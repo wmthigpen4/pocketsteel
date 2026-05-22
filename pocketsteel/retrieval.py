@@ -1,4 +1,4 @@
-"""Small local retrieval helpers for the Pocket Steel vertical slice."""
+"""Small local retrieval helpers for the pocketsteel vertical slice."""
 
 from __future__ import annotations
 
@@ -64,4 +64,3 @@ def best_excerpt(text: str, query: str, max_chars: int = 550) -> str:
     if score(best)[0] == 0 and len(sentences) > 1:
         best = " ".join(sentences[:2])
     return shorten(best, max_chars)
-

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Chunk the clean Pocket Steel corpus for retrieval."""
+"""Chunk The Turnaround clean corpus for retrieval."""
 
 from __future__ import annotations
 

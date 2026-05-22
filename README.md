@@ -1,6 +1,9 @@
-# Pocket Steel
+# The Turnaround
 
-Pocket Steel is a local, source-grounded RAG pipeline for Steel Guitar Forum knowledge.
+The Turnaround is a local, source-grounded RAG pipeline for Steel Guitar Forum knowledge.
+
+The user-facing app name is The Turnaround. Internal technical names such as
+`pocketsteel`, `pocket-steel`, and `pocket_steel` are intentionally preserved for now.
 
 The personal MVP is intentionally small:
 

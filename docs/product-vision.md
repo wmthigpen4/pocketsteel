@@ -1,3 +1,3 @@
-# Pocket Steel — Product Vision
+# The Turnaround — Product Vision
 
-Pocket Steel is a living steel guitar companion.
+The Turnaround is a living steel guitar companion.

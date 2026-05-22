@@ -7,7 +7,7 @@ import argparse
 import re
 from typing import Any
 
-from rag_common import DEFAULT_CHAT_MODEL, excerpt, ollama_chat
+from rag_common import APP_DISPLAY_NAME, DEFAULT_CHAT_MODEL, excerpt, ollama_chat
 from rag_search import search_chunks
 
 
@@ -76,7 +76,7 @@ def answer_question(query: str, top_k: int = 6, chat_model: str | None = None, *
         {
             "role": "system",
             "content": (
-                "You answer questions for Pocket Steel using only the retrieved Steel Guitar Forum "
+                f"You answer questions for {APP_DISPLAY_NAME} using only the retrieved Steel Guitar Forum "
                 "Electronics sources. Do not invent technical advice. If the sources disagree, say so. "
                 "If the sources are thin, say the corpus does not provide enough evidence. Keep the answer "
                 "practical and concise, and include source numbers in brackets where useful."

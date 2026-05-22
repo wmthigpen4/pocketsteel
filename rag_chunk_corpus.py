@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Chunk the clean Electronics corpus for Pocket Steel RAG v0."""
+"""Chunk the clean Electronics corpus for The Turnaround RAG v0."""
 
 from __future__ import annotations
 

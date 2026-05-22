@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Ask a local Pocket Steel vector index a source-grounded question."""
+"""Ask The Turnaround local vector index a source-grounded question."""
 
 from __future__ import annotations
 

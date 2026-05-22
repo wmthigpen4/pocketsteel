@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Streamlit app for Pocket Steel Electronics RAG v0."""
+"""Streamlit app for The Turnaround Electronics RAG v0."""
 
 from __future__ import annotations
 
 import os
 
 from rag_answer import answer_question
-from rag_common import DEFAULT_CHAT_MODEL, DEFAULT_EMBEDDING_MODEL, excerpt
+from rag_common import APP_DISPLAY_NAME, DEFAULT_CHAT_MODEL, DEFAULT_EMBEDDING_MODEL, excerpt
 
 
 def main() -> None:
@@ -15,8 +15,8 @@ def main() -> None:
     except ImportError as exc:
         raise SystemExit("Missing dependency: streamlit. Install it with `pip install streamlit`.") from exc
 
-    st.set_page_config(page_title="Pocket Steel RAG v0", layout="wide")
-    st.title("Pocket Steel RAG v0")
+    st.set_page_config(page_title=f"{APP_DISPLAY_NAME} RAG v0", layout="wide")
+    st.title(f"{APP_DISPLAY_NAME} RAG v0")
     st.caption("Electronics forum only")
 
     with st.sidebar:

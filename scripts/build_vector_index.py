@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a small local vector index from Pocket Steel chunks."""
+"""Build a small local vector index from The Turnaround chunks."""
 
 from __future__ import annotations
 

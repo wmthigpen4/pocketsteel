@@ -1,3 +1,3 @@
-# Pocket Steel — Architecture
+# The Turnaround — Architecture
 
 Raw Sources -> Normalization -> Chunking -> Embeddings -> Retrieval -> Answers

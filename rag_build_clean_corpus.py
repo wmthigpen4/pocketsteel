@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the clean Electronics corpus for Pocket Steel RAG v0."""
+"""Build the clean Electronics corpus for The Turnaround RAG v0."""
 
 from __future__ import annotations
 
@@ -203,4 +203,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

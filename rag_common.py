@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Shared helpers for the Pocket Steel Electronics RAG v0 scripts."""
+"""Shared helpers for The Turnaround Electronics RAG v0 scripts."""
 
 from __future__ import annotations
 
@@ -19,6 +19,7 @@ DEFAULT_FORUM_NAME = "Electronics"
 DEFAULT_EMBEDDING_MODEL = "bge-m3"
 DEFAULT_CHAT_MODEL = "qwen3:14b"
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
+APP_DISPLAY_NAME = "The Turnaround"
 
 TOKEN_RE = re.compile(r"\w+|[^\w\s]", re.UNICODE)
 WORD_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9+'_.-]*")
@@ -161,4 +162,3 @@ def parse_json_metadata(value: Any) -> Any:
         return json.loads(value)
     except json.JSONDecodeError:
         return value
-
