@@ -13,3 +13,7 @@ The user-facing app name is The Turnaround. Internal technical names such as
 ## Evaluation
 
 - [RAG Evaluation](rag-evaluation.md)
+
+## Agent Workflow
+
+- [Codex Workflow](codex-workflow.md)
