@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "status": "scaffolding_only",
+  "notes": "Source registry placeholder. Do not require this during active scraping or clean-corpus generation yet.",
+  "sources": [
+    {
+      "source_registry_id": "sgf",
+      "source_name": "Steel Guitar Forum",
+      "source_system": "sgf",
+      "source_url": "https://bb.steelguitarforum.com/",
+      "policy_snapshot_id": null,
+      "license_policy_id": null,
+      "corpus_use_status": "ingestion_in_progress",
+      "review_status": "not_reviewed",
+      "notes": "Policy snapshot and copyright review will be added after SGF scraping is complete."
+    }
+  ]
+}

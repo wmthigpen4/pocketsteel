@@ -46,9 +46,30 @@ EXTRA_FIELD_ALIASES = {
     "source_name": ("source",),
 }
 
+PROVENANCE_POLICY_FIELDS = {
+    "source_registry_id": None,
+    "source_policy_id": None,
+    "source_policy_snapshot_id": None,
+    "source_policy_snapshot_date": None,
+    "source_policy_url": None,
+    "license_policy_id": None,
+    "copyright_review_status": None,
+    "copyright_flags": [],
+    "copyright_notes": None,
+}
+
 METADATA_FIELDS = (
     "source",
     "source_name",
+    "source_registry_id",
+    "source_policy_id",
+    "source_policy_snapshot_id",
+    "source_policy_snapshot_date",
+    "source_policy_url",
+    "license_policy_id",
+    "copyright_review_status",
+    "copyright_flags",
+    "copyright_notes",
     "title",
     "url",
     "thread_url",
@@ -318,6 +339,10 @@ def normalize_record(
 
     for field_name, aliases in EXTRA_FIELD_ALIASES.items():
         normalized[field_name] = stringify_metadata(first_value(record, aliases))
+
+    for field_name, default in PROVENANCE_POLICY_FIELDS.items():
+        if field_name not in normalized:
+            normalized[field_name] = list(default) if isinstance(default, list) else default
 
     if "links" in record and isinstance(record["links"], list):
         normalized["links"] = record["links"]

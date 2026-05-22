@@ -21,6 +21,9 @@ def test_clean_corpus_flattens_threads_and_strips_html() -> None:
     assert records[3]["posted_at"] == "5 Aug 2013 10:07 am"
     assert records[3]["url"].endswith("start=25#p1029")
     assert records[3]["text"] == "Cabinet drop can make the E strings sound sour. A compensator can help the return note settle."
+    assert records[3]["source_policy_id"] is None
+    assert records[3]["copyright_review_status"] is None
+    assert records[3]["copyright_flags"] == []
 
 
 def test_read_jsonl_roundtrip_fixture() -> None:

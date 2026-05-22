@@ -23,6 +23,17 @@ from rag_common import (
 DEFAULT_INPUT_GLOB = "sgf-output/jsonl/forum-11/*.jsonl"
 DEFAULT_OUTPUT = "rag-data/electronics/clean_corpus.jsonl"
 DEFAULT_REPORT = "rag-data/electronics/clean_corpus_report.json"
+PROVENANCE_POLICY_PLACEHOLDERS = {
+    "source_registry_id": None,
+    "source_policy_id": None,
+    "source_policy_snapshot_id": None,
+    "source_policy_snapshot_date": None,
+    "source_policy_url": None,
+    "license_policy_id": None,
+    "copyright_review_status": None,
+    "copyright_flags": [],
+    "copyright_notes": None,
+}
 
 DATE_LINE_RE = re.compile(
     r"^\d{1,2}\s+[A-Z][a-z]{2}\s+\d{4}\s+\d{1,2}:\d{2}\s+(?:am|pm)\b",
@@ -134,6 +145,12 @@ def clean_row(row: dict[str, Any], source_file: Path) -> tuple[dict[str, Any] | 
         "text": text,
         "links": row.get("links") or [],
     }
+    clean.update(
+        {
+            key: list(value) if isinstance(value, list) else value
+            for key, value in PROVENANCE_POLICY_PLACEHOLDERS.items()
+        }
+    )
     if not clean["thread_id"] or not clean["post_uid"]:
         return None, "missing_required_metadata"
     clean["_source_file"] = str(source_file)
