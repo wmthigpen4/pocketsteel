@@ -99,6 +99,13 @@ python scripts/ask_pocket_steel.py \
   --question "What are common uses for the E9 9th string?"
 ```
 
+## Electronics RAG v0
+
+The repo also includes a focused Ollama/Chroma v0 for the SGF Electronics forum only.
+It expects `forum_id=11`, `forum_name=Electronics`, and does not scrape new data.
+
+See [docs/rag-v0-electronics.md](docs/rag-v0-electronics.md).
+
 ## Offline Smoke Index
 
 If the embedding model is not available yet:

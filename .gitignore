@@ -29,6 +29,12 @@ data/**/*.htm.gz
 *.npz
 *.parquet
 
+# Electronics RAG v0 generated artifacts
+rag-data/electronics/clean_corpus.jsonl
+rag-data/electronics/chunks.jsonl
+rag-data/electronics/*report.json
+rag-data/electronics/chroma/
+
 # Private or future non-MVP sources
 transcripts/
 private/
