@@ -9,3 +9,7 @@ The user-facing app name is The Turnaround. Internal technical names such as
 
 - [Copyright and Provenance Plan](copyright-provenance.md)
 - [Corpus License Policy](corpus-license-policy.md)
+
+## Evaluation
+
+- [RAG Evaluation](rag-evaluation.md)

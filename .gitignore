@@ -35,6 +35,10 @@ rag-data/electronics/chunks.jsonl
 rag-data/electronics/*report.json
 rag-data/electronics/chroma/
 
+# Local RAG eval run outputs
+eval/results/*
+!eval/results/.gitkeep
+
 # Private or future non-MVP sources
 transcripts/
 private/
