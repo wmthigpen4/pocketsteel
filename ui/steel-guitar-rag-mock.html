@@ -1,0 +1,696 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Steel Guitar RAG - Simple Search Mock</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --ink: #151818;
+      --box: #1d2021;
+      --box-2: #242829;
+      --cream: #f4ead6;
+      --muted: #b9ad98;
+      --dim: #7f776c;
+      --brass: #f0bf69;
+      --brass-2: #bd8842;
+      --red: #b65b45;
+      --line: rgba(244, 234, 214, 0.14);
+      --shadow: 0 28px 80px rgba(0, 0, 0, 0.38);
+      --font-ui: "Gill Sans", "Gill Sans MT", "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+      --font-lesson: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+      font-family: var(--font-ui);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--cream);
+      background:
+        radial-gradient(circle at 50% 36%, rgba(240, 191, 105, 0.1), transparent 30%),
+        radial-gradient(circle at 50% 110%, rgba(182, 91, 69, 0.12), transparent 36%),
+        linear-gradient(145deg, #111414 0%, #1c211f 52%, #30261d 100%);
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.22;
+      background:
+        repeating-linear-gradient(90deg, transparent 0 8px, rgba(244,234,214,0.035) 8px 9px),
+        linear-gradient(rgba(255,255,255,0.025), transparent 28%, rgba(0,0,0,0.26));
+    }
+
+    button, textarea, select {
+      font: inherit;
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+    }
+
+    header {
+      width: min(1080px, calc(100% - 36px));
+      margin: 0 auto;
+      padding: 24px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .brand-logo {
+      width: clamp(188px, 25vw, 285px);
+      height: auto;
+      display: block;
+      flex: 0 0 auto;
+      filter: drop-shadow(0 0 12px rgba(240, 128, 24, 0.18));
+    }
+
+    .settings {
+      min-height: 38px;
+      padding: 0 14px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(244, 234, 214, 0.045);
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .settings:hover {
+      color: var(--cream);
+      border-color: rgba(240, 191, 105, 0.42);
+    }
+
+    main {
+      width: min(860px, calc(100% - 32px));
+      margin: 0 auto;
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      padding: 28px 0 76px;
+    }
+
+    h1 {
+      margin: 0;
+      width: min(780px, 100%);
+      text-align: center;
+      font-size: clamp(36px, 6vw, 70px);
+      line-height: 0.98;
+      letter-spacing: 0;
+      font-weight: 780;
+    }
+
+    .lesson-question {
+      width: min(600px, 100%);
+      margin: 0 auto 24px;
+      text-align: center;
+      transition: opacity 260ms ease, transform 260ms ease;
+    }
+
+    .question-label,
+    .try-label {
+      margin: 0;
+      color: rgba(185, 173, 152, 0.58);
+      font-size: 12px;
+      line-height: 1.35;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .question-label {
+      margin-bottom: 7px;
+    }
+
+    .subhead {
+      margin: 0;
+      color: var(--muted);
+      font-family: var(--font-lesson);
+      font-size: clamp(20px, 2.3vw, 26px);
+      font-style: italic;
+      font-weight: 400;
+      line-height: 1.45;
+      min-height: 1.45em;
+    }
+
+    .lesson-question.is-changing {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+
+    .helper-text,
+    .prompt-typing-indicator {
+      transition: opacity 220ms ease, transform 220ms ease;
+    }
+
+    .prompt-typing-indicator {
+      display: none;
+      position: absolute;
+      right: 12px;
+      top: 13px;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      color: rgba(244, 234, 214, 0.62);
+      pointer-events: none;
+    }
+
+    .prompt-typing-indicator span {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--brass);
+      opacity: 0.38;
+      animation: typingPulse 1.35s ease-in-out infinite;
+    }
+
+    .prompt-typing-indicator span:nth-child(2) {
+      animation-delay: 0.18s;
+    }
+
+    .prompt-typing-indicator span:nth-child(3) {
+      animation-delay: 0.36s;
+    }
+
+    .lesson-question.is-typing .helper-text {
+      opacity: 0;
+      transform: translateY(3px);
+    }
+
+    .prompt.is-typing .prompt-typing-indicator {
+      display: flex;
+      animation: indicatorIn 220ms ease both;
+    }
+
+    @keyframes typingPulse {
+      0%, 100% {
+        transform: translateY(0);
+        opacity: 0.32;
+      }
+      45% {
+        transform: translateY(-3px);
+        opacity: 0.86;
+      }
+    }
+
+    @keyframes indicatorIn {
+      from {
+        opacity: 0;
+        transform: translateY(3px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .prompt-shell {
+      width: min(620px, 100%);
+      padding: 1px;
+      border-radius: 24px;
+      background:
+        linear-gradient(135deg, rgba(240,191,105,0.42), rgba(244,234,214,0.07) 44%, rgba(182,91,69,0.14));
+      box-shadow: var(--shadow), 0 0 58px rgba(240,191,105,0.065);
+    }
+
+    .prompt {
+      position: relative;
+      min-height: 112px;
+      border-radius: 23px;
+      background: linear-gradient(180deg, var(--box-2), var(--box));
+      border: 1px solid rgba(244, 234, 214, 0.06);
+      padding: 16px;
+    }
+
+    .input-area {
+      position: relative;
+    }
+
+    .input-area.is-empty::before {
+      content: "";
+      position: absolute;
+      left: 5px;
+      top: 8px;
+      width: 2px;
+      height: 25px;
+      border-radius: 999px;
+      background: rgba(240, 191, 105, 0.72);
+      box-shadow: 0 0 14px rgba(240, 191, 105, 0.16);
+      animation: caretBlink 1.25s ease-in-out infinite;
+      pointer-events: none;
+    }
+
+    .input-area.is-empty:focus-within::before {
+      opacity: 0;
+    }
+
+    textarea {
+      display: block;
+      width: 100%;
+      min-height: 50px;
+      resize: none;
+      border: 0;
+      outline: 0;
+      background: transparent;
+      color: var(--cream);
+      padding: 4px 54px 12px 4px;
+      font-family: var(--font-ui);
+      font-size: 19px;
+      font-weight: 400;
+      line-height: 1.45;
+    }
+
+    textarea::placeholder {
+      color: rgba(244, 234, 214, 0.52);
+    }
+
+    @keyframes caretBlink {
+      0%, 100% {
+        opacity: 0.28;
+      }
+      50% {
+        opacity: 0.9;
+      }
+    }
+
+    .prompt-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .left-tools {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .icon-button {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+
+    .icon-button:hover {
+      color: var(--cream);
+      border-color: rgba(244, 234, 214, 0.12);
+      background: rgba(244, 234, 214, 0.055);
+    }
+
+    .topic-select-wrap {
+      position: relative;
+      min-width: 154px;
+      flex: 0 1 auto;
+    }
+
+    .topic-select-wrap::after {
+      content: "";
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      width: 7px;
+      height: 7px;
+      border-right: 1.5px solid var(--brass);
+      border-bottom: 1.5px solid var(--brass);
+      transform: translateY(-65%) rotate(45deg);
+      pointer-events: none;
+    }
+
+    select {
+      width: 100%;
+      min-height: 34px;
+      border: 1px solid rgba(240, 191, 105, 0.26);
+      border-radius: 999px;
+      background: rgba(240, 191, 105, 0.07);
+      color: var(--cream);
+      padding: 0 30px 0 12px;
+      appearance: none;
+      outline: 0;
+      cursor: pointer;
+      font-size: 16px;
+      letter-spacing: 0;
+    }
+
+    option {
+      background: var(--box);
+      color: var(--cream);
+    }
+
+    .send {
+      width: 36px;
+      height: 36px;
+      border: 0;
+      border-radius: 50%;
+      background: var(--brass);
+      color: #21170d;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      font-weight: 900;
+      box-shadow: 0 14px 34px rgba(240, 191, 105, 0.24);
+      flex: 0 0 auto;
+    }
+
+    .examples {
+      width: min(620px, 100%);
+      margin-top: 8px;
+      display: flex;
+      justify-content: center;
+      min-height: 38px;
+      transition: opacity 220ms ease, transform 220ms ease;
+    }
+
+    .try-asking {
+      width: min(620px, 100%);
+      margin-top: 17px;
+      display: grid;
+      justify-items: center;
+      gap: 0;
+    }
+
+    .examples.is-changing {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+
+    .example {
+      min-height: 36px;
+      border: 1px solid rgba(244, 234, 214, 0.11);
+      border-radius: 999px;
+      padding: 0 13px;
+      background: rgba(244, 234, 214, 0.045);
+      color: var(--muted);
+      cursor: pointer;
+      white-space: nowrap;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 16px;
+      font-weight: 400;
+      transition: transform 160ms ease, border-color 160ms ease, color 160ms ease, background 160ms ease;
+    }
+
+    .example:hover {
+      border-color: rgba(240, 191, 105, 0.42);
+      color: var(--cream);
+      background: rgba(244, 234, 214, 0.065);
+      transform: translateY(-2px);
+    }
+
+    footer {
+      width: min(1080px, calc(100% - 36px));
+      margin: 0 auto;
+      padding: 0 0 28px;
+      color: rgba(185, 173, 152, 0.72);
+      text-align: center;
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .footer-shimmer {
+      position: relative;
+      display: inline-block;
+      white-space: nowrap;
+      color: rgba(244, 234, 214, 0.84);
+      font-weight: 400;
+    }
+
+    .footer-shimmer::after {
+      content: attr(data-text);
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      color: transparent;
+      background-image: linear-gradient(
+        108deg,
+        transparent 0%,
+        transparent 27%,
+        rgba(255, 250, 235, 1) 42%,
+        rgba(240, 191, 105, 0.95) 50%,
+        rgba(255, 224, 156, 0.72) 59%,
+        transparent 74%,
+        transparent 100%
+      );
+      background-size: 240% 100%;
+      background-position: 180% 0;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 0 12px rgba(240, 191, 105, 0.28);
+      opacity: 1;
+      animation: footer-shimmer-sweep 3.2s ease-in-out infinite;
+    }
+
+    @keyframes footer-shimmer-sweep {
+      0% {
+        background-position: 180% 0;
+      }
+      100% {
+        background-position: -180% 0;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .footer-shimmer::after {
+        content: none;
+        animation: none;
+      }
+    }
+
+    svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      stroke-width: 1.9;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    @media (max-width: 640px) {
+      header {
+        width: calc(100% - 28px);
+        padding-top: 18px;
+      }
+
+      .brand-logo {
+        width: min(210px, 58vw);
+      }
+
+      .settings {
+        padding: 0 11px;
+      }
+
+      main {
+        width: calc(100% - 28px);
+        padding-top: 44px;
+      }
+
+      .prompt {
+        min-height: 136px;
+      }
+
+      .prompt-bar {
+        align-items: flex-end;
+      }
+
+      .left-tools {
+        gap: 5px;
+      }
+
+      .icon-button {
+        width: 30px;
+        height: 30px;
+      }
+
+      .topic-select-wrap {
+        min-width: 132px;
+      }
+
+      select {
+        font-size: 14px;
+      }
+
+      .examples {
+        justify-content: center;
+        padding-bottom: 3px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div class="brand">
+        <img class="brand-logo" src="assets/steel-guitar-rag-logo-transparent.png" alt="Steel Guitar RAG">
+      </div>
+      <button class="settings" type="button">Settings</button>
+    </header>
+
+    <main>
+      <section class="lesson-question" id="lesson-question" aria-label="Tonight's question">
+        <p class="question-label">Tonight’s question:</p>
+        <p class="subhead">
+          <span class="helper-text">Alright. What are we working on?</span>
+        </p>
+      </section>
+
+      <section class="prompt-shell" aria-label="Steel guitar companion prompt">
+        <div class="prompt">
+          <div class="input-area">
+            <textarea id="question" aria-label="Type your steel guitar question"></textarea>
+            <div class="prompt-typing-indicator" aria-label="Listening" role="status">
+              <span></span><span></span><span></span>
+            </div>
+          </div>
+          <div class="prompt-bar">
+            <div class="left-tools">
+              <div class="topic-select-wrap">
+                <select id="topic" aria-label="Choose topic type">
+                  <option>Technique</option>
+                  <option>Tone</option>
+                  <option>Electronics</option>
+                  <option>Forum Wisdom</option>
+                </select>
+              </div>
+              <button class="icon-button" type="button" aria-label="Voice question">
+                <svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></svg>
+              </button>
+            </div>
+            <button class="send" type="button" aria-label="Ask">↑</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="try-asking" aria-label="Suggested question">
+        <p class="try-label">Try asking:</p>
+        <div class="examples" id="suggested-prompts" aria-label="Example questions"></div>
+      </div>
+    </main>
+
+    <footer>
+      Simple on the surface.
+      <span class="footer-shimmer" data-text="Deeply intelligent underneath.">Deeply intelligent underneath.</span>
+    </footer>
+  </div>
+
+  <script>
+    const question = document.querySelector("#question");
+    const promptBox = document.querySelector(".prompt");
+    const inputArea = document.querySelector(".input-area");
+    const topic = document.querySelector("#topic");
+    const suggestedPrompts = document.querySelector("#suggested-prompts");
+    const lessonQuestion = document.querySelector("#lesson-question");
+    const helperText = document.querySelector(".helper-text");
+    const promptPool = [
+      { text: "Why does my rig hum?", topic: "Electronics" },
+      { text: "Show me smoother chord movement", topic: "Technique" },
+      { text: "Build tonight’s practice plan", topic: "Technique" },
+      { text: "Where should I go after A+B?", topic: "Technique" },
+      { text: "Why does my bar movement sound rough?", topic: "Technique" },
+      { text: "Give me a better way into the IV chord", topic: "Technique" },
+      { text: "Help me stop overplaying fills", topic: "Technique" },
+      { text: "What are good uses for the 9th string?", topic: "Forum Wisdom" },
+      { text: "Why does my tone sound thin?", topic: "Tone" },
+      { text: "Show me a smoother turnaround", topic: "Technique" },
+      { text: "How do players use the 6th string lower?", topic: "Forum Wisdom" },
+      { text: "Explain this lick like a steel player would", topic: "Technique" },
+      { text: "Help me connect open position to pedals down", topic: "Technique" },
+      { text: "What’s a good 20-minute practice routine?", topic: "Technique" },
+      { text: "Why does my volume pedal feel awkward?", topic: "Tone" },
+      { text: "Show me a classic country move", topic: "Technique" },
+      { text: "Help me clean up my blocking", topic: "Technique" },
+      { text: "Why does touching the changer reduce hum?", topic: "Electronics" },
+      { text: "What’s a better grip for this chord?", topic: "Technique" },
+      { text: "Give me a practice rut breaker", topic: "Technique" },
+      { text: "Show me movement without sliding everywhere", topic: "Technique" },
+      { text: "Why does my amp buzz at idle?", topic: "Electronics" },
+      { text: "Help me sound less mechanical", topic: "Technique" },
+      { text: "Show me tasteful fills behind a singer", topic: "Technique" },
+      { text: "What should I woodshed tonight?", topic: "Technique" },
+      { text: "Why can’t I hear the chord movement clearly?", topic: "Technique" },
+      { text: "Give me a better way to think about the neck", topic: "Technique" },
+      { text: "Show me how pros approach this position", topic: "Forum Wisdom" },
+      { text: "What’s the simplest way to hear this change?", topic: "Technique" },
+      { text: "Help me stop getting lost on the fretboard", topic: "Technique" }
+    ];
+
+    let activePromptIndex = Math.floor(Math.random() * promptPool.length);
+
+    function renderSuggestedPrompt() {
+      suggestedPrompts.innerHTML = "";
+      const prompt = promptPool[activePromptIndex];
+      const button = document.createElement("button");
+      button.className = "example";
+      button.type = "button";
+      button.dataset.topic = prompt.topic;
+      button.textContent = prompt.text;
+      suggestedPrompts.appendChild(button);
+    }
+
+    function rotateSuggestedPrompt() {
+      let nextIndex = activePromptIndex;
+      while (nextIndex === activePromptIndex) {
+        nextIndex = Math.floor(Math.random() * promptPool.length);
+      }
+      suggestedPrompts.classList.add("is-changing");
+      window.setTimeout(() => {
+        activePromptIndex = nextIndex;
+        renderSuggestedPrompt();
+        suggestedPrompts.classList.remove("is-changing");
+      }, 220);
+    }
+
+    function updateHelperState() {
+      const hasText = Boolean(question.value.trim());
+      lessonQuestion.classList.toggle("is-typing", hasText);
+      promptBox.classList.toggle("is-typing", hasText);
+      inputArea.classList.toggle("is-empty", !hasText);
+    }
+
+    helperText.textContent = "Alright. What are we working on?";
+    renderSuggestedPrompt();
+    updateHelperState();
+
+    setInterval(rotateSuggestedPrompt, 6500);
+
+    question.addEventListener("input", updateHelperState);
+
+    suggestedPrompts.addEventListener("click", (event) => {
+      const button = event.target.closest(".example");
+      if (!button) return;
+      question.value = button.textContent.trim();
+      topic.value = button.dataset.topic;
+      updateHelperState();
+      question.focus();
+    });
+  </script>
+</body>
+</html>
