@@ -32,9 +32,15 @@
       min-height: 100vh;
       color: var(--cream);
       background:
-        radial-gradient(circle at 50% 36%, rgba(240, 191, 105, 0.1), transparent 30%),
-        radial-gradient(circle at 50% 110%, rgba(182, 91, 69, 0.12), transparent 36%),
-        linear-gradient(145deg, #111414 0%, #1c211f 52%, #30261d 100%);
+        linear-gradient(180deg, rgba(3, 4, 4, 0.34) 0%, rgba(3, 4, 4, 0.54) 52%, rgba(3, 4, 4, 0.74) 100%),
+        radial-gradient(ellipse at 50% 19%, rgba(240, 191, 105, 0.14), transparent 38%),
+        radial-gradient(ellipse at 50% 100%, rgba(240, 143, 48, 0.16), transparent 42%),
+        url("assets/steel_on_stage2.png"),
+        linear-gradient(180deg, #050606 0%, #101312 48%, #0b0d0d 100%);
+      background-size: cover, cover, cover, cover, cover;
+      background-position: center center, center center, center bottom, center center, center center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
       overflow-x: hidden;
     }
 
@@ -43,10 +49,15 @@
       position: fixed;
       inset: 0;
       pointer-events: none;
-      opacity: 0.22;
+      opacity: 0.42;
       background:
-        repeating-linear-gradient(90deg, transparent 0 8px, rgba(244,234,214,0.035) 8px 9px),
-        linear-gradient(rgba(255,255,255,0.025), transparent 28%, rgba(0,0,0,0.26));
+        linear-gradient(90deg, rgba(0, 0, 0, 0.64), transparent 24%, transparent 74%, rgba(0, 0, 0, 0.72)),
+        radial-gradient(ellipse at 50% 46%, transparent 0 34%, rgba(0, 0, 0, 0.58) 76%),
+        linear-gradient(rgba(255,255,255,0.018), transparent 28%, rgba(0,0,0,0.42));
+    }
+
+    body::after {
+      content: none;
     }
 
     button, textarea, select {
@@ -62,9 +73,9 @@
     }
 
     header {
-      width: min(1080px, calc(100% - 36px));
+      width: min(1120px, calc(100% - 40px));
       margin: 0 auto;
-      padding: 24px 0;
+      padding: 16px 0 4px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -77,83 +88,653 @@
       min-width: 0;
     }
 
+    .brand-home {
+      display: block;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      cursor: pointer;
+      border-radius: 8px;
+    }
+
+    .brand-home:focus-visible {
+      outline: 2px solid rgba(240, 191, 105, 0.54);
+      outline-offset: 5px;
+    }
+
     .brand-logo {
-      width: clamp(188px, 25vw, 285px);
+      width: clamp(200px, 24vw, 292px);
       height: auto;
       display: block;
       flex: 0 0 auto;
-      filter: drop-shadow(0 0 12px rgba(240, 128, 24, 0.18));
+      filter: drop-shadow(0 0 14px rgba(240, 128, 24, 0.22)) drop-shadow(0 0 28px rgba(240, 191, 105, 0.12));
     }
 
-    .settings {
-      min-height: 38px;
-      padding: 0 14px;
+    .backstage-trigger {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      min-height: 42px;
+      padding: 0 16px;
       border-radius: 999px;
-      border: 1px solid var(--line);
-      background: rgba(244, 234, 214, 0.045);
-      color: var(--muted);
+      border: 1px solid rgba(240, 191, 105, 0.34);
+      background: rgba(13, 14, 14, 0.68);
+      color: rgba(244, 234, 214, 0.88);
       cursor: pointer;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.26), 0 18px 48px rgba(0, 0, 0, 0.24);
     }
 
-    .settings:hover {
+    .backstage-trigger:hover,
+    .backstage-trigger:focus-visible {
       color: var(--cream);
-      border-color: rgba(240, 191, 105, 0.42);
+      border-color: rgba(240, 191, 105, 0.62);
+      background: rgba(240, 191, 105, 0.075);
+      outline: none;
     }
 
-    main {
-      width: min(860px, calc(100% - 32px));
-      margin: 0 auto;
+    .backstage-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
       display: grid;
-      align-content: center;
-      justify-items: center;
-      padding: 28px 0 76px;
+      place-items: center;
+      padding: 24px;
+      background: rgba(8, 10, 10, 0.64);
+      backdrop-filter: blur(12px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 180ms ease;
     }
 
-    h1 {
-      margin: 0;
-      width: min(780px, 100%);
-      text-align: center;
-      font-size: clamp(36px, 6vw, 70px);
-      line-height: 0.98;
-      letter-spacing: 0;
-      font-weight: 780;
+    .backstage-overlay[hidden] {
+      display: none;
     }
 
-    .lesson-question {
-      width: min(600px, 100%);
-      margin: 0 auto 24px;
-      text-align: center;
-      transition: opacity 260ms ease, transform 260ms ease;
+    .backstage-overlay.is-open {
+      opacity: 1;
+      pointer-events: auto;
     }
 
-    .question-label,
-    .try-label {
-      margin: 0;
-      color: rgba(185, 173, 152, 0.58);
+    .backstage-panel {
+      width: min(980px, 100%);
+      max-height: min(88vh, 840px);
+      overflow-y: auto;
+      border: 1px solid rgba(240, 191, 105, 0.24);
+      border-radius: 18px;
+      background:
+        linear-gradient(180deg, rgba(36, 40, 41, 0.98), rgba(23, 26, 26, 0.98)),
+        var(--box);
+      box-shadow: 0 32px 110px rgba(0, 0, 0, 0.56), 0 0 48px rgba(240, 191, 105, 0.09);
+      transform: translateY(8px) scale(0.985);
+      transition: transform 180ms ease;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(240, 191, 105, 0.34) transparent;
+    }
+
+    .backstage-overlay.is-open .backstage-panel {
+      transform: translateY(0) scale(1);
+    }
+
+    .backstage-panel::-webkit-scrollbar {
+      width: 7px;
+    }
+
+    .backstage-panel::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .backstage-panel::-webkit-scrollbar-thumb {
+      background: rgba(240, 191, 105, 0.34);
+      border-radius: 999px;
+    }
+
+    .backstage-header {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 24px 24px 18px;
+      border-bottom: 1px solid rgba(244, 234, 214, 0.09);
+      background: linear-gradient(180deg, rgba(36, 40, 41, 0.98), rgba(36, 40, 41, 0.92));
+      backdrop-filter: blur(8px);
+    }
+
+    .backstage-kicker {
+      margin: 0 0 5px;
+      color: rgba(240, 191, 105, 0.72);
       font-size: 12px;
       line-height: 1.35;
       letter-spacing: 0.08em;
       text-transform: uppercase;
     }
 
-    .question-label {
-      margin-bottom: 7px;
-    }
-
-    .subhead {
+    .backstage-title {
       margin: 0;
-      color: var(--muted);
+      color: var(--cream);
       font-family: var(--font-lesson);
-      font-size: clamp(20px, 2.3vw, 26px);
-      font-style: italic;
-      font-weight: 400;
-      line-height: 1.45;
-      min-height: 1.45em;
+      font-size: clamp(34px, 5vw, 52px);
+      font-weight: 500;
+      line-height: 1;
     }
 
-    .lesson-question.is-changing {
-      opacity: 0;
-      transform: translateY(4px);
+    .backstage-subtitle {
+      margin: 8px 0 0;
+      max-width: 520px;
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.45;
+    }
+
+    .access-preview {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 11px 24px;
+      border-bottom: 1px solid rgba(244, 234, 214, 0.08);
+      background: rgba(21, 24, 24, 0.62);
+    }
+
+    .access-preview-label {
+      color: rgba(244, 234, 214, 0.68);
+      font-size: 12px;
+      line-height: 1.35;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .access-toggle {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+
+    .access-toggle label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 30px;
+      padding: 0 10px;
+      border: 1px solid rgba(244, 234, 214, 0.1);
+      border-radius: 999px;
+      background: rgba(244, 234, 214, 0.035);
+      color: rgba(244, 234, 214, 0.72);
+      cursor: pointer;
+      font-size: 12px;
+      line-height: 1.2;
+    }
+
+    .access-toggle label:has(input:checked) {
+      border-color: rgba(240, 191, 105, 0.38);
+      background: rgba(240, 191, 105, 0.08);
+      color: var(--cream);
+    }
+
+    .access-toggle input {
+      accent-color: var(--brass);
+    }
+
+    .backstage-close {
+      flex: 0 0 auto;
+      width: 36px;
+      height: 36px;
+      border: 1px solid rgba(244, 234, 214, 0.14);
+      border-radius: 999px;
+      background: rgba(244, 234, 214, 0.04);
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .backstage-close:hover,
+    .backstage-close:focus-visible {
+      border-color: rgba(240, 191, 105, 0.42);
+      color: var(--cream);
+      outline: none;
+    }
+
+    .backstage-content {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      padding: 18px 24px 24px;
+    }
+
+    .backstage-tabs {
+      position: sticky;
+      top: 110px;
+      z-index: 1;
+      display: flex;
+      gap: 7px;
+      overflow-x: auto;
+      padding: 12px 24px;
+      border-bottom: 1px solid rgba(244, 234, 214, 0.08);
+      background: rgba(29, 32, 33, 0.92);
+      scrollbar-width: none;
+    }
+
+    .backstage-tabs::-webkit-scrollbar {
+      display: none;
+    }
+
+    .backstage-tab {
+      flex: 0 0 auto;
+      min-height: 34px;
+      border: 1px solid rgba(244, 234, 214, 0.1);
+      border-radius: 999px;
+      padding: 0 12px;
+      background: rgba(244, 234, 214, 0.035);
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .backstage-tab:hover,
+    .backstage-tab:focus-visible,
+    .backstage-tab[aria-selected="true"] {
+      border-color: rgba(240, 191, 105, 0.38);
+      color: var(--cream);
+      background: rgba(240, 191, 105, 0.07);
+      outline: none;
+    }
+
+    .backstage-tab-panel[hidden] {
+      display: none;
+    }
+
+    .backstage-card {
+      display: grid;
+      align-content: start;
+      gap: 14px;
+      min-height: 100%;
+      padding: 17px;
+      border: 1px solid rgba(244, 234, 214, 0.1);
+      border-radius: 8px;
+      background: rgba(244, 234, 214, 0.035);
+    }
+
+    .backstage-card.is-wide {
+      grid-column: 1 / -1;
+    }
+
+    .backstage-card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .backstage-card h3 {
+      margin: 0;
+      color: var(--cream);
+      font-size: 18px;
+      line-height: 1.2;
+      font-weight: 650;
+    }
+
+    .backstage-card p {
+      margin: 0;
+      color: rgba(244, 234, 214, 0.72);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .coming-soon {
+      flex: 0 0 auto;
+      border: 1px solid rgba(240, 191, 105, 0.24);
+      border-radius: 999px;
+      padding: 3px 8px;
+      color: rgba(240, 191, 105, 0.78);
+      background: rgba(240, 191, 105, 0.06);
+      font-size: 11px;
+      line-height: 1.2;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .backstage-fields {
+      display: grid;
+      gap: 10px;
+    }
+
+    .backstage-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .backstage-field {
+      display: grid;
+      gap: 5px;
+      min-width: 0;
+    }
+
+    .backstage-field label,
+    .backstage-metric span:first-child,
+    .source-option {
+      color: rgba(185, 173, 152, 0.76);
+      font-size: 12px;
+      line-height: 1.35;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .backstage-field input,
+    .backstage-field textarea,
+    .backstage-field select {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid rgba(244, 234, 214, 0.1);
+      border-radius: 8px;
+      background: rgba(21, 24, 24, 0.42);
+      color: rgba(244, 234, 214, 0.82);
+      padding: 9px 10px;
+      outline: 0;
+      cursor: text;
+    }
+
+    .backstage-field select {
+      cursor: pointer;
+    }
+
+    .backstage-field textarea {
+      min-height: 82px;
+      resize: vertical;
+      font-size: 14px;
+    }
+
+    .backstage-field input::placeholder,
+    .backstage-field textarea::placeholder {
+      color: rgba(185, 173, 152, 0.46);
+    }
+
+    .backstage-field input:disabled,
+    .backstage-field textarea:disabled,
+    .backstage-field select:disabled,
+    .backstage-button:disabled {
+      opacity: 0.72;
+      cursor: not-allowed;
+    }
+
+    .backstage-button {
+      width: fit-content;
+      min-height: 36px;
+      border: 1px solid rgba(240, 191, 105, 0.24);
+      border-radius: 999px;
+      padding: 0 13px;
+      background: rgba(240, 191, 105, 0.07);
+      color: rgba(244, 234, 214, 0.72);
+      cursor: pointer;
+    }
+
+    .backstage-button:hover:not(:disabled),
+    .backstage-button:focus-visible:not(:disabled) {
+      border-color: rgba(240, 191, 105, 0.46);
+      color: var(--cream);
+      outline: none;
+    }
+
+    .backstage-actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .backstage-status {
+      color: rgba(240, 191, 105, 0.78);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .pass-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .pass-tier {
+      display: grid;
+      grid-template-columns: minmax(150px, 0.8fr) minmax(220px, 1.4fr) auto;
+      gap: 12px;
+      align-items: center;
+      padding: 12px;
+      border: 1px solid rgba(244, 234, 214, 0.09);
+      border-radius: 8px;
+      background: rgba(21, 24, 24, 0.3);
+    }
+
+    .pass-tier.is-current {
+      border-color: rgba(240, 191, 105, 0.32);
+      background: rgba(240, 191, 105, 0.055);
+    }
+
+    .pass-name {
+      display: grid;
+      gap: 5px;
+      min-width: 0;
+    }
+
+    .pass-name strong {
+      color: var(--cream);
+      font-size: 16px;
+      line-height: 1.2;
+      font-weight: 650;
+    }
+
+    .pass-name span,
+    .pass-copy {
+      color: rgba(244, 234, 214, 0.7);
+      font-size: 13px;
+      line-height: 1.42;
+    }
+
+    .pass-copy {
+      margin: 0;
+    }
+
+    .pass-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 7px;
+    }
+
+    .copedent-editor {
+      gap: 18px;
+    }
+
+    .copedent-editor h4 {
+      margin: 0;
+      color: rgba(240, 191, 105, 0.86);
+      font-size: 14px;
+      line-height: 1.3;
+      font-weight: 650;
+    }
+
+    .copedent-section {
+      display: grid;
+      gap: 10px;
+      padding-top: 2px;
+    }
+
+    .copedent-table-wrap {
+      overflow-x: auto;
+      border: 1px solid rgba(244, 234, 214, 0.08);
+      border-radius: 8px;
+      background: rgba(21, 24, 24, 0.24);
+    }
+
+    .copedent-table {
+      width: 100%;
+      min-width: 620px;
+      border-collapse: collapse;
+    }
+
+    .copedent-table th,
+    .copedent-table td {
+      border-bottom: 1px solid rgba(244, 234, 214, 0.07);
+      padding: 7px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .copedent-table th {
+      color: rgba(185, 173, 152, 0.76);
+      font-size: 11px;
+      line-height: 1.25;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-weight: 650;
+    }
+
+    .copedent-table input,
+    .copedent-table select {
+      width: 100%;
+      min-height: 34px;
+      border: 1px solid rgba(244, 234, 214, 0.1);
+      border-radius: 7px;
+      background: rgba(15, 17, 17, 0.42);
+      color: rgba(244, 234, 214, 0.84);
+      padding: 7px 8px;
+      outline: 0;
+    }
+
+    .copedent-table .small-cell {
+      width: 78px;
+    }
+
+    .copedent-table .medium-cell {
+      width: 132px;
+    }
+
+    .copedent-row-action {
+      width: 30px;
+      height: 30px;
+      border: 1px solid rgba(244, 234, 214, 0.1);
+      border-radius: 999px;
+      background: rgba(244, 234, 214, 0.04);
+      color: var(--muted);
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .copedent-row-action:hover,
+    .copedent-row-action:focus-visible {
+      border-color: rgba(240, 191, 105, 0.42);
+      color: var(--cream);
+      outline: none;
+    }
+
+    .copedent-template-note {
+      border-left: 2px solid rgba(240, 191, 105, 0.42);
+      padding-left: 10px;
+      color: rgba(244, 234, 214, 0.68);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .backstage-metrics,
+    .account-list,
+    .source-options {
+      display: grid;
+      gap: 9px;
+    }
+
+    .backstage-metric,
+    .account-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 38px;
+      border-bottom: 1px solid rgba(244, 234, 214, 0.07);
+    }
+
+    .backstage-metric strong,
+    .account-item strong {
+      color: rgba(244, 234, 214, 0.76);
+      font-size: 14px;
+      font-weight: 500;
+      text-align: right;
+    }
+
+    .source-options {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .source-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      padding: 7px 9px;
+      border: 1px solid rgba(244, 234, 214, 0.08);
+      border-radius: 8px;
+      background: rgba(21, 24, 24, 0.3);
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .source-option input {
+      accent-color: var(--brass);
+    }
+
+    .backstage-note {
+      color: rgba(185, 173, 152, 0.6);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    main {
+      width: min(1040px, calc(100% - 32px));
+      margin: 0 auto;
+      display: grid;
+      align-content: start;
+      justify-items: center;
+      padding: 88px 0 24px;
+    }
+
+    h1 {
+      margin: 0;
+      width: min(860px, 100%);
+      text-align: center;
+      font-family: var(--font-lesson);
+      font-size: clamp(42px, 5.6vw, 68px);
+      line-height: 0.95;
+      letter-spacing: 0;
+      font-weight: 500;
+      color: #fff1db;
+      text-shadow: 0 14px 52px rgba(0, 0, 0, 0.68), 0 0 32px rgba(240, 191, 105, 0.08);
+    }
+
+    .hero {
+      width: min(900px, 100%);
+      margin: 0 auto 24px;
+      display: grid;
+      justify-items: center;
+      gap: 10px;
+      text-align: center;
+    }
+
+    .hero-subtext {
+      width: min(660px, 100%);
+      margin: 0;
+      color: rgba(244, 234, 214, 0.7);
+      font-size: clamp(18px, 2vw, 23px);
+      line-height: 1.32;
+      text-wrap: balance;
+    }
+
+    .try-label {
+      margin: 0;
+      color: rgba(240, 191, 105, 0.68);
+      font-size: 12px;
+      line-height: 1.35;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
     }
 
     .helper-text,
@@ -164,8 +745,8 @@
     .prompt-typing-indicator {
       display: none;
       position: absolute;
-      right: 12px;
-      top: 13px;
+      right: 102px;
+      bottom: 24px;
       align-items: center;
       justify-content: center;
       gap: 6px;
@@ -188,11 +769,6 @@
 
     .prompt-typing-indicator span:nth-child(3) {
       animation-delay: 0.36s;
-    }
-
-    .lesson-question.is-typing .helper-text {
-      opacity: 0;
-      transform: translateY(3px);
     }
 
     .prompt.is-typing .prompt-typing-indicator {
@@ -223,32 +799,40 @@
     }
 
     .prompt-shell {
-      width: min(620px, 100%);
+      width: min(920px, 100%);
       padding: 1px;
-      border-radius: 24px;
+      border-radius: 25px;
       background:
-        linear-gradient(135deg, rgba(240,191,105,0.42), rgba(244,234,214,0.07) 44%, rgba(182,91,69,0.14));
-      box-shadow: var(--shadow), 0 0 58px rgba(240,191,105,0.065);
+        linear-gradient(135deg, rgba(240,191,105,0.78), rgba(244,234,214,0.08) 45%, rgba(182,91,69,0.22));
+      box-shadow: 0 34px 100px rgba(0, 0, 0, 0.54), 0 0 62px rgba(240,191,105,0.08);
     }
 
     .prompt {
       position: relative;
-      min-height: 112px;
-      border-radius: 23px;
-      background: linear-gradient(180deg, var(--box-2), var(--box));
-      border: 1px solid rgba(244, 234, 214, 0.06);
-      padding: 16px;
+      min-height: 198px;
+      border-radius: 24px;
+      background:
+        radial-gradient(circle at 88% 74%, rgba(240, 191, 105, 0.06), transparent 22%),
+        linear-gradient(180deg, rgba(35, 39, 40, 0.82), rgba(17, 19, 19, 0.94));
+      border: 1px solid rgba(244, 234, 214, 0.055);
+      padding: clamp(18px, 2.4vw, 26px);
+      backdrop-filter: blur(10px);
     }
 
     .input-area {
       position: relative;
+      min-height: 138px;
+      border: 1px solid rgba(240, 191, 105, 0.34);
+      border-radius: 20px;
+      background: rgba(8, 9, 9, 0.28);
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12), 0 16px 44px rgba(0, 0, 0, 0.22);
     }
 
     .input-area.is-empty::before {
       content: "";
       position: absolute;
-      left: 5px;
-      top: 8px;
+      left: 24px;
+      top: 25px;
       width: 2px;
       height: 25px;
       border-radius: 999px;
@@ -265,21 +849,39 @@
     textarea {
       display: block;
       width: 100%;
-      min-height: 50px;
+      min-height: 128px;
       resize: none;
       border: 0;
       outline: 0;
       background: transparent;
       color: var(--cream);
-      padding: 4px 54px 12px 4px;
+      padding: 22px 132px 22px 24px;
       font-family: var(--font-ui);
-      font-size: 19px;
+      font-size: clamp(18px, 1.8vw, 22px);
       font-weight: 400;
       line-height: 1.45;
     }
 
     textarea::placeholder {
-      color: rgba(244, 234, 214, 0.52);
+      color: rgba(244, 234, 214, 0.66);
+    }
+
+    .input-helper {
+      margin: 10px 3px 0;
+      color: rgba(244, 234, 214, 0.72);
+      font-size: 14px;
+      line-height: 1.42;
+    }
+
+    .access-helper {
+      margin: 7px 3px 0;
+      color: rgba(240, 191, 105, 0.86);
+      font-size: 13px;
+      line-height: 1.42;
+    }
+
+    .access-helper[hidden] {
+      display: none;
     }
 
     @keyframes caretBlink {
@@ -305,13 +907,22 @@
       min-width: 0;
     }
 
+    .input-actions {
+      position: absolute;
+      right: 24px;
+      bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
     .icon-button {
-      width: 32px;
-      height: 32px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
       border: 1px solid transparent;
       background: transparent;
-      color: var(--muted);
+      color: rgba(244, 234, 214, 0.68);
       display: grid;
       place-items: center;
       cursor: pointer;
@@ -324,38 +935,20 @@
       background: rgba(244, 234, 214, 0.055);
     }
 
-    .topic-select-wrap {
-      position: relative;
-      min-width: 154px;
-      flex: 0 1 auto;
-    }
-
-    .topic-select-wrap::after {
-      content: "";
-      position: absolute;
-      right: 12px;
-      top: 50%;
-      width: 7px;
-      height: 7px;
-      border-right: 1.5px solid var(--brass);
-      border-bottom: 1.5px solid var(--brass);
-      transform: translateY(-65%) rotate(45deg);
-      pointer-events: none;
-    }
-
     select {
       width: 100%;
-      min-height: 34px;
-      border: 1px solid rgba(240, 191, 105, 0.26);
+      min-height: 44px;
+      border: 1px solid rgba(240, 191, 105, 0.42);
       border-radius: 999px;
-      background: rgba(240, 191, 105, 0.07);
+      background: rgba(12, 13, 13, 0.62);
       color: var(--cream);
-      padding: 0 30px 0 12px;
+      padding: 0 38px 0 48px;
       appearance: none;
       outline: 0;
       cursor: pointer;
-      font-size: 16px;
+      font-size: 17px;
       letter-spacing: 0;
+      box-shadow: inset 0 0 0 1px rgba(244, 234, 214, 0.025);
     }
 
     option {
@@ -364,8 +957,8 @@
     }
 
     .send {
-      width: 36px;
-      height: 36px;
+      width: 50px;
+      height: 50px;
       border: 0;
       border-radius: 50%;
       background: var(--brass);
@@ -373,26 +966,48 @@
       display: grid;
       place-items: center;
       cursor: pointer;
-      font-weight: 900;
-      box-shadow: 0 14px 34px rgba(240, 191, 105, 0.24);
+      font-size: 28px;
+      font-weight: 800;
+      box-shadow: 0 14px 40px rgba(240, 191, 105, 0.34), 0 0 24px rgba(240, 191, 105, 0.18);
       flex: 0 0 auto;
     }
 
     .examples {
-      width: min(620px, 100%);
-      margin-top: 8px;
-      display: flex;
+      width: min(920px, 100%);
+      margin-top: 0;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
       justify-content: center;
-      min-height: 38px;
+      min-height: 58px;
       transition: opacity 220ms ease, transform 220ms ease;
     }
 
     .try-asking {
-      width: min(620px, 100%);
-      margin-top: 17px;
+      width: min(920px, 100%);
+      margin-top: 18px;
       display: grid;
       justify-items: center;
-      gap: 0;
+      gap: 12px;
+    }
+
+    .try-label-wrap {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 18px;
+    }
+
+    .try-label-wrap::before,
+    .try-label-wrap::after {
+      content: "";
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(240, 191, 105, 0.22));
+    }
+
+    .try-label-wrap::after {
+      background: linear-gradient(90deg, rgba(240, 191, 105, 0.22), transparent);
     }
 
     .examples.is-changing {
@@ -401,37 +1016,398 @@
     }
 
     .example {
-      min-height: 36px;
-      border: 1px solid rgba(244, 234, 214, 0.11);
-      border-radius: 999px;
-      padding: 0 13px;
-      background: rgba(244, 234, 214, 0.045);
-      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 58px;
+      border: 1px solid rgba(240, 191, 105, 0.24);
+      border-radius: 18px;
+      padding: 0 16px;
+      background: rgba(24, 27, 27, 0.72);
+      color: rgba(244, 234, 214, 0.86);
       cursor: pointer;
-      white-space: nowrap;
+      white-space: normal;
       max-width: 100%;
       overflow: hidden;
-      text-overflow: ellipsis;
-      font-size: 16px;
+      font-size: 14px;
+      line-height: 1.28;
       font-weight: 400;
+      text-align: center;
       transition: transform 160ms ease, border-color 160ms ease, color 160ms ease, background 160ms ease;
     }
 
     .example:hover {
       border-color: rgba(240, 191, 105, 0.42);
       color: var(--cream);
-      background: rgba(244, 234, 214, 0.065);
+      background: rgba(240, 191, 105, 0.07);
       transform: translateY(-2px);
     }
 
-    footer {
-      width: min(1080px, calc(100% - 36px));
-      margin: 0 auto;
-      padding: 0 0 28px;
-      color: rgba(185, 173, 152, 0.72);
-      text-align: center;
+    .source-note {
+      width: min(650px, 100%);
+      margin: 4px auto 0;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: start;
+      gap: 10px;
+      color: rgba(244, 234, 214, 0.78);
+      font-size: 14px;
+      line-height: 1.42;
+      text-align: left;
+    }
+
+    .source-note svg {
+      width: 22px;
+      height: 22px;
+      color: rgba(240, 191, 105, 0.9);
+    }
+
+    .page.is-answering main {
+      width: min(1060px, calc(100% - 32px));
+      padding-top: 24px;
+    }
+
+    .page.is-answering .hero,
+    .page.is-answering .prompt-shell,
+    .page.is-answering .try-asking {
+      display: none;
+    }
+
+    .page.is-answering footer {
+      display: none;
+    }
+
+    .answer-workspace {
+      width: 100%;
+      display: grid;
+      gap: 16px;
+      align-items: start;
+      color: var(--cream);
+    }
+
+    .answer-workspace[hidden] {
+      display: none;
+    }
+
+    .stage-return {
+      justify-self: start;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      color: rgba(240, 191, 105, 0.82);
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1.35;
+      letter-spacing: 0.02em;
+      text-decoration: none;
+      transition: color 160ms ease, text-shadow 160ms ease, text-decoration-color 160ms ease;
+    }
+
+    .stage-return:hover,
+    .stage-return:focus-visible {
+      color: var(--cream);
+      text-decoration: underline;
+      text-decoration-color: rgba(240, 191, 105, 0.72);
+      text-underline-offset: 4px;
+      text-shadow: 0 0 12px rgba(240, 191, 105, 0.22);
+      outline: none;
+    }
+
+    .question-card,
+    .answer-card,
+    .source-card,
+    .answer-followup-input {
+      border: 1px solid rgba(240, 191, 105, 0.22);
+      background:
+        radial-gradient(circle at 50% 0%, rgba(240, 191, 105, 0.08), transparent 42%),
+        linear-gradient(180deg, rgba(30, 32, 31, 0.88), rgba(13, 14, 14, 0.86));
+      box-shadow: 0 26px 70px rgba(0, 0, 0, 0.38);
+      backdrop-filter: blur(10px);
+    }
+
+    .question-card {
+      width: min(760px, 100%);
+      padding: 18px 24px;
+      border-radius: 15px;
+    }
+
+    .answer-kicker,
+    .answer-section-title,
+    .source-section-title,
+    .followup-title {
+      margin: 0;
+      color: rgba(240, 191, 105, 0.92);
+      font-size: 12px;
+      line-height: 1.35;
+      font-weight: 750;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    .answered-question {
+      margin: 10px 0 16px;
+      color: #fff1db;
+      font-family: var(--font-lesson);
+      font-size: clamp(24px, 3vw, 32px);
+      line-height: 1.14;
+      font-weight: 600;
+    }
+
+    .searched-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .searched-row span:first-child {
+      color: rgba(240, 191, 105, 0.88);
+      font-size: 12px;
+      font-weight: 750;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .searched-chip {
+      min-height: 30px;
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid rgba(240, 191, 105, 0.26);
+      border-radius: 999px;
+      padding: 0 13px;
+      background: rgba(240, 191, 105, 0.06);
+      color: rgba(244, 234, 214, 0.86);
+      font-size: 13px;
+    }
+
+    .answer-card {
+      padding: 24px 26px;
+      border-radius: 17px;
+    }
+
+    .answer-lead {
+      margin: 13px 0 22px;
+      max-width: 800px;
+      color: #fff1db;
+      font-family: var(--font-lesson);
+      font-size: clamp(22px, 2.4vw, 30px);
+      line-height: 1.28;
+      font-weight: 500;
+    }
+
+    .answer-detail-grid {
+      display: grid;
+      grid-template-columns: 1.08fr 1fr 1fr;
+      gap: 18px;
+      padding-top: 18px;
+      border-top: 1px solid rgba(244, 234, 214, 0.12);
+    }
+
+    .answer-section {
+      display: grid;
+      align-content: start;
+      gap: 11px;
+      min-width: 0;
+    }
+
+    .answer-section-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .answer-section-title svg,
+    .source-section-title svg {
+      width: 18px;
+      height: 18px;
+      color: var(--brass);
+      stroke-width: 1.7;
+    }
+
+    .try-list {
+      margin: 0;
+      padding-left: 22px;
+      color: rgba(244, 234, 214, 0.86);
+      font-size: 15px;
+      line-height: 1.58;
+    }
+
+    .try-list li::marker {
+      color: var(--brass);
+      font-weight: 700;
+    }
+
+    .answer-section p {
+      margin: 0;
+      color: rgba(244, 234, 214, 0.84);
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    .source-section,
+    .followup-section {
+      display: grid;
+      gap: 12px;
+    }
+
+    .source-section-title,
+    .followup-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-left: 3px;
+    }
+
+    .source-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .source-card {
+      display: grid;
+      gap: 9px;
+      min-height: 154px;
+      padding: 14px 15px;
+      border-radius: 10px;
+    }
+
+    .source-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: rgba(240, 191, 105, 0.86);
+      font-size: 12px;
+      line-height: 1.35;
+      font-weight: 650;
+    }
+
+    .source-card h3 {
+      margin: 0;
+      color: rgba(244, 234, 214, 0.94);
+      font-size: 15px;
+      line-height: 1.25;
+    }
+
+    .source-card p {
+      margin: 0;
+      color: rgba(244, 234, 214, 0.72);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .source-card a {
+      color: var(--brass);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 650;
+      overflow-wrap: anywhere;
+    }
+
+    .source-card a:hover,
+    .source-card a:focus-visible {
+      color: var(--cream);
+      outline: none;
+    }
+
+    .source-date {
+      align-self: end;
+      justify-self: end;
+      color: rgba(185, 173, 152, 0.74);
+      font-size: 12px;
+    }
+
+    .answer-status {
+      margin: -8px 0 18px;
+      color: rgba(240, 191, 105, 0.86);
       font-size: 14px;
       line-height: 1.45;
+    }
+
+    .answer-status[hidden] {
+      display: none;
+    }
+
+    .followup-chips {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .followup-chip {
+      min-height: 54px;
+      border: 1px solid rgba(240, 191, 105, 0.24);
+      border-radius: 15px;
+      padding: 0 14px;
+      background: rgba(24, 27, 27, 0.72);
+      color: rgba(244, 234, 214, 0.9);
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1.25;
+    }
+
+    .followup-chip:hover,
+    .followup-chip:focus-visible {
+      border-color: rgba(240, 191, 105, 0.48);
+      background: rgba(240, 191, 105, 0.07);
+      outline: none;
+    }
+
+    .answer-followup-input {
+      position: relative;
+      min-height: 72px;
+      border-radius: 20px;
+    }
+
+    .answer-followup-input textarea {
+      min-height: 70px;
+      padding: 20px 124px 18px 24px;
+      font-size: 18px;
+    }
+
+    footer {
+      position: relative;
+      width: min(1080px, calc(100% - 36px));
+      margin: 0 auto;
+      padding: 0 0 18px;
+      color: rgba(244, 234, 214, 0.78);
+      text-align: center;
+      font-size: 15px;
+      line-height: 1.45;
+    }
+
+    .footer-ornament {
+      width: min(340px, 58vw);
+      margin: 0 auto 10px;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 14px;
+      color: rgba(240, 191, 105, 0.84);
+      pointer-events: none;
+    }
+
+    .footer-ornament::before,
+    .footer-ornament::after {
+      content: "";
+      height: 1px;
+      opacity: 0.68;
+    }
+
+    .footer-ornament::before {
+      background: linear-gradient(90deg, transparent, rgba(240, 191, 105, 0.52));
+    }
+
+    .footer-ornament::after {
+      background: linear-gradient(90deg, rgba(240, 191, 105, 0.52), transparent);
+    }
+
+    .footer-ornament-star {
+      font-size: 15px;
+      line-height: 1;
+      text-shadow: 0 0 13px rgba(240, 191, 105, 0.26);
+      transform: translateY(-1px);
     }
 
     .footer-shimmer {
@@ -440,6 +1416,31 @@
       white-space: nowrap;
       color: rgba(244, 234, 214, 0.84);
       font-weight: 400;
+    }
+
+    .footer-trigger {
+      border: 0;
+      padding: 0;
+      background: transparent;
+      cursor: pointer;
+      border-radius: 3px;
+      text-decoration: underline;
+      text-decoration-color: transparent;
+      text-underline-offset: 3px;
+      transition: color 160ms ease, text-decoration-color 160ms ease, text-shadow 160ms ease;
+    }
+
+    .footer-trigger:hover,
+    .footer-trigger:focus-visible,
+    .footer-trigger[aria-expanded="true"] {
+      color: var(--cream);
+      text-decoration-color: rgba(240, 191, 105, 0.72);
+      text-shadow: 0 0 14px rgba(240, 191, 105, 0.32);
+      outline: none;
+    }
+
+    .footer-trigger:focus-visible {
+      box-shadow: 0 0 0 3px rgba(240, 191, 105, 0.2);
     }
 
     .footer-shimmer::after {
@@ -484,6 +1485,147 @@
       }
     }
 
+    @media (max-width: 960px) {
+      .examples {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .answer-detail-grid,
+      .source-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .followup-chips {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    .tech-popover {
+      position: absolute;
+      left: 50%;
+      bottom: calc(100% + 14px);
+      z-index: 5;
+      width: min(500px, calc(100vw - 28px));
+      max-height: min(72vh, 540px);
+      overflow-y: auto;
+      padding: 16px;
+      border: 1px solid rgba(240, 191, 105, 0.28);
+      border-radius: 8px;
+      background:
+        linear-gradient(180deg, rgba(36, 40, 41, 0.98), rgba(29, 32, 33, 0.98)),
+        var(--box);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.48), 0 0 34px rgba(240, 191, 105, 0.08);
+      color: rgba(244, 234, 214, 0.9);
+      text-align: left;
+      transform: translate(-50%, 6px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 160ms ease, transform 160ms ease;
+      font-family: var(--font-ui);
+      scrollbar-width: thin;
+      scrollbar-color: rgba(240, 191, 105, 0.34) transparent;
+    }
+
+    .tech-popover::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .tech-popover::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .tech-popover::-webkit-scrollbar-thumb {
+      background: rgba(240, 191, 105, 0.34);
+      border-radius: 999px;
+    }
+
+    .tech-popover[hidden] {
+      display: none;
+    }
+
+    .tech-popover.is-open {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translate(-50%, 0);
+    }
+
+    .tech-popover::after {
+      content: "";
+      position: absolute;
+      left: 50%;
+      bottom: -7px;
+      width: 12px;
+      height: 12px;
+      border-right: 1px solid rgba(240, 191, 105, 0.28);
+      border-bottom: 1px solid rgba(240, 191, 105, 0.28);
+      background: rgba(29, 32, 33, 0.98);
+      transform: translateX(-50%) rotate(45deg);
+    }
+
+    .tech-popover-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .tech-popover-title {
+      margin: 0;
+      color: var(--cream);
+      font-size: 17px;
+      line-height: 1.2;
+      font-weight: 650;
+    }
+
+    .tech-popover-close {
+      flex: 0 0 auto;
+      width: 30px;
+      height: 30px;
+      border: 1px solid rgba(244, 234, 214, 0.14);
+      border-radius: 999px;
+      background: rgba(244, 234, 214, 0.04);
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .tech-popover-close:hover,
+    .tech-popover-close:focus-visible {
+      border-color: rgba(240, 191, 105, 0.42);
+      color: var(--cream);
+      outline: none;
+    }
+
+    .tech-popover-content {
+      display: grid;
+      gap: 10px;
+      font-size: 14px;
+      line-height: 1.48;
+    }
+
+    .tech-popover-section {
+      display: grid;
+      gap: 2px;
+    }
+
+    .tech-popover-section h4,
+    .tech-popover-section p {
+      margin: 0;
+    }
+
+    .tech-popover-section h4 {
+      color: rgba(240, 191, 105, 0.92);
+      font-size: 13px;
+      line-height: 1.25;
+      font-weight: 650;
+    }
+
+    .tech-popover-section p {
+      color: rgba(244, 234, 214, 0.78);
+    }
+
     svg {
       width: 18px;
       height: 18px;
@@ -497,50 +1639,182 @@
     @media (max-width: 640px) {
       header {
         width: calc(100% - 28px);
-        padding-top: 18px;
+        padding-top: 14px;
+        align-items: flex-start;
       }
 
       .brand-logo {
-        width: min(210px, 58vw);
+        width: min(210px, 56vw);
       }
 
-      .settings {
-        padding: 0 11px;
+      .backstage-trigger {
+        min-height: 40px;
+        padding: 0 12px;
+      }
+
+      .backstage-overlay {
+        padding: 12px;
+        align-items: start;
+      }
+
+      .backstage-panel {
+        max-height: calc(100vh - 24px);
+      }
+
+      .backstage-header {
+        padding: 20px 16px 15px;
+      }
+
+      .access-preview {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 10px 16px;
+      }
+
+      .backstage-content {
+        grid-template-columns: 1fr;
+        padding: 14px 16px 18px;
+      }
+
+      .backstage-tabs {
+        top: 96px;
+        padding: 10px 16px;
+      }
+
+      .backstage-grid,
+      .source-options {
+        grid-template-columns: 1fr;
+      }
+
+      .pass-tier {
+        grid-template-columns: 1fr;
+      }
+
+      .pass-actions {
+        align-items: flex-start;
       }
 
       main {
         width: calc(100% - 28px);
-        padding-top: 44px;
+        padding-top: 70px;
+        padding-bottom: 28px;
+      }
+
+      .hero {
+        gap: 10px;
+        margin-bottom: 22px;
       }
 
       .prompt {
-        min-height: 136px;
+        min-height: 268px;
+        padding: 18px;
+        border-radius: 24px;
       }
 
-      .prompt-bar {
-        align-items: flex-end;
+      .prompt-shell {
+        border-radius: 25px;
       }
 
-      .left-tools {
-        gap: 5px;
+      .prompt-topline {
+        display: grid;
+        margin-bottom: 14px;
+      }
+
+      .input-area {
+        min-height: 154px;
+        border-radius: 19px;
+      }
+
+      textarea {
+        min-height: 152px;
+        padding: 20px 20px 82px;
       }
 
       .icon-button {
-        width: 30px;
-        height: 30px;
-      }
-
-      .topic-select-wrap {
-        min-width: 132px;
+        width: 42px;
+        height: 42px;
       }
 
       select {
-        font-size: 14px;
+        font-size: 17px;
+      }
+
+      .input-actions {
+        right: 20px;
+        bottom: 20px;
+        gap: 10px;
+      }
+
+      .send {
+        width: 50px;
+        height: 50px;
       }
 
       .examples {
-        justify-content: center;
+        grid-template-columns: 1fr;
         padding-bottom: 3px;
+      }
+
+      .example:not(:first-child) {
+        display: none;
+      }
+
+      .try-label-wrap {
+        gap: 14px;
+      }
+
+      .source-note {
+        grid-template-columns: 1fr;
+        justify-items: center;
+        text-align: center;
+        font-size: 14px;
+      }
+
+      .page.is-answering main {
+        width: calc(100% - 28px);
+        padding-top: 22px;
+      }
+
+      .question-card,
+      .answer-card {
+        padding: 18px;
+      }
+
+      .answered-question {
+        font-size: 24px;
+      }
+
+      .answer-lead {
+        font-size: 21px;
+      }
+
+      .followup-chips {
+        grid-template-columns: 1fr;
+      }
+
+      .answer-followup-input textarea {
+        min-height: 92px;
+        padding: 18px 20px 82px;
+      }
+
+      footer {
+        width: calc(100% - 28px);
+        padding-bottom: 22px;
+        font-size: 15px;
+      }
+
+      .footer-ornament {
+        width: min(280px, 72vw);
+        margin-bottom: 14px;
+      }
+
+      .tech-popover {
+        bottom: calc(100% + 12px);
+        padding: 14px;
+      }
+
+      .tech-popover-content {
+        font-size: 13px;
       }
     }
   </style>
@@ -549,70 +1823,651 @@
   <div class="page">
     <header>
       <div class="brand">
-        <img class="brand-logo" src="assets/steel-guitar-rag-logo-transparent.png" alt="Steel Guitar RAG">
+        <button class="brand-home" type="button" aria-label="Return to Steel Guitar RAG home">
+          <img class="brand-logo" src="assets/steel-guitar-rag-logo-transparent.png" alt="Steel Guitar RAG">
+        </button>
       </div>
-      <button class="settings" type="button">Settings</button>
+      <button class="backstage-trigger" type="button" aria-haspopup="dialog" aria-controls="backstage" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5z"/><path d="M8 16h8"/><path d="M9 13l3-5 3 5"/><path d="M12 8v8"/></svg>
+        <span id="backstage-cta-label">Get a Backstage Pass</span>
+      </button>
     </header>
 
     <main>
-      <section class="lesson-question" id="lesson-question" aria-label="Tonight's question">
-        <p class="question-label">Tonight’s question:</p>
-        <p class="subhead">
-          <span class="helper-text">Alright. What are we working on?</span>
-        </p>
+      <section class="hero" aria-labelledby="home-title">
+        <h1 id="home-title">Ask the steel guitar brain.</h1>
+        <p class="hero-subtext">Source-backed help with tone, gear, copedents, technique, tab, setup, and troubleshooting.</p>
       </section>
 
       <section class="prompt-shell" aria-label="Steel guitar companion prompt">
         <div class="prompt">
           <div class="input-area">
-            <textarea id="question" aria-label="Type your steel guitar question"></textarea>
+            <textarea id="question" aria-label="Type your steel guitar question" placeholder="Ask a steel guitar question..."></textarea>
             <div class="prompt-typing-indicator" aria-label="Listening" role="status">
               <span></span><span></span><span></span>
             </div>
-          </div>
-          <div class="prompt-bar">
-            <div class="left-tools">
-              <div class="topic-select-wrap">
-                <select id="topic" aria-label="Choose topic type">
-                  <option>Technique</option>
-                  <option>Tone</option>
-                  <option>Electronics</option>
-                  <option>Forum Wisdom</option>
-                </select>
-              </div>
+            <div class="input-actions">
               <button class="icon-button" type="button" aria-label="Voice question">
                 <svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></svg>
               </button>
+              <button class="send" type="button" aria-label="Ask">↑</button>
             </div>
-            <button class="send" type="button" aria-label="Ask">↑</button>
           </div>
+          <p class="input-helper">Buzz, tone, pedals, knee levers, amp settings, copedents, tab, or how to play a phrase.</p>
+          <p class="access-helper" id="access-helper">Get a Backstage Pass to ask Steel Guitar RAG.</p>
         </div>
       </section>
 
       <div class="try-asking" aria-label="Suggested question">
-        <p class="try-label">Try asking:</p>
+        <div class="try-label-wrap"><p class="try-label">Try asking:</p></div>
         <div class="examples" id="suggested-prompts" aria-label="Example questions"></div>
+        <p class="source-note">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 20 6v6c0 5-3.4 8-8 9-4.6-1-8-4-8-9V6l8-3Z"/><path d="m8.5 12 2.2 2.2 4.9-5"/></svg>
+          <span>Answers draw from forum discussions, manuals, setup notes, copedents, and steel-specific sources.</span>
+        </p>
       </div>
+
+      <section class="answer-workspace" id="answer-workspace" aria-label="Steel Guitar RAG answer workspace" hidden>
+        <button class="stage-return" type="button" aria-label="Return to Steel Guitar RAG home">← Return to the stage</button>
+        <article class="question-card">
+          <p class="answer-kicker">Your question</p>
+          <h2 class="answered-question" id="answered-question">Why does touching the changer reduce hum?</h2>
+          <div class="searched-row" aria-label="Mock searched sources">
+            <span>Searched:</span>
+            <span class="searched-chip">Electronics</span>
+            <span class="searched-chip">Forum Wisdom</span>
+            <span class="searched-chip">Gear Setup</span>
+          </div>
+        </article>
+
+        <article class="answer-card">
+          <p class="answer-section-title" id="answer-primary-title">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v3"/><path d="M12 18v3"/><path d="M4.6 7.6 6.8 9.8"/><path d="m17.2 14.2 2.2 2.2"/><path d="M3 12h3"/><path d="M18 12h3"/><path d="m4.6 16.4 2.2-2.2"/><path d="m17.2 9.8 2.2-2.2"/><circle cx="12" cy="12" r="3"/></svg>
+            The short answer
+          </p>
+          <p class="answer-lead" id="answer-lead">Touching the changer can reduce hum because your body is temporarily changing the guitar’s ground reference. That usually points toward grounding, shielding, pickup, cable, volume pedal, or amp-input issues.</p>
+          <p class="answer-status" id="answer-status" role="status" hidden></p>
+
+          <div class="answer-detail-grid" id="answer-section-grid"></div>
+        </article>
+
+        <section class="source-section" aria-labelledby="source-notes-title">
+          <h2 class="source-section-title" id="source-notes-title">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5Z"/><path d="M8 7h8"/><path d="M8 11h6"/></svg>
+            Source notes
+          </h2>
+          <div class="source-grid" id="source-grid">
+            <article class="source-card">
+              <div class="source-meta"><span>Steel Guitar Forum · Electronics</span></div>
+              <h3>Hum that goes away when touching changer</h3>
+              <p>“Nine times out of ten it’s a ground issue. Try direct to amp first. The body is giving you...”</p>
+              <a href="#" aria-label="View source thread for hum that goes away when touching changer">View source thread →</a>
+              <span class="source-date">Mar 12, 2018</span>
+            </article>
+            <article class="source-card">
+              <div class="source-meta"><span>Steel Guitar Forum · Electronics</span></div>
+              <h3>Understanding grounding on pedal steels</h3>
+              <p>“Make sure the pickup, changer, and volume pedal all share a solid ground...”</p>
+              <a href="#" aria-label="View source thread for understanding grounding on pedal steels">View source thread →</a>
+              <span class="source-date">Jul 7, 2019</span>
+            </article>
+            <article class="source-card">
+              <div class="source-meta"><span>Steel Guitar Forum · Gear Setup</span></div>
+              <h3>Volume pedal hum and buzz troubleshooting</h3>
+              <p>“A lot of buzz comes from the volume pedal cable or pot. Bypass it and see if it’s still there.”</p>
+              <a href="#" aria-label="View source thread for volume pedal hum and buzz troubleshooting">View source thread →</a>
+              <span class="source-date">Oct 3, 2020</span>
+            </article>
+          </div>
+        </section>
+
+        <section class="followup-section" aria-labelledby="keep-going-title">
+          <h2 class="followup-title" id="keep-going-title">Keep going</h2>
+          <div class="followup-chips">
+            <button class="followup-chip" type="button">Show me a test sequence</button>
+            <button class="followup-chip" type="button">Explain grounding simply</button>
+            <button class="followup-chip" type="button">Could it be my volume pedal?</button>
+            <button class="followup-chip" type="button">Find more forum posts</button>
+          </div>
+        </section>
+
+        <section class="answer-followup-input" aria-label="Ask another steel guitar question">
+          <textarea id="followup-question" aria-label="Ask another steel guitar question" placeholder="Ask another steel guitar question..."></textarea>
+          <div class="input-actions">
+            <button class="icon-button" type="button" aria-label="Voice question">
+              <svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></svg>
+            </button>
+            <button class="send answer-send" type="button" aria-label="Ask follow-up">↑</button>
+          </div>
+        </section>
+      </section>
     </main>
 
     <footer>
+      <div class="footer-ornament" aria-hidden="true">
+        <span class="footer-ornament-star">☆</span>
+      </div>
       Simple on the surface.
-      <span class="footer-shimmer" data-text="Deeply intelligent underneath.">Deeply intelligent underneath.</span>
+      <button
+        class="footer-trigger footer-shimmer"
+        type="button"
+        data-text="Built deep for pedal steel underneath."
+        aria-expanded="false"
+        aria-controls="tech-popover"
+      >Built deep for pedal steel underneath.</button>
+      <aside
+        class="tech-popover"
+        id="tech-popover"
+        role="dialog"
+        aria-labelledby="tech-popover-title"
+        hidden
+      >
+        <div class="tech-popover-header">
+          <h3 class="tech-popover-title" id="tech-popover-title"></h3>
+          <button class="tech-popover-close" type="button" aria-label="Close technology explanation">×</button>
+        </div>
+        <div class="tech-popover-content" id="tech-popover-content"></div>
+      </aside>
     </footer>
+
+    <div class="backstage-overlay" id="backstage" role="dialog" aria-modal="true" aria-labelledby="backstage-title" hidden>
+      <section class="backstage-panel">
+        <div class="backstage-header">
+          <div>
+            <p class="backstage-kicker">Player control room</p>
+            <h2 class="backstage-title" id="backstage-title">Backstage</h2>
+            <p class="backstage-subtitle">Your setup, account, and Steel Guitar RAG preferences.</p>
+          </div>
+          <button class="backstage-close" type="button" aria-label="Close Backstage">×</button>
+        </div>
+
+        <section class="access-preview" aria-label="Temporary access state preview">
+          <span class="access-preview-label">Dev preview: Access state</span>
+          <div class="access-toggle" role="radiogroup" aria-label="Dev preview access state">
+            <label>
+              <input type="radio" name="mock-access-state" value="anonymous">
+              Anonymous preview
+            </label>
+            <label>
+              <input type="radio" name="mock-access-state" value="member">
+              Member preview
+            </label>
+          </div>
+        </section>
+
+        <nav class="backstage-tabs" role="tablist" aria-label="Backstage sections">
+          <button class="backstage-tab" id="backstage-tab-overview" type="button" role="tab" aria-selected="true" aria-controls="backstage-panel-overview" data-backstage-tab="overview">Overview</button>
+          <button class="backstage-tab" id="backstage-tab-setup" type="button" role="tab" aria-selected="false" aria-controls="backstage-panel-setup" data-backstage-tab="setup" tabindex="-1">My Setup</button>
+          <button class="backstage-tab" id="backstage-tab-pass" type="button" role="tab" aria-selected="false" aria-controls="backstage-panel-pass" data-backstage-tab="pass" tabindex="-1">Pass &amp; Usage</button>
+          <button class="backstage-tab" id="backstage-tab-feedback" type="button" role="tab" aria-selected="false" aria-controls="backstage-panel-feedback" data-backstage-tab="feedback" tabindex="-1">Feedback</button>
+          <button class="backstage-tab" id="backstage-tab-account" type="button" role="tab" aria-selected="false" aria-controls="backstage-panel-account" data-backstage-tab="account" tabindex="-1">Account</button>
+        </nav>
+
+        <div class="backstage-content backstage-tab-panel" id="backstage-panel-overview" role="tabpanel" aria-labelledby="backstage-tab-overview">
+          <article class="backstage-card">
+            <div class="backstage-card-header">
+              <h3>My Setup</h3>
+              <span class="coming-soon">Local draft</span>
+            </div>
+            <p>Keep your guitar details nearby without making Backstage feel like a giant form.</p>
+            <div class="backstage-metrics">
+              <div class="backstage-metric">
+                <span>Saved setup</span>
+                <strong id="copedent-overview-summary">E9 10-string saved</strong>
+              </div>
+              <div class="backstage-metric">
+                <span>Last updated</span>
+                <strong id="copedent-overview-updated">Draft</strong>
+              </div>
+            </div>
+            <button class="backstage-button" type="button" data-backstage-jump="setup">Edit copedent</button>
+          </article>
+
+          <article class="backstage-card">
+            <div class="backstage-card-header">
+              <h3>Pass &amp; Usage</h3>
+              <span class="coming-soon">Draft</span>
+            </div>
+            <p>Standing Room is the current mock pass. AI usage and pass upgrades are not connected yet.</p>
+            <button class="backstage-button" type="button" data-backstage-jump="pass">View passes</button>
+          </article>
+
+          <article class="backstage-card">
+            <div class="backstage-card-header">
+              <h3>Feedback</h3>
+              <span class="coming-soon">Mock only</span>
+            </div>
+            <p>Share what helped, what missed, or where the steel-guitar reasoning needs more work.</p>
+            <button class="backstage-button" type="button" data-backstage-jump="feedback">Open feedback</button>
+          </article>
+
+          <article class="backstage-card">
+            <div class="backstage-card-header">
+              <h3>Account</h3>
+              <span class="coming-soon">Auth later</span>
+            </div>
+            <p>Email, password, login provider, and account controls will live here after authentication is added.</p>
+            <button class="backstage-button" type="button" data-backstage-jump="account">View account</button>
+          </article>
+
+        </div>
+
+        <div class="backstage-content backstage-tab-panel" id="backstage-panel-setup" role="tabpanel" aria-labelledby="backstage-tab-setup" hidden>
+          <article class="backstage-card is-wide copedent-editor">
+            <div class="backstage-card-header">
+              <h3>My Setup / Copedent</h3>
+              <span class="coming-soon">Local draft</span>
+            </div>
+            <p>Keep your tuning, pedals, knees, and guitar setup here so answers can eventually be tailored to your instrument.</p>
+            <p class="backstage-note">This draft saves in this browser only. Account storage and RAG personalization are planned, but not connected yet.</p>
+            <div class="backstage-fields">
+              <div class="backstage-grid">
+                <div class="backstage-field">
+                  <label for="copedent-name">Setup name</label>
+                  <input id="copedent-name" type="text" placeholder="My main E9">
+                </div>
+                <div class="backstage-field">
+                  <label for="copedent-template">Starter setup</label>
+                  <select id="copedent-template">
+                    <option value="e9-10">E9 10-string</option>
+                    <option value="c6-10">C6 10-string</option>
+                    <option value="universal-12">12-string Universal</option>
+                    <option value="extended-e9-12">12-string Extended E9</option>
+                    <option value="extended-c6-12">12-string Extended C6</option>
+                    <option value="custom">Other / Custom</option>
+                  </select>
+                </div>
+                <div class="backstage-field">
+                  <label for="copedent-family">Tuning family</label>
+                  <select id="copedent-family">
+                    <option value="E9">E9</option>
+                    <option value="C6">C6</option>
+                    <option value="Universal">Universal</option>
+                    <option value="Extended">Extended</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div class="backstage-field">
+                  <label for="copedent-string-count">String count</label>
+                  <select id="copedent-string-count">
+                    <option value="10">10</option>
+                    <option value="12">12</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </div>
+                <div class="backstage-field">
+                  <label for="copedent-guitar">Guitar</label>
+                  <input id="copedent-guitar" type="text" placeholder="Zum, Emmons, MSA, Sho-Bud...">
+                </div>
+                <div class="backstage-field">
+                  <label for="copedent-custom-count">Custom string count</label>
+                  <input id="copedent-custom-count" type="number" min="1" max="20" placeholder="Only if custom">
+                </div>
+              </div>
+            </div>
+
+            <div class="copedent-section">
+              <h4>Open tuning</h4>
+              <p class="copedent-template-note">Start with a familiar setup, then change any note or gauge. Custom and 12-string setups are welcome here.</p>
+              <div class="copedent-table-wrap">
+                <table class="copedent-table" aria-label="Open tuning table">
+                  <thead>
+                    <tr>
+                      <th class="small-cell">String #</th>
+                      <th class="medium-cell">Open note</th>
+                      <th class="medium-cell">Gauge</th>
+                      <th>Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody id="copedent-strings"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="copedent-section">
+              <div class="backstage-card-header">
+                <h4>Pedals and knee levers</h4>
+                <button class="backstage-button" id="add-copedent-change" type="button">Add change</button>
+              </div>
+              <p class="copedent-template-note">Each row is one string change. Use the same control label on multiple rows when a pedal or lever moves more than one string.</p>
+              <div class="copedent-table-wrap">
+                <table class="copedent-table" aria-label="Pedal and lever changes">
+                  <thead>
+                    <tr>
+                      <th class="medium-cell">Control</th>
+                      <th class="medium-cell">Type</th>
+                      <th class="small-cell">String #</th>
+                      <th class="medium-cell">From</th>
+                      <th class="medium-cell">To</th>
+                      <th class="medium-cell">Change type</th>
+                      <th>Notes</th>
+                      <th class="small-cell">Remove</th>
+                    </tr>
+                  </thead>
+                  <tbody id="copedent-changes"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="backstage-fields">
+              <div class="backstage-field">
+                <label for="copedent-notes">Notes</label>
+                <textarea id="copedent-notes" placeholder="Add copedent details, string gauges, pickup notes, setup quirks, or changes you are still deciding on."></textarea>
+              </div>
+              <div class="backstage-actions">
+                <button class="backstage-button" id="save-copedent" type="button">Save local profile</button>
+                <button class="backstage-button" id="reset-copedent" type="button">Reset from starter</button>
+                <span class="backstage-status" id="copedent-save-status" role="status"></span>
+              </div>
+            </div>
+
+            <div class="copedent-section">
+              <h4>Don’t see your setup?</h4>
+              <p>Tell us what tuning or setup you use. This saves as a local request draft until account feedback is connected.</p>
+              <div class="backstage-grid">
+                <div class="backstage-field">
+                  <label for="copedent-request">Tuning/setup request</label>
+                  <textarea id="copedent-request" placeholder="Example: 11-string extended E9 with a custom vertical that lowers 5 and 10..."></textarea>
+                </div>
+                <div class="backstage-field">
+                  <label for="copedent-request-contact">Contact email, optional</label>
+                  <input id="copedent-request-contact" type="email" placeholder="Only needed if your account email is not available">
+                </div>
+              </div>
+              <div class="backstage-actions">
+                <button class="backstage-button" id="save-copedent-request" type="button">Save request locally</button>
+                <span class="backstage-status" id="copedent-request-status" role="status"></span>
+              </div>
+            </div>
+          </article>
+
+        </div>
+
+        <div class="backstage-content backstage-tab-panel" id="backstage-panel-pass" role="tabpanel" aria-labelledby="backstage-tab-pass" hidden>
+          <article class="backstage-card is-wide">
+            <div class="backstage-card-header">
+              <h3>Subscription Level</h3>
+              <span class="coming-soon">Draft</span>
+            </div>
+            <p>Future pass and access level will appear here. This is a draft access model only; billing and limits are not connected.</p>
+            <div class="backstage-metrics">
+              <div class="backstage-metric">
+                <span>Mock current pass</span>
+                <strong id="mock-current-pass">Standing Room</strong>
+              </div>
+            </div>
+            <div class="pass-list" aria-label="Draft pass tiers">
+              <section class="pass-tier is-current">
+                <div class="pass-name">
+                  <strong>Standing Room</strong>
+                  <span>Anonymous</span>
+                </div>
+                <p class="pass-copy">Anonymous access for visitors looking around. Draft access: browse public pages and see examples.</p>
+                <div class="pass-actions">
+                  <span class="coming-soon">Current draft</span>
+                  <button class="backstage-button" type="button" disabled>Manage pass · coming soon</button>
+                </div>
+              </section>
+              <section class="pass-tier">
+                <div class="pass-name">
+                  <strong>Dance Hall Pass</strong>
+                  <span>Free</span>
+                </div>
+                <p class="pass-copy">Free account for curious players getting started. Draft access: limited AI answers and basic saved preferences.</p>
+                <div class="pass-actions">
+                  <span class="coming-soon">Draft</span>
+                  <button class="backstage-button" type="button" disabled>Upgrade · coming soon</button>
+                </div>
+              </section>
+              <section class="pass-tier">
+                <div class="pass-name">
+                  <strong>Session Pass</strong>
+                  <span>Paid</span>
+                </div>
+                <p class="pass-copy">Paid access for regular players. Draft access: higher answer limits, deeper source retrieval, and saved learning history.</p>
+                <div class="pass-actions">
+                  <span class="coming-soon">Draft</span>
+                  <button class="backstage-button" type="button" disabled>Upgrade · coming soon</button>
+                </div>
+              </section>
+              <section class="pass-tier">
+                <div class="pass-name">
+                  <strong>Headliner Pass</strong>
+                  <span>Premium</span>
+                </div>
+                <p class="pass-copy">Premium access for serious learners. Draft access: expanded AI usage, custom practice paths, deeper corpus search, and advanced personalization.</p>
+                <div class="pass-actions">
+                  <span class="coming-soon">Draft</span>
+                  <button class="backstage-button" type="button" disabled>Upgrade · coming soon</button>
+                </div>
+              </section>
+              <section class="pass-tier">
+                <div class="pass-name">
+                  <strong>Bandleader Pass</strong>
+                  <span>Power/admin</span>
+                </div>
+                <p class="pass-copy">Power/admin access. Draft access: corpus review, usage oversight, source management, testing tools, and admin controls.</p>
+                <div class="pass-actions">
+                  <span class="coming-soon">Draft</span>
+                  <button class="backstage-button" type="button" disabled>Manage pass · coming soon</button>
+                </div>
+              </section>
+            </div>
+            <p class="backstage-note">These passes do not enforce access, change answer behavior, or connect to payments yet.</p>
+          </article>
+
+          <article class="backstage-card">
+            <div class="backstage-card-header">
+              <h3>AI Usage</h3>
+              <span class="coming-soon">Coming soon</span>
+            </div>
+            <p>Track answer usage, premium responses, and monthly limits here once account features are connected.</p>
+            <div class="backstage-metrics">
+              <div class="backstage-metric">
+                <span>Questions used this period</span>
+                <strong>Not connected</strong>
+              </div>
+              <div class="backstage-metric">
+                <span>Premium responses remaining</span>
+                <strong>Coming soon</strong>
+              </div>
+              <div class="backstage-metric">
+                <span>Estimated monthly usage</span>
+                <strong>Coming soon</strong>
+              </div>
+            </div>
+          </article>
+
+        </div>
+
+        <div class="backstage-content backstage-tab-panel" id="backstage-panel-feedback" role="tabpanel" aria-labelledby="backstage-tab-feedback" hidden>
+          <article class="backstage-card">
+            <div class="backstage-card-header">
+              <h3>Feedback</h3>
+              <span class="coming-soon">Mock only</span>
+            </div>
+            <p>Tell us when an answer helped, missed the mark, or needs better steel-guitar reasoning.</p>
+            <div class="backstage-fields">
+              <div class="backstage-field">
+                <label for="backstage-feedback-category">Category</label>
+                <select id="backstage-feedback-category" disabled>
+                  <option>Answer quality / Missing source / Wrong steel logic / UX issue / Other</option>
+                </select>
+              </div>
+              <div class="backstage-field">
+                <label for="backstage-feedback">Feedback</label>
+                <textarea id="backstage-feedback" placeholder="What should Steel Guitar RAG learn from this?" disabled></textarea>
+              </div>
+            </div>
+            <button class="backstage-button" type="button" disabled>Submit feedback · coming soon</button>
+          </article>
+
+        </div>
+
+        <div class="backstage-content backstage-tab-panel" id="backstage-panel-account" role="tabpanel" aria-labelledby="backstage-tab-account" hidden>
+          <article class="backstage-card">
+            <div class="backstage-card-header">
+              <h3>Password &amp; Account</h3>
+              <span class="coming-soon">Auth later</span>
+            </div>
+            <p>Account security and login controls will live here after authentication is added.</p>
+            <div class="account-list">
+              <div class="account-item">
+                <span>Email</span>
+                <strong>Not connected</strong>
+              </div>
+              <div class="account-item">
+                <span>Change password</span>
+                <strong>Coming soon</strong>
+              </div>
+              <div class="account-item">
+                <span>Connected login provider</span>
+                <strong>Coming soon</strong>
+              </div>
+              <div class="account-item">
+                <span>Delete account</span>
+                <strong>Coming soon</strong>
+              </div>
+            </div>
+          </article>
+
+        </div>
+
+      </section>
+    </div>
   </div>
 
+  <script src="answer-client.js"></script>
   <script>
     const question = document.querySelector("#question");
     const promptBox = document.querySelector(".prompt");
     const inputArea = document.querySelector(".input-area");
     const topic = document.querySelector("#topic");
     const suggestedPrompts = document.querySelector("#suggested-prompts");
+    const page = document.querySelector(".page");
+    const homeSections = Array.from(document.querySelectorAll(".hero, .prompt-shell, .try-asking"));
+    const brandHome = document.querySelector(".brand-home");
+    const stageReturn = document.querySelector(".stage-return");
+    const footer = document.querySelector("footer");
+    const primarySend = document.querySelector(".prompt .send");
+    const answerWorkspace = document.querySelector("#answer-workspace");
+    const answeredQuestion = document.querySelector("#answered-question");
+    const answerPrimaryTitle = document.querySelector("#answer-primary-title");
+    const answerLead = document.querySelector("#answer-lead");
+    const answerStatus = document.querySelector("#answer-status");
+    const answerSectionGrid = document.querySelector("#answer-section-grid");
+    const searchedRow = document.querySelector(".searched-row");
+    const sourceGrid = document.querySelector("#source-grid");
+    const followupQuestion = document.querySelector("#followup-question");
+    const answerSend = document.querySelector(".answer-send");
+    const followupChipList = document.querySelector(".followup-chips");
+    const questionLabel = document.querySelector(".question-label");
     const lessonQuestion = document.querySelector("#lesson-question");
     const helperText = document.querySelector(".helper-text");
+    const backstageTrigger = document.querySelector(".backstage-trigger");
+    const backstageCtaLabel = document.querySelector("#backstage-cta-label");
+    const accessHelper = document.querySelector("#access-helper");
+    const accessStateRadios = Array.from(document.querySelectorAll("input[name='mock-access-state']"));
+    const mockCurrentPass = document.querySelector("#mock-current-pass");
+    const backstage = document.querySelector("#backstage");
+    const backstagePanel = document.querySelector(".backstage-panel");
+    const backstageClose = document.querySelector(".backstage-close");
+    const backstageTabs = Array.from(document.querySelectorAll("[data-backstage-tab]"));
+    const backstageTabPanels = Array.from(document.querySelectorAll(".backstage-tab-panel"));
+    const backstageJumpButtons = Array.from(document.querySelectorAll("[data-backstage-jump]"));
+    const copedentOverviewSummary = document.querySelector("#copedent-overview-summary");
+    const copedentOverviewUpdated = document.querySelector("#copedent-overview-updated");
+    const copedentTemplate = document.querySelector("#copedent-template");
+    const copedentName = document.querySelector("#copedent-name");
+    const copedentFamily = document.querySelector("#copedent-family");
+    const copedentStringCount = document.querySelector("#copedent-string-count");
+    const copedentCustomCount = document.querySelector("#copedent-custom-count");
+    const copedentGuitar = document.querySelector("#copedent-guitar");
+    const copedentNotes = document.querySelector("#copedent-notes");
+    const copedentStrings = document.querySelector("#copedent-strings");
+    const copedentChanges = document.querySelector("#copedent-changes");
+    const addCopedentChange = document.querySelector("#add-copedent-change");
+    const saveCopedent = document.querySelector("#save-copedent");
+    const resetCopedent = document.querySelector("#reset-copedent");
+    const copedentSaveStatus = document.querySelector("#copedent-save-status");
+    const copedentRequest = document.querySelector("#copedent-request");
+    const copedentRequestContact = document.querySelector("#copedent-request-contact");
+    const saveCopedentRequest = document.querySelector("#save-copedent-request");
+    const copedentRequestStatus = document.querySelector("#copedent-request-status");
+    const techPopoverTrigger = document.querySelector(".footer-trigger");
+    const techPopover = document.querySelector("#tech-popover");
+    const techPopoverTitle = document.querySelector("#tech-popover-title");
+    const techPopoverContent = document.querySelector("#tech-popover-content");
+    const techPopoverClose = document.querySelector(".tech-popover-close");
+    const TECH_POPOVER_COPY = {
+      title: "What’s underneath?",
+      sections: [
+        {
+          body: "Steel Guitar RAG is more than a search box."
+        },
+        {
+          body: "“RAG” stands for retrieval-augmented generation — a newer kind of AI system that searches organized knowledge before responding, instead of simply guessing from memory."
+        },
+        {
+          body: "Behind the scenes, Steel Guitar RAG searches through steel guitar discussions, lessons, gear conversations, manuals, and player experience gathered from years of real-world steel guitar knowledge."
+        },
+        {
+          body: "The system breaks long discussions into smaller musical ideas, connects related concepts together, and searches by meaning instead of exact wording. That helps it find useful answers even when different players describe the same thing in different ways."
+        },
+        {
+          body: "Modern AI systems then help organize sources, compare ideas, retrieve useful context, and prepare grounded responses tied back to real discussions instead of random guesses."
+        },
+        {
+          body: "Over time, the system can continue learning from new material, organizing fresh information, and improving how steel guitar knowledge connects together."
+        },
+        {
+          heading: "The goal is simple:",
+          body: "A calm, easy-to-use interface backed by decades of steel guitar wisdom and modern AI reasoning."
+        }
+      ]
+    };
+    const INSTRUCTOR_OPENING_LINES = [
+      "Alright. What are we working on?",
+      "Where’s it fighting you tonight?",
+      "Show me where it starts coming apart.",
+      "What part’s not settling under your hands yet?",
+      "What keeps slipping away from you?",
+      "What’s giving you trouble?",
+      "Where’re you getting hung up?",
+      "What change are you chasing?",
+      "What’s sounding rough to your ears?",
+      "Where do you start losing the neck?",
+      "What’re you hearing that you can’t quite reach yet?",
+      "What’s not laying right?",
+      "Which part keeps tying your hands in knots?",
+      "What’s making you work too hard?",
+      "Where’s the awkward spot?",
+      "What keeps breaking down when the tempo comes up?",
+      "What’re you trying to smooth out?",
+      "What part are you overthinking?",
+      "Show me where you quit trusting yourself.",
+      "What keeps escaping you every time through?",
+      "What move are you tired of faking?",
+      "What part of the neck still feels foggy?",
+      "What’s keeping this from sounding musical?",
+      "Where do you stop hearing the chord move?",
+      "What’re you trying to clean up tonight?",
+      "What’s the steel not giving you yet?",
+      "What’s bothering you about your playing lately?",
+      "Which pedal move still feels unnatural?",
+      "What are you avoiding practicing?",
+      "What do you wish would finally click?"
+    ];
     const promptPool = [
-      { text: "Why does my rig hum?", topic: "Electronics" },
-      { text: "Show me smoother chord movement", topic: "Technique" },
-      { text: "Build tonight’s practice plan", topic: "Technique" },
+      { text: "Show movement without sliding everywhere", topic: "Technique" },
+      { text: "Help me sound less mechanical", topic: "Technique" },
+      { text: "Show tasteful fills behind a singer", topic: "Technique" },
+      { text: "What should I woodshed tonight?", topic: "Practice" },
+      { text: "Why does my amp buzz at idle?", topic: "Electronics" },
+      { text: "Show me I-IV-V positions on E9", topic: "Copedents" },
+      { text: "How do I soften my attack?", topic: "Technique" },
+      { text: "What does the F lever do?", topic: "Copedents" },
+      { text: "Build tonight’s practice plan", topic: "Practice" },
       { text: "Where should I go after A+B?", topic: "Technique" },
       { text: "Why does my bar movement sound rough?", topic: "Technique" },
       { text: "Give me a better way into the IV chord", topic: "Technique" },
@@ -630,29 +2485,441 @@
       { text: "Why does touching the changer reduce hum?", topic: "Electronics" },
       { text: "What’s a better grip for this chord?", topic: "Technique" },
       { text: "Give me a practice rut breaker", topic: "Technique" },
-      { text: "Show me movement without sliding everywhere", topic: "Technique" },
-      { text: "Why does my amp buzz at idle?", topic: "Electronics" },
-      { text: "Help me sound less mechanical", topic: "Technique" },
-      { text: "Show me tasteful fills behind a singer", topic: "Technique" },
-      { text: "What should I woodshed tonight?", topic: "Technique" },
       { text: "Why can’t I hear the chord movement clearly?", topic: "Technique" },
       { text: "Give me a better way to think about the neck", topic: "Technique" },
       { text: "Show me how pros approach this position", topic: "Forum Wisdom" },
       { text: "What’s the simplest way to hear this change?", topic: "Technique" },
       { text: "Help me stop getting lost on the fretboard", topic: "Technique" }
     ];
+    const COPEDENT_STORAGE_KEY = "steel-guitar-rag.copedentProfile.v1";
+    const COPEDENT_REQUEST_STORAGE_KEY = "steel-guitar-rag.copedentSetupRequest.v1";
+    const MOCK_ACCESS_STORAGE_KEY = "steel-guitar-rag.mockAccessState.v1";
+    const CONTROL_TYPE_OPTIONS = [
+      ["pedal", "Pedal"],
+      ["knee_lever", "Knee lever"],
+      ["vertical", "Vertical"],
+      ["other", "Other"]
+    ];
+    const CHANGE_TYPE_OPTIONS = [
+      ["raise", "Raise"],
+      ["lower", "Lower"],
+      ["half-stop", "Half-stop"],
+      ["split", "Split"],
+      ["optional", "Optional"]
+    ];
+    const COPEDENT_STARTERS = {
+      "e9-10": {
+        name: "My E9 10-string",
+        tuningFamily: "E9",
+        stringCount: 10,
+        strings: [
+          ["1", "F#", "", ""],
+          ["2", "D#", "", ""],
+          ["3", "G#", "", ""],
+          ["4", "E", "", ""],
+          ["5", "B", "", ""],
+          ["6", "G#", "", ""],
+          ["7", "F#", "", ""],
+          ["8", "E", "", ""],
+          ["9", "D", "", ""],
+          ["10", "B", "", ""]
+        ],
+        controls: [
+          ["A", "pedal", [["5", "B", "C#", "raise", ""], ["10", "B", "C#", "raise", ""]]],
+          ["B", "pedal", [["3", "G#", "A", "raise", ""], ["6", "G#", "A", "raise", ""]]],
+          ["C", "pedal", [["4", "E", "F#", "raise", ""], ["5", "B", "C#", "raise", ""]]],
+          ["LKL", "knee_lever", [["4", "E", "F", "raise", "E raise"], ["8", "E", "F", "raise", "E raise"]]],
+          ["LKR", "knee_lever", [["4", "E", "D#", "lower", "E lower"], ["8", "E", "D#", "lower", "E lower"]]],
+          ["RKR", "knee_lever", [["2", "D#", "D/C#", "half-stop", "Common half-stop"], ["9", "D", "C#", "lower", ""]]]
+        ],
+        notes: "Starter E9 example. Edit labels, levers, and notes to match your guitar."
+      },
+      "c6-10": {
+        name: "My C6 10-string",
+        tuningFamily: "C6",
+        stringCount: 10,
+        strings: [
+          ["1", "G", "", ""],
+          ["2", "E", "", ""],
+          ["3", "C", "", ""],
+          ["4", "A", "", ""],
+          ["5", "G", "", ""],
+          ["6", "E", "", ""],
+          ["7", "C", "", ""],
+          ["8", "A", "", ""],
+          ["9", "F", "", ""],
+          ["10", "C", "", ""]
+        ],
+        controls: [
+          ["P4", "pedal", [["4", "A", "B", "raise", "Example C6 change"], ["8", "A", "B", "raise", ""]]],
+          ["P5", "pedal", [["5", "G", "F#", "lower", "Editable example"], ["9", "F", "F#", "raise", ""]]],
+          ["P6", "pedal", [["2", "E", "F", "raise", "Editable example"], ["6", "E", "F", "raise", ""]]],
+          ["P7", "pedal", [["3", "C", "C#", "raise", "Editable example"], ["4", "A", "B", "raise", ""]]],
+          ["P8", "pedal", [["7", "C", "C#", "raise", "Editable example"], ["10", "C", "A", "lower", ""]]]
+        ],
+        notes: "C6 starter labels are examples only. C6 copedents vary a lot; customize freely."
+      },
+      "universal-12": {
+        name: "My 12-string Universal",
+        tuningFamily: "Universal",
+        stringCount: 12,
+        strings: [
+          ["1", "F#", "", ""],
+          ["2", "D#", "", ""],
+          ["3", "G#", "", ""],
+          ["4", "E", "", ""],
+          ["5", "B", "", ""],
+          ["6", "G#", "", ""],
+          ["7", "F#", "", ""],
+          ["8", "E", "", ""],
+          ["9", "B", "", ""],
+          ["10", "G#", "", ""],
+          ["11", "E", "", ""],
+          ["12", "B", "", ""]
+        ],
+        controls: [
+          ["A", "pedal", [["5", "B", "C#", "raise", ""], ["9", "B", "C#", "raise", ""]]],
+          ["B", "pedal", [["3", "G#", "A", "raise", ""], ["6", "G#", "A", "raise", ""], ["10", "G#", "A", "raise", ""]]],
+          ["E lower", "knee_lever", [["4", "E", "D#", "lower", ""], ["8", "E", "D#", "lower", ""], ["11", "E", "D#", "lower", ""]]]
+        ],
+        notes: "Universal starter. Add your B6 pedals, lock lever, and any extra changes."
+      },
+      "extended-e9-12": {
+        name: "My Extended E9 12-string",
+        tuningFamily: "Extended",
+        stringCount: 12,
+        strings: [
+          ["1", "F#", "", ""],
+          ["2", "D#", "", ""],
+          ["3", "G#", "", ""],
+          ["4", "E", "", ""],
+          ["5", "B", "", ""],
+          ["6", "G#", "", ""],
+          ["7", "F#", "", ""],
+          ["8", "E", "", ""],
+          ["9", "D", "", ""],
+          ["10", "B", "", ""],
+          ["11", "G#", "", ""],
+          ["12", "E", "", ""]
+        ],
+        controls: [
+          ["A", "pedal", [["5", "B", "C#", "raise", ""], ["10", "B", "C#", "raise", ""]]],
+          ["B", "pedal", [["3", "G#", "A", "raise", ""], ["6", "G#", "A", "raise", ""], ["11", "G#", "A", "raise", ""]]],
+          ["E lower", "knee_lever", [["4", "E", "D#", "lower", ""], ["8", "E", "D#", "lower", ""], ["12", "E", "D#", "lower", ""]]]
+        ],
+        notes: "Extended E9 starter. Adjust the lower strings and levers to your guitar."
+      },
+      "extended-c6-12": {
+        name: "My Extended C6 12-string",
+        tuningFamily: "Extended",
+        stringCount: 12,
+        strings: [
+          ["1", "D", "", ""],
+          ["2", "G", "", ""],
+          ["3", "E", "", ""],
+          ["4", "C", "", ""],
+          ["5", "A", "", ""],
+          ["6", "G", "", ""],
+          ["7", "E", "", ""],
+          ["8", "C", "", ""],
+          ["9", "A", "", ""],
+          ["10", "F", "", ""],
+          ["11", "C", "", ""],
+          ["12", "A", "", ""]
+        ],
+        controls: [
+          ["P4", "pedal", [["5", "A", "B", "raise", "Editable example"], ["9", "A", "B", "raise", ""]]],
+          ["P5", "pedal", [["6", "G", "F#", "lower", "Editable example"], ["10", "F", "F#", "raise", ""]]]
+        ],
+        notes: "Extended C6 starter. This is intentionally flexible; add your real pedal and lever changes."
+      },
+      custom: {
+        name: "My custom setup",
+        tuningFamily: "Other",
+        stringCount: 10,
+        strings: Array.from({ length: 10 }, (_, index) => [String(index + 1), "", "", ""]),
+        controls: [],
+        notes: "Custom setup. Enter each open string and add your pedals or levers below."
+      }
+    };
 
-    let activePromptIndex = Math.floor(Math.random() * promptPool.length);
+    let activePromptIndex = 0;
+
+    function getTimeOfDayQuestionLabel(date = new Date()) {
+      const minutes = date.getHours() * 60 + date.getMinutes();
+      if (minutes >= 5 * 60 && minutes < 12 * 60) {
+        return "This morning’s question:";
+      }
+      if (minutes >= 12 * 60 && minutes < 17 * 60) {
+        return "This afternoon’s question:";
+      }
+      if (minutes >= 17 * 60 && minutes < 21 * 60) {
+        return "This evening’s question:";
+      }
+      return "Tonight’s question:";
+    }
+
+    function renderQuestionLabel() {
+      if (!questionLabel || !lessonQuestion) return;
+      const label = getTimeOfDayQuestionLabel();
+      questionLabel.textContent = label;
+      lessonQuestion.setAttribute("aria-label", label.replace(/:$/, ""));
+    }
+
+    function optionMarkup(options, selectedValue) {
+      return options.map(([value, label]) => {
+        const selected = value === selectedValue ? " selected" : "";
+        return `<option value="${value}"${selected}>${label}</option>`;
+      }).join("");
+    }
+
+    function escapeAttribute(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/"/g, "&quot;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    }
+
+    function makeCopedentId() {
+      if (window.crypto && window.crypto.randomUUID) {
+        return window.crypto.randomUUID();
+      }
+      return `local-${Date.now()}`;
+    }
+
+    function inferChangeDirection(changeType, fromNote = "", toNote = "") {
+      if (changeType === "lower") return "lower";
+      if (changeType === "raise") return "raise";
+      if (/#/.test(fromNote) && /(^|\/)[A-G](?:$|\/)/.test(toNote)) return "lower";
+      if (/b/.test(toNote)) return "lower";
+      return "raise";
+    }
+
+    function starterToProfile(templateKey) {
+      const starter = COPEDENT_STARTERS[templateKey] || COPEDENT_STARTERS.custom;
+      const now = new Date().toISOString();
+      return {
+        id: makeCopedentId(),
+        userId: null,
+        name: starter.name,
+        tuningFamily: starter.tuningFamily,
+        stringCount: starter.stringCount,
+        templateKey,
+        guitar: "",
+        strings: starter.strings.map(([stringNumber, openNote, gauge, notes]) => ({
+          stringNumber: Number(stringNumber),
+          openNote,
+          gauge,
+          notes
+        })),
+        controls: starter.controls.map(([label, type, changes], index) => ({
+          id: `${label.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "control"}-${index}`,
+          label,
+          type,
+          changes: changes.map(([stringNumber, fromNote, toNote, changeType, notes]) => ({
+            stringNumber: Number(stringNumber),
+            fromNote,
+            toNote,
+            direction: inferChangeDirection(changeType, fromNote, toNote),
+            amount: "",
+            isHalfStop: changeType === "half-stop",
+            isSplit: changeType === "split",
+            changeType,
+            notes
+          }))
+        })),
+        notes: starter.notes,
+        createdAt: now,
+        updatedAt: now
+      };
+    }
+
+    function loadCopedentProfile() {
+      try {
+        const stored = localStorage.getItem(COPEDENT_STORAGE_KEY);
+        if (stored) {
+          return JSON.parse(stored);
+        }
+      } catch (_error) {
+        return starterToProfile("e9-10");
+      }
+      return starterToProfile("e9-10");
+    }
+
+    function saveCopedentProfile(profile) {
+      localStorage.setItem(COPEDENT_STORAGE_KEY, JSON.stringify(profile));
+    }
+
+    function flattenCopedentChanges(profile) {
+      return (profile.controls || []).flatMap((control) =>
+        (control.changes || []).map((change) => ({
+          controlId: control.id,
+          controlLabel: control.label,
+          controlType: control.type,
+          ...change
+        }))
+      );
+    }
+
+    function controlsFromFlatChanges(changes) {
+      const groupedControls = new Map();
+      changes.forEach((change, index) => {
+        const label = change.controlLabel || `Control ${index + 1}`;
+        const type = change.controlType || "pedal";
+        const key = `${label}::${type}`;
+        if (!groupedControls.has(key)) {
+          groupedControls.set(key, {
+            id: `${label.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "control"}-${groupedControls.size + 1}`,
+            label,
+            type,
+            changes: []
+          });
+        }
+        groupedControls.get(key).changes.push({
+          stringNumber: Number(change.stringNumber || 0),
+          fromNote: change.fromNote || "",
+          toNote: change.toNote || "",
+          direction: inferChangeDirection(change.changeType, change.fromNote, change.toNote),
+          amount: change.amount || "",
+          isHalfStop: change.changeType === "half-stop",
+          isSplit: change.changeType === "split",
+          changeType: change.changeType || "raise",
+          notes: change.notes || ""
+        });
+      });
+      return Array.from(groupedControls.values());
+    }
+
+    function normalizeStringCount(profile) {
+      if (profile.stringCount === "custom") {
+        return Number(copedentCustomCount.value || profile.strings?.length || 10);
+      }
+      return Number(profile.stringCount || profile.strings?.length || 10);
+    }
+
+    function renderCopedentStrings(strings, targetCount) {
+      const rows = [];
+      for (let index = 0; index < targetCount; index += 1) {
+        const string = strings[index] || { stringNumber: index + 1, openNote: "", gauge: "", notes: "" };
+        rows.push(`
+          <tr>
+            <td><input data-field="stringNumber" type="number" min="1" value="${string.stringNumber || index + 1}"></td>
+            <td><input data-field="openNote" type="text" value="${escapeAttribute(string.openNote)}" placeholder="E"></td>
+            <td><input data-field="gauge" type="text" value="${escapeAttribute(string.gauge)}" placeholder=".011"></td>
+            <td><input data-field="notes" type="text" value="${escapeAttribute(string.notes)}" placeholder="Optional"></td>
+          </tr>
+        `);
+      }
+      copedentStrings.innerHTML = rows.join("");
+    }
+
+    function renderCopedentChanges(profile) {
+      const rows = flattenCopedentChanges(profile);
+      copedentChanges.innerHTML = rows.map((change, index) => `
+        <tr>
+          <td><input data-field="controlLabel" type="text" value="${escapeAttribute(change.controlLabel)}" placeholder="A, B, LKL, P5"></td>
+          <td><select data-field="controlType">${optionMarkup(CONTROL_TYPE_OPTIONS, change.controlType || "pedal")}</select></td>
+          <td><input data-field="stringNumber" type="number" min="1" value="${change.stringNumber || ""}" placeholder="5"></td>
+          <td><input data-field="fromNote" type="text" value="${escapeAttribute(change.fromNote)}" placeholder="B"></td>
+          <td><input data-field="toNote" type="text" value="${escapeAttribute(change.toNote)}" placeholder="C#"></td>
+          <td><select data-field="changeType">${optionMarkup(CHANGE_TYPE_OPTIONS, change.changeType || "raise")}</select></td>
+          <td><input data-field="notes" type="text" value="${escapeAttribute(change.notes)}" placeholder="Half-stop, split, optional..."></td>
+          <td><button class="copedent-row-action" type="button" data-remove-change="${index}" aria-label="Remove change">×</button></td>
+        </tr>
+      `).join("");
+    }
+
+    function renderCopedentProfile(profile) {
+      copedentTemplate.value = profile.templateKey || "custom";
+      copedentName.value = profile.name || "";
+      copedentFamily.value = profile.tuningFamily || "Other";
+      const hasStandardCount = profile.stringCount === 10 || profile.stringCount === 12;
+      copedentStringCount.value = hasStandardCount ? String(profile.stringCount) : "custom";
+      copedentCustomCount.value = hasStandardCount ? "" : String(profile.stringCount || profile.strings?.length || "");
+      copedentGuitar.value = profile.guitar || "";
+      copedentNotes.value = profile.notes || "";
+      renderCopedentStrings(profile.strings || [], normalizeStringCount(profile));
+      renderCopedentChanges(profile);
+      updateCopedentOverview(profile);
+    }
+
+    function collectCopedentProfile(existingProfile = loadCopedentProfile()) {
+      const now = new Date().toISOString();
+      const strings = Array.from(copedentStrings.querySelectorAll("tr")).map((row, index) => ({
+        stringNumber: Number(row.querySelector('[data-field="stringNumber"]').value || index + 1),
+        openNote: row.querySelector('[data-field="openNote"]').value.trim(),
+        gauge: row.querySelector('[data-field="gauge"]').value.trim(),
+        notes: row.querySelector('[data-field="notes"]').value.trim()
+      }));
+      const groupedControls = new Map();
+      Array.from(copedentChanges.querySelectorAll("tr")).forEach((row, index) => {
+        const label = row.querySelector('[data-field="controlLabel"]').value.trim() || `Control ${index + 1}`;
+        const type = row.querySelector('[data-field="controlType"]').value;
+        const changeType = row.querySelector('[data-field="changeType"]').value;
+        const key = `${label}::${type}`;
+        if (!groupedControls.has(key)) {
+          groupedControls.set(key, {
+            id: `${label.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "control"}-${groupedControls.size + 1}`,
+            label,
+            type,
+            changes: []
+          });
+        }
+        groupedControls.get(key).changes.push({
+          stringNumber: Number(row.querySelector('[data-field="stringNumber"]').value || 0),
+          fromNote: row.querySelector('[data-field="fromNote"]').value.trim(),
+          toNote: row.querySelector('[data-field="toNote"]').value.trim(),
+          direction: inferChangeDirection(
+            changeType,
+            row.querySelector('[data-field="fromNote"]').value.trim(),
+            row.querySelector('[data-field="toNote"]').value.trim()
+          ),
+          amount: "",
+          isHalfStop: changeType === "half-stop",
+          isSplit: changeType === "split",
+          changeType,
+          notes: row.querySelector('[data-field="notes"]').value.trim()
+        });
+      });
+      const selectedCount = copedentStringCount.value === "custom"
+        ? Number(copedentCustomCount.value || strings.length)
+        : Number(copedentStringCount.value);
+      return {
+        id: existingProfile.id || makeCopedentId(),
+        userId: existingProfile.userId || null,
+        name: copedentName.value.trim() || "My copedent",
+        tuningFamily: copedentFamily.value,
+        stringCount: selectedCount,
+        templateKey: copedentTemplate.value,
+        guitar: copedentGuitar.value.trim(),
+        strings,
+        controls: Array.from(groupedControls.values()),
+        notes: copedentNotes.value.trim(),
+        createdAt: existingProfile.createdAt || now,
+        updatedAt: now
+      };
+    }
+
+    function rebuildCopedentStringRows() {
+      const profile = collectCopedentProfile();
+      renderCopedentStrings(profile.strings, normalizeStringCount(profile));
+    }
 
     function renderSuggestedPrompt() {
       suggestedPrompts.innerHTML = "";
-      const prompt = promptPool[activePromptIndex];
-      const button = document.createElement("button");
-      button.className = "example";
-      button.type = "button";
-      button.dataset.topic = prompt.topic;
-      button.textContent = prompt.text;
-      suggestedPrompts.appendChild(button);
+      const visiblePrompts = Array.from({ length: Math.min(4, promptPool.length) }, (_, offset) => (
+        promptPool[(activePromptIndex + offset) % promptPool.length]
+      ));
+      visiblePrompts.forEach((prompt) => {
+        const button = document.createElement("button");
+        button.className = "example";
+        button.type = "button";
+        button.dataset.topic = prompt.topic;
+        button.dataset.promptText = prompt.text;
+        button.textContent = prompt.text;
+        suggestedPrompts.appendChild(button);
+      });
     }
 
     function rotateSuggestedPrompt() {
@@ -670,26 +2937,561 @@
 
     function updateHelperState() {
       const hasText = Boolean(question.value.trim());
-      lessonQuestion.classList.toggle("is-typing", hasText);
       promptBox.classList.toggle("is-typing", hasText);
       inputArea.classList.toggle("is-empty", !hasText);
     }
 
-    helperText.textContent = "Alright. What are we working on?";
+    const HUM_DEMO_QUESTION = "Why does touching the changer reduce hum?";
+
+    function renderResponse(response) {
+      answerStatus.hidden = true;
+      answerStatus.textContent = "";
+      searchedRow.innerHTML = '<span>Searched:</span>';
+      const searchedDomains = response.searched_domains || response.searched || [];
+      if (searchedDomains.length) {
+        searchedDomains.forEach((label) => {
+          const chip = document.createElement("span");
+          chip.className = "searched-chip";
+          chip.textContent = label;
+          searchedRow.appendChild(chip);
+        });
+      } else {
+        const chip = document.createElement("span");
+        chip.className = "searched-chip";
+        chip.textContent = "Sources pending";
+        searchedRow.appendChild(chip);
+      }
+
+      const sections = response.sections || [];
+      const primarySection = sections.find((section) => section.style === "lead") || sections[0] || {
+        title: "Answer",
+        body: response.answer || "The answer service did not return answer text."
+      };
+      const primaryIcon = answerPrimaryTitle.querySelector("svg")?.cloneNode(true);
+      answerPrimaryTitle.replaceChildren();
+      if (primaryIcon) {
+        answerPrimaryTitle.appendChild(primaryIcon);
+      }
+      answerPrimaryTitle.append(document.createTextNode(primarySection.title || "Answer"));
+      answerLead.textContent = primarySection.body || "";
+
+      answerSectionGrid.innerHTML = "";
+      sections.filter((section) => section !== primarySection).forEach((section) => {
+        const sectionEl = document.createElement("section");
+        sectionEl.className = "answer-section";
+
+        const title = document.createElement("p");
+        title.className = "answer-section-title";
+        title.textContent = section.title || "Answer note";
+        sectionEl.appendChild(title);
+
+        if (section.bullets?.length) {
+          const list = document.createElement("ol");
+          list.className = "try-list";
+          section.bullets.forEach((item) => {
+            const li = document.createElement("li");
+            li.textContent = item;
+            list.appendChild(li);
+          });
+          sectionEl.appendChild(list);
+        }
+
+        if (section.body) {
+          const body = document.createElement("p");
+          body.textContent = section.body;
+          sectionEl.appendChild(body);
+        }
+
+        answerSectionGrid.appendChild(sectionEl);
+      });
+
+      sourceGrid.innerHTML = "";
+      if (!response.sources?.length) {
+        const emptyCard = document.createElement("article");
+        emptyCard.className = "source-card";
+        const meta = document.createElement("div");
+        meta.className = "source-meta";
+        const forum = document.createElement("span");
+        forum.textContent = "Source notes";
+        meta.appendChild(forum);
+        const title = document.createElement("h3");
+        title.textContent = "No sources returned";
+        const excerpt = document.createElement("p");
+        excerpt.textContent = "The answer service did not return source cards for this response.";
+        emptyCard.append(meta, title, excerpt);
+        sourceGrid.appendChild(emptyCard);
+      }
+      (response.sources || []).forEach((source) => {
+        const card = document.createElement("article");
+        card.className = "source-card";
+
+        const meta = document.createElement("div");
+        meta.className = "source-meta";
+        const forum = document.createElement("span");
+        forum.textContent = source.forum || "Steel Guitar RAG";
+        meta.appendChild(forum);
+
+        const title = document.createElement("h3");
+        title.textContent = source.title || "Source preview";
+
+        const excerpt = document.createElement("p");
+        excerpt.textContent = source.excerpt || "Source excerpt preview.";
+
+        const link = document.createElement("a");
+        if (source.url) {
+          link.href = source.url;
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          link.setAttribute("aria-label", `View source for ${title.textContent}`);
+          link.textContent = source.url;
+        } else {
+          link.href = "#";
+          link.setAttribute("aria-disabled", "true");
+          link.setAttribute("aria-label", `Source URL unavailable for ${title.textContent}`);
+          link.textContent = "Source URL unavailable";
+        }
+
+        const date = document.createElement("span");
+        date.className = "source-date";
+        date.textContent = source.date || "";
+
+        card.append(meta, title, excerpt, link, date);
+        sourceGrid.appendChild(card);
+      });
+      sourceGrid.querySelectorAll('a[aria-disabled="true"]').forEach((link) => {
+        link.addEventListener("click", (event) => event.preventDefault());
+      });
+
+      followupChipList.innerHTML = "";
+      const followups = response.followups?.length
+        ? response.followups
+        : ["Ask a follow-up", "Show more sources", "Make it simpler", "What should I try first?"];
+      followups.forEach((followup) => {
+        const chip = document.createElement("button");
+        chip.className = "followup-chip";
+        chip.type = "button";
+        chip.textContent = followup;
+        followupChipList.appendChild(chip);
+      });
+    }
+
+    function renderLoadingState(submittedQuestion) {
+      searchedRow.innerHTML = '<span>Searched:</span>';
+      const chip = document.createElement("span");
+      chip.className = "searched-chip";
+      chip.textContent = "Searching";
+      searchedRow.appendChild(chip);
+      answerPrimaryTitle.lastChild.textContent = "Answer";
+      answerLead.textContent = "Searching the forum sources...";
+      answerStatus.hidden = false;
+      answerStatus.textContent = "Retrieving a source-backed answer.";
+      answerSectionGrid.innerHTML = "";
+      sourceGrid.innerHTML = "";
+      const loadingCard = document.createElement("article");
+      loadingCard.className = "source-card";
+      loadingCard.innerHTML = '<div class="source-meta"><span>Source notes</span></div><h3>Retrieving source cards</h3><p>Forum name, thread title, excerpt, and source URL will appear here.</p>';
+      sourceGrid.appendChild(loadingCard);
+      followupChipList.innerHTML = "";
+      answeredQuestion.textContent = submittedQuestion;
+    }
+
+    function renderErrorState(message) {
+      answerPrimaryTitle.lastChild.textContent = "Answer unavailable";
+      answerLead.textContent = "I couldn't reach the answer service.";
+      answerStatus.hidden = false;
+      answerStatus.textContent = message || "Try again once the local API is running.";
+      answerSectionGrid.innerHTML = "";
+      sourceGrid.innerHTML = "";
+      const errorCard = document.createElement("article");
+      errorCard.className = "source-card";
+      errorCard.innerHTML = '<div class="source-meta"><span>Source notes</span></div><h3>No sources loaded</h3><p>The request failed before source cards could be returned.</p>';
+      sourceGrid.appendChild(errorCard);
+      followupChipList.innerHTML = "";
+    }
+
+    function setAnswerBusy(isBusy) {
+      primarySend.disabled = isBusy;
+      answerSend.disabled = isBusy;
+    }
+
+    function showWorkspaceShell(submittedQuestion) {
+      answeredQuestion.textContent = submittedQuestion;
+      homeSections.forEach((section) => {
+        section.hidden = true;
+      });
+      if (footer) {
+        footer.hidden = true;
+      }
+      answerWorkspace.hidden = false;
+      page.classList.add("is-answering");
+      updateHelperState();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    async function showAnswerWorkspace(rawQuestion) {
+      const submittedQuestion = rawQuestion.trim() || HUM_DEMO_QUESTION;
+      showWorkspaceShell(submittedQuestion);
+      renderLoadingState(submittedQuestion);
+      question.value = "";
+      setAnswerBusy(true);
+      try {
+        const response = await TURNAROUND_ANSWER_UI.requestAnswer(submittedQuestion);
+        answeredQuestion.textContent = response.question || submittedQuestion;
+        renderResponse(response);
+      } catch (error) {
+        renderErrorState(error.message);
+      } finally {
+        setAnswerBusy(false);
+        updateHelperState();
+      }
+    }
+
+    function submitHomeQuestion() {
+      showAnswerWorkspace(question.value || HUM_DEMO_QUESTION);
+    }
+
+    function returnToStage() {
+      answerWorkspace.hidden = true;
+      page.classList.remove("is-answering");
+      homeSections.forEach((section) => {
+        section.hidden = false;
+      });
+      if (footer) {
+        footer.hidden = false;
+      }
+      question.value = "";
+      followupQuestion.value = "";
+      answeredQuestion.textContent = HUM_DEMO_QUESTION;
+      updateHelperState();
+      question.focus();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function renderTechPopover() {
+      techPopoverTitle.textContent = TECH_POPOVER_COPY.title;
+      techPopoverContent.innerHTML = "";
+      TECH_POPOVER_COPY.sections.forEach((section) => {
+        const sectionEl = document.createElement("section");
+        sectionEl.className = "tech-popover-section";
+        const body = document.createElement("p");
+        body.textContent = section.body;
+        if (section.heading) {
+          const heading = document.createElement("h4");
+          heading.textContent = section.heading;
+          sectionEl.append(heading);
+        }
+        sectionEl.append(body);
+        techPopoverContent.appendChild(sectionEl);
+      });
+    }
+
+    function openTechPopover() {
+      techPopover.hidden = false;
+      requestAnimationFrame(() => {
+        techPopover.classList.add("is-open");
+        techPopoverTrigger.setAttribute("aria-expanded", "true");
+      });
+    }
+
+    function closeTechPopover({ restoreFocus = false } = {}) {
+      techPopover.classList.remove("is-open");
+      techPopoverTrigger.setAttribute("aria-expanded", "false");
+      window.setTimeout(() => {
+        if (techPopoverTrigger.getAttribute("aria-expanded") === "false") {
+          techPopover.hidden = true;
+        }
+      }, 170);
+      if (restoreFocus) {
+        techPopoverTrigger.focus();
+      }
+    }
+
+    function toggleTechPopover() {
+      if (techPopover.hidden) {
+        openTechPopover();
+      } else {
+        closeTechPopover();
+      }
+    }
+
+    function loadMockAccessState() {
+      try {
+        return localStorage.getItem(MOCK_ACCESS_STORAGE_KEY) === "member" ? "member" : "anonymous";
+      } catch (error) {
+        return "anonymous";
+      }
+    }
+
+    function saveMockAccessState(state) {
+      try {
+        localStorage.setItem(MOCK_ACCESS_STORAGE_KEY, state);
+      } catch (error) {
+        // Local storage is a convenience for the mock preview only.
+      }
+    }
+
+    function updateMockAccessUi() {
+      const isMember = mockAccessState === "member";
+      const ctaText = isMember ? "Go Backstage" : "Get a Backstage Pass";
+      backstageCtaLabel.textContent = ctaText;
+      backstageTrigger.setAttribute("aria-label", ctaText);
+      accessHelper.hidden = isMember;
+      mockCurrentPass.textContent = isMember ? "Dance Hall Pass preview" : "Standing Room";
+      accessStateRadios.forEach((radio) => {
+        radio.checked = radio.value === mockAccessState;
+      });
+    }
+
+    function setMockAccessState(state) {
+      mockAccessState = state === "member" ? "member" : "anonymous";
+      saveMockAccessState(mockAccessState);
+      updateMockAccessUi();
+    }
+
+    function openBackstageForAccessState() {
+      openBackstage({ initialTab: mockAccessState === "member" ? "overview" : "pass" });
+    }
+
+    function showBackstageTab(tabName) {
+      backstageTabs.forEach((tab) => {
+        const isSelected = tab.dataset.backstageTab === tabName;
+        tab.setAttribute("aria-selected", String(isSelected));
+        tab.tabIndex = isSelected ? 0 : -1;
+      });
+      backstageTabPanels.forEach((panel) => {
+        panel.hidden = panel.id !== `backstage-panel-${tabName}`;
+      });
+      backstagePanel.scrollTop = 0;
+    }
+
+    function formatDraftDate(value) {
+      if (!value) return "Draft";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "Draft";
+      return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    }
+
+    function updateCopedentOverview(profile) {
+      const configuredStrings = (profile.strings || []).filter((string) => string.openNote).length;
+      const summaryParts = [
+        profile.tuningFamily || "Custom",
+        `${profile.stringCount || configuredStrings || "custom"}-string`
+      ];
+      copedentOverviewSummary.textContent = configuredStrings
+        ? `${summaryParts.join(" ")} saved`
+        : `${profile.tuningFamily || "Custom"} not configured`;
+      copedentOverviewUpdated.textContent = formatDraftDate(profile.updatedAt || profile.createdAt);
+    }
+
+    function openBackstage({ initialTab = "overview" } = {}) {
+      backstage.hidden = false;
+      closeTechPopover();
+      showBackstageTab(initialTab);
+      requestAnimationFrame(() => {
+        backstage.classList.add("is-open");
+        backstageTrigger.setAttribute("aria-expanded", "true");
+        backstageClose.focus();
+      });
+    }
+
+    function closeBackstage({ restoreFocus = false } = {}) {
+      backstage.classList.remove("is-open");
+      backstageTrigger.setAttribute("aria-expanded", "false");
+      window.setTimeout(() => {
+        if (backstageTrigger.getAttribute("aria-expanded") === "false") {
+          backstage.hidden = true;
+        }
+      }, 180);
+      if (restoreFocus) {
+        backstageTrigger.focus();
+      }
+    }
+
+    let activeCopedentProfile = loadCopedentProfile();
+    let mockAccessState = loadMockAccessState();
+
+    renderQuestionLabel();
+    if (helperText) {
+      helperText.textContent = INSTRUCTOR_OPENING_LINES[Math.floor(Math.random() * INSTRUCTOR_OPENING_LINES.length)];
+    }
     renderSuggestedPrompt();
+    renderTechPopover();
+    renderCopedentProfile(activeCopedentProfile);
+    updateMockAccessUi();
     updateHelperState();
 
     setInterval(rotateSuggestedPrompt, 6500);
 
     question.addEventListener("input", updateHelperState);
+    question.addEventListener("keydown", (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+        event.preventDefault();
+        submitHomeQuestion();
+      }
+    });
+
+    primarySend.addEventListener("click", submitHomeQuestion);
+    brandHome.addEventListener("click", returnToStage);
+    stageReturn.addEventListener("click", returnToStage);
+
+    copedentTemplate.addEventListener("change", () => {
+      activeCopedentProfile = starterToProfile(copedentTemplate.value);
+      renderCopedentProfile(activeCopedentProfile);
+      copedentSaveStatus.textContent = "Starter loaded. Save when it matches your guitar.";
+    });
+
+    copedentStringCount.addEventListener("change", rebuildCopedentStringRows);
+    copedentCustomCount.addEventListener("input", () => {
+      if (copedentStringCount.value === "custom") {
+        rebuildCopedentStringRows();
+      }
+    });
+
+    addCopedentChange.addEventListener("click", () => {
+      activeCopedentProfile = collectCopedentProfile(activeCopedentProfile);
+      activeCopedentProfile.controls.push({
+        id: `custom-control-${Date.now()}`,
+        label: "",
+        type: "pedal",
+        changes: [
+          {
+            stringNumber: 0,
+            fromNote: "",
+            toNote: "",
+            direction: "raise",
+            amount: "",
+            isHalfStop: false,
+            isSplit: false,
+            changeType: "raise",
+            notes: ""
+          }
+        ]
+      });
+      renderCopedentChanges(activeCopedentProfile);
+      copedentSaveStatus.textContent = "New change row added.";
+    });
+
+    copedentChanges.addEventListener("click", (event) => {
+      const removeButton = event.target.closest("[data-remove-change]");
+      if (!removeButton) return;
+      activeCopedentProfile = collectCopedentProfile(activeCopedentProfile);
+      const rows = flattenCopedentChanges(activeCopedentProfile);
+      rows.splice(Number(removeButton.dataset.removeChange), 1);
+      activeCopedentProfile.controls = controlsFromFlatChanges(rows);
+      renderCopedentChanges(activeCopedentProfile);
+      copedentSaveStatus.textContent = "Change removed.";
+    });
+
+    saveCopedent.addEventListener("click", () => {
+      activeCopedentProfile = collectCopedentProfile(activeCopedentProfile);
+      saveCopedentProfile(activeCopedentProfile);
+      updateCopedentOverview(activeCopedentProfile);
+      copedentSaveStatus.textContent = "Saved locally in this browser.";
+    });
+
+    resetCopedent.addEventListener("click", () => {
+      activeCopedentProfile = starterToProfile(copedentTemplate.value);
+      renderCopedentProfile(activeCopedentProfile);
+      copedentSaveStatus.textContent = "Reset from starter. Save to keep it.";
+    });
+
+    saveCopedentRequest.addEventListener("click", () => {
+      const requestDraft = {
+        request: copedentRequest.value.trim(),
+        contact: copedentRequestContact.value.trim(),
+        savedAt: new Date().toISOString()
+      };
+      localStorage.setItem(COPEDENT_REQUEST_STORAGE_KEY, JSON.stringify(requestDraft));
+      copedentRequestStatus.textContent = requestDraft.request
+        ? "Request saved locally."
+        : "Add a setup request first.";
+    });
+
+    backstageTabs.forEach((tab, index) => {
+      tab.addEventListener("click", () => showBackstageTab(tab.dataset.backstageTab));
+      tab.addEventListener("keydown", (event) => {
+        if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+        event.preventDefault();
+        const direction = event.key === "ArrowRight" ? 1 : -1;
+        const nextIndex = (index + direction + backstageTabs.length) % backstageTabs.length;
+        backstageTabs[nextIndex].focus();
+        showBackstageTab(backstageTabs[nextIndex].dataset.backstageTab);
+      });
+    });
+
+    backstageJumpButtons.forEach((button) => {
+      button.addEventListener("click", () => showBackstageTab(button.dataset.backstageJump));
+    });
+
+    accessStateRadios.forEach((radio) => {
+      radio.addEventListener("change", () => setMockAccessState(radio.value));
+    });
+
+    backstageTrigger.addEventListener("click", (event) => {
+      event.stopPropagation();
+      openBackstageForAccessState();
+    });
+
+    backstageClose.addEventListener("click", () => closeBackstage({ restoreFocus: true }));
+
+    backstagePanel.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
+
+    backstage.addEventListener("click", () => closeBackstage({ restoreFocus: true }));
 
     suggestedPrompts.addEventListener("click", (event) => {
       const button = event.target.closest(".example");
       if (!button) return;
-      question.value = button.textContent.trim();
-      topic.value = button.dataset.topic;
+      question.value = button.dataset.promptText || button.textContent.trim();
+      if (topic) {
+        topic.value = button.dataset.topic;
+      }
       updateHelperState();
       question.focus();
+    });
+
+    followupChipList.addEventListener("click", (event) => {
+      const chip = event.target.closest(".followup-chip");
+      if (!chip) return;
+      followupQuestion.value = chip.textContent.trim();
+      followupQuestion.focus();
+    });
+
+    answerSend.addEventListener("click", () => {
+      if (followupQuestion.value.trim()) {
+        showAnswerWorkspace(followupQuestion.value);
+        followupQuestion.value = "";
+      }
+    });
+
+    document.querySelectorAll(".source-card a").forEach((link) => {
+      link.addEventListener("click", (event) => event.preventDefault());
+    });
+
+    techPopoverTrigger.addEventListener("click", (event) => {
+      event.stopPropagation();
+      toggleTechPopover();
+    });
+
+    techPopoverClose.addEventListener("click", () => closeTechPopover({ restoreFocus: true }));
+
+    techPopover.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
+
+    document.addEventListener("click", () => {
+      if (!techPopover.hidden) {
+        closeTechPopover();
+      }
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !backstage.hidden) {
+        closeBackstage({ restoreFocus: true });
+      } else if (event.key === "Escape" && !techPopover.hidden) {
+        closeTechPopover({ restoreFocus: true });
+      }
     });
   </script>
 </body>
