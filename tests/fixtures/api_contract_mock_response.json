@@ -1,0 +1,50 @@
+{
+  "searchResponse": {
+    "query": "why does touching the changer reduce hum",
+    "results": [
+      {
+        "score": 0.8125,
+        "excerpt": "Touching the changer can change the ground reference, so check the cable, jack, pickup ground, volume pedal, and amp input before replacing parts.",
+        "source_system": "sgf_phpbb_current",
+        "forum_name": "Electronics",
+        "thread_title": "Grounding a pedal steel",
+        "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=123",
+        "chunk_id": "sgf_phpbb_current:electronics:123:0",
+        "post_uid": "p12345",
+        "source_kind": "forum_post",
+        "forum_id": "11",
+        "legacy_forum_number": "",
+        "thread_id": "123",
+        "legacy_thread_uid": "",
+        "thread_category": "Electronics",
+        "thread_quality_score": 0.92,
+        "chunk_index": 0,
+        "warnings": []
+      }
+    ],
+    "warnings": []
+  },
+  "answerResponse": {
+    "answer": "The retrieved forum sources point to a grounding or signal-chain issue. Start by bypassing the volume pedal, trying a known-good cable, and checking whether the hum changes when you touch the strings, changer, jack plate, and amp chassis. [1]",
+    "mode": "gear",
+    "sources": [
+      {
+        "title": "Grounding a pedal steel",
+        "forumName": "Electronics",
+        "url": "https://bb.steelguitarforum.com/viewtopic.php?t=123",
+        "excerpt": "Touching the changer can change the ground reference, so check the cable, jack, pickup ground, volume pedal, and amp input before replacing parts.",
+        "score": 0.8125,
+        "chunkId": "sgf_phpbb_current:electronics:123:0",
+        "postUid": "p12345"
+      }
+    ],
+    "warnings": [],
+    "sections": [
+      {
+        "title": "Answer",
+        "style": "lead",
+        "body": "The retrieved forum sources point to a grounding or signal-chain issue. Start by bypassing the volume pedal, trying a known-good cable, and checking whether the hum changes when you touch the strings, changer, jack plate, and amp chassis. [1]"
+      }
+    ]
+  }
+}
