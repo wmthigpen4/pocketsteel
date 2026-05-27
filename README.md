@@ -21,6 +21,16 @@ python -m pip install -e ".[rag,test]"
 
 The default vector index uses `sentence-transformers`, which may download the embedding model the first time it runs. For offline smoke tests, use `--backend hashing`.
 
+## Developer Workflow
+
+Start with the repo operating rules in [AGENTS.md](AGENTS.md). The short version:
+
+- Docs, tests, read-only analysis, and small copy edits are GREEN and can proceed.
+- Prompt, chunking, retrieval, schema, dependency, UI flow, or corpus-output script changes are YELLOW and need approval before edits.
+- Scraper behavior, raw corpus data, deletion, index rebuilds, private transcripts, paid transcripts, and licensing metadata are RED and need approval before action.
+
+Team workflow notes live in [docs/dev-team-workflow.md](docs/dev-team-workflow.md), and the current command reference lives in [docs/current-commands.md](docs/current-commands.md).
+
 ## Add Raw SGF Data
 
 Put scraped SGF JSON or JSONL files under:
@@ -127,7 +137,8 @@ python scripts/ask_pocket_steel.py \
 ## Guardrails
 
 - Preserve raw scraped data.
-- Do not commit corpus dumps, raw HTML, SQLite DBs, embeddings, indexes, or private transcripts.
+- Do not run live scraping from this repo.
+- Do not commit corpus dumps, raw HTML, SQLite DBs, credentials, logs, embeddings, indexes, private transcripts, or paid transcripts.
 - Keep private lesson and transcript support out of Phase 1.
 - Answers must be grounded in retrieved source excerpts and SGF links.
 - Retrieval quality matters more than UI polish.

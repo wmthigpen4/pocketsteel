@@ -10,30 +10,61 @@ __pycache__/
 .venv/
 venv/
 
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets/
+credentials/
+
+# Logs and local run output
+*.log
+logs/
+run-logs/
+
 # Local corpus and generated artifacts
 data/raw/
 data/processed/
 data/indexes/
+data/**/raw/
+data/**/processed/
+data/**/indexes/
 data/**/*.html
 data/**/*.htm
 data/**/*.html.gz
 data/**/*.htm.gz
+sgf-output/
+*/sgf-output/
 *.sqlite
 *.sqlite-*
 *.sqlite3
 *.sqlite3-*
 *.db
 *.db-*
+*.duckdb
+*.duckdb-*
 *.faiss
 *.npy
 *.npz
 *.parquet
+*.pkl
+*.pickle
 
 # Electronics RAG v0 generated artifacts
 rag-data/electronics/clean_corpus.jsonl
 rag-data/electronics/chunks.jsonl
 rag-data/electronics/*report.json
 rag-data/electronics/chroma/
+rag-data/forums/
+rag-data/**/chroma/
+rag-data/**/*.sqlite
+rag-data/**/*.sqlite3
+rag-data/**/*.db
 
 # Local RAG eval run outputs
 eval/results/*
@@ -41,5 +72,6 @@ eval/results/*
 
 # Private or future non-MVP sources
 transcripts/
+paid-transcripts/
 private/
 lessons/

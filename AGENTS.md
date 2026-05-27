@@ -4,6 +4,14 @@ This repo uses a human-in-the-loop workflow. Codex should classify every task be
 
 The user-facing app name is The Turnaround. Keep `pocketsteel`, `pocket-steel`, and `pocket_steel` as internal technical names unless the user explicitly approves a rename.
 
+## Standing Safety Rules
+
+- Do not modify scraper behavior unless the user explicitly approves that RED task.
+- Do not run live scraping from this repo.
+- Do not delete files or data unless the user explicitly approves the exact deletion.
+- Do not commit raw data, SQLite databases, credentials, logs, vector indexes, Chroma stores, embeddings, private transcripts, paid transcripts, or licensing metadata dumps.
+- Preserve raw corpus data exactly as received. Derived corpus files must stay in ignored generated-output locations unless the user approves a different path.
+
 ## Task Modes
 
 ### GREEN - Codex Can Proceed
@@ -55,3 +63,4 @@ For every task, Codex must end with:
 
 If a task is YELLOW or RED, the closeout must clearly state what approval is needed before the next phase.
 
+When the user asks for a custom closeout format, include these required fields as well as the user's requested fields.
