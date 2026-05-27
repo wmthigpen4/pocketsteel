@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Shared helpers for The Turnaround Electronics RAG v0 scripts."""
+"""Shared helpers for The Turnaround forum RAG scripts."""
 
 from __future__ import annotations
 
 import json
 import os
 import re
+import sqlite3
 import textwrap
 import urllib.error
 import urllib.request
@@ -16,10 +17,13 @@ from typing import Any, Iterable
 PROJECT_ROOT = Path(__file__).resolve().parent
 DEFAULT_FORUM_ID = 11
 DEFAULT_FORUM_NAME = "Electronics"
+DEFAULT_FORUM_SLUG = "electronics"
 DEFAULT_EMBEDDING_MODEL = "bge-m3"
 DEFAULT_CHAT_MODEL = "qwen3:14b"
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
 APP_DISPLAY_NAME = "The Turnaround"
+LEGACY_ELECTRONICS_DIR = "rag-data/electronics"
+FORUMS_OUTPUT_ROOT = "rag-data/forums"
 
 TOKEN_RE = re.compile(r"\w+|[^\w\s]", re.UNICODE)
 WORD_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9+'_.-]*")
@@ -30,6 +34,102 @@ def project_path(path: str | Path) -> Path:
     if path.is_absolute():
         return path
     return PROJECT_ROOT / path
+
+
+def slugify(value: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", (value or "").lower()).strip("-")
+    return slug or DEFAULT_FORUM_SLUG
+
+
+def forum_output_dir(slug: str | None = None, output_dir: str | Path | None = None, legacy_default: bool = False) -> Path:
+    if output_dir:
+        return project_path(output_dir)
+    if legacy_default and not slug:
+        return project_path(LEGACY_ELECTRONICS_DIR)
+    return project_path(FORUMS_OUTPUT_ROOT) / (slug or DEFAULT_FORUM_SLUG)
+
+
+def resolve_sgf_output_dir(input_dir: str | Path | None = None) -> Path:
+    if input_dir:
+        return project_path(input_dir)
+
+    env_dir = os.environ.get("SGF_OUTPUT_DIR")
+    if env_dir:
+        return project_path(env_dir)
+
+    local = project_path("sgf-output")
+    if (local / "manifest.sqlite").exists() or local.exists():
+        return local
+
+    for candidate in PROJECT_ROOT.parent.glob("*/sgf-output"):
+        if (candidate / "manifest.sqlite").exists():
+            return candidate
+
+    return local
+
+
+def forum_input_glob(forum_id: int, input_dir: str | Path | None = None) -> str:
+    return str(resolve_sgf_output_dir(input_dir) / "jsonl" / f"forum-{forum_id}" / "*.jsonl")
+
+
+def forum_store_candidates(slug: str) -> list[tuple[str, Path, str]]:
+    stores: list[tuple[str, Path, str]] = []
+    forum_dir = project_path(FORUMS_OUTPUT_ROOT) / slug
+    stores.append((slug, forum_dir / "chroma", slug))
+    if slug == DEFAULT_FORUM_SLUG:
+        stores.append((slug, project_path(LEGACY_ELECTRONICS_DIR) / "chroma", DEFAULT_FORUM_SLUG))
+    return stores
+
+
+def built_forum_stores() -> list[tuple[str, Path, str]]:
+    stores: list[tuple[str, Path, str]] = []
+    forums_root = project_path(FORUMS_OUTPUT_ROOT)
+    if forums_root.exists():
+        for forum_dir in sorted(path for path in forums_root.iterdir() if path.is_dir()):
+            chroma_path = forum_dir / "chroma"
+            if chroma_path.exists():
+                stores.append((forum_dir.name, chroma_path, forum_dir.name))
+
+    legacy_chroma = project_path(LEGACY_ELECTRONICS_DIR) / "chroma"
+    if legacy_chroma.exists() and not any(slug == DEFAULT_FORUM_SLUG for slug, _, _ in stores):
+        stores.append((DEFAULT_FORUM_SLUG, legacy_chroma, DEFAULT_FORUM_SLUG))
+    return stores
+
+
+def load_forum_config(path: str | Path = "rag_forums.json") -> dict[str, dict[str, Any]]:
+    config_path = project_path(path)
+    if not config_path.exists():
+        return {}
+    with config_path.open("r", encoding="utf-8") as handle:
+        data = json.load(handle)
+    return {str(slug): value for slug, value in data.items()}
+
+
+def manifest_forum_status(manifest_path: Path, forum_id: int) -> dict[str, int | str]:
+    if not manifest_path.exists():
+        raise FileNotFoundError(f"Manifest not found: {manifest_path}")
+    with sqlite3.connect(manifest_path) as conn:
+        row = conn.execute(
+            """
+            select coalesce(max(forum_name), ''),
+                   sum(case when status='scraped' then 1 else 0 end),
+                   sum(case when status='discovered' then 1 else 0 end),
+                   sum(case when status='error' then 1 else 0 end),
+                   count(*)
+            from threads
+            where forum_id=?
+            """,
+            (forum_id,),
+        ).fetchone()
+    forum_name, scraped, discovered, errors, total = row or ("", 0, 0, 0, 0)
+    return {
+        "forum_id": forum_id,
+        "forum_name": forum_name or "",
+        "scraped": int(scraped or 0),
+        "discovered": int(discovered or 0),
+        "errors": int(errors or 0),
+        "total": int(total or 0),
+    }
 
 
 def jsonl_reader(path: Path) -> Iterable[dict[str, Any]]:
