@@ -15,6 +15,7 @@ from pocketsteel.answering import (
     build_sections,
     concise_source_cards,
     configured_answer_provider,
+    final_answer_quality_gate,
     parse_answer_request,
 )
 from pocketsteel.api_contract import AnswerResponse
@@ -27,11 +28,13 @@ from pocketsteel.chroma_search import (
     SearchResponse,
 )
 from pocketsteel.curated_answers import (
+    CURATED_FACT_WEAK_WARNING,
     WEAK_RETRIEVAL_WARNING,
     lookup_curated_answer,
     retrieval_looks_weak_for_curated,
 )
 from pocketsteel.rag_guardrails import sanitize_retrieved_sources
+from pocketsteel.rag_guardrails import is_injection_like
 
 
 class RetrievalApi:
@@ -75,6 +78,9 @@ class RetrievalApi:
                 forum_name=forum_name,
             )
             warnings = list(search_response.warnings)
+            user_prompt_injection = is_injection_like(answer_request.question)
+            if user_prompt_injection:
+                warnings.append("prompt-injection-like text ignored")
             strong_sources = [source for source in search_response.results if float(source.get("score") or 0.0) > 0.0]
             sanitized = sanitize_retrieved_sources(strong_sources)
             warnings.extend(sanitized.warnings)
@@ -82,6 +88,8 @@ class RetrievalApi:
             curated_answer = lookup_curated_answer(answer_request.question, strong_sources)
             if curated_answer is not None:
                 answer = curated_answer.answer
+                if curated_answer.intent == "curated_fact_source_check":
+                    warnings.append(CURATED_FACT_WEAK_WARNING)
                 if retrieval_looks_weak_for_curated(answer_request.question, curated_answer, strong_sources):
                     warnings.append(WEAK_RETRIEVAL_WARNING)
                 if answer_is_no_source(answer):
@@ -89,6 +97,12 @@ class RetrievalApi:
                     warnings.append("no strong source match")
                 else:
                     sources = concise_source_cards(strong_sources)
+            elif user_prompt_injection:
+                answer = (
+                    "I can’t follow prompt-injection instructions. "
+                    "Ask a steel-guitar question and I’ll answer from the available sources."
+                )
+                sources = concise_source_cards(strong_sources)
             elif not strong_sources:
                 answer = "No strong source match found in the current corpus for that question."
                 sources: list[dict[str, Any]] = []
@@ -100,12 +114,13 @@ class RetrievalApi:
                     warnings.append("no strong source match")
                 else:
                     sources = concise_source_cards(strong_sources)
+            final_answer = final_answer_quality_gate(answer, answer_request.question)
             payload: AnswerResponse = {
-                "answer": answer,
+                "answer": final_answer,
                 "mode": answer_request.mode,
                 "sources": sources,
                 "warnings": warnings,
-                "sections": build_sections(answer),
+                "sections": build_sections(final_answer),
             }
             return self._json_response(start_response, "200 OK", payload)
 

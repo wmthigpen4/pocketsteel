@@ -19,6 +19,7 @@ class CuratedAnswer:
 
 
 WEAK_RETRIEVAL_WARNING = "curated answer used; retrieved sources were weak"
+CURATED_FACT_WEAK_WARNING = "curated fact used; source support weak"
 
 
 def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer | None:
@@ -67,13 +68,38 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             ),
         )
 
+    if "emmons guitar" in q and ("business" in q or "still" in q or "today" in q):
+        return CuratedAnswer(
+            intent="current_entity_status",
+            confidence="curated_high",
+            source_url="https://www.emmonsguitar.co/",
+            answer=(
+                "Yes. Emmons Guitar Co. appears to be operating today through its official site, emmonsguitar.co, "
+                "offering ReSound’65 pedal steels and related items. Treat old forum rumors as historical context, not current company status."
+            ),
+        )
+
+    if mentions_every_pack_a_seat(q):
+        return CuratedAnswer(
+            intent="yes_no_quantifier",
+            confidence="curated_high",
+            source_url="https://www.steelerschoice.com/",
+            answer=(
+                "No. Not every pack-a-seat is made by Steeler’s Choice. "
+                "Steeler’s Choice is a known maker, but pack-a-seat is a general steel-guitar seat/storage-box category.\n"
+                "Website: https://www.steelerschoice.com/"
+            ),
+        )
+
     if "pack-a-seat" in q or "pack a seat" in q or "pack seat" in q:
         return CuratedAnswer(
             intent="entity_definition",
             confidence="curated_high",
+            source_url="https://www.steelerschoice.com/",
             answer=(
                 "A pack-a-seat is a steel-guitar seat/storage box.\n"
-                "Steeler’s Choice is a known pack-a-seat maker."
+                "Steeler’s Choice is a known pack-a-seat maker.\n"
+                "Website: https://www.steelerschoice.com/"
             ),
         )
 
@@ -89,13 +115,147 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             ),
         )
 
+    if "honky tonk boss" in q or "honky-tonk boss" in q:
+        return CuratedAnswer(
+            intent="practice_style",
+            confidence="curated_medium",
+            answer=(
+                "Work on playing less, better, and more rhythmically.\n\n"
+                "Honky-tonk practice path:\n"
+                "- Learn simple I-IV-V movement in two positions before chasing long licks.\n"
+                "- Practice short fills that answer the singer, then leave space.\n"
+                "- Use shuffles and backing tracks so your timing has to sit in the pocket.\n"
+                "- Keep bar movement clean and make the pedals sound intentional.\n"
+                "- Listen to classic country steel players and copy the restraint as much as the notes."
+            ),
+        )
+
+    if "church" in q and ("pedal steel" in q or "steel" in q or "play" in q):
+        return CuratedAnswer(
+            intent="practice_context",
+            confidence="curated_medium",
+            answer=(
+                "For church, make the steel supportive first and impressive second.\n\n"
+                "Preparation checklist:\n"
+                "- Learn the hymn or song changes clearly before adding fills.\n"
+                "- Keep intros, endings, and transitions simple enough for the singers to trust.\n"
+                "- Use swells, pads, and quiet fills behind vocals instead of stepping on the melody.\n"
+                "- Rehearse volume-pedal control so your entrances are smooth.\n"
+                "- Know when not to play; space is part of the arrangement."
+            ),
+        )
+
+    if "tommy white" in q and ("as good as" in q or "get to be" in q or "play like" in q):
+        return CuratedAnswer(
+            intent="practice_path",
+            confidence="curated_medium",
+            answer=(
+                "Use Tommy White as a north star, but build the skills one layer at a time.\n\n"
+                "Practice path:\n"
+                "- Work daily on clean intonation, blocking, and time before speed.\n"
+                "- Learn short phrases by ear and move them through common E9 positions.\n"
+                "- Record yourself so you can hear bar movement, tuning, and volume-pedal bumps honestly.\n"
+                "- Practice tasteful fills behind a singer, not just solo lines.\n"
+                "- Study great players closely, then turn the ideas into your own musical vocabulary."
+            ),
+        )
+
+    if "nashville 400" in q and "fender steel king" in q:
+        return CuratedAnswer(
+            intent="gear_comparison",
+            confidence="curated_medium",
+            answer=(
+                "There is no single winner between a Peavey Nashville 400 and a Fender Steel King; it depends on the player, guitar, room, and weight tolerance.\n\n"
+                "Practical comparison:\n"
+                "- Nashville 400: known steel amp, strong headroom, familiar Peavey reliability, often a practical working-player choice.\n"
+                "- Fender Steel King: big clean steel-friendly sound, Fender-flavored EQ, also heavy, and often chosen for a different feel under the hands.\n"
+                "- Condition matters: speaker, service history, pots, and cabinet condition can matter more than the badge.\n"
+                "- Try both at gig volume if possible; bedroom settings do not tell the whole story."
+            ),
+        )
+
+    if "how heavy" in q and ("steel guitar" in q or "pedal steel" in q):
+        return CuratedAnswer(
+            intent="gear_practical",
+            confidence="curated_medium",
+            answer=(
+                "Pedal steel weight varies a lot by model and case, but it is usually a serious carry.\n\n"
+                "Useful rough ranges:\n"
+                "- S-10: often roughly 35-50 lb before case variables.\n"
+                "- SD-10: often roughly 45-60 lb.\n"
+                "- D-10: often roughly 55-75 lb or more.\n"
+                "- Case, legs, rods, and accessories can add another noticeable chunk.\n\n"
+                "For buying or travel, ask for the packed weight, not just the guitar weight."
+            ),
+        )
+
+    if "red guitars are gay" in q:
+        return CuratedAnswer(
+            intent="preference_safety",
+            confidence="curated_high",
+            answer="Color does not affect playability or tone. Choose the guitar you like and judge it by sound, feel, setup, and condition.",
+        )
+
+    if ("shoes" in q or "barefoot" in q) and ("play" in q or "pedal" in q):
+        return CuratedAnswer(
+            intent="technique_setup",
+            confidence="curated_medium",
+            answer=(
+                "Use whatever footwear gives you consistent pedal feel and safe control.\n\n"
+                "Practical tradeoffs:\n"
+                "- Thin-soled shoes give many players a good balance of feel, repeatability, and protection.\n"
+                "- Barefoot can feel precise at home, but it is less predictable on stage and offers no protection.\n"
+                "- Boots or thick soles can make pedal travel harder to feel.\n"
+                "- Pick one approach and practice with it consistently so your foot learns the travel."
+            ),
+        )
+
+    if ("tablature" in q or "tab" in q) and ("random song" in q or "song" in q):
+        return CuratedAnswer(
+            intent="tab_copyright",
+            confidence="curated_high",
+            answer=(
+                "I can’t provide copyrighted song tablature by default or send you to random people’s emails.\n\n"
+                "I can help in safer ways:\n"
+                "- Make a short original E9 exercise in the style you want.\n"
+                "- Explain the chord movement or grips for a lick you describe.\n"
+                "- Work from a public-domain tune if you name one.\n\n"
+                "Original mini-exercise: at the 3rd fret, pick strings 4-5-6, press A+B, release cleanly, then move to the 6th fret with A+F and pick 4-5-6 again."
+            ),
+        )
+
+    if "panhandle rag" in q and "pan handle" in q:
+        return CuratedAnswer(
+            intent="joke_direct",
+            confidence="curated_medium",
+            answer=(
+                "You can try it for fun, but a kitchen pan handle is not a good steel bar. "
+                "A proper steel bar gives you the smooth surface, weight, intonation, sustain, and control the tune needs."
+            ),
+        )
+
+    if "mullen" in q and ("who plays" in q or "players" in q):
+        return CuratedAnswer(
+            intent="brand_player_lookup",
+            confidence="curated_medium",
+            answer=(
+                "I’m reading that as Mullen pedal steel, not “Mullins.” "
+                "I do not have a high-confidence curated roster of Mullen players in this answer layer. "
+                "Use the source cards as leads, and treat any forum mentions as source-specific rather than a complete endorsement list."
+            ),
+        )
+
     if "telonics" in q and "slide" in q and "bar" in q:
         if source_proves_telonics_slide_bar(sources):
             return None
         return CuratedAnswer(
-            intent="yes_no_source_check",
+            intent="curated_fact_source_check",
             confidence="curated_medium",
-            answer="I do not see a strong source match showing that Telonics made a slide bar.",
+            answer=(
+                "The current corpus retrieval does not show strong source support for Telonics slide bars, "
+                "but curated/user-known information says Telonics has made at least some slide bars. "
+                "Treat that as curated knowledge rather than corpus-supported evidence."
+            ),
         )
 
     if mentions_g_chord_sixth_fret(q):
@@ -254,6 +414,14 @@ def mentions_practice_plan(question: str) -> bool:
         or "give me a practice plan" in question
         or "practice routine" in question
         or "practice session" in question
+    )
+
+
+def mentions_every_pack_a_seat(question: str) -> bool:
+    return bool(
+        ("pack-a-seat" in question or "pack a seat" in question or "pack seat" in question)
+        and ("every" in question or "all" in question or "only" in question)
+        and ("steeler" in question or "steeler’s choice" in question or "steelers choice" in question)
     )
 
 

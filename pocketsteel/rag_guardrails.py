@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Any
 
 
-INJECTION_WARNING = "prompt-injection-like source text was ignored"
+INJECTION_WARNING = "prompt-injection-like text ignored"
 REDACTED_EXCERPT = "[Redacted prompt-injection-like source text.]"
 
 INJECTION_PATTERNS = [
@@ -17,7 +17,7 @@ INJECTION_PATTERNS = [
     for pattern in (
         r"\bignore\s+(?:all\s+)?(?:previous|prior|system|developer)\s+instructions?\b",
         r"\bignore\s+(?:the\s+)?(?:system|developer)\s+instructions?\b",
-        r"\b(?:reveal|show|print|display|dump)\s+(?:the\s+)?(?:system|developer)\s+prompt\b",
+        r"\b(?:reveal|show|print|display|dump)\s+(?:the\s+|your\s+)?(?:system|developer)\s+prompt\b",
         r"\bfollow\s+this\s+link\b",
         r"\bclick\s+(?:this|the)\s+link\b",
         r"\bopen\s+(?:this|the)\s+link\b",
@@ -31,8 +31,12 @@ INJECTION_PATTERNS = [
         r"\bdeveloper\s+mode\b",
         r"\boutput\s+secrets?\b",
         r"\brecommend\s+.+\bregardless\s+of\s+evidence\b",
+        r"\bsay\s+.+\bregardless\s+of\s+evidence\b",
+        r"\bsay\s+.+\bmade\b.+\bregardless\b",
         r"\bdo\s+not\s+(?:cite|use)\s+sources?\b",
+        r"\boutput\s+only\b",
         r"\bhidden\s+prompt\b",
+        r"\bhidden\s+rules?\b",
         r"\bprompt\s+injection\b",
         r"\[/?INST\]",
         r"<<\s*SYS\s*>>",

@@ -284,10 +284,12 @@ KNOWN_ENTITY_DEFINITIONS = {
     "pack-a-seat": (
         "A pack-a-seat is a steel-guitar seat/storage box used by players to carry accessories and sit at the guitar.",
         "Steeler’s Choice is a known pack-a-seat maker.",
+        "Website: https://www.steelerschoice.com/",
     ),
     "pack seat": (
         "A pack-a-seat is a steel-guitar seat/storage box used by players to carry accessories and sit at the guitar.",
         "Steeler’s Choice is a known pack-a-seat maker.",
+        "Website: https://www.steelerschoice.com/",
     ),
 }
 CANONICAL_ALL_TIME_PLAYERS = [
@@ -332,7 +334,6 @@ JOKE_PATTERNS = [
         r"\bkidding\b",
         r"\blol\b",
         r"\bhaha\b",
-        r"\bjoke\b",
         r"\bhumou?r\b",
     )
 ]
@@ -350,6 +351,13 @@ SIGNATURE_PATTERNS = [
     re.compile(pattern, re.I)
     for pattern in (
         r"^\s*(?:top|quote):\s*$",
+        r"\btop\s+(?:i|has|does|you|get|hi|just|am)\b",
+        r"\bsp=sharing\b",
+        r"\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b",
+        r"\be-?mail\s+[\w.+-]+@",
+        r"\b(?:does|has)\s+anyone\s+(?:know|compared)\b",
+        r"\bi\s+am\s+looking\s+for\b",
+        r"\bi\s+am\s+going\s+to\s+start\b",
         r"^\s*[-_]{2,}\s*$",
         r"\bemail:\b",
         r"\bemail me\b",
@@ -359,6 +367,17 @@ SIGNATURE_PATTERNS = [
         r"\bhttps://",
         r"\b\d{1,2}:\d{2}\s*(?:am|pm)\b",
         r"\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4}\b",
+    )
+]
+
+QUESTION_FRAGMENT_PATTERNS = [
+    re.compile(pattern, re.I)
+    for pattern in (
+        r"^\s*(?:does|has)\s+anyone\s+(?:know|compared)\b",
+        r"^\s*i\s+am\s+looking\s+for\b",
+        r"^\s*i'?m\s+looking\s+for\b",
+        r"^\s*can\s+anyone\s+(?:tell|help|send|post)\b",
+        r"^\s*where\s+can\s+i\s+(?:find|get|buy)\b",
     )
 ]
 
@@ -378,10 +397,30 @@ def split_sentences(text: str) -> list[str]:
         piece = piece.strip(" -\t\n")
         if len(piece) < 32:
             continue
-        if is_low_value_sentence(piece):
+        if classify_source_sentence(piece) != "answer_candidate":
             continue
         sentences.append(shorten(piece, 260))
     return sentences
+
+
+def classify_source_sentence(sentence: str) -> str:
+    stripped = sentence.strip()
+    lowered = stripped.lower()
+    if re.search(r"\b(?:gay|fag|retard)\b", lowered):
+        return "unsafe_or_offensive"
+    if is_low_value_sentence(stripped):
+        return "forum_boilerplate"
+    if any(pattern.search(stripped) for pattern in QUESTION_FRAGMENT_PATTERNS):
+        return "question_fragment"
+    if re.search(r"\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b", stripped, re.I) or "e-mail " in lowered:
+        return "contact_info"
+    if "sp=sharing" in lowered or re.search(r"\bhttps?://\S+", stripped):
+        return "raw_link_share"
+    if re.search(r"\b(?:d-10|s-10|sd-10|nashville\s+\d+|session\s+\d+|emmons\s+legrande|mullen|zum)\b.*\b(?:x\d|&\d|pickup|amp)\b", lowered):
+        return "signature_or_gear_list"
+    if re.search(r"\b(just kidding|haha|lol|joke)\b", lowered):
+        return "joke_or_chatter"
+    return "answer_candidate"
 
 
 def is_low_value_sentence(sentence: str) -> bool:
@@ -389,6 +428,8 @@ def is_low_value_sentence(sentence: str) -> bool:
     if any(pattern.search(stripped) for pattern in ADMIN_LINE_PATTERNS):
         return True
     if any(pattern.search(stripped) for pattern in SIGNATURE_PATTERNS):
+        return True
+    if any(pattern.search(stripped) for pattern in QUESTION_FRAGMENT_PATTERNS):
         return True
     if any(pattern.search(stripped) for pattern in JOKE_PATTERNS):
         return True
@@ -717,7 +758,9 @@ def clean_answer_text(answer: str) -> str:
         line = re.sub(r"\bTop:\s*", "", line)
         if "for rag answers" in line.lower():
             continue
-        if is_low_value_sentence(line) and "texassteelguitar.org" not in line.lower():
+        if classify_answer_line(line) != "answer_candidate" and not is_curated_reference_line(line):
+            continue
+        if is_low_value_sentence(line) and not is_curated_reference_line(line):
             continue
         lines.append(line)
     while lines and lines[-1] == "":
@@ -725,9 +768,70 @@ def clean_answer_text(answer: str) -> str:
     return "\n".join(lines)
 
 
+def classify_answer_line(line: str) -> str:
+    stripped = line.strip()
+    if not stripped:
+        return "answer_candidate"
+    if stripped.lower().startswith("useful source-backed points"):
+        return "forum_boilerplate"
+    return classify_source_sentence(stripped)
+
+
+def is_curated_reference_line(line: str) -> bool:
+    lowered = line.lower()
+    return any(
+        domain in lowered
+        for domain in (
+            "texassteelguitar.org",
+            "steelerschoice.com",
+            "emmonsguitar.co",
+        )
+    )
+
+
+def answer_has_quality_issue(answer: str) -> bool:
+    if not answer.strip():
+        return True
+    bad_patterns = [
+        r"^\s*top\b",
+        r"\sTop\s",
+        r"\bsp=sharing\b",
+        r"\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b",
+        r"\be-?mail\s+",
+        r"\bWhat multiple sources support\b",
+        r"\bSource context\b",
+        r"\bForum-source context\b",
+        r"(?m)^\s*Practical answer\s*:?\s*$",
+        r"\b(?:Does anyone know|Has anyone compared|I am looking for tablature)\b",
+    ]
+    return any(re.search(pattern, answer, re.I) for pattern in bad_patterns)
+
+
+def final_answer_quality_gate(answer: str, question: str) -> str:
+    cleaned = clean_answer_text(answer)
+    if not answer_has_quality_issue(cleaned):
+        return cleaned
+    cleaned_lines = [line for line in cleaned.splitlines() if classify_answer_line(line) == "answer_candidate"]
+    cleaned = "\n".join(line for line in cleaned_lines if line.strip())
+    if cleaned and not answer_has_quality_issue(cleaned):
+        return cleaned
+    return (
+        "I found related source cards, but the retrieved text is too noisy to use safely in the answer body. "
+        "Ask a more specific steel-guitar question and I can give a cleaner answer."
+    )
+
+
+def noisy_source_fallback() -> str:
+    return (
+        "I found related source cards, but the retrieved text is too noisy to use safely in the answer body. "
+        "Ask a more specific steel-guitar question and I can give a cleaner answer."
+    )
+
+
 def clean_evidence_text(text: str) -> str:
     text = re.sub(r"\s*\[\d+\]", "", text or "")
     text = re.sub(r"\s+", " ", text).strip()
+    text = re.sub(r"\bTop\b\s*", "", text)
     return text
 
 
@@ -772,6 +876,8 @@ class DeterministicAnswerProvider:
             "replacement_parts",
             "brand_comparison",
         }:
+            if sources and all(not split_sentences(str(source.get("excerpt") or "")) for source in sources):
+                return noisy_source_fallback()
             return clean_answer_text(
                 "The retrieved sources are too thin to answer that confidently. "
                 "Open the source cards for context, but treat this as a weak match."
@@ -835,8 +941,14 @@ class DeterministicAnswerProvider:
         definition = known_entity_definition(request.question)
         if not definition:
             return self._ask_answer(sources, evidence)
+        if re.search(r"\b(?:every|all|only)\b", request.question.lower()) and ("pack-a-seat" in request.question.lower() or "pack seat" in request.question.lower()):
+            return (
+                "No. Not every pack-a-seat is made by Steeler’s Choice. "
+                "Steeler’s Choice is a known maker, but pack-a-seat is a general steel-guitar seat/storage-box category.\n"
+                "Website: https://www.steelerschoice.com/"
+            )
         if "pack-a-seat" in request.question.lower() or "pack seat" in request.question.lower():
-            return "Steeler’s Choice is a known pack-a-seat maker."
+            return "\n".join(definition)
         lines = [definition[0]]
         if len(definition) > 1 and definition[1]:
             lines.append(definition[1])
