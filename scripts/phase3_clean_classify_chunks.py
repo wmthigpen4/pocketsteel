@@ -48,7 +48,7 @@ SIGNATURE_SEPARATOR_RE = re.compile(r"^\s*(?:-{5,}|_{5,}|={5,}|--)\s*$")
 INLINE_SIGNATURE_SEPARATOR_RE = re.compile(r"(?<![_=])-{5,}(?![_=])")
 GEAR_RE = re.compile(
     r"\b(?:D-?10|SD-?10|S-?10|U-?12|Zum(?:Steel)?|Emmons|Sho-?Bud|Mullen|MSA|Carter|GFI|Sierra|"
-    r"Williams|Franklin|Derby|Fessenden|MCI|BMI|Excel|Peavey|Nashville\s*(?:400|112|1000)|Session\s*400|"
+    r"Williams|Franklin|Derby|Fessenden|MCI|BMI|Excel|Rittenberry|Quilter|Peavey|Nashville\s*(?:400|112|1000)|Session\s*400|"
     r"Webb|Evans|Telonics|Goodrich|Hilton|Sarno|Black Box|Steel King|Profex|NV\s*112|L710|BL-?710|"
     r"E9|C6|copedent|amp|cab(?:inet)?|pickup|volume pedal)\b",
     re.IGNORECASE,
@@ -175,6 +175,19 @@ def normalize_source_metadata(row: Mapping[str, Any]) -> dict[str, Any]:
             flags = as_list(normalized.get("metadata_normalization_flags"))
             if "legacy_thread_id_derived" not in flags:
                 flags.append("legacy_thread_id_derived")
+            normalized["metadata_normalization_flags"] = flags
+    return normalized
+
+
+def normalize_post_identity(row: Mapping[str, Any]) -> dict[str, Any]:
+    normalized = dict(row)
+    if not normalized.get("post_uid") and not as_list(normalized.get("post_uids")):
+        chunk_id = str(normalized.get("chunk_id") or "").strip()
+        if chunk_id:
+            normalized["post_uids"] = [f"source_chunk:{chunk_id}"]
+            flags = as_list(normalized.get("metadata_normalization_flags"))
+            if "post_identity_derived_from_chunk_id" not in flags:
+                flags.append("post_identity_derived_from_chunk_id")
             normalized["metadata_normalization_flags"] = flags
     return normalized
 
@@ -489,7 +502,7 @@ def quality_score(answer_density: float, noise_score: float, metadata_complete: 
 
 
 def clean_and_classify_chunk(row: Mapping[str, Any]) -> dict[str, Any]:
-    normalized_row = normalize_source_metadata(row)
+    normalized_row = normalize_post_identity(normalize_source_metadata(row))
     raw_text = str(normalized_row.get("chunk_text") or normalized_row.get("text") or "")
     clean_text, signature_text, flags = cleanup_text(raw_text, str(normalized_row.get("thread_title") or ""))
     links = as_list(normalized_row.get("links"))

@@ -238,6 +238,21 @@ def test_legacy_ubb_thread_id_derivation_is_stable() -> None:
     assert first["thread_id"] == second["thread_id"] == "ubb:forum5/html/012345"
 
 
+def test_missing_post_identity_gets_source_chunk_fallback() -> None:
+    row = base_chunk(
+        "Try slow arpeggios because they reveal intonation problems.",
+        post_uid=None,
+        post_uids=[],
+        chunk_id="sgf_phpbb_current:forum-5:thread-411421:chunk-0001",
+    )
+
+    cleaned = clean_and_classify_chunk(row)
+
+    assert cleaned["post_identity_complete"] is True
+    assert cleaned["post_uids"] == ["source_chunk:sgf_phpbb_current:forum-5:thread-411421:chunk-0001"]
+    assert "post_identity_derived_from_chunk_id" in cleaned["metadata_normalization_flags"]
+
+
 def test_cleanup_is_non_destructive_to_raw_input() -> None:
     row = base_chunk("Top Contact me at picker@example.com")
     original = dict(row)

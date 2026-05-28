@@ -24,6 +24,29 @@ SEPARATE_ROLES = {"event", "memorial", "opinion", "unknown"}
 DEFAULT_TARGET_WORDS = 180
 DEFAULT_MAX_WORDS = 240
 DEFAULT_MIN_WORDS = 8
+MIN_MEANINGFUL_WORDS = 3
+MEANINGFUL_TEXT_RE = re.compile(r"[A-Za-z0-9]")
+AUTHOR_DATE_RE = re.compile(
+    r"\b[A-Z][A-Za-z.'~-]+(?:\s+[A-Z][A-Za-z.'~-]+){0,3}\s*/\s+"
+    r"\d{1,2}\s+[A-Z][a-z]+\s+\d{4}\s+\d{1,2}:\d{2}\s+(?:am|pm)\b"
+)
+GEAR_RE = re.compile(
+    r"\b(?:D-?10|SD-?10|S-?10|U-?12|Zum(?:Steel)?|Emmons|Sho-?Bud|Mullen|MSA|Carter|GFI|Sierra|"
+    r"Williams|Franklin|Derby|Fessenden|MCI|BMI|Excel|Rittenberry|Quilter|Peavey|Nashville\s*(?:400|112|1000)|"
+    r"Session\s*400|Webb|Evans|Telonics|Goodrich|Hilton|Sarno|Black Box|Steel King|Profex|NV\s*112|"
+    r"L710|BL-?710|pickup|volume pedal)\b",
+    re.IGNORECASE,
+)
+SIGNATURE_TAIL_RE = re.compile(
+    r"\b[A-Z][A-Za-z.'~-]+(?:\s+[A-Z][A-Za-z.'~-]+){0,3}\s+"
+    r"(?=(?:D-?10|SD-?10|S-?10|U-?12|Zum(?:Steel)?|Emmons|Sho-?Bud|Mullen|MSA|Carter|GFI|Sierra|"
+    r"Williams|Franklin|Derby|Fessenden|MCI|BMI|Excel|Rittenberry|Quilter|Peavey|Nashville|Session|Webb|"
+    r"Evans|Telonics|Goodrich|Hilton|Steel King)\b)"
+)
+ADVICE_TERMS_RE = re.compile(
+    r"\b(?:check|try|because|adjust|replace|use|recommend|problem|issue|sounds?|lower|raise|tune)\b",
+    re.IGNORECASE,
+)
 
 
 def stable_hash(*parts: object, length: int = 10) -> str:
@@ -100,6 +123,53 @@ def record_risk_flags(record: Mapping[str, Any]) -> set[str]:
         flags.add("mixed_topic_flagged")
         flags.add("mixed_topic_quarantined")
     return flags
+
+
+def is_tiny_low_value_text(text: str) -> bool:
+    compacted = compact_space(text)
+    if not compacted or not MEANINGFUL_TEXT_RE.search(compacted):
+        return True
+    return word_count(compacted) < MIN_MEANINGFUL_WORDS
+
+
+def trim_residual_signature_tails(text: str) -> tuple[str, bool]:
+    pieces: list[str] = []
+    cursor = 0
+    removed = False
+
+    for match in SIGNATURE_TAIL_RE.finditer(text):
+        if match.start() < cursor:
+            continue
+        next_author = AUTHOR_DATE_RE.search(text, match.end())
+        end = next_author.start() if next_author else len(text)
+        candidate = compact_space(text[match.start() : end])
+        if word_count(candidate) > 120 or len(GEAR_RE.findall(candidate)) < 3:
+            continue
+        list_like = candidate.count(",") >= 2 or bool(re.search(r"\b(?:my rig|gear|equipment)\s*:", candidate, re.I))
+        sentence_count = len(re.findall(r"[.!?]", candidate))
+        if not list_like or sentence_count > 2 or ADVICE_TERMS_RE.search(candidate):
+            continue
+        pieces.append(text[cursor : match.start()])
+        cursor = end
+        removed = True
+
+    if not removed:
+        return text, False
+
+    pieces.append(text[cursor:])
+    return compact_space(" ".join(pieces)), True
+
+
+def prepare_output_part(text: str, chunk_role: str, flags: set[str]) -> tuple[str, bool]:
+    prepared = compact_space(text)
+    if chunk_role == ANSWER_ROLE:
+        prepared, removed = trim_residual_signature_tails(prepared)
+        if removed:
+            flags.add("residual_signature_tail_removed")
+    if is_tiny_low_value_text(prepared):
+        flags.add("tiny_low_value_skipped")
+        return "", True
+    return prepared, False
 
 
 def mixed_topic_roles(record: Mapping[str, Any]) -> set[str]:
@@ -186,6 +256,8 @@ def should_skip_record(record: Mapping[str, Any], min_words: int) -> tuple[bool,
     role = role_for(record)
     text = text_for_chunk(record)
     words = word_count(text)
+    if is_tiny_low_value_text(text):
+        return True, "tiny_low_value"
     if role == ANSWER_ROLE and mixed_topic_roles(record):
         return True, "mixed_topic_quarantined"
     if role in EXCLUDED_ANSWER_ROLES:
@@ -213,7 +285,11 @@ def append_record_chunks(
     if len(parts) > 1:
         flags.add("oversized_split")
     for part in parts:
-        chunks.append(make_chunk([record], part, chunk_role=role, chunk_index=chunk_index, extra_flags=flags))
+        part_flags = set(flags)
+        prepared_part, skip_part = prepare_output_part(part, role, part_flags)
+        if skip_part:
+            continue
+        chunks.append(make_chunk([record], prepared_part, chunk_role=role, chunk_index=chunk_index, extra_flags=part_flags))
         chunk_index += 1
     return chunk_index
 
@@ -246,8 +322,17 @@ def build_thread_chunks(
             part_flags = set(flags)
             if part != text:
                 part_flags.add("oversized_split")
+            prepared_part, skip_part = prepare_output_part(part, ANSWER_ROLE, part_flags)
+            if skip_part:
+                continue
             chunks.append(
-                make_chunk(answer_group, part, chunk_role=ANSWER_ROLE, chunk_index=chunk_index, extra_flags=part_flags)
+                make_chunk(
+                    answer_group,
+                    prepared_part,
+                    chunk_role=ANSWER_ROLE,
+                    chunk_index=chunk_index,
+                    extra_flags=part_flags,
+                )
             )
             chunk_index += 1
         answer_group = []

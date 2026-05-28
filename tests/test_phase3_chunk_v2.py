@@ -124,6 +124,36 @@ def test_tiny_junk_chunks_are_skipped() -> None:
     assert "Thanks" not in chunks[0]["chunk_text"]
 
 
+def test_punctuation_only_answer_split_is_skipped() -> None:
+    records = [
+        classified_record(". . .", chunk_id="punct"),
+        classified_record("Check the ground because a bad cable can hum.", chunk_id="answer"),
+    ]
+
+    chunks = build_chunks(records, target_words=10, max_words=10, min_words=3)
+
+    assert len(chunks) == 1
+    assert chunks[0]["chunk_text"] == "Check the ground because a bad cable can hum."
+
+
+def test_residual_rig_list_tail_is_trimmed_from_answer_chunk() -> None:
+    records = [
+        classified_record(
+            "I use a mixer at home for backing tracks and headphones, and the direct out works well. "
+            "Bo Borland Rittenberry SD10, Derby D-10, Rittenberry Prestige, Emmons Bolt, Quilter TT12",
+            cleanup_flags=["inline_gear_signature_removed"],
+        )
+    ]
+
+    chunks = build_chunks(records)
+
+    assert len(chunks) == 1
+    assert "direct out works well" in chunks[0]["chunk_text"]
+    assert "Bo Borland" not in chunks[0]["chunk_text"]
+    assert "Rittenberry Prestige" not in chunks[0]["chunk_text"]
+    assert "residual_signature_tail_removed" in chunks[0]["cleanup_flags"]
+
+
 def test_mixed_topic_content_is_not_promoted_as_answer_evidence() -> None:
     records = [
         classified_record(
