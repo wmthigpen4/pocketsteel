@@ -195,7 +195,7 @@ function buildDigestBody(classifiedRows, now = new Date()) {
 
   if (includedCount === 0) {
     return {
-      title: "The Turnaround interest list",
+      title: "Steel Guitar RAG interest list",
       message: `No new real interest-list submissions for the weekly digest.\nChecked: ${now.toISOString()}`,
       includedCount,
       skippedCount,
@@ -212,7 +212,7 @@ function buildDigestBody(classifiedRows, now = new Date()) {
   });
 
   const message = [
-    `Weekly interest-list digest for The Turnaround`,
+    `Weekly interest-list digest for Steel Guitar RAG`,
     `Included: ${includedCount}`,
     `Needs review: ${reviewCount}`,
     `Skipped as test/spam: ${skippedCount}`,
@@ -221,7 +221,7 @@ function buildDigestBody(classifiedRows, now = new Date()) {
   ].join("\n");
 
   return {
-    title: `The Turnaround: ${includedCount} new interest ${includedCount === 1 ? "submission" : "submissions"}`,
+    title: `Steel Guitar RAG: ${includedCount} new interest ${includedCount === 1 ? "submission" : "submissions"}`,
     message: truncateDigest(message),
     includedCount,
     skippedCount,

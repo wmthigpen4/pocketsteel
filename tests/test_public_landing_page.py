@@ -535,6 +535,11 @@ const rows = mod.__test.classifySubmissions([
   })
 ]);
 const digest = mod.__test.buildDigestBody(rows, new Date("2026-05-28T12:00:00.000Z"));
+const staleBrand = "The " + "Turnaround";
+assert.match(digest.title, /Steel Guitar RAG/);
+assert.match(digest.message, /Steel Guitar RAG/);
+assert.equal(digest.title.includes(staleBrand), false);
+assert.equal(digest.message.includes(staleBrand), false);
 assert.match(digest.message, /Lloyd/);
 assert.match(digest.message, /player@steel\\.example/);
 assert.match(digest.message, /gear-tone, practice/);
