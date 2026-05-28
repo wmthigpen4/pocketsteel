@@ -5,7 +5,7 @@ compatibility_date = "2026-05-28"
 [[d1_databases]]
 binding = "STEEL_RAG_INTEREST_D1"
 database_name = "steel_rag_interest"
-database_id = "PLACEHOLDER_D1_DATABASE_ID"
+database_id = "f2f8412c-88aa-44e7-bc65-f49fd21b281c"
 
 [triggers]
 crons = ["0 14 * * 1"]
