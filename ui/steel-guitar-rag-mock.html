@@ -1166,6 +1166,7 @@
       font-size: clamp(22px, 2.4vw, 30px);
       line-height: 1.28;
       font-weight: 500;
+      white-space: pre-line;
     }
 
     .answer-detail-grid {
@@ -1179,14 +1180,26 @@
     .answer-section {
       display: grid;
       align-content: start;
-      gap: 11px;
+      gap: 12px;
       min-width: 0;
+    }
+
+    .answer-section.is-bullets {
+      gap: 13px;
+    }
+
+    .answer-section.is-caveat {
+      border-left: 2px solid rgba(240, 191, 105, 0.42);
+      padding-left: 12px;
     }
 
     .answer-section-title {
       display: flex;
       align-items: center;
       gap: 8px;
+      font-size: 13px;
+      line-height: 1.38;
+      letter-spacing: 0.12em;
     }
 
     .answer-section-title svg,
@@ -1201,8 +1214,13 @@
       margin: 0;
       padding-left: 22px;
       color: rgba(244, 234, 214, 0.86);
-      font-size: 15px;
-      line-height: 1.58;
+      font-size: 18px;
+      line-height: 1.55;
+      font-weight: 440;
+    }
+
+    .try-list li + li {
+      margin-top: 8px;
     }
 
     .try-list li::marker {
@@ -1213,8 +1231,14 @@
     .answer-section p {
       margin: 0;
       color: rgba(244, 234, 214, 0.84);
-      font-size: 15px;
+      font-size: 17px;
       line-height: 1.6;
+      white-space: pre-line;
+    }
+
+    .answer-section.is-caveat p {
+      color: rgba(244, 234, 214, 0.76);
+      font-size: 16px;
     }
 
     .source-section,
@@ -2930,6 +2954,9 @@
       sections.filter((section) => section !== primarySection).forEach((section) => {
         const sectionEl = document.createElement("section");
         sectionEl.className = "answer-section";
+        if (section.style) {
+          sectionEl.classList.add(`is-${section.style}`);
+        }
 
         const title = document.createElement("p");
         title.className = "answer-section-title";
@@ -2937,7 +2964,7 @@
         sectionEl.appendChild(title);
 
         if (section.bullets?.length) {
-          const list = document.createElement("ol");
+          const list = document.createElement(section.ordered ? "ol" : "ul");
           list.className = "try-list";
           section.bullets.forEach((item) => {
             const li = document.createElement("li");
