@@ -270,7 +270,6 @@ const STEEL_RAG_ANSWER_UI = (() => {
     return {
       authenticated,
       role: authenticated ? role : ACCESS_ROLES.ANONYMOUS,
-      email: firstValue(payload?.email) || null,
       authProvider: normalizeAuthProvider(firstValue(payload?.authProvider, "local_dev"))
     };
   }

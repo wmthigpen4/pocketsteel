@@ -581,7 +581,6 @@ def test_api_session_cloudflare_access_blocks_missing_jwt_as_anonymous(monkeypat
     assert payload == {
         "authenticated": False,
         "role": "anonymous",
-        "email": None,
         "authProvider": "cloudflare_access",
     }
 
@@ -647,7 +646,6 @@ def test_api_session_cloudflare_access_blocks_invalid_jwt_as_anonymous(monkeypat
     assert payload == {
         "authenticated": False,
         "role": "anonymous",
-        "email": None,
         "authProvider": "cloudflare_access",
     }
 
@@ -672,6 +670,44 @@ def test_api_answer_cloudflare_access_allows_valid_beta_email(monkeypatch: Any) 
     assert "source-backed answer" in payload["answer"]
 
 
+def test_api_answer_cloudflare_logging_uses_hashed_identity(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
+    app = create_app(
+        fake_search_index(),
+        answer_provider=FakeAnswerProvider(),
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        answer_rate_limiter=InMemoryAnswerRateLimiter(enabled=True, max_requests=10, window_seconds=60),
+    )
+
+    status, _, payload = call_existing_app(
+        app,
+        "/api/answer",
+        method="POST",
+        json_body={"question": "cabinet drop compensator"},
+        cloudflare_token="valid-beta",
+        access_role=None,
+    )
+
+    assert status == "200 OK"
+    assert "source-backed answer" in payload["answer"]
+    event = app.answer_request_log[-1]
+    event_json = json.dumps(event, sort_keys=True)
+    assert event["role"] == "beta_user"
+    assert event["identityKey"].startswith("email_sha256:")
+    assert "identityEmail" not in event
+    assert "beta@example.test" not in event_json
+    assert "valid-beta" not in event_json
+    assert "Cf-Access-Jwt-Assertion" not in event_json
+    assert "X-Steel-Rag" not in event_json
+    rate_limit_keys = list(app.answer_rate_limiter._attempts)
+    assert any(key.startswith("beta_user:email_sha256:") for key in rate_limit_keys)
+    assert all("beta@example.test" not in key for key in rate_limit_keys)
+
+
 def test_api_session_cloudflare_access_valid_beta_email(monkeypatch: Any) -> None:
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
@@ -691,9 +727,9 @@ def test_api_session_cloudflare_access_valid_beta_email(monkeypatch: Any) -> Non
     assert payload == {
         "authenticated": True,
         "role": "beta_user",
-        "email": "beta@example.test",
         "authProvider": "cloudflare_access",
     }
+    assert "email" not in payload
 
 
 def test_api_answer_cloudflare_access_allows_valid_admin_email(monkeypatch: Any) -> None:
@@ -735,9 +771,9 @@ def test_api_session_cloudflare_access_valid_admin_email(monkeypatch: Any) -> No
     assert payload == {
         "authenticated": True,
         "role": "admin",
-        "email": "admin@example.test",
         "authProvider": "cloudflare_access",
     }
+    assert "email" not in payload
 
 
 def test_api_answer_cloudflare_access_blocks_unlisted_valid_email(monkeypatch: Any) -> None:
@@ -782,9 +818,9 @@ def test_api_session_cloudflare_access_unlisted_valid_email_is_anonymous(monkeyp
     assert payload == {
         "authenticated": False,
         "role": "anonymous",
-        "email": "stranger@example.test",
         "authProvider": "cloudflare_access",
     }
+    assert "email" not in payload
 
 
 def test_api_answer_cloudflare_access_ignores_dev_mock_header(monkeypatch: Any) -> None:
@@ -868,7 +904,6 @@ def test_api_session_local_dev_mock_still_works_when_provider_is_cloudflare(monk
     assert payload == {
         "authenticated": True,
         "role": "beta_user",
-        "email": None,
         "authProvider": "local_dev",
     }
 
@@ -892,6 +927,8 @@ def test_api_answer_logs_authorized_success() -> None:
     assert payload["sources"]
     event = app.answer_request_log[-1]
     assert event["role"] == "beta_user"
+    assert event["identityKey"] == ""
+    assert "identityEmail" not in event
     assert event["accessStatus"] == "authorized"
     assert event["authorized"] is True
     assert event["blocked"] is False
@@ -923,6 +960,8 @@ def test_api_answer_logs_anonymous_blocked_attempt() -> None:
     assert search_index.calls == []
     event = app.answer_request_log[-1]
     assert event["role"] == "anonymous"
+    assert event["identityKey"] == ""
+    assert "identityEmail" not in event
     assert event["accessStatus"] == "blocked"
     assert event["authorized"] is False
     assert event["blocked"] is True
@@ -961,6 +1000,8 @@ def test_api_answer_rate_limit_exceeded_returns_429_and_logs_attempt() -> None:
     assert payload["retryAfterSeconds"] > 0
     event = app.answer_request_log[-1]
     assert event["role"] == "beta_user"
+    assert event["identityKey"] == ""
+    assert "identityEmail" not in event
     assert event["accessStatus"] == "rate_limited"
     assert event["authorized"] is True
     assert event["blocked"] is True

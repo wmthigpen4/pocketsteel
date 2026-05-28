@@ -191,15 +191,19 @@ browser-controlled header.
 Usage logging scaffold:
 
 Each `/api/answer` attempt records a local structured event with timestamp,
-role, access status, authorized/blocked state, question length, mode, source
-count when an answer succeeds, warning count, and error status when blocked or
-failed. The current implementation keeps these events in process memory and
-emits them through Python logging.
+role, hashed identity key when a verified Cloudflare identity is available,
+access status, authorized/blocked state, question length, mode, source count
+when an answer succeeds, warning count, and error status when blocked or
+failed. It does not log full email addresses, Cloudflare JWTs, cookies, auth
+headers, or private environment values. The current implementation keeps these
+events in process memory and emits them through Python logging.
 
 Rate-limit scaffold:
 
-The API uses an in-memory process-local limiter before retrieval. It is
-configured by:
+The API uses an in-memory process-local limiter before retrieval. When a
+verified identity is available, the temporary quota key uses the same hashed
+identity key used in logs. Otherwise it falls back to role/IP. It is configured
+by:
 
 - `STEEL_RAG_ANSWER_RATE_LIMIT_ENABLED`: defaults to enabled.
 - `STEEL_RAG_ANSWER_RATE_LIMIT_MAX_REQUESTS`: defaults to `120`.
@@ -208,7 +212,7 @@ configured by:
 TODO before production quotas:
 
 - Replace process memory with a persistent usage store.
-- Use verified user identity, not role/IP, as the quota key.
+- Move the hashed verified-user quota key into the persistent usage store.
 - Define per-user quotas.
 - Decide whether admin bypasses quota or receives a separate quota.
 - Add paid/free tier budgets later.
@@ -359,7 +363,6 @@ Response:
 {
   "authenticated": true,
   "role": "beta_user",
-  "email": "tester@example.com",
   "authProvider": "cloudflare_access"
 }
 ```
@@ -370,10 +373,13 @@ Anonymous response:
 {
   "authenticated": false,
   "role": "anonymous",
-  "email": null,
   "authProvider": "cloudflare_access"
 }
 ```
+
+The session response intentionally omits full email addresses. The frontend
+should use only `authenticated`, `role`, and `authProvider` to decide whether
+to unlock the live Q&A UI.
 
 ## Fixture
 

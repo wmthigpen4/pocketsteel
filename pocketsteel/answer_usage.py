@@ -43,12 +43,14 @@ def _env_positive_int(name: str, default: int) -> int:
     return value if value > 0 else default
 
 
-def answer_rate_limit_key(environ: dict[str, Any], role: AccessRole) -> str:
+def answer_rate_limit_key(environ: dict[str, Any], role: AccessRole, *, identity_key: str = "") -> str:
     """Return the temporary in-memory quota key for the scaffold.
 
-    TODO(production): replace role/IP keys with a verified user identity key.
+    TODO(production): store hashed verified-user keys in a persistent quota store.
     """
 
+    if identity_key:
+        return f"{role}:{identity_key}"
     remote_addr = str(environ.get("REMOTE_ADDR") or "local").strip() or "local"
     return f"{role}:{remote_addr}"
 

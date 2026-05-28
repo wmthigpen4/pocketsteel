@@ -143,7 +143,6 @@ def test_smoke_api_honors_cloudflare_auth_env_for_session(monkeypatch: Any) -> N
     assert payload == {
         "authenticated": False,
         "role": "anonymous",
-        "email": None,
         "authProvider": "cloudflare_access",
     }
 
@@ -182,7 +181,6 @@ def test_smoke_api_defaults_to_local_dev_when_auth_env_missing(monkeypatch: Any)
     assert payload == {
         "authenticated": True,
         "role": "beta_user",
-        "email": None,
         "authProvider": "local_dev",
     }
 

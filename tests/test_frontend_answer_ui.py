@@ -112,9 +112,9 @@ let capturedRequest;
   assert.equal(JSON.stringify(beta), JSON.stringify({
     authenticated: true,
     role: "beta_user",
-    email: "beta@example.test",
     authProvider: "cloudflare_access"
   }));
+  assert.equal("email" in beta, false);
 
   assert.equal(JSON.stringify(answerUi.normalizeSessionResponse({
     authenticated: false,
@@ -124,7 +124,6 @@ let capturedRequest;
   })), JSON.stringify({
     authenticated: false,
     role: "anonymous",
-    email: "admin@example.test",
     authProvider: "cloudflare_access"
   }));
 

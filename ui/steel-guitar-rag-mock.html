@@ -3120,7 +3120,6 @@
     let backendSession = {
       authenticated: false,
       role: STEEL_RAG_ANSWER_UI.ACCESS_ROLES.ANONYMOUS,
-      email: null,
       authProvider: "local_dev"
     };
 
@@ -3350,7 +3349,6 @@
       return {
         authenticated,
         role: authenticated ? role : STEEL_RAG_ANSWER_UI.ACCESS_ROLES.ANONYMOUS,
-        email: payload?.email || null,
         authProvider: normalizeSessionAuthProvider(payload)
       };
     }

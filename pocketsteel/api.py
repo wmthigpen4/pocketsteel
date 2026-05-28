@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import logging
 import json
 from collections.abc import Iterable
@@ -103,7 +104,6 @@ class RetrievalApi:
             payload = {
                 "authenticated": access.allowed,
                 "role": access.role if access.allowed else "anonymous",
-                "email": access.identity_email or None,
                 "authProvider": auth_provider,
             }
             return self._json_response(start_response, "200 OK", payload)
@@ -130,7 +130,8 @@ class RetrievalApi:
                 )
                 return self._json_response(start_response, access.status, {"error": access.error})
 
-            rate_key = answer_rate_limit_key(environ, access.role)
+            identity_key = self._identity_key(access.identity_email)
+            rate_key = answer_rate_limit_key(environ, access.role, identity_key=identity_key)
             rate_limit = self.answer_rate_limiter.check(rate_key)
             if not rate_limit.allowed:
                 self._log_answer_attempt(
@@ -296,7 +297,7 @@ class RetrievalApi:
         event = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "role": role,
-            "identityEmail": identity_email,
+            "identityKey": self._identity_key(identity_email),
             "accessStatus": access_status,
             "authorized": authorized,
             "blocked": not authorized or bool(error_status),
@@ -308,6 +309,14 @@ class RetrievalApi:
         }
         self.answer_request_log.append(event)
         LOGGER.info("answer request event: %s", json.dumps(event, sort_keys=True))
+
+    @staticmethod
+    def _identity_key(identity_email: str = "") -> str:
+        normalized = str(identity_email or "").strip().lower()
+        if not normalized:
+            return ""
+        digest = hashlib.sha256(f"steel-rag-access:{normalized}".encode("utf-8")).hexdigest()
+        return f"email_sha256:{digest}"
 
     @staticmethod
     def _json_response(start_response: Any, status: str, payload: dict[str, Any]) -> list[bytes]:
