@@ -152,6 +152,38 @@ def test_gear_rich_user_experience_is_not_signature_leakage(tmp_path: Path) -> N
     assert result["leakage_counts"]["signature"] == 0
 
 
+def test_gear_dense_troubleshooting_is_not_signature_leakage(tmp_path: Path) -> None:
+    text = (
+        "I mounted BL-910s on my Emmons P-P and lowered the pickups under the strings. "
+        "The Nashville 400 amp still compressed on the 10th string, so I checked the pickup height and volume pedal."
+    )
+    chunk_input = write_jsonl(tmp_path / "chunks-v2.jsonl", [chunk_record(text)])
+
+    result = evaluate_preflight(
+        chunk_input=chunk_input,
+        target_chroma_path=tmp_path / "corpus-v2" / "vector-stores" / "chroma",
+    )
+
+    assert result["passed"] is True
+    assert result["leakage_counts"]["signature"] == 0
+
+
+def test_tab_underlines_are_not_signature_leakage(tmp_path: Path) -> None:
+    text = (
+        "This tab shows the phrase. [tab] 1:______________________________________ "
+        "2:______________________________________ 3:___8~8B___8~8B____ [/tab]"
+    )
+    chunk_input = write_jsonl(tmp_path / "chunks-v2.jsonl", [chunk_record(text)])
+
+    result = evaluate_preflight(
+        chunk_input=chunk_input,
+        target_chroma_path=tmp_path / "corpus-v2" / "vector-stores" / "chroma",
+    )
+
+    assert result["passed"] is True
+    assert result["leakage_counts"]["signature"] == 0
+
+
 def test_cli_does_not_create_chroma_or_run_embeddings(tmp_path: Path) -> None:
     chunk_input = write_jsonl(tmp_path / "chunks-v2.jsonl", [chunk_record()])
     target_chroma = tmp_path / "corpus-v2" / "vector-stores" / "chroma"

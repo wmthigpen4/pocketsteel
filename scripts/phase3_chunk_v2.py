@@ -95,12 +95,17 @@ def record_risk_flags(record: Mapping[str, Any]) -> set[str]:
     role = role_for(record)
     if "quote_marker_detected" in cleanup_flags:
         flags.add("quote_heavy_flagged")
-    cleaned_artifact_roles = {"contact_block", "gear_signature"}
-    mixed_roles = detected_roles - {role, "answer_advice", "question"} - cleaned_artifact_roles
+    mixed_roles = mixed_topic_roles(record)
     if role == ANSWER_ROLE and mixed_roles:
         flags.add("mixed_topic_flagged")
         flags.add("mixed_topic_quarantined")
     return flags
+
+
+def mixed_topic_roles(record: Mapping[str, Any]) -> set[str]:
+    detected_roles = set(str(role) for role in as_list(record.get("detected_roles")))
+    cleaned_artifact_roles = {"contact_block", "gear_signature"}
+    return detected_roles - {role_for(record), "answer_advice", "question"} - cleaned_artifact_roles
 
 
 def post_role_summary(records: list[Mapping[str, Any]]) -> dict[str, int]:
@@ -181,6 +186,8 @@ def should_skip_record(record: Mapping[str, Any], min_words: int) -> tuple[bool,
     role = role_for(record)
     text = text_for_chunk(record)
     words = word_count(text)
+    if role == ANSWER_ROLE and mixed_topic_roles(record):
+        return True, "mixed_topic_quarantined"
     if role in EXCLUDED_ANSWER_ROLES:
         return True, f"excluded_role:{role}"
     if words < min_words and role not in {QUESTION_ROLE, ANSWER_ROLE}:

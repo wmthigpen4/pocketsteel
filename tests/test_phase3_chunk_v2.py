@@ -124,7 +124,7 @@ def test_tiny_junk_chunks_are_skipped() -> None:
     assert "Thanks" not in chunks[0]["chunk_text"]
 
 
-def test_mixed_topic_content_is_flagged() -> None:
+def test_mixed_topic_content_is_not_promoted_as_answer_evidence() -> None:
     records = [
         classified_record(
             "Check the amp because it may be a ground issue, but the show is Saturday.",
@@ -134,10 +134,7 @@ def test_mixed_topic_content_is_flagged() -> None:
 
     chunks = build_chunks(records)
 
-    assert "mixed_topic_flagged" in chunks[0]["cleanup_flags"]
-    assert "mixed_topic_quarantined" in chunks[0]["cleanup_flags"]
-    assert chunks[0]["noise_score"] >= 0.65
-    assert chunks[0]["quality_score"] <= 0.35
+    assert chunks == []
 
 
 def test_quote_heavy_content_is_flagged() -> None:

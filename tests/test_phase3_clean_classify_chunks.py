@@ -63,6 +63,22 @@ def test_signatures_are_flagged_without_destroying_answer_body() -> None:
     assert "signature_removed" in cleaned["cleanup_flags"]
 
 
+def test_inline_separator_signature_is_removed_until_next_author() -> None:
+    row = base_chunk(
+        "Try a 100K pot because that wah expects it. "
+        "------------------ Darvin Willhoite MSA Millennium, Nashville 400, Goodrich pedal "
+        "Bob Smith / 1 Jan 2007 2:00 pm Check the cable too."
+    )
+
+    cleaned = clean_and_classify_chunk(row)
+
+    assert "Try a 100K pot" in cleaned["answer_text"]
+    assert "Bob Smith" in cleaned["answer_text"]
+    assert "Darvin Willhoite MSA" not in cleaned["answer_text"]
+    assert "Darvin Willhoite MSA" in cleaned["signature_text"]
+    assert "signature_removed" in cleaned["cleanup_flags"]
+
+
 def test_question_only_chunks_are_classified() -> None:
     row = base_chunk("Does anyone know what speaker came in a Sho-Bud Compactra amp?")
 
@@ -187,6 +203,39 @@ def test_missing_source_metadata_is_reported() -> None:
 
     assert cleaned["source_metadata_complete"] is False
     assert cleaned["missing_source_metadata"] == ["thread_url"]
+
+
+def test_legacy_ubb_thread_id_is_derived_from_legacy_thread_uid() -> None:
+    row = base_chunk(
+        "Try cleaning the pot before replacing the pedal.",
+        source_system="sgf_ubb_legacy",
+        thread_id=None,
+        legacy_thread_uid="sgf_ubb_legacy:Forum11/HTML/000073.html",
+        thread_url="https://steelguitarforum.com/Forum11/HTML/000073.html",
+    )
+
+    cleaned = clean_and_classify_chunk(row)
+
+    assert cleaned["source_system"] == "sgf_ubb_legacy"
+    assert cleaned["thread_id"] == "ubb:forum11/html/000073"
+    assert cleaned["source_metadata_complete"] is True
+    assert cleaned["missing_source_metadata"] == []
+    assert cleaned["metadata_normalization_flags"] == ["legacy_thread_id_derived"]
+
+
+def test_legacy_ubb_thread_id_derivation_is_stable() -> None:
+    row = base_chunk(
+        "Try another cable because cables fail.",
+        source_system="sgf_ubb_legacy",
+        thread_id=None,
+        legacy_thread_uid="sgf_ubb_legacy:Forum5/HTML/012345.html",
+        thread_url="https://steelguitarforum.com/Forum5/HTML/012345.html",
+    )
+
+    first = clean_and_classify_chunk(row)
+    second = clean_and_classify_chunk(row)
+
+    assert first["thread_id"] == second["thread_id"] == "ubb:forum5/html/012345"
 
 
 def test_cleanup_is_non_destructive_to_raw_input() -> None:

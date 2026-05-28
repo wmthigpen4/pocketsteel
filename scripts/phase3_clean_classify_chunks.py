@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 from collections import Counter
@@ -44,6 +45,7 @@ NAV_LINE_RE = re.compile(
 EDIT_LINE_RE = re.compile(r"^Last edited by .+? in total\.$", re.IGNORECASE)
 QUOTE_RE = re.compile(r"\b[A-Z][\w .'-]{0,80}\s+wrote:|\bquote:\b|<small>|</small>", re.IGNORECASE)
 SIGNATURE_SEPARATOR_RE = re.compile(r"^\s*(?:-{5,}|_{5,}|={5,}|--)\s*$")
+INLINE_SIGNATURE_SEPARATOR_RE = re.compile(r"(?<![_=])-{5,}(?![_=])")
 GEAR_RE = re.compile(
     r"\b(?:D-?10|SD-?10|S-?10|U-?12|Zum(?:Steel)?|Emmons|Sho-?Bud|Mullen|MSA|Carter|GFI|Sierra|"
     r"Williams|Franklin|Derby|Fessenden|MCI|BMI|Excel|Peavey|Nashville\s*(?:400|112|1000)|Session\s*400|"
@@ -139,6 +141,42 @@ def as_list(value: Any) -> list[Any]:
 def source_metadata_complete(row: Mapping[str, Any]) -> tuple[bool, list[str]]:
     missing = [field for field in SOURCE_METADATA_FIELDS if not row.get(field)]
     return not missing, missing
+
+
+def stable_legacy_thread_id(row: Mapping[str, Any]) -> str:
+    if row.get("source_system") != "sgf_ubb_legacy":
+        return ""
+    for field in ("legacy_thread_uid", "thread_url", "source_url"):
+        value = str(row.get(field) or "").strip()
+        if not value:
+            continue
+        match = re.search(r"(?:^|[:/])(Forum\d+/HTML/\d+)\.html\b", value, flags=re.IGNORECASE)
+        if match:
+            return f"ubb:{match.group(1).lower()}"
+        if field == "legacy_thread_uid":
+            safe_value = re.sub(r"[^A-Za-z0-9_.-]+", "-", value).strip("-").lower()
+            if safe_value:
+                return f"ubb:{safe_value}"
+    seed = "|".join(
+        str(row.get(field) or "")
+        for field in ("forum_name", "thread_title", "chunk_id", "large_sample_source_line")
+    )
+    if seed.strip("|"):
+        return f"ubb:derived:{hashlib.sha1(seed.encode('utf-8')).hexdigest()[:12]}"
+    return ""
+
+
+def normalize_source_metadata(row: Mapping[str, Any]) -> dict[str, Any]:
+    normalized = dict(row)
+    if not normalized.get("thread_id"):
+        legacy_thread_id = stable_legacy_thread_id(normalized)
+        if legacy_thread_id:
+            normalized["thread_id"] = legacy_thread_id
+            flags = as_list(normalized.get("metadata_normalization_flags"))
+            if "legacy_thread_id_derived" not in flags:
+                flags.append("legacy_thread_id_derived")
+            normalized["metadata_normalization_flags"] = flags
+    return normalized
 
 
 def post_identity_complete(row: Mapping[str, Any]) -> bool:
@@ -307,6 +345,44 @@ def strip_inline_signature_spans(text: str, signature_text: str, flags: set[str]
     return compact_space(" ".join(pieces)), compact_space("\n".join(part for part in signatures if part))
 
 
+def strip_inline_separator_signatures(text: str, signature_text: str, flags: set[str]) -> tuple[str, str]:
+    pieces: list[str] = []
+    signatures: list[str] = [signature_text] if signature_text else []
+    cursor = 0
+    removed = False
+
+    for match in INLINE_SIGNATURE_SEPARATOR_RE.finditer(text):
+        if match.start() < cursor:
+            continue
+        next_author = AUTHOR_DATE_RE.search(text, match.end())
+        end = next_author.start() if next_author else len(text)
+        candidate = compact_space(text[match.end() : end])
+        if not candidate:
+            continue
+        candidate_words = word_count(candidate)
+        if candidate_words > 120:
+            continue
+        is_signature = (
+            len(GEAR_RE.findall(candidate)) >= 1
+            or "raw_link_removed" in flags
+            or "contact_block_removed" in flags
+            or candidate_words <= 30
+        )
+        if not is_signature:
+            continue
+        pieces.append(text[cursor : match.start()])
+        signatures.append(candidate)
+        cursor = end
+        removed = True
+
+    if not removed:
+        return text, signature_text
+
+    pieces.append(text[cursor:])
+    flags.add("signature_removed")
+    return compact_space(" ".join(pieces)), compact_space("\n".join(part for part in signatures if part))
+
+
 def cleanup_text(raw_text: str, thread_title: str = "") -> tuple[str, str, list[str]]:
     flags: set[str] = set()
     text = compact_space(raw_text or "")
@@ -317,6 +393,7 @@ def cleanup_text(raw_text: str, thread_title: str = "") -> tuple[str, str, list[
     text = remove_navigation_lines(text, flags)
     text = strip_quote_markers(text, flags)
     text, signature_text = split_signature(text, flags)
+    text, signature_text = strip_inline_separator_signatures(text, signature_text, flags)
     text, signature_text = split_inline_gear_signature(text, signature_text, flags)
     text, signature_text = strip_inline_signature_spans(text, signature_text, flags)
     text = remove_repeated_sentences(text, flags)
@@ -412,17 +489,18 @@ def quality_score(answer_density: float, noise_score: float, metadata_complete: 
 
 
 def clean_and_classify_chunk(row: Mapping[str, Any]) -> dict[str, Any]:
-    raw_text = str(row.get("chunk_text") or row.get("text") or "")
-    clean_text, signature_text, flags = cleanup_text(raw_text, str(row.get("thread_title") or ""))
-    links = as_list(row.get("links"))
+    normalized_row = normalize_source_metadata(row)
+    raw_text = str(normalized_row.get("chunk_text") or normalized_row.get("text") or "")
+    clean_text, signature_text, flags = cleanup_text(raw_text, str(normalized_row.get("thread_title") or ""))
+    links = as_list(normalized_row.get("links"))
     roles = detect_roles(clean_text, raw_text, signature_text, links, flags)
     role = choose_role(roles)
-    metadata_complete, missing_metadata = source_metadata_complete(row)
-    post_identity = post_identity_complete(row)
+    metadata_complete, missing_metadata = source_metadata_complete(normalized_row)
+    post_identity = post_identity_complete(normalized_row)
     answer_density = score_answer_density(clean_text)
     noise_score = score_noise(raw_text, clean_text, signature_text, flags, roles)
 
-    output = dict(row)
+    output = dict(normalized_row)
     output.update(
         {
             "raw_text": raw_text,

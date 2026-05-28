@@ -154,15 +154,20 @@ def looks_link_only(text: str) -> bool:
 
 
 def looks_signature_like(text: str) -> bool:
-    if SIGNATURE_SEPARATOR_RE.search(text):
-        return True
     words = text.split()
     tail = " ".join(words[-60:])
+    separator = SIGNATURE_SEPARATOR_RE.search(tail)
+    if separator:
+        after_separator = tail[separator.end() :]
+        if word_count(after_separator) <= 80 and len(GEAR_RE.findall(after_separator)) >= 1:
+            return True
     for match in SIGNATURE_ANCHOR_RE.finditer(tail):
         next_author = AUTHOR_DATE_RE.search(tail, match.end())
         end = next_author.start() if next_author else len(tail)
         candidate = tail[match.start() : end]
-        if len(GEAR_RE.findall(candidate)) >= 3 and not re.search(
+        list_like = candidate.count(",") >= 2 or bool(re.search(r"\b(?:my rig|gear|equipment)\s*:", candidate, re.I))
+        sentence_count = len(re.findall(r"[.!?]", candidate))
+        if list_like and sentence_count <= 2 and len(GEAR_RE.findall(candidate)) >= 3 and not re.search(
             r"\b(?:check|try|because|adjust|replace|use|recommend|problem|issue|sounds?)\b",
             candidate,
             re.IGNORECASE,
