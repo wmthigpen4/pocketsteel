@@ -221,6 +221,12 @@ The scheduled digest Worker lives at:
 workers/interest-digest.js
 ```
 
+Wrangler deployment config lives at:
+
+```text
+wrangler-interest-digest.toml
+```
+
 It is intended to be deployed as a standalone Cloudflare Worker with a Cron
 Trigger. It does not expose `/api/answer`, does not call the RAG backend, and
 does not touch `app.steelguitarrag.com`, Chroma, embeddings, scraping, or corpus
@@ -254,6 +260,82 @@ INTEREST_DIGEST_ADMIN_TOKEN
 
 Do not put Pushover or admin tokens in source files, docs, issue comments, shell
 history snippets, or screenshots.
+
+The Pushover app is named:
+
+```text
+SGR Interest Digest
+```
+
+Use that app's API token for `PUSHOVER_APP_TOKEN`.
+
+### Find The D1 Database ID
+
+The Wrangler config contains a placeholder:
+
+```text
+PLACEHOLDER_D1_DATABASE_ID
+```
+
+Replace it with the real `steel_rag_interest` D1 database ID before deploying.
+
+Dashboard path:
+
+1. Open Cloudflare dashboard.
+2. Select the account that owns `steelguitarrag.com`.
+3. Go to `Workers & Pages`.
+4. Open `D1 SQL Database`.
+5. Select `steel_rag_interest`.
+6. Copy the database ID from the database detail/settings page.
+
+Wrangler alternative:
+
+```bash
+npx --yes wrangler@latest d1 list
+```
+
+Find the row named `steel_rag_interest` and copy its UUID into
+`wrangler-interest-digest.toml`.
+
+### Deploy The Digest Worker
+
+Do not deploy until the D1 `database_id` placeholder has been replaced and the
+operational columns exist on `interest_submissions`.
+
+Deploy command:
+
+```bash
+npx --yes wrangler@latest deploy --config wrangler-interest-digest.toml
+```
+
+### Add Pushover Secrets
+
+Set secrets through Wrangler. The commands prompt for values; do not paste token
+values into shell commands.
+
+```bash
+npx --yes wrangler@latest secret put PUSHOVER_APP_TOKEN --config wrangler-interest-digest.toml
+npx --yes wrangler@latest secret put PUSHOVER_USER_KEY --config wrangler-interest-digest.toml
+```
+
+Optional dry-run secret:
+
+```bash
+npx --yes wrangler@latest secret put INTEREST_DIGEST_ADMIN_TOKEN --config wrangler-interest-digest.toml
+```
+
+### Verify The Worker In Cloudflare
+
+After deployment:
+
+1. Open Cloudflare dashboard.
+2. Select the account that owns `steelguitarrag.com`.
+3. Go to `Workers & Pages`.
+4. Open `Workers`.
+5. Select `steel-rag-interest-digest`.
+6. Check `Settings` > `Bindings` for `STEEL_RAG_INTEREST_D1`.
+7. Check `Settings` > `Variables and Secrets` for the Pushover secret names.
+8. Check `Triggers` > `Cron Triggers` for `0 14 * * 1`.
 
 ### Digest Query
 
@@ -306,6 +388,8 @@ marking rows notified.
 With a Worker dev server and `INTEREST_DIGEST_ADMIN_TOKEN` configured:
 
 ```bash
+npx --yes wrangler@latest dev --config wrangler-interest-digest.toml
+
 curl -sS \
   -H "Authorization: Bearer $INTEREST_DIGEST_ADMIN_TOKEN" \
   "http://localhost:8787/dry-run"
@@ -333,7 +417,7 @@ When a Worker project configuration exists for this script, Wrangler can invoke
 the scheduled handler locally:
 
 ```bash
-npx --yes wrangler@latest dev --test-scheduled
+npx --yes wrangler@latest dev --config wrangler-interest-digest.toml --test-scheduled
 curl "http://localhost:8787/__scheduled?cron=0+14+*+*+1"
 ```
 
@@ -353,6 +437,19 @@ To disable the alert without changing stored submissions:
 If the Worker is configured through Wrangler, remove the `crons` entry from the
 Worker config and deploy that config change. Cron Trigger changes can take a few
 minutes to propagate.
+
+For this Worker, edit `wrangler-interest-digest.toml`:
+
+```toml
+[triggers]
+crons = []
+```
+
+Then deploy the config change:
+
+```bash
+npx --yes wrangler@latest deploy --config wrangler-interest-digest.toml
+```
 
 ## Privacy Notes
 

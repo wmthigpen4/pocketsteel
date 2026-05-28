@@ -1,0 +1,11 @@
+name = "steel-rag-interest-digest"
+main = "workers/interest-digest.js"
+compatibility_date = "2026-05-28"
+
+[[d1_databases]]
+binding = "STEEL_RAG_INTEREST_D1"
+database_name = "steel_rag_interest"
+database_id = "PLACEHOLDER_D1_DATABASE_ID"
+
+[triggers]
+crons = ["0 14 * * 1"]
