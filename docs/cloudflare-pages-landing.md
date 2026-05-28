@@ -109,7 +109,10 @@ The Cloudflare Pages Function lives at:
 functions/api/interest.js
 ```
 
-It validates email, rejects obviously invalid addresses, adds a timestamp and generated id, and returns JSON. It has placeholder Turnstile support through a `turnstileToken` field, but Turnstile verification is intentionally skipped until a site key/secret are configured.
+It validates email, rejects obviously invalid addresses, adds a timestamp and
+generated id, classifies obvious junk/test submissions, and returns JSON. It has
+placeholder Turnstile support through a `turnstileToken` field, but Turnstile
+verification is intentionally skipped until a site key/secret are configured.
 
 ## Required Cloudflare Binding
 
@@ -131,8 +134,23 @@ create table if not exists interest_submissions (
   interests text,
   message text,
   user_agent text,
-  ip_hash text
+  ip_hash text,
+  status text default 'new',
+  spam_score integer default 0,
+  admin_notes text,
+  notified_at text,
+  source text default 'landing_page'
 );
+```
+
+For an existing table, add the operational fields once:
+
+```sql
+alter table interest_submissions add column status text default 'new';
+alter table interest_submissions add column spam_score integer default 0;
+alter table interest_submissions add column admin_notes text;
+alter table interest_submissions add column notified_at text;
+alter table interest_submissions add column source text default 'landing_page';
 ```
 
 The Pages Function D1 insert expects exactly these columns:
@@ -146,6 +164,22 @@ The Pages Function D1 insert expects exactly these columns:
 - `message`
 - `user_agent`
 - `ip_hash`
+- `status`
+- `spam_score`
+- `admin_notes`
+- `source`
+
+`notified_at` is used by the weekly digest Worker, but the Pages Function does
+not set it during capture.
+
+Status values:
+
+- `new`: real-looking lead ready for the digest.
+- `review`: stored, but should be checked by a human before treating as a real
+  lead.
+- `test`: stored test/example-domain submission.
+- `spam`: reserved for operational filtering; the Pages Function currently
+  marks obvious form junk as `test` or `review` rather than deleting it.
 
 If the table still has older columns such as `submitted_at`, `interests_json`,
 `turnstile_token_present`, or `cf_ray`, the D1 insert can throw inside the Pages
@@ -164,7 +198,21 @@ If neither binding is configured, the endpoint returns success with `stored: fal
 For D1, query or export rows from Cloudflare:
 
 ```bash
-wrangler d1 execute <database-name> --command "select created_at, email, name, player_level, interests from interest_submissions order by created_at desc limit 50;"
+wrangler d1 execute <database-name> --command "select created_at, email, name, player_level, interests, status, spam_score from interest_submissions order by created_at desc limit 50;"
+```
+
+Query by status:
+
+```bash
+wrangler d1 execute <database-name> --command "select created_at, email, name, status, spam_score, admin_notes from interest_submissions where status = 'new' order by created_at desc limit 50;"
+wrangler d1 execute <database-name> --command "select created_at, email, name, status, spam_score, admin_notes from interest_submissions where status = 'review' order by created_at desc limit 50;"
+wrangler d1 execute <database-name> --command "select created_at, email, name, status, spam_score, admin_notes from interest_submissions where status in ('spam', 'test') order by created_at desc limit 50;"
+```
+
+Delete only known test rows by exact email or id:
+
+```bash
+wrangler d1 execute <database-name> --command "delete from interest_submissions where email = 'test@example.com';"
 ```
 
 For KV, list keys with the `interest:` prefix, then read values:

@@ -1,5 +1,7 @@
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MAX_FIELD_LENGTH = 2000;
+const SOURCE = "landing_page";
+const SUSPICIOUS_MESSAGE_LENGTH = 1500;
 
 function jsonResponse(payload, status = 200) {
   return new Response(JSON.stringify(payload), {
@@ -21,6 +23,68 @@ function cleanInterestList(value) {
     .map((item) => cleanString(item, 80))
     .filter(Boolean)
     .slice(0, 12);
+}
+
+function countUrlSignals(text) {
+  const matches = cleanString(text, 3000).match(/\b(?:https?:\/\/|www\.|[a-z0-9-]+\.[a-z]{2,})(?:[^\s]*)/gi);
+  return matches ? matches.length : 0;
+}
+
+function emailDomain(email) {
+  return cleanString(email, 320).split("@").pop() || "";
+}
+
+function statusRank(status) {
+  return { new: 0, review: 1, test: 2, spam: 3 }[status] ?? 0;
+}
+
+function applyStatus(currentStatus, nextStatus) {
+  return statusRank(nextStatus) > statusRank(currentStatus) ? nextStatus : currentStatus;
+}
+
+function classifySubmission(submission) {
+  const domain = emailDomain(submission.email);
+  const notes = [];
+  let status = "new";
+  let spamScore = 0;
+
+  if (submission.email === "test@example.com") {
+    status = "test";
+    spamScore = Math.max(spamScore, 100);
+    notes.push("obvious test email");
+  } else if (domain === "example.com" || domain.endsWith(".example.com") || domain.endsWith(".test")) {
+    status = applyStatus(status, "test");
+    spamScore = Math.max(spamScore, 80);
+    notes.push("reserved test/example email domain");
+  } else if (domain.includes("test")) {
+    status = applyStatus(status, "review");
+    spamScore = Math.max(spamScore, 30);
+    notes.push("email domain contains test");
+  }
+
+  if (countUrlSignals(`${submission.name} ${submission.message}`) >= 2) {
+    status = applyStatus(status, "review");
+    spamScore = Math.max(spamScore, 60);
+    notes.push("URL-heavy message");
+  }
+
+  if (!submission.name && !submission.message) {
+    status = applyStatus(status, "review");
+    spamScore = Math.max(spamScore, 20);
+    notes.push("blank name and message");
+  }
+
+  if (submission.message.length >= SUSPICIOUS_MESSAGE_LENGTH) {
+    status = applyStatus(status, "review");
+    spamScore = Math.max(spamScore, 40);
+    notes.push("very long message");
+  }
+
+  return {
+    status,
+    spamScore,
+    adminNotes: notes.length ? `interest filter: ${notes.join("; ")}` : ""
+  };
 }
 
 async function sha256Hex(value) {
@@ -60,19 +124,28 @@ function normalizeSubmission(input, now = new Date()) {
     return { ok: false, error: "Enter a valid email address." };
   }
 
+  const submission = {
+    id: crypto.randomUUID(),
+    createdAt: now.toISOString(),
+    name: cleanString(input.name, 200),
+    email,
+    playerLevel: cleanString(input.playerLevel, 80),
+    interests: cleanInterestList(input.interests),
+    message: cleanString(input.message, 2000),
+    turnstileTokenPresent: Boolean(cleanString(input.turnstileToken, 2048)),
+    userAgent: "",
+    ipHash: "",
+    source: SOURCE
+  };
+  const classification = classifySubmission(submission);
+
   return {
     ok: true,
     submission: {
-      id: crypto.randomUUID(),
-      createdAt: now.toISOString(),
-      name: cleanString(input.name, 200),
-      email,
-      playerLevel: cleanString(input.playerLevel, 80),
-      interests: cleanInterestList(input.interests),
-      message: cleanString(input.message, 2000),
-      turnstileTokenPresent: Boolean(cleanString(input.turnstileToken, 2048)),
-      userAgent: "",
-      ipHash: ""
+      ...submission,
+      status: classification.status,
+      spamScore: classification.spamScore,
+      adminNotes: classification.adminNotes
     }
   };
 }
@@ -89,8 +162,9 @@ function createInterestStorage(env) {
         await env.STEEL_RAG_INTEREST_D1
           .prepare(
             `insert into interest_submissions
-              (id, created_at, name, email, player_level, interests, message, user_agent, ip_hash)
-             values (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+              (id, created_at, name, email, player_level, interests, message, user_agent, ip_hash,
+               status, spam_score, admin_notes, source)
+             values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
           )
           .bind(
             submission.id,
@@ -101,7 +175,11 @@ function createInterestStorage(env) {
             JSON.stringify(submission.interests),
             submission.message,
             submission.userAgent,
-            submission.ipHash
+            submission.ipHash,
+            submission.status,
+            submission.spamScore,
+            submission.adminNotes,
+            submission.source
           )
           .run();
       }
@@ -188,7 +266,9 @@ export async function onRequest(context) {
 }
 
 export const __test = {
+  classifySubmission,
   createInterestStorage,
+  countUrlSignals,
   handleInterestRequest,
   normalizeSubmission,
   ipHashFromRequest,
