@@ -42,41 +42,53 @@ Recommended first beta shape:
 - Do not create `api.steelguitarrag.com` until there is a clear need for a separate API origin.
 - Keep `/api/answer` same-origin behind the app where possible to reduce CORS and secret-handling complexity.
 
-## GoDaddy-to-Cloudflare Migration Checklist
+## Current DNS Status
 
-Current domain state, supplied on 2026-05-28:
+Current domain state on 2026-05-28:
 
 - Domain: `steelguitarrag.com`
 - Registrar: GoDaddy
 - Email: not configured
-- Current nameservers:
+- Previous GoDaddy nameservers:
   - `ns07.domaincontrol.com`
   - `ns08.domaincontrol.com`
-- Current visible GoDaddy DNS records:
-  - `A @ WebsiteBuilder Site`
-  - `CNAME www steelguitarrag.com`
-  - `CNAME pay paylinks.commerce.godaddy.com`
-  - `CNAME _domainconnect _domainconnect.gd.domaincontrol.com`
-  - `TXT _dmarc` DMARC quarantine record
-  - no MX records visible
+- New Cloudflare nameservers:
+  - `derek.ns.cloudflare.com`
+  - `vita.ns.cloudflare.com`
+- Current public NS lookup shows:
+  - `derek.ns.cloudflare.com`
+  - `vita.ns.cloudflare.com`
 
-Migration checklist:
+GoDaddy remains the registrar. Cloudflare is becoming authoritative DNS for the zone. Wait for Cloudflare to show the zone as active before routing services, creating tunnel public hostnames, or changing landing-page records.
 
-- Screenshot or export the existing GoDaddy DNS records before any change.
-- Note that no MX records are currently configured, so there is no active domain email routing to preserve at this time.
-- Preserve the `_dmarc` TXT record if the domain may later send mail.
-- Decide whether to keep or drop GoDaddy-specific records:
-  - `A @ WebsiteBuilder Site`: drop only when the Cloudflare landing page or tunnel landing route is ready.
-  - `CNAME pay paylinks.commerce.godaddy.com`: keep only if GoDaddy Pay Links are still used.
-  - `CNAME _domainconnect _domainconnect.gd.domaincontrol.com`: usually not needed after Cloudflare becomes authoritative unless GoDaddy Domain Connect is still required.
-- Add `steelguitarrag.com` to Cloudflare.
-- Let Cloudflare scan/import existing DNS records.
-- Compare Cloudflare's imported records against the GoDaddy screenshot/export.
-- Recreate only the DNS records that are still needed in Cloudflare.
-- Receive the assigned Cloudflare nameservers.
-- Change GoDaddy nameservers from `ns07.domaincontrol.com` and `ns08.domaincontrol.com` to the assigned Cloudflare nameservers.
-- Wait for Cloudflare to confirm the zone is active.
-- Do not create public `app` or `api` DNS records until auth, tunnel routing, and backend guardrails are ready.
+No MX records were visible in GoDaddy, and email is not configured, so there are no existing domain email routes to preserve. If email is added later, create MX, SPF, DKIM, and DMARC records intentionally in Cloudflare.
+
+## DNS Records to Review After Cloudflare Activation
+
+Current visible GoDaddy records captured before the nameserver change:
+
+- `A @ WebsiteBuilder Site`
+- `CNAME www steelguitarrag.com`
+- `CNAME pay paylinks.commerce.godaddy.com`
+- `CNAME _domainconnect _domainconnect.gd.domaincontrol.com`
+- `TXT _dmarc` DMARC quarantine record
+- no MX records visible
+
+Review these records in Cloudflare after activation:
+
+- Apex/root record:
+  - Remove or replace the GoDaddy WebsiteBuilder apex record after the landing page target is chosen.
+  - Do not route apex/root to the live RAG app.
+- `www`:
+  - Configure as a redirect to `steelguitarrag.com` or as the landing host's required record.
+- `pay`:
+  - Preserve only if GoDaddy Pay Links are still needed.
+- `_domainconnect`:
+  - Usually remove after Cloudflare is authoritative unless GoDaddy Domain Connect is still required.
+- `_dmarc`:
+  - Preserve the current quarantine record unless intentionally changing mail policy.
+- MX/email:
+  - No MX records are currently configured; there are no active email records to preserve.
 
 Initial Cloudflare DNS target state:
 
@@ -87,6 +99,16 @@ Initial Cloudflare DNS target state:
 | `app` | Private beta app | Add only when the Cloudflare Tunnel and auth gates are ready. |
 | `api` | Optional later API | Do not add for first beta unless separately approved. |
 | `_dmarc` TXT | Mail policy marker | Preserve current quarantine record unless intentionally changed. |
+
+## Next Cloudflare Tasks
+
+- Confirm the Cloudflare zone is active.
+- Review imported DNS records against the GoDaddy records captured before the nameserver change.
+- Remove or replace the GoDaddy WebsiteBuilder apex record if present, but only after the landing page routing is chosen.
+- Decide whether to keep `pay`, `_domainconnect`, and `_dmarc`.
+- Create landing page routing later for `steelguitarrag.com` and `www.steelguitarrag.com`.
+- Create an `app.steelguitarrag.com` Cloudflare Tunnel route only after auth guardrails are implemented and verified.
+- Do not create `api.steelguitarrag.com` for the first beta unless separately approved.
 
 ## Cloudflare Tunnel Plan
 
@@ -110,6 +132,9 @@ Tunnel requirements:
 - No direct public home IP exposure.
 - No tunnel route to `127.0.0.1:11434`.
 - No tunnel route to a Chroma port or database process.
+- No public Ollama.
+- No public Chroma.
+- The backend app calls Ollama locally through `OLLAMA_URL=http://127.0.0.1:11434`.
 - Cloudflare Access protection is optional but recommended for preview and early private beta.
 - Use an allowlist policy for beta testers, for example approved emails or identity-provider groups.
 - Prefer a deny-by-default Access posture so new hostnames are not accidentally public.
@@ -252,8 +277,9 @@ Required before `app.steelguitarrag.com` reaches beta testers:
 
 - `/api/answer` enforces auth server-side.
 - Anonymous users are blocked from live RAG with a non-200 auth response.
+- `/api/answer` is not exposed publicly until server-side auth is implemented and tested.
 - Backend role checks allow only approved beta users and admins.
-- Cloudflare Access protects the beta hostname during preview and private beta.
+- Cloudflare Access protects the beta hostname during preview and private beta if used; otherwise an equivalent preview gate is required until app auth is proven.
 - Usage limits exist per user and per time window.
 - Rate limits exist at Cloudflare and/or the app layer.
 - Request logging is active.
@@ -435,16 +461,15 @@ Alerts should cover:
 - [ ] Restart commands are documented with real launchctl service labels.
 - [ ] Backup plan is documented and tested for config and Chroma.
 - [ ] Rollback plan is documented.
-- [ ] GoDaddy DNS screenshot/export is captured.
-- [ ] Cloudflare imported DNS records are reviewed before nameserver change.
+- [ ] Cloudflare zone is active after nameserver change.
+- [ ] Cloudflare imported DNS records are reviewed against the captured GoDaddy records.
+- [ ] GoDaddy WebsiteBuilder apex record is removed or replaced only after the landing page target is chosen.
 - [ ] No scraping command is part of service startup.
 - [ ] No embedding command is part of service startup.
 - [ ] Chroma is not reset or modified by deployment.
 
 ## Human Decisions Still Needed
 
-- Whether to move authoritative DNS from GoDaddy nameservers to Cloudflare.
-- Who owns and approves GoDaddy DNS changes.
 - Whether to preserve the GoDaddy `pay` CNAME.
 - Whether to preserve the GoDaddy `_domainconnect` CNAME after Cloudflare becomes authoritative.
 - Whether to preserve the current `_dmarc` quarantine TXT record exactly.
@@ -469,10 +494,11 @@ Alerts should cover:
 
 - Backend auth for `/api/answer` is not optional.
 - Anonymous live RAG access must fail server-side.
+- Live RAG must not be exposed publicly until `/api/answer` is protected server-side.
 - Cloudflare Access or equivalent preview protection must be in place until app auth is proven.
 - Ollama must not be publicly reachable.
 - Chroma must stay local and read-only for serving.
-- No DNS changes until GoDaddy records are captured and the no-MX email state is confirmed.
+- Do not route `app.steelguitarrag.com` until the Cloudflare zone is active and imported DNS records are reviewed.
 - No beta invites until logging, rate limits, rollback, and source/copyright policy are ready.
 
 ## References
