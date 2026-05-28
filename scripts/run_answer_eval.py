@@ -15,6 +15,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from pocketsteel.answer_contracts import validate_answer_against_contract
+
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8770"
 DEFAULT_QUESTION_BANK = Path("tests/fixtures/user_question_bank.json")
@@ -136,6 +138,7 @@ class EvalResult:
     category: str
     question: str
     expected_intent: str
+    expected_contract: str
     status_code: int
     answer: str
     warnings: list[str]
@@ -169,6 +172,7 @@ def load_question_bank(path: Path) -> list[dict[str, str]]:
                 "category": str(item.get("category") or "uncategorized"),
                 "question": str(item["question"]).strip(),
                 "expected_intent": str(item.get("expected_intent") or "").strip(),
+                "expected_contract": str(item.get("expected_contract") or "").strip(),
             }
         )
     return rows
@@ -311,8 +315,10 @@ def evaluate_answer(
     source_count: int,
     status_code: int,
     expected_intent: str = "",
+    expected_contract: str = "",
 ) -> list[Failure]:
     failures: list[Failure] = []
+    explicit_contract_intent = expected_contract or expected_intent
     expected_intent = infer_expected_intent(question, expected_intent)
 
     if status_code != 200:
@@ -323,6 +329,12 @@ def evaluate_answer(
     for reason, pattern in FORMAT_PATTERNS:
         if pattern.search(answer):
             add_failure(failures, "likely formatting failure", reason)
+
+    if explicit_contract_intent:
+        contract_validation = validate_answer_against_contract(answer, explicit_contract_intent)
+        for violation in contract_validation.violations:
+            group = "likely formatting failure" if re.search(r"\b(?:boilerplate|email|citation|context|fragment|template|Top|link|orphan)\b", violation, re.I) else "likely_directness_failure"
+            add_failure(failures, group, f"contract {contract_validation.intent}: {violation}")
 
     if re.search(r"\bI did not find strong negative evidence\b", answer, re.I) and expected_intent != "product_value":
         add_failure(failures, "likely_intent_mismatch", "negative-evidence product-value language on non-product-value question")
@@ -373,12 +385,21 @@ def result_from_payload(row: dict[str, str], status_code: int, payload: dict[str
     warnings = [str(warning) for warning in (payload.get("warnings") or [])]
     sources = payload.get("sources") if isinstance(payload.get("sources"), list) else []
     first_source = sources[0] if sources else {}
-    failures = evaluate_answer(row["question"], answer, warnings, len(sources), status_code, row.get("expected_intent", ""))
+    failures = evaluate_answer(
+        row["question"],
+        answer,
+        warnings,
+        len(sources),
+        status_code,
+        row.get("expected_intent", ""),
+        row.get("expected_contract", ""),
+    )
     return EvalResult(
         id=row["id"],
         category=row["category"],
         question=row["question"],
         expected_intent=row.get("expected_intent", ""),
+        expected_contract=row.get("expected_contract", ""),
         status_code=status_code,
         answer=answer,
         warnings=warnings,
@@ -412,6 +433,7 @@ def result_to_json(result: EvalResult) -> dict[str, Any]:
         "category": result.category,
         "question": result.question,
         "expected_intent": result.expected_intent,
+        "expected_contract": result.expected_contract,
         "status_code": result.status_code,
         "answer": result.answer,
         "warnings": result.warnings,
@@ -468,6 +490,7 @@ def render_report(results: list[EvalResult], *, base_url: str, question_bank: Pa
                 "",
                 f"- Category: `{result.category}`",
                 f"- Expected intent: `{result.expected_intent or 'unspecified'}`",
+                f"- Expected contract: `{result.expected_contract or 'inferred'}`",
                 f"- Question: {result.question}",
                 f"- Reasons: {failure_reason_text(result)}",
                 f"- Status: {result.status_code}",
@@ -488,6 +511,7 @@ def render_report(results: list[EvalResult], *, base_url: str, question_bank: Pa
             lines.append(
                 f"- `{result.id}` {result.question} "
                 f"(category: `{result.category}`, intent: `{result.expected_intent or 'unspecified'}`, "
+                f"contract: `{result.expected_contract or 'inferred'}`, "
                 f"sources: {result.source_count}, reasons: {failure_reason_text(result)})"
             )
     lines.append("")

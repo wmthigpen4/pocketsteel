@@ -283,13 +283,14 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             intent="practice_context",
             confidence="curated_medium",
             answer=(
-                "For church, make the steel supportive first and impressive second.\n\n"
+                "For church, support the vocals first and make the steel part feel calm, steady, and singable.\n\n"
                 "Preparation checklist:\n"
-                "- Learn the hymn or song changes clearly before adding fills.\n"
-                "- Keep intros, endings, and transitions simple enough for the singers to trust.\n"
-                "- Use swells, pads, and quiet fills behind vocals instead of stepping on the melody.\n"
-                "- Rehearse volume-pedal control so your entrances are smooth.\n"
-                "- Know when not to play; space is part of the arrangement."
+                "- Learn the chord chart, key changes, repeats, tags, and song form before adding fills.\n"
+                "- Use swells, pads, and simple vocal-response fills instead of lead-style licks.\n"
+                "- Stay out of the singer’s way; leave space at the ends of vocal lines.\n"
+                "- Rehearse intros, endings, transitions, and any quiet breakdowns.\n"
+                "- Practice volume-pedal control so entrances bloom instead of jumping out.\n"
+                "- Look for slow CCM/worship pedal-steel demonstrations or backing tracks, then practice pads and short vocal-response fills rather than busy lead parts."
             ),
         )
 
@@ -364,11 +365,16 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             confidence="curated_high",
             answer=(
                 "I can’t provide copyrighted song tablature by default or send you to random people’s emails.\n\n"
-                "I can help in safer ways:\n"
-                "- Make a short original E9 exercise in the style you want.\n"
-                "- Explain the chord movement or grips for a lick you describe.\n"
-                "- Work from a public-domain tune if you name one.\n\n"
-                "Original mini-exercise: at the 3rd fret, pick strings 4-5-6, press A+B, release cleanly, then move to the 6th fret with A+F and pick 4-5-6 again."
+                "Safer options:\n"
+                "- Name a public-domain tune such as Amazing Grace or Silent Night and I can help build a simple steel arrangement.\n"
+                "- Describe the chord movement you want and I can make an original exercise around it.\n"
+                "- For a random default, use this public-domain-style chord path: G to C to D to G.\n\n"
+                "Original E9 mini-tab/chord path:\n"
+                "- G: 3rd fret, no pedals, pick strings 4-5-6.\n"
+                "- C: 3rd fret with A+B pedals, pick strings 4-5-6.\n"
+                "- D: 5th fret with A+B pedals, pick strings 4-5-6.\n"
+                "- G: 6th fret with A pedal + F lever, pick strings 4-5-6.\n\n"
+                "Play it slowly with clean blocking and let each chord settle before moving."
             ),
         )
 

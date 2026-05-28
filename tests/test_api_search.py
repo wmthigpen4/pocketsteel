@@ -6,6 +6,7 @@ from typing import Any
 from urllib.parse import urlencode
 
 from pocketsteel import chroma_search
+from pocketsteel.answer_contracts import CONTRACTS, infer_contract_intent, validate_answer_against_contract
 from pocketsteel.answering import DeterministicAnswerProvider
 from pocketsteel.chroma_search import ChromaSearchIndex
 from pocketsteel.curated_answers import CURATED_FACT_WEAK_WARNING, WEAK_RETRIEVAL_WARNING, lookup_curated_answer
@@ -120,6 +121,50 @@ def test_configured_chroma_path_allows_explicit_override(monkeypatch: Any, tmp_p
     monkeypatch.setenv(chroma_search.CHROMA_PATH_ENV, str(configured))
 
     assert chroma_search.configured_chroma_path(explicit) == explicit
+
+
+def test_answer_contract_registry_covers_major_intents() -> None:
+    expected = {
+        "practice_plan",
+        "copedent_fretboard",
+        "equipment_recommendation",
+        "vendor_buying_guidance",
+        "product_value",
+        "maintenance_safety",
+        "replacement_parts",
+        "travel_transport",
+        "brand_comparison",
+        "player_bio",
+        "player_brand_usage",
+        "subjective_ranking",
+        "entity_definition",
+        "current_company_status",
+        "performance_context_guidance",
+        "public_domain_tab_or_exercise",
+        "yes_no_source_check",
+        "general_forum_wisdom",
+    }
+
+    assert expected <= set(CONTRACTS)
+
+
+def test_contract_intent_inference_for_common_questions() -> None:
+    assert infer_contract_intent("How do I prepare to play my pedal steel at church?") == "performance_context_guidance"
+    assert infer_contract_intent("Can you give me tablature for a random song?") == "public_domain_tab_or_exercise"
+    assert infer_contract_intent("What should I practice tonight?") == "practice_plan"
+    assert infer_contract_intent("Where can I buy a slide bar?") == "vendor_buying_guidance"
+    assert infer_contract_intent("Is Mullen or MSA better?") == "brand_comparison"
+    assert infer_contract_intent("Who is Lloyd Green?") == "player_bio"
+    assert infer_contract_intent("Who plays an Emmons guitar today?") == "player_brand_usage"
+
+
+def test_contract_validation_catches_template_leakage() -> None:
+    bad_buying_answer = "What it is: The retrieved sources discuss that product. positive owner/source impression."
+    validation = validate_answer_against_contract(bad_buying_answer, "vendor_buying_guidance")
+
+    assert not validation.is_valid
+    assert any("generic product-value template" in violation for violation in validation.violations)
+
 
 
 def test_configured_chroma_path_falls_back_to_app_local(monkeypatch: Any) -> None:
@@ -1220,13 +1265,13 @@ def test_lloyd_green_entity_definition_not_player_ranking() -> None:
 def test_latest_frontend_curated_failures_have_clean_answer_bodies() -> None:
     cases = [
         ("How do I play like a honky tonk boss?", "Honky-tonk practice path:", ["I-IV-V", "backing tracks"]),
-        ("How do I prepare to play my pedal steel at church?", "For church, make the steel supportive first", ["vocals", "swells"]),
+        ("How do I prepare to play my pedal steel at church?", "For church, support the vocals first", ["swells", "CCM/worship"]),
         ("How do I get to be as good as Tommy White?", "Use Tommy White as a north star", ["Record yourself", "tasteful fills"]),
         ("Is the Nashville 400 better than the Fender Steel King?", "There is no single winner", ["Nashville 400", "Fender Steel King"]),
         ("How heavy is a steel guitar?", "Pedal steel weight varies", ["S-10", "D-10"]),
         ("Red guitars are gay.", "Color does not affect playability or tone.", ["sound", "condition"]),
         ("Do you wear shoes or play barefoot?", "Use whatever footwear gives you consistent pedal feel", ["Thin-soled shoes", "Barefoot"]),
-        ("Can you give me tablature for a random song?", "I can’t provide copyrighted song tablature", ["Original mini-exercise", "public-domain"]),
+        ("Can you give me tablature for a random song?", "I can’t provide copyrighted song tablature", ["Amazing Grace", "Original E9 mini-tab/chord path"]),
         ("Can you play Panhandle Rag with a pan handle?", "proper steel bar", ["intonation", "control"]),
         ("Who plays a Mullen steel guitar?", "current, source-backed roster", ["Mullen guitars today", "official artist list"]),
         ("Is Emmons Guitar still in business today?", "Yes. Emmons Guitar Co. appears to be operating today", ["emmonsguitar.co", "ReSound’65"]),
@@ -1253,6 +1298,66 @@ def test_latest_frontend_curated_failures_have_clean_answer_bodies() -> None:
         assert "blacksteveb@aol.com" not in payload["answer"]
         assert "ernie Top Get" not in payload["answer"]
         assert payload["sources"]
+
+
+def test_church_practice_answer_has_specific_resource_guidance_without_fake_url() -> None:
+    payload = answer_for_question(
+        "How do I prepare to play my pedal steel at church?",
+        [
+            {
+                "score": 0.78,
+                "excerpt": "Church steel discussion drifted into announcements and unrelated service chatter.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "Church steel",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400022",
+                "chunk_id": "chunk-church",
+                "post_uid": "p-church",
+                "source_system": "sgf_phpbb_current",
+            }
+        ],
+    )
+
+    assert_clean_answer_body(payload)
+    assert "support the vocals first" in payload["answer"]
+    assert "singer" in payload["answer"].lower()
+    assert "swells" in payload["answer"]
+    assert "pads" in payload["answer"]
+    assert "simple vocal-response fills" in payload["answer"]
+    assert "chord chart" in payload["answer"]
+    assert "CCM/worship pedal-steel demonstrations or backing tracks" in payload["answer"]
+    assert "http://" not in payload["answer"]
+    assert "https://" not in payload["answer"]
+    assert payload["sources"]
+
+
+def test_random_tab_answer_offers_public_domain_and_concrete_exercise() -> None:
+    payload = answer_for_question(
+        "Can you give me tablature for a random song?",
+        [
+            {
+                "score": 0.77,
+                "excerpt": "I am looking for tablature and an e-mail address for a random copyrighted song.",
+                "forum_name": "Tablature",
+                "thread_title": "Looking for tab",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400023",
+                "chunk_id": "chunk-random-tab",
+                "post_uid": "p-random-tab",
+                "source_system": "sgf_phpbb_current",
+            }
+        ],
+    )
+
+    assert_clean_answer_body(payload)
+    assert "I can’t provide copyrighted song tablature" in payload["answer"]
+    assert "random people’s emails" in payload["answer"]
+    assert "public-domain tune such as Amazing Grace or Silent Night" in payload["answer"]
+    assert "G to C to D to G" in payload["answer"]
+    assert "Original E9 mini-tab/chord path" in payload["answer"]
+    assert "3rd fret" in payload["answer"]
+    assert "A+B pedals" in payload["answer"]
+    assert "A pedal + F lever" in payload["answer"]
+    assert "@" not in payload["answer"]
+    assert payload["sources"]
 
 
 def test_source_junk_quality_gate_removes_raw_forum_fragments() -> None:

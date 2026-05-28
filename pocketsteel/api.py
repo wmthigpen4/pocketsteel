@@ -19,6 +19,7 @@ from pocketsteel.answering import (
     parse_answer_request,
 )
 from pocketsteel.api_contract import AnswerResponse
+from pocketsteel.answer_contracts import enforce_answer_contract, infer_contract_intent
 from pocketsteel.chroma_search import (
     CHROMA_COLLECTION_ENV,
     CHROMA_PATH_ENV,
@@ -86,8 +87,10 @@ class RetrievalApi:
             warnings.extend(sanitized.warnings)
             strong_sources = sanitized.sources
             curated_answer = lookup_curated_answer(answer_request.question, strong_sources)
+            contract_intent = infer_contract_intent(answer_request.question, answer_request.mode)
             if curated_answer is not None:
                 answer = curated_answer.answer
+                contract_intent = curated_answer.intent
                 if curated_answer.intent == "curated_fact_source_check":
                     warnings.append(CURATED_FACT_WEAK_WARNING)
                 if retrieval_looks_weak_for_curated(answer_request.question, curated_answer, strong_sources):
@@ -115,6 +118,10 @@ class RetrievalApi:
                 else:
                     sources = concise_source_cards(strong_sources)
             final_answer = final_answer_quality_gate(answer, answer_request.question)
+            contract_validation = enforce_answer_contract(final_answer, contract_intent)
+            if contract_validation.violations and contract_validation.answer != final_answer:
+                warnings.append(f"answer contract enforced: {contract_validation.intent}")
+            final_answer = contract_validation.answer
             payload: AnswerResponse = {
                 "answer": final_answer,
                 "mode": answer_request.mode,

@@ -107,7 +107,7 @@ def test_eval_flags_directness_and_intent_mismatches() -> None:
 
     assert not evaluate_answer(
         "Where can I buy a slide bar?",
-        "Buy from steel-guitar vendors, maker websites, dealers, or the SGF classifieds/used market.",
+        "Buy from steel-guitar vendors, maker websites, dealers, or the SGF classifieds/used market; check diameter, length, weight, and material before ordering.",
         [],
         1,
         200,
@@ -153,7 +153,9 @@ def test_eval_allows_status_and_product_value_language_when_intent_matches() -> 
         200,
         "product_value",
     )
-    assert {failure.reason for failure in product_value_failures} == set()
+    assert "contract product_value: old product-value boilerplate" in {
+        failure.reason for failure in product_value_failures
+    }
 
 
 def test_eval_flags_retrieval_and_safety_checks() -> None:
@@ -186,7 +188,12 @@ def test_eval_flags_retrieval_and_safety_checks() -> None:
 
 def test_result_capture_and_report_grouping() -> None:
     result = result_from_payload(
-        {"id": "Q001", "category": "gear_effects_tone", "question": "What are common Fender Steel King settings?"},
+        {
+            "id": "Q001",
+            "category": "gear_effects_tone",
+            "question": "What are common Fender Steel King settings?",
+            "expected_contract": "general_forum_wisdom",
+        },
         200,
         {
             "answer": "Practical answer\nSource context: raw forum text.",
