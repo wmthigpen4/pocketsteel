@@ -363,9 +363,9 @@
 
     .beta-panel {
       display: grid;
-      grid-template-columns: 1fr auto;
+      grid-template-columns: minmax(0, 0.8fr) minmax(320px, 1fr);
       gap: 18px;
-      align-items: center;
+      align-items: start;
       margin-top: 26px;
       padding: 22px;
       border: 1px solid rgba(240, 191, 105, 0.22);
@@ -377,6 +377,123 @@
       margin: 0;
       color: rgba(244, 234, 214, 0.74);
       line-height: 1.5;
+    }
+
+    .interest-form {
+      display: grid;
+      gap: 13px;
+      padding: 16px;
+      border: 1px solid rgba(244, 234, 214, 0.1);
+      border-radius: 12px;
+      background: rgba(5, 6, 6, 0.38);
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .field.is-wide {
+      grid-column: 1 / -1;
+    }
+
+    label,
+    legend {
+      color: rgba(240, 191, 105, 0.86);
+      font-size: 12px;
+      line-height: 1.35;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid rgba(244, 234, 214, 0.13);
+      border-radius: 9px;
+      background: rgba(9, 11, 11, 0.68);
+      color: var(--cream);
+      font: inherit;
+      font-size: 15px;
+    }
+
+    input,
+    select {
+      min-height: 42px;
+      padding: 0 11px;
+    }
+
+    textarea {
+      min-height: 96px;
+      resize: vertical;
+      padding: 11px;
+      line-height: 1.45;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: rgba(240, 191, 105, 0.5);
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(240, 191, 105, 0.09);
+    }
+
+    fieldset {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      border: 0;
+    }
+
+    .checkbox-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .checkbox-list label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 36px;
+      padding: 8px 9px;
+      border: 1px solid rgba(244, 234, 214, 0.1);
+      border-radius: 9px;
+      background: rgba(244, 234, 214, 0.035);
+      color: rgba(244, 234, 214, 0.78);
+      cursor: pointer;
+      font-size: 13px;
+      letter-spacing: 0;
+      text-transform: none;
+      font-weight: 500;
+    }
+
+    .checkbox-list input {
+      width: auto;
+      min-height: auto;
+      accent-color: var(--brass);
+    }
+
+    .form-note,
+    .form-status {
+      margin: 0;
+      color: rgba(244, 234, 214, 0.62);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .form-status {
+      min-height: 1.45em;
+      color: rgba(240, 191, 105, 0.88);
     }
 
     footer {
@@ -438,7 +555,9 @@
       .feature-grid,
       .example-grid,
       .trust-grid,
-      .beta-panel {
+      .beta-panel,
+      .field-grid,
+      .checkbox-list {
         grid-template-columns: 1fr;
       }
     }
@@ -500,22 +619,22 @@
         <img class="brand-logo" src="assets/steel-guitar-rag-logo-transparent.png" alt="Steel Guitar RAG">
       </a>
       <div class="header-actions">
-        <span class="access-note">Private beta access preview</span>
-        <a class="backstage-link" id="backstage-cta" href="#beta">Get a Backstage Pass</a>
+        <span class="access-note">Interest list now open</span>
+        <a class="backstage-link" href="#interest-form">Request early access</a>
       </div>
     </header>
 
     <main id="top">
       <section class="hero" aria-labelledby="hero-title">
-        <p class="eyebrow">Private beta coming</p>
+        <p class="eyebrow">Private beta in preparation</p>
         <h1 id="hero-title">Source-backed AI for pedal steel players.</h1>
         <p class="hero-copy">Steel Guitar RAG helps with gear, tone, E9 copedent questions, practice, forum wisdom, and learning paths by treating steel-specific source material as evidence.</p>
         <div class="hero-actions">
-          <a class="button" href="#beta">Join the private beta</a>
+          <a class="button" href="#interest-form">Join the interest list</a>
           <a class="ghost-button" href="#examples">See example questions</a>
-          <a class="ghost-button" id="hero-backstage-cta" href="#beta">Get a Backstage Pass</a>
+          <a class="ghost-button" href="#interest-form">Request early access</a>
         </div>
-        <p class="beta-note">Live AI access is not public yet. During private beta, asking Steel Guitar RAG will require login and member access.</p>
+        <p class="beta-note">Live AI access requires login and is not public yet. This public page only collects interest while the corpus and beta access model are prepared.</p>
       </section>
 
       <section class="section" aria-labelledby="helps-title">
@@ -578,13 +697,51 @@
       <section class="beta-panel" id="beta" aria-labelledby="beta-title">
         <div>
           <p class="section-kicker">Not public yet</p>
-          <h2 class="section-heading" id="beta-title">Private beta access is coming.</h2>
-          <p>Join the list to hear when Steel Guitar RAG is ready for invited players. Live AI access will require login during private beta.</p>
+          <h2 class="section-heading" id="beta-title">Request early access.</h2>
+          <p>Join the interest list to hear when Steel Guitar RAG is ready for invited players. Live AI access requires login and is not public yet.</p>
         </div>
-        <div class="example-actions">
-          <a class="button" href="mailto:hello@steelguitarrag.com?subject=Steel%20Guitar%20RAG%20private%20beta">Join the private beta</a>
-          <a class="ghost-button" href="#examples">See example questions</a>
-        </div>
+        <form class="interest-form" id="interest-form" action="/api/interest" method="post">
+          <div class="field-grid">
+            <div class="field">
+              <label for="interest-name">Name</label>
+              <input id="interest-name" name="name" type="text" autocomplete="name" placeholder="Your name">
+            </div>
+            <div class="field">
+              <label for="interest-email">Email</label>
+              <input id="interest-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+            </div>
+            <div class="field is-wide">
+              <label for="player-level">Player level, optional</label>
+              <select id="player-level" name="playerLevel">
+                <option value="">Choose one if you like</option>
+                <option value="new">New to pedal steel</option>
+                <option value="returning">Returning player</option>
+                <option value="working">Working player</option>
+                <option value="teacher">Teacher or mentor</option>
+                <option value="builder-tech">Builder or tech</option>
+              </select>
+            </div>
+          </div>
+          <fieldset>
+            <legend>What would you use it for?</legend>
+            <div class="checkbox-list">
+              <label><input type="checkbox" name="interests" value="gear-tone"> Gear and tone</label>
+              <label><input type="checkbox" name="interests" value="e9-copedent"> E9 copedents</label>
+              <label><input type="checkbox" name="interests" value="practice"> Practice plans</label>
+              <label><input type="checkbox" name="interests" value="forum-wisdom"> Forum wisdom</label>
+              <label><input type="checkbox" name="interests" value="learning-paths"> Learning paths</label>
+              <label><input type="checkbox" name="interests" value="troubleshooting"> Troubleshooting</label>
+            </div>
+          </fieldset>
+          <div class="field">
+            <label for="interest-message">Message, optional</label>
+            <textarea id="interest-message" name="message" placeholder="Tell us what you hope Steel Guitar RAG can help you with."></textarea>
+          </div>
+          <input type="hidden" name="turnstileToken" id="turnstile-token" value="">
+          <p class="form-note">No live AI access is opened by this form. Turnstile spam protection will be connected before broader public use.</p>
+          <button class="button" type="submit">Join the interest list</button>
+          <p class="form-status" id="interest-form-status" role="status" aria-live="polite"></p>
+        </form>
       </section>
     </main>
 
@@ -596,13 +753,43 @@
 
   <script>
     (() => {
-      const storageKey = "steel-guitar-rag.mockAccessState.v1";
-      const isMember = localStorage.getItem(storageKey) === "member";
-      const label = isMember ? "Go Backstage" : "Get a Backstage Pass";
+      const form = document.querySelector("#interest-form");
+      const status = document.querySelector("#interest-form-status");
 
-      document.querySelectorAll("#backstage-cta, #hero-backstage-cta").forEach((link) => {
-        link.textContent = label;
-        link.setAttribute("aria-label", label);
+      function valuesFor(formData, name) {
+        return formData.getAll(name).map((value) => String(value)).filter(Boolean);
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        status.textContent = "Sending your request...";
+
+        const formData = new FormData(form);
+        const payload = {
+          name: String(formData.get("name") || "").trim(),
+          email: String(formData.get("email") || "").trim(),
+          playerLevel: String(formData.get("playerLevel") || "").trim(),
+          interests: valuesFor(formData, "interests"),
+          message: String(formData.get("message") || "").trim(),
+          turnstileToken: String(formData.get("turnstileToken") || "").trim()
+        };
+
+        try {
+          const response = await fetch("/api/interest", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          const result = await response.json().catch(() => ({}));
+          if (!response.ok || !result.ok) {
+            status.textContent = result.error || "That did not go through. Please check your email and try again.";
+            return;
+          }
+          form.reset();
+          status.textContent = "Thanks. You are on the interest list.";
+        } catch (error) {
+          status.textContent = "The interest form is not connected in this preview. Try again after deployment.";
+        }
       });
     })();
   </script>

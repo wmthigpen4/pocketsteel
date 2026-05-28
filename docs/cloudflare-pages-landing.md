@@ -13,6 +13,14 @@ Do not connect the public root site to live RAG, Ollama, Chroma, private corpus 
 
 The output directory is intentionally static. It should not include `/api/answer`, backend code, embeddings, indexes, raw corpus files, private transcripts, or local environment files.
 
+The only public API route planned for this landing deployment is:
+
+```text
+POST /api/interest
+```
+
+That route captures interest-list submissions only. It must not call live RAG, Ollama, Chroma, or corpus services.
+
 ## Cloudflare Pages Setup
 
 1. In Cloudflare Pages, create a new project connected to the GitHub repository.
@@ -28,7 +36,81 @@ The output directory is intentionally static. It should not include `/api/answer
    - `index.html` loads as the root page.
    - Logo and stage background assets load from `/assets/`.
    - There are no calls to `/api/answer`.
-   - The Backstage Pass CTA points to the beta note, not to the private app.
+   - The early-access CTAs point to the interest form, not to the private app.
+   - `POST /api/interest` returns success for a valid email.
+
+## Interest Form
+
+The public landing page includes an early-access interest form with:
+
+- name
+- email
+- player level, optional
+- interest checkboxes
+- optional message
+
+The form posts JSON to:
+
+```text
+/api/interest
+```
+
+The Cloudflare Pages Function lives at:
+
+```text
+functions/api/interest.js
+```
+
+It validates email, rejects obviously invalid addresses, adds a timestamp and generated id, and returns JSON. It has placeholder Turnstile support through a `turnstileToken` field, but Turnstile verification is intentionally skipped until a site key/secret are configured.
+
+## Required Cloudflare Binding
+
+Preferred storage binding:
+
+```text
+STEEL_RAG_INTEREST_D1
+```
+
+Create a D1 database table before relying on persistent capture:
+
+```sql
+create table if not exists interest_submissions (
+  id text primary key,
+  submitted_at text not null,
+  name text,
+  email text not null,
+  player_level text,
+  interests_json text not null,
+  message text,
+  turnstile_token_present integer not null default 0,
+  user_agent text,
+  cf_ray text
+);
+```
+
+Alternative storage binding:
+
+```text
+STEEL_RAG_INTEREST_KV
+```
+
+If neither binding is configured, the endpoint returns success with `stored: false`. This keeps local/dev previews from failing loudly, but production should configure one binding before collecting real interest.
+
+## Viewing or Exporting Submissions
+
+For D1, query or export rows from Cloudflare:
+
+```bash
+wrangler d1 execute <database-name> --command "select submitted_at, email, name, player_level, interests_json from interest_submissions order by submitted_at desc limit 50;"
+```
+
+For KV, list keys with the `interest:` prefix, then read values:
+
+```bash
+wrangler kv key list --binding STEEL_RAG_INTEREST_KV --prefix interest:
+```
+
+Email routing for `hello@steelguitarrag.com` should be configured separately in Cloudflare Email Routing or another mail provider. The interest form does not send email yet.
 
 ## Custom Domain Plan
 
