@@ -13,7 +13,9 @@ venv/
 # Local environment and credentials
 .env
 .env.*
+*.env
 !.env.example
+private-preview.env
 *.pem
 *.key
 *.crt
@@ -26,8 +28,12 @@ credentials/
 *.log
 logs/
 run-logs/
+.wrangler/
 
 # Local corpus and generated artifacts
+archive/
+corpus-v2/
+rag-data/
 data/raw/
 data/processed/
 data/indexes/
