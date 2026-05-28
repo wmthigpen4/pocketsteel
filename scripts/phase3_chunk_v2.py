@@ -95,9 +95,11 @@ def record_risk_flags(record: Mapping[str, Any]) -> set[str]:
     role = role_for(record)
     if "quote_marker_detected" in cleanup_flags:
         flags.add("quote_heavy_flagged")
-    mixed_roles = detected_roles - {role, "answer_advice", "question"}
+    cleaned_artifact_roles = {"contact_block", "gear_signature"}
+    mixed_roles = detected_roles - {role, "answer_advice", "question"} - cleaned_artifact_roles
     if role == ANSWER_ROLE and mixed_roles:
         flags.add("mixed_topic_flagged")
+        flags.add("mixed_topic_quarantined")
     return flags
 
 
@@ -139,7 +141,8 @@ def make_chunk(
     if "tiny_low_value_flagged" in cleanup_flags:
         quality = min(quality, 0.35)
     if "mixed_topic_flagged" in cleanup_flags:
-        noise_score = max(noise_score, 0.45)
+        noise_score = max(noise_score, 0.65)
+        quality = min(quality, 0.35)
     return {
         "chunk_id": chunk_id_for(thread_id, chunk_role, chunk_index, text, records),
         "source_system": first.get("source_system") or "",

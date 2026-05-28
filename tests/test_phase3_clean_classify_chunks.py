@@ -59,7 +59,7 @@ def test_signatures_are_flagged_without_destroying_answer_body() -> None:
     assert "Use a 500K pot" in cleaned["answer_text"]
     assert "Zum D-10" not in cleaned["answer_text"]
     assert "Zum D-10" in cleaned["signature_text"]
-    assert cleaned["chunk_role"] == "gear_signature"
+    assert cleaned["chunk_role"] == "answer_advice"
     assert "signature_removed" in cleaned["cleanup_flags"]
 
 
@@ -81,6 +81,63 @@ def test_answer_advice_like_chunks_are_preserved() -> None:
     assert cleaned["chunk_role"] == "answer_advice"
     assert cleaned["answer_text"] == text
     assert cleaned["answer_density"] > 0.3
+
+
+def test_useful_advice_with_price_or_ebay_language_is_not_automatically_sale_wanted() -> None:
+    row = base_chunk(
+        "A used Dunlop pot might be $25 on eBay, but I would first check the sweep and use a 100K pot because "
+        "that is what most wah pedals expect."
+    )
+
+    cleaned = clean_and_classify_chunk(row)
+
+    assert cleaned["chunk_role"] == "answer_advice"
+    assert "sale_wanted" not in cleaned["detected_roles"]
+    assert "use a 100K pot" in cleaned["answer_text"]
+
+
+def test_contact_details_are_removed_while_useful_advice_is_preserved_when_possible() -> None:
+    row = base_chunk(
+        "Email me at picker@example.com if you want, but check the ground because a bad cable can hum. "
+        "Try another cable before replacing the pickup."
+    )
+
+    cleaned = clean_and_classify_chunk(row)
+
+    assert cleaned["chunk_role"] == "answer_advice"
+    assert "picker@example.com" not in cleaned["answer_text"]
+    assert "[contact removed]" in cleaned["answer_text"]
+    assert "check the ground" in cleaned["answer_text"]
+    assert "contact_block" in cleaned["detected_roles"]
+
+
+def test_inline_gear_signatures_are_removed_from_answer_advice_text() -> None:
+    row = base_chunk(
+        "Check the speaker connection first because a loose wire can buzz. "
+        "Try another cable before replacing parts. "
+        "Dave - Zum D-10, Nashville 400, Goodrich volume pedal, Hilton pedal"
+    )
+
+    cleaned = clean_and_classify_chunk(row)
+
+    assert cleaned["chunk_role"] == "answer_advice"
+    assert "Check the speaker connection" in cleaned["answer_text"]
+    assert "Zum D-10" not in cleaned["answer_text"]
+    assert "Zum D-10" in cleaned["signature_text"]
+    assert "inline_gear_signature_removed" in cleaned["cleanup_flags"]
+
+
+def test_quote_heavy_advice_is_not_mislabeled_as_event_when_event_terms_do_not_dominate() -> None:
+    row = base_chunk(
+        "Brad wrote: this amp buzzed at the show. Dave wrote: I would check the speaker cable because "
+        "a loose plug can buzz. Lee wrote: try another ground before replacing the amp."
+    )
+
+    cleaned = clean_and_classify_chunk(row)
+
+    assert cleaned["chunk_role"] == "answer_advice"
+    assert "event" not in cleaned["detected_roles"]
+    assert "quote_marker_detected" in cleaned["cleanup_flags"]
 
 
 def test_source_metadata_and_post_identity_are_preserved_when_available() -> None:

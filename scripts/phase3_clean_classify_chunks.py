@@ -84,6 +84,10 @@ EVENT_RE = re.compile(
     r"workshop|steel show|tsga|isgc)\b",
     re.IGNORECASE,
 )
+EVENT_STRONG_RE = re.compile(
+    r"\b(?:jamboree|convention|seminar|festival|concert|meeting|schedule|calendar|workshop|steel show|tsga|isgc)\b",
+    re.IGNORECASE,
+)
 MEMORIAL_RE = re.compile(
     r"\b(?:rip|r\.i\.p\.|rest in peace|passed away|sad to hear|condolences|memorial|obituary|funeral|"
     r"prayers|will be missed)\b",
@@ -218,6 +222,45 @@ def split_signature(text: str, flags: set[str]) -> tuple[str, str]:
     return text, ""
 
 
+def split_inline_gear_signature(text: str, signature_text: str, flags: set[str]) -> tuple[str, str]:
+    """Remove short rig-list tails that were flattened onto an answer line."""
+    inline_match = re.search(r"\b[A-Z][A-Za-z.'-]+(?:\s+[A-Z][A-Za-z.'-]+)?\s[-/]\s.+$", text)
+    if inline_match:
+        tail = inline_match.group(0).strip()
+        if word_count(tail) <= 80 and len(GEAR_RE.findall(tail)) >= 3:
+            body = compact_space(text[: inline_match.start()])
+            if word_count(body) >= 5:
+                flags.add("inline_gear_signature_removed")
+                merged_signature = compact_space(f"{signature_text}\n{tail}" if signature_text else tail)
+                return body, merged_signature
+
+    words = text.split()
+    if len(words) < 14:
+        return text, signature_text
+
+    for tail_word_count in (24, 32, 44, 60):
+        if len(words) <= tail_word_count:
+            continue
+        tail = " ".join(words[-tail_word_count:])
+        gear_hits = len(GEAR_RE.findall(tail))
+        if gear_hits < 3:
+            continue
+        has_signature_shape = bool(
+            re.search(r"(?:\s[-/]\s|\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\s*[-/]\s)", tail)
+            or re.search(r"\b(?:D-?10|SD-?10|S-?10|U-?12)\b", tail, re.IGNORECASE)
+        )
+        if not has_signature_shape:
+            continue
+        body = " ".join(words[:-tail_word_count])
+        if word_count(body) < 5:
+            continue
+        flags.add("inline_gear_signature_removed")
+        merged_signature = compact_space(f"{signature_text}\n{tail}" if signature_text else tail)
+        return compact_space(body), merged_signature
+
+    return text, signature_text
+
+
 def cleanup_text(raw_text: str, thread_title: str = "") -> tuple[str, str, list[str]]:
     flags: set[str] = set()
     text = compact_space(raw_text or "")
@@ -227,6 +270,7 @@ def cleanup_text(raw_text: str, thread_title: str = "") -> tuple[str, str, list[
     text = remove_navigation_lines(text, flags)
     text = strip_quote_markers(text, flags)
     text, signature_text = split_signature(text, flags)
+    text, signature_text = split_inline_gear_signature(text, signature_text, flags)
     text = remove_repeated_sentences(text, flags)
     text = compact_space(text)
     return text, compact_space(signature_text), sorted(flags)
@@ -238,23 +282,35 @@ def detect_roles(text: str, raw_text: str, signature_text: str, links: list[Any]
     answer_hits = len(ANSWER_RE.findall(text))
     question_hits = len(QUESTION_RE.findall(text))
     quote_hits = len(QUOTE_RE.findall(raw_text))
+    sale_hits = len(SALE_RE.findall(text))
+    event_hits = len(EVENT_RE.findall(text))
+    strong_event_hits = len(EVENT_STRONG_RE.findall(text))
+    opinion_hits = len(OPINION_RE.findall(text))
+    advice_like = bool(answer_hits >= 4 or ADVICE_RE.search(text))
+    question_like = bool(question_hits and not ADVICE_RE.search(text) and tokens <= 220)
+    sale_dominates = bool(sale_hits and not advice_like)
+    event_dominates = bool(event_hits and not advice_like and (strong_event_hits or event_hits >= 2))
     roles = {
         "contact_block": "contact_block_removed" in cleanup_flags,
         "gear_signature": bool(signature_text or "gear_signature_removed" in cleanup_flags or "signature_removed" in cleanup_flags),
-        "sale_wanted": bool(SALE_RE.search(text)),
-        "event": bool(EVENT_RE.search(text)),
+        "sale_wanted": sale_dominates,
+        "event": event_dominates,
         "memorial": bool(MEMORIAL_RE.search(text)),
         "joke_chatter": bool(CHATTER_RE.search(text) and answer_hits < 3),
         "link_only": bool(url_count and (tokens <= 80 or url_count / max(tokens, 1) > 0.05) and answer_hits < 2),
-        "question": bool(question_hits and not ADVICE_RE.search(text) and tokens <= 220),
-        "answer_advice": bool(answer_hits >= 4 or ADVICE_RE.search(text)),
-        "opinion": bool(OPINION_RE.search(text) and answer_hits < 3),
+        "question": question_like,
+        "answer_advice": advice_like,
+        "opinion": bool(opinion_hits and answer_hits < 2 and not event_dominates),
         "quote_heavy": quote_hits >= 3,
     }
     return roles
 
 
 def choose_role(roles: Mapping[str, bool]) -> str:
+    if roles.get("answer_advice"):
+        return "answer_advice"
+    if roles.get("question"):
+        return "question"
     for role in (
         "contact_block",
         "sale_wanted",
@@ -262,8 +318,6 @@ def choose_role(roles: Mapping[str, bool]) -> str:
         "event",
         "link_only",
         "gear_signature",
-        "question",
-        "answer_advice",
         "opinion",
         "joke_chatter",
     ):

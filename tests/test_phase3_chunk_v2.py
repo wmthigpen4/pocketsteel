@@ -135,7 +135,9 @@ def test_mixed_topic_content_is_flagged() -> None:
     chunks = build_chunks(records)
 
     assert "mixed_topic_flagged" in chunks[0]["cleanup_flags"]
-    assert chunks[0]["noise_score"] >= 0.45
+    assert "mixed_topic_quarantined" in chunks[0]["cleanup_flags"]
+    assert chunks[0]["noise_score"] >= 0.65
+    assert chunks[0]["quality_score"] <= 0.35
 
 
 def test_quote_heavy_content_is_flagged() -> None:
