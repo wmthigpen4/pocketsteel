@@ -159,6 +159,30 @@ Auth mode is selected by passing `answer_auth_mode` when creating the WSGI app,
 by the `--answer-auth-mode` CLI flag, or by `STEEL_RAG_ANSWER_AUTH_MODE`.
 Unknown or unset mode defaults to `production`.
 
+Auth provider is selected by passing `auth_provider` when creating the WSGI app,
+by the `--auth-provider` CLI flag, or by `STEEL_RAG_AUTH_PROVIDER`.
+
+Provider values:
+
+- `scaffold`: reads `X-Steel-Rag-Access-Role` in production-like mode. This is
+  only a pre-Cloudflare scaffold and must not be used for public beta.
+- `cloudflare_access`: reads `Cf-Access-Jwt-Assertion`, validates the Access JWT
+  issuer, audience, expiry/not-before, and RS256 signature against the Access
+  JWKS, then maps the verified email to `beta_user` or `admin` from allowlists.
+  Browser-supplied role headers and local-dev mock headers are ignored in this
+  provider unless `STEEL_RAG_ANSWER_AUTH_MODE=local_dev`.
+
+Cloudflare Access provider configuration:
+
+- `STEEL_RAG_AUTH_PROVIDER=cloudflare_access`
+- `STEEL_RAG_CF_ACCESS_ISSUER`: expected Access issuer, for example
+  `https://<team>.cloudflareaccess.com`
+- `STEEL_RAG_CF_ACCESS_AUD`: Access application audience/AUD tag
+- `STEEL_RAG_CF_ACCESS_JWKS_URL`: optional override; defaults to
+  `<issuer>/cdn-cgi/access/certs`
+- `STEEL_RAG_BETA_USER_EMAILS`: comma-separated beta allowlist
+- `STEEL_RAG_ADMIN_EMAILS`: comma-separated admin allowlist
+
 These role headers are scaffolding only. Before public beta, the trusted role
 must come from real server-side auth/session validation, not directly from a
 browser-controlled header.
@@ -193,7 +217,7 @@ Request:
 ```http
 POST /api/answer
 Content-Type: application/json
-X-Steel-Rag-Access-Role: beta_user
+Cf-Access-Jwt-Assertion: <Cloudflare Access JWT>
 ```
 
 ```json
@@ -276,6 +300,24 @@ Missing production auth returns `401 Unauthorized`:
 ```json
 {
   "error": "/api/answer requires authenticated beta_user or admin access"
+}
+```
+
+Missing Cloudflare Access JWT in `cloudflare_access` mode returns
+`401 Unauthorized`:
+
+```json
+{
+  "error": "/api/answer requires Cloudflare Access identity"
+}
+```
+
+Invalid Cloudflare Access JWT in `cloudflare_access` mode returns
+`401 Unauthorized`:
+
+```json
+{
+  "error": "/api/answer requires valid Cloudflare Access identity"
 }
 ```
 

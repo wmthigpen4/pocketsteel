@@ -6,7 +6,10 @@ from pathlib import Path
 from pocketsteel.access_control import (
     ACCESS_ROLES,
     ANSWER_AUTH_MODE_ENV,
+    AUTH_PROVIDER_ENV,
+    CLOUDFLARE_ACCESS_AUTH_PROVIDER,
     DEV_ACCESS_ROLE_HEADER,
+    SCAFFOLD_AUTH_PROVIDER,
     TRUSTED_AUTH_ROLE_HEADER,
     can_call_live_answer,
     normalize_access_role,
@@ -17,6 +20,14 @@ from pocketsteel.answer_usage import (
     RATE_LIMIT_WINDOW_SECONDS_ENV,
 )
 from pocketsteel.answering import VALID_MODES
+from pocketsteel.cloudflare_access import (
+    BETA_USER_EMAILS_ENV,
+    ADMIN_EMAILS_ENV,
+    CLOUDFLARE_ACCESS_AUD_ENV,
+    CLOUDFLARE_ACCESS_ISSUER_ENV,
+    CLOUDFLARE_ACCESS_JWKS_URL_ENV,
+    CLOUDFLARE_ACCESS_JWT_HEADER,
+)
 
 
 FIXTURE = Path("tests/fixtures/api_contract_mock_response.json")
@@ -70,3 +81,12 @@ def test_access_role_contract_gates_live_answer_access() -> None:
     assert RATE_LIMIT_ENABLED_ENV == "STEEL_RAG_ANSWER_RATE_LIMIT_ENABLED"
     assert RATE_LIMIT_MAX_REQUESTS_ENV == "STEEL_RAG_ANSWER_RATE_LIMIT_MAX_REQUESTS"
     assert RATE_LIMIT_WINDOW_SECONDS_ENV == "STEEL_RAG_ANSWER_RATE_LIMIT_WINDOW_SECONDS"
+    assert AUTH_PROVIDER_ENV == "STEEL_RAG_AUTH_PROVIDER"
+    assert SCAFFOLD_AUTH_PROVIDER == "scaffold"
+    assert CLOUDFLARE_ACCESS_AUTH_PROVIDER == "cloudflare_access"
+    assert CLOUDFLARE_ACCESS_JWT_HEADER == "Cf-Access-Jwt-Assertion"
+    assert CLOUDFLARE_ACCESS_ISSUER_ENV == "STEEL_RAG_CF_ACCESS_ISSUER"
+    assert CLOUDFLARE_ACCESS_AUD_ENV == "STEEL_RAG_CF_ACCESS_AUD"
+    assert CLOUDFLARE_ACCESS_JWKS_URL_ENV == "STEEL_RAG_CF_ACCESS_JWKS_URL"
+    assert BETA_USER_EMAILS_ENV == "STEEL_RAG_BETA_USER_EMAILS"
+    assert ADMIN_EMAILS_ENV == "STEEL_RAG_ADMIN_EMAILS"

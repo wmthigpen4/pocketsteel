@@ -27,7 +27,7 @@ Boundaries:
 
 ## Local App Command
 
-Use `production` auth scaffold mode for any preview route. `local_dev` is only for local smoke tests and must not be accepted on a public hostname unless the entire hostname is explicitly isolated as a short-lived dev/test route behind Cloudflare Access and never treated as beta access.
+Use `production` auth mode with the `cloudflare_access` provider for any preview route. `local_dev` is only for local smoke tests and must not be accepted on a public hostname unless the entire hostname is explicitly isolated as a short-lived dev/test route behind Cloudflare Access and never treated as beta access.
 
 Planning command:
 
@@ -39,10 +39,15 @@ PYTHONPATH=. \
 STEEL_RAG_CHROMA_PATH="/Users/cory/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma" \
 STEEL_RAG_CHROMA_COLLECTION="steel_guitar_unified" \
 STEEL_RAG_ANSWER_AUTH_MODE="production" \
+STEEL_RAG_AUTH_PROVIDER="cloudflare_access" \
+STEEL_RAG_CF_ACCESS_ISSUER="https://<team>.cloudflareaccess.com" \
+STEEL_RAG_CF_ACCESS_AUD="<cloudflare-access-aud-tag>" \
+STEEL_RAG_BETA_USER_EMAILS="tester@example.com" \
+STEEL_RAG_ADMIN_EMAILS="owner@example.com" \
 STEEL_RAG_ANSWER_PROVIDER="ollama" \
 STEEL_RAG_CHAT_MODEL="<approved local Ollama chat model>" \
 OLLAMA_URL="http://127.0.0.1:11434" \
-.venv/bin/python rag_api.py --host 127.0.0.1 --port <APP_PORT>
+.venv/bin/python rag_api.py --host 127.0.0.1 --port <APP_PORT> --auth-provider cloudflare-access
 ```
 
 Notes:
@@ -50,8 +55,12 @@ Notes:
 - `STEEL_RAG_CHROMA_PATH` must point to the approved existing local Chroma path.
 - `STEEL_RAG_CHROMA_COLLECTION` should match the approved collection, currently expected to be `steel_guitar_unified` for the unified corpus.
 - `STEEL_RAG_ANSWER_AUTH_MODE=production` ignores the local dev mock access header.
+- `STEEL_RAG_AUTH_PROVIDER=cloudflare_access` validates `Cf-Access-Jwt-Assertion` server-side and derives the access role from verified email allowlists.
+- `STEEL_RAG_CF_ACCESS_ISSUER` must match the Cloudflare Access team issuer.
+- `STEEL_RAG_CF_ACCESS_AUD` must match the Access application AUD tag.
+- `STEEL_RAG_BETA_USER_EMAILS` and `STEEL_RAG_ADMIN_EMAILS` must be explicit comma-separated allowlists.
 - `OLLAMA_URL` must stay loopback-only.
-- This command is not enough for public beta because the current trusted role header is still scaffolding. Real server-side identity/session validation must own role assignment before live RAG is exposed.
+- This command is still not a deployment instruction. It is a planned service command to use only after Access app policy, tunnel ingress, rollback, and local service hardening have been reviewed.
 
 ## Cloudflare Tunnel Setup Steps
 
@@ -81,6 +90,16 @@ Recommended for preview:
 
 Important: Cloudflare Access is not a substitute for backend auth. `/api/answer` must still enforce backend authorization before retrieval or answer generation runs.
 
+Backend Access validation boundary:
+
+- Cloudflare Access sends the application JWT to the origin in `Cf-Access-Jwt-Assertion`.
+- The backend must run with `STEEL_RAG_AUTH_PROVIDER=cloudflare_access`.
+- The backend validates issuer, audience, expiry/not-before, and RS256 signature against the Access JWKS endpoint.
+- The backend maps the verified email to `admin` or `beta_user` only if it appears in `STEEL_RAG_ADMIN_EMAILS` or `STEEL_RAG_BETA_USER_EMAILS`.
+- Valid but unlisted Access identities receive `403 Forbidden`.
+- Missing or invalid Access JWTs receive `401 Unauthorized`.
+- Local dev mock headers are ignored in production/cloudflare mode.
+
 ## Security Requirements
 
 - Ollama must remain local-only at `http://127.0.0.1:11434`.
@@ -109,10 +128,14 @@ Fast rollback order:
 ## Manual Checklist Before Creating the Tunnel
 
 - [ ] Answer eval passing against the intended local service path.
-- [ ] Server-side `/api/answer` auth scaffold committed.
-- [ ] Real identity/login plan documented, even if not final.
+- [ ] Server-side `/api/answer` Cloudflare Access provider committed.
+- [ ] Real identity/login plan documented, including Access issuer, AUD tag, and email allowlists.
 - [ ] Production auth mode verified: `STEEL_RAG_ANSWER_AUTH_MODE=production`.
+- [ ] Cloudflare Access provider verified: `STEEL_RAG_AUTH_PROVIDER=cloudflare_access`.
 - [ ] Anonymous `/api/answer` returns `401 Unauthorized`.
+- [ ] Missing `Cf-Access-Jwt-Assertion` returns `401 Unauthorized`.
+- [ ] Invalid `Cf-Access-Jwt-Assertion` returns `401 Unauthorized`.
+- [ ] Valid unlisted Cloudflare Access email returns `403 Forbidden`.
 - [ ] Unauthorized non-live roles return `403 Forbidden`.
 - [ ] Local dev mock auth is disabled for the public route.
 - [ ] Rate-limit scaffold committed.
@@ -131,8 +154,8 @@ Fast rollback order:
 
 ## Blockers Before Actual Tunnel Routing
 
-- Do not route `app.steelguitarrag.com` to the Mac mini until `/api/answer` enforces backend auth.
-- Do not expose live RAG while role assignment depends on a browser-controlled header.
+- Do not route `app.steelguitarrag.com` to the Mac mini until `/api/answer` validates Cloudflare Access JWTs server-side.
+- Do not expose live RAG while role assignment depends on a browser-controlled header or scaffold provider.
 - Do not use `local_dev` auth mode for a real preview hostname.
 - Do not expose Ollama publicly.
 - Do not expose Chroma publicly.

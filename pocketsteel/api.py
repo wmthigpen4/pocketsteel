@@ -20,7 +20,13 @@ from pocketsteel.answering import (
     final_answer_quality_gate,
     parse_answer_request,
 )
-from pocketsteel.access_control import AnswerAuthMode, authorize_answer_request, configured_answer_auth_mode
+from pocketsteel.access_control import (
+    AnswerAuthMode,
+    AuthProvider,
+    authorize_answer_request,
+    configured_answer_auth_mode,
+    configured_auth_provider,
+)
 from pocketsteel.answer_usage import InMemoryAnswerRateLimiter, answer_rate_limit_key
 from pocketsteel.api_contract import AnswerResponse
 from pocketsteel.answer_contracts import enforce_answer_contract, infer_contract_intent
@@ -51,11 +57,15 @@ class RetrievalApi:
         answer_provider: AnswerProvider | None = None,
         *,
         answer_auth_mode: AnswerAuthMode | None = None,
+        auth_provider: AuthProvider | None = None,
+        cloudflare_verifier: Any = None,
         answer_rate_limiter: InMemoryAnswerRateLimiter | None = None,
     ) -> None:
         self.search_index = search_index
         self.answer_provider = configured_answer_provider(answer_provider)
         self.answer_auth_mode = answer_auth_mode or configured_answer_auth_mode()
+        self.auth_provider = auth_provider or configured_auth_provider()
+        self.cloudflare_verifier = cloudflare_verifier
         self.answer_rate_limiter = answer_rate_limiter or InMemoryAnswerRateLimiter.from_env()
         self.answer_request_log: list[dict[str, Any]] = []
 
@@ -82,11 +92,17 @@ class RetrievalApi:
                 return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"})
 
             request_payload = self._read_json_body(environ)
-            access = authorize_answer_request(environ, self.answer_auth_mode)
+            access = authorize_answer_request(
+                environ,
+                self.answer_auth_mode,
+                self.auth_provider,
+                self.cloudflare_verifier,
+            )
             if not access.allowed:
                 self._log_answer_attempt(
                     request_payload,
                     role=access.role,
+                    identity_email=access.identity_email,
                     access_status="blocked",
                     authorized=False,
                     error_status=access.status,
@@ -99,6 +115,7 @@ class RetrievalApi:
                 self._log_answer_attempt(
                     request_payload,
                     role=access.role,
+                    identity_email=access.identity_email,
                     access_status="rate_limited",
                     authorized=True,
                     error_status="429 Too Many Requests",
@@ -114,6 +131,7 @@ class RetrievalApi:
                 self._log_answer_attempt(
                     request_payload,
                     role=access.role,
+                    identity_email=access.identity_email,
                     access_status="authorized",
                     authorized=True,
                     error_status="400 Bad Request",
@@ -182,6 +200,7 @@ class RetrievalApi:
             self._log_answer_attempt(
                 request_payload,
                 role=access.role,
+                identity_email=access.identity_email,
                 access_status="authorized",
                 authorized=True,
                 source_count=len(sources),
@@ -244,6 +263,7 @@ class RetrievalApi:
         request_payload: dict[str, Any],
         *,
         role: str,
+        identity_email: str = "",
         access_status: str,
         authorized: bool,
         source_count: int | None = None,
@@ -255,6 +275,7 @@ class RetrievalApi:
         event = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "role": role,
+            "identityEmail": identity_email,
             "accessStatus": access_status,
             "authorized": authorized,
             "blocked": not authorized or bool(error_status),
@@ -285,12 +306,16 @@ def create_app(
     answer_provider: AnswerProvider | None = None,
     *,
     answer_auth_mode: AnswerAuthMode | None = None,
+    auth_provider: AuthProvider | None = None,
+    cloudflare_verifier: Any = None,
     answer_rate_limiter: InMemoryAnswerRateLimiter | None = None,
 ) -> RetrievalApi:
     return RetrievalApi(
         search_index or ChromaSearchIndex.from_chroma(),
         answer_provider=answer_provider,
         answer_auth_mode=answer_auth_mode,
+        auth_provider=auth_provider,
+        cloudflare_verifier=cloudflare_verifier,
         answer_rate_limiter=answer_rate_limiter,
     )
 
@@ -316,6 +341,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=None,
         help="Auth scaffold mode for /api/answer. Defaults to STEEL_RAG_ANSWER_AUTH_MODE or production.",
     )
+    parser.add_argument(
+        "--auth-provider",
+        choices=["scaffold", "cloudflare-access", "cloudflare_access"],
+        default=None,
+        help="Auth provider for production /api/answer requests. Defaults to STEEL_RAG_AUTH_PROVIDER or scaffold.",
+    )
     return parser
 
 
@@ -328,6 +359,7 @@ def main(argv: list[str] | None = None) -> int:
             model=args.model,
         ),
         answer_auth_mode=args.answer_auth_mode,
+        auth_provider=args.auth_provider,
     )
     with make_server(args.host, args.port, app) as server:
         print(f"Serving local retrieval API at http://{args.host}:{args.port}")

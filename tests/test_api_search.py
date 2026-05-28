@@ -18,6 +18,11 @@ from pocketsteel.curated_answers import CURATED_FACT_WEAK_WARNING, WEAK_RETRIEVA
 from pocketsteel.api import create_app
 from pocketsteel.access_control import DEV_ACCESS_ROLE_ENVIRON, TRUSTED_AUTH_ROLE_ENVIRON
 from pocketsteel.answer_usage import InMemoryAnswerRateLimiter
+from pocketsteel.cloudflare_access import (
+    CLOUDFLARE_ACCESS_JWT_ENVIRON,
+    CloudflareAccessClaims,
+    CloudflareAccessError,
+)
 from pocketsteel.rag_guardrails import INJECTION_WARNING
 
 
@@ -32,11 +37,16 @@ def call_app(
     answer_auth_mode: str = "local_dev",
     access_role: str | None = "beta_user",
     access_header: str = "dev",
+    auth_provider: str = "scaffold",
+    cloudflare_token: str | None = None,
+    cloudflare_verifier: Any = None,
 ) -> tuple[str, dict[str, str], dict[str, Any]]:
     app = create_app(
         search_index or fake_search_index(),
         answer_provider=answer_provider or FakeAnswerProvider(),
         answer_auth_mode=answer_auth_mode,
+        auth_provider=auth_provider,
+        cloudflare_verifier=cloudflare_verifier,
     )
     captured: dict[str, Any] = {}
     body = json.dumps(json_body or {}).encode("utf-8") if json_body is not None else b""
@@ -54,6 +64,8 @@ def call_app(
     }
     if access_role is not None:
         environ[DEV_ACCESS_ROLE_ENVIRON if access_header == "dev" else TRUSTED_AUTH_ROLE_ENVIRON] = access_role
+    if cloudflare_token is not None:
+        environ[CLOUDFLARE_ACCESS_JWT_ENVIRON] = cloudflare_token
     response_body = b"".join(app(environ, start_response))
     return captured["status"], captured["headers"], json.loads(response_body)
 
@@ -66,6 +78,7 @@ def call_existing_app(
     json_body: dict[str, Any] | None = None,
     access_role: str | None = "beta_user",
     access_header: str = "dev",
+    cloudflare_token: str | None = None,
 ) -> tuple[str, dict[str, str], dict[str, Any]]:
     captured: dict[str, Any] = {}
     body = json.dumps(json_body or {}).encode("utf-8") if json_body is not None else b""
@@ -84,6 +97,8 @@ def call_existing_app(
     }
     if access_role is not None:
         environ[DEV_ACCESS_ROLE_ENVIRON if access_header == "dev" else TRUSTED_AUTH_ROLE_ENVIRON] = access_role
+    if cloudflare_token is not None:
+        environ[CLOUDFLARE_ACCESS_JWT_ENVIRON] = cloudflare_token
     response_body = b"".join(app(environ, start_response))
     return captured["status"], captured["headers"], json.loads(response_body)
 
@@ -139,6 +154,25 @@ class FakeAnswerProvider:
         if request.mode == "practice":
             return "1. Isolate the move. 2. Repeat it slowly. 3. Move it to another fret. [1]"
         return "A source-backed answer grounded in the retrieved forum discussion. [1]"
+
+
+class FakeCloudflareVerifier:
+    def validate(self, token: str, config: Any) -> CloudflareAccessClaims:
+        if token == "invalid":
+            raise CloudflareAccessError("invalid test token")
+        email = {
+            "valid-beta": "beta@example.test",
+            "valid-admin": "admin@example.test",
+            "valid-unlisted": "stranger@example.test",
+        }.get(token)
+        if email is None:
+            raise CloudflareAccessError("unknown test token")
+        return CloudflareAccessClaims(
+            email=email,
+            issuer=config.issuer,
+            audience=(config.audience,),
+            raw={"email": email, "iss": config.issuer, "aud": config.audience},
+        )
 
 
 def fake_search_index(collection: FakeCollection | None = None) -> ChromaSearchIndex:
@@ -505,6 +539,156 @@ def test_api_answer_ignores_legacy_scaffold_headers() -> None:
 
     assert captured["status"] == "401 Unauthorized"
     assert payload == {"error": "/api/answer requires authenticated beta_user or admin access"}
+
+
+def test_api_answer_cloudflare_access_blocks_missing_jwt(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
+    search_index = FakeSearchIndex({"results": [], "warnings": []})
+
+    status, _, payload = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={"question": "cabinet drop compensator"},
+        search_index=search_index,
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        access_role=None,
+    )
+
+    assert status == "401 Unauthorized"
+    assert payload == {"error": "/api/answer requires Cloudflare Access identity"}
+    assert search_index.calls == []
+
+
+def test_api_answer_cloudflare_access_blocks_invalid_jwt(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
+    search_index = FakeSearchIndex({"results": [], "warnings": []})
+
+    status, _, payload = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={"question": "cabinet drop compensator"},
+        search_index=search_index,
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_token="invalid",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        access_role=None,
+    )
+
+    assert status == "401 Unauthorized"
+    assert payload == {"error": "/api/answer requires valid Cloudflare Access identity"}
+    assert search_index.calls == []
+
+
+def test_api_answer_cloudflare_access_allows_valid_beta_email(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
+
+    status, _, payload = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={"question": "cabinet drop compensator"},
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_token="valid-beta",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        access_role=None,
+    )
+
+    assert status == "200 OK"
+    assert "source-backed answer" in payload["answer"]
+
+
+def test_api_answer_cloudflare_access_allows_valid_admin_email(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_ADMIN_EMAILS", "admin@example.test")
+
+    status, _, payload = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={"question": "cabinet drop compensator"},
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_token="valid-admin",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        access_role=None,
+    )
+
+    assert status == "200 OK"
+    assert "source-backed answer" in payload["answer"]
+
+
+def test_api_answer_cloudflare_access_blocks_unlisted_valid_email(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
+    search_index = FakeSearchIndex({"results": [], "warnings": []})
+
+    status, _, payload = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={"question": "cabinet drop compensator"},
+        search_index=search_index,
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_token="valid-unlisted",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        access_role=None,
+    )
+
+    assert status == "403 Forbidden"
+    assert payload == {"error": "/api/answer requires beta_user or admin access"}
+    assert search_index.calls == []
+
+
+def test_api_answer_cloudflare_access_ignores_dev_mock_header(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
+    search_index = FakeSearchIndex({"results": [], "warnings": []})
+
+    status, _, payload = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={"question": "cabinet drop compensator"},
+        search_index=search_index,
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        access_role="beta_user",
+        access_header="dev",
+    )
+
+    assert status == "401 Unauthorized"
+    assert payload == {"error": "/api/answer requires Cloudflare Access identity"}
+    assert search_index.calls == []
+
+
+def test_api_answer_local_dev_mock_still_works_when_provider_is_cloudflare(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+
+    status, _, payload = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={"question": "cabinet drop compensator"},
+        answer_auth_mode="local_dev",
+        auth_provider="cloudflare_access",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        access_role="beta_user",
+        access_header="dev",
+    )
+
+    assert status == "200 OK"
+    assert "source-backed answer" in payload["answer"]
 
 
 def test_api_answer_logs_authorized_success() -> None:

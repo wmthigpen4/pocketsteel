@@ -4,10 +4,18 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
+
+from pocketsteel.cloudflare_access import (
+    CLOUDFLARE_ACCESS_JWT_ENVIRON,
+    CloudflareAccessConfig,
+    CloudflareAccessError,
+    CloudflareAccessJwtVerifier,
+)
 
 AccessRole = Literal["anonymous", "beta_user", "admin"]
 AnswerAuthMode = Literal["production", "local_dev"]
+AuthProvider = Literal["scaffold", "cloudflare_access"]
 
 ANONYMOUS: AccessRole = "anonymous"
 BETA_USER: AccessRole = "beta_user"
@@ -20,6 +28,10 @@ PRODUCTION_AUTH_MODE: AnswerAuthMode = "production"
 LOCAL_DEV_AUTH_MODE: AnswerAuthMode = "local_dev"
 ANSWER_AUTH_MODES: tuple[AnswerAuthMode, ...] = (PRODUCTION_AUTH_MODE, LOCAL_DEV_AUTH_MODE)
 ANSWER_AUTH_MODE_ENV = "STEEL_RAG_ANSWER_AUTH_MODE"
+AUTH_PROVIDER_ENV = "STEEL_RAG_AUTH_PROVIDER"
+SCAFFOLD_AUTH_PROVIDER: AuthProvider = "scaffold"
+CLOUDFLARE_ACCESS_AUTH_PROVIDER: AuthProvider = "cloudflare_access"
+AUTH_PROVIDERS: tuple[AuthProvider, ...] = (SCAFFOLD_AUTH_PROVIDER, CLOUDFLARE_ACCESS_AUTH_PROVIDER)
 
 TRUSTED_AUTH_ROLE_HEADER = "X-Steel-Rag-Access-Role"
 DEV_ACCESS_ROLE_HEADER = "X-Steel-Rag-Dev-Access-Role"
@@ -33,6 +45,7 @@ class AnswerAccessDecision:
     role: AccessRole
     status: str = "200 OK"
     error: str = ""
+    identity_email: str = ""
 
 
 def normalize_access_role(value: object) -> AccessRole:
@@ -63,14 +76,73 @@ def configured_answer_auth_mode() -> AnswerAuthMode:
     return normalize_answer_auth_mode(os.environ.get(ANSWER_AUTH_MODE_ENV))
 
 
-def authorize_answer_request(environ: dict[str, object], auth_mode: object = None) -> AnswerAccessDecision:
+def normalize_auth_provider(value: object) -> AuthProvider:
+    text = str(value or "").strip().lower().replace("-", "_")
+    if text in AUTH_PROVIDERS:
+        return text  # type: ignore[return-value]
+    return SCAFFOLD_AUTH_PROVIDER
+
+
+def configured_auth_provider() -> AuthProvider:
+    return normalize_auth_provider(os.environ.get(AUTH_PROVIDER_ENV))
+
+
+def _authorize_with_cloudflare_access(
+    environ: dict[str, object],
+    cloudflare_verifier: Any,
+) -> AnswerAccessDecision:
+    token = str(environ.get(CLOUDFLARE_ACCESS_JWT_ENVIRON) or "").strip()
+    if not token:
+        return AnswerAccessDecision(
+            allowed=False,
+            role=ANONYMOUS,
+            status="401 Unauthorized",
+            error="/api/answer requires Cloudflare Access identity",
+        )
+
+    config = CloudflareAccessConfig.from_env()
+    verifier = cloudflare_verifier or CloudflareAccessJwtVerifier()
+    try:
+        claims = verifier.validate(token, config)
+    except CloudflareAccessError:
+        return AnswerAccessDecision(
+            allowed=False,
+            role=ANONYMOUS,
+            status="401 Unauthorized",
+            error="/api/answer requires valid Cloudflare Access identity",
+        )
+
+    email = claims.email.strip().lower()
+    if email in config.admin_emails:
+        return AnswerAccessDecision(allowed=True, role=ADMIN, identity_email=email)
+    if email in config.beta_user_emails:
+        return AnswerAccessDecision(allowed=True, role=BETA_USER, identity_email=email)
+    return AnswerAccessDecision(
+        allowed=False,
+        role=ANONYMOUS,
+        status="403 Forbidden",
+        error="/api/answer requires beta_user or admin access",
+        identity_email=email,
+    )
+
+
+def authorize_answer_request(
+    environ: dict[str, object],
+    auth_mode: object = None,
+    auth_provider: object = None,
+    cloudflare_verifier: Any = None,
+) -> AnswerAccessDecision:
     """Authorize POST /api/answer without depending on a real provider yet.
 
-    Production mode reads only the trusted-auth placeholder header. Local-dev
-    mode may also read the explicit dev mock header used by tests and local UI.
+    Local-dev mode may read the explicit dev mock header used by tests and local
+    UI. In production mode, `cloudflare_access` derives roles only from a
+    verified Access JWT and configured email allowlists.
     """
 
     mode = normalize_answer_auth_mode(auth_mode or configured_answer_auth_mode())
+    if mode != LOCAL_DEV_AUTH_MODE and normalize_auth_provider(auth_provider or configured_auth_provider()) == CLOUDFLARE_ACCESS_AUTH_PROVIDER:
+        return _authorize_with_cloudflare_access(environ, cloudflare_verifier)
+
     trusted_role_value = environ.get(TRUSTED_AUTH_ROLE_ENVIRON)
     dev_role_value = environ.get(DEV_ACCESS_ROLE_ENVIRON) if mode == LOCAL_DEV_AUTH_MODE else None
     raw_role = trusted_role_value or dev_role_value
