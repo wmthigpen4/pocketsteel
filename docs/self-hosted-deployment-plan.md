@@ -354,6 +354,14 @@ Required before `app.steelguitarrag.com` reaches beta testers:
 
 Cloudflare Access reduces accidental exposure, but it is not enough by itself. The backend must independently reject unauthenticated `/api/answer` calls.
 
+Cloudflare Security Insights hardening note:
+
+- Finding: Low severity configuration suggestion, "Review unwanted AI crawlers with AI Labyrinth."
+- Recommended action: enable AI Labyrinth.
+- This is a low-severity hardening item, not a blocker for private preview.
+- It may be useful for the public landing page later, especially once `steelguitarrag.com` serves public content.
+- AI Labyrinth is not a replacement for Cloudflare Access, backend `/api/answer` auth, rate limits, request logging, or keeping Ollama and Chroma private.
+
 Prompt-injection guardrails:
 
 - Keep prompt-injection detection active for user questions.
