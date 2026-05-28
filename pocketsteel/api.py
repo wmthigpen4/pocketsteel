@@ -26,6 +26,12 @@ from pocketsteel.chroma_search import (
     ChromaSearchIndex,
     SearchResponse,
 )
+from pocketsteel.curated_answers import (
+    WEAK_RETRIEVAL_WARNING,
+    lookup_curated_answer,
+    retrieval_looks_weak_for_curated,
+)
+from pocketsteel.rag_guardrails import sanitize_retrieved_sources
 
 
 class RetrievalApi:
@@ -70,13 +76,30 @@ class RetrievalApi:
             )
             warnings = list(search_response.warnings)
             strong_sources = [source for source in search_response.results if float(source.get("score") or 0.0) > 0.0]
-            if not strong_sources:
+            sanitized = sanitize_retrieved_sources(strong_sources)
+            warnings.extend(sanitized.warnings)
+            strong_sources = sanitized.sources
+            curated_answer = lookup_curated_answer(answer_request.question, strong_sources)
+            if curated_answer is not None:
+                answer = curated_answer.answer
+                if retrieval_looks_weak_for_curated(answer_request.question, curated_answer, strong_sources):
+                    warnings.append(WEAK_RETRIEVAL_WARNING)
+                if answer_is_no_source(answer):
+                    sources = []
+                    warnings.append("no strong source match")
+                else:
+                    sources = concise_source_cards(strong_sources)
+            elif not strong_sources:
                 answer = "No strong source match found in the current corpus for that question."
                 sources: list[dict[str, Any]] = []
                 warnings.append("no strong source match")
             else:
                 answer = self.answer_provider.answer(answer_request, strong_sources)
-                sources = [] if answer_is_no_source(answer) else concise_source_cards(strong_sources)
+                if answer_is_no_source(answer):
+                    sources = []
+                    warnings.append("no strong source match")
+                else:
+                    sources = concise_source_cards(strong_sources)
             payload: AnswerResponse = {
                 "answer": answer,
                 "mode": answer_request.mode,

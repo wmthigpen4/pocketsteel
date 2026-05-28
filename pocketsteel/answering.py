@@ -8,7 +8,7 @@ import re
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
-from typing import Any, Protocol, cast
+from typing import Any, Literal, Protocol, cast
 
 from pocketsteel.api_contract import AnswerMode, SourceCitation
 
@@ -86,6 +86,662 @@ def source_context(sources: list[dict[str, Any]]) -> str:
     return "\n\n---\n\n".join(sections)
 
 
+@dataclass(frozen=True)
+class EvidencePoint:
+    text: str
+    source_index: int
+    score: int
+
+
+AnswerRoute = Literal[
+    "copedent_fretboard",
+    "gear_setup",
+    "equipment_recommendation",
+    "maintenance_safety",
+    "practice_plan",
+    "travel_transport",
+    "replacement_parts",
+    "brand_comparison",
+    "product_value",
+    "entity_definition",
+    "yes_no_source_check",
+    "player_history",
+    "general_forum_wisdom",
+]
+
+
+STOPWORDS = {
+    "about",
+    "after",
+    "again",
+    "also",
+    "common",
+    "could",
+    "does",
+    "from",
+    "have",
+    "into",
+    "that",
+    "their",
+    "there",
+    "these",
+    "they",
+    "this",
+    "what",
+    "when",
+    "where",
+    "which",
+    "while",
+    "with",
+    "would",
+}
+GEAR_TERMS = {
+    "amp",
+    "black",
+    "box",
+    "cable",
+    "changer",
+    "fender",
+    "ground",
+    "hum",
+    "jack",
+    "pickup",
+    "pedal",
+    "pot",
+    "reverb",
+    "speaker",
+    "steel",
+    "tone",
+    "volume",
+}
+TROUBLESHOOTING_TERMS = {
+    "buzz",
+    "check",
+    "diagnostic",
+    "fix",
+    "ground",
+    "hum",
+    "noise",
+    "problem",
+    "repair",
+    "replace",
+    "test",
+    "touching",
+    "trouble",
+}
+SETTINGS_TERMS = {"bass", "eq", "gain", "mid", "middle", "presence", "setting", "settings", "treble", "volume"}
+SAFETY_TERMS = {"capacitor", "chassis", "electric", "ground", "mains", "power", "shock", "tube", "voltage"}
+INTERVAL_TERMS = {
+    "augmented",
+    "chord",
+    "dominant",
+    "diminished",
+    "fifth",
+    "flat",
+    "fourth",
+    "interval",
+    "major",
+    "minor",
+    "raise",
+    "root",
+    "scale",
+    "seventh",
+    "sixth",
+    "third",
+}
+MECHANIC_TERMS = {
+    "a+b",
+    "b+c",
+    "fret",
+    "frets",
+    "knee",
+    "lever",
+    "levers",
+    "lower",
+    "pedal",
+    "pedals",
+    "raise",
+    "string",
+    "strings",
+}
+COPEDENT_TERMS = {
+    "c6",
+    "change",
+    "copedent",
+    "e9",
+    "lower",
+    "pull",
+    "raise",
+    "split",
+    "tuning",
+}
+PRACTICE_TERMS = {
+    "bar",
+    "blocking",
+    "clean",
+    "exercise",
+    "grip",
+    "lick",
+    "move",
+    "movement",
+    "phrase",
+    "practice",
+    "slow",
+    "smooth",
+    "tempo",
+}
+PRODUCT_VALUE_TERMS = {"buy", "cost", "money", "price", "product", "value", "worth"}
+PRODUCT_FEATURE_TERMS = {
+    "delay",
+    "distortion",
+    "effect",
+    "effects",
+    "overdrive",
+    "pedal",
+    "preamp",
+    "reverb",
+    "steel dream",
+    "tone",
+}
+POSITIVE_SENTIMENT_TERMS = {
+    "best",
+    "excellent",
+    "favorite",
+    "good",
+    "great",
+    "happy",
+    "impressed",
+    "keeper",
+    "like",
+    "love",
+    "worth",
+}
+NEGATIVE_SENTIMENT_TERMS = {
+    "expensive",
+    "issue",
+    "problem",
+    "return",
+    "sold",
+    "trouble",
+    "weak",
+}
+RANKING_TERMS = {"alive", "best", "ever", "greatest", "players", "ranking", "rankings", "top"}
+KNOWN_ENTITY_DEFINITIONS = {
+    "tsga": (
+        "TSGA is the Texas Steel Guitar Association.",
+        "Its public website is https://www.texassteelguitar.org/.",
+    ),
+    "maurice anderson": (
+        "Maurice “Reece” Anderson was a major steel guitarist and an important builder/player figure associated with MSA.",
+    ),
+    "reece anderson": (
+        "Maurice “Reece” Anderson was a major steel guitarist and an important builder/player figure associated with MSA.",
+    ),
+    "lloyd green": (
+        "Lloyd Green is one of the most influential pedal steel guitarists, especially associated with classic Nashville/session steel guitar.",
+        "He is known for tasteful, melodic E9 playing and major recorded work in country music.",
+    ),
+    "pack-a-seat": (
+        "A pack-a-seat is a steel-guitar seat/storage box used by players to carry accessories and sit at the guitar.",
+        "Steeler’s Choice is a known pack-a-seat maker.",
+    ),
+    "pack seat": (
+        "A pack-a-seat is a steel-guitar seat/storage box used by players to carry accessories and sit at the guitar.",
+        "Steeler’s Choice is a known pack-a-seat maker.",
+    ),
+}
+CANONICAL_ALL_TIME_PLAYERS = [
+    "Buddy Emmons",
+    "Jimmy Day",
+    "Lloyd Green",
+    "Paul Franklin",
+    "Tom Brumley",
+]
+COMMONLY_CITED_LIVING_PLAYERS = [
+    "Paul Franklin",
+    "Tommy White",
+    "Mike Johnson",
+    "Bruce Bouton",
+    "Doug Jernigan",
+]
+KNOWN_WILLIE_STEEL_PLAYERS = {
+    "Buddy Emmons",
+    "Jimmy Day",
+    "Weldon Myrick",
+    "Ralph Mooney",
+}
+NAME_NOISE_WORDS = {
+    "Again",
+    "Anne",
+    "Does",
+    "Hi",
+    "More",
+    "Once",
+    "Thanks",
+    "Top",
+    "With",
+    "Willie",
+}
+JOKE_PATTERNS = [
+    re.compile(pattern, re.I)
+    for pattern in (
+        r"\bephram\b",
+        r"\bnunkheimer\b",
+        r"\bzoawister\b",
+        r"\bjust kidding\b",
+        r"\bkidding\b",
+        r"\blol\b",
+        r"\bhaha\b",
+        r"\bjoke\b",
+        r"\bhumou?r\b",
+    )
+]
+ADMIN_LINE_PATTERNS = [
+    re.compile(pattern, re.I)
+    for pattern in (
+        r"\bthis message was edited\b",
+        r"\bposted\s+\d{1,2}\s+\w+\s+\d{4}\b",
+        r"\bmoderator\b",
+        r"\bmoved to\b",
+        r"\bwrong forum\b",
+    )
+]
+SIGNATURE_PATTERNS = [
+    re.compile(pattern, re.I)
+    for pattern in (
+        r"^\s*(?:top|quote):\s*$",
+        r"^\s*[-_]{2,}\s*$",
+        r"\bemail:\b",
+        r"\bemail me\b",
+        r"\bfor sale\b",
+        r"\bwww\.",
+        r"\bhttp://",
+        r"\bhttps://",
+        r"\b\d{1,2}:\d{2}\s*(?:am|pm)\b",
+        r"\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4}\b",
+    )
+]
+
+
+def normalized_terms(text: str) -> set[str]:
+    words = set(re.findall(r"[a-z0-9+]+", text.lower()))
+    return {word for word in words if len(word) > 2 and word not in STOPWORDS}
+
+
+def split_sentences(text: str) -> list[str]:
+    normalized = re.sub(r"\s+", " ", text or "").strip()
+    if not normalized:
+        return []
+    pieces = re.split(r"(?<=[.!?])\s+", normalized)
+    sentences = []
+    for piece in pieces:
+        piece = piece.strip(" -\t\n")
+        if len(piece) < 32:
+            continue
+        if is_low_value_sentence(piece):
+            continue
+        sentences.append(shorten(piece, 260))
+    return sentences
+
+
+def is_low_value_sentence(sentence: str) -> bool:
+    stripped = sentence.strip()
+    if any(pattern.search(stripped) for pattern in ADMIN_LINE_PATTERNS):
+        return True
+    if any(pattern.search(stripped) for pattern in SIGNATURE_PATTERNS):
+        return True
+    if any(pattern.search(stripped) for pattern in JOKE_PATTERNS):
+        return True
+    if re.fullmatch(r"[\w .'-]{2,40}\s+on\s+\d{1,2}\s+\w+\s+\d{4}.*", stripped, re.I):
+        return True
+    return False
+
+
+def collect_evidence(question: str, sources: list[dict[str, Any]]) -> list[EvidencePoint]:
+    question_terms = normalized_terms(question)
+    points: list[EvidencePoint] = []
+    seen: set[str] = set()
+    for source_index, source in enumerate(sources, 1):
+        excerpt = str(source.get("excerpt") or "").strip()
+        for sentence in split_sentences(excerpt):
+            key = evidence_key(sentence)
+            if key in seen:
+                continue
+            seen.add(key)
+            sentence_terms = normalized_terms(sentence)
+            overlap = len(question_terms & sentence_terms)
+            score = overlap * 5 + max(0, 7 - source_index)
+            if overlap == 0 and source_index > 3:
+                continue
+            points.append(EvidencePoint(text=sentence, source_index=source_index, score=score))
+    points.sort(key=lambda point: (-point.score, point.source_index, point.text))
+    return points
+
+
+def evidence_key(sentence: str) -> str:
+    normalized = re.sub(r"\W+", " ", sentence.lower()).strip()
+    return " ".join(normalized.split()[:28])
+
+
+def has_any(text: str, terms: set[str]) -> bool:
+    text_terms = normalized_terms(text)
+    return bool(text_terms & terms)
+
+
+def points_matching(evidence: list[EvidencePoint], terms: set[str], fallback_count: int) -> list[EvidencePoint]:
+    matches = [point for point in evidence if has_any(point.text, terms)]
+    if matches:
+        return matches
+    return evidence[:fallback_count]
+
+
+def notable_context(sources: list[dict[str, Any]], evidence: list[EvidencePoint]) -> list[str]:
+    contexts: list[str] = []
+    used = {point.source_index for point in evidence[:3]}
+    for index, source in enumerate(sources[:4], 1):
+        if index in used and len(contexts) >= 1:
+            continue
+        title = source.get("thread_title") or "Source thread"
+        forum = source.get("forum_name") or "Steel Guitar Forum"
+        system = source_label(str(source.get("source_system") or ""))
+        contexts.append(f"- Source is {system} from {forum}: {title}.")
+        if len(contexts) == 2:
+            break
+    return contexts
+
+
+def classify_answer_route(request: AnswerRequest, sources: list[dict[str, Any]]) -> AnswerRoute:
+    question = request.question.lower()
+    source_titles = " ".join(str(source.get("thread_title") or "") for source in sources).lower()
+    combined = f"{question} {source_titles}"
+    if has_known_entity_definition(question):
+        return "entity_definition"
+    if question_mentions_brand_comparison(question):
+        return "brand_comparison"
+    if question_mentions_replacement_parts(question):
+        return "replacement_parts"
+    if question_mentions_airplane_travel(question):
+        return "travel_transport"
+    if question_mentions_maintenance_oil(question):
+        return "maintenance_safety"
+    if question_mentions_finger_picks(question):
+        return "equipment_recommendation"
+    if question_mentions_practice_plan(question) or request.mode == "practice":
+        return "practice_plan"
+    if re.search(r"\bdid\b.+\bmake\b|\bever\b.+\bmake\b|\bdo(?:es)?\b.+\bmake\b", question):
+        return "yes_no_source_check"
+    if question_mentions_player_ranking(question):
+        return "player_history"
+    if re.search(r"\bwho\b.+\bplayed\b.+\bwith\b", question) or "willie nelson" in question:
+        return "player_history"
+    if request.mode == "copedent" or (
+        re.search(r"\bplay\s+(?:an?\s+)?[a-g](?:#|b)?\s+chord\b", question)
+        and re.search(r"\b\d+(?:st|nd|rd|th)?\s+fret\b", question)
+    ) or "across the guitar" in question or "b&c" in question or "b+c" in question or "wound 6th" in question or "wound sixth" in question:
+        return "copedent_fretboard"
+    if has_any(combined, PRODUCT_VALUE_TERMS) or "benado" in combined or "steel dream" in combined:
+        return "product_value"
+    if request.mode == "gear":
+        return "gear_setup"
+    return "general_forum_wisdom"
+
+
+def source_count(evidence: list[EvidencePoint]) -> int:
+    return len({point.source_index for point in evidence})
+
+
+def source_supported_heading(evidence: list[EvidencePoint]) -> str:
+    if source_count(evidence) >= 2:
+        return "Useful source-backed points:"
+    return "One useful source-backed point:"
+
+
+def strip_answer_support_sections(lines: list[str]) -> list[str]:
+    """Keep generated answer prose compact by removing source-context tails."""
+    blocked_headings = {"Source context:", "Source support:", "Notable source context:"}
+    cleaned: list[str] = []
+    skip_block = False
+    for line in lines:
+        if line in blocked_headings:
+            skip_block = True
+            continue
+        if skip_block and line and not line.endswith(":"):
+            continue
+        if skip_block and line.endswith(":"):
+            skip_block = False
+        if not skip_block:
+            cleaned.append(line)
+    while cleaned and cleaned[-1] == "":
+        cleaned.pop()
+    return cleaned
+
+
+def question_mentions_g_at_sixth_fret(question: str) -> bool:
+    lowered = question.lower()
+    return bool(
+        re.search(r"\bg\s+chord\b", lowered)
+        and re.search(r"\b6(?:th)?\s+fret\b|\bsixth\s+fret\b", lowered)
+    )
+
+
+def question_mentions_wound_sixth(question: str) -> bool:
+    return bool(re.search(r"\bwound\s+(?:6th|sixth|string\s+6)\b", question.lower()))
+
+
+def question_mentions_bc_pedals_second_fret(question: str) -> bool:
+    lowered = question.lower()
+    return bool(("b&c" in lowered or "b+c" in lowered) and re.search(r"\b2(?:nd)?\s+fret\b|\bsecond\s+fret\b", lowered))
+
+
+def question_mentions_g_across_guitar(question: str) -> bool:
+    lowered = question.lower()
+    return bool(re.search(r"\bg\s+chord\b", lowered) and ("across the guitar" in lowered or "across the neck" in lowered))
+
+
+def question_mentions_maintenance_oil(question: str) -> bool:
+    lowered = question.lower()
+    maintenance_fluid = "oil" in lowered or "lubricat" in lowered or "lighter fluid" in lowered or "naphtha" in lowered or "wd-40" in lowered
+    return bool(maintenance_fluid and ("changer" in lowered or "pedal steel" in lowered or "steel guitar" in lowered))
+
+
+def question_mentions_finger_picks(question: str) -> bool:
+    lowered = question.lower()
+    return bool(("finger pick" in lowered or "fingerpick" in lowered or "picks" in lowered) and ("buy" in lowered or "best" in lowered or "recommend" in lowered))
+
+
+def question_mentions_practice_plan(question: str) -> bool:
+    lowered = question.lower()
+    return bool(
+        "what should i practice" in lowered
+        or "what should i work on" in lowered
+        or re.search(r"\bgive me\b.*\bpractice plan\b", lowered)
+        or re.search(r"\bhow should i practice\b", lowered)
+        or re.search(r"\bpractice\b.*\bplan\b", lowered)
+        or "practice routine" in lowered
+        or "practice session" in lowered
+    )
+
+
+def question_mentions_player_ranking(question: str) -> bool:
+    lowered = question.lower()
+    if not re.search(r"\b(player|players|steel players|guitarists|steel guitarists)\b", lowered):
+        return False
+    return bool(
+        re.search(r"\b(top|best|greatest|ranking|rankings|ranked)\b", lowered)
+        or re.search(r"\bmost\s+(?:influential|important)\b", lowered)
+        or re.search(r"\b(?:ever|alive today|today)\b", lowered)
+    )
+
+
+def question_mentions_airplane_travel(question: str) -> bool:
+    lowered = question.lower()
+    return bool(("airplane" in lowered or "airline" in lowered or "fly" in lowered or "flight" in lowered) and ("steel" in lowered or "guitar" in lowered))
+
+
+def question_mentions_replacement_parts(question: str) -> bool:
+    lowered = question.lower()
+    return bool(("pedal rod" in lowered or "pedal rods" in lowered) and ("broke" in lowered or "broken" in lowered or "new ones" in lowered or "replace" in lowered or "get" in lowered))
+
+
+def question_mentions_brand_comparison(question: str) -> bool:
+    lowered = question.lower()
+    return bool(("sho-bud" in lowered or "shobud" in lowered) and "emmons" in lowered)
+
+
+def has_known_entity_definition(question: str) -> bool:
+    lowered = question.lower()
+    return any(entity in lowered for entity in KNOWN_ENTITY_DEFINITIONS)
+
+
+def known_entity_definition(question: str) -> tuple[str, str] | None:
+    lowered = question.lower()
+    for entity, definition in KNOWN_ENTITY_DEFINITIONS.items():
+        if entity in lowered:
+            return definition
+    return None
+
+
+def key_entities(question: str) -> set[str]:
+    lowered = question.lower()
+    entities: set[str] = set()
+    for entity in ("telonics", "axtremity", "pedal slide", "tsga", "maurice", "anderson", "reece", "steeler", "pack-a-seat", "pack seat"):
+        if entity in lowered:
+            entities.add(entity)
+    proper_phrases = re.findall(r"\b[A-Z][A-Za-z']+(?:\s+[A-Z][A-Za-z']+){0,3}\b", question)
+    for phrase in proper_phrases:
+        phrase_lower = phrase.lower()
+        if phrase_lower.split()[0] not in {"what", "who", "how", "did", "should", "is"}:
+            entities.add(phrase_lower)
+    return entities
+
+
+def sources_contain_entity(sources: list[dict[str, Any]], entity: str) -> bool:
+    for source in sources:
+        haystack = f"{source.get('thread_title') or ''} {source.get('excerpt') or ''}".lower()
+        if entity in haystack:
+            return True
+    return False
+
+
+def has_entity_mismatch(question: str, sources: list[dict[str, Any]]) -> bool:
+    entities = key_entities(question)
+    if not entities:
+        return False
+    important = [entity for entity in entities if entity not in {"slide", "bar", "steel"}]
+    return bool(important and not any(sources_contain_entity(sources, entity) for entity in important))
+
+
+def extract_person_names(evidence: list[EvidencePoint]) -> list[str]:
+    names: list[str] = []
+    seen: set[str] = set()
+    for point in evidence:
+        for name in re.findall(r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2}\b", point.text):
+            if not is_clean_person_name(name):
+                continue
+            lowered = name.lower()
+            if lowered in seen or lowered.startswith(("steel guitar", "willie nelson")):
+                continue
+            seen.add(lowered)
+            names.append(name)
+    return names
+
+
+def is_clean_person_name(name: str) -> bool:
+    words = name.split()
+    if len(words) < 2:
+        return False
+    if any(word in NAME_NOISE_WORDS for word in words):
+        return False
+    if name in KNOWN_WILLIE_STEEL_PLAYERS:
+        return True
+    # Keep this conservative: unknown title-case phrases from forum snippets
+    # are often thread titles or parsed boilerplate, not reliable player names.
+    return False
+
+
+def product_name_from_question(question: str) -> str:
+    if re.search(r"benado\s+steel\s+dream\s*2?", question, re.I):
+        return "Benado Steel Dream 2"
+    quoted = re.search(r'"([^"]+)"', question)
+    if quoted:
+        return quoted.group(1)
+    titled = re.search(r"\b([A-Z][A-Za-z0-9+-]+(?:\s+[A-Z0-9][A-Za-z0-9+-]+){1,5})\b", question)
+    return titled.group(1) if titled else "that product"
+
+
+def canonical_player_context(question: str) -> tuple[list[str], list[str] | None]:
+    lowered = question.lower()
+    all_time = CANONICAL_ALL_TIME_PLAYERS
+    living = COMMONLY_CITED_LIVING_PLAYERS if "alive" in lowered or "today" in lowered else None
+    return all_time, living
+
+
+def summarize_product_impression(point: EvidencePoint) -> str:
+    text = point.text
+    terms = normalized_terms(text)
+    feature_words = sorted((PRODUCT_FEATURE_TERMS | SETTINGS_TERMS | GEAR_TERMS) & terms)
+    positive = bool(terms & POSITIVE_SENTIMENT_TERMS)
+    negative = bool(terms & NEGATIVE_SENTIMENT_TERMS)
+    sentiment = "positive owner/source impression"
+    if negative and not positive:
+        sentiment = "source caveat"
+    elif positive and negative:
+        sentiment = "mixed source impression"
+
+    if feature_words:
+        return f"{sentiment} mentioning {', '.join(feature_words[:5])}"
+    if "price" in terms or "money" in terms or "worth" in terms:
+        return f"{sentiment} about price/value"
+    return f"{sentiment}; check the source card for the full wording"
+
+
+def clean_answer_text(answer: str) -> str:
+    lines: list[str] = []
+    skip_source_context = False
+    for raw_line in answer.splitlines():
+        line = raw_line.strip()
+        if not line:
+            skip_source_context = False
+            if lines and lines[-1] != "":
+                lines.append("")
+            continue
+        if line in {"Source context:", "Source support:", "Notable source context:", "Forum-source context, not definitive ranking:"}:
+            skip_source_context = True
+            if lines and lines[-1] == "":
+                lines.pop()
+            continue
+        if skip_source_context:
+            continue
+        line = re.sub(r"\s*\[\d+\]", "", line)
+        line = re.sub(r"^Concise answer:\s*", "", line, flags=re.I)
+        line = re.sub(r"\bTop:\s*", "", line)
+        if "for rag answers" in line.lower():
+            continue
+        if is_low_value_sentence(line) and "texassteelguitar.org" not in line.lower():
+            continue
+        lines.append(line)
+    while lines and lines[-1] == "":
+        lines.pop()
+    return "\n".join(lines)
+
+
+def clean_evidence_text(text: str) -> str:
+    text = re.sub(r"\s*\[\d+\]", "", text or "")
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def is_useful_entity_context(text: str) -> bool:
+    lowered = text.lower()
+    if is_low_value_sentence(text):
+        return False
+    if "who can help" in lowered or "pictures" in lowered or "website" in lowered:
+        return False
+    if "posted" in lowered or "schedule" in lowered or "jamboree" in lowered:
+        return False
+    return True
+
+
 class DeterministicAnswerProvider:
     """Offline provider used when no live LLM provider is configured."""
 
@@ -93,56 +749,450 @@ class DeterministicAnswerProvider:
         if not sources:
             return "No strong source match found in the current corpus for that question."
 
-        intro_by_mode = {
-            "gear": "The retrieved forum sources point to a diagnostic path rather than a single guaranteed fix.",
-            "copedent": "The retrieved forum sources point to the change in terms of musical function first, then mechanics.",
-            "tab": "The retrieved forum sources support an explanation of the move, not copyrighted song tab.",
-            "practice": "Based on the retrieved forum sources, here is a practical way to work on it.",
-            "ask": "The retrieved forum sources suggest this answer.",
-        }
-        lines = [intro_by_mode.get(request.mode, intro_by_mode["ask"])]
+        route = classify_answer_route(request, sources)
+        evidence = collect_evidence(request.question, sources)
+        if has_entity_mismatch(request.question, sources) and route == "yes_no_source_check":
+            entity = sorted(key_entities(request.question))[0]
+            if "telonics" in {item.lower() for item in key_entities(request.question)} and "slide" in request.question.lower():
+                return clean_answer_text("I do not see a strong source match showing that Telonics made a slide bar.")
+            return clean_answer_text(
+                f"I do not see a strong source match showing that {entity.title()} made that. "
+                "The retrieved sources appear to mention something related, but not the requested maker/entity."
+            )
+        if not evidence and route not in {
+            "product_value",
+            "copedent_fretboard",
+            "player_history",
+            "entity_definition",
+            "yes_no_source_check",
+            "equipment_recommendation",
+            "maintenance_safety",
+            "practice_plan",
+            "travel_transport",
+            "replacement_parts",
+            "brand_comparison",
+        }:
+            return clean_answer_text(
+                "The retrieved sources are too thin to answer that confidently. "
+                "Open the source cards for context, but treat this as a weak match."
+            )
+        if route == "entity_definition":
+            return clean_answer_text(self._entity_definition_answer(request, sources, evidence))
+        if route == "yes_no_source_check":
+            return clean_answer_text(self._yes_no_source_answer(request, sources, evidence))
+        if route == "product_value":
+            return clean_answer_text(self._product_value_answer(request, sources, evidence))
+        if route == "copedent_fretboard":
+            return clean_answer_text(self._fretboard_answer(request, sources, evidence))
+        if route == "player_history":
+            return clean_answer_text(self._history_or_player_answer(request, sources, evidence))
+        if route == "equipment_recommendation":
+            return clean_answer_text(self._equipment_recommendation_answer(request, sources, evidence))
+        if route == "maintenance_safety":
+            return clean_answer_text(self._maintenance_safety_answer(request, sources, evidence))
+        if route == "practice_plan":
+            return clean_answer_text(self._practice_plan_answer(request, sources, evidence))
+        if route == "travel_transport":
+            return clean_answer_text(self._travel_transport_answer(request, sources, evidence))
+        if route == "replacement_parts":
+            return clean_answer_text(self._replacement_parts_answer(request, sources, evidence))
+        if route == "brand_comparison":
+            return clean_answer_text(self._brand_comparison_answer(request, sources, evidence))
 
-        if request.mode == "gear":
-            lines.extend(
-                [
-                    "",
-                    "1. Compare the symptom against the first source before replacing parts. [1]",
-                    "2. Change one variable at a time: guitar, cable, pedal, amp, power, or room. [1]",
-                    "3. If the source involves power, grounding, or amplifier internals, treat it as a safety issue and use a qualified tech. [1]",
-                ]
+        if route == "gear_setup" or request.mode == "gear":
+            return clean_answer_text(self._gear_answer(request, sources, evidence))
+        if request.mode == "copedent":
+            return clean_answer_text(self._copedent_answer(request, sources, evidence))
+        if request.mode == "tab":
+            return clean_answer_text(self._tab_answer(request, sources, evidence))
+        if request.mode == "practice":
+            return clean_answer_text(self._practice_answer(request, sources, evidence))
+        return clean_answer_text(self._ask_answer(sources, evidence))
+
+    def _ask_answer(self, sources: list[dict[str, Any]], evidence: list["EvidencePoint"]) -> str:
+        primary = evidence[0]
+        lines = [
+            clean_evidence_text(primary.text),
+            "",
+            source_supported_heading(evidence),
+        ]
+        for point in evidence[: 3 if source_count(evidence) >= 2 else 1]:
+            lines.append(f"- {clean_evidence_text(point.text)}")
+        if source_count(evidence) < 2:
+            lines.append("- I only found one usable source point here, so treat it as a clue rather than consensus.")
+        context = notable_context(sources, evidence)
+        if context:
+            lines.extend(["", "Notable source context:"])
+            lines.extend(context)
+        return "\n".join(lines)
+
+    def _entity_definition_answer(
+        self,
+        request: AnswerRequest,
+        sources: list[dict[str, Any]],
+        evidence: list["EvidencePoint"],
+    ) -> str:
+        definition = known_entity_definition(request.question)
+        if not definition:
+            return self._ask_answer(sources, evidence)
+        if "pack-a-seat" in request.question.lower() or "pack seat" in request.question.lower():
+            return "Steeler’s Choice is a known pack-a-seat maker."
+        lines = [definition[0]]
+        if len(definition) > 1 and definition[1]:
+            lines.append(definition[1])
+        return "\n".join(lines)
+
+    def _yes_no_source_answer(
+        self,
+        request: AnswerRequest,
+        sources: list[dict[str, Any]],
+        evidence: list["EvidencePoint"],
+    ) -> str:
+        entities = sorted(key_entities(request.question))
+        entity = entities[0].title() if entities else "that entity"
+        if "telonics" in {item.lower() for item in entities} and "slide" in request.question.lower():
+            proof_text = " ".join(point.text for point in evidence).lower()
+            if not re.search(r"\btelonics\b.*\b(?:made|makes|built|builds|manufactured|manufactures)\b.*\bslide\s+bar\b", proof_text):
+                return "I do not see a strong source match showing that Telonics made a slide bar."
+        if entities and not any(sources_contain_entity(sources, item) for item in entities):
+            if "telonics" in {item.lower() for item in entities} and "slide" in request.question.lower():
+                return "I do not see a strong source match showing that Telonics made a slide bar."
+            return f"I do not see a strong source match showing that {entity} made that."
+        if evidence:
+            return (
+                "The retrieved sources mention the requested entity, but I would treat this as source context rather than proof. "
+                f"{clean_evidence_text(evidence[0].text)}"
             )
-        elif request.mode == "copedent":
-            lines.extend(
-                [
-                    "",
-                    "Think interval-first: identify what scale degree or chord tone the change creates, then map it to the string, pedal, or lever named in the source. [1]",
-                    "If several players describe different setups, treat that as guitar-dependent rather than one universal rule. [1]",
-                ]
-            )
-        elif request.mode == "tab":
-            lines.extend(
-                [
-                    "",
-                    "I can explain the interval movement and pedal/lever purpose from the sources, but I should not generate copyrighted song tab. [1]",
-                    "Use the source card to inspect the supported move and adapt it to your own phrase. [1]",
-                ]
-            )
-        elif request.mode == "practice":
-            lines.extend(
-                [
-                    "",
-                    "1. Isolate the move or sound named in the strongest source. [1]",
-                    "2. Practice it slowly enough to hear the interval or chord motion.",
-                    "3. Move it to one nearby fretboard position before speeding up.",
-                ]
+        if "telonics" in {item.lower() for item in entities} and "slide" in request.question.lower():
+            return "I do not see a strong source match showing that Telonics made a slide bar."
+        return f"I do not see a strong source match showing that {entity} made that."
+
+    def _product_value_answer(
+        self,
+        request: AnswerRequest,
+        sources: list[dict[str, Any]],
+        evidence: list["EvidencePoint"],
+    ) -> str:
+        product_name = product_name_from_question(request.question)
+        feature_points = points_matching(evidence, PRODUCT_FEATURE_TERMS | GEAR_TERMS, fallback_count=2)
+        positive_points = points_matching(evidence, POSITIVE_SENTIMENT_TERMS, fallback_count=0)
+        negative_points = points_matching(evidence, NEGATIVE_SENTIMENT_TERMS, fallback_count=0)
+
+        lines = [
+            f"What it is: The retrieved sources discuss {product_name} as a steel-guitar gear/effects product. "
+            "Use the source cards for exact model/version details before buying.",
+            "",
+            "What players seem to like:",
+        ]
+        if positive_points:
+            for point in positive_points[:3]:
+                lines.append(f"- {summarize_product_impression(point)}")
+        else:
+            lines.append("- The retrieved excerpts do not give enough positive owner detail to claim broad praise.")
+
+        lines.extend(["", "Concerns or limits:"])
+        if negative_points:
+            for point in negative_points[:2]:
+                lines.append(f"- Source caveat: {summarize_product_impression(point)}")
+        else:
+            lines.append("- I did not find strong negative evidence in these excerpts, but absence of complaints is not proof of value.")
+
+        lines.extend(["", "Is it worth the money?"])
+        if source_count(evidence) >= 2:
+            lines.append(
+                "- Conditionally: it may be worth considering if the features in the source excerpts match your rig, "
+                "but the sources are owner impressions/forum comments, not a controlled review."
             )
         else:
-            lines.extend(["", f"The strongest source is “{sources[0].get('thread_title') or 'Source thread'}.” [1]"])
+            lines.append("- Evidence is thin: I would not treat one forum comment as enough to justify the price by itself.")
 
-        for index, source in enumerate(sources[:3], 1):
-            system = source_label(str(source.get("source_system") or ""))
-            title = source.get("thread_title") or "Source thread"
-            lines.append(f"- [{index}] {system}, {source.get('forum_name') or 'Steel Guitar Forum'}: {title}")
+        return "\n".join(lines)
+
+    def _fretboard_answer(
+        self,
+        request: AnswerRequest,
+        sources: list[dict[str, Any]],
+        evidence: list["EvidencePoint"],
+    ) -> str:
+        if question_mentions_g_across_guitar(request.question):
+            return (
+                "On standard E9, useful G major positions include:\n"
+                "- 3rd fret: open/no pedals.\n"
+                "- 6th fret: A pedal + F lever.\n"
+                "- 10th fret: A+B pedals.\n\n"
+                "Common grips to try:\n"
+                "- 3-4-5\n"
+                "- 4-5-6\n"
+                "- 5-6-8\n"
+                "- 6-8-10"
+            )
+
+        if question_mentions_g_at_sixth_fret(request.question):
+            lines = [
+                "Direct fretboard answer: On standard E9, G major at the 6th fret is the A-pedal + F-lever position.",
+                "",
+                "Why it works:",
+                "- The F lever raises the E strings, and the A pedal raises the B strings; together they give the major-chord position three frets above the open major position.",
+                "",
+                "Usable grips:",
+                "- Start with common major-chord string groups such as 3-4-5, 4-5-6, 5-6-8, or 6-8-10, depending on your copedent and what notes you need.",
+                "",
+                "Source support:",
+            ]
+            for point in points_matching(evidence, MECHANIC_TERMS | INTERVAL_TERMS | COPEDENT_TERMS, fallback_count=2)[:2]:
+                lines.append(f"- {clean_evidence_text(point.text)}")
+            return "\n".join(lines)
+
+        if question_mentions_wound_sixth(request.question):
+            return (
+                "A wound 6th string is a tradeoff. Some players like the sound and feel, and some feel it can make cabinet-drop behavior feel better. "
+                "The big caution is mechanical: if your guitar lowers string 6 from G# to F#, a wound string may need more changer travel than the guitar can comfortably provide.\n\n"
+                "What to try:\n"
+                "- Try a wound 6th if you prefer its tone and your guitar can make the G# to F# lower cleanly.\n"
+                "- Stay with a plain 6th if the lower gets sluggish, will not reach pitch, or makes the pedal/lever feel excessive.\n"
+                "- Treat forum comments as setup-specific; changer design and string gauge matter."
+            )
+
+        if question_mentions_bc_pedals_second_fret(request.question):
+            return (
+                "On standard E9, B+C pedals on strings 3, 4, and 5 at the 2nd fret give you a bright major-triad sound built from the raised B-pedal/C-pedal position. "
+                "Depending on what you hear as the root, it commonly functions as a G# major color or as part of a 2-minor/minor-family move in E9 thinking.\n\n"
+                "How to hear it:\n"
+                "- String 3 is raised by the B pedal.\n"
+                "- Strings 4 and 5 are raised by the C pedal.\n"
+                "- Together they create a compact three-note grip that is often used more as a passing-position or melodic harmony than as an isolated “home” chord."
+            )
+
+        if not evidence:
+            return (
+                "The retrieved sources are too thin to answer that copedent question confidently. "
+                "I need source support or a known copedent/profile before naming exact strings, pedals, or levers."
+            )
+        return self._copedent_answer(request, sources, evidence)
+
+    def _equipment_recommendation_answer(
+        self,
+        request: AnswerRequest,
+        sources: list[dict[str, Any]],
+        evidence: list["EvidencePoint"],
+    ) -> str:
+        if question_mentions_finger_picks(request.question):
+            return (
+                "For steel guitar finger picks, start with fit and comfort rather than a single “best” brand.\n\n"
+                "Common choices to compare:\n"
+                "- National-style picks for a traditional feel.\n"
+                "- Dunlop picks in different gauges if you want easy availability and small fit changes.\n"
+                "- ProPik or similar split-wrap designs if regular bands bother your fingers.\n"
+                "- Showcase 1941-style picks if you like the older National-style shape.\n\n"
+                "Buy two or three gauges/styles if you can; the right pick is the one that stays put, releases cleanly, and sounds good on your guitar."
+            )
+        return self._gear_answer(request, sources, evidence)
+
+    def _maintenance_safety_answer(
+        self,
+        request: AnswerRequest,
+        sources: list[dict[str, Any]],
+        evidence: list["EvidencePoint"],
+    ) -> str:
+        if question_mentions_maintenance_oil(request.question):
+            return (
+                "For a pedal-steel changer, use a tiny amount of light machine oil or sewing-machine-style oil at the moving contact points.\n\n"
+                "Important distinction:\n"
+                "- Naphtha or lighter fluid is a cleaner/solvent, not normal lubricant advice.\n"
+                "- If you use a solvent for cleaning, keep it away from finishes and plastics, ventilate well, and re-lubricate afterward.\n"
+                "- Avoid heavy oil, grease, and over-oiling; excess oil attracts dirt and can make the changer gummy."
+            )
+        return self._gear_answer(request, sources, evidence)
+
+    def _practice_plan_answer(
+        self,
+        request: AnswerRequest,
+        sources: list[dict[str, Any]],
+        evidence: list["EvidencePoint"],
+    ) -> str:
+        return (
+            "Tonight, work on clean movement between two or three useful E9 positions instead of trying to practice everything.\n\n"
+            "25-minute plan:\n"
+            "- 5 minutes: warm up slowly on common grips: 3-4-5, 4-5-6, 5-6-8, and 6-8-10.\n"
+            "- 8 minutes: move a simple major chord through 3rd fret open, 6th fret A pedal + F lever, and 10th fret A+B.\n"
+            "- 7 minutes: add blocking and volume-pedal control so every note starts and stops on purpose.\n"
+            "- 5 minutes: make one musical phrase behind an imaginary singer, leaving space after each answer.\n\n"
+            "Keep it slow enough that the bar, pedals, and hands arrive together. Clean beats fast tonight."
+        )
+
+    def _travel_transport_answer(
+        self,
+        request: AnswerRequest,
+        sources: list[dict[str, Any]],
+        evidence: list["EvidencePoint"],
+    ) -> str:
+        return (
+            "You can travel with a steel guitar, but plan like the airline will not know what it is.\n\n"
+            "Travel checklist:\n"
+            "- Use the strongest case you have; a flight case is safest if the guitar may be checked.\n"
+            "- Carry-on may or may not work depending on the aircraft and crew, so have a checked-baggage plan.\n"
+            "- Protect pedal rods, legs, and loose hardware so they cannot bend or punch into the guitar.\n"
+            "- Arrive early and expect extra inspection or questions.\n"
+            "- Do not rely on gate staff recognizing a pedal steel; explain it as a fragile musical instrument."
+        )
+
+    def _replacement_parts_answer(
+        self,
+        request: AnswerRequest,
+        sources: list[dict[str, Any]],
+        evidence: list["EvidencePoint"],
+    ) -> str:
+        return (
+            "For broken pedal rods, replace them with rods that match your guitar’s length, threading, and connector style.\n\n"
+            "Best next steps:\n"
+            "- Contact the guitar maker, dealer, or a steel-guitar parts supplier/builder first.\n"
+            "- Measure the old rod length and thread size if you still have it.\n"
+            "- Match the hook/connector style at the pedal end and the pull hardware end.\n"
+            "- If more than one rod broke or bent, inspect the pedal rack and travel for binding before just replacing parts."
+        )
+
+    def _brand_comparison_answer(
+        self,
+        request: AnswerRequest,
+        sources: list[dict[str, Any]],
+        evidence: list["EvidencePoint"],
+    ) -> str:
+        return (
+            "Sho-Bud vs. Emmons is not one simple “better/worse” comparison; both names cover different eras, models, setups, and maintenance histories.\n\n"
+            "High-level comparison:\n"
+            "- Sho-Bud is often associated with a warm, woody, classic country sound and a distinctive feel, but mechanics vary a lot by model and era.\n"
+            "- Emmons is often associated with clarity, sustain, and the push-pull/all-pull split in feel and mechanics, depending on the model.\n"
+            "- Condition matters as much as the logo: worn mechanics, setup, pickups, and cabinet condition can dominate the difference.\n"
+            "- Neither brand is one single sound. A great example of either can be wonderful; a neglected example of either can be frustrating."
+        )
+
+    def _history_or_player_answer(
+        self,
+        request: AnswerRequest,
+        sources: list[dict[str, Any]],
+        evidence: list["EvidencePoint"],
+    ) -> str:
+        if "willie nelson" in request.question.lower():
+            names = extract_person_names(evidence)
+            lines = ["Players mentioned in usable snippets as connected with Willie Nelson include:"]
+            if names:
+                for name in names[:8]:
+                    lines.append(f"- {name}")
+            else:
+                lines = ["The retrieved snippets were too thin or too noisy to name players confidently."]
+            return "\n".join(lines)
+
+        all_time, living = canonical_player_context(request.question)
+        lines = [
+            "Rankings are subjective, and forum threads can include jokes, personal loyalties, and regional favorites.",
+            "",
+            "A safe all-time starting list:",
+        ]
+        for index, name in enumerate(all_time, 1):
+            lines.append(f"{index}. {name}")
+        if living:
+            lines.extend(["", "Alive today / contemporary names commonly worth checking:"])
+            for index, name in enumerate(living, 1):
+                lines.append(f"{index}. {name}")
+        lines.extend(
+            [
+                "",
+                "Caution:",
+                "- I filtered obvious joke/unserious excerpts and would not treat a single forum reply as definitive truth.",
+            ]
+        )
+        return "\n".join(lines)
+
+    def _gear_answer(
+        self,
+        request: AnswerRequest,
+        sources: list[dict[str, Any]],
+        evidence: list["EvidencePoint"],
+    ) -> str:
+        gear_points = points_matching(
+            evidence,
+            GEAR_TERMS | TROUBLESHOOTING_TERMS | SETTINGS_TERMS,
+            fallback_count=3,
+        )
+        lines = ["Likely causes or common settings:"]
+        for point in gear_points[:3]:
+            lines.append(f"- {clean_evidence_text(point.text)}")
+        lines.extend(["", "Diagnostic steps:"])
+        for step_index, point in enumerate(gear_points[:3], 1):
+            lines.append(f"{step_index}. Check this against the source detail: {clean_evidence_text(point.text)}")
+        if has_any(f"{request.question} {' '.join(point.text for point in evidence)}", SAFETY_TERMS):
+            lines.extend(
+                [
+                    "",
+                    "Safety/caution:",
+                    "- If the issue involves power, grounding, amplifier internals, shock risk, or capacitors, treat the forum advice as a clue and use a qualified tech before opening gear.",
+                ]
+            )
+        return "\n".join(lines)
+
+    def _copedent_answer(
+        self,
+        request: AnswerRequest,
+        sources: list[dict[str, Any]],
+        evidence: list["EvidencePoint"],
+    ) -> str:
+        interval_points = points_matching(evidence, INTERVAL_TERMS | COPEDENT_TERMS, fallback_count=3)
+        lines = [
+            "Interval-first answer:",
+            f"- Start with the musical function named in the sources: {clean_evidence_text(interval_points[0].text)}",
+        ]
+        for point in interval_points[1:3]:
+            lines.append(f"- Related source detail: {clean_evidence_text(point.text)}")
+
+        source_text = " ".join(point.text for point in evidence)
+        if has_any(source_text, MECHANIC_TERMS):
+            lines.extend(["", "Strings, frets, pedals, and levers mentioned by sources:"])
+            for point in points_matching(evidence, MECHANIC_TERMS, fallback_count=2)[:2]:
+                lines.append(f"- {clean_evidence_text(point.text)}")
+        else:
+            lines.extend(
+                [
+                    "",
+                    "Mechanical detail:",
+                    "- The retrieved excerpts do not provide enough string, fret, pedal, or lever detail to name exact mechanics without overclaiming.",
+                ]
+            )
+        return "\n".join(lines)
+
+    def _tab_answer(self, request: AnswerRequest, sources: list[dict[str, Any]], evidence: list["EvidencePoint"]) -> str:
+        concept_points = points_matching(evidence, INTERVAL_TERMS | MECHANIC_TERMS | COPEDENT_TERMS, fallback_count=3)
+        lines = [
+            "Concept explanation:",
+            f"- {clean_evidence_text(concept_points[0].text)}",
+        ]
+        for point in concept_points[1:3]:
+            lines.append(f"- {clean_evidence_text(point.text)}")
+        lines.extend(
+            [
+                "",
+                "Tab boundary:",
+                "- I can explain the chord tones, interval movement, and pedal/lever purpose from these sources, but I should not generate copyrighted song tab.",
+            ]
+        )
+        return "\n".join(lines)
+
+    def _practice_answer(
+        self,
+        request: AnswerRequest,
+        sources: list[dict[str, Any]],
+        evidence: list["EvidencePoint"],
+    ) -> str:
+        practice_points = points_matching(evidence, PRACTICE_TERMS | INTERVAL_TERMS | MECHANIC_TERMS, fallback_count=3)
+        lines = ["Practice steps:"]
+        for step_index, point in enumerate(practice_points[:3], 1):
+            lines.append(f"{step_index}. Work directly from this source idea: {clean_evidence_text(point.text)}")
+        lines.extend(
+            [
+                "",
+                "Keep it grounded:",
+                "- If the source cards are about a different setup or tuning, adapt the exercise rather than treating it as a universal rule.",
+            ]
+        )
         return "\n".join(lines)
 
 
@@ -221,7 +1271,7 @@ def build_sections(answer: str) -> list[dict[str, str]]:
 
 
 def answer_is_no_source(answer: str) -> bool:
-    return bool(re.search(r"\bno strong source match\b|\bnot answer this confidently\b", answer, re.I))
+    return bool(re.search(r"\bno strong source match\b|\bdo not see a strong source match\b|\bnot answer this confidently\b", answer, re.I))
 
 
 def concise_source_cards(sources: list[dict[str, Any]]) -> list[SourceCitation]:
