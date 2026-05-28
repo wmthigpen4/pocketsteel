@@ -79,6 +79,13 @@ Current Cloudflare DNS export for `steelguitarrag.com`:
 
 The apex/root A records `13.248.243.5` and `76.223.105.230` appear to be imported GoDaddy/WebsiteBuilder-style records. They are not the Mac mini app, not Cloudflare Tunnel, and not the live RAG backend.
 
+Current issue: root `steelguitarrag.com` still shows the imported GoDaddy "Launching Soon" placeholder because the Cloudflare apex A records still point to:
+
+- `13.248.243.5`
+- `76.223.105.230`
+
+Those records should remain untouched until a public-safe landing-page target is ready.
+
 ## Recommended Near-term DNS Plan
 
 - `steelguitarrag.com`:
@@ -94,6 +101,49 @@ The apex/root A records `13.248.243.5` and `76.223.105.230` appear to be importe
 - `api.steelguitarrag.com`:
   - Keep disabled for the first beta unless separately approved.
   - If introduced later, route only to the authenticated backend, never to Ollama.
+
+## Public Landing Page Route
+
+Recommended target:
+
+| Hostname | Target behavior |
+| --- | --- |
+| `steelguitarrag.com` | Public landing page only |
+| `www.steelguitarrag.com` | Redirect or CNAME to root |
+| `app.steelguitarrag.com` | Protected private beta app only |
+
+Landing-page options:
+
+- Cloudflare Pages static landing page:
+  - Recommended root-domain approach for the first public route.
+  - Keeps public landing content separate from the Mac mini private beta app.
+  - Avoids routing root traffic to the home network.
+  - Should contain only public-safe copy, waitlist/contact path, and source/copyright policy links.
+- Self-hosted landing-only route through Cloudflare Tunnel:
+  - Acceptable if the landing page must be served from the Mac mini.
+  - Must be a separate landing-only service or route that cannot reach live `/api/answer`.
+  - Must not expose Ollama, Chroma, or the private beta app.
+  - Adds operational dependency on the Mac mini for the public root domain.
+
+Recommended root-domain landing approach: use Cloudflare Pages for `steelguitarrag.com` and redirect `www.steelguitarrag.com` to root. Keep `app.steelguitarrag.com` separate for the protected private beta app.
+
+DNS changes needed later:
+
+- Remove or replace `A @ 13.248.243.5`.
+- Remove or replace `A @ 76.223.105.230`.
+- Add the Cloudflare Pages-required root record or Cloudflare-managed Pages binding for `steelguitarrag.com`.
+- Update `www` to redirect or CNAME to the chosen root landing target.
+
+Do not make those DNS changes until the landing page target is ready and reviewed.
+
+Landing guardrails:
+
+- Root domain must not expose live RAG.
+- Root domain must not proxy `/api/answer`.
+- `/api/answer` must remain protected behind private beta auth.
+- Ollama must remain private.
+- Chroma must remain private.
+- Public landing content must not include secrets, private local paths, raw data, or private beta URLs that bypass Access.
 
 ## Records to Review Before Launch
 
@@ -475,6 +525,8 @@ Alerts should cover:
 - [ ] Cloudflare zone is active after nameserver change.
 - [ ] Cloudflare DNS records are reviewed against the current export.
 - [ ] Imported GoDaddy/WebsiteBuilder-style apex A records are removed or replaced only after the landing page target is chosen.
+- [ ] Root landing page target is reviewed and contains no live RAG access.
+- [ ] Root landing page route does not proxy `/api/answer`.
 - [ ] No scraping command is part of service startup.
 - [ ] No embedding command is part of service startup.
 - [ ] Chroma is not reset or modified by deployment.
@@ -485,6 +537,7 @@ Alerts should cover:
 - Whether to preserve the GoDaddy `_domainconnect` CNAME after Cloudflare becomes authoritative.
 - Whether to preserve the current `_dmarc` quarantine TXT record exactly.
 - Whether the landing page is served by Cloudflare Pages or through the Mac mini tunnel.
+- Whether to use Cloudflare Pages for the recommended root-domain landing route.
 - Which hostname is first: public landing apex or protected `app`.
 - Which local app server entrypoint will serve private beta traffic.
 - Approved local app port.
@@ -510,6 +563,8 @@ Alerts should cover:
 - Ollama must not be publicly reachable.
 - Chroma must stay local and read-only for serving.
 - Do not route `app.steelguitarrag.com` to the Mac mini until server-side `/api/answer` auth is enforced.
+- Do not replace the imported GoDaddy/WebsiteBuilder apex A records until the public landing page target is ready.
+- Do not route root `steelguitarrag.com` to any service that exposes live `/api/answer`.
 - No beta invites until logging, rate limits, rollback, and source/copyright policy are ready.
 
 ## References
