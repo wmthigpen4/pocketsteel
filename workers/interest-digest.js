@@ -1,4 +1,3 @@
-const DEFAULT_LOOKBACK_DAYS = 7;
 const MAX_DIGEST_LENGTH = 950;
 const PUSHOVER_ENDPOINT = "https://api.pushover.net/1/messages.json";
 const OBVIOUS_TEST_EMAILS = new Set([
@@ -96,7 +95,10 @@ function classifySubmission(row, duplicateCount = 1) {
   let status = submission.status || "new";
   let spamScore = submission.spam_score;
 
-  if (isObviousTestEmail(submission.email)) {
+  if (status === "spam" || status === "test") {
+    include = false;
+    reasons.push(`existing ${status} status`);
+  } else if (isObviousTestEmail(submission.email)) {
     include = false;
     status = "spam";
     spamScore = Math.max(spamScore, 100);
@@ -234,8 +236,7 @@ function getDatabase(env) {
   return env.STEEL_RAG_INTEREST_D1;
 }
 
-async function fetchCandidateRows(db, now = new Date(), lookbackDays = DEFAULT_LOOKBACK_DAYS) {
-  const cutoff = new Date(now.getTime() - lookbackDays * 24 * 60 * 60 * 1000).toISOString();
+async function fetchCandidateRows(db) {
   const result = await db
     .prepare(
       `select id, created_at, name, email, player_level, interests, message,
@@ -243,11 +244,11 @@ async function fetchCandidateRows(db, now = new Date(), lookbackDays = DEFAULT_L
               coalesce(spam_score, 0) as spam_score,
               admin_notes, notified_at, coalesce(source, 'landing_page') as source
          from interest_submissions
-        where (created_at >= ? or notified_at is null)
+        where notified_at is null
           and lower(coalesce(status, 'new')) in ('new', 'review')
         order by created_at asc`
     )
-    .bind(cutoff)
+    .bind()
     .all();
 
   return result?.results || [];
@@ -334,6 +335,9 @@ async function runInterestDigest({ env, now = new Date(), dryRun = false, fetchI
       rows: classifiedRows.map((row) => ({
         id: row.id,
         email: row.email,
+        name: row.name,
+        player_level: row.player_level,
+        interests: row.interests,
         status: row.status,
         spam_score: row.spam_score,
         include: row.include,

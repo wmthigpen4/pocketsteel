@@ -376,6 +376,31 @@ assert.match(rows[0].admin_notes, /obvious test email/);
     assert result.returncode == 0, result.stderr
 
 
+def test_interest_digest_excludes_existing_spam_and_test_statuses() -> None:
+    script = _interest_digest_test_script(
+        """
+const rows = mod.__test.classifySubmissions([
+  makeRow({ id: "spam-1", email: "spam@steel.example", status: "spam" }),
+  makeRow({ id: "test-1", email: "tester@steel.example", status: "test" }),
+  makeRow({ id: "new-1", email: "player@steel.example", status: "new" })
+]);
+const digest = mod.__test.buildDigestBody(rows, new Date("2026-05-28T12:00:00.000Z"));
+assert.equal(rows[0].include, false);
+assert.equal(rows[1].include, false);
+assert.equal(rows[2].include, true);
+assert.equal(digest.includedCount, 1);
+assert.equal(digest.skippedCount, 2);
+assert.doesNotMatch(digest.message, /spam@steel\\.example/);
+assert.doesNotMatch(digest.message, /tester@steel\\.example/);
+assert.match(digest.message, /player@steel\\.example/);
+"""
+    )
+
+    result = subprocess.run(["node", "-e", script], cwd=Path.cwd(), capture_output=True, text=True, check=False)
+
+    assert result.returncode == 0, result.stderr
+
+
 def test_interest_digest_keeps_real_submission() -> None:
     script = _interest_digest_test_script(
         """
@@ -399,6 +424,27 @@ assert.equal(rows[0].spam_score, 0);
     assert result.returncode == 0, result.stderr
 
 
+def test_interest_digest_includes_new_and_review_rows() -> None:
+    script = _interest_digest_test_script(
+        """
+const rows = mod.__test.classifySubmissions([
+  makeRow({ id: "new-1", email: "new@steel.example", name: "New Player", status: "new" }),
+  makeRow({ id: "review-1", email: "review@steel.example", name: "Review Player", status: "review" })
+]);
+const digest = mod.__test.buildDigestBody(rows, new Date("2026-05-28T12:00:00.000Z"));
+assert.equal(digest.includedCount, 2);
+assert.equal(digest.reviewCount, 1);
+assert.match(digest.message, /New Player/);
+assert.match(digest.message, /Review Player/);
+assert.match(digest.message, /review@steel\\.example/);
+"""
+    )
+
+    result = subprocess.run(["node", "-e", script], cwd=Path.cwd(), capture_output=True, text=True, check=False)
+
+    assert result.returncode == 0, result.stderr
+
+
 def test_interest_digest_groups_duplicate_email() -> None:
     script = _interest_digest_test_script(
         """
@@ -414,6 +460,36 @@ assert.equal(groups[0].submissions.length, 2);
 assert.match(digest.message, /player@steel\\.example \\(2 submissions\\)/);
 assert.match(digest.message, /Submission 1\\/2/);
 assert.match(digest.message, /Submission 2\\/2/);
+"""
+    )
+
+    result = subprocess.run(["node", "-e", script], cwd=Path.cwd(), capture_output=True, text=True, check=False)
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_interest_digest_candidate_query_only_fetches_unnotified_new_review_rows() -> None:
+    script = _interest_digest_test_script(
+        """
+let capturedSql = "";
+let bindValues = null;
+const d1 = {
+  prepare: (sql) => {
+    capturedSql = sql;
+    return {
+      bind: (...values) => {
+        bindValues = values;
+        return { all: async () => ({ results: [] }) };
+      }
+    };
+  }
+};
+await mod.__test.fetchCandidateRows(d1);
+assert.match(capturedSql, /notified_at is null/);
+assert.match(capturedSql, /lower\\(coalesce\\(status, 'new'\\)\\) in \\('new', 'review'\\)/);
+assert.match(capturedSql, /order by created_at asc/);
+assert.doesNotMatch(capturedSql, /created_at >=/);
+assert.deepEqual(bindValues, []);
 """
     )
 
@@ -463,6 +539,29 @@ assert.match(digest.message, /Lloyd/);
 assert.match(digest.message, /player@steel\\.example/);
 assert.match(digest.message, /gear-tone, practice/);
 assert.match(digest.message, /I want a better practice path\\./);
+"""
+    )
+
+    result = subprocess.run(["node", "-e", script], cwd=Path.cwd(), capture_output=True, text=True, check=False)
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_interest_digest_missing_pushover_secrets_fails_without_notifying() -> None:
+    script = _interest_digest_test_script(
+        """
+const d1 = makeD1([
+  makeRow({ id: "real-missing-secret", email: "player@steel.example", name: "Paul" })
+]);
+await assert.rejects(
+  () => mod.__test.runInterestDigest({
+    env: { STEEL_RAG_INTEREST_D1: d1 },
+    now: new Date("2026-05-28T12:00:00.000Z"),
+    fetchImpl: async () => new Response("{}", { status: 200 })
+  }),
+  /Missing Pushover credentials/
+);
+assert.equal(d1.operations.some((op) => /notified_at/.test(op.sql)), false);
 """
     )
 

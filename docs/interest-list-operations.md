@@ -130,7 +130,7 @@ This mirrors the scheduled digest candidate query:
 
 ```bash
 npx --yes wrangler@latest d1 execute steel_rag_interest --remote \
-  --command "select created_at, email, name, player_level, interests, message, status, spam_score, notified_at from interest_submissions where (created_at >= datetime('now', '-7 days') or notified_at is null) and lower(coalesce(status, 'new')) in ('new', 'review') order by created_at asc;"
+  --command "select created_at, email, name, player_level, interests, message, status, spam_score, notified_at from interest_submissions where notified_at is null and lower(coalesce(status, 'new')) in ('new', 'review') order by created_at asc;"
 ```
 
 ### Count All Submissions
@@ -257,7 +257,8 @@ history snippets, or screenshots.
 
 ### Digest Query
 
-Each run queries D1 for rows that are either recent or have never been notified:
+Each run queries D1 for rows that have never been notified and are still in a
+digest-eligible status:
 
 ```sql
 select id, created_at, name, email, player_level, interests, message,
@@ -265,12 +266,12 @@ select id, created_at, name, email, player_level, interests, message,
        coalesce(spam_score, 0) as spam_score,
        admin_notes, notified_at, coalesce(source, 'landing_page') as source
 from interest_submissions
-where (created_at >= ? or notified_at is null)
+where notified_at is null
   and lower(coalesce(status, 'new')) in ('new', 'review')
 order by created_at asc;
 ```
 
-The `?` value is the ISO timestamp for seven days before the scheduled run.
+Rows already marked `spam`, `test`, or `notified` are excluded by the query.
 
 ### Filtering Rules
 
