@@ -127,6 +127,33 @@ def test_inline_gear_signatures_are_removed_from_answer_advice_text() -> None:
     assert "inline_gear_signature_removed" in cleaned["cleanup_flags"]
 
 
+def test_named_inline_gear_signature_without_separator_is_removed() -> None:
+    row = base_chunk(
+        "This amp is loud and sounds good for a small amp. "
+        "Darvin Willhoite MSA Millennium, Legend, Studio Pro, Nashville 400, Goodrich pedal, Zum D10"
+    )
+
+    cleaned = clean_and_classify_chunk(row)
+
+    assert cleaned["chunk_role"] == "answer_advice"
+    assert "This amp is loud" in cleaned["answer_text"]
+    assert "Darvin Willhoite MSA" not in cleaned["answer_text"]
+    assert "Darvin Willhoite MSA" in cleaned["signature_text"]
+    assert "inline_gear_signature_removed" in cleaned["cleanup_flags"]
+
+
+def test_raw_links_are_removed_from_answer_text_but_link_role_can_remain() -> None:
+    row = base_chunk("Here is the page: http://example.test/pedal click here", links=["http://example.test/pedal"])
+
+    cleaned = clean_and_classify_chunk(row)
+
+    assert "http://example.test" not in cleaned["answer_text"]
+    assert "click here" not in cleaned["answer_text"].lower()
+    assert "[link removed]" in cleaned["answer_text"]
+    assert cleaned["chunk_role"] == "link_only"
+    assert "raw_link_removed" in cleaned["cleanup_flags"]
+
+
 def test_quote_heavy_advice_is_not_mislabeled_as_event_when_event_terms_do_not_dominate() -> None:
     row = base_chunk(
         "Brad wrote: this amp buzzed at the show. Dave wrote: I would check the speaker cable because "

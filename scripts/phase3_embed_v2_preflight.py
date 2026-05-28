@@ -48,6 +48,16 @@ GEAR_RE = re.compile(
     r"Webb|Evans|Telonics|Goodrich|Hilton|Sarno|Black Box|Steel King|Profex|NV\s*112|pickup|volume pedal)\b",
     re.IGNORECASE,
 )
+SIGNATURE_ANCHOR_RE = re.compile(
+    r"\b[A-Z][A-Za-z.'~-]+(?:\s+[A-Z][A-Za-z.'~-]+){1,3}\s+"
+    r"(?=(?:D-?10|SD-?10|S-?10|U-?12|Zum(?:Steel)?|Emmons|Sho-?Bud|Mullen|MSA|Carter|GFI|Sierra|"
+    r"Williams|Franklin|Derby|Fessenden|MCI|BMI|Excel|Rittenberry|Peavey|Nashville|Session|Webb|"
+    r"Evans|Telonics|Goodrich|Hilton|Steel King)\b)"
+)
+AUTHOR_DATE_RE = re.compile(
+    r"\b[A-Z][A-Za-z.'~-]+(?:\s+[A-Z][A-Za-z.'~-]+){0,3}\s*/\s+"
+    r"\d{1,2}\s+[A-Z][a-z]+\s+\d{4}\s+\d{1,2}:\d{2}\s+(?:am|pm)\b"
+)
 
 
 def iter_jsonl(path: Path) -> Iterable[dict[str, Any]]:
@@ -148,11 +158,17 @@ def looks_signature_like(text: str) -> bool:
         return True
     words = text.split()
     tail = " ".join(words[-60:])
-    return len(GEAR_RE.findall(tail)) >= 5 and not re.search(
-        r"\b(?:check|try|because|adjust|replace|use|recommend|problem|issue)\b",
-        tail,
-        re.IGNORECASE,
-    )
+    for match in SIGNATURE_ANCHOR_RE.finditer(tail):
+        next_author = AUTHOR_DATE_RE.search(tail, match.end())
+        end = next_author.start() if next_author else len(tail)
+        candidate = tail[match.start() : end]
+        if len(GEAR_RE.findall(candidate)) >= 3 and not re.search(
+            r"\b(?:check|try|because|adjust|replace|use|recommend|problem|issue|sounds?)\b",
+            candidate,
+            re.IGNORECASE,
+        ):
+            return True
+    return False
 
 
 def leakage_counts(chunks: list[Mapping[str, Any]]) -> dict[str, int]:

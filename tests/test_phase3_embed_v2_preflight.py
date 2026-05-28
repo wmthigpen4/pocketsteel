@@ -120,6 +120,38 @@ def test_leakage_fails(tmp_path: Path) -> None:
     assert any("leakage rate" in failure for failure in result["failures"])
 
 
+def test_named_gear_signature_leakage_fails(tmp_path: Path) -> None:
+    text = (
+        "This amp is loud enough for rehearsal. "
+        "Darvin Willhoite MSA Millennium, Legend, Studio Pro, Nashville 400, Goodrich pedal, Zum D10"
+    )
+    chunk_input = write_jsonl(tmp_path / "chunks-v2.jsonl", [chunk_record(text)])
+
+    result = evaluate_preflight(
+        chunk_input=chunk_input,
+        target_chroma_path=tmp_path / "corpus-v2" / "vector-stores" / "chroma",
+    )
+
+    assert result["passed"] is False
+    assert result["leakage_counts"]["signature"] == 1
+
+
+def test_gear_rich_user_experience_is_not_signature_leakage(tmp_path: Path) -> None:
+    text = (
+        "My ZBs and Fenders sounded great through the amp. My Kline did not. "
+        "The Sho-Bud sounded OK, and a Carter Starter sounded surprisingly good through the Nashville 112."
+    )
+    chunk_input = write_jsonl(tmp_path / "chunks-v2.jsonl", [chunk_record(text)])
+
+    result = evaluate_preflight(
+        chunk_input=chunk_input,
+        target_chroma_path=tmp_path / "corpus-v2" / "vector-stores" / "chroma",
+    )
+
+    assert result["passed"] is True
+    assert result["leakage_counts"]["signature"] == 0
+
+
 def test_cli_does_not_create_chroma_or_run_embeddings(tmp_path: Path) -> None:
     chunk_input = write_jsonl(tmp_path / "chunks-v2.jsonl", [chunk_record()])
     target_chroma = tmp_path / "corpus-v2" / "vector-stores" / "chroma"

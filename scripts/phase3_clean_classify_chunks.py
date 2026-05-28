@@ -35,6 +35,7 @@ CONTACT_RE = re.compile(
 )
 SHARE_RE = re.compile(r"(?:[?&](?:sp|usp)=sharing\b|\b(?:sp|usp)=sharing\b|drive\.google\.com)", re.IGNORECASE)
 URL_RE = re.compile(r"https?://\S+|www\.\S+|\bclick here\b", re.IGNORECASE)
+RAW_URL_RE = re.compile(r"https?://\S+|www\.\S+|\bclick here\b", re.IGNORECASE)
 TOP_TOKEN_RE = re.compile(r"(?<![A-Za-z])Top(?![A-Za-z])")
 NAV_LINE_RE = re.compile(
     r"^(?:Top|Back to top|You do not have the required permissions to view the files attached to this post\.)$",
@@ -50,6 +51,16 @@ GEAR_RE = re.compile(
     r"E9|C6|copedent|amp|cab(?:inet)?|pickup|volume pedal)\b",
     re.IGNORECASE,
 )
+AUTHOR_DATE_RE = re.compile(
+    r"\b[A-Z][A-Za-z.'~-]+(?:\s+[A-Z][A-Za-z.'~-]+){0,3}\s*/\s+"
+    r"\d{1,2}\s+[A-Z][a-z]+\s+\d{4}\s+\d{1,2}:\d{2}\s+(?:am|pm)\b"
+)
+INLINE_GEAR_SIGNATURE_START_RE = re.compile(
+    r"\b[A-Z][A-Za-z.'~-]+(?:\s+[A-Z][A-Za-z.'~-]+){1,3}\s+"
+    r"(?=(?:D-?10|SD-?10|S-?10|U-?12|Zum(?:Steel)?|Emmons|Sho-?Bud|Mullen|MSA|Carter|GFI|Sierra|"
+    r"Williams|Franklin|Derby|Fessenden|MCI|BMI|Excel|Rittenberry|Peavey|Nashville|Session|Webb|"
+    r"Evans|Telonics|Goodrich|Hilton|Steel King)\b)"
+)
 QUESTION_RE = re.compile(
     r"\?|"
     r"\b(?:does anyone|has anyone|can anyone|could someone|what|why|how|where|which|who|is there|are there|"
@@ -59,13 +70,13 @@ QUESTION_RE = re.compile(
 ANSWER_RE = re.compile(
     r"\b(?:you should|i recommend|i would|try|use|adjust|check|replace|lower|raise|tune|because|"
     r"the problem|the issue|works well|best way|be sure|make sure|in my experience|i use|i've used|"
-    r"settings?|ohm|pot|pickup|changer|pedal|lever|fret|string|amp|speaker|cabinet|reverb|delay|"
+    r"sounds? good|settings?|ohm|pot|pickup|changer|pedal|lever|fret|string|amp|speaker|cabinet|reverb|delay|"
     r"compressor|volume pedal|tone|hum|buzz|ground|lubricat|tri-flow|wd-?40)\b",
     re.IGNORECASE,
 )
 ADVICE_RE = re.compile(
     r"\b(?:you should|i recommend|i would|try|use|adjust|check|replace|lower|raise|tune|because|"
-    r"the problem|the issue|works well|best way|be sure|make sure|in my experience|i use|i've used)\b",
+    r"the problem|the issue|works well|sounds? good|best way|be sure|make sure|in my experience|i use|i've used)\b",
     re.IGNORECASE,
 )
 OPINION_RE = re.compile(r"\b(?:i think|i believe|in my opinion|imo|imho|prefer|favorite|best|better|worse)\b", re.IGNORECASE)
@@ -148,6 +159,13 @@ def strip_share_fragments(text: str, flags: set[str]) -> str:
         flags.add("share_fragment_removed")
     text = re.sub(r"([?&])(?:sp|usp)=sharing\b&?", r"\1", text, flags=re.IGNORECASE)
     text = re.sub(r"\b(?:sp|usp)=sharing\b", "", text, flags=re.IGNORECASE)
+    return text
+
+
+def strip_raw_links(text: str, flags: set[str]) -> str:
+    if RAW_URL_RE.search(text):
+        flags.add("raw_link_removed")
+        text = RAW_URL_RE.sub("[link removed]", text)
     return text
 
 
@@ -261,16 +279,46 @@ def split_inline_gear_signature(text: str, signature_text: str, flags: set[str])
     return text, signature_text
 
 
+def strip_inline_signature_spans(text: str, signature_text: str, flags: set[str]) -> tuple[str, str]:
+    pieces: list[str] = []
+    signatures: list[str] = [signature_text] if signature_text else []
+    cursor = 0
+    removed = False
+
+    for match in INLINE_GEAR_SIGNATURE_START_RE.finditer(text):
+        if match.start() < cursor:
+            continue
+        next_author = AUTHOR_DATE_RE.search(text, match.end())
+        end = next_author.start() if next_author else len(text)
+        candidate = compact_space(text[match.start() : end])
+        gear_hits = len(GEAR_RE.findall(candidate))
+        if gear_hits < 3 or word_count(candidate) > 120:
+            continue
+        pieces.append(text[cursor : match.start()])
+        signatures.append(candidate)
+        cursor = end
+        removed = True
+
+    if not removed:
+        return text, signature_text
+
+    pieces.append(text[cursor:])
+    flags.add("inline_gear_signature_removed")
+    return compact_space(" ".join(pieces)), compact_space("\n".join(part for part in signatures if part))
+
+
 def cleanup_text(raw_text: str, thread_title: str = "") -> tuple[str, str, list[str]]:
     flags: set[str] = set()
     text = compact_space(raw_text or "")
     text = remove_repeated_thread_title(text, thread_title, flags)
     text = strip_share_fragments(text, flags)
+    text = strip_raw_links(text, flags)
     text = strip_contact_text(text, flags)
     text = remove_navigation_lines(text, flags)
     text = strip_quote_markers(text, flags)
     text, signature_text = split_signature(text, flags)
     text, signature_text = split_inline_gear_signature(text, signature_text, flags)
+    text, signature_text = strip_inline_signature_spans(text, signature_text, flags)
     text = remove_repeated_sentences(text, flags)
     text = compact_space(text)
     return text, compact_space(signature_text), sorted(flags)
