@@ -23,6 +23,17 @@ function cleanInterestList(value) {
     .slice(0, 12);
 }
 
+async function sha256Hex(value) {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function ipHashFromRequest(request) {
+  const ip = cleanString(request.headers.get("cf-connecting-ip"), 120);
+  return ip ? sha256Hex(ip) : "";
+}
+
 async function parseRequestBody(request) {
   const contentType = request.headers.get("content-type") || "";
   if (contentType.includes("application/json")) {
@@ -53,7 +64,7 @@ function normalizeSubmission(input, now = new Date()) {
     ok: true,
     submission: {
       id: crypto.randomUUID(),
-      submittedAt: now.toISOString(),
+      createdAt: now.toISOString(),
       name: cleanString(input.name, 200),
       email,
       playerLevel: cleanString(input.playerLevel, 80),
@@ -61,7 +72,7 @@ function normalizeSubmission(input, now = new Date()) {
       message: cleanString(input.message, 2000),
       turnstileTokenPresent: Boolean(cleanString(input.turnstileToken, 2048)),
       userAgent: "",
-      cfRay: ""
+      ipHash: ""
     }
   };
 }
@@ -78,20 +89,19 @@ function createInterestStorage(env) {
         await env.STEEL_RAG_INTEREST_D1
           .prepare(
             `insert into interest_submissions
-              (id, submitted_at, name, email, player_level, interests_json, message, turnstile_token_present, user_agent, cf_ray)
-             values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+              (id, created_at, name, email, player_level, interests, message, user_agent, ip_hash)
+             values (?, ?, ?, ?, ?, ?, ?, ?, ?)`
           )
           .bind(
             submission.id,
-            submission.submittedAt,
+            submission.createdAt,
             submission.name,
             submission.email,
             submission.playerLevel,
             JSON.stringify(submission.interests),
             submission.message,
-            submission.turnstileTokenPresent ? 1 : 0,
             submission.userAgent,
-            submission.cfRay
+            submission.ipHash
           )
           .run();
       }
@@ -103,9 +113,9 @@ function createInterestStorage(env) {
       type: "kv",
       async save(submission) {
         await env.STEEL_RAG_INTEREST_KV.put(
-          `interest:${submission.submittedAt}:${submission.id}`,
+          `interest:${submission.createdAt}:${submission.id}`,
           JSON.stringify(submission),
-          { metadata: { email: submission.email, submittedAt: submission.submittedAt } }
+          { metadata: { email: submission.email, createdAt: submission.createdAt } }
         );
       }
     };
@@ -139,7 +149,7 @@ async function handleInterestRequest({ request, env = {} }) {
   const submission = {
     ...normalized.submission,
     userAgent: cleanString(request.headers.get("user-agent"), 300),
-    cfRay: cleanString(request.headers.get("cf-ray"), 100)
+    ipHash: await ipHashFromRequest(request)
   };
 
   const turnstile = await verifyTurnstilePlaceholder(submission, env);
@@ -148,7 +158,16 @@ async function handleInterestRequest({ request, env = {} }) {
   }
 
   const storage = createInterestStorage(env);
-  await storage.save(submission);
+  try {
+    await storage.save(submission);
+  } catch (error) {
+    console.error("interest storage error", {
+      storage: storage.type,
+      name: error?.name || "Error",
+      message: error?.message || String(error)
+    });
+    return jsonResponse({ ok: false, error: "storage_error" }, 500);
+  }
 
   return jsonResponse({
     ok: true,
@@ -172,5 +191,6 @@ export const __test = {
   createInterestStorage,
   handleInterestRequest,
   normalizeSubmission,
+  ipHashFromRequest,
   verifyTurnstilePlaceholder
 };

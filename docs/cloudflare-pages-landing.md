@@ -78,17 +78,32 @@ Create a D1 database table before relying on persistent capture:
 ```sql
 create table if not exists interest_submissions (
   id text primary key,
-  submitted_at text not null,
+  created_at text not null,
   name text,
   email text not null,
   player_level text,
-  interests_json text not null,
+  interests text,
   message text,
-  turnstile_token_present integer not null default 0,
   user_agent text,
-  cf_ray text
+  ip_hash text
 );
 ```
+
+The Pages Function D1 insert expects exactly these columns:
+
+- `id`
+- `created_at`
+- `name`
+- `email`
+- `player_level`
+- `interests`
+- `message`
+- `user_agent`
+- `ip_hash`
+
+If the table still has older columns such as `submitted_at`, `interests_json`,
+`turnstile_token_present`, or `cf_ray`, the D1 insert can throw inside the Pages
+Function and Cloudflare may surface that as error `1101`.
 
 Alternative storage binding:
 
@@ -103,7 +118,7 @@ If neither binding is configured, the endpoint returns success with `stored: fal
 For D1, query or export rows from Cloudflare:
 
 ```bash
-wrangler d1 execute <database-name> --command "select submitted_at, email, name, player_level, interests_json from interest_submissions order by submitted_at desc limit 50;"
+wrangler d1 execute <database-name> --command "select created_at, email, name, player_level, interests from interest_submissions order by created_at desc limit 50;"
 ```
 
 For KV, list keys with the `interest:` prefix, then read values:
@@ -113,6 +128,39 @@ wrangler kv key list --binding STEEL_RAG_INTEREST_KV --prefix interest:
 ```
 
 Email routing for `hello@steelguitarrag.com` should be configured separately in Cloudflare Email Routing or another mail provider. The interest form does not send email yet.
+
+## Debugging D1 1101 Errors
+
+If `POST /api/interest` returns Cloudflare error `1101` after adding the D1
+binding:
+
+1. Confirm the Pages Function is live by checking behavior without a D1/KV
+   binding in a preview environment. The expected no-storage response is:
+
+   ```json
+   {"ok":true,"stored":false,"storage":"missing"}
+   ```
+
+2. Confirm the D1 binding name is exactly:
+
+   ```text
+   STEEL_RAG_INTEREST_D1
+   ```
+
+3. Inspect the deployed table schema and verify it matches the required schema
+   above. The most likely runtime failure is a schema mismatch between the
+   Function insert and D1 table columns.
+
+4. Check Cloudflare Pages Function logs for `interest storage error`. The
+   Function logs storage type, error name, and error message, but returns only
+   safe JSON to the browser:
+
+   ```json
+   {"ok":false,"error":"storage_error"}
+   ```
+
+5. Do not add live RAG, Ollama, Chroma, or private beta routes while debugging
+   the public landing interest form.
 
 ## Custom Domain Plan
 

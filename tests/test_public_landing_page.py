@@ -112,8 +112,44 @@ assert.equal(payload.ok, true);
 assert.equal(payload.stored, true);
 assert.equal(payload.storage, "d1");
 assert.equal(saved.length, 1);
+assert.match(saved[0].sql, /created_at/);
+assert.match(saved[0].sql, /interests/);
+assert.doesNotMatch(saved[0].sql, /submitted_at/);
+assert.doesNotMatch(saved[0].sql, /interests_json/);
 assert.equal(saved[0].values[3], "buddy@example.com");
 assert.equal(saved[0].values[5], JSON.stringify(["gear-tone", "e9-copedent"]));
+assert.equal(saved[0].values.length, 9);
+"""
+    )
+
+    result = subprocess.run(["node", "-e", script], cwd=Path.cwd(), capture_output=True, text=True, check=False)
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_interest_function_returns_safe_json_when_d1_insert_fails() -> None:
+    script = _interest_function_test_script(
+        """
+const d1 = {
+  prepare: () => ({
+    bind: () => ({
+      run: async () => {
+        throw new Error("no such column: submitted_at");
+      }
+    })
+  })
+};
+const response = await mod.__test.handleInterestRequest({
+  request: new Request("https://steelguitarrag.com/api/interest", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: "player@example.com" })
+  }),
+  env: { STEEL_RAG_INTEREST_D1: d1 }
+});
+const payload = await response.json();
+assert.equal(response.status, 500);
+assert.deepEqual(payload, { ok: false, error: "storage_error" });
 """
     )
 
