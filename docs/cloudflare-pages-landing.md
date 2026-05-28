@@ -21,23 +21,69 @@ POST /api/interest
 
 That route captures interest-list submissions only. It must not call live RAG, Ollama, Chroma, or corpus services.
 
-## Cloudflare Pages Setup
+## Current Cloudflare Pages Method
 
-1. In Cloudflare Pages, create a new project connected to the GitHub repository.
-2. Select the branch intended for preview or production deployment.
-3. Use no build command for the static landing page.
-4. Set the output directory to:
+The current landing deployment method is Wrangler/manual deploy from the static
+output directory:
+
+```bash
+npx --yes wrangler@latest pages deploy deploy/landing \
+  --project-name steel-guitar-rag-landing \
+  --branch feature/answer-api \
+  --commit-dirty=true
+```
+
+This is acceptable for early preview because the landing page is already
+working, the deployment surface is limited to `deploy/landing`, and it avoids
+connecting the whole mixed local repo state to automatic Pages builds.
+
+Manual deploy checks:
+
+1. Verify `deploy/landing/index.html` matches the intended public landing page.
+2. Verify `deploy/landing/assets/` contains only public landing assets.
+3. Verify there are no calls to `/api/answer`.
+4. Verify the early-access CTAs point to the interest form, not to the private app.
+5. Verify `POST /api/interest` returns success for a valid email.
+
+## Later GitHub Integration
+
+Cloudflare Pages GitHub integration should be a later migration, not the current
+deployment method.
+
+Later method:
+
+1. Create a new Git-connected Cloudflare Pages project.
+2. Connect the GitHub repository.
+3. Use `main` as the production branch.
+4. Deploy only public landing assets.
+5. Use no build command unless a landing-only build step is added.
+6. Set the output directory to:
 
    ```text
    deploy/landing
    ```
 
-5. Deploy the Pages preview and verify:
-   - `index.html` loads as the root page.
-   - Logo and stage background assets load from `/assets/`.
-   - There are no calls to `/api/answer`.
-   - The early-access CTAs point to the interest form, not to the private app.
-   - `POST /api/interest` returns success for a valid email.
+7. Keep `app.steelguitarrag.com` separate from the public landing page.
+8. Keep `/api/answer`, Ollama, Chroma, corpus data, embeddings, and private beta
+   app assets out of the landing deployment.
+
+Reason not now:
+
+- The repo still has mixed dirty lanes.
+- Generated artifacts must not deploy.
+- A Direct Upload Pages project cannot simply be converted to Git integration;
+  use a new Git-connected project when migrating.
+- The current landing page and interest form are already working.
+
+Required prerequisites before GitHub integration:
+
+- `.gitignore` hygiene reviewed.
+- Clean branch with only intended public landing files.
+- Deploy path documented and enforced.
+- No secrets or generated corpus data in the repo.
+- No raw corpus, Chroma stores, embeddings, logs, private transcripts, or
+  generated corpus outputs in the landing deploy path.
+- CI/test gate for the public landing page.
 
 ## Interest Form
 

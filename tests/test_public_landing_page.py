@@ -12,7 +12,7 @@ def test_public_landing_page_has_required_beta_copy_and_ctas() -> None:
     html = LANDING_PAGE.read_text(encoding="utf-8")
 
     assert "Steel Guitar RAG is a source-backed AI assistant" in html or "Source-backed AI for pedal steel players." in html
-    assert "Private beta in preparation" in html
+    assert "Private preview in preparation" in html
     assert "Join the interest list" in html
     assert "Request early access" in html
     assert "See example questions" in html
