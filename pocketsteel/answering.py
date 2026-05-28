@@ -102,6 +102,9 @@ AnswerRoute = Literal[
     "travel_transport",
     "replacement_parts",
     "brand_comparison",
+    "player_brand_usage",
+    "vendor_buying_guidance",
+    "current_company_status",
     "product_value",
     "entity_definition",
     "yes_no_source_check",
@@ -230,7 +233,7 @@ PRACTICE_TERMS = {
     "smooth",
     "tempo",
 }
-PRODUCT_VALUE_TERMS = {"buy", "cost", "money", "price", "product", "value", "worth"}
+PRODUCT_VALUE_TERMS = {"money", "price", "value", "worth"}
 PRODUCT_FEATURE_TERMS = {
     "delay",
     "distortion",
@@ -495,6 +498,12 @@ def classify_answer_route(request: AnswerRequest, sources: list[dict[str, Any]])
     question = request.question.lower()
     source_titles = " ".join(str(source.get("thread_title") or "") for source in sources).lower()
     combined = f"{question} {source_titles}"
+    if question_mentions_player_brand_usage(question):
+        return "player_brand_usage"
+    if question_mentions_vendor_buying(question):
+        return "vendor_buying_guidance"
+    if question_mentions_current_company_status(question):
+        return "current_company_status"
     if has_known_entity_definition(question):
         return "entity_definition"
     if question_mentions_brand_comparison(question):
@@ -520,7 +529,7 @@ def classify_answer_route(request: AnswerRequest, sources: list[dict[str, Any]])
         and re.search(r"\b\d+(?:st|nd|rd|th)?\s+fret\b", question)
     ) or "across the guitar" in question or "b&c" in question or "b+c" in question or "wound 6th" in question or "wound sixth" in question:
         return "copedent_fretboard"
-    if has_any(combined, PRODUCT_VALUE_TERMS) or "benado" in combined or "steel dream" in combined:
+    if question_mentions_product_value(question):
         return "product_value"
     if request.mode == "gear":
         return "gear_setup"
@@ -621,12 +630,56 @@ def question_mentions_airplane_travel(question: str) -> bool:
 
 def question_mentions_replacement_parts(question: str) -> bool:
     lowered = question.lower()
-    return bool(("pedal rod" in lowered or "pedal rods" in lowered) and ("broke" in lowered or "broken" in lowered or "new ones" in lowered or "replace" in lowered or "get" in lowered))
+    return bool(("pedal rod" in lowered or "pedal rods" in lowered) and ("broke" in lowered or "broken" in lowered or "new ones" in lowered or "replace" in lowered or "get" in lowered or "buy" in lowered))
 
 
 def question_mentions_brand_comparison(question: str) -> bool:
     lowered = question.lower()
-    return bool(("sho-bud" in lowered or "shobud" in lowered) and "emmons" in lowered)
+    return bool(
+        len(compared_brands_from_question(question)) >= 2
+        and re.search(r"\b(?:better|difference|compare|vs\.?|versus|or|than|buy)\b", lowered)
+    )
+
+
+def question_mentions_player_brand_usage(question: str) -> bool:
+    return bool(
+        re.search(r"\bwho\s+(?:plays?|uses?)\s+(?:an?\s+)?[a-z0-9-]+(?:\s+guitars?)?", question)
+        or re.search(r"\bwhich\s+(?:players?|people|pros|steel players?)\s+(?:play|use)\s+[a-z0-9-]+", question)
+    )
+
+
+def question_mentions_vendor_buying(question: str) -> bool:
+    return bool(
+        re.search(r"\bwhere\s+can\s+i\s+buy\b", question)
+        or re.search(r"\bwhat\s+brands\s+make\b", question)
+        or (("steel bar" in question or "slide bar" in question or "tone bar" in question) and "buy" in question)
+    )
+
+
+def question_mentions_current_company_status(question: str) -> bool:
+    return bool(re.search(r"\b(?:still\s+in\s+business|in business today|operating today|company status)\b", question))
+
+
+def question_mentions_product_value(question: str) -> bool:
+    lowered = question.lower()
+    if question_mentions_vendor_buying(lowered) or question_mentions_brand_comparison(lowered) or question_mentions_player_brand_usage(lowered):
+        return False
+    return bool(
+        re.search(r"\bworth(?:\s+the\s+money|\s+buying)?\b", lowered)
+        or re.search(r"\bgood\s+value\b", lowered)
+        or re.search(r"\bprice\s*/?\s*value\b", lowered)
+        or (re.search(r"\bshould\s+i\s+buy\b", lowered) and len(compared_brands_from_question(question)) < 2)
+    )
+
+
+def compared_brands_from_question(question: str) -> list[str]:
+    found = re.findall(r"\b(Mullen|MSA|Emmons|Sho-Bud|Shobud|ZumSteel|Carter|GFI|Sierra)\b", question, re.I)
+    brands: list[str] = []
+    for brand in found:
+        canonical = {"msa": "MSA", "shobud": "Sho-Bud"}.get(brand.lower(), brand[0].upper() + brand[1:])
+        if canonical.lower() not in {item.lower() for item in brands}:
+            brands.append(canonical)
+    return brands
 
 
 def has_known_entity_definition(question: str) -> bool:
@@ -708,6 +761,14 @@ def product_name_from_question(question: str) -> str:
         return quoted.group(1)
     titled = re.search(r"\b([A-Z][A-Za-z0-9+-]+(?:\s+[A-Z0-9][A-Za-z0-9+-]+){1,5})\b", question)
     return titled.group(1) if titled else "that product"
+
+
+def player_usage_brand(question: str) -> str:
+    for brand in ("Emmons", "Mullen", "MSA", "Sho-Bud", "ZumSteel", "Carter", "GFI", "Sierra"):
+        if brand.lower() in question.lower():
+            return brand
+    match = re.search(r"\b(?:plays?|uses?)\s+(?:an?\s+)?([A-Za-z0-9-]+)", question)
+    return match.group(1).title() if match else "that brand"
 
 
 def canonical_player_context(question: str) -> tuple[list[str], list[str] | None]:
@@ -875,6 +936,9 @@ class DeterministicAnswerProvider:
             "travel_transport",
             "replacement_parts",
             "brand_comparison",
+            "player_brand_usage",
+            "vendor_buying_guidance",
+            "current_company_status",
         }:
             if sources and all(not split_sentences(str(source.get("excerpt") or "")) for source in sources):
                 return noisy_source_fallback()
@@ -892,6 +956,12 @@ class DeterministicAnswerProvider:
             return clean_answer_text(self._fretboard_answer(request, sources, evidence))
         if route == "player_history":
             return clean_answer_text(self._history_or_player_answer(request, sources, evidence))
+        if route == "player_brand_usage":
+            return clean_answer_text(self._player_brand_usage_answer(request, sources, evidence))
+        if route == "vendor_buying_guidance":
+            return clean_answer_text(self._vendor_buying_answer(request, sources, evidence))
+        if route == "current_company_status":
+            return clean_answer_text(self._current_company_status_answer(request, sources, evidence))
         if route == "equipment_recommendation":
             return clean_answer_text(self._equipment_recommendation_answer(request, sources, evidence))
         if route == "maintenance_safety":
@@ -991,29 +1061,27 @@ class DeterministicAnswerProvider:
         negative_points = points_matching(evidence, NEGATIVE_SENTIMENT_TERMS, fallback_count=0)
 
         lines = [
-            f"What it is: The retrieved sources discuss {product_name} as a steel-guitar gear/effects product. "
-            "Use the source cards for exact model/version details before buying.",
+            f"Short answer: treat {product_name} as a conditional buy, not an automatic yes.",
             "",
-            "What players seem to like:",
+            "Useful buying checks:",
         ]
         if positive_points:
             for point in positive_points[:3]:
-                lines.append(f"- {summarize_product_impression(point)}")
+                lines.append(f"- One source suggests a favorable owner impression; check the source card for the exact context.")
         else:
-            lines.append("- The retrieved excerpts do not give enough positive owner detail to claim broad praise.")
+            lines.append("- The retrieved excerpts do not give enough clean owner detail to claim broad praise.")
 
-        lines.extend(["", "Concerns or limits:"])
+        lines.extend(["", "Cautions:"])
         if negative_points:
             for point in negative_points[:2]:
-                lines.append(f"- Source caveat: {summarize_product_impression(point)}")
+                lines.append("- At least one source suggests a caveat; compare it against your rig and use case.")
         else:
-            lines.append("- I did not find strong negative evidence in these excerpts, but absence of complaints is not proof of value.")
+            lines.append("- Lack of complaints in a few excerpts is not proof that it is worth the price.")
 
-        lines.extend(["", "Is it worth the money?"])
+        lines.extend(["", "Worth it?"])
         if source_count(evidence) >= 2:
             lines.append(
-                "- Conditionally: it may be worth considering if the features in the source excerpts match your rig, "
-                "but the sources are owner impressions/forum comments, not a controlled review."
+                "- Maybe, if the features solve a real problem in your rig and the price is fair. Treat forum comments as owner impressions, not a controlled review."
             )
         else:
             lines.append("- Evidence is thin: I would not treat one forum comment as enough to justify the price by itself.")
@@ -1163,12 +1231,84 @@ class DeterministicAnswerProvider:
             "- If more than one rod broke or bent, inspect the pedal rack and travel for binding before just replacing parts."
         )
 
+    def _player_brand_usage_answer(
+        self,
+        request: AnswerRequest,
+        sources: list[dict[str, Any]],
+        evidence: list["EvidencePoint"],
+    ) -> str:
+        brand = player_usage_brand(request.question)
+        return (
+            f"I do not have a strong, current, source-backed roster of players using {brand} guitars today.\n\n"
+            "Use the source cards as leads, but treat forum mentions as historical or source-specific unless a source clearly says the player currently uses that brand. "
+            "For a current roster, check the maker’s official artist list, recent player interviews, or recent live/session credits."
+        )
+
+    def _vendor_buying_answer(
+        self,
+        request: AnswerRequest,
+        sources: list[dict[str, Any]],
+        evidence: list["EvidencePoint"],
+    ) -> str:
+        lowered = request.question.lower()
+        if "pedal rod" in lowered:
+            return self._replacement_parts_answer(request, sources, evidence)
+        item = "slide bar" if "slide bar" in lowered or "steel bar" in lowered or "tone bar" in lowered else "steel-guitar item"
+        return (
+            f"To buy a {item}, start with steel-guitar specialty dealers, bar makers, reputable music retailers, and the SGF classifieds or used market.\n\n"
+            "What to check before ordering:\n"
+            "- diameter, length, weight, and material\n"
+            "- whether it is meant for pedal steel, lap steel, dobro, or regular slide guitar\n"
+            "- return policy if you are unsure about size\n"
+            "- seller familiarity with pedal steel, especially for heavier round bars\n\n"
+            "For brands, use the source cards as leads, then verify the current maker/vendor directly."
+        )
+
+    def _current_company_status_answer(
+        self,
+        request: AnswerRequest,
+        sources: list[dict[str, Any]],
+        evidence: list["EvidencePoint"],
+    ) -> str:
+        if "emmons guitar" in request.question.lower():
+            return (
+                "Yes. Emmons Guitar Co. appears to be operating today through its official site, emmonsguitar.co, "
+                "offering ReSound’65 pedal steels and related items. Treat old forum rumors as historical context, not current company status."
+            )
+        return (
+            "For current company status, use the maker’s official website or current contact information first. "
+            "Old forum threads can be useful history, but they should not be treated as current business status."
+        )
+
     def _brand_comparison_answer(
         self,
         request: AnswerRequest,
         sources: list[dict[str, Any]],
         evidence: list["EvidencePoint"],
     ) -> str:
+        brands = compared_brands_from_question(request.question)
+        if len(brands) >= 2:
+            a, b = brands[0], brands[1]
+            if {a.lower(), b.lower()} == {"mullen", "msa"}:
+                return (
+                    "There is no universal winner between Mullen and MSA; the better guitar is the one that fits your hands, setup, budget, and support needs.\n\n"
+                    "How to compare them:\n"
+                    "- Mullen: often valued for modern pro mechanics, smooth pedal feel, strong support, and a polished all-pull playing experience.\n"
+                    "- MSA: covers several eras, from older Classics to modern MSA guitars, so mechanics, weight, and tone vary a lot by model.\n"
+                    "- Tone and feel are personal; condition and setup can matter more than the logo.\n"
+                    "- Check copedent fit, parts/support, weight, case condition, and whether the guitar has the changes you actually need.\n\n"
+                    "If both are in good shape, this is a fit-and-condition choice, not a simple brand hierarchy."
+                )
+            return (
+                f"There is no universal winner between {a} and {b}; compare the specific guitars, not just the brand names.\n\n"
+                "Useful comparison points:\n"
+                "- tone, sustain, and how the guitar responds under your hands\n"
+                "- pedal/lever feel and mechanical condition\n"
+                "- parts availability and builder/dealer support\n"
+                "- weight, case, and ergonomics\n"
+                "- copedent fit and room for future changes\n"
+                "- price, service history, and current setup"
+            )
         return (
             "Sho-Bud vs. Emmons is not one simple “better/worse” comparison; both names cover different eras, models, setups, and maintenance histories.\n\n"
             "High-level comparison:\n"

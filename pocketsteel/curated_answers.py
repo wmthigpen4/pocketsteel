@@ -25,6 +25,154 @@ CURATED_FACT_WEAK_WARNING = "curated fact used; source support weak"
 def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer | None:
     q = normalize(question)
 
+    if mentions_player_brand_usage(q):
+        brand = brand_from_player_usage_question(q)
+        return CuratedAnswer(
+            intent="player_brand_usage",
+            confidence="curated_medium",
+            answer=(
+                f"I do not have a strong, current, source-backed roster of players using {brand} guitars today.\n\n"
+                "Use the source cards as leads, but treat forum mentions as historical or source-specific unless the source clearly says a player currently uses that brand. "
+                "For a current roster, the safest path is the maker’s official artist list, recent player interviews, or recent live/session credits."
+            ),
+        )
+
+    if mentions_vendor_buying(q):
+        item = "slide bar" if "slide bar" in q or "steel bar" in q or "tone bar" in q else "steel-guitar part"
+        if "pedal rod" in q:
+            return CuratedAnswer(
+                intent="vendor_buying_guidance",
+                confidence="curated_medium",
+                answer=(
+                    "For pedal rods, start with the guitar maker, a dealer for that brand, or a steel-guitar parts supplier/builder.\n\n"
+                    "Before ordering, match:\n"
+                    "- rod length\n"
+                    "- thread size\n"
+                    "- hook/connector style\n"
+                    "- pedal-rack and bellcrank hardware\n\n"
+                    "Used SGF classifieds can help, but matching the hardware matters more than finding any random rod."
+                ),
+            )
+        return CuratedAnswer(
+            intent="vendor_buying_guidance",
+            confidence="curated_medium",
+            answer=(
+                f"To buy a {item}, start with steel-guitar specialty dealers, bar makers, reputable music retailers, and the SGF classifieds or used market.\n\n"
+                "What to choose:\n"
+                "- Pedal steel players usually want a round steel bar with enough weight for sustain.\n"
+                "- Match diameter, length, weight, and material to your hand size and instrument.\n"
+                "- Lap steel and dobro-style bars can be different tools, so do not buy only by the word “slide.”\n"
+                "- If you are unsure, buy from a seller who understands pedal steel and can advise on size."
+            ),
+        )
+
+    if mentions_shobud_emmons(q):
+        return CuratedAnswer(
+            intent="brand_comparison",
+            confidence="curated_medium",
+            answer=(
+                "Sho-Bud vs. Emmons is not one simple “better/worse” comparison; both names cover different eras, models, setups, and maintenance histories.\n\n"
+                "High-level comparison:\n"
+                "- Sho-Bud is often associated with a warm, woody, classic country sound and a distinctive feel, but mechanics vary a lot by model and era.\n"
+                "- Emmons is often associated with clarity, sustain, and the push-pull/all-pull split in feel and mechanics, depending on the model.\n"
+                "- Condition matters as much as the logo: worn mechanics, setup, pickups, and cabinet condition can dominate the difference.\n"
+                "- Neither brand is one single sound. A great example of either can be wonderful; a neglected example of either can be frustrating."
+            ),
+        )
+
+    if mentions_mullen_msa_comparison(q):
+        return CuratedAnswer(
+            intent="brand_comparison",
+            confidence="curated_medium",
+            answer=(
+                "There is no universal winner between Mullen and MSA; the better guitar is the one that fits your hands, setup, budget, and support needs.\n\n"
+                "How to compare them:\n"
+                "- Mullen: often valued for modern pro mechanics, smooth pedal feel, strong support, and a polished all-pull playing experience.\n"
+                "- MSA: covers several eras, from older Classics to modern MSA guitars, so mechanics, weight, and tone vary a lot by model.\n"
+                "- Tone and feel are personal; condition and setup can matter more than the logo.\n"
+                "- Check copedent fit, parts/support, weight, case condition, and whether the guitar has the changes you actually need.\n\n"
+                "If both are in good shape, this is a fit-and-condition choice, not a simple brand hierarchy."
+            ),
+        )
+
+    if mentions_generic_brand_comparison(q):
+        brands = compared_brands(q)
+        a = brands[0] if brands else "one brand"
+        b = brands[1] if len(brands) > 1 else "the other"
+        return CuratedAnswer(
+            intent="brand_comparison",
+            confidence="curated_medium",
+            answer=(
+                f"There is no universal winner between {a} and {b}; compare the specific guitars, not just the names on the front.\n\n"
+                "Useful comparison points:\n"
+                "- tone and sustain\n"
+                "- pedal/lever feel and mechanical condition\n"
+                "- parts and builder/dealer support\n"
+                "- weight, case, and ergonomics\n"
+                "- copedent fit and room for future changes\n"
+                "- price, service history, and current setup\n\n"
+                "A clean, well-adjusted example of either brand can beat a neglected example of the “better” brand."
+            ),
+        )
+
+    if mentions_benado_steel_dream_value(q):
+        return CuratedAnswer(
+            intent="product_value",
+            confidence="curated_medium",
+            answer=(
+                "What it is: The Benado Steel Dream 2 is a steel-guitar-oriented effects unit/pedal platform associated with steel-friendly sounds such as delay, reverb, and overdrive-style color.\n\n"
+                "Worth it?\n"
+                "- Maybe, if those sounds solve a real problem in your rig and the price is fair.\n"
+                "- Treat forum comments as owner impressions, not a controlled review.\n"
+                "- Check which Benado version the source is discussing before making a buying decision."
+            ),
+        )
+
+    if mentions_benado_steel_dream_definition(q):
+        return CuratedAnswer(
+            intent="product_definition",
+            confidence="curated_medium",
+            answer=(
+                "The Benado Steel Dream 2 is a steel-guitar-oriented effects unit/pedal platform associated with steel-friendly sounds such as delay, reverb, and overdrive-style color.\n\n"
+                "Use the source cards for exact version details, because forum posts may refer to different Benado models or revisions."
+            ),
+        )
+
+    if mentions_steel_string_buying(q):
+        return CuratedAnswer(
+            intent="equipment_recommendation",
+            confidence="curated_medium",
+            answer=(
+                "For E9 strings, buy a pedal-steel E9 set from a steel-guitar dealer or string brand you trust, then adjust gauges only after you know what your guitar likes.\n\n"
+                "Practical buying notes:\n"
+                "- Start with a standard E9 set for your scale length and copedent.\n"
+                "- If you lower string 6 from G# to F#, decide whether your guitar works better with plain or wound 6th.\n"
+                "- Keep spare 3rd and 5th strings; they work hard on E9.\n"
+                "- If your guitar is older or unusual, match the current gauges before experimenting."
+            ),
+        )
+
+    if mentions_neck_choice(q):
+        return CuratedAnswer(
+            intent="equipment_recommendation",
+            confidence="curated_medium",
+            answer=(
+                "Choose the neck/body format by what you will actually play and carry, not by prestige.\n\n"
+                "Quick guide:\n"
+                "- S-10: lighter and simpler if you mainly need E9.\n"
+                "- SD-10: E9-only playing with a larger body and pad feel.\n"
+                "- D-10: E9 plus C6, more range, more weight, more maintenance.\n"
+                "- Single-neck vs double-neck is a music-and-weight decision; buy the one you will practice and gig with."
+            ),
+        )
+
+    if mentions_generic_product_command(q):
+        return CuratedAnswer(
+            intent="safety_boundary",
+            confidence="curated_high",
+            answer="No. I should not say every product is worth buying. Gear depends on fit, condition, price, support, and what problem you are trying to solve.",
+        )
+
     if mentions_practice_plan(q):
         return CuratedAnswer(
             intent="practice_plan",
@@ -68,7 +216,7 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             ),
         )
 
-    if "emmons guitar" in q and ("business" in q or "still" in q or "today" in q):
+    if mentions_company_status(q):
         return CuratedAnswer(
             intent="current_entity_status",
             confidence="curated_high",
@@ -374,20 +522,6 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             ),
         )
 
-    if mentions_shobud_emmons(q):
-        return CuratedAnswer(
-            intent="brand_comparison",
-            confidence="curated_medium",
-            answer=(
-                "Sho-Bud vs. Emmons is not one simple “better/worse” comparison; both names cover different eras, models, setups, and maintenance histories.\n\n"
-                "High-level comparison:\n"
-                "- Sho-Bud is often associated with a warm, woody, classic country sound and a distinctive feel, but mechanics vary a lot by model and era.\n"
-                "- Emmons is often associated with clarity, sustain, and the push-pull/all-pull split in feel and mechanics, depending on the model.\n"
-                "- Condition matters as much as the logo: worn mechanics, setup, pickups, and cabinet condition can dominate the difference.\n"
-                "- Neither brand is one single sound. A great example of either can be wonderful; a neglected example of either can be frustrating."
-            ),
-        )
-
     return None
 
 
@@ -443,6 +577,79 @@ def mentions_pedal_rods(question: str) -> bool:
 
 def mentions_shobud_emmons(question: str) -> bool:
     return bool(("sho-bud" in question or "shobud" in question) and "emmons" in question)
+
+
+def mentions_company_status(question: str) -> bool:
+    return bool(
+        "emmons guitar" in question
+        and ("business" in question or "still" in question or "today" in question)
+        and not mentions_player_brand_usage(question)
+    )
+
+
+def mentions_player_brand_usage(question: str) -> bool:
+    return bool(
+        re.search(r"\bwho\s+(?:plays?|uses?)\s+(?:an?\s+)?[a-z0-9-]+(?:\s+guitars?)?", question)
+        or re.search(r"\bwhich\s+(?:players?|people|pros|steel players?)\s+(?:play|use)\s+[a-z0-9-]+", question)
+    )
+
+
+def brand_from_player_usage_question(question: str) -> str:
+    for brand in ("Emmons", "Mullen", "MSA", "Sho-Bud", "ZumSteel", "Carter", "GFI", "Sierra"):
+        if brand.lower() in question:
+            return brand
+    match = re.search(r"\b(?:plays?|uses?)\s+(?:an?\s+)?([a-z0-9-]+)", question)
+    return match.group(1).title() if match else "that brand"
+
+
+def mentions_vendor_buying(question: str) -> bool:
+    return bool(
+        re.search(r"\bwhere\s+can\s+i\s+buy\b", question)
+        or re.search(r"\bwhat\s+brands\s+make\b", question)
+        or (("steel bar" in question or "slide bar" in question or "tone bar" in question) and "buy" in question)
+    )
+
+
+def mentions_mullen_msa_comparison(question: str) -> bool:
+    return bool("mullen" in question and "msa" in question and re.search(r"\b(?:better|or|vs|versus|buy|compare|difference)\b", question))
+
+
+def mentions_generic_brand_comparison(question: str) -> bool:
+    brands = compared_brands(question)
+    return len(brands) >= 2 and bool(re.search(r"\b(?:better|difference|compare|vs|versus|or|than|buy)\b", question))
+
+
+def compared_brands(question: str) -> list[str]:
+    found = re.findall(r"\b(Mullen|MSA|Emmons|Sho-Bud|Shobud|ZumSteel|Carter|GFI|Sierra)\b", question, re.I)
+    brands: list[str] = []
+    for brand in found:
+        canonical = {"msa": "MSA", "shobud": "Sho-Bud"}.get(brand.lower(), brand[0].upper() + brand[1:])
+        if canonical.lower() not in {item.lower() for item in brands}:
+            brands.append(canonical)
+    return brands
+
+
+def mentions_benado_steel_dream_definition(question: str) -> bool:
+    return "benado" in question and "steel dream" in question and re.search(r"\bwhat\s+is\b", question) and not mentions_benado_steel_dream_value(question)
+
+
+def mentions_benado_steel_dream_value(question: str) -> bool:
+    return bool("benado" in question and "steel dream" in question and re.search(r"\b(?:worth|money|value|should\s+i\s+buy)\b", question))
+
+
+def mentions_steel_string_buying(question: str) -> bool:
+    return bool(("strings" in question or "string set" in question) and "e9" in question and ("buy" in question or "should" in question))
+
+
+def mentions_neck_choice(question: str) -> bool:
+    return bool(
+        ("single-neck" in question or "double-neck" in question or "s-10" in question or "sd-10" in question or "d-10" in question)
+        and ("buy" in question or "should" in question or "choose" in question)
+    )
+
+
+def mentions_generic_product_command(question: str) -> bool:
+    return bool(re.search(r"\bsay\s+every\s+product\s+is\s+worth\s+buying\b", question))
 
 
 def source_proves_telonics_slide_bar(sources: list[dict]) -> bool:

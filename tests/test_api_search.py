@@ -528,9 +528,8 @@ def test_product_value_question_summarizes_without_repeating_owner_comment_as_an
     assert "I bought the new version" not in first_line
     assert "I bought the new version" not in payload["answer"]
     assert "What it is:" in payload["answer"]
-    assert "What players seem to like:" in payload["answer"]
-    assert "Is it worth the money?" in payload["answer"]
-    assert "owner impressions/forum comments" in payload["answer"]
+    assert "Worth it?" in payload["answer"]
+    assert "owner impressions" in payload["answer"]
     assert payload["sources"][0]["url"].startswith("https://bb.steelguitarforum.com/")
 
 
@@ -978,6 +977,84 @@ def test_shobud_vs_emmons_routes_to_brand_comparison() -> None:
     assert payload["sources"]
 
 
+def test_player_brand_usage_does_not_answer_company_status() -> None:
+    payload = answer_for_question(
+        "Who plays an Emmons guitar today?",
+        [
+            {
+                "score": 0.81,
+                "excerpt": "Old thread chatter says Emmons guitars are back, but it does not provide a current artist roster.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "Emmons PP Cool Factor",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400021",
+                "chunk_id": "chunk-emmons-players",
+                "post_uid": "p-emmons-players",
+                "source_system": "sgf_phpbb_current",
+            }
+        ],
+    )
+
+    assert_clean_answer_body(payload)
+    assert "current, source-backed roster" in payload["answer"]
+    assert "players using Emmons guitars today" in payload["answer"]
+    assert "operating today through its official site" not in payload["answer"]
+    assert "ReSound’65" not in payload["answer"]
+    assert payload["sources"]
+
+
+def test_slide_bar_buying_routes_to_vendor_guidance() -> None:
+    payload = answer_for_question(
+        "Where can I buy a slide bar?",
+        [
+            {
+                "score": 0.79,
+                "excerpt": "A discussion mentioned slide bars and several old classified links.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "slide bar",
+                "thread_url": "https://steelguitarforum.com/Forum5/HTML/006841.html",
+                "chunk_id": "chunk-slide-buy",
+                "post_uid": "p-slide-buy",
+                "source_system": "sgf_ubb_legacy",
+            }
+        ],
+    )
+
+    assert_clean_answer_body(payload)
+    assert "steel-guitar specialty dealers" in payload["answer"]
+    assert "bar makers" in payload["answer"]
+    assert "SGF classifieds" in payload["answer"]
+    assert "diameter, length, weight, and material" in payload["answer"]
+    assert "positive owner/source impression" not in payload["answer"]
+    assert payload["sources"]
+
+
+def test_mullen_msa_brand_comparison_is_direct() -> None:
+    payload = answer_for_question(
+        "Is Mullen or MSA a better guitar? Why?",
+        [
+            {
+                "score": 0.83,
+                "excerpt": "Players compared a new Mullen and a new MSA and discussed feel, service, and personal preference.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "Objective Product Review. New Mullen v New MSA",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=374850",
+                "chunk_id": "chunk-mullen-msa",
+                "post_uid": "p-mullen-msa",
+                "source_system": "sgf_phpbb_current",
+            }
+        ],
+    )
+
+    assert_clean_answer_body(payload)
+    assert "There is no universal winner between Mullen and MSA" in payload["answer"]
+    assert "Mullen" in payload["answer"]
+    assert "MSA" in payload["answer"]
+    assert "condition" in payload["answer"].lower()
+    assert "copedent" in payload["answer"].lower()
+    assert "positive owner/source impression" not in payload["answer"]
+    assert payload["sources"]
+
+
 def test_practice_tonight_routes_to_practice_plan_not_player_ranking() -> None:
     payload = answer_for_question(
         "What should I practice tonight?",
@@ -1151,7 +1228,7 @@ def test_latest_frontend_curated_failures_have_clean_answer_bodies() -> None:
         ("Do you wear shoes or play barefoot?", "Use whatever footwear gives you consistent pedal feel", ["Thin-soled shoes", "Barefoot"]),
         ("Can you give me tablature for a random song?", "I can’t provide copyrighted song tablature", ["Original mini-exercise", "public-domain"]),
         ("Can you play Panhandle Rag with a pan handle?", "proper steel bar", ["intonation", "control"]),
-        ("Who plays a Mullen steel guitar?", "I’m reading that as Mullen pedal steel", ["source cards", "complete endorsement list"]),
+        ("Who plays a Mullen steel guitar?", "current, source-backed roster", ["Mullen guitars today", "official artist list"]),
         ("Is Emmons Guitar still in business today?", "Yes. Emmons Guitar Co. appears to be operating today", ["emmonsguitar.co", "ReSound’65"]),
     ]
     noisy_source = [
