@@ -58,6 +58,10 @@ FORMAT_PATTERNS = [
     ("forum tab request fragment", re.compile(r"\bI am looking for tablature\b", re.I)),
     ("raw forum junk: Thanks Nick", re.compile(r"\bThanks Nick\b", re.I)),
     ("raw forum junk: Top Hi All", re.compile(r"\bTop Hi All\b", re.I)),
+    ("raw live-sound chatter: tell the sound guy", re.compile(r"\btell\s+the\s+sound\s+guy\b", re.I)),
+    ("raw live-sound chatter: bite ya", re.compile(r"\bbite\s+ya\b", re.I)),
+    ("raw live-sound chatter: road-case/speaker/mic fragment", re.compile(r"\b(?:road\s+cases?|speakers?\s+stay\s+inside|with\s+mics?)\b", re.I)),
+    ("blanket copyrighted-material refusal", re.compile(r"\b(?:cannot|can't|do not|won't)\s+(?:discuss|talk about|help with)\s+copyrighted\b", re.I)),
     ("orphan Practical answer heading", re.compile(r"(?m)^\s*Practical answer\s*:?\s*$", re.I)),
     (
         "empty heading: What players seem to like",
@@ -108,6 +112,22 @@ BRAND_COMPARISON_QUESTION = re.compile(
 )
 COMPANY_STATUS_QUESTION = re.compile(r"\b(?:still\s+in\s+business|in business today|company status|operating today)\b", re.I)
 PERSON_BIO_QUESTION = re.compile(r"^\s*who\s+is\s+[A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+)+\??\s*$", re.I)
+TECHNIQUE_IMPROVEMENT_QUESTION = re.compile(
+    r"\b(?:sound less mechanical|sounds mechanical|sound more musical|less stiff|fills? sound better|play with more feeling|sound less robotic)\b",
+    re.I,
+)
+DIAGNOSTIC_TROUBLESHOOTING_QUESTION = re.compile(
+    r"\b(?:amp\s+(?:buzz|buzzes|hum|hums)|buzz\s+at\s+idle|amp\s+hum|hums?\s+until\s+i\s+touch|noise\s+when\s+nothing\s+is\s+plugged\s+in|ground\s+buzz|touching\s+(?:the\s+)?(?:strings?|changer).*(?:buzz|hum))\b",
+    re.I,
+)
+TONE_TOUCH_QUESTION = re.compile(
+    r"\b(?:soften\s+my\s+attack|attack\s+is\s+too\s+hard|sound\s+less\s+harsh|pick\s+attack\s+(?:sounds\s+)?too\s+sharp|play\s+with\s+softer\s+touch)\b",
+    re.I,
+)
+SONG_LEARNING_QUESTION = re.compile(
+    r"\b(?:tab|tablature|lyrics?|approach playing|explain the style of|chord progression|original e9 lick|song arrangement|together again|amazing grace|slow country ballad)\b",
+    re.I,
+)
 PRACTICE_QUESTION = re.compile(r"\bpractice\b|\bwhat should i work on\b", re.I)
 COPEDENT_QUESTION = re.compile(r"\b(?:A\+B|B\+C|A\+F|pedal|lever|fret|chord|E9|copedent|string)\b", re.I)
 MAINTENANCE_QUESTION = re.compile(r"\b(?:oil|lubricate|changer|pedal rods|nylon tuner|cabinet drop|adjust|clean|return)\b", re.I)
@@ -212,6 +232,42 @@ def has_practice_plan(answer: str) -> bool:
     return bool(re.search(r"\bpractice\b|\bplan\b|\broutine\b|\b\d+\.\s+\w+", answer, re.I))
 
 
+def has_technique_improvement_guidance(answer: str) -> bool:
+    return bool(
+        re.search(
+            r"\b(?:phrasing|timing|space|bar control|vibrato|blocking|volume[- ]pedal|dynamics|singer|backing track)\b",
+            answer,
+            re.I,
+        )
+    )
+
+
+def has_diagnostic_troubleshooting_guidance(answer: str) -> bool:
+    return bool(
+        re.search(r"\b(?:nothing plugged in|signal chain|cable|volume pedal|effects?|one at a time|qualified amp tech|safety)\b", answer, re.I)
+        and re.search(r"\b(?:step|check|test|isolate|swap|add|diagnostic)\b", answer, re.I)
+    )
+
+
+def has_tone_touch_guidance(answer: str) -> bool:
+    concrete_terms = re.findall(
+        r"\b(?:right-hand|pick force|pick attack|volume pedal|blocking|bar|vibrato|treble|presence|delay|reverb|practice)\b",
+        answer,
+        re.I,
+    )
+    return len({term.lower() for term in concrete_terms}) >= 2
+
+
+def has_song_learning_guidance(answer: str) -> bool:
+    return bool(
+        re.search(
+            r"\b(?:approach|style|chord|position|practice|public-domain|public domain|original|mini-tab|exercise|full note-for-note|full lyrics)\b",
+            answer,
+            re.I,
+        )
+    )
+
+
 def mentions_a_pedal_and_f_lever(answer: str) -> bool:
     has_a = bool(re.search(r"\bA\s*(?:pedal|\+)", answer, re.I))
     has_f = bool(re.search(r"\bF\s*(?:lever|\+)", answer, re.I))
@@ -231,6 +287,14 @@ def infer_expected_intent(question: str, explicit_intent: str = "") -> str:
         return "current_company_status"
     if PERSON_BIO_QUESTION.search(question):
         return "player_bio"
+    if SONG_LEARNING_QUESTION.search(question):
+        return "song_learning_or_tab_request"
+    if DIAGNOSTIC_TROUBLESHOOTING_QUESTION.search(question):
+        return "diagnostic_troubleshooting"
+    if TONE_TOUCH_QUESTION.search(question):
+        return "tone_touch"
+    if TECHNIQUE_IMPROVEMENT_QUESTION.search(question):
+        return "technique_improvement"
     if PRACTICE_QUESTION.search(question):
         return "practice_plan"
     if COPEDENT_QUESTION.search(question):
@@ -306,6 +370,38 @@ def add_directness_failures(question: str, answer: str, expected_intent: str, fa
             add_failure(failures, "likely_directness_failure", "practice-plan question missing plan/routine language")
         if RANKING_LANGUAGE.search(answer) or PLAYER_NAMES.search(answer):
             add_failure(failures, "likely_intent_mismatch", "practice-plan question returned rankings/player list")
+    elif expected_intent == "technique_improvement":
+        if not has_technique_improvement_guidance(answer):
+            add_failure(
+                failures,
+                "likely_directness_failure",
+                "technique-improvement question missing phrasing/timing/dynamics/bar/blocking/space guidance",
+            )
+        if re.search(r"\b(?:sound guy|bite ya|road cases?|speakers?\s+stay\s+inside|with\s+mics?)\b", answer, re.I):
+            add_failure(failures, "likely formatting failure", "technique-improvement answer leaked live-sound forum chatter")
+    elif expected_intent == "diagnostic_troubleshooting":
+        if not has_diagnostic_troubleshooting_guidance(answer):
+            add_failure(
+                failures,
+                "likely_directness_failure",
+                "diagnostic troubleshooting answer missing isolation/signal-chain/safety steps",
+            )
+        if re.match(r"^\s*Does\s+the\b", answer, re.I):
+            add_failure(failures, "likely formatting failure", "diagnostic answer opened as a forum question")
+    elif expected_intent == "tone_touch":
+        if not has_tone_touch_guidance(answer):
+            add_failure(
+                failures,
+                "likely_directness_failure",
+                "tone/touch answer missing concrete right-hand/volume-pedal/blocking/bar/EQ practice actions",
+            )
+    elif expected_intent == "song_learning_or_tab_request":
+        if not has_song_learning_guidance(answer):
+            add_failure(
+                failures,
+                "likely_directness_failure",
+                "song-learning answer missing approach/style/chord/practice/original/public-domain guidance",
+            )
 
 
 def evaluate_answer(

@@ -173,6 +173,57 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             answer="No. I should not say every product is worth buying. Gear depends on fit, condition, price, support, and what problem you are trying to solve.",
         )
 
+    if mentions_diagnostic_troubleshooting(q):
+        return CuratedAnswer(
+            intent="diagnostic_troubleshooting",
+            confidence="curated_high",
+            answer=(
+                "Start by isolating whether the buzz is in the amp itself or in the signal chain.\n\n"
+                "Diagnostic path:\n"
+                "- Turn the amp on with nothing plugged in. If it still buzzes, suspect the amp, power, tubes, or electronics.\n"
+                "- Plug the guitar straight into the amp with a known-good cable.\n"
+                "- Swap the cable before changing anything else.\n"
+                "- Add the volume pedal, then effects, then power supplies one at a time.\n"
+                "- Listen for whether touching the strings or changer changes the buzz; that can point toward grounding or shielding behavior.\n"
+                "- Move away from dimmers, neon, motors, wall-warts, and noisy power strips if the buzz changes with location.\n\n"
+                "Safety: if the amp buzzes with nothing plugged in, or if the issue involves power, tubes, shock risk, or amp internals, use a qualified amp tech."
+            ),
+        )
+
+    if mentions_tone_touch(q):
+        return CuratedAnswer(
+            intent="tone_touch",
+            confidence="curated_high",
+            answer=(
+                "To soften your attack, start with touch and timing before covering it with effects.\n\n"
+                "Touch checklist:\n"
+                "- Lighten your right-hand pick force and let the string speak instead of snapping it.\n"
+                "- Try picking a little farther from the changer for a rounder attack, then compare it closer to the changer for brightness.\n"
+                "- Bring the volume pedal in smoothly after the pick so the note blooms instead of jumps.\n"
+                "- Practice slower pick blocking and palm blocking so note starts and stops stay controlled.\n"
+                "- Center the pitch first, then add gentle bar vibrato after the note settles.\n"
+                "- If the amp is biting too hard, reduce excessive treble or presence.\n"
+                "- Use delay or reverb lightly for space, but do not use it to hide rough technique.\n"
+                "- Practice one phrase loud/soft and short/long so your hands learn the difference."
+            ),
+        )
+
+    if mentions_technique_improvement(q):
+        return CuratedAnswer(
+            intent="technique_improvement",
+            confidence="curated_high",
+            answer=(
+                "To sound less mechanical, make the phrase breathe before you add more notes.\n\n"
+                "Practice it this way:\n"
+                "- Use fewer fills and leave space after the vocal line or backing-track phrase.\n"
+                "- Place a simple fill slightly behind the beat, then repeat it until it feels relaxed.\n"
+                "- Keep bar movement slow and in tune; add gentle vibrato only after the note settles.\n"
+                "- Block cleanly so notes end intentionally instead of running together.\n"
+                "- Use the volume pedal for dynamics and sustain, not constant motion.\n"
+                "- Record one chorus and listen for rushed attacks, clipped endings, or fills that answer nothing."
+            ),
+        )
+
     if mentions_practice_plan(q):
         return CuratedAnswer(
             intent="practice_plan",
@@ -359,13 +410,89 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             ),
         )
 
-    if ("tablature" in q or "tab" in q) and ("random song" in q or "song" in q):
+    if mentions_full_lyrics_request(q):
         return CuratedAnswer(
-            intent="tab_copyright",
+            intent="song_learning_or_tab_request",
             confidence="curated_high",
             answer=(
-                "I can’t provide copyrighted song tablature by default or send you to random people’s emails.\n\n"
-                "Safer options:\n"
+                "I do not provide full copyrighted lyrics by default.\n\n"
+                "What I can do instead:\n"
+                "- summarize the song’s theme or mood\n"
+                "- discuss how to arrange it for pedal steel\n"
+                "- suggest chord/position strategy and tone ideas\n"
+                "- work from a short excerpt or chart you provide"
+            ),
+        )
+
+    if mentions_together_again_approach(q):
+        return CuratedAnswer(
+            intent="song_learning_or_tab_request",
+            confidence="curated_high",
+            answer=(
+                "For “Together Again” on E9, think melody-first and vocal-like rather than lick-heavy.\n\n"
+                "How to approach it:\n"
+                "- Map the chord movement first, then find two or three nearby E9 positions for each phrase.\n"
+                "- Use common major grips such as 3-4-5, 4-5-6, 5-6-8, and 6-8-10 where they fit the melody.\n"
+                "- Let slides, A+B, A+F, and E-lower positions connect the melody smoothly instead of jumping around the neck.\n"
+                "- Keep the tone round, the vibrato slow, and the volume pedal even.\n"
+                "- Practice one vocal phrase at a time, then answer it with a short fill.\n\n"
+                "I can help build an arrangement from your chord chart or a short user-provided excerpt, but I will not dump a full note-for-note copyrighted tab by default."
+            ),
+        )
+
+    if mentions_panhandle_rag_tab(q):
+        return CuratedAnswer(
+            intent="song_learning_or_tab_request",
+            confidence="curated_high",
+            answer=(
+                "I can help you work toward “Panhandle Rag,” but I will not dump a full note-for-note copyrighted tab by default.\n\n"
+                "Learning approach:\n"
+                "- Start by learning the chord path and where the melody sits against each chord.\n"
+                "- Practice a bright Western-swing feel with clean blocking and a steady bounce.\n"
+                "- Use small position shifts and harmonized grips instead of trying to memorize a whole arrangement at once.\n"
+                "- Build your own version phrase by phrase, or give me a short excerpt you are working from and I can help transform it.\n\n"
+                "If you want a safe tab exercise now, use an original Western-swing-style G-C-D-G phrase instead."
+            ),
+        )
+
+    if mentions_amazing_grace_progression(q):
+        return CuratedAnswer(
+            intent="song_learning_or_tab_request",
+            confidence="curated_high",
+            answer=(
+                "“Amazing Grace” is public domain, so discussing its harmony is fine.\n\n"
+                "A common simple progression in G is:\n"
+                "- G\n"
+                "- C\n"
+                "- G\n"
+                "- D\n"
+                "- G\n\n"
+                "On E9, try connecting G at the 3rd fret open, C at the 3rd fret with A+B, D at the 5th fret with A+B, and another G at the 6th fret with A pedal + F lever."
+            ),
+        )
+
+    if mentions_original_style_lick(q):
+        return CuratedAnswer(
+            intent="song_learning_or_tab_request",
+            confidence="curated_high",
+            answer=(
+                "Yes. Here is an original slow-country E9 exercise, not a copied song lick.\n\n"
+                "Original mini-exercise in G:\n"
+                "- Start on strings 5-6-8 at the 3rd fret, no pedals.\n"
+                "- Pick the grip, let it bloom with the volume pedal, then slide to the 5th fret with A+B for D.\n"
+                "- Resolve to the 6th fret with A pedal + F lever for a higher G color.\n"
+                "- Add slow vibrato only after each chord settles.\n\n"
+                "Keep it sparse and vocal-like; the point is phrasing, not speed."
+            ),
+        )
+
+    if mentions_random_tab_request(q):
+        return CuratedAnswer(
+            intent="song_learning_or_tab_request",
+            confidence="curated_high",
+            answer=(
+                "For a random tab request, I’ll choose a copyright-safe path instead of sending you to random emails or questionable tab sources.\n\n"
+                "Good options:\n"
                 "- Name a public-domain tune such as Amazing Grace or Silent Night and I can help build a simple steel arrangement.\n"
                 "- Describe the chord movement you want and I can make an original exercise around it.\n"
                 "- For a random default, use this public-domain-style chord path: G to C to D to G.\n\n"
@@ -555,6 +682,57 @@ def mentions_practice_plan(question: str) -> bool:
         or "practice routine" in question
         or "practice session" in question
     )
+
+
+def mentions_technique_improvement(question: str) -> bool:
+    return bool(
+        re.search(
+            r"\b(?:sound less mechanical|sounds mechanical|sound more musical|less stiff|fills? sound better|play with more feeling|sound less robotic)\b",
+            question,
+        )
+    )
+
+
+def mentions_diagnostic_troubleshooting(question: str) -> bool:
+    return bool(
+        re.search(
+            r"\b(?:amp\s+(?:buzz|buzzes|hum|hums)|buzz\s+at\s+idle|amp\s+hum|hums?\s+until\s+i\s+touch|noise\s+when\s+nothing\s+is\s+plugged\s+in|ground\s+buzz|touching\s+(?:the\s+)?(?:strings?|changer).*(?:buzz|hum))\b",
+            question,
+        )
+    )
+
+
+def mentions_tone_touch(question: str) -> bool:
+    return bool(
+        re.search(
+            r"\b(?:soften\s+my\s+attack|attack\s+is\s+too\s+hard|sound\s+less\s+harsh|pick\s+attack\s+(?:sounds\s+)?too\s+sharp|play\s+with\s+softer\s+touch)\b",
+            question,
+        )
+    )
+
+
+def mentions_full_lyrics_request(question: str) -> bool:
+    return bool(re.search(r"\b(?:full|all|complete)\b.*\blyrics?\b|\blyrics?\b.*\b(?:full|all|complete)\b", question))
+
+
+def mentions_random_tab_request(question: str) -> bool:
+    return bool(("tablature" in question or "tab" in question) and ("random song" in question or "random" in question))
+
+
+def mentions_panhandle_rag_tab(question: str) -> bool:
+    return bool("panhandle rag" in question and ("tab" in question or "tablature" in question))
+
+
+def mentions_together_again_approach(question: str) -> bool:
+    return bool("together again" in question and re.search(r"\b(?:approach|play|playing|e9|arrange|arrangement)\b", question))
+
+
+def mentions_amazing_grace_progression(question: str) -> bool:
+    return bool("amazing grace" in question and re.search(r"\b(?:chord progression|progression|chords|harmony)\b", question))
+
+
+def mentions_original_style_lick(question: str) -> bool:
+    return bool(re.search(r"\boriginal\b", question) and re.search(r"\b(?:lick|exercise|phrase)\b", question))
 
 
 def mentions_every_pack_a_seat(question: str) -> bool:

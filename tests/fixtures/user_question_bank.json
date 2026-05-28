@@ -175,7 +175,7 @@
     {"id": "L005", "category": "latest_frontend_failures", "question": "How heavy is a steel guitar?"},
     {"id": "L006", "category": "latest_frontend_failures", "question": "Red guitars are gay."},
     {"id": "L007", "category": "latest_frontend_failures", "question": "Do you wear shoes or play barefoot?"},
-    {"id": "L008", "category": "latest_frontend_failures", "question": "Can you give me tablature for a random song?", "expected_contract": "public_domain_tab_or_exercise"},
+    {"id": "L008", "category": "latest_frontend_failures", "question": "Can you give me tablature for a random song?", "expected_contract": "song_learning_or_tab_request"},
     {"id": "L009", "category": "latest_frontend_failures", "question": "Can you play Panhandle Rag with a pan handle?"},
     {"id": "L010", "category": "latest_frontend_failures", "question": "Who plays a Mullen steel guitar?", "expected_intent": "player_brand_usage"},
     {"id": "L011", "category": "latest_frontend_failures", "question": "Is Emmons Guitar still in business today?", "expected_intent": "current_company_status"},
@@ -189,6 +189,25 @@
     {"id": "M007", "category": "targeted_directness_probes", "question": "Is Mullen better than MSA?", "expected_intent": "brand_comparison"},
     {"id": "M008", "category": "targeted_directness_probes", "question": "Is MSA better than Mullen?", "expected_intent": "brand_comparison"},
     {"id": "M009", "category": "targeted_directness_probes", "question": "Should I buy a Mullen or MSA?", "expected_intent": "brand_comparison"},
-    {"id": "M010", "category": "targeted_directness_probes", "question": "What brands make slide bars?", "expected_intent": "vendor_buying_guidance"}
+    {"id": "M010", "category": "targeted_directness_probes", "question": "What brands make slide bars?", "expected_intent": "vendor_buying_guidance"},
+
+    {"id": "N001", "category": "technique_improvement", "question": "Help me sound less mechanical", "expected_contract": "technique_improvement"},
+    {"id": "N002", "category": "technique_improvement", "question": "My playing sounds mechanical. What should I practice?", "expected_contract": "technique_improvement"},
+    {"id": "N003", "category": "technique_improvement", "question": "How do I make my pedal steel playing sound more musical?", "expected_contract": "technique_improvement"},
+    {"id": "N004", "category": "technique_improvement", "question": "How do I play with more feeling?", "expected_contract": "technique_improvement"},
+
+    {"id": "P001", "category": "diagnostic_troubleshooting", "question": "Why does my amp buzz at idle?", "expected_contract": "diagnostic_troubleshooting"},
+    {"id": "P002", "category": "diagnostic_troubleshooting", "question": "My amp hums even when I am not playing. What should I check?", "expected_contract": "diagnostic_troubleshooting"},
+    {"id": "P003", "category": "diagnostic_troubleshooting", "question": "Why does touching the changer reduce buzz?", "expected_contract": "diagnostic_troubleshooting"},
+
+    {"id": "Q001", "category": "tone_touch", "question": "How do I soften my attack?", "expected_contract": "tone_touch"},
+    {"id": "Q002", "category": "tone_touch", "question": "My pick attack sounds too sharp. What should I practice?", "expected_contract": "tone_touch"},
+    {"id": "Q003", "category": "tone_touch", "question": "How do I make my pedal steel sound less harsh?", "expected_contract": "tone_touch"},
+
+    {"id": "O001", "category": "song_learning_or_tab_request", "question": "Can you give me tab for Panhandle Rag?", "expected_contract": "song_learning_or_tab_request"},
+    {"id": "O002", "category": "song_learning_or_tab_request", "question": "How should I approach playing Together Again on E9?", "expected_contract": "song_learning_or_tab_request"},
+    {"id": "O003", "category": "song_learning_or_tab_request", "question": "What chord progression is common in Amazing Grace?", "expected_contract": "song_learning_or_tab_request"},
+    {"id": "O004", "category": "song_learning_or_tab_request", "question": "Can you write me an original E9 lick in the style of a slow country ballad?", "expected_contract": "song_learning_or_tab_request"},
+    {"id": "O005", "category": "song_learning_or_tab_request", "question": "Give me the full lyrics to Crazy", "expected_contract": "song_learning_or_tab_request"}
   ]
 }

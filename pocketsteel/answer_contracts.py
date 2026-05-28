@@ -7,6 +7,14 @@ from dataclasses import dataclass
 from typing import Any
 
 
+COPYRIGHT_AWARE_SONG_HELP_POLICY = (
+    "The assistant may discuss songs, recordings, style, chord movement, technique, tone, practice strategy, "
+    "and arrangement approach. It may create original exercises and public-domain examples. It should not provide "
+    "full copyrighted lyrics, full copyrighted tablature, or complete note-for-note copyrighted arrangements unless "
+    "the user provides the material, the work is public domain, or permission/license is available."
+)
+
+
 @dataclass(frozen=True)
 class AnswerContract:
     intent: str
@@ -57,6 +65,62 @@ CONTRACTS: dict[str, AnswerContract] = {
         fallback_answer=(
             "Tonight, use a short steel-specific practice plan: warm up on common grips, move one chord through two or three E9 positions, "
             "then spend a few minutes on blocking, bar movement, and volume-pedal control."
+        ),
+    ),
+    "technique_improvement": AnswerContract(
+        intent="technique_improvement",
+        required_answer_elements=(
+            ("musical feel guidance", r"\b(?:phrasing|timing|space|bar control|vibrato|blocking|volume[- ]pedal|dynamics|singer|backing track)\b"),
+        ),
+        forbidden_answer_patterns=COMMON_FORBIDDEN
+        + (
+            ("live sound-guy chatter", r"\b(?:tell the sound guy|bite ya|road cases?|speakers?\s+stay\s+inside|mics?|move some air)\b"),
+            ("ranking language", r"\bRankings are subjective\b"),
+        ),
+        default_section_labels=("practice it this way",),
+        fallback_answer=(
+            "To sound less mechanical, work on phrasing and timing before adding more notes.\n\n"
+            "Practice it this way:\n"
+            "- Play fewer fills and leave space after the singer or backing-track phrase.\n"
+            "- Use bar control and slow vibrato only after the note is in tune.\n"
+            "- Block cleanly so notes end on purpose.\n"
+            "- Use the volume pedal for dynamics and sustain, not constant motion."
+        ),
+    ),
+    "diagnostic_troubleshooting": AnswerContract(
+        intent="diagnostic_troubleshooting",
+        required_answer_elements=(
+            ("isolation path", r"\b(?:nothing plugged in|direct|signal chain|cable|volume pedal|effects?|one at a time)\b"),
+            ("diagnostic steps", r"\b(?:step|check|test|isolate|swap|add)\b"),
+            ("safety caution", r"\b(?:safety|tech|qualified|amp|electrical|power|tube|electronics)\b"),
+        ),
+        forbidden_answer_patterns=COMMON_FORBIDDEN
+        + (
+            ("answer opens as forum question only", r"^\s*Does\s+the\b"),
+            ("raw forum question as answer", r"\bDoes the amp buzz with nothing connected\b"),
+        ),
+        default_section_labels=("diagnostic path", "safety"),
+        fallback_answer=(
+            "Start by isolating the buzz: turn the amp on with nothing plugged in, then test guitar to amp direct, "
+            "swap the cable, add the volume pedal, and add effects one at a time. If the buzz is present with nothing plugged in, "
+            "suspect the amp, power, tubes, or electronics and use a qualified tech for electrical work."
+        ),
+    ),
+    "tone_touch": AnswerContract(
+        intent="tone_touch",
+        required_answer_elements=(
+            ("physical touch guidance", r"\b(?:right-hand|pick force|pick attack|touch|blocking|bar|vibrato|volume pedal|dynamics)\b"),
+            ("concrete practice action", r"\b(?:practice|try|play|pick|reduce|move|record)\b"),
+        ),
+        forbidden_answer_patterns=COMMON_FORBIDDEN
+        + (
+            ("vague amp-only answer", r"\bwith amp settings you can soften the sound\b"),
+            ("live sound-guy chatter", r"\b(?:tell the sound guy|bite ya|road cases?|speakers?\s+stay\s+inside|mics?|move some air)\b"),
+        ),
+        default_section_labels=("touch checklist",),
+        fallback_answer=(
+            "To soften your attack, start with your hands before hiding it with gear: lighten right-hand pick force, "
+            "shape the note with the volume pedal after the pick, clean up blocking, and add vibrato only after the pitch centers."
         ),
     ),
     "copedent_fretboard": AnswerContract(
@@ -159,16 +223,19 @@ CONTRACTS: dict[str, AnswerContract] = {
             "rehearse intros/endings, and practice with slow worship-style backing tracks without inventing specific links."
         ),
     ),
-    "public_domain_tab_or_exercise": AnswerContract(
-        intent="public_domain_tab_or_exercise",
+    "song_learning_or_tab_request": AnswerContract(
+        intent="song_learning_or_tab_request",
         required_answer_elements=(
-            ("copyright boundary", r"\b(?:copyrighted|public-domain|public domain)\b"),
-            ("concrete exercise", r"\b(?:mini-tab|exercise|chord path|fret|A\+B|A pedal \+ F lever)\b"),
+            ("song teaching or exercise", r"\b(?:approach|style|chord|position|practice|public-domain|public domain|original|mini-tab|exercise|full note-for-note|full lyrics)\b"),
         ),
-        forbidden_answer_patterns=COMMON_FORBIDDEN + (("random contact", r"\b(?:email|e-mail)\b"),),
-        default_section_labels=("safer options", "exercise"),
+        forbidden_answer_patterns=COMMON_FORBIDDEN
+        + (
+            ("random contact", r"\b(?:email|e-mail)\b"),
+            ("blanket copyrighted-material refusal", r"\b(?:cannot|can't|do not|won't)\s+(?:discuss|talk about|help with)\s+copyrighted\b"),
+        ),
+        default_section_labels=("learning approach", "exercise"),
         fallback_answer=(
-            "I cannot provide copyrighted song tab by default. I can build a public-domain or original exercise, for example a simple G-C-D-G E9 chord path."
+            COPYRIGHT_AWARE_SONG_HELP_POLICY
         ),
     ),
     "yes_no_source_check": AnswerContract(
@@ -191,7 +258,12 @@ INTENT_ALIASES = {
     "practice_context": "performance_context_guidance",
     "practice_style": "performance_context_guidance",
     "practice_path": "practice_plan",
-    "tab_copyright": "public_domain_tab_or_exercise",
+    "performance_feel": "technique_improvement",
+    "gear_troubleshooting": "diagnostic_troubleshooting",
+    "gear_setup": "diagnostic_troubleshooting",
+    "touch_tone": "tone_touch",
+    "tab_copyright": "song_learning_or_tab_request",
+    "public_domain_tab_or_exercise": "song_learning_or_tab_request",
     "brand_player_lookup": "player_brand_usage",
     "gear_comparison": "brand_comparison",
     "gear_practical": "equipment_recommendation",
@@ -217,8 +289,17 @@ def infer_contract_intent(question: str, mode: str = "ask") -> str:
     q = re.sub(r"\s+", " ", question or "").strip().lower()
     if "church" in q and ("steel" in q or "play" in q):
         return "performance_context_guidance"
-    if ("tablature" in q or "tab" in q) and ("random song" in q or "song" in q):
-        return "public_domain_tab_or_exercise"
+    if _mentions_song_learning_or_tab(q):
+        return "song_learning_or_tab_request"
+    if _mentions_diagnostic_troubleshooting(q):
+        return "diagnostic_troubleshooting"
+    if _mentions_tone_touch(q):
+        return "tone_touch"
+    if re.search(
+        r"\b(?:sound less mechanical|sounds mechanical|sound more musical|less stiff|fills? sound better|play with more feeling|sound less robotic)\b",
+        q,
+    ):
+        return "technique_improvement"
     if "what should i practice" in q or "practice plan" in q or "practice routine" in q or mode == "practice":
         return "practice_plan"
     if re.search(r"\bwhere\s+can\s+i\s+buy\b|\bwhat\s+brands\s+make\b", q):
@@ -298,4 +379,30 @@ def _mentions_two_brands(question: str) -> bool:
     brands = re.findall(r"\b(mullen|msa|emmons|sho-bud|shobud|zumsteel|carter|gfi|sierra)\b", question, re.I)
     return len({brand.lower() for brand in brands}) >= 2 and bool(
         re.search(r"\b(?:better|difference|compare|vs\.?|versus|or|than|buy)\b", question, re.I)
+    )
+
+
+def _mentions_song_learning_or_tab(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:tab|tablature|lyrics?)\b", question)
+        or re.search(r"\b(?:approach playing|explain the style of|chord progression|original e9 lick|song arrangement)\b", question)
+        or re.search(r"\b(?:panhandle rag|together again|amazing grace|slow country ballad)\b", question)
+    )
+
+
+def _mentions_diagnostic_troubleshooting(question: str) -> bool:
+    return bool(
+        re.search(
+            r"\b(?:amp\s+(?:buzz|buzzes|hum|hums)|buzz\s+at\s+idle|amp\s+hum|hums?\s+until\s+i\s+touch|noise\s+when\s+nothing\s+is\s+plugged\s+in|ground\s+buzz|touching\s+(?:the\s+)?(?:strings?|changer).*(?:buzz|hum))\b",
+            question,
+        )
+    )
+
+
+def _mentions_tone_touch(question: str) -> bool:
+    return bool(
+        re.search(
+            r"\b(?:soften\s+my\s+attack|attack\s+is\s+too\s+hard|sound\s+less\s+harsh|pick\s+attack\s+(?:sounds\s+)?too\s+sharp|play\s+with\s+softer\s+touch)\b",
+            question,
+        )
     )

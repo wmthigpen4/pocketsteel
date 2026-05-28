@@ -6,8 +6,13 @@ from typing import Any
 from urllib.parse import urlencode
 
 from pocketsteel import chroma_search
-from pocketsteel.answer_contracts import CONTRACTS, infer_contract_intent, validate_answer_against_contract
-from pocketsteel.answering import DeterministicAnswerProvider
+from pocketsteel.answer_contracts import (
+    CONTRACTS,
+    COPYRIGHT_AWARE_SONG_HELP_POLICY,
+    infer_contract_intent,
+    validate_answer_against_contract,
+)
+from pocketsteel.answering import DeterministicAnswerProvider, final_answer_quality_gate
 from pocketsteel.chroma_search import ChromaSearchIndex
 from pocketsteel.curated_answers import CURATED_FACT_WEAK_WARNING, WEAK_RETRIEVAL_WARNING, lookup_curated_answer
 from pocketsteel.api import create_app
@@ -89,7 +94,7 @@ class FakeAnswerProvider:
         if request.mode == "copedent":
             return "Interval-first: treat the change as moving from the 5th toward a 6th or dominant color, then map it to string 6, frets, pedals, and levers. [1]"
         if request.mode == "tab":
-            return "I can explain chord tones and pedal purpose from the sources, but I should not generate copyrighted song tab. [1]"
+            return "I can explain style, harmony, chord tones, and pedal purpose from the sources, but I do not provide full note-for-note copyrighted tab by default. [1]"
         if request.mode == "practice":
             return "1. Isolate the move. 2. Repeat it slowly. 3. Move it to another fret. [1]"
         return "A source-backed answer grounded in the retrieved forum discussion. [1]"
@@ -127,6 +132,7 @@ def test_answer_contract_registry_covers_major_intents() -> None:
     expected = {
         "practice_plan",
         "copedent_fretboard",
+        "diagnostic_troubleshooting",
         "equipment_recommendation",
         "vendor_buying_guidance",
         "product_value",
@@ -140,7 +146,9 @@ def test_answer_contract_registry_covers_major_intents() -> None:
         "entity_definition",
         "current_company_status",
         "performance_context_guidance",
-        "public_domain_tab_or_exercise",
+        "song_learning_or_tab_request",
+        "technique_improvement",
+        "tone_touch",
         "yes_no_source_check",
         "general_forum_wisdom",
     }
@@ -150,8 +158,14 @@ def test_answer_contract_registry_covers_major_intents() -> None:
 
 def test_contract_intent_inference_for_common_questions() -> None:
     assert infer_contract_intent("How do I prepare to play my pedal steel at church?") == "performance_context_guidance"
-    assert infer_contract_intent("Can you give me tablature for a random song?") == "public_domain_tab_or_exercise"
+    assert infer_contract_intent("Can you give me tablature for a random song?") == "song_learning_or_tab_request"
+    assert infer_contract_intent("How should I approach playing Together Again on E9?") == "song_learning_or_tab_request"
     assert infer_contract_intent("What should I practice tonight?") == "practice_plan"
+    assert infer_contract_intent("Why does my amp buzz at idle?") == "diagnostic_troubleshooting"
+    assert infer_contract_intent("Why does touching the changer reduce buzz?") == "diagnostic_troubleshooting"
+    assert infer_contract_intent("How do I soften my attack?") == "tone_touch"
+    assert infer_contract_intent("Help me sound less mechanical") == "technique_improvement"
+    assert infer_contract_intent("My playing sounds mechanical. What should I practice?") == "technique_improvement"
     assert infer_contract_intent("Where can I buy a slide bar?") == "vendor_buying_guidance"
     assert infer_contract_intent("Is Mullen or MSA better?") == "brand_comparison"
     assert infer_contract_intent("Who is Lloyd Green?") == "player_bio"
@@ -164,6 +178,22 @@ def test_contract_validation_catches_template_leakage() -> None:
 
     assert not validation.is_valid
     assert any("generic product-value template" in violation for violation in validation.violations)
+
+
+def test_song_help_contract_contains_copyright_aware_teaching_policy() -> None:
+    policy = COPYRIGHT_AWARE_SONG_HELP_POLICY
+
+    assert "may discuss songs" in policy
+    assert "style" in policy
+    assert "chord movement" in policy
+    assert "original exercises" in policy
+    assert "public-domain examples" in policy
+    assert "should not provide full copyrighted lyrics" in policy
+    assert "full copyrighted tablature" in policy
+
+    bad_refusal = "I cannot discuss copyrighted songs."
+    validation = validate_answer_against_contract(bad_refusal, "song_learning_or_tab_request")
+    assert any("blanket copyrighted-material refusal" in violation for violation in validation.violations)
 
 
 
@@ -406,11 +436,15 @@ def test_api_answer_passes_filters_and_top_k_to_search() -> None:
     }
 
 
-def deterministic_payload(mode: str = "ask", response: dict[str, Any] | None = None) -> dict[str, Any]:
+def deterministic_payload(
+    mode: str = "ask",
+    response: dict[str, Any] | None = None,
+    question: str = "why does touching the changer reduce hum",
+) -> dict[str, Any]:
     status, _, payload = call_app(
         "/api/answer",
         method="POST",
-        json_body={"question": "why does touching the changer reduce hum", "mode": mode, "topK": 3},
+        json_body={"question": question, "mode": mode, "topK": 3},
         search_index=FakeSearchIndex(
             response
             or {
@@ -458,7 +492,9 @@ def test_deterministic_answer_is_extractively_useful_not_placeholder() -> None:
     assert "Concise answer:" not in payload["answer"]
     assert "Useful source-backed points:" not in payload["answer"]
     assert "What multiple sources support:" not in payload["answer"]
-    assert "Touching the changer can change the ground reference" in payload["answer"]
+    assert "Start by isolating whether the buzz is in the amp itself or in the signal chain." in payload["answer"]
+    assert "nothing plugged in" in payload["answer"]
+    assert "volume pedal" in payload["answer"]
     assert "[1]" not in payload["answer"]
 
 
@@ -482,7 +518,7 @@ def test_deterministic_answer_preserves_sources_and_real_urls() -> None:
 
 
 def test_deterministic_mode_specific_sections_render() -> None:
-    gear = deterministic_payload("gear")
+    gear = deterministic_payload("gear", question="What are common Fender Steel King settings?")
     assert "Likely causes or common settings:" in gear["answer"]
     assert "Diagnostic steps:" in gear["answer"]
     assert "Safety/caution:" in gear["answer"]
@@ -507,16 +543,17 @@ def test_deterministic_mode_specific_sections_render() -> None:
             ],
             "warnings": [],
         },
+        question="How do I use the 6th string lower?",
     )
     assert "Interval-first answer:" in copedent["answer"]
     assert "Strings, frets, pedals, and levers mentioned by sources:" in copedent["answer"]
 
-    tab = deterministic_payload("tab")
+    tab = deterministic_payload("tab", question="Explain this E9 tab concept")
     assert "Concept explanation:" in tab["answer"]
-    assert "I can explain" in tab["answer"]
-    assert "should not generate copyrighted song tab" in tab["answer"]
+    assert "I can discuss style, harmony" in tab["answer"]
+    assert "full note-for-note copyrighted tab" in tab["answer"]
 
-    practice = deterministic_payload("practice")
+    practice = deterministic_payload("practice", question="What should I practice tonight?")
     assert "25-minute plan:" in practice["answer"]
     assert "3-4-5" in practice["answer"]
     assert "blocking" in practice["answer"]
@@ -677,6 +714,9 @@ def assert_clean_answer_body(payload: dict[str, Any]) -> None:
     assert "Does anyone know" not in answer
     assert "Has anyone compared" not in answer
     assert "I am looking for tablature" not in answer
+    assert "sound guy" not in answer.lower()
+    assert "bite ya" not in answer.lower()
+    assert "road cases" not in answer.lower()
 
 
 def answer_for_question(question: str, results: list[dict[str, Any]], mode: str = "ask") -> dict[str, Any]:
@@ -1271,7 +1311,7 @@ def test_latest_frontend_curated_failures_have_clean_answer_bodies() -> None:
         ("How heavy is a steel guitar?", "Pedal steel weight varies", ["S-10", "D-10"]),
         ("Red guitars are gay.", "Color does not affect playability or tone.", ["sound", "condition"]),
         ("Do you wear shoes or play barefoot?", "Use whatever footwear gives you consistent pedal feel", ["Thin-soled shoes", "Barefoot"]),
-        ("Can you give me tablature for a random song?", "I can’t provide copyrighted song tablature", ["Amazing Grace", "Original E9 mini-tab/chord path"]),
+        ("Can you give me tablature for a random song?", "For a random tab request", ["Amazing Grace", "Original E9 mini-tab/chord path"]),
         ("Can you play Panhandle Rag with a pan handle?", "proper steel bar", ["intonation", "control"]),
         ("Who plays a Mullen steel guitar?", "current, source-backed roster", ["Mullen guitars today", "official artist list"]),
         ("Is Emmons Guitar still in business today?", "Yes. Emmons Guitar Co. appears to be operating today", ["emmonsguitar.co", "ReSound’65"]),
@@ -1348,8 +1388,8 @@ def test_random_tab_answer_offers_public_domain_and_concrete_exercise() -> None:
     )
 
     assert_clean_answer_body(payload)
-    assert "I can’t provide copyrighted song tablature" in payload["answer"]
-    assert "random people’s emails" in payload["answer"]
+    assert "copyright-safe path" in payload["answer"]
+    assert "random emails" in payload["answer"]
     assert "public-domain tune such as Amazing Grace or Silent Night" in payload["answer"]
     assert "G to C to D to G" in payload["answer"]
     assert "Original E9 mini-tab/chord path" in payload["answer"]
@@ -1358,6 +1398,173 @@ def test_random_tab_answer_offers_public_domain_and_concrete_exercise() -> None:
     assert "A pedal + F lever" in payload["answer"]
     assert "@" not in payload["answer"]
     assert payload["sources"]
+
+
+def test_song_tab_policy_allows_teaching_without_full_copyrighted_tab() -> None:
+    noisy_source = [
+        {
+            "score": 0.77,
+            "excerpt": "I am looking for tablature and an e-mail address for a random song.",
+            "forum_name": "Tablature",
+            "thread_title": "Looking for tab",
+            "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400025",
+            "chunk_id": "chunk-song-policy",
+            "post_uid": "p-song-policy",
+            "source_system": "sgf_phpbb_current",
+        }
+    ]
+    cases = [
+        (
+            "Can you give me tab for Panhandle Rag?",
+            ["work toward “Panhandle Rag,”", "full note-for-note copyrighted tab", "Learning approach:", "Western-swing"],
+            ["random email", "e-mail", "full lyrics"],
+        ),
+        (
+            "How should I approach playing Together Again on E9?",
+            ["For “Together Again” on E9", "chord movement", "common major grips", "full note-for-note copyrighted tab"],
+            ["I can’t", "cannot discuss"],
+        ),
+        (
+            "What chord progression is common in Amazing Grace?",
+            ["“Amazing Grace” is public domain", "A common simple progression in G", "A pedal + F lever"],
+            ["not provide", "cannot discuss"],
+        ),
+        (
+            "Can you write me an original E9 lick in the style of a slow country ballad?",
+            ["original slow-country E9 exercise", "Original mini-exercise in G", "A+B", "A pedal + F lever"],
+            ["copyrighted song tab", "random email"],
+        ),
+        (
+            "Give me the full lyrics to Crazy",
+            ["do not provide full copyrighted lyrics", "summarize the song", "arrange it for pedal steel"],
+            ["full lyrics to", "random email"],
+        ),
+    ]
+
+    for question, required, forbidden in cases:
+        payload = answer_for_question(question, noisy_source)
+        assert_clean_answer_body(payload)
+        for bit in required:
+            assert bit in payload["answer"]
+        for bit in forbidden:
+            assert bit.lower() not in payload["answer"].lower()
+        assert payload["sources"]
+
+
+def test_amp_buzz_questions_return_diagnostic_path_not_forum_questions() -> None:
+    noisy_source = [
+        {
+            "score": 0.82,
+            "excerpt": "Does the amp buzz with nothing connected to it? Top Has anyone compared hum with a volume pedal?",
+            "forum_name": "Electronics",
+            "thread_title": "Amp buzz",
+            "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400026",
+            "chunk_id": "chunk-amp-buzz",
+            "post_uid": "p-amp-buzz",
+            "source_system": "sgf_phpbb_current",
+        }
+    ]
+    questions = [
+        "Why does my amp buzz at idle?",
+        "My amp hums even when I am not playing. What should I check?",
+        "Why does touching the changer reduce buzz?",
+    ]
+
+    for question in questions:
+        payload = answer_for_question(question, noisy_source)
+        assert_clean_answer_body(payload)
+        answer = payload["answer"]
+        assert not answer.startswith("Does the")
+        assert "nothing plugged in" in answer
+        assert "guitar straight into the amp" in answer
+        assert "Swap the cable" in answer
+        assert "volume pedal" in answer
+        assert "effects" in answer
+        assert "one at a time" in answer
+        assert "qualified amp tech" in answer
+        assert payload["sources"]
+
+
+def test_soft_attack_questions_return_tone_touch_practice_actions() -> None:
+    noisy_source = [
+        {
+            "score": 0.82,
+            "excerpt": "With amp settings you can soften the sound. Top I am looking for advice.",
+            "forum_name": "Pedal Steel",
+            "thread_title": "Attack question",
+            "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400027",
+            "chunk_id": "chunk-soft-attack",
+            "post_uid": "p-soft-attack",
+            "source_system": "sgf_phpbb_current",
+        }
+    ]
+    questions = [
+        "How do I soften my attack?",
+        "My pick attack sounds too sharp. What should I practice?",
+        "How do I make my pedal steel sound less harsh?",
+    ]
+
+    for question in questions:
+        payload = answer_for_question(question, noisy_source)
+        assert_clean_answer_body(payload)
+        answer = payload["answer"]
+        assert "right-hand pick force" in answer
+        assert "volume pedal" in answer
+        assert "blocking" in answer
+        assert "bar vibrato" in answer
+        assert "treble or presence" in answer
+        assert "Practice one phrase loud/soft and short/long" in answer
+        assert "With amp settings you can soften the sound" not in answer
+        assert payload["sources"]
+
+
+def test_technique_improvement_questions_do_not_leak_live_sound_chatter() -> None:
+    noisy_source = [
+        {
+            "score": 0.83,
+            "excerpt": "#1 tell the sound guy to bite ya'. I couldn't agree more. If you don't move some air, you don't get the better tone. I have road cases that speakers stay inside with mics.",
+            "forum_name": "Pedal Steel",
+            "thread_title": "Sound less mechanical",
+            "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400024",
+            "chunk_id": "chunk-mechanical",
+            "post_uid": "p-mechanical",
+            "source_system": "sgf_phpbb_current",
+        }
+    ]
+    questions = [
+        "Help me sound less mechanical",
+        "My playing sounds mechanical. What should I practice?",
+        "How do I make my pedal steel playing sound more musical?",
+        "How do I play with more feeling?",
+    ]
+
+    for question in questions:
+        payload = answer_for_question(question, noisy_source)
+        assert_clean_answer_body(payload)
+        answer = payload["answer"]
+        assert any(
+            term in answer.lower()
+            for term in ("phrasing", "timing", "space", "bar movement", "vibrato", "blocking", "volume pedal", "dynamics")
+        )
+        assert "Practice it this way:" in answer
+        assert answer.count("To sound less mechanical") <= 1
+        assert payload["sources"]
+
+
+def test_final_quality_gate_deduplicates_answer_lines() -> None:
+    raw = (
+        "To sound less mechanical, make the phrase breathe before you add more notes.\n\n"
+        "Practical answer\n"
+        "To sound less mechanical, make the phrase breathe before you add more notes.\n"
+        "- Use fewer fills and leave space.\n"
+        "- Use fewer fills and leave space."
+    )
+
+    cleaned = final_answer_quality_gate(raw, "Help me sound less mechanical")
+
+    assert "Practical answer" not in cleaned
+    assert cleaned.count("To sound less mechanical") <= 1
+    assert cleaned.count("Use fewer fills and leave space") == 1
 
 
 def test_source_junk_quality_gate_removes_raw_forum_fragments() -> None:
@@ -1574,7 +1781,8 @@ def test_copedent_mode_preserves_interval_first_language() -> None:
 def test_tab_mode_does_not_generate_copyrighted_song_tab() -> None:
     payload = mode_payload("tab")
     assert payload["mode"] == "tab"
-    assert "should not generate copyrighted song tab" in payload["answer"]
+    assert "full note-for-note copyrighted tab" in payload["answer"]
+    assert "style, harmony" in payload["answer"]
 
 
 def test_practice_mode_returns_steps() -> None:

@@ -63,7 +63,7 @@ def mode_guidance(mode: str) -> str:
     if mode == "copedent":
         return "Use interval-first language. Include strings, frets, pedals, levers, and interval functions when the sources support them."
     if mode == "tab":
-        return "Explain intervals, chord tones, pedal/lever purpose, and impossible combinations when relevant. Do not generate copyrighted song tab."
+        return "Teach style, harmony, positions, chord tones, and pedal/lever purpose. Do not provide full note-for-note copyrighted tab or full copyrighted lyrics by default."
     if mode == "practice":
         return "Return practical numbered practice steps grounded in the retrieved sources."
     return "Give a clear, practical source-backed answer."
@@ -96,8 +96,11 @@ class EvidencePoint:
 AnswerRoute = Literal[
     "copedent_fretboard",
     "gear_setup",
+    "diagnostic_troubleshooting",
     "equipment_recommendation",
     "maintenance_safety",
+    "technique_improvement",
+    "tone_touch",
     "practice_plan",
     "travel_transport",
     "replacement_parts",
@@ -370,6 +373,12 @@ SIGNATURE_PATTERNS = [
         r"\bhttps://",
         r"\b\d{1,2}:\d{2}\s*(?:am|pm)\b",
         r"\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4}\b",
+        r"\btell\s+the\s+sound\s+guy\b",
+        r"\bbite\s+ya\b",
+        r"\broad\s+cases?\b.*\bspeakers?\b",
+        r"\bspeakers?\s+stay\s+inside\b",
+        r"\bwith\s+mics?\b",
+        r"\bmove\s+some\s+air\b",
     )
 ]
 
@@ -512,10 +521,16 @@ def classify_answer_route(request: AnswerRequest, sources: list[dict[str, Any]])
         return "replacement_parts"
     if question_mentions_airplane_travel(question):
         return "travel_transport"
+    if question_mentions_diagnostic_troubleshooting(question):
+        return "diagnostic_troubleshooting"
     if question_mentions_maintenance_oil(question):
         return "maintenance_safety"
     if question_mentions_finger_picks(question):
         return "equipment_recommendation"
+    if question_mentions_tone_touch(question):
+        return "tone_touch"
+    if question_mentions_technique_improvement(question):
+        return "technique_improvement"
     if question_mentions_practice_plan(question) or request.mode == "practice":
         return "practice_plan"
     if re.search(r"\bdid\b.+\bmake\b|\bever\b.+\bmake\b|\bdo(?:es)?\b.+\bmake\b", question):
@@ -609,6 +624,36 @@ def question_mentions_practice_plan(question: str) -> bool:
         or re.search(r"\bpractice\b.*\bplan\b", lowered)
         or "practice routine" in lowered
         or "practice session" in lowered
+    )
+
+
+def question_mentions_technique_improvement(question: str) -> bool:
+    lowered = question.lower()
+    return bool(
+        re.search(
+            r"\b(?:help me sound less mechanical|sound less mechanical|sounds mechanical|sound more musical|less stiff|fills? sound better|play with more feeling|sound less robotic)\b",
+            lowered,
+        )
+    )
+
+
+def question_mentions_diagnostic_troubleshooting(question: str) -> bool:
+    lowered = question.lower()
+    return bool(
+        re.search(
+            r"\b(?:amp\s+(?:buzz|buzzes|hum|hums)|buzz\s+at\s+idle|amp\s+hum|hums?\s+until\s+i\s+touch|noise\s+when\s+nothing\s+is\s+plugged\s+in|ground\s+buzz|touching\s+(?:the\s+)?(?:strings?|changer).*(?:buzz|hum))\b",
+            lowered,
+        )
+    )
+
+
+def question_mentions_tone_touch(question: str) -> bool:
+    lowered = question.lower()
+    return bool(
+        re.search(
+            r"\b(?:soften\s+my\s+attack|attack\s+is\s+too\s+hard|sound\s+less\s+harsh|pick\s+attack\s+(?:sounds\s+)?too\s+sharp|play\s+with\s+softer\s+touch)\b",
+            lowered,
+        )
     )
 
 
@@ -807,6 +852,8 @@ def clean_answer_text(answer: str) -> str:
             if lines and lines[-1] != "":
                 lines.append("")
             continue
+        if line.lower().rstrip(":") in {"practical answer", "the useful way to hear it"}:
+            continue
         if line in {"Source context:", "Source support:", "Notable source context:", "Forum-source context, not definitive ranking:"}:
             skip_source_context = True
             if lines and lines[-1] == "":
@@ -826,7 +873,39 @@ def clean_answer_text(answer: str) -> str:
         lines.append(line)
     while lines and lines[-1] == "":
         lines.pop()
-    return "\n".join(lines)
+    return dedupe_answer_lines("\n".join(lines))
+
+
+def dedupe_answer_lines(answer: str) -> str:
+    """Remove repeated generated lines so lead text and sections do not echo each other."""
+    output: list[str] = []
+    seen: set[str] = set()
+    for raw_line in answer.splitlines():
+        line = raw_line.rstrip()
+        if not line.strip():
+            if output and output[-1] != "":
+                output.append("")
+            continue
+        key = normalized_answer_line_key(line)
+        if key and key in seen:
+            continue
+        if key:
+            seen.add(key)
+        output.append(line)
+    while output and output[-1] == "":
+        output.pop()
+    return "\n".join(output)
+
+
+def normalized_answer_line_key(line: str) -> str:
+    key = line.strip().lower()
+    key = re.sub(r"^[-*]\s+", "", key)
+    key = re.sub(r"^\d+[.)]\s+", "", key)
+    key = re.sub(r"[^a-z0-9+ ]+", " ", key)
+    key = re.sub(r"\s+", " ", key).strip()
+    if len(key) < 18:
+        return ""
+    return key
 
 
 def classify_answer_line(line: str) -> str:
@@ -930,8 +1009,11 @@ class DeterministicAnswerProvider:
             "player_history",
             "entity_definition",
             "yes_no_source_check",
+            "diagnostic_troubleshooting",
             "equipment_recommendation",
             "maintenance_safety",
+            "technique_improvement",
+            "tone_touch",
             "practice_plan",
             "travel_transport",
             "replacement_parts",
@@ -964,8 +1046,14 @@ class DeterministicAnswerProvider:
             return clean_answer_text(self._current_company_status_answer(request, sources, evidence))
         if route == "equipment_recommendation":
             return clean_answer_text(self._equipment_recommendation_answer(request, sources, evidence))
+        if route == "diagnostic_troubleshooting":
+            return clean_answer_text(self._diagnostic_troubleshooting_answer(request, sources, evidence))
         if route == "maintenance_safety":
             return clean_answer_text(self._maintenance_safety_answer(request, sources, evidence))
+        if route == "tone_touch":
+            return clean_answer_text(self._tone_touch_answer(request, sources, evidence))
+        if route == "technique_improvement":
+            return clean_answer_text(self._technique_improvement_answer(request, sources, evidence))
         if route == "practice_plan":
             return clean_answer_text(self._practice_plan_answer(request, sources, evidence))
         if route == "travel_transport":
@@ -1184,6 +1272,43 @@ class DeterministicAnswerProvider:
             )
         return self._gear_answer(request, sources, evidence)
 
+    def _diagnostic_troubleshooting_answer(
+        self,
+        request: AnswerRequest,
+        sources: list[dict[str, Any]],
+        evidence: list["EvidencePoint"],
+    ) -> str:
+        return (
+            "Start by isolating whether the buzz is in the amp itself or in the signal chain.\n\n"
+            "Diagnostic path:\n"
+            "- Turn the amp on with nothing plugged in. If it still buzzes, suspect the amp, power, tubes, or electronics.\n"
+            "- Plug the guitar straight into the amp with a known-good cable.\n"
+            "- Swap the cable before changing anything else.\n"
+            "- Add the volume pedal, then effects, then power supplies one at a time.\n"
+            "- Listen for whether touching the strings or changer changes the buzz; that can point toward grounding or shielding behavior.\n"
+            "- Move away from dimmers, neon, motors, wall-warts, and noisy power strips if the buzz changes with location.\n\n"
+            "Safety: if the amp buzzes with nothing plugged in, or if the issue involves power, tubes, shock risk, or amp internals, use a qualified amp tech."
+        )
+
+    def _tone_touch_answer(
+        self,
+        request: AnswerRequest,
+        sources: list[dict[str, Any]],
+        evidence: list["EvidencePoint"],
+    ) -> str:
+        return (
+            "To soften your attack, start with touch and timing before covering it with effects.\n\n"
+            "Touch checklist:\n"
+            "- Lighten your right-hand pick force and let the string speak instead of snapping it.\n"
+            "- Try picking a little farther from the changer for a rounder attack, then compare it closer to the changer for brightness.\n"
+            "- Bring the volume pedal in smoothly after the pick so the note blooms instead of jumps.\n"
+            "- Practice slower pick blocking and palm blocking so note starts and stops stay controlled.\n"
+            "- Center the pitch first, then add gentle bar vibrato after the note settles.\n"
+            "- If the amp is biting too hard, reduce excessive treble or presence.\n"
+            "- Use delay or reverb lightly for space, but do not use it to hide rough technique.\n"
+            "- Practice one phrase loud/soft and short/long so your hands learn the difference."
+        )
+
     def _practice_plan_answer(
         self,
         request: AnswerRequest,
@@ -1198,6 +1323,23 @@ class DeterministicAnswerProvider:
             "- 7 minutes: add blocking and volume-pedal control so every note starts and stops on purpose.\n"
             "- 5 minutes: make one musical phrase behind an imaginary singer, leaving space after each answer.\n\n"
             "Keep it slow enough that the bar, pedals, and hands arrive together. Clean beats fast tonight."
+        )
+
+    def _technique_improvement_answer(
+        self,
+        request: AnswerRequest,
+        sources: list[dict[str, Any]],
+        evidence: list["EvidencePoint"],
+    ) -> str:
+        return (
+            "To sound less mechanical, make the phrase breathe before you add more notes.\n\n"
+            "Practice it this way:\n"
+            "- Use fewer fills and leave space after the vocal line or backing-track phrase.\n"
+            "- Place a simple fill slightly behind the beat, then repeat it until it feels relaxed.\n"
+            "- Keep bar movement slow and in tune; add gentle vibrato only after the note settles.\n"
+            "- Block cleanly so notes end intentionally instead of running together.\n"
+            "- Use the volume pedal for dynamics and sustain, not constant motion.\n"
+            "- Record one chorus and listen for rushed attacks, clipped endings, or fills that answer nothing."
         )
 
     def _travel_transport_answer(
@@ -1422,8 +1564,9 @@ class DeterministicAnswerProvider:
         lines.extend(
             [
                 "",
-                "Tab boundary:",
-                "- I can explain the chord tones, interval movement, and pedal/lever purpose from these sources, but I should not generate copyrighted song tab.",
+                "Song-learning boundary:",
+                "- I can discuss style, harmony, chord tones, positions, and pedal/lever purpose.",
+                "- I do not provide full note-for-note copyrighted tab or full copyrighted lyrics by default, but I can build public-domain arrangements, original exercises, or work from material you provide.",
             ]
         )
         return "\n".join(lines)
@@ -1462,7 +1605,8 @@ class OllamaAnswerProvider:
                     "Answer only from the retrieved Steel Guitar Forum sources. "
                     "Cite sources with [1], [2], etc. Distinguish current phpBB from legacy UBB when relevant. "
                     "If the sources are weak, indirect, or conflicting, say so. "
-                    "Do not invent unsupported claims. Do not generate copyrighted song tab."
+                    "Do not invent unsupported claims. You may discuss copyrighted songs, style, harmony, tone, and arrangement approach, "
+                    "but do not provide full note-for-note copyrighted tab or full copyrighted lyrics by default."
                 ),
             },
             {
