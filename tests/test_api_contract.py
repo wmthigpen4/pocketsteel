@@ -11,6 +11,11 @@ from pocketsteel.access_control import (
     can_call_live_answer,
     normalize_access_role,
 )
+from pocketsteel.answer_usage import (
+    RATE_LIMIT_ENABLED_ENV,
+    RATE_LIMIT_MAX_REQUESTS_ENV,
+    RATE_LIMIT_WINDOW_SECONDS_ENV,
+)
 from pocketsteel.answering import VALID_MODES
 
 
@@ -62,3 +67,6 @@ def test_access_role_contract_gates_live_answer_access() -> None:
     assert can_call_live_answer("anonymous") is False
     assert can_call_live_answer("beta_user") is True
     assert can_call_live_answer("admin") is True
+    assert RATE_LIMIT_ENABLED_ENV == "STEEL_RAG_ANSWER_RATE_LIMIT_ENABLED"
+    assert RATE_LIMIT_MAX_REQUESTS_ENV == "STEEL_RAG_ANSWER_RATE_LIMIT_MAX_REQUESTS"
+    assert RATE_LIMIT_WINDOW_SECONDS_ENV == "STEEL_RAG_ANSWER_RATE_LIMIT_WINDOW_SECONDS"

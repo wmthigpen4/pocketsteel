@@ -17,6 +17,7 @@ from pocketsteel.chroma_search import ChromaSearchIndex
 from pocketsteel.curated_answers import CURATED_FACT_WEAK_WARNING, WEAK_RETRIEVAL_WARNING, lookup_curated_answer
 from pocketsteel.api import create_app
 from pocketsteel.access_control import DEV_ACCESS_ROLE_ENVIRON, TRUSTED_AUTH_ROLE_ENVIRON
+from pocketsteel.answer_usage import InMemoryAnswerRateLimiter
 from pocketsteel.rag_guardrails import INJECTION_WARNING
 
 
@@ -50,6 +51,36 @@ def call_app(
         "QUERY_STRING": urlencode(query or {}),
         "CONTENT_LENGTH": str(len(body)),
         "wsgi.input": io.BytesIO(body),
+    }
+    if access_role is not None:
+        environ[DEV_ACCESS_ROLE_ENVIRON if access_header == "dev" else TRUSTED_AUTH_ROLE_ENVIRON] = access_role
+    response_body = b"".join(app(environ, start_response))
+    return captured["status"], captured["headers"], json.loads(response_body)
+
+
+def call_existing_app(
+    app: Any,
+    path: str,
+    *,
+    method: str = "GET",
+    json_body: dict[str, Any] | None = None,
+    access_role: str | None = "beta_user",
+    access_header: str = "dev",
+) -> tuple[str, dict[str, str], dict[str, Any]]:
+    captured: dict[str, Any] = {}
+    body = json.dumps(json_body or {}).encode("utf-8") if json_body is not None else b""
+
+    def start_response(status: str, headers: list[tuple[str, str]]) -> None:
+        captured["status"] = status
+        captured["headers"] = dict(headers)
+
+    environ = {
+        "REQUEST_METHOD": method,
+        "PATH_INFO": path,
+        "QUERY_STRING": "",
+        "CONTENT_LENGTH": str(len(body)),
+        "wsgi.input": io.BytesIO(body),
+        "REMOTE_ADDR": "127.0.0.1",
     }
     if access_role is not None:
         environ[DEV_ACCESS_ROLE_ENVIRON if access_header == "dev" else TRUSTED_AUTH_ROLE_ENVIRON] = access_role
@@ -474,6 +505,104 @@ def test_api_answer_ignores_legacy_scaffold_headers() -> None:
 
     assert captured["status"] == "401 Unauthorized"
     assert payload == {"error": "/api/answer requires authenticated beta_user or admin access"}
+
+
+def test_api_answer_logs_authorized_success() -> None:
+    app = create_app(
+        fake_search_index(),
+        answer_provider=FakeAnswerProvider(),
+        answer_auth_mode="local_dev",
+        answer_rate_limiter=InMemoryAnswerRateLimiter(enabled=True, max_requests=10, window_seconds=60),
+    )
+    status, _, payload = call_existing_app(
+        app,
+        "/api/answer",
+        method="POST",
+        json_body={"question": "cabinet drop compensator", "mode": "ask"},
+        access_role="beta_user",
+    )
+
+    assert status == "200 OK"
+    assert payload["sources"]
+    event = app.answer_request_log[-1]
+    assert event["role"] == "beta_user"
+    assert event["accessStatus"] == "authorized"
+    assert event["authorized"] is True
+    assert event["blocked"] is False
+    assert event["questionLength"] == len("cabinet drop compensator")
+    assert event["mode"] == "ask"
+    assert event["sourceCount"] == 1
+    assert event["warningCount"] == 0
+    assert event["errorStatus"] == ""
+
+
+def test_api_answer_logs_anonymous_blocked_attempt() -> None:
+    search_index = FakeSearchIndex({"results": [], "warnings": []})
+    app = create_app(
+        search_index,
+        answer_provider=FakeAnswerProvider(),
+        answer_auth_mode="production",
+        answer_rate_limiter=InMemoryAnswerRateLimiter(enabled=True, max_requests=10, window_seconds=60),
+    )
+    status, _, payload = call_existing_app(
+        app,
+        "/api/answer",
+        method="POST",
+        json_body={"question": "cabinet drop compensator", "mode": "gear"},
+        access_role=None,
+    )
+
+    assert status == "401 Unauthorized"
+    assert payload == {"error": "/api/answer requires authenticated beta_user or admin access"}
+    assert search_index.calls == []
+    event = app.answer_request_log[-1]
+    assert event["role"] == "anonymous"
+    assert event["accessStatus"] == "blocked"
+    assert event["authorized"] is False
+    assert event["blocked"] is True
+    assert event["questionLength"] == len("cabinet drop compensator")
+    assert event["mode"] == "gear"
+    assert event["sourceCount"] is None
+    assert event["warningCount"] == 0
+    assert event["errorStatus"] == "401 Unauthorized"
+
+
+def test_api_answer_rate_limit_exceeded_returns_429_and_logs_attempt() -> None:
+    app = create_app(
+        fake_search_index(),
+        answer_provider=FakeAnswerProvider(),
+        answer_auth_mode="local_dev",
+        answer_rate_limiter=InMemoryAnswerRateLimiter(enabled=True, max_requests=1, window_seconds=60),
+    )
+    first_status, _, _ = call_existing_app(
+        app,
+        "/api/answer",
+        method="POST",
+        json_body={"question": "cabinet drop compensator"},
+        access_role="beta_user",
+    )
+    second_status, _, payload = call_existing_app(
+        app,
+        "/api/answer",
+        method="POST",
+        json_body={"question": "another cabinet drop question"},
+        access_role="beta_user",
+    )
+
+    assert first_status == "200 OK"
+    assert second_status == "429 Too Many Requests"
+    assert payload["error"] == "/api/answer rate limit exceeded"
+    assert payload["retryAfterSeconds"] > 0
+    event = app.answer_request_log[-1]
+    assert event["role"] == "beta_user"
+    assert event["accessStatus"] == "rate_limited"
+    assert event["authorized"] is True
+    assert event["blocked"] is True
+    assert event["questionLength"] == len("another cabinet drop question")
+    assert event["mode"] == "ask"
+    assert event["sourceCount"] is None
+    assert event["warningCount"] == 0
+    assert event["errorStatus"] == "429 Too Many Requests"
 
 
 def test_curated_lookup_triggers_for_high_confidence_question() -> None:

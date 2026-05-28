@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import json
 from collections.abc import Iterable
+from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import parse_qs
 from wsgiref.simple_server import make_server
@@ -19,6 +21,7 @@ from pocketsteel.answering import (
     parse_answer_request,
 )
 from pocketsteel.access_control import AnswerAuthMode, authorize_answer_request, configured_answer_auth_mode
+from pocketsteel.answer_usage import InMemoryAnswerRateLimiter, answer_rate_limit_key
 from pocketsteel.api_contract import AnswerResponse
 from pocketsteel.answer_contracts import enforce_answer_contract, infer_contract_intent
 from pocketsteel.chroma_search import (
@@ -38,6 +41,8 @@ from pocketsteel.curated_answers import (
 from pocketsteel.rag_guardrails import sanitize_retrieved_sources
 from pocketsteel.rag_guardrails import is_injection_like
 
+LOGGER = logging.getLogger(__name__)
+
 
 class RetrievalApi:
     def __init__(
@@ -46,10 +51,13 @@ class RetrievalApi:
         answer_provider: AnswerProvider | None = None,
         *,
         answer_auth_mode: AnswerAuthMode | None = None,
+        answer_rate_limiter: InMemoryAnswerRateLimiter | None = None,
     ) -> None:
         self.search_index = search_index
         self.answer_provider = configured_answer_provider(answer_provider)
         self.answer_auth_mode = answer_auth_mode or configured_answer_auth_mode()
+        self.answer_rate_limiter = answer_rate_limiter or InMemoryAnswerRateLimiter.from_env()
+        self.answer_request_log: list[dict[str, Any]] = []
 
     def __call__(self, environ: dict[str, Any], start_response: Any) -> Iterable[bytes]:
         method = environ.get("REQUEST_METHOD", "GET")
@@ -73,13 +81,43 @@ class RetrievalApi:
             if method != "POST":
                 return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"})
 
+            request_payload = self._read_json_body(environ)
             access = authorize_answer_request(environ, self.answer_auth_mode)
             if not access.allowed:
+                self._log_answer_attempt(
+                    request_payload,
+                    role=access.role,
+                    access_status="blocked",
+                    authorized=False,
+                    error_status=access.status,
+                )
                 return self._json_response(start_response, access.status, {"error": access.error})
 
-            request_payload = self._read_json_body(environ)
+            rate_key = answer_rate_limit_key(environ, access.role)
+            rate_limit = self.answer_rate_limiter.check(rate_key)
+            if not rate_limit.allowed:
+                self._log_answer_attempt(
+                    request_payload,
+                    role=access.role,
+                    access_status="rate_limited",
+                    authorized=True,
+                    error_status="429 Too Many Requests",
+                )
+                return self._json_response(
+                    start_response,
+                    "429 Too Many Requests",
+                    {"error": rate_limit.error, "retryAfterSeconds": rate_limit.retry_after_seconds},
+                )
+
             answer_request, error = parse_answer_request(request_payload)
             if error or answer_request is None:
+                self._log_answer_attempt(
+                    request_payload,
+                    role=access.role,
+                    access_status="authorized",
+                    authorized=True,
+                    error_status="400 Bad Request",
+                )
                 return self._json_response(start_response, "400 Bad Request", {"error": error or "invalid request"})
 
             source_system = self._optional_string(request_payload.get("sourceSystem") or request_payload.get("source_system"))
@@ -141,6 +179,14 @@ class RetrievalApi:
                 "warnings": warnings,
                 "sections": build_sections(final_answer),
             }
+            self._log_answer_attempt(
+                request_payload,
+                role=access.role,
+                access_status="authorized",
+                authorized=True,
+                source_count=len(sources),
+                warning_count=len(warnings),
+            )
             return self._json_response(start_response, "200 OK", payload)
 
         else:
@@ -193,6 +239,33 @@ class RetrievalApi:
         text = str(value or "").strip()
         return text or None
 
+    def _log_answer_attempt(
+        self,
+        request_payload: dict[str, Any],
+        *,
+        role: str,
+        access_status: str,
+        authorized: bool,
+        source_count: int | None = None,
+        warning_count: int = 0,
+        error_status: str = "",
+    ) -> None:
+        question = str(request_payload.get("question") or "")
+        mode = str(request_payload.get("mode") or "ask")
+        event = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "role": role,
+            "accessStatus": access_status,
+            "authorized": authorized,
+            "blocked": not authorized or bool(error_status),
+            "questionLength": len(question),
+            "mode": mode,
+            "sourceCount": source_count,
+            "warningCount": warning_count,
+            "errorStatus": error_status,
+        }
+        self.answer_request_log.append(event)
+        LOGGER.info("answer request event: %s", json.dumps(event, sort_keys=True))
 
     @staticmethod
     def _json_response(start_response: Any, status: str, payload: dict[str, Any]) -> list[bytes]:
@@ -212,11 +285,13 @@ def create_app(
     answer_provider: AnswerProvider | None = None,
     *,
     answer_auth_mode: AnswerAuthMode | None = None,
+    answer_rate_limiter: InMemoryAnswerRateLimiter | None = None,
 ) -> RetrievalApi:
     return RetrievalApi(
         search_index or ChromaSearchIndex.from_chroma(),
         answer_provider=answer_provider,
         answer_auth_mode=answer_auth_mode,
+        answer_rate_limiter=answer_rate_limiter,
     )
 
 

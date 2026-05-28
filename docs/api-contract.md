@@ -163,6 +163,31 @@ These role headers are scaffolding only. Before public beta, the trusted role
 must come from real server-side auth/session validation, not directly from a
 browser-controlled header.
 
+Usage logging scaffold:
+
+Each `/api/answer` attempt records a local structured event with timestamp,
+role, access status, authorized/blocked state, question length, mode, source
+count when an answer succeeds, warning count, and error status when blocked or
+failed. The current implementation keeps these events in process memory and
+emits them through Python logging.
+
+Rate-limit scaffold:
+
+The API uses an in-memory process-local limiter before retrieval. It is
+configured by:
+
+- `STEEL_RAG_ANSWER_RATE_LIMIT_ENABLED`: defaults to enabled.
+- `STEEL_RAG_ANSWER_RATE_LIMIT_MAX_REQUESTS`: defaults to `120`.
+- `STEEL_RAG_ANSWER_RATE_LIMIT_WINDOW_SECONDS`: defaults to `60`.
+
+TODO before production quotas:
+
+- Replace process memory with a persistent usage store.
+- Use verified user identity, not role/IP, as the quota key.
+- Define per-user quotas.
+- Decide whether admin bypasses quota or receives a separate quota.
+- Add paid/free tier budgets later.
+
 Request:
 
 ```http
@@ -259,6 +284,15 @@ Authenticated-but-unauthorized roles return `403 Forbidden`:
 ```json
 {
   "error": "/api/answer requires beta_user or admin access"
+}
+```
+
+Rate-limit failures return `429 Too Many Requests`:
+
+```json
+{
+  "error": "/api/answer rate limit exceeded",
+  "retryAfterSeconds": 60
 }
 ```
 
