@@ -76,3 +76,16 @@ def test_answer_ui_uses_live_answer_client_not_mock_answer_data() -> None:
     assert '<script src="mock-answer-data.js"></script>' not in html
     assert "TURNAROUND_ANSWER_UI.requestAnswer" in html
     assert "No sources returned" in html
+
+
+def test_answer_ui_hides_searched_row_but_preserves_source_card_metadata() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+
+    assert "Searched:" not in html
+    assert "searched-row" not in html
+    assert "searched-chip" not in html
+    assert "source-meta" in html
+    assert "source.title" in html
+    assert "source.excerpt" in html
+    assert "source.url" in html
+    assert "source.forum" in html

@@ -1145,39 +1145,12 @@
     }
 
     .answered-question {
-      margin: 10px 0 16px;
+      margin: 10px 0 0;
       color: #fff1db;
       font-family: var(--font-lesson);
       font-size: clamp(24px, 3vw, 32px);
       line-height: 1.14;
       font-weight: 600;
-    }
-
-    .searched-row {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 9px;
-    }
-
-    .searched-row span:first-child {
-      color: rgba(240, 191, 105, 0.88);
-      font-size: 12px;
-      font-weight: 750;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-    }
-
-    .searched-chip {
-      min-height: 30px;
-      display: inline-flex;
-      align-items: center;
-      border: 1px solid rgba(240, 191, 105, 0.26);
-      border-radius: 999px;
-      padding: 0 13px;
-      background: rgba(240, 191, 105, 0.06);
-      color: rgba(244, 234, 214, 0.86);
-      font-size: 13px;
     }
 
     .answer-card {
@@ -1872,12 +1845,6 @@
         <article class="question-card">
           <p class="answer-kicker">Your question</p>
           <h2 class="answered-question" id="answered-question">Why does touching the changer reduce hum?</h2>
-          <div class="searched-row" aria-label="Mock searched sources">
-            <span>Searched:</span>
-            <span class="searched-chip">Electronics</span>
-            <span class="searched-chip">Forum Wisdom</span>
-            <span class="searched-chip">Gear Setup</span>
-          </div>
         </article>
 
         <article class="answer-card">
@@ -2356,7 +2323,6 @@
     const answerLead = document.querySelector("#answer-lead");
     const answerStatus = document.querySelector("#answer-status");
     const answerSectionGrid = document.querySelector("#answer-section-grid");
-    const searchedRow = document.querySelector(".searched-row");
     const sourceGrid = document.querySelector("#source-grid");
     const followupQuestion = document.querySelector("#followup-question");
     const answerSend = document.querySelector(".answer-send");
@@ -2946,21 +2912,6 @@
     function renderResponse(response) {
       answerStatus.hidden = true;
       answerStatus.textContent = "";
-      searchedRow.innerHTML = '<span>Searched:</span>';
-      const searchedDomains = response.searched_domains || response.searched || [];
-      if (searchedDomains.length) {
-        searchedDomains.forEach((label) => {
-          const chip = document.createElement("span");
-          chip.className = "searched-chip";
-          chip.textContent = label;
-          searchedRow.appendChild(chip);
-        });
-      } else {
-        const chip = document.createElement("span");
-        chip.className = "searched-chip";
-        chip.textContent = "Sources pending";
-        searchedRow.appendChild(chip);
-      }
 
       const sections = response.sections || [];
       const primarySection = sections.find((section) => section.style === "lead") || sections[0] || {
@@ -3076,11 +3027,6 @@
     }
 
     function renderLoadingState(submittedQuestion) {
-      searchedRow.innerHTML = '<span>Searched:</span>';
-      const chip = document.createElement("span");
-      chip.className = "searched-chip";
-      chip.textContent = "Searching";
-      searchedRow.appendChild(chip);
       answerPrimaryTitle.lastChild.textContent = "Answer";
       answerLead.textContent = "Searching the forum sources...";
       answerStatus.hidden = false;
