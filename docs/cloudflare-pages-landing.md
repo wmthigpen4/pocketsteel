@@ -52,10 +52,10 @@ The public landing page includes an early-access interest form with:
 The form posts JSON to:
 
 ```text
-https://main.steel-guitar-rag-landing.pages.dev/api/interest
+/api/interest
 ```
 
-This is a temporary public landing-page target while `https://steelguitarrag.com/api/interest` returns `404` on the custom domain. The branch Pages endpoint is known to reach the working Pages Function. Switch the form back to the same-origin `/api/interest` route after custom-domain Function routing is fixed and verified.
+The custom-domain Function route has been verified on `https://steelguitarrag.com/api/interest`, so the landing form should use the same-origin `/api/interest` route. This keeps the public form independent from preview branch aliases such as `main.steel-guitar-rag-landing.pages.dev`.
 
 The Cloudflare Pages Function lives at:
 

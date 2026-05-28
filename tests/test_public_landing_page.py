@@ -6,7 +6,6 @@ import tempfile
 LANDING_PAGE = Path("ui/steel-guitar-rag-landing.html")
 DEPLOY_PAGE = Path("deploy/landing/index.html")
 INTEREST_FUNCTION = Path("functions/api/interest.js")
-WORKING_INTEREST_ENDPOINT = "https://main.steel-guitar-rag-landing.pages.dev/api/interest"
 
 
 def test_public_landing_page_has_required_beta_copy_and_ctas() -> None:
@@ -41,8 +40,8 @@ def test_public_landing_page_is_static_and_uses_local_assets() -> None:
     assert 'src="assets/steel-guitar-rag-logo-transparent.png"' in html
     assert 'url("assets/steel_on_stage2.png")' in html
     assert "/api/answer" not in html
-    assert f'action="{WORKING_INTEREST_ENDPOINT}"' in html
-    assert f'fetch("{WORKING_INTEREST_ENDPOINT}"' in html
+    assert 'action="/api/interest"' in html
+    assert 'fetch("/api/interest"' in html
     assert 'id="interest-form"' in html
     assert 'name="email"' in html
     assert 'name="interests"' in html

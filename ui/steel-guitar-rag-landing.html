@@ -700,7 +700,7 @@
           <h2 class="section-heading" id="beta-title">Request early access.</h2>
           <p>Join the interest list to hear when Steel Guitar RAG is ready for invited players. Live AI access requires login and is not public yet.</p>
         </div>
-        <form class="interest-form" id="interest-form" action="https://main.steel-guitar-rag-landing.pages.dev/api/interest" method="post">
+        <form class="interest-form" id="interest-form" action="/api/interest" method="post">
           <div class="field-grid">
             <div class="field">
               <label for="interest-name">Name</label>
@@ -775,7 +775,7 @@
         };
 
         try {
-          const response = await fetch("https://main.steel-guitar-rag-landing.pages.dev/api/interest", {
+          const response = await fetch("/api/interest", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload)
