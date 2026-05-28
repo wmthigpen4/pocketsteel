@@ -238,6 +238,10 @@
       background: rgba(21, 24, 24, 0.62);
     }
 
+    .access-preview[hidden] {
+      display: none;
+    }
+
     .access-preview-label {
       color: rgba(244, 234, 214, 0.68);
       font-size: 12px;
@@ -2344,7 +2348,7 @@
     </div>
   </div>
 
-  <script src="answer-client.js"></script>
+  <script src="answer-client.js?v=session-bootstrap-20260528"></script>
   <script>
     const question = document.querySelector("#question");
     const promptBox = document.querySelector(".prompt");
@@ -2373,6 +2377,7 @@
     const backstageTrigger = document.querySelector(".backstage-trigger");
     const backstageCtaLabel = document.querySelector("#backstage-cta-label");
     const accessHelper = document.querySelector("#access-helper");
+    const accessPreview = document.querySelector(".access-preview");
     const accessStateRadios = Array.from(document.querySelectorAll("input[name='mock-access-state']"));
     const mockCurrentPass = document.querySelector("#mock-current-pass");
     const backstage = document.querySelector("#backstage");
@@ -3111,6 +3116,13 @@
     }
 
     let answerRequestInFlight = false;
+    let devPreviewAccessEnabled = true;
+    let backendSession = {
+      authenticated: false,
+      role: STEEL_RAG_ANSWER_UI.ACCESS_ROLES.ANONYMOUS,
+      email: null,
+      authProvider: "local_dev"
+    };
 
     function setAnswerBusy(isBusy) {
       const canAskLive = STEEL_RAG_ANSWER_UI.canSubmitLiveQuestion(mockAccessState);
@@ -3281,7 +3293,95 @@
       updateHelperState();
     }
 
+    function setDevPreviewAccessEnabled(isEnabled) {
+      devPreviewAccessEnabled = Boolean(isEnabled);
+      if (accessPreview) {
+        accessPreview.hidden = !devPreviewAccessEnabled;
+        accessPreview.setAttribute("aria-hidden", String(!devPreviewAccessEnabled));
+      }
+      accessStateRadios.forEach((radio) => {
+        radio.disabled = !devPreviewAccessEnabled;
+      });
+    }
+
+    function applySessionAccess(session) {
+      backendSession = session;
+      const isLocalDevSession = sessionUsesLocalDev(session);
+      setDevPreviewAccessEnabled(isLocalDevSession);
+
+      if (!isLocalDevSession) {
+        mockAccessState = sessionGrantsLiveAccess(session)
+          ? STEEL_RAG_ANSWER_UI.normalizeAccessRole(session.role)
+          : STEEL_RAG_ANSWER_UI.ACCESS_ROLES.ANONYMOUS;
+        updateMockAccessUi();
+        return;
+      }
+
+      if (sessionGrantsLiveAccess(session)) {
+        mockAccessState = STEEL_RAG_ANSWER_UI.normalizeAccessRole(session.role);
+        updateMockAccessUi();
+      }
+    }
+
+    function normalizeSessionAuthProvider(session) {
+      return String(session?.authProvider || "local_dev").trim().toLowerCase().replace(/-/g, "_") || "local_dev";
+    }
+
+    function sessionUsesLocalDev(session) {
+      if (typeof STEEL_RAG_ANSWER_UI.sessionUsesLocalDev === "function") {
+        return STEEL_RAG_ANSWER_UI.sessionUsesLocalDev(session);
+      }
+      return normalizeSessionAuthProvider(session) === "local_dev";
+    }
+
+    function sessionGrantsLiveAccess(session) {
+      if (typeof STEEL_RAG_ANSWER_UI.sessionGrantsLiveAccess === "function") {
+        return STEEL_RAG_ANSWER_UI.sessionGrantsLiveAccess(session);
+      }
+      return Boolean(session?.authenticated) && STEEL_RAG_ANSWER_UI.canSubmitLiveQuestion(session?.role);
+    }
+
+    function normalizeSessionPayload(payload) {
+      if (typeof STEEL_RAG_ANSWER_UI.normalizeSessionResponse === "function") {
+        return STEEL_RAG_ANSWER_UI.normalizeSessionResponse(payload);
+      }
+      const role = STEEL_RAG_ANSWER_UI.normalizeAccessRole(payload?.role);
+      const authenticated = Boolean(payload?.authenticated) && STEEL_RAG_ANSWER_UI.canSubmitLiveQuestion(role);
+      return {
+        authenticated,
+        role: authenticated ? role : STEEL_RAG_ANSWER_UI.ACCESS_ROLES.ANONYMOUS,
+        email: payload?.email || null,
+        authProvider: normalizeSessionAuthProvider(payload)
+      };
+    }
+
+    async function requestBackendSession() {
+      if (typeof STEEL_RAG_ANSWER_UI.requestSession === "function") {
+        return STEEL_RAG_ANSWER_UI.requestSession({ accessRole: mockAccessState });
+      }
+      const response = await fetch(STEEL_RAG_ANSWER_UI.SESSION_ENDPOINT || "/api/session", {
+        method: "GET",
+        headers: { Accept: "application/json" }
+      });
+      if (!response.ok) {
+        throw new Error(`Session request failed with ${response.status}`);
+      }
+      return normalizeSessionPayload(await response.json());
+    }
+
+    async function bootstrapSessionAccess() {
+      try {
+        const session = await requestBackendSession();
+        applySessionAccess(session);
+      } catch (_error) {
+        updateMockAccessUi();
+      }
+    }
+
     function setMockAccessState(state) {
+      if (!devPreviewAccessEnabled || !sessionUsesLocalDev(backendSession)) {
+        return;
+      }
       mockAccessState = STEEL_RAG_ANSWER_UI.normalizeAccessRole(state);
       saveMockAccessState(mockAccessState);
       updateMockAccessUi();
@@ -3359,6 +3459,7 @@
     renderTechPopover();
     renderCopedentProfile(activeCopedentProfile);
     updateMockAccessUi();
+    bootstrapSessionAccess();
     updateHelperState();
 
     setInterval(rotateSuggestedPrompt, 6500);

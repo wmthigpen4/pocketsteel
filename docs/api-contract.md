@@ -3,6 +3,7 @@
 The frontend answer UI talks to the backend retrieval/RAG layer through two JSON endpoints:
 
 - `GET /api/search`
+- `GET /api/session`
 - `POST /api/answer`
 
 This contract is for the Steel Guitar RAG frontend and local backend API. The API reads from existing retrieval indexes only. It must not run SGF scraping, rebuild embeddings, reset vector stores, or mutate source corpus files.
@@ -335,6 +336,42 @@ Rate-limit failures return `429 Too Many Requests`:
 {
   "error": "/api/answer rate limit exceeded",
   "retryAfterSeconds": 60
+}
+```
+
+## GET /api/session
+
+`/api/session` lets the frontend ask the backend whether the current request is
+authenticated. It uses the same auth provider boundary as `/api/answer`, but it
+does not run retrieval or answer generation.
+
+In `cloudflare_access` mode, the endpoint validates `Cf-Access-Jwt-Assertion`
+and maps the verified email to `beta_user` or `admin`. Missing, invalid, or
+unlisted identities return an anonymous status in the response body.
+
+In `local_dev` mode, the endpoint may accept the explicit local dev mock access
+header so `?access=beta_user` and the Backstage preview controls remain useful
+for local testing.
+
+Response:
+
+```json
+{
+  "authenticated": true,
+  "role": "beta_user",
+  "email": "tester@example.com",
+  "authProvider": "cloudflare_access"
+}
+```
+
+Anonymous response:
+
+```json
+{
+  "authenticated": false,
+  "role": "anonymous",
+  "email": null,
+  "authProvider": "cloudflare_access"
 }
 ```
 

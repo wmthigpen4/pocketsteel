@@ -74,12 +74,102 @@ let capturedRequest;
     assert result.returncode == 0, result.stderr
 
 
+def test_frontend_answer_client_fetches_session_and_normalizes_access() -> None:
+    script = r"""
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const vm = require("node:vm");
+
+const code = fs.readFileSync("ui/answer-client.js", "utf8");
+const sandbox = { window: {} };
+vm.createContext(sandbox);
+vm.runInContext(code, sandbox);
+const answerUi = vm.runInContext("STEEL_RAG_ANSWER_UI", sandbox);
+
+let capturedRequest;
+(async () => {
+  const beta = await answerUi.requestSession({
+    accessRole: "beta_user",
+    fetchImpl: async (url, options) => {
+      capturedRequest = { url, options };
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          authenticated: true,
+          role: "beta_user",
+          email: "beta@example.test",
+          authProvider: "cloudflare_access"
+        })
+      };
+    }
+  });
+
+  assert.equal(capturedRequest.url, "/api/session");
+  assert.equal(capturedRequest.options.method, "GET");
+  assert.equal(capturedRequest.options.headers.Accept, "application/json");
+  assert.equal(capturedRequest.options.headers["X-Steel-Rag-Dev-Access-Role"], "beta_user");
+  assert.equal(JSON.stringify(beta), JSON.stringify({
+    authenticated: true,
+    role: "beta_user",
+    email: "beta@example.test",
+    authProvider: "cloudflare_access"
+  }));
+
+  assert.equal(JSON.stringify(answerUi.normalizeSessionResponse({
+    authenticated: false,
+    role: "admin",
+    email: "admin@example.test",
+    authProvider: "cloudflare_access"
+  })), JSON.stringify({
+    authenticated: false,
+    role: "anonymous",
+    email: "admin@example.test",
+    authProvider: "cloudflare_access"
+  }));
+
+  assert.equal(answerUi.sessionGrantsLiveAccess({
+    authenticated: true,
+    role: "beta_user",
+    authProvider: "cloudflare_access"
+  }), true);
+  assert.equal(answerUi.sessionGrantsLiveAccess({
+    authenticated: true,
+    role: "admin",
+    authProvider: "cloudflare_access"
+  }), true);
+  assert.equal(answerUi.sessionGrantsLiveAccess({
+    authenticated: false,
+    role: "anonymous",
+    authProvider: "cloudflare_access"
+  }), false);
+  assert.equal(answerUi.sessionUsesLocalDev({ authProvider: "local_dev" }), true);
+  assert.equal(answerUi.sessionUsesLocalDev({ authProvider: "cloudflare_access" }), false);
+  assert.equal(answerUi.sessionUsesLocalDev({ authProvider: "cloudflare-access" }), false);
+})().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
+"""
+
+    result = subprocess.run(
+        ["node", "-e", script],
+        cwd=Path(__file__).resolve().parents[1],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
 def test_answer_ui_uses_live_answer_client_not_mock_answer_data() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
 
-    assert '<script src="answer-client.js"></script>' in html
+    assert '<script src="answer-client.js?v=session-bootstrap-20260528"></script>' in html
     assert '<script src="mock-answer-data.js"></script>' not in html
     assert "STEEL_RAG_ANSWER_UI.requestAnswer" in html
+    assert "STEEL_RAG_ANSWER_UI.requestSession" in html
     assert "No sources returned" in html
 
 
@@ -222,6 +312,249 @@ def test_answer_ui_gates_live_submission_by_mock_access_state() -> None:
     assert 'Private beta answers need a Backstage Pass.' in html
     assert 'accessHelper.textContent = "Get a Backstage Pass to ask Steel Guitar RAG live.";' in html
     assert 'initialTab: STEEL_RAG_ANSWER_UI.canSubmitLiveQuestion(mockAccessState) ? "overview" : "pass"' in html
+    assert "function bootstrapSessionAccess()" in html
+    assert "const session = await requestBackendSession();" in html
+    assert "applySessionAccess(session);" in html
+    assert "setDevPreviewAccessEnabled(isLocalDevSession);" in html
+
+
+def test_answer_ui_applies_backend_session_as_authoritative_access_state() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+
+    assert "const accessPreview = document.querySelector(\".access-preview\");" in html
+    assert "let devPreviewAccessEnabled = true;" in html
+    assert "let backendSession = {" in html
+    assert "function applySessionAccess(session)" in html
+    assert "function requestBackendSession()" in html
+    assert 'fetch(STEEL_RAG_ANSWER_UI.SESSION_ENDPOINT || "/api/session"' in html
+    assert "backendSession = session;" in html
+    assert "const isLocalDevSession = sessionUsesLocalDev(session);" in html
+    assert "setDevPreviewAccessEnabled(isLocalDevSession);" in html
+    assert "sessionGrantsLiveAccess(session)" in html
+    assert "? STEEL_RAG_ANSWER_UI.normalizeAccessRole(session.role)" in html
+    assert ": STEEL_RAG_ANSWER_UI.ACCESS_ROLES.ANONYMOUS;" in html
+    assert "mockAccessState = STEEL_RAG_ANSWER_UI.normalizeAccessRole(session.role);" in html
+    assert "if (!devPreviewAccessEnabled || !sessionUsesLocalDev(backendSession))" in html
+
+
+def test_answer_ui_hides_dev_preview_controls_outside_local_dev() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+
+    assert ".access-preview[hidden]" in html
+    assert "display: none;" in html
+    assert "function setDevPreviewAccessEnabled(isEnabled)" in html
+    assert "accessPreview.hidden = !devPreviewAccessEnabled;" in html
+    assert "accessPreview.setAttribute(\"aria-hidden\", String(!devPreviewAccessEnabled));" in html
+    assert "radio.disabled = !devPreviewAccessEnabled;" in html
+    assert "setDevPreviewAccessEnabled(isLocalDevSession);" in html
+
+
+def test_answer_ui_page_load_bootstraps_session_access_state() -> None:
+    script = r"""
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const vm = require("node:vm");
+
+const clientCode = fs.readFileSync("ui/answer-client.js", "utf8");
+const html = fs.readFileSync("ui/steel-guitar-rag-mock.html", "utf8");
+const inlineScript = html.match(/<script>\n([\s\S]*)\n  <\/script>/)[1];
+
+function makeElement(selector = "") {
+  return {
+    selector,
+    id: selector.startsWith("#") ? selector.slice(1) : "",
+    value: "",
+    textContent: "",
+    innerHTML: "",
+    hidden: false,
+    disabled: false,
+    tabIndex: 0,
+    dataset: {},
+    attributes: {},
+    children: [],
+    lastChild: { textContent: "" },
+    classList: {
+      add() {},
+      remove() {},
+      toggle() {}
+    },
+    setAttribute(name, value) {
+      this.attributes[name] = String(value);
+    },
+    getAttribute(name) {
+      return this.attributes[name] || "";
+    },
+    appendChild(child) {
+      this.children.push(child);
+      return child;
+    },
+    append(...nodes) {
+      this.children.push(...nodes);
+    },
+    replaceChildren(...nodes) {
+      this.children = nodes;
+    },
+    focus() {},
+    addEventListener() {},
+    querySelector() {
+      return makeElement();
+    },
+    querySelectorAll() {
+      return [];
+    },
+    closest() {
+      return null;
+    }
+  };
+}
+
+async function runPage(sessionPayload, storedAccess = "anonymous") {
+  const elements = new Map();
+  const radioValues = ["anonymous", "beta_user", "admin"];
+  const radios = radioValues.map((value) => ({ ...makeElement(), value, checked: false }));
+  const tabs = ["overview", "setup", "pass", "feedback", "account"].map((name) => {
+    const tab = makeElement();
+    tab.dataset.backstageTab = name;
+    return tab;
+  });
+  const panels = ["overview", "setup", "pass", "feedback", "account"].map((name) => {
+    const panel = makeElement();
+    panel.id = `backstage-panel-${name}`;
+    return panel;
+  });
+
+  function getElement(selector) {
+    if (!elements.has(selector)) {
+      elements.set(selector, makeElement(selector));
+    }
+    return elements.get(selector);
+  }
+
+  const fetchCalls = [];
+  const sandbox = {
+    console,
+    URLSearchParams,
+    Date,
+    Math,
+    JSON,
+    setInterval() {},
+    requestAnimationFrame(callback) { callback(); },
+    localStorage: {
+      getItem(key) {
+        if (key === "steel-guitar-rag.mockAccessState.v1") return storedAccess;
+        return null;
+      },
+      setItem() {}
+    },
+    window: {
+      location: { search: "" },
+      crypto: { randomUUID: () => "test-id" },
+      scrollTo() {},
+      setTimeout(callback) { callback(); },
+      fetch: async (url, options) => {
+        fetchCalls.push({ url, options });
+        return {
+          ok: true,
+          status: 200,
+          json: async () => sessionPayload
+        };
+      }
+    },
+    document: {
+      querySelector(selector) {
+        return getElement(selector);
+      },
+      querySelectorAll(selector) {
+        if (selector === "input[name='mock-access-state']") return radios;
+        if (selector === "[data-backstage-tab]") return tabs;
+        if (selector === ".backstage-tab-panel") return panels;
+        if (selector === ".hero, .prompt-shell, .try-asking") return [makeElement(), makeElement(), makeElement()];
+        return [];
+      },
+      createElement(tagName) {
+        return makeElement(tagName);
+      },
+      createTextNode(text) {
+        return { textContent: text };
+      },
+      addEventListener() {}
+    }
+  };
+  sandbox.window.localStorage = sandbox.localStorage;
+  sandbox.window.URLSearchParams = URLSearchParams;
+  sandbox.window.setTimeout = sandbox.window.setTimeout;
+
+  vm.createContext(sandbox);
+  vm.runInContext(clientCode, sandbox);
+  vm.runInContext(inlineScript, sandbox);
+  await new Promise((resolve) => setImmediate(resolve));
+
+  return {
+    fetchCalls,
+    question: getElement("#question"),
+    accessPreview: getElement(".access-preview"),
+    backstageCtaLabel: getElement("#backstage-cta-label"),
+    radios
+  };
+}
+
+(async () => {
+  const beta = await runPage({
+    authenticated: true,
+    role: "beta_user",
+    email: "beta@example.test",
+    authProvider: "cloudflare_access"
+  });
+  assert.equal(beta.fetchCalls[0].url, "/api/session");
+  assert.equal(beta.fetchCalls[0].options.method, "GET");
+  assert.equal(beta.question.disabled, false);
+  assert.equal(beta.accessPreview.hidden, true);
+  assert.equal(beta.radios.every((radio) => radio.disabled), true);
+  assert.equal(beta.backstageCtaLabel.textContent, "Go Backstage");
+
+  const admin = await runPage({
+    authenticated: true,
+    role: "admin",
+    email: "admin@example.test",
+    authProvider: "cloudflare_access"
+  });
+  assert.equal(admin.question.disabled, false);
+  assert.equal(admin.backstageCtaLabel.textContent, "Go Backstage");
+
+  const anonymous = await runPage({
+    authenticated: false,
+    role: "anonymous",
+    email: null,
+    authProvider: "cloudflare_access"
+  }, "beta_user");
+  assert.equal(anonymous.question.disabled, true);
+  assert.equal(anonymous.accessPreview.hidden, true);
+  assert.equal(anonymous.radios.every((radio) => radio.disabled), true);
+
+  const localDev = await runPage({
+    authenticated: false,
+    role: "anonymous",
+    email: null,
+    authProvider: "local_dev"
+  });
+  assert.equal(localDev.question.disabled, true);
+  assert.equal(localDev.accessPreview.hidden, false);
+  assert.equal(localDev.radios.every((radio) => !radio.disabled), true);
+})().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
+"""
+
+    result = subprocess.run(
+        ["node", "-e", script],
+        cwd=Path(__file__).resolve().parents[1],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
 
 
 def test_answer_ui_prompt_chips_submit_instead_of_only_filling_input() -> None:

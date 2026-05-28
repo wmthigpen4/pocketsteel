@@ -1,5 +1,6 @@
 const STEEL_RAG_ANSWER_UI = (() => {
   const ANSWER_ENDPOINT = "/api/answer";
+  const SESSION_ENDPOINT = "/api/session";
   const ACCESS_ROLES = Object.freeze({
     ANONYMOUS: "anonymous",
     BETA_USER: "beta_user",
@@ -33,6 +34,28 @@ const STEEL_RAG_ANSWER_UI = (() => {
 
   function canSubmitLiveQuestion(role) {
     return LIVE_ANSWER_ROLES.has(normalizeAccessRole(role));
+  }
+
+  function normalizeAuthProvider(value) {
+    const provider = String(value || "").trim().toLowerCase().replace(/-/g, "_");
+    return provider || "local_dev";
+  }
+
+  function sessionUsesLocalDev(session) {
+    return normalizeAuthProvider(session?.authProvider) === "local_dev";
+  }
+
+  function sessionGrantsLiveAccess(session) {
+    return Boolean(session?.authenticated) && canSubmitLiveQuestion(session?.role);
+  }
+
+  function devAccessHeaders(accessRole = ACCESS_ROLES.ANONYMOUS) {
+    const headers = {};
+    const role = normalizeAccessRole(accessRole);
+    if (canSubmitLiveQuestion(role)) {
+      headers["X-Steel-Rag-Dev-Access-Role"] = role;
+    }
+    return headers;
   }
 
   function cleanLines(text) {
@@ -223,12 +246,9 @@ const STEEL_RAG_ANSWER_UI = (() => {
   async function requestAnswer(question, { fetchImpl = window.fetch, accessRole = ACCESS_ROLES.ANONYMOUS } = {}) {
     const headers = {
       "Content-Type": "application/json",
-      Accept: "application/json"
+      Accept: "application/json",
+      ...devAccessHeaders(accessRole)
     };
-    const role = normalizeAccessRole(accessRole);
-    if (canSubmitLiveQuestion(role)) {
-      headers["X-Steel-Rag-Dev-Access-Role"] = role;
-    }
 
     const response = await fetchImpl(ANSWER_ENDPOINT, {
       method: "POST",
@@ -244,15 +264,48 @@ const STEEL_RAG_ANSWER_UI = (() => {
     return normalizeAnswerResponse(payload, question);
   }
 
+  function normalizeSessionResponse(payload) {
+    const role = normalizeAccessRole(payload?.role);
+    const authenticated = Boolean(payload?.authenticated) && canSubmitLiveQuestion(role);
+    return {
+      authenticated,
+      role: authenticated ? role : ACCESS_ROLES.ANONYMOUS,
+      email: firstValue(payload?.email) || null,
+      authProvider: normalizeAuthProvider(firstValue(payload?.authProvider, "local_dev"))
+    };
+  }
+
+  async function requestSession({ fetchImpl = window.fetch, accessRole = ACCESS_ROLES.ANONYMOUS } = {}) {
+    const response = await fetchImpl(SESSION_ENDPOINT, {
+      method: "GET",
+      headers: {
+        Accept: "application/json",
+        ...devAccessHeaders(accessRole)
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Session request failed with ${response.status}`);
+    }
+
+    const payload = await response.json();
+    return normalizeSessionResponse(payload);
+  }
+
   return {
     ANSWER_ENDPOINT,
+    SESSION_ENDPOINT,
     ACCESS_ROLES,
     hasSubmittableQuestion,
     shouldSubmitQuestionKey,
     normalizeAccessRole,
     canSubmitLiveQuestion,
+    sessionUsesLocalDev,
+    sessionGrantsLiveAccess,
+    normalizeSessionResponse,
     normalizeSections,
     normalizeAnswerResponse,
+    requestSession,
     requestAnswer
   };
 })();
