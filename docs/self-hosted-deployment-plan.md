@@ -59,52 +59,61 @@ Current domain state on 2026-05-28:
   - `derek.ns.cloudflare.com`
   - `vita.ns.cloudflare.com`
 
-GoDaddy remains the registrar. Cloudflare is becoming authoritative DNS for the zone. Wait for Cloudflare to show the zone as active before routing services, creating tunnel public hostnames, or changing landing-page records.
+GoDaddy remains the registrar. Cloudflare is now the DNS control plane for the zone. Continue to treat routing as not launched until the landing page and private beta guardrails are ready.
 
 No MX records were visible in GoDaddy, and email is not configured, so there are no existing domain email routes to preserve. If email is added later, create MX, SPF, DKIM, and DMARC records intentionally in Cloudflare.
 
-## DNS Records to Review After Cloudflare Activation
+## Current Cloudflare DNS Records
 
-Current visible GoDaddy records captured before the nameserver change:
+Current Cloudflare DNS export for `steelguitarrag.com`:
 
-- `A @ WebsiteBuilder Site`
+- `NS derek.ns.cloudflare.com`
+- `NS vita.ns.cloudflare.com`
+- `A @ 13.248.243.5`
+- `A @ 76.223.105.230`
 - `CNAME www steelguitarrag.com`
 - `CNAME pay paylinks.commerce.godaddy.com`
 - `CNAME _domainconnect _domainconnect.gd.domaincontrol.com`
 - `TXT _dmarc` DMARC quarantine record
-- no MX records visible
+- no MX records
 
-Review these records in Cloudflare after activation:
+The apex/root A records `13.248.243.5` and `76.223.105.230` appear to be imported GoDaddy/WebsiteBuilder-style records. They are not the Mac mini app, not Cloudflare Tunnel, and not the live RAG backend.
 
-- Apex/root record:
-  - Remove or replace the GoDaddy WebsiteBuilder apex record after the landing page target is chosen.
-  - Do not route apex/root to the live RAG app.
-- `www`:
-  - Configure as a redirect to `steelguitarrag.com` or as the landing host's required record.
+## Recommended Near-term DNS Plan
+
+- `steelguitarrag.com`:
+  - Eventually point root to the public landing page.
+  - Do not point root to the live RAG app.
+  - Remove or replace the imported GoDaddy/WebsiteBuilder-style A records only after the landing page target is chosen.
+- `www.steelguitarrag.com`:
+  - Redirect to root or CNAME to the landing-page target according to the chosen landing setup.
+  - Keep it public-safe with no live RAG access.
+- `app.steelguitarrag.com`:
+  - Later point to the Cloudflare Tunnel public hostname for the Mac mini app/backend.
+  - Do not create or route this hostname until server-side `/api/answer` auth is enforced and tested.
+- `api.steelguitarrag.com`:
+  - Keep disabled for the first beta unless separately approved.
+  - If introduced later, route only to the authenticated backend, never to Ollama.
+
+## Records to Review Before Launch
+
 - `pay`:
-  - Preserve only if GoDaddy Pay Links are still needed.
+  - Decide whether to remove `CNAME pay paylinks.commerce.godaddy.com`.
+  - Keep it only if GoDaddy Pay Links are still needed.
 - `_domainconnect`:
+  - Decide whether to remove `CNAME _domainconnect _domainconnect.gd.domaincontrol.com`.
   - Usually remove after Cloudflare is authoritative unless GoDaddy Domain Connect is still required.
 - `_dmarc`:
-  - Preserve the current quarantine record unless intentionally changing mail policy.
+  - Decide whether to keep the current DMARC quarantine record before email exists.
+  - Keeping it is reasonable as a conservative mail-policy placeholder, but future email setup should revisit SPF, DKIM, DMARC, and MX together.
 - MX/email:
   - No MX records are currently configured; there are no active email records to preserve.
 
-Initial Cloudflare DNS target state:
-
-| Record | Purpose | Initial recommendation |
-| --- | --- | --- |
-| Apex/root | Public landing page | Point to the chosen landing page only. No live RAG. |
-| `www` | Redirect to root | Configure redirect or CNAME according to the landing setup. |
-| `app` | Private beta app | Add only when the Cloudflare Tunnel and auth gates are ready. |
-| `api` | Optional later API | Do not add for first beta unless separately approved. |
-| `_dmarc` TXT | Mail policy marker | Preserve current quarantine record unless intentionally changed. |
-
 ## Next Cloudflare Tasks
 
-- Confirm the Cloudflare zone is active.
-- Review imported DNS records against the GoDaddy records captured before the nameserver change.
-- Remove or replace the GoDaddy WebsiteBuilder apex record if present, but only after the landing page routing is chosen.
+- Confirm the Cloudflare zone is active and serving the exported records.
+- Review the imported apex/root, `www`, `pay`, `_domainconnect`, and `_dmarc` records.
+- Remove or replace the imported GoDaddy/WebsiteBuilder-style apex A records only after the landing page routing is chosen.
 - Decide whether to keep `pay`, `_domainconnect`, and `_dmarc`.
 - Create landing page routing later for `steelguitarrag.com` and `www.steelguitarrag.com`.
 - Create an `app.steelguitarrag.com` Cloudflare Tunnel route only after auth guardrails are implemented and verified.
@@ -127,6 +136,7 @@ Tunnel requirements:
 
 - Create a tunnel public hostname for `app.steelguitarrag.com`.
 - Point that public hostname only at the local app/backend port, for example `http://127.0.0.1:<APP_PORT>`.
+- Do not route `app.steelguitarrag.com` to the Mac mini until server-side `/api/answer` auth is enforced.
 - Tunnel points only to the local app port.
 - No router port forwarding.
 - No direct public home IP exposure.
@@ -455,6 +465,7 @@ Alerts should cover:
 - [ ] Source/copyright policy page is ready and linked from the landing page.
 - [ ] Ollama is reachable only locally at `http://127.0.0.1:11434`.
 - [ ] `app.steelguitarrag.com` routes only to the app/backend port.
+- [ ] `app.steelguitarrag.com` is not routed to the Mac mini until `/api/answer` has server-side auth.
 - [ ] Router has no port forwarding for app, Ollama, Chroma, or SSH.
 - [ ] Mac mini sleep is disabled.
 - [ ] Log directory exists and log rotation/retention is decided.
@@ -462,8 +473,8 @@ Alerts should cover:
 - [ ] Backup plan is documented and tested for config and Chroma.
 - [ ] Rollback plan is documented.
 - [ ] Cloudflare zone is active after nameserver change.
-- [ ] Cloudflare imported DNS records are reviewed against the captured GoDaddy records.
-- [ ] GoDaddy WebsiteBuilder apex record is removed or replaced only after the landing page target is chosen.
+- [ ] Cloudflare DNS records are reviewed against the current export.
+- [ ] Imported GoDaddy/WebsiteBuilder-style apex A records are removed or replaced only after the landing page target is chosen.
 - [ ] No scraping command is part of service startup.
 - [ ] No embedding command is part of service startup.
 - [ ] Chroma is not reset or modified by deployment.
@@ -498,7 +509,7 @@ Alerts should cover:
 - Cloudflare Access or equivalent preview protection must be in place until app auth is proven.
 - Ollama must not be publicly reachable.
 - Chroma must stay local and read-only for serving.
-- Do not route `app.steelguitarrag.com` until the Cloudflare zone is active and imported DNS records are reviewed.
+- Do not route `app.steelguitarrag.com` to the Mac mini until server-side `/api/answer` auth is enforced.
 - No beta invites until logging, rate limits, rollback, and source/copyright policy are ready.
 
 ## References
