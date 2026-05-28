@@ -33,6 +33,11 @@ run-logs/
 # Local corpus and generated artifacts
 archive/
 corpus-v2/
+corpus_metadata/copyright_review_queue.jsonl
+corpus_metadata/legal_provenance_events.jsonl
+corpus_metadata/legal_snapshots/
+corpus_metadata/review_queue/
+corpus_metadata/source_policy_snapshots.jsonl
 rag-data/
 data/raw/
 data/processed/
