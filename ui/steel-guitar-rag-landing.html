@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Steel Guitar RAG - Private Beta</title>
+  <meta name="description" content="Steel Guitar RAG is a source-backed AI assistant for pedal steel players. Private beta coming soon.">
+  <style>
+    :root {
+      color-scheme: dark;
+      --cream: #f4ead6;
+      --muted: #c5b8a0;
+      --soft: rgba(244, 234, 214, 0.72);
+      --brass: #f0bf69;
+      --brass-2: #bd8842;
+      --ink: #080a0a;
+      --panel: rgba(20, 23, 23, 0.72);
+      --line: rgba(240, 191, 105, 0.22);
+      --font-ui: "Gill Sans", "Gill Sans MT", "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+      --font-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+      font-family: var(--font-ui);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--cream);
+      background:
+        linear-gradient(180deg, rgba(4, 5, 5, 0.24), rgba(4, 5, 5, 0.78) 68%, #050606 100%),
+        radial-gradient(ellipse at 50% 16%, rgba(240, 191, 105, 0.15), transparent 35%),
+        url("assets/steel_on_stage2.png"),
+        linear-gradient(180deg, #050606, #111414);
+      background-size: cover, cover, cover, cover;
+      background-position: center center, center top, center center, center center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(90deg, rgba(0, 0, 0, 0.72), transparent 28%, transparent 72%, rgba(0, 0, 0, 0.7)),
+        radial-gradient(ellipse at 50% 44%, transparent 0 34%, rgba(0, 0, 0, 0.54) 76%);
+    }
+
+    a,
+    button {
+      font: inherit;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      min-height: 100vh;
+    }
+
+    .site-header {
+      width: min(1160px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 18px 0 8px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+    }
+
+    .brand-logo {
+      width: clamp(198px, 24vw, 304px);
+      height: auto;
+      display: block;
+      filter: drop-shadow(0 0 14px rgba(240, 128, 24, 0.24)) drop-shadow(0 0 26px rgba(240, 191, 105, 0.13));
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .access-note {
+      color: rgba(244, 234, 214, 0.58);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .button,
+    .ghost-button,
+    .backstage-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      border-radius: 999px;
+      padding: 0 17px;
+      text-decoration: none;
+      transition: border-color 160ms ease, background 160ms ease, color 160ms ease, transform 160ms ease;
+    }
+
+    .button {
+      border: 1px solid rgba(240, 191, 105, 0.74);
+      background: linear-gradient(180deg, #ffd27c, #e49f45);
+      color: #1a1209;
+      font-weight: 700;
+      box-shadow: 0 14px 34px rgba(240, 160, 70, 0.18);
+    }
+
+    .ghost-button,
+    .backstage-link {
+      border: 1px solid rgba(240, 191, 105, 0.32);
+      background: rgba(13, 14, 14, 0.68);
+      color: rgba(244, 234, 214, 0.88);
+    }
+
+    .button:hover,
+    .button:focus-visible,
+    .ghost-button:hover,
+    .ghost-button:focus-visible,
+    .backstage-link:hover,
+    .backstage-link:focus-visible {
+      transform: translateY(-1px);
+      outline: none;
+    }
+
+    .ghost-button:hover,
+    .ghost-button:focus-visible,
+    .backstage-link:hover,
+    .backstage-link:focus-visible {
+      border-color: rgba(240, 191, 105, 0.62);
+      background: rgba(240, 191, 105, 0.075);
+      color: var(--cream);
+    }
+
+    main {
+      width: min(1160px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 58px 0 70px;
+    }
+
+    .hero {
+      display: grid;
+      gap: 24px;
+      max-width: 780px;
+      padding: 44px 0 64px;
+    }
+
+    .eyebrow,
+    .section-kicker {
+      margin: 0;
+      color: rgba(240, 191, 105, 0.82);
+      font-size: 12px;
+      line-height: 1.35;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    h1,
+    h2,
+    h3,
+    p {
+      margin-top: 0;
+    }
+
+    h1 {
+      margin-bottom: 0;
+      color: #fff2dc;
+      font-family: var(--font-display);
+      font-size: clamp(48px, 8vw, 96px);
+      line-height: 0.95;
+      font-weight: 500;
+      letter-spacing: 0;
+      text-wrap: balance;
+    }
+
+    .hero-copy {
+      max-width: 680px;
+      margin-bottom: 0;
+      color: rgba(244, 234, 214, 0.78);
+      font-size: clamp(18px, 2vw, 23px);
+      line-height: 1.45;
+    }
+
+    .hero-actions,
+    .example-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .beta-note {
+      max-width: 620px;
+      margin: 0;
+      padding: 13px 15px;
+      border: 1px solid rgba(240, 191, 105, 0.2);
+      border-radius: 10px;
+      background: rgba(13, 14, 14, 0.56);
+      color: rgba(244, 234, 214, 0.74);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .section-grid {
+      display: grid;
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .feature-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .example-grid {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    .trust-grid {
+      grid-template-columns: 0.9fr 1.1fr;
+      align-items: stretch;
+    }
+
+    .section {
+      margin-top: 26px;
+      padding: 26px;
+      border: 1px solid rgba(240, 191, 105, 0.18);
+      border-radius: 18px;
+      background:
+        linear-gradient(180deg, rgba(28, 31, 31, 0.82), rgba(14, 16, 16, 0.72)),
+        var(--panel);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+      backdrop-filter: blur(8px);
+    }
+
+    .section-heading {
+      margin: 6px 0 0;
+      color: var(--cream);
+      font-family: var(--font-display);
+      font-size: clamp(30px, 4vw, 48px);
+      line-height: 1.05;
+      font-weight: 500;
+    }
+
+    .section-copy {
+      max-width: 720px;
+      margin: 12px 0 0;
+      color: rgba(244, 234, 214, 0.75);
+      font-size: 16px;
+      line-height: 1.55;
+    }
+
+    .card,
+    .question-card,
+    .source-card {
+      border: 1px solid rgba(244, 234, 214, 0.1);
+      border-radius: 10px;
+      background: rgba(9, 11, 11, 0.48);
+    }
+
+    .card {
+      min-height: 150px;
+      padding: 18px;
+    }
+
+    .card h3 {
+      margin: 0 0 9px;
+      color: rgba(255, 242, 220, 0.96);
+      font-size: 18px;
+      line-height: 1.2;
+    }
+
+    .card p {
+      margin-bottom: 0;
+      color: rgba(244, 234, 214, 0.7);
+      font-size: 14px;
+      line-height: 1.52;
+    }
+
+    .question-card {
+      min-height: 112px;
+      padding: 16px;
+      color: rgba(244, 234, 214, 0.88);
+      font-size: 15px;
+      line-height: 1.42;
+      display: flex;
+      align-items: center;
+    }
+
+    .question-card span {
+      color: var(--brass);
+      margin-right: 8px;
+    }
+
+    .source-demo {
+      display: grid;
+      gap: 12px;
+    }
+
+    .source-card {
+      padding: 15px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .source-card small {
+      color: rgba(240, 191, 105, 0.86);
+      font-weight: 700;
+    }
+
+    .source-card strong {
+      color: var(--cream);
+      font-size: 16px;
+      line-height: 1.25;
+    }
+
+    .source-card p {
+      margin-bottom: 0;
+      color: rgba(244, 234, 214, 0.69);
+      font-size: 14px;
+      line-height: 1.48;
+    }
+
+    .evidence-list {
+      display: grid;
+      gap: 12px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .evidence-list li {
+      padding-left: 22px;
+      position: relative;
+      color: rgba(244, 234, 214, 0.76);
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    .evidence-list li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 0.68em;
+      width: 9px;
+      height: 1px;
+      background: var(--brass);
+      box-shadow: 0 0 10px rgba(240, 191, 105, 0.5);
+    }
+
+    .beta-panel {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 18px;
+      align-items: center;
+      margin-top: 26px;
+      padding: 22px;
+      border: 1px solid rgba(240, 191, 105, 0.22);
+      border-radius: 16px;
+      background: rgba(9, 11, 11, 0.62);
+    }
+
+    .beta-panel p {
+      margin: 0;
+      color: rgba(244, 234, 214, 0.74);
+      line-height: 1.5;
+    }
+
+    footer {
+      width: min(1160px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 0 0 34px;
+      color: rgba(244, 234, 214, 0.58);
+      font-size: 13px;
+      text-align: center;
+    }
+
+    .footer-ornament {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 14px;
+      width: min(320px, 76vw);
+      margin: 0 auto 14px;
+      color: var(--brass);
+    }
+
+    .footer-ornament::before,
+    .footer-ornament::after {
+      content: "";
+      height: 1px;
+      opacity: 0.55;
+    }
+
+    .footer-ornament::before {
+      background: linear-gradient(to left, rgba(240, 191, 105, 0.75), transparent);
+    }
+
+    .footer-ornament::after {
+      background: linear-gradient(to right, rgba(240, 191, 105, 0.75), transparent);
+    }
+
+    @media (max-width: 900px) {
+      .site-header {
+        align-items: flex-start;
+      }
+
+      .header-actions {
+        align-items: flex-end;
+        flex-direction: column;
+      }
+
+      .access-note {
+        display: none;
+      }
+
+      main {
+        padding-top: 32px;
+      }
+
+      .hero {
+        padding-top: 28px;
+      }
+
+      .feature-grid,
+      .example-grid,
+      .trust-grid,
+      .beta-panel {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      body {
+        background-position: center center, center top, 58% center, center center;
+      }
+
+      .site-header,
+      main,
+      footer {
+        width: calc(100% - 28px);
+      }
+
+      .site-header {
+        padding-top: 14px;
+      }
+
+      .brand-logo {
+        width: min(210px, 58vw);
+      }
+
+      .backstage-link {
+        min-height: 38px;
+        padding: 0 12px;
+        font-size: 13px;
+      }
+
+      h1 {
+        font-size: clamp(44px, 15vw, 68px);
+      }
+
+      .hero {
+        padding-bottom: 40px;
+      }
+
+      .hero-actions,
+      .example-actions {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .button,
+      .ghost-button {
+        width: 100%;
+      }
+
+      .section {
+        padding: 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a href="#top" aria-label="Steel Guitar RAG home">
+        <img class="brand-logo" src="assets/steel-guitar-rag-logo-transparent.png" alt="Steel Guitar RAG">
+      </a>
+      <div class="header-actions">
+        <span class="access-note">Private beta access preview</span>
+        <a class="backstage-link" id="backstage-cta" href="steel-guitar-rag-mock.html">Get a Backstage Pass</a>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="hero" aria-labelledby="hero-title">
+        <p class="eyebrow">Private beta coming</p>
+        <h1 id="hero-title">Source-backed AI for pedal steel players.</h1>
+        <p class="hero-copy">Steel Guitar RAG helps with gear, tone, E9 copedent questions, practice, forum wisdom, and learning paths by treating steel-specific source material as evidence.</p>
+        <div class="hero-actions">
+          <a class="button" href="#beta">Join the private beta</a>
+          <a class="ghost-button" href="#examples">See example questions</a>
+          <a class="ghost-button" id="hero-backstage-cta" href="steel-guitar-rag-mock.html">Get a Backstage Pass</a>
+        </div>
+        <p class="beta-note">Live AI access is not public yet. During private beta, asking Steel Guitar RAG will require login and member access.</p>
+      </section>
+
+      <section class="section" aria-labelledby="helps-title">
+        <p class="section-kicker">What it helps with</p>
+        <h2 class="section-heading" id="helps-title">Built for the questions steel players actually ask.</h2>
+        <p class="section-copy">The public page is a preview. The app itself is being prepared around source-grounded answers, practical next steps, and visible citations when corpus material is used.</p>
+        <div class="section-grid feature-grid">
+          <article class="card">
+            <h3>Gear and tone</h3>
+            <p>Amp settings, volume pedals, pickups, buzz, hum, signal chains, and stage-ready troubleshooting.</p>
+          </article>
+          <article class="card">
+            <h3>E9 copedents</h3>
+            <p>Pedals, knee levers, string changes, common lowers and raises, and how a setup affects an answer.</p>
+          </article>
+          <article class="card">
+            <h3>Practice and learning paths</h3>
+            <p>Focused woodshed plans, technique questions, position movement, tasteful fills, and follow-up drills.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="examples" aria-labelledby="examples-title">
+        <p class="section-kicker">Example questions</p>
+        <h2 class="section-heading" id="examples-title">Start with a steel question, not a search query.</h2>
+        <div class="section-grid example-grid">
+          <article class="question-card"><span>01</span>What are common Fender Steel King settings?</article>
+          <article class="question-card"><span>02</span>How do I use the E9 6th string lower?</article>
+          <article class="question-card"><span>03</span>What should I practice tonight?</article>
+          <article class="question-card"><span>04</span>Why does my amp buzz until I touch the changer?</article>
+          <article class="question-card"><span>05</span>How do players use B+C pedals?</article>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="trust-title">
+        <p class="section-kicker">Sources and evidence</p>
+        <h2 class="section-heading" id="trust-title">Source-backed, with receipts when the corpus is used.</h2>
+        <p class="section-copy">Steel Guitar RAG is designed to show source cards beside answers, so players can see where the guidance came from and keep the human steel-guitar context intact.</p>
+        <div class="section-grid trust-grid">
+          <ul class="evidence-list">
+            <li>Answers are source-backed instead of free-floating chatbot guesses.</li>
+            <li>Source cards are shown when forum, manual, transcript, or curated corpus material is used.</li>
+            <li>Forum posts, manuals, transcripts, and curated steel knowledge are treated as evidence, not blindly repeated.</li>
+          </ul>
+          <div class="source-demo" aria-label="Example source cards">
+            <article class="source-card">
+              <small>Steel Guitar Forum - Electronics</small>
+              <strong>Hum that changes when touching the guitar</strong>
+              <p>Example source cards will summarize the relevant excerpt and link back to the original material when available.</p>
+            </article>
+            <article class="source-card">
+              <small>Curated setup note</small>
+              <strong>Fender Steel King baseline settings</strong>
+              <p>Manuals, setup notes, and reviewed steel-specific references can support an answer alongside forum wisdom.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="beta-panel" id="beta" aria-labelledby="beta-title">
+        <div>
+          <p class="section-kicker">Not public yet</p>
+          <h2 class="section-heading" id="beta-title">Private beta access is coming.</h2>
+          <p>Join the list to hear when Steel Guitar RAG is ready for invited players. Live AI access will require login during private beta.</p>
+        </div>
+        <div class="example-actions">
+          <a class="button" href="mailto:hello@steelguitarrag.com?subject=Steel%20Guitar%20RAG%20private%20beta">Join the private beta</a>
+          <a class="ghost-button" href="#examples">See example questions</a>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="footer-ornament" aria-hidden="true">☆</div>
+      Steel Guitar RAG is in private beta preparation. No live RAG access is exposed from this public landing page.
+    </footer>
+  </div>
+
+  <script>
+    (() => {
+      const storageKey = "steel-guitar-rag.mockAccessState.v1";
+      const isMember = localStorage.getItem(storageKey) === "member";
+      const label = isMember ? "Go Backstage" : "Get a Backstage Pass";
+
+      document.querySelectorAll("#backstage-cta, #hero-backstage-cta").forEach((link) => {
+        link.textContent = label;
+        link.setAttribute("aria-label", label);
+      });
+    })();
+  </script>
+</body>
+</html>
