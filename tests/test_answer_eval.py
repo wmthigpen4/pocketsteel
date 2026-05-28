@@ -11,8 +11,11 @@ from scripts.run_answer_eval import (
 )
 
 
-def failure_reasons(question: str, answer: str, *, source_count: int = 1) -> set[str]:
-    return {failure.reason for failure in evaluate_answer(question, answer, [], source_count, 200)}
+def failure_reasons(question: str, answer: str, *, source_count: int = 1, expected_intent: str = "") -> set[str]:
+    return {
+        failure.reason
+        for failure in evaluate_answer(question, answer, [], source_count, 200, expected_intent)
+    }
 
 
 def test_question_bank_has_large_representative_set() -> None:
@@ -23,6 +26,11 @@ def test_question_bank_has_large_representative_set() -> None:
     assert "entity_player_biography" in categories
     assert "prompt_injection_hostile_retrieved_text" in categories
     assert any(row["question"] == "What are common Fender Steel King settings?" for row in questions)
+    targeted = {row["question"]: row.get("expected_intent") for row in questions if row["category"] == "targeted_directness_probes"}
+    assert targeted["Who plays an Emmons guitar today?"] == "player_brand_usage"
+    assert targeted["Where can I buy a slide bar?"] == "vendor_buying_guidance"
+    assert targeted["Is Mullen or MSA a better guitar? Why?"] == "brand_comparison"
+    assert targeted["Is Emmons Guitar Co. still in business today?"] == "current_company_status"
 
 
 def test_eval_flags_known_formatting_failures() -> None:
@@ -69,6 +77,83 @@ def test_eval_flags_routing_and_category_specific_failures() -> None:
         "What are the best finger picks?",
         "Buddy Emmons and Paul Franklin are often mentioned.",
     )
+
+
+def test_eval_flags_directness_and_intent_mismatches() -> None:
+    emmons_status_reasons = failure_reasons(
+        "Who plays an Emmons guitar today?",
+        "Emmons Guitar Co. is operating today and the company has a website.",
+        expected_intent="player_brand_usage",
+    )
+    assert "player-brand usage question answered as company status" in emmons_status_reasons
+    assert "player-brand usage answer did not mention players/users or weak current-player support" in emmons_status_reasons
+
+    assert not evaluate_answer(
+        "Who plays an Emmons guitar today?",
+        "The sources are weak for current players, but they do discuss players/users of Emmons guitars.",
+        [],
+        1,
+        200,
+        "player_brand_usage",
+    )
+
+    buying_reasons = failure_reasons(
+        "Where can I buy a slide bar?",
+        "The retrieved sources discuss that product. Use the source cards for exact model/version details before buying.",
+        expected_intent="vendor_buying_guidance",
+    )
+    assert "buying/vendor question used product-value template" in buying_reasons
+    assert "banned product template: retrieved sources discuss that product" in buying_reasons
+
+    assert not evaluate_answer(
+        "Where can I buy a slide bar?",
+        "Buy from steel-guitar vendors, maker websites, dealers, or the SGF classifieds/used market.",
+        [],
+        1,
+        200,
+        "vendor_buying_guidance",
+    )
+
+    comparison_reasons = failure_reasons(
+        "Is Mullen or MSA a better guitar? Why?",
+        "Conditionally: it may be worth considering that product.",
+        expected_intent="brand_comparison",
+    )
+    assert "brand comparison used generic product-value template" in comparison_reasons
+    assert "brand comparison did not mention both compared brands" in comparison_reasons
+    assert (
+        "brand comparison did not say no universal winner or depends on fit/condition/tone/mechanics/budget/support/copedent"
+        in comparison_reasons
+    )
+
+    assert not evaluate_answer(
+        "Is Mullen or MSA a better guitar? Why?",
+        "No universal winner: Mullen and MSA depend on fit, condition, tone, mechanics, budget, support, and copedent.",
+        [],
+        1,
+        200,
+        "brand_comparison",
+    )
+
+
+def test_eval_allows_status_and_product_value_language_when_intent_matches() -> None:
+    assert not evaluate_answer(
+        "Is Emmons Guitar Co. still in business today?",
+        "Emmons Guitar Co. appears to be operating today, based on company status/source evidence.",
+        [],
+        1,
+        200,
+        "current_company_status",
+    )
+    product_value_failures = evaluate_answer(
+        "Is the Benado Steel Dream 2 worth the money?",
+        "I did not find strong negative evidence. Conditionally: it may be worth considering.",
+        [],
+        1,
+        200,
+        "product_value",
+    )
+    assert {failure.reason for failure in product_value_failures} == set()
 
 
 def test_eval_flags_retrieval_and_safety_checks() -> None:

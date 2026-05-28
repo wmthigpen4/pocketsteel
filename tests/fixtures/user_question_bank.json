@@ -177,7 +177,18 @@
     {"id": "L007", "category": "latest_frontend_failures", "question": "Do you wear shoes or play barefoot?"},
     {"id": "L008", "category": "latest_frontend_failures", "question": "Can you give me tablature for a random song?"},
     {"id": "L009", "category": "latest_frontend_failures", "question": "Can you play Panhandle Rag with a pan handle?"},
-    {"id": "L010", "category": "latest_frontend_failures", "question": "Who plays a Mullen steel guitar?"},
-    {"id": "L011", "category": "latest_frontend_failures", "question": "Is Emmons Guitar still in business today?"}
+    {"id": "L010", "category": "latest_frontend_failures", "question": "Who plays a Mullen steel guitar?", "expected_intent": "player_brand_usage"},
+    {"id": "L011", "category": "latest_frontend_failures", "question": "Is Emmons Guitar still in business today?", "expected_intent": "current_company_status"},
+
+    {"id": "M001", "category": "targeted_directness_probes", "question": "Who plays an Emmons guitar today?", "expected_intent": "player_brand_usage"},
+    {"id": "M002", "category": "targeted_directness_probes", "question": "Where can I buy a slide bar?", "expected_intent": "vendor_buying_guidance"},
+    {"id": "M003", "category": "targeted_directness_probes", "question": "Is Mullen or MSA a better guitar? Why?", "expected_intent": "brand_comparison"},
+    {"id": "M004", "category": "targeted_directness_probes", "question": "Where can I buy a steel bar?", "expected_intent": "vendor_buying_guidance"},
+    {"id": "M005", "category": "targeted_directness_probes", "question": "Which players use Emmons guitars?", "expected_intent": "player_brand_usage"},
+    {"id": "M006", "category": "targeted_directness_probes", "question": "Is Emmons Guitar Co. still in business today?", "expected_intent": "current_company_status"},
+    {"id": "M007", "category": "targeted_directness_probes", "question": "Is Mullen better than MSA?", "expected_intent": "brand_comparison"},
+    {"id": "M008", "category": "targeted_directness_probes", "question": "Is MSA better than Mullen?", "expected_intent": "brand_comparison"},
+    {"id": "M009", "category": "targeted_directness_probes", "question": "Should I buy a Mullen or MSA?", "expected_intent": "brand_comparison"},
+    {"id": "M010", "category": "targeted_directness_probes", "question": "What brands make slide bars?", "expected_intent": "vendor_buying_guidance"}
   ]
 }

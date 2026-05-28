@@ -22,6 +22,8 @@ DEFAULT_OUTPUT = Path("docs/answer-eval-report.md")
 DEFAULT_JSON_OUTPUT = Path("/tmp/answer-eval-results.json")
 
 REPORT_GROUPS = [
+    "likely_intent_mismatch",
+    "likely_directness_failure",
     "likely routing failure",
     "likely formatting failure",
     "likely retrieval mismatch",
@@ -31,6 +33,12 @@ REPORT_GROUPS = [
 ]
 
 FORMAT_PATTERNS = [
+    ("banned product template: retrieved sources discuss that product", re.compile(r"\bThe retrieved sources discuss that product\b", re.I)),
+    (
+        "banned product template: use source cards before buying",
+        re.compile(r"\bUse the source cards for exact model/version details before buying\b", re.I),
+    ),
+    ("banned product template: positive owner/source impression", re.compile(r"\bpositive owner/source impression\b", re.I)),
     ("banned phrase: Concise answer:", re.compile(r"\bConcise answer:", re.I)),
     ("banned phrase: What multiple sources support", re.compile(r"\bWhat multiple sources support\b", re.I)),
     ("banned phrase: Source context:", re.compile(r"\bSource context:", re.I)),
@@ -49,6 +57,10 @@ FORMAT_PATTERNS = [
     ("raw forum junk: Thanks Nick", re.compile(r"\bThanks Nick\b", re.I)),
     ("raw forum junk: Top Hi All", re.compile(r"\bTop Hi All\b", re.I)),
     ("orphan Practical answer heading", re.compile(r"(?m)^\s*Practical answer\s*:?\s*$", re.I)),
+    (
+        "empty heading: What players seem to like",
+        re.compile(r"(?im)^\s*What players seem to like\s*:?\s*(?:\n\s*(?:$|#{1,6}\s|\w[^:\n]{0,80}:)|$)"),
+    ),
     ("inline citation marker", re.compile(r"\[\d+\]")),
     (
         "username/date boilerplate",
@@ -82,6 +94,34 @@ HOSTILE_QUESTION = re.compile(
     r"\byou\s+are\s+now\b|\boutput\s+only\b",
     re.I,
 )
+PRODUCT_VALUE_QUESTION = re.compile(r"\b(worth|worth buying|good value|should i buy|is .+ good|better)\b", re.I)
+PLAYER_BRAND_USAGE_QUESTION = re.compile(
+    r"\b(?:who|which)\s+(?:players?|people|pros|steel players?)\s+(?:play|plays|use|uses)\s+(?:an?\s+)?(?P<brand>[A-Z][A-Za-z0-9-]+)",
+    re.I,
+)
+BUYING_QUESTION = re.compile(r"\bwhere\s+can\s+i\s+buy\b|\bwhat\s+brands\s+make\b", re.I)
+BRAND_COMPARISON_QUESTION = re.compile(
+    r"\b(?:is|are|should)\b.*\b(?P<a>Mullen|MSA|Emmons|Sho-Bud|ZumSteel|Carter|GFI|Sierra)\b.*\b(?:or|than|vs\.?|versus|and)\b.*\b(?P<b>Mullen|MSA|Emmons|Sho-Bud|ZumSteel|Carter|GFI|Sierra)\b",
+    re.I,
+)
+COMPANY_STATUS_QUESTION = re.compile(r"\b(?:still\s+in\s+business|in business today|company status|operating today)\b", re.I)
+PERSON_BIO_QUESTION = re.compile(r"^\s*who\s+is\s+[A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+)+\??\s*$", re.I)
+PRACTICE_QUESTION = re.compile(r"\bpractice\b|\bwhat should i work on\b", re.I)
+COPEDENT_QUESTION = re.compile(r"\b(?:A\+B|B\+C|A\+F|pedal|lever|fret|chord|E9|copedent|string)\b", re.I)
+MAINTENANCE_QUESTION = re.compile(r"\b(?:oil|lubricate|changer|pedal rods|nylon tuner|cabinet drop|adjust|clean|return)\b", re.I)
+COMPANY_STATUS_LANGUAGE = re.compile(r"\b(company|co\.|guitar co|in business|operating|owner|website|factory|production|founded)\b", re.I)
+PLAYER_USAGE_LANGUAGE = re.compile(r"\b(players?|users?|used by|played by|plays? (?:an? )?[A-Z][A-Za-z0-9-]+|uses? (?:an? )?[A-Z][A-Za-z0-9-]+)\b", re.I)
+WEAK_SOURCE_LANGUAGE = re.compile(r"\b(source support is weak|sources are weak|not enough source|did not find strong|current players)\b", re.I)
+VENDOR_LANGUAGE = re.compile(r"\b(buy|dealer|vendor|source|order|shop|store|classifieds?|for sale|used market|manufacturer|maker|contact|website|retailer|brand)\b", re.I)
+GENERIC_PRODUCT_TEMPLATE = re.compile(
+    r"\b(that product|retrieved sources discuss that product|exact model/version details|positive owner/source impression|"
+    r"Conditionally: it may be worth considering|I did not find strong negative evidence)\b",
+    re.I,
+)
+NO_UNIVERSAL_WINNER_LANGUAGE = re.compile(
+    r"\b(no universal winner|depends|fit|condition|tone|mechanics|budget|support|copedent|try both|personal preference)\b",
+    re.I,
+)
 
 
 @dataclass
@@ -95,6 +135,7 @@ class EvalResult:
     id: str
     category: str
     question: str
+    expected_intent: str
     status_code: int
     answer: str
     warnings: list[str]
@@ -127,6 +168,7 @@ def load_question_bank(path: Path) -> list[dict[str, str]]:
                 "id": str(item.get("id") or f"Q{index:03d}"),
                 "category": str(item.get("category") or "uncategorized"),
                 "question": str(item["question"]).strip(),
+                "expected_intent": str(item.get("expected_intent") or "").strip(),
             }
         )
     return rows
@@ -172,8 +214,106 @@ def mentions_a_pedal_and_f_lever(answer: str) -> bool:
     return has_a and has_f
 
 
-def evaluate_answer(question: str, answer: str, warnings: list[str], source_count: int, status_code: int) -> list[Failure]:
+def infer_expected_intent(question: str, explicit_intent: str = "") -> str:
+    if explicit_intent:
+        return explicit_intent
+    if PLAYER_BRAND_USAGE_QUESTION.search(question):
+        return "player_brand_usage"
+    if BUYING_QUESTION.search(question):
+        return "vendor_buying_guidance"
+    if BRAND_COMPARISON_QUESTION.search(question):
+        return "brand_comparison"
+    if COMPANY_STATUS_QUESTION.search(question):
+        return "current_company_status"
+    if PERSON_BIO_QUESTION.search(question):
+        return "player_bio"
+    if PRACTICE_QUESTION.search(question):
+        return "practice_plan"
+    if COPEDENT_QUESTION.search(question):
+        return "copedent_fretboard"
+    if MAINTENANCE_QUESTION.search(question):
+        return "maintenance_safety"
+    if PRODUCT_VALUE_QUESTION.search(question):
+        return "product_value"
+    return ""
+
+
+def mentioned_brands(question: str) -> list[str]:
+    brands = re.findall(r"\b(Mullen|MSA|Emmons|Sho-Bud|ZumSteel|Carter|GFI|Sierra)\b", question, re.I)
+    unique: list[str] = []
+    for brand in brands:
+        canonical = "MSA" if brand.lower() == "msa" else brand
+        if canonical.lower() not in {item.lower() for item in unique}:
+            unique.append(canonical)
+    return unique
+
+
+def has_meaningful_player_usage_answer(answer: str) -> bool:
+    return bool(PLAYER_USAGE_LANGUAGE.search(answer) or WEAK_SOURCE_LANGUAGE.search(answer))
+
+
+def answer_mentions_all_brands(answer: str, brands: list[str]) -> bool:
+    return all(re.search(rf"\b{re.escape(brand)}\b", answer, re.I) for brand in brands)
+
+
+def add_directness_failures(question: str, answer: str, expected_intent: str, failures: list[Failure]) -> None:
+    brands = mentioned_brands(question)
+    if expected_intent == "player_brand_usage":
+        if COMPANY_STATUS_LANGUAGE.search(answer) and not has_meaningful_player_usage_answer(answer):
+            add_failure(
+                failures,
+                "likely_intent_mismatch",
+                "player-brand usage question answered as company status",
+            )
+        if not has_meaningful_player_usage_answer(answer):
+            add_failure(
+                failures,
+                "likely_directness_failure",
+                "player-brand usage answer did not mention players/users or weak current-player support",
+            )
+    elif expected_intent == "vendor_buying_guidance":
+        if GENERIC_PRODUCT_TEMPLATE.search(answer):
+            add_failure(failures, "likely_intent_mismatch", "buying/vendor question used product-value template")
+        if not VENDOR_LANGUAGE.search(answer):
+            add_failure(
+                failures,
+                "likely_directness_failure",
+                "buying/vendor question did not give buying/source/vendor guidance",
+            )
+    elif expected_intent == "brand_comparison":
+        if GENERIC_PRODUCT_TEMPLATE.search(answer):
+            add_failure(failures, "likely_intent_mismatch", "brand comparison used generic product-value template")
+        if len(brands) >= 2 and not answer_mentions_all_brands(answer, brands[:2]):
+            add_failure(failures, "likely_directness_failure", "brand comparison did not mention both compared brands")
+        if not NO_UNIVERSAL_WINNER_LANGUAGE.search(answer):
+            add_failure(
+                failures,
+                "likely_directness_failure",
+                "brand comparison did not say no universal winner or depends on fit/condition/tone/mechanics/budget/support/copedent",
+            )
+    elif expected_intent == "current_company_status":
+        if not COMPANY_STATUS_LANGUAGE.search(answer):
+            add_failure(failures, "likely_directness_failure", "company-status question did not answer current status")
+    elif expected_intent == "player_bio":
+        if RANKING_LANGUAGE.search(answer):
+            add_failure(failures, "likely_intent_mismatch", "player bio question triggered ranking language")
+    elif expected_intent == "practice_plan":
+        if not has_practice_plan(answer):
+            add_failure(failures, "likely_directness_failure", "practice-plan question missing plan/routine language")
+        if RANKING_LANGUAGE.search(answer) or PLAYER_NAMES.search(answer):
+            add_failure(failures, "likely_intent_mismatch", "practice-plan question returned rankings/player list")
+
+
+def evaluate_answer(
+    question: str,
+    answer: str,
+    warnings: list[str],
+    source_count: int,
+    status_code: int,
+    expected_intent: str = "",
+) -> list[Failure]:
     failures: list[Failure] = []
+    expected_intent = infer_expected_intent(question, expected_intent)
 
     if status_code != 200:
         add_failure(failures, "source weakness / no-source", f"HTTP status {status_code}")
@@ -183,6 +323,13 @@ def evaluate_answer(question: str, answer: str, warnings: list[str], source_coun
     for reason, pattern in FORMAT_PATTERNS:
         if pattern.search(answer):
             add_failure(failures, "likely formatting failure", reason)
+
+    if re.search(r"\bI did not find strong negative evidence\b", answer, re.I) and expected_intent != "product_value":
+        add_failure(failures, "likely_intent_mismatch", "negative-evidence product-value language on non-product-value question")
+    if re.search(r"\bConditionally: it may be worth considering\b", answer, re.I) and expected_intent != "product_value":
+        add_failure(failures, "likely_intent_mismatch", "worth-considering product-value language on non-worth-buying question")
+
+    add_directness_failures(question, answer, expected_intent, failures)
 
     if not is_ranking_question(question) and re.search(r"\bRankings are subjective\b", answer, re.I):
         add_failure(failures, "likely routing failure", "ranking caveat on non-ranking question")
@@ -226,11 +373,12 @@ def result_from_payload(row: dict[str, str], status_code: int, payload: dict[str
     warnings = [str(warning) for warning in (payload.get("warnings") or [])]
     sources = payload.get("sources") if isinstance(payload.get("sources"), list) else []
     first_source = sources[0] if sources else {}
-    failures = evaluate_answer(row["question"], answer, warnings, len(sources), status_code)
+    failures = evaluate_answer(row["question"], answer, warnings, len(sources), status_code, row.get("expected_intent", ""))
     return EvalResult(
         id=row["id"],
         category=row["category"],
         question=row["question"],
+        expected_intent=row.get("expected_intent", ""),
         status_code=status_code,
         answer=answer,
         warnings=warnings,
@@ -263,6 +411,7 @@ def result_to_json(result: EvalResult) -> dict[str, Any]:
         "id": result.id,
         "category": result.category,
         "question": result.question,
+        "expected_intent": result.expected_intent,
         "status_code": result.status_code,
         "answer": result.answer,
         "warnings": result.warnings,
@@ -318,6 +467,7 @@ def render_report(results: list[EvalResult], *, base_url: str, question_bank: Pa
                 f"### {result.id} · {result.group}",
                 "",
                 f"- Category: `{result.category}`",
+                f"- Expected intent: `{result.expected_intent or 'unspecified'}`",
                 f"- Question: {result.question}",
                 f"- Reasons: {failure_reason_text(result)}",
                 f"- Status: {result.status_code}",
@@ -337,7 +487,8 @@ def render_report(results: list[EvalResult], *, base_url: str, question_bank: Pa
         for result in rows:
             lines.append(
                 f"- `{result.id}` {result.question} "
-                f"(category: `{result.category}`, sources: {result.source_count}, reasons: {failure_reason_text(result)})"
+                f"(category: `{result.category}`, intent: `{result.expected_intent or 'unspecified'}`, "
+                f"sources: {result.source_count}, reasons: {failure_reason_text(result)})"
             )
     lines.append("")
     return "\n".join(lines)
