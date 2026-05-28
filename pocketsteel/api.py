@@ -1,4 +1,4 @@
-"""Tiny local retrieval API for The Turnaround."""
+"""Tiny local retrieval API for Steel Guitar RAG."""
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ from pocketsteel.answering import (
     final_answer_quality_gate,
     parse_answer_request,
 )
+from pocketsteel.access_control import AnswerAuthMode, authorize_answer_request, configured_answer_auth_mode
 from pocketsteel.api_contract import AnswerResponse
 from pocketsteel.answer_contracts import enforce_answer_contract, infer_contract_intent
 from pocketsteel.chroma_search import (
@@ -39,9 +40,16 @@ from pocketsteel.rag_guardrails import is_injection_like
 
 
 class RetrievalApi:
-    def __init__(self, search_index: Any, answer_provider: AnswerProvider | None = None) -> None:
+    def __init__(
+        self,
+        search_index: Any,
+        answer_provider: AnswerProvider | None = None,
+        *,
+        answer_auth_mode: AnswerAuthMode | None = None,
+    ) -> None:
         self.search_index = search_index
         self.answer_provider = configured_answer_provider(answer_provider)
+        self.answer_auth_mode = answer_auth_mode or configured_answer_auth_mode()
 
     def __call__(self, environ: dict[str, Any], start_response: Any) -> Iterable[bytes]:
         method = environ.get("REQUEST_METHOD", "GET")
@@ -64,6 +72,10 @@ class RetrievalApi:
         if path == "/api/answer":
             if method != "POST":
                 return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"})
+
+            access = authorize_answer_request(environ, self.answer_auth_mode)
+            if not access.allowed:
+                return self._json_response(start_response, access.status, {"error": access.error})
 
             request_payload = self._read_json_body(environ)
             answer_request, error = parse_answer_request(request_payload)
@@ -195,8 +207,17 @@ class RetrievalApi:
         return [body]
 
 
-def create_app(search_index: Any | None = None, answer_provider: AnswerProvider | None = None) -> RetrievalApi:
-    return RetrievalApi(search_index or ChromaSearchIndex.from_chroma(), answer_provider=answer_provider)
+def create_app(
+    search_index: Any | None = None,
+    answer_provider: AnswerProvider | None = None,
+    *,
+    answer_auth_mode: AnswerAuthMode | None = None,
+) -> RetrievalApi:
+    return RetrievalApi(
+        search_index or ChromaSearchIndex.from_chroma(),
+        answer_provider=answer_provider,
+        answer_auth_mode=answer_auth_mode,
+    )
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
@@ -214,6 +235,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help=f"Existing Chroma collection name. Defaults to ${CHROMA_COLLECTION_ENV} or {DEFAULT_COLLECTION_NAME}.",
     )
     parser.add_argument("--model", default=None, help="Local embedding model for query embedding.")
+    parser.add_argument(
+        "--answer-auth-mode",
+        choices=["production", "local-dev", "local_dev"],
+        default=None,
+        help="Auth scaffold mode for /api/answer. Defaults to STEEL_RAG_ANSWER_AUTH_MODE or production.",
+    )
     return parser
 
 
@@ -224,7 +251,8 @@ def main(argv: list[str] | None = None) -> int:
             chroma_path=args.chroma,
             collection_name=args.collection,
             model=args.model,
-        )
+        ),
+        answer_auth_mode=args.answer_auth_mode,
     )
     with make_server(args.host, args.port, app) as server:
         print(f"Serving local retrieval API at http://{args.host}:{args.port}")

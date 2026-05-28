@@ -15,11 +15,12 @@ const code = fs.readFileSync("ui/answer-client.js", "utf8");
 const sandbox = { window: {} };
 vm.createContext(sandbox);
 vm.runInContext(code, sandbox);
-const answerUi = vm.runInContext("TURNAROUND_ANSWER_UI", sandbox);
+const answerUi = vm.runInContext("STEEL_RAG_ANSWER_UI", sandbox);
 
 let capturedRequest;
 (async () => {
   const result = await answerUi.requestAnswer("Why does my amp buzz?", {
+    accessRole: "beta_user",
     fetchImpl: async (url, options) => {
       capturedRequest = { url, options };
       return {
@@ -44,6 +45,9 @@ let capturedRequest;
   assert.equal(capturedRequest.url, "/api/answer");
   assert.equal(capturedRequest.options.method, "POST");
   assert.equal(capturedRequest.options.headers["Content-Type"], "application/json");
+  assert.equal(capturedRequest.options.headers["X-Steel-Rag-Dev-Access-Role"], "beta_user");
+  const legacyHeader = ["X", "Turn" + "around", "Dev", "Access", "Role"].join("-");
+  assert.equal(capturedRequest.options.headers[legacyHeader], undefined);
   assert.equal(JSON.parse(capturedRequest.options.body).question, "Why does my amp buzz?");
   assert.equal(result.sections[0].body, "Forum users suggest checking the ground path before replacing parts. [1]");
   assert.equal(JSON.stringify(result.sources[0]), JSON.stringify({
@@ -75,7 +79,7 @@ def test_answer_ui_uses_live_answer_client_not_mock_answer_data() -> None:
 
     assert '<script src="answer-client.js"></script>' in html
     assert '<script src="mock-answer-data.js"></script>' not in html
-    assert "TURNAROUND_ANSWER_UI.requestAnswer" in html
+    assert "STEEL_RAG_ANSWER_UI.requestAnswer" in html
     assert "No sources returned" in html
 
 
@@ -89,7 +93,7 @@ const code = fs.readFileSync("ui/answer-client.js", "utf8");
 const sandbox = { window: {} };
 vm.createContext(sandbox);
 vm.runInContext(code, sandbox);
-const answerUi = vm.runInContext("TURNAROUND_ANSWER_UI", sandbox);
+const answerUi = vm.runInContext("STEEL_RAG_ANSWER_UI", sandbox);
 
 const formatted = answerUi.normalizeAnswerResponse({
   answer: [
@@ -152,10 +156,92 @@ assert.equal(JSON.stringify(sourced.sources[0]), JSON.stringify({
     assert result.returncode == 0, result.stderr
 
 
+def test_frontend_answer_input_submit_rules_are_enter_without_shift() -> None:
+    script = r"""
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const vm = require("node:vm");
+
+const code = fs.readFileSync("ui/answer-client.js", "utf8");
+const sandbox = { window: {} };
+vm.createContext(sandbox);
+vm.runInContext(code, sandbox);
+const answerUi = vm.runInContext("STEEL_RAG_ANSWER_UI", sandbox);
+
+assert.equal(answerUi.shouldSubmitQuestionKey({ key: "Enter", shiftKey: false }), true);
+assert.equal(answerUi.shouldSubmitQuestionKey({ key: "Enter", shiftKey: true }), false);
+assert.equal(answerUi.shouldSubmitQuestionKey({ key: "a", shiftKey: false }), false);
+assert.equal(answerUi.hasSubmittableQuestion("Why does my amp buzz?"), true);
+assert.equal(answerUi.hasSubmittableQuestion("   \n\t  "), false);
+assert.equal(answerUi.hasSubmittableQuestion(""), false);
+assert.equal(answerUi.normalizeAccessRole("anonymous"), "anonymous");
+assert.equal(answerUi.normalizeAccessRole("member"), "beta_user");
+assert.equal(answerUi.normalizeAccessRole("beta_user"), "beta_user");
+assert.equal(answerUi.normalizeAccessRole("admin"), "admin");
+assert.equal(answerUi.normalizeAccessRole("unknown"), "anonymous");
+assert.equal(answerUi.canSubmitLiveQuestion("anonymous"), false);
+assert.equal(answerUi.canSubmitLiveQuestion("beta_user"), true);
+assert.equal(answerUi.canSubmitLiveQuestion("admin"), true);
+"""
+
+    result = subprocess.run(
+        ["node", "-e", script],
+        cwd=Path(__file__).resolve().parents[1],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_answer_ui_wires_enter_and_send_button_to_same_submit_path() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+
+    assert "question.addEventListener(\"keydown\"" in html
+    assert "followupQuestion.addEventListener(\"keydown\"" in html
+    assert "STEEL_RAG_ANSWER_UI.shouldSubmitQuestionKey(event)" in html
+    assert "event.preventDefault();" in html
+    assert "function submitQuestion(questionText)" in html
+    assert "STEEL_RAG_ANSWER_UI.hasSubmittableQuestion(questionText)" in html
+    assert "submitQuestion(question.value);" in html
+    assert "primarySend.addEventListener(\"click\", submitHomeQuestion)" in html
+    assert "answerSend.addEventListener(\"click\", () =>" in html
+    assert "submitFollowupQuestion();" in html
+
+
+def test_answer_ui_gates_live_submission_by_mock_access_state() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+
+    assert 'value="anonymous"' in html
+    assert 'value="beta_user"' in html
+    assert 'value="admin"' in html
+    assert "STEEL_RAG_ANSWER_UI.canSubmitLiveQuestion(mockAccessState)" in html
+    assert 'openBackstage({ initialTab: "pass" });' in html
+    assert 'question.disabled = !canAskLive;' in html
+    assert 'Private beta answers need a Backstage Pass.' in html
+    assert 'accessHelper.textContent = "Get a Backstage Pass to ask Steel Guitar RAG live.";' in html
+    assert 'initialTab: STEEL_RAG_ANSWER_UI.canSubmitLiveQuestion(mockAccessState) ? "overview" : "pass"' in html
+
+
+def test_answer_ui_prompt_chips_submit_instead_of_only_filling_input() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+
+    assert "Show movement without sliding everywhere" in html
+    assert 'button.type = "button";' in html
+    assert "button.dataset.promptText = prompt.text;" in html
+    assert "button.textContent = prompt.text;" in html
+    assert "suggestedPrompts.addEventListener(\"click\"" in html
+    assert "submitQuestion(button.dataset.promptText || button.textContent.trim());" in html
+    assert "question.value = button.dataset.promptText" not in html
+    assert "suggestedPrompts.querySelectorAll(\".example\")" in html
+    assert "button.disabled = isBusy;" in html
+
+
 def test_answer_ui_styles_sections_and_bullets_as_readable_answer_content() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
 
-    assert "sectionEl.classList.add" in html
+    assert "sectionEl.classList.add(`is-${section.style}`);" in html
     assert 'title.className = "answer-section-title";' in html
     assert 'const list = document.createElement(section.ordered ? "ol" : "ul");' in html
     assert 'list.className = "try-list";' in html

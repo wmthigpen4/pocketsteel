@@ -16,6 +16,7 @@ from pocketsteel.answering import DeterministicAnswerProvider, final_answer_qual
 from pocketsteel.chroma_search import ChromaSearchIndex
 from pocketsteel.curated_answers import CURATED_FACT_WEAK_WARNING, WEAK_RETRIEVAL_WARNING, lookup_curated_answer
 from pocketsteel.api import create_app
+from pocketsteel.access_control import DEV_ACCESS_ROLE_ENVIRON, TRUSTED_AUTH_ROLE_ENVIRON
 from pocketsteel.rag_guardrails import INJECTION_WARNING
 
 
@@ -27,8 +28,15 @@ def call_app(
     json_body: dict[str, Any] | None = None,
     search_index: Any | None = None,
     answer_provider: Any | None = None,
+    answer_auth_mode: str = "local_dev",
+    access_role: str | None = "beta_user",
+    access_header: str = "dev",
 ) -> tuple[str, dict[str, str], dict[str, Any]]:
-    app = create_app(search_index or fake_search_index(), answer_provider=answer_provider or FakeAnswerProvider())
+    app = create_app(
+        search_index or fake_search_index(),
+        answer_provider=answer_provider or FakeAnswerProvider(),
+        answer_auth_mode=answer_auth_mode,
+    )
     captured: dict[str, Any] = {}
     body = json.dumps(json_body or {}).encode("utf-8") if json_body is not None else b""
 
@@ -43,6 +51,8 @@ def call_app(
         "CONTENT_LENGTH": str(len(body)),
         "wsgi.input": io.BytesIO(body),
     }
+    if access_role is not None:
+        environ[DEV_ACCESS_ROLE_ENVIRON if access_header == "dev" else TRUSTED_AUTH_ROLE_ENVIRON] = access_role
     response_body = b"".join(app(environ, start_response))
     return captured["status"], captured["headers"], json.loads(response_body)
 
@@ -344,6 +354,126 @@ def test_api_answer_returns_frontend_contract() -> None:
         "chunkId",
         "postUid",
     }
+
+
+def test_api_answer_blocks_anonymous_in_production_like_mode() -> None:
+    search_index = FakeSearchIndex({"results": [], "warnings": []})
+    status, _, payload = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={"question": "cabinet drop compensator"},
+        search_index=search_index,
+        answer_auth_mode="production",
+        access_role=None,
+    )
+
+    assert status == "401 Unauthorized"
+    assert payload == {"error": "/api/answer requires authenticated beta_user or admin access"}
+    assert search_index.calls == []
+
+
+def test_api_answer_allows_beta_user_in_production_like_mode() -> None:
+    status, _, payload = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={"question": "cabinet drop compensator"},
+        answer_auth_mode="production",
+        access_role="beta_user",
+        access_header="trusted",
+    )
+
+    assert status == "200 OK"
+    assert "source-backed answer" in payload["answer"]
+
+
+def test_api_answer_allows_admin_in_production_like_mode() -> None:
+    status, _, payload = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={"question": "cabinet drop compensator"},
+        answer_auth_mode="production",
+        access_role="admin",
+        access_header="trusted",
+    )
+
+    assert status == "200 OK"
+    assert "source-backed answer" in payload["answer"]
+
+
+def test_api_answer_dev_override_only_works_when_explicitly_enabled() -> None:
+    production_search = FakeSearchIndex({"results": [], "warnings": []})
+    status, _, payload = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={"question": "cabinet drop compensator"},
+        search_index=production_search,
+        answer_auth_mode="production",
+        access_role="beta_user",
+        access_header="dev",
+    )
+
+    assert status == "401 Unauthorized"
+    assert payload == {"error": "/api/answer requires authenticated beta_user or admin access"}
+    assert production_search.calls == []
+
+    dev_search = FakeSearchIndex(
+        {
+            "results": [
+                {
+                    "score": 0.75,
+                    "excerpt": "Touching the changer can change the ground reference.",
+                    "forum_name": "Electronics",
+                    "thread_title": "Grounding a pedal steel",
+                    "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=123",
+                    "chunk_id": "chunk-ground",
+                    "post_uid": "p-ground",
+                    "source_system": "sgf_phpbb_current",
+                }
+            ],
+            "warnings": [],
+        }
+    )
+    status, _, payload = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={"question": "cabinet drop compensator"},
+        search_index=dev_search,
+        answer_auth_mode="local_dev",
+        access_role="beta_user",
+        access_header="dev",
+    )
+
+    assert status == "200 OK"
+    assert payload["sources"][0]["forumName"] == "Electronics"
+    assert dev_search.calls
+
+
+def test_api_answer_ignores_legacy_scaffold_headers() -> None:
+    app = create_app(
+        FakeSearchIndex({"results": [], "warnings": []}),
+        answer_provider=FakeAnswerProvider(),
+        answer_auth_mode="local_dev",
+    )
+    captured: dict[str, Any] = {}
+    body = json.dumps({"question": "cabinet drop compensator"}).encode("utf-8")
+
+    def start_response(status: str, headers: list[tuple[str, str]]) -> None:
+        captured["status"] = status
+        captured["headers"] = dict(headers)
+
+    environ = {
+        "REQUEST_METHOD": "POST",
+        "PATH_INFO": "/api/answer",
+        "QUERY_STRING": "",
+        "CONTENT_LENGTH": str(len(body)),
+        "wsgi.input": io.BytesIO(body),
+        "HTTP_X_" + "TURN" + "AROUND_ACCESS_ROLE": "beta_user",
+        "HTTP_X_" + "TURN" + "AROUND_DEV_ACCESS_ROLE": "beta_user",
+    }
+    payload = json.loads(b"".join(app(environ, start_response)))
+
+    assert captured["status"] == "401 Unauthorized"
+    assert payload == {"error": "/api/answer requires authenticated beta_user or admin access"}
 
 
 def test_curated_lookup_triggers_for_high_confidence_question() -> None:

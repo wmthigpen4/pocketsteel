@@ -5,11 +5,28 @@ The frontend answer UI talks to the backend retrieval/RAG layer through two JSON
 - `GET /api/search`
 - `POST /api/answer`
 
-This contract is for The Turnaround UI and the local backend API. The API reads from existing retrieval indexes only. It must not run SGF scraping, rebuild embeddings, reset vector stores, or mutate source corpus files.
+This contract is for the Steel Guitar RAG frontend and local backend API. The API reads from existing retrieval indexes only. It must not run SGF scraping, rebuild embeddings, reset vector stores, or mutate source corpus files.
 
 ## Shared Types
 
 Backend shared type definitions live in `pocketsteel/api_contract.py`.
+
+### AccessRole
+
+The private beta access scaffold uses three roles. These names are contract
+values only; there is no real auth provider connected yet.
+
+```json
+"anonymous" | "beta_user" | "admin"
+```
+
+- `anonymous`: may view public landing content and canned examples, but must
+  not call live `/api/answer` in production.
+- `beta_user`: logged-in/private beta member. May use the live answer UI.
+- `admin`: developer/admin role for local testing and future management tools.
+  Admin may use the live answer UI.
+
+The matching backend constants live in `pocketsteel/access_control.py`.
 
 ### AnswerMode
 
@@ -123,11 +140,35 @@ Empty or whitespace-only search queries return `200 OK` with no results:
 
 ## POST /api/answer
 
+Access requirement:
+
+`/api/answer` requires `beta_user` or `admin` access. Anonymous requests must be
+rejected before retrieval, answer generation, or source-card construction.
+
+Auth scaffold modes:
+
+- `production`: production-like mode. The app reads only the trusted placeholder
+  header `X-Steel-Rag-Access-Role`. Missing access returns `401 Unauthorized`.
+  Explicit non-live roles such as `anonymous` return `403 Forbidden`.
+- `local_dev`: local/test mode. The app also accepts the explicit dev mock
+  header `X-Steel-Rag-Dev-Access-Role`. This is how the local frontend mock
+  Backstage selector previews beta/admin access. The dev mock header is ignored
+  in `production` mode.
+
+Auth mode is selected by passing `answer_auth_mode` when creating the WSGI app,
+by the `--answer-auth-mode` CLI flag, or by `STEEL_RAG_ANSWER_AUTH_MODE`.
+Unknown or unset mode defaults to `production`.
+
+These role headers are scaffolding only. Before public beta, the trusted role
+must come from real server-side auth/session validation, not directly from a
+browser-controlled header.
+
 Request:
 
 ```http
 POST /api/answer
 Content-Type: application/json
+X-Steel-Rag-Access-Role: beta_user
 ```
 
 ```json
@@ -202,6 +243,22 @@ Validation errors return `400 Bad Request`:
 ```json
 {
   "error": "question is required"
+}
+```
+
+Missing production auth returns `401 Unauthorized`:
+
+```json
+{
+  "error": "/api/answer requires authenticated beta_user or admin access"
+}
+```
+
+Authenticated-but-unauthorized roles return `403 Forbidden`:
+
+```json
+{
+  "error": "/api/answer requires beta_user or admin access"
 }
 ```
 

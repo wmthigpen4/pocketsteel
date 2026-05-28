@@ -1,5 +1,11 @@
-const TURNAROUND_ANSWER_UI = (() => {
+const STEEL_RAG_ANSWER_UI = (() => {
   const ANSWER_ENDPOINT = "/api/answer";
+  const ACCESS_ROLES = Object.freeze({
+    ANONYMOUS: "anonymous",
+    BETA_USER: "beta_user",
+    ADMIN: "admin"
+  });
+  const LIVE_ANSWER_ROLES = new Set([ACCESS_ROLES.BETA_USER, ACCESS_ROLES.ADMIN]);
 
   function uniqueLabels(labels) {
     return Array.from(new Set(labels.filter(Boolean)));
@@ -7,6 +13,26 @@ const TURNAROUND_ANSWER_UI = (() => {
 
   function firstValue(...values) {
     return values.find((value) => value !== undefined && value !== null && String(value).trim() !== "") || "";
+  }
+
+  function hasSubmittableQuestion(value) {
+    return Boolean(String(value || "").trim());
+  }
+
+  function shouldSubmitQuestionKey(event) {
+    return event?.key === "Enter" && !event.shiftKey;
+  }
+
+  function normalizeAccessRole(value) {
+    const role = String(value || "").trim().toLowerCase();
+    if (role === "member") return ACCESS_ROLES.BETA_USER;
+    return LIVE_ANSWER_ROLES.has(role) || role === ACCESS_ROLES.ANONYMOUS
+      ? role
+      : ACCESS_ROLES.ANONYMOUS;
+  }
+
+  function canSubmitLiveQuestion(role) {
+    return LIVE_ANSWER_ROLES.has(normalizeAccessRole(role));
   }
 
   function cleanLines(text) {
@@ -194,13 +220,19 @@ const TURNAROUND_ANSWER_UI = (() => {
     };
   }
 
-  async function requestAnswer(question, { fetchImpl = window.fetch } = {}) {
+  async function requestAnswer(question, { fetchImpl = window.fetch, accessRole = ACCESS_ROLES.ANONYMOUS } = {}) {
+    const headers = {
+      "Content-Type": "application/json",
+      Accept: "application/json"
+    };
+    const role = normalizeAccessRole(accessRole);
+    if (canSubmitLiveQuestion(role)) {
+      headers["X-Steel-Rag-Dev-Access-Role"] = role;
+    }
+
     const response = await fetchImpl(ANSWER_ENDPOINT, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json"
-      },
+      headers,
       body: JSON.stringify({ question })
     });
 
@@ -214,6 +246,11 @@ const TURNAROUND_ANSWER_UI = (() => {
 
   return {
     ANSWER_ENDPOINT,
+    ACCESS_ROLES,
+    hasSubmittableQuestion,
+    shouldSubmitQuestionKey,
+    normalizeAccessRole,
+    canSubmitLiveQuestion,
     normalizeSections,
     normalizeAnswerResponse,
     requestAnswer

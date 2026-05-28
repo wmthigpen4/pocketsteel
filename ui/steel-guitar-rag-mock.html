@@ -1036,11 +1036,23 @@
       transition: transform 160ms ease, border-color 160ms ease, color 160ms ease, background 160ms ease;
     }
 
-    .example:hover {
+    .example:hover,
+    .example:focus-visible {
       border-color: rgba(240, 191, 105, 0.42);
       color: var(--cream);
       background: rgba(240, 191, 105, 0.07);
       transform: translateY(-2px);
+    }
+
+    .example:focus-visible {
+      outline: 2px solid rgba(240, 191, 105, 0.36);
+      outline-offset: 3px;
+    }
+
+    .example:disabled {
+      cursor: wait;
+      opacity: 0.62;
+      transform: none;
     }
 
     .source-note {
@@ -1980,8 +1992,12 @@
               Anonymous preview
             </label>
             <label>
-              <input type="radio" name="mock-access-state" value="member">
-              Member preview
+              <input type="radio" name="mock-access-state" value="beta_user">
+              Beta member preview
+            </label>
+            <label>
+              <input type="radio" name="mock-access-state" value="admin">
+              Admin preview
             </label>
           </div>
         </section>
@@ -2180,7 +2196,7 @@
               <h3>Subscription Level</h3>
               <span class="coming-soon">Draft</span>
             </div>
-            <p>Future pass and access level will appear here. This is a draft access model only; billing and limits are not connected.</p>
+            <p>Future pass and access level will appear here. This is a draft access model only; billing, production auth, and limits are not connected.</p>
             <div class="backstage-metrics">
               <div class="backstage-metric">
                 <span>Mock current pass</span>
@@ -2244,7 +2260,7 @@
                 </div>
               </section>
             </div>
-            <p class="backstage-note">These passes do not enforce access, change answer behavior, or connect to payments yet.</p>
+            <p class="backstage-note">The local preview gates live answer submission in the browser only. Production API authentication is not connected yet.</p>
           </article>
 
           <article class="backstage-card">
@@ -2926,9 +2942,21 @@
     }
 
     function updateHelperState() {
+      const canAskLive = STEEL_RAG_ANSWER_UI.canSubmitLiveQuestion(mockAccessState);
       const hasText = Boolean(question.value.trim());
       promptBox.classList.toggle("is-typing", hasText);
       inputArea.classList.toggle("is-empty", !hasText);
+      question.disabled = !canAskLive;
+      primarySend.disabled = !canAskLive || answerRequestInFlight;
+      if (!canAskLive) {
+        question.placeholder = "Private beta answers need a Backstage Pass.";
+        accessHelper.hidden = false;
+        accessHelper.textContent = "Get a Backstage Pass to ask Steel Guitar RAG live.";
+      } else {
+        question.placeholder = "Ask a steel guitar question...";
+        accessHelper.hidden = true;
+        accessHelper.textContent = "Private beta access enabled.";
+      }
     }
 
     const HUM_DEMO_QUESTION = "Why does touching the changer reduce hum?";
@@ -3082,9 +3110,15 @@
       followupChipList.innerHTML = "";
     }
 
+    let answerRequestInFlight = false;
+
     function setAnswerBusy(isBusy) {
-      primarySend.disabled = isBusy;
-      answerSend.disabled = isBusy;
+      const canAskLive = STEEL_RAG_ANSWER_UI.canSubmitLiveQuestion(mockAccessState);
+      primarySend.disabled = isBusy || !canAskLive;
+      answerSend.disabled = isBusy || !canAskLive;
+      suggestedPrompts.querySelectorAll(".example").forEach((button) => {
+        button.disabled = isBusy;
+      });
     }
 
     function showWorkspaceShell(submittedQuestion) {
@@ -3102,25 +3136,46 @@
     }
 
     async function showAnswerWorkspace(rawQuestion) {
+      if (answerRequestInFlight) return;
+      answerRequestInFlight = true;
       const submittedQuestion = rawQuestion.trim() || HUM_DEMO_QUESTION;
       showWorkspaceShell(submittedQuestion);
       renderLoadingState(submittedQuestion);
       question.value = "";
       setAnswerBusy(true);
       try {
-        const response = await TURNAROUND_ANSWER_UI.requestAnswer(submittedQuestion);
+        const response = await STEEL_RAG_ANSWER_UI.requestAnswer(submittedQuestion, {
+          accessRole: mockAccessState
+        });
         answeredQuestion.textContent = response.question || submittedQuestion;
         renderResponse(response);
       } catch (error) {
         renderErrorState(error.message);
       } finally {
+        answerRequestInFlight = false;
         setAnswerBusy(false);
         updateHelperState();
       }
     }
 
+    function submitQuestion(questionText) {
+      if (!STEEL_RAG_ANSWER_UI.canSubmitLiveQuestion(mockAccessState)) {
+        openBackstage({ initialTab: "pass" });
+        return false;
+      }
+      if (answerRequestInFlight || !STEEL_RAG_ANSWER_UI.hasSubmittableQuestion(questionText)) return false;
+      showAnswerWorkspace(questionText);
+      return true;
+    }
+
     function submitHomeQuestion() {
-      showAnswerWorkspace(question.value || HUM_DEMO_QUESTION);
+      submitQuestion(question.value);
+    }
+
+    function submitFollowupQuestion() {
+      if (submitQuestion(followupQuestion.value)) {
+        followupQuestion.value = "";
+      }
     }
 
     function returnToStage() {
@@ -3189,9 +3244,12 @@
 
     function loadMockAccessState() {
       try {
-        return localStorage.getItem(MOCK_ACCESS_STORAGE_KEY) === "member" ? "member" : "anonymous";
+        const params = new URLSearchParams(window.location.search);
+        const queryRole = STEEL_RAG_ANSWER_UI.normalizeAccessRole(params.get("access"));
+        if (params.has("access")) return queryRole;
+        return STEEL_RAG_ANSWER_UI.normalizeAccessRole(localStorage.getItem(MOCK_ACCESS_STORAGE_KEY));
       } catch (error) {
-        return "anonymous";
+        return STEEL_RAG_ANSWER_UI.ACCESS_ROLES.ANONYMOUS;
       }
     }
 
@@ -3204,25 +3262,35 @@
     }
 
     function updateMockAccessUi() {
-      const isMember = mockAccessState === "member";
-      const ctaText = isMember ? "Go Backstage" : "Get a Backstage Pass";
+      const accessRole = STEEL_RAG_ANSWER_UI.normalizeAccessRole(mockAccessState);
+      const canAskLive = STEEL_RAG_ANSWER_UI.canSubmitLiveQuestion(accessRole);
+      const ctaText = canAskLive ? "Go Backstage" : "Get a Backstage Pass";
       backstageCtaLabel.textContent = ctaText;
       backstageTrigger.setAttribute("aria-label", ctaText);
-      accessHelper.hidden = isMember;
-      mockCurrentPass.textContent = isMember ? "Dance Hall Pass preview" : "Standing Room";
+      mockCurrentPass.textContent = accessRole === "admin"
+        ? "Bandleader Pass preview"
+        : canAskLive
+          ? "Dance Hall Pass preview"
+          : "Standing Room";
       accessStateRadios.forEach((radio) => {
-        radio.checked = radio.value === mockAccessState;
+        radio.checked = radio.value === accessRole;
       });
+      if (!canAskLive && !answerWorkspace.hidden) {
+        returnToStage();
+      }
+      updateHelperState();
     }
 
     function setMockAccessState(state) {
-      mockAccessState = state === "member" ? "member" : "anonymous";
+      mockAccessState = STEEL_RAG_ANSWER_UI.normalizeAccessRole(state);
       saveMockAccessState(mockAccessState);
       updateMockAccessUi();
     }
 
     function openBackstageForAccessState() {
-      openBackstage({ initialTab: mockAccessState === "member" ? "overview" : "pass" });
+      openBackstage({
+        initialTab: STEEL_RAG_ANSWER_UI.canSubmitLiveQuestion(mockAccessState) ? "overview" : "pass"
+      });
     }
 
     function showBackstageTab(tabName) {
@@ -3297,7 +3365,7 @@
 
     question.addEventListener("input", updateHelperState);
     question.addEventListener("keydown", (event) => {
-      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+      if (STEEL_RAG_ANSWER_UI.shouldSubmitQuestionKey(event)) {
         event.preventDefault();
         submitHomeQuestion();
       }
@@ -3416,12 +3484,10 @@
     suggestedPrompts.addEventListener("click", (event) => {
       const button = event.target.closest(".example");
       if (!button) return;
-      question.value = button.dataset.promptText || button.textContent.trim();
       if (topic) {
         topic.value = button.dataset.topic;
       }
-      updateHelperState();
-      question.focus();
+      submitQuestion(button.dataset.promptText || button.textContent.trim());
     });
 
     followupChipList.addEventListener("click", (event) => {
@@ -3432,9 +3498,13 @@
     });
 
     answerSend.addEventListener("click", () => {
-      if (followupQuestion.value.trim()) {
-        showAnswerWorkspace(followupQuestion.value);
-        followupQuestion.value = "";
+      submitFollowupQuestion();
+    });
+
+    followupQuestion.addEventListener("keydown", (event) => {
+      if (STEEL_RAG_ANSWER_UI.shouldSubmitQuestionKey(event)) {
+        event.preventDefault();
+        submitFollowupQuestion();
       }
     });
 
