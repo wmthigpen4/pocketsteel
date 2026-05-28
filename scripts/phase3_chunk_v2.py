@@ -392,6 +392,72 @@ def summarize(chunks: list[Mapping[str, Any]]) -> dict[str, Any]:
     }
 
 
+def update_summary_counts(summary: dict[str, Any], chunk: Mapping[str, Any]) -> None:
+    summary["chunks"] += 1
+    summary["role_counts"][str(chunk.get("chunk_role") or "unknown")] += 1
+    summary["cleanup_flag_counts"].update(str(flag) for flag in as_list(chunk.get("cleanup_flags")))
+    summary["noise_score_total"] += float(chunk.get("noise_score") or 0)
+    summary["quality_score_total"] += float(chunk.get("quality_score") or 0)
+
+
+def finalize_summary(summary: Mapping[str, Any]) -> dict[str, Any]:
+    chunks = int(summary["chunks"])
+    return {
+        "chunks": chunks,
+        "role_counts": dict(sorted(summary["role_counts"].items())),
+        "cleanup_flag_counts": dict(sorted(summary["cleanup_flag_counts"].items())),
+        "avg_noise_score": round(float(summary["noise_score_total"]) / max(chunks, 1), 3),
+        "avg_quality_score": round(float(summary["quality_score_total"]) / max(chunks, 1), 3),
+    }
+
+
+def build_chunks_file(
+    input_path: Path,
+    output_path: Path,
+    *,
+    target_words: int = DEFAULT_TARGET_WORDS,
+    max_words: int = DEFAULT_MAX_WORDS,
+    min_words: int = DEFAULT_MIN_WORDS,
+) -> dict[str, Any]:
+    summary: dict[str, Any] = {
+        "chunks": 0,
+        "role_counts": Counter(),
+        "cleanup_flag_counts": Counter(),
+        "noise_score_total": 0.0,
+        "quality_score_total": 0.0,
+    }
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    current_thread_id: str | None = None
+    thread_records: list[Mapping[str, Any]] = []
+
+    def flush_thread(handle: Any) -> None:
+        nonlocal thread_records
+        if not thread_records:
+            return
+        chunks = build_thread_chunks(
+            thread_records,
+            target_words=target_words,
+            max_words=max_words,
+            min_words=min_words,
+        )
+        for chunk in chunks:
+            handle.write(json.dumps(chunk, ensure_ascii=False, sort_keys=True) + "\n")
+            update_summary_counts(summary, chunk)
+        thread_records = []
+
+    with output_path.open("w", encoding="utf-8") as handle:
+        for record in iter_jsonl(input_path):
+            thread_id = str(record.get("thread_id") or "")
+            if current_thread_id is not None and thread_id != current_thread_id:
+                flush_thread(handle)
+            current_thread_id = thread_id
+            thread_records.append(record)
+        flush_thread(handle)
+
+    return finalize_summary(summary)
+
+
 def markdown_report(summary: Mapping[str, Any], input_path: Path, output_path: Path) -> str:
     lines = [
         "# Phase 3C Chunker V2 Sample Report",
@@ -432,10 +498,13 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit("word limits must be positive")
     if args.target_words > args.max_words:
         raise SystemExit("--target-words must be less than or equal to --max-words")
-    records = list(iter_jsonl(args.input))
-    chunks = build_chunks(records, target_words=args.target_words, max_words=args.max_words, min_words=args.min_words)
-    write_jsonl(args.output, chunks)
-    summary = summarize(chunks)
+    summary = build_chunks_file(
+        args.input,
+        args.output,
+        target_words=args.target_words,
+        max_words=args.max_words,
+        min_words=args.min_words,
+    )
     if args.report:
         args.report.parent.mkdir(parents=True, exist_ok=True)
         args.report.write_text(markdown_report(summary, args.input, args.output), encoding="utf-8")

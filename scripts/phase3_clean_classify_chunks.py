@@ -558,6 +558,44 @@ def summarize(rows: list[Mapping[str, Any]]) -> dict[str, Any]:
     }
 
 
+def update_summary_counts(summary: dict[str, Any], row: Mapping[str, Any]) -> None:
+    summary["rows"] += 1
+    summary["role_counts"][str(row.get("chunk_role") or "unknown")] += 1
+    summary["cleanup_flag_counts"].update(str(flag) for flag in row.get("cleanup_flags") or [])
+    summary["noise_score_total"] += float(row.get("noise_score") or 0)
+    summary["answer_density_total"] += float(row.get("answer_density") or 0)
+
+
+def finalize_summary(summary: Mapping[str, Any]) -> dict[str, Any]:
+    rows = int(summary["rows"])
+    return {
+        "rows": rows,
+        "role_counts": dict(sorted(summary["role_counts"].items())),
+        "cleanup_flag_counts": dict(sorted(summary["cleanup_flag_counts"].items())),
+        "avg_noise_score": round(float(summary["noise_score_total"]) / max(rows, 1), 3),
+        "avg_answer_density": round(float(summary["answer_density_total"]) / max(rows, 1), 3),
+    }
+
+
+def clean_file(input_path: Path, output_path: Path, *, limit: int | None = None) -> dict[str, Any]:
+    summary: dict[str, Any] = {
+        "rows": 0,
+        "role_counts": Counter(),
+        "cleanup_flag_counts": Counter(),
+        "noise_score_total": 0.0,
+        "answer_density_total": 0.0,
+    }
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w", encoding="utf-8") as handle:
+        for index, row in enumerate(iter_jsonl(input_path), start=1):
+            if limit is not None and index > limit:
+                break
+            cleaned = clean_and_classify_chunk(row)
+            handle.write(json.dumps(cleaned, ensure_ascii=False, sort_keys=True) + "\n")
+            update_summary_counts(summary, cleaned)
+    return finalize_summary(summary)
+
+
 def markdown_report(summary: Mapping[str, Any], input_path: Path, output_path: Path) -> str:
     lines = [
         "# Phase 3B Cleaner Classifier Sample Report",
@@ -595,14 +633,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.limit is not None and args.limit < 1:
         raise SystemExit("--limit must be at least 1")
 
-    rows: list[dict[str, Any]] = []
-    for index, row in enumerate(iter_jsonl(args.input), start=1):
-        if args.limit is not None and index > args.limit:
-            break
-        rows.append(clean_and_classify_chunk(row))
-
-    write_jsonl(args.output, rows)
-    summary = summarize(rows)
+    summary = clean_file(args.input, args.output, limit=args.limit)
     if args.report:
         args.report.parent.mkdir(parents=True, exist_ok=True)
         args.report.write_text(markdown_report(summary, args.input, args.output), encoding="utf-8")

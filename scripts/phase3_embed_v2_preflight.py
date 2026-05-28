@@ -118,7 +118,11 @@ def percentile(values: list[int], fraction: float) -> int:
 
 
 def chunk_length_distribution(chunks: list[Mapping[str, Any]]) -> dict[str, float | int]:
-    lengths = sorted(word_count(str(chunk.get("chunk_text") or "")) for chunk in chunks)
+    return chunk_length_distribution_from_lengths(word_count(str(chunk.get("chunk_text") or "")) for chunk in chunks)
+
+
+def chunk_length_distribution_from_lengths(lengths_iter: Iterable[int]) -> dict[str, float | int]:
+    lengths = sorted(lengths_iter)
     if not lengths:
         return {"min": 0, "p50": 0, "p95": 0, "max": 0, "avg": 0.0}
     return {
@@ -133,18 +137,21 @@ def chunk_length_distribution(chunks: list[Mapping[str, Any]]) -> dict[str, floa
 def noise_buckets(chunks: list[Mapping[str, Any]]) -> dict[str, int]:
     buckets = Counter()
     for chunk in chunks:
-        noise = numeric_field(chunk, "noise_score")
-        if noise <= 0.20:
-            buckets["0.00-0.20"] += 1
-        elif noise <= 0.40:
-            buckets["0.21-0.40"] += 1
-        elif noise <= 0.60:
-            buckets["0.41-0.60"] += 1
-        elif noise <= 0.80:
-            buckets["0.61-0.80"] += 1
-        else:
-            buckets["0.81-1.00"] += 1
+        add_noise_bucket(buckets, numeric_field(chunk, "noise_score"))
     return dict(sorted(buckets.items()))
+
+
+def add_noise_bucket(buckets: Counter[str], noise: float) -> None:
+    if noise <= 0.20:
+        buckets["0.00-0.20"] += 1
+    elif noise <= 0.40:
+        buckets["0.21-0.40"] += 1
+    elif noise <= 0.60:
+        buckets["0.41-0.60"] += 1
+    elif noise <= 0.80:
+        buckets["0.61-0.80"] += 1
+    else:
+        buckets["0.81-1.00"] += 1
 
 
 def looks_link_only(text: str) -> bool:
@@ -177,16 +184,27 @@ def looks_signature_like(text: str) -> bool:
 
 
 def leakage_counts(chunks: list[Mapping[str, Any]]) -> dict[str, int]:
-    contact = signature = link_only = 0
+    counts = Counter({"contact": 0, "signature": 0, "link_only": 0})
     for chunk in chunks:
-        text = str(chunk.get("chunk_text") or "")
-        role = str(chunk.get("chunk_role") or "")
-        if CONTACT_LEAK_RE.search(text):
-            contact += 1
-        if looks_signature_like(text) or role == "gear_signature":
-            signature += 1
-        if role == "link_only" or looks_link_only(text):
-            link_only += 1
+        update_leakage_counts(counts, chunk)
+    return leakage_counts_dict(counts)
+
+
+def update_leakage_counts(counts: Counter[str], chunk: Mapping[str, Any]) -> None:
+    text = str(chunk.get("chunk_text") or "")
+    role = str(chunk.get("chunk_role") or "")
+    if CONTACT_LEAK_RE.search(text):
+        counts["contact"] += 1
+    if looks_signature_like(text) or role == "gear_signature":
+        counts["signature"] += 1
+    if role == "link_only" or looks_link_only(text):
+        counts["link_only"] += 1
+
+
+def leakage_counts_dict(counts: Mapping[str, int]) -> dict[str, int]:
+    contact = int(counts.get("contact", 0))
+    signature = int(counts.get("signature", 0))
+    link_only = int(counts.get("link_only", 0))
     return {
         "contact": contact,
         "signature": signature,
@@ -236,19 +254,38 @@ def evaluate_preflight(
     max_mixed_topic_rate: float = 0.05,
     max_avg_noise_score: float = 0.60,
 ) -> dict[str, Any]:
-    chunks = list(iter_jsonl(chunk_input))
-    clean_records = list(iter_jsonl(clean_input)) if clean_input else []
-    total_chunks = len(chunks)
-    role_counts = Counter(str(chunk.get("chunk_role") or "unknown") for chunk in chunks)
-    flag_counts = top_cleanup_flags(chunks)
-    leak_counts = leakage_counts(chunks)
-    metadata_complete = sum(1 for chunk in chunks if has_source_metadata(chunk))
-    post_identity_complete = sum(1 for chunk in chunks if has_post_identity(chunk))
-    mixed_topic_quarantined = sum(
-        1 for chunk in chunks if "mixed_topic_quarantined" in as_list(chunk.get("cleanup_flags"))
-    )
-    avg_quality = round(sum(numeric_field(chunk, "quality_score") for chunk in chunks) / max(total_chunks, 1), 3)
-    avg_noise = round(sum(numeric_field(chunk, "noise_score") for chunk in chunks) / max(total_chunks, 1), 3)
+    total_chunks = 0
+    role_counts: Counter[str] = Counter()
+    flag_counts_all: Counter[str] = Counter()
+    leak_counts_raw: Counter[str] = Counter({"contact": 0, "signature": 0, "link_only": 0})
+    noise_bucket_counts: Counter[str] = Counter()
+    lengths: list[int] = []
+    metadata_complete = 0
+    post_identity_complete = 0
+    mixed_topic_quarantined = 0
+    quality_total = 0.0
+    noise_total = 0.0
+
+    for chunk in iter_jsonl(chunk_input):
+        total_chunks += 1
+        role_counts[str(chunk.get("chunk_role") or "unknown")] += 1
+        flags = as_list(chunk.get("cleanup_flags"))
+        flag_counts_all.update(str(flag) for flag in flags)
+        update_leakage_counts(leak_counts_raw, chunk)
+        metadata_complete += int(has_source_metadata(chunk))
+        post_identity_complete += int(has_post_identity(chunk))
+        mixed_topic_quarantined += int("mixed_topic_quarantined" in flags)
+        quality_total += numeric_field(chunk, "quality_score")
+        noise = numeric_field(chunk, "noise_score")
+        noise_total += noise
+        add_noise_bucket(noise_bucket_counts, noise)
+        lengths.append(word_count(str(chunk.get("chunk_text") or "")))
+
+    total_records = sum(1 for _ in iter_jsonl(clean_input)) if clean_input else total_chunks
+    flag_counts = dict(flag_counts_all.most_common(15))
+    leak_counts = leakage_counts_dict(leak_counts_raw)
+    avg_quality = round(quality_total / max(total_chunks, 1), 3)
+    avg_noise = round(noise_total / max(total_chunks, 1), 3)
 
     metadata_rate = metadata_complete / max(total_chunks, 1)
     post_identity_rate = post_identity_complete / max(total_chunks, 1)
@@ -284,12 +321,12 @@ def evaluate_preflight(
             "target_chroma_path": str(target_chroma_path),
             "planned_output_path": str(planned_output_path) if planned_output_path else "",
         },
-        "total_records": len(clean_records) if clean_input else total_chunks,
+        "total_records": total_records,
         "total_chunks": total_chunks,
         "role_distribution": dict(sorted(role_counts.items())),
         "average_quality_score": avg_quality,
         "average_noise_score": avg_noise,
-        "noise_buckets": noise_buckets(chunks),
+        "noise_buckets": dict(sorted(noise_bucket_counts.items())),
         "source_metadata_complete": metadata_complete,
         "source_metadata_completeness_rate": round(metadata_rate, 3),
         "post_identity_complete": post_identity_complete,
@@ -300,7 +337,7 @@ def evaluate_preflight(
         "answer_advice_chunk_count": role_counts.get("answer_advice", 0),
         "mixed_topic_quarantined_count": mixed_topic_quarantined,
         "mixed_topic_quarantined_rate": round(mixed_topic_rate, 3),
-        "chunk_length_distribution": chunk_length_distribution(chunks),
+        "chunk_length_distribution": chunk_length_distribution_from_lengths(lengths),
         "top_cleanup_flags": flag_counts,
         "path_safety": {"safe_outside_v1_paths": not path_checks(chunk_input, target_chroma_path, planned_output_path)},
         "embedding_commands_executed": False,
