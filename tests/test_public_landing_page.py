@@ -570,6 +570,185 @@ assert.equal(d1.operations.some((op) => /notified_at/.test(op.sql)), false);
     assert result.returncode == 0, result.stderr
 
 
+def test_interest_digest_dry_run_endpoint_previews_without_notifying() -> None:
+    script = _interest_digest_test_script(
+        """
+const d1 = makeD1([
+  makeRow({ id: "dry-1", email: "dry@steel.example", name: "Dry Run" })
+]);
+const response = await mod.default.fetch(
+  new Request("https://steel-rag-interest-digest.example/dry-run", {
+    method: "GET",
+    headers: { Authorization: "Bearer admin-token" }
+  }),
+  {
+    STEEL_RAG_INTEREST_D1: d1,
+    INTEREST_DIGEST_ADMIN_TOKEN: "admin-token"
+  }
+);
+const payload = await response.json();
+assert.equal(response.status, 200);
+assert.equal(payload.ok, true);
+assert.equal(payload.dryRun, true);
+assert.equal(payload.sent, false);
+assert.equal(payload.includedCount, 1);
+assert.equal(payload.rows[0].email, "dry@steel.example");
+assert.equal(d1.operations.some((op) => /notified_at/.test(op.sql)), false);
+"""
+    )
+
+    result = subprocess.run(["node", "-e", script], cwd=Path.cwd(), capture_output=True, text=True, check=False)
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_interest_digest_dry_run_requires_admin_token() -> None:
+    script = _interest_digest_test_script(
+        """
+const d1 = makeD1([
+  makeRow({ id: "dry-2", email: "dry@steel.example", name: "Dry Run" })
+]);
+const response = await mod.default.fetch(
+  new Request("https://steel-rag-interest-digest.example/dry-run", { method: "GET" }),
+  {
+    STEEL_RAG_INTEREST_D1: d1,
+    INTEREST_DIGEST_ADMIN_TOKEN: "admin-token"
+  }
+);
+const payload = await response.json();
+assert.equal(response.status, 403);
+assert.deepEqual(payload, { ok: false, error: "forbidden" });
+assert.equal(d1.operations.length, 0);
+"""
+    )
+
+    result = subprocess.run(["node", "-e", script], cwd=Path.cwd(), capture_output=True, text=True, check=False)
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_interest_digest_manual_run_endpoint_sends_and_notifies() -> None:
+    script = _interest_digest_test_script(
+        """
+const d1 = makeD1([
+  makeRow({ id: "run-1", email: "run@steel.example", name: "Manual Run" })
+]);
+const fetchCalls = [];
+const originalFetch = globalThis.fetch;
+globalThis.fetch = async (url, options) => {
+  fetchCalls.push({ url, options });
+  return new Response("{}", { status: 200 });
+};
+try {
+  const response = await mod.default.fetch(
+    new Request("https://steel-rag-interest-digest.example/run", {
+      method: "POST",
+      headers: { "x-interest-digest-token": "admin-token" }
+    }),
+    {
+      STEEL_RAG_INTEREST_D1: d1,
+      PUSHOVER_APP_TOKEN: "pushover-app-secret",
+      PUSHOVER_USER_KEY: "pushover-user-secret",
+      INTEREST_DIGEST_ADMIN_TOKEN: "admin-token"
+    }
+  );
+  const text = await response.text();
+  const payload = JSON.parse(text);
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.equal(payload.dryRun, false);
+  assert.equal(payload.sent, true);
+  assert.equal(fetchCalls.length, 1);
+  assert.equal(d1.operations.some((op) => /notified_at/.test(op.sql)), true);
+  assert.doesNotMatch(text, /pushover-app-secret/);
+  assert.doesNotMatch(text, /pushover-user-secret/);
+} finally {
+  globalThis.fetch = originalFetch;
+}
+"""
+    )
+
+    result = subprocess.run(["node", "-e", script], cwd=Path.cwd(), capture_output=True, text=True, check=False)
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_interest_digest_manual_run_requires_admin_token() -> None:
+    script = _interest_digest_test_script(
+        """
+const d1 = makeD1([
+  makeRow({ id: "run-2", email: "run@steel.example", name: "Manual Run" })
+]);
+const originalFetch = globalThis.fetch;
+let fetchCalled = false;
+globalThis.fetch = async () => {
+  fetchCalled = true;
+  return new Response("{}", { status: 200 });
+};
+try {
+  const response = await mod.default.fetch(
+    new Request("https://steel-rag-interest-digest.example/run", { method: "POST" }),
+    {
+      STEEL_RAG_INTEREST_D1: d1,
+      PUSHOVER_APP_TOKEN: "pushover-app-secret",
+      PUSHOVER_USER_KEY: "pushover-user-secret",
+      INTEREST_DIGEST_ADMIN_TOKEN: "admin-token"
+    }
+  );
+  const payload = await response.json();
+  assert.equal(response.status, 403);
+  assert.deepEqual(payload, { ok: false, error: "forbidden" });
+  assert.equal(fetchCalled, false);
+  assert.equal(d1.operations.length, 0);
+} finally {
+  globalThis.fetch = originalFetch;
+}
+"""
+    )
+
+    result = subprocess.run(["node", "-e", script], cwd=Path.cwd(), capture_output=True, text=True, check=False)
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_interest_digest_manual_run_failure_does_not_expose_pushover_secrets() -> None:
+    script = _interest_digest_test_script(
+        """
+const d1 = makeD1([
+  makeRow({ id: "run-3", email: "run@steel.example", name: "Manual Run" })
+]);
+const originalFetch = globalThis.fetch;
+globalThis.fetch = async () => new Response("bad", { status: 500 });
+try {
+  const response = await mod.default.fetch(
+    new Request("https://steel-rag-interest-digest.example/run", {
+      method: "POST",
+      headers: { Authorization: "Bearer admin-token" }
+    }),
+    {
+      STEEL_RAG_INTEREST_D1: d1,
+      PUSHOVER_APP_TOKEN: "pushover-app-secret",
+      PUSHOVER_USER_KEY: "pushover-user-secret",
+      INTEREST_DIGEST_ADMIN_TOKEN: "admin-token"
+    }
+  );
+  const text = await response.text();
+  assert.equal(response.status, 500);
+  assert.deepEqual(JSON.parse(text), { ok: false, error: "run_failed" });
+  assert.doesNotMatch(text, /pushover-app-secret/);
+  assert.doesNotMatch(text, /pushover-user-secret/);
+  assert.equal(d1.operations.some((op) => /notified_at/.test(op.sql)), false);
+} finally {
+  globalThis.fetch = originalFetch;
+}
+"""
+    )
+
+    result = subprocess.run(["node", "-e", script], cwd=Path.cwd(), capture_output=True, text=True, check=False)
+
+    assert result.returncode == 0, result.stderr
+
+
 def test_interest_digest_does_not_log_secrets() -> None:
     script = _interest_digest_test_script(
         """

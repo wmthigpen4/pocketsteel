@@ -378,22 +378,61 @@ async function tokenMatches(provided, expected) {
   return difference === 0;
 }
 
-async function handleDryRunRequest(request, env) {
+async function requestHasAdminToken(request, env) {
   const configuredToken = cleanString(env?.INTEREST_DIGEST_ADMIN_TOKEN, 500);
   if (!configuredToken) {
-    return jsonResponse({ ok: false, error: "dry_run_disabled" }, 403);
+    return false;
   }
 
   const header = request.headers.get("authorization") || "";
   const bearer = header.toLowerCase().startsWith("bearer ") ? header.slice(7) : "";
   const token = bearer || request.headers.get("x-interest-digest-token") || "";
 
-  if (!(await tokenMatches(token, configuredToken))) {
+  return tokenMatches(token, configuredToken);
+}
+
+async function requireAdminToken(request, env) {
+  if (!(await requestHasAdminToken(request, env))) {
     return jsonResponse({ ok: false, error: "forbidden" }, 403);
   }
 
-  const result = await runInterestDigest({ env, dryRun: true });
-  return jsonResponse(result);
+  return null;
+}
+
+async function handleDryRunRequest(request, env) {
+  if (request.method !== "GET") {
+    return jsonResponse({ ok: false, error: "Method not allowed." }, 405);
+  }
+
+  const forbidden = await requireAdminToken(request, env);
+  if (forbidden) {
+    return forbidden;
+  }
+
+  try {
+    const result = await runInterestDigest({ env, dryRun: true });
+    return jsonResponse(result);
+  } catch (_error) {
+    return jsonResponse({ ok: false, error: "dry_run_failed" }, 500);
+  }
+}
+
+async function handleManualRunRequest(request, env) {
+  if (request.method !== "POST") {
+    return jsonResponse({ ok: false, error: "Method not allowed." }, 405);
+  }
+
+  const forbidden = await requireAdminToken(request, env);
+  if (forbidden) {
+    return forbidden;
+  }
+
+  try {
+    const result = await runInterestDigest({ env, dryRun: false });
+    return jsonResponse(result);
+  } catch (_error) {
+    return jsonResponse({ ok: false, error: "run_failed" }, 500);
+  }
 }
 
 export default {
@@ -403,8 +442,11 @@ export default {
 
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (url.pathname === "/dry-run" || url.searchParams.get("dry_run") === "1") {
+    if (url.pathname === "/dry-run") {
       return handleDryRunRequest(request, env);
+    }
+    if (url.pathname === "/run") {
+      return handleManualRunRequest(request, env);
     }
 
     return jsonResponse({ ok: false, error: "not_found" }, 404);
@@ -419,8 +461,10 @@ export const __test = {
   fetchCandidateRows,
   groupIncludedSubmissions,
   handleDryRunRequest,
+  handleManualRunRequest,
   isObviousTestEmail,
   markRowsNotified,
+  requestHasAdminToken,
   runInterestDigest,
   sendPushoverDigest
 };

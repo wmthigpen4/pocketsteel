@@ -395,14 +395,28 @@ curl -sS \
   "http://localhost:8787/dry-run"
 ```
 
-The same handler also accepts:
+Only `GET /dry-run` is supported for preview.
 
-```text
-/?dry_run=1
+### Manual Run
+
+Manual run mode sends the digest through Pushover and marks included rows
+notified after Pushover returns success. It requires the
+`INTEREST_DIGEST_ADMIN_TOKEN` Worker secret.
+
+With a Worker dev server and all required secrets configured:
+
+```bash
+curl -sS \
+  -X POST \
+  -H "Authorization: Bearer $INTEREST_DIGEST_ADMIN_TOKEN" \
+  "http://localhost:8787/run"
 ```
 
-Only use dry run in a trusted environment. The JSON response can include real
-user emails and messages.
+The endpoint also accepts the token in `x-interest-digest-token` for local
+testing. Prefer the `Authorization: Bearer ...` form for regular use.
+
+Only use dry run or manual run in a trusted environment. The JSON response can
+include real user emails and messages.
 
 ### Testing The Scheduled Worker
 
