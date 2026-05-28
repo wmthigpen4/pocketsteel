@@ -28,6 +28,7 @@ from pocketsteel.cloudflare_access import (
     CLOUDFLARE_ACCESS_JWKS_URL_ENV,
     CLOUDFLARE_ACCESS_JWT_HEADER,
 )
+from scripts.serve_answer_smoke import resolved_answer_auth_mode, resolved_auth_provider
 
 
 FIXTURE = Path("tests/fixtures/api_contract_mock_response.json")
@@ -90,3 +91,18 @@ def test_access_role_contract_gates_live_answer_access() -> None:
     assert CLOUDFLARE_ACCESS_JWKS_URL_ENV == "STEEL_RAG_CF_ACCESS_JWKS_URL"
     assert BETA_USER_EMAILS_ENV == "STEEL_RAG_BETA_USER_EMAILS"
     assert ADMIN_EMAILS_ENV == "STEEL_RAG_ADMIN_EMAILS"
+
+
+def test_answer_smoke_server_auth_config_contract(monkeypatch) -> None:
+    monkeypatch.setenv("STEEL_RAG_AUTH_PROVIDER", "cloudflare_access")
+    monkeypatch.setenv("STEEL_RAG_ANSWER_AUTH_MODE", "production")
+
+    assert resolved_auth_provider(None) == "cloudflare_access"
+    assert resolved_answer_auth_mode(None) == "production"
+    assert resolved_auth_provider("scaffold") == "scaffold"
+    assert resolved_answer_auth_mode("local_dev") == "local_dev"
+
+    monkeypatch.delenv("STEEL_RAG_AUTH_PROVIDER", raising=False)
+    monkeypatch.delenv("STEEL_RAG_ANSWER_AUTH_MODE", raising=False)
+    assert resolved_auth_provider(None) is None
+    assert resolved_answer_auth_mode(None) == "local_dev"

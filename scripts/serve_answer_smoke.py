@@ -7,12 +7,14 @@ import argparse
 import io
 import json
 import mimetypes
+import os
 from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import Any
 from wsgiref.simple_server import make_server
 
 from pocketsteel.api import create_app
+from pocketsteel.access_control import ANSWER_AUTH_MODE_ENV, AUTH_PROVIDER_ENV, LOCAL_DEV_AUTH_MODE
 
 
 StartResponse = Callable[[str, list[tuple[str, str]]], None]
@@ -135,6 +137,27 @@ def build_app(
     return same_origin_app
 
 
+def resolved_answer_auth_mode(cli_value: str | None) -> str:
+    return cli_value or os.environ.get(ANSWER_AUTH_MODE_ENV) or LOCAL_DEV_AUTH_MODE
+
+
+def resolved_auth_provider(cli_value: str | None) -> str | None:
+    return cli_value or os.environ.get(AUTH_PROVIDER_ENV)
+
+
+def create_smoke_api_app(
+    *,
+    answer_auth_mode: str | None = None,
+    auth_provider: str | None = None,
+    search_index: Any | None = None,
+) -> WsgiApp:
+    return create_app(
+        search_index,
+        answer_auth_mode=resolved_answer_auth_mode(answer_auth_mode),
+        auth_provider=resolved_auth_provider(auth_provider),
+    )
+
+
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--host", default="127.0.0.1")
@@ -145,13 +168,28 @@ def build_arg_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Intercept controlled no-source/error questions for UI state smoke testing.",
     )
+    parser.add_argument(
+        "--answer-auth-mode",
+        choices=["production", "local-dev", "local_dev"],
+        default=None,
+        help=f"Auth mode for /api/answer. Defaults to ${ANSWER_AUTH_MODE_ENV}, then local_dev for smoke.",
+    )
+    parser.add_argument(
+        "--auth-provider",
+        choices=["scaffold", "cloudflare-access", "cloudflare_access"],
+        default=None,
+        help=f"Auth provider for /api/answer. Defaults to ${AUTH_PROVIDER_ENV}, then scaffold.",
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_arg_parser().parse_args(argv)
     app = build_app(
-        api_app=create_app(answer_auth_mode="local_dev"),
+        api_app=create_smoke_api_app(
+            answer_auth_mode=args.answer_auth_mode,
+            auth_provider=args.auth_provider,
+        ),
         ui_root=args.ui_root,
         controlled_states=args.controlled_states,
     )

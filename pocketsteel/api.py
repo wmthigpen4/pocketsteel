@@ -26,6 +26,8 @@ from pocketsteel.access_control import (
     authorize_answer_request,
     configured_answer_auth_mode,
     configured_auth_provider,
+    normalize_answer_auth_mode,
+    normalize_auth_provider,
 )
 from pocketsteel.answer_usage import InMemoryAnswerRateLimiter, answer_rate_limit_key
 from pocketsteel.api_contract import AnswerResponse
@@ -63,8 +65,8 @@ class RetrievalApi:
     ) -> None:
         self.search_index = search_index
         self.answer_provider = configured_answer_provider(answer_provider)
-        self.answer_auth_mode = answer_auth_mode or configured_answer_auth_mode()
-        self.auth_provider = auth_provider or configured_auth_provider()
+        self.answer_auth_mode = normalize_answer_auth_mode(answer_auth_mode or configured_answer_auth_mode())
+        self.auth_provider = normalize_auth_provider(auth_provider or configured_auth_provider())
         self.cloudflare_verifier = cloudflare_verifier
         self.answer_rate_limiter = answer_rate_limiter or InMemoryAnswerRateLimiter.from_env()
         self.answer_request_log: list[dict[str, Any]] = []
@@ -84,6 +86,25 @@ class RetrievalApi:
                 "query": query,
                 "results": search_response.results,
                 "warnings": search_response.warnings,
+            }
+            return self._json_response(start_response, "200 OK", payload)
+
+        if path == "/api/session":
+            if method != "GET":
+                return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"})
+
+            access = authorize_answer_request(
+                environ,
+                self.answer_auth_mode,
+                self.auth_provider,
+                self.cloudflare_verifier,
+            )
+            auth_provider = "cloudflare_access" if self.auth_provider == "cloudflare_access" and self.answer_auth_mode != "local_dev" else "local_dev"
+            payload = {
+                "authenticated": access.allowed,
+                "role": access.role if access.allowed else "anonymous",
+                "email": access.identity_email or None,
+                "authProvider": auth_provider,
             }
             return self._json_response(start_response, "200 OK", payload)
 

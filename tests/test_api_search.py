@@ -563,6 +563,48 @@ def test_api_answer_cloudflare_access_blocks_missing_jwt(monkeypatch: Any) -> No
     assert search_index.calls == []
 
 
+def test_api_session_cloudflare_access_blocks_missing_jwt_as_anonymous(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
+
+    status, _, payload = call_app(
+        "/api/session",
+        method="GET",
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        access_role=None,
+    )
+
+    assert status == "200 OK"
+    assert payload == {
+        "authenticated": False,
+        "role": "anonymous",
+        "email": None,
+        "authProvider": "cloudflare_access",
+    }
+
+
+def test_api_session_normalizes_cli_style_auth_aliases(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+
+    status, _, payload = call_app(
+        "/api/session",
+        method="GET",
+        answer_auth_mode="production",
+        auth_provider="cloudflare-access",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        access_role=None,
+    )
+
+    assert status == "200 OK"
+    assert payload["authenticated"] is False
+    assert payload["role"] == "anonymous"
+    assert payload["authProvider"] == "cloudflare_access"
+
+
 def test_api_answer_cloudflare_access_blocks_invalid_jwt(monkeypatch: Any) -> None:
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
@@ -586,6 +628,30 @@ def test_api_answer_cloudflare_access_blocks_invalid_jwt(monkeypatch: Any) -> No
     assert search_index.calls == []
 
 
+def test_api_session_cloudflare_access_blocks_invalid_jwt_as_anonymous(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
+
+    status, _, payload = call_app(
+        "/api/session",
+        method="GET",
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_token="invalid",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        access_role=None,
+    )
+
+    assert status == "200 OK"
+    assert payload == {
+        "authenticated": False,
+        "role": "anonymous",
+        "email": None,
+        "authProvider": "cloudflare_access",
+    }
+
+
 def test_api_answer_cloudflare_access_allows_valid_beta_email(monkeypatch: Any) -> None:
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
@@ -606,6 +672,30 @@ def test_api_answer_cloudflare_access_allows_valid_beta_email(monkeypatch: Any) 
     assert "source-backed answer" in payload["answer"]
 
 
+def test_api_session_cloudflare_access_valid_beta_email(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
+
+    status, _, payload = call_app(
+        "/api/session",
+        method="GET",
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_token="valid-beta",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        access_role=None,
+    )
+
+    assert status == "200 OK"
+    assert payload == {
+        "authenticated": True,
+        "role": "beta_user",
+        "email": "beta@example.test",
+        "authProvider": "cloudflare_access",
+    }
+
+
 def test_api_answer_cloudflare_access_allows_valid_admin_email(monkeypatch: Any) -> None:
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
@@ -624,6 +714,30 @@ def test_api_answer_cloudflare_access_allows_valid_admin_email(monkeypatch: Any)
 
     assert status == "200 OK"
     assert "source-backed answer" in payload["answer"]
+
+
+def test_api_session_cloudflare_access_valid_admin_email(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_ADMIN_EMAILS", "admin@example.test")
+
+    status, _, payload = call_app(
+        "/api/session",
+        method="GET",
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_token="valid-admin",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        access_role=None,
+    )
+
+    assert status == "200 OK"
+    assert payload == {
+        "authenticated": True,
+        "role": "admin",
+        "email": "admin@example.test",
+        "authProvider": "cloudflare_access",
+    }
 
 
 def test_api_answer_cloudflare_access_blocks_unlisted_valid_email(monkeypatch: Any) -> None:
@@ -649,6 +763,30 @@ def test_api_answer_cloudflare_access_blocks_unlisted_valid_email(monkeypatch: A
     assert search_index.calls == []
 
 
+def test_api_session_cloudflare_access_unlisted_valid_email_is_anonymous(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
+
+    status, _, payload = call_app(
+        "/api/session",
+        method="GET",
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_token="valid-unlisted",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        access_role=None,
+    )
+
+    assert status == "200 OK"
+    assert payload == {
+        "authenticated": False,
+        "role": "anonymous",
+        "email": "stranger@example.test",
+        "authProvider": "cloudflare_access",
+    }
+
+
 def test_api_answer_cloudflare_access_ignores_dev_mock_header(monkeypatch: Any) -> None:
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
@@ -672,6 +810,27 @@ def test_api_answer_cloudflare_access_ignores_dev_mock_header(monkeypatch: Any) 
     assert search_index.calls == []
 
 
+def test_api_session_cloudflare_access_ignores_dev_mock_header(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
+
+    status, _, payload = call_app(
+        "/api/session",
+        method="GET",
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        access_role="beta_user",
+        access_header="dev",
+    )
+
+    assert status == "200 OK"
+    assert payload["authenticated"] is False
+    assert payload["role"] == "anonymous"
+    assert payload["authProvider"] == "cloudflare_access"
+
+
 def test_api_answer_local_dev_mock_still_works_when_provider_is_cloudflare(monkeypatch: Any) -> None:
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
@@ -689,6 +848,29 @@ def test_api_answer_local_dev_mock_still_works_when_provider_is_cloudflare(monke
 
     assert status == "200 OK"
     assert "source-backed answer" in payload["answer"]
+
+
+def test_api_session_local_dev_mock_still_works_when_provider_is_cloudflare(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+
+    status, _, payload = call_app(
+        "/api/session",
+        method="GET",
+        answer_auth_mode="local_dev",
+        auth_provider="cloudflare_access",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        access_role="beta_user",
+        access_header="dev",
+    )
+
+    assert status == "200 OK"
+    assert payload == {
+        "authenticated": True,
+        "role": "beta_user",
+        "email": None,
+        "authProvider": "local_dev",
+    }
 
 
 def test_api_answer_logs_authorized_success() -> None:

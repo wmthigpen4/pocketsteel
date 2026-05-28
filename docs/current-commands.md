@@ -15,15 +15,108 @@ python -m pip install -e ".[rag,test]"
 ```bash
 git status --short
 git diff --check
-pytest
+.venv/bin/python -m pytest
 ```
 
 Run targeted tests while iterating:
 
 ```bash
-pytest tests/test_clean_corpus.py
-pytest tests/test_chunk_corpus.py
+.venv/bin/python -m pytest tests/test_clean_corpus.py
+.venv/bin/python -m pytest tests/test_chunk_corpus.py
 ```
+
+## Local Answer UI Smoke
+
+Start the same-origin answer UI smoke/dev server:
+
+```bash
+PYTHONPATH=. \
+STEEL_RAG_CHROMA_PATH="/Users/cory/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma" \
+STEEL_RAG_CHROMA_COLLECTION="steel_guitar_unified" \
+.venv/bin/python scripts/serve_answer_smoke.py --controlled-states --port 8770
+```
+
+Start the same-origin answer UI against Cloudflare Access auth config for private-preview verification:
+
+```bash
+cd /Users/cory/Documents/Pocket\ Steel
+source .venv/bin/activate
+set -a
+source ~/.steel-rag/env/private-preview.env
+set +a
+
+PYTHONPATH=. \
+.venv/bin/python scripts/serve_answer_smoke.py \
+  --host 127.0.0.1 \
+  --port 8770 \
+  --answer-auth-mode production \
+  --auth-provider cloudflare-access
+```
+
+Open:
+
+```text
+http://127.0.0.1:8770/ui/steel-guitar-rag-mock.html
+```
+
+Kill the server before restarting it:
+
+```bash
+lsof -tiTCP:8770 -sTCP:LISTEN | xargs kill
+```
+
+Run the answer eval against the local server:
+
+```bash
+.venv/bin/python scripts/run_answer_eval.py \
+  --base-url http://127.0.0.1:8770 \
+  --question-bank tests/fixtures/user_question_bank.json \
+  --output docs/answer-eval-report.md \
+  --json-output /tmp/answer-eval-results.json
+```
+
+Restart the server after backend Python changes; the running smoke server does not reload them automatically.
+
+## Frontend And API Tests
+
+Run the frontend/UI checks:
+
+```bash
+node --check ui/answer-client.js
+.venv/bin/python -m pytest tests/test_frontend_answer_ui.py
+.venv/bin/python -m pytest tests/test_public_landing_page.py
+```
+
+Run the API and answer contract checks:
+
+```bash
+.venv/bin/python -m pytest tests/test_api_contract.py tests/test_api_search.py tests/test_answer_eval.py
+```
+
+Run the same-origin smoke server checks:
+
+```bash
+.venv/bin/python -m pytest tests/test_same_origin_smoke_server.py
+```
+
+Run the full test suite:
+
+```bash
+.venv/bin/python -m pytest
+```
+
+## Phase 3 Corpus-V2 Checks
+
+Run the Phase 3 cleaner, chunker, and preflight tests:
+
+```bash
+.venv/bin/python -m pytest \
+  tests/test_phase3_clean_classify_chunks.py \
+  tests/test_phase3_chunk_v2.py \
+  tests/test_phase3_embed_v2_preflight.py
+```
+
+Generated `corpus-v2/` data is derived output. Do not commit `corpus-v2/`, Chroma stores, vector files, embedding outputs, or large generated JSONL unless a human explicitly approves the exact generated artifact.
 
 ## Read-Only Scrape Audit
 
