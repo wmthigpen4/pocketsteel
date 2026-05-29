@@ -1358,11 +1358,11 @@ class DeterministicAnswerProvider:
         if question_mentions_af_pedal_lever(request.question):
             return (
                 "On standard E9, A+F means using the A pedal with the F lever to make a major-chord position three frets above the open major position.\n\n"
-                "What changes:\n"
+                "What changes\n"
                 "- The A pedal raises the B strings to C#.\n"
                 "- The F lever raises the E strings to F.\n"
                 "- Together they give a major triad in the A+F position.\n\n"
-                "Practical use:\n"
+                "Practical use\n"
                 "- Use it to connect major chords smoothly without jumping straight to the A+B position.\n"
                 "- Example: G major is available at the 6th fret with A pedal + F lever.\n"
                 "- Common grips include 3-4-5, 4-5-6, 5-6-8, and 6-8-10, depending on your copedent."
