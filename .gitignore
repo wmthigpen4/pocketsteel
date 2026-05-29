@@ -86,3 +86,15 @@ transcripts/
 paid-transcripts/
 private/
 lessons/
+
+# Human-managed non-SGF source inbox
+!source-inbox/
+!source-inbox/**/
+source-inbox/**/*.txt
+source-inbox/**/*.pdf
+source-inbox/**/*.vtt
+source-inbox/**/*.srt
+source-inbox/**/*.docx
+source-inbox/**/*.md
+!source-inbox/**/README.md
+!source-inbox/**/.gitkeep
