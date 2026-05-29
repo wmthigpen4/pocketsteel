@@ -64,4 +64,4 @@ def test_final_answer_url_gate_allows_only_approved_curated_domains() -> None:
 
     cleaned = final_answer_quality_gate(unapproved, "Where can I buy a seat?")
     assert "private.example.invalid" not in cleaned
-    assert "source-backed evidence" in cleaned
+    assert "reliable information" in cleaned

@@ -197,7 +197,7 @@ class RetrievalApi:
                 )
                 sources = concise_source_cards(strong_sources)
             elif not strong_sources:
-                answer = "No strong source match found in the current corpus for that question."
+                answer = "No strong source match found for that question."
                 sources: list[dict[str, Any]] = []
                 warnings.append("no strong source match")
             else:

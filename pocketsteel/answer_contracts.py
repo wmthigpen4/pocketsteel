@@ -28,7 +28,7 @@ class AnswerContract:
     rag_excerpts_may_appear_in_answer_body: bool = False
     source_context_in_source_cards_only: bool = True
     fallback_answer: str = (
-        "I don’t have enough source-backed evidence in this corpus to answer that confidently. "
+        "I don’t have enough reliable information to answer that confidently. "
         "Try adding the song, key, tuning, brand, or exact part you mean so I can narrow the source match."
     )
 
@@ -224,8 +224,8 @@ CONTRACTS: dict[str, AnswerContract] = {
         required_answer_elements=(("player usage or weak roster support", r"\b(?:players?|users?|roster|source-backed|currently uses|artist list)\b"),),
         forbidden_answer_patterns=COMMON_FORBIDDEN + (("company-status-only answer", r"\bReSound’65\b"),),
         fallback_answer=(
-            "I do not have a strong, current, source-backed player roster for that brand. "
-            "Use the source cards as leads and verify current users through official artist lists or recent credits."
+            "I do not have a strong, current player roster for that brand from the information I have. "
+            "Use any listed sources as leads and verify current users through official artist lists or recent credits."
         ),
     ),
     "subjective_ranking": AnswerContract(
@@ -277,17 +277,17 @@ CONTRACTS: dict[str, AnswerContract] = {
     "current_roster": AnswerContract(
         intent="current_roster",
         required_answer_elements=(
-            ("current source limitation", r"\b(?:current|reliable|source-backed|corpus|do not have)\b"),
+            ("current information limitation", r"\b(?:current roster from the information I have|current|reliable|do not have|don't know)\b"),
             ("official credits next step", r"\b(?:official tour credits|album/session credits|official.*credits|current band listings)\b"),
         ),
         forbidden_answer_patterns=COMMON_FORBIDDEN + (("stale forum certainty", r"\b(?:definitely|currently plays for)\b"),),
         requires_direct_first_sentence=True,
-        direct_first_sentence_pattern=r"\b(?:do not have|don't have|cannot verify|can't verify|current)\b",
+        direct_first_sentence_pattern=r"\b(?:do not have|don't have|don’t know|cannot verify|can't verify|current)\b",
     ),
     "sensitive_identity": AnswerContract(
         intent="sensitive_identity",
         required_answer_elements=(
-            ("current corpus uncertainty", r"\b(?:don’t know from the current corpus|don't know from the current corpus|not in the current corpus|reliable source-backed)\b"),
+            ("direct uncertainty", r"\b(?:I don’t know|I don't know|not enough reliable information)\b"),
             ("no private identity speculation", r"\b(?:private identity|not appropriate to speculate|do not speculate|would not be appropriate|would not want to guess)\b"),
         ),
         forbidden_answer_patterns=COMMON_FORBIDDEN + (("identity roster", r"\b(?:list of gay|gay players include)\b"),),
@@ -296,12 +296,12 @@ CONTRACTS: dict[str, AnswerContract] = {
     "fallback_unknown": AnswerContract(
         intent="fallback_unknown",
         required_answer_elements=(
-            ("source-backed uncertainty", r"\b(?:don’t have enough source-backed evidence|don't have enough source-backed evidence|not enough source-backed evidence)\b"),
+            ("reliable information uncertainty", r"\b(?:don’t have enough reliable information|don't have enough reliable information|not enough reliable information)\b"),
             ("useful next step", r"\b(?:try adding|check|provide|narrow|exact)\b"),
         ),
         forbidden_answer_patterns=COMMON_FORBIDDEN,
         requires_direct_first_sentence=True,
-        direct_first_sentence_pattern=r"\b(?:don’t have enough source-backed evidence|don't have enough source-backed evidence|not enough source-backed evidence)\b",
+        direct_first_sentence_pattern=r"\b(?:don’t have enough reliable information|don't have enough reliable information|not enough reliable information)\b",
     ),
     "yes_no_source_check": AnswerContract(
         intent="yes_no_source_check",

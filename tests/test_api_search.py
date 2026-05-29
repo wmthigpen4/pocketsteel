@@ -1050,7 +1050,7 @@ def test_api_answer_empty_retrieval_returns_no_source_response() -> None:
     )
 
     assert status == "200 OK"
-    assert payload["answer"] == "No strong source match found in the current corpus for that question."
+    assert payload["answer"] == "No strong source match found for that question."
     assert payload["sources"] == []
     assert "no strong source match" in payload["warnings"]
 
@@ -1507,9 +1507,9 @@ def test_telonics_slide_bar_requires_matching_entity() -> None:
     )
 
     assert_clean_answer_body(payload)
-    assert "current corpus retrieval does not show strong source support" in payload["answer"]
+    assert "information I have here does not show strong support" in payload["answer"]
     assert "Telonics has made at least some slide bars" in payload["answer"]
-    assert "curated knowledge rather than corpus-supported evidence" in payload["answer"]
+    assert "curated knowledge rather than something proven by the listed sources" in payload["answer"]
     assert "Axtremity" not in payload["answer"]
     assert "Pedal Slide" not in payload["answer"]
     assert payload["sources"]
@@ -1763,7 +1763,8 @@ def test_player_brand_usage_does_not_answer_company_status() -> None:
     )
 
     assert_clean_answer_body(payload)
-    assert "current, source-backed roster" in payload["answer"]
+    assert "current roster of players using Emmons guitars today" in payload["answer"]
+    assert "information I have" in payload["answer"]
     assert "players using Emmons guitars today" in payload["answer"]
     assert "operating today through its official site" not in payload["answer"]
     assert "ReSound’65" not in payload["answer"]
@@ -2054,7 +2055,7 @@ def test_latest_frontend_curated_failures_have_clean_answer_bodies() -> None:
         ("Do you wear shoes or play barefoot?", "Use whatever footwear gives you consistent pedal feel", ["Thin-soled shoes", "Barefoot"]),
         ("Can you give me tablature for a random song?", "For a random tab request", ["Amazing Grace", "Original E9 mini-tab/chord path"]),
         ("Can you play Panhandle Rag with a pan handle?", "proper steel bar", ["intonation", "control"]),
-        ("Who plays a Mullen steel guitar?", "current, source-backed roster", ["Mullen guitars today", "official artist list"]),
+        ("Who plays a Mullen steel guitar?", "current roster", ["Mullen guitars today", "official artist list"]),
         ("Is Emmons Guitar still in business today?", "Yes. Emmons Guitar Co. appears to be operating today", ["emmonsguitar.co", "ReSound’65"]),
     ]
     noisy_source = [
@@ -2449,7 +2450,7 @@ def test_source_junk_quality_gate_removes_raw_forum_fragments() -> None:
     )
 
     assert_clean_answer_body(payload)
-    assert "I don’t have enough source-backed evidence in this corpus" in payload["answer"]
+    assert "I don’t have enough reliable information" in payload["answer"]
     assert "blacksteveb@aol.com" not in payload["answer"]
     assert "Top I am going to start" not in payload["answer"]
     assert "Has anyone compared" not in payload["answer"]
@@ -2491,7 +2492,7 @@ def test_final_answer_lint_blocks_raw_source_junk_and_empty_sections() -> None:
     assert answer_has_quality_issue(raw)
     cleaned = final_answer_quality_gate(raw, "What is the steel guitar wisdom here?")
     assert_clean_answer_body({"answer": cleaned})
-    assert "I don’t have enough source-backed evidence" in cleaned
+    assert "I don’t have enough reliable information" in cleaned
     assert "source cards as supporting evidence" not in cleaned
     assert "Useful distilled points" not in cleaned
     assert "Top" not in cleaned
@@ -2660,16 +2661,19 @@ def test_sensitive_demographic_and_current_roster_questions_do_not_speculate() -
     demographic = answer_for_question("Do any gay people play pedal steel?", noisy_source)
     assert_clean_answer_body(demographic)
     assert demographic["answer"] == (
-        "I don’t know from the current corpus. "
+        "I don’t know. "
         "I would not want to guess about anyone’s private identity."
     )
+    assert "corpus" not in demographic["answer"].lower()
     assert "Top Hi All" not in demographic["answer"]
 
     roster = answer_for_question("Who plays for Shania Twain?", noisy_source)
     assert_clean_answer_body(roster)
-    assert "current roster from this corpus" in roster["answer"]
-    assert "historical leads rather than current band members" in roster["answer"]
+    assert "current roster from the information I have" in roster["answer"]
     assert "official tour credits" in roster["answer"]
+    assert "I can also help interpret any credits you find" in roster["answer"]
+    assert "corpus" not in roster["answer"].lower()
+    assert "source cards" not in roster["answer"].lower()
     assert "For guitars" not in roster["answer"]
 
 
@@ -2740,7 +2744,7 @@ def test_prompt_injection_ignore_previous_instructions_is_not_obeyed() -> None:
     )
 
     assert "Telonics has made at least some slide bars" in payload["answer"]
-    assert "curated knowledge rather than corpus-supported evidence" in payload["answer"]
+    assert "curated knowledge rather than something proven by the listed sources" in payload["answer"]
     assert "Thanks Nick" not in payload["answer"]
     assert "Top Hi All" not in payload["answer"]
     assert "ignore previous instructions" not in payload["answer"].lower()

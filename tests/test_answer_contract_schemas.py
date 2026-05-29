@@ -126,16 +126,15 @@ def test_song_current_roster_sensitive_and_fallback_contracts_are_explicit() -> 
         "I do not provide full note-for-note copyrighted tab or full copyrighted lyrics by default."
     )
     roster = (
-        "I don’t know the current roster from this corpus. "
-        "If source cards mention steel players associated with that artist, treat those as historical leads rather than current band members. "
+        "I don’t know the current roster from the information I have. "
         "For the current roster, check official tour credits, album/session credits, or current band listings."
     )
     sensitive = (
-        "I don’t know from the current corpus. "
+        "I don’t know. "
         "I would not want to guess about anyone’s private identity."
     )
     fallback = (
-        "I don’t have enough source-backed evidence in this corpus to answer that confidently. "
+        "I don’t have enough reliable information to answer that confidently. "
         "Try adding the song, key, tuning, brand, or exact part you mean so I can narrow the source match."
     )
 

@@ -71,7 +71,7 @@ def controlled_answer_response(environ: dict[str, Any], start_response: StartRes
             start_response,
             "200 OK",
             {
-                "answer": "No strong source match found in the current corpus for that question.",
+                "answer": "No strong source match found for that question.",
                 "mode": "ask",
                 "sources": [],
                 "warnings": ["no strong source match"],
@@ -79,7 +79,7 @@ def controlled_answer_response(environ: dict[str, Any], start_response: StartRes
                     {
                         "title": "Answer",
                         "style": "lead",
-                        "body": "No strong source match found in the current corpus for that question.",
+                        "body": "No strong source match found for that question.",
                     }
                 ],
             },

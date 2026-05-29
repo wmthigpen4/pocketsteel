@@ -21,7 +21,7 @@ class CuratedAnswer:
     source_url: str | None = None
 
 
-WEAK_RETRIEVAL_WARNING = "curated answer used; retrieved sources were weak"
+WEAK_RETRIEVAL_WARNING = "curated answer used; source support was weak"
 CURATED_FACT_WEAK_WARNING = "curated fact used; source support weak"
 
 
@@ -40,7 +40,7 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             intent="sensitive_identity",
             confidence="curated_high",
             answer=(
-                "I don’t know from the current corpus. "
+                "I don’t know. "
                 "I would not want to guess about anyone’s private identity."
             ),
         )
@@ -50,9 +50,9 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             intent="current_roster",
             confidence="curated_medium",
             answer=(
-                "I don’t know the current roster from this corpus. "
-                "If source cards mention steel players associated with that artist, treat those as historical leads rather than current band members. "
-                "For the current roster, check official tour credits, album/session credits, or the artist’s current band listings."
+                "I don’t know the current roster from the information I have. "
+                "For the current touring or recording lineup, check official tour credits, album/session credits, or the artist’s current band listings. "
+                "I can also help interpret any credits you find."
             ),
         )
 
@@ -137,8 +137,8 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             intent="player_brand_usage",
             confidence="curated_medium",
             answer=(
-                f"I do not have a strong, current, source-backed roster of players using {brand} guitars today.\n\n"
-                "Use the source cards as leads, but treat forum mentions as historical or source-specific unless the source clearly says a player currently uses that brand. "
+                f"I do not have a strong, current roster of players using {brand} guitars today from the information I have.\n\n"
+                "Use any listed sources as leads, but treat forum mentions as historical or source-specific unless a source clearly says the player currently uses that brand. "
                 "For a current roster, the safest path is the maker’s official artist list, recent player interviews, or recent live/session credits."
             ),
         )
@@ -257,7 +257,7 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             confidence="curated_medium",
             answer=(
                 "The Benado Steel Dream 2 is a steel-guitar-oriented effects unit/pedal platform associated with steel-friendly sounds such as delay, reverb, and overdrive-style color.\n\n"
-                "Use the source cards for exact version details, because forum posts may refer to different Benado models or revisions."
+                "Check the listed sources for exact version details, because forum posts may refer to different Benado models or revisions."
             ),
         )
 
@@ -660,7 +660,7 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             answer=(
                 "I’m reading that as Mullen pedal steel, not “Mullins.” "
                 "I do not have a high-confidence curated roster of Mullen players in this answer layer. "
-                "Use the source cards as leads, and treat any forum mentions as source-specific rather than a complete endorsement list."
+                "Use any listed sources as leads, and treat forum mentions as source-specific rather than a complete endorsement list."
             ),
         )
 
@@ -671,9 +671,9 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             intent="curated_fact_source_check",
             confidence="curated_medium",
             answer=(
-                "The current corpus retrieval does not show strong source support for Telonics slide bars, "
+                "The information I have here does not show strong support for Telonics slide bars, "
                 "but curated/user-known information says Telonics has made at least some slide bars. "
-                "Treat that as curated knowledge rather than corpus-supported evidence."
+                "Treat that as curated knowledge rather than something proven by the listed sources."
             ),
         )
 

@@ -77,7 +77,7 @@ def mode_guidance(mode: str) -> str:
     if mode == "tab":
         return "Teach style, harmony, positions, chord tones, and pedal/lever purpose. Do not provide full note-for-note copyrighted tab or full copyrighted lyrics by default."
     if mode == "practice":
-        return "Return practical numbered practice steps grounded in the retrieved sources."
+        return "Return practical numbered practice steps grounded in the provided sources."
     return "Give a clear, practical source-backed answer."
 
 
@@ -1156,13 +1156,13 @@ def fallback_answer_for_category(category: FallbackCategory, question: str) -> s
             return rule_answer.answer
     if category == "current_info_not_in_corpus":
         return (
-            "I don’t know the current roster from this corpus. "
-            "If source cards mention steel players associated with that artist, treat those as historical leads rather than current band members. "
-            "For the current roster, check official tour credits, album/session credits, or the artist’s current band listings."
+            "I don’t know the current roster from the information I have. "
+            "For the current touring or recording lineup, check official tour credits, album/session credits, or the artist’s current band listings. "
+            "I can also help interpret any credits you find."
         )
     if category == "sensitive_identity_speculation":
         return (
-            "I don’t know from the current corpus. "
+            "I don’t know. "
             "I would not want to guess about anyone’s private identity."
         )
     if category == "copyrighted_song_guardrail":
@@ -1196,7 +1196,7 @@ def final_answer_quality_gate(answer: str, question: str) -> str:
 
 def noisy_source_fallback() -> str:
     return (
-        "I don’t have enough source-backed evidence in this corpus to answer that confidently. "
+        "I don’t have enough reliable information to answer that confidently. "
         "Try adding the song, key, tuning, brand, or exact part you mean so I can narrow the source match."
     )
 
@@ -1224,7 +1224,7 @@ class DeterministicAnswerProvider:
 
     def answer(self, request: AnswerRequest, sources: list[dict[str, Any]]) -> str:
         if not sources:
-            return "No strong source match found in the current corpus for that question."
+            return "No strong source match found for that question."
 
         route = classify_answer_route(request, sources)
         evidence = collect_evidence(request.question, sources)
@@ -1234,7 +1234,7 @@ class DeterministicAnswerProvider:
                 return clean_answer_text("I do not see a strong source match showing that Telonics made a slide bar.")
             return clean_answer_text(
                 f"I do not see a strong source match showing that {entity.title()} made that. "
-                "The retrieved sources appear to mention something related, but not the requested maker/entity."
+                "The closest matches appear to mention something related, but not the requested maker/entity."
             )
         if not evidence and route not in {
             "product_value",
@@ -1259,8 +1259,8 @@ class DeterministicAnswerProvider:
             if sources and all(not split_sentences(str(source.get("excerpt") or "")) for source in sources):
                 return noisy_source_fallback()
             return clean_answer_text(
-                "The retrieved sources are too thin to answer that confidently. "
-                "Open the source cards for context, but treat this as a weak match."
+                "The available matches are too thin to answer that confidently. "
+                "Treat this as a weak match."
             )
         if route == "entity_definition":
             return clean_answer_text(self._entity_definition_answer(request, sources, evidence))
@@ -1374,7 +1374,7 @@ class DeterministicAnswerProvider:
             return f"I do not see a strong source match showing that {entity} made that."
         if evidence:
             return (
-                "The retrieved sources mention the requested entity, but I would treat this as source context rather than proof. "
+                "The available matches mention the requested entity, but I would not treat that as proof. "
                 f"{clean_evidence_text(evidence[0].text)}"
             )
         if "telonics" in {item.lower() for item in entities} and "slide" in request.question.lower():
@@ -1514,7 +1514,7 @@ class DeterministicAnswerProvider:
 
         if not evidence:
             return (
-                "The retrieved sources are too thin to answer that copedent question confidently. "
+                "The available matches are too thin to answer that copedent question confidently. "
                 "I need source support or a known copedent/profile before naming exact strings, pedals, or levers."
             )
         return self._copedent_answer(request, sources, evidence)
@@ -1666,8 +1666,8 @@ class DeterministicAnswerProvider:
     ) -> str:
         brand = player_usage_brand(request.question)
         return (
-            f"I do not have a strong, current, source-backed roster of players using {brand} guitars today.\n\n"
-            "Use the source cards as leads, but treat forum mentions as historical or source-specific unless a source clearly says the player currently uses that brand. "
+            f"I do not have a strong, current roster of players using {brand} guitars today from the information I have.\n\n"
+            "Use any listed sources as leads, but treat forum mentions as historical or source-specific unless a source clearly says the player currently uses that brand. "
             "For a current roster, check the maker’s official artist list, recent player interviews, or recent live/session credits."
         )
 
@@ -1701,7 +1701,7 @@ class DeterministicAnswerProvider:
             "- whether it is meant for pedal steel, lap steel, dobro, or regular slide guitar\n"
             "- return policy if you are unsure about size\n"
             "- seller familiarity with pedal steel, especially for heavier round bars\n\n"
-            "For brands, use the source cards as leads, then verify the current maker/vendor directly."
+            "For brands, use any listed sources as leads, then verify the current maker/vendor directly."
         )
 
     def _current_company_status_answer(
@@ -1883,7 +1883,7 @@ class DeterministicAnswerProvider:
             [
                 "",
                 "Keep it grounded:",
-                "- If the source cards are about a different setup or tuning, adapt the exercise rather than treating it as a universal rule.",
+                "- If the listed sources are about a different setup or tuning, adapt the exercise rather than treating it as a universal rule.",
             ]
         )
         return "\n".join(lines)

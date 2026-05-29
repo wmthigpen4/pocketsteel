@@ -105,7 +105,7 @@ def test_same_origin_server_can_control_no_source_and_error_states() -> None:
     payload = json.loads(body)
     assert status == "200 OK"
     assert payload["sources"] == []
-    assert payload["answer"] == "No strong source match found in the current corpus for that question."
+    assert payload["answer"] == "No strong source match found for that question."
 
     status, _, body = call_app(
         app,
