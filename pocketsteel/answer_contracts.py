@@ -48,8 +48,10 @@ COMMON_FORBIDDEN: tuple[tuple[str, str], ...] = (
     ("raw e-mail contact", r"\be-?mail\s+"),
     ("source context heading", r"\b(?:Source context|Forum-source context|What multiple sources support)\b"),
     ("orphan Practical answer heading", r"(?m)^\s*Practical answer\s*:?\s*$"),
+    ("duplicate answer headings", r"(?s)(?m)^\s*Answer\s*:?\s*$.*^\s*Practical answer\s*:?\s*$"),
     ("forum question fragment", r"\b(?:Does anyone know|Has anyone compared|I am looking for tablature)\b"),
     ("inline citation marker", r"\[\d+\]"),
+    ("obvious source typo", r"\b(?:tje|teh)\b"),
 )
 
 
@@ -90,6 +92,7 @@ CONTRACTS: dict[str, AnswerContract] = {
     "diagnostic_troubleshooting": AnswerContract(
         intent="diagnostic_troubleshooting",
         required_answer_elements=(
+            ("likely causes", r"\b(?:likely causes|suspect|cause|comes from|appears only)\b"),
             ("isolation path", r"\b(?:nothing plugged in|direct|signal chain|cable|volume pedal|effects?|one at a time)\b"),
             ("diagnostic steps", r"\b(?:step|check|test|isolate|swap|add)\b"),
             ("safety caution", r"\b(?:safety|tech|qualified|amp|electrical|power|tube|electronics)\b"),
@@ -125,7 +128,12 @@ CONTRACTS: dict[str, AnswerContract] = {
     ),
     "copedent_fretboard": AnswerContract(
         intent="copedent_fretboard",
-        required_answer_elements=(("fretboard mechanics", r"\b(?:fret|pedal|lever|string|E9|grip|chord)\b"),),
+        required_answer_elements=(
+            ("what changes or provides", r"\b(?:raise|raises|lower|lowers|changes?|takes|string|gives|provides|note)\b"),
+            ("chord or interval result", r"\b(?:chord|interval|triad|dominant|major|minor|seventh|scale tone|color)\b"),
+            ("fret/string/pedal example", r"\b(?:fret|pedal|lever|string|grip)\b"),
+            ("practical use", r"\b(?:use|practical|players use|practice|connect|movement)\b"),
+        ),
         forbidden_answer_patterns=COMMON_FORBIDDEN,
         default_section_labels=("direct answer", "why it works"),
         fallback_answer="On E9, answer copedent questions from the chord function first, then name the fret, strings, pedals, and levers only when those details are supported.",
@@ -174,6 +182,7 @@ CONTRACTS: dict[str, AnswerContract] = {
     "brand_comparison": AnswerContract(
         intent="brand_comparison",
         required_answer_elements=(
+            ("both brands", r"\b(?:Mullen|MSA|Emmons|Sho-Bud|ZumSteel|Carter|GFI|Sierra)\b.*\b(?:Mullen|MSA|Emmons|Sho-Bud|ZumSteel|Carter|GFI|Sierra)\b"),
             ("no universal winner", r"\b(?:no universal winner|depends|fit|condition|personal|specific guitars)\b"),
             ("comparison caveats", r"\b(?:condition|setup|copedent|support|mechanics|budget|tone|feel)\b"),
         ),
@@ -182,7 +191,11 @@ CONTRACTS: dict[str, AnswerContract] = {
     ),
     "player_bio": AnswerContract(
         intent="player_bio",
-        required_answer_elements=(("biographical answer", r"\b(?:steel guitarist|player|known for|associated with|influential)\b"),),
+        required_answer_elements=(
+            ("identity", r"\b(?:is|was)\b.*\b(?:steel guitarist|pedal steel guitarist|player)\b"),
+            ("why they matter", r"\b(?:influential|important|major|known for|associated with)\b"),
+            ("style or contribution", r"\b(?:style|playing|technique|contribution|builder|designer|recorded work|session)\b"),
+        ),
         forbidden_answer_patterns=COMMON_FORBIDDEN + (("ranking template", r"\bRankings are subjective\b|\bA safe all-time starting list\b"),),
     ),
     "player_brand_usage": AnswerContract(
@@ -335,7 +348,7 @@ def validate_answer_against_contract(answer: str, intent: str | None) -> Contrac
     contract = contract_for_intent(intent)
     violations: list[str] = []
     for reason, pattern in contract.forbidden_answer_patterns:
-        if re.search(pattern, answer, re.I):
+        if _contract_pattern_matches(reason, pattern, answer):
             violations.append(reason)
     for reason, pattern in contract.required_answer_elements:
         if not re.search(pattern, answer, re.I):
@@ -364,7 +377,7 @@ def enforce_answer_contract(answer: str, intent: str | None) -> ContractValidati
 def _remove_forbidden_lines(answer: str, contract: AnswerContract) -> str:
     lines: list[str] = []
     for line in answer.splitlines():
-        if any(re.search(pattern, line, re.I) for _, pattern in contract.forbidden_answer_patterns):
+        if any(_contract_pattern_matches(reason, pattern, line) for reason, pattern in contract.forbidden_answer_patterns):
             continue
         lines.append(line)
     return "\n".join(lines).strip()
@@ -373,6 +386,11 @@ def _remove_forbidden_lines(answer: str, contract: AnswerContract) -> str:
 def _has_forbidden_violation(validation: ContractValidation, contract: AnswerContract) -> bool:
     forbidden_reasons = {reason for reason, _ in contract.forbidden_answer_patterns}
     return any(violation in forbidden_reasons for violation in validation.violations)
+
+
+def _contract_pattern_matches(reason: str, pattern: str, text: str) -> bool:
+    flags = 0 if reason == "raw Top boilerplate" else re.I
+    return bool(re.search(pattern, text, flags))
 
 
 def _mentions_two_brands(question: str) -> bool:

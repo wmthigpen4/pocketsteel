@@ -93,6 +93,18 @@ class EvidencePoint:
     score: int
 
 
+@dataclass(frozen=True)
+class DistilledFacts:
+    """Clean facts extracted from source text for synthesis, not direct copying."""
+
+    facts: tuple[str, ...]
+    source_count: int
+
+    @property
+    def is_thin(self) -> bool:
+        return len(self.facts) < 2 or self.source_count < 1
+
+
 AnswerRoute = Literal[
     "copedent_fretboard",
     "gear_setup",
@@ -287,6 +299,10 @@ KNOWN_ENTITY_DEFINITIONS = {
         "Lloyd Green is one of the most influential pedal steel guitarists, especially associated with classic Nashville/session steel guitar.",
         "He is known for tasteful, melodic E9 playing and major recorded work in country music.",
     ),
+    "buddy emmons": (
+        "Buddy Emmons was one of the most influential pedal steel guitarists in the instrument’s history.",
+        "He is widely associated with advanced pedal-steel technique, influential E9 and C6 playing, and major contributions as a player and builder/designer.",
+    ),
     "pack-a-seat": (
         "A pack-a-seat is a steel-guitar seat/storage box used by players to carry accessories and sit at the guitar.",
         "Steeler’s Choice is a known pack-a-seat maker.",
@@ -471,6 +487,55 @@ def collect_evidence(question: str, sources: list[dict[str, Any]]) -> list[Evide
     return points
 
 
+def distill_source_facts(question: str, evidence: list[EvidencePoint], *, limit: int = 4) -> DistilledFacts:
+    """Return normalized fact candidates that can inform synthesis without leaking source prose.
+
+    This deliberately rejects short mention-only fragments and raw SGF cleanup leftovers. The
+    returned strings are still source-derived, so callers should use them as supporting facts,
+    not as the opening sentence of an answer.
+    """
+
+    question_terms = normalized_terms(question)
+    facts: list[str] = []
+    seen: set[str] = set()
+    source_indexes: set[int] = set()
+    for point in evidence:
+        text = normalize_source_fact_text(point.text)
+        if not text or not is_distillable_fact(text, question_terms):
+            continue
+        key = evidence_key(text)
+        if key in seen:
+            continue
+        seen.add(key)
+        facts.append(text)
+        source_indexes.add(point.source_index)
+        if len(facts) >= limit:
+            break
+    return DistilledFacts(facts=tuple(facts), source_count=len(source_indexes))
+
+
+def normalize_source_fact_text(text: str) -> str:
+    text = clean_evidence_text(text)
+    text = re.sub(r"\btje\b", "the", text, flags=re.I)
+    text = re.sub(r"\bteh\b", "the", text, flags=re.I)
+    text = re.sub(r"\bi\b", "I", text)
+    text = re.sub(r"\s+", " ", text).strip(" -")
+    return text
+
+
+def is_distillable_fact(text: str, question_terms: set[str]) -> bool:
+    if classify_source_sentence(text) != "answer_candidate":
+        return False
+    terms = normalized_terms(text)
+    if len(text) < 45 or len(terms) < 5:
+        return False
+    if question_terms and not (terms & question_terms) and len(text) < 90:
+        return False
+    if re.search(r"\b(?:i\s+(?:think|guess|wonder|heard)|anyone|somebody|some one)\b", text, re.I) and len(terms & question_terms) < 2:
+        return False
+    return True
+
+
 def evidence_key(sentence: str) -> str:
     normalized = re.sub(r"\W+", " ", sentence.lower()).strip()
     return " ".join(normalized.split()[:28])
@@ -539,10 +604,21 @@ def classify_answer_route(request: AnswerRequest, sources: list[dict[str, Any]])
         return "player_history"
     if re.search(r"\bwho\b.+\bplayed\b.+\bwith\b", question) or "willie nelson" in question:
         return "player_history"
-    if request.mode == "copedent" or (
-        re.search(r"\bplay\s+(?:an?\s+)?[a-g](?:#|b)?\s+chord\b", question)
-        and re.search(r"\b\d+(?:st|nd|rd|th)?\s+fret\b", question)
-    ) or "across the guitar" in question or "b&c" in question or "b+c" in question or "wound 6th" in question or "wound sixth" in question:
+    if (
+        request.mode == "copedent"
+        or (
+            re.search(r"\bplay\s+(?:an?\s+)?[a-g](?:#|b)?\s+chord\b", question)
+            and re.search(r"\b\d+(?:st|nd|rd|th)?\s+fret\b", question)
+        )
+        or "across the guitar" in question
+        or "b&c" in question
+        or "b+c" in question
+        or "wound 6th" in question
+        or "wound sixth" in question
+        or question_mentions_af_pedal_lever(question)
+        or question_mentions_ninth_string(question)
+        or question_mentions_sixth_string_lower(question)
+    ):
         return "copedent_fretboard"
     if question_mentions_product_value(question):
         return "product_value"
@@ -601,6 +677,30 @@ def question_mentions_bc_pedals_second_fret(question: str) -> bool:
 def question_mentions_g_across_guitar(question: str) -> bool:
     lowered = question.lower()
     return bool(re.search(r"\bg\s+chord\b", lowered) and ("across the guitar" in lowered or "across the neck" in lowered))
+
+
+def question_mentions_af_pedal_lever(question: str) -> bool:
+    lowered = question.lower()
+    return bool(
+        re.search(r"\ba\s*\+\s*f\b", lowered)
+        or re.search(r"\ba\s+pedal\b.*\bf\s+lever\b", lowered)
+        or re.search(r"\bf\s+lever\b.*\ba\s+pedal\b", lowered)
+    )
+
+
+def question_mentions_ninth_string(question: str) -> bool:
+    lowered = question.lower()
+    return bool(re.search(r"\b(?:9th|ninth|string\s+9)\s+string\b|\bstring\s+9\b", lowered))
+
+
+def question_mentions_sixth_string_lower(question: str) -> bool:
+    lowered = question.lower()
+    return bool(
+        re.search(r"\b(?:6th|sixth|string\s+6)\s+string\b.*\blower\b", lowered)
+        or re.search(r"\blower\b.*\b(?:6th|sixth|string\s+6)\s+string\b", lowered)
+        or "6th string lower" in lowered
+        or "string 6 lower" in lowered
+    )
 
 
 def question_mentions_maintenance_oil(question: str) -> bool:
@@ -864,6 +964,8 @@ def clean_answer_text(answer: str) -> str:
         line = re.sub(r"\s*\[\d+\]", "", line)
         line = re.sub(r"^Concise answer:\s*", "", line, flags=re.I)
         line = re.sub(r"\bTop:\s*", "", line)
+        line = re.sub(r"\btje\b", "the", line, flags=re.I)
+        line = re.sub(r"\bteh\b", "the", line, flags=re.I)
         if "for rag answers" in line.lower():
             continue
         if classify_answer_line(line) != "answer_candidate" and not is_curated_reference_line(line):
@@ -932,9 +1034,11 @@ def is_curated_reference_line(line: str) -> bool:
 def answer_has_quality_issue(answer: str) -> bool:
     if not answer.strip():
         return True
-    bad_patterns = [
-        r"^\s*top\b",
+    case_sensitive_bad_patterns = [
+        r"^\s*Top\b",
         r"\sTop\s",
+    ]
+    bad_patterns = [
         r"\bsp=sharing\b",
         r"\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b",
         r"\be-?mail\s+",
@@ -943,8 +1047,11 @@ def answer_has_quality_issue(answer: str) -> bool:
         r"\bForum-source context\b",
         r"(?m)^\s*Practical answer\s*:?\s*$",
         r"\b(?:Does anyone know|Has anyone compared|I am looking for tablature)\b",
+        r"\btje\b|\bteh\b",
     ]
-    return any(re.search(pattern, answer, re.I) for pattern in bad_patterns)
+    return any(re.search(pattern, answer) for pattern in case_sensitive_bad_patterns) or any(
+        re.search(pattern, answer, re.I) for pattern in bad_patterns
+    )
 
 
 def final_answer_quality_gate(answer: str, question: str) -> str:
@@ -1074,9 +1181,21 @@ class DeterministicAnswerProvider:
         return clean_answer_text(self._ask_answer(sources, evidence))
 
     def _ask_answer(self, sources: list[dict[str, Any]], evidence: list["EvidencePoint"]) -> str:
+        facts = distill_source_facts("", evidence)
+        if facts.facts:
+            lines = [
+                "The cleanest source-backed answer is to treat the source cards as supporting evidence, not as a script to copy.",
+                "",
+                "Useful distilled points:",
+            ]
+            for fact in facts.facts[:3]:
+                lines.append(f"- {fact}")
+            if facts.source_count < 2:
+                lines.append("- I found this in limited source support, so treat it as a clue rather than consensus.")
+            return "\n".join(lines)
         primary = evidence[0]
         lines = [
-            clean_evidence_text(primary.text),
+            f"I found one related source point, but it is thin: {clean_evidence_text(primary.text)}",
             "",
             source_supported_heading(evidence),
         ]
@@ -1231,6 +1350,39 @@ class DeterministicAnswerProvider:
                 "- Together they create a compact three-note grip that is often used more as a passing-position or melodic harmony than as an isolated “home” chord."
             )
 
+        if question_mentions_af_pedal_lever(request.question):
+            return (
+                "On standard E9, A+F means using the A pedal with the F lever to make a major-chord position three frets above the open major position.\n\n"
+                "What changes:\n"
+                "- The A pedal raises the B strings to C#.\n"
+                "- The F lever raises the E strings to F.\n"
+                "- Together they give a major triad in the A+F position.\n\n"
+                "Practical use:\n"
+                "- Use it to connect major chords smoothly without jumping straight to the A+B position.\n"
+                "- Example: G major is available at the 6th fret with A pedal + F lever.\n"
+                "- Common grips include 3-4-5, 4-5-6, 5-6-8, and 6-8-10, depending on your copedent."
+            )
+
+        if question_mentions_ninth_string(request.question):
+            return (
+                "On E9, the 9th string is most often useful because it gives you the D note: a dominant-7th color against E and a strong passing or scale tone.\n\n"
+                "Practical uses:\n"
+                "- Add the D note for dominant-7th sounds instead of hunting for it on top strings.\n"
+                "- Use it in scale runs and walk-downs so the lower register connects smoothly.\n"
+                "- Combine it with E-lower and pedal positions for 2-minor/5-dominant style movement.\n"
+                "- Practice it slowly with common grips so it becomes part of your chord vocabulary, not a mystery string."
+            )
+
+        if question_mentions_sixth_string_lower(request.question):
+            return (
+                "The E9 6th-string lower usually takes string 6 from G# down to F#, which gives you a lower scale tone and a useful moving voice inside chords.\n\n"
+                "How players use it:\n"
+                "- As a smooth passing note between G# and F# in single-note lines.\n"
+                "- To change the color of A+B or E-lower positions without moving the bar as much.\n"
+                "- For dominant, suspended, or minor-family movement depending on the rest of the grip.\n"
+                "- With care: the change needs enough travel, and plain vs. wound 6th string can affect how easily it reaches pitch."
+            )
+
         if not evidence:
             return (
                 "The retrieved sources are too thin to answer that copedent question confidently. "
@@ -1280,6 +1432,10 @@ class DeterministicAnswerProvider:
     ) -> str:
         return (
             "Start by isolating whether the buzz is in the amp itself or in the signal chain.\n\n"
+            "Likely causes:\n"
+            "- If the amp buzzes with nothing plugged in, suspect amp power, tubes, filter caps, grounding, or other amp electronics.\n"
+            "- If the buzz appears only after the rig is connected, suspect cable, volume pedal, pickup ground, effects, or power-supply noise.\n"
+            "- If touching the strings or changer changes the buzz, look closely at grounding and shielding behavior.\n\n"
             "Diagnostic path:\n"
             "- Turn the amp on with nothing plugged in. If it still buzzes, suspect the amp, power, tubes, or electronics.\n"
             "- Plug the guitar straight into the amp with a known-good cable.\n"
@@ -1332,7 +1488,7 @@ class DeterministicAnswerProvider:
         evidence: list["EvidencePoint"],
     ) -> str:
         return (
-            "To sound less mechanical, make the phrase breathe before you add more notes.\n\n"
+            "To sound less mechanical, make your phrasing breathe before you add more notes.\n\n"
             "Practice it this way:\n"
             "- Use fewer fills and leave space after the vocal line or backing-track phrase.\n"
             "- Place a simple fill slightly behind the beat, then repeat it until it feels relaxed.\n"

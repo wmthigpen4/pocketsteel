@@ -1211,8 +1211,9 @@ def test_deterministic_mode_specific_sections_render() -> None:
         },
         question="How do I use the 6th string lower?",
     )
-    assert "Interval-first answer:" in copedent["answer"]
-    assert "Strings, frets, pedals, and levers mentioned by sources:" in copedent["answer"]
+    assert "6th-string lower" in copedent["answer"]
+    assert "string 6 from G# down to F#" in copedent["answer"]
+    assert "How players use it:" in copedent["answer"]
 
     tab = deterministic_payload("tab", question="Explain this E9 tab concept")
     assert "Concept explanation:" in tab["answer"]
@@ -2113,7 +2114,10 @@ def test_song_tab_policy_allows_teaching_without_full_copyrighted_tab() -> None:
         for bit in required:
             assert bit in payload["answer"]
         for bit in forbidden:
-            assert bit.lower() not in payload["answer"].lower()
+            if bit == "Top":
+                assert bit not in payload["answer"]
+            else:
+                assert bit.lower() not in payload["answer"].lower()
         assert payload["sources"]
 
 
@@ -2181,6 +2185,125 @@ def test_soft_attack_questions_return_tone_touch_practice_actions() -> None:
         assert "treble or presence" in answer
         assert "Practice one phrase loud/soft and short/long" in answer
         assert "With amp settings you can soften the sound" not in answer
+        assert payload["sources"]
+
+
+def test_source_backed_synthesis_smoke_questions_do_not_copy_raw_fragments() -> None:
+    cases = [
+        (
+            "Who is Buddy Emmons?",
+            [
+                "Buddy Emmons",
+                "influential pedal steel guitarist",
+                "E9 and C6",
+            ],
+            ["tje", "Top", "fragment"],
+        ),
+        (
+            "What does A+F do?",
+            [
+                "A pedal raises the B strings to C#",
+                "F lever raises the E strings to F",
+                "major triad",
+                "6th fret with A pedal + F lever",
+            ],
+            ["tje", "source typo", "Top"],
+        ),
+        (
+            "How do I use the 9th string?",
+            [
+                "9th string",
+                "D note",
+                "dominant-7th",
+                "passing",
+            ],
+            ["unclear forum", "Top"],
+        ),
+        (
+            "How do I use the 6th string lower?",
+            [
+                "string 6 from G# down to F#",
+                "passing note",
+                "A+B",
+                "plain vs. wound",
+            ],
+            ["partial forum", "Top"],
+        ),
+        (
+            "Why does my amp buzz at idle?",
+            [
+                "Likely causes:",
+                "nothing plugged in",
+                "signal chain",
+                "cable",
+                "volume pedal",
+                "qualified amp tech",
+            ],
+            ["Does the amp buzz", "Top"],
+        ),
+        (
+            "Where can I buy a slide bar?",
+            [
+                "steel-guitar specialty dealers",
+                "bar makers",
+                "diameter, length, weight, and material",
+            ],
+            ["positive owner/source impression"],
+        ),
+        (
+            "Is Mullen or MSA better?",
+            [
+                "There is no universal winner between Mullen and MSA",
+                "condition",
+                "support",
+                "copedent",
+            ],
+            ["that product", "positive owner/source impression"],
+        ),
+        (
+            "What should I practice tonight?",
+            [
+                "25-minute plan",
+                "3-4-5",
+                "blocking",
+            ],
+            ["Rankings are subjective", "Buddy Emmons"],
+        ),
+        (
+            "Help me sound less mechanical.",
+            [
+                "phrasing",
+                "bar movement",
+                "volume pedal",
+                "Record one chorus",
+            ],
+            ["sound guy", "bite ya"],
+        ),
+    ]
+    noisy_sources = [
+        {
+            "score": 0.86,
+            "excerpt": "Top Does anyone know? tje answer fragment says to e-mail somebody and copy this partial forum text.",
+            "forum_name": "Pedal Steel",
+            "thread_title": "Noisy source",
+            "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400028",
+            "chunk_id": "chunk-synthesis-noise",
+            "post_uid": "p-synthesis-noise",
+            "source_system": "sgf_phpbb_current",
+        }
+    ]
+
+    for question, required, forbidden in cases:
+        payload = answer_for_question(question, noisy_sources)
+        assert_clean_answer_body(payload)
+        for bit in required:
+            assert bit in payload["answer"]
+        for bit in forbidden:
+            if bit == "Top":
+                assert bit not in payload["answer"]
+            else:
+                assert bit.lower() not in payload["answer"].lower()
+        assert payload["answer"].splitlines()[0].strip()
         assert payload["sources"]
 
 

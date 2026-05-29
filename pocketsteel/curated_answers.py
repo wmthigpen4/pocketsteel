@@ -179,6 +179,10 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             confidence="curated_high",
             answer=(
                 "Start by isolating whether the buzz is in the amp itself or in the signal chain.\n\n"
+                "Likely causes:\n"
+                "- If the amp buzzes with nothing plugged in, suspect amp power, tubes, filter caps, grounding, or other amp electronics.\n"
+                "- If the buzz appears only after the rig is connected, suspect cable, volume pedal, pickup ground, effects, or power-supply noise.\n"
+                "- If touching the strings or changer changes the buzz, look closely at grounding and shielding behavior.\n\n"
                 "Diagnostic path:\n"
                 "- Turn the amp on with nothing plugged in. If it still buzzes, suspect the amp, power, tubes, or electronics.\n"
                 "- Plug the guitar straight into the amp with a known-good cable.\n"
@@ -213,7 +217,7 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             intent="technique_improvement",
             confidence="curated_high",
             answer=(
-                "To sound less mechanical, make the phrase breathe before you add more notes.\n\n"
+                "To sound less mechanical, make your phrasing breathe before you add more notes.\n\n"
                 "Practice it this way:\n"
                 "- Use fewer fills and leave space after the vocal line or backing-track phrase.\n"
                 "- Place a simple fill slightly behind the beat, then repeat it until it feels relaxed.\n"
@@ -264,6 +268,17 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             answer=(
                 "Lloyd Green is one of the most influential pedal steel guitarists, especially associated with classic Nashville/session steel guitar. "
                 "He is known for tasteful, melodic E9 playing and major recorded work in country music."
+            ),
+        )
+
+    if "buddy emmons" in q and re.search(r"\bwho\s+is\b|\btell\s+me\s+about\b|\bwhat\s+is\b", q):
+        return CuratedAnswer(
+            intent="player_bio",
+            confidence="curated_high",
+            answer=(
+                "Buddy Emmons was one of the most influential pedal steel guitarists in the instrument’s history. "
+                "He is known for brilliant E9 and C6 playing, adventurous technique, and major contributions as both a player and a builder/designer influence. "
+                "For many players, his recordings and ideas are central reference points for modern pedal steel."
             ),
         )
 
@@ -584,6 +599,51 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             ),
         )
 
+    if mentions_af_pedal_lever(q):
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=(
+                "On standard E9, A+F means using the A pedal with the F lever to make a major-chord position three frets above the open major position.\n\n"
+                "What changes:\n"
+                "- The A pedal raises the B strings to C#.\n"
+                "- The F lever raises the E strings to F.\n"
+                "- Together they give a major triad in the A+F position.\n\n"
+                "Practical use:\n"
+                "- Use it to connect major chords smoothly without jumping straight to the A+B position.\n"
+                "- Example: G major is available at the 6th fret with A pedal + F lever.\n"
+                "- Common grips include 3-4-5, 4-5-6, 5-6-8, and 6-8-10, depending on your copedent."
+            ),
+        )
+
+    if mentions_ninth_string(q):
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_medium",
+            answer=(
+                "On E9, the 9th string is most often useful because it gives you the D note: a dominant-7th color against E and a strong passing or scale tone.\n\n"
+                "Practical uses:\n"
+                "- Add the D note for dominant-7th sounds instead of hunting for it on top strings.\n"
+                "- Use it in scale runs and walk-downs so the lower register connects smoothly.\n"
+                "- Combine it with E-lower and pedal positions for 2-minor/5-dominant style movement.\n"
+                "- Practice it slowly with common grips so it becomes part of your chord vocabulary, not a mystery string."
+            ),
+        )
+
+    if mentions_sixth_string_lower(q):
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_medium",
+            answer=(
+                "The E9 6th-string lower usually takes string 6 from G# down to F#, which gives you a lower scale tone and a useful moving voice inside chords.\n\n"
+                "How players use it:\n"
+                "- As a smooth passing note between G# and F# in single-note lines.\n"
+                "- To change the color of A+B or E-lower positions without moving the bar as much.\n"
+                "- For dominant, suspended, or minor-family movement depending on the rest of the grip.\n"
+                "- With care: the change needs enough travel, and plain vs. wound 6th string can affect how easily it reaches pitch."
+            ),
+        )
+
     if "wound" in q and ("6th" in q or "sixth" in q or "string 6" in q):
         return CuratedAnswer(
             intent="copedent_fretboard",
@@ -672,6 +732,27 @@ def mentions_g_chord_across_guitar(question: str) -> bool:
 
 def mentions_bc_second_fret(question: str) -> bool:
     return bool(("b&c" in question or "b+c" in question) and re.search(r"\b2(?:nd)?\s+fret\b|\bsecond\s+fret\b", question))
+
+
+def mentions_af_pedal_lever(question: str) -> bool:
+    return bool(
+        re.search(r"\ba\s*\+\s*f\b", question)
+        or re.search(r"\ba\s+pedal\b.*\bf\s+lever\b", question)
+        or re.search(r"\bf\s+lever\b.*\ba\s+pedal\b", question)
+    )
+
+
+def mentions_ninth_string(question: str) -> bool:
+    return bool(re.search(r"\b(?:9th|ninth|string\s+9)\s+string\b|\bstring\s+9\b", question))
+
+
+def mentions_sixth_string_lower(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:6th|sixth|string\s+6)\s+string\b.*\blower\b", question)
+        or re.search(r"\blower\b.*\b(?:6th|sixth|string\s+6)\s+string\b", question)
+        or "6th string lower" in question
+        or "string 6 lower" in question
+    )
 
 
 def mentions_practice_plan(question: str) -> bool:
