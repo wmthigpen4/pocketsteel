@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
 
@@ -31,6 +32,7 @@ from pocketsteel.cloudflare_access import (
     CloudflareAccessError,
 )
 from pocketsteel.rag_guardrails import INJECTION_WARNING
+from pocketsteel.retrieval_modes import RetrievalMode, RetrievalModeConfig
 
 
 def call_app(
@@ -47,6 +49,8 @@ def call_app(
     auth_provider: str = "scaffold",
     cloudflare_token: str | None = None,
     cloudflare_verifier: Any = None,
+    private_search_index: Any | None = None,
+    retrieval_config: RetrievalModeConfig | None = None,
 ) -> tuple[str, dict[str, str], dict[str, Any]]:
     app = create_app(
         search_index or fake_search_index(),
@@ -54,6 +58,8 @@ def call_app(
         answer_auth_mode=answer_auth_mode,
         auth_provider=auth_provider,
         cloudflare_verifier=cloudflare_verifier,
+        private_search_index=private_search_index,
+        retrieval_config=retrieval_config,
     )
     captured: dict[str, Any] = {}
     body = json.dumps(json_body or {}).encode("utf-8") if json_body is not None else b""
@@ -144,6 +150,23 @@ class FakeSearchIndex:
     def search(self, query: str, **kwargs: Any) -> Any:
         self.calls.append({"query": query, **kwargs})
         return self.response
+
+
+def retrieval_config(
+    mode: str = "sgf_only",
+    *,
+    private_enabled: bool = False,
+    debug: bool = False,
+) -> RetrievalModeConfig:
+    return RetrievalModeConfig(
+        requested_mode=RetrievalMode(mode),
+        private_sources_enabled=private_enabled,
+        sgf_chroma_path=Path("corpus-v2/vector-stores/chroma"),
+        sgf_collection="steel_guitar_unified_v2",
+        private_chroma_path=Path("corpus-private/vector-stores/chroma"),
+        private_collection="steel_guitar_private_sources_v1",
+        expose_debug_metadata=debug,
+    )
 
 
 class FakeAnswerProvider:
@@ -337,6 +360,156 @@ def test_api_search_returns_query_and_results() -> None:
         "post_uid",
         "warnings",
     }.issubset(payload["results"][0])
+    assert "retrieval" not in payload
+
+
+def test_api_search_private_retrieval_disabled_by_default() -> None:
+    sgf_index = FakeSearchIndex(
+        {
+            "results": [{"chunk_id": "sgf-1", "thread_title": "SGF result", "source_system": "sgf_phpbb_current"}],
+            "warnings": [],
+        }
+    )
+    private_index = FakeSearchIndex(
+        {
+            "results": [{"chunk_id": "private-1", "thread_title": "Private result", "source_system": "personal_rules_note"}],
+            "warnings": [],
+        }
+    )
+
+    status, _, payload = call_app(
+        "/api/search",
+        {"q": "A+F"},
+        search_index=sgf_index,
+        private_search_index=private_index,
+    )
+
+    assert status == "200 OK"
+    assert [result["chunk_id"] for result in payload["results"]] == ["sgf-1"]
+    assert sgf_index.calls
+    assert private_index.calls == []
+    assert "retrieval" not in payload
+
+
+def test_api_search_private_mode_falls_back_when_private_env_disabled() -> None:
+    sgf_index = FakeSearchIndex(
+        {
+            "results": [{"chunk_id": "sgf-1", "thread_title": "SGF result", "source_system": "sgf_phpbb_current"}],
+            "warnings": [],
+        }
+    )
+    private_index = FakeSearchIndex(
+        {
+            "results": [{"chunk_id": "private-1", "thread_title": "Private result", "source_system": "personal_rules_note"}],
+            "warnings": [],
+        }
+    )
+
+    status, _, payload = call_app(
+        "/api/search",
+        {"q": "my copedent"},
+        search_index=sgf_index,
+        private_search_index=private_index,
+        retrieval_config=retrieval_config("private_only", private_enabled=False),
+    )
+
+    assert status == "200 OK"
+    assert [result["chunk_id"] for result in payload["results"]] == ["sgf-1"]
+    assert private_index.calls == []
+    assert payload["warnings"] == ["private retrieval disabled or not allowed for role; using sgf_only"]
+
+
+def test_api_search_private_not_exposed_to_anonymous_even_when_enabled() -> None:
+    sgf_index = FakeSearchIndex(
+        {
+            "results": [{"chunk_id": "sgf-1", "thread_title": "SGF result", "source_system": "sgf_phpbb_current"}],
+            "warnings": [],
+        }
+    )
+    private_index = FakeSearchIndex(
+        {
+            "results": [{"chunk_id": "private-1", "thread_title": "Private result", "source_system": "personal_rules_note"}],
+            "warnings": [],
+        }
+    )
+
+    status, _, payload = call_app(
+        "/api/search",
+        {"q": "private lesson"},
+        search_index=sgf_index,
+        private_search_index=private_index,
+        retrieval_config=retrieval_config("hybrid_private_first", private_enabled=True),
+        access_role=None,
+    )
+
+    assert status == "200 OK"
+    assert [result["chunk_id"] for result in payload["results"]] == ["sgf-1"]
+    assert private_index.calls == []
+    assert payload["warnings"] == ["private retrieval disabled or not allowed for role; using sgf_only"]
+
+
+def test_api_search_hybrid_private_first_when_explicitly_enabled_for_beta() -> None:
+    sgf_index = FakeSearchIndex(
+        {
+            "results": [{"chunk_id": "sgf-1", "thread_title": "SGF result", "source_system": "sgf_phpbb_current"}],
+            "warnings": [],
+        }
+    )
+    private_index = FakeSearchIndex(
+        {
+            "results": [
+                {"chunk_id": "private-1", "thread_title": "Private result", "source_system": "personal_rules_note"}
+            ],
+            "warnings": [],
+        }
+    )
+
+    status, _, payload = call_app(
+        "/api/search",
+        {"q": "my E9 copedent"},
+        search_index=sgf_index,
+        private_search_index=private_index,
+        retrieval_config=retrieval_config("hybrid_private_first", private_enabled=True),
+    )
+
+    assert status == "200 OK"
+    assert [result["chunk_id"] for result in payload["results"]] == ["private-1", "sgf-1"]
+    assert private_index.calls[0]["query"] == "my E9 copedent"
+    assert sgf_index.calls[0]["query"] == "my E9 copedent"
+
+
+def test_api_search_debug_metadata_is_admin_only() -> None:
+    config = retrieval_config("hybrid_sgf_first", private_enabled=True, debug=True)
+
+    _, _, beta_payload = call_app(
+        "/api/search",
+        {"q": "my E9 copedent"},
+        search_index=FakeSearchIndex({"results": [], "warnings": []}),
+        private_search_index=FakeSearchIndex({"results": [], "warnings": []}),
+        retrieval_config=config,
+        access_role="beta_user",
+    )
+    status, _, admin_payload = call_app(
+        "/api/search",
+        {"q": "my E9 copedent"},
+        search_index=FakeSearchIndex({"results": [], "warnings": []}),
+        private_search_index=FakeSearchIndex({"results": [], "warnings": []}),
+        retrieval_config=config,
+        access_role="admin",
+    )
+
+    assert status == "200 OK"
+    assert "retrieval" not in beta_payload
+    assert admin_payload["retrieval"] == {
+        "requestedMode": "hybrid_sgf_first",
+        "selectedMode": "hybrid_sgf_first",
+        "sourceOrder": ["sgf_v2", "private_sources"],
+        "useSgf": True,
+        "usePrivate": True,
+        "privateSourcesEnabled": True,
+        "privateSourcesAllowed": True,
+        "role": "admin",
+    }
 
 
 def test_chroma_search_handles_metadata_aliases_and_warns_on_fallbacks() -> None:
@@ -1113,6 +1286,37 @@ def test_api_answer_passes_filters_and_top_k_to_search() -> None:
         "source_system": "sgf_phpbb_current",
         "forum_name": "Electronics",
     }
+
+
+def test_api_answer_does_not_use_private_retrieval_modes_yet() -> None:
+    sgf_index = FakeSearchIndex({"results": [], "warnings": []})
+    private_index = FakeSearchIndex(
+        {
+            "results": [{"chunk_id": "private-1", "thread_title": "Private result", "source_system": "personal_rules_note"}],
+            "warnings": [],
+        }
+    )
+
+    status, _, payload = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={"question": "What is my E9 copedent?", "mode": "ask", "topK": 3},
+        search_index=sgf_index,
+        private_search_index=private_index,
+        retrieval_config=retrieval_config("hybrid_private_first", private_enabled=True),
+    )
+
+    assert status == "200 OK"
+    assert sgf_index.calls == [
+        {
+            "query": "What is my E9 copedent?",
+            "limit": 3,
+            "source_system": None,
+            "forum_name": None,
+        }
+    ]
+    assert private_index.calls == []
+    assert payload["sources"] == []
 
 
 def deterministic_payload(

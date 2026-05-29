@@ -8,6 +8,7 @@ import logging
 import json
 from collections.abc import Iterable
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs
 from wsgiref.simple_server import make_server
@@ -49,6 +50,20 @@ from pocketsteel.curated_answers import (
 )
 from pocketsteel.rag_guardrails import sanitize_retrieved_sources
 from pocketsteel.rag_guardrails import is_injection_like
+from pocketsteel.private_source_search import PrivateSourceSearchIndex
+from pocketsteel.retrieval_modes import (
+    ENABLE_PRIVATE_SOURCES_ENV,
+    PRIVATE_CHROMA_PATH_ENV,
+    PRIVATE_COLLECTION_ENV,
+    RETRIEVAL_DEBUG_ENV,
+    RETRIEVAL_MODE_ENV,
+    RetrievalMode,
+    RetrievalModeConfig,
+    configured_retrieval_mode_config,
+    normalize_retrieval_mode,
+    private_sources_allowed,
+    retrieval_plan_for_role,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -63,14 +78,18 @@ class RetrievalApi:
         auth_provider: AuthProvider | None = None,
         cloudflare_verifier: Any = None,
         answer_rate_limiter: InMemoryAnswerRateLimiter | None = None,
+        private_search_index: Any | None = None,
+        retrieval_config: RetrievalModeConfig | None = None,
     ) -> None:
         self.search_index = search_index
+        self.private_search_index = private_search_index
         self.answer_provider = configured_answer_provider(answer_provider)
         self.answer_auth_mode = normalize_answer_auth_mode(answer_auth_mode or configured_answer_auth_mode())
         self.auth_provider = normalize_auth_provider(auth_provider or configured_auth_provider())
         self.cloudflare_verifier = cloudflare_verifier
         self.answer_rate_limiter = answer_rate_limiter or InMemoryAnswerRateLimiter.from_env()
         self.answer_request_log: list[dict[str, Any]] = []
+        self.retrieval_config = retrieval_config or configured_retrieval_mode_config()
 
     def __call__(self, environ: dict[str, Any], start_response: Any) -> Iterable[bytes]:
         method = environ.get("REQUEST_METHOD", "GET")
@@ -82,12 +101,14 @@ class RetrievalApi:
 
             params = parse_qs(environ.get("QUERY_STRING", ""), keep_blank_values=True)
             query = params.get("q", [""])[0]
-            search_response = self._search(query)
+            search_response, debug_metadata = self._search_for_api(query, environ)
             payload = {
                 "query": query,
                 "results": search_response.results,
                 "warnings": search_response.warnings,
             }
+            if debug_metadata:
+                payload["retrieval"] = debug_metadata
             return self._json_response(start_response, "200 OK", payload)
 
         if path == "/api/session":
@@ -259,6 +280,102 @@ class RetrievalApi:
             )
         return SearchResponse(results=list(response or []), warnings=[])
 
+    def _search_for_api(
+        self,
+        query: str,
+        environ: dict[str, Any],
+        *,
+        limit: int = 5,
+        source_system: str | None = None,
+        forum_name: str | None = None,
+    ) -> tuple[SearchResponse, dict[str, Any]]:
+        role = self._search_role(environ)
+        plan = retrieval_plan_for_role(role, config=self.retrieval_config)
+        warnings = list(plan.warnings)
+        results_by_source: dict[str, list[dict[str, Any]]] = {}
+
+        if plan.use_sgf:
+            sgf_response = self._search(
+                query,
+                limit=limit,
+                source_system=source_system,
+                forum_name=forum_name,
+            )
+            results_by_source["sgf_v2"] = sgf_response.results
+            warnings.extend(sgf_response.warnings)
+
+        if plan.use_private:
+            if self.private_search_index is None:
+                warnings.append("private retrieval requested but private search index is not configured")
+            else:
+                private_response = self._search_private(
+                    query,
+                    limit=limit,
+                    source_system=source_system,
+                    forum_name=forum_name,
+                )
+                results_by_source["private_sources"] = private_response.results
+                warnings.extend(private_response.warnings)
+
+        merged: list[dict[str, Any]] = []
+        for source_name in plan.source_order:
+            merged.extend(results_by_source.get(source_name, []))
+        merged = merged[:limit]
+
+        debug_metadata: dict[str, Any] = {}
+        if self._may_expose_retrieval_debug(role, plan.expose_debug_metadata):
+            debug_metadata = {
+                "requestedMode": self.retrieval_config.requested_mode.value,
+                "selectedMode": plan.selected_mode.value,
+                "sourceOrder": list(plan.source_order),
+                "useSgf": plan.use_sgf,
+                "usePrivate": plan.use_private,
+                "privateSourcesEnabled": self.retrieval_config.private_sources_enabled,
+                "privateSourcesAllowed": private_sources_allowed(role, self.retrieval_config),
+                "role": role,
+            }
+
+        return SearchResponse(results=merged, warnings=warnings), debug_metadata
+
+    def _search_private(
+        self,
+        query: str,
+        *,
+        limit: int,
+        source_system: str | None,
+        forum_name: str | None,
+    ) -> SearchResponse:
+        try:
+            response = self.private_search_index.search(
+                query,
+                limit=limit,
+                source_system=source_system,
+                forum_name=forum_name,
+            )
+        except TypeError:
+            response = self.private_search_index.search(query)
+        if isinstance(response, SearchResponse):
+            return response
+        if isinstance(response, dict):
+            return SearchResponse(
+                results=list(response.get("results") or []),
+                warnings=list(response.get("warnings") or []),
+            )
+        return SearchResponse(results=list(response or []), warnings=[])
+
+    def _search_role(self, environ: dict[str, Any]) -> str:
+        access = authorize_answer_request(
+            environ,
+            self.answer_auth_mode,
+            self.auth_provider,
+            self.cloudflare_verifier,
+        )
+        return access.role if access.allowed else "anonymous"
+
+    @staticmethod
+    def _may_expose_retrieval_debug(role: str, enabled: bool) -> bool:
+        return enabled and role in {"admin", "dev", "developer"}
+
     @staticmethod
     def _read_json_body(environ: dict[str, Any]) -> dict[str, Any]:
         try:
@@ -339,7 +456,20 @@ def create_app(
     auth_provider: AuthProvider | None = None,
     cloudflare_verifier: Any = None,
     answer_rate_limiter: InMemoryAnswerRateLimiter | None = None,
+    private_search_index: Any | None = None,
+    retrieval_config: RetrievalModeConfig | None = None,
 ) -> RetrievalApi:
+    retrieval_config = retrieval_config or configured_retrieval_mode_config()
+    private_requested = retrieval_config.requested_mode in {
+        RetrievalMode.PRIVATE_ONLY,
+        RetrievalMode.HYBRID_PRIVATE_FIRST,
+        RetrievalMode.HYBRID_SGF_FIRST,
+    }
+    if private_search_index is None and retrieval_config.private_sources_enabled and private_requested:
+        private_search_index = PrivateSourceSearchIndex.from_chroma(
+            chroma_path=retrieval_config.private_chroma_path,
+            collection_name=retrieval_config.private_collection,
+        )
     return RetrievalApi(
         search_index or ChromaSearchIndex.from_chroma(),
         answer_provider=answer_provider,
@@ -347,6 +477,8 @@ def create_app(
         auth_provider=auth_provider,
         cloudflare_verifier=cloudflare_verifier,
         answer_rate_limiter=answer_rate_limiter,
+        private_search_index=private_search_index,
+        retrieval_config=retrieval_config,
     )
 
 
@@ -377,11 +509,46 @@ def build_arg_parser() -> argparse.ArgumentParser:
         default=None,
         help="Auth provider for production /api/answer requests. Defaults to STEEL_RAG_AUTH_PROVIDER or scaffold.",
     )
+    parser.add_argument(
+        "--retrieval-mode",
+        default=None,
+        help=f"Search retrieval mode. Defaults to ${RETRIEVAL_MODE_ENV} or sgf_only.",
+    )
+    parser.add_argument(
+        "--enable-private-sources",
+        action="store_true",
+        help=f"Allow /api/search private-source modes. Defaults to ${ENABLE_PRIVATE_SOURCES_ENV}=false.",
+    )
+    parser.add_argument(
+        "--private-chroma",
+        default=None,
+        help=f"Private Chroma path. Defaults to ${PRIVATE_CHROMA_PATH_ENV} or corpus-private/vector-stores/chroma.",
+    )
+    parser.add_argument(
+        "--private-collection",
+        default=None,
+        help=f"Private Chroma collection. Defaults to ${PRIVATE_COLLECTION_ENV} or steel_guitar_private_sources_v1.",
+    )
+    parser.add_argument(
+        "--retrieval-debug",
+        action="store_true",
+        help=f"Expose /api/search retrieval metadata to admin/dev roles. Defaults to ${RETRIEVAL_DEBUG_ENV}=false.",
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_arg_parser().parse_args(argv)
+    env_config = configured_retrieval_mode_config()
+    retrieval_config = RetrievalModeConfig(
+        requested_mode=env_config.requested_mode if args.retrieval_mode is None else normalize_retrieval_mode(args.retrieval_mode),
+        private_sources_enabled=args.enable_private_sources or env_config.private_sources_enabled,
+        sgf_chroma_path=env_config.sgf_chroma_path,
+        sgf_collection=env_config.sgf_collection,
+        private_chroma_path=env_config.private_chroma_path if args.private_chroma is None else Path(args.private_chroma),
+        private_collection=args.private_collection or env_config.private_collection,
+        expose_debug_metadata=args.retrieval_debug or env_config.expose_debug_metadata,
+    )
     app = create_app(
         ChromaSearchIndex.from_chroma(
             chroma_path=args.chroma,
@@ -390,6 +557,7 @@ def main(argv: list[str] | None = None) -> int:
         ),
         answer_auth_mode=args.answer_auth_mode,
         auth_provider=args.auth_provider,
+        retrieval_config=retrieval_config,
     )
     with make_server(args.host, args.port, app) as server:
         print(f"Serving local retrieval API at http://{args.host}:{args.port}")

@@ -209,7 +209,10 @@ Current scaffold behavior:
 - The default plan is `sgf_only`.
 - Private retrieval is disabled by default, even for beta users.
 - If a private or hybrid mode is requested without private access, the plan falls back to `sgf_only`.
-- No app route uses private sources until a later explicit wiring step.
+- `/api/search` can use the retrieval plan when explicitly configured.
+- `/api/answer` does not use private retrieval yet.
+- Private search results are never returned to anonymous/public callers.
+- Retrieval debug metadata is only returned when `STEEL_RAG_RETRIEVAL_DEBUG=true` and the caller is admin/dev.
 
 ## Metadata Requirements
 
