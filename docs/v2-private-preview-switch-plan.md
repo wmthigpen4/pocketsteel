@@ -60,14 +60,30 @@ STEEL_RAG_CHROMA_COLLECTION=steel_guitar_unified
 OLLAMA_URL=http://127.0.0.1:11434
 ```
 
+## V2 Local Smoke Startup Command
+
+Use this only for loopback smoke testing on `127.0.0.1:8781`. This command keeps
+local-dev mock access enabled and must not be routed publicly:
+
+```bash
+cd /Users/cory/Documents/Pocket\ Steel
+source .venv/bin/activate
+
+PYTHONPATH=. \
+.venv/bin/python scripts/serve_v2_rerank_smoke.py \
+  --host 127.0.0.1 \
+  --port 8781 \
+  --answer-auth-mode local_dev \
+  --auth-provider scaffold \
+  --v2-chroma-path corpus-v2/vector-stores/chroma \
+  --v2-collection steel_guitar_unified_v2
+```
+
 ## Proposed V2 Private-Preview Startup Command
 
-The current local v2 smoke helper, `scripts/serve_v2_rerank_smoke.py`, is
-intentionally local-only and creates the app with `local_dev` / `scaffold` auth.
-Do not route `app.steelguitarrag.com` to a process using local-dev auth.
-
-The v2 switch command draft below is the intended shape for port `8770` after
-the v2 serving path supports production Cloudflare Access auth:
+`scripts/serve_v2_rerank_smoke.py` now supports production Cloudflare Access
+auth. Do not route `app.steelguitarrag.com` to this process unless it is started
+with production auth and Cloudflare Access provider settings.
 
 ```bash
 cd /Users/cory/Documents/Pocket\ Steel
@@ -84,6 +100,8 @@ STEEL_RAG_CHROMA_COLLECTION="steel_guitar_unified_v2" \
 .venv/bin/python scripts/serve_v2_rerank_smoke.py \
   --host 127.0.0.1 \
   --port 8770 \
+  --answer-auth-mode production \
+  --auth-provider cloudflare-access \
   --v2-chroma-path corpus-v2/vector-stores/chroma \
   --v2-collection steel_guitar_unified_v2 \
   --candidate-k 20 \
@@ -97,10 +115,10 @@ STEEL_RAG_CHROMA_COLLECTION="steel_guitar_unified_v2" \
   --noise-threshold 0.60
 ```
 
-Pre-switch blocker: confirm this command path actually enforces
+Pre-switch check: confirm this command path enforces
 `STEEL_RAG_ANSWER_AUTH_MODE=production` and
-`STEEL_RAG_AUTH_PROVIDER=cloudflare_access`. If it still accepts local mock
-access such as `?access=beta_user`, do not use it for the private-preview route.
+`STEEL_RAG_AUTH_PROVIDER=cloudflare_access`. If it accepts local mock access
+such as `?access=beta_user`, do not use it for the private-preview route.
 
 ## Required Env Vars
 
@@ -177,8 +195,14 @@ Before stopping v1:
    noise_threshold=0.60
    ```
 
-4. Confirm the v2 private-preview serving path supports production Cloudflare
-   Access auth and does not rely on local mock access.
+4. Confirm the v2 private-preview serving path is started with:
+
+   ```text
+   --answer-auth-mode production
+   --auth-provider cloudflare-access
+   ```
+
+   It must not rely on local mock access.
 5. Confirm local anonymous `/api/answer` remains `401 Unauthorized`:
 
    ```bash
