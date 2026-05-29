@@ -1,0 +1,37 @@
+{
+  "generated_at": "2026-05-29T05:28:56.571090+00:00",
+  "source_root": "source-inbox",
+  "total_files": 1,
+  "skipped_files": 8,
+  "skipped_reasons": {
+    "hidden_or_placeholder": 8
+  },
+  "counts_by_file_type": {
+    "md": 1
+  },
+  "counts_by_source_system": {
+    "pending_review": 1
+  },
+  "counts_by_visibility": {
+    "review": 1
+  },
+  "counts_by_category": {
+    "source-inbox-root": 1
+  },
+  "files": [
+    {
+      "path": "source-inbox/README.md",
+      "filename": "README.md",
+      "extension": "md",
+      "file_type": "md",
+      "file_size_bytes": 1439,
+      "modified_time": "2026-05-29T05:24:18.185956+00:00",
+      "likely_source_category": "source-inbox-root",
+      "source_system_suggestion": "pending_review",
+      "visibility_suggestion": "review",
+      "ingestion_recommendation": "Review manually before ingestion.",
+      "approximate_line_count": 20,
+      "approximate_character_count": 1439
+    }
+  ]
+}
