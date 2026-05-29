@@ -46,6 +46,28 @@ The old `curated_vendor_sources` block remains only for backward compatibility. 
 
 Do not add private contact information, random forum links, dead links, paid-only sources, scraped posts, or one-off user emails as curated sources.
 
+### Example Entry
+
+Use this shape when adding a reviewed source:
+
+```json
+{
+  "id": "example_steel_source",
+  "name": "Example Steel Source",
+  "url": "https://example.com/",
+  "category": "tone_bars",
+  "source_type": "official",
+  "description": "Official page for an example steel-guitar accessory source.",
+  "caveat": "Check current availability before recommending as in stock.",
+  "last_reviewed": "2026-05-29",
+  "active": false,
+  "allowed_answer_modes": ["vendor_buying_guidance"],
+  "tags": ["tone_bars", "vendor", "official"]
+}
+```
+
+Required fields are `id`, `name`, `url`, `category`, `source_type`, `description`, `caveat`, `last_reviewed`, `active`, `allowed_answer_modes`, and `tags`. Keep `allowed_answer_modes` narrow so a vendor link does not appear in unrelated theory, technique, or player-history answers. New sources should start inactive until reviewed.
+
 ## Freshness Review
 
 Review curated links periodically and whenever a user reports a stale result. On review:

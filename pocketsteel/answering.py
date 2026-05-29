@@ -1156,13 +1156,14 @@ def fallback_answer_for_category(category: FallbackCategory, question: str) -> s
             return rule_answer.answer
     if category == "current_info_not_in_corpus":
         return (
-            "I do not have a current, reliable source-backed roster for that artist in this corpus. "
-            "Check official tour credits, album/session credits, or the artist’s current band listings."
+            "I don’t know the current roster from this corpus. "
+            "If source cards mention steel players associated with that artist, treat those as historical leads rather than current band members. "
+            "For the current roster, check official tour credits, album/session credits, or the artist’s current band listings."
         )
     if category == "sensitive_identity_speculation":
         return (
-            "I do not have a reliable source-backed roster for that, and it would not be appropriate to speculate about anyone’s private identity traits. "
-            "Pedal steel is played by people from many backgrounds."
+            "I don’t know from the current corpus. "
+            "I would not want to guess about anyone’s private identity."
         )
     if category == "copyrighted_song_guardrail":
         return (

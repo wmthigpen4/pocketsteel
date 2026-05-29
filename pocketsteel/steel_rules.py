@@ -80,12 +80,12 @@ def explain_number_chord(number: str, key: str) -> str | None:
     name, tones = chord
     if normalized_number in {"2m", "ii"} and normalized_key == "g":
         return (
-            f"In the key of G, the 2m chord is A minor ({name}): {tones}.\n\n"
-            "One practical E9 option:\n"
-            "- Go to the 8th fret.\n"
-            "- Use the A pedal.\n"
-            "- Try strings 5-6-8: string 5 gives A with the A pedal, string 6 gives E, and string 8 gives C.\n\n"
-            "Hear it as the ii minor in G, then practice moving it toward D7 and back to G."
+            f"In the key of G, the 2m chord is A minor ({name}): {tones}. "
+            "Interval-wise, 2 minor means 1-b3-5 built on scale degree 2.\n\n"
+            "Two practical E9 options:\n"
+            "- 3rd fret with B+C pedals on strings 3-4-5: the notes outline A-C-E, with the chord tones in an inversion.\n"
+            "- 8th fret with the A pedal on strings 5-6-8: string 5 gives A with the A pedal, string 6 gives E, and string 8 gives C.\n\n"
+            "Hear it as the ii minor in G, then practice moving it toward D or D7, the 5-dominant chord in G, before resolving back to G."
         )
     return f"In the key of {key}, {number} is {name}: {tones}."
 
@@ -114,12 +114,11 @@ def explain_tab_symbol(symbol: str) -> str | None:
     compact = symbol.strip().lower()
     if compact == "5^7":
         return (
-            "In steel tab, 5^7 is notation-dependent, but it often means a move or slide from fret 5 to fret 7.\n\n"
-            "How to read it:\n"
-            "- If it appears over one string, it likely means pick at fret 5 and slide to fret 7.\n"
-            "- If it appears in a chord grip, it may mean the whole grip moves from 5 to 7.\n"
-            "- Some tab authors use different symbols, so the surrounding line matters.\n\n"
-            "Send the full tab line if you want me to read the exact move."
+            "5^7 is ambiguous without the surrounding line.\n\n"
+            "Two common readings:\n"
+            "- In chord-symbol or Nashville-number context, it may mean 5 dominant 7, also called V7.\n"
+            "- In steel tab context, it may mean a move or slide from fret 5 to fret 7.\n\n"
+            "Send the surrounding tab or chord line and I can tell which meaning fits."
         )
     return None
 

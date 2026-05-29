@@ -52,9 +52,12 @@ def test_explain_number_chord_two_minor_in_g() -> None:
     assert answer is not None
     assert "2m chord is A minor (Am)" in answer
     assert "A-C-E" in answer
+    assert "1-b3-5 built on scale degree 2" in answer
+    assert "3rd fret with B+C pedals" in answer
     assert "8th fret" in answer
     assert "A pedal" in answer
     assert "strings 5-6-8" in answer
+    assert "D7, the 5-dominant chord in G" in answer
 
 
 def test_explain_e9_change_a_f() -> None:
@@ -72,8 +75,11 @@ def test_explain_tab_symbol_5_to_7() -> None:
     answer = explain_tab_symbol("5^7")
 
     assert answer is not None
+    assert "ambiguous" in answer
+    assert "5 dominant 7" in answer
+    assert "V7" in answer
     assert "slide from fret 5 to fret 7" in answer
-    assert "Send the full tab line" in answer
+    assert "surrounding tab or chord line" in answer
 
 
 def test_answer_from_rules_for_smoke_questions() -> None:
@@ -81,8 +87,8 @@ def test_answer_from_rules_for_smoke_questions() -> None:
         "What is a triad?": ("root, a third, and a fifth", "3-4-5"),
         "What does A+F do?": ("A pedal with the F lever", "major triad"),
         "What gauge is 10th string on E9?": ("10th string is B", ".036 wound"),
-        "What is 2m in G?": ("2m chord is A minor (Am)", "A-C-E"),
-        "What is a 5^7?": ("slide from fret 5 to fret 7", "full tab line"),
+        "What is 2m in G?": ("2m chord is A minor (Am)", "B+C pedals", "A pedal"),
+        "What is a 5^7?": ("5 dominant 7", "slide from fret 5 to fret 7"),
     }
 
     for question, required in cases.items():

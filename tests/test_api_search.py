@@ -2527,7 +2527,7 @@ def test_named_fallback_categories_produce_safe_direct_answers() -> None:
         (
             "Do any gay people play pedal steel?",
             "sensitive_identity_speculation",
-            "not be appropriate to speculate",
+            "would not want to guess",
         ),
         (
             "How do I play Happy Birthday?",
@@ -2593,13 +2593,19 @@ def test_two_minor_in_g_and_tab_notation_questions_route_to_fretboard_guidance()
     assert_clean_answer_body(two_minor)
     assert "2m chord is A minor" in two_minor["answer"]
     assert "A-C-E" in two_minor["answer"]
+    assert "1-b3-5 built on scale degree 2" in two_minor["answer"]
+    assert "3rd fret with B+C pedals" in two_minor["answer"]
     assert "8th fret" in two_minor["answer"]
     assert "A pedal" in two_minor["answer"]
+    assert "D7, the 5-dominant chord in G" in two_minor["answer"]
 
     notation = answer_for_question("What is a 5^7?", noisy_source)
     assert_clean_answer_body(notation)
+    assert "ambiguous" in notation["answer"]
+    assert "5 dominant 7" in notation["answer"]
+    assert "V7" in notation["answer"]
     assert "slide from fret 5 to fret 7" in notation["answer"]
-    assert "Send the full tab line" in notation["answer"]
+    assert "surrounding tab or chord line" in notation["answer"]
     assert "diminished" not in notation["answer"].lower()
 
 
@@ -2653,13 +2659,16 @@ def test_sensitive_demographic_and_current_roster_questions_do_not_speculate() -
 
     demographic = answer_for_question("Do any gay people play pedal steel?", noisy_source)
     assert_clean_answer_body(demographic)
-    assert "would not be appropriate to speculate" in demographic["answer"]
-    assert "many backgrounds" in demographic["answer"]
+    assert demographic["answer"] == (
+        "I don’t know from the current corpus. "
+        "I would not want to guess about anyone’s private identity."
+    )
     assert "Top Hi All" not in demographic["answer"]
 
     roster = answer_for_question("Who plays for Shania Twain?", noisy_source)
     assert_clean_answer_body(roster)
-    assert "current, reliable source-backed roster" in roster["answer"]
+    assert "current roster from this corpus" in roster["answer"]
+    assert "historical leads rather than current band members" in roster["answer"]
     assert "official tour credits" in roster["answer"]
     assert "For guitars" not in roster["answer"]
 

@@ -40,8 +40,8 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             intent="sensitive_identity",
             confidence="curated_high",
             answer=(
-                "I do not have a reliable source-backed roster for that, and it would not be appropriate to speculate about anyone’s sexual orientation. "
-                "Pedal steel is played by people from many backgrounds."
+                "I don’t know from the current corpus. "
+                "I would not want to guess about anyone’s private identity."
             ),
         )
 
@@ -50,8 +50,9 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             intent="current_roster",
             confidence="curated_medium",
             answer=(
-                "I do not have a current, reliable source-backed roster for that artist in this corpus. "
-                "For a current touring or recording band, check official tour credits, album/session credits, or the artist’s current band listings."
+                "I don’t know the current roster from this corpus. "
+                "If source cards mention steel players associated with that artist, treat those as historical leads rather than current band members. "
+                "For the current roster, check official tour credits, album/session credits, or the artist’s current band listings."
             ),
         )
 
@@ -81,31 +82,23 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
         )
 
     if mentions_two_minor_in_g(q):
+        rule_answer = answer_from_rules(question)
+        if rule_answer is None:
+            return None
         return CuratedAnswer(
             intent="copedent_fretboard",
             confidence="curated_high",
-            answer=(
-                "In the key of G, the 2m chord is A minor: A-C-E.\n\n"
-                "One practical E9 option:\n"
-                "- Go to the 8th fret.\n"
-                "- Use the A pedal.\n"
-                "- Try strings 5-6-8: string 5 gives A with the A pedal, string 6 gives E, and string 8 gives C.\n\n"
-                "Hear it as the ii minor in G, then practice moving it toward D7 and back to G."
-            ),
+            answer=rule_answer.answer,
         )
 
     if mentions_tab_notation_5_to_7(q):
+        rule_answer = answer_from_rules(question)
+        if rule_answer is None:
+            return None
         return CuratedAnswer(
             intent="copedent_fretboard",
             confidence="curated_high",
-            answer=(
-                "In steel tab, 5^7 is notation-dependent, but it often means a move or slide from fret 5 to fret 7.\n\n"
-                "How to read it:\n"
-                "- If it appears over one string, it likely means pick at fret 5 and slide to fret 7.\n"
-                "- If it appears in a chord grip, it may mean the whole grip moves from 5 to 7.\n"
-                "- Some tab authors use different symbols, so the surrounding line matters.\n\n"
-                "Send the full tab line if you want me to read the exact move."
-            ),
+            answer=rule_answer.answer,
         )
 
     if mentions_happy_birthday(q):
