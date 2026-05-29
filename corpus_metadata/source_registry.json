@@ -1,7 +1,172 @@
 {
-  "version": 1,
+  "schema_version": 2,
   "status": "scaffolding_only",
-  "notes": "Source registry placeholder. Do not require this during active scraping or clean-corpus generation yet.",
+  "notes": "Source registry for The Turnaround / Steel Guitar RAG provenance. This is not legal advice and does not make legal conclusions.",
+  "curated_sources": [
+    {
+      "id": "steel_guitar_shopper_accessories",
+      "name": "Steel Guitar Shopper",
+      "url": "https://steelguitarshopper.com/accessories/",
+      "category": "steel_guitar_accessories",
+      "source_type": "dealer",
+      "description": "Steel guitar accessories including tone bars, picks, strings, and parts.",
+      "caveat": "Do not claim a specific item is in stock unless current inventory was verified.",
+      "last_reviewed": "2026-05-28",
+      "active": true,
+      "allowed_answer_modes": [
+        "vendor_buying_guidance"
+      ],
+      "tags": [
+        "tone_bars",
+        "picks",
+        "strings",
+        "parts",
+        "vendor"
+      ]
+    },
+    {
+      "id": "bjs_steel_guitar_bars",
+      "name": "BJS Steel Guitar Bars",
+      "url": "https://www.bjsbars.com/",
+      "category": "tone_bars",
+      "source_type": "official",
+      "description": "Dedicated steel guitar bar maker.",
+      "caveat": "Do not claim bars are in stock unless current inventory was verified.",
+      "last_reviewed": "2026-05-28",
+      "active": true,
+      "allowed_answer_modes": [
+        "vendor_buying_guidance",
+        "official_brand_reference"
+      ],
+      "tags": [
+        "tone_bars",
+        "vendor",
+        "official"
+      ]
+    },
+    {
+      "id": "jim_dunlop_tonebars",
+      "name": "Jim Dunlop Tonebars",
+      "url": "https://www.jimdunlop.com/products/accessories/slides-tonebars/tonebars/",
+      "category": "tone_bars",
+      "source_type": "official/manufacturer",
+      "description": "Mainstream tonebar options in multiple sizes.",
+      "caveat": "Confirm the exact model, size, and retailer inventory; pedal steel players usually want a round tone bar, not a dobro/lap-style slide by mistake.",
+      "last_reviewed": "2026-05-28",
+      "active": true,
+      "allowed_answer_modes": [
+        "vendor_buying_guidance",
+        "official_brand_reference"
+      ],
+      "tags": [
+        "tone_bars",
+        "vendor",
+        "manufacturer"
+      ]
+    },
+    {
+      "id": "sgf_classifieds_store",
+      "name": "Steel Guitar Forum Classifieds / Forum Store",
+      "url": "https://bb.steelguitarforum.com/viewforum.php?f=9",
+      "category": "used_market",
+      "source_type": "forum/used_market",
+      "description": "Used/classifieds path for member listings and forum-market leads.",
+      "caveat": "Classifieds may require forum membership; verify seller reputation, current listing status, dimensions, and payment/shipping terms.",
+      "last_reviewed": "2026-05-28",
+      "active": true,
+      "allowed_answer_modes": [
+        "vendor_buying_guidance",
+        "classifieds_used_market"
+      ],
+      "tags": [
+        "used_market",
+        "classifieds",
+        "forum",
+        "vendor"
+      ]
+    },
+    {
+      "id": "texas_steel_guitar_association",
+      "name": "Texas Steel Guitar Association",
+      "url": "https://www.texassteelguitar.org/",
+      "category": "organization",
+      "source_type": "official_organization",
+      "description": "Official public site for the Texas Steel Guitar Association.",
+      "caveat": "Use for organization identity and event lookup; verify current event dates on the official site.",
+      "last_reviewed": "2026-05-28",
+      "active": true,
+      "allowed_answer_modes": [
+        "organization_event_lookup",
+        "official_brand_reference"
+      ],
+      "tags": [
+        "organization",
+        "events",
+        "tsga",
+        "official"
+      ]
+    },
+    {
+      "id": "steelers_choice",
+      "name": "Steeler’s Choice",
+      "url": "https://www.steelerschoice.com/",
+      "category": "steel_guitar_accessories",
+      "source_type": "official",
+      "description": "Known maker of steel-guitar pack-a-seat seat/storage boxes.",
+      "caveat": "Do not imply Steeler’s Choice is the only pack-a-seat maker; check current product availability.",
+      "last_reviewed": "2026-05-28",
+      "active": true,
+      "allowed_answer_modes": [
+        "vendor_buying_guidance",
+        "official_brand_reference"
+      ],
+      "tags": [
+        "pack_a_seat",
+        "seat",
+        "vendor",
+        "official"
+      ]
+    },
+    {
+      "id": "emmons_guitar_co",
+      "name": "Emmons Guitar Co.",
+      "url": "https://www.emmonsguitar.co/",
+      "category": "brand_official",
+      "source_type": "official",
+      "description": "Official public site for Emmons Guitar Co.",
+      "caveat": "Use for current official-site reference; do not use old forum rumors as current company status.",
+      "last_reviewed": "2026-05-28",
+      "active": true,
+      "allowed_answer_modes": [
+        "official_brand_reference",
+        "current_company_status"
+      ],
+      "tags": [
+        "brand",
+        "emmons",
+        "official"
+      ]
+    },
+    {
+      "id": "b0b_pedal_steel_pages",
+      "name": "b0b Pedal Steel Pages",
+      "url": "https://b0b.com/wp/links/",
+      "category": "lessons_reference",
+      "source_type": "curated_article_site",
+      "description": "Curated pedal-steel links and reference material maintained separately from SGF forum retrieval.",
+      "caveat": "Use as a lessons/reference lead only; do not treat it as retrieved SGF evidence.",
+      "last_reviewed": "2026-05-28",
+      "active": true,
+      "allowed_answer_modes": [
+        "lessons_reference"
+      ],
+      "tags": [
+        "lessons",
+        "reference",
+        "links"
+      ]
+    }
+  ],
   "curated_vendor_sources": [
     {
       "name": "Steel Guitar Shopper",
