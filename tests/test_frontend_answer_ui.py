@@ -288,6 +288,26 @@ assert.equal(afFormatted.sections[1].bullets.length, 3);
 assert.equal(afFormatted.sections[2].title, "Practical use");
 assert.equal(afFormatted.sections[2].bullets.length, 2);
 assert.equal(JSON.stringify(afFormatted.sections).includes("Practical answer"), false);
+
+const bcFormatted = answerUi.normalizeAnswerResponse({
+  answer: [
+    "Practice plan",
+    "",
+    "- Start with B+C down at one fret.",
+    "- Pick strings 4, 5, and 6 slowly.",
+    "",
+    "Diagnostic path",
+    "",
+    "- Listen for the C pedal raise.",
+    "- Release cleanly before moving."
+  ].join("\n"),
+  sources: []
+});
+
+assert.equal(bcFormatted.sections[0].title, "Practice plan");
+assert.equal(bcFormatted.sections[0].bullets.length, 2);
+assert.equal(bcFormatted.sections[1].title, "Diagnostic path");
+assert.equal(bcFormatted.sections[1].bullets.length, 2);
 """
 
     result = subprocess.run(
@@ -315,7 +335,7 @@ const answerUi = vm.runInContext("STEEL_RAG_ANSWER_UI", sandbox);
 
 const formatted = answerUi.normalizeAnswerResponse({
   answer: [
-    "Your saved E9 copedent is organized below.",
+    "Your private profile describes a 10-string E9 setup.",
     "",
     "Open tuning",
     "",
@@ -323,21 +343,21 @@ const formatted = answerUi.normalizeAnswerResponse({
     "| --- | --- |",
     "| 1 | F# |",
     "| 2 | D# |",
-    "| 3 | G# |",
     "",
     "Pedals",
     "",
-    "| Pedal | String | Change |",
-    "| --- | --- | --- |",
-    "| A | 5 | B to C# |",
-    "| B | 3 | G# to A |",
+    "| Pedal | Change |",
+    "| --- | --- |",
+    "| A | raises strings 5 and 10 B to C# |",
     "",
     "Levers",
     "",
-    "| Lever | String | Change |",
-    "| --- | --- | --- |",
-    "| LKL | 4 | E to F |",
-    "| LKR | 4 | E to D# |",
+    "| Lever | Change |",
+    "| --- | --- |",
+    "| F lever | raises strings 4 and 8 E to F |",
+    "| E-lower | lowers strings 4 and 8 E to D# |",
+    "| RKL | raises string 1 F# to G/G#, raises string 2 D# to E, lowers string 6 G# to F# |",
+    "| RKR | lowers string 2 D# to D/C#, lowers string 9 D to C# |",
     "",
     "Common grips",
     "- 3-4-5",
@@ -355,19 +375,26 @@ const commonGrips = formatted.sections.find((section) => section.title === "Comm
 const sectionOrder = formatted.sections.map((section) => section.title);
 
 assert.equal(formatted.sections[0].title, "Answer");
-assert.equal(formatted.sections[0].body, "Your saved E9 copedent is organized below.");
+assert.equal(formatted.sections[0].body, "Your private profile describes a 10-string E9 setup.");
 assert.equal(JSON.stringify(sectionOrder), JSON.stringify(["Answer", "Open tuning", "Pedals", "Levers", "Common grips"]));
+assert.equal(JSON.stringify(sectionOrder.slice(1)), JSON.stringify(["Open tuning", "Pedals", "Levers", "Common grips"]));
 assert.equal(JSON.stringify(openTuning.tables[0].headers), JSON.stringify(["String", "Note"]));
-assert.equal(JSON.stringify(openTuning.tables[0].rows), JSON.stringify([["1", "F#"], ["2", "D#"], ["3", "G#"]]));
-assert.equal(JSON.stringify(pedals.tables[0].headers), JSON.stringify(["Pedal", "String", "Change"]));
-assert.equal(JSON.stringify(pedals.tables[0].rows), JSON.stringify([["A", "5", "B to C#"], ["B", "3", "G# to A"]]));
-assert.equal(JSON.stringify(levers.tables[0].headers), JSON.stringify(["Lever", "String", "Change"]));
-assert.equal(JSON.stringify(levers.tables[0].rows), JSON.stringify([["LKL", "4", "E to F"], ["LKR", "4", "E to D#"]]));
+assert.equal(JSON.stringify(openTuning.tables[0].rows), JSON.stringify([["1", "F#"], ["2", "D#"]]));
+assert.equal(JSON.stringify(pedals.tables[0].headers), JSON.stringify(["Pedal", "Change"]));
+assert.equal(JSON.stringify(pedals.tables[0].rows), JSON.stringify([["A", "raises strings 5 and 10 B to C#"]]));
+assert.equal(JSON.stringify(levers.tables[0].headers), JSON.stringify(["Lever", "Change"]));
+assert.equal(JSON.stringify(levers.tables[0].rows), JSON.stringify([
+  ["F lever", "raises strings 4 and 8 E to F"],
+  ["E-lower", "lowers strings 4 and 8 E to D#"],
+  ["RKL", "raises string 1 F# to G/G#, raises string 2 D# to E, lowers string 6 G# to F#"],
+  ["RKR", "lowers string 2 D# to D/C#, lowers string 9 D to C#"]
+]));
 assert.equal(JSON.stringify(levers.bullets), JSON.stringify([]));
 assert.equal(JSON.stringify(commonGrips.bullets), JSON.stringify(["3-4-5", "4-5-6", "5-6-8", "6-8-10"]));
 assert.equal(levers.blocks[0].type, "table");
 assert.equal(commonGrips.blocks[0].type, "bullets");
 assert.equal(JSON.stringify(commonGrips.blocks[0].items), JSON.stringify(["3-4-5", "4-5-6", "5-6-8", "6-8-10"]));
+assert.equal(JSON.stringify(levers).includes("3-4-5"), false);
 assert.equal(JSON.stringify(formatted.sections).includes("| --- |"), false);
 
 const sectionPayload = answerUi.normalizeAnswerResponse({
@@ -376,7 +403,7 @@ const sectionPayload = answerUi.normalizeAnswerResponse({
       title: "Answer",
       style: "lead",
       body: [
-        "Your saved E9 copedent is organized below.",
+        "Your private profile describes a 10-string E9 setup.",
         "",
         "Open tuning",
         "",
@@ -391,7 +418,7 @@ const sectionPayload = answerUi.normalizeAnswerResponse({
 });
 
 const sectionOpenTuning = sectionPayload.sections.find((section) => section.title === "Open tuning");
-assert.equal(sectionPayload.sections[0].body, "Your saved E9 copedent is organized below.");
+assert.equal(sectionPayload.sections[0].body, "Your private profile describes a 10-string E9 setup.");
 assert.equal(JSON.stringify(sectionOpenTuning.tables[0].headers), JSON.stringify(["String", "Note"]));
 assert.equal(JSON.stringify(sectionOpenTuning.tables[0].rows), JSON.stringify([["1", "F#"], ["2", "D#"]]));
 assert.equal(JSON.stringify(sectionPayload.sections).includes("| String | Note |"), false);
