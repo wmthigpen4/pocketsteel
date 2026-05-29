@@ -4,13 +4,14 @@ This plan describes the private source-inbox path before embeddings. It is inten
 
 ## Current Scope
 
-The private source path currently has three safe stages:
+The private source path currently has four safe stages before any real embedding run:
 
 1. Inventory files in `source-inbox/`.
 2. Normalize reviewed TXT/MD/VTT/SRT files into private JSONL.
 3. Chunk normalized private documents into private chunk JSONL.
+4. Run embedding preflight against the private chunks and planned private vector destination.
 
-No embedding, Chroma writes, app config switches, scraping, DNS changes, or deployment are part of this stage.
+No app config switches, scraping, DNS changes, or deployment are part of this stage.
 
 ## Inputs And Outputs
 
@@ -22,6 +23,19 @@ Chunk outputs:
 
 - `corpus-private/chunks/source-inbox-chunks.jsonl`
 - `corpus-private/reports/source-inbox-chunk-report.md`
+
+Embedding preflight output:
+
+- `corpus-private/reports/private-source-embed-preflight.md`
+
+Planned private vector destination:
+
+- `corpus-private/vector-stores/chroma`
+- collection: `steel_guitar_private_sources_v1`
+
+Embedding report path when a dry run or approved real run is executed:
+
+- `corpus-private/reports/private-source-embedding-report.md`
 
 `corpus-private/` is generated private corpus output and must remain ignored by git.
 
@@ -76,9 +90,33 @@ Before any private embeddings are built, review:
 
 Private chunks should never be exposed to public/free users unless rights and access policy explicitly allow it.
 
-## Private Search Smoke
+## Embedding Safety
 
-After an explicitly approved private embedding run, use metadata-first search smoke checks against the private collection:
+The private embedding script must:
+
+- run private source preflight before embedding,
+- require `--confirm-preflight-pass` for a real embedding run,
+- support `--dry-run`,
+- write only to `corpus-private/vector-stores/chroma`,
+- use the `steel_guitar_private_sources_v1` collection,
+- refuse SGF v1/v2 vector paths,
+- preserve private metadata on every vector,
+- avoid logging private source text,
+- require `--reset-private-collection` before deleting/recreating the private collection.
+
+Dry-run command:
+
+```bash
+.venv/bin/python scripts/embed_private_sources_chroma.py --dry-run
+```
+
+Real embedding command, after reviewing preflight:
+
+```bash
+.venv/bin/python scripts/embed_private_sources_chroma.py --confirm-preflight-pass
+```
+
+Private search smoke commands, after embedding:
 
 ```bash
 .venv/bin/python scripts/search_private_sources.py --query "What is my E9 copedent?"
