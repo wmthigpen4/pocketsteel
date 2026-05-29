@@ -1821,6 +1821,9 @@ def assert_clean_answer_body(payload: dict[str, Any]) -> None:
     assert "The cleanest source-backed answer" not in answer
     assert "source cards as supporting evidence" not in answer
     assert "Useful distilled points" not in answer
+    assert "Interval-first answer" not in answer
+    assert "Strings, frets, pedals, and levers mentioned by sources" not in answer
+    assert "Start with the musical function named in the sources" not in answer
     assert "sp=sharing" not in answer
     assert "e-mail " not in answer.lower()
     assert "Does anyone know" not in answer
@@ -1829,6 +1832,34 @@ def assert_clean_answer_body(payload: dict[str, Any]) -> None:
     assert "sound guy" not in answer.lower()
     assert "bite ya" not in answer.lower()
     assert "road cases" not in answer.lower()
+
+
+def test_bc_pedal_exercises_return_practical_drills_not_source_fragments() -> None:
+    payload = answer_for_question(
+        "What are some good B&C pedal exercises?",
+        [
+            {
+                "score": 0.8,
+                "excerpt": "Can some of you possibly post tab of your favorite B&C pedal licks and phrases.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "B&C pedal licks",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400099",
+                "chunk_id": "chunk-bc-exercises",
+                "post_uid": "p-bc-exercises",
+                "source_system": "sgf_phpbb_current",
+            }
+        ],
+    )
+
+    assert_clean_answer_body(payload)
+    assert "On standard E9" in payload["answer"]
+    assert "B raises strings 3 and 6 G# to A" in payload["answer"]
+    assert "C raises string 4 E to F#" in payload["answer"]
+    assert "Practice plan" in payload["answer"]
+    assert "Exercise 1" in payload["answer"]
+    assert "strings 3-4-5" in payload["answer"]
+    assert "Metronome" in payload["answer"]
+    assert "Can some of you possibly post tab" not in payload["answer"]
 
 
 def answer_for_question(question: str, results: list[dict[str, Any]], mode: str = "ask") -> dict[str, Any]:

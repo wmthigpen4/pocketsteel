@@ -375,6 +375,49 @@ def test_private_profile_common_grips_answer_stays_clean() -> None:
     assert "80% of steelers" not in answer
 
 
+def test_bc_pedal_exercise_answer_uses_saved_profile_without_forum_question_text() -> None:
+    status, payload = call_answer(
+        question="What are some good B&C pedal exercises?",
+        search_index=FakeSearchIndex(
+            {
+                "results": [
+                    {
+                        "score": 0.78,
+                        "excerpt": "Can some of you possibly post tab of your favorite B&C pedal licks and phrases.",
+                        "source_system": "sgf_phpbb_current",
+                        "forum_name": "Pedal Steel",
+                        "thread_title": "B&C pedal licks",
+                        "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=102",
+                        "chunk_id": "sgf-bc-question",
+                        "post_uid": "p-sgf-bc-question",
+                        "source_kind": "forum_thread_chunk",
+                        "warnings": [],
+                    }
+                ],
+                "warnings": [],
+            }
+        ),
+        private_search_index=FakeSearchIndex(private_response()),
+        config=retrieval_config("hybrid_private_first", private_enabled=True),
+        access_role="beta_user",
+    )
+
+    assert status == "200 OK"
+    answer = payload["answer"]
+    assert "On your saved 10-string E9 setup" in answer
+    assert "B raises strings 3 and 6 G# to A" in answer
+    assert "C raises string 4 E to F#" in answer
+    assert "string 5 B to C#" in answer
+    assert "Practice plan" in answer
+    assert "Exercise 1" in answer
+    assert "strings 3-4-5" in answer
+    assert "Metronome" in answer
+    assert "Interval-first answer" not in answer
+    assert "Strings, frets, pedals, and levers mentioned by sources" not in answer
+    assert "Start with the musical function named in the sources" not in answer
+    assert "Can some of you possibly post tab" not in answer
+
+
 def test_private_answer_false_quote_permission_blanks_source_excerpt() -> None:
     private_index = FakeSearchIndex(private_response(answer_quote_allowed="false"))
 

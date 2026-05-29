@@ -17,6 +17,7 @@ from pocketsteel.answering import (
     AnswerProvider,
     answer_is_no_source,
     apply_private_profile_wording,
+    bc_pedal_exercise_answer,
     build_sections,
     concise_source_cards,
     configured_answer_provider,
@@ -208,8 +209,16 @@ class RetrievalApi:
                 contract_intent = "copedent_fretboard"
                 sources = concise_source_cards(strong_sources)
             else:
-                curated_answer = lookup_curated_answer(answer_request.question, strong_sources)
-                if curated_answer is not None:
+                exercise_answer = bc_pedal_exercise_answer(answer_request.question, strong_sources)
+                if exercise_answer is not None:
+                    answer = exercise_answer
+                    contract_intent = "practice_plan"
+                    sources = concise_source_cards(strong_sources)
+                else:
+                    curated_answer = lookup_curated_answer(answer_request.question, strong_sources)
+                if exercise_answer is not None:
+                    pass
+                elif curated_answer is not None:
                     answer = curated_answer.answer
                     contract_intent = curated_answer.intent
                     if curated_answer.intent == "curated_fact_source_check":

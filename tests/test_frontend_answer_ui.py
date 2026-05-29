@@ -165,7 +165,7 @@ let capturedRequest;
 def test_answer_ui_uses_live_answer_client_not_mock_answer_data() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
 
-    assert '<script src="answer-client.js?v=session-bootstrap-20260528"></script>' in html
+    assert '<script src="answer-client.js?v=answer-tables-20260529"></script>' in html
     assert '<script src="mock-answer-data.js"></script>' not in html
     assert "STEEL_RAG_ANSWER_UI.requestAnswer" in html
     assert "STEEL_RAG_ANSWER_UI.requestSession" in html
@@ -355,6 +355,32 @@ assert.equal(JSON.stringify(pedals.tables[0].rows), JSON.stringify([["A", "5", "
 assert.equal(JSON.stringify(levers.tables[0].headers), JSON.stringify(["Lever", "String", "Change"]));
 assert.equal(JSON.stringify(levers.tables[0].rows), JSON.stringify([["LKL", "4", "E to F"], ["LKR", "4", "E to D#"]]));
 assert.equal(JSON.stringify(formatted.sections).includes("| --- |"), false);
+
+const sectionPayload = answerUi.normalizeAnswerResponse({
+  sections: [
+    {
+      title: "Answer",
+      style: "lead",
+      body: [
+        "Your saved E9 copedent is organized below.",
+        "",
+        "Open tuning",
+        "",
+        "| String | Note |",
+        "| --- | --- |",
+        "| 1 | F# |",
+        "| 2 | D# |"
+      ].join("\n")
+    }
+  ],
+  sources: []
+});
+
+const sectionOpenTuning = sectionPayload.sections.find((section) => section.title === "Open tuning");
+assert.equal(sectionPayload.sections[0].body, "Your saved E9 copedent is organized below.");
+assert.equal(JSON.stringify(sectionOpenTuning.tables[0].headers), JSON.stringify(["String", "Note"]));
+assert.equal(JSON.stringify(sectionOpenTuning.tables[0].rows), JSON.stringify([["1", "F#"], ["2", "D#"]]));
+assert.equal(JSON.stringify(sectionPayload.sections).includes("| String | Note |"), false);
 """
 
     result = subprocess.run(

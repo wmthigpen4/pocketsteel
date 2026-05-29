@@ -151,6 +151,27 @@ def private_profile_answer(question: str, sources: list[dict[str, Any]]) -> str 
     )
 
 
+def bc_pedal_exercise_answer(question: str, sources: list[dict[str, Any]]) -> str | None:
+    if not question_mentions_bc_pedal_exercises(question):
+        return None
+    setup_prefix = (
+        "On your saved 10-string E9 setup"
+        if first_private_e9_profile_source(sources) is not None
+        else "On standard E9"
+    )
+    return (
+        f"{setup_prefix}, B+C is a useful E9 movement because B raises strings 3 and 6 G# to A, "
+        "and C raises string 4 E to F# plus string 5 B to C#.\n\n"
+        "Practice plan\n"
+        "- Exercise 1: On strings 3-4-5, pick cleanly, press B+C together, let the notes settle, then release together.\n"
+        "- Exercise 2: At one fret, compare the no-pedal grip against the B+C grip so your ear learns the color of the change.\n"
+        "- Exercise 3: Move the bar two frets and use B+C as a passing position, keeping the bar movement smooth and quiet.\n"
+        "- Exercise 4: Block after each 3-4-5 grip so the pedal change sounds intentional instead of smeared.\n"
+        "- Exercise 5: Make a two-measure fill: play one B+C phrase, leave space, then answer it with a simpler no-pedal phrase.\n"
+        "- Metronome: start slow, use four clean repetitions per fret, then move up only when the pedals, bar, and blocking stay even."
+    )
+
+
 def question_mentions_private_profile(question: str) -> bool:
     lowered = re.sub(r"\s+", " ", (question or "").strip().lower())
     if not re.search(r"\b(?:my|i|me)\b", lowered):
@@ -161,6 +182,18 @@ def question_mentions_private_profile(question: str) -> bool:
             lowered,
         )
     )
+
+
+def question_mentions_bc_pedal_exercises(question: str) -> bool:
+    lowered = re.sub(r"\s+", " ", (question or "").strip().lower())
+    mentions_bc = bool(
+        "b&c" in lowered
+        or "b+c" in lowered
+        or re.search(r"\bb\s+and\s+c\s+pedals?\b", lowered)
+        or re.search(r"\bb\s+c\s+pedals?\b", lowered)
+    )
+    asks_practice = bool(re.search(r"\b(?:exercise|exercises|practice|drill|drills|lick|licks|phrase|phrases)\b", lowered))
+    return mentions_bc and asks_practice
 
 
 def first_private_e9_profile_source(sources: list[dict[str, Any]]) -> dict[str, Any] | None:
@@ -1185,7 +1218,7 @@ def classify_answer_line(line: str) -> str:
     if not stripped:
         return "answer_candidate"
     if re.search(
-        r"\b(?:useful source-backed points|useful distilled points|source cards as supporting evidence|the cleanest source-backed answer)\b",
+        r"\b(?:useful source-backed points|useful distilled points|source cards as supporting evidence|the cleanest source-backed answer|interval-first answer|strings, frets, pedals, and levers mentioned by sources|start with the musical function named in the sources)\b",
         stripped,
         re.I,
     ):
@@ -1210,12 +1243,16 @@ def answer_has_quality_issue(answer: str, *, allow_contact_info: bool = False) -
         r"\bsource cards as supporting evidence\b",
         r"\bUseful distilled points\b",
         r"\bUseful source-backed points\b",
+        r"\bInterval-first answer\b",
+        r"\bStrings, frets, pedals, and levers mentioned by sources\b",
+        r"\bStart with the musical function named in the sources\b",
         r"\bsp=sharing\b",
         r"\bWhat multiple sources support\b",
         r"\bSource context\b",
         r"\bForum-source context\b",
         r"(?m)^\s*Practical answer\s*:?\s*$",
         r"\b(?:Does anyone know|Has anyone compared|I am looking for tablature)\b",
+        r"\bCan some of you possibly post tab\b",
         r"\btje\b|\bteh\b",
     ]
     if not allow_contact_info:
