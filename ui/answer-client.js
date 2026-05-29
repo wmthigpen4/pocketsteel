@@ -73,14 +73,14 @@ const STEEL_RAG_ANSWER_UI = (() => {
   function isSectionHeading(text) {
     return /^[A-Z][A-Za-z0-9 /&-]{1,46}$/.test(text)
       && !/[.!?]$/.test(text)
-      && /\b(answer|try|step|cause|diagnostic|caveat|caution|note|why|important|source|practice|summary|direct|practical|likely|next)\b/i.test(text);
+      && /\b(answer|try|step|cause|diagnostic|caveat|caution|note|why|important|source|practice|summary|direct|practical|likely|next|best|places|choose|changes|use)\b/i.test(text);
   }
 
   function classifySection(title, fallbackStyle = "") {
     const normalized = String(title || "").toLowerCase();
     if (fallbackStyle === "lead" || /\b(direct|short|answer)\b/.test(normalized)) return "lead";
     if (/\b(caveat|caution|important|warning|limitation|not to change)\b/.test(normalized)) return "caveat";
-    if (/\b(try|step|diagnostic|practice|practical|cause|likely)\b/.test(normalized)) return "bullets";
+    if (/\b(try|step|diagnostic|practice|practical|cause|likely|places|choose)\b/.test(normalized)) return "bullets";
     return fallbackStyle || "";
   }
 
@@ -166,6 +166,11 @@ const STEEL_RAG_ANSWER_UI = (() => {
         return;
       }
 
+      if (isSectionHeading(line)) {
+        startSection(line);
+        return;
+      }
+
       addContent(line);
     });
     flush();
@@ -174,22 +179,7 @@ const STEEL_RAG_ANSWER_UI = (() => {
       return [{ title: fallbackTitle || "Answer", style: fallbackStyle || "lead", body: "", bullets: [] }];
     }
 
-    const splitSections = [];
-    sections.forEach((section, index) => {
-      if (index === 0 && section.style === "lead" && section.body && section.bullets?.length) {
-        splitSections.push({ ...section, bullets: [], ordered: false });
-        splitSections.push({
-          title: "Practical answer",
-          style: "bullets",
-          body: "",
-          bullets: section.bullets,
-          ordered: section.ordered
-        });
-        return;
-      }
-      splitSections.push(section);
-    });
-    return splitSections;
+    return sections;
   }
 
   function normalizeSections(sections, answerText) {

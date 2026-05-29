@@ -1892,7 +1892,7 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v3"/><path d="M12 18v3"/><path d="M4.6 7.6 6.8 9.8"/><path d="m17.2 14.2 2.2 2.2"/><path d="M3 12h3"/><path d="M18 12h3"/><path d="m4.6 16.4 2.2-2.2"/><path d="m17.2 9.8 2.2-2.2"/><circle cx="12" cy="12" r="3"/></svg>
             The short answer
           </p>
-          <p class="answer-lead" id="answer-lead">Touching the changer can reduce hum because your body is temporarily changing the guitar’s ground reference. That usually points toward grounding, shielding, pickup, cable, volume pedal, or amp-input issues.</p>
+          <div class="answer-lead" id="answer-lead">Touching the changer can reduce hum because your body is temporarily changing the guitar’s ground reference. That usually points toward grounding, shielding, pickup, cable, volume pedal, or amp-input issues.</div>
           <p class="answer-status" id="answer-status" role="status" hidden></p>
 
           <div class="answer-detail-grid" id="answer-section-grid"></div>
@@ -2981,7 +2981,22 @@
         answerPrimaryTitle.appendChild(primaryIcon);
       }
       answerPrimaryTitle.append(document.createTextNode(primarySection.title || "Answer"));
-      answerLead.textContent = primarySection.body || "";
+      answerLead.replaceChildren();
+      if (primarySection.body) {
+        const leadBody = document.createElement("p");
+        leadBody.textContent = primarySection.body;
+        answerLead.appendChild(leadBody);
+      }
+      if (primarySection.bullets?.length) {
+        const list = document.createElement(primarySection.ordered ? "ol" : "ul");
+        list.className = "try-list";
+        primarySection.bullets.forEach((item) => {
+          const li = document.createElement("li");
+          li.textContent = item;
+          list.appendChild(li);
+        });
+        answerLead.appendChild(list);
+      }
 
       answerSectionGrid.innerHTML = "";
       sections.filter((section) => section !== primarySection).forEach((section) => {

@@ -232,6 +232,62 @@ assert.equal(JSON.stringify(sourced.sources[0]), JSON.stringify({
   url: "https://bb.steelguitarforum.com/viewtopic.php?t=123",
   date: ""
 }));
+
+const vendorFormatted = answerUi.normalizeAnswerResponse({
+  answer: [
+    "Best places to check",
+    "",
+    "- Steel Guitar Shopper — https://steelguitarshopper.com/accessories/ — Steel guitar accessories.",
+    "- BJS Steel Guitar Bars — https://www.bjsbars.com/ — Dedicated steel guitar bar maker.",
+    "- Jim Dunlop Tonebars — https://www.jimdunlop.com/products/accessories/slides-tonebars/tonebars/ — Mainstream tonebar options.",
+    "- Steel Guitar Forum Classifieds / Forum Store — https://bb.steelguitarforum.com/viewforum.php?f=9 — Used/classifieds path.",
+    "",
+    "What to choose",
+    "",
+    "- Diameter",
+    "- Length",
+    "- Weight",
+    "- Material",
+    "- Pedal steel round tone bar vs. lap/dobro slide style",
+    "",
+    "Check current availability before assuming anything is in stock."
+  ].join("\n"),
+  sources: []
+});
+
+assert.equal(vendorFormatted.sections[0].title, "Best places to check");
+assert.equal(vendorFormatted.sections[0].style, "bullets");
+assert.equal(vendorFormatted.sections[0].bullets.length, 4);
+assert.equal(vendorFormatted.sections[1].title, "What to choose");
+assert.equal(vendorFormatted.sections[1].bullets.length, 5);
+assert.equal(vendorFormatted.sections[1].body, "Check current availability before assuming anything is in stock.");
+assert.equal(JSON.stringify(vendorFormatted.sections).includes("Practical answer"), false);
+
+const afFormatted = answerUi.normalizeAnswerResponse({
+  answer: [
+    "On standard E9, A+F means using the A pedal with the F lever to make a major-chord position three frets above the open major position.",
+    "",
+    "What changes",
+    "",
+    "- The A pedal raises the B strings to C#.",
+    "- The F lever raises the E strings to F.",
+    "- Together they give a major triad in the A+F position.",
+    "",
+    "Practical use",
+    "",
+    "- Use it to connect major chords smoothly without jumping straight to the A+B position.",
+    "- Example: G major is available at the 6th fret with A pedal + F lever."
+  ].join("\n"),
+  sources: []
+});
+
+assert.equal(afFormatted.sections[0].title, "Answer");
+assert.equal(afFormatted.sections[0].body, "On standard E9, A+F means using the A pedal with the F lever to make a major-chord position three frets above the open major position.");
+assert.equal(afFormatted.sections[1].title, "What changes");
+assert.equal(afFormatted.sections[1].bullets.length, 3);
+assert.equal(afFormatted.sections[2].title, "Practical use");
+assert.equal(afFormatted.sections[2].bullets.length, 2);
+assert.equal(JSON.stringify(afFormatted.sections).includes("Practical answer"), false);
 """
 
     result = subprocess.run(
@@ -583,6 +639,8 @@ def test_answer_ui_styles_sections_and_bullets_as_readable_answer_content() -> N
     assert "sourceGrid.appendChild(card);" in html
     assert "source.forum" in html
     assert "source.excerpt" in html
+    assert "primarySection.bullets?.length" in html
+    assert 'answerLead.appendChild(list);' in html
 
 
 def test_answer_ui_hides_searched_row_but_preserves_source_card_metadata() -> None:

@@ -8,7 +8,7 @@
       "url": "https://steelguitarshopper.com/accessories/",
       "category": "steel_guitar_accessories",
       "short_description": "Steel guitar accessories including tone bars, picks, strings, and parts.",
-      "caveat": "Check current availability before recommending a specific item or claiming inventory.",
+      "caveat": "Do not claim a specific item is in stock unless current inventory was verified.",
       "last_reviewed": "2026-05-28",
       "source_type": "dealer"
     },
@@ -17,7 +17,7 @@
       "url": "https://www.bjsbars.com/",
       "category": "tone_bars",
       "short_description": "Dedicated steel guitar bar maker.",
-      "caveat": "Check current availability before recommending as in stock.",
+      "caveat": "Do not claim bars are in stock unless current inventory was verified.",
       "last_reviewed": "2026-05-28",
       "source_type": "official"
     },

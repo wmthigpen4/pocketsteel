@@ -1790,10 +1790,47 @@ def test_slide_bar_buying_routes_to_vendor_guidance() -> None:
     assert "Material" in payload["answer"]
     assert "Pedal steel round tone bar vs. lap/dobro slide style" in payload["answer"]
     assert "check current availability" in payload["answer"].lower()
+    best_index = payload["answer"].index("Best places to check")
+    shopper_index = payload["answer"].index("Steel Guitar Shopper")
+    choose_index = payload["answer"].index("What to choose")
+    diameter_index = payload["answer"].index("Diameter")
+    availability_index = payload["answer"].lower().index("check current availability")
+    assert best_index < shopper_index < choose_index < diameter_index < availability_index
     assert "positive owner/source impression" not in payload["answer"]
     assert "https://steelguitarforum.com/Forum5/HTML/006841.html" not in payload["answer"]
     assert "/api/answer" not in payload["answer"]
     assert "@" not in payload["answer"]
+    assert payload["sources"]
+
+
+def test_af_answer_uses_specific_sections_without_practical_answer() -> None:
+    payload = answer_for_question(
+        "What does A+F do?",
+        [
+            {
+                "score": 0.78,
+                "excerpt": "Top Does anyone know? tje source fragment talks about A+F.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "A+F position",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400029",
+                "chunk_id": "chunk-af",
+                "post_uid": "p-af",
+                "source_system": "sgf_phpbb_current",
+            }
+        ],
+    )
+
+    assert_clean_answer_body(payload)
+    assert "On standard E9, A+F means" in payload["answer"].splitlines()[0]
+    assert "What changes\n" in payload["answer"]
+    assert "Practical use\n" in payload["answer"]
+    assert "What changes:" not in payload["answer"]
+    assert "Practical use:" not in payload["answer"]
+    assert "Practical answer" not in payload["answer"]
+    assert "A pedal raises the B strings to C#" in payload["answer"]
+    assert "F lever raises the E strings to F" in payload["answer"]
+    assert payload["answer"].index("What changes") < payload["answer"].index("A pedal raises")
+    assert payload["answer"].index("Practical use") < payload["answer"].index("Use it to connect")
     assert payload["sources"]
 
 
@@ -1824,6 +1861,7 @@ def test_mullen_msa_brand_comparison_is_direct() -> None:
     assert "Steel Guitar Shopper" not in payload["answer"]
     assert "BJS Steel Guitar Bars" not in payload["answer"]
     assert "Jim Dunlop Tonebars" not in payload["answer"]
+    assert "Best places to check" not in payload["answer"]
     assert payload["sources"]
 
 
