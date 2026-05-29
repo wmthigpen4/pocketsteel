@@ -18,6 +18,8 @@ def test_public_landing_page_has_required_beta_copy_and_ctas() -> None:
     assert "Request early access" in html
     assert "See example questions" in html
     assert "Live AI access requires login and is not public yet." in html
+    assert "Tell me what you play and what you want Steel Guitar RAG to help with. I’ll use this list to invite early testers when the private preview opens." in html
+    assert '<form class="interest-form" id="interest-form" action="/api/interest" method="post">' in html
 
 
 def test_public_landing_page_lists_expected_example_questions() -> None:
