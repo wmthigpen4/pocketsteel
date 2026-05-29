@@ -75,6 +75,8 @@ def private_response(answer_quote_allowed: str = "limited") -> dict[str, Any]:
                 "excerpt": (
                     "User E9 copedent profile: 10-string E9. Open strings are 1 F#, 2 D#, 3 G#, 4 E, "
                     "5 B, 6 G#, 7 F#, 8 E, 9 D, 10 B. Pedals A, B, C. Levers F, E-lower, RKL, RKR. "
+                    "RKL raises string 1 F# to G/G#, raises string 2 D# to E, and lowers string 6 G# to F#. "
+                    "RKR lowers string 2 D# to D/C# and lowers string 9 D to C#. "
                     "Common grips are 3-4-5, 4-5-6, 5-6-8, and 6-8-10."
                 ),
                 "source_system": "personal_rules_note",
@@ -278,6 +280,26 @@ def test_rules_layer_answer_wins_over_private_source_for_stable_e9_basics() -> N
     assert "F lever" in payload["answer"]
     assert "major" in payload["answer"].lower()
     assert "Private profile says" not in payload["answer"]
+    assert "For your saved 10-string E9 profile" in payload["answer"]
+    assert "depending on your copedent" not in payload["answer"]
+
+
+def test_af_answer_still_uses_standard_wording_without_private_profile() -> None:
+    private_index = FakeSearchIndex(private_response())
+
+    status, payload = call_answer(
+        question="What does A+F do?",
+        private_search_index=private_index,
+        config=retrieval_config("sgf_only", private_enabled=False),
+        access_role="beta_user",
+    )
+
+    assert status == "200 OK"
+    assert private_index.calls == []
+    assert "A pedal" in payload["answer"]
+    assert "F lever" in payload["answer"]
+    assert "depending on your copedent" in payload["answer"]
+    assert "For your saved 10-string E9 profile" not in payload["answer"]
 
 
 def test_limited_private_quoting_is_not_copied_into_answer_body() -> None:
@@ -306,15 +328,23 @@ def test_private_profile_copedent_answer_uses_profile_facts_not_sgf_chatter() ->
     assert status == "200 OK"
     answer = payload["answer"]
     assert "10-string E9" in answer
+    assert "| String | Note |" in answer
+    assert "| Pedal | Change |" in answer
+    assert "| Lever | Change |" in answer
     assert "1 F#" in answer
     assert "10 B" in answer
-    assert "A pedal" in answer
-    assert "B pedal" in answer
-    assert "C pedal" in answer
+    assert "| A | raises strings 5 and 10 B to C# |" in answer
+    assert "| B | raises strings 3 and 6 G# to A |" in answer
+    assert "| C | raises string 4 E to F# and string 5 B to C# |" in answer
     assert "F lever" in answer
     assert "E-lower" in answer
     assert "RKL" in answer
+    assert "raises string 1 F# to G/G#" in answer
+    assert "raises string 2 D# to E" in answer
+    assert "lowers string 6 G# to F#" in answer
     assert "RKR" in answer
+    assert "lowers string 2 D# to D/C#" in answer
+    assert "lowers string 9 D to C#" in answer
     assert "3-4-5" in answer
     assert "4-5-6" in answer
     assert "5-6-8" in answer
@@ -340,6 +370,7 @@ def test_private_profile_common_grips_answer_stays_clean() -> None:
     assert "4-5-6" in answer
     assert "5-6-8" in answer
     assert "6-8-10" in answer
+    assert "saved 10-string E9 profile" in answer
     assert "Bobs copedent" not in answer
     assert "80% of steelers" not in answer
 

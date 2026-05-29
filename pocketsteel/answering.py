@@ -101,38 +101,48 @@ def private_profile_answer(question: str, sources: list[dict[str, Any]]) -> str 
 
     lowered = question.lower()
     if "grip" in lowered:
-        return "Your common E9 grips are " + ", ".join(PRIVATE_PROFILE_GRIPS) + "."
+        return (
+            "For your saved 10-string E9 profile, your common grips are "
+            + ", ".join(PRIVATE_PROFILE_GRIPS[:-1])
+            + f", and {PRIVATE_PROFILE_GRIPS[-1]}."
+        )
     if "lever" in lowered:
         return (
             "Your private E9 profile lists these knee levers:\n"
-            "- F lever\n"
-            "- E-lower\n"
-            "- RKL\n"
-            "- RKR"
+            "- F lever: raises strings 4 and 8 E to F.\n"
+            "- E-lower: lowers strings 4 and 8 E to D#.\n"
+            "- RKL: raises string 1 F# to G/G#, raises string 2 D# to E, and lowers string 6 G# to F#.\n"
+            "- RKR: lowers string 2 D# to D/C# and lowers string 9 D to C#."
         )
 
     return (
         "Your private profile describes a 10-string E9 setup.\n\n"
         "Open tuning\n"
-        "- 1 F#\n"
-        "- 2 D#\n"
-        "- 3 G#\n"
-        "- 4 E\n"
-        "- 5 B\n"
-        "- 6 G#\n"
-        "- 7 F#\n"
-        "- 8 E\n"
-        "- 9 D\n"
-        "- 10 B\n\n"
+        "| String | Note |\n"
+        "| --- | --- |\n"
+        "| 1 | F# |\n"
+        "| 2 | D# |\n"
+        "| 3 | G# |\n"
+        "| 4 | E |\n"
+        "| 5 | B |\n"
+        "| 6 | G# |\n"
+        "| 7 | F# |\n"
+        "| 8 | E |\n"
+        "| 9 | D |\n"
+        "| 10 | B |\n\n"
         "Pedals\n"
-        "- A pedal: raises the B strings to C#.\n"
-        "- B pedal: raises the G# strings to A.\n"
-        "- C pedal: raises string 4 E to F# and string 5 B to C#.\n\n"
+        "| Pedal | Change |\n"
+        "| --- | --- |\n"
+        "| A | raises strings 5 and 10 B to C# |\n"
+        "| B | raises strings 3 and 6 G# to A |\n"
+        "| C | raises string 4 E to F# and string 5 B to C# |\n\n"
         "Levers\n"
-        "- F lever\n"
-        "- E-lower\n"
-        "- RKL\n"
-        "- RKR\n\n"
+        "| Lever | Change |\n"
+        "| --- | --- |\n"
+        "| F lever | raises strings 4 and 8 E to F |\n"
+        "| E-lower | lowers strings 4 and 8 E to D# |\n"
+        "| RKL | raises string 1 F# to G/G#, raises string 2 D# to E, lowers string 6 G# to F# |\n"
+        "| RKR | lowers string 2 D# to D/C#, lowers string 9 D to C# |\n\n"
         "Common grips\n"
         "- 3-4-5\n"
         "- 4-5-6\n"
@@ -163,6 +173,18 @@ def first_private_e9_profile_source(sources: list[dict[str, Any]]) -> dict[str, 
         ):
             return source
     return None
+
+
+def apply_private_profile_wording(answer: str, question: str, sources: list[dict[str, Any]]) -> str:
+    if first_private_e9_profile_source(sources) is None:
+        return answer
+    if question_mentions_af_pedal_lever(question):
+        answer = re.sub(
+            r"Common grips include 3-4-5, 4-5-6, 5-6-8, (?:and )?6-8-10, depending on your copedent\.?",
+            "For your saved 10-string E9 profile, useful grips include 3-4-5, 4-5-6, 5-6-8, and 6-8-10.",
+            answer,
+        )
+    return answer
 
 
 def mode_guidance(mode: str) -> str:

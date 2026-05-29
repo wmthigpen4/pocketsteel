@@ -16,6 +16,7 @@ from wsgiref.simple_server import make_server
 from pocketsteel.answering import (
     AnswerProvider,
     answer_is_no_source,
+    apply_private_profile_wording,
     build_sections,
     concise_source_cards,
     configured_answer_provider,
@@ -237,6 +238,7 @@ class RetrievalApi:
                         warnings.append("no strong source match")
                     else:
                         sources = concise_source_cards(strong_sources)
+            answer = apply_private_profile_wording(answer, answer_request.question, strong_sources)
             final_answer = final_answer_quality_gate(answer, answer_request.question)
             contract_validation = enforce_answer_contract(final_answer, contract_intent)
             if contract_validation.violations and contract_validation.answer != final_answer:
