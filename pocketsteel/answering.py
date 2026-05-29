@@ -12,8 +12,19 @@ from typing import Any, Literal, Protocol, cast
 
 from pocketsteel.api_contract import AnswerMode, SourceCitation
 
-from pocketsteel.curated_source_registry import slide_bar_vendor_bullets
+from pocketsteel.curated_source_registry import answer_contains_unapproved_url, is_approved_curated_url, slide_bar_vendor_bullets
+from pocketsteel.steel_rules import answer_from_rules
 from pocketsteel.text import shorten
+
+
+FallbackCategory = Literal[
+    "not_enough_source_evidence",
+    "current_info_not_in_corpus",
+    "sensitive_identity_speculation",
+    "copyrighted_song_guardrail",
+    "ask_for_more_context",
+    "rules_layer_answer_available",
+]
 
 
 VALID_MODES: set[AnswerMode] = {"ask", "gear", "copedent", "tab", "practice"}
@@ -125,6 +136,7 @@ AnswerRoute = Literal[
     "entity_definition",
     "yes_no_source_check",
     "player_history",
+    "song_learning_or_tab_request",
     "general_forum_wisdom",
 ]
 
@@ -599,6 +611,10 @@ def classify_answer_route(request: AnswerRequest, sources: list[dict[str, Any]])
         return "technique_improvement"
     if question_mentions_practice_plan(question) or request.mode == "practice":
         return "practice_plan"
+    if request.mode == "tab":
+        return "general_forum_wisdom"
+    if question_mentions_song_learning_or_tab(question):
+        return "song_learning_or_tab_request"
     if re.search(r"\bdid\b.+\bmake\b|\bever\b.+\bmake\b|\bdo(?:es)?\b.+\bmake\b", question):
         return "yes_no_source_check"
     if question_mentions_player_ranking(question):
@@ -619,6 +635,9 @@ def classify_answer_route(request: AnswerRequest, sources: list[dict[str, Any]])
         or question_mentions_af_pedal_lever(question)
         or question_mentions_ninth_string(question)
         or question_mentions_sixth_string_lower(question)
+        or question_mentions_basic_theory(question)
+        or question_mentions_string_gauge(question)
+        or question_mentions_tab_notation(question)
     ):
         return "copedent_fretboard"
     if question_mentions_product_value(question):
@@ -634,8 +653,8 @@ def source_count(evidence: list[EvidencePoint]) -> int:
 
 def source_supported_heading(evidence: list[EvidencePoint]) -> str:
     if source_count(evidence) >= 2:
-        return "Useful source-backed points:"
-    return "One useful source-backed point:"
+        return "Related points:"
+    return "One related point:"
 
 
 def strip_answer_support_sections(lines: list[str]) -> list[str]:
@@ -726,6 +745,32 @@ def question_mentions_practice_plan(question: str) -> bool:
         or "practice routine" in lowered
         or "practice session" in lowered
     )
+
+
+def question_mentions_song_learning_or_tab(question: str) -> bool:
+    lowered = question.lower()
+    return bool(
+        re.search(r"\b(?:tab|tablature|lyrics?)\b", lowered)
+        or re.search(r"\b(?:show me how to play a song|teach me how to play anything specific|how do i play happy birthday|happy birthday)\b", lowered)
+        or re.search(r"\b(?:approach playing|explain the style of|chord progression|song arrangement)\b", lowered)
+    )
+
+
+def question_mentions_basic_theory(question: str) -> bool:
+    lowered = question.lower()
+    return bool(
+        re.search(r"\bwhat\s+is\s+(?:a\s+)?triad\b", lowered)
+        or re.search(r"\bhow\s+do\s+i\s+play\s+(?:a\s+)?2m\s+in\s+the\s+key\s+of\s+g\b", lowered)
+    )
+
+
+def question_mentions_string_gauge(question: str) -> bool:
+    lowered = question.lower()
+    return bool("gauge" in lowered and ("10th string" in lowered or "string 10" in lowered or "e9" in lowered))
+
+
+def question_mentions_tab_notation(question: str) -> bool:
+    return bool(re.search(r"\bwhat\s+is\s+a?\s*5\^7\b|\b5\^7\b", question.lower()))
 
 
 def question_mentions_technique_improvement(question: str) -> bool:
@@ -943,7 +988,7 @@ def summarize_product_impression(point: EvidencePoint) -> str:
     return f"{sentiment}; check the source card for the full wording"
 
 
-def clean_answer_text(answer: str) -> str:
+def clean_answer_text(answer: str, *, allow_contact_info: bool = False) -> str:
     lines: list[str] = []
     skip_source_context = False
     for raw_line in answer.splitlines():
@@ -969,9 +1014,15 @@ def clean_answer_text(answer: str) -> str:
         line = re.sub(r"\bteh\b", "the", line, flags=re.I)
         if "for rag answers" in line.lower():
             continue
-        if classify_answer_line(line) != "answer_candidate" and not is_curated_reference_line(line):
+        if answer_contains_unapproved_url(line):
             continue
-        if is_low_value_sentence(line) and not is_curated_reference_line(line):
+        line_class = classify_answer_line(line)
+        if allow_contact_info and re.search(r"\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b", line, re.I):
+            line_class = "contact_info"
+        if line_class != "answer_candidate" and not is_curated_reference_line(line):
+            if not (allow_contact_info and line_class == "contact_info"):
+                continue
+        if is_low_value_sentence(line) and not is_curated_reference_line(line) and not (allow_contact_info and line_class == "contact_info"):
             continue
         lines.append(line)
     while lines and lines[-1] == "":
@@ -1015,28 +1066,21 @@ def classify_answer_line(line: str) -> str:
     stripped = line.strip()
     if not stripped:
         return "answer_candidate"
-    if stripped.lower().startswith("useful source-backed points"):
+    if re.search(
+        r"\b(?:useful source-backed points|useful distilled points|source cards as supporting evidence|the cleanest source-backed answer)\b",
+        stripped,
+        re.I,
+    ):
         return "forum_boilerplate"
     return classify_source_sentence(stripped)
 
 
 def is_curated_reference_line(line: str) -> bool:
-    lowered = line.lower()
-    return any(
-        domain in lowered
-        for domain in (
-            "texassteelguitar.org",
-            "steelerschoice.com",
-            "emmonsguitar.co",
-            "steelguitarshopper.com",
-            "bjsbars.com",
-            "jimdunlop.com",
-            "bb.steelguitarforum.com/viewforum.php?f=9",
-        )
-    )
+    urls = re.findall(r"https?://[^\s)>\"]+", line or "")
+    return bool(urls and all(is_approved_curated_url(url.rstrip(".,;")) for url in urls))
 
 
-def answer_has_quality_issue(answer: str) -> bool:
+def answer_has_quality_issue(answer: str, *, allow_contact_info: bool = False) -> bool:
     if not answer.strip():
         return True
     case_sensitive_bad_patterns = [
@@ -1044,9 +1088,11 @@ def answer_has_quality_issue(answer: str) -> bool:
         r"\sTop\s",
     ]
     bad_patterns = [
+        r"\bThe cleanest source-backed answer\b",
+        r"\bsource cards as supporting evidence\b",
+        r"\bUseful distilled points\b",
+        r"\bUseful source-backed points\b",
         r"\bsp=sharing\b",
-        r"\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b",
-        r"\be-?mail\s+",
         r"\bWhat multiple sources support\b",
         r"\bSource context\b",
         r"\bForum-source context\b",
@@ -1054,29 +1100,103 @@ def answer_has_quality_issue(answer: str) -> bool:
         r"\b(?:Does anyone know|Has anyone compared|I am looking for tablature)\b",
         r"\btje\b|\bteh\b",
     ]
-    return any(re.search(pattern, answer) for pattern in case_sensitive_bad_patterns) or any(
+    if not allow_contact_info:
+        bad_patterns.extend((r"\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b", r"\be-?mail\s+"))
+    return (
+        answer_contains_unapproved_url(answer)
+        or has_empty_or_orphan_section(answer)
+        or any(re.search(pattern, answer) for pattern in case_sensitive_bad_patterns)
+        or any(
         re.search(pattern, answer, re.I) for pattern in bad_patterns
     )
+    )
+
+
+SECTION_HEADING_RE = re.compile(
+    r"^\s*(?:answer|direct answer|practical answer|practical use|what changes|what to choose|best places to check|likely causes|diagnostic path|safety|caveat|learning approach|exercise|practice it this way|touch checklist)\s*:?\s*$",
+    re.I,
+)
+
+
+def has_empty_or_orphan_section(answer: str) -> bool:
+    lines = answer.splitlines()
+    for index, line in enumerate(lines):
+        if not SECTION_HEADING_RE.match(line):
+            continue
+        next_index = index + 1
+        while next_index < len(lines) and not lines[next_index].strip():
+            next_index += 1
+        if next_index >= len(lines):
+            return True
+        if SECTION_HEADING_RE.match(lines[next_index]):
+            return True
+    return False
+
+
+def fallback_category_for_question(question: str) -> FallbackCategory:
+    rule_answer = answer_from_rules(question)
+    if rule_answer is not None:
+        return "rules_layer_answer_available"
+    q = re.sub(r"\s+", " ", question or "").strip().lower()
+    if re.search(r"\b(?:gay people|gay players|lgbtq|sexual orientation)\b", q):
+        return "sensitive_identity_speculation"
+    if re.search(r"\bwho\s+plays\s+for\s+[a-z0-9'. -]+\??$", q):
+        return "current_info_not_in_corpus"
+    if "happy birthday" in q or re.search(r"\b(?:full lyrics|full tab|note-for-note|copyrighted)\b", q):
+        return "copyrighted_song_guardrail"
+    if re.search(r"\b(?:play a song|teach me how to play anything specific|show me how to play a song)\b", q):
+        return "ask_for_more_context"
+    return "not_enough_source_evidence"
+
+
+def fallback_answer_for_category(category: FallbackCategory, question: str) -> str:
+    if category == "rules_layer_answer_available":
+        rule_answer = answer_from_rules(question)
+        if rule_answer is not None:
+            return rule_answer.answer
+    if category == "current_info_not_in_corpus":
+        return (
+            "I do not have a current, reliable source-backed roster for that artist in this corpus. "
+            "Check official tour credits, album/session credits, or the artist’s current band listings."
+        )
+    if category == "sensitive_identity_speculation":
+        return (
+            "I do not have a reliable source-backed roster for that, and it would not be appropriate to speculate about anyone’s private identity traits. "
+            "Pedal steel is played by people from many backgrounds."
+        )
+    if category == "copyrighted_song_guardrail":
+        return (
+            "I can help with the musical approach, but I will not provide full copyrighted lyrics or full note-for-note copyrighted tab by default. "
+            "Give me the key, tuning, and a short excerpt or your own tab attempt, and I can help map it to pedal-steel positions."
+        )
+    if category == "ask_for_more_context":
+        return (
+            "Tell me the song, key, tuning, and what skill you want to work on. "
+            "If you want a safe starter now, use a public-domain tune such as Amazing Grace or an original mini-exercise and we can map it to E9 positions."
+        )
+    return noisy_source_fallback()
+
+
+def raw_contact_info_requested(question: str) -> bool:
+    return bool(re.search(r"\b(?:email|e-mail|contact info|contact information|contact)\b", question or "", re.I))
 
 
 def final_answer_quality_gate(answer: str, question: str) -> str:
-    cleaned = clean_answer_text(answer)
-    if not answer_has_quality_issue(cleaned):
+    allow_contact_info = raw_contact_info_requested(question)
+    cleaned = clean_answer_text(answer, allow_contact_info=allow_contact_info)
+    if not answer_has_quality_issue(cleaned, allow_contact_info=allow_contact_info):
         return cleaned
     cleaned_lines = [line for line in cleaned.splitlines() if classify_answer_line(line) == "answer_candidate"]
     cleaned = "\n".join(line for line in cleaned_lines if line.strip())
-    if cleaned and not answer_has_quality_issue(cleaned):
+    if cleaned and not answer_has_quality_issue(cleaned, allow_contact_info=allow_contact_info):
         return cleaned
-    return (
-        "I found related source cards, but the retrieved text is too noisy to use safely in the answer body. "
-        "Ask a more specific steel-guitar question and I can give a cleaner answer."
-    )
+    return fallback_answer_for_category(fallback_category_for_question(question), question)
 
 
 def noisy_source_fallback() -> str:
     return (
-        "I found related source cards, but the retrieved text is too noisy to use safely in the answer body. "
-        "Ask a more specific steel-guitar question and I can give a cleaner answer."
+        "I don’t have enough source-backed evidence in this corpus to answer that confidently. "
+        "Try adding the song, key, tuning, brand, or exact part you mean so I can narrow the source match."
     )
 
 
@@ -1133,6 +1253,7 @@ class DeterministicAnswerProvider:
             "player_brand_usage",
             "vendor_buying_guidance",
             "current_company_status",
+            "song_learning_or_tab_request",
         }:
             if sources and all(not split_sentences(str(source.get("excerpt") or "")) for source in sources):
                 return noisy_source_fallback()
@@ -1174,6 +1295,8 @@ class DeterministicAnswerProvider:
             return clean_answer_text(self._replacement_parts_answer(request, sources, evidence))
         if route == "brand_comparison":
             return clean_answer_text(self._brand_comparison_answer(request, sources, evidence))
+        if route == "song_learning_or_tab_request":
+            return clean_answer_text(self._song_learning_answer(request, sources, evidence))
 
         if route == "gear_setup" or request.mode == "gear":
             return clean_answer_text(self._gear_answer(request, sources, evidence))
@@ -1188,11 +1311,7 @@ class DeterministicAnswerProvider:
     def _ask_answer(self, sources: list[dict[str, Any]], evidence: list["EvidencePoint"]) -> str:
         facts = distill_source_facts("", evidence)
         if facts.facts:
-            lines = [
-                "The cleanest source-backed answer is to treat the source cards as supporting evidence, not as a script to copy.",
-                "",
-                "Useful distilled points:",
-            ]
+            lines = ["Here is the safest answer I can support from the retrieved material:"]
             for fact in facts.facts[:3]:
                 lines.append(f"- {fact}")
             if facts.source_count < 2:
@@ -1306,6 +1425,10 @@ class DeterministicAnswerProvider:
         sources: list[dict[str, Any]],
         evidence: list["EvidencePoint"],
     ) -> str:
+        rule_answer = answer_from_rules(request.question)
+        if rule_answer is not None:
+            return rule_answer.answer
+
         if question_mentions_g_across_guitar(request.question):
             return (
                 "On standard E9, useful G major positions include:\n"
@@ -1763,6 +1886,33 @@ class DeterministicAnswerProvider:
             ]
         )
         return "\n".join(lines)
+
+    def _song_learning_answer(
+        self,
+        request: AnswerRequest,
+        sources: list[dict[str, Any]],
+        evidence: list["EvidencePoint"],
+    ) -> str:
+        lowered = request.question.lower()
+        if "happy birthday" in lowered:
+            return (
+                "I can help you learn the approach, but I will not dump a full protected melody or note-for-note tab by default.\n\n"
+                "Guardrail-friendly way to work on it:\n"
+                "- Think in intervals from the key center instead of memorizing fret numbers first.\n"
+                "- Pick a key and map the melody notes to nearby E9 positions.\n"
+                "- Work one short phrase at a time, then add simple harmony or pads underneath.\n"
+                "- If you provide the notes, a short excerpt, or your own tab attempt, I can help map it to strings, frets, pedals, and levers."
+            )
+        return (
+            "Tell me the song, key, tuning, and what you want to work on, and I can map an approach for pedal steel.\n\n"
+            "A practical starter option:\n"
+            "- Use a public-domain tune such as “Amazing Grace” in G.\n"
+            "- Start with G at the 3rd fret open.\n"
+            "- Move to C at the 3rd fret with A+B.\n"
+            "- Move to D at the 5th fret with A+B.\n"
+            "- Resolve to G at the 6th fret with A pedal + F lever.\n\n"
+            "I can discuss style, chord movement, positions, tone, and practice strategy. I do not provide full note-for-note copyrighted tab or full copyrighted lyrics by default."
+        )
 
 
 class OllamaAnswerProvider:

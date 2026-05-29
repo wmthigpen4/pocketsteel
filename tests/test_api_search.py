@@ -10,9 +10,16 @@ from pocketsteel.answer_contracts import (
     CONTRACTS,
     COPYRIGHT_AWARE_SONG_HELP_POLICY,
     infer_contract_intent,
+    normalize_intent,
     validate_answer_against_contract,
 )
-from pocketsteel.answering import DeterministicAnswerProvider, final_answer_quality_gate
+from pocketsteel.answering import (
+    DeterministicAnswerProvider,
+    answer_has_quality_issue,
+    fallback_answer_for_category,
+    fallback_category_for_question,
+    final_answer_quality_gate,
+)
 from pocketsteel.chroma_search import ChromaSearchIndex
 from pocketsteel.curated_answers import CURATED_FACT_WEAK_WARNING, WEAK_RETRIEVAL_WARNING, lookup_curated_answer
 from pocketsteel.api import create_app
@@ -221,7 +228,10 @@ def test_answer_contract_registry_covers_major_intents() -> None:
         "entity_definition",
         "current_company_status",
         "performance_context_guidance",
-        "song_learning_or_tab_request",
+        "song_learning",
+        "current_roster",
+        "sensitive_identity",
+        "fallback_unknown",
         "technique_improvement",
         "tone_touch",
         "yes_no_source_check",
@@ -233,8 +243,8 @@ def test_answer_contract_registry_covers_major_intents() -> None:
 
 def test_contract_intent_inference_for_common_questions() -> None:
     assert infer_contract_intent("How do I prepare to play my pedal steel at church?") == "performance_context_guidance"
-    assert infer_contract_intent("Can you give me tablature for a random song?") == "song_learning_or_tab_request"
-    assert infer_contract_intent("How should I approach playing Together Again on E9?") == "song_learning_or_tab_request"
+    assert infer_contract_intent("Can you give me tablature for a random song?") == "song_learning"
+    assert infer_contract_intent("How should I approach playing Together Again on E9?") == "song_learning"
     assert infer_contract_intent("What should I practice tonight?") == "practice_plan"
     assert infer_contract_intent("Why does my amp buzz at idle?") == "diagnostic_troubleshooting"
     assert infer_contract_intent("Why does touching the changer reduce buzz?") == "diagnostic_troubleshooting"
@@ -245,6 +255,9 @@ def test_contract_intent_inference_for_common_questions() -> None:
     assert infer_contract_intent("Is Mullen or MSA better?") == "brand_comparison"
     assert infer_contract_intent("Who is Lloyd Green?") == "player_bio"
     assert infer_contract_intent("Who plays an Emmons guitar today?") == "player_brand_usage"
+    assert infer_contract_intent("Who plays for Shania Twain?") == "current_roster"
+    assert infer_contract_intent("Do any gay people play pedal steel?") == "sensitive_identity"
+    assert normalize_intent("song_learning_or_tab_request") == "song_learning"
 
 
 def test_contract_validation_catches_template_leakage() -> None:
@@ -1376,6 +1389,9 @@ def assert_clean_answer_body(payload: dict[str, Any]) -> None:
     assert "The useful way to hear it:" not in answer
     assert "What multiple sources support" not in answer
     assert "Useful source-backed points" not in answer
+    assert "The cleanest source-backed answer" not in answer
+    assert "source cards as supporting evidence" not in answer
+    assert "Useful distilled points" not in answer
     assert "sp=sharing" not in answer
     assert "e-mail " not in answer.lower()
     assert "Does anyone know" not in answer
@@ -2433,11 +2449,242 @@ def test_source_junk_quality_gate_removes_raw_forum_fragments() -> None:
     )
 
     assert_clean_answer_body(payload)
-    assert "I found related source cards" in payload["answer"]
+    assert "I don’t have enough source-backed evidence in this corpus" in payload["answer"]
     assert "blacksteveb@aol.com" not in payload["answer"]
     assert "Top I am going to start" not in payload["answer"]
     assert "Has anyone compared" not in payload["answer"]
     assert payload["sources"]
+
+
+def test_internal_source_synthesis_fallback_language_never_reaches_answer_body() -> None:
+    payload = answer_for_question(
+        "What is the steel guitar wisdom here?",
+        [
+            {
+                "score": 0.86,
+                "excerpt": "Players recommend checking string gauge, pedal travel, and bar position before blaming the amp.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "Useful advice",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400030",
+                "chunk_id": "chunk-clean-fallback",
+                "post_uid": "p-clean-fallback",
+                "source_system": "sgf_phpbb_current",
+            }
+        ],
+    )
+
+    assert_clean_answer_body(payload)
+    assert "The cleanest source-backed answer" not in payload["answer"]
+    assert "source cards as supporting evidence" not in payload["answer"]
+    assert "Useful distilled points" not in payload["answer"]
+    assert not payload["answer"].startswith("The cleanest source-backed answer")
+
+
+def test_final_answer_lint_blocks_raw_source_junk_and_empty_sections() -> None:
+    raw = (
+        "The cleanest source-backed answer is to treat the source cards as supporting evidence.\n\n"
+        "Likely causes\n\n"
+        "Diagnostic path\n\n"
+        "Useful distilled points: Top Has anyone compared this? e-mail player@example.com tje sp=sharing"
+    )
+
+    assert answer_has_quality_issue(raw)
+    cleaned = final_answer_quality_gate(raw, "What is the steel guitar wisdom here?")
+    assert_clean_answer_body({"answer": cleaned})
+    assert "I don’t have enough source-backed evidence" in cleaned
+    assert "source cards as supporting evidence" not in cleaned
+    assert "Useful distilled points" not in cleaned
+    assert "Top" not in cleaned
+    assert "@" not in cleaned
+    assert "tje" not in cleaned
+
+
+def test_final_answer_lint_allows_contact_only_when_requested() -> None:
+    raw = "You can contact the maker at helper@example.com."
+
+    assert "@" not in final_answer_quality_gate(raw, "Where can I buy a part?")
+    requested = final_answer_quality_gate(raw, "What is the contact email for that maker?")
+    assert "helper@example.com" in requested
+
+
+def test_final_answer_gate_prefers_rules_layer_fallback_when_available() -> None:
+    raw = "Top Useful distilled points: tje forum fragment."
+
+    cleaned = final_answer_quality_gate(raw, "What is a triad?")
+
+    assert "root, a third, and a fifth" in cleaned
+    assert "Useful distilled points" not in cleaned
+    assert fallback_category_for_question("What is a triad?") == "rules_layer_answer_available"
+
+
+def test_named_fallback_categories_produce_safe_direct_answers() -> None:
+    cases = [
+        (
+            "Who plays for Shania Twain?",
+            "current_info_not_in_corpus",
+            "official tour credits",
+        ),
+        (
+            "Do any gay people play pedal steel?",
+            "sensitive_identity_speculation",
+            "not be appropriate to speculate",
+        ),
+        (
+            "How do I play Happy Birthday?",
+            "copyrighted_song_guardrail",
+            "full copyrighted lyrics",
+        ),
+        (
+            "Show me how to play a song.",
+            "ask_for_more_context",
+            "Tell me the song, key, tuning",
+        ),
+    ]
+
+    for question, category, expected in cases:
+        assert fallback_category_for_question(question) == category
+        answer = fallback_answer_for_category(category, question)
+        assert expected in answer
+        assert "Useful distilled points" not in answer
+        assert "Top" not in answer
+
+
+def test_basic_theory_and_gauge_questions_have_direct_curated_answers() -> None:
+    noisy_source = [
+        {
+            "score": 0.78,
+            "excerpt": "Top Does anyone know about the 8th string? Somebody mentioned random gauges and unrelated notes.",
+            "forum_name": "Pedal Steel",
+            "thread_title": "String question",
+            "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400031",
+            "chunk_id": "chunk-theory-gauge",
+            "post_uid": "p-theory-gauge",
+            "source_system": "sgf_phpbb_current",
+        }
+    ]
+
+    gauge = answer_for_question("What gauge is the 10th string on E9?", noisy_source)
+    assert_clean_answer_body(gauge)
+    assert "10th string is B" in gauge["answer"]
+    assert ".036 wound" in gauge["answer"]
+    assert "8th string" not in gauge["answer"]
+
+    triad = answer_for_question("What is a triad?", noisy_source)
+    assert_clean_answer_body(triad)
+    assert "root, a third, and a fifth" in triad["answer"]
+    assert "3-4-5" in triad["answer"]
+
+
+def test_two_minor_in_g_and_tab_notation_questions_route_to_fretboard_guidance() -> None:
+    noisy_source = [
+        {
+            "score": 0.79,
+            "excerpt": "A forum post drifted into diminished theory and did not answer the notation question.",
+            "forum_name": "Pedal Steel",
+            "thread_title": "Theory question",
+            "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400032",
+            "chunk_id": "chunk-theory",
+            "post_uid": "p-theory",
+            "source_system": "sgf_phpbb_current",
+        }
+    ]
+
+    two_minor = answer_for_question("How do I play a 2m in the key of G?", noisy_source)
+    assert_clean_answer_body(two_minor)
+    assert "2m chord is A minor" in two_minor["answer"]
+    assert "A-C-E" in two_minor["answer"]
+    assert "8th fret" in two_minor["answer"]
+    assert "A pedal" in two_minor["answer"]
+
+    notation = answer_for_question("What is a 5^7?", noisy_source)
+    assert_clean_answer_body(notation)
+    assert "slide from fret 5 to fret 7" in notation["answer"]
+    assert "Send the full tab line" in notation["answer"]
+    assert "diminished" not in notation["answer"].lower()
+
+
+def test_song_requests_use_copyright_aware_teaching_guardrails() -> None:
+    noisy_source = [
+        {
+            "score": 0.81,
+            "excerpt": "Top I am looking for tablature. Please e-mail me the whole song.",
+            "forum_name": "Tablature",
+            "thread_title": "Tab request",
+            "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400033",
+            "chunk_id": "chunk-song",
+            "post_uid": "p-song",
+            "source_system": "sgf_phpbb_current",
+        }
+    ]
+
+    generic = answer_for_question("Show me how to play a song.", noisy_source)
+    assert_clean_answer_body(generic)
+    assert "Tell me the song, key, tuning" in generic["answer"]
+    assert "Amazing Grace" in generic["answer"]
+    assert "3rd fret open" in generic["answer"]
+    assert "full note-for-note copyrighted tab" in generic["answer"]
+
+    specific = answer_for_question("Can you teach me how to play anything specific?", noisy_source)
+    assert_clean_answer_body(specific)
+    assert "public-domain tune" in specific["answer"]
+    assert "A pedal + F lever" in specific["answer"]
+
+    birthday = answer_for_question("How do I play Happy Birthday?", noisy_source)
+    assert_clean_answer_body(birthday)
+    assert "Guardrail-friendly" in birthday["answer"]
+    assert "intervals from the key center" in birthday["answer"]
+    assert "full protected melody" in birthday["answer"]
+    assert "e-mail" not in birthday["answer"].lower()
+
+
+def test_sensitive_demographic_and_current_roster_questions_do_not_speculate() -> None:
+    noisy_source = [
+        {
+            "score": 0.82,
+            "excerpt": "Top Hi All. Somebody joked about players and posted unrelated brand chatter.",
+            "forum_name": "Steel Players",
+            "thread_title": "Player chatter",
+            "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400034",
+            "chunk_id": "chunk-demographic",
+            "post_uid": "p-demographic",
+            "source_system": "sgf_phpbb_current",
+        }
+    ]
+
+    demographic = answer_for_question("Do any gay people play pedal steel?", noisy_source)
+    assert_clean_answer_body(demographic)
+    assert "would not be appropriate to speculate" in demographic["answer"]
+    assert "many backgrounds" in demographic["answer"]
+    assert "Top Hi All" not in demographic["answer"]
+
+    roster = answer_for_question("Who plays for Shania Twain?", noisy_source)
+    assert_clean_answer_body(roster)
+    assert "current, reliable source-backed roster" in roster["answer"]
+    assert "official tour credits" in roster["answer"]
+    assert "For guitars" not in roster["answer"]
+
+
+def test_broken_pedal_rod_answer_remains_specific_after_fallback_changes() -> None:
+    payload = answer_for_question(
+        "How do I fix a broken pedal rod?",
+        [
+            {
+                "score": 0.78,
+                "excerpt": "Where can I buy rods? Mine broke and I need replacements.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "Broken rods",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400035",
+                "chunk_id": "chunk-rods-still-good",
+                "post_uid": "p-rods-still-good",
+                "source_system": "sgf_phpbb_current",
+            }
+        ],
+    )
+
+    assert_clean_answer_body(payload)
+    assert "replace them with rods that match your guitar’s length" in payload["answer"]
+    assert "Measure the old rod length and thread size" in payload["answer"]
+    assert "source-backed evidence" not in payload["answer"]
 
 
 def malicious_result(excerpt: str) -> dict[str, Any]:

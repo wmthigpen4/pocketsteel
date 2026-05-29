@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from pocketsteel.curated_source_registry import slide_bar_vendor_bullets
+from pocketsteel.steel_rules import answer_from_rules
 
 
 CuratedConfidence = Literal["curated_high", "curated_medium", "rag_only"]
@@ -26,6 +27,116 @@ CURATED_FACT_WEAK_WARNING = "curated fact used; source support weak"
 
 def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer | None:
     q = normalize(question)
+    rule_answer = answer_from_rules(question)
+    if rule_answer is not None:
+        return CuratedAnswer(
+            intent=rule_answer.intent,
+            confidence="curated_high",
+            answer=rule_answer.answer,
+        )
+
+    if mentions_sensitive_demographic_question(q):
+        return CuratedAnswer(
+            intent="sensitive_identity",
+            confidence="curated_high",
+            answer=(
+                "I do not have a reliable source-backed roster for that, and it would not be appropriate to speculate about anyone’s sexual orientation. "
+                "Pedal steel is played by people from many backgrounds."
+            ),
+        )
+
+    if mentions_current_roster_question(q):
+        return CuratedAnswer(
+            intent="current_roster",
+            confidence="curated_medium",
+            answer=(
+                "I do not have a current, reliable source-backed roster for that artist in this corpus. "
+                "For a current touring or recording band, check official tour credits, album/session credits, or the artist’s current band listings."
+            ),
+        )
+
+    if mentions_e9_tenth_string_gauge(q):
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=(
+                "On standard E9, the 10th string is B, and a common gauge is around .036 wound.\n\n"
+                "Gauge caveat:\n"
+                "- String sets vary by brand, scale length, and player preference.\n"
+                "- Check the guitar or string-set chart if you are matching an existing setup."
+            ),
+        )
+
+    if mentions_triad_definition(q):
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=(
+                "A triad is a three-note chord built from a root, a third, and a fifth.\n\n"
+                "Examples:\n"
+                "- Major triad: root, major third, fifth.\n"
+                "- Minor triad: root, minor third, fifth.\n\n"
+                "On E9, common major-triad grips include 3-4-5, 4-5-6, 5-6-8, and 6-8-10, depending on the position and pedals/levers."
+            ),
+        )
+
+    if mentions_two_minor_in_g(q):
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=(
+                "In the key of G, the 2m chord is A minor: A-C-E.\n\n"
+                "One practical E9 option:\n"
+                "- Go to the 8th fret.\n"
+                "- Use the A pedal.\n"
+                "- Try strings 5-6-8: string 5 gives A with the A pedal, string 6 gives E, and string 8 gives C.\n\n"
+                "Hear it as the ii minor in G, then practice moving it toward D7 and back to G."
+            ),
+        )
+
+    if mentions_tab_notation_5_to_7(q):
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=(
+                "In steel tab, 5^7 is notation-dependent, but it often means a move or slide from fret 5 to fret 7.\n\n"
+                "How to read it:\n"
+                "- If it appears over one string, it likely means pick at fret 5 and slide to fret 7.\n"
+                "- If it appears in a chord grip, it may mean the whole grip moves from 5 to 7.\n"
+                "- Some tab authors use different symbols, so the surrounding line matters.\n\n"
+                "Send the full tab line if you want me to read the exact move."
+            ),
+        )
+
+    if mentions_happy_birthday(q):
+        return CuratedAnswer(
+            intent="song_learning",
+            confidence="curated_high",
+            answer=(
+                "I can help you learn the approach, but I will not dump a full protected melody or note-for-note tab by default.\n\n"
+                "Guardrail-friendly way to work on it:\n"
+                "- Think in intervals from the key center instead of memorizing fret numbers first.\n"
+                "- Pick a key and map the melody notes to nearby E9 positions.\n"
+                "- Work one short phrase at a time, then add simple harmony or pads underneath.\n"
+                "- If you provide the notes, a short excerpt, or your own tab attempt, I can help map it to strings, frets, pedals, and levers."
+            ),
+        )
+
+    if mentions_generic_song_learning(q):
+        return CuratedAnswer(
+            intent="song_learning",
+            confidence="curated_high",
+            answer=(
+                "Tell me the song, key, tuning, and what you want to work on, and I can map an approach for pedal steel.\n\n"
+                "A practical starter option:\n"
+                "- Use a public-domain tune such as “Amazing Grace” in G.\n"
+                "- Start with G at the 3rd fret open.\n"
+                "- Move to C at the 3rd fret with A+B.\n"
+                "- Move to D at the 5th fret with A+B.\n"
+                "- Resolve to G at the 6th fret with A pedal + F lever.\n\n"
+                "I can discuss style, chord movement, positions, tone, and practice strategy. I do not provide full note-for-note copyrighted tab or full copyrighted lyrics by default."
+            ),
+        )
 
     if mentions_player_brand_usage(q):
         brand = brand_from_player_usage_question(q)
@@ -446,7 +557,7 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
 
     if mentions_full_lyrics_request(q):
         return CuratedAnswer(
-            intent="song_learning_or_tab_request",
+            intent="song_learning",
             confidence="curated_high",
             answer=(
                 "I do not provide full copyrighted lyrics by default.\n\n"
@@ -460,7 +571,7 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
 
     if mentions_together_again_approach(q):
         return CuratedAnswer(
-            intent="song_learning_or_tab_request",
+            intent="song_learning",
             confidence="curated_high",
             answer=(
                 "For “Together Again” on E9, think melody-first and vocal-like rather than lick-heavy.\n\n"
@@ -476,7 +587,7 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
 
     if mentions_panhandle_rag_tab(q):
         return CuratedAnswer(
-            intent="song_learning_or_tab_request",
+            intent="song_learning",
             confidence="curated_high",
             answer=(
                 "I can help you work toward “Panhandle Rag,” but I will not dump a full note-for-note copyrighted tab by default.\n\n"
@@ -491,7 +602,7 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
 
     if mentions_amazing_grace_progression(q):
         return CuratedAnswer(
-            intent="song_learning_or_tab_request",
+            intent="song_learning",
             confidence="curated_high",
             answer=(
                 "“Amazing Grace” is public domain, so discussing its harmony is fine.\n\n"
@@ -507,7 +618,7 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
 
     if mentions_original_style_lick(q):
         return CuratedAnswer(
-            intent="song_learning_or_tab_request",
+            intent="song_learning",
             confidence="curated_high",
             answer=(
                 "Yes. Here is an original slow-country E9 exercise, not a copied song lick.\n\n"
@@ -522,7 +633,7 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
 
     if mentions_random_tab_request(q):
         return CuratedAnswer(
-            intent="song_learning_or_tab_request",
+            intent="song_learning",
             confidence="curated_high",
             answer=(
                 "For a random tab request, I’ll choose a copyright-safe path instead of sending you to random emails or questionable tab sources.\n\n"
@@ -743,6 +854,41 @@ def normalize(text: str) -> str:
 
 def mentions_g_chord_sixth_fret(question: str) -> bool:
     return bool(re.search(r"\bg\s+chord\b", question) and re.search(r"\b6(?:th)?\s+fret\b|\bsixth\s+fret\b", question))
+
+
+def mentions_sensitive_demographic_question(question: str) -> bool:
+    return bool(re.search(r"\b(?:gay people|gay players|lgbtq|sexual orientation)\b", question))
+
+
+def mentions_current_roster_question(question: str) -> bool:
+    return bool(re.search(r"\bwho\s+plays\s+for\s+[a-z0-9'. -]+\??$", question))
+
+
+def mentions_e9_tenth_string_gauge(question: str) -> bool:
+    return bool("gauge" in question and ("10th string" in question or "string 10" in question) and "e9" in question)
+
+
+def mentions_triad_definition(question: str) -> bool:
+    return bool(re.search(r"\bwhat\s+is\s+(?:a\s+)?triad\b", question))
+
+
+def mentions_two_minor_in_g(question: str) -> bool:
+    return bool(re.search(r"\bhow\s+do\s+i\s+play\s+(?:a\s+)?2m\s+in\s+the\s+key\s+of\s+g\b|\b2m\s+in\s+g\b", question))
+
+
+def mentions_tab_notation_5_to_7(question: str) -> bool:
+    return bool(re.search(r"\bwhat\s+is\s+a?\s*5\^7\b|\b5\^7\b", question))
+
+
+def mentions_happy_birthday(question: str) -> bool:
+    return bool("happy birthday" in question and re.search(r"\b(?:how|play|tab|teach|learn)\b", question))
+
+
+def mentions_generic_song_learning(question: str) -> bool:
+    return bool(
+        re.search(r"\bshow me how to play a song\b", question)
+        or re.search(r"\bteach me how to play anything specific\b", question)
+    )
 
 
 def mentions_g_chord_across_guitar(question: str) -> bool:
