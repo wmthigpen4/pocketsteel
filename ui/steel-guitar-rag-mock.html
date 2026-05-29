@@ -1194,6 +1194,10 @@
       border-top: 1px solid rgba(244, 234, 214, 0.12);
     }
 
+    .answer-detail-grid.is-structured-answer {
+      grid-template-columns: 1fr;
+    }
+
     .answer-section {
       display: grid;
       align-content: start;
@@ -2387,7 +2391,7 @@
     </div>
   </div>
 
-  <script src="answer-client.js?v=answer-tables-20260529"></script>
+  <script src="answer-client.js?v=answer-dom-order-20260529"></script>
   <script>
     const question = document.querySelector("#question");
     const promptBox = document.querySelector(".prompt");
@@ -3048,13 +3052,13 @@
     function appendAnswerBulletList(container, items, ordered = false) {
       if (!items?.length) return;
       const list = document.createElement(ordered ? "ol" : "ul");
-        list.className = "try-list";
+      list.className = "try-list";
       items.forEach((item) => {
-          const li = document.createElement("li");
-          li.textContent = item;
-          list.appendChild(li);
-        });
-        container.appendChild(list);
+        const li = document.createElement("li");
+        li.textContent = item;
+        list.appendChild(li);
+      });
+      container.appendChild(list);
     }
 
     function appendAnswerSectionContent(container, section) {
@@ -3087,6 +3091,10 @@
         title: "Answer",
         body: response.answer || "The answer service did not return answer text."
       };
+      const detailSections = sections.filter((section) => section !== primarySection);
+      const hasStructuredTables = detailSections.some((section) => (
+        section.tables?.length || section.blocks?.some((block) => block.type === "table")
+      ));
       const primaryIcon = answerPrimaryTitle.querySelector("svg")?.cloneNode(true);
       answerPrimaryTitle.replaceChildren();
       if (primaryIcon) {
@@ -3094,15 +3102,11 @@
       }
       answerPrimaryTitle.append(document.createTextNode(primarySection.title || "Answer"));
       answerLead.replaceChildren();
-      if (primarySection.body) {
-        const leadBody = document.createElement("p");
-        leadBody.textContent = primarySection.body;
-        answerLead.appendChild(leadBody);
-      }
-      appendAnswerSectionContent(answerLead, { ...primarySection, body: "" });
+      appendAnswerSectionContent(answerLead, primarySection);
 
       answerSectionGrid.innerHTML = "";
-      sections.filter((section) => section !== primarySection).forEach((section) => {
+      answerSectionGrid.classList.toggle("is-structured-answer", hasStructuredTables);
+      detailSections.forEach((section) => {
         const sectionEl = document.createElement("section");
         sectionEl.className = "answer-section";
         if (section.style) {
@@ -3195,6 +3199,7 @@
       answerStatus.hidden = false;
       answerStatus.textContent = "Retrieving a source-backed answer.";
       answerSectionGrid.innerHTML = "";
+      answerSectionGrid.classList.remove("is-structured-answer");
       sourceGrid.innerHTML = "";
       const loadingCard = document.createElement("article");
       loadingCard.className = "source-card";
@@ -3210,6 +3215,7 @@
       answerStatus.hidden = false;
       answerStatus.textContent = message || "Try again once the local API is running.";
       answerSectionGrid.innerHTML = "";
+      answerSectionGrid.classList.remove("is-structured-answer");
       sourceGrid.innerHTML = "";
       const errorCard = document.createElement("article");
       errorCard.className = "source-card";

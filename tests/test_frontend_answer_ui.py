@@ -165,7 +165,7 @@ let capturedRequest;
 def test_answer_ui_uses_live_answer_client_not_mock_answer_data() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
 
-    assert '<script src="answer-client.js?v=answer-tables-20260529"></script>' in html
+    assert '<script src="answer-client.js?v=answer-dom-order-20260529"></script>' in html
     assert '<script src="mock-answer-data.js"></script>' not in html
     assert "STEEL_RAG_ANSWER_UI.requestAnswer" in html
     assert "STEEL_RAG_ANSWER_UI.requestSession" in html
@@ -422,6 +422,324 @@ assert.equal(sectionPayload.sections[0].body, "Your private profile describes a 
 assert.equal(JSON.stringify(sectionOpenTuning.tables[0].headers), JSON.stringify(["String", "Note"]));
 assert.equal(JSON.stringify(sectionOpenTuning.tables[0].rows), JSON.stringify([["1", "F#"], ["2", "D#"]]));
 assert.equal(JSON.stringify(sectionPayload.sections).includes("| String | Note |"), false);
+"""
+
+    result = subprocess.run(
+        ["node", "-e", script],
+        cwd=Path(__file__).resolve().parents[1],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_answer_ui_renders_private_copedent_sections_in_dom_order() -> None:
+    script = r"""
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const vm = require("node:vm");
+
+const clientCode = fs.readFileSync("ui/answer-client.js", "utf8");
+const html = fs.readFileSync("ui/steel-guitar-rag-mock.html", "utf8");
+const inlineScript = html.match(/<script>\n([\s\S]*)\n  <\/script>/)[1];
+
+const COPEDENT_ANSWER = [
+  "Your private profile describes a 10-string E9 setup.",
+  "",
+  "Open tuning",
+  "| String | Note |",
+  "| --- | --- |",
+  "| 1 | F# |",
+  "| 2 | D# |",
+  "",
+  "Pedals",
+  "| Pedal | Change |",
+  "| --- | --- |",
+  "| A | raises strings 5 and 10 B to C# |",
+  "",
+  "Levers",
+  "| Lever | Change |",
+  "| --- | --- |",
+  "| F lever | raises strings 4 and 8 E to F |",
+  "| E-lower | lowers strings 4 and 8 E to D# |",
+  "| RKL | raises string 1 F# to G/G#, raises string 2 D# to E, lowers string 6 G# to F# |",
+  "| RKR | lowers string 2 D# to D/C#, lowers string 9 D to C# |",
+  "",
+  "Common grips",
+  "- 3-4-5",
+  "- 4-5-6",
+  "- 5-6-8",
+  "- 6-8-10"
+].join("\n");
+
+function makeClassList(element) {
+  const values = new Set(String(element.className || "").split(/\s+/).filter(Boolean));
+  function sync() {
+    element.className = Array.from(values).join(" ");
+  }
+  return {
+    add(...names) {
+      names.forEach((name) => values.add(name));
+      sync();
+    },
+    remove(...names) {
+      names.forEach((name) => values.delete(name));
+      sync();
+    },
+    toggle(name, force) {
+      const shouldAdd = force === undefined ? !values.has(name) : Boolean(force);
+      if (shouldAdd) values.add(name);
+      else values.delete(name);
+      sync();
+      return shouldAdd;
+    },
+    contains(name) {
+      return values.has(name);
+    }
+  };
+}
+
+function makeTextNode(text) {
+  return { tagName: "#TEXT", textContent: String(text), children: [] };
+}
+
+function makeElement(selector = "", tagName = "div") {
+  const element = {
+    selector,
+    tagName: tagName.toUpperCase(),
+    id: selector.startsWith("#") ? selector.slice(1) : "",
+    className: selector.startsWith(".") ? selector.slice(1) : "",
+    value: "",
+    checked: false,
+    hidden: false,
+    disabled: false,
+    tabIndex: 0,
+    dataset: {},
+    attributes: {},
+    children: [],
+    parentNode: null,
+    _textContent: "",
+    set textContent(value) {
+      this._textContent = String(value ?? "");
+      this.children = [];
+    },
+    get textContent() {
+      return this._textContent + this.children.map((child) => child.textContent || "").join("");
+    },
+    set innerHTML(_value) {
+      this.children = [];
+      this._textContent = "";
+    },
+    get innerHTML() {
+      return this.textContent;
+    },
+    get lastChild() {
+      if (!this.children.length) {
+        this.appendChild(makeTextNode(""));
+      }
+      return this.children[this.children.length - 1];
+    },
+    setAttribute(name, value) {
+      this.attributes[name] = String(value);
+    },
+    getAttribute(name) {
+      return this.attributes[name] || "";
+    },
+    appendChild(child) {
+      child.parentNode = this;
+      this.children.push(child);
+      return child;
+    },
+    append(...nodes) {
+      nodes.forEach((node) => {
+        this.appendChild(typeof node === "string" ? makeTextNode(node) : node);
+      });
+    },
+    replaceChildren(...nodes) {
+      this.children = [];
+      this._textContent = "";
+      this.append(...nodes);
+    },
+    querySelector(selector) {
+      return findFirst(this, selector);
+    },
+    querySelectorAll(selector) {
+      return findAll(this, selector);
+    },
+    closest() {
+      return null;
+    },
+    cloneNode() {
+      const clone = makeElement("", this.tagName);
+      clone.textContent = this.textContent;
+      return clone;
+    },
+    focus() {},
+    addEventListener() {}
+  };
+  element.classList = makeClassList(element);
+  return element;
+}
+
+function walk(node, callback) {
+  callback(node);
+  (node.children || []).forEach((child) => walk(child, callback));
+}
+
+function matchesSelector(node, selector) {
+  if (!node.tagName) return false;
+  if (selector === "svg") return node.tagName === "SVG";
+  if (selector === "a[aria-disabled=\"true\"]") {
+    return node.tagName === "A" && node.attributes["aria-disabled"] === "true";
+  }
+  if (selector.startsWith(".")) {
+    return String(node.className || "").split(/\s+/).includes(selector.slice(1));
+  }
+  if (selector.startsWith("#")) return node.id === selector.slice(1);
+  return node.tagName.toLowerCase() === selector.toLowerCase();
+}
+
+function findAll(root, selector) {
+  const matches = [];
+  walk(root, (node) => {
+    if (node !== root && matchesSelector(node, selector)) matches.push(node);
+  });
+  return matches;
+}
+
+function findFirst(root, selector) {
+  return findAll(root, selector)[0] || null;
+}
+
+const elements = new Map();
+function getElement(selector) {
+  if (!elements.has(selector)) {
+    elements.set(selector, makeElement(selector));
+  }
+  return elements.get(selector);
+}
+
+const radioValues = ["anonymous", "beta_user", "admin"];
+const radios = radioValues.map((value) => ({ ...makeElement(), value, checked: false }));
+const tabs = ["overview", "setup", "pass", "feedback", "account"].map((name) => {
+  const tab = makeElement();
+  tab.dataset.backstageTab = name;
+  return tab;
+});
+const panels = ["overview", "setup", "pass", "feedback", "account"].map((name) => {
+  const panel = makeElement();
+  panel.id = `backstage-panel-${name}`;
+  return panel;
+});
+const jumps = ["setup", "pass"].map((name) => {
+  const button = makeElement();
+  button.dataset.backstageJump = name;
+  return button;
+});
+
+const documentStub = {
+  querySelector(selector) {
+    return getElement(selector);
+  },
+  querySelectorAll(selector) {
+    if (selector === ".hero, .prompt-shell, .try-asking") {
+      return [getElement(".hero"), getElement(".prompt-shell"), getElement(".try-asking")];
+    }
+    if (selector === "input[name='mock-access-state']") return radios;
+    if (selector === "[data-backstage-tab]") return tabs;
+    if (selector === ".backstage-tab-panel") return panels;
+    if (selector === "[data-backstage-jump]") return jumps;
+    return [];
+  },
+  createElement(tagName) {
+    return makeElement("", tagName);
+  },
+  createTextNode: makeTextNode,
+  addEventListener() {}
+};
+
+const sandbox = {
+  window: {
+    location: { search: "?access=beta_user" },
+    crypto: { randomUUID: () => "test-id" },
+    scrollTo() {},
+    setTimeout: (callback) => callback()
+  },
+  document: documentStub,
+  localStorage: {
+    getItem: () => "beta_user",
+    setItem() {}
+  },
+  fetch: async (url) => ({
+    ok: true,
+    status: 200,
+    json: async () => {
+      if (url === "/api/session") {
+        return { authenticated: true, role: "beta_user", authProvider: "local_dev" };
+      }
+      return {
+        question: "What is my copedent?",
+        answer: COPEDENT_ANSWER,
+        sections: [{ title: "Answer", style: "lead", body: COPEDENT_ANSWER }],
+        sources: [],
+        followups: []
+      };
+    }
+  }),
+  URLSearchParams,
+  Date,
+  Math,
+  Array,
+  String,
+  Number,
+  Boolean,
+  setInterval() {},
+  requestAnimationFrame: (callback) => callback()
+};
+sandbox.window.fetch = sandbox.fetch;
+
+vm.createContext(sandbox);
+vm.runInContext(clientCode, sandbox);
+sandbox.STEEL_RAG_ANSWER_UI = sandbox.window.STEEL_RAG_ANSWER_UI;
+vm.runInContext(inlineScript, sandbox);
+
+(async () => {
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(sandbox.submitQuestion("What is my copedent?"), true);
+  await new Promise((resolve) => setImmediate(resolve));
+  await new Promise((resolve) => setImmediate(resolve));
+
+  const grid = getElement("#answer-section-grid");
+  assert.equal(grid.classList.contains("is-structured-answer"), true);
+  const renderedSections = grid.children.map((section) => ({
+    title: section.children[0]?.textContent,
+    text: section.textContent,
+    blockTags: section.children.slice(1).map((child) => child.tagName)
+  }));
+
+  assert.deepEqual(renderedSections.map((section) => section.title), [
+    "Open tuning",
+    "Pedals",
+    "Levers",
+    "Common grips"
+  ]);
+  assert.deepEqual(renderedSections.map((section) => section.blockTags[0]), [
+    "DIV",
+    "DIV",
+    "DIV",
+    "UL"
+  ]);
+  assert.equal(renderedSections[2].text.includes("F lever"), true);
+  assert.equal(renderedSections[2].text.includes("3-4-5"), false);
+  assert.equal(renderedSections[2].text.includes("Common grips"), false);
+  assert.equal(renderedSections[3].text.includes("3-4-5"), true);
+  assert.equal(renderedSections[3].text.includes("6-8-10"), true);
+})().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
 """
 
     result = subprocess.run(
