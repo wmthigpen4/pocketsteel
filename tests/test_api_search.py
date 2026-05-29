@@ -594,6 +594,42 @@ def test_api_search_production_cloudflare_ignores_query_and_dev_header_for_priva
     assert payload["warnings"] == ["private retrieval disabled or not allowed for role; using sgf_only"]
 
 
+def test_api_search_production_cloudflare_ignores_trusted_mock_header_for_private(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
+    sgf_index = FakeSearchIndex(
+        {
+            "results": [{"chunk_id": "sgf-1", "thread_title": "SGF result", "source_system": "sgf_phpbb_current"}],
+            "warnings": [],
+        }
+    )
+    private_index = FakeSearchIndex(
+        {
+            "results": [{"chunk_id": "private-1", "thread_title": "Private result", "source_system": "personal_rules_note"}],
+            "warnings": [],
+        }
+    )
+
+    status, _, payload = call_app(
+        "/api/search",
+        {"q": "my common grips"},
+        search_index=sgf_index,
+        private_search_index=private_index,
+        retrieval_config=retrieval_config("hybrid_private_first", private_enabled=True),
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        access_role="beta_user",
+        access_header="trusted",
+    )
+
+    assert status == "200 OK"
+    assert [result["chunk_id"] for result in payload["results"]] == ["sgf-1"]
+    assert private_index.calls == []
+    assert payload["warnings"] == ["private retrieval disabled or not allowed for role; using sgf_only"]
+
+
 def test_api_session_production_cloudflare_ignores_query_access(monkeypatch: Any) -> None:
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
@@ -1159,6 +1195,50 @@ def test_api_session_cloudflare_access_ignores_dev_mock_header(monkeypatch: Any)
     assert payload["authProvider"] == "cloudflare_access"
 
 
+def test_api_session_cloudflare_access_ignores_trusted_mock_header(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
+
+    status, _, payload = call_app(
+        "/api/session",
+        method="GET",
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        access_role="beta_user",
+        access_header="trusted",
+    )
+
+    assert status == "200 OK"
+    assert payload["authenticated"] is False
+    assert payload["role"] == "anonymous"
+    assert payload["authProvider"] == "cloudflare_access"
+
+
+def test_api_answer_cloudflare_access_ignores_trusted_mock_header(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
+    search_index = FakeSearchIndex({"results": [], "warnings": []})
+
+    status, _, payload = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={"question": "cabinet drop compensator"},
+        search_index=search_index,
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        access_role="beta_user",
+        access_header="trusted",
+    )
+
+    assert status == "401 Unauthorized"
+    assert payload == {"error": "/api/answer requires Cloudflare Access identity"}
+    assert search_index.calls == []
+
+
 def test_api_answer_local_dev_mock_still_works_when_provider_is_cloudflare(monkeypatch: Any) -> None:
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
@@ -1394,11 +1474,25 @@ def test_api_answer_passes_filters_and_top_k_to_search() -> None:
     }
 
 
-def test_api_answer_does_not_use_private_retrieval_modes_yet() -> None:
+def test_api_answer_uses_private_retrieval_when_explicitly_enabled() -> None:
     sgf_index = FakeSearchIndex({"results": [], "warnings": []})
     private_index = FakeSearchIndex(
         {
-            "results": [{"chunk_id": "private-1", "thread_title": "Private result", "source_system": "personal_rules_note"}],
+            "results": [
+                {
+                    "score": 0.9,
+                    "excerpt": "Private source excerpt.",
+                    "chunk_id": "private-1",
+                    "thread_title": "Private result",
+                    "thread_url": "source-inbox/private.txt",
+                    "source_system": "personal_rules_note",
+                    "source_kind": "private_source_chunk",
+                    "visibility": "private",
+                    "source_id": "private-source",
+                    "provenance_status": "reviewed",
+                    "answer_quote_allowed": "limited",
+                }
+            ],
             "warnings": [],
         }
     )
@@ -1421,8 +1515,15 @@ def test_api_answer_does_not_use_private_retrieval_modes_yet() -> None:
             "forum_name": None,
         }
     ]
-    assert private_index.calls == []
-    assert payload["sources"] == []
+    assert private_index.calls == [
+        {
+            "query": "What is my E9 copedent?",
+            "limit": 3,
+            "source_system": None,
+            "forum_name": None,
+        }
+    ]
+    assert payload["sources"][0]["visibility"] == "private"
 
 
 def test_api_answer_does_not_accept_local_dev_query_access() -> None:

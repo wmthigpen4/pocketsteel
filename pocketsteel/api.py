@@ -184,8 +184,9 @@ class RetrievalApi:
 
             source_system = self._optional_string(request_payload.get("sourceSystem") or request_payload.get("source_system"))
             forum_name = self._optional_string(request_payload.get("forumName") or request_payload.get("forum_name"))
-            search_response = self._search(
+            search_response = self._search_for_answer(
                 answer_request.question,
+                role=access.role,
                 limit=answer_request.top_k,
                 source_system=source_system,
                 forum_name=forum_name,
@@ -281,6 +282,24 @@ class RetrievalApi:
             )
         return SearchResponse(results=list(response or []), warnings=[])
 
+    def _search_for_answer(
+        self,
+        query: str,
+        *,
+        role: str,
+        limit: int = 5,
+        source_system: str | None = None,
+        forum_name: str | None = None,
+    ) -> SearchResponse:
+        response, _plan = self._search_with_retrieval_plan(
+            query,
+            role=role,
+            limit=limit,
+            source_system=source_system,
+            forum_name=forum_name,
+        )
+        return response
+
     def _search_for_api(
         self,
         query: str,
@@ -291,6 +310,38 @@ class RetrievalApi:
         forum_name: str | None = None,
     ) -> tuple[SearchResponse, dict[str, Any]]:
         role = self._search_role(environ)
+        search_response, plan = self._search_with_retrieval_plan(
+            query,
+            role=role,
+            limit=limit,
+            source_system=source_system,
+            forum_name=forum_name,
+        )
+
+        debug_metadata: dict[str, Any] = {}
+        if self._may_expose_retrieval_debug(role, plan.expose_debug_metadata):
+            debug_metadata = {
+                "requestedMode": self.retrieval_config.requested_mode.value,
+                "selectedMode": plan.selected_mode.value,
+                "sourceOrder": list(plan.source_order),
+                "useSgf": plan.use_sgf,
+                "usePrivate": plan.use_private,
+                "privateSourcesEnabled": self.retrieval_config.private_sources_enabled,
+                "privateSourcesAllowed": private_sources_allowed(role, self.retrieval_config),
+                "role": role,
+            }
+
+        return search_response, debug_metadata
+
+    def _search_with_retrieval_plan(
+        self,
+        query: str,
+        *,
+        role: str,
+        limit: int = 5,
+        source_system: str | None = None,
+        forum_name: str | None = None,
+    ) -> tuple[SearchResponse, Any]:
         plan = retrieval_plan_for_role(role, config=self.retrieval_config)
         warnings = list(plan.warnings)
         results_by_source: dict[str, list[dict[str, Any]]] = {}
@@ -323,20 +374,7 @@ class RetrievalApi:
             merged.extend(results_by_source.get(source_name, []))
         merged = merged[:limit]
 
-        debug_metadata: dict[str, Any] = {}
-        if self._may_expose_retrieval_debug(role, plan.expose_debug_metadata):
-            debug_metadata = {
-                "requestedMode": self.retrieval_config.requested_mode.value,
-                "selectedMode": plan.selected_mode.value,
-                "sourceOrder": list(plan.source_order),
-                "useSgf": plan.use_sgf,
-                "usePrivate": plan.use_private,
-                "privateSourcesEnabled": self.retrieval_config.private_sources_enabled,
-                "privateSourcesAllowed": private_sources_allowed(role, self.retrieval_config),
-                "role": role,
-            }
-
-        return SearchResponse(results=merged, warnings=warnings), debug_metadata
+        return SearchResponse(results=merged, warnings=warnings), plan
 
     def _search_private(
         self,

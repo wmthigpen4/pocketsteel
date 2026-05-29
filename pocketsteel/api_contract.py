@@ -48,6 +48,12 @@ class SourceCitation(TypedDict):
     score: float
     chunkId: str
     postUid: str | None
+    source_system: NotRequired[str]
+    visibility: NotRequired[str]
+    source_id: NotRequired[str]
+    source_path: NotRequired[str]
+    provenance_status: NotRequired[str]
+    answer_quote_allowed: NotRequired[str]
 
 
 class AnswerSection(TypedDict):

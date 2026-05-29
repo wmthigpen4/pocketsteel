@@ -58,7 +58,7 @@ def source_label(source_system: str) -> str:
 
 
 def source_to_card(source: dict[str, Any]) -> SourceCitation:
-    return {
+    card: dict[str, Any] = {
         "title": source.get("thread_title") or "Source thread",
         "forumName": source.get("forum_name") or "Steel Guitar Forum",
         "url": source.get("thread_url") or "",
@@ -67,6 +67,18 @@ def source_to_card(source: dict[str, Any]) -> SourceCitation:
         "chunkId": source.get("chunk_id") or "",
         "postUid": source.get("post_uid") or None,
     }
+    if source.get("visibility") == "private" or source.get("source_kind") == "private_source_chunk":
+        card.update(
+            {
+                "source_system": source.get("source_system") or "",
+                "visibility": source.get("visibility") or "private",
+                "source_id": source.get("source_id") or "",
+                "source_path": source.get("source_path") or source.get("thread_url") or "",
+                "provenance_status": source.get("provenance_status") or "",
+                "answer_quote_allowed": source.get("answer_quote_allowed") or "limited",
+            }
+        )
+    return cast(SourceCitation, card)
 
 
 def mode_guidance(mode: str) -> str:
@@ -1999,6 +2011,12 @@ def concise_source_cards(sources: list[dict[str, Any]]) -> list[SourceCitation]:
     cards = []
     for source in sources:
         card = source_to_card(source)
-        card["excerpt"] = shorten(card["excerpt"], 420)
+        quote_allowed = str(source.get("answer_quote_allowed") or "").strip().lower()
+        if source.get("visibility") == "private" and quote_allowed == "false":
+            card["excerpt"] = ""
+        elif source.get("visibility") == "private" and quote_allowed == "limited":
+            card["excerpt"] = shorten(card["excerpt"], 220)
+        else:
+            card["excerpt"] = shorten(card["excerpt"], 420)
         cards.append(card)
     return cards

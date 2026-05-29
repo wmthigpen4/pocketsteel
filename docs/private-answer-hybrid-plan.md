@@ -1,13 +1,13 @@
 # Private Answer Hybrid Plan
 
-This document plans how `/api/answer` can safely use SGF v2 plus the private source collection. It is a plan only. Do not switch runtime behavior until the implementation phase is explicitly approved and tested.
+This document describes how `/api/answer` can safely use SGF v2 plus the private source collection. Private answer retrieval is wired behind env/access gates. Do not switch any preview or public runtime into private mode until local smoke and manual review pass.
 
 Current state:
 
 - `/api/search` can use retrieval modes in local-dev/private smoke mode.
-- `/api/answer` remains SGF-only.
+- `/api/answer` can use retrieval modes only when explicitly enabled and authorized.
 - Private sources are disabled by default.
-- No Chroma data, embeddings, DNS, deployment, scraping, or app config should change for this planning phase.
+- No Chroma data, embeddings, DNS, deployment, scraping, or app config changes are required.
 
 ## 1. When `/api/answer` May Use Private Sources
 
@@ -32,7 +32,8 @@ Private answer retrieval is disabled by default.
 Required access behavior:
 
 - Anonymous/public callers never receive private retrieval, private excerpts, private metadata, or private source cards.
-- Local-dev smoke may use `?access=beta_user` only in local-dev/scaffold mode.
+- Local-dev `/api/search` smoke may use `?access=beta_user` only in local-dev/scaffold mode.
+- Local-dev `/api/answer` smoke should use the `X-Steel-Rag-Dev-Access-Role: beta_user` header.
 - Production `cloudflare_access` mode must ignore query-param access and mock dev headers.
 - Private retrieval in production/private preview must require verified Cloudflare Access identity.
 - Debug retrieval metadata may be returned only when `STEEL_RAG_RETRIEVAL_DEBUG=true` and the caller is admin/dev.
@@ -114,9 +115,9 @@ Display requirements:
 - In local-dev/admin inspection, source path may appear only when debug/admin mode is enabled.
 - If `answer_quote_allowed=false`, show metadata only and omit the excerpt.
 
-## 6. Tests Required Before Implementation
+## 6. Tests Required Before Preview Use
 
-Before wiring `/api/answer`, add tests proving:
+Before enabling private answer retrieval in any shared preview, tests must prove:
 
 - default `/api/answer` behavior is unchanged
 - private retrieval is disabled by default
@@ -162,9 +163,9 @@ Stop implementation immediately if any of these happen:
 - Chroma path validation fails or points outside `corpus-private`
 - tests require modifying embeddings, scraper behavior, DNS, deploy config, or app preview routing
 
-## 9. Proposed Env Vars And Local Smoke Command
+## 9. Env Vars And Smoke Commands
 
-Local answer smoke only:
+Local hybrid answer smoke:
 
 ```bash
 STEEL_RAG_RETRIEVAL_MODE=hybrid_private_first \
@@ -174,7 +175,13 @@ STEEL_RAG_CHROMA_COLLECTION=steel_guitar_unified_v2 \
 STEEL_RAG_PRIVATE_CHROMA_PATH=corpus-private/vector-stores/chroma \
 STEEL_RAG_PRIVATE_CHROMA_COLLECTION=steel_guitar_private_sources_v1 \
 STEEL_RAG_RETRIEVAL_DEBUG=true \
-.venv/bin/python scripts/serve_answer_smoke.py --port 8770
+.venv/bin/python scripts/serve_v2_rerank_smoke.py \
+  --host 127.0.0.1 \
+  --port 8770 \
+  --v2-chroma-path corpus-v2/vector-stores/chroma \
+  --v2-collection steel_guitar_unified_v2 \
+  --answer-auth-mode local_dev \
+  --auth-provider scaffold
 ```
 
 Local-dev checks:
@@ -182,21 +189,50 @@ Local-dev checks:
 ```bash
 curl 'http://127.0.0.1:8770/api/session?access=beta_user'
 curl 'http://127.0.0.1:8770/api/search?q=What%20are%20my%20common%20grips%3F&access=beta_user'
-```
-
-Future `/api/answer` smoke after implementation approval:
-
-```bash
-curl -X POST 'http://127.0.0.1:8770/api/answer?access=beta_user' \
+curl -X POST 'http://127.0.0.1:8770/api/answer' \
   -H 'Content-Type: application/json' \
+  -H 'X-Steel-Rag-Dev-Access-Role: beta_user' \
   -d '{"question":"What are my common grips?","mode":"ask","topK":6}'
 ```
 
-That future command must not work in production `cloudflare_access` mode unless a valid Cloudflare Access identity is present.
+Production protected private-preview startup for `app.steelguitarrag.com` loopback:
+
+```bash
+STEEL_RAG_AUTH_PROVIDER=cloudflare_access \
+STEEL_RAG_ANSWER_AUTH_MODE=production \
+STEEL_RAG_RETRIEVAL_MODE=hybrid_private_first \
+STEEL_RAG_ENABLE_PRIVATE_SOURCES=true \
+STEEL_RAG_CHROMA_PATH=corpus-v2/vector-stores/chroma \
+STEEL_RAG_CHROMA_COLLECTION=steel_guitar_unified_v2 \
+STEEL_RAG_PRIVATE_CHROMA_PATH=corpus-private/vector-stores/chroma \
+STEEL_RAG_PRIVATE_CHROMA_COLLECTION=steel_guitar_private_sources_v1 \
+STEEL_RAG_RETRIEVAL_DEBUG=false \
+.venv/bin/python scripts/serve_v2_rerank_smoke.py \
+  --host 127.0.0.1 \
+  --port 8770 \
+  --v2-chroma-path corpus-v2/vector-stores/chroma \
+  --v2-collection steel_guitar_unified_v2 \
+  --answer-auth-mode production \
+  --auth-provider cloudflare-access
+```
+
+This production-mode command depends on existing Cloudflare Access issuer, audience, and beta/admin email env vars. It must not accept `?access=beta_user` or mock dev headers.
+
+Rollback to SGF-only:
+
+```bash
+STEEL_RAG_RETRIEVAL_MODE=sgf_only \
+STEEL_RAG_ENABLE_PRIVATE_SOURCES=false \
+.venv/bin/python scripts/serve_v2_rerank_smoke.py \
+  --host 127.0.0.1 \
+  --port 8770 \
+  --v2-chroma-path corpus-v2/vector-stores/chroma \
+  --v2-collection steel_guitar_unified_v2
+```
 
 ## Implementation Phases
 
-Phase 1: planning only.
+Phase 1: planning.
 
 - This document.
 - No runtime behavior changes.
