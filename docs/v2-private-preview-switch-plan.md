@@ -6,6 +6,40 @@ expose Ollama or Chroma.
 
 Current branch when this plan was written: `feature/answer-api`.
 
+## Switch Status
+
+Status: completed successfully.
+
+Recorded: `2026-05-28 22:43:14 CDT`.
+
+The controlled switch of `app.steelguitarrag.com` to the v2 rerank process on
+`127.0.0.1:8770` passed human smoke testing.
+
+Current private-preview process:
+
+- V2 Chroma path: `corpus-v2/vector-stores/chroma`
+- Collection: `steel_guitar_unified_v2`
+- Auth provider: production Cloudflare Access
+- Host: `127.0.0.1`
+- Port: `8770`
+
+Smoke questions passed:
+
+- Where can I buy a slide bar?
+- Is Mullen or MSA better?
+- Who is Buddy Emmons?
+- What does A+F do?
+- How do I use the 9th string?
+- Why does my amp buzz at idle?
+
+Remaining caution:
+
+- No outside testers yet until the v2 private-preview process runs cleanly for a
+  bit.
+- Keep the v1 rollback command ready.
+- Do not expose Ollama or Chroma.
+- Do not change DNS.
+
 ## Goal
 
 Switch `app.steelguitarrag.com` from the current v1 private-preview process to
