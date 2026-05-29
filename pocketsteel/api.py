@@ -26,6 +26,7 @@ from pocketsteel.access_control import (
     AnswerAuthMode,
     AuthProvider,
     authorize_answer_request,
+    authorize_local_dev_request,
     configured_answer_auth_mode,
     configured_auth_provider,
     normalize_answer_auth_mode,
@@ -115,7 +116,7 @@ class RetrievalApi:
             if method != "GET":
                 return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"})
 
-            access = authorize_answer_request(
+            access = authorize_local_dev_request(
                 environ,
                 self.answer_auth_mode,
                 self.auth_provider,
@@ -364,7 +365,7 @@ class RetrievalApi:
         return SearchResponse(results=list(response or []), warnings=[])
 
     def _search_role(self, environ: dict[str, Any]) -> str:
-        access = authorize_answer_request(
+        access = authorize_local_dev_request(
             environ,
             self.answer_auth_mode,
             self.auth_provider,

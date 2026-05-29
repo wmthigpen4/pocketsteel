@@ -214,6 +214,29 @@ Current scaffold behavior:
 - Private search results are never returned to anonymous/public callers.
 - Retrieval debug metadata is only returned when `STEEL_RAG_RETRIEVAL_DEBUG=true` and the caller is admin/dev.
 
+Local-dev smoke testing:
+
+```bash
+STEEL_RAG_RETRIEVAL_MODE=hybrid_private_first \
+STEEL_RAG_ENABLE_PRIVATE_SOURCES=true \
+STEEL_RAG_CHROMA_PATH=corpus-v2/vector-stores/chroma \
+STEEL_RAG_CHROMA_COLLECTION=steel_guitar_unified_v2 \
+STEEL_RAG_PRIVATE_CHROMA_PATH=corpus-private/vector-stores/chroma \
+STEEL_RAG_PRIVATE_CHROMA_COLLECTION=steel_guitar_private_sources_v1 \
+STEEL_RAG_RETRIEVAL_DEBUG=true \
+.venv/bin/python scripts/serve_answer_smoke.py --port 8770
+```
+
+Then:
+
+```bash
+curl 'http://127.0.0.1:8770/api/session?access=beta_user'
+curl 'http://127.0.0.1:8770/api/search?q=What%20are%20my%20common%20grips%3F&access=beta_user'
+```
+
+`?access=beta_user` is local-dev only. Production `cloudflare_access`
+mode ignores the query parameter and mock dev headers.
+
 ## Metadata Requirements
 
 Every retrievable or curated source should preserve metadata needed for routing, access, provenance, and answer display.

@@ -448,6 +448,52 @@ def test_api_search_private_not_exposed_to_anonymous_even_when_enabled() -> None
     assert payload["warnings"] == ["private retrieval disabled or not allowed for role; using sgf_only"]
 
 
+def test_api_session_local_dev_query_access_beta_user() -> None:
+    status, _, payload = call_app(
+        "/api/session",
+        {"access": "beta_user"},
+        method="GET",
+        access_role=None,
+    )
+
+    assert status == "200 OK"
+    assert payload == {
+        "authenticated": True,
+        "role": "beta_user",
+        "authProvider": "local_dev",
+    }
+
+
+def test_api_search_local_dev_query_access_can_use_private_when_enabled() -> None:
+    sgf_index = FakeSearchIndex(
+        {
+            "results": [{"chunk_id": "sgf-1", "thread_title": "SGF result", "source_system": "sgf_phpbb_current"}],
+            "warnings": [],
+        }
+    )
+    private_index = FakeSearchIndex(
+        {
+            "results": [
+                {"chunk_id": "private-1", "thread_title": "Private result", "source_system": "personal_rules_note"}
+            ],
+            "warnings": [],
+        }
+    )
+
+    status, _, payload = call_app(
+        "/api/search",
+        {"q": "my common grips", "access": "beta_user"},
+        search_index=sgf_index,
+        private_search_index=private_index,
+        retrieval_config=retrieval_config("hybrid_private_first", private_enabled=True),
+        access_role=None,
+    )
+
+    assert status == "200 OK"
+    assert [result["chunk_id"] for result in payload["results"]] == ["private-1", "sgf-1"]
+    assert private_index.calls[0]["query"] == "my common grips"
+
+
 def test_api_search_hybrid_private_first_when_explicitly_enabled_for_beta() -> None:
     sgf_index = FakeSearchIndex(
         {
@@ -509,6 +555,66 @@ def test_api_search_debug_metadata_is_admin_only() -> None:
         "privateSourcesEnabled": True,
         "privateSourcesAllowed": True,
         "role": "admin",
+    }
+
+
+def test_api_search_production_cloudflare_ignores_query_and_dev_header_for_private(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
+    sgf_index = FakeSearchIndex(
+        {
+            "results": [{"chunk_id": "sgf-1", "thread_title": "SGF result", "source_system": "sgf_phpbb_current"}],
+            "warnings": [],
+        }
+    )
+    private_index = FakeSearchIndex(
+        {
+            "results": [{"chunk_id": "private-1", "thread_title": "Private result", "source_system": "personal_rules_note"}],
+            "warnings": [],
+        }
+    )
+
+    status, _, payload = call_app(
+        "/api/search",
+        {"q": "my common grips", "access": "beta_user"},
+        search_index=sgf_index,
+        private_search_index=private_index,
+        retrieval_config=retrieval_config("hybrid_private_first", private_enabled=True),
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        access_role="beta_user",
+        access_header="dev",
+    )
+
+    assert status == "200 OK"
+    assert [result["chunk_id"] for result in payload["results"]] == ["sgf-1"]
+    assert private_index.calls == []
+    assert payload["warnings"] == ["private retrieval disabled or not allowed for role; using sgf_only"]
+
+
+def test_api_session_production_cloudflare_ignores_query_access(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
+
+    status, _, payload = call_app(
+        "/api/session",
+        {"access": "beta_user"},
+        method="GET",
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        access_role="beta_user",
+        access_header="dev",
+    )
+
+    assert status == "200 OK"
+    assert payload == {
+        "authenticated": False,
+        "role": "anonymous",
+        "authProvider": "cloudflare_access",
     }
 
 
@@ -1317,6 +1423,24 @@ def test_api_answer_does_not_use_private_retrieval_modes_yet() -> None:
     ]
     assert private_index.calls == []
     assert payload["sources"] == []
+
+
+def test_api_answer_does_not_accept_local_dev_query_access() -> None:
+    search_index = FakeSearchIndex({"results": [], "warnings": []})
+
+    status, _, payload = call_app(
+        "/api/answer",
+        {"access": "beta_user"},
+        method="POST",
+        json_body={"question": "cabinet drop compensator"},
+        search_index=search_index,
+        answer_auth_mode="local_dev",
+        access_role=None,
+    )
+
+    assert status == "401 Unauthorized"
+    assert payload == {"error": "/api/answer requires authenticated beta_user or admin access"}
+    assert search_index.calls == []
 
 
 def deterministic_payload(

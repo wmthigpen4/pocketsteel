@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from typing import Any, Literal
+from urllib.parse import parse_qs
 
 from pocketsteel.cloudflare_access import (
     CLOUDFLARE_ACCESS_JWT_ENVIRON,
@@ -161,4 +162,49 @@ def authorize_answer_request(
         role=ANONYMOUS,
         status="401 Unauthorized",
         error="/api/answer requires authenticated beta_user or admin access",
+    )
+
+
+def authorize_local_dev_request(
+    environ: dict[str, object],
+    auth_mode: object = None,
+    auth_provider: object = None,
+    cloudflare_verifier: Any = None,
+) -> AnswerAccessDecision:
+    """Authorize non-answer local-dev helpers without weakening production auth.
+
+    This supports explicit smoke-test roles such as `?access=beta_user` for
+    local `/api/session` and `/api/search` checks. Production Cloudflare Access
+    mode still derives identity only from the verified Access JWT path and
+    ignores query-string/mock dev roles.
+    """
+
+    mode = normalize_answer_auth_mode(auth_mode or configured_answer_auth_mode())
+    provider = normalize_auth_provider(auth_provider or configured_auth_provider())
+    if mode != LOCAL_DEV_AUTH_MODE and provider == CLOUDFLARE_ACCESS_AUTH_PROVIDER:
+        return _authorize_with_cloudflare_access(environ, cloudflare_verifier)
+
+    trusted_role_value = environ.get(TRUSTED_AUTH_ROLE_ENVIRON)
+    dev_role_value = environ.get(DEV_ACCESS_ROLE_ENVIRON) if mode == LOCAL_DEV_AUTH_MODE else None
+    query_role_value = None
+    if mode == LOCAL_DEV_AUTH_MODE:
+        query_params = parse_qs(str(environ.get("QUERY_STRING") or ""), keep_blank_values=True)
+        query_role_value = (query_params.get("access") or [""])[0]
+
+    raw_role = trusted_role_value or dev_role_value or query_role_value
+    role = normalize_access_role(raw_role)
+    if can_call_live_answer(role):
+        return AnswerAccessDecision(allowed=True, role=role)
+    if raw_role:
+        return AnswerAccessDecision(
+            allowed=False,
+            role=role,
+            status="403 Forbidden",
+            error="request requires beta_user or admin access",
+        )
+    return AnswerAccessDecision(
+        allowed=False,
+        role=ANONYMOUS,
+        status="401 Unauthorized",
+        error="request requires authenticated beta_user or admin access",
     )
