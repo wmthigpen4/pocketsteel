@@ -7,12 +7,17 @@ import argparse
 import json
 import re
 import statistics
+import sys
 import textwrap
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from pocketsteel.chroma_search import ChromaSearchIndex
 from scripts.run_answer_eval import load_question_bank
@@ -33,7 +38,7 @@ SIGNATURE_PATTERN = re.compile(
     r"(?im)(^_{4,}$|^\s*(thanks|regards|sincerely|cheers|best),?\s*$|^\s*sent from my\b|^\s*signature\b)"
 )
 
-METADATA_FIELDS = [
+V1_METADATA_FIELDS = [
     "source_system",
     "forum_name",
     "thread_title",
@@ -46,7 +51,26 @@ METADATA_FIELDS = [
     "thread_category",
     "chunk_index",
 ]
+V2_METADATA_FIELDS = [
+    "source_system",
+    "forum_name",
+    "thread_title",
+    "thread_url",
+    "chunk_id",
+    "thread_id",
+    "chunk_role",
+    "quality_score",
+    "noise_score",
+    "source_metadata_complete",
+    "post_uids",
+]
+METADATA_FIELDS = V1_METADATA_FIELDS
 POST_IDENTITY_FIELDS = ["post_uid", "thread_id", "chunk_id"]
+QUESTION_START_PATTERN = re.compile(r"^(does|do|did|what|where|how|why|who|which|can|should|is|are)\b", re.I)
+USEFUL_SHORT_FRAGMENT_PATTERN = re.compile(
+    r"\b(use|raise|lower|pedal|lever|string|fret|check|adjust|tune|because|avoid|compare|recommend|clean|oil|buy|practice)\b",
+    re.I,
+)
 
 
 @dataclass(frozen=True)
@@ -54,6 +78,34 @@ class SideConfig:
     name: str
     chroma_path: Path
     collection: str
+
+
+@dataclass(frozen=True)
+class RerankConfig:
+    candidate_k: int
+    min_excerpt_chars: int = 0
+    dedupe_thread: bool = False
+    question_only_penalty: float = 0.0
+    mention_only_penalty: float = 0.0
+    answer_advice_boost: float = 0.0
+    quality_boost: float = 0.0
+    quality_threshold: float = 0.70
+    noise_penalty: float = 0.0
+    noise_threshold: float = 0.60
+
+    @property
+    def enabled(self) -> bool:
+        return any(
+            [
+                self.min_excerpt_chars > 0,
+                self.dedupe_thread,
+                self.question_only_penalty > 0,
+                self.mention_only_penalty > 0,
+                self.answer_advice_boost > 0,
+                self.quality_boost > 0,
+                self.noise_penalty > 0,
+            ]
+        )
 
 
 def compact(text: str, width: int = 220) -> str:
@@ -97,6 +149,20 @@ def duplicate_source_rate(sources: list[dict[str, Any]]) -> float:
     return round((len(identities) - len(set(identities))) / len(identities), 6)
 
 
+def field_present(value: Any) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, str):
+        return bool(value.strip())
+    if isinstance(value, (list, tuple, set, dict)):
+        return bool(value)
+    return True
+
+
+def has_v2_metadata(source: dict[str, Any]) -> bool:
+    return any(field_present(source.get(field)) for field in ("chunk_role", "quality_score", "noise_score", "source_metadata_complete", "post_uids"))
+
+
 def leakage_flags(excerpt: str) -> list[str]:
     flags: list[str] = []
     if TOP_LEAK_PATTERN.search(excerpt):
@@ -113,8 +179,98 @@ def leakage_flags(excerpt: str) -> list[str]:
 def required_field_rate(source: dict[str, Any], fields: list[str]) -> float:
     if not fields:
         return 1.0
-    present = sum(1 for field in fields if str(source.get(field) or "").strip())
+    present = sum(1 for field in fields if field_present(source.get(field)))
     return round(present / len(fields), 6)
+
+
+def metadata_fields_for_source(source: dict[str, Any]) -> list[str]:
+    return V2_METADATA_FIELDS if has_v2_metadata(source) else V1_METADATA_FIELDS
+
+
+def is_question_only_source(source: dict[str, Any]) -> bool:
+    role = str(source.get("chunk_role") or "").strip().lower()
+    excerpt = str(source.get("excerpt") or "").strip()
+    return role == "question" or excerpt.endswith("?") or bool(QUESTION_START_PATTERN.search(excerpt))
+
+
+def is_mention_only_fragment(source: dict[str, Any], *, min_chars: int = 80) -> bool:
+    excerpt = re.sub(r"\s+", " ", str(source.get("excerpt") or "")).strip()
+    if len(excerpt) >= min_chars:
+        return False
+    if USEFUL_SHORT_FRAGMENT_PATTERN.search(excerpt):
+        return False
+    words = re.findall(r"[A-Za-z0-9+#'-]+", excerpt)
+    return len(words) <= 10
+
+
+def rerank_score(source: dict[str, Any], config: RerankConfig) -> float:
+    score = numeric_score(source.get("score")) or 0.0
+    role = str(source.get("chunk_role") or "").strip().lower()
+    quality = numeric_score(source.get("quality_score"))
+    noise = numeric_score(source.get("noise_score"))
+
+    if role == "answer_advice":
+        score += config.answer_advice_boost
+    elif role in {"question", "unknown", "event", "memorial"}:
+        score -= config.question_only_penalty / 2
+
+    if quality is not None and quality >= config.quality_threshold:
+        score += config.quality_boost
+    if noise is not None and noise >= config.noise_threshold:
+        score -= config.noise_penalty
+    if is_question_only_source(source):
+        score -= config.question_only_penalty
+    if is_mention_only_fragment(source, min_chars=max(config.min_excerpt_chars, 80)):
+        score -= config.mention_only_penalty
+    return round(score, 6)
+
+
+def select_with_thread_dedupe(sources: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
+    selected: list[dict[str, Any]] = []
+    seen_threads: set[str] = set()
+    deferred: list[dict[str, Any]] = []
+    for source in sources:
+        thread_url = str(source.get("thread_url") or "").strip()
+        if thread_url and thread_url in seen_threads:
+            deferred.append(source)
+            continue
+        selected.append(source)
+        if thread_url:
+            seen_threads.add(thread_url)
+        if len(selected) >= limit:
+            return selected
+    for source in deferred:
+        selected.append(source)
+        if len(selected) >= limit:
+            break
+    return selected
+
+
+def rerank_sources(sources: list[dict[str, Any]], *, limit: int, config: RerankConfig) -> list[dict[str, Any]]:
+    if not config.enabled:
+        return sources[:limit]
+
+    ranked = []
+    for index, source in enumerate(sources):
+        source = dict(source)
+        source["rerank_score"] = rerank_score(source, config)
+        source["rerank_flags"] = []
+        if config.min_excerpt_chars and len(str(source.get("excerpt") or "").strip()) < config.min_excerpt_chars:
+            source["rerank_flags"].append("short_excerpt")
+        if is_question_only_source(source):
+            source["rerank_flags"].append("question_only")
+        if is_mention_only_fragment(source, min_chars=max(config.min_excerpt_chars, 80)):
+            source["rerank_flags"].append("mention_only")
+        ranked.append((source["rerank_score"], -index, source))
+
+    ordered = [source for _, _, source in sorted(ranked, reverse=True)]
+    if config.min_excerpt_chars:
+        long_enough = [source for source in ordered if "short_excerpt" not in source["rerank_flags"]]
+        short = [source for source in ordered if "short_excerpt" in source["rerank_flags"]]
+        ordered = long_enough + short
+    if config.dedupe_thread:
+        return select_with_thread_dedupe(ordered, limit)
+    return ordered[:limit]
 
 
 def analyze_sources(sources: list[dict[str, Any]]) -> dict[str, Any]:
@@ -134,7 +290,7 @@ def analyze_sources(sources: list[dict[str, Any]]) -> dict[str, Any]:
         if flags:
             leaking_source_count += 1
             leakage_counts.update(flags)
-        metadata_rates.append(required_field_rate(source, METADATA_FIELDS))
+        metadata_rates.append(required_field_rate(source, metadata_fields_for_source(source)))
         post_identity_rates.append(required_field_rate(source, POST_IDENTITY_FIELDS))
 
     source_count = len(sources)
@@ -164,12 +320,14 @@ def summarize_side(question_results: list[dict[str, Any]]) -> dict[str, Any]:
     return summary
 
 
-def run_side(config: SideConfig, questions: list[dict[str, str]], top_k: int) -> dict[str, Any]:
+def run_side(config: SideConfig, questions: list[dict[str, str]], top_k: int, rerank_config: RerankConfig) -> dict[str, Any]:
     index = ChromaSearchIndex.from_chroma(chroma_path=config.chroma_path, collection_name=config.collection)
     results: list[dict[str, Any]] = []
+    candidate_k = max(top_k, rerank_config.candidate_k)
     for row in questions:
-        response = index.search(row["question"], limit=top_k)
-        sources = list(response.results)
+        response = index.search(row["question"], limit=candidate_k)
+        candidate_sources = list(response.results)
+        sources = rerank_sources(candidate_sources, limit=top_k, config=rerank_config)
         results.append(
             {
                 "id": row["id"],
@@ -178,6 +336,7 @@ def run_side(config: SideConfig, questions: list[dict[str, str]], top_k: int) ->
                 "expected_intent": row.get("expected_intent", ""),
                 "expected_contract": row.get("expected_contract", ""),
                 "sources": sources,
+                "candidate_source_count": len(candidate_sources),
                 "warnings": response.warnings,
                 "metrics": analyze_sources(sources),
             }
@@ -291,12 +450,14 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"Generated: {report['generated_at']}",
         f"Question bank: `{report['question_bank']}`",
         f"Top K: {report['top_k']}",
+        f"Candidate K: {report['rerank_config']['candidate_k']}",
         "",
         "## Safety Notes",
         "",
         "- This harness reads existing Chroma collections only when a side is explicitly enabled.",
         "- It does not scrape, rebuild embeddings, reset Chroma, switch app config, or call answer generation.",
         "- v2 retrieval requires both `--run-v2` and `--confirm-v2-ready`.",
+        f"- Rerank enabled: `{report['rerank_config']['enabled']}`.",
         "",
         "## Side Summaries",
         "",
@@ -363,17 +524,30 @@ def render_markdown(report: dict[str, Any]) -> str:
 
 
 def build_report(args: argparse.Namespace, questions: list[dict[str, str]]) -> dict[str, Any]:
+    rerank_config = RerankConfig(
+        candidate_k=args.candidate_k,
+        min_excerpt_chars=args.min_excerpt_chars,
+        dedupe_thread=args.dedupe_thread,
+        question_only_penalty=args.question_only_penalty,
+        mention_only_penalty=args.mention_only_penalty,
+        answer_advice_boost=args.answer_advice_boost,
+        quality_boost=args.quality_boost,
+        quality_threshold=args.quality_threshold,
+        noise_penalty=args.noise_penalty,
+        noise_threshold=args.noise_threshold,
+    )
     report: dict[str, Any] = {
         "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "question_bank": str(args.question_bank),
         "top_k": args.top_k,
+        "rerank_config": {**asdict(rerank_config), "enabled": rerank_config.enabled},
         "sides": {},
         "paired_results": [],
     }
     if args.run_v1:
-        report["sides"]["v1"] = run_side(SideConfig("v1", args.v1_chroma_path, args.v1_collection), questions, args.top_k)
+        report["sides"]["v1"] = run_side(SideConfig("v1", args.v1_chroma_path, args.v1_collection), questions, args.top_k, rerank_config)
     if args.run_v2:
-        report["sides"]["v2"] = run_side(SideConfig("v2", args.v2_chroma_path, args.v2_collection), questions, args.top_k)
+        report["sides"]["v2"] = run_side(SideConfig("v2", args.v2_chroma_path, args.v2_collection), questions, args.top_k, rerank_config)
 
     attach_answer_eval(report, "v1", load_answer_eval(args.v1_answer_eval_json))
     attach_answer_eval(report, "v2", load_answer_eval(args.v2_answer_eval_json))
@@ -389,6 +563,16 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--v2-collection", default=DEFAULT_V2_COLLECTION)
     parser.add_argument("--question-bank", type=Path, default=DEFAULT_QUESTION_BANK)
     parser.add_argument("--top-k", type=int, default=5)
+    parser.add_argument("--candidate-k", type=int, default=5, help="Read-only candidate count to retrieve before optional rerank/dedupe.")
+    parser.add_argument("--min-excerpt-chars", type=int, default=0, help="Prefer sources with at least this many excerpt characters.")
+    parser.add_argument("--dedupe-thread", action="store_true", help="Prefer one source per thread URL after reranking.")
+    parser.add_argument("--question-only-penalty", type=float, default=0.0)
+    parser.add_argument("--mention-only-penalty", type=float, default=0.0)
+    parser.add_argument("--answer-advice-boost", type=float, default=0.0)
+    parser.add_argument("--quality-boost", type=float, default=0.0)
+    parser.add_argument("--quality-threshold", type=float, default=0.70)
+    parser.add_argument("--noise-penalty", type=float, default=0.0)
+    parser.add_argument("--noise-threshold", type=float, default=0.60)
     parser.add_argument("--limit", type=int, default=None, help="Optional question limit for smoke runs.")
     parser.add_argument("--run-v1", action="store_true", help="Run read-only retrieval against the v1 Chroma collection.")
     parser.add_argument("--run-v2", action="store_true", help="Run read-only retrieval against the v2 Chroma collection.")
@@ -410,6 +594,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.top_k <= 0:
         parser.error("--top-k must be greater than zero")
+    if args.candidate_k <= 0:
+        parser.error("--candidate-k must be greater than zero")
+    if args.min_excerpt_chars < 0:
+        parser.error("--min-excerpt-chars must be zero or greater")
     if args.run_v2 and not args.confirm_v2_ready:
         parser.error("--run-v2 requires --confirm-v2-ready after v2 embedding completes")
 

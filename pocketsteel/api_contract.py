@@ -31,6 +31,13 @@ class SearchResult(TypedDict):
     thread_quality_score: Any
     chunk_index: Any
     warnings: list[str]
+    chunk_role: NotRequired[str]
+    quality_score: NotRequired[Any]
+    noise_score: NotRequired[Any]
+    source_metadata_complete: NotRequired[Any]
+    cleanup_flags: NotRequired[list[str]]
+    post_uids: NotRequired[list[str]]
+    post_role_summary: NotRequired[Any]
 
 
 class SourceCitation(TypedDict):

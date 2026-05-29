@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import os
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
@@ -39,6 +40,13 @@ class NormalizedSearchResult:
     thread_quality_score: Any
     chunk_index: Any
     warnings: list[str]
+    chunk_role: str = ""
+    quality_score: Any = None
+    noise_score: Any = None
+    source_metadata_complete: Any = None
+    cleanup_flags: list[str] | None = None
+    post_uids: list[str] | None = None
+    post_role_summary: Any = None
 
     def to_dict(self) -> SearchResult:
         return {
@@ -59,6 +67,13 @@ class NormalizedSearchResult:
             "thread_quality_score": self.thread_quality_score,
             "chunk_index": self.chunk_index,
             "warnings": self.warnings,
+            "chunk_role": self.chunk_role,
+            "quality_score": self.quality_score,
+            "noise_score": self.noise_score,
+            "source_metadata_complete": self.source_metadata_complete,
+            "cleanup_flags": self.cleanup_flags or [],
+            "post_uids": self.post_uids or [],
+            "post_role_summary": self.post_role_summary,
         }
 
 
@@ -74,6 +89,14 @@ def first_list_item(value: Any) -> Any:
     return None
 
 
+def list_value(value: Any) -> list[Any]:
+    if isinstance(value, list):
+        return value
+    if value in (None, ""):
+        return []
+    return [value]
+
+
 def normalize_metadata(metadata: dict[str, Any] | None) -> dict[str, Any]:
     return {key: parse_json_metadata(value) for key, value in (metadata or {}).items()}
 
@@ -86,6 +109,13 @@ def distance_to_score(distance: Any) -> float:
     if not math.isfinite(value):
         return 0.0
     return round(1.0 / (1.0 + max(value, 0.0)), 6)
+
+
+def chunk_index_from_id(chunk_id: str) -> int | str:
+    match = re.match(r"^v2:[^:]+:[^:]+:(\d+):", chunk_id)
+    if not match:
+        return ""
+    return int(match.group(1))
 
 
 def normalize_chroma_result(
@@ -140,6 +170,16 @@ def normalize_chroma_result(
     if reject_warnings:
         return None, reject_warnings
 
+    chunk_role = str(metadata.get("chunk_role") or "").strip()
+    source_kind = str(metadata.get("source_kind") or "").strip()
+    if not source_kind and chunk_role:
+        source_kind = "forum_thread_chunk"
+
+    post_uids = [str(item) for item in list_value(metadata.get("post_uids")) if str(item or "").strip()]
+    chunk_index = metadata.get("chunk_index")
+    if chunk_index in (None, ""):
+        chunk_index = chunk_index_from_id(chunk_id)
+
     result = NormalizedSearchResult(
         score=distance_to_score(distance),
         excerpt=shorten(text, excerpt_chars),
@@ -149,15 +189,22 @@ def normalize_chroma_result(
         thread_url=thread_url,
         chunk_id=chunk_id,
         post_uid=post_uid,
-        source_kind=str(metadata.get("source_kind") or "").strip(),
+        source_kind=source_kind,
         forum_id=str(metadata.get("forum_id") or "").strip(),
         legacy_forum_number=str(metadata.get("legacy_forum_number") or "").strip(),
         thread_id=str(metadata.get("thread_id") or "").strip(),
         legacy_thread_uid=str(metadata.get("legacy_thread_uid") or "").strip(),
         thread_category=str(metadata.get("thread_category") or "").strip(),
         thread_quality_score=metadata.get("thread_quality_score"),
-        chunk_index=metadata.get("chunk_index"),
+        chunk_index=chunk_index,
         warnings=warnings,
+        chunk_role=chunk_role,
+        quality_score=metadata.get("quality_score"),
+        noise_score=metadata.get("noise_score"),
+        source_metadata_complete=metadata.get("source_metadata_complete"),
+        cleanup_flags=[str(item) for item in list_value(metadata.get("cleanup_flags"))],
+        post_uids=post_uids,
+        post_role_summary=metadata.get("post_role_summary"),
     )
     return result.to_dict(), []
 
