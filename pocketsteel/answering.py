@@ -159,9 +159,23 @@ def bc_pedal_exercise_answer(question: str, sources: list[dict[str, Any]]) -> st
         if first_private_e9_profile_source(sources) is not None
         else "On standard E9"
     )
-    return (
+    intro = (
         f"{setup_prefix}, B+C is a useful E9 movement because B raises strings 3 and 6 G# to A, "
-        "and C raises string 4 E to F# plus string 5 B to C#.\n\n"
+        "and C raises string 4 E to F# plus string 5 B to C#."
+    )
+    if question_mentions_learning_plan(question):
+        return (
+            f"{intro}\n\n"
+            "20-minute practice plan\n"
+            "- 3 minutes: Learn the mechanics on strings 3-4-5. Pick the grip, then press B+C slowly enough to hear every note move.\n"
+            "- 4 minutes: Press and release B+C together cleanly, with no extra bar or volume-pedal motion.\n"
+            "- 4 minutes: Compare no-pedal and B+C sounds at the same fret so your ear learns the color.\n"
+            "- 4 minutes: Add blocking after each grip so the release sounds intentional and clean.\n"
+            "- 5 minutes: Make short two-measure fills: play one B+C phrase, leave space, then answer it with a simpler no-pedal phrase.\n\n"
+            "Metronome: start slow and move up only when pedals, bar, and blocking stay even."
+        )
+    return (
+        f"{intro}\n\n"
         "Practice plan\n"
         "- Exercise 1: On strings 3-4-5, pick cleanly, press B+C together, let the notes settle, then release together.\n"
         "- Exercise 2: At one fret, compare the no-pedal grip against the B+C grip so your ear learns the color of the change.\n"
@@ -174,6 +188,8 @@ def bc_pedal_exercise_answer(question: str, sources: list[dict[str, Any]]) -> st
 
 def question_mentions_private_profile(question: str) -> bool:
     lowered = re.sub(r"\s+", " ", (question or "").strip().lower())
+    if question_mentions_practice_or_learning_request(lowered):
+        return False
     if not re.search(r"\b(?:my|i|me)\b", lowered):
         return False
     return bool(
@@ -192,8 +208,20 @@ def question_mentions_bc_pedal_exercises(question: str) -> bool:
         or re.search(r"\bb\s+and\s+c\s+pedals?\b", lowered)
         or re.search(r"\bb\s+c\s+pedals?\b", lowered)
     )
-    asks_practice = bool(re.search(r"\b(?:exercise|exercises|practice|drill|drills|lick|licks|phrase|phrases)\b", lowered))
+    asks_practice = bool(
+        re.search(r"\b(?:plan|learn|learning|exercise|exercises|practice|drill|drills|idea|ideas|lick|licks|phrase|phrases)\b", lowered)
+    )
     return mentions_bc and asks_practice
+
+
+def question_mentions_practice_or_learning_request(question: str) -> bool:
+    lowered = re.sub(r"\s+", " ", (question or "").strip().lower())
+    return bool(re.search(r"\b(?:plan|learn|learning|exercise|exercises|practice|drill|drills|idea|ideas|lick|licks|phrase|phrases)\b", lowered))
+
+
+def question_mentions_learning_plan(question: str) -> bool:
+    lowered = re.sub(r"\s+", " ", (question or "").strip().lower())
+    return bool(re.search(r"\b(?:plan|learn|learning|help me learn|how should i practice)\b", lowered))
 
 
 def first_private_e9_profile_source(sources: list[dict[str, Any]]) -> dict[str, Any] | None:

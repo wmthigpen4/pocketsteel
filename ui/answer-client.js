@@ -73,7 +73,7 @@ const STEEL_RAG_ANSWER_UI = (() => {
   function isSectionHeading(text) {
     return /^[A-Z][A-Za-z0-9 /&-]{1,46}$/.test(text)
       && !/[.!?]$/.test(text)
-      && /\b(answer|try|step|cause|diagnostic|caveat|caution|note|why|important|source|practice|summary|direct|practical|likely|next|best|places|choose|changes|use|tuning|pedals?|levers?|copedent|string|open)\b/i.test(text);
+      && /\b(answer|try|step|cause|diagnostic|caveat|caution|note|why|important|source|practice|summary|direct|practical|likely|next|best|places|choose|changes|use|tuning|pedals?|levers?|grips?|copedent|string|open)\b/i.test(text);
   }
 
   function classifySection(title, fallbackStyle = "") {
@@ -145,21 +145,35 @@ const STEEL_RAG_ANSWER_UI = (() => {
       bodyLines: [],
       bullets: [],
       tables: [],
+      blocks: [],
       ordered: false
     };
 
     function hasContent(section) {
-      return section.bodyLines.some(Boolean) || section.bullets.length > 0 || section.tables.length > 0;
+      return section.bodyLines.some(Boolean) || section.blocks.length > 0 || section.bullets.length > 0 || section.tables.length > 0;
+    }
+
+    function flushBodyBlock() {
+      const body = compactBody(current.bodyLines);
+      if (body) {
+        current.blocks.push({ type: "body", body });
+      }
+      current.bodyLines = [];
     }
 
     function flush() {
       if (!hasContent(current)) return;
+      flushBodyBlock();
       sections.push({
         title: current.title,
         style: current.style,
-        body: compactBody(current.bodyLines),
+        body: current.blocks
+          .filter((block) => block.type === "body")
+          .map((block) => block.body)
+          .join("\n\n"),
         bullets: current.bullets,
         tables: current.tables,
+        blocks: current.blocks,
         ordered: current.ordered
       });
     }
@@ -172,6 +186,7 @@ const STEEL_RAG_ANSWER_UI = (() => {
         bodyLines: [],
         bullets: [],
         tables: [],
+        blocks: [],
         ordered: false
       };
     }
@@ -179,8 +194,15 @@ const STEEL_RAG_ANSWER_UI = (() => {
     function addContent(line) {
       const bullet = parseBulletLine(line);
       if (bullet) {
+        flushBodyBlock();
         current.bullets.push(bullet.text);
         current.ordered = current.ordered || bullet.ordered;
+        const lastBlock = current.blocks.at(-1);
+        if (lastBlock?.type === "bullets" && lastBlock.ordered === bullet.ordered) {
+          lastBlock.items.push(bullet.text);
+        } else {
+          current.blocks.push({ type: "bullets", ordered: bullet.ordered, items: [bullet.text] });
+        }
         return;
       }
       current.bodyLines.push(line);
@@ -199,7 +221,9 @@ const STEEL_RAG_ANSWER_UI = (() => {
 
       const parsedTable = parseMarkdownTable(lines, index);
       if (parsedTable) {
+        flushBodyBlock();
         current.tables.push(parsedTable.table);
+        current.blocks.push({ type: "table", table: parsedTable.table });
         index = parsedTable.nextIndex - 1;
         continue;
       }
@@ -226,7 +250,7 @@ const STEEL_RAG_ANSWER_UI = (() => {
     flush();
 
     if (!sections.length) {
-      return [{ title: fallbackTitle || "Answer", style: fallbackStyle || "lead", body: "", bullets: [], tables: [] }];
+      return [{ title: fallbackTitle || "Answer", style: fallbackStyle || "lead", body: "", bullets: [], tables: [], blocks: [] }];
     }
 
     return sections;
@@ -245,6 +269,12 @@ const STEEL_RAG_ANSWER_UI = (() => {
         const lastSection = bodySections.at(-1);
         if (lastSection && !lastSection.bullets?.length) {
           lastSection.bullets = section.bullets.map((item) => String(item).trim()).filter(Boolean);
+          if (lastSection.bullets.length) {
+            lastSection.blocks = [
+              ...(lastSection.blocks || []),
+              { type: "bullets", ordered: Boolean(section.ordered), items: lastSection.bullets }
+            ];
+          }
         }
       }
       return bodySections;

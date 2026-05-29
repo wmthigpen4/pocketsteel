@@ -3038,27 +3038,44 @@
       return wrap;
     }
 
-    function appendAnswerSectionContent(container, section) {
-      if (section.bullets?.length) {
-        const list = document.createElement(section.ordered ? "ol" : "ul");
+    function appendAnswerParagraph(container, text) {
+      if (!text) return;
+      const body = document.createElement("p");
+      body.textContent = text;
+      container.appendChild(body);
+    }
+
+    function appendAnswerBulletList(container, items, ordered = false) {
+      if (!items?.length) return;
+      const list = document.createElement(ordered ? "ol" : "ul");
         list.className = "try-list";
-        section.bullets.forEach((item) => {
+      items.forEach((item) => {
           const li = document.createElement("li");
           li.textContent = item;
           list.appendChild(li);
         });
         container.appendChild(list);
+    }
+
+    function appendAnswerSectionContent(container, section) {
+      if (section.blocks?.length) {
+        section.blocks.forEach((block) => {
+          if (block.type === "body") {
+            appendAnswerParagraph(container, block.body);
+          } else if (block.type === "bullets") {
+            appendAnswerBulletList(container, block.items, block.ordered);
+          } else if (block.type === "table") {
+            container.appendChild(renderAnswerTable(block.table));
+          }
+        });
+        return;
       }
 
+      appendAnswerParagraph(container, section.body);
       (section.tables || []).forEach((table) => {
         container.appendChild(renderAnswerTable(table));
       });
-
-      if (section.body) {
-        const body = document.createElement("p");
-        body.textContent = section.body;
-        container.appendChild(body);
-      }
+      appendAnswerBulletList(container, section.bullets, section.ordered);
     }
 
     function renderResponse(response) {

@@ -337,7 +337,13 @@ const formatted = answerUi.normalizeAnswerResponse({
     "| Lever | String | Change |",
     "| --- | --- | --- |",
     "| LKL | 4 | E to F |",
-    "| LKR | 4 | E to D# |"
+    "| LKR | 4 | E to D# |",
+    "",
+    "Common grips",
+    "- 3-4-5",
+    "- 4-5-6",
+    "- 5-6-8",
+    "- 6-8-10"
   ].join("\n"),
   sources: []
 });
@@ -345,15 +351,23 @@ const formatted = answerUi.normalizeAnswerResponse({
 const openTuning = formatted.sections.find((section) => section.title === "Open tuning");
 const pedals = formatted.sections.find((section) => section.title === "Pedals");
 const levers = formatted.sections.find((section) => section.title === "Levers");
+const commonGrips = formatted.sections.find((section) => section.title === "Common grips");
+const sectionOrder = formatted.sections.map((section) => section.title);
 
 assert.equal(formatted.sections[0].title, "Answer");
 assert.equal(formatted.sections[0].body, "Your saved E9 copedent is organized below.");
+assert.equal(JSON.stringify(sectionOrder), JSON.stringify(["Answer", "Open tuning", "Pedals", "Levers", "Common grips"]));
 assert.equal(JSON.stringify(openTuning.tables[0].headers), JSON.stringify(["String", "Note"]));
 assert.equal(JSON.stringify(openTuning.tables[0].rows), JSON.stringify([["1", "F#"], ["2", "D#"], ["3", "G#"]]));
 assert.equal(JSON.stringify(pedals.tables[0].headers), JSON.stringify(["Pedal", "String", "Change"]));
 assert.equal(JSON.stringify(pedals.tables[0].rows), JSON.stringify([["A", "5", "B to C#"], ["B", "3", "G# to A"]]));
 assert.equal(JSON.stringify(levers.tables[0].headers), JSON.stringify(["Lever", "String", "Change"]));
 assert.equal(JSON.stringify(levers.tables[0].rows), JSON.stringify([["LKL", "4", "E to F"], ["LKR", "4", "E to D#"]]));
+assert.equal(JSON.stringify(levers.bullets), JSON.stringify([]));
+assert.equal(JSON.stringify(commonGrips.bullets), JSON.stringify(["3-4-5", "4-5-6", "5-6-8", "6-8-10"]));
+assert.equal(levers.blocks[0].type, "table");
+assert.equal(commonGrips.blocks[0].type, "bullets");
+assert.equal(JSON.stringify(commonGrips.blocks[0].items), JSON.stringify(["3-4-5", "4-5-6", "5-6-8", "6-8-10"]));
 assert.equal(JSON.stringify(formatted.sections).includes("| --- |"), false);
 
 const sectionPayload = answerUi.normalizeAnswerResponse({
@@ -724,7 +738,8 @@ def test_answer_ui_styles_sections_and_bullets_as_readable_answer_content() -> N
 
     assert "sectionEl.classList.add(`is-${section.style}`);" in html
     assert 'title.className = "answer-section-title";' in html
-    assert 'const list = document.createElement(section.ordered ? "ol" : "ul");' in html
+    assert 'const list = document.createElement(ordered ? "ol" : "ul");' in html
+    assert "section.blocks?.length" in html
     assert 'list.className = "try-list";' in html
     assert ".answer-section.is-bullets" in html
     assert re.search(r"\.try-list\s*\{[^}]*font-size:\s*18px;", html, re.S)

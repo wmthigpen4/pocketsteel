@@ -203,20 +203,20 @@ class RetrievalApi:
             warnings.extend(sanitized.warnings)
             strong_sources = sanitized.sources
             contract_intent = infer_contract_intent(answer_request.question, answer_request.mode)
-            profile_answer = private_profile_answer(answer_request.question, strong_sources)
-            if profile_answer is not None:
-                answer = profile_answer
-                contract_intent = "copedent_fretboard"
+            exercise_answer = bc_pedal_exercise_answer(answer_request.question, strong_sources)
+            if exercise_answer is not None:
+                answer = exercise_answer
+                contract_intent = "practice_plan"
                 sources = concise_source_cards(strong_sources)
             else:
-                exercise_answer = bc_pedal_exercise_answer(answer_request.question, strong_sources)
-                if exercise_answer is not None:
-                    answer = exercise_answer
-                    contract_intent = "practice_plan"
+                profile_answer = private_profile_answer(answer_request.question, strong_sources)
+                if profile_answer is not None:
+                    answer = profile_answer
+                    contract_intent = "copedent_fretboard"
                     sources = concise_source_cards(strong_sources)
                 else:
                     curated_answer = lookup_curated_answer(answer_request.question, strong_sources)
-                if exercise_answer is not None:
+                if profile_answer is not None:
                     pass
                 elif curated_answer is not None:
                     answer = curated_answer.answer

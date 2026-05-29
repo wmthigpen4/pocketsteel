@@ -418,6 +418,55 @@ def test_bc_pedal_exercise_answer_uses_saved_profile_without_forum_question_text
     assert "Can some of you possibly post tab" not in answer
 
 
+def test_bc_pedal_learning_plan_does_not_return_full_private_copedent_profile() -> None:
+    status, payload = call_answer(
+        question="Give me a plan for learning the B&C pedals.",
+        search_index=FakeSearchIndex(sgf_copedent_chatter_response()),
+        private_search_index=FakeSearchIndex(private_response()),
+        config=retrieval_config("hybrid_private_first", private_enabled=True),
+        access_role="beta_user",
+    )
+
+    assert status == "200 OK"
+    answer = payload["answer"]
+    assert "On your saved 10-string E9 setup" in answer
+    assert "B raises strings 3 and 6 G# to A" in answer
+    assert "C raises string 4 E to F#" in answer
+    assert "20-minute practice plan" in answer
+    assert "3 minutes" in answer
+    assert "4 minutes" in answer
+    assert "5 minutes" in answer
+    assert "Day 1" not in answer
+    assert "Day 2" not in answer
+    assert "Metronome" in answer
+    assert "| String | Note |" not in answer
+    assert "Open tuning" not in answer
+    assert "Your private profile describes" not in answer
+    assert "Bobs copedent" not in answer
+
+
+def test_private_profile_summary_still_answers_explicit_copedent_question() -> None:
+    status, payload = call_answer(
+        question="What is my copedent?",
+        search_index=FakeSearchIndex(sgf_copedent_chatter_response()),
+        private_search_index=FakeSearchIndex(private_response()),
+        config=retrieval_config("hybrid_private_first", private_enabled=True),
+        access_role="beta_user",
+    )
+
+    assert status == "200 OK"
+    answer = payload["answer"]
+    assert "Your private profile describes a 10-string E9 setup." in answer
+    assert "Open tuning" in answer
+    assert "| String | Note |" in answer
+    assert "Pedals" in answer
+    assert "| Pedal | Change |" in answer
+    assert "Levers" in answer
+    assert "| Lever | Change |" in answer
+    assert "Common grips" in answer
+    assert "3-4-5" in answer
+
+
 def test_private_answer_false_quote_permission_blanks_source_excerpt() -> None:
     private_index = FakeSearchIndex(private_response(answer_quote_allowed="false"))
 
