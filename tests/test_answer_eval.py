@@ -107,7 +107,14 @@ def test_eval_flags_directness_and_intent_mismatches() -> None:
 
     assert not evaluate_answer(
         "Where can I buy a slide bar?",
-        "Buy from steel-guitar vendors, maker websites, dealers, or the SGF classifieds/used market; check diameter, length, weight, and material before ordering.",
+        (
+            "Best places to check\n\n"
+            "- Steel Guitar Shopper — steel-guitar accessories dealer.\n"
+            "- BJS Steel Guitar Bars — dedicated steel bar maker.\n\n"
+            "What to choose\n\n"
+            "- Check diameter, length, weight, and material before ordering.\n\n"
+            "Check current availability before assuming anything is in stock."
+        ),
         [],
         1,
         200,
@@ -128,7 +135,7 @@ def test_eval_flags_directness_and_intent_mismatches() -> None:
 
     assert not evaluate_answer(
         "Is Mullen or MSA a better guitar? Why?",
-        "No universal winner: Mullen and MSA depend on fit, condition, tone, mechanics, budget, support, and copedent.",
+        "No universal winner: Mullen and MSA depend on fit, condition, tone, mechanics, support, weight, budget, and copedent.",
         [],
         1,
         200,

@@ -19,14 +19,17 @@ COPYRIGHT_AWARE_SONG_HELP_POLICY = (
 class AnswerContract:
     intent: str
     required_answer_elements: tuple[tuple[str, str], ...] = ()
+    required_section_labels: tuple[str, ...] = ()
     forbidden_answer_patterns: tuple[tuple[str, str], ...] = ()
     default_section_labels: tuple[str, ...] = ()
+    requires_direct_first_sentence: bool = False
+    direct_first_sentence_pattern: str = ""
     curated_answer_may_lead: bool = True
     rag_excerpts_may_appear_in_answer_body: bool = False
     source_context_in_source_cards_only: bool = True
     fallback_answer: str = (
-        "I found related source cards, but the retrieved text is too noisy to use safely in the answer body. "
-        "Ask a more specific steel-guitar question and I can give a cleaner answer."
+        "I don’t have enough source-backed evidence in this corpus to answer that confidently. "
+        "Try adding the song, key, tuning, brand, or exact part you mean so I can narrow the source match."
     )
 
 
@@ -42,6 +45,7 @@ class ContractValidation:
 
 
 COMMON_FORBIDDEN: tuple[tuple[str, str], ...] = (
+    ("internal source-backed fallback language", r"\bThe cleanest source-backed answer\b|\bsource cards as supporting evidence\b|\bUseful distilled points\b|\bUseful source-backed points\b"),
     ("raw Top boilerplate", r"^\s*Top\b|\sTop\s"),
     ("raw link-share fragment", r"\bsp=sharing\b"),
     ("raw email address", r"\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b"),
@@ -102,6 +106,7 @@ CONTRACTS: dict[str, AnswerContract] = {
             ("answer opens as forum question only", r"^\s*Does\s+the\b"),
             ("raw forum question as answer", r"\bDoes the amp buzz with nothing connected\b"),
         ),
+        required_section_labels=("Likely causes", "Diagnostic path", "Safety"),
         default_section_labels=("diagnostic path", "safety"),
         fallback_answer=(
             "Start by isolating the buzz: turn the amp on with nothing plugged in, then test guitar to amp direct, "
@@ -147,10 +152,16 @@ CONTRACTS: dict[str, AnswerContract] = {
     "vendor_buying_guidance": AnswerContract(
         intent="vendor_buying_guidance",
         required_answer_elements=(
-            ("places to buy", r"\b(?:dealer|vendor|retailer|shop|store|classifieds?|used market|maker|manufacturer|bar makers?)\b"),
+            ("curated sources or buying channels", r"\b(?:Steel Guitar Shopper|BJS Steel Guitar Bars|Jim Dunlop|dealer|vendor|retailer|shop|store|classifieds?|used market|maker|manufacturer|bar makers?)\b"),
             ("specs to check", r"\b(?:diameter|length|weight|material|thread|connector|compatib|size|gauge)\b"),
+            ("current availability caveat", r"\b(?:check current availability|inventory|in stock)\b"),
         ),
-        forbidden_answer_patterns=COMMON_FORBIDDEN + (("generic product-value template", r"\bpositive owner/source impression\b|\bthat product\b"),),
+        required_section_labels=("Best places to check", "What to choose"),
+        forbidden_answer_patterns=COMMON_FORBIDDEN
+        + (
+            ("generic product-value template", r"\bpositive owner/source impression\b|\bthat product\b"),
+            ("random old forum vendor link", r"https?://(?:www\.)?steelguitarforum\.com/Forum\d+/HTML/"),
+        ),
         default_section_labels=("what to check",),
         fallback_answer=(
             "Start with steel-guitar specialty dealers, reputable makers, music retailers, and the SGF classifieds or used market. "
@@ -184,9 +195,17 @@ CONTRACTS: dict[str, AnswerContract] = {
         required_answer_elements=(
             ("both brands", r"\b(?:Mullen|MSA|Emmons|Sho-Bud|ZumSteel|Carter|GFI|Sierra)\b.*\b(?:Mullen|MSA|Emmons|Sho-Bud|ZumSteel|Carter|GFI|Sierra)\b"),
             ("no universal winner", r"\b(?:no universal winner|depends|fit|condition|personal|specific guitars)\b"),
-            ("comparison caveats", r"\b(?:condition|setup|copedent|support|mechanics|budget|tone|feel)\b"),
+            ("mechanics comparison", r"\b(?:mechanics|mechanical|push-pull|all-pull|changer)\b"),
+            ("support or parts comparison", r"\b(?:support|parts|builder|service)\b"),
+            ("tone comparison", r"\b(?:tone|sound|sustain|clarity|warm)\b"),
+            ("weight or ergonomics comparison", r"\b(?:weight|ergonomic|cabinet|case|carry)\b"),
+            ("condition or setup caveat", r"\b(?:condition|setup|copedent|fit|budget)\b"),
         ),
-        forbidden_answer_patterns=COMMON_FORBIDDEN + (("generic product-value template", r"\bpositive owner/source impression\b|\bthat product\b"),),
+        forbidden_answer_patterns=COMMON_FORBIDDEN
+        + (
+            ("generic product-value template", r"\bpositive owner/source impression\b|\bthat product\b"),
+            ("vendor links in comparison", r"https?://"),
+        ),
         default_section_labels=("comparison",),
     ),
     "player_bio": AnswerContract(
@@ -197,6 +216,8 @@ CONTRACTS: dict[str, AnswerContract] = {
             ("style or contribution", r"\b(?:style|playing|technique|contribution|builder|designer|recorded work|session)\b"),
         ),
         forbidden_answer_patterns=COMMON_FORBIDDEN + (("ranking template", r"\bRankings are subjective\b|\bA safe all-time starting list\b"),),
+        requires_direct_first_sentence=True,
+        direct_first_sentence_pattern=r"\b(?:is|was)\b.*\b(?:steel guitarist|pedal steel guitarist|player)\b",
     ),
     "player_brand_usage": AnswerContract(
         intent="player_brand_usage",
@@ -236,10 +257,12 @@ CONTRACTS: dict[str, AnswerContract] = {
             "rehearse intros/endings, and practice with slow worship-style backing tracks without inventing specific links."
         ),
     ),
-    "song_learning_or_tab_request": AnswerContract(
-        intent="song_learning_or_tab_request",
+    "song_learning": AnswerContract(
+        intent="song_learning",
         required_answer_elements=(
-            ("song teaching or exercise", r"\b(?:approach|style|chord|position|practice|public-domain|public domain|original|mini-tab|exercise|full note-for-note|full lyrics)\b"),
+            ("song, key, tuning, or user-provided path", r"\b(?:song|key|tuning|user-provided|provide the notes|short excerpt|chart)\b"),
+            ("public-domain or original exercise path", r"\b(?:public-domain|public domain|original|mini-tab|exercise|Amazing Grace)\b"),
+            ("copyright-aware tab or lyrics boundary", r"\b(?:full note-for-note|full lyrics|copyrighted tab|copyrighted lyrics|protected melody)\b"),
         ),
         forbidden_answer_patterns=COMMON_FORBIDDEN
         + (
@@ -250,6 +273,35 @@ CONTRACTS: dict[str, AnswerContract] = {
         fallback_answer=(
             COPYRIGHT_AWARE_SONG_HELP_POLICY
         ),
+    ),
+    "current_roster": AnswerContract(
+        intent="current_roster",
+        required_answer_elements=(
+            ("current source limitation", r"\b(?:current|reliable|source-backed|corpus|do not have)\b"),
+            ("official credits next step", r"\b(?:official tour credits|album/session credits|official.*credits|current band listings)\b"),
+        ),
+        forbidden_answer_patterns=COMMON_FORBIDDEN + (("stale forum certainty", r"\b(?:definitely|currently plays for)\b"),),
+        requires_direct_first_sentence=True,
+        direct_first_sentence_pattern=r"\b(?:do not have|don't have|cannot verify|can't verify|current)\b",
+    ),
+    "sensitive_identity": AnswerContract(
+        intent="sensitive_identity",
+        required_answer_elements=(
+            ("no private identity speculation", r"\b(?:not appropriate to speculate|do not speculate|would not be appropriate)\b"),
+            ("respectful broad answer", r"\b(?:many backgrounds|reliable source-backed|publicly self-identified)\b"),
+        ),
+        forbidden_answer_patterns=COMMON_FORBIDDEN + (("identity roster", r"\b(?:list of gay|gay players include)\b"),),
+        requires_direct_first_sentence=True,
+    ),
+    "fallback_unknown": AnswerContract(
+        intent="fallback_unknown",
+        required_answer_elements=(
+            ("source-backed uncertainty", r"\b(?:don’t have enough source-backed evidence|don't have enough source-backed evidence|not enough source-backed evidence)\b"),
+            ("useful next step", r"\b(?:try adding|check|provide|narrow|exact)\b"),
+        ),
+        forbidden_answer_patterns=COMMON_FORBIDDEN,
+        requires_direct_first_sentence=True,
+        direct_first_sentence_pattern=r"\b(?:don’t have enough source-backed evidence|don't have enough source-backed evidence|not enough source-backed evidence)\b",
     ),
     "yes_no_source_check": AnswerContract(
         intent="yes_no_source_check",
@@ -275,8 +327,11 @@ INTENT_ALIASES = {
     "gear_troubleshooting": "diagnostic_troubleshooting",
     "gear_setup": "diagnostic_troubleshooting",
     "touch_tone": "tone_touch",
-    "tab_copyright": "song_learning_or_tab_request",
-    "public_domain_tab_or_exercise": "song_learning_or_tab_request",
+    "tab_copyright": "song_learning",
+    "public_domain_tab_or_exercise": "song_learning",
+    "song_learning_or_tab_request": "song_learning",
+    "current_roster_lookup": "current_roster",
+    "sensitive_identity_question": "sensitive_identity",
     "brand_player_lookup": "player_brand_usage",
     "gear_comparison": "brand_comparison",
     "gear_practical": "equipment_recommendation",
@@ -284,6 +339,7 @@ INTENT_ALIASES = {
     "technique_setup": "equipment_recommendation",
     "product_definition": "product_value",
     "curated_fact_source_check": "yes_no_source_check",
+    "unknown": "fallback_unknown",
     "safety_boundary": "general_forum_wisdom",
 }
 
@@ -300,10 +356,14 @@ def contract_for_intent(intent: str | None) -> AnswerContract:
 
 def infer_contract_intent(question: str, mode: str = "ask") -> str:
     q = re.sub(r"\s+", " ", question or "").strip().lower()
+    if re.search(r"\b(?:gay people|gay players|lgbtq|sexual orientation)\b", q):
+        return "sensitive_identity"
+    if re.search(r"\bwho\s+plays\s+for\s+[a-z0-9'. -]+\??$", q):
+        return "current_roster"
     if "church" in q and ("steel" in q or "play" in q):
         return "performance_context_guidance"
     if _mentions_song_learning_or_tab(q):
-        return "song_learning_or_tab_request"
+        return "song_learning"
     if _mentions_diagnostic_troubleshooting(q):
         return "diagnostic_troubleshooting"
     if _mentions_tone_touch(q):
@@ -329,6 +389,8 @@ def infer_contract_intent(question: str, mode: str = "ask") -> str:
         return "subjective_ranking"
     if re.search(r"\b(?:a\+b|b\+c|a\+f|pedal|lever|fret|chord|e9|copedent|string)\b", q) or mode == "copedent":
         return "copedent_fretboard"
+    if re.search(r"\b(?:triad|2m|ii minor|5\^7|string gauge|gauge)\b", q):
+        return "copedent_fretboard"
     if re.search(r"\b(?:oil|lubricate|changer|wd-40|naphtha|lighter fluid)\b", q):
         return "maintenance_safety"
     if re.search(r"\b(?:pedal rod|pedal rods|replacement|broke|broken)\b", q):
@@ -353,6 +415,11 @@ def validate_answer_against_contract(answer: str, intent: str | None) -> Contrac
     for reason, pattern in contract.required_answer_elements:
         if not re.search(pattern, answer, re.I):
             violations.append(f"missing {reason}")
+    for label in contract.required_section_labels:
+        if not _has_section_label(answer, label):
+            violations.append(f"missing section {label}")
+    if contract.requires_direct_first_sentence and _violates_direct_first_sentence(answer, contract):
+        violations.append("missing direct first sentence")
     return ContractValidation(intent=contract.intent, answer=answer, violations=tuple(violations))
 
 
@@ -393,6 +460,35 @@ def _contract_pattern_matches(reason: str, pattern: str, text: str) -> bool:
     return bool(re.search(pattern, text, flags))
 
 
+def _has_section_label(answer: str, label: str) -> bool:
+    escaped = re.escape(label)
+    return bool(re.search(rf"(?im)^\s*{escaped}\s*(?::\s*(?:\S.*)?)?$", answer))
+
+
+def _first_sentence(answer: str) -> str:
+    compact = re.sub(r"\s+", " ", answer or "").strip()
+    if not compact:
+        return ""
+    match = re.search(r"(.+?[.!?])(?:\s|$)", compact)
+    return (match.group(1) if match else compact).strip()
+
+
+def _violates_direct_first_sentence(answer: str, contract: AnswerContract) -> bool:
+    first = _first_sentence(answer)
+    if not first:
+        return True
+    if contract.direct_first_sentence_pattern and not re.search(contract.direct_first_sentence_pattern, first, re.I):
+        return True
+    return bool(
+        re.search(
+            r"^(?:the retrieved sources|source cards|useful distilled points|useful source-backed points|source context|what multiple sources support|top\b)",
+            first,
+            re.I,
+        )
+        or re.search(r"\b(?:Does anyone know|Has anyone compared|I am looking for)\b", first, re.I)
+    )
+
+
 def _mentions_two_brands(question: str) -> bool:
     brands = re.findall(r"\b(mullen|msa|emmons|sho-bud|shobud|zumsteel|carter|gfi|sierra)\b", question, re.I)
     return len({brand.lower() for brand in brands}) >= 2 and bool(
@@ -404,6 +500,7 @@ def _mentions_song_learning_or_tab(question: str) -> bool:
     return bool(
         re.search(r"\b(?:tab|tablature|lyrics?)\b", question)
         or re.search(r"\b(?:approach playing|explain the style of|chord progression|original e9 lick|song arrangement)\b", question)
+        or re.search(r"\b(?:play a song|teach me how to play anything specific)\b", question)
         or re.search(r"\b(?:panhandle rag|together again|amazing grace|slow country ballad)\b", question)
     )
 

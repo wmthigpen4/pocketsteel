@@ -15,7 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from pocketsteel.answer_contracts import validate_answer_against_contract
+from pocketsteel.answer_contracts import normalize_intent, validate_answer_against_contract
 
 
 DEFAULT_BASE_URL = "http://127.0.0.1:8770"
@@ -35,6 +35,9 @@ REPORT_GROUPS = [
 ]
 
 FORMAT_PATTERNS = [
+    ("internal fallback language: cleanest source-backed answer", re.compile(r"\bThe cleanest source-backed answer\b", re.I)),
+    ("internal fallback language: source cards as supporting evidence", re.compile(r"\bsource cards as supporting evidence\b", re.I)),
+    ("internal fallback language: Useful distilled points", re.compile(r"\bUseful distilled points\b", re.I)),
     ("banned product template: retrieved sources discuss that product", re.compile(r"\bThe retrieved sources discuss that product\b", re.I)),
     (
         "banned product template: use source cards before buying",
@@ -288,7 +291,7 @@ def infer_expected_intent(question: str, explicit_intent: str = "") -> str:
     if PERSON_BIO_QUESTION.search(question):
         return "player_bio"
     if SONG_LEARNING_QUESTION.search(question):
-        return "song_learning_or_tab_request"
+        return "song_learning"
     if DIAGNOSTIC_TROUBLESHOOTING_QUESTION.search(question):
         return "diagnostic_troubleshooting"
     if TONE_TOUCH_QUESTION.search(question):
@@ -395,7 +398,7 @@ def add_directness_failures(question: str, answer: str, expected_intent: str, fa
                 "likely_directness_failure",
                 "tone/touch answer missing concrete right-hand/volume-pedal/blocking/bar/EQ practice actions",
             )
-    elif expected_intent == "song_learning_or_tab_request":
+    elif normalize_intent(expected_intent) == "song_learning":
         if not has_song_learning_guidance(answer):
             add_failure(
                 failures,
@@ -415,7 +418,7 @@ def evaluate_answer(
 ) -> list[Failure]:
     failures: list[Failure] = []
     explicit_contract_intent = expected_contract or expected_intent
-    expected_intent = infer_expected_intent(question, expected_intent)
+    expected_intent = normalize_intent(infer_expected_intent(question, expected_intent))
 
     if status_code != 200:
         add_failure(failures, "source weakness / no-source", f"HTTP status {status_code}")
