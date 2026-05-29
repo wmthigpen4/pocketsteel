@@ -12,6 +12,7 @@ from typing import Any, Literal, Protocol, cast
 
 from pocketsteel.api_contract import AnswerMode, SourceCitation
 
+from pocketsteel.curated_source_registry import slide_bar_vendor_bullets
 from pocketsteel.text import shorten
 
 
@@ -1027,6 +1028,10 @@ def is_curated_reference_line(line: str) -> bool:
             "texassteelguitar.org",
             "steelerschoice.com",
             "emmonsguitar.co",
+            "steelguitarshopper.com",
+            "bjsbars.com",
+            "jimdunlop.com",
+            "bb.steelguitarforum.com/viewforum.php?f=9",
         )
     )
 
@@ -1552,6 +1557,19 @@ class DeterministicAnswerProvider:
         if "pedal rod" in lowered:
             return self._replacement_parts_answer(request, sources, evidence)
         item = "slide bar" if "slide bar" in lowered or "steel bar" in lowered or "tone bar" in lowered else "steel-guitar item"
+        if item == "slide bar":
+            vendor_lines = "\n".join(slide_bar_vendor_bullets())
+            return (
+                "Best places to check\n\n"
+                f"{vendor_lines}\n\n"
+                "What to choose\n\n"
+                "- Diameter\n"
+                "- Length\n"
+                "- Weight\n"
+                "- Material\n"
+                "- Pedal steel round tone bar vs. lap/dobro slide style\n\n"
+                "Check current availability before assuming anything is in stock."
+            )
         return (
             f"To buy a {item}, start with steel-guitar specialty dealers, bar makers, reputable music retailers, and the SGF classifieds or used market.\n\n"
             "What to check before ordering:\n"

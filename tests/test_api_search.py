@@ -1772,11 +1772,28 @@ def test_slide_bar_buying_routes_to_vendor_guidance() -> None:
     )
 
     assert_clean_answer_body(payload)
-    assert "steel-guitar specialty dealers" in payload["answer"]
-    assert "bar makers" in payload["answer"]
-    assert "SGF classifieds" in payload["answer"]
-    assert "diameter, length, weight, and material" in payload["answer"]
+    assert "Best places to check" in payload["answer"]
+    assert "What to choose" in payload["answer"]
+    assert "Practical answer" not in payload["answer"]
+    assert payload["answer"].count("What to choose") == 1
+    assert "Steel Guitar Shopper" in payload["answer"]
+    assert "https://steelguitarshopper.com/accessories/" in payload["answer"]
+    assert "BJS Steel Guitar Bars" in payload["answer"]
+    assert "https://www.bjsbars.com/" in payload["answer"]
+    assert "Jim Dunlop Tonebars" in payload["answer"]
+    assert "https://www.jimdunlop.com/products/accessories/slides-tonebars/tonebars/" in payload["answer"]
+    assert "Steel Guitar Forum Classifieds" in payload["answer"]
+    assert "https://bb.steelguitarforum.com/viewforum.php?f=9" in payload["answer"]
+    assert "Diameter" in payload["answer"]
+    assert "Length" in payload["answer"]
+    assert "Weight" in payload["answer"]
+    assert "Material" in payload["answer"]
+    assert "Pedal steel round tone bar vs. lap/dobro slide style" in payload["answer"]
+    assert "check current availability" in payload["answer"].lower()
     assert "positive owner/source impression" not in payload["answer"]
+    assert "https://steelguitarforum.com/Forum5/HTML/006841.html" not in payload["answer"]
+    assert "/api/answer" not in payload["answer"]
+    assert "@" not in payload["answer"]
     assert payload["sources"]
 
 
@@ -1804,6 +1821,9 @@ def test_mullen_msa_brand_comparison_is_direct() -> None:
     assert "condition" in payload["answer"].lower()
     assert "copedent" in payload["answer"].lower()
     assert "positive owner/source impression" not in payload["answer"]
+    assert "Steel Guitar Shopper" not in payload["answer"]
+    assert "BJS Steel Guitar Bars" not in payload["answer"]
+    assert "Jim Dunlop Tonebars" not in payload["answer"]
     assert payload["sources"]
 
 
@@ -2244,9 +2264,10 @@ def test_source_backed_synthesis_smoke_questions_do_not_copy_raw_fragments() -> 
         (
             "Where can I buy a slide bar?",
             [
-                "steel-guitar specialty dealers",
-                "bar makers",
-                "diameter, length, weight, and material",
+                "Steel Guitar Shopper",
+                "BJS Steel Guitar Bars",
+                "Jim Dunlop Tonebars",
+                "Steel Guitar Forum Classifieds",
             ],
             ["positive owner/source impression"],
         ),

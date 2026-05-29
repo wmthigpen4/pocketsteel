@@ -2,6 +2,44 @@
   "version": 1,
   "status": "scaffolding_only",
   "notes": "Source registry placeholder. Do not require this during active scraping or clean-corpus generation yet.",
+  "curated_vendor_sources": [
+    {
+      "name": "Steel Guitar Shopper",
+      "url": "https://steelguitarshopper.com/accessories/",
+      "category": "steel_guitar_accessories",
+      "short_description": "Steel guitar accessories including tone bars, picks, strings, and parts.",
+      "caveat": "Check current availability before recommending a specific item or claiming inventory.",
+      "last_reviewed": "2026-05-28",
+      "source_type": "dealer"
+    },
+    {
+      "name": "BJS Steel Guitar Bars",
+      "url": "https://www.bjsbars.com/",
+      "category": "tone_bars",
+      "short_description": "Dedicated steel guitar bar maker.",
+      "caveat": "Check current availability before recommending as in stock.",
+      "last_reviewed": "2026-05-28",
+      "source_type": "official"
+    },
+    {
+      "name": "Jim Dunlop Tonebars",
+      "url": "https://www.jimdunlop.com/products/accessories/slides-tonebars/tonebars/",
+      "category": "tone_bars",
+      "short_description": "Mainstream tonebar options in multiple sizes.",
+      "caveat": "Confirm the exact model, size, and retailer inventory; pedal steel players usually want a round tone bar, not a dobro/lap-style slide by mistake.",
+      "last_reviewed": "2026-05-28",
+      "source_type": "official/manufacturer"
+    },
+    {
+      "name": "Steel Guitar Forum Classifieds / Forum Store",
+      "url": "https://bb.steelguitarforum.com/viewforum.php?f=9",
+      "category": "used_market",
+      "short_description": "Used/classifieds path for member listings and forum-market leads.",
+      "caveat": "Classifieds may require forum membership; verify seller reputation, current listing status, dimensions, and payment/shipping terms.",
+      "last_reviewed": "2026-05-28",
+      "source_type": "forum/used_market"
+    }
+  ],
   "sources": [
     {
       "source_registry_id": "sgf",

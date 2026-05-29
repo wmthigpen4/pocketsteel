@@ -6,6 +6,8 @@ import re
 from dataclasses import dataclass
 from typing import Literal
 
+from pocketsteel.curated_source_registry import slide_bar_vendor_bullets
+
 
 CuratedConfidence = Literal["curated_high", "curated_medium", "rag_only"]
 
@@ -51,6 +53,23 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
                     "- hook/connector style\n"
                     "- pedal-rack and bellcrank hardware\n\n"
                     "Used SGF classifieds can help, but matching the hardware matters more than finding any random rod."
+                ),
+            )
+        if item == "slide bar":
+            vendor_lines = "\n".join(slide_bar_vendor_bullets())
+            return CuratedAnswer(
+                intent="vendor_buying_guidance",
+                confidence="curated_medium",
+                answer=(
+                    "Best places to check\n\n"
+                    f"{vendor_lines}\n\n"
+                    "What to choose\n\n"
+                    "- Diameter\n"
+                    "- Length\n"
+                    "- Weight\n"
+                    "- Material\n"
+                    "- Pedal steel round tone bar vs. lap/dobro slide style\n\n"
+                    "Check current availability before assuming anything is in stock."
                 ),
             )
         return CuratedAnswer(
