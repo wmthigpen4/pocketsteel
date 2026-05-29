@@ -98,3 +98,6 @@ source-inbox/**/*.docx
 source-inbox/**/*.md
 !source-inbox/**/README.md
 !source-inbox/**/.gitkeep
+
+# Private normalized/generated corpus outputs
+corpus-private/

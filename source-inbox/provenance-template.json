@@ -1,0 +1,20 @@
+{
+  "sources": [
+    {
+      "source_id": "example_private_lesson_001",
+      "path": "source-inbox/private-lessons/example.vtt",
+      "title": "Example Private Lesson Transcript",
+      "author_or_creator": "Unknown",
+      "source_type": "lesson_transcript",
+      "source_system": "private_lesson_transcript",
+      "visibility": "private",
+      "redistribution_allowed": "unknown",
+      "embedding_allowed": "review",
+      "answer_quote_allowed": "limited",
+      "source_url": null,
+      "notes": "Template only. Copy to source-inbox/provenance.json and review before normalization.",
+      "reviewed_at": null,
+      "reviewed_by": null
+    }
+  ]
+}
