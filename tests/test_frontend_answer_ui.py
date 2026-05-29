@@ -301,6 +301,73 @@ assert.equal(JSON.stringify(afFormatted.sections).includes("Practical answer"), 
     assert result.returncode == 0, result.stderr
 
 
+def test_frontend_answer_client_formats_private_copedent_markdown_tables() -> None:
+    script = r"""
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const vm = require("node:vm");
+
+const code = fs.readFileSync("ui/answer-client.js", "utf8");
+const sandbox = { window: {} };
+vm.createContext(sandbox);
+vm.runInContext(code, sandbox);
+const answerUi = vm.runInContext("STEEL_RAG_ANSWER_UI", sandbox);
+
+const formatted = answerUi.normalizeAnswerResponse({
+  answer: [
+    "Your saved E9 copedent is organized below.",
+    "",
+    "Open tuning",
+    "",
+    "| String | Note |",
+    "| --- | --- |",
+    "| 1 | F# |",
+    "| 2 | D# |",
+    "| 3 | G# |",
+    "",
+    "Pedals",
+    "",
+    "| Pedal | String | Change |",
+    "| --- | --- | --- |",
+    "| A | 5 | B to C# |",
+    "| B | 3 | G# to A |",
+    "",
+    "Levers",
+    "",
+    "| Lever | String | Change |",
+    "| --- | --- | --- |",
+    "| LKL | 4 | E to F |",
+    "| LKR | 4 | E to D# |"
+  ].join("\n"),
+  sources: []
+});
+
+const openTuning = formatted.sections.find((section) => section.title === "Open tuning");
+const pedals = formatted.sections.find((section) => section.title === "Pedals");
+const levers = formatted.sections.find((section) => section.title === "Levers");
+
+assert.equal(formatted.sections[0].title, "Answer");
+assert.equal(formatted.sections[0].body, "Your saved E9 copedent is organized below.");
+assert.equal(JSON.stringify(openTuning.tables[0].headers), JSON.stringify(["String", "Note"]));
+assert.equal(JSON.stringify(openTuning.tables[0].rows), JSON.stringify([["1", "F#"], ["2", "D#"], ["3", "G#"]]));
+assert.equal(JSON.stringify(pedals.tables[0].headers), JSON.stringify(["Pedal", "String", "Change"]));
+assert.equal(JSON.stringify(pedals.tables[0].rows), JSON.stringify([["A", "5", "B to C#"], ["B", "3", "G# to A"]]));
+assert.equal(JSON.stringify(levers.tables[0].headers), JSON.stringify(["Lever", "String", "Change"]));
+assert.equal(JSON.stringify(levers.tables[0].rows), JSON.stringify([["LKL", "4", "E to F"], ["LKR", "4", "E to D#"]]));
+assert.equal(JSON.stringify(formatted.sections).includes("| --- |"), false);
+"""
+
+    result = subprocess.run(
+        ["node", "-e", script],
+        cwd=Path(__file__).resolve().parents[1],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
 def test_frontend_answer_input_submit_rules_are_enter_without_shift() -> None:
     script = r"""
 const assert = require("node:assert/strict");
@@ -639,8 +706,22 @@ def test_answer_ui_styles_sections_and_bullets_as_readable_answer_content() -> N
     assert "sourceGrid.appendChild(card);" in html
     assert "source.forum" in html
     assert "source.excerpt" in html
-    assert "primarySection.bullets?.length" in html
-    assert 'answerLead.appendChild(list);' in html
+    assert "appendAnswerSectionContent(answerLead" in html
+
+
+def test_answer_ui_styles_markdown_tables_as_readable_answer_content() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+
+    assert 'function renderAnswerTable(table)' in html
+    assert 'wrap.className = "answer-table-wrap";' in html
+    assert 'tableEl.className = "answer-table";' in html
+    assert 'th.scope = "col";' in html
+    assert 'container.appendChild(renderAnswerTable(table));' in html
+    assert ".answer-table-wrap" in html
+    assert "overflow-x: auto;" in html
+    assert ".answer-table th," in html
+    assert ".answer-table td" in html
+    assert re.search(r"\.answer-table\s*\{[^}]*font-size:\s*16px;", html, re.S)
 
 
 def test_answer_ui_hides_searched_row_but_preserves_source_card_metadata() -> None:

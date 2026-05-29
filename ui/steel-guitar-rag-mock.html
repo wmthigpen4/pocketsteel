@@ -803,7 +803,8 @@
     }
 
     .prompt-shell {
-      width: min(920px, 100%);
+      width: min(800px, 100%);
+      margin-inline: auto;
       padding: 1px;
       border-radius: 25px;
       background:
@@ -813,7 +814,7 @@
 
     .prompt {
       position: relative;
-      min-height: 198px;
+      min-height: 178px;
       border-radius: 24px;
       background:
         radial-gradient(circle at 88% 74%, rgba(240, 191, 105, 0.06), transparent 22%),
@@ -825,7 +826,7 @@
 
     .input-area {
       position: relative;
-      min-height: 138px;
+      min-height: 118px;
       border: 1px solid rgba(240, 191, 105, 0.34);
       border-radius: 20px;
       background: rgba(8, 9, 9, 0.28);
@@ -853,7 +854,7 @@
     textarea {
       display: block;
       width: 100%;
-      min-height: 128px;
+      min-height: 112px;
       resize: none;
       border: 0;
       outline: 0;
@@ -977,7 +978,7 @@
     }
 
     .examples {
-      width: min(920px, 100%);
+      width: min(800px, 100%);
       margin-top: 0;
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -988,7 +989,7 @@
     }
 
     .try-asking {
-      width: min(920px, 100%);
+      width: min(800px, 100%);
       margin-top: 18px;
       display: grid;
       justify-items: center;
@@ -1255,6 +1256,43 @@
     .answer-section.is-caveat p {
       color: rgba(244, 234, 214, 0.76);
       font-size: 16px;
+    }
+
+    .answer-table-wrap {
+      max-width: 100%;
+      overflow-x: auto;
+      border: 1px solid rgba(240, 191, 105, 0.2);
+      border-radius: 10px;
+      background: rgba(7, 9, 9, 0.36);
+    }
+
+    .answer-table {
+      width: 100%;
+      min-width: 360px;
+      border-collapse: collapse;
+      color: rgba(244, 234, 214, 0.88);
+      font-size: 16px;
+      line-height: 1.45;
+    }
+
+    .answer-table th,
+    .answer-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(244, 234, 214, 0.09);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .answer-table th {
+      color: rgba(240, 191, 105, 0.92);
+      background: rgba(240, 191, 105, 0.07);
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .answer-table tr:last-child td {
+      border-bottom: 0;
     }
 
     .source-section,
@@ -1725,6 +1763,7 @@
       }
 
       .prompt-shell {
+        width: 100%;
         border-radius: 25px;
       }
 
@@ -2966,6 +3005,62 @@
 
     const HUM_DEMO_QUESTION = "Why does touching the changer reduce hum?";
 
+    function renderAnswerTable(table) {
+      const wrap = document.createElement("div");
+      wrap.className = "answer-table-wrap";
+      const tableEl = document.createElement("table");
+      tableEl.className = "answer-table";
+
+      const thead = document.createElement("thead");
+      const headerRow = document.createElement("tr");
+      (table.headers || []).forEach((header) => {
+        const th = document.createElement("th");
+        th.scope = "col";
+        th.textContent = header;
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      tableEl.appendChild(thead);
+
+      const tbody = document.createElement("tbody");
+      (table.rows || []).forEach((row) => {
+        const tr = document.createElement("tr");
+        row.forEach((cell) => {
+          const td = document.createElement("td");
+          td.textContent = cell;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+      tableEl.appendChild(tbody);
+
+      wrap.appendChild(tableEl);
+      return wrap;
+    }
+
+    function appendAnswerSectionContent(container, section) {
+      if (section.bullets?.length) {
+        const list = document.createElement(section.ordered ? "ol" : "ul");
+        list.className = "try-list";
+        section.bullets.forEach((item) => {
+          const li = document.createElement("li");
+          li.textContent = item;
+          list.appendChild(li);
+        });
+        container.appendChild(list);
+      }
+
+      (section.tables || []).forEach((table) => {
+        container.appendChild(renderAnswerTable(table));
+      });
+
+      if (section.body) {
+        const body = document.createElement("p");
+        body.textContent = section.body;
+        container.appendChild(body);
+      }
+    }
+
     function renderResponse(response) {
       answerStatus.hidden = true;
       answerStatus.textContent = "";
@@ -2987,16 +3082,7 @@
         leadBody.textContent = primarySection.body;
         answerLead.appendChild(leadBody);
       }
-      if (primarySection.bullets?.length) {
-        const list = document.createElement(primarySection.ordered ? "ol" : "ul");
-        list.className = "try-list";
-        primarySection.bullets.forEach((item) => {
-          const li = document.createElement("li");
-          li.textContent = item;
-          list.appendChild(li);
-        });
-        answerLead.appendChild(list);
-      }
+      appendAnswerSectionContent(answerLead, { ...primarySection, body: "" });
 
       answerSectionGrid.innerHTML = "";
       sections.filter((section) => section !== primarySection).forEach((section) => {
@@ -3011,22 +3097,7 @@
         title.textContent = section.title || "Answer note";
         sectionEl.appendChild(title);
 
-        if (section.bullets?.length) {
-          const list = document.createElement(section.ordered ? "ol" : "ul");
-          list.className = "try-list";
-          section.bullets.forEach((item) => {
-            const li = document.createElement("li");
-            li.textContent = item;
-            list.appendChild(li);
-          });
-          sectionEl.appendChild(list);
-        }
-
-        if (section.body) {
-          const body = document.createElement("p");
-          body.textContent = section.body;
-          sectionEl.appendChild(body);
-        }
+        appendAnswerSectionContent(sectionEl, section);
 
         answerSectionGrid.appendChild(sectionEl);
       });

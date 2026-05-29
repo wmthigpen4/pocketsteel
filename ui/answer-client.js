@@ -73,7 +73,7 @@ const STEEL_RAG_ANSWER_UI = (() => {
   function isSectionHeading(text) {
     return /^[A-Z][A-Za-z0-9 /&-]{1,46}$/.test(text)
       && !/[.!?]$/.test(text)
-      && /\b(answer|try|step|cause|diagnostic|caveat|caution|note|why|important|source|practice|summary|direct|practical|likely|next|best|places|choose|changes|use)\b/i.test(text);
+      && /\b(answer|try|step|cause|diagnostic|caveat|caution|note|why|important|source|practice|summary|direct|practical|likely|next|best|places|choose|changes|use|tuning|pedals?|levers?|copedent|string|open)\b/i.test(text);
   }
 
   function classifySection(title, fallbackStyle = "") {
@@ -92,6 +92,44 @@ const STEEL_RAG_ANSWER_UI = (() => {
     return null;
   }
 
+  function isMarkdownTableRow(line) {
+    return /^\|.+\|$/.test(String(line || "").trim());
+  }
+
+  function tableCells(line) {
+    return String(line || "")
+      .trim()
+      .replace(/^\|/, "")
+      .replace(/\|$/, "")
+      .split("|")
+      .map((cell) => cell.trim());
+  }
+
+  function isMarkdownTableSeparator(line) {
+    const cells = tableCells(line);
+    return cells.length > 0 && cells.every((cell) => /^:?-{3,}:?$/.test(cell));
+  }
+
+  function parseMarkdownTable(lines, startIndex) {
+    if (!isMarkdownTableRow(lines[startIndex]) || !isMarkdownTableSeparator(lines[startIndex + 1])) {
+      return null;
+    }
+
+    const headers = tableCells(lines[startIndex]);
+    const rows = [];
+    let index = startIndex + 2;
+    while (index < lines.length && isMarkdownTableRow(lines[index])) {
+      const cells = tableCells(lines[index]);
+      rows.push(headers.map((_header, cellIndex) => cells[cellIndex] || ""));
+      index += 1;
+    }
+
+    return {
+      table: { headers, rows },
+      nextIndex: index
+    };
+  }
+
   function compactBody(lines) {
     return lines
       .join("\n")
@@ -106,11 +144,12 @@ const STEEL_RAG_ANSWER_UI = (() => {
       style: classifySection(fallbackTitle, fallbackStyle),
       bodyLines: [],
       bullets: [],
+      tables: [],
       ordered: false
     };
 
     function hasContent(section) {
-      return section.bodyLines.some(Boolean) || section.bullets.length > 0;
+      return section.bodyLines.some(Boolean) || section.bullets.length > 0 || section.tables.length > 0;
     }
 
     function flush() {
@@ -120,6 +159,7 @@ const STEEL_RAG_ANSWER_UI = (() => {
         style: current.style,
         body: compactBody(current.bodyLines),
         bullets: current.bullets,
+        tables: current.tables,
         ordered: current.ordered
       });
     }
@@ -131,6 +171,7 @@ const STEEL_RAG_ANSWER_UI = (() => {
         style: classifySection(title, style),
         bodyLines: [],
         bullets: [],
+        tables: [],
         ordered: false
       };
     }
@@ -145,38 +186,47 @@ const STEEL_RAG_ANSWER_UI = (() => {
       current.bodyLines.push(line);
     }
 
-    cleanLines(text).forEach((line) => {
+    const lines = cleanLines(text);
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index];
       if (!line) {
         if (current.bodyLines.some(Boolean) && current.bodyLines.at(-1) !== "") {
           current.bodyLines.push("");
         }
-        return;
+        continue;
       }
-      if (isRawSourceContextLine(line)) return;
+      if (isRawSourceContextLine(line)) continue;
+
+      const parsedTable = parseMarkdownTable(lines, index);
+      if (parsedTable) {
+        current.tables.push(parsedTable.table);
+        index = parsedTable.nextIndex - 1;
+        continue;
+      }
 
       const labeled = line.match(/^([^:]{2,48}):\s*(.*)$/);
       if (labeled && isSectionHeading(labeled[1].trim())) {
         startSection(labeled[1].trim());
         if (labeled[2].trim()) addContent(labeled[2].trim());
-        return;
+        continue;
       }
 
       if (line.endsWith(":") && isSectionHeading(line.slice(0, -1).trim())) {
         startSection(line.slice(0, -1).trim());
-        return;
+        continue;
       }
 
       if (isSectionHeading(line)) {
         startSection(line);
-        return;
+        continue;
       }
 
       addContent(line);
-    });
+    }
     flush();
 
     if (!sections.length) {
-      return [{ title: fallbackTitle || "Answer", style: fallbackStyle || "lead", body: "", bullets: [] }];
+      return [{ title: fallbackTitle || "Answer", style: fallbackStyle || "lead", body: "", bullets: [], tables: [] }];
     }
 
     return sections;
