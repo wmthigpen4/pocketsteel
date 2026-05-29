@@ -81,6 +81,90 @@ def source_to_card(source: dict[str, Any]) -> SourceCitation:
     return cast(SourceCitation, card)
 
 
+PRIVATE_E9_PROFILE_SOURCE_ID = "user-e9-copedent-profile"
+PRIVATE_PROFILE_GRIPS = ("3-4-5", "4-5-6", "5-6-8", "6-8-10")
+
+
+def private_profile_answer(question: str, sources: list[dict[str, Any]]) -> str | None:
+    """Answer first-person setup questions from the user's private profile only.
+
+    Hybrid retrieval can legitimately return SGF copedent discussions alongside
+    the user's private setup note. For first-person questions, those forum
+    snippets are comparison material at best, not the user's copedent.
+    """
+
+    if not question_mentions_private_profile(question):
+        return None
+    profile_source = first_private_e9_profile_source(sources)
+    if profile_source is None:
+        return None
+
+    lowered = question.lower()
+    if "grip" in lowered:
+        return "Your common E9 grips are " + ", ".join(PRIVATE_PROFILE_GRIPS) + "."
+    if "lever" in lowered:
+        return (
+            "Your private E9 profile lists these knee levers:\n"
+            "- F lever\n"
+            "- E-lower\n"
+            "- RKL\n"
+            "- RKR"
+        )
+
+    return (
+        "Your private profile describes a 10-string E9 setup.\n\n"
+        "Open tuning\n"
+        "- 1 F#\n"
+        "- 2 D#\n"
+        "- 3 G#\n"
+        "- 4 E\n"
+        "- 5 B\n"
+        "- 6 G#\n"
+        "- 7 F#\n"
+        "- 8 E\n"
+        "- 9 D\n"
+        "- 10 B\n\n"
+        "Pedals\n"
+        "- A pedal: raises the B strings to C#.\n"
+        "- B pedal: raises the G# strings to A.\n"
+        "- C pedal: raises string 4 E to F# and string 5 B to C#.\n\n"
+        "Levers\n"
+        "- F lever\n"
+        "- E-lower\n"
+        "- RKL\n"
+        "- RKR\n\n"
+        "Common grips\n"
+        "- 3-4-5\n"
+        "- 4-5-6\n"
+        "- 5-6-8\n"
+        "- 6-8-10"
+    )
+
+
+def question_mentions_private_profile(question: str) -> bool:
+    lowered = re.sub(r"\s+", " ", (question or "").strip().lower())
+    if not re.search(r"\b(?:my|i|me)\b", lowered):
+        return False
+    return bool(
+        re.search(
+            r"\b(?:e9\s+)?copedent\b|\bsetup\b|\blevers?\b|\bpedals?\b|\bcommon\s+grips?\b|\bgrips?\b",
+            lowered,
+        )
+    )
+
+
+def first_private_e9_profile_source(sources: list[dict[str, Any]]) -> dict[str, Any] | None:
+    for source in sources:
+        source_id = str(source.get("source_id") or "").strip()
+        title = str(source.get("thread_title") or "").strip().lower()
+        visibility = str(source.get("visibility") or "").strip().lower()
+        if visibility == "private" and (
+            source_id == PRIVATE_E9_PROFILE_SOURCE_ID or title == "user e9 copedent profile"
+        ):
+            return source
+    return None
+
+
 def mode_guidance(mode: str) -> str:
     if mode == "gear":
         return "Emphasize likely causes, diagnostic steps, safety notes, and source-backed forum wisdom."

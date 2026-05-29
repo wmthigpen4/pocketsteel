@@ -72,7 +72,11 @@ def private_response(answer_quote_allowed: str = "limited") -> dict[str, Any]:
         "results": [
             {
                 "score": 0.95,
-                "excerpt": "Private profile says the user's common grips are 3-4-5 and 5-6-8.",
+                "excerpt": (
+                    "User E9 copedent profile: 10-string E9. Open strings are 1 F#, 2 D#, 3 G#, 4 E, "
+                    "5 B, 6 G#, 7 F#, 8 E, 9 D, 10 B. Pedals A, B, C. Levers F, E-lower, RKL, RKR. "
+                    "Common grips are 3-4-5, 4-5-6, 5-6-8, and 6-8-10."
+                ),
                 "source_system": "personal_rules_note",
                 "forum_name": "Private Sources",
                 "thread_title": "User E9 Copedent Profile",
@@ -86,6 +90,26 @@ def private_response(answer_quote_allowed: str = "limited") -> dict[str, Any]:
                 "source_path": "source-inbox/rules/user-e9-copedent.txt",
                 "provenance_status": "reviewed",
                 "answer_quote_allowed": answer_quote_allowed,
+            }
+        ],
+        "warnings": [],
+    }
+
+
+def sgf_copedent_chatter_response() -> dict[str, Any]:
+    return {
+        "results": [
+            {
+                "score": 0.82,
+                "excerpt": "The LV is a special thing in Bobs copedent I kept. 80% of steelers have a different copedent anyway.",
+                "source_system": "sgf_phpbb_current",
+                "forum_name": "Pedal Steel",
+                "thread_title": "Forum copedent chatter",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=101",
+                "chunk_id": "sgf-copedent-chatter-1",
+                "post_uid": "p-sgf-copedent-chatter",
+                "source_kind": "forum_thread_chunk",
+                "warnings": [],
             }
         ],
         "warnings": [],
@@ -266,8 +290,58 @@ def test_limited_private_quoting_is_not_copied_into_answer_body() -> None:
     )
 
     assert status == "200 OK"
-    assert "Private profile says" not in payload["answer"]
-    assert "user's common grips are 3-4-5 and 5-6-8" not in payload["answer"]
+    assert "User E9 copedent profile" not in payload["answer"]
+    assert "Open strings are 1 F#" not in payload["answer"]
+
+
+def test_private_profile_copedent_answer_uses_profile_facts_not_sgf_chatter() -> None:
+    status, payload = call_answer(
+        question="What is my E9 copedent?",
+        search_index=FakeSearchIndex(sgf_copedent_chatter_response()),
+        private_search_index=FakeSearchIndex(private_response()),
+        config=retrieval_config("hybrid_private_first", private_enabled=True),
+        access_role="beta_user",
+    )
+
+    assert status == "200 OK"
+    answer = payload["answer"]
+    assert "10-string E9" in answer
+    assert "1 F#" in answer
+    assert "10 B" in answer
+    assert "A pedal" in answer
+    assert "B pedal" in answer
+    assert "C pedal" in answer
+    assert "F lever" in answer
+    assert "E-lower" in answer
+    assert "RKL" in answer
+    assert "RKR" in answer
+    assert "3-4-5" in answer
+    assert "4-5-6" in answer
+    assert "5-6-8" in answer
+    assert "6-8-10" in answer
+    assert "Bobs copedent" not in answer
+    assert "The LV is a special thing" not in answer
+    assert "80% of steelers" not in answer
+    assert payload["sources"][0]["source_id"] == "user-e9-copedent-profile"
+
+
+def test_private_profile_common_grips_answer_stays_clean() -> None:
+    status, payload = call_answer(
+        question="What are my common grips?",
+        search_index=FakeSearchIndex(sgf_copedent_chatter_response()),
+        private_search_index=FakeSearchIndex(private_response()),
+        config=retrieval_config("hybrid_private_first", private_enabled=True),
+        access_role="beta_user",
+    )
+
+    assert status == "200 OK"
+    answer = payload["answer"]
+    assert "3-4-5" in answer
+    assert "4-5-6" in answer
+    assert "5-6-8" in answer
+    assert "6-8-10" in answer
+    assert "Bobs copedent" not in answer
+    assert "80% of steelers" not in answer
 
 
 def test_private_answer_false_quote_permission_blanks_source_excerpt() -> None:

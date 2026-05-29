@@ -21,6 +21,7 @@ from pocketsteel.answering import (
     configured_answer_provider,
     final_answer_quality_gate,
     parse_answer_request,
+    private_profile_answer,
 )
 from pocketsteel.access_control import (
     AnswerAuthMode,
@@ -199,37 +200,43 @@ class RetrievalApi:
             sanitized = sanitize_retrieved_sources(strong_sources)
             warnings.extend(sanitized.warnings)
             strong_sources = sanitized.sources
-            curated_answer = lookup_curated_answer(answer_request.question, strong_sources)
             contract_intent = infer_contract_intent(answer_request.question, answer_request.mode)
-            if curated_answer is not None:
-                answer = curated_answer.answer
-                contract_intent = curated_answer.intent
-                if curated_answer.intent == "curated_fact_source_check":
-                    warnings.append(CURATED_FACT_WEAK_WARNING)
-                if retrieval_looks_weak_for_curated(answer_request.question, curated_answer, strong_sources):
-                    warnings.append(WEAK_RETRIEVAL_WARNING)
-                if answer_is_no_source(answer):
-                    sources = []
-                    warnings.append("no strong source match")
-                else:
-                    sources = concise_source_cards(strong_sources)
-            elif user_prompt_injection:
-                answer = (
-                    "I can’t follow prompt-injection instructions. "
-                    "Ask a steel-guitar question and I’ll answer from the available sources."
-                )
+            profile_answer = private_profile_answer(answer_request.question, strong_sources)
+            if profile_answer is not None:
+                answer = profile_answer
+                contract_intent = "copedent_fretboard"
                 sources = concise_source_cards(strong_sources)
-            elif not strong_sources:
-                answer = "No strong source match found for that question."
-                sources: list[dict[str, Any]] = []
-                warnings.append("no strong source match")
             else:
-                answer = self.answer_provider.answer(answer_request, strong_sources)
-                if answer_is_no_source(answer):
-                    sources = []
+                curated_answer = lookup_curated_answer(answer_request.question, strong_sources)
+                if curated_answer is not None:
+                    answer = curated_answer.answer
+                    contract_intent = curated_answer.intent
+                    if curated_answer.intent == "curated_fact_source_check":
+                        warnings.append(CURATED_FACT_WEAK_WARNING)
+                    if retrieval_looks_weak_for_curated(answer_request.question, curated_answer, strong_sources):
+                        warnings.append(WEAK_RETRIEVAL_WARNING)
+                    if answer_is_no_source(answer):
+                        sources = []
+                        warnings.append("no strong source match")
+                    else:
+                        sources = concise_source_cards(strong_sources)
+                elif user_prompt_injection:
+                    answer = (
+                        "I can’t follow prompt-injection instructions. "
+                        "Ask a steel-guitar question and I’ll answer from the available sources."
+                    )
+                    sources = concise_source_cards(strong_sources)
+                elif not strong_sources:
+                    answer = "No strong source match found for that question."
+                    sources: list[dict[str, Any]] = []
                     warnings.append("no strong source match")
                 else:
-                    sources = concise_source_cards(strong_sources)
+                    answer = self.answer_provider.answer(answer_request, strong_sources)
+                    if answer_is_no_source(answer):
+                        sources = []
+                        warnings.append("no strong source match")
+                    else:
+                        sources = concise_source_cards(strong_sources)
             final_answer = final_answer_quality_gate(answer, answer_request.question)
             contract_validation = enforce_answer_contract(final_answer, contract_intent)
             if contract_validation.violations and contract_validation.answer != final_answer:
