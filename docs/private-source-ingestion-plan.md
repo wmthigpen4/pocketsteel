@@ -76,10 +76,23 @@ Before any private embeddings are built, review:
 
 Private chunks should never be exposed to public/free users unless rights and access policy explicitly allow it.
 
+## Private Search Smoke
+
+After an explicitly approved private embedding run, use metadata-first search smoke checks against the private collection:
+
+```bash
+.venv/bin/python scripts/search_private_sources.py --query "What is my E9 copedent?"
+.venv/bin/python scripts/search_private_sources.py --query "What does A+F do?"
+.venv/bin/python scripts/search_private_sources.py --query "What is the 10th string on E9?"
+.venv/bin/python scripts/search_private_sources.py --query "What are my common grips?"
+```
+
+By default, private search output is metadata-only. Add `--show-excerpts` only when intentionally inspecting private text locally.
+
 ## Future Steps
 
 1. Add private-source eval samples.
 2. Add private-source access-control gates.
 3. Add private source retrieval mode.
-4. Build a private-only embedding store only after approval.
+4. Build a private-only embedding store only after explicit approval.
 5. Add admin/dev diagnostics for source lane selection.
