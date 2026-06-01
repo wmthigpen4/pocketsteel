@@ -1819,6 +1819,8 @@ def assert_clean_answer_body(payload: dict[str, Any]) -> None:
     assert "What multiple sources support" not in answer
     assert "Useful source-backed points" not in answer
     assert "The cleanest source-backed answer" not in answer
+    assert "Here is the safest answer I can support from the retrieved material" not in answer
+    assert "retrieved material" not in answer.lower()
     assert "source cards as supporting evidence" not in answer
     assert "Useful distilled points" not in answer
     assert "Interval-first answer" not in answer
@@ -1826,6 +1828,9 @@ def assert_clean_answer_body(payload: dict[str, Any]) -> None:
     assert "Start with the musical function named in the sources" not in answer
     assert "sp=sharing" not in answer
     assert "e-mail " not in answer.lower()
+    assert "paypal" not in answer.lower()
+    assert "order form" not in answer.lower()
+    assert "order link" not in answer.lower()
     assert "Does anyone know" not in answer
     assert "Has anyone compared" not in answer
     assert "I am looking for tablature" not in answer
@@ -1872,6 +1877,81 @@ def answer_for_question(question: str, results: list[dict[str, Any]], mode: str 
     )
     assert status == "200 OK"
     return payload
+
+
+def noisy_practical_sources() -> list[dict[str, Any]]:
+    return [
+        {
+            "score": 0.86,
+            "excerpt": "Top Does anyone know where to order? PayPal accepted, e-mail bob@example.com, https://example.com/order-form",
+            "forum_name": "Steel Players",
+            "thread_title": "Random old contact thread",
+            "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400601",
+            "chunk_id": "chunk-noisy-practical",
+            "post_uid": "p-noisy-practical",
+            "source_system": "sgf_phpbb_current",
+        },
+        {
+            "score": 0.74,
+            "excerpt": "Your private profile describes a 10-string E9 setup. Open tuning Pedals Levers Common grips 3-4-5 4-5-6.",
+            "forum_name": "Private",
+            "thread_title": "User E9 Copedent Profile",
+            "thread_url": "",
+            "chunk_id": "private-profile-noise",
+            "post_uid": "private-profile-noise",
+            "source_system": "personal_rules_note",
+            "visibility": "private",
+            "source_id": "user-e9-copedent-profile",
+        },
+    ]
+
+
+def test_pockets_answer_is_practical_not_weak_source_dump() -> None:
+    payload = answer_for_question("Teach me about pockets.", noisy_practical_sources())
+
+    assert_clean_answer_body(payload)
+    assert "pocket is a familiar local zone" in payload["answer"]
+    assert "fret area" in payload["answer"]
+    assert "strings, pedals, and levers" in payload["answer"]
+    assert "I, IV, and V" in payload["answer"]
+    assert "two short licks" in payload["answer"]
+    assert "Your private profile" not in payload["answer"]
+    assert "Open tuning" not in payload["answer"]
+
+
+def test_fourth_finger_pick_answer_explains_right_hand_tradeoff() -> None:
+    payload = answer_for_question("Why do some people wear a 4th finger pick?", noisy_practical_sources())
+
+    assert_clean_answer_body(payload)
+    assert "thumb pick plus two fingerpicks" in payload["answer"]
+    assert "ring-finger pick" in payload["answer"]
+    assert "four-note grips" in payload["answer"]
+    assert "optional" in payload["answer"].lower()
+    assert "Your private profile" not in payload["answer"]
+
+
+def test_stroboplus_answer_explains_product_without_contact_noise() -> None:
+    payload = answer_for_question("What’s a StroboPlus?", noisy_practical_sources())
+
+    assert_clean_answer_body(payload)
+    assert "Peterson StroboPlus" in payload["answer"]
+    assert "strobe-style" in payload["answer"]
+    assert "tuner" in payload["answer"]
+    assert "sweetened temperaments" in payload["answer"]
+    assert "model/manual" in payload["answer"]
+    assert "Your private profile" not in payload["answer"]
+
+
+def test_jeff_newman_answer_is_teacher_bio_not_forum_dump() -> None:
+    payload = answer_for_question("Why was Jeff Newman famous?", noisy_practical_sources())
+
+    assert_clean_answer_body(payload)
+    assert "Jeff Newman" in payload["answer"]
+    assert "teachers" in payload["answer"]
+    assert "courses" in payload["answer"]
+    assert "seminars" in payload["answer"]
+    assert "generations of steel players" in payload["answer"]
+    assert "Your private profile" not in payload["answer"]
 
 
 def test_willie_nelson_player_answer_stays_clean() -> None:

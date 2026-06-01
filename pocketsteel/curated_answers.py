@@ -56,6 +56,59 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             ),
         )
 
+    if mentions_pockets_concept(q):
+        return CuratedAnswer(
+            intent="practical_concept_explanation",
+            confidence="curated_high",
+            answer=(
+                "In pedal-steel playing, a pocket is a familiar local zone on the neck: a fret area plus nearby strings, pedals, and levers where related chords, licks, and phrases live.\n\n"
+                "How to practice one pocket:\n"
+                "- Pick one key and one home position.\n"
+                "- Find I, IV, and V movement in that small area before moving up the neck.\n"
+                "- Make two short licks in the pocket: one fill that answers a vocal line and one ending phrase.\n"
+                "- Move the same idea to another pocket so you learn relationships instead of only fret numbers."
+            ),
+        )
+
+    if mentions_fourth_finger_pick(q):
+        return CuratedAnswer(
+            intent="right_hand_technique",
+            confidence="curated_high",
+            answer=(
+                "Most E9 players use a thumb pick plus two fingerpicks. Some players add a fourth or ring-finger pick for four-note grips, wider chords, C6 or extended-voicing work, or because their right-hand technique feels better that way.\n\n"
+                "It is optional:\n"
+                "- It can help when the music calls for fuller grips.\n"
+                "- It can feel awkward or noisy until the ring finger learns to move independently.\n"
+                "- If your usual grips sound clean with thumb, index, and middle, you do not need a fourth pick."
+            ),
+        )
+
+    if mentions_stroboplus(q):
+        return CuratedAnswer(
+            intent="gear_product_explanation",
+            confidence="curated_high",
+            answer=(
+                "A Peterson StroboPlus is a strobe-style electronic tuner and tuning tool; some versions also include metronome or practice features, so check the current model/manual for exact specs.\n\n"
+                "Why steel players care:\n"
+                "- Strobe-style tuning is very precise.\n"
+                "- Steel players often use sweetened temperaments rather than straight equal temperament.\n"
+                "- Pedal and lever changes may need offset checks, not just open-string tuning."
+            ),
+        )
+
+    if mentions_jeff_newman(q):
+        return CuratedAnswer(
+            intent="player_teacher_bio",
+            confidence="curated_high",
+            answer=(
+                "Jeff Newman was famous as one of pedal steel’s major teachers as well as a player. He built a large instructional legacy through courses, seminars, workshops, and practical E9/C6 teaching material.\n\n"
+                "Why he mattered:\n"
+                "- He helped many players learn pedal steel in an organized way.\n"
+                "- His teaching focused on usable musical systems, not only isolated licks.\n"
+                "- His instructional materials and seminars influenced generations of steel players."
+            ),
+        )
+
     if mentions_e9_tenth_string_gauge(q):
         return CuratedAnswer(
             intent="copedent_fretboard",
@@ -855,6 +908,30 @@ def mentions_sensitive_demographic_question(question: str) -> bool:
 
 def mentions_current_roster_question(question: str) -> bool:
     return bool(re.search(r"\bwho\s+plays\s+for\s+[a-z0-9'. -]+\??$", question))
+
+
+def mentions_pockets_concept(question: str) -> bool:
+    return bool(
+        re.search(
+            r"\b(?:teach\s+me\s+about\s+pockets?|what\s+are\s+pockets?|what\s+is\s+a\s+pocket|playing\s+in\s+pockets?)\b",
+            question,
+        )
+    )
+
+
+def mentions_fourth_finger_pick(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:4th|fourth|ring)\s+finger\s+pick\b", question)
+        or re.search(r"\bwhy\b.*\b(?:4th|fourth|ring)\s+finger\b.*\bpicks?\b", question)
+    )
+
+
+def mentions_stroboplus(question: str) -> bool:
+    return bool(re.search(r"\b(?:stroboplus|strobo\s*plus)\b", question))
+
+
+def mentions_jeff_newman(question: str) -> bool:
+    return bool(re.search(r"\bjeff\s+newman\b", question))
 
 
 def mentions_e9_tenth_string_gauge(question: str) -> bool:

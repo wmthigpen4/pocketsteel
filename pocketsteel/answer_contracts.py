@@ -45,11 +45,12 @@ class ContractValidation:
 
 
 COMMON_FORBIDDEN: tuple[tuple[str, str], ...] = (
-    ("internal source-backed fallback language", r"\bThe cleanest source-backed answer\b|\bsource cards as supporting evidence\b|\bUseful distilled points\b|\bUseful source-backed points\b"),
+    ("internal source-backed fallback language", r"\bThe cleanest source-backed answer\b|\bHere is the safest answer I can support from the retrieved material\b|\bretrieved material\b|\bsource cards as supporting evidence\b|\bUseful distilled points\b|\bUseful source-backed points\b"),
     ("raw Top boilerplate", r"^\s*Top\b|\sTop\s"),
     ("raw link-share fragment", r"\bsp=sharing\b"),
     ("raw email address", r"\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b"),
     ("raw e-mail contact", r"\be-?mail\s+"),
+    ("raw sales/contact snippet", r"\b(?:PayPal|order\s+(?:form|page|link|online|through))\b"),
     ("source context heading", r"\b(?:Source context|Forum-source context|What multiple sources support)\b"),
     ("orphan Practical answer heading", r"(?m)^\s*Practical answer\s*:?\s*$"),
     ("duplicate answer headings", r"(?s)(?m)^\s*Answer\s*:?\s*$.*^\s*Practical answer\s*:?\s*$"),
@@ -130,6 +131,60 @@ CONTRACTS: dict[str, AnswerContract] = {
             "To soften your attack, start with your hands before hiding it with gear: lighten right-hand pick force, "
             "shape the note with the volume pedal after the pick, clean up blocking, and add vibrato only after the pitch centers."
         ),
+    ),
+    "practical_concept_explanation": AnswerContract(
+        intent="practical_concept_explanation",
+        required_answer_elements=(
+            ("practical concept definition", r"\b(?:pocket|zone|position|area)\b"),
+            ("pedal-steel location details", r"\b(?:fret|strings?|pedals?|levers?|neck)\b"),
+            ("practice application", r"\b(?:practice|licks?|I, IV, and V|home position|move)\b"),
+        ),
+        forbidden_answer_patterns=COMMON_FORBIDDEN
+        + (
+            ("source dump fallback", r"\b(?:retrieved material|Useful distilled points|source cards as supporting evidence)\b"),
+            ("private profile leakage", r"\b(?:Your private profile|Open tuning|Pedals\s*$|Levers\s*$)\b"),
+        ),
+        default_section_labels=("how to practice",),
+    ),
+    "right_hand_technique": AnswerContract(
+        intent="right_hand_technique",
+        required_answer_elements=(
+            ("right-hand pick context", r"\b(?:thumb pick|fingerpicks?|ring-finger|fourth)\b"),
+            ("four-note or grip reason", r"\b(?:four-note|grips?|wider chords?|C6|extended)\b"),
+            ("optional caveat", r"\b(?:optional|not required|do not need|awkward)\b"),
+        ),
+        forbidden_answer_patterns=COMMON_FORBIDDEN
+        + (
+            ("source dump fallback", r"\b(?:retrieved material|Useful distilled points|source cards as supporting evidence)\b"),
+            ("private profile leakage", r"\b(?:Your private profile|Open tuning|Pedals\s*$|Levers\s*$)\b"),
+        ),
+    ),
+    "gear_product_explanation": AnswerContract(
+        intent="gear_product_explanation",
+        required_answer_elements=(
+            ("product identity", r"\b(?:Peterson|StroboPlus|strobe-style|tuner|tuning tool)\b"),
+            ("why steel players care", r"\b(?:sweetened|temperament|pedal|lever|offset|precise)\b"),
+            ("model caveat", r"\b(?:check|model|manual|specs?|features)\b"),
+        ),
+        forbidden_answer_patterns=COMMON_FORBIDDEN
+        + (
+            ("sales/contact fragment", r"\b(?:PayPal|order\s+(?:form|page|link|online|through)|call\s+me|contact)\b"),
+            ("private profile leakage", r"\b(?:Your private profile|Open tuning|Pedals\s*$|Levers\s*$)\b"),
+        ),
+    ),
+    "player_teacher_bio": AnswerContract(
+        intent="player_teacher_bio",
+        required_answer_elements=(
+            ("identity", r"\b(?:was|is)\b.*\b(?:teacher|player|pedal steel)\b"),
+            ("instructional role", r"\b(?:teacher|instructional|courses?|seminars?|workshops?)\b"),
+            ("influence", r"\b(?:influenced|generations|legacy|helped many players)\b"),
+        ),
+        forbidden_answer_patterns=COMMON_FORBIDDEN
+        + (
+            ("ranking template", r"\bRankings are subjective\b|\bA safe all-time starting list\b"),
+            ("private profile leakage", r"\b(?:Your private profile|Open tuning|Pedals\s*$|Levers\s*$)\b"),
+        ),
+        requires_direct_first_sentence=True,
     ),
     "copedent_fretboard": AnswerContract(
         intent="copedent_fretboard",

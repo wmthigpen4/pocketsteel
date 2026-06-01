@@ -1246,7 +1246,7 @@ def classify_answer_line(line: str) -> str:
     if not stripped:
         return "answer_candidate"
     if re.search(
-        r"\b(?:useful source-backed points|useful distilled points|source cards as supporting evidence|the cleanest source-backed answer|interval-first answer|strings, frets, pedals, and levers mentioned by sources|start with the musical function named in the sources)\b",
+        r"\b(?:useful source-backed points|useful distilled points|source cards as supporting evidence|the cleanest source-backed answer|here is the safest answer i can support from the retrieved material|retrieved material|interval-first answer|strings, frets, pedals, and levers mentioned by sources|start with the musical function named in the sources)\b",
         stripped,
         re.I,
     ):
@@ -1268,6 +1268,8 @@ def answer_has_quality_issue(answer: str, *, allow_contact_info: bool = False) -
     ]
     bad_patterns = [
         r"\bThe cleanest source-backed answer\b",
+        r"\bHere is the safest answer I can support from the retrieved material\b",
+        r"\bretrieved material\b",
         r"\bsource cards as supporting evidence\b",
         r"\bUseful distilled points\b",
         r"\bUseful source-backed points\b",
@@ -1281,6 +1283,8 @@ def answer_has_quality_issue(answer: str, *, allow_contact_info: bool = False) -
         r"(?m)^\s*Practical answer\s*:?\s*$",
         r"\b(?:Does anyone know|Has anyone compared|I am looking for tablature)\b",
         r"\bCan some of you possibly post tab\b",
+        r"\bPayPal\b",
+        r"\border\s+(?:form|page|link|online|through)\b",
         r"\btje\b|\bteh\b",
     ]
     if not allow_contact_info:
@@ -1495,7 +1499,7 @@ class DeterministicAnswerProvider:
     def _ask_answer(self, sources: list[dict[str, Any]], evidence: list["EvidencePoint"]) -> str:
         facts = distill_source_facts("", evidence)
         if facts.facts:
-            lines = ["Here is the safest answer I can support from the retrieved material:"]
+            lines = ["I found a few related practical points, but the match is limited:"]
             for fact in facts.facts[:3]:
                 lines.append(f"- {fact}")
             if facts.source_count < 2:
