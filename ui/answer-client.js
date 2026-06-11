@@ -292,6 +292,33 @@ const STEEL_RAG_ANSWER_UI = (() => {
     };
   }
 
+  function normalizeFretboard(fretboard) {
+    if (!fretboard || typeof fretboard !== "object" || Array.isArray(fretboard)) {
+      return null;
+    }
+
+    const normalized = {
+      title: firstValue(fretboard.title, "Fretboard view"),
+      description: firstValue(fretboard.description),
+      highlights: Array.isArray(fretboard.highlights) ? fretboard.highlights : []
+    };
+
+    if (Array.isArray(fretboard.positions)) {
+      normalized.positions = fretboard.positions;
+    }
+    if (fretboard.maxFret !== undefined) {
+      normalized.maxFret = fretboard.maxFret;
+    }
+    if (fretboard.stringCount !== undefined) {
+      normalized.stringCount = fretboard.stringCount;
+    }
+    if (Array.isArray(fretboard.tuningLabels)) {
+      normalized.tuningLabels = fretboard.tuningLabels;
+    }
+
+    return normalized;
+  }
+
   function normalizeAnswerResponse(payload, fallbackQuestion = "") {
     const sourceRows = firstValue(payload?.sources, payload?.retrieved_sources, payload?.rows);
     const sources = Array.isArray(sourceRows) ? sourceRows.map(normalizeSource) : [];
@@ -303,7 +330,7 @@ const STEEL_RAG_ANSWER_UI = (() => {
         ? payload.searched
         : uniqueLabels(sources.map((source) => source.forum));
 
-    return {
+    const normalized = {
       question: firstValue(payload?.question, fallbackQuestion),
       answer: answerText,
       sections,
@@ -311,6 +338,11 @@ const STEEL_RAG_ANSWER_UI = (() => {
       searched_domains: searchedDomains,
       followups: Array.isArray(payload?.followups) ? payload.followups : []
     };
+    const fretboard = normalizeFretboard(payload?.fretboard);
+    if (fretboard) {
+      normalized.fretboard = fretboard;
+    }
+    return normalized;
   }
 
   async function requestAnswer(question, { fetchImpl = window.fetch, accessRole = ACCESS_ROLES.ANONYMOUS } = {}) {
@@ -372,6 +404,7 @@ const STEEL_RAG_ANSWER_UI = (() => {
     sessionUsesLocalDev,
     sessionGrantsLiveAccess,
     normalizeSessionResponse,
+    normalizeFretboard,
     normalizeSections,
     normalizeAnswerResponse,
     requestSession,

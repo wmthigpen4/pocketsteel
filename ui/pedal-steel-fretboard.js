@@ -210,22 +210,49 @@
     return Array.from({ length: stringCount }, (_, index) => source[index] || "");
   }
 
-  function normalizeHighlight(highlight, index, maxFret, stringCount) {
-    const strings = Array.isArray(highlight.strings)
-      ? highlight.strings
-          .map((stringNumber) => Number(stringNumber))
-          .filter((stringNumber) => Number.isInteger(stringNumber) && stringNumber >= 1 && stringNumber <= stringCount)
-      : [];
-    const uniqueStrings = Array.from(new Set(strings)).sort((a, b) => a - b);
+  function normalizeStringList(value, stringCount) {
+    const source = Array.isArray(value)
+      ? value
+      : typeof value === "string"
+        ? value.split(/[^0-9]+/).filter(Boolean)
+        : [];
+    const strings = source
+      .map((stringNumber) => Number(stringNumber))
+      .filter((stringNumber) => Number.isInteger(stringNumber) && stringNumber >= 1 && stringNumber <= stringCount);
+    return Array.from(new Set(strings)).sort((a, b) => a - b);
+  }
+
+  function normalizeTextList(value) {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value.map(String).map((item) => item.trim()).filter(Boolean);
+  }
+
+  function normalizePosition(position, index, maxFret, stringCount, sourceType) {
+    const item = position && typeof position === "object" ? position : {};
+    const strings = normalizeStringList(item.strings, stringCount);
+    const gripStrings = normalizeStringList(item.grip, stringCount);
+    const uniqueStrings = strings.length ? strings : gripStrings;
+    const grip = item.grip !== undefined
+      ? Array.isArray(item.grip)
+        ? gripStrings.join("-")
+        : String(item.grip)
+      : uniqueStrings.join("-");
     return {
-      id: String(highlight.id || `highlight-${index + 1}`),
-      label: String(highlight.label || `Position ${index + 1}`),
-      fret: clampNumber(highlight.fret, 0, maxFret),
+      id: String(item.id || `${sourceType}-${index + 1}`),
+      label: String(item.label || `Position ${index + 1}`),
+      fret: clampNumber(item.fret, 0, maxFret),
       strings: uniqueStrings,
-      pedals: Array.isArray(highlight.pedals) ? highlight.pedals.map(String) : [],
-      levers: Array.isArray(highlight.levers) ? highlight.levers.map(String) : [],
-      role: String(highlight.role || ""),
-      colorRole: COLOR_ROLES[highlight.colorRole] ? highlight.colorRole : index === 0 ? "primary" : index === 1 ? "alternate" : "movement",
+      grip,
+      pedals: normalizeTextList(item.pedals),
+      levers: normalizeTextList(item.levers),
+      role: String(item.role || ""),
+      notes: String(item.notes || ""),
+      explanation: String(item.explanation || ""),
+      intervals: normalizeTextList(item.intervals),
+      sourceType,
+      colorRole: COLOR_ROLES[item.colorRole] ? item.colorRole : index === 0 ? "primary" : index === 1 ? "alternate" : "movement",
     };
   }
 
@@ -246,8 +273,15 @@
       label: tuningLabels[index] || "",
       y: LAYOUT.top + index * stringSpacing,
     }));
-    const highlights = (Array.isArray(options.highlights) ? options.highlights : [])
-      .map((highlight, index) => normalizeHighlight(highlight, index, maxFret, stringCount))
+    const hasContractPositions = Array.isArray(options.positions);
+    const sourcePositions = hasContractPositions
+      ? options.positions
+      : Array.isArray(options.highlights)
+        ? options.highlights
+        : [];
+    const positionSourceType = hasContractPositions ? "position" : "highlight";
+    const highlights = sourcePositions
+      .map((position, index) => normalizePosition(position, index, maxFret, stringCount, positionSourceType))
       .filter((highlight) => highlight.strings.length > 0)
       .map((highlight) => ({
         ...highlight,
@@ -392,9 +426,12 @@
         const controls = [...highlight.pedals, ...highlight.levers];
         const metaParts = [
           `Fret ${highlight.fret}`,
-          `strings ${highlight.strings.join("-")}`,
+          highlight.grip ? `grip ${highlight.grip}` : `strings ${highlight.strings.join("-")}`,
           controls.length ? controls.join(" + ") : "no pedals/levers",
           highlight.role,
+          highlight.intervals.length ? `intervals ${highlight.intervals.join("-")}` : "",
+          highlight.notes,
+          highlight.explanation,
         ].filter(Boolean);
         return `<li class="pedal-steel-fretboard__legend-item" data-legend-id="${escapeHtml(highlight.id)}" style="--fretboard-swatch: ${color.dot}; --fretboard-glow: ${color.glow};">
           <div class="pedal-steel-fretboard__legend-title"><span class="pedal-steel-fretboard__legend-swatch" aria-hidden="true"></span><span>${escapeHtml(highlight.label)}</span></div>
@@ -481,10 +518,48 @@
     },
   ];
 
+  const DEMO_POSITIONS = [
+    {
+      id: "g-position-open-3",
+      label: "G major",
+      fret: 3,
+      strings: [4, 5, 6],
+      grip: [4, 5, 6],
+      role: "No-pedals position",
+      notes: "Open G pocket",
+      intervals: ["1", "3", "5"],
+      colorRole: "primary",
+    },
+    {
+      id: "g-position-af-6",
+      label: "G major",
+      fret: 6,
+      strings: [4, 5, 6],
+      grip: [4, 5, 6],
+      pedals: ["A"],
+      levers: ["E raise/F lever"],
+      role: "A+F position",
+      explanation: "A pedal plus the E raise makes the G pocket at fret 6.",
+      colorRole: "alternate",
+    },
+    {
+      id: "g-position-ab-10",
+      label: "G major",
+      fret: 10,
+      strings: [4, 5, 6],
+      grip: [4, 5, 6],
+      pedals: ["A", "B"],
+      role: "A+B position",
+      explanation: "Pedals-down G position at fret 10.",
+      colorRole: "movement",
+    },
+  ];
+
   const api = {
     COMMON_FRET_MARKERS,
     DEFAULT_E9_TUNING,
     DEMO_HIGHLIGHTS,
+    DEMO_POSITIONS,
     STYLE_TEXT,
     buildFretboardModel,
     injectPedalSteelFretboardStyles,

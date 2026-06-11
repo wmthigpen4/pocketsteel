@@ -287,6 +287,218 @@ for (const highlight of model.highlights) {
     run_node(script)
 
 
+def test_contract_positions_are_primary_over_legacy_highlights() -> None:
+    script = component_eval_script(
+        """
+const model = fretboard.buildFretboardModel({
+  positions: fretboard.DEMO_POSITIONS,
+  highlights: [{
+    id: "wrong-legacy-ab-6",
+    label: "Wrong legacy A+B",
+    fret: 6,
+    strings: [4, 5, 6],
+    pedals: ["A", "B"]
+  }]
+});
+assert.equal(model.highlights.length, 3);
+assert.equal(JSON.stringify(model.highlights.map((item) => item.id)), JSON.stringify([
+  "g-position-open-3",
+  "g-position-af-6",
+  "g-position-ab-10"
+]));
+assert.equal(JSON.stringify(model.highlights.map((item) => item.fret)), JSON.stringify([3, 6, 10]));
+assert.equal(model.highlights[1].id, "g-position-af-6");
+assert.equal(model.highlights[1].role, "A+F position");
+assert.equal(JSON.stringify(model.highlights[1].pedals), JSON.stringify(["A"]));
+assert.equal(JSON.stringify(model.highlights[1].levers), JSON.stringify(["E raise/F lever"]));
+assert.equal(model.highlights[1].grip, "4-5-6");
+assert.equal(model.highlights[1].explanation, "A pedal plus the E raise makes the G pocket at fret 6.");
+assert.equal(model.highlights[2].id, "g-position-ab-10");
+assert.equal(model.highlights[2].role, "A+B position");
+assert.equal(JSON.stringify(model.highlights[2].pedals), JSON.stringify(["A", "B"]));
+assert.equal(JSON.stringify(model.highlights[2].levers), JSON.stringify([]));
+assert.equal(model.highlights[2].fret, 10);
+assert.ok(model.highlights.every((item) => item.sourceType === "position"));
+assert.equal(JSON.stringify(model.highlights.map((item) => item.strings.join("-"))), JSON.stringify(["4-5-6", "4-5-6", "4-5-6"]));
+assert.ok(model.highlights[0].x < model.highlights[1].x);
+assert.ok(model.highlights[1].x < model.highlights[2].x);
+"""
+    )
+
+    run_node(script)
+
+
+def test_committed_contract_positions_render_with_stable_g_major_facts() -> None:
+    script = component_eval_script(
+        """
+const committedPositions = [
+  {
+    id: "g-open-3",
+    label: "G major",
+    fret: 3,
+    strings: [4, 5, 6],
+    grip: "4-5-6",
+    pedals: [],
+    levers: [],
+    color: "primary",
+    role: "Open position"
+  },
+  {
+    id: "g-af-6",
+    label: "G major",
+    fret: 6,
+    strings: [4, 5, 6],
+    grip: "4-5-6",
+    pedals: ["A"],
+    levers: ["F"],
+    color: "secondary",
+    role: "A+F position"
+  },
+  {
+    id: "g-ab-10",
+    label: "G major",
+    fret: 10,
+    strings: [4, 5, 6],
+    grip: "4-5-6",
+    pedals: ["A", "B"],
+    levers: [],
+    color: "alternate",
+    role: "A+B position"
+  }
+];
+const staleHighlights = [
+  {
+    id: "wrong-legacy-af-10",
+    label: "Wrong legacy A+F",
+    fret: 10,
+    strings: [4, 5, 6],
+    pedals: ["A"],
+    levers: ["F"],
+    role: "Wrong A+F"
+  },
+  {
+    id: "wrong-legacy-ab-6",
+    label: "Wrong legacy A+B",
+    fret: 6,
+    strings: [4, 5, 6],
+    pedals: ["A", "B"],
+    role: "Wrong A+B"
+  }
+];
+const model = fretboard.buildFretboardModel({ positions: committedPositions, highlights: staleHighlights });
+const byId = Object.fromEntries(model.highlights.map((item) => [item.id, item]));
+assert.deepEqual(model.highlights.map((item) => item.id), ["g-open-3", "g-af-6", "g-ab-10"]);
+assert.equal(byId["g-open-3"].fret, 3);
+assert.equal(JSON.stringify(byId["g-open-3"].strings), JSON.stringify([4, 5, 6]));
+assert.equal(JSON.stringify(byId["g-open-3"].pedals), JSON.stringify([]));
+assert.equal(JSON.stringify(byId["g-open-3"].levers), JSON.stringify([]));
+assert.equal(byId["g-af-6"].fret, 6);
+assert.equal(JSON.stringify(byId["g-af-6"].strings), JSON.stringify([4, 5, 6]));
+assert.equal(JSON.stringify(byId["g-af-6"].pedals), JSON.stringify(["A"]));
+assert.equal(JSON.stringify(byId["g-af-6"].levers), JSON.stringify(["F"]));
+assert.equal(byId["g-ab-10"].fret, 10);
+assert.equal(JSON.stringify(byId["g-ab-10"].strings), JSON.stringify([4, 5, 6]));
+assert.equal(JSON.stringify(byId["g-ab-10"].pedals), JSON.stringify(["A", "B"]));
+assert.equal(JSON.stringify(byId["g-ab-10"].levers), JSON.stringify([]));
+assert.ok(model.highlights.every((item) => item.sourceType === "position"));
+assert.equal(model.highlights.some((item) => item.id.startsWith("wrong-legacy")), false);
+assert.equal(byId["g-af-6"].fret === 10, false);
+assert.equal(byId["g-ab-10"].fret === 6, false);
+
+const html = fretboard.renderPedalSteelFretboard({ positions: committedPositions, highlights: staleHighlights });
+assert.match(html, /data-highlight-id="g-open-3"/);
+assert.match(html, /data-highlight-id="g-af-6"/);
+assert.match(html, /data-highlight-fret="6"/);
+assert.match(html, /data-highlight-id="g-ab-10"/);
+assert.match(html, /data-highlight-fret="10"/);
+assert.match(html, /data-highlight-strings="4,5,6"/);
+assert.match(html, /A\\+F position/);
+assert.match(html, /A\\+B position/);
+assert.doesNotMatch(html, /wrong-legacy/);
+assert.doesNotMatch(html, /data-highlight-fret="10"[^>]*data-highlight-id="g-af-6"/);
+assert.doesNotMatch(html, /data-highlight-fret="6"[^>]*data-highlight-id="g-ab-10"/);
+"""
+    )
+
+    run_node(script)
+
+
+def test_legacy_highlights_still_render_when_positions_are_absent() -> None:
+    script = component_eval_script(
+        """
+const model = fretboard.buildFretboardModel({ highlights: fretboard.DEMO_HIGHLIGHTS });
+assert.equal(model.highlights.length, 3);
+assert.equal(JSON.stringify(model.highlights.map((item) => item.id)), JSON.stringify([
+  "g-major-open-3",
+  "g-major-af-6",
+  "g-major-ab-10"
+]));
+assert.equal(JSON.stringify(model.highlights.map((item) => item.fret)), JSON.stringify([3, 6, 10]));
+assert.ok(model.highlights.every((item) => item.sourceType === "highlight"));
+assert.equal(model.highlights[1].role, "A+F position");
+assert.equal(model.highlights[2].role, "A+B position");
+"""
+    )
+
+    run_node(script)
+
+
+def test_unsupported_or_empty_contract_payload_does_not_invent_positions() -> None:
+    script = component_eval_script(
+        """
+const model = fretboard.buildFretboardModel({
+  positions: [
+    {
+      id: "unsupported-full-solo",
+      label: "Unsupported full solo",
+      fret: "not-a-fret",
+      strings: [99],
+      pedals: ["made-up"],
+      levers: ["made-up"]
+    }
+  ]
+});
+assert.equal(model.highlights.length, 0);
+const html = fretboard.renderPedalSteelFretboard({
+  positions: [
+    {
+      id: "unsupported-full-solo",
+      label: "Unsupported full solo",
+      fret: "not-a-fret",
+      strings: [99],
+      pedals: ["made-up"],
+      levers: ["made-up"]
+    }
+  ]
+});
+assert.doesNotMatch(html, /unsupported-full-solo/);
+assert.doesNotMatch(html, /made-up/);
+"""
+    )
+
+    run_node(script)
+
+
+def test_rendered_svg_uses_positions_contract_fields_in_legend() -> None:
+    script = component_eval_script(
+        """
+const html = fretboard.renderPedalSteelFretboard({ positions: fretboard.DEMO_POSITIONS });
+assert.match(html, /data-highlight-id="g-position-af-6"/);
+assert.match(html, /data-highlight-fret="6"/);
+assert.match(html, /data-highlight-id="g-position-ab-10"/);
+assert.match(html, /data-highlight-fret="10"/);
+assert.match(html, /grip 4-5-6/);
+assert.match(html, /intervals 1-3-5/);
+assert.match(html, /Open G pocket/);
+assert.match(html, /A pedal plus the E raise makes the G pocket at fret 6\\./);
+assert.match(html, /Pedals-down G position at fret 10\\./);
+assert.doesNotMatch(html, /wrong-legacy/);
+"""
+    )
+
+    run_node(script)
+
+
 def test_component_escapes_user_supplied_highlight_text() -> None:
     script = component_eval_script(
         r"""

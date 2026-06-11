@@ -1189,6 +1189,7 @@
     .answer-detail-grid {
       display: grid;
       grid-template-columns: 1.08fr 1fr 1fr;
+    .fretboard-card,
       gap: 18px;
       padding-top: 18px;
       border-top: 1px solid rgba(244, 234, 214, 0.12);
@@ -1356,6 +1357,69 @@
       color: var(--brass);
       text-decoration: none;
       font-size: 13px;
+    .answer-fretboard[hidden] {
+      display: none;
+    }
+
+    .fretboard-card {
+      padding: 18px 20px 20px;
+      border-radius: 17px;
+    }
+
+    .answer-fretboard-details {
+      display: grid;
+      gap: 13px;
+    }
+
+    .answer-fretboard-details summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      color: rgba(240, 191, 105, 0.92);
+      cursor: pointer;
+      font-size: 13px;
+      line-height: 1.35;
+      font-weight: 750;
+      letter-spacing: 0.13em;
+      list-style: none;
+      text-transform: uppercase;
+    }
+
+    .answer-fretboard-details summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .answer-fretboard-details summary::after {
+      content: "Show";
+      border: 1px solid rgba(240, 191, 105, 0.26);
+      border-radius: 999px;
+      padding: 5px 10px;
+      color: rgba(244, 234, 214, 0.8);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+    }
+
+    .answer-fretboard-details[open] summary::after {
+      content: "Hide";
+    }
+
+    .answer-fretboard-description {
+      max-width: 760px;
+      margin: 0;
+      color: rgba(244, 234, 214, 0.76);
+      font-size: 15px;
+      line-height: 1.55;
+    }
+
+    .answer-fretboard-description:empty {
+      display: none;
+    }
+
+    .answer-fretboard-mount {
+      min-width: 0;
+    }
+
       font-weight: 650;
       overflow-wrap: anywhere;
     }
@@ -1832,7 +1896,8 @@
       }
 
       .question-card,
-      .answer-card {
+      .answer-card,
+      .fretboard-card {
         padding: 18px;
       }
 
@@ -1908,6 +1973,11 @@
               </button>
               <button class="send" type="button" aria-label="Ask">↑</button>
             </div>
+      .answer-fretboard-details summary {
+        align-items: flex-start;
+        font-size: 12px;
+      }
+
           </div>
           <p class="input-helper">Buzz, tone, pedals, knee levers, amp settings, copedents, tab, or how to play a phrase.</p>
           <p class="access-helper" id="access-helper">Get a Backstage Pass to ask Steel Guitar RAG.</p>
@@ -2038,6 +2108,16 @@
               <input type="radio" name="mock-access-state" value="anonymous">
               Anonymous preview
             </label>
+        <section class="answer-fretboard" id="answer-fretboard" aria-labelledby="answer-fretboard-title" hidden>
+          <div class="fretboard-card">
+            <details class="answer-fretboard-details" id="answer-fretboard-details">
+              <summary id="answer-fretboard-title">Fretboard view</summary>
+              <p class="answer-fretboard-description" id="answer-fretboard-description"></p>
+              <div class="answer-fretboard-mount" id="answer-fretboard-mount"></div>
+            </details>
+          </div>
+        </section>
+
             <label>
               <input type="radio" name="mock-access-state" value="beta_user">
               Beta member preview
@@ -2391,7 +2471,8 @@
     </div>
   </div>
 
-  <script src="answer-client.js?v=answer-dom-order-20260529"></script>
+  <script src="answer-client.js?v=answer-fretboard-20260611"></script>
+  <script src="pedal-steel-fretboard.js?v=answer-fretboard-20260611"></script>
   <script>
     const question = document.querySelector("#question");
     const promptBox = document.querySelector(".prompt");
@@ -2507,6 +2588,11 @@
       "Where do you stop hearing the chord move?",
       "What’re you trying to clean up tonight?",
       "What’s the steel not giving you yet?",
+    const answerFretboard = document.querySelector("#answer-fretboard");
+    const answerFretboardDetails = document.querySelector("#answer-fretboard-details");
+    const answerFretboardTitle = document.querySelector("#answer-fretboard-title");
+    const answerFretboardDescription = document.querySelector("#answer-fretboard-description");
+    const answerFretboardMount = document.querySelector("#answer-fretboard-mount");
       "What’s bothering you about your playing lately?",
       "Which pedal move still feels unnatural?",
       "What are you avoiding practicing?",
@@ -3196,6 +3282,37 @@
     function renderLoadingState(submittedQuestion) {
       answerPrimaryTitle.lastChild.textContent = "Answer";
       answerLead.textContent = "Searching the forum sources...";
+    function shouldOpenFretboardByDefault() {
+      return !window.matchMedia || !window.matchMedia("(max-width: 640px)").matches;
+    }
+
+    function clearFretboardVisualization() {
+      answerFretboard.hidden = true;
+      answerFretboardTitle.textContent = "Fretboard view";
+      answerFretboardDescription.textContent = "";
+      answerFretboardMount.innerHTML = "";
+      answerFretboardDetails.open = false;
+    }
+
+    function renderFretboardVisualization(fretboard) {
+      clearFretboardVisualization();
+      if (!fretboard || !window.STEEL_RAG_FRETBOARD?.mountPedalSteelFretboard) {
+        return;
+      }
+
+      answerFretboard.hidden = false;
+      answerFretboardTitle.textContent = fretboard.title || "Fretboard view";
+      answerFretboardDescription.textContent = fretboard.description || "";
+      answerFretboardDetails.open = shouldOpenFretboardByDefault();
+      window.STEEL_RAG_FRETBOARD.mountPedalSteelFretboard(answerFretboardMount, {
+        maxFret: fretboard.maxFret,
+        stringCount: fretboard.stringCount,
+        tuningLabels: fretboard.tuningLabels,
+        positions: fretboard.positions,
+        highlights: fretboard.highlights || []
+      });
+    }
+
       answerStatus.hidden = false;
       answerStatus.textContent = "Retrieving a source-backed answer.";
       answerSectionGrid.innerHTML = "";
@@ -3237,6 +3354,8 @@
       primarySend.disabled = isBusy || !canAskLive;
       answerSend.disabled = isBusy || !canAskLive;
       suggestedPrompts.querySelectorAll(".example").forEach((button) => {
+      renderFretboardVisualization(response.fretboard);
+
         button.disabled = isBusy;
       });
     }
@@ -3314,6 +3433,7 @@
       question.focus();
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
+      clearFretboardVisualization();
 
     function renderTechPopover() {
       techPopoverTitle.textContent = TECH_POPOVER_COPY.title;
@@ -3330,6 +3450,7 @@
         }
         sectionEl.append(body);
         techPopoverContent.appendChild(sectionEl);
+      clearFretboardVisualization();
       });
     }
 
@@ -3424,6 +3545,7 @@
         updateMockAccessUi();
         return;
       }
+      clearFretboardVisualization();
 
       if (sessionGrantsLiveAccess(session)) {
         mockAccessState = STEEL_RAG_ANSWER_UI.normalizeAccessRole(session.role);

@@ -165,7 +165,8 @@ let capturedRequest;
 def test_answer_ui_uses_live_answer_client_not_mock_answer_data() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
 
-    assert '<script src="answer-client.js?v=answer-dom-order-20260529"></script>' in html
+    assert '<script src="answer-client.js?v=answer-fretboard-20260611"></script>' in html
+    assert '<script src="pedal-steel-fretboard.js?v=answer-fretboard-20260611"></script>' in html
     assert '<script src="mock-answer-data.js"></script>' not in html
     assert "STEEL_RAG_ANSWER_UI.requestAnswer" in html
     assert "STEEL_RAG_ANSWER_UI.requestSession" in html
@@ -232,6 +233,109 @@ assert.equal(JSON.stringify(sourced.sources[0]), JSON.stringify({
   url: "https://bb.steelguitarforum.com/viewtopic.php?t=123",
   date: ""
 }));
+assert.equal("fretboard" in sourced, false);
+
+const visualized = answerUi.normalizeAnswerResponse({
+  question: "Show me G major positions.",
+  answer: "Use a few nearby grips.",
+  fretboard: {
+    description: "Three common G major locations.",
+    maxFret: 24,
+    stringCount: 10,
+    tuningLabels: ["F#", "D#", "G#", "E", "B", "G#", "F#", "E", "D", "B"],
+    positions: [
+      {
+        id: "g-open-3",
+        label: "G major",
+        fret: 3,
+        strings: [4, 5, 6],
+        grip: [4, 5, 6],
+        role: "No pedals",
+        notes: "Open G pocket"
+      }
+    ]
+  },
+  sources: []
+});
+assert.equal(visualized.fretboard.title, "Fretboard view");
+assert.equal(visualized.fretboard.description, "Three common G major locations.");
+assert.equal(visualized.fretboard.maxFret, 24);
+assert.equal(visualized.fretboard.stringCount, 10);
+assert.equal(JSON.stringify(visualized.fretboard.tuningLabels), JSON.stringify(["F#", "D#", "G#", "E", "B", "G#", "F#", "E", "D", "B"]));
+assert.equal(visualized.fretboard.positions[0].id, "g-open-3");
+assert.equal(visualized.fretboard.positions[0].notes, "Open G pocket");
+assert.equal(JSON.stringify(visualized.fretboard.highlights), JSON.stringify([]));
+
+const positionsWinVisualized = answerUi.normalizeAnswerResponse({
+  question: "Where can I play a G chord?",
+  answer: "Use the contract positions, not stale legacy highlights.",
+  fretboard: {
+    title: "G major positions on E9",
+    description: "Contract positions should be primary.",
+    positions: [
+      {
+        id: "g-open-3",
+        label: "G major",
+        fret: 3,
+        strings: [4, 5, 6],
+        grip: "4-5-6",
+        pedals: [],
+        levers: []
+      },
+      {
+        id: "g-af-6",
+        label: "G major",
+        fret: 6,
+        strings: [4, 5, 6],
+        grip: "4-5-6",
+        pedals: ["A"],
+        levers: ["F"]
+      },
+      {
+        id: "g-ab-10",
+        label: "G major",
+        fret: 10,
+        strings: [4, 5, 6],
+        grip: "4-5-6",
+        pedals: ["A", "B"],
+        levers: []
+      }
+    ],
+    highlights: [
+      {
+        id: "wrong-legacy-ab-6",
+        label: "Wrong legacy A+B",
+        fret: 6,
+        strings: [4, 5, 6],
+        pedals: ["A", "B"]
+      }
+    ]
+  },
+  sources: []
+});
+assert.equal(positionsWinVisualized.fretboard.positions.length, 3);
+assert.equal(JSON.stringify(positionsWinVisualized.fretboard.positions.map((item) => item.id)), JSON.stringify(["g-open-3", "g-af-6", "g-ab-10"]));
+assert.equal(JSON.stringify(positionsWinVisualized.fretboard.positions.map((item) => item.fret)), JSON.stringify([3, 6, 10]));
+assert.equal(positionsWinVisualized.fretboard.highlights[0].id, "wrong-legacy-ab-6");
+
+const legacyVisualized = answerUi.normalizeAnswerResponse({
+  question: "Show me legacy positions.",
+  answer: "Legacy fallback still works.",
+  fretboard: {
+    highlights: [
+      {
+        id: "legacy-open-3",
+        label: "Legacy G major",
+        fret: 3,
+        strings: [4, 5, 6],
+        role: "Legacy no pedals"
+      }
+    ]
+  },
+  sources: []
+});
+assert.equal("positions" in legacyVisualized.fretboard, false);
+assert.equal(legacyVisualized.fretboard.highlights[0].id, "legacy-open-3");
 
 const vendorFormatted = answerUi.normalizeAnswerResponse({
   answer: [
@@ -664,6 +768,19 @@ const sandbox = {
   window: {
     location: { search: "?access=beta_user" },
     crypto: { randomUUID: () => "test-id" },
+    STEEL_RAG_FRETBOARD: {
+      mountPedalSteelFretboard(container, options) {
+        sandbox.mountedFretboardOptions = options;
+        container.dataset.mountedFretboard = "true";
+        container.dataset.positionCount = String((options.positions || []).length);
+        container.dataset.highlightCount = String(options.highlights.length);
+        const figure = makeElement("", "figure");
+        figure.className = "pedal-steel-fretboard";
+        figure.dataset.component = "PedalSteelFretboard";
+        container.appendChild(figure);
+      }
+    },
+    matchMedia: () => ({ matches: false }),
     scrollTo() {},
     setTimeout: (callback) => callback()
   },
@@ -683,6 +800,22 @@ const sandbox = {
         question: "What is my copedent?",
         answer: COPEDENT_ANSWER,
         sections: [{ title: "Answer", style: "lead", body: COPEDENT_ANSWER }],
+        fretboard: {
+          title: "G major positions",
+          description: "Three common G major locations on E9.",
+          maxFret: 24,
+          stringCount: 10,
+          positions: [
+            {
+              id: "g-open-3",
+              label: "G major",
+              fret: 3,
+              strings: [4, 5, 6],
+              grip: [4, 5, 6],
+              role: "No pedals"
+            }
+          ]
+        },
         sources: [],
         followups: []
       };
@@ -736,6 +869,34 @@ vm.runInContext(inlineScript, sandbox);
   assert.equal(renderedSections[2].text.includes("Common grips"), false);
   assert.equal(renderedSections[3].text.includes("3-4-5"), true);
   assert.equal(renderedSections[3].text.includes("6-8-10"), true);
+
+  const fretboardSection = getElement("#answer-fretboard");
+  const fretboardDetails = getElement("#answer-fretboard-details");
+  const fretboardTitle = getElement("#answer-fretboard-title");
+  const fretboardDescription = getElement("#answer-fretboard-description");
+  const fretboardMount = getElement("#answer-fretboard-mount");
+  assert.equal(fretboardSection.hidden, false);
+  assert.equal(fretboardDetails.open, true);
+  assert.equal(fretboardTitle.textContent, "G major positions");
+  assert.equal(fretboardDescription.textContent, "Three common G major locations on E9.");
+  assert.equal(fretboardMount.dataset.mountedFretboard, "true");
+  assert.equal(fretboardMount.dataset.positionCount, "1");
+  assert.equal(fretboardMount.dataset.highlightCount, "0");
+  assert.equal(sandbox.mountedFretboardOptions.maxFret, 24);
+  assert.equal(sandbox.mountedFretboardOptions.stringCount, 10);
+  assert.equal(sandbox.mountedFretboardOptions.positions[0].id, "g-open-3");
+  assert.equal(sandbox.mountedFretboardOptions.positions[0].role, "No pedals");
+
+  sandbox.renderResponse({
+    answer: "No fretboard here.",
+    sections: [{ title: "Answer", style: "lead", body: "No fretboard here." }],
+    sources: [],
+    followups: []
+  });
+  assert.equal(fretboardSection.hidden, true);
+  assert.equal(fretboardTitle.textContent, "Fretboard view");
+  assert.equal(fretboardDescription.textContent, "");
+  assert.equal(fretboardMount.children.length, 0);
 })().catch((error) => {
   console.error(error);
   process.exit(1);
@@ -1108,6 +1269,25 @@ def test_answer_ui_styles_markdown_tables_as_readable_answer_content() -> None:
     assert ".answer-table th," in html
     assert ".answer-table td" in html
     assert re.search(r"\.answer-table\s*\{[^}]*font-size:\s*16px;", html, re.S)
+
+
+def test_answer_ui_wires_optional_fretboard_visualization_section() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+
+    answer_card_index = html.index('<article class="answer-card">')
+    fretboard_index = html.index('<section class="answer-fretboard" id="answer-fretboard"')
+    source_index = html.index('<section class="source-section" aria-labelledby="source-notes-title">')
+    assert answer_card_index < fretboard_index < source_index
+    assert 'id="answer-fretboard-details"' in html
+    assert 'id="answer-fretboard-title">Fretboard view</summary>' in html
+    assert 'id="answer-fretboard-mount"' in html
+    assert ".answer-fretboard[hidden]" in html
+    assert ".fretboard-card" in html
+    assert "function renderFretboardVisualization(fretboard)" in html
+    assert "window.STEEL_RAG_FRETBOARD.mountPedalSteelFretboard(answerFretboardMount" in html
+    assert "function clearFretboardVisualization()" in html
+    assert "clearFretboardVisualization();" in html
+    assert 'window.matchMedia("(max-width: 640px)").matches' in html
 
 
 def test_answer_ui_hides_searched_row_but_preserves_source_card_metadata() -> None:
