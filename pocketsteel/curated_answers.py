@@ -24,9 +24,113 @@ class CuratedAnswer:
 WEAK_RETRIEVAL_WARNING = "curated answer used; source support was weak"
 CURATED_FACT_WEAK_WARNING = "curated fact used; source support weak"
 
+PLAYER_BIOS = {
+    "buddy emmons": (
+        "Buddy Emmons was one of the most influential pedal steel guitarists in the instrument’s history. "
+        "He is known for brilliant E9 and C6 playing, adventurous technique, and major contributions as both a player and a builder/designer influence. "
+        "For many players, his recordings and ideas are central reference points for modern pedal steel."
+    ),
+    "lloyd green": (
+        "Lloyd Green is one of the most influential pedal steel guitarists, especially associated with classic Nashville/session steel guitar. "
+        "He is known for tasteful, melodic E9 playing, precise phrasing, and major recorded work in country music."
+    ),
+    "paul franklin": (
+        "Paul Franklin is a major modern pedal steel guitarist and session player. "
+        "He is known for highly polished E9 and C6 playing, broad Nashville recording work, and a teaching influence on modern pedal-steel technique."
+    ),
+    "jimmy day": (
+        "Jimmy Day was an important pedal steel guitarist closely associated with classic country steel. "
+        "He is known for expressive phrasing, touch, and recorded work that helped define the emotional vocabulary of the instrument."
+    ),
+    "ralph mooney": (
+        "Ralph Mooney was an influential pedal steel guitarist known for a driving, bright West Coast country sound. "
+        "His playing helped shape the Bakersfield side of pedal steel and remains a reference for rhythmic, vocal-like E9 phrasing."
+    ),
+    "curly chalker": (
+        "Curly Chalker was a major steel guitarist known especially for powerful C6 playing, jazz harmony, and big chordal command. "
+        "He is often cited by players for his technical authority, musical imagination, and distinctive tone."
+    ),
+    "john hughey": (
+        "John Hughey was a pedal steel guitarist known for lyrical, singing E9 playing and emotional ballad work. "
+        "Many players associate him with smooth sustain, expressive slides, and a highly vocal approach to the instrument."
+    ),
+    "tom brumley": (
+        "Tom Brumley was an influential pedal steel guitarist best known for clean, memorable country steel parts. "
+        "His playing is often cited for tone, restraint, melodic clarity, and its influence on classic country pedal steel."
+    ),
+    "maurice anderson": (
+        "Maurice Anderson, often known as “Reece” Anderson, was a major steel guitarist and an important builder/player figure associated with MSA. "
+        "He is known for advanced musicianship, jazz-influenced steel playing, and his role in the development and visibility of MSA guitars."
+    ),
+    "reece anderson": (
+        "Reece Anderson, also known as Maurice “Reece” Anderson, was a major steel guitarist and an important builder/player figure associated with MSA. "
+        "He is known for advanced musicianship, jazz-influenced steel playing, and his role in the development and visibility of MSA guitars."
+    ),
+    "sarah jory": (
+        "Sarah Jory is a respected steel guitarist known for strong technique, showmanship, and modern country/steel-guitar performance. "
+        "She is often mentioned as an example of a high-level contemporary player with a commanding stage and recording presence."
+    ),
+    "doug jernigan": (
+        "Doug Jernigan is a highly respected pedal steel guitarist known for speed, precision, and strong jazz and country command. "
+        "Players often cite him for advanced technique, clean execution, and broad musical vocabulary."
+    ),
+    "weldon myrick": (
+        "Weldon Myrick was an important Nashville pedal steel guitarist and session player. "
+        "He is known for tasteful recorded work, strong E9 musicianship, and his place among the classic generation of country steel players."
+    ),
+    "hal rugg": (
+        "Hal Rugg was a major pedal steel guitarist and Nashville session player. "
+        "He is known for clean, authoritative playing, strong C6 and E9 musicianship, and influential work in classic country settings."
+    ),
+    "pete drake": (
+        "Pete Drake was a steel guitarist and producer associated with major Nashville recording work. "
+        "He is known for memorable session playing and for popularizing vocal/talk-box-style steel sounds in addition to conventional steel parts."
+    ),
+}
+
+
+def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
+    if mentions_g_major_location_question(question):
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=(
+                "On standard E9, useful G major positions include:\n\n"
+                "- 3rd fret, no pedals: open-position G major.\n"
+                "- 6th fret with A pedal + F lever: A+F G major position.\n"
+                "- 10th fret with A+B pedals: A+B G major position.\n\n"
+                "Common grips to try are 4-5-6, 3-4-5, 5-6-8, and 6-8-10."
+            ),
+        )
+    if mentions_g_i_iv_v_visual_question(question):
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=(
+                "On standard E9, a compact 1-4-5 in G is:\n\n"
+                "- G: 3rd fret, no pedals.\n"
+                "- C: 3rd fret with A+B pedals.\n"
+                "- D: 5th fret with A+B pedals.\n\n"
+                "Use this as a simple map before adding more positions or passing chords."
+            ),
+        )
+    if mentions_g_common_grips_visual_question(question):
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=(
+                "For G at the 3rd fret open position on standard E9, common grips include 4-5-6, 3-4-5, 5-6-8, and 6-8-10."
+            ),
+        )
+    return None
+
 
 def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer | None:
     q = normalize(question)
+    fretboard_answer = visual_fretboard_curated_answer(q)
+    if fretboard_answer is not None:
+        return fretboard_answer
+
     rule_answer = answer_from_rules(question)
     if rule_answer is not None:
         return CuratedAnswer(
@@ -203,13 +307,17 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
                 intent="vendor_buying_guidance",
                 confidence="curated_medium",
                 answer=(
-                    "For pedal rods, start with the guitar maker, a dealer for that brand, or a steel-guitar parts supplier/builder.\n\n"
-                    "Before ordering, match:\n"
+                    "Best places to check\n\n"
+                    "- The guitar maker or current brand owner.\n"
+                    "- A dealer for that brand.\n"
+                    "- A steel-guitar parts supplier or builder who can match pedal-rod hardware.\n"
+                    "- SGF classifieds or the used market if you can verify the dimensions.\n\n"
+                    "What to choose\n\n"
                     "- rod length\n"
                     "- thread size\n"
                     "- hook/connector style\n"
                     "- pedal-rack and bellcrank hardware\n\n"
-                    "Used SGF classifieds can help, but matching the hardware matters more than finding any random rod."
+                    "Check current availability before assuming a listed rod will fit; matching the hardware matters more than finding any random rod."
                 ),
             )
         if item == "slide bar":
@@ -430,33 +538,9 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             ),
         )
 
-    if "maurice anderson" in q or "reece anderson" in q:
-        return CuratedAnswer(
-            intent="entity_definition",
-            confidence="curated_high",
-            answer="Maurice “Reece” Anderson was a major steel guitarist and an important builder/player figure associated with MSA.",
-        )
-
-    if "lloyd green" in q and re.search(r"\bwho\s+is\b|\btell\s+me\s+about\b|\bwhat\s+is\b", q):
-        return CuratedAnswer(
-            intent="entity_definition",
-            confidence="curated_high",
-            answer=(
-                "Lloyd Green is one of the most influential pedal steel guitarists, especially associated with classic Nashville/session steel guitar. "
-                "He is known for tasteful, melodic E9 playing and major recorded work in country music."
-            ),
-        )
-
-    if "buddy emmons" in q and re.search(r"\bwho\s+is\b|\btell\s+me\s+about\b|\bwhat\s+is\b", q):
-        return CuratedAnswer(
-            intent="player_bio",
-            confidence="curated_high",
-            answer=(
-                "Buddy Emmons was one of the most influential pedal steel guitarists in the instrument’s history. "
-                "He is known for brilliant E9 and C6 playing, adventurous technique, and major contributions as both a player and a builder/designer influence. "
-                "For many players, his recordings and ideas are central reference points for modern pedal steel."
-            ),
-        )
+    player_bio = player_bio_answer(q)
+    if player_bio is not None:
+        return player_bio
 
     if mentions_company_status(q):
         return CuratedAnswer(
@@ -847,6 +931,21 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             ),
         )
 
+    if mentions_play_without_finger_picks(q):
+        return CuratedAnswer(
+            intent="right_hand_technique",
+            confidence="curated_high",
+            answer=(
+                "Technically, yes — a player can play pedal steel without finger picks. But for standard pedal steel playing, it is usually better to learn with picks.\n\n"
+                "Why picks help:\n"
+                "- Finger picks give the notes more volume and clearer attack.\n"
+                "- They improve string separation when playing grips.\n"
+                "- They make blocking, speed, and tone more consistent.\n"
+                "- They are part of the classic pedal-steel sound.\n\n"
+                "Some players may occasionally play without picks for a softer touch, and non-pedal or dobro contexts can differ. For a beginner on pedal steel, picks usually feel awkward at first, but it is worth giving the adjustment period time."
+            ),
+        )
+
     if mentions_finger_picks(q):
         return CuratedAnswer(
             intent="equipment_recommendation",
@@ -898,6 +997,19 @@ def normalize(text: str) -> str:
     return re.sub(r"\s+", " ", text or "").strip().lower()
 
 
+def player_bio_answer(question: str) -> CuratedAnswer | None:
+    if not re.search(r"\bwho\s+is\b|\btell\s+me\s+about\b|\bwhat\s+is\b", question):
+        return None
+    for name, answer in PLAYER_BIOS.items():
+        if name in question:
+            return CuratedAnswer(
+                intent="player_bio",
+                confidence="curated_high",
+                answer=answer,
+            )
+    return None
+
+
 def mentions_g_chord_sixth_fret(question: str) -> bool:
     return bool(re.search(r"\bg\s+chord\b", question) and re.search(r"\b6(?:th)?\s+fret\b|\bsixth\s+fret\b", question))
 
@@ -932,6 +1044,25 @@ def mentions_stroboplus(question: str) -> bool:
 
 def mentions_jeff_newman(question: str) -> bool:
     return bool(re.search(r"\bjeff\s+newman\b", question))
+
+
+def mentions_g_major_location_question(question: str) -> bool:
+    return question in {
+        "where can i play a g chord?",
+        "where can i play a g chord",
+        "show me places to play a g major chord.",
+        "show me places to play a g major chord",
+        "where are g major positions on e9?",
+        "where are g major positions on e9",
+    }
+
+
+def mentions_g_i_iv_v_visual_question(question: str) -> bool:
+    return question in {"show me a 1-4-5 in g.", "show me a 1-4-5 in g"}
+
+
+def mentions_g_common_grips_visual_question(question: str) -> bool:
+    return question in {"show me common grips for g.", "show me common grips for g"}
 
 
 def mentions_e9_tenth_string_gauge(question: str) -> bool:
@@ -1065,6 +1196,14 @@ def mentions_changer_oil(question: str) -> bool:
 
 def mentions_finger_picks(question: str) -> bool:
     return bool(("finger pick" in question or "fingerpick" in question or "picks" in question) and ("buy" in question or "best" in question or "recommend" in question))
+
+
+def mentions_play_without_finger_picks(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:play|practice|pick)\b", question)
+        and re.search(r"\bwithout\b", question)
+        and re.search(r"\b(?:finger\s*picks?|fingerpicks?|picks?)\b", question)
+    )
 
 
 def mentions_airplane_travel(question: str) -> bool:

@@ -23,6 +23,7 @@ from pocketsteel.answering import (
 )
 from pocketsteel.chroma_search import ChromaSearchIndex
 from pocketsteel.curated_answers import CURATED_FACT_WEAK_WARNING, WEAK_RETRIEVAL_WARNING, lookup_curated_answer
+from pocketsteel.fretboard_examples import DEFAULT_PEDAL_LEVER_LABELS
 from pocketsteel.api import create_app
 from pocketsteel.access_control import DEV_ACCESS_ROLE_ENVIRON, TRUSTED_AUTH_ROLE_ENVIRON
 from pocketsteel.answer_usage import InMemoryAnswerRateLimiter
@@ -1820,7 +1821,10 @@ def assert_clean_answer_body(payload: dict[str, Any]) -> None:
     assert "Useful source-backed points" not in answer
     assert "The cleanest source-backed answer" not in answer
     assert "Here is the safest answer I can support from the retrieved material" not in answer
+    assert "I found a few related practical points" not in answer
+    assert "match is limited" not in answer
     assert "retrieved material" not in answer.lower()
+    assert "[link removed]" not in answer
     assert "source cards as supporting evidence" not in answer
     assert "Useful distilled points" not in answer
     assert "Interval-first answer" not in answer
@@ -1831,6 +1835,7 @@ def assert_clean_answer_body(payload: dict[str, Any]) -> None:
     assert "paypal" not in answer.lower()
     assert "order form" not in answer.lower()
     assert "order link" not in answer.lower()
+    assert "other hand I rarely" not in answer
     assert "Does anyone know" not in answer
     assert "Has anyone compared" not in answer
     assert "I am looking for tablature" not in answer
@@ -1879,6 +1884,22 @@ def answer_for_question(question: str, results: list[dict[str, Any]], mode: str 
     return payload
 
 
+def assert_valid_fretboard_payload(payload: dict[str, Any]) -> None:
+    fretboard = payload["fretboard"]
+    assert set(fretboard) == {"title", "description", "highlights"}
+    assert isinstance(fretboard["title"], str) and fretboard["title"]
+    assert isinstance(fretboard["description"], str) and fretboard["description"]
+    assert fretboard["highlights"]
+    for highlight in fretboard["highlights"]:
+        assert set(highlight) == {"id", "label", "fret", "strings", "pedals", "levers", "role"}
+        assert isinstance(highlight["id"], str) and highlight["id"]
+        assert 0 <= highlight["fret"] <= 24
+        assert highlight["strings"]
+        assert all(1 <= string <= 10 for string in highlight["strings"])
+        assert all(label in DEFAULT_PEDAL_LEVER_LABELS for label in highlight["pedals"])
+        assert all(label in DEFAULT_PEDAL_LEVER_LABELS for label in highlight["levers"])
+
+
 def noisy_practical_sources() -> list[dict[str, Any]]:
     return [
         {
@@ -1904,6 +1925,62 @@ def noisy_practical_sources() -> list[dict[str, Any]]:
             "source_id": "user-e9-copedent-profile",
         },
     ]
+
+
+def test_location_based_g_chord_answer_includes_fretboard_payload() -> None:
+    payload = answer_for_question("Where can I play a G chord?", noisy_practical_sources())
+
+    assert_clean_answer_body(payload)
+    assert "fretboard" in payload
+    assert_valid_fretboard_payload(payload)
+    assert payload["fretboard"]["title"] == "G major positions on E9"
+    assert [highlight["id"] for highlight in payload["fretboard"]["highlights"]] == ["g-open-3", "g-af-6", "g-ab-10"]
+    assert "On standard E9, useful G major positions include" in payload["answer"]
+    assert "3rd fret" in payload["answer"]
+    assert "6th fret" in payload["answer"]
+    assert "10th fret" in payload["answer"]
+    assert "I " not in payload["answer"]
+    assert payload["sources"]
+
+
+def test_i_iv_v_question_includes_fretboard_payload() -> None:
+    payload = answer_for_question("Show me a 1-4-5 in G.", noisy_practical_sources())
+
+    assert_clean_answer_body(payload)
+    assert "fretboard" in payload
+    assert_valid_fretboard_payload(payload)
+    assert payload["fretboard"]["title"] == "I-IV-V in G on E9"
+    assert [highlight["id"] for highlight in payload["fretboard"]["highlights"]] == [
+        "g-i-open-3",
+        "c-iv-ab-3",
+        "d-v-ab-5",
+    ]
+    assert "G: 3rd fret, no pedals" in payload["answer"]
+    assert "C: 3rd fret with A+B pedals" in payload["answer"]
+    assert "D: 5th fret with A+B pedals" in payload["answer"]
+
+
+def test_common_grips_question_includes_fretboard_payload() -> None:
+    payload = answer_for_question("Show me common grips for G.", noisy_practical_sources())
+
+    assert_clean_answer_body(payload)
+    assert "fretboard" in payload
+    assert_valid_fretboard_payload(payload)
+    assert payload["fretboard"]["title"] == "Common G major grips on E9"
+    assert [highlight["strings"] for highlight in payload["fretboard"]["highlights"]] == [
+        [4, 5, 6],
+        [3, 4, 5],
+        [5, 6, 8],
+        [6, 8, 10],
+    ]
+    assert "common grips include 4-5-6, 3-4-5, 5-6-8, and 6-8-10" in payload["answer"]
+
+
+def test_non_location_answer_omits_fretboard_payload() -> None:
+    payload = deterministic_payload("gear", question="What are common Fender Steel King settings?")
+
+    assert "fretboard" not in payload
+    assert payload["sources"]
 
 
 def test_pockets_answer_is_practical_not_weak_source_dump() -> None:
@@ -2211,6 +2288,49 @@ def test_best_finger_picks_routes_to_equipment_not_player_ranking() -> None:
     assert payload["sources"]
 
 
+def test_play_without_finger_picks_synthesizes_third_person_guidance() -> None:
+    payload = answer_for_question(
+        "Can I play without finger picks?",
+        [
+            {
+                "score": 0.82,
+                "excerpt": "[link removed] I play with and without picks. other hand I rarely play dobro or PSG without them.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "Playing without picks",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400615",
+                "chunk_id": "chunk-without-picks",
+                "post_uid": "p-without-picks",
+                "source_system": "sgf_phpbb_current",
+            },
+            {
+                "score": 0.78,
+                "excerpt": "I had never worn finger picks before I started PSG but they appeared to be essential so I persevered.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "Finger picks adjustment",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400616",
+                "chunk_id": "chunk-finger-picks-adjustment",
+                "post_uid": "p-finger-picks-adjustment",
+                "source_system": "sgf_phpbb_current",
+            },
+        ],
+    )
+
+    answer = payload["answer"]
+    assert_clean_answer_body(payload)
+    assert answer.startswith("Technically, yes")
+    assert "a player can play pedal steel without finger picks" in answer
+    assert "usually better to learn with picks" in answer
+    assert "volume" in answer
+    assert "clearer attack" in answer
+    assert "string separation" in answer
+    assert "classic pedal-steel sound" in answer
+    assert "beginner" in answer
+    assert "I play" not in answer
+    assert "I had never" not in answer
+    assert "other hand I rarely" not in answer
+    assert payload["sources"]
+
+
 def test_airplane_question_routes_to_travel_guidance() -> None:
     payload = answer_for_question(
         "Can I put my steel guitar on an airplane?",
@@ -2358,6 +2478,32 @@ def test_slide_bar_buying_routes_to_vendor_guidance() -> None:
     assert "/api/answer" not in payload["answer"]
     assert "@" not in payload["answer"]
     assert payload["sources"]
+
+
+def test_source_cards_clean_contact_order_and_forum_junk() -> None:
+    payload = answer_for_question(
+        "Where can I buy a slide bar?",
+        [
+            {
+                "score": 0.83,
+                "excerpt": "Bob Example / 12 Jan 2020 10:00 AM Top Does anyone know where to order? PayPal accepted, e-mail bob@example.com, https://example.com/order-form. Several players mention BJS and other steel bars as options to compare by diameter and weight.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "slide bar source",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400030",
+                "chunk_id": "chunk-slide-source-cleanup",
+                "post_uid": "p-slide-source-cleanup",
+                "source_system": "sgf_phpbb_current",
+            }
+        ],
+    )
+
+    source_excerpt = payload["sources"][0]["excerpt"]
+    assert "Several players mention BJS" in source_excerpt
+    assert "PayPal" not in source_excerpt
+    assert "bob@example.com" not in source_excerpt
+    assert "Does anyone know" not in source_excerpt
+    assert "order-form" not in source_excerpt
+    assert "12 Jan 2020" not in source_excerpt
 
 
 def test_af_answer_uses_specific_sections_without_practical_answer() -> None:
@@ -2541,7 +2687,7 @@ def test_maurice_anderson_entity_definition_is_direct() -> None:
     )
 
     assert_clean_answer_body(payload)
-    assert "Maurice “Reece” Anderson" in payload["answer"]
+    assert "Maurice Anderson" in payload["answer"]
     assert "major steel guitarist" in payload["answer"]
     assert "Who can help us with pictures" not in payload["answer"]
     assert "For RAG answers" not in payload["answer"]
@@ -2582,6 +2728,36 @@ def test_lloyd_green_entity_definition_not_player_ranking() -> None:
     for player in ("Buddy Emmons", "Jimmy Day", "Paul Franklin", "Tom Brumley"):
         assert player not in payload["answer"]
     assert payload["sources"]
+
+
+def test_known_player_bios_use_curated_direct_answers() -> None:
+    samples = {
+        "Who is Jimmy Day?": "Jimmy Day was an important pedal steel guitarist",
+        "Who is Curly Chalker?": "Curly Chalker was a major steel guitarist",
+        "Who is John Hughey?": "John Hughey was a pedal steel guitarist",
+        "Who is Sarah Jory?": "Sarah Jory is a respected steel guitarist",
+    }
+    for question, expected in samples.items():
+        payload = answer_for_question(
+            question,
+            [
+                {
+                    "score": 0.81,
+                    "excerpt": "Top Does anyone know? This old thread has birthday chatter and unrelated ranking talk.",
+                    "forum_name": "Steel Players",
+                    "thread_title": "Noisy player thread",
+                    "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400041",
+                    "chunk_id": f"chunk-{question}",
+                    "post_uid": f"p-{question}",
+                    "source_system": "sgf_phpbb_current",
+                }
+            ],
+        )
+
+        assert_clean_answer_body(payload)
+        assert expected in payload["answer"]
+        assert "Rankings are subjective" not in payload["answer"]
+        assert "birthday chatter" not in payload["answer"]
 
 
 def test_latest_frontend_curated_failures_have_clean_answer_bodies() -> None:

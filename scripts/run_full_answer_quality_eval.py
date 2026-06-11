@@ -1,0 +1,817 @@
+#!/usr/bin/env python3
+"""Run a strict local answer-quality eval for the protected-preview stack."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+import textwrap
+import threading
+import urllib.error
+import urllib.request
+from collections import Counter, defaultdict
+from dataclasses import dataclass, field
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Literal
+from wsgiref.simple_server import WSGIServer, make_server
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from pocketsteel.access_control import DEV_ACCESS_ROLE_HEADER
+from pocketsteel.answer_contracts import normalize_intent
+from pocketsteel.answer_usage import InMemoryAnswerRateLimiter
+from pocketsteel.api import create_app
+from pocketsteel.answering import question_mentions_private_profile
+from pocketsteel.chroma_search import ChromaSearchIndex
+from pocketsteel.private_source_search import PrivateSourceSearchIndex
+from pocketsteel.retrieval_modes import (
+    DEFAULT_PRIVATE_CHROMA_PATH,
+    DEFAULT_PRIVATE_COLLECTION,
+    DEFAULT_SGF_V2_CHROMA_PATH,
+    DEFAULT_SGF_V2_COLLECTION,
+    PRIVATE_CAPABLE_ROLES,
+    RetrievalMode,
+    RetrievalModeConfig,
+)
+from scripts.run_answer_eval import (
+    DEFAULT_QUESTION_BANK,
+    add_directness_failures,
+    evaluate_answer,
+    infer_expected_intent,
+    load_question_bank,
+)
+from scripts.run_retrieval_ab_eval import RerankConfig
+from scripts.run_v2_rerank_answer_eval import RerankedSearchIndex
+
+
+DEFAULT_OUTPUT = Path("corpus-private/reports/full-answer-quality-eval.md")
+DEFAULT_JSON_OUTPUT = Path("corpus-private/reports/full-answer-quality-eval.json")
+DEFAULT_TOP_K = 6
+
+Outcome = Literal["pass", "warn", "fail"]
+Severity = Literal["warn", "fail"]
+
+INTERNAL_LANGUAGE_RE = re.compile(
+    r"\b(?:retrieved material|source cards|Useful distilled points|Useful source-backed points|"
+    r"cleanest source-backed answer|safest answer I can support|source context|forum-source context|"
+    r"For RAG answers)\b",
+    re.I,
+)
+RAW_JUNK_RE = re.compile(
+    r"\b(?:PayPal|sp=sharing|e-?mail|order\s+(?:form|page|link|online|through)|"
+    r"Does anyone know|Has anyone compared|Thanks Nick|Top Hi All|\[link removed\])\b|"
+    r"\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b",
+    re.I,
+)
+FORUM_FRAGMENT_RE = re.compile(
+    r"\b[A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+){0,3}\s*/\s*\d{1,2}\s+"
+    r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\s+\d{4}",
+    re.I,
+)
+DIRECTNESS_BAD_START_RE = re.compile(
+    r"^\s*(?:Top\b|I found\b|The retrieved\b|Retrieved\b|Useful\b|Source\b|Forum\b|"
+    r"Here is the safest\b|The cleanest source-backed\b|It depends\b)",
+    re.I,
+)
+MECHANICS_RE = re.compile(
+    r"\b(?:string|strings|fret|frets|pedal|pedals|lever|levers|A\+B|A\+F|B\+C|"
+    r"E-lower|F lever|grip|grips|chord|major|minor|interval|scale|position)\b",
+    re.I,
+)
+ACTION_RE = re.compile(
+    r"\b(?:practice|try|play|check|test|listen|move|slow|repeat|work|isolate|compare|"
+    r"start|use|set|adjust|swap|mute|block)\b",
+    re.I,
+)
+TROUBLESHOOT_RE = re.compile(r"\b(?:check|test|swap|isolate|cable|ground|tech|safety|signal chain|amp)\b", re.I)
+BRAND_COMPARE_RE = re.compile(r"\b(?:no universal winner|depends|fit|condition|tone|mechanics|budget|support|copedent)\b", re.I)
+VENDOR_RE = re.compile(r"\b(?:buy|dealer|vendor|shop|store|classifieds|used market|maker|manufacturer|availability|current)\b", re.I)
+SONG_GUARDRAIL_RE = re.compile(r"\b(?:approach|style|chord|progression|public domain|original|exercise|not provide full|cannot provide full)\b", re.I)
+PRIVATE_PROFILE_RE = re.compile(r"\b(?:your saved 10-string E9 profile|your private|my common grips|your E9 copedent)\b", re.I)
+SENSITIVE_IDENTITY_RE = re.compile(r"\b(?:gay|identity|private trait|orientation|race|religion|medical)\b", re.I)
+
+FALLBACK_CATEGORIES = {
+    "source_mismatch_no_source",
+    "prompt_injection_hostile_retrieved_text",
+}
+
+MAINTENANCE_DIAGNOSTIC_RE = re.compile(
+    r"\b(?:fix|will not|won't|not return|cabinet drop|buzz|causes|string will not|what do i do if)\b",
+    re.I,
+)
+MAINTENANCE_ACTION_RE = re.compile(
+    r"\b(?:check|test|adjust|measure|match|replace|contact|clean|lubricat|oil|avoid|caution|sparingly|tune|thread|connector|qualified|tech)\b",
+    re.I,
+)
+
+
+@dataclass(frozen=True)
+class QualityFinding:
+    severity: Severity
+    key: str
+    message: str
+
+
+@dataclass
+class QualityResult:
+    id: str
+    category: str
+    category_family: str
+    question: str
+    expected_intent: str
+    expected_contract: str
+    status_code: int
+    answer: str
+    warnings: list[str]
+    sources: list[dict[str, Any]]
+    findings: list[QualityFinding] = field(default_factory=list)
+
+    @property
+    def outcome(self) -> Outcome:
+        if any(finding.severity == "fail" for finding in self.findings):
+            return "fail"
+        if self.findings:
+            return "warn"
+        return "pass"
+
+    @property
+    def private_source_count(self) -> int:
+        return sum(1 for source in self.sources if is_private_source_card(source))
+
+
+def category_family(row: dict[str, str]) -> str:
+    category = row.get("category", "")
+    expected = normalize_intent(row.get("expected_contract") or row.get("expected_intent") or "")
+    if category == "entity_player_biography":
+        return "player/teacher bio"
+    if category == "rankings_subjective_players":
+        return "subjective ranking"
+    if category == "e9_fretboard_copedent" or expected in {"copedent_fretboard", "right_hand_technique"}:
+        return "copedent/fretboard"
+    if category == "practice_plan_questions" or expected == "practice_plan":
+        return "practice/exercises"
+    if category == "gear_effects_tone" or expected in {"tone_touch", "technique_improvement"}:
+        return "gear/tone"
+    if category in {"maintenance_parts_safety", "diagnostic_troubleshooting"} or expected == "diagnostic_troubleshooting":
+        return "maintenance/troubleshooting"
+    if category == "brands_comparisons" or expected == "brand_comparison":
+        return "brand comparison"
+    if category == "accessories_products" or expected == "vendor_buying_guidance":
+        return "vendor/buying"
+    if category == "song_learning_or_tab_request" or expected == "song_learning":
+        return "song/tab/guardrail"
+    if category in {"source_mismatch_no_source", "prompt_injection_hostile_retrieved_text"}:
+        return "fallback/guardrail"
+    if category == "latest_frontend_failures" and SENSITIVE_IDENTITY_RE.search(row.get("question", "")):
+        return "sensitive identity/current roster"
+    if question_mentions_private_profile(row.get("question", "")):
+        return "private-profile/personal setup"
+    return category or "uncategorized"
+
+
+def first_sentence(answer: str) -> str:
+    text = re.sub(r"\s+", " ", answer or "").strip()
+    if not text:
+        return ""
+    match = re.search(r"(?<=[.!?])\s+", text)
+    return text[: match.start()].strip() if match else text
+
+
+def excerpt(text: str, width: int = 260) -> str:
+    return textwrap.shorten(re.sub(r"\s+", " ", text or "").strip(), width=width, placeholder=" ...")
+
+
+def add_finding(findings: list[QualityFinding], severity: Severity, key: str, message: str) -> None:
+    findings.append(QualityFinding(severity=severity, key=key, message=message))
+
+
+def is_private_source_card(source: dict[str, Any]) -> bool:
+    return str(source.get("visibility") or "").lower() == "private" or str(source.get("source_system") or "").startswith("private")
+
+
+def fallback_expected(row: dict[str, str]) -> bool:
+    question = row.get("question", "")
+    return (
+        row.get("category") in FALLBACK_CATEGORIES
+        or bool(SENSITIVE_IDENTITY_RE.search(question))
+        or "current" in normalize_intent(row.get("expected_intent") or "")
+    )
+
+
+def fallback_quality_is_good(answer: str) -> bool:
+    return bool(
+        re.search(r"\b(?:do not|don't|cannot|can't|not enough|no strong|not safe|ignore|check current|verify current)\b", answer, re.I)
+        and not RAW_JUNK_RE.search(answer)
+    )
+
+
+def answer_mentions_question_subject(question: str, answer: str) -> bool:
+    who = re.match(r"^\s*Who is\s+(.+?)\??\s*$", question, re.I)
+    if who:
+        name = who.group(1).strip()
+        return bool(re.search(rf"\b{re.escape(name)}\b", answer, re.I))
+    brands = re.findall(r"\b(Mullen|MSA|Emmons|Sho-Bud|ZumSteel|Carter|GFI|Sierra|Telonics|Benado|Sarno|Goodrich|BJS)\b", question, re.I)
+    return all(re.search(rf"\b{re.escape(brand)}\b", answer, re.I) for brand in set(brands)) if brands else True
+
+
+def evaluate_source_cards(
+    *,
+    row: dict[str, str],
+    sources: list[dict[str, Any]],
+    access_role: str,
+    findings: list[QualityFinding],
+) -> None:
+    if not sources:
+        if fallback_expected(row):
+            add_finding(findings, "warn", "no_source_fallback", "answer used fallback/no-source path; review fallback quality")
+        else:
+            add_finding(findings, "fail", "missing_sources", "answer has no source cards for a source-backed question")
+        return
+
+    private_allowed = access_role in PRIVATE_CAPABLE_ROLES
+    private_count = 0
+    public_url_count = 0
+    useful_count = 0
+    for index, source in enumerate(sources, 1):
+        title = str(source.get("title") or "").strip()
+        url = str(source.get("url") or "").strip()
+        excerpt_text = str(source.get("excerpt") or "").strip()
+        private = is_private_source_card(source)
+        if private:
+            private_count += 1
+            if not private_allowed:
+                add_finding(findings, "fail", "unauthorized_private_source", "private source card returned to unauthorized role")
+        elif url:
+            public_url_count += 1
+
+        if not title:
+            add_finding(findings, "fail", "source_missing_title", f"source card {index} is missing a title")
+        if not private and not url:
+            add_finding(findings, "fail", "source_missing_url", f"public source card {index} is missing a URL")
+        if private and not (source.get("source_id") or source.get("source_path")):
+            add_finding(findings, "warn", "private_source_missing_identity", f"private source card {index} lacks source_id/source_path")
+        if excerpt_text and len(excerpt_text) >= 45:
+            useful_count += 1
+        elif str(source.get("answer_quote_allowed") or "").lower() != "false":
+            add_finding(findings, "warn", "source_excerpt_too_short", f"source card {index} excerpt is too short")
+        if RAW_JUNK_RE.search(excerpt_text) or FORUM_FRAGMENT_RE.search(excerpt_text):
+            add_finding(findings, "warn", "source_excerpt_junk", f"source card {index} excerpt contains raw forum/contact/order junk")
+
+    if not private_count and not public_url_count:
+        add_finding(findings, "fail", "no_clickable_public_source", "source cards lack public URLs and no private source identity is present")
+    if useful_count == 0:
+        add_finding(findings, "warn", "weak_source_card_usefulness", "no source card has a useful excerpt")
+
+
+def evaluate_category_specific(row: dict[str, str], answer: str, sources: list[dict[str, Any]], findings: list[QualityFinding]) -> None:
+    question = row["question"]
+    family = category_family(row)
+    first = first_sentence(answer)
+    lower_answer = answer.lower()
+
+    if family == "player/teacher bio":
+        if not answer_mentions_question_subject(question, answer):
+            add_finding(findings, "fail", "bio_missing_subject", "player/teacher bio does not mention the requested person")
+        if re.search(r"\brankings are subjective\b|\btop\s+\d+\b", answer, re.I):
+            add_finding(findings, "fail", "bio_routed_as_ranking", "player/teacher bio used ranking language")
+        if not re.search(r"\b(?:player|steel guitarist|pedal steel|recording|session|teacher|innovator)\b", answer, re.I):
+            add_finding(findings, "warn", "bio_too_thin", "bio lacks a basic role/contribution statement")
+
+    elif family == "subjective ranking":
+        player_mentions = len(set(re.findall(r"\b(Buddy Emmons|Lloyd Green|Paul Franklin|Jimmy Day|Ralph Mooney|Curly Chalker|John Hughey|Tom Brumley|Doug Jernigan|Hal Rugg|Pete Drake)\b", answer, re.I)))
+        if player_mentions < 3:
+            add_finding(findings, "warn", "ranking_too_few_examples", "subjective ranking answer names too few players")
+        if not re.search(r"\b(?:subjective|depends|one way to frame|not definitive|criteria)\b", answer, re.I):
+            add_finding(findings, "warn", "ranking_missing_subjectivity", "ranking answer should frame the list as subjective")
+
+    elif family == "copedent/fretboard":
+        if not MECHANICS_RE.search(answer):
+            add_finding(findings, "fail", "missing_mechanics", "copedent/fretboard answer lacks strings, frets, pedals, levers, or chord-function language")
+        if re.search(r"\bA\+F|A pedal and F lever|A pedal.*F lever\b", question, re.I):
+            if not (re.search(r"\bA\s*(?:pedal|\+)", answer, re.I) and re.search(r"\bF\s*(?:lever|\+)", answer, re.I) and re.search(r"\bmajor\b", answer, re.I)):
+                add_finding(findings, "fail", "af_mechanics_incomplete", "A+F answer should mention A pedal, F lever, and the major-position function")
+        if "unsupported exact mechanics" in lower_answer:
+            add_finding(findings, "fail", "unsupported_exact_mechanics", "answer admits unsupported exact mechanics")
+
+    elif family == "practice/exercises":
+        if not re.search(r"\b(?:minute|day|routine|exercise|step|practice|repeat|tempo|slow)\b", answer, re.I):
+            add_finding(findings, "fail", "practice_not_actionable", "practice answer lacks a concrete routine, exercise, or practice step")
+        if not ACTION_RE.search(answer):
+            add_finding(findings, "warn", "practice_low_teaching_value", "practice answer has low actionable teaching value")
+
+    elif family == "gear/tone":
+        if RAW_JUNK_RE.search(answer):
+            add_finding(findings, "fail", "gear_contact_order_junk", "gear/tone answer contains contact, PayPal, order, or raw-link junk")
+        if re.search(r"\bworth|buy|best|where can i buy\b", question, re.I) and not re.search(r"\b(?:condition|availability|try|current|dealer|used|budget|fit|need)\b", answer, re.I):
+            add_finding(findings, "warn", "gear_buying_context_missing", "gear/buying answer lacks current availability, condition, budget, or fit caveats")
+
+    elif family == "maintenance/troubleshooting":
+        if MAINTENANCE_DIAGNOSTIC_RE.search(question):
+            if not TROUBLESHOOT_RE.search(answer):
+                add_finding(findings, "fail", "troubleshooting_not_diagnostic", "maintenance/troubleshooting answer lacks check/test/isolate/safety guidance")
+        elif not MAINTENANCE_ACTION_RE.search(answer):
+            add_finding(findings, "warn", "maintenance_action_missing", "maintenance answer lacks concrete action or safety guidance")
+        if re.search(r"\b(?:amp|hum|buzz|electrical)\b", question, re.I) and not re.search(r"\b(?:qualified|tech|safety|danger|unplug|ground|cable|outlet)\b", answer, re.I):
+            add_finding(findings, "warn", "amp_safety_context_missing", "amp/electrical troubleshooting should mention safe isolation or qualified tech help")
+
+    elif family == "brand comparison":
+        if not BRAND_COMPARE_RE.search(answer):
+            add_finding(findings, "fail", "brand_comparison_too_absolute", "brand comparison should avoid a universal winner and compare fit/condition/tone/mechanics/support")
+
+    elif family == "vendor/buying":
+        if not VENDOR_RE.search(answer):
+            add_finding(findings, "fail", "vendor_guidance_missing", "vendor/buying answer lacks dealer/vendor/current availability guidance")
+        if RAW_JUNK_RE.search(answer):
+            add_finding(findings, "fail", "vendor_contact_order_junk", "vendor/buying answer contains contact, PayPal, order, or raw-link junk")
+
+    elif family == "song/tab/guardrail":
+        if re.search(r"\bfull lyrics\b", question, re.I) and not re.search(r"\b(?:can't|cannot|not provide|won't provide|summary)\b", answer, re.I):
+            add_finding(findings, "fail", "lyrics_guardrail_missing", "lyrics request did not clearly avoid providing full lyrics")
+        if not SONG_GUARDRAIL_RE.search(answer):
+            add_finding(findings, "warn", "song_learning_low_guidance", "song/tab answer lacks approach, style, chord, original exercise, or public-domain guidance")
+
+    elif family == "sensitive identity/current roster":
+        if SENSITIVE_IDENTITY_RE.search(question) and not re.search(r"\b(?:don't use|avoid|not appropriate|focus on|instrument|color|gear)\b", answer, re.I):
+            add_finding(findings, "fail", "sensitive_identity_not_handled", "sensitive identity phrasing was not redirected safely")
+
+    if question_mentions_private_profile(question):
+        if not any(is_private_source_card(source) for source in sources) and not PRIVATE_PROFILE_RE.search(answer):
+            add_finding(findings, "warn", "personal_setup_without_private_source", "personal setup question did not use private profile/source evidence")
+    elif PRIVATE_PROFILE_RE.search(answer):
+        add_finding(findings, "warn", "unrelated_private_profile_fact", "answer mentions private profile facts for a non-personal question")
+
+    if first and len(first.split()) > 55:
+        add_finding(findings, "warn", "first_sentence_too_long", "first sentence is too long for a direct answer")
+
+
+def evaluate_quality_result(
+    row: dict[str, str],
+    *,
+    status_code: int,
+    payload: dict[str, Any],
+    access_role: str = "beta_user",
+) -> QualityResult:
+    answer = str(payload.get("answer") or payload.get("error") or "")
+    warnings = [str(warning) for warning in (payload.get("warnings") or [])]
+    sources = payload.get("sources") if isinstance(payload.get("sources"), list) else []
+    sources = [source for source in sources if isinstance(source, dict)]
+    expected_intent = normalize_intent(infer_expected_intent(row["question"], row.get("expected_intent", "")))
+    findings: list[QualityFinding] = []
+
+    if status_code != 200:
+        add_finding(findings, "fail", "http_error", f"HTTP status {status_code}")
+    if not answer.strip():
+        add_finding(findings, "fail", "empty_answer", "answer body is empty")
+    if answer and len(answer.strip()) < 80 and not fallback_expected(row):
+        add_finding(findings, "warn", "answer_too_short", "answer is too short for a useful product answer")
+
+    first = first_sentence(answer)
+    if not first:
+        add_finding(findings, "fail", "missing_direct_first_sentence", "answer lacks a direct first sentence")
+    elif DIRECTNESS_BAD_START_RE.search(first):
+        add_finding(findings, "warn", "weak_direct_first_sentence", "first sentence starts with caveat/internal/source framing")
+    if not answer_mentions_question_subject(row["question"], answer):
+        add_finding(findings, "warn", "subject_not_named", "answer does not clearly name the asked-about subject")
+
+    if INTERNAL_LANGUAGE_RE.search(answer):
+        add_finding(findings, "fail", "internal_implementation_language", "answer exposes internal retrieval/source-card language")
+    if RAW_JUNK_RE.search(answer):
+        add_finding(findings, "fail", "raw_contact_order_link_junk", "answer contains PayPal/contact/order/raw-link junk")
+    if FORUM_FRAGMENT_RE.search(answer):
+        add_finding(findings, "fail", "raw_forum_fragment", "answer contains username/date forum fragment")
+    if re.search(r"\[\d+\]", answer):
+        add_finding(findings, "warn", "inline_citation_marker", "answer contains inline numeric citation markers")
+    if not fallback_expected(row) and not ACTION_RE.search(answer) and category_family(row) not in {"player/teacher bio", "subjective ranking"}:
+        add_finding(findings, "warn", "low_actionable_teaching_value", "answer has low actionable teaching value")
+
+    legacy_failures = evaluate_answer(
+        row["question"],
+        answer,
+        warnings,
+        len(sources),
+        status_code,
+        row.get("expected_intent", ""),
+        row.get("expected_contract", ""),
+    )
+    for legacy in legacy_failures:
+        severity: Severity = "fail"
+        if legacy.group == "source weakness / no-source" and fallback_expected(row) and fallback_quality_is_good(answer):
+            severity = "warn"
+        add_finding(findings, severity, f"legacy_{legacy.group.replace(' ', '_').replace('/', '_')}", legacy.reason)
+
+    directness_findings: list[Any] = []
+    add_directness_failures(row["question"], answer, expected_intent, directness_findings)
+    for directness in directness_findings:
+        add_finding(findings, "fail", f"directness_{directness.group.replace(' ', '_').replace('/', '_')}", directness.reason)
+
+    evaluate_source_cards(row=row, sources=sources, access_role=access_role, findings=findings)
+    evaluate_category_specific(row, answer, sources, findings)
+
+    deduped: list[QualityFinding] = []
+    seen: set[tuple[str, str, str]] = set()
+    for finding in findings:
+        key = (finding.severity, finding.key, finding.message)
+        if key not in seen:
+            seen.add(key)
+            deduped.append(finding)
+
+    return QualityResult(
+        id=row["id"],
+        category=row["category"],
+        category_family=category_family(row),
+        question=row["question"],
+        expected_intent=row.get("expected_intent", ""),
+        expected_contract=row.get("expected_contract", ""),
+        status_code=status_code,
+        answer=answer,
+        warnings=warnings,
+        sources=sources,
+        findings=deduped,
+    )
+
+
+def post_answer(base_url: str, question: str, *, top_k: int, access_role: str) -> tuple[int, dict[str, Any]]:
+    payload = json.dumps({"question": question, "mode": "ask", "topK": top_k}).encode("utf-8")
+    headers = {"Content-Type": "application/json", "Accept": "application/json"}
+    if access_role:
+        headers[DEV_ACCESS_ROLE_HEADER] = access_role
+    request = urllib.request.Request(
+        f"{base_url.rstrip('/')}/api/answer",
+        data=payload,
+        headers=headers,
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=120) as response:
+            return response.status, json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        raw = exc.read().decode("utf-8", errors="replace")
+        try:
+            return exc.code, json.loads(raw)
+        except json.JSONDecodeError:
+            return exc.code, {"error": raw}
+    except (TimeoutError, urllib.error.URLError) as exc:
+        return 0, {"error": str(exc)}
+
+
+def run_http_eval(base_url: str, questions: list[dict[str, str]], *, top_k: int, access_role: str) -> list[QualityResult]:
+    results: list[QualityResult] = []
+    for index, row in enumerate(questions, 1):
+        print(f"[{index}/{len(questions)}] {row['id']} {row['question']}", flush=True)
+        status_code, payload = post_answer(base_url, row["question"], top_k=top_k, access_role=access_role)
+        results.append(evaluate_quality_result(row, status_code=status_code, payload=payload, access_role=access_role))
+    return results
+
+
+def build_protected_preview_app(args: argparse.Namespace) -> Any:
+    rerank_config = RerankConfig(
+        candidate_k=args.candidate_k,
+        min_excerpt_chars=args.min_excerpt_chars,
+        dedupe_thread=not args.no_dedupe_thread,
+        question_only_penalty=args.question_only_penalty,
+        mention_only_penalty=args.mention_only_penalty,
+        answer_advice_boost=args.answer_advice_boost,
+        quality_boost=args.quality_boost,
+        quality_threshold=args.quality_threshold,
+        noise_penalty=args.noise_penalty,
+        noise_threshold=args.noise_threshold,
+    )
+    sgf_index = RerankedSearchIndex(
+        ChromaSearchIndex.from_chroma(
+            chroma_path=args.sgf_chroma_path,
+            collection_name=args.sgf_collection,
+        ),
+        rerank_config,
+    )
+    private_index = PrivateSourceSearchIndex.from_chroma(
+        chroma_path=args.private_chroma_path,
+        collection_name=args.private_collection,
+    )
+    retrieval_config = RetrievalModeConfig(
+        requested_mode=RetrievalMode.HYBRID_PRIVATE_FIRST,
+        private_sources_enabled=True,
+        sgf_chroma_path=args.sgf_chroma_path,
+        sgf_collection=args.sgf_collection,
+        private_chroma_path=args.private_chroma_path,
+        private_collection=args.private_collection,
+        expose_debug_metadata=False,
+    )
+    return create_app(
+        sgf_index,
+        answer_auth_mode="local_dev",
+        auth_provider="scaffold",
+        answer_rate_limiter=InMemoryAnswerRateLimiter(enabled=False),
+        private_search_index=private_index,
+        retrieval_config=retrieval_config,
+    )
+
+
+def result_sort_key(result: QualityResult) -> tuple[int, int, str]:
+    outcome_rank = {"fail": 0, "warn": 1, "pass": 2}
+    fail_count = sum(1 for finding in result.findings if finding.severity == "fail")
+    return (outcome_rank[result.outcome], -fail_count, result.id)
+
+
+def summarize_results(results: list[QualityResult]) -> dict[str, Any]:
+    outcome_counts = Counter(result.outcome for result in results)
+    category_counts: dict[str, Counter[str]] = defaultdict(Counter)
+    family_counts: dict[str, Counter[str]] = defaultdict(Counter)
+    finding_counts = Counter()
+    private_cards = 0
+    unauthorized_private = 0
+    private_rows = 0
+    no_source_rows = 0
+    for result in results:
+        category_counts[result.category][result.outcome] += 1
+        family_counts[result.category_family][result.outcome] += 1
+        no_source_rows += int(len(result.sources) == 0)
+        private_cards += result.private_source_count
+        if result.private_source_count:
+            private_rows += 1
+        for finding in result.findings:
+            finding_counts[f"{finding.severity}:{finding.key}"] += 1
+            if finding.key == "unauthorized_private_source":
+                unauthorized_private += 1
+
+    return {
+        "total_questions": len(results),
+        "outcome_counts": {key: outcome_counts[key] for key in ("pass", "warn", "fail")},
+        "category_counts": {category: dict(counts) for category, counts in sorted(category_counts.items())},
+        "category_family_counts": {family: dict(counts) for family, counts in sorted(family_counts.items())},
+        "finding_counts": dict(finding_counts.most_common()),
+        "private_source_behavior": {
+            "private_source_cards": private_cards,
+            "answers_with_private_sources": private_rows,
+            "unauthorized_private_source_findings": unauthorized_private,
+            "no_source_answers": no_source_rows,
+            "behaved_correctly": unauthorized_private == 0,
+        },
+    }
+
+
+def recommended_fixes(finding_counts: Counter[str]) -> list[str]:
+    fixes: list[str] = []
+    if any("unrelated_private_profile_fact" in key for key in finding_counts):
+        fixes.append("Tighten hybrid routing so private E9 profile facts appear only for personal setup questions or clearly labeled personalization.")
+    if any("source_excerpt_junk" in key or "raw_contact_order_link_junk" in key for key in finding_counts):
+        fixes.append("Strengthen final answer/source-card cleanup for contact, PayPal, order, raw-link, and username/date fragments.")
+    if any("missing_sources" in key or "weak_source_card_usefulness" in key for key in finding_counts):
+        fixes.append("Improve retrieval/rerank thresholds for source-card usefulness before answer generation.")
+    if any("bio_too_thin" in key or "bio_missing_subject" in key for key in finding_counts):
+        fixes.append("Add player/teacher bio routing or curated public registry entries for thin biography answers.")
+    if any("practice_not_actionable" in key or "low_actionable_teaching_value" in key for key in finding_counts):
+        fixes.append("Strengthen practice and teaching templates to produce concrete steps without exposing internal source language.")
+    if any("vendor_guidance_missing" in key or "gear_buying_context_missing" in key for key in finding_counts):
+        fixes.append("Route buying/vendor questions to curated current-source guidance and avoid stale forum sales fragments.")
+    if not fixes:
+        fixes.append("Review warning samples manually; no dominant automatic failure pattern exceeded the strict checks.")
+    return fixes
+
+
+def result_to_json(result: QualityResult) -> dict[str, Any]:
+    return {
+        "id": result.id,
+        "category": result.category,
+        "category_family": result.category_family,
+        "question": result.question,
+        "expected_intent": result.expected_intent,
+        "expected_contract": result.expected_contract,
+        "status_code": result.status_code,
+        "outcome": result.outcome,
+        "answer": result.answer,
+        "answer_excerpt": excerpt(result.answer),
+        "warnings": result.warnings,
+        "source_count": len(result.sources),
+        "private_source_count": result.private_source_count,
+        "sources": result.sources,
+        "findings": [
+            {"severity": finding.severity, "key": finding.key, "message": finding.message}
+            for finding in result.findings
+        ],
+    }
+
+
+def render_result_list(results: list[QualityResult], *, limit: int) -> list[str]:
+    lines: list[str] = []
+    for result in results[:limit]:
+        reasons = "; ".join(f"{finding.severity}:{finding.message}" for finding in result.findings) or "pass"
+        first_source = result.sources[0] if result.sources else {}
+        lines.extend(
+            [
+                f"### {result.id} · {result.outcome}",
+                "",
+                f"- Category: `{result.category}` / `{result.category_family}`",
+                f"- Question: {result.question}",
+                f"- Status: {result.status_code}",
+                f"- Sources: {len(result.sources)} (private: {result.private_source_count})",
+                f"- First source: {first_source.get('forumName') or ''} · {first_source.get('title') or ''} · {first_source.get('url') or ''}",
+                f"- Findings: {reasons}",
+                f"- Answer excerpt: {excerpt(result.answer)}",
+                "",
+            ]
+        )
+    if not lines:
+        lines.append("None.")
+    return lines
+
+
+def render_markdown_report(
+    results: list[QualityResult],
+    *,
+    question_bank: Path,
+    base_url: str,
+    config: dict[str, Any],
+) -> str:
+    summary = summarize_results(results)
+    finding_counter = Counter(summary["finding_counts"])
+    worst_failures = sorted([result for result in results if result.outcome == "fail"], key=result_sort_key)[:25]
+    top_warnings = sorted([result for result in results if result.outcome == "warn"], key=lambda result: (-len(result.findings), result.id))[:25]
+    excellent = [
+        result
+        for result in results
+        if result.outcome == "pass" and len(result.answer) >= 160 and result.sources and not result.warnings
+    ][:25]
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    lines = [
+        "# Full Answer Quality Eval",
+        "",
+        f"Generated: {now}",
+        f"Question bank: `{question_bank}`",
+        f"Local base URL: `{base_url}`",
+        "",
+        "## Configuration",
+        "",
+    ]
+    for key, value in config.items():
+        lines.append(f"- {key}: `{value}`")
+
+    lines.extend(
+        [
+            "",
+            "## Summary",
+            "",
+            f"- Total questions: {summary['total_questions']}",
+            f"- Pass: {summary['outcome_counts']['pass']}",
+            f"- Warn: {summary['outcome_counts']['warn']}",
+            f"- Fail: {summary['outcome_counts']['fail']}",
+            f"- Answers with no source cards: {summary['private_source_behavior']['no_source_answers']}",
+            f"- Answers with private source cards: {summary['private_source_behavior']['answers_with_private_sources']}",
+            f"- Private source cards: {summary['private_source_behavior']['private_source_cards']}",
+            f"- Unauthorized private-source findings: {summary['private_source_behavior']['unauthorized_private_source_findings']}",
+            f"- Private-source behavior correct: `{summary['private_source_behavior']['behaved_correctly']}`",
+            "",
+            "## Failures By Category",
+            "",
+            "| Category | Pass | Warn | Fail |",
+            "| --- | ---: | ---: | ---: |",
+        ]
+    )
+    for category, counts in summary["category_counts"].items():
+        lines.append(f"| {category} | {counts.get('pass', 0)} | {counts.get('warn', 0)} | {counts.get('fail', 0)} |")
+
+    lines.extend(["", "## Failures By Category Family", "", "| Family | Pass | Warn | Fail |", "| --- | ---: | ---: | ---: |"])
+    for family, counts in summary["category_family_counts"].items():
+        lines.append(f"| {family} | {counts.get('pass', 0)} | {counts.get('warn', 0)} | {counts.get('fail', 0)} |")
+
+    lines.extend(["", "## Repeated Failure Patterns", ""])
+    for key, count in finding_counter.most_common(30):
+        lines.append(f"- {key}: {count}")
+    if not finding_counter:
+        lines.append("- none")
+
+    lines.extend(["", "## Top 25 Worst Answers", ""])
+    lines.extend(render_result_list(worst_failures, limit=25))
+
+    lines.extend(["", "## Top 25 Warnings", ""])
+    lines.extend(render_result_list(top_warnings, limit=25))
+
+    lines.extend(["", "## Examples Of Excellent Answers", ""])
+    lines.extend(render_result_list(excellent, limit=25))
+
+    lines.extend(["", "## Recommended Next Fixes", ""])
+    for fix in recommended_fixes(finding_counter):
+        lines.append(f"- {fix}")
+
+    lines.extend(
+        [
+            "",
+            "## Private-Source Behavior",
+            "",
+            (
+                "Private-source cards behaved correctly under this local-dev authorized run."
+                if summary["private_source_behavior"]["behaved_correctly"]
+                else "Private-source authorization findings were detected and need review before broader testing."
+            ),
+            "",
+            "This eval started a loopback-only local app in `local_dev` mode with `beta_user` access and did not change production/private-preview auth configuration.",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def build_arg_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=0, help="Loopback port. 0 chooses a free ephemeral port.")
+    parser.add_argument("--question-bank", type=Path, default=DEFAULT_QUESTION_BANK)
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--json-output", type=Path, default=DEFAULT_JSON_OUTPUT)
+    parser.add_argument("--limit", type=int, default=None)
+    parser.add_argument("--top-k", type=int, default=DEFAULT_TOP_K)
+    parser.add_argument("--access-role", default="beta_user", choices=["beta_user", "admin"])
+    parser.add_argument("--sgf-chroma-path", type=Path, default=DEFAULT_SGF_V2_CHROMA_PATH)
+    parser.add_argument("--sgf-collection", default=DEFAULT_SGF_V2_COLLECTION)
+    parser.add_argument("--private-chroma-path", type=Path, default=DEFAULT_PRIVATE_CHROMA_PATH)
+    parser.add_argument("--private-collection", default=DEFAULT_PRIVATE_COLLECTION)
+    parser.add_argument("--candidate-k", type=int, default=20)
+    parser.add_argument("--min-excerpt-chars", type=int, default=80)
+    parser.add_argument("--no-dedupe-thread", action="store_true")
+    parser.add_argument("--question-only-penalty", type=float, default=0.12)
+    parser.add_argument("--mention-only-penalty", type=float, default=0.20)
+    parser.add_argument("--answer-advice-boost", type=float, default=0.04)
+    parser.add_argument("--quality-boost", type=float, default=0.04)
+    parser.add_argument("--quality-threshold", type=float, default=0.70)
+    parser.add_argument("--noise-penalty", type=float, default=0.06)
+    parser.add_argument("--noise-threshold", type=float, default=0.60)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_arg_parser().parse_args(argv)
+    if args.host != "127.0.0.1":
+        raise SystemExit("full answer-quality eval must bind to 127.0.0.1 only")
+    if args.top_k <= 0:
+        raise SystemExit("--top-k must be greater than zero")
+    if args.candidate_k <= 0:
+        raise SystemExit("--candidate-k must be greater than zero")
+    if args.min_excerpt_chars < 0:
+        raise SystemExit("--min-excerpt-chars must be zero or greater")
+
+    questions = load_question_bank(args.question_bank)
+    if args.limit is not None:
+        questions = questions[: max(0, args.limit)]
+
+    app = build_protected_preview_app(args)
+    server: WSGIServer = make_server(args.host, args.port, app)
+    host, port = server.server_address[:2]
+    base_url = f"http://{host}:{port}"
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        results = run_http_eval(base_url, questions, top_k=args.top_k, access_role=args.access_role)
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=5)
+
+    config = {
+        "sgf_chroma_path": args.sgf_chroma_path,
+        "sgf_collection": args.sgf_collection,
+        "private_chroma_path": args.private_chroma_path,
+        "private_collection": args.private_collection,
+        "retrieval_mode": "hybrid_private_first",
+        "answer_auth_mode": "local_dev",
+        "access_role": args.access_role,
+        "top_k": args.top_k,
+        "candidate_k": args.candidate_k,
+        "min_excerpt_chars": args.min_excerpt_chars,
+        "dedupe_thread": not args.no_dedupe_thread,
+    }
+    summary = summarize_results(results)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(
+        render_markdown_report(results, question_bank=args.question_bank, base_url=base_url, config=config),
+        encoding="utf-8",
+    )
+    args.json_output.parent.mkdir(parents=True, exist_ok=True)
+    args.json_output.write_text(
+        json.dumps(
+            {
+                "summary": summary,
+                "config": {key: str(value) for key, value in config.items()},
+                "results": [result_to_json(result) for result in results],
+            },
+            indent=2,
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    print(f"Evaluated {len(results)} questions against local protected-preview stack at {base_url}")
+    for outcome in ("pass", "warn", "fail"):
+        print(f"{outcome}: {summary['outcome_counts'][outcome]}")
+    print(f"Private-source behavior correct: {summary['private_source_behavior']['behaved_correctly']}")
+    print(f"Markdown report: {args.output}")
+    print(f"JSON report: {args.json_output}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -269,19 +269,42 @@ def test_private_source_card_contract_includes_private_metadata() -> None:
 
 
 def test_rules_layer_answer_wins_over_private_source_for_stable_e9_basics() -> None:
+    private_index = FakeSearchIndex(private_response())
+
     status, payload = call_answer(
         question="What does A+F do?",
+        private_search_index=private_index,
         config=retrieval_config("hybrid_private_first", private_enabled=True),
         access_role="beta_user",
     )
 
     assert status == "200 OK"
+    assert private_index.calls
     assert "A pedal" in payload["answer"]
     assert "F lever" in payload["answer"]
     assert "major" in payload["answer"].lower()
     assert "Private profile says" not in payload["answer"]
-    assert "For your saved 10-string E9 profile" in payload["answer"]
-    assert "depending on your copedent" not in payload["answer"]
+    assert "For your saved 10-string E9 profile" not in payload["answer"]
+    assert "depending on your copedent" in payload["answer"]
+    assert all(source.get("visibility") != "private" for source in payload["sources"])
+
+
+def test_non_personal_hybrid_answer_does_not_use_private_profile() -> None:
+    private_index = FakeSearchIndex(private_response())
+
+    status, payload = call_answer(
+        question="How do I make my pedal steel sound less harsh?",
+        private_search_index=private_index,
+        config=retrieval_config("hybrid_private_first", private_enabled=True),
+        access_role="beta_user",
+    )
+
+    assert status == "200 OK"
+    assert private_index.calls
+    assert "Your private profile describes" not in payload["answer"]
+    assert "Open tuning" not in payload["answer"]
+    assert "For your saved 10-string E9 profile" not in payload["answer"]
+    assert all(source.get("visibility") != "private" for source in payload["sources"])
 
 
 def test_af_answer_still_uses_standard_wording_without_private_profile() -> None:

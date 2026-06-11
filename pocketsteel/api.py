@@ -22,6 +22,7 @@ from pocketsteel.answering import (
     concise_source_cards,
     configured_answer_provider,
     final_answer_quality_gate,
+    filter_sources_for_question,
     parse_answer_request,
     private_profile_answer,
 )
@@ -52,6 +53,7 @@ from pocketsteel.curated_answers import (
     lookup_curated_answer,
     retrieval_looks_weak_for_curated,
 )
+from pocketsteel.fretboard_examples import fretboard_payload_for_question
 from pocketsteel.rag_guardrails import sanitize_retrieved_sources
 from pocketsteel.rag_guardrails import is_injection_like
 from pocketsteel.private_source_search import PrivateSourceSearchIndex
@@ -260,6 +262,9 @@ class RetrievalApi:
                 "warnings": warnings,
                 "sections": build_sections(final_answer),
             }
+            fretboard_payload = fretboard_payload_for_question(answer_request.question)
+            if fretboard_payload is not None:
+                payload["fretboard"] = fretboard_payload
             self._log_answer_attempt(
                 request_payload,
                 role=access.role,
@@ -389,7 +394,7 @@ class RetrievalApi:
 
         merged: list[dict[str, Any]] = []
         for source_name in plan.source_order:
-            merged.extend(results_by_source.get(source_name, []))
+            merged.extend(filter_sources_for_question(query, results_by_source.get(source_name, [])))
         merged = merged[:limit]
 
         return SearchResponse(results=merged, warnings=warnings), plan

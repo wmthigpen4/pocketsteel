@@ -190,13 +190,13 @@ def question_mentions_private_profile(question: str) -> bool:
     lowered = re.sub(r"\s+", " ", (question or "").strip().lower())
     if question_mentions_practice_or_learning_request(lowered):
         return False
-    if not re.search(r"\b(?:my|i|me)\b", lowered):
-        return False
     return bool(
         re.search(
-            r"\b(?:e9\s+)?copedent\b|\bsetup\b|\blevers?\b|\bpedals?\b|\bcommon\s+grips?\b|\bgrips?\b",
+            r"\bmy\s+(?:e9\s+)?(?:copedent|setup|common\s+grips?|grips?|knee\s+levers?|levers?|pedals|rkl|rkr|e-lower|f\s+lever)\b",
             lowered,
         )
+        or re.search(r"\bwhat\s+(?:levers?|pedals?)\s+(?:do\s+i\s+have|are\s+on\s+my\s+setup)\b", lowered)
+        or re.search(r"\b(?:show|list|describe)\s+(?:me\s+)?my\s+(?:e9\s+)?(?:copedent|setup|levers?|pedals?|grips?)\b", lowered)
     )
 
 
@@ -236,8 +236,34 @@ def first_private_e9_profile_source(sources: list[dict[str, Any]]) -> dict[str, 
     return None
 
 
+def is_personal_private_source(source: dict[str, Any]) -> bool:
+    visibility = str(source.get("visibility") or "").strip().lower()
+    source_system = str(source.get("source_system") or "").strip().lower()
+    source_id = str(source.get("source_id") or "").strip().lower()
+    title = str(source.get("thread_title") or "").strip().lower()
+    if visibility != "private":
+        return False
+    return bool(
+        source_system == "personal_rules_note"
+        or source_id == PRIVATE_E9_PROFILE_SOURCE_ID
+        or title in {"user e9 copedent profile", "e9 rules seed"}
+    )
+
+
+def question_allows_personal_private_sources(question: str) -> bool:
+    return question_mentions_private_profile(question) or question_mentions_bc_pedal_exercises(question)
+
+
+def filter_sources_for_question(question: str, sources: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    if question_allows_personal_private_sources(question):
+        return sources
+    return [source for source in sources if not is_personal_private_source(source)]
+
+
 def apply_private_profile_wording(answer: str, question: str, sources: list[dict[str, Any]]) -> str:
     if first_private_e9_profile_source(sources) is None:
+        return answer
+    if not question_allows_personal_private_sources(question):
         return answer
     if question_mentions_af_pedal_lever(question):
         answer = re.sub(
@@ -782,7 +808,7 @@ def classify_answer_route(request: AnswerRequest, sources: list[dict[str, Any]])
         return "diagnostic_troubleshooting"
     if question_mentions_maintenance_oil(question):
         return "maintenance_safety"
-    if question_mentions_finger_picks(question):
+    if question_mentions_play_without_finger_picks(question) or question_mentions_finger_picks(question):
         return "equipment_recommendation"
     if question_mentions_tone_touch(question):
         return "tone_touch"
@@ -911,6 +937,15 @@ def question_mentions_maintenance_oil(question: str) -> bool:
 def question_mentions_finger_picks(question: str) -> bool:
     lowered = question.lower()
     return bool(("finger pick" in lowered or "fingerpick" in lowered or "picks" in lowered) and ("buy" in lowered or "best" in lowered or "recommend" in lowered))
+
+
+def question_mentions_play_without_finger_picks(question: str) -> bool:
+    lowered = question.lower()
+    return bool(
+        re.search(r"\b(?:play|practice|pick)\b", lowered)
+        and "without" in lowered
+        and re.search(r"\b(?:finger\s*picks?|fingerpicks?|picks?)\b", lowered)
+    )
 
 
 def question_mentions_practice_plan(question: str) -> bool:
@@ -1246,10 +1281,12 @@ def classify_answer_line(line: str) -> str:
     if not stripped:
         return "answer_candidate"
     if re.search(
-        r"\b(?:useful source-backed points|useful distilled points|source cards as supporting evidence|the cleanest source-backed answer|here is the safest answer i can support from the retrieved material|retrieved material|interval-first answer|strings, frets, pedals, and levers mentioned by sources|start with the musical function named in the sources)\b",
+        r"\b(?:useful source-backed points|useful distilled points|source cards as supporting evidence|the cleanest source-backed answer|here is the safest answer i can support from the retrieved material|i found a few related practical points|match is limited|retrieved material|\[link removed\]|interval-first answer|strings, frets, pedals, and levers mentioned by sources|start with the musical function named in the sources)\b",
         stripped,
         re.I,
     ):
+        return "forum_boilerplate"
+    if re.search(r"^\s*[-*]?\s*(?:i|my)\s+(?:play|use|had|never|rarely|usually|guitar|amp)\b", stripped, re.I):
         return "forum_boilerplate"
     return classify_source_sentence(stripped)
 
@@ -1269,7 +1306,10 @@ def answer_has_quality_issue(answer: str, *, allow_contact_info: bool = False) -
     bad_patterns = [
         r"\bThe cleanest source-backed answer\b",
         r"\bHere is the safest answer I can support from the retrieved material\b",
+        r"\bI found a few related practical points\b",
+        r"\bmatch is limited\b",
         r"\bretrieved material\b",
+        r"\[link removed\]",
         r"\bsource cards as supporting evidence\b",
         r"\bUseful distilled points\b",
         r"\bUseful source-backed points\b",
@@ -1285,6 +1325,8 @@ def answer_has_quality_issue(answer: str, *, allow_contact_info: bool = False) -
         r"\bCan some of you possibly post tab\b",
         r"\bPayPal\b",
         r"\border\s+(?:form|page|link|online|through)\b",
+        r"(?m)^\s*[-*]?\s*(?:I|My)\s+(?:play|use|had|never|rarely|usually|guitar|amp)\b",
+        r"\bother hand I rarely\b",
         r"\btje\b|\bteh\b",
     ]
     if not allow_contact_info:
@@ -1393,6 +1435,42 @@ def clean_evidence_text(text: str) -> str:
     text = re.sub(r"\s+", " ", text).strip()
     text = re.sub(r"\bTop\b\s*", "", text)
     return text
+
+
+SOURCE_CARD_JUNK_RE = re.compile(
+    r"\b(?:PayPal|sp=sharing|e-?mail|order\s+(?:form|page|link|online|through)|"
+    r"Does anyone know|Has anyone compared|Thanks Nick|Top Hi All|\[link removed\])\b|"
+    r"\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b",
+    re.I,
+)
+SOURCE_CARD_DATE_PREFIX_RE = re.compile(
+    r"^\s*[A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.-]+){0,3}\s*/\s*\d{1,2}\s+"
+    r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\s+\d{4}"
+    r"(?:\s+\d{1,2}:\d{2}\s*(?:AM|PM|am|pm)?)?\s*",
+    re.I,
+)
+
+
+def clean_source_card_excerpt(excerpt: str) -> str:
+    cleaned_sentences: list[str] = []
+    for sentence in split_sentences(excerpt):
+        cleaned = clean_evidence_text(sentence)
+        cleaned = SOURCE_CARD_DATE_PREFIX_RE.sub("", cleaned).strip(" -")
+        if not cleaned or SOURCE_CARD_JUNK_RE.search(cleaned):
+            continue
+        if classify_source_sentence(cleaned) != "answer_candidate":
+            continue
+        cleaned_sentences.append(cleaned)
+
+    if cleaned_sentences:
+        return " ".join(cleaned_sentences)
+
+    fallback = SOURCE_CARD_DATE_PREFIX_RE.sub("", clean_evidence_text(excerpt)).strip(" -")
+    if not fallback or SOURCE_CARD_JUNK_RE.search(fallback):
+        return ""
+    if classify_source_sentence(fallback) != "answer_candidate":
+        return ""
+    return fallback
 
 
 def is_useful_entity_context(text: str) -> bool:
@@ -1712,6 +1790,16 @@ class DeterministicAnswerProvider:
         sources: list[dict[str, Any]],
         evidence: list["EvidencePoint"],
     ) -> str:
+        if question_mentions_play_without_finger_picks(request.question):
+            return (
+                "Technically, yes — a player can play pedal steel without finger picks. But for standard pedal steel playing, it is usually better to learn with picks.\n\n"
+                "Why picks help:\n"
+                "- Finger picks give the notes more volume and clearer attack.\n"
+                "- They improve string separation when playing grips.\n"
+                "- They make blocking, speed, and tone more consistent.\n"
+                "- They are part of the classic pedal-steel sound.\n\n"
+                "Some players may occasionally play without picks for a softer touch, and non-pedal or dobro contexts can differ. For a beginner on pedal steel, picks usually feel awkward at first, but it is worth giving the adjustment period time."
+            )
         if question_mentions_finger_picks(request.question):
             return (
                 "For steel guitar finger picks, start with fit and comfort rather than a single “best” brand.\n\n"
@@ -1866,7 +1954,19 @@ class DeterministicAnswerProvider:
     ) -> str:
         lowered = request.question.lower()
         if "pedal rod" in lowered:
-            return self._replacement_parts_answer(request, sources, evidence)
+            return (
+                "Best places to check\n\n"
+                "- The guitar maker or current brand owner.\n"
+                "- A dealer for that brand.\n"
+                "- A steel-guitar parts supplier or builder who can match pedal-rod hardware.\n"
+                "- SGF classifieds or the used market if you can verify the dimensions.\n\n"
+                "What to choose\n\n"
+                "- rod length\n"
+                "- thread size\n"
+                "- hook/connector style\n"
+                "- pedal-rack and bellcrank hardware\n\n"
+                "Check current availability before assuming a listed rod will fit; matching the hardware matters more than finding any random rod."
+            )
         item = "slide bar" if "slide bar" in lowered or "steel bar" in lowered or "tone bar" in lowered else "steel-guitar item"
         if item == "slide bar":
             vendor_lines = "\n".join(slide_bar_vendor_bullets())
@@ -2186,6 +2286,7 @@ def concise_source_cards(sources: list[dict[str, Any]]) -> list[SourceCitation]:
     cards = []
     for source in sources:
         card = source_to_card(source)
+        card["excerpt"] = clean_source_card_excerpt(card["excerpt"])
         quote_allowed = str(source.get("answer_quote_allowed") or "").strip().lower()
         if source.get("visibility") == "private" and quote_allowed == "false":
             card["excerpt"] = ""
