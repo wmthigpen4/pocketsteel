@@ -1886,10 +1886,46 @@ def answer_for_question(question: str, results: list[dict[str, Any]], mode: str 
 
 def assert_valid_fretboard_payload(payload: dict[str, Any]) -> None:
     fretboard = payload["fretboard"]
-    assert set(fretboard) == {"title", "description", "highlights"}
+    assert {
+        "type",
+        "title",
+        "subtitle",
+        "description",
+        "tuning",
+        "strings",
+        "positions",
+        "highlights",
+    }.issubset(fretboard)
+    assert fretboard["type"] == "e9-fretboard-diagram"
+    assert fretboard["tuning"] == "E9"
+    assert fretboard["strings"]["count"] == 10
     assert isinstance(fretboard["title"], str) and fretboard["title"]
     assert isinstance(fretboard["description"], str) and fretboard["description"]
+    assert fretboard["positions"]
     assert fretboard["highlights"]
+    assert [position["id"] for position in fretboard["positions"]] == [
+        highlight["id"] for highlight in fretboard["highlights"]
+    ]
+    for position in fretboard["positions"]:
+        assert {
+            "id",
+            "label",
+            "fret",
+            "strings",
+            "grip",
+            "pedals",
+            "levers",
+            "color",
+        }.issubset(position)
+        assert isinstance(position["id"], str) and position["id"]
+        assert 0 <= position["fret"] <= 24
+        assert position["strings"]
+        assert all(1 <= string <= 10 for string in position["strings"])
+        assert position["grip"] == "-".join(str(string) for string in position["strings"])
+        assert all(label in DEFAULT_PEDAL_LEVER_LABELS for label in position["pedals"])
+        assert all(label in DEFAULT_PEDAL_LEVER_LABELS for label in position["levers"])
+        assert "x" not in position
+        assert "y" not in position
     for highlight in fretboard["highlights"]:
         assert set(highlight) == {"id", "label", "fret", "strings", "pedals", "levers", "role"}
         assert isinstance(highlight["id"], str) and highlight["id"]

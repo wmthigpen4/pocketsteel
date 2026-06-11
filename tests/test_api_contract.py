@@ -61,9 +61,69 @@ def test_api_contract_fixture_matches_required_shapes() -> None:
     }
 
     assert answer["mode"] in VALID_MODES
-    assert set(answer) == {"answer", "mode", "sources", "warnings", "sections"}
+    required_answer_keys = {"answer", "mode", "sources", "warnings", "sections"}
+    assert required_answer_keys.issubset(answer)
+    assert set(answer).issubset(required_answer_keys | {"fretboard"})
+    assert "fretboard" not in answer
     assert set(answer["sources"][0]) == {"title", "forumName", "url", "excerpt", "score", "chunkId", "postUid"}
     assert set(answer["sections"][0]) == {"title", "style", "body"}
+
+
+def test_optional_fretboard_payload_contract_shape() -> None:
+    answer = {
+        "answer": "On standard E9, useful G major positions include 3rd fret open, 6th fret A+F, and 10th fret A+B.",
+        "mode": "ask",
+        "sources": [],
+        "warnings": [],
+        "sections": [{"title": "Answer", "style": "lead", "body": "On standard E9, useful G major positions include 3rd fret open."}],
+        "fretboard": {
+            "type": "e9-fretboard-diagram",
+            "title": "G major positions on E9",
+            "subtitle": "Common places to find G major.",
+            "description": "Common places to find G major.",
+            "tuning": "E9",
+            "strings": {"count": 10},
+            "positions": [
+                {
+                    "id": "g-open-3",
+                    "label": "G major",
+                    "fret": 3,
+                    "strings": [4, 5, 6],
+                    "grip": "4-5-6",
+                    "pedals": [],
+                    "levers": [],
+                    "color": "primary",
+                    "role": "Open position",
+                }
+            ],
+            "highlights": [
+                {
+                    "id": "g-open-3",
+                    "label": "G major",
+                    "fret": 3,
+                    "strings": [4, 5, 6],
+                    "pedals": [],
+                    "levers": [],
+                    "role": "Open position",
+                }
+            ],
+        },
+    }
+
+    assert answer["mode"] in VALID_MODES
+    fretboard = answer["fretboard"]
+    assert {"type", "title", "description", "positions", "highlights"}.issubset(fretboard)
+    assert fretboard["type"] == "e9-fretboard-diagram"
+    assert fretboard["tuning"] == "E9"
+    assert fretboard["strings"]["count"] == 10
+    position = fretboard["positions"][0]
+    assert set(position) == {"id", "label", "fret", "strings", "grip", "pedals", "levers", "color", "role"}
+    assert position["grip"] == "4-5-6"
+    assert position["color"] == "primary"
+    highlight = fretboard["highlights"][0]
+    assert set(highlight) == {"id", "label", "fret", "strings", "pedals", "levers", "role"}
+    assert 0 <= highlight["fret"] <= 24
+    assert all(1 <= string <= 10 for string in highlight["strings"])
 
 
 def test_access_role_contract_gates_live_answer_access() -> None:

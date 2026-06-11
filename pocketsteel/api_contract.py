@@ -62,9 +62,52 @@ class AnswerSection(TypedDict):
     style: NotRequired[str]
 
 
+class FretboardHighlight(TypedDict):
+    id: str
+    label: str
+    fret: int
+    strings: list[int]
+    pedals: list[str]
+    levers: list[str]
+    role: str
+
+
+class FretboardPosition(TypedDict):
+    id: str
+    label: str
+    fret: int
+    strings: list[int]
+    grip: str
+    pedals: list[str]
+    levers: list[str]
+    color: str
+    role: NotRequired[str]
+    notes: NotRequired[dict[str, str]]
+    intervals: NotRequired[dict[str, str]]
+    explanation: NotRequired[str]
+
+
+class FretboardPayload(TypedDict):
+    type: NotRequired[str]
+    title: str
+    subtitle: NotRequired[str]
+    description: NotRequired[str]
+    tuning: NotRequired[str]
+    copedent: NotRequired[dict[str, str]]
+    key: NotRequired[str]
+    strings: NotRequired[dict[str, Any]]
+    positions: NotRequired[list[FretboardPosition]]
+    highlights: list[FretboardHighlight]
+    legend: NotRequired[list[dict[str, Any]]]
+    notes: NotRequired[list[str]]
+    warnings: NotRequired[list[str]]
+    sourceContext: NotRequired[list[dict[str, Any]]]
+
+
 class AnswerResponse(TypedDict):
     answer: str
     mode: AnswerMode
     sources: list[SourceCitation]
     warnings: list[str]
     sections: list[AnswerSection]
+    fretboard: NotRequired[FretboardPayload]

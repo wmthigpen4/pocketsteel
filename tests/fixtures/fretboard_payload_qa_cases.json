@@ -1,0 +1,74 @@
+[
+  {
+    "id": "g-major-positions",
+    "question": "Where can I play a G chord?",
+    "expected_positions": [
+      {
+        "id": "g-open-3",
+        "fret": 3,
+        "strings": [4, 5, 6],
+        "pedals": [],
+        "levers": []
+      },
+      {
+        "id": "g-af-6",
+        "fret": 6,
+        "strings": [4, 5, 6],
+        "pedals": ["A"],
+        "levers": ["F"]
+      },
+      {
+        "id": "g-ab-10",
+        "fret": 10,
+        "strings": [4, 5, 6],
+        "pedals": ["A", "B"],
+        "levers": []
+      }
+    ]
+  },
+  {
+    "id": "g-major-ab",
+    "question": "Show me G major with A+B.",
+    "expected_positions": [
+      {
+        "id": "g-ab-10",
+        "fret": 10,
+        "strings": [4, 5, 6],
+        "pedals": ["A", "B"],
+        "levers": []
+      }
+    ],
+    "forbidden_controls_at_frets": [
+      {
+        "pedals": ["A", "B"],
+        "levers": [],
+        "fret": 6
+      }
+    ]
+  },
+  {
+    "id": "g-major-af",
+    "question": "Show me G major with A+F.",
+    "expected_positions": [
+      {
+        "id": "g-af-6",
+        "fret": 6,
+        "strings": [4, 5, 6],
+        "pedals": ["A"],
+        "levers": ["F"]
+      }
+    ],
+    "forbidden_controls_at_frets": [
+      {
+        "pedals": ["A"],
+        "levers": ["F"],
+        "fret": 10
+      }
+    ]
+  },
+  {
+    "id": "unsupported-full-solo-tab",
+    "question": "Generate a full solo tab across every string",
+    "unsupported": true
+  }
+]
