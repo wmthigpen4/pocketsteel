@@ -40,14 +40,66 @@ def source_card(**overrides: object) -> dict[str, object]:
     return card
 
 
-def payload(answer: str, *, sources: list[dict[str, object]] | None = None, warnings: list[str] | None = None) -> dict[str, object]:
+def fretboard_payload(key: str, frets: tuple[int, int, int]) -> dict[str, object]:
+    open_fret, af_fret, ab_fret = frets
     return {
+        "type": "e9-fretboard-diagram",
+        "title": f"{key} major positions on E9",
+        "tuning": "E9",
+        "key": key,
+        "strings": {"count": 10},
+        "positions": [
+            {
+                "id": f"{key.lower().replace('#', 'sharp')}-open-{open_fret}",
+                "label": f"{key} major",
+                "fret": open_fret,
+                "strings": [4, 5, 6],
+                "grip": "4-5-6",
+                "pedals": [],
+                "levers": [],
+                "role": "Open position",
+            },
+            {
+                "id": f"{key.lower().replace('#', 'sharp')}-af-{af_fret}",
+                "label": f"{key} major",
+                "fret": af_fret,
+                "strings": [4, 5, 6],
+                "grip": "4-5-6",
+                "pedals": ["A"],
+                "levers": ["F"],
+                "role": "A+F position",
+            },
+            {
+                "id": f"{key.lower().replace('#', 'sharp')}-ab-{ab_fret}",
+                "label": f"{key} major",
+                "fret": ab_fret,
+                "strings": [4, 5, 6],
+                "grip": "4-5-6",
+                "pedals": ["A", "B"],
+                "levers": [],
+                "role": "A+B position",
+            },
+        ],
+    }
+
+
+def payload(
+    answer: str,
+    *,
+    sources: list[dict[str, object]] | None = None,
+    warnings: list[str] | None = None,
+    fretboard: dict[str, object] | None = None,
+) -> dict[str, object]:
+    response: dict[str, object] = {
         "answer": answer,
         "mode": "ask",
         "sources": sources if sources is not None else [source_card()],
         "warnings": warnings or [],
         "sections": [{"title": "Answer", "style": "lead", "body": answer}],
     }
+    if fretboard is not None:
+        response["fretboard"] = fretboard
+    return response
 
 
 def finding_keys(result) -> set[str]:
@@ -110,6 +162,244 @@ def test_quality_eval_flags_non_actionable_practice_answer() -> None:
 
     assert result.outcome == "fail"
     assert "practice_not_actionable" in finding_keys(result)
+
+
+def test_quality_eval_flags_wrong_key_chord_position_leakage() -> None:
+    result = evaluate_quality_result(
+        row(question="Where can I play an A chord?", category="e9_fretboard_copedent"),
+        status_code=200,
+        payload=payload(
+            (
+                "For A, the source examples mention B7 at the 5th fret. "
+                "A+F is a generic major-position idea, and a G major example sits at the 6th fret with A pedal and F lever."
+            )
+        ),
+    )
+
+    assert result.outcome == "fail"
+    assert "wrong_key_chord_position_leakage" in finding_keys(result)
+    assert "missing_fretboard_payload_for_chord_position" in finding_keys(result)
+
+
+def test_quality_eval_flags_enharmonic_chord_position_failure() -> None:
+    result = evaluate_quality_result(
+        row(question="How do I play a B# chord?", category="e9_fretboard_copedent", expected_contract="copedent_fretboard"),
+        status_code=200,
+        payload=payload(
+            (
+                "If you can lower the B's to Bb, use that with the G#>F# lower to get a II7 chord. "
+                "Then play it with your middle finger as the horns descend."
+            )
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "fail"
+    assert "enharmonic_chord_position_failure" in keys
+    assert "source_fragment_chord_answer_failure" in keys
+    assert "missing_deterministic_chord_route" in keys
+
+
+def test_quality_eval_flags_source_fragments_for_suffixless_chord_position_question() -> None:
+    result = evaluate_quality_result(
+        row(question="How do I play a C#?", category="e9_fretboard_copedent", expected_contract="copedent_fretboard"),
+        status_code=200,
+        payload=payload(
+            (
+                "You either tune it and play it, or you don't. I've played it this way so long I can't imagine it any other way. "
+                "Like your example, starting with the first string to the fifth string: C#,G#,F#,E,B."
+            )
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "fail"
+    assert "source_fragment_chord_answer_failure" in keys
+    assert "missing_deterministic_chord_route" in keys
+
+
+def test_quality_eval_flags_source_fragments_for_b_chord_position_question() -> None:
+    result = evaluate_quality_result(
+        row(question="Where all can I play a B chord?", category="e9_fretboard_copedent", expected_contract="copedent_fretboard"),
+        status_code=200,
+        payload=payload(
+            (
+                "RKL fully engaged and B pedal pressed can help. "
+                "You might use B7 in key of C, or a B9 chord if the tune needs it."
+            )
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "fail"
+    assert "source_fragment_chord_answer_failure" in keys
+    assert "wrong_key_chord_position_leakage" in keys
+
+
+def test_quality_eval_flags_sgf_sources_for_deterministic_chord_position_answer() -> None:
+    result = evaluate_quality_result(
+        row(question="Where can I play a B chord?", category="e9_fretboard_copedent", expected_contract="copedent_fretboard"),
+        status_code=200,
+        payload=payload(
+            (
+                "On standard E9, useful B major positions include the 7th fret with no pedals, "
+                "the 10th fret with A pedal + F lever, and the 14th fret with A+B pedals. "
+                "Try strings 4-5-6 first."
+            ),
+            sources=[source_card(forumName="Steel Guitar Forum", url="https://bb.steelguitarforum.com/viewtopic.php?t=999")],
+            fretboard=fretboard_payload("B", (7, 10, 14)),
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "fail"
+    assert "unrelated_sgf_sources_for_deterministic_answer" in keys
+
+
+def test_quality_eval_flags_missing_fretboard_for_clean_chord_position_text() -> None:
+    result = evaluate_quality_result(
+        row(question="Where all can I play a B chord?", category="e9_fretboard_copedent", expected_contract="copedent_fretboard"),
+        status_code=200,
+        payload=payload(
+            (
+                "On standard E9, useful B major positions include the 7th fret with no pedals, "
+                "the 10th fret with A pedal + F lever, and the 14th fret with A+B pedals. "
+                "Try strings 4-5-6 first."
+            ),
+            sources=[],
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "fail"
+    assert "missing_fretboard_payload_for_chord_position" in keys
+
+
+def test_quality_eval_flags_weak_source_language_for_chord_position_question() -> None:
+    result = evaluate_quality_result(
+        row(question="What frets give me B?", category="e9_fretboard_copedent", expected_contract="copedent_fretboard"),
+        status_code=200,
+        payload=payload(
+            "Source support was weak, so use the source cards.",
+            sources=[],
+            warnings=["curated answer used; source support was weak"],
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "fail"
+    assert "missing_deterministic_chord_route" in keys
+
+
+def test_quality_eval_flags_unrequested_dominant_in_a_chord_position_answer() -> None:
+    result = evaluate_quality_result(
+        row(question="Where can I play an A major chord?", category="e9_fretboard_copedent"),
+        status_code=200,
+        payload=payload(
+            "A major is at the 5th fret open, 8th fret with A+F, and 12th fret with A+B. You can also use B7 at the 5th fret."
+        ),
+    )
+
+    assert result.outcome == "fail"
+    assert "wrong_key_chord_position_leakage" in finding_keys(result)
+
+
+def test_quality_eval_passes_clean_a_major_position_answer() -> None:
+    result = evaluate_quality_result(
+        row(question="Show me places to play an A major chord.", category="e9_fretboard_copedent"),
+        status_code=200,
+        payload=payload(
+            (
+                "On standard E9, play A major at the 5th fret with no pedals, "
+                "the 8th fret with A pedal + F lever, and the 12th fret with A+B pedals. "
+                "Use grips 4-5-6, 3-4-5, or 6-8-10 and move between the positions slowly."
+            ),
+            sources=[],
+            fretboard=fretboard_payload("A", (5, 8, 12)),
+        ),
+    )
+
+    assert result.outcome == "pass"
+    assert "wrong_key_chord_position_leakage" not in finding_keys(result)
+
+
+def test_quality_eval_passes_clean_b_sharp_as_c_major_position_answer() -> None:
+    result = evaluate_quality_result(
+        row(question="How do I play a B# chord?", category="e9_fretboard_copedent", expected_contract="copedent_fretboard"),
+        status_code=200,
+        payload=payload(
+            (
+                "B# is the same pitch as C. On E9, think of it as a C major chord. "
+                "Useful C major positions include the 8th fret with no pedals, the 11th fret with A pedal + F lever, "
+                "and the 15th fret with A+B pedals. Common grips to try include 4-5-6, 3-4-5, and 6-8-10."
+            ),
+            sources=[],
+            fretboard=fretboard_payload("C", (8, 11, 15)),
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "pass"
+    assert "enharmonic_chord_position_failure" not in keys
+    assert "source_fragment_chord_answer_failure" not in keys
+    assert "wrong_key_chord_position_leakage" not in keys
+
+
+def test_quality_eval_passes_clean_c_sharp_position_answer() -> None:
+    result = evaluate_quality_result(
+        row(question="How do I play a C#?", category="e9_fretboard_copedent", expected_contract="copedent_fretboard"),
+        status_code=200,
+        payload=payload(
+            (
+                "On standard E9, useful C# major positions include the 9th fret with no pedals, "
+                "the 12th fret with A pedal + F lever, and the 16th fret with A+B pedals. "
+                "Common grips to try include 4-5-6, 3-4-5, and 6-8-10."
+            ),
+            sources=[],
+            fretboard=fretboard_payload("C#", (9, 12, 16)),
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "pass"
+    assert "source_fragment_chord_answer_failure" not in keys
+    assert "wrong_key_chord_position_leakage" not in keys
+
+
+def test_quality_eval_passes_clean_b_position_answer() -> None:
+    result = evaluate_quality_result(
+        row(question="Where all can I play a B chord?", category="e9_fretboard_copedent", expected_contract="copedent_fretboard"),
+        status_code=200,
+        payload=payload(
+            (
+                "On standard E9, useful B major positions include the 7th fret with no pedals, "
+                "the 10th fret with A pedal + F lever, and the 14th fret with A+B pedals. "
+                "Common grips to try include 4-5-6, 3-4-5, and 6-8-10."
+            ),
+            sources=[],
+            fretboard=fretboard_payload("B", (7, 10, 14)),
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "pass"
+    assert "source_fragment_chord_answer_failure" not in keys
+    assert "wrong_key_chord_position_leakage" not in keys
+
+
+def test_quality_eval_allows_dominants_for_i_iv_v_context() -> None:
+    result = evaluate_quality_result(
+        row(question="Show me a 1-4-5 in G.", category="e9_fretboard_copedent"),
+        status_code=200,
+        payload=payload(
+            (
+                "In a 1-4-5 in G, use G as I, C as IV, and D or D7 as the V chord. "
+                "Practice the move slowly, then connect the positions with clean bar movement."
+            )
+        ),
+    )
+
+    assert "wrong_key_chord_position_leakage" not in finding_keys(result)
 
 
 def test_quality_summary_and_report_shape() -> None:

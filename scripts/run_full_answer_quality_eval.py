@@ -28,6 +28,7 @@ from pocketsteel.answer_usage import InMemoryAnswerRateLimiter
 from pocketsteel.api import create_app
 from pocketsteel.answering import question_mentions_private_profile
 from pocketsteel.chroma_search import ChromaSearchIndex
+from pocketsteel.fretboard_examples import get_e9_major_chord_positions, major_chord_location_request_for_question
 from pocketsteel.private_source_search import PrivateSourceSearchIndex
 from pocketsteel.retrieval_modes import (
     DEFAULT_PRIVATE_CHROMA_PATH,
@@ -52,6 +53,14 @@ from scripts.run_v2_rerank_answer_eval import RerankedSearchIndex
 DEFAULT_OUTPUT = Path("corpus-private/reports/full-answer-quality-eval.md")
 DEFAULT_JSON_OUTPUT = Path("corpus-private/reports/full-answer-quality-eval.json")
 DEFAULT_TOP_K = 6
+DETERMINISTIC_CHORD_POSITION_FAILURE_BUCKETS = {
+    "missing_deterministic_chord_route",
+    "missing_fretboard_payload_for_chord_position",
+    "wrong_key_chord_position_leakage",
+    "source_fragment_chord_answer_failure",
+    "unrelated_sgf_sources_for_deterministic_answer",
+    "enharmonic_chord_position_failure",
+}
 
 Outcome = Literal["pass", "warn", "fail"]
 Severity = Literal["warn", "fail"]
@@ -94,6 +103,37 @@ VENDOR_RE = re.compile(r"\b(?:buy|dealer|vendor|shop|store|classifieds|used mark
 SONG_GUARDRAIL_RE = re.compile(r"\b(?:approach|style|chord|progression|public domain|original|exercise|not provide full|cannot provide full)\b", re.I)
 PRIVATE_PROFILE_RE = re.compile(r"\b(?:your saved 10-string E9 profile|your private|my common grips|your E9 copedent)\b", re.I)
 SENSITIVE_IDENTITY_RE = re.compile(r"\b(?:gay|identity|private trait|orientation|race|religion|medical)\b", re.I)
+CHORD_POSITION_LOCATION_RE = re.compile(
+    r"\b(?:where\s+(?:all\s+)?can\s+i\s+play|where\s+can\s+i\s+find|how\s+do\s+i\s+play|"
+    r"how\s+do\s+i\s+make|show\s+me(?:\s+places\s+to\s+play)?|where\s+are|where\s+is|what\s+frets\s+give\s+me)\b"
+    r".*?\b(?:an?\s+)?(?P<key>[A-G](?:#|b)?)(?:\s+(?:major\s+)?(?:chord|positions?)|\s+major\b|\b)",
+    re.I,
+)
+KEYED_MAJOR_CHORD_RE = re.compile(r"\b(?P<key>[A-G](?:#|b)?)\s+(?:major|chord)\b", re.I)
+DOMINANT_SEVENTH_CHORD_RE = re.compile(r"\b(?P<key>[A-G](?:#|b)?)7\b", re.I)
+DOMINANT_CONTEXT_RE = re.compile(
+    r"\b(?:I[- ]?IV[- ]?V|1[- ]?4[- ]?5|key\s+of|dominant|V\s+chord|turnaround|progression)\b",
+    re.I,
+)
+A_MAJOR_WRONG_POSITION_RE = re.compile(
+    r"(?:\b(?:3rd|third|6th|sixth|10th|tenth)\s+fret\b.*\b(?:A\+F|A\s+pedal\s+(?:and|\+)\s+F\s+lever|A\+B)|"
+    r"\b(?:A\+F|A\s+pedal\s+(?:and|\+)\s+F\s+lever)\b.*\b(?:6th|sixth)\s+fret\b|"
+    r"\bA\+B\b.*\b(?:10th|tenth)\s+fret\b)",
+    re.I | re.S,
+)
+RAW_CHORD_FRAGMENT_RE = re.compile(
+    r"\b(?:[A-G](?:#|b)?7\s*=|Example:\s+[A-G](?:#|b)?\s+major|"
+    r"You can play\s+[A-G](?:#|b)?,\s+[A-G](?:#|b)?,\s+and\s+[A-G](?:#|b)?7|"
+    r"G#>F#|B's\s+to\s+Bb|with\s+your\s+middle\s+finger|lowering\s+G#|"
+    r"You either tune it|I've played it this way|starting with the first string|"
+    r"RKL\s+fully\s+engaged|B9\s+chord)\b",
+    re.I,
+)
+WEAK_SOURCE_CHORD_ROUTE_RE = re.compile(
+    r"\b(?:source support was weak|source support is weak|curated answer used;\s*source support was weak|"
+    r"API warning indicates weak/no source|no strong source match|retrieval match was weak|sources are weak)\b",
+    re.I,
+)
 
 FALLBACK_CATEGORIES = {
     "source_mismatch_no_source",
@@ -190,6 +230,209 @@ def add_finding(findings: list[QualityFinding], severity: Severity, key: str, me
     findings.append(QualityFinding(severity=severity, key=key, message=message))
 
 
+def normalize_chord_key(key: str) -> str:
+    return (key or "").strip().replace("♯", "#").replace("♭", "b").upper()
+
+
+def requested_chord_position_request(question: str) -> Any | None:
+    request = major_chord_location_request_for_question(question)
+    if request is not None:
+        return request
+    match = CHORD_POSITION_LOCATION_RE.search(question or "")
+    if not match:
+        return None
+    try:
+        return major_chord_location_request_for_question(f"where can i play a {match.group('key')} chord")
+    except ValueError:
+        return None
+
+
+def is_deterministic_chord_position_question(question: str) -> bool:
+    return requested_chord_position_request(question) is not None
+
+
+def requested_chord_position_key(question: str) -> str:
+    request = requested_chord_position_request(question)
+    return request.normalized_key if request else ""
+
+
+def answer_mentions_required_major_positions(answer: str, key: str) -> bool:
+    try:
+        required_frets = [
+            position["fret"]
+            for position in get_e9_major_chord_positions(key)
+            if position["role"] in {"Open position", "A+F position", "A+B position"}
+        ]
+    except ValueError:
+        return True
+    return all(
+        re.search(rf"\b{fret}(?:st|nd|rd|th)?\s+fret\b", answer, re.I)
+        for fret in required_frets
+    )
+
+
+def expected_chord_position_frets(key: str) -> list[int]:
+    return [
+        position["fret"]
+        for position in get_e9_major_chord_positions(key)
+        if position["role"] in {"Open position", "A+F position", "A+B position"}
+    ]
+
+
+def has_fretboard_payload(payload: dict[str, Any]) -> bool:
+    fretboard = payload.get("fretboard")
+    if not isinstance(fretboard, dict):
+        return False
+    positions = fretboard.get("positions")
+    return isinstance(positions, list) and bool(positions)
+
+
+def fretboard_payload_has_expected_chord_positions(payload: dict[str, Any], key: str) -> bool:
+    fretboard = payload.get("fretboard")
+    if not isinstance(fretboard, dict):
+        return False
+    positions = fretboard.get("positions")
+    if not isinstance(positions, list):
+        return False
+    expected = set(expected_chord_position_frets(key))
+    actual = {
+        position.get("fret")
+        for position in positions
+        if isinstance(position, dict)
+        and position.get("role") in {"Open position", "A+F position", "A+B position"}
+        and position.get("strings") == [4, 5, 6]
+    }
+    return expected <= actual
+
+
+def is_sgf_forum_source(source: dict[str, Any]) -> bool:
+    if is_private_source_card(source):
+        return False
+    haystack = " ".join(
+        str(source.get(field) or "")
+        for field in ("url", "thread_url", "forumName", "forum_name", "source_system", "sourceSystem")
+    ).lower()
+    return bool(
+        "steelguitarforum.com" in haystack
+        or "steel guitar forum" in haystack
+        or "sgf_" in haystack
+        or "phpbb" in haystack
+        or "ubb" in haystack
+    )
+
+
+def evaluate_chord_position_key_leakage(question: str, answer: str, findings: list[QualityFinding]) -> None:
+    request = requested_chord_position_request(question)
+    if not request:
+        return
+    requested_key = request.normalized_key
+
+    dominant_context_allowed = bool(DOMINANT_CONTEXT_RE.search(question))
+    for match in KEYED_MAJOR_CHORD_RE.finditer(answer):
+        mentioned_key = normalize_chord_key(match.group("key"))
+        if mentioned_key and mentioned_key != requested_key:
+            add_finding(
+                findings,
+                "fail",
+                "wrong_key_chord_position_leakage",
+                f"chord-position answer for {requested_key} leaked {mentioned_key} major/chord material",
+            )
+            break
+
+    if not dominant_context_allowed:
+        dominant_match = DOMINANT_SEVENTH_CHORD_RE.search(answer)
+        if dominant_match:
+            add_finding(
+                findings,
+                "fail",
+                "wrong_key_chord_position_leakage",
+                f"chord-position answer for {requested_key} leaked unrelated dominant material ({dominant_match.group(0)})",
+            )
+
+    if requested_key == "A" and A_MAJOR_WRONG_POSITION_RE.search(answer):
+        add_finding(
+            findings,
+            "fail",
+            "wrong_key_chord_position_leakage",
+            "chord-position answer appears to reuse wrong-key E9 major-position examples",
+        )
+    if RAW_CHORD_FRAGMENT_RE.search(answer):
+        add_finding(
+            findings,
+            "fail",
+            "source_fragment_chord_answer_failure",
+            "plain chord-position answer appears to reuse raw source fragments",
+        )
+    if request.is_enharmonic and not re.search(
+        rf"(?<!\w){re.escape(request.requested_root)}(?!\w).*?\b(?:same pitch as|enharmonic|think of it as)\b.*?(?<!\w){re.escape(request.normalized_key)}(?!\w)",
+        answer,
+        re.I | re.S,
+    ):
+        add_finding(
+            findings,
+            "fail",
+            "enharmonic_chord_position_failure",
+            f"enharmonic chord-position answer did not explain {request.requested_root} as {request.normalized_key}",
+        )
+    if not answer_mentions_required_major_positions(answer, requested_key):
+        required = ", ".join(f"{fret}th" if fret not in {1, 2, 3} else f"{fret}{'st' if fret == 1 else 'nd' if fret == 2 else 'rd'}" for fret in expected_chord_position_frets(requested_key))
+        add_finding(
+            findings,
+            "fail",
+            "missing_deterministic_chord_route",
+            f"{requested_key} chord-position answer did not provide the deterministic {required} fret positions",
+        )
+
+
+def evaluate_deterministic_chord_position_response(
+    *,
+    question: str,
+    answer: str,
+    warnings: list[str],
+    sources: list[dict[str, Any]],
+    payload: dict[str, Any],
+    findings: list[QualityFinding],
+) -> None:
+    request = requested_chord_position_request(question)
+    if request is None:
+        return
+    if not answer_mentions_required_major_positions(answer, request.normalized_key):
+        add_finding(
+            findings,
+            "fail",
+            "missing_deterministic_chord_route",
+            f"{request.normalized_key} chord-position answer did not route to deterministic E9 frets",
+        )
+    if WEAK_SOURCE_CHORD_ROUTE_RE.search(answer) or any(WEAK_SOURCE_CHORD_ROUTE_RE.search(warning) for warning in warnings):
+        add_finding(
+            findings,
+            "fail",
+            "missing_deterministic_chord_route",
+            "deterministic chord-position answer exposed weak/no-source retrieval fallback language",
+        )
+    if not has_fretboard_payload(payload):
+        add_finding(
+            findings,
+            "fail",
+            "missing_fretboard_payload_for_chord_position",
+            "deterministic chord-position answer did not include response.fretboard",
+        )
+    elif not fretboard_payload_has_expected_chord_positions(payload, request.normalized_key):
+        add_finding(
+            findings,
+            "fail",
+            "missing_fretboard_payload_for_chord_position",
+            "response.fretboard did not contain the expected deterministic chord positions",
+        )
+    if any(is_sgf_forum_source(source) for source in sources):
+        add_finding(
+            findings,
+            "fail",
+            "unrelated_sgf_sources_for_deterministic_answer",
+            "deterministic chord-position answer returned top-level SGF source cards",
+        )
+
+
 def is_private_source_card(source: dict[str, Any]) -> bool:
     return str(source.get("visibility") or "").lower() == "private" or str(source.get("source_system") or "").startswith("private")
 
@@ -227,6 +470,8 @@ def evaluate_source_cards(
     findings: list[QualityFinding],
 ) -> None:
     if not sources:
+        if is_deterministic_chord_position_question(row.get("question", "")):
+            return
         if fallback_expected(row):
             add_finding(findings, "warn", "no_source_fallback", "answer used fallback/no-source path; review fallback quality")
         else:
@@ -273,6 +518,8 @@ def evaluate_category_specific(row: dict[str, str], answer: str, sources: list[d
     family = category_family(row)
     first = first_sentence(answer)
     lower_answer = answer.lower()
+
+    evaluate_chord_position_key_leakage(question, answer, findings)
 
     if family == "player/teacher bio":
         if not answer_mentions_question_subject(question, answer):
@@ -402,6 +649,8 @@ def evaluate_quality_result(
         severity: Severity = "fail"
         if legacy.group == "source weakness / no-source" and fallback_expected(row) and fallback_quality_is_good(answer):
             severity = "warn"
+        if legacy.group == "source weakness / no-source" and is_deterministic_chord_position_question(row["question"]):
+            continue
         add_finding(findings, severity, f"legacy_{legacy.group.replace(' ', '_').replace('/', '_')}", legacy.reason)
 
     directness_findings: list[Any] = []
@@ -409,6 +658,14 @@ def evaluate_quality_result(
     for directness in directness_findings:
         add_finding(findings, "fail", f"directness_{directness.group.replace(' ', '_').replace('/', '_')}", directness.reason)
 
+    evaluate_deterministic_chord_position_response(
+        question=row["question"],
+        answer=answer,
+        warnings=warnings,
+        sources=sources,
+        payload=payload,
+        findings=findings,
+    )
     evaluate_source_cards(row=row, sources=sources, access_role=access_role, findings=findings)
     evaluate_category_specific(row, answer, sources, findings)
 
@@ -568,6 +825,8 @@ def recommended_fixes(finding_counts: Counter[str]) -> list[str]:
         fixes.append("Strengthen practice and teaching templates to produce concrete steps without exposing internal source language.")
     if any("vendor_guidance_missing" in key or "gear_buying_context_missing" in key for key in finding_counts):
         fixes.append("Route buying/vendor questions to curated current-source guidance and avoid stale forum sales fragments.")
+    if any(any(bucket in key for bucket in DETERMINISTIC_CHORD_POSITION_FAILURE_BUCKETS) for key in finding_counts):
+        fixes.append("Route chord-position/location questions through deterministic key-aware E9 positions before retrieval, require fretboard payloads, and suppress SGF source cards.")
     if not fixes:
         fixes.append("Review warning samples manually; no dominant automatic failure pattern exceeded the strict checks.")
     return fixes

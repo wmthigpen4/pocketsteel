@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from scripts.run_answer_eval import (
@@ -26,6 +27,40 @@ def test_question_bank_has_large_representative_set() -> None:
     assert "entity_player_biography" in categories
     assert "prompt_injection_hostile_retrieved_text" in categories
     assert any(row["question"] == "What are common Fender Steel King settings?" for row in questions)
+    assert any(row["question"] == "Can I play without finger picks?" and row["expected_contract"] == "right_hand_technique" for row in questions)
+    a_position_questions = {
+        row["question"]: row
+        for row in questions
+        if row["question"] in {
+            "Where can I play an A chord?",
+            "Where can I play an A major chord?",
+            "Show me places to play an A major chord.",
+            "How do I play a B# chord?",
+            "How do I play a C#?",
+            "Where all can I play a B chord?",
+        }
+    }
+    assert set(a_position_questions) == {
+        "Where can I play an A chord?",
+        "Where can I play an A major chord?",
+        "Show me places to play an A major chord.",
+        "How do I play a B# chord?",
+        "How do I play a C#?",
+        "Where all can I play a B chord?",
+    }
+    assert all(row["category"] == "e9_fretboard_copedent" for row in a_position_questions.values())
+    assert all(row["expected_contract"] == "copedent_fretboard" for row in a_position_questions.values())
+    chord_fuzz_rows = [row for row in questions if row["id"].startswith("CF")]
+    assert len(chord_fuzz_rows) == 64
+    assert all(row["category"] == "e9_fretboard_copedent" for row in chord_fuzz_rows)
+    assert all(row["expected_contract"] == "copedent_fretboard" for row in chord_fuzz_rows)
+    for root in ("G", "A", "B", "C", "C#", "F#", "Bb", "B#"):
+        root_pattern = re.compile(rf"(?<!\w){re.escape(root)}(?![#b]|\w)")
+        root_rows = [row for row in chord_fuzz_rows if root_pattern.search(row["question"])]
+        assert len(root_rows) == 8
+        assert any(row["question"] == f"Show me {root} positions." for row in root_rows)
+        assert any(row["question"] == f"Where is {root} major?" for row in root_rows)
+        assert any(row["question"] == f"What frets give me {root}?" for row in root_rows)
     targeted = {row["question"]: row.get("expected_intent") for row in questions if row["category"] == "targeted_directness_probes"}
     assert targeted["Who plays an Emmons guitar today?"] == "player_brand_usage"
     assert targeted["Where can I buy a slide bar?"] == "vendor_buying_guidance"
@@ -36,7 +71,7 @@ def test_question_bank_has_large_representative_set() -> None:
 def test_eval_flags_known_formatting_failures() -> None:
     reasons = failure_reasons(
         "What are common Fender Steel King settings?",
-        "Top Concise answer: Bill Lowe / 16 Nov 2007 1:32 pm asked about settings. [1]\n\nSource context: raw forum text. Thanks Nick Top Hi All. e-mail blacksteveb@aol.com sp=sharing Does anyone know?",
+        "Top Concise answer: Bill Lowe / 16 Nov 2007 1:32 pm asked about settings. [1]\n\nSource context: raw forum text. Thanks Nick Top Hi All. e-mail blacksteveb@aol.com sp=sharing Does anyone know?\n\nI found a few related practical points, but the match is limited:\n- [link removed] I play with and without picks.\n- other hand I rarely play dobro without them.\n- I had never worn finger picks before PSG. PayPal order link.",
     )
 
     assert "banned phrase: Concise answer:" in reasons
@@ -52,6 +87,12 @@ def test_eval_flags_known_formatting_failures() -> None:
     assert "forum question fragment: Does anyone know" in reasons
     assert "raw forum junk: Thanks Nick" in reasons
     assert "raw forum junk: Top Hi All" in reasons
+    assert "internal fallback language: related practical points" in reasons
+    assert "internal fallback language: match is limited" in reasons
+    assert "raw cleaned link marker" in reasons
+    assert "first-person forum statement as answer voice" in reasons
+    assert "chopped first-person source fragment" in reasons
+    assert "raw PayPal/order fragment" in reasons
 
 
 def test_eval_allows_clean_source_backed_heading() -> None:
