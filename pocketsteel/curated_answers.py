@@ -7,6 +7,11 @@ from dataclasses import dataclass
 from typing import Literal
 
 from pocketsteel.curated_source_registry import slide_bar_vendor_bullets
+from pocketsteel.fretboard_examples import (
+    get_e9_major_chord_positions,
+    major_chord_location_request_for_question,
+    unsupported_chord_location_request_for_question,
+)
 from pocketsteel.steel_rules import answer_from_rules
 
 
@@ -90,19 +95,46 @@ PLAYER_BIOS = {
 
 
 def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
-    if mentions_g_major_location_question(question):
+    q = normalize(question)
+    major_request = major_chord_location_request_for_question(question)
+    if major_request is not None:
+        major_key = major_request.normalized_key
+        positions = get_e9_major_chord_positions(major_key)
+        open_position = next(position for position in positions if position["role"] == "Open position")
+        af_position = next(position for position in positions if position["role"] == "A+F position")
+        ab_position = next(position for position in positions if position["role"] == "A+B position")
+        lines: list[str] = []
+        if major_request.is_enharmonic:
+            lines.extend(
+                [
+                    f"{major_request.requested_root} is the same pitch as {major_key}. On E9, think of it as a {major_key} major chord.",
+                    "",
+                ]
+            )
+        lines.extend(
+            [
+                f"On standard E9, useful {major_key} major positions include:",
+                "",
+                f"- {fret_label(open_position['fret'])}, no pedals: open-position {major_key} major.",
+                f"- {fret_label(af_position['fret'])} with A pedal + F lever: A+F {major_key} major position.",
+                f"- {fret_label(ab_position['fret'])} with A+B pedals: A+B {major_key} major position.",
+                "",
+                "Common grips to try are 4-5-6, 3-4-5, 5-6-8, and 6-8-10.",
+            ]
+        )
+        if major_request.is_enharmonic:
+            lines.extend(
+                [
+                    "",
+                    f"Most players would call this {major_key}, not {major_request.requested_root}, unless you are reading notation where that spelling is required by the key.",
+                ]
+            )
         return CuratedAnswer(
             intent="copedent_fretboard",
             confidence="curated_high",
-            answer=(
-                "On standard E9, useful G major positions include:\n\n"
-                "- 3rd fret, no pedals: open-position G major.\n"
-                "- 6th fret with A pedal + F lever: A+F G major position.\n"
-                "- 10th fret with A+B pedals: A+B G major position.\n\n"
-                "Common grips to try are 4-5-6, 3-4-5, 5-6-8, and 6-8-10."
-            ),
+            answer="\n".join(lines),
         )
-    if mentions_g_i_iv_v_visual_question(question):
+    if mentions_g_i_iv_v_visual_question(q):
         return CuratedAnswer(
             intent="copedent_fretboard",
             confidence="curated_high",
@@ -114,7 +146,7 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
                 "Use this as a simple map before adding more positions or passing chords."
             ),
         )
-    if mentions_g_common_grips_visual_question(question):
+    if mentions_g_common_grips_visual_question(q):
         return CuratedAnswer(
             intent="copedent_fretboard",
             confidence="curated_high",
@@ -125,11 +157,32 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
     return None
 
 
+def unsupported_chord_position_curated_answer(question: str) -> CuratedAnswer | None:
+    unsupported_request = unsupported_chord_location_request_for_question(question)
+    if unsupported_request is None:
+        return None
+    if unsupported_request.requested_root == unsupported_request.normalized_key:
+        requested = unsupported_request.requested_root
+    else:
+        requested = f"{unsupported_request.requested_root} (same pitch as {unsupported_request.normalized_key})"
+    return CuratedAnswer(
+        intent="copedent_fretboard",
+        confidence="curated_high",
+        answer=(
+            f"The deterministic fretboard view currently supports major-position diagrams first, so I would not use SGF snippets for a {requested} {unsupported_request.quality} answer.\n\n"
+            f"For a major-chord map, use {unsupported_request.normalized_key} major positions; for {unsupported_request.quality}, tell me the tuning/copedent context you want and I can keep the answer explicit instead of guessing."
+        ),
+    )
+
+
 def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer | None:
     q = normalize(question)
     fretboard_answer = visual_fretboard_curated_answer(q)
     if fretboard_answer is not None:
         return fretboard_answer
+    unsupported_chord_answer = unsupported_chord_position_curated_answer(q)
+    if unsupported_chord_answer is not None:
+        return unsupported_chord_answer
 
     rule_answer = answer_from_rules(question)
     if rule_answer is not None:
@@ -1063,6 +1116,14 @@ def mentions_g_i_iv_v_visual_question(question: str) -> bool:
 
 def mentions_g_common_grips_visual_question(question: str) -> bool:
     return question in {"show me common grips for g.", "show me common grips for g"}
+
+
+def fret_label(fret: int) -> str:
+    if 10 <= fret % 100 <= 20:
+        suffix = "th"
+    else:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(fret % 10, "th")
+    return f"{fret}{suffix} fret"
 
 
 def mentions_e9_tenth_string_gauge(question: str) -> bool:

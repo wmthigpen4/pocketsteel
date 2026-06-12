@@ -1934,6 +1934,16 @@ def assert_valid_fretboard_payload(payload: dict[str, Any]) -> None:
         assert all(1 <= string <= 10 for string in highlight["strings"])
         assert all(label in DEFAULT_PEDAL_LEVER_LABELS for label in highlight["pedals"])
         assert all(label in DEFAULT_PEDAL_LEVER_LABELS for label in highlight["levers"])
+    assert fretboard["sourceContext"][0]["kind"] == "rule"
+    assert fretboard["sourceContext"][0]["sourceId"] == "pocketsteel.fretboard_examples"
+
+
+def assert_deterministic_fretboard_sources_are_clean(payload: dict[str, Any]) -> None:
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert "fretboard" in payload
+    assert payload["fretboard"]["sourceContext"][0]["kind"] == "rule"
+    assert payload["fretboard"]["sourceContext"][0]["sourceId"] == "pocketsteel.fretboard_examples"
 
 
 def noisy_practical_sources() -> list[dict[str, Any]]:
@@ -1976,7 +1986,275 @@ def test_location_based_g_chord_answer_includes_fretboard_payload() -> None:
     assert "6th fret" in payload["answer"]
     assert "10th fret" in payload["answer"]
     assert "I " not in payload["answer"]
-    assert payload["sources"]
+    assert_deterministic_fretboard_sources_are_clean(payload)
+
+
+def test_location_based_b_chord_question_uses_b_positions_not_source_fragments() -> None:
+    payload = answer_for_question(
+        "Where all can I play a B chord?",
+        [
+            {
+                "score": 0.91,
+                "excerpt": "RKL fully engaged and B pedal pressed gives a strange color here.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "Unrelated RKL discussion",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=401001",
+                "chunk_id": "noisy-rkl-fragment",
+                "post_uid": "noisy-rkl-fragment",
+                "source_system": "sgf_phpbb_current",
+            },
+            {
+                "score": 0.89,
+                "excerpt": "Try a B7 in key of C or a B9 chord depending on the tune.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "Unrelated B7 B9 discussion",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=401002",
+                "chunk_id": "noisy-b7-b9-fragment",
+                "post_uid": "noisy-b7-b9-fragment",
+                "source_system": "sgf_phpbb_current",
+            },
+        ],
+    )
+
+    assert_clean_answer_body(payload)
+    assert "fretboard" in payload
+    assert_valid_fretboard_payload(payload)
+    assert payload["fretboard"]["title"] == "B major positions on E9"
+    assert [highlight["id"] for highlight in payload["fretboard"]["highlights"]] == ["b-open-7", "b-af-10", "b-ab-14"]
+    assert "On standard E9, useful B major positions include" in payload["answer"]
+    assert "7th fret, no pedals" in payload["answer"]
+    assert "10th fret with A pedal + F lever" in payload["answer"]
+    assert "14th fret with A+B pedals" in payload["answer"]
+    assert "RKL" not in payload["answer"]
+    assert "B7" not in payload["answer"]
+    assert "B9" not in payload["answer"]
+    assert "key of C" not in payload["answer"]
+    assert_deterministic_fretboard_sources_are_clean(payload)
+
+
+def test_deterministic_chord_position_answer_runs_before_retrieval() -> None:
+    search_index = FakeSearchIndex(
+        {
+            "results": [
+                {
+                    "score": 0.91,
+                    "excerpt": "RKL fully engaged and B pedal pressed. B9 chord.",
+                    "forum_name": "Pedal Steel",
+                    "thread_title": "Should not be retrieved",
+                    "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=401004",
+                    "chunk_id": "should-not-call",
+                    "post_uid": "should-not-call",
+                    "source_system": "sgf_phpbb_current",
+                }
+            ],
+            "warnings": ["should not appear"],
+        }
+    )
+
+    status, _, payload = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={"question": "Where all can I play a B chord?", "mode": "ask", "topK": 6},
+        search_index=search_index,
+        answer_provider=DeterministicAnswerProvider(),
+    )
+
+    assert status == "200 OK"
+    assert search_index.calls == []
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert payload["fretboard"]["title"] == "B major positions on E9"
+
+
+def test_unsupported_chord_quality_location_question_does_not_use_sgf_fragments() -> None:
+    payload = answer_for_question(
+        "Where can I play a B7 chord?",
+        [
+            {
+                "score": 0.91,
+                "excerpt": "RKL fully engaged and B pedal pressed gives a B9 chord.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "Unrelated RKL and B9 discussion",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=401003",
+                "chunk_id": "noisy-b7-unsupported",
+                "post_uid": "noisy-b7-unsupported",
+                "source_system": "sgf_phpbb_current",
+            },
+        ],
+    )
+
+    assert "fretboard" not in payload
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert "supports major-position diagrams first" in payload["answer"]
+    assert "B dominant 7" in payload["answer"]
+    assert "RKL" not in payload["answer"]
+    assert "B9" not in payload["answer"]
+
+
+def test_location_based_a_chord_answer_uses_a_positions_not_source_fragments() -> None:
+    payload = answer_for_question(
+        "Where can I play an A chord?",
+        [
+            {
+                "score": 0.91,
+                "excerpt": "B7 = press the 'A' pedal. You can play E, A, and B7 all on the 5th fret.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "Unrelated E position fragment",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400701",
+                "chunk_id": "noisy-b7-fragment",
+                "post_uid": "noisy-b7-fragment",
+                "source_system": "sgf_phpbb_current",
+            },
+            {
+                "score": 0.88,
+                "excerpt": "Example: G major can be found at the 6th fret with A pedal and F lever.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "G major A+F example",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400702",
+                "chunk_id": "noisy-g-fragment",
+                "post_uid": "noisy-g-fragment",
+                "source_system": "sgf_phpbb_current",
+            },
+        ],
+    )
+
+    assert_clean_answer_body(payload)
+    assert "fretboard" in payload
+    assert_valid_fretboard_payload(payload)
+    assert payload["fretboard"]["title"] == "A major positions on E9"
+    assert [highlight["id"] for highlight in payload["fretboard"]["highlights"]] == ["a-open-5", "a-af-8", "a-ab-12"]
+    assert "On standard E9, useful A major positions include" in payload["answer"]
+    assert "5th fret, no pedals" in payload["answer"]
+    assert "8th fret with A pedal + F lever" in payload["answer"]
+    assert "12th fret with A+B pedals" in payload["answer"]
+    assert "G major" not in payload["answer"]
+    assert "B7" not in payload["answer"]
+    assert "source-backed" not in payload["answer"].lower()
+    assert_deterministic_fretboard_sources_are_clean(payload)
+
+
+def test_location_based_c_sharp_question_without_chord_suffix_uses_positions_not_source_fragments() -> None:
+    payload = answer_for_question(
+        "How do I play a C#?",
+        [
+            {
+                "score": 0.92,
+                "excerpt": "You either tune it and play it, or you don't.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "Removing pedals 4,5,6 on a U12",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400901",
+                "chunk_id": "noisy-u12-fragment",
+                "post_uid": "noisy-u12-fragment",
+                "source_system": "sgf_phpbb_current",
+            },
+            {
+                "score": 0.88,
+                "excerpt": "I've played it this way so long I can't imagine it any other way.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "Carter D-10 Copedent",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400902",
+                "chunk_id": "noisy-carter-fragment",
+                "post_uid": "noisy-carter-fragment",
+                "source_system": "sgf_phpbb_current",
+            },
+            {
+                "score": 0.84,
+                "excerpt": "like your example, starting with the first string to the fifth string: C#,G#,F#,E,B.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "Push/Pull tuning question",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400903",
+                "chunk_id": "noisy-tuning-fragment",
+                "post_uid": "noisy-tuning-fragment",
+                "source_system": "sgf_phpbb_current",
+            },
+        ],
+    )
+
+    assert_clean_answer_body(payload)
+    assert "fretboard" in payload
+    assert_valid_fretboard_payload(payload)
+    assert payload["fretboard"]["title"] == "C# major positions on E9"
+    assert [highlight["id"] for highlight in payload["fretboard"]["highlights"]] == [
+        "csharp-open-9",
+        "csharp-af-12",
+        "csharp-ab-16",
+    ]
+    assert "On standard E9, useful C# major positions include" in payload["answer"]
+    assert "9th fret, no pedals" in payload["answer"]
+    assert "12th fret with A pedal + F lever" in payload["answer"]
+    assert "16th fret with A+B pedals" in payload["answer"]
+    assert "You either tune it" not in payload["answer"]
+    assert "I've played it this way" not in payload["answer"]
+    assert "starting with the first string" not in payload["answer"]
+    assert "C#,G#,F#,E,B" not in payload["answer"]
+    assert "source-backed" not in payload["answer"].lower()
+    assert_deterministic_fretboard_sources_are_clean(payload)
+    assert not any("You either tune it" in source.get("excerpt", "") for source in payload["sources"])
+    assert not any("I've played it this way" in source.get("excerpt", "") for source in payload["sources"])
+    assert not any("starting with the first string" in source.get("excerpt", "") for source in payload["sources"])
+
+
+def test_location_based_b_sharp_chord_answer_uses_c_positions_not_source_fragments() -> None:
+    payload = answer_for_question(
+        "How do I play a B# chord?",
+        [
+            {
+                "score": 0.91,
+                "excerpt": "If you can lower the B's to Bb, use that with the G#>F# lower to get a II7 chord.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "Unrelated lower discussion",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400801",
+                "chunk_id": "noisy-lower-fragment",
+                "post_uid": "noisy-lower-fragment",
+                "source_system": "sgf_phpbb_current",
+            },
+            {
+                "score": 0.87,
+                "excerpt": "with your middle finger - a split second after - and play that pattern as the horns descend from the 5 chord.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "Unrelated lick fragment",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400802",
+                "chunk_id": "noisy-middle-finger-fragment",
+                "post_uid": "noisy-middle-finger-fragment",
+                "source_system": "sgf_phpbb_current",
+            },
+        ],
+    )
+
+    assert_clean_answer_body(payload)
+    assert "fretboard" in payload
+    assert_valid_fretboard_payload(payload)
+    assert payload["fretboard"]["title"] == "C major positions on E9"
+    assert [highlight["id"] for highlight in payload["fretboard"]["highlights"]] == ["c-open-8", "c-af-11", "c-ab-15"]
+    assert "B# is the same pitch as C" in payload["answer"]
+    assert "C major positions" in payload["answer"]
+    assert "8th fret, no pedals" in payload["answer"]
+    assert "11th fret with A pedal + F lever" in payload["answer"]
+    assert "15th fret with A+B pedals" in payload["answer"]
+    assert "G#>F#" not in payload["answer"]
+    assert "B's to Bb" not in payload["answer"]
+    assert "middle finger" not in payload["answer"]
+    assert "B7" not in payload["answer"]
+    assert "G major" not in payload["answer"]
+    assert "source-backed" not in payload["answer"].lower()
+    assert_deterministic_fretboard_sources_are_clean(payload)
+
+
+def test_location_based_c_chord_answer_uses_c_positions() -> None:
+    payload = answer_for_question("Where can I play a C chord?", noisy_practical_sources())
+
+    assert_clean_answer_body(payload)
+    assert "fretboard" in payload
+    assert_valid_fretboard_payload(payload)
+    assert payload["fretboard"]["title"] == "C major positions on E9"
+    assert [highlight["id"] for highlight in payload["fretboard"]["highlights"]] == ["c-open-8", "c-af-11", "c-ab-15"]
+    assert "On standard E9, useful C major positions include" in payload["answer"]
+    assert "8th fret, no pedals" in payload["answer"]
+    assert "11th fret with A pedal + F lever" in payload["answer"]
+    assert "15th fret with A+B pedals" in payload["answer"]
+    assert "G major" not in payload["answer"]
+    assert_deterministic_fretboard_sources_are_clean(payload)
 
 
 def test_i_iv_v_question_includes_fretboard_payload() -> None:
@@ -1994,6 +2272,7 @@ def test_i_iv_v_question_includes_fretboard_payload() -> None:
     assert "G: 3rd fret, no pedals" in payload["answer"]
     assert "C: 3rd fret with A+B pedals" in payload["answer"]
     assert "D: 5th fret with A+B pedals" in payload["answer"]
+    assert_deterministic_fretboard_sources_are_clean(payload)
 
 
 def test_common_grips_question_includes_fretboard_payload() -> None:
@@ -2010,6 +2289,7 @@ def test_common_grips_question_includes_fretboard_payload() -> None:
         [6, 8, 10],
     ]
     assert "common grips include 4-5-6, 3-4-5, 5-6-8, and 6-8-10" in payload["answer"]
+    assert_deterministic_fretboard_sources_are_clean(payload)
 
 
 def test_non_location_answer_omits_fretboard_payload() -> None:

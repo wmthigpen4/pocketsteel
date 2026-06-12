@@ -52,6 +52,8 @@ from pocketsteel.curated_answers import (
     WEAK_RETRIEVAL_WARNING,
     lookup_curated_answer,
     retrieval_looks_weak_for_curated,
+    unsupported_chord_position_curated_answer,
+    visual_fretboard_curated_answer,
 )
 from pocketsteel.fretboard_examples import fretboard_payload_for_question
 from pocketsteel.rag_guardrails import sanitize_retrieved_sources
@@ -187,6 +189,34 @@ class RetrievalApi:
                 )
                 return self._json_response(start_response, "400 Bad Request", {"error": error or "invalid request"})
 
+            deterministic_chord_answer = visual_fretboard_curated_answer(answer_request.question)
+            if deterministic_chord_answer is None:
+                deterministic_chord_answer = unsupported_chord_position_curated_answer(answer_request.question)
+            if deterministic_chord_answer is not None:
+                final_answer = final_answer_quality_gate(deterministic_chord_answer.answer, answer_request.question)
+                contract_validation = enforce_answer_contract(final_answer, deterministic_chord_answer.intent)
+                final_answer = contract_validation.answer
+                fretboard_payload = fretboard_payload_for_question(answer_request.question)
+                payload: AnswerResponse = {
+                    "answer": final_answer,
+                    "mode": answer_request.mode,
+                    "sources": [],
+                    "warnings": [],
+                    "sections": build_sections(final_answer),
+                }
+                if fretboard_payload is not None:
+                    payload["fretboard"] = fretboard_payload
+                self._log_answer_attempt(
+                    request_payload,
+                    role=access.role,
+                    identity_email=access.identity_email,
+                    access_status="authorized",
+                    authorized=True,
+                    source_count=0,
+                    warning_count=0,
+                )
+                return self._json_response(start_response, "200 OK", payload)
+
             source_system = self._optional_string(request_payload.get("sourceSystem") or request_payload.get("source_system"))
             forum_name = self._optional_string(request_payload.get("forumName") or request_payload.get("forum_name"))
             search_response = self._search_for_answer(
@@ -255,6 +285,9 @@ class RetrievalApi:
             if contract_validation.violations and contract_validation.answer != final_answer:
                 warnings.append(f"answer contract enforced: {contract_validation.intent}")
             final_answer = contract_validation.answer
+            fretboard_payload = fretboard_payload_for_question(answer_request.question)
+            if fretboard_payload is not None:
+                sources = []
             payload: AnswerResponse = {
                 "answer": final_answer,
                 "mode": answer_request.mode,
@@ -262,7 +295,6 @@ class RetrievalApi:
                 "warnings": warnings,
                 "sections": build_sections(final_answer),
             }
-            fretboard_payload = fretboard_payload_for_question(answer_request.question)
             if fretboard_payload is not None:
                 payload["fretboard"] = fretboard_payload
             self._log_answer_attempt(

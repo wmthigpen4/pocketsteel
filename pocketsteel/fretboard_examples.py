@@ -44,15 +44,36 @@ COMMON_E9_VISUAL_GRIPS: tuple[tuple[int, ...], ...] = (
 
 FretboardIntent = Literal["major_positions", "minor_grips", "i_iv_v", "common_grips"]
 
+
+@dataclass(frozen=True)
+class MajorChordLocationRequest:
+    requested_root: str
+    normalized_key: str
+
+    @property
+    def is_enharmonic(self) -> bool:
+        return self.requested_root != self.normalized_key
+
+
+@dataclass(frozen=True)
+class UnsupportedChordLocationRequest:
+    requested_root: str
+    normalized_key: str
+    quality: str
+
+
 NOTE_TO_SEMITONE: dict[str, int] = {
     "C": 0,
+    "B#": 0,
     "C#": 1,
     "DB": 1,
     "D": 2,
     "D#": 3,
     "EB": 3,
     "E": 4,
+    "FB": 4,
     "F": 5,
+    "E#": 5,
     "F#": 6,
     "GB": 6,
     "G": 7,
@@ -62,6 +83,7 @@ NOTE_TO_SEMITONE: dict[str, int] = {
     "A#": 10,
     "BB": 10,
     "B": 11,
+    "CB": 11,
 }
 
 CANONICAL_NOTES: dict[int, str] = {
@@ -80,8 +102,8 @@ CANONICAL_NOTES: dict[int, str] = {
 }
 
 OPEN_MAJOR_ROOT = NOTE_TO_SEMITONE["E"]
-AB_MAJOR_ROOT = NOTE_TO_SEMITONE["A"]
-AF_MAJOR_ROOT = NOTE_TO_SEMITONE["C#"]
+AF_MAJOR_OFFSET = 3
+AB_MAJOR_OFFSET = 7
 
 
 @dataclass(frozen=True)
@@ -279,6 +301,10 @@ def major_triad_annotations(key: str, *, inversion: str) -> tuple[dict[str, str]
     )
 
 
+def indefinite_article(term: str) -> str:
+    return "an" if term[:1].upper() in {"A", "E", "F"} else "a"
+
+
 def get_e9_major_chord_positions(key: str = "G") -> list[dict]:
     """Return deterministic contract positions for a major chord key."""
     return major_positions(key).to_payload()["positions"]
@@ -309,19 +335,128 @@ def fretboard_payload_for_question(question: str) -> dict | None:
     q = re.sub(r"\s+", " ", question or "").strip().lower().rstrip("?!.")
     if not q:
         return None
-    if q in {
-        "where can i play a g chord",
-        "show me places to play a g major chord",
-        "where are g major positions on e9",
-        "show me g major with a+b",
-        "show me g major with a+f",
-    }:
-        return get_fretboard_examples("major_positions", "G")
+    major_request = major_chord_location_request_for_question(q)
+    if major_request is not None:
+        return get_fretboard_examples("major_positions", major_request.normalized_key)
     if q == "show me a 1-4-5 in g":
         return get_fretboard_examples("i_iv_v", "G")
     if q == "show me common grips for g":
         return get_fretboard_examples("common_grips", "G")
     return None
+
+
+def major_chord_location_key_for_question(question: str) -> str | None:
+    """Extract a deterministic major-key request from narrow location prompts."""
+    request = major_chord_location_request_for_question(question)
+    return request.normalized_key if request else None
+
+
+def major_chord_location_request_for_question(question: str) -> MajorChordLocationRequest | None:
+    """Extract a deterministic major-chord request and preserve spelling."""
+    q = re.sub(r"\s+", " ", question or "").strip().lower().rstrip("?!.")
+    if not q:
+        return None
+    patterns = (
+        r"^where(?: all)? can i play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?$",
+        r"^where can i find (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?$",
+        r"^how do i play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?$",
+        r"^how do i make (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?$",
+        r"^where is ([a-g](?:#|b)?) major$",
+        r"^where is ([a-g](?:#|b)?)(?: major)? on e9$",
+        r"^show me ([a-g](?:#|b)?) (?:major )?positions$",
+        r"^what frets give me (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?$",
+        r"^show me places to play (?:a|an)?\s*([a-g](?:#|b)?)(?: major)?(?: chord)?$",
+        r"^where are ([a-g](?:#|b)?) major positions on e9$",
+        r"^show me ([a-g](?:#|b)?) major with a\+b$",
+        r"^show me ([a-g](?:#|b)?) major with a\+f$",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, q)
+        if match:
+            requested_root = normalize_requested_root(match.group(1))
+            return MajorChordLocationRequest(
+                requested_root=requested_root,
+                normalized_key=normalize_key(requested_root),
+            )
+    return None
+
+
+def unsupported_chord_location_request_for_question(question: str) -> UnsupportedChordLocationRequest | None:
+    """Detect location-style chord questions with unsupported non-major qualities."""
+    q = re.sub(r"\s+", " ", question or "").strip().lower().rstrip("?!.")
+    if not q:
+        return None
+    prefixes = (
+        r"where(?: all)? can i play",
+        r"where can i find",
+        r"where is",
+        r"how do i play",
+        r"how do i make",
+        r"show me places to play",
+        r"show me",
+        r"what frets give me",
+    )
+    prefix_match = re.match(rf"^(?:{'|'.join(prefixes)})\s+(?:a|an)?\s*(?P<body>.+)$", q)
+    if not prefix_match:
+        return None
+    body = prefix_match.group("body")
+    body = re.sub(r"\bon e9\b$", "", body).strip()
+    body = re.sub(r"\bpositions?\b$", "", body).strip()
+    body = re.sub(r"\bchord\b$", "", body).strip()
+    quality_match = re.match(
+        r"^(?P<root>[a-g](?:#|b)?)(?P<compact>m(?!ajor)|7|dim|aug)?(?:\s+(?P<quality>minor|minor\s+7|m7|dominant(?:\s+7)?|seventh|7|diminished|dim|augmented|aug|sus(?:2|4)?|major\s+7|maj7))?$",
+        body,
+    )
+    if not quality_match:
+        return None
+    compact = quality_match.group("compact") or ""
+    quality = quality_match.group("quality") or compact
+    if not quality:
+        return None
+    requested_root = normalize_requested_root(quality_match.group("root"))
+    return UnsupportedChordLocationRequest(
+        requested_root=requested_root,
+        normalized_key=normalize_key(requested_root),
+        quality=normalize_chord_quality(quality),
+    )
+
+
+def normalize_chord_quality(quality: str) -> str:
+    q = re.sub(r"\s+", " ", (quality or "").strip().lower())
+    aliases = {
+        "m": "minor",
+        "m7": "minor 7",
+        "7": "dominant 7",
+        "seventh": "dominant 7",
+        "dominant": "dominant 7",
+        "dominant 7": "dominant 7",
+        "dim": "diminished",
+        "aug": "augmented",
+        "maj7": "major 7",
+    }
+    return aliases.get(q, q)
+
+
+def normalize_requested_root(root: str) -> str:
+    normalized = (root or "").strip().replace("♯", "#").replace("♭", "b")
+    if not normalized:
+        raise ValueError(f"Unsupported key: {root}")
+    letter = normalized[:1].upper()
+    accidental = normalized[1:]
+    if accidental not in {"", "#", "b"}:
+        raise ValueError(f"Unsupported key: {root}")
+    display = f"{letter}{accidental}"
+    if note_lookup_key(display) not in NOTE_TO_SEMITONE:
+        raise ValueError(f"Unsupported key: {root}")
+    return display
+
+
+def note_lookup_key(note: str) -> str:
+    return (note or "").strip().replace("♯", "#").replace("♭", "b").upper().replace("B", "B", 1)
+
+
+def semitone_for_note(note: str) -> int:
+    return NOTE_TO_SEMITONE[note_lookup_key(note)]
 
 
 def normalize_intent(intent: str) -> FretboardIntent:
@@ -347,33 +482,34 @@ def normalize_intent(intent: str) -> FretboardIntent:
 
 
 def normalize_key(key: str) -> str:
-    normalized = (key or "G").strip().upper().replace("♯", "#").replace("♭", "B")
-    if normalized not in NOTE_TO_SEMITONE:
-        raise ValueError(f"Unsupported key: {key}")
-    return CANONICAL_NOTES[NOTE_TO_SEMITONE[normalized]]
+    normalized = normalize_requested_root(key or "G")
+    return CANONICAL_NOTES[semitone_for_note(normalized)]
 
 
 def major_positions(key: str) -> FretboardVisualizationPayload:
     key = normalize_key(key)
     open_notes, open_intervals = major_triad_annotations(key, inversion="open")
     pedals_notes, pedals_intervals = major_triad_annotations(key, inversion="pedals")
+    open_fret = open_major_fret(key)
+    af_fret = af_major_fret(key)
+    ab_fret = ab_major_fret(key)
     positions = (
         FretboardPosition(
-            id=f"{slug(key)}-open-{open_major_fret(key)}",
+            id=f"{slug(key)}-open-{open_fret}",
             label=f"{key} major",
-            fret=open_major_fret(key),
+            fret=open_fret,
             strings=(4, 5, 6),
             grip=grip_label((4, 5, 6)),
             color="primary",
             role="Open position",
             notes=open_notes,
             intervals=open_intervals,
-            explanation=f"No-pedal fret {open_major_fret(key)} gives a {key} major grip on strings 4-5-6.",
+            explanation=f"No-pedal fret {open_fret} gives {indefinite_article(key)} {key} major grip on strings 4-5-6.",
         ),
         FretboardPosition(
-            id=f"{slug(key)}-af-{af_major_fret(key)}",
+            id=f"{slug(key)}-af-{af_fret}",
             label=f"{key} major",
-            fret=af_major_fret(key),
+            fret=af_fret,
             strings=(4, 5, 6),
             grip=grip_label((4, 5, 6)),
             pedals=("A",),
@@ -382,12 +518,12 @@ def major_positions(key: str) -> FretboardVisualizationPayload:
             role="A+F position",
             notes=pedals_notes,
             intervals=pedals_intervals,
-            explanation=f"A+F at fret {af_major_fret(key)} gives another {key} major position on strings 4-5-6.",
+            explanation=f"A+F at fret {af_fret} gives another {key} major position on strings 4-5-6.",
         ),
         FretboardPosition(
-            id=f"{slug(key)}-ab-{ab_major_fret(key)}",
+            id=f"{slug(key)}-ab-{ab_fret}",
             label=f"{key} major",
-            fret=ab_major_fret(key),
+            fret=ab_fret,
             strings=(4, 5, 6),
             grip=grip_label((4, 5, 6)),
             pedals=("A", "B"),
@@ -395,7 +531,7 @@ def major_positions(key: str) -> FretboardVisualizationPayload:
             role="A+B position",
             notes=pedals_notes,
             intervals=pedals_intervals,
-            explanation=f"A+B at fret {ab_major_fret(key)} gives another {key} major position on strings 4-5-6.",
+            explanation=f"A+B at fret {ab_fret} gives another {key} major position on strings 4-5-6.",
         ),
     )
     return FretboardVisualizationPayload(
@@ -510,19 +646,19 @@ def open_major_fret(key: str) -> int:
 
 
 def ab_major_fret(key: str) -> int:
-    return fret_for_root(key, AB_MAJOR_ROOT)
+    return open_major_fret(key) + AB_MAJOR_OFFSET
 
 
 def af_major_fret(key: str) -> int:
-    return fret_for_root(key, AF_MAJOR_ROOT)
+    return open_major_fret(key) + AF_MAJOR_OFFSET
 
 
 def fret_for_root(key: str, root_at_zero: int) -> int:
-    return (NOTE_TO_SEMITONE[normalize_key(key)] - root_at_zero) % 12
+    return (semitone_for_note(normalize_key(key)) - root_at_zero) % 12
 
 
 def transpose(key: str, semitones: int) -> str:
-    return CANONICAL_NOTES[(NOTE_TO_SEMITONE[normalize_key(key)] + semitones) % 12]
+    return CANONICAL_NOTES[(semitone_for_note(normalize_key(key)) + semitones) % 12]
 
 
 def slug(key: str) -> str:

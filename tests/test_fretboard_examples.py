@@ -13,6 +13,7 @@ from pocketsteel.fretboard_examples import (
     fretboard_payload_for_question,
     get_fretboard_examples,
     get_e9_major_chord_positions,
+    major_chord_location_request_for_question,
     validate_fretboard_payload,
 )
 
@@ -165,6 +166,106 @@ def test_major_chord_helper_functions_return_contract_data() -> None:
     assert payload["positions"][2]["pedals"] == ["A", "B"]
 
 
+def test_a_major_positions_are_transposed_safely() -> None:
+    payload = get_fretboard_examples("major_positions", "A")
+    by_id = {position["id"]: position for position in payload["positions"]}
+
+    assert payload["title"] == "A major positions on E9"
+    assert [position["id"] for position in payload["positions"]] == ["a-open-5", "a-af-8", "a-ab-12"]
+    assert by_id["a-open-5"]["fret"] == 5
+    assert by_id["a-open-5"]["strings"] == [4, 5, 6]
+    assert by_id["a-open-5"]["pedals"] == []
+    assert by_id["a-open-5"]["levers"] == []
+    assert by_id["a-af-8"]["fret"] == 8
+    assert by_id["a-af-8"]["strings"] == [4, 5, 6]
+    assert by_id["a-af-8"]["pedals"] == ["A"]
+    assert by_id["a-af-8"]["levers"] == ["F"]
+    assert by_id["a-ab-12"]["fret"] == 12
+    assert by_id["a-ab-12"]["strings"] == [4, 5, 6]
+    assert by_id["a-ab-12"]["pedals"] == ["A", "B"]
+    assert by_id["a-ab-12"]["levers"] == []
+
+
+def test_b_major_positions_are_transposed_safely() -> None:
+    payload = get_fretboard_examples("major_positions", "B")
+    by_id = {position["id"]: position for position in payload["positions"]}
+
+    assert payload["title"] == "B major positions on E9"
+    assert [position["id"] for position in payload["positions"]] == ["b-open-7", "b-af-10", "b-ab-14"]
+    assert by_id["b-open-7"]["fret"] == 7
+    assert by_id["b-open-7"]["pedals"] == []
+    assert by_id["b-open-7"]["levers"] == []
+    assert by_id["b-af-10"]["fret"] == 10
+    assert by_id["b-af-10"]["pedals"] == ["A"]
+    assert by_id["b-af-10"]["levers"] == ["F"]
+    assert by_id["b-ab-14"]["fret"] == 14
+    assert by_id["b-ab-14"]["pedals"] == ["A", "B"]
+
+
+def test_b_sharp_major_positions_normalize_to_c_major() -> None:
+    request = major_chord_location_request_for_question("How do I play a B# chord?")
+    assert request is not None
+    assert request.requested_root == "B#"
+    assert request.normalized_key == "C"
+    assert request.is_enharmonic is True
+
+    payload = fretboard_payload_for_question("How do I play a B# chord?")
+    assert payload["title"] == "C major positions on E9"
+    by_id = {position["id"]: position for position in payload["positions"]}
+    assert [position["id"] for position in payload["positions"]] == ["c-open-8", "c-af-11", "c-ab-15"]
+    assert by_id["c-open-8"]["fret"] == 8
+    assert by_id["c-open-8"]["strings"] == [4, 5, 6]
+    assert by_id["c-open-8"]["pedals"] == []
+    assert by_id["c-open-8"]["levers"] == []
+    assert by_id["c-af-11"]["fret"] == 11
+    assert by_id["c-af-11"]["pedals"] == ["A"]
+    assert by_id["c-af-11"]["levers"] == ["F"]
+    assert by_id["c-ab-15"]["fret"] == 15
+    assert by_id["c-ab-15"]["pedals"] == ["A", "B"]
+    assert by_id["c-ab-15"]["levers"] == []
+
+
+def test_c_major_position_prompts_are_supported() -> None:
+    expected_ids = ["c-open-8", "c-af-11", "c-ab-15"]
+
+    assert [position["id"] for position in fretboard_payload_for_question("Where can I play a C chord?")["positions"]] == expected_ids
+    assert fretboard_payload_for_question("Where is C major?")["title"] == "C major positions on E9"
+    assert fretboard_payload_for_question("Show me C positions.")["title"] == "C major positions on E9"
+    assert fretboard_payload_for_question("What frets give me a C chord?")["title"] == "C major positions on E9"
+
+
+def test_c_sharp_major_position_prompts_are_supported() -> None:
+    expected_ids = ["csharp-open-9", "csharp-af-12", "csharp-ab-16"]
+
+    assert [position["id"] for position in fretboard_payload_for_question("How do I play a C#?")["positions"]] == expected_ids
+    assert fretboard_payload_for_question("How do I play a C# chord?")["title"] == "C# major positions on E9"
+    assert fretboard_payload_for_question("Where can I play a C# chord?")["title"] == "C# major positions on E9"
+    assert fretboard_payload_for_question("Where is C# major?")["title"] == "C# major positions on E9"
+    assert fretboard_payload_for_question("Show me C# positions.")["title"] == "C# major positions on E9"
+    assert fretboard_payload_for_question("Show me places to play C# major.")["title"] == "C# major positions on E9"
+
+
+def test_b_major_position_prompt_variants_are_supported() -> None:
+    expected_ids = ["b-open-7", "b-af-10", "b-ab-14"]
+
+    variants = [
+        "Where can I play a B chord?",
+        "Where all can I play a B chord?",
+        "Where can I find B?",
+        "Where is B major?",
+        "How do I play a B chord?",
+        "How do I make a B chord?",
+        "Show me B positions.",
+        "Show me places to play B major.",
+        "What frets give me B?",
+        "Where is B on E9?",
+    ]
+    for question in variants:
+        payload = fretboard_payload_for_question(question)
+        assert payload["title"] == "B major positions on E9", question
+        assert [position["id"] for position in payload["positions"]] == expected_ids
+
+
 def test_i_iv_v_examples_in_requested_keys_are_stable() -> None:
     g_payload = get_fretboard_examples("i_iv_v", "G")
     c_payload = get_fretboard_examples("i_iv_v", "C")
@@ -213,6 +314,15 @@ def test_aliases_and_validation_errors() -> None:
 
 def test_fretboard_payload_for_question_matches_only_mvp_triggers() -> None:
     assert fretboard_payload_for_question("Where can I play a G chord?")["title"] == "G major positions on E9"
+    assert fretboard_payload_for_question("Where can I play an A chord?")["title"] == "A major positions on E9"
+    assert [position["id"] for position in fretboard_payload_for_question("Where can I play an A chord?")["positions"]] == [
+        "a-open-5",
+        "a-af-8",
+        "a-ab-12",
+    ]
+    assert fretboard_payload_for_question("Where can I play an A major chord?")["title"] == "A major positions on E9"
+    assert fretboard_payload_for_question("How do I play a C#?")["title"] == "C# major positions on E9"
+    assert fretboard_payload_for_question("Show me places to play an A major chord.")["title"] == "A major positions on E9"
     assert fretboard_payload_for_question("Show me places to play a G major chord.")["title"] == "G major positions on E9"
     assert fretboard_payload_for_question("Where are G major positions on E9?")["title"] == "G major positions on E9"
     assert fretboard_payload_for_question("Show me a 1-4-5 in G.")["title"] == "I-IV-V in G on E9"
