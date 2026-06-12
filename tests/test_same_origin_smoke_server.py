@@ -65,7 +65,8 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     status, headers, html = call_app(smoke_app(), "/ui/steel-guitar-rag-mock.html")
     assert status == "200 OK"
     assert headers["Content-Type"] == "text/html; charset=utf-8"
-    assert b'<script src="answer-client.js?v=answer-dom-order-20260529"></script>' in html
+    assert b'<script src="answer-client.js?v=fretboard-positions-20260611-1731"></script>' in html
+    assert b'<script src="pedal-steel-fretboard.js?v=fretboard-positions-20260611-1731"></script>' in html
 
     status, headers, script = call_app(smoke_app(), "/ui/answer-client.js")
     assert status == "200 OK"
@@ -74,6 +75,23 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
         "application/javascript; charset=utf-8",
     }
     assert b'const ANSWER_ENDPOINT = "/api/answer";' in script
+
+    status, headers, script = call_app(smoke_app(), "/ui/pedal-steel-fretboard.js")
+    assert status == "200 OK"
+    assert headers["Content-Type"] in {
+        "text/javascript; charset=utf-8",
+        "application/javascript; charset=utf-8",
+    }
+    assert b"PedalSteelFretboard" in script
+
+
+def test_same_origin_server_serves_public_fretboard_background() -> None:
+    status, headers, body = call_app(smoke_app(), "/brand/pedal-steel-fretboard-background.svg")
+
+    assert status == "200 OK"
+    assert headers["Content-Type"] == "image/svg+xml; charset=utf-8"
+    assert b'data-layer="headstock-keyhead-shell"' in body
+    assert b'data-layer="10-tuning-keys"' in body
 
 
 def test_same_origin_server_delegates_answer_api() -> None:
