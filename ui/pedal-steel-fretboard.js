@@ -40,22 +40,22 @@
       text: "#fff3d5",
     },
     alternate: {
-      dot: "#d8a44d",
-      glow: "rgba(216, 164, 77, 0.46)",
-      band: "rgba(216, 164, 77, 0.14)",
-      text: "#ffe5ad",
+      dot: "#f0bf69",
+      glow: "rgba(240, 191, 105, 0.5)",
+      band: "rgba(240, 191, 105, 0.16)",
+      text: "#fff3d5",
     },
     movement: {
-      dot: "#8fd5ff",
-      glow: "rgba(143, 213, 255, 0.34)",
-      band: "rgba(143, 213, 255, 0.12)",
-      text: "#d8f0ff",
+      dot: "#f0bf69",
+      glow: "rgba(240, 191, 105, 0.5)",
+      band: "rgba(240, 191, 105, 0.16)",
+      text: "#fff3d5",
     },
     warning: {
-      dot: "#ff9f6e",
-      glow: "rgba(255, 159, 110, 0.44)",
-      band: "rgba(255, 159, 110, 0.14)",
-      text: "#ffe1d0",
+      dot: "#f0bf69",
+      glow: "rgba(240, 191, 105, 0.5)",
+      band: "rgba(240, 191, 105, 0.16)",
+      text: "#fff3d5",
     },
   };
 
@@ -103,6 +103,128 @@
   margin: 14px 0 0;
   padding: 0;
   list-style: none;
+}
+
+.pedal-steel-fretboard__position-tools {
+  display: grid;
+  gap: 12px;
+  margin: 14px 0 0;
+}
+
+.pedal-steel-fretboard__selector-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 9px;
+}
+
+.pedal-steel-fretboard__selector {
+  min-height: 46px;
+  border: 1px solid rgba(240, 191, 105, 0.26);
+  border-radius: 12px;
+  background: rgba(12, 12, 11, 0.72);
+  color: rgba(255, 246, 223, 0.82);
+  cursor: pointer;
+  display: grid;
+  gap: 2px;
+  padding: 9px 11px;
+  text-align: left;
+}
+
+.pedal-steel-fretboard__selector:hover,
+.pedal-steel-fretboard__selector:focus-visible,
+.pedal-steel-fretboard__selector.is-selected {
+  border-color: rgba(240, 191, 105, 0.68);
+  background: rgba(240, 191, 105, 0.12);
+  color: #fff6df;
+  outline: none;
+}
+
+.pedal-steel-fretboard__selector-main {
+  font-size: 0.98rem;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.pedal-steel-fretboard__selector-sub {
+  color: rgba(255, 246, 223, 0.62);
+  font-size: 0.78rem;
+  line-height: 1.25;
+}
+
+.pedal-steel-fretboard__detail {
+  border: 1px solid rgba(240, 191, 105, 0.22);
+  border-radius: 14px;
+  background: rgba(8, 8, 7, 0.72);
+  padding: 13px;
+}
+
+.pedal-steel-fretboard__detail[hidden] {
+  display: none;
+}
+
+.pedal-steel-fretboard__detail-title {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+
+.pedal-steel-fretboard__detail-title strong {
+  color: #fff6df;
+  font-size: 1rem;
+}
+
+.pedal-steel-fretboard__detail-title span {
+  color: rgba(240, 191, 105, 0.82);
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.pedal-steel-fretboard__detail-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.pedal-steel-fretboard__detail-item {
+  border: 1px solid rgba(255, 246, 223, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 246, 223, 0.035);
+  min-width: 0;
+  padding: 8px 9px;
+}
+
+.pedal-steel-fretboard__detail-item.is-wide {
+  grid-column: span 2;
+}
+
+.pedal-steel-fretboard__detail-label {
+  color: rgba(240, 191, 105, 0.76);
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+}
+
+.pedal-steel-fretboard__detail-value {
+  color: rgba(255, 246, 223, 0.86);
+  font-size: 0.9rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.pedal-steel-fretboard__highlight {
+  opacity: 0.42;
+  transition: opacity 140ms ease, filter 140ms ease;
+}
+
+.pedal-steel-fretboard__highlight.is-selected {
+  opacity: 1;
+  filter: drop-shadow(0 0 12px rgba(240, 191, 105, 0.46));
 }
 
 .pedal-steel-fretboard__legend-item {
@@ -175,6 +297,18 @@
   .pedal-steel-fretboard__legend {
     grid-template-columns: 1fr;
   }
+
+  .pedal-steel-fretboard__selector-list {
+    grid-template-columns: 1fr;
+  }
+
+  .pedal-steel-fretboard__detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pedal-steel-fretboard__detail-item.is-wide {
+    grid-column: auto;
+  }
 }
 `;
 
@@ -229,6 +363,20 @@
     return value.map(String).map((item) => item.trim()).filter(Boolean);
   }
 
+  function normalizeDetailList(value) {
+    if (Array.isArray(value)) {
+      return normalizeTextList(value);
+    }
+    if (value && typeof value === "object") {
+      return Object.entries(value)
+        .sort(([left], [right]) => Number(left) - Number(right))
+        .map(([key, detail]) => `String ${key}: ${String(detail).trim()}`)
+        .filter((item) => !item.endsWith(":"));
+    }
+    const text = String(value || "").trim();
+    return text ? [text] : [];
+  }
+
   function normalizePosition(position, index, maxFret, stringCount, sourceType) {
     const item = position && typeof position === "object" ? position : {};
     const strings = normalizeStringList(item.strings, stringCount);
@@ -248,11 +396,11 @@
       pedals: normalizeTextList(item.pedals),
       levers: normalizeTextList(item.levers),
       role: String(item.role || ""),
-      notes: String(item.notes || ""),
+      notes: normalizeDetailList(item.notes),
       explanation: String(item.explanation || ""),
-      intervals: normalizeTextList(item.intervals),
+      intervals: normalizeDetailList(item.intervals),
       sourceType,
-      colorRole: COLOR_ROLES[item.colorRole] ? item.colorRole : index === 0 ? "primary" : index === 1 ? "alternate" : "movement",
+      colorRole: "primary",
     };
   }
 
@@ -299,6 +447,7 @@
       fretPositions,
       strings,
       markers: COMMON_FRET_MARKERS.filter((fret) => fret <= maxFret),
+      markerY: strings.length >= 6 ? (strings[4].y + strings[5].y) / 2 : LAYOUT.top + fretboardHeight / 2,
       highlights,
     };
   }
@@ -332,32 +481,26 @@
   }
 
   function markerX(model, fret) {
-    return (fretX(model, fret) + fretX(model, fret + 1)) / 2;
+    return (fretX(model, fret - 1) + fretX(model, fret)) / 2;
+  }
+
+  function renderDiamond({ x, y, size, fret, index, isEmphasis }) {
+    const points = [
+      `${x.toFixed(3)},${(y - size).toFixed(3)}`,
+      `${(x + size).toFixed(3)},${y.toFixed(3)}`,
+      `${x.toFixed(3)},${(y + size).toFixed(3)}`,
+      `${(x - size).toFixed(3)},${y.toFixed(3)}`,
+    ].join(" ");
+    return `<polygon data-fret-marker-diamond="${fret}" data-fret-marker-diamond-index="${index}" points="${points}" fill="rgba(255, 246, 223, 0.62)" stroke="rgba(240, 191, 105, 0.58)" stroke-width="${isEmphasis ? "1.8" : "1.55"}" opacity="${isEmphasis ? "0.58" : "0.46"}" />`;
   }
 
   function renderFretMarkerShape({ x, y, size, isEmphasis, fret }) {
-    const outer = [
-      `${x.toFixed(3)},${(y - size).toFixed(3)}`,
-      `${(x + size * 0.32).toFixed(3)},${(y - size * 0.32).toFixed(3)}`,
-      `${(x + size).toFixed(3)},${y.toFixed(3)}`,
-      `${(x + size * 0.32).toFixed(3)},${(y + size * 0.32).toFixed(3)}`,
-      `${x.toFixed(3)},${(y + size).toFixed(3)}`,
-      `${(x - size * 0.32).toFixed(3)},${(y + size * 0.32).toFixed(3)}`,
-      `${(x - size).toFixed(3)},${y.toFixed(3)}`,
-      `${(x - size * 0.32).toFixed(3)},${(y - size * 0.32).toFixed(3)}`,
-    ].join(" ");
-    const innerSize = size * 0.36;
-    const inner = [
-      `${x.toFixed(3)},${(y - innerSize).toFixed(3)}`,
-      `${(x + innerSize).toFixed(3)},${y.toFixed(3)}`,
-      `${x.toFixed(3)},${(y + innerSize).toFixed(3)}`,
-      `${(x - innerSize).toFixed(3)},${y.toFixed(3)}`,
-    ].join(" ");
-    const fill = isEmphasis ? "rgba(255, 246, 223, 0.9)" : "rgba(255, 246, 223, 0.72)";
-    const accent = isEmphasis ? "rgba(240, 191, 105, 0.64)" : "rgba(240, 191, 105, 0.38)";
-    return `<g data-fret-marker="${fret}" data-fret-marker-emphasis="${isEmphasis ? "true" : "false"}" data-fret-marker-placement="space" data-fret-marker-style="printed-star" transform="translate(0 0)">
-      <polygon data-fret-marker-star="${fret}" points="${outer}" fill="${fill}" stroke="rgba(7, 8, 8, 0.82)" stroke-width="${isEmphasis ? "2.1" : "1.6"}" opacity="${isEmphasis ? "0.92" : "0.72"}" />
-      <polygon data-fret-marker-center="${fret}" points="${inner}" fill="${accent}" opacity="${isEmphasis ? "0.9" : "0.76"}" />
+    const offsets = isEmphasis ? [-19, 0, 19] : [0];
+    const diamonds = offsets
+      .map((offset, index) => renderDiamond({ x, y: y + offset, size, fret, index: index + 1, isEmphasis }))
+      .join("");
+    return `<g data-fret-marker="${fret}" data-fret-marker-emphasis="${isEmphasis ? "true" : "false"}" data-fret-marker-placement="space" data-fret-marker-position="between-strings-5-6" data-fret-marker-style="printed-diamond" data-fret-marker-y="${y.toFixed(3)}" transform="translate(0 0)">
+      ${diamonds}
     </g>`;
   }
 
@@ -365,9 +508,9 @@
     return model.markers
       .map((fret) => {
         const x = markerX(model, fret);
-        const markerY = SVG_HEIGHT - 82;
+        const markerY = model.markerY;
         const isEmphasis = fret === 12 || fret === 24;
-        const size = isEmphasis ? 9.5 : 6.2;
+        const size = isEmphasis ? 8.8 : 10.8;
         return renderFretMarkerShape({ x, y: markerY, size, isEmphasis, fret });
       })
       .join("");
@@ -405,7 +548,7 @@
         return `<rect data-highlight-dot ${dataAttrs} data-highlight-string="${stringNumber}" x="${(highlight.x - 15).toFixed(3)}" y="${(y - 9).toFixed(3)}" width="30" height="18" rx="9" fill="${color.dot}" fill-opacity="0.95" stroke="#fff6df" stroke-opacity="0.38" filter="url(#fretboard-glow)" />`;
       })
       .join("");
-    return `<g class="pedal-steel-fretboard__highlight" ${dataAttrs}>
+    return `<g class="pedal-steel-fretboard__highlight${highlight.isSelected ? " is-selected" : ""}" ${dataAttrs}>
       ${band}
       ${dots}
       <text data-highlight-label="${escapeHtml(highlight.id)}" x="${highlight.x.toFixed(3)}" y="${labelY.toFixed(3)}" text-anchor="middle" fill="${color.text}" font-size="18" font-weight="700">${escapeHtml(highlight.label)}</text>
@@ -413,7 +556,61 @@
   }
 
   function renderHighlights(model) {
-    return model.highlights.map(renderHighlight).join("");
+    return model.highlights.map((highlight, index) => renderHighlight({ ...highlight, isSelected: index === 0 })).join("");
+  }
+
+  function controlLabel(highlight) {
+    const controls = [...highlight.pedals, ...highlight.levers];
+    return controls.length ? controls.join("+") : "open";
+  }
+
+  function positionSelectorLabel(highlight) {
+    return `${highlight.fret} ${controlLabel(highlight)}`;
+  }
+
+  function valueOrDash(value) {
+    const text = Array.isArray(value) ? value.filter(Boolean).join("; ") : String(value || "").trim();
+    return text || "None";
+  }
+
+  function renderDetailItem(label, value, className = "") {
+    return `<div class="pedal-steel-fretboard__detail-item${className ? ` ${className}` : ""}">
+      <span class="pedal-steel-fretboard__detail-label">${escapeHtml(label)}</span>
+      <span class="pedal-steel-fretboard__detail-value">${escapeHtml(valueOrDash(value))}</span>
+    </div>`;
+  }
+
+  function renderPositionDetail(highlight, index) {
+    return `<section class="pedal-steel-fretboard__detail" data-position-detail="${escapeHtml(highlight.id)}" aria-live="polite"${index === 0 ? "" : " hidden"}>
+      <p class="pedal-steel-fretboard__detail-title"><strong>${escapeHtml(highlight.label)}</strong><span>${escapeHtml(positionSelectorLabel(highlight))}</span></p>
+      <div class="pedal-steel-fretboard__detail-grid">
+        ${renderDetailItem("Fret", highlight.fret)}
+        ${renderDetailItem("Grip", highlight.grip || highlight.strings.join("-"))}
+        ${renderDetailItem("Pedals", highlight.pedals)}
+        ${renderDetailItem("Levers", highlight.levers)}
+        ${renderDetailItem("Role", highlight.role, "is-wide")}
+        ${renderDetailItem("Notes", highlight.notes, "is-wide")}
+        ${renderDetailItem("Intervals", highlight.intervals, "is-wide")}
+        ${renderDetailItem("Explanation", highlight.explanation, "is-wide")}
+      </div>
+    </section>`;
+  }
+
+  function renderPositionTools(model) {
+    if (model.highlights.length === 0) {
+      return "";
+    }
+    const buttons = model.highlights
+      .map((highlight, index) => `<button class="pedal-steel-fretboard__selector${index === 0 ? " is-selected" : ""}" type="button" data-position-selector="${escapeHtml(highlight.id)}" aria-pressed="${index === 0 ? "true" : "false"}">
+        <span class="pedal-steel-fretboard__selector-main">${escapeHtml(positionSelectorLabel(highlight))}</span>
+        <span class="pedal-steel-fretboard__selector-sub">${escapeHtml(highlight.role || highlight.label)}</span>
+      </button>`)
+      .join("");
+    const details = model.highlights.map(renderPositionDetail).join("");
+    return `<div class="pedal-steel-fretboard__position-tools" data-position-tools>
+      <div class="pedal-steel-fretboard__selector-list" aria-label="Choose a fretboard position">${buttons}</div>
+      ${details}
+    </div>`;
   }
 
   function renderLegend(model) {
@@ -429,8 +626,8 @@
           highlight.grip ? `grip ${highlight.grip}` : `strings ${highlight.strings.join("-")}`,
           controls.length ? controls.join(" + ") : "no pedals/levers",
           highlight.role,
-          highlight.intervals.length ? `intervals ${highlight.intervals.join("-")}` : "",
-          highlight.notes,
+          highlight.intervals.length ? `intervals ${highlight.intervals.join("; ")}` : "",
+          highlight.notes.length ? highlight.notes.join("; ") : "",
           highlight.explanation,
         ].filter(Boolean);
         return `<li class="pedal-steel-fretboard__legend-item" data-legend-id="${escapeHtml(highlight.id)}" style="--fretboard-swatch: ${color.dot}; --fretboard-glow: ${color.glow};">
@@ -444,9 +641,10 @@
 
   function renderPedalSteelFretboard(options = {}) {
     const model = buildFretboardModel(options);
+    const selectedPositionId = model.highlights[0]?.id || "";
     // Decorative underlay only. Functional strings, frets, fret markers, labels,
     // and interaction targets are drawn by SVG geometry below/above this layer.
-    return `<figure class="pedal-steel-fretboard" data-component="PedalSteelFretboard" data-max-fret="${model.maxFret}" data-string-count="${model.stringCount}" data-spacing="equal-temperament">
+    return `<figure class="pedal-steel-fretboard" data-component="PedalSteelFretboard" data-max-fret="${model.maxFret}" data-string-count="${model.stringCount}" data-spacing="equal-temperament" data-selected-position-id="${escapeHtml(selectedPositionId)}">
       <div class="pedal-steel-fretboard__stage">
         <svg class="pedal-steel-fretboard__svg" viewBox="0 0 ${SVG_WIDTH} ${SVG_HEIGHT}" role="img" aria-label="10-string E9 pedal steel fretboard with highlighted positions" xmlns="http://www.w3.org/2000/svg">
           <defs>
@@ -456,7 +654,6 @@
           </defs>
           <image href="${DECORATIVE_BACKGROUND_HREF}" x="${DECORATIVE_BACKGROUND_BOX.x}" y="${DECORATIVE_BACKGROUND_BOX.y}" width="${DECORATIVE_BACKGROUND_BOX.width}" height="${DECORATIVE_BACKGROUND_BOX.height}" opacity="${DECORATIVE_BACKGROUND_BOX.opacity}" preserveAspectRatio="${DECORATIVE_BACKGROUND_BOX.preserveAspectRatio}" class="pedal-steel-background" pointer-events="none" />
           <rect x="18" y="18" width="${SVG_WIDTH - 36}" height="${SVG_HEIGHT - 54}" rx="26" fill="rgba(9, 10, 10, 0.22)" stroke="rgba(240, 191, 105, 0.28)" />
-          <text x="${LAYOUT.left}" y="34" fill="rgba(240, 191, 105, 0.82)" font-size="18" font-weight="700" letter-spacing="3">E9 PEDAL STEEL</text>
           ${renderFrets(model)}
           ${renderMarkers(model)}
           ${renderStrings(model)}
@@ -464,8 +661,35 @@
           ${renderFretNumbers(model)}
         </svg>
       </div>
+      ${renderPositionTools(model)}
       ${renderLegend(model)}
     </figure>`;
+  }
+
+  function selectPosition(figure, positionId) {
+    if (!figure || !positionId) return;
+    figure.dataset.selectedPositionId = positionId;
+    figure.querySelectorAll("[data-position-selector]").forEach((button) => {
+      const isSelected = button.getAttribute("data-position-selector") === positionId;
+      button.classList.toggle("is-selected", isSelected);
+      button.setAttribute("aria-pressed", String(isSelected));
+    });
+    figure.querySelectorAll("[data-position-detail]").forEach((detail) => {
+      detail.hidden = detail.getAttribute("data-position-detail") !== positionId;
+    });
+    figure.querySelectorAll(".pedal-steel-fretboard__highlight").forEach((highlight) => {
+      highlight.classList.toggle("is-selected", highlight.getAttribute("data-highlight-id") === positionId);
+    });
+  }
+
+  function bindFretboardInteractions(figure) {
+    if (!figure) return;
+    figure.querySelectorAll("[data-position-selector]").forEach((button) => {
+      button.addEventListener("click", () => {
+        selectPosition(figure, button.getAttribute("data-position-selector"));
+      });
+    });
+    selectPosition(figure, figure.dataset.selectedPositionId);
   }
 
   function injectPedalSteelFretboardStyles(doc) {
@@ -485,7 +709,9 @@
     }
     injectPedalSteelFretboardStyles(container.ownerDocument);
     container.innerHTML = renderPedalSteelFretboard(options);
-    return container.querySelector("[data-component='PedalSteelFretboard']");
+    const figure = container.querySelector("[data-component='PedalSteelFretboard']");
+    bindFretboardInteractions(figure);
+    return figure;
   }
 
   const DEMO_HIGHLIGHTS = [

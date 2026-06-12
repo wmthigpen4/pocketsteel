@@ -88,6 +88,9 @@ assert.ok(model.fretPositions[24].x < model.layout.pickupStartX - model.layout.h
 const gap = model.layout.pickupStartX - model.fretPositions[24].x;
 assert.ok(gap >= 55 && gap <= 75);
 assert.ok(Math.abs(gap - 65) < 0.001);
+assert.ok(Math.abs(model.markerY - ((model.strings[4].y + model.strings[5].y) / 2)) < 0.001);
+assert.ok(model.markerY > model.strings[4].y);
+assert.ok(model.markerY < model.strings[5].y);
 assert.ok(model.fretPositions[1].x - model.fretPositions[0].x > model.fretPositions[24].x - model.fretPositions[23].x);
 assert.equal(JSON.stringify(model.markers), JSON.stringify([3, 5, 7, 9, 12, 15, 17, 19, 21, 24]));
 """
@@ -160,8 +163,11 @@ const markerFrets = Array.from(html.matchAll(/data-fret-marker="(\\d+)"/g)).map(
 assert.deepEqual(markerFrets, [3, 5, 7, 9, 12, 15, 17, 19, 21, 24]);
 assert.equal((html.match(/data-fret-marker-emphasis="true"/g) || []).length, 2);
 assert.equal((html.match(/data-fret-marker-placement="space"/g) || []).length, 10);
-assert.equal((html.match(/data-fret-marker-style="printed-star"/g) || []).length, 10);
-assert.equal((html.match(/data-fret-marker-star="/g) || []).length, 10);
+assert.equal((html.match(/data-fret-marker-position="between-strings-5-6"/g) || []).length, 10);
+assert.equal((html.match(/data-fret-marker-style="printed-diamond"/g) || []).length, 10);
+assert.equal((html.match(/data-fret-marker-diamond="/g) || []).length, 14);
+assert.equal((html.match(/data-fret-marker-diamond="12"/g) || []).length, 3);
+assert.equal((html.match(/data-fret-marker-diamond="24"/g) || []).length, 3);
 assert.match(html, /data-highlight-id="g-major-open-3"/);
 assert.match(html, /data-highlight-id="g-major-af-6"/);
 assert.match(html, /data-highlight-id="g-major-ab-10"/);
@@ -172,6 +178,7 @@ assert.match(html, /data-highlight-strings="4,5,6"/);
 assert.match(html, /A\\+B position/);
 assert.match(html, /E raise\\/F lever/);
 assert.match(html, /A\\+F position/);
+assert.doesNotMatch(html, /E9 PEDAL STEEL/);
 """
     )
 
@@ -205,23 +212,35 @@ assert.match(html, /paint-order="stroke fill"/);
     run_node(script)
 
 
-def test_printed_fret_markers_are_centered_in_fret_spaces() -> None:
+def test_printed_fret_markers_are_centered_in_fret_spaces_and_playable_region() -> None:
     script = component_eval_script(
         """
 const model = fretboard.buildFretboardModel();
 const html = fretboard.renderPedalSteelFretboard({ highlights: fretboard.DEMO_HIGHLIGHTS });
-const markers = Array.from(html.matchAll(/data-fret-marker-star="(\\d+)" points="([^"]+)"/g));
-assert.equal(markers.length, 10);
+const markerGroups = Array.from(html.matchAll(/data-fret-marker="(\\d+)"[^>]*data-fret-marker-y="([^"]+)"/g));
+assert.equal(markerGroups.length, 10);
+for (const match of markerGroups) {
+  const fret = Number(match[1]);
+  const markerY = Number(match[2]);
+  assert.ok(Math.abs(markerY - model.markerY) < 0.001);
+  assert.ok(markerY > model.strings[4].y, `marker ${fret} should be below string 5`);
+  assert.ok(markerY < model.strings[5].y, `marker ${fret} should be above string 6`);
+  assert.ok(markerY < model.strings[9].y, `marker ${fret} should not sit below string 10`);
+}
+const markers = Array.from(html.matchAll(/data-fret-marker-diamond="(\\d+)"[^>]*points="([^"]+)"/g));
+assert.equal(markers.length, 14);
 for (const match of markers) {
   const fret = Number(match[1]);
   const centerX = Number(match[2].split(" ")[0].split(",")[0]);
+  const previousFretX = model.fretPositions[fret - 1].x;
   const fretX = model.fretPositions[fret].x;
-  const nextFretX = model.layout.nutX + fretboard.normalizedFretPosition(fret + 1, fret + 1) * model.layout.scalePx;
-  const expectedCenter = (fretX + nextFretX) / 2;
-  assert.ok(centerX > fretX, `marker ${fret} should be after its fret line`);
-  assert.ok(centerX < nextFretX, `marker ${fret} should be before the next fret line`);
+  const expectedCenter = (previousFretX + fretX) / 2;
+  assert.ok(centerX > previousFretX, `marker ${fret} should be after fret line ${fret - 1}`);
+  assert.ok(centerX < fretX, `marker ${fret} should be before fret line ${fret}`);
   assert.ok(Math.abs(centerX - expectedCenter) < 0.001);
 }
+assert.equal(markers.filter((match) => Number(match[1]) === 12).length, 3);
+assert.equal(markers.filter((match) => Number(match[1]) === 24).length, 3);
 """
     )
 
@@ -253,6 +272,24 @@ assert.ok(fretIndex < markerIndex);
 assert.ok(markerIndex < stringIndex);
 assert.ok(stringIndex < highlightIndex);
 assert.equal((html.match(/href="\\/brand\\/pedal-steel-fretboard-background\\.svg"/g) || []).length, 1);
+"""
+    )
+
+    run_node(script)
+
+
+def test_default_position_dots_use_one_amber_style_without_unexplained_color_split() -> None:
+    script = component_eval_script(
+        """
+const model = fretboard.buildFretboardModel({ positions: fretboard.DEMO_POSITIONS });
+assert.equal(JSON.stringify(model.highlights.map((item) => item.colorRole)), JSON.stringify(["primary", "primary", "primary"]));
+const html = fretboard.renderPedalSteelFretboard({ positions: fretboard.DEMO_POSITIONS });
+assert.equal((html.match(/data-color-role="primary"/g) || []).length > 0, true);
+assert.equal((html.match(/data-color-role="alternate"/g) || []).length, 0);
+assert.equal((html.match(/data-color-role="movement"/g) || []).length, 0);
+assert.equal((html.match(/data-color-role="warning"/g) || []).length, 0);
+assert.doesNotMatch(html, /#8fd5ff/);
+assert.doesNotMatch(html, /#ff9f6e/);
 """
     )
 
@@ -488,11 +525,155 @@ assert.match(html, /data-highlight-fret="6"/);
 assert.match(html, /data-highlight-id="g-position-ab-10"/);
 assert.match(html, /data-highlight-fret="10"/);
 assert.match(html, /grip 4-5-6/);
-assert.match(html, /intervals 1-3-5/);
+assert.match(html, /intervals 1; 3; 5/);
 assert.match(html, /Open G pocket/);
 assert.match(html, /A pedal plus the E raise makes the G pocket at fret 6\\./);
 assert.match(html, /Pedals-down G position at fret 10\\./);
 assert.doesNotMatch(html, /wrong-legacy/);
+"""
+    )
+
+    run_node(script)
+
+
+def test_position_selector_renders_three_positions_and_default_detail() -> None:
+    script = component_eval_script(
+        """
+const csharpPositions = [
+  {
+    id: "csharp-open-9",
+    label: "C# major",
+    fret: 9,
+    strings: [4, 5, 6],
+    grip: "4-5-6",
+    pedals: [],
+    levers: [],
+    role: "Open position",
+    notes: {"4": "C#", "5": "G#", "6": "E#"},
+    intervals: {"4": "1", "5": "5", "6": "3"},
+    explanation: "No-pedal C# at fret 9."
+  },
+  {
+    id: "csharp-af-12",
+    label: "C# major",
+    fret: 12,
+    strings: [4, 5, 6],
+    grip: "4-5-6",
+    pedals: ["A"],
+    levers: ["F"],
+    role: "A+F position",
+    notes: {"4": "E#", "5": "C#", "6": "G#"},
+    intervals: {"4": "3", "5": "1", "6": "5"},
+    explanation: "A+F C# at fret 12."
+  },
+  {
+    id: "csharp-ab-16",
+    label: "C# major",
+    fret: 16,
+    strings: [4, 5, 6],
+    grip: "4-5-6",
+    pedals: ["A", "B"],
+    levers: [],
+    role: "A+B position",
+    notes: {"4": "E#", "5": "C#", "6": "G#"},
+    intervals: {"4": "3", "5": "1", "6": "5"},
+    explanation: "A+B C# at fret 16."
+  }
+];
+const html = fretboard.renderPedalSteelFretboard({ positions: csharpPositions });
+assert.equal((html.match(/data-position-selector="/g) || []).length, 3);
+assert.match(html, /data-position-selector="csharp-open-9"/);
+assert.match(html, />\\s*<span class="pedal-steel-fretboard__selector-main">9 open<\\/span>/);
+assert.match(html, />\\s*<span class="pedal-steel-fretboard__selector-main">12 A\\+F<\\/span>/);
+assert.match(html, />\\s*<span class="pedal-steel-fretboard__selector-main">16 A\\+B<\\/span>/);
+assert.match(html, /data-selected-position-id="csharp-open-9"/);
+assert.match(html, /data-position-detail="csharp-open-9" aria-live="polite">/);
+assert.match(html, /data-position-detail="csharp-af-12" aria-live="polite" hidden>/);
+assert.match(html, /<span class="pedal-steel-fretboard__detail-label">Fret<\\/span>\\s*<span class="pedal-steel-fretboard__detail-value">9<\\/span>/);
+assert.match(html, /<span class="pedal-steel-fretboard__detail-label">Grip<\\/span>\\s*<span class="pedal-steel-fretboard__detail-value">4-5-6<\\/span>/);
+assert.match(html, /<span class="pedal-steel-fretboard__detail-label">Pedals<\\/span>\\s*<span class="pedal-steel-fretboard__detail-value">None<\\/span>/);
+assert.match(html, /<span class="pedal-steel-fretboard__detail-label">Levers<\\/span>\\s*<span class="pedal-steel-fretboard__detail-value">None<\\/span>/);
+assert.match(html, /String 4: C#/);
+assert.match(html, /String 5: G#/);
+assert.match(html, /String 6: E#/);
+assert.match(html, /String 4: 1/);
+assert.match(html, /No-pedal C# at fret 9\\./);
+"""
+    )
+
+    run_node(script)
+
+
+def test_csharp_and_b_payloads_render_expected_selector_frets() -> None:
+    script = component_eval_script(
+        """
+const csharpModel = fretboard.buildFretboardModel({
+  positions: [
+    { id: "csharp-open-9", label: "C# major", fret: 9, strings: [4, 5, 6], grip: "4-5-6", pedals: [], levers: [] },
+    { id: "csharp-af-12", label: "C# major", fret: 12, strings: [4, 5, 6], grip: "4-5-6", pedals: ["A"], levers: ["F"] },
+    { id: "csharp-ab-16", label: "C# major", fret: 16, strings: [4, 5, 6], grip: "4-5-6", pedals: ["A", "B"], levers: [] }
+  ]
+});
+assert.deepEqual(csharpModel.highlights.map((item) => item.fret), [9, 12, 16]);
+const csharpHtml = fretboard.renderPedalSteelFretboard({
+  positions: csharpModel.highlights.map((item) => ({
+    id: item.id,
+    label: item.label,
+    fret: item.fret,
+    strings: item.strings,
+    grip: item.grip,
+    pedals: item.pedals,
+    levers: item.levers
+  }))
+});
+assert.match(csharpHtml, /9 open/);
+assert.match(csharpHtml, /12 A\\+F/);
+assert.match(csharpHtml, /16 A\\+B/);
+
+const bModel = fretboard.buildFretboardModel({
+  positions: [
+    { id: "b-open-7", label: "B major", fret: 7, strings: [4, 5, 6], grip: "4-5-6", pedals: [], levers: [] },
+    { id: "b-af-10", label: "B major", fret: 10, strings: [4, 5, 6], grip: "4-5-6", pedals: ["A"], levers: ["F"] },
+    { id: "b-ab-14", label: "B major", fret: 14, strings: [4, 5, 6], grip: "4-5-6", pedals: ["A", "B"], levers: [] }
+  ]
+});
+assert.deepEqual(bModel.highlights.map((item) => item.fret), [7, 10, 14]);
+const bHtml = fretboard.renderPedalSteelFretboard({
+  positions: bModel.highlights.map((item) => ({
+    id: item.id,
+    label: item.label,
+    fret: item.fret,
+    strings: item.strings,
+    grip: item.grip,
+    pedals: item.pedals,
+    levers: item.levers
+  }))
+});
+assert.match(bHtml, /7 open/);
+assert.match(bHtml, /10 A\\+F/);
+assert.match(bHtml, /14 A\\+B/);
+"""
+    )
+
+    run_node(script)
+
+
+def test_missing_or_partial_fretboard_payload_omits_selector_cleanly() -> None:
+    script = component_eval_script(
+        """
+const emptyHtml = fretboard.renderPedalSteelFretboard({ positions: [] });
+assert.doesNotMatch(emptyHtml, /data-position-selector="/);
+assert.doesNotMatch(emptyHtml, /data-position-detail="/);
+
+const partialHtml = fretboard.renderPedalSteelFretboard({
+  positions: [
+    { id: "missing-strings", label: "Missing strings", fret: 4 },
+    { id: "bad-strings", label: "Bad strings", fret: 5, strings: [99] }
+  ]
+});
+assert.doesNotMatch(partialHtml, /data-position-selector="/);
+assert.doesNotMatch(partialHtml, /missing-strings/);
+assert.doesNotMatch(partialHtml, /bad-strings/);
 """
     )
 
