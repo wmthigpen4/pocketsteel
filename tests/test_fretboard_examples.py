@@ -472,6 +472,19 @@ def test_function_and_direct_minor_questions_route_to_e_minor_positions() -> Non
             assert set(position["intervals"].values()) == {"1", "b3", "5"}
 
 
+def test_hyphenated_minor_chord_questions_route_to_minor_positions() -> None:
+    direct_minor_request = minor_chord_location_request_for_question("How do I play a G-minor chord?")
+
+    assert direct_minor_request is not None
+    assert direct_minor_request.normalized_key == "G"
+
+    payload = fretboard_payload_for_question("How do I play a G-minor chord?")
+    assert payload is not None
+    assert payload["title"] == "G minor positions on E9"
+    assert_valid_visualization_payload(payload)
+
+
+
 def test_b_major_position_prompt_variants_are_supported() -> None:
     expected_ids = {"b-open-7", "b-af-10", "b-ab-14", "b-ab-2-lower-octave", "b-e-lower-5-7-8-0"}
 

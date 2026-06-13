@@ -424,6 +424,14 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             answer=rule_answer.answer,
         )
 
+    turnaround_answer = teacher_first_turnaround_answer(q)
+    if turnaround_answer is not None:
+        return turnaround_answer
+
+    swing_waltz_answer = teacher_first_swing_waltz_answer(q)
+    if swing_waltz_answer is not None:
+        return swing_waltz_answer
+
     intent_mode_answer = intent_mode_curated_answer(q)
     if intent_mode_answer is not None:
         return intent_mode_answer
@@ -1357,6 +1365,55 @@ def mentions_sensitive_demographic_question(question: str) -> bool:
 
 def mentions_current_roster_question(question: str) -> bool:
     return bool(re.search(r"\bwho\s+plays\s+for\s+[a-z0-9'. -]+\??$", question))
+
+
+def teacher_first_turnaround_answer(question: str) -> CuratedAnswer | None:
+    if not re.search(r"\b1\s*[-/]\s*4\s*[-/]\s*5\s*[-/]\s*1\b", question):
+        return None
+    if "turnaround" not in question and not re.search(r"\b(?:play|practice|use|learn)\b", question):
+        return None
+    return CuratedAnswer(
+        intent="practice_plan",
+        confidence="curated_high",
+        answer=(
+            "A 1-4-5-1 turnaround means I-IV-V-I: the home chord, the IV chord, the V chord, then back home.\n\n"
+            "Example in G:\n"
+            "- 1 chord: G\n"
+            "- 4 chord: C\n"
+            "- 5 chord: D\n"
+            "- back to 1: G\n\n"
+            "One practical E9 path:\n"
+            "- G: 3rd fret, no pedals, grip 4-5-6.\n"
+            "- C: 3rd fret with A+B, same grip.\n"
+            "- D: 5th fret with A+B, same grip.\n"
+            "- G: return to the 3rd fret open, or use the 6th fret with A pedal + F lever for a smoother color.\n\n"
+            "Practice it: play the chords slowly as whole notes first, then make one two-beat fill between C and D. "
+            "The goal is to hear the function change, not to memorize a forum lick."
+        ),
+    )
+
+
+def teacher_first_swing_waltz_answer(question: str) -> CuratedAnswer | None:
+    if not ("swing" in question and "waltz" in question):
+        return None
+    if not re.search(r"\b(?:mean|means|feel|song|difference|what(?:'s|’s| is))\b", question):
+        return None
+    return CuratedAnswer(
+        intent="performance_context_guidance",
+        confidence="curated_high",
+        answer=(
+            "Swing and waltz describe the feel and meter of the song, not a different pedal-steel tuning.\n\n"
+            "Swing:\n"
+            "- Usually felt in 4/4 with a long-short, triplet-based pulse.\n"
+            "- On steel, keep fills light, slightly bouncing, and behind the vocal instead of square and stiff.\n"
+            "- Good practice: count 1-and-2-and-3-and-4-and, but let the \"and\" feel late and relaxed.\n\n"
+            "Waltz:\n"
+            "- Usually felt in 3/4: 1-2-3, 1-2-3.\n"
+            "- On steel, support beat 1, then answer in the space on beats 2 and 3.\n"
+            "- Good practice: play a simple pad on beat 1, then one short fill after it.\n\n"
+            "Steel-guitar takeaway: match your bar movement, blocking, and volume-pedal swells to the groove before adding more notes."
+        ),
+    )
 
 
 def mentions_pockets_concept(question: str) -> bool:

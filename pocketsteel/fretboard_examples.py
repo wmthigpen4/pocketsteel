@@ -155,6 +155,21 @@ CANONICAL_NOTES: dict[int, str] = {
     11: "B",
 }
 
+FLAT_NOTES: dict[int, str] = {
+    0: "C",
+    1: "Db",
+    2: "D",
+    3: "Eb",
+    4: "E",
+    5: "F",
+    6: "Gb",
+    7: "G",
+    8: "Ab",
+    9: "A",
+    10: "Bb",
+    11: "B",
+}
+
 OPEN_MAJOR_ROOT = NOTE_TO_SEMITONE["E"]
 AF_MAJOR_OFFSET = 3
 AB_MAJOR_OFFSET = 7
@@ -1492,10 +1507,11 @@ def minor_chord_location_request_for_question(question: str) -> MinorChordLocati
     if not q:
         return None
     patterns = (
-        r"^where is ([a-g](?:#|b)?)(?:m| minor)(?: chord)?(?: on e9)?$",
-        r"^where can i play (?:a|an)?\s*([a-g](?:#|b)?)(?:m| minor)(?: chord)?(?: on e9)?$",
-        r"^show me ([a-g](?:#|b)?)(?:m| minor) positions$",
-        r"^what frets give me (?:a|an)?\s*([a-g](?:#|b)?)(?:m| minor)(?: chord)?$",
+        r"^where is ([a-g](?:#|b)?)(?:m|[- ]minor)(?: chord)?(?: on e9)?$",
+        r"^where can i play (?:a|an)?\s*([a-g](?:#|b)?)(?:m|[- ]minor)(?: chord)?(?: on e9)?$",
+        r"^how do i play (?:a|an)?\s*([a-g](?:#|b)?)(?:m|[- ]minor)(?: chord)?(?: on e9)?$",
+        r"^show me ([a-g](?:#|b)?)(?:m|[- ]minor) positions$",
+        r"^what frets give me (?:a|an)?\s*([a-g](?:#|b)?)(?:m|[- ]minor)(?: chord)?$",
     )
     for pattern in patterns:
         match = re.search(pattern, q)
@@ -1711,7 +1727,14 @@ def minor_chord_answer_for_question(question: str) -> str | None:
     request = minor_chord_location_request_for_question(question)
     if request is None:
         return None
-    return minor_position_answer(request.normalized_key)
+    key = request.normalized_key
+    return minor_position_answer(
+        key,
+        prefix=(
+            f"A {key} minor chord means the notes {minor_triad_spelling_for_answer(key)}: "
+            "root, minor 3rd, and perfect 5th."
+        ),
+    )
 
 
 def chord_concept_request_for_question(question: str) -> ChordConceptRequest | None:
@@ -1807,6 +1830,13 @@ def generic_chord_concept_answer_for_question(question: str) -> str | None:
 
 def minor_triad_spelling(root: str) -> str:
     return f"{normalize_key(root)}-{transpose(normalize_key(root), 3)}-{transpose(normalize_key(root), 7)}"
+
+
+def minor_triad_spelling_for_answer(root: str) -> str:
+    key = normalize_key(root)
+    minor_third = FLAT_NOTES[(semitone_for_note(key) + 3) % 12]
+    fifth = CANONICAL_NOTES[(semitone_for_note(key) + 7) % 12]
+    return f"{key}-{minor_third}-{fifth}"
 
 
 def minor_position_answer(root: str, *, prefix: str | None = None) -> str:

@@ -2454,6 +2454,37 @@ def test_deterministic_fretboard_regressions_still_beat_intent_mode() -> None:
     assert_deterministic_fretboard_sources_are_clean(b9)
 
 
+def test_teacher_first_screenshot_prompt_regressions_are_synthesized() -> None:
+    g_minor = answer_for_question("How do I play a G-minor chord?", noisy_practical_sources())
+    assert_clean_answer_body(g_minor)
+    assert "G minor chord means the notes G-Bb-D" in g_minor["answer"]
+    assert "root, minor 3rd, and perfect 5th" in g_minor["answer"]
+    assert "Useful G minor positions on E9" in g_minor["answer"]
+    assert "fretboard" in g_minor
+    assert_valid_fretboard_payload(g_minor)
+    assert_deterministic_fretboard_sources_are_clean(g_minor)
+
+    turnaround = answer_for_question("How do I play a 1-4-5-1 turnaround?", noisy_practical_sources())
+    assert_clean_answer_body(turnaround)
+    assert "1-4-5-1 turnaround means I-IV-V-I" in turnaround["answer"]
+    assert "Example in G" in turnaround["answer"]
+    assert "G: 3rd fret, no pedals" in turnaround["answer"]
+    assert "C: 3rd fret with A+B" in turnaround["answer"]
+    assert "D: 5th fret with A+B" in turnaround["answer"]
+    assert "fretboard" not in turnaround
+    assert turnaround["sources"]
+
+    swing_waltz = answer_for_question("What’s it mean for a song to be a swing or a waltz?", noisy_practical_sources())
+    assert_clean_answer_body(swing_waltz)
+    assert "Swing and waltz describe the feel and meter" in swing_waltz["answer"]
+    assert "Usually felt in 4/4" in swing_waltz["answer"]
+    assert "Usually felt in 3/4" in swing_waltz["answer"]
+    assert "bar movement, blocking, and volume-pedal swells" in swing_waltz["answer"]
+    assert "fretboard" not in swing_waltz
+    assert swing_waltz["sources"]
+
+
+
 def test_invalid_chord_symbol_question_clarifies_without_retrieval_or_fretboard() -> None:
     payload = answer_for_question(
         "how. do I play a GF chord?",
