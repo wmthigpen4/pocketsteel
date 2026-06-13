@@ -16,6 +16,10 @@ const STEEL_RAG_ANSWER_UI = (() => {
     return values.find((value) => value !== undefined && value !== null && String(value).trim() !== "") || "";
   }
 
+  function isObjectRecord(value) {
+    return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+  }
+
   function hasSubmittableQuestion(value) {
     return Boolean(String(value || "").trim());
   }
@@ -293,18 +297,24 @@ const STEEL_RAG_ANSWER_UI = (() => {
   }
 
   function normalizeFretboard(fretboard) {
-    if (!fretboard || typeof fretboard !== "object" || Array.isArray(fretboard)) {
+    if (!isObjectRecord(fretboard)) {
+      return null;
+    }
+
+    const positions = Array.isArray(fretboard.positions) ? fretboard.positions : [];
+    const highlights = Array.isArray(fretboard.highlights) ? fretboard.highlights : [];
+    if (!positions.length && !highlights.length) {
       return null;
     }
 
     const normalized = {
       title: firstValue(fretboard.title, "Fretboard view"),
       description: firstValue(fretboard.description),
-      highlights: Array.isArray(fretboard.highlights) ? fretboard.highlights : []
+      highlights
     };
 
-    if (Array.isArray(fretboard.positions)) {
-      normalized.positions = fretboard.positions;
+    if (positions.length) {
+      normalized.positions = positions;
     }
     if (fretboard.maxFret !== undefined) {
       normalized.maxFret = fretboard.maxFret;
@@ -315,8 +325,24 @@ const STEEL_RAG_ANSWER_UI = (() => {
     if (Array.isArray(fretboard.tuningLabels)) {
       normalized.tuningLabels = fretboard.tuningLabels;
     }
+    if (Array.isArray(fretboard.legend)) {
+      normalized.legend = fretboard.legend;
+    }
 
     return normalized;
+  }
+
+  function findFretboardPayload(payload) {
+    const candidates = [
+      payload?.fretboard,
+      payload?.response?.fretboard,
+      payload?.data?.fretboard,
+      payload?.result?.fretboard
+    ];
+    if (isObjectRecord(payload?.answer)) {
+      candidates.push(payload.answer.fretboard);
+    }
+    return candidates.find(isObjectRecord) || null;
   }
 
   function normalizeAnswerResponse(payload, fallbackQuestion = "") {
@@ -338,7 +364,7 @@ const STEEL_RAG_ANSWER_UI = (() => {
       searched_domains: searchedDomains,
       followups: Array.isArray(payload?.followups) ? payload.followups : []
     };
-    const fretboard = normalizeFretboard(payload?.fretboard);
+    const fretboard = normalizeFretboard(findFretboardPayload(payload));
     if (fretboard) {
       normalized.fretboard = fretboard;
     }
@@ -405,6 +431,7 @@ const STEEL_RAG_ANSWER_UI = (() => {
     sessionGrantsLiveAccess,
     normalizeSessionResponse,
     normalizeFretboard,
+    findFretboardPayload,
     normalizeSections,
     normalizeAnswerResponse,
     requestSession,

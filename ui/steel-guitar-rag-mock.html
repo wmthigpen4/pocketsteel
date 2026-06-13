@@ -73,6 +73,8 @@
     }
 
     header {
+      position: relative;
+      z-index: 4;
       width: min(1120px, calc(100% - 40px));
       margin: 0 auto;
       padding: 16px 0 4px;
@@ -82,6 +84,52 @@
       gap: 18px;
     }
 
+    .hero-hanging-sign {
+      position: absolute;
+      top: 14px;
+      left: 0;
+      width: clamp(240px, 22vw, 360px);
+      z-index: 2;
+      pointer-events: none;
+      transform: translate(-8px, -10px) rotate(-1.5deg);
+      transform-origin: top left;
+      filter:
+        drop-shadow(0 18px 28px rgba(0, 0, 0, 0.55))
+        drop-shadow(0 0 22px rgba(255, 106, 0, 0.22));
+    }
+
+    .hero-hanging-sign video,
+    .hero-hanging-sign img {
+      display: block;
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+      object-position: top left;
+      image-rendering: auto;
+    }
+
+    .hero-hanging-sign video {
+      display: none;
+    }
+
+    .hero-hanging-sign.is-animated video {
+      display: block;
+    }
+
+    .hero-hanging-sign.is-animated img {
+      display: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .hero-hanging-sign.is-animated video {
+        display: none;
+      }
+
+      .hero-hanging-sign.is-animated img {
+        display: block;
+      }
+    }
+
     .brand {
       display: flex;
       align-items: center;
@@ -89,12 +137,16 @@
     }
 
     .brand-home {
-      display: block;
+      display: none;
       border: 0;
       padding: 0;
       background: transparent;
       cursor: pointer;
       border-radius: 8px;
+    }
+
+    .page.is-answering .brand-home {
+      display: block;
     }
 
     .brand-home:focus-visible {
@@ -698,7 +750,7 @@
       display: grid;
       align-content: start;
       justify-items: center;
-      padding: 88px 0 24px;
+      padding: clamp(170px, 14vw, 220px) 0 24px;
     }
 
     h1 {
@@ -715,6 +767,8 @@
     }
 
     .hero {
+      position: relative;
+      z-index: 4;
       width: min(900px, 100%);
       margin: 0 auto 24px;
       display: grid;
@@ -803,6 +857,8 @@
     }
 
     .prompt-shell {
+      position: relative;
+      z-index: 4;
       width: min(800px, 100%);
       margin-inline: auto;
       padding: 1px;
@@ -1086,7 +1142,8 @@
 
     .page.is-answering .hero,
     .page.is-answering .prompt-shell,
-    .page.is-answering .try-asking {
+    .page.is-answering .try-asking,
+    .page.is-answering .hero-hanging-sign {
       display: none;
     }
 
@@ -1132,6 +1189,7 @@
 
     .question-card,
     .answer-card,
+    .fretboard-card,
     .source-card,
     .answer-followup-input {
       border: 1px solid rgba(240, 191, 105, 0.22);
@@ -1189,7 +1247,6 @@
     .answer-detail-grid {
       display: grid;
       grid-template-columns: 1.08fr 1fr 1fr;
-    .fretboard-card,
       gap: 18px;
       padding-top: 18px;
       border-top: 1px solid rgba(244, 234, 214, 0.12);
@@ -1300,63 +1357,6 @@
       border-bottom: 0;
     }
 
-    .source-section,
-    .followup-section {
-      display: grid;
-      gap: 12px;
-    }
-
-    .source-section-title,
-    .followup-title {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding-left: 3px;
-    }
-
-    .source-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    .source-card {
-      display: grid;
-      gap: 9px;
-      min-height: 154px;
-      padding: 14px 15px;
-      border-radius: 10px;
-    }
-
-    .source-meta {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      color: rgba(240, 191, 105, 0.86);
-      font-size: 12px;
-      line-height: 1.35;
-      font-weight: 650;
-    }
-
-    .source-card h3 {
-      margin: 0;
-      color: rgba(244, 234, 214, 0.94);
-      font-size: 15px;
-      line-height: 1.25;
-    }
-
-    .source-card p {
-      margin: 0;
-      color: rgba(244, 234, 214, 0.72);
-      font-size: 13px;
-      line-height: 1.45;
-    }
-
-    .source-card a {
-      color: var(--brass);
-      text-decoration: none;
-      font-size: 13px;
     .answer-fretboard[hidden] {
       display: none;
     }
@@ -1420,6 +1420,63 @@
       min-width: 0;
     }
 
+    .source-section,
+    .followup-section {
+      display: grid;
+      gap: 12px;
+    }
+
+    .source-section-title,
+    .followup-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-left: 3px;
+    }
+
+    .source-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .source-card {
+      display: grid;
+      gap: 9px;
+      min-height: 154px;
+      padding: 14px 15px;
+      border-radius: 10px;
+    }
+
+    .source-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      color: rgba(240, 191, 105, 0.86);
+      font-size: 12px;
+      line-height: 1.35;
+      font-weight: 650;
+    }
+
+    .source-card h3 {
+      margin: 0;
+      color: rgba(244, 234, 214, 0.94);
+      font-size: 15px;
+      line-height: 1.25;
+    }
+
+    .source-card p {
+      margin: 0;
+      color: rgba(244, 234, 214, 0.72);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .source-card a {
+      color: var(--brass);
+      text-decoration: none;
+      font-size: 13px;
       font-weight: 650;
       overflow-wrap: anywhere;
     }
@@ -1815,8 +1872,15 @@
 
       main {
         width: calc(100% - 28px);
-        padding-top: 70px;
+        padding-top: clamp(120px, 20vw, 170px);
         padding-bottom: 28px;
+      }
+
+      .hero-hanging-sign {
+        width: clamp(190px, 30vw, 270px);
+        top: 12px;
+        left: 0;
+        transform: translate(-7px, -8px) rotate(-1.5deg);
       }
 
       .hero {
@@ -1909,6 +1973,11 @@
         font-size: 21px;
       }
 
+      .answer-fretboard-details summary {
+        align-items: flex-start;
+        font-size: 12px;
+      }
+
       .followup-chips {
         grid-template-columns: 1fr;
       }
@@ -1938,6 +2007,34 @@
         font-size: 13px;
       }
     }
+
+    @media (max-width: 520px) {
+      main {
+        padding-top: 120px;
+      }
+
+      .hero-hanging-sign {
+        display: block;
+        top: 8px;
+        left: 0;
+        width: clamp(150px, 48vw, 210px);
+        transform: translate(-4px, 0) rotate(-1.5deg);
+        z-index: 2;
+        pointer-events: none;
+      }
+
+      .hero-hanging-sign video,
+      .hero-hanging-sign.is-animated video {
+        display: none;
+      }
+
+      .hero-hanging-sign img,
+      .hero-hanging-sign.is-animated img {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1953,6 +2050,11 @@
         <span id="backstage-cta-label">Get a Backstage Pass</span>
       </button>
     </header>
+
+    <div class="hero-hanging-sign" aria-hidden="true">
+      <video muted loop playsinline poster="brand/steel-guitar-rag-hanging-sign-fallback.png" preload="none" data-src="brand/steel-guitar-rag-hanging-sign.webm"></video>
+      <img src="brand/steel-guitar-rag-hanging-sign-fallback.png" alt="">
+    </div>
 
     <main>
       <section class="hero" aria-labelledby="home-title">
@@ -1973,11 +2075,6 @@
               </button>
               <button class="send" type="button" aria-label="Ask">↑</button>
             </div>
-      .answer-fretboard-details summary {
-        align-items: flex-start;
-        font-size: 12px;
-      }
-
           </div>
           <p class="input-helper">Buzz, tone, pedals, knee levers, amp settings, copedents, tab, or how to play a phrase.</p>
           <p class="access-helper" id="access-helper">Get a Backstage Pass to ask Steel Guitar RAG.</p>
@@ -2010,6 +2107,16 @@
 
           <div class="answer-detail-grid" id="answer-section-grid"></div>
         </article>
+
+        <section class="answer-fretboard" id="answer-fretboard" aria-labelledby="answer-fretboard-title" hidden>
+          <div class="fretboard-card">
+            <details class="answer-fretboard-details" id="answer-fretboard-details">
+              <summary id="answer-fretboard-title">Fretboard view</summary>
+              <p class="answer-fretboard-description" id="answer-fretboard-description"></p>
+              <div class="answer-fretboard-mount" id="answer-fretboard-mount"></div>
+            </details>
+          </div>
+        </section>
 
         <section class="source-section" aria-labelledby="source-notes-title">
           <h2 class="source-section-title" id="source-notes-title">
@@ -2108,16 +2215,6 @@
               <input type="radio" name="mock-access-state" value="anonymous">
               Anonymous preview
             </label>
-        <section class="answer-fretboard" id="answer-fretboard" aria-labelledby="answer-fretboard-title" hidden>
-          <div class="fretboard-card">
-            <details class="answer-fretboard-details" id="answer-fretboard-details">
-              <summary id="answer-fretboard-title">Fretboard view</summary>
-              <p class="answer-fretboard-description" id="answer-fretboard-description"></p>
-              <div class="answer-fretboard-mount" id="answer-fretboard-mount"></div>
-            </details>
-          </div>
-        </section>
-
             <label>
               <input type="radio" name="mock-access-state" value="beta_user">
               Beta member preview
@@ -2471,8 +2568,8 @@
     </div>
   </div>
 
-  <script src="answer-client.js?v=answer-fretboard-20260611"></script>
-  <script src="pedal-steel-fretboard.js?v=answer-fretboard-20260611"></script>
+  <script src="answer-client.js?v=pitch-engine-fretboard-20260612"></script>
+  <script src="pedal-steel-fretboard.js?v=pitch-engine-fretboard-20260612"></script>
   <script>
     const question = document.querySelector("#question");
     const promptBox = document.querySelector(".prompt");
@@ -2491,6 +2588,11 @@
     const answerLead = document.querySelector("#answer-lead");
     const answerStatus = document.querySelector("#answer-status");
     const answerSectionGrid = document.querySelector("#answer-section-grid");
+    const answerFretboard = document.querySelector("#answer-fretboard");
+    const answerFretboardDetails = document.querySelector("#answer-fretboard-details");
+    const answerFretboardTitle = document.querySelector("#answer-fretboard-title");
+    const answerFretboardDescription = document.querySelector("#answer-fretboard-description");
+    const answerFretboardMount = document.querySelector("#answer-fretboard-mount");
     const sourceGrid = document.querySelector("#source-grid");
     const followupQuestion = document.querySelector("#followup-question");
     const answerSend = document.querySelector(".answer-send");
@@ -2588,11 +2690,6 @@
       "Where do you stop hearing the chord move?",
       "What’re you trying to clean up tonight?",
       "What’s the steel not giving you yet?",
-    const answerFretboard = document.querySelector("#answer-fretboard");
-    const answerFretboardDetails = document.querySelector("#answer-fretboard-details");
-    const answerFretboardTitle = document.querySelector("#answer-fretboard-title");
-    const answerFretboardDescription = document.querySelector("#answer-fretboard-description");
-    const answerFretboardMount = document.querySelector("#answer-fretboard-mount");
       "What’s bothering you about your playing lately?",
       "Which pedal move still feels unnatural?",
       "What are you avoiding practicing?",
@@ -2804,6 +2901,23 @@
       const label = getTimeOfDayQuestionLabel();
       questionLabel.textContent = label;
       lessonQuestion.setAttribute("aria-label", label.replace(/:$/, ""));
+    }
+
+    function initializeHeroHangingSigns() {
+      const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+      if (prefersReducedMotion) return;
+      document.querySelectorAll(".hero-hanging-sign video[data-src]").forEach((video) => {
+        const source = document.createElement("source");
+        source.src = video.dataset.src;
+        source.type = "video/webm";
+        video.appendChild(source);
+        video.removeAttribute("data-src");
+        video.closest(".hero-hanging-sign")?.classList.add("is-animated");
+        video.load();
+        video.play?.().catch(() => {
+          video.closest(".hero-hanging-sign")?.classList.remove("is-animated");
+        });
+      });
     }
 
     function optionMarkup(options, selectedValue) {
@@ -3168,6 +3282,38 @@
       appendAnswerBulletList(container, section.bullets, section.ordered);
     }
 
+    function shouldOpenFretboardByDefault() {
+      return !window.matchMedia || !window.matchMedia("(max-width: 640px)").matches;
+    }
+
+    function clearFretboardVisualization() {
+      answerFretboard.hidden = true;
+      answerFretboardTitle.textContent = "Fretboard view";
+      answerFretboardDescription.textContent = "";
+      answerFretboardMount.innerHTML = "";
+      answerFretboardDetails.open = false;
+    }
+
+    function renderFretboardVisualization(fretboard) {
+      clearFretboardVisualization();
+      if (!fretboard || !window.STEEL_RAG_FRETBOARD?.mountPedalSteelFretboard) {
+        return;
+      }
+
+      answerFretboard.hidden = false;
+      answerFretboardTitle.textContent = fretboard.title || "Fretboard view";
+      answerFretboardDescription.textContent = fretboard.description || "";
+      answerFretboardDetails.open = shouldOpenFretboardByDefault();
+      window.STEEL_RAG_FRETBOARD.mountPedalSteelFretboard(answerFretboardMount, {
+        maxFret: fretboard.maxFret,
+        stringCount: fretboard.stringCount,
+        tuningLabels: fretboard.tuningLabels,
+        positions: fretboard.positions,
+        highlights: fretboard.highlights || [],
+        legend: fretboard.legend
+      });
+    }
+
     function renderResponse(response) {
       answerStatus.hidden = true;
       answerStatus.textContent = "";
@@ -3208,6 +3354,8 @@
 
         answerSectionGrid.appendChild(sectionEl);
       });
+
+      renderFretboardVisualization(response.fretboard);
 
       sourceGrid.innerHTML = "";
       if (!response.sources?.length) {
@@ -3282,41 +3430,11 @@
     function renderLoadingState(submittedQuestion) {
       answerPrimaryTitle.lastChild.textContent = "Answer";
       answerLead.textContent = "Searching the forum sources...";
-    function shouldOpenFretboardByDefault() {
-      return !window.matchMedia || !window.matchMedia("(max-width: 640px)").matches;
-    }
-
-    function clearFretboardVisualization() {
-      answerFretboard.hidden = true;
-      answerFretboardTitle.textContent = "Fretboard view";
-      answerFretboardDescription.textContent = "";
-      answerFretboardMount.innerHTML = "";
-      answerFretboardDetails.open = false;
-    }
-
-    function renderFretboardVisualization(fretboard) {
-      clearFretboardVisualization();
-      if (!fretboard || !window.STEEL_RAG_FRETBOARD?.mountPedalSteelFretboard) {
-        return;
-      }
-
-      answerFretboard.hidden = false;
-      answerFretboardTitle.textContent = fretboard.title || "Fretboard view";
-      answerFretboardDescription.textContent = fretboard.description || "";
-      answerFretboardDetails.open = shouldOpenFretboardByDefault();
-      window.STEEL_RAG_FRETBOARD.mountPedalSteelFretboard(answerFretboardMount, {
-        maxFret: fretboard.maxFret,
-        stringCount: fretboard.stringCount,
-        tuningLabels: fretboard.tuningLabels,
-        positions: fretboard.positions,
-        highlights: fretboard.highlights || []
-      });
-    }
-
       answerStatus.hidden = false;
       answerStatus.textContent = "Retrieving a source-backed answer.";
       answerSectionGrid.innerHTML = "";
       answerSectionGrid.classList.remove("is-structured-answer");
+      clearFretboardVisualization();
       sourceGrid.innerHTML = "";
       const loadingCard = document.createElement("article");
       loadingCard.className = "source-card";
@@ -3333,6 +3451,7 @@
       answerStatus.textContent = message || "Try again once the local API is running.";
       answerSectionGrid.innerHTML = "";
       answerSectionGrid.classList.remove("is-structured-answer");
+      clearFretboardVisualization();
       sourceGrid.innerHTML = "";
       const errorCard = document.createElement("article");
       errorCard.className = "source-card";
@@ -3354,8 +3473,6 @@
       primarySend.disabled = isBusy || !canAskLive;
       answerSend.disabled = isBusy || !canAskLive;
       suggestedPrompts.querySelectorAll(".example").forEach((button) => {
-      renderFretboardVisualization(response.fretboard);
-
         button.disabled = isBusy;
       });
     }
@@ -3429,11 +3546,11 @@
       question.value = "";
       followupQuestion.value = "";
       answeredQuestion.textContent = HUM_DEMO_QUESTION;
+      clearFretboardVisualization();
       updateHelperState();
       question.focus();
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
-      clearFretboardVisualization();
 
     function renderTechPopover() {
       techPopoverTitle.textContent = TECH_POPOVER_COPY.title;
@@ -3450,7 +3567,6 @@
         }
         sectionEl.append(body);
         techPopoverContent.appendChild(sectionEl);
-      clearFretboardVisualization();
       });
     }
 
@@ -3545,7 +3661,6 @@
         updateMockAccessUi();
         return;
       }
-      clearFretboardVisualization();
 
       if (sessionGrantsLiveAccess(session)) {
         mockAccessState = STEEL_RAG_ANSWER_UI.normalizeAccessRole(session.role);
@@ -3681,6 +3796,7 @@
     let mockAccessState = loadMockAccessState();
 
     renderQuestionLabel();
+    initializeHeroHangingSigns();
     if (helperText) {
       helperText.textContent = INSTRUCTOR_OPENING_LINES[Math.floor(Math.random() * INSTRUCTOR_OPENING_LINES.length)];
     }

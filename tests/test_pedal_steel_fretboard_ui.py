@@ -282,12 +282,15 @@ def test_default_position_dots_use_one_amber_style_without_unexplained_color_spl
     script = component_eval_script(
         """
 const model = fretboard.buildFretboardModel({ positions: fretboard.DEMO_POSITIONS });
-assert.equal(JSON.stringify(model.highlights.map((item) => item.colorRole)), JSON.stringify(["primary", "primary", "primary"]));
+assert.equal(JSON.stringify(model.highlights.map((item) => item.colorRole)), JSON.stringify(["open", "a-f", "a-b"]));
 const html = fretboard.renderPedalSteelFretboard({ positions: fretboard.DEMO_POSITIONS });
-assert.equal((html.match(/data-color-role="primary"/g) || []).length > 0, true);
-assert.equal((html.match(/data-color-role="alternate"/g) || []).length, 0);
-assert.equal((html.match(/data-color-role="movement"/g) || []).length, 0);
+assert.equal((html.match(/data-color-role="open"/g) || []).length > 0, true);
+assert.equal((html.match(/data-color-role="a-f"/g) || []).length > 0, true);
+assert.equal((html.match(/data-color-role="a-b"/g) || []).length > 0, true);
 assert.equal((html.match(/data-color-role="warning"/g) || []).length, 0);
+assert.equal((html.match(/data-color-role="primary"/g) || []).length, 0);
+assert.equal((html.match(/data-color-role="secondary"/g) || []).length, 0);
+assert.equal((html.match(/data-color-role="alternate"/g) || []).length, 0);
 assert.doesNotMatch(html, /#8fd5ff/);
 assert.doesNotMatch(html, /#ff9f6e/);
 """
@@ -587,17 +590,33 @@ assert.match(html, />\\s*<span class="pedal-steel-fretboard__selector-main">9 op
 assert.match(html, />\\s*<span class="pedal-steel-fretboard__selector-main">12 A\\+F<\\/span>/);
 assert.match(html, />\\s*<span class="pedal-steel-fretboard__selector-main">16 A\\+B<\\/span>/);
 assert.match(html, /data-selected-position-id="csharp-open-9"/);
-assert.match(html, /data-position-detail="csharp-open-9" aria-live="polite">/);
-assert.match(html, /data-position-detail="csharp-af-12" aria-live="polite" hidden>/);
+assert.match(html, /data-position-detail="csharp-open-9"[^>]*aria-live="polite">/);
+assert.match(html, /data-position-detail="csharp-af-12"[^>]*aria-live="polite" hidden>/);
 assert.match(html, /<span class="pedal-steel-fretboard__detail-label">Fret<\\/span>\\s*<span class="pedal-steel-fretboard__detail-value">9<\\/span>/);
 assert.match(html, /<span class="pedal-steel-fretboard__detail-label">Grip<\\/span>\\s*<span class="pedal-steel-fretboard__detail-value">4-5-6<\\/span>/);
-assert.match(html, /<span class="pedal-steel-fretboard__detail-label">Pedals<\\/span>\\s*<span class="pedal-steel-fretboard__detail-value">None<\\/span>/);
-assert.match(html, /<span class="pedal-steel-fretboard__detail-label">Levers<\\/span>\\s*<span class="pedal-steel-fretboard__detail-value">None<\\/span>/);
+assert.match(html, /<span class="pedal-steel-fretboard__detail-label">Pedals<\\/span>\\s*<span class="pedal-steel-fretboard__detail-value">none<\\/span>/);
+assert.match(html, /<span class="pedal-steel-fretboard__detail-label">Levers<\\/span>\\s*<span class="pedal-steel-fretboard__detail-value">none<\\/span>/);
 assert.match(html, /String 4: C#/);
 assert.match(html, /String 5: G#/);
 assert.match(html, /String 6: E#/);
 assert.match(html, /String 4: 1/);
 assert.match(html, /No-pedal C# at fret 9\\./);
+assert.doesNotMatch(html, /\\[object Object\\]/);
+const nestedHtml = fretboard.renderPedalSteelFretboard({
+  positions: [{
+    id: "nested-detail",
+    label: "Nested detail",
+    fret: 3,
+    strings: [4, 5, 6],
+    grip: "4-5-6",
+    notes: {"4": {note: "G", interval: "1"}, "5": {note: "D", interval: "5"}},
+    intervals: {"4": {value: "1"}, "5": {value: "5"}},
+    explanation: "Nested details should render cleanly."
+  }]
+});
+assert.match(nestedHtml, /String 4: G \\/ 1/);
+assert.match(nestedHtml, /String 5: D \\/ 5/);
+assert.doesNotMatch(nestedHtml, /\\[object Object\\]/);
 """
     )
 
@@ -656,6 +675,306 @@ assert.match(bHtml, /14 A\\+B/);
     )
 
     run_node(script)
+
+
+def test_b_payload_filters_reveal_hidden_fret_two_alternate_without_object_text() -> None:
+    script = component_eval_script(
+        """
+const bPositions = [
+  {
+    id: "b-open-7",
+    label: "B major",
+    fret: 7,
+    strings: [4, 5, 6],
+    grip: "4-5-6",
+    pedals: [],
+    levers: [],
+    role: "Open position",
+    family: "major_triad",
+    tier: "beginner",
+    colorRole: "primary",
+    visibleByDefault: true,
+    sortOrder: 10,
+    notes: {"4": "B", "5": "F#", "6": "D#"},
+    intervals: {"4": "1", "5": "5", "6": "3"},
+    explanation: "No-pedal B at fret 7."
+  },
+  {
+    id: "b-af-10",
+    label: "B major",
+    fret: 10,
+    strings: [4, 5, 6],
+    grip: "4-5-6",
+    pedals: ["A"],
+    levers: ["F"],
+    role: "A+F position",
+    family: "major_triad",
+    tier: "beginner",
+    colorRole: "secondary",
+    visibleByDefault: true,
+    sortOrder: 20,
+    notes: {"4": {note: "D#", interval: "3"}, "5": {note: "B", interval: "1"}, "6": {note: "F#", interval: "5"}},
+    intervals: {"4": {value: "3"}, "5": {value: "1"}, "6": {value: "5"}},
+    explanation: "A+F B at fret 10."
+  },
+  {
+    id: "b-ab-14",
+    label: "B major",
+    fret: 14,
+    strings: [4, 5, 6],
+    grip: "4-5-6",
+    pedals: ["A", "B"],
+    levers: [],
+    role: "A+B position",
+    family: "major_triad",
+    tier: "beginner",
+    colorRole: "alternate",
+    visibleByDefault: true,
+    sortOrder: 30,
+    notes: {"4": "D#", "5": "B", "6": "F#"},
+    intervals: {"4": "3", "5": "1", "6": "5"},
+    explanation: "A+B B at fret 14."
+  },
+  {
+    id: "b-ab-2-lower-octave",
+    label: "B major",
+    fret: 2,
+    strings: [4, 5, 6],
+    grip: "4-5-6",
+    pedals: ["A", "B"],
+    levers: [],
+    role: "A+B lower-octave alternate",
+    family: "major_triad",
+    tier: "alternate",
+    colorRole: "alternate",
+    visibleByDefault: false,
+    sortOrder: 40,
+    notes: {"4": "D#", "5": "B", "6": "F#"},
+    intervals: {"4": "3", "5": "1", "6": "5"},
+    explanation: "A+B B at fret 2."
+  }
+];
+const coreModel = fretboard.buildFretboardModel({ positions: bPositions });
+assert.deepEqual(coreModel.highlights.map((item) => item.id), ["b-open-7", "b-af-10", "b-ab-14"]);
+assert.equal(coreModel.allHighlights.length, 4);
+assert.equal(coreModel.allHighlights.find((item) => item.id === "b-ab-2-lower-octave").fret, 2);
+
+const allModel = fretboard.buildFretboardModel({ positions: bPositions, filterMode: "all" });
+assert.deepEqual(allModel.highlights.map((item) => item.id), ["b-open-7", "b-af-10", "b-ab-14", "b-ab-2-lower-octave"]);
+const alternateModel = fretboard.buildFretboardModel({ positions: bPositions, filterMode: "more" });
+assert.deepEqual(alternateModel.highlights.map((item) => item.id), ["b-ab-2-lower-octave"]);
+const leverModel = fretboard.buildFretboardModel({ positions: bPositions, includeLeverPositions: true });
+assert.deepEqual(leverModel.highlights.map((item) => item.id), ["b-open-7", "b-af-10", "b-ab-14"]);
+
+const html = fretboard.renderPedalSteelFretboard({
+  positions: bPositions,
+  legend: [
+    { id: "primary", label: "Open/no-pedal position", color: "primary", description: "Straight-bar position." },
+    { id: "secondary", label: "A+F position", color: "secondary", description: "A pedal plus F lever." },
+    { id: "alternate", label: "A+B position", color: "alternate", description: "A and B pedals together." }
+  ]
+});
+assert.match(html, /data-position-tab="starter"/);
+assert.match(html, /data-position-tab="more"/);
+assert.match(html, /data-position-tab="dominant"/);
+assert.match(html, /data-position-tab="advanced"/);
+assert.match(html, /data-position-tab="show-all"/);
+assert.match(html, /data-include-levers/);
+assert.match(html, /data-position-selector="b-ab-2-lower-octave"[^>]*hidden/);
+assert.match(html, /data-highlight-id="b-ab-2-lower-octave"[^>]*data-visible-by-default="false"[^>]*hidden/);
+assert.match(html, /2 A\\+B/);
+assert.doesNotMatch(html, /\\[object Object\\]/);
+assert.match(html, /String 4: D# \\/ 3/);
+assert.match(html, /String 5: B \\/ 1/);
+assert.match(html, /String 6: F# \\/ 5/);
+assert.match(html, /data-position-selector="b-open-7"[^>]*data-color-role="open"/);
+assert.match(html, /data-position-selector="b-af-10"[^>]*data-color-role="a-f"/);
+assert.match(html, /data-position-selector="b-ab-14"[^>]*data-color-role="a-b"/);
+assert.match(html, /data-position-detail="b-af-10"[^>]*data-color-role="a-f"/);
+assert.match(html, /data-highlight-id="b-af-10"[^>]*data-color-role="a-f"/);
+assert.match(html, /data-legend-id="secondary" data-color-role="a-f"/);
+assert.match(html, /Straight-bar position\\./);
+assert.match(html, /A pedal plus F lever\\./);
+"""
+    )
+
+    run_node(script)
+
+
+def test_pitch_engine_tabs_render_dominant_partial_rootless_and_linked_colors() -> None:
+    script = component_eval_script(
+        """
+const positions = [
+  {
+    id: "g-open-3",
+    label: "G major",
+    fret: 3,
+    strings: [4, 5, 6],
+    grip: "4-5-6",
+    pedals: [],
+    levers: [],
+    family: "open_no_pedals",
+    tier: "beginner",
+    positionKind: "starter_position",
+    colorRole: "open",
+    visibleByDefault: true,
+    validationStatus: "pitch_validated",
+    intervals: {"4": "1", "5": "5", "6": "3"}
+  },
+  {
+    id: "a-v-dominant-3",
+    label: "E7 pocket",
+    fret: 3,
+    strings: [5, 7, 8],
+    grip: "5-7-8",
+    pedals: [],
+    levers: ["E lower"],
+    family: "dominant_pocket",
+    tier: "common",
+    positionKind: "dominant_pocket",
+    colorRole: "dominant",
+    visibleByDefault: false,
+    validationStatus: "pitch_validated",
+    notes: {"5": {note: "B", interval: "5"}, "7": {note: "F#", interval: "9"}, "8": {note: "D", interval: "b7"}},
+    intervals: {"5": "5", "7": "9", "8": "b7"},
+    omittedIntervals: ["1", "3"],
+    caveats: [{label: "No root in this grip", detail: {reason: "rootless dominant color"}}]
+  },
+  {
+    id: "a-v-rootless-5",
+    label: "E9 rootless",
+    fret: 5,
+    strings: [5, 6, 8],
+    grip: "5-6-8",
+    pedals: ["A"],
+    levers: [],
+    family: "dominant_rootless_partial",
+    tier: "common",
+    positionKind: "rootless_partial",
+    colorRole: "partial-rootless",
+    visibleByDefault: false,
+    isPartial: true,
+    isRootless: true,
+    validationStatus: "pitch_validated",
+    omittedIntervals: ["1"],
+    explanation: {summary: "Useful passing dominant color", context: {resolution: "A"}}
+  },
+  {
+    id: "advanced-e-lower-10",
+    label: "E-lower color",
+    fret: 10,
+    strings: [5, 7, 8],
+    grip: "5-7-8",
+    pedals: [],
+    levers: ["E lower"],
+    family: "e_lower_578",
+    tier: "advanced",
+    positionKind: "advanced_reference",
+    colorRole: "e-lower",
+    visibleByDefault: false,
+    validationStatus: "pitch_validated"
+  }
+];
+const defaultModel = fretboard.buildFretboardModel({ positions });
+assert.deepEqual(defaultModel.highlights.map((item) => item.id), ["g-open-3"]);
+
+const dominantModel = fretboard.buildFretboardModel({ positions, filterMode: "dominant" });
+assert.deepEqual(dominantModel.highlights.map((item) => item.id), ["a-v-dominant-3", "a-v-rootless-5"]);
+assert.deepEqual(dominantModel.highlights.map((item) => item.colorRole), ["dominant", "partial-rootless"]);
+
+const advancedModel = fretboard.buildFretboardModel({ positions, filterMode: "advanced" });
+assert.deepEqual(advancedModel.highlights.map((item) => item.id), ["advanced-e-lower-10"]);
+assert.equal(advancedModel.highlights[0].colorRole, "e-lower");
+
+const showAllModel = fretboard.buildFretboardModel({ positions, filterMode: "show-all" });
+assert.deepEqual(showAllModel.highlights.map((item) => item.id), ["g-open-3", "a-v-dominant-3", "a-v-rootless-5", "advanced-e-lower-10"]);
+
+const html = fretboard.renderPedalSteelFretboard({ positions });
+assert.match(html, /data-position-tab="dominant"/);
+assert.match(html, /Dominant pockets/);
+assert.match(html, /data-position-selector="a-v-dominant-3"[^>]*data-color-role="dominant"[^>]*hidden/);
+assert.match(html, /data-position-detail="a-v-dominant-3"[^>]*data-color-role="dominant"/);
+assert.match(html, /data-highlight-id="a-v-dominant-3"[^>]*data-color-role="dominant"[^>]*hidden/);
+assert.match(html, /data-position-selector="a-v-rootless-5"[^>]*data-color-role="partial-rootless"[^>]*hidden/);
+assert.match(html, /data-position-detail="a-v-rootless-5"[^>]*data-color-role="partial-rootless"/);
+assert.match(html, /data-highlight-id="a-v-rootless-5"[^>]*data-color-role="partial-rootless"[^>]*hidden/);
+assert.match(html, /data-position-selector="advanced-e-lower-10"[^>]*data-color-role="e-lower"[^>]*hidden/);
+assert.match(html, /Position kind/);
+assert.match(html, /Validation status/);
+assert.match(html, /Omitted intervals/);
+assert.match(html, /partial · rootless/);
+assert.match(html, /pitch_validated/);
+assert.match(html, /No root in this grip \\/ detail: reason: rootless dominant color/);
+assert.match(html, /Useful passing dominant color \\/ context: resolution: A/);
+assert.doesNotMatch(html, /\\[object Object\\]/);
+"""
+    )
+
+    run_node(script)
+
+
+def test_advanced_filter_and_safe_nested_values_render_without_object_text() -> None:
+    script = component_eval_script(
+        """
+const positions = [
+  {
+    id: "starter-open",
+    label: "Starter",
+    fret: 7,
+    strings: [4, 5, 6],
+    grip: "4-5-6",
+    tier: "beginner",
+    visibleByDefault: true,
+    colorRole: "primary",
+    pedals: [],
+    levers: []
+  },
+  {
+    id: "advanced-pass",
+    label: "Advanced",
+    fret: 19,
+    strings: [4, 5, 6],
+    grip: "4-5-6",
+    tier: "advanced",
+    visibleByDefault: false,
+    colorRole: "warning",
+    pedals: ["A", "B"],
+    levers: ["E lower"],
+    notes: { "4": { note: "D#", confidence: { level: "draft" } } },
+    intervals: { "4": { value: "3", source: { type: "computed" } } },
+    caveats: [{ label: "Watch intonation", detail: { reason: "high fret" } }],
+    explanation: { summary: "Use sparingly", context: { lane: "advanced" } }
+  }
+];
+const defaultModel = fretboard.buildFretboardModel({ positions });
+assert.deepEqual(defaultModel.highlights.map((item) => item.id), ["starter-open"]);
+const advancedModel = fretboard.buildFretboardModel({ positions, filterMode: "advanced" });
+assert.deepEqual(advancedModel.highlights.map((item) => item.id), ["advanced-pass"]);
+const leverModel = fretboard.buildFretboardModel({ positions, includeLeverPositions: true });
+assert.deepEqual(leverModel.highlights.map((item) => item.id), ["starter-open", "advanced-pass"]);
+const html = fretboard.renderPedalSteelFretboard({ positions });
+assert.match(html, /data-position-selector="advanced-pass"[^>]*data-position-tier="advanced"[^>]*data-visible-by-default="false"[^>]*data-has-levers="true"[^>]*hidden/);
+assert.match(html, /data-color-role="e-lower"/);
+assert.match(html, /String 4: D# \\/ confidence: level: draft/);
+assert.match(html, /Use sparingly \\/ context: lane: advanced/);
+assert.match(html, /Watch intonation \\/ detail: reason: high fret/);
+assert.doesNotMatch(html, /\\[object Object\\]/);
+"""
+    )
+
+    run_node(script)
+
+
+def test_filter_interaction_source_resets_hidden_selection_to_first_visible() -> None:
+    source = (REPO_ROOT / COMPONENT).read_text(encoding="utf-8")
+
+    assert "function updatePositionFilter(figure, changedTab)" in source
+    assert 'const firstVisible = figure.querySelector("[data-position-selector]:not([hidden])");' in source
+    assert "selectPosition(figure, firstVisible.getAttribute(\"data-position-selector\"));" in source
+    assert "if (selector?.hidden) return;" in source
+    assert "data-position-empty" in source
+    assert "function positionElementMatchesTab(element, tabMode, includeLeverPositions)" in source
+    assert "[data-include-levers]" in source
 
 
 def test_missing_or_partial_fretboard_payload_omits_selector_cleanly() -> None:

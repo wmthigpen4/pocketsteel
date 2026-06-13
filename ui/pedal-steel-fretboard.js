@@ -33,31 +33,82 @@
   };
 
   const COLOR_ROLES = {
-    primary: {
+    open: {
       dot: "#f0bf69",
       glow: "rgba(240, 191, 105, 0.5)",
       band: "rgba(240, 191, 105, 0.16)",
       text: "#fff3d5",
     },
-    alternate: {
-      dot: "#f0bf69",
-      glow: "rgba(240, 191, 105, 0.5)",
-      band: "rgba(240, 191, 105, 0.16)",
-      text: "#fff3d5",
+    "a-f": {
+      dot: "#ffd17e",
+      glow: "rgba(255, 209, 126, 0.5)",
+      band: "rgba(255, 209, 126, 0.15)",
+      text: "#fff5db",
     },
-    movement: {
-      dot: "#f0bf69",
-      glow: "rgba(240, 191, 105, 0.5)",
-      band: "rgba(240, 191, 105, 0.16)",
-      text: "#fff3d5",
+    "a-b": {
+      dot: "#d99b44",
+      glow: "rgba(217, 155, 68, 0.48)",
+      band: "rgba(217, 155, 68, 0.15)",
+      text: "#ffe8bd",
     },
-    warning: {
-      dot: "#f0bf69",
-      glow: "rgba(240, 191, 105, 0.5)",
-      band: "rgba(240, 191, 105, 0.16)",
-      text: "#fff3d5",
+    "e-lower": {
+      dot: "#e8b75f",
+      glow: "rgba(232, 183, 95, 0.46)",
+      band: "rgba(232, 183, 95, 0.14)",
+      text: "#fff0cc",
+    },
+    dominant: {
+      dot: "#cfa85d",
+      glow: "rgba(207, 168, 93, 0.42)",
+      band: "rgba(207, 168, 93, 0.12)",
+      text: "#f5dfb5",
+    },
+    "partial-rootless": {
+      dot: "#e5c986",
+      glow: "rgba(229, 201, 134, 0.42)",
+      band: "rgba(229, 201, 134, 0.12)",
+      text: "#f6e7bf",
+    },
+    advanced: {
+      dot: "#ffcf7a",
+      glow: "rgba(255, 207, 122, 0.5)",
+      band: "rgba(255, 207, 122, 0.16)",
+      text: "#fff0cc",
+    },
+    selected: {
+      dot: "#fff0b5",
+      glow: "rgba(255, 240, 181, 0.68)",
+      band: "rgba(255, 240, 181, 0.18)",
+      text: "#fff8df",
     },
   };
+  const LEGACY_COLOR_ROLE_ALIASES = {
+    primary: "open",
+    secondary: "a-f",
+    alternate: "a-b",
+    movement: "advanced",
+    reference: "advanced",
+    warning: "advanced",
+    "a+f": "a-f",
+    "af": "a-f",
+    "a_f": "a-f",
+    "a+b": "a-b",
+    "ab": "a-b",
+    "a_b": "a-b",
+    "e lower": "e-lower",
+    "e_lower": "e-lower",
+    elower: "e-lower",
+    rootless: "partial-rootless",
+    partial: "partial-rootless",
+  };
+  const DEFAULT_TAB = "starter";
+  const TAB_OPTIONS = [
+    { id: "starter", label: "Starter" },
+    { id: "more", label: "More" },
+    { id: "dominant", label: "Dominant pockets" },
+    { id: "advanced", label: "Advanced" },
+    { id: "show-all", label: "Show all" },
+  ];
 
   const STYLE_ID = "pedal-steel-fretboard-styles";
   const STYLE_TEXT = `
@@ -111,6 +162,40 @@
   margin: 14px 0 0;
 }
 
+.pedal-steel-fretboard__tab-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pedal-steel-fretboard__tab,
+.pedal-steel-fretboard__lever-toggle {
+  border: 1px solid rgba(240, 191, 105, 0.32);
+  border-radius: 8px;
+  background: rgba(12, 12, 11, 0.72);
+  color: rgba(255, 246, 223, 0.82);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.82rem;
+  padding: 7px 10px;
+}
+
+.pedal-steel-fretboard__tab:hover,
+.pedal-steel-fretboard__tab:focus-visible,
+.pedal-steel-fretboard__tab.is-selected,
+.pedal-steel-fretboard__lever-toggle:hover,
+.pedal-steel-fretboard__lever-toggle:focus-visible,
+.pedal-steel-fretboard__lever-toggle.is-selected {
+  border-color: rgba(240, 191, 105, 0.68);
+  background: rgba(240, 191, 105, 0.12);
+  color: #fff6df;
+  outline: none;
+}
+
+.pedal-steel-fretboard__lever-toggle {
+  justify-self: start;
+}
+
 .pedal-steel-fretboard__selector-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -125,7 +210,8 @@
   color: rgba(255, 246, 223, 0.82);
   cursor: pointer;
   display: grid;
-  gap: 2px;
+  gap: 4px;
+  grid-template-columns: auto minmax(0, 1fr);
   padding: 9px 11px;
   text-align: left;
 }
@@ -140,6 +226,7 @@
 }
 
 .pedal-steel-fretboard__selector-main {
+  grid-column: 2;
   font-size: 0.98rem;
   font-weight: 800;
   line-height: 1.15;
@@ -148,7 +235,23 @@
 .pedal-steel-fretboard__selector-sub {
   color: rgba(255, 246, 223, 0.62);
   font-size: 0.78rem;
+  grid-column: 2;
   line-height: 1.25;
+}
+
+.pedal-steel-fretboard__selector-marker,
+.pedal-steel-fretboard__detail-marker {
+  background: var(--fretboard-swatch, #f0bf69);
+  border-radius: 999px;
+  box-shadow: 0 0 14px var(--fretboard-glow, rgba(240, 191, 105, 0.45));
+  display: inline-block;
+}
+
+.pedal-steel-fretboard__selector-marker {
+  align-self: center;
+  grid-row: 1 / span 2;
+  height: 11px;
+  width: 11px;
 }
 
 .pedal-steel-fretboard__detail {
@@ -163,11 +266,17 @@
 }
 
 .pedal-steel-fretboard__detail-title {
-  align-items: baseline;
+  align-items: center;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin: 0 0 10px;
+}
+
+.pedal-steel-fretboard__detail-marker {
+  flex: 0 0 auto;
+  height: 12px;
+  width: 12px;
 }
 
 .pedal-steel-fretboard__detail-title strong {
@@ -222,9 +331,25 @@
   transition: opacity 140ms ease, filter 140ms ease;
 }
 
+.pedal-steel-fretboard__highlight.is-filter-hidden {
+  display: none;
+}
+
 .pedal-steel-fretboard__highlight.is-selected {
   opacity: 1;
   filter: drop-shadow(0 0 12px rgba(240, 191, 105, 0.46));
+}
+
+.pedal-steel-fretboard__empty[hidden] {
+  display: none;
+}
+
+.pedal-steel-fretboard__empty {
+  border: 1px solid rgba(240, 191, 105, 0.2);
+  border-radius: 12px;
+  color: rgba(255, 246, 223, 0.68);
+  margin: 0;
+  padding: 10px 12px;
 }
 
 .pedal-steel-fretboard__legend-item {
@@ -329,6 +454,13 @@
       .replace(/'/g, "&#39;");
   }
 
+  function escapeSelectorValue(value) {
+    if (global.CSS && typeof global.CSS.escape === "function") {
+      return global.CSS.escape(String(value));
+    }
+    return String(value).replace(/["\\]/g, "\\$&");
+  }
+
   function normalizedFretPosition(fret, maxFret = 24) {
     const safeMax = Math.max(1, Number(maxFret) || 24);
     const safeFret = clampNumber(fret, 0, safeMax);
@@ -336,7 +468,44 @@
   }
 
   function getColorRole(colorRole) {
-    return COLOR_ROLES[colorRole] || COLOR_ROLES.primary;
+    return COLOR_ROLES[colorRole] || COLOR_ROLES.open;
+  }
+
+  function normalizeColorRole(value, item = {}) {
+    const rawRole = String(value || "").trim().toLowerCase();
+    const aliasedRole = LEGACY_COLOR_ROLE_ALIASES[rawRole] || rawRole;
+    if (COLOR_ROLES[aliasedRole] && !["reference", "movement", "warning"].includes(rawRole)) {
+      return aliasedRole;
+    }
+
+    const family = normalizeMetadataText(item.family).toLowerCase();
+    const positionKind = normalizeMetadataText(item.positionKind || item.position_kind).toLowerCase();
+    const role = normalizeMetadataText(item.role).toLowerCase();
+    const tier = normalizeMetadataText(item.tier).toLowerCase();
+    const pedals = normalizeTextList(item.pedals).join("+").toLowerCase();
+    const levers = normalizeTextList(item.levers).join("+").toLowerCase();
+    const omittedIntervals = normalizeDetailList(item.omittedIntervals || item.omitted_intervals);
+    const haystack = [family, positionKind, role, tier, pedals, levers].join(" ");
+
+    if (haystack.includes("dominant") || /\bv(7|9|13)?\b/.test(haystack)) {
+      return "dominant";
+    }
+    if (item.isRootless || item.is_rootless || item.isPartial || item.is_partial || omittedIntervals.length > 0 || haystack.includes("rootless") || haystack.includes("partial")) {
+      return "partial-rootless";
+    }
+    if (family.includes("e_lower") || family.includes("e-lower") || haystack.includes("e lower") || haystack.includes("e-lower")) {
+      return "e-lower";
+    }
+    if (tier === "advanced" || positionKind.includes("advanced")) {
+      return "advanced";
+    }
+    if (pedals.includes("a") && pedals.includes("b")) {
+      return "a-b";
+    }
+    if ((pedals.includes("a") && levers.includes("f")) || haystack.includes("a+f")) {
+      return "a-f";
+    }
+    return "open";
   }
 
   function normalizeTuningLabels(tuningLabels, stringCount) {
@@ -360,7 +529,7 @@
     if (!Array.isArray(value)) {
       return [];
     }
-    return value.map(String).map((item) => item.trim()).filter(Boolean);
+    return value.map(formatDetailValue).map((item) => item.trim()).filter(Boolean);
   }
 
   function normalizeDetailList(value) {
@@ -369,12 +538,81 @@
     }
     if (value && typeof value === "object") {
       return Object.entries(value)
-        .sort(([left], [right]) => Number(left) - Number(right))
-        .map(([key, detail]) => `String ${key}: ${String(detail).trim()}`)
+        .sort(compareEntryKeys)
+        .map(([key, detail]) => `String ${key}: ${formatDetailValue(detail)}`)
         .filter((item) => !item.endsWith(":"));
     }
     const text = String(value || "").trim();
     return text ? [text] : [];
+  }
+
+  function formatDetailValue(detail) {
+    if (Array.isArray(detail)) {
+      return detail.map(formatDetailValue).filter(Boolean).join(", ");
+    }
+    if (detail && typeof detail === "object") {
+      const preferredKeys = ["note", "interval", "value", "label", "name", "summary"];
+      const preferred = preferredKeys
+        .map((key) => detail[key])
+        .filter((item) => item !== undefined && item !== null)
+        .map(formatDetailValue)
+        .filter(Boolean);
+      const remaining = Object.entries(detail)
+        .filter(([key]) => !preferredKeys.includes(key))
+        .sort(compareEntryKeys)
+        .map(([key, value]) => `${key}: ${formatDetailValue(value)}`)
+        .filter((item) => !item.endsWith(": "));
+      return [...preferred, ...remaining].join(" / ");
+    }
+    return String(detail || "").trim();
+  }
+
+  function compareEntryKeys([left], [right]) {
+    const leftNumber = Number(left);
+    const rightNumber = Number(right);
+    if (Number.isFinite(leftNumber) && Number.isFinite(rightNumber)) {
+      return leftNumber - rightNumber;
+    }
+    return String(left).localeCompare(String(right));
+  }
+
+  function normalizeMetadataText(value) {
+    return formatDetailValue(value).trim();
+  }
+
+  function normalizeVisibleByDefault(value) {
+    if (value === false || value === "false" || value === 0 || value === "0") {
+      return false;
+    }
+    return true;
+  }
+
+  function normalizeTier(value) {
+    const tier = normalizeMetadataText(value).toLowerCase();
+    return tier || "starter";
+  }
+
+  function normalizeLegend(legend) {
+    if (!Array.isArray(legend)) {
+      return [];
+    }
+    return legend
+      .map((item, index) => {
+        const entry = item && typeof item === "object" ? item : {};
+        const colorRole = normalizeColorRole(entry.colorRole || entry.color || entry.id, entry);
+        const label = normalizeMetadataText(entry.label || entry.name || entry.id || `Legend ${index + 1}`);
+        const description = normalizeMetadataText(entry.description || entry.body || entry.notes);
+        if (!label) {
+          return null;
+        }
+        return {
+          id: normalizeMetadataText(entry.id || colorRole || `legend-${index + 1}`),
+          label,
+          description,
+          colorRole,
+        };
+      })
+      .filter(Boolean);
   }
 
   function normalizePosition(position, index, maxFret, stringCount, sourceType) {
@@ -387,6 +625,12 @@
         ? gripStrings.join("-")
         : String(item.grip)
       : uniqueStrings.join("-");
+    const positionKind = normalizeMetadataText(item.positionKind || item.position_kind);
+    const omittedIntervals = normalizeDetailList(item.omittedIntervals || item.omitted_intervals);
+    const isPartial = Boolean(item.isPartial || item.is_partial);
+    const isRootless = Boolean(item.isRootless || item.is_rootless);
+    const validationStatus = normalizeMetadataText(item.validationStatus || item.validation_status);
+    const colorRole = normalizeColorRole(item.colorRole || item.color, item);
     return {
       id: String(item.id || `${sourceType}-${index + 1}`),
       label: String(item.label || `Position ${index + 1}`),
@@ -397,11 +641,79 @@
       levers: normalizeTextList(item.levers),
       role: String(item.role || ""),
       notes: normalizeDetailList(item.notes),
-      explanation: String(item.explanation || ""),
+      explanation: normalizeMetadataText(item.explanation),
       intervals: normalizeDetailList(item.intervals),
+      omittedIntervals,
+      caveats: normalizeDetailList(item.caveats),
+      positionKind,
+      family: normalizeMetadataText(item.family),
+      tier: normalizeTier(item.tier),
+      isPartial,
+      isRootless,
+      validationStatus,
+      visibleByDefault: normalizeVisibleByDefault(item.visibleByDefault),
+      sortOrder: Number.isFinite(Number(item.sortOrder)) ? Number(item.sortOrder) : index + 1,
       sourceType,
-      colorRole: "primary",
+      colorRole,
+      hasFilterMetadata: Object.prototype.hasOwnProperty.call(item, "family") ||
+        Object.prototype.hasOwnProperty.call(item, "tier") ||
+        Object.prototype.hasOwnProperty.call(item, "visibleByDefault") ||
+        Object.prototype.hasOwnProperty.call(item, "positionKind") ||
+        Object.prototype.hasOwnProperty.call(item, "position_kind") ||
+        Object.prototype.hasOwnProperty.call(item, "omittedIntervals") ||
+        Object.prototype.hasOwnProperty.call(item, "omitted_intervals") ||
+        Object.prototype.hasOwnProperty.call(item, "validationStatus") ||
+        Object.prototype.hasOwnProperty.call(item, "validation_status"),
     };
+  }
+
+  function hasPositionMetadata(highlights) {
+    return highlights.some((highlight) =>
+      highlight.hasFilterMetadata ||
+      highlight.caveats.length > 0
+    );
+  }
+
+  function isDominantPosition(highlight) {
+    const text = [
+      highlight.family,
+      highlight.positionKind,
+      highlight.role,
+      highlight.tier,
+      highlight.label,
+      highlight.colorRole,
+    ].join(" ").toLowerCase();
+    return highlight.colorRole === "dominant" || text.includes("dominant") || /\bv(7|9|13)?\b/.test(text);
+  }
+
+  function isAdvancedPosition(highlight) {
+    return highlight.tier === "advanced" ||
+      highlight.colorRole === "advanced" ||
+      normalizeMetadataText(highlight.positionKind).toLowerCase().includes("advanced");
+  }
+
+  function isMorePosition(highlight) {
+    return !highlight.visibleByDefault && !isDominantPosition(highlight) && !isAdvancedPosition(highlight);
+  }
+
+  function positionMatchesTab(highlight, tabMode, includeLeverPositions = false) {
+    const includesLever = includeLeverPositions && highlight.levers.length > 0;
+    if (tabMode === "show-all") {
+      return true;
+    }
+    if (includesLever) {
+      return true;
+    }
+    if (tabMode === "dominant") {
+      return isDominantPosition(highlight);
+    }
+    if (tabMode === "advanced") {
+      return isAdvancedPosition(highlight);
+    }
+    if (tabMode === "more") {
+      return isMorePosition(highlight);
+    }
+    return highlight.visibleByDefault;
   }
 
   function buildFretboardModel(options = {}) {
@@ -428,14 +740,24 @@
         ? options.highlights
         : [];
     const positionSourceType = hasContractPositions ? "position" : "highlight";
-    const highlights = sourcePositions
+    const allHighlights = sourcePositions
       .map((position, index) => normalizePosition(position, index, maxFret, stringCount, positionSourceType))
       .filter((highlight) => highlight.strings.length > 0)
+      .sort((left, right) =>
+        (left.sortOrder - right.sortOrder) ||
+        (left.fret - right.fret) ||
+        left.id.localeCompare(right.id)
+      )
       .map((highlight) => ({
         ...highlight,
         x: LAYOUT.nutX + normalizedFretPosition(highlight.fret, maxFret) * fretboardWidth,
         stringYs: highlight.strings.map((stringNumber) => strings[stringNumber - 1].y),
       }));
+    const requestedTab = String(options.filterMode || options.tabMode || DEFAULT_TAB).trim();
+    const tabMode = requestedTab === "all" ? "show-all" : TAB_OPTIONS.some((tab) => tab.id === requestedTab) ? requestedTab : DEFAULT_TAB;
+    const includeLeverPositions = Boolean(options.includeLeverPositions || options.includeLevers);
+    const highlights = allHighlights.filter((highlight) => positionMatchesTab(highlight, tabMode, includeLeverPositions));
+    const selectedPositionId = highlights[0]?.id || "";
 
     return {
       width: SVG_WIDTH,
@@ -448,7 +770,14 @@
       strings,
       markers: COMMON_FRET_MARKERS.filter((fret) => fret <= maxFret),
       markerY: strings.length >= 6 ? (strings[4].y + strings[5].y) / 2 : LAYOUT.top + fretboardHeight / 2,
+      filterMode: tabMode,
+      tabMode,
+      includeLeverPositions,
+      hasFilters: hasPositionMetadata(allHighlights),
+      selectedPositionId,
+      allHighlights,
       highlights,
+      legend: normalizeLegend(options.legend),
     };
   }
 
@@ -548,7 +877,7 @@
         return `<rect data-highlight-dot ${dataAttrs} data-highlight-string="${stringNumber}" x="${(highlight.x - 15).toFixed(3)}" y="${(y - 9).toFixed(3)}" width="30" height="18" rx="9" fill="${color.dot}" fill-opacity="0.95" stroke="#fff6df" stroke-opacity="0.38" filter="url(#fretboard-glow)" />`;
       })
       .join("");
-    return `<g class="pedal-steel-fretboard__highlight${highlight.isSelected ? " is-selected" : ""}" ${dataAttrs}>
+    return `<g class="pedal-steel-fretboard__highlight${highlight.isSelected ? " is-selected" : ""}${highlight.isHiddenByFilter ? " is-filter-hidden" : ""}" ${dataAttrs} data-position-family="${escapeHtml(highlight.family)}" data-position-tier="${escapeHtml(highlight.tier)}" data-position-kind="${escapeHtml(highlight.positionKind)}" data-visible-by-default="${highlight.visibleByDefault ? "true" : "false"}" data-has-levers="${highlight.levers.length ? "true" : "false"}" data-is-dominant="${isDominantPosition(highlight) ? "true" : "false"}" data-is-advanced="${isAdvancedPosition(highlight) ? "true" : "false"}" data-is-more="${isMorePosition(highlight) ? "true" : "false"}" data-filter-visible="${highlight.isHiddenByFilter ? "false" : "true"}"${highlight.isHiddenByFilter ? " hidden style=\"display: none;\"" : ""}>
       ${band}
       ${dots}
       <text data-highlight-label="${escapeHtml(highlight.id)}" x="${highlight.x.toFixed(3)}" y="${labelY.toFixed(3)}" text-anchor="middle" fill="${color.text}" font-size="18" font-weight="700">${escapeHtml(highlight.label)}</text>
@@ -556,7 +885,12 @@
   }
 
   function renderHighlights(model) {
-    return model.highlights.map((highlight, index) => renderHighlight({ ...highlight, isSelected: index === 0 })).join("");
+    const visibleIds = new Set(model.highlights.map((highlight) => highlight.id));
+    return model.allHighlights.map((highlight) => renderHighlight({
+      ...highlight,
+      isSelected: model.highlights[0]?.id === highlight.id,
+      isHiddenByFilter: !visibleIds.has(highlight.id),
+    })).join("");
   }
 
   function controlLabel(highlight) {
@@ -569,8 +903,10 @@
   }
 
   function valueOrDash(value) {
-    const text = Array.isArray(value) ? value.filter(Boolean).join("; ") : String(value || "").trim();
-    return text || "None";
+    const text = Array.isArray(value)
+      ? value.map(formatDetailValue).filter(Boolean).join(", ")
+      : formatDetailValue(value).trim();
+    return text || "none";
   }
 
   function renderDetailItem(label, value, className = "") {
@@ -580,46 +916,93 @@
     </div>`;
   }
 
-  function renderPositionDetail(highlight, index) {
-    return `<section class="pedal-steel-fretboard__detail" data-position-detail="${escapeHtml(highlight.id)}" aria-live="polite"${index === 0 ? "" : " hidden"}>
-      <p class="pedal-steel-fretboard__detail-title"><strong>${escapeHtml(highlight.label)}</strong><span>${escapeHtml(positionSelectorLabel(highlight))}</span></p>
+  function renderPositionDetail(highlight, selectedPositionId, visibleIds) {
+    const color = getColorRole(highlight.colorRole);
+    const isVisible = visibleIds.has(highlight.id);
+    const isSelected = highlight.id === selectedPositionId;
+    const kindValue = [
+      highlight.positionKind,
+      highlight.isPartial ? "partial" : "",
+      highlight.isRootless ? "rootless" : "",
+    ].filter(Boolean).join(" · ");
+    return `<section class="pedal-steel-fretboard__detail" data-position-detail="${escapeHtml(highlight.id)}" data-color-role="${escapeHtml(highlight.colorRole)}" data-position-family="${escapeHtml(highlight.family)}" data-position-tier="${escapeHtml(highlight.tier)}" data-position-kind="${escapeHtml(highlight.positionKind)}" data-visible-by-default="${highlight.visibleByDefault ? "true" : "false"}" data-has-levers="${highlight.levers.length ? "true" : "false"}" data-is-dominant="${isDominantPosition(highlight) ? "true" : "false"}" data-is-advanced="${isAdvancedPosition(highlight) ? "true" : "false"}" data-is-more="${isMorePosition(highlight) ? "true" : "false"}" data-filter-visible="${isVisible ? "true" : "false"}" aria-live="polite"${isVisible && isSelected ? "" : " hidden"}>
+      <p class="pedal-steel-fretboard__detail-title"><span class="pedal-steel-fretboard__detail-marker" data-color-role="${escapeHtml(highlight.colorRole)}" style="--fretboard-swatch: ${color.dot}; --fretboard-glow: ${color.glow};" aria-hidden="true"></span><strong>${escapeHtml(highlight.label)}</strong><span>${escapeHtml(positionSelectorLabel(highlight))}</span></p>
       <div class="pedal-steel-fretboard__detail-grid">
         ${renderDetailItem("Fret", highlight.fret)}
         ${renderDetailItem("Grip", highlight.grip || highlight.strings.join("-"))}
         ${renderDetailItem("Pedals", highlight.pedals)}
         ${renderDetailItem("Levers", highlight.levers)}
+        ${renderDetailItem("Position kind", kindValue, "is-wide")}
+        ${renderDetailItem("Validation status", highlight.validationStatus, "is-wide")}
+        ${renderDetailItem("Family", highlight.family, "is-wide")}
+        ${renderDetailItem("Tier", highlight.tier, "is-wide")}
         ${renderDetailItem("Role", highlight.role, "is-wide")}
         ${renderDetailItem("Notes", highlight.notes, "is-wide")}
         ${renderDetailItem("Intervals", highlight.intervals, "is-wide")}
+        ${renderDetailItem("Omitted intervals", highlight.omittedIntervals, "is-wide")}
         ${renderDetailItem("Explanation", highlight.explanation, "is-wide")}
+        ${renderDetailItem("Caveats", highlight.caveats, "is-wide")}
       </div>
     </section>`;
   }
 
   function renderPositionTools(model) {
-    if (model.highlights.length === 0) {
+    if (model.allHighlights.length === 0) {
       return "";
     }
-    const buttons = model.highlights
-      .map((highlight, index) => `<button class="pedal-steel-fretboard__selector${index === 0 ? " is-selected" : ""}" type="button" data-position-selector="${escapeHtml(highlight.id)}" aria-pressed="${index === 0 ? "true" : "false"}">
+    const visibleIds = new Set(model.highlights.map((highlight) => highlight.id));
+    const selectedPositionId = model.selectedPositionId;
+    const filters = model.hasFilters
+      ? `<div class="pedal-steel-fretboard__tab-row" aria-label="Choose fretboard position set" role="tablist">
+        ${TAB_OPTIONS.map((tab) => `<button class="pedal-steel-fretboard__tab${model.tabMode === tab.id ? " is-selected" : ""}" type="button" data-position-tab="${tab.id}" role="tab" aria-selected="${model.tabMode === tab.id ? "true" : "false"}" aria-pressed="${model.tabMode === tab.id ? "true" : "false"}">${escapeHtml(tab.label)}</button>`).join("")}
+      </div>
+      <button class="pedal-steel-fretboard__lever-toggle${model.includeLeverPositions ? " is-selected" : ""}" type="button" data-include-levers aria-pressed="${model.includeLeverPositions ? "true" : "false"}">Include lever positions</button>`
+      : "";
+    const buttons = model.allHighlights
+      .map((highlight) => {
+        const color = getColorRole(highlight.colorRole);
+        const isVisible = visibleIds.has(highlight.id);
+        const isSelected = highlight.id === selectedPositionId;
+        const controls = [...highlight.pedals, ...highlight.levers];
+        const kindTags = [
+          highlight.positionKind,
+          highlight.isPartial ? "partial" : "",
+          highlight.isRootless ? "rootless" : "",
+        ].filter(Boolean);
+        const metaParts = [
+          highlight.grip ? `grip ${highlight.grip}` : `strings ${highlight.strings.join("-")}`,
+          controls.length ? controls.join(" + ") : "no pedals/levers",
+          kindTags.join(" · "),
+          highlight.tier,
+        ].filter(Boolean);
+        return `<button class="pedal-steel-fretboard__selector${isSelected ? " is-selected" : ""}" type="button" data-position-selector="${escapeHtml(highlight.id)}" data-color-role="${escapeHtml(highlight.colorRole)}" data-position-family="${escapeHtml(highlight.family)}" data-position-tier="${escapeHtml(highlight.tier)}" data-position-kind="${escapeHtml(highlight.positionKind)}" data-visible-by-default="${highlight.visibleByDefault ? "true" : "false"}" data-has-levers="${highlight.levers.length ? "true" : "false"}" data-is-dominant="${isDominantPosition(highlight) ? "true" : "false"}" data-is-advanced="${isAdvancedPosition(highlight) ? "true" : "false"}" data-is-more="${isMorePosition(highlight) ? "true" : "false"}" data-filter-visible="${isVisible ? "true" : "false"}" aria-pressed="${isSelected ? "true" : "false"}"${isVisible ? "" : " hidden"}>
+        <span class="pedal-steel-fretboard__selector-marker" data-color-role="${escapeHtml(highlight.colorRole)}" style="--fretboard-swatch: ${color.dot}; --fretboard-glow: ${color.glow};" aria-hidden="true"></span>
         <span class="pedal-steel-fretboard__selector-main">${escapeHtml(positionSelectorLabel(highlight))}</span>
-        <span class="pedal-steel-fretboard__selector-sub">${escapeHtml(highlight.role || highlight.label)}</span>
-      </button>`)
+        <span class="pedal-steel-fretboard__selector-sub">${escapeHtml(metaParts.join(" · "))}</span>
+      </button>`;
+      })
       .join("");
-    const details = model.highlights.map(renderPositionDetail).join("");
+    const details = model.allHighlights.map((highlight) => renderPositionDetail(highlight, selectedPositionId, visibleIds)).join("");
     return `<div class="pedal-steel-fretboard__position-tools" data-position-tools>
+      ${filters}
       <div class="pedal-steel-fretboard__selector-list" aria-label="Choose a fretboard position">${buttons}</div>
+      <p class="pedal-steel-fretboard__empty" data-position-empty hidden>No positions match those filters.</p>
       ${details}
     </div>`;
   }
 
   function renderLegend(model) {
-    if (model.highlights.length === 0) {
+    if (model.highlights.length === 0 && model.legend.length === 0) {
       return "";
     }
-    const items = model.highlights
-      .map((highlight) => {
-        const color = getColorRole(highlight.colorRole);
+    const legendItems = model.legend.length
+      ? model.legend.map((item) => ({
+        id: item.id,
+        label: item.label,
+        description: item.description,
+        colorRole: item.colorRole,
+      }))
+      : model.highlights.map((highlight) => {
         const controls = [...highlight.pedals, ...highlight.levers];
         const metaParts = [
           `Fret ${highlight.fret}`,
@@ -630,21 +1013,30 @@
           highlight.notes.length ? highlight.notes.join("; ") : "",
           highlight.explanation,
         ].filter(Boolean);
-        return `<li class="pedal-steel-fretboard__legend-item" data-legend-id="${escapeHtml(highlight.id)}" style="--fretboard-swatch: ${color.dot}; --fretboard-glow: ${color.glow};">
-          <div class="pedal-steel-fretboard__legend-title"><span class="pedal-steel-fretboard__legend-swatch" aria-hidden="true"></span><span>${escapeHtml(highlight.label)}</span></div>
-          <div class="pedal-steel-fretboard__legend-meta">${escapeHtml(metaParts.join(" · "))}</div>
-        </li>`;
-      })
-      .join("");
+        return {
+          id: highlight.id,
+          label: highlight.label,
+          description: metaParts.join(" · "),
+          colorRole: highlight.colorRole,
+        };
+      });
+    const items = legendItems.map((item) => {
+      const colorRole = normalizeColorRole(item.colorRole, item);
+      const color = getColorRole(colorRole);
+      return `<li class="pedal-steel-fretboard__legend-item" data-legend-id="${escapeHtml(item.id)}" data-color-role="${escapeHtml(colorRole)}" style="--fretboard-swatch: ${color.dot}; --fretboard-glow: ${color.glow};">
+        <div class="pedal-steel-fretboard__legend-title"><span class="pedal-steel-fretboard__legend-swatch" data-color-role="${escapeHtml(colorRole)}" aria-hidden="true"></span><span>${escapeHtml(item.label)}</span></div>
+        <div class="pedal-steel-fretboard__legend-meta">${escapeHtml(item.description)}</div>
+      </li>`;
+    }).join("");
     return `<ul class="pedal-steel-fretboard__legend" aria-label="Highlighted fretboard positions">${items}</ul>`;
   }
 
   function renderPedalSteelFretboard(options = {}) {
     const model = buildFretboardModel(options);
-    const selectedPositionId = model.highlights[0]?.id || "";
+    const selectedPositionId = model.selectedPositionId;
     // Decorative underlay only. Functional strings, frets, fret markers, labels,
     // and interaction targets are drawn by SVG geometry below/above this layer.
-    return `<figure class="pedal-steel-fretboard" data-component="PedalSteelFretboard" data-max-fret="${model.maxFret}" data-string-count="${model.stringCount}" data-spacing="equal-temperament" data-selected-position-id="${escapeHtml(selectedPositionId)}">
+    const html = `<figure class="pedal-steel-fretboard" data-component="PedalSteelFretboard" data-max-fret="${model.maxFret}" data-string-count="${model.stringCount}" data-spacing="equal-temperament" data-selected-position-id="${escapeHtml(selectedPositionId)}">
       <div class="pedal-steel-fretboard__stage">
         <svg class="pedal-steel-fretboard__svg" viewBox="0 0 ${SVG_WIDTH} ${SVG_HEIGHT}" role="img" aria-label="10-string E9 pedal steel fretboard with highlighted positions" xmlns="http://www.w3.org/2000/svg">
           <defs>
@@ -664,31 +1056,142 @@
       ${renderPositionTools(model)}
       ${renderLegend(model)}
     </figure>`;
+    return guardRenderableHtml(html);
+  }
+
+  function guardRenderableHtml(html) {
+    if (!html.includes("[object Object]")) {
+      return html;
+    }
+    if (global.console && typeof global.console.warn === "function") {
+      global.console.warn("PedalSteelFretboard blocked unsafe object string rendering.");
+    }
+    return html.replace(/\[object Object\]/g, "");
   }
 
   function selectPosition(figure, positionId) {
     if (!figure || !positionId) return;
+    const selector = figure.querySelector(`[data-position-selector="${escapeSelectorValue(positionId)}"]`);
+    if (selector?.hidden) return;
     figure.dataset.selectedPositionId = positionId;
     figure.querySelectorAll("[data-position-selector]").forEach((button) => {
-      const isSelected = button.getAttribute("data-position-selector") === positionId;
+      const isSelected = !button.hidden && button.getAttribute("data-position-selector") === positionId;
       button.classList.toggle("is-selected", isSelected);
       button.setAttribute("aria-pressed", String(isSelected));
     });
     figure.querySelectorAll("[data-position-detail]").forEach((detail) => {
-      detail.hidden = detail.getAttribute("data-position-detail") !== positionId;
+      const visibleByFilter = detail.dataset.filterVisible !== "false";
+      detail.hidden = !visibleByFilter || detail.getAttribute("data-position-detail") !== positionId;
     });
     figure.querySelectorAll(".pedal-steel-fretboard__highlight").forEach((highlight) => {
-      highlight.classList.toggle("is-selected", highlight.getAttribute("data-highlight-id") === positionId);
+      const visibleByFilter = highlight.dataset.filterVisible !== "false";
+      highlight.hidden = !visibleByFilter;
+      highlight.style.display = visibleByFilter ? "" : "none";
+      highlight.classList.toggle("is-filter-hidden", !visibleByFilter);
+      highlight.classList.toggle("is-selected", visibleByFilter && highlight.getAttribute("data-highlight-id") === positionId);
     });
+    figure.querySelectorAll("[data-legend-id]").forEach((legend) => {
+      const legendId = legend.getAttribute("data-legend-id");
+      const visiblePosition = figure.querySelector(`[data-position-selector="${escapeSelectorValue(legendId)}"]`);
+      if (visiblePosition) {
+        legend.hidden = visiblePosition.hidden;
+      }
+    });
+  }
+
+  function readActiveTab(figure) {
+    return figure.querySelector("[data-position-tab].is-selected")?.getAttribute("data-position-tab") || DEFAULT_TAB;
+  }
+
+  function readIncludeLeverPositions(figure) {
+    return figure.querySelector("[data-include-levers]")?.getAttribute("aria-pressed") === "true";
+  }
+
+  function positionElementMatchesTab(element, tabMode, includeLeverPositions) {
+    if (tabMode === "show-all") {
+      return true;
+    }
+    const tier = element.getAttribute("data-position-tier") || "";
+    const visibleByDefault = element.getAttribute("data-visible-by-default") !== "false";
+    const hasLevers = element.getAttribute("data-has-levers") === "true";
+    const isDominant = element.getAttribute("data-is-dominant") === "true";
+    const isAdvanced = element.getAttribute("data-is-advanced") === "true" || tier === "advanced";
+    const isMore = element.getAttribute("data-is-more") === "true";
+    if (includeLeverPositions && hasLevers) {
+      return true;
+    }
+    if (tabMode === "dominant") {
+      return isDominant;
+    }
+    if (tabMode === "advanced") {
+      return isAdvanced;
+    }
+    if (tabMode === "more") {
+      return isMore;
+    }
+    return visibleByDefault;
+  }
+
+  function updatePositionFilter(figure, changedTab) {
+    if (!figure) return;
+    if (changedTab) {
+      const button = figure.querySelector(`[data-position-tab="${escapeSelectorValue(changedTab)}"]`);
+      if (button) {
+        figure.querySelectorAll("[data-position-tab]").forEach((tabButton) => {
+          const selected = tabButton === button;
+          tabButton.classList.toggle("is-selected", selected);
+          tabButton.setAttribute("aria-selected", String(selected));
+          tabButton.setAttribute("aria-pressed", String(selected));
+        });
+      }
+    }
+    const tabMode = readActiveTab(figure);
+    const includeLeverPositions = readIncludeLeverPositions(figure);
+    figure.querySelectorAll("[data-position-selector], [data-position-detail], .pedal-steel-fretboard__highlight").forEach((item) => {
+      const isVisible = positionElementMatchesTab(item, tabMode, includeLeverPositions);
+      item.dataset.filterVisible = String(isVisible);
+      item.hidden = !isVisible;
+      if (item.classList.contains("pedal-steel-fretboard__highlight")) {
+        item.style.display = isVisible ? "" : "none";
+      }
+      item.classList.toggle("is-filter-hidden", !isVisible);
+    });
+    const emptyState = figure.querySelector("[data-position-empty]");
+    const firstVisible = figure.querySelector("[data-position-selector]:not([hidden])");
+    if (firstVisible) {
+      if (emptyState) {
+        emptyState.hidden = true;
+      }
+      selectPosition(figure, firstVisible.getAttribute("data-position-selector"));
+    } else {
+      if (emptyState) {
+        emptyState.hidden = false;
+      }
+      figure.dataset.selectedPositionId = "";
+    }
   }
 
   function bindFretboardInteractions(figure) {
     if (!figure) return;
+    figure.querySelectorAll("[data-position-tab]").forEach((button) => {
+      button.addEventListener("click", () => {
+        updatePositionFilter(figure, button.getAttribute("data-position-tab") || "");
+      });
+    });
+    figure.querySelectorAll("[data-include-levers]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const selected = button.getAttribute("aria-pressed") !== "true";
+        button.classList.toggle("is-selected", selected);
+        button.setAttribute("aria-pressed", String(selected));
+        updatePositionFilter(figure);
+      });
+    });
     figure.querySelectorAll("[data-position-selector]").forEach((button) => {
       button.addEventListener("click", () => {
         selectPosition(figure, button.getAttribute("data-position-selector"));
       });
     });
+    updatePositionFilter(figure);
     selectPosition(figure, figure.dataset.selectedPositionId);
   }
 
@@ -721,7 +1224,7 @@
       fret: 3,
       strings: [4, 5, 6],
       role: "No-pedals position",
-      colorRole: "primary",
+      colorRole: "open",
     },
     {
       id: "g-major-af-6",
@@ -731,7 +1234,7 @@
       pedals: ["A"],
       levers: ["E raise/F lever"],
       role: "A+F position",
-      colorRole: "alternate",
+      colorRole: "a-f",
     },
     {
       id: "g-major-ab-10",
@@ -740,7 +1243,7 @@
       strings: [4, 5, 6],
       pedals: ["A", "B"],
       role: "A+B position",
-      colorRole: "movement",
+      colorRole: "a-b",
     },
   ];
 
@@ -754,7 +1257,9 @@
       role: "No-pedals position",
       notes: "Open G pocket",
       intervals: ["1", "3", "5"],
-      colorRole: "primary",
+      colorRole: "open",
+      positionKind: "starter",
+      validationStatus: "pitch_validated",
     },
     {
       id: "g-position-af-6",
@@ -766,7 +1271,9 @@
       levers: ["E raise/F lever"],
       role: "A+F position",
       explanation: "A pedal plus the E raise makes the G pocket at fret 6.",
-      colorRole: "alternate",
+      colorRole: "a-f",
+      positionKind: "starter",
+      validationStatus: "pitch_validated",
     },
     {
       id: "g-position-ab-10",
@@ -777,7 +1284,9 @@
       pedals: ["A", "B"],
       role: "A+B position",
       explanation: "Pedals-down G position at fret 10.",
-      colorRole: "movement",
+      colorRole: "a-b",
+      positionKind: "starter",
+      validationStatus: "pitch_validated",
     },
   ];
 

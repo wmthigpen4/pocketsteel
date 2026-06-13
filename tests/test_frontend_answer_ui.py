@@ -165,12 +165,41 @@ let capturedRequest;
 def test_answer_ui_uses_live_answer_client_not_mock_answer_data() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
 
-    assert '<script src="answer-client.js?v=answer-fretboard-20260611"></script>' in html
-    assert '<script src="pedal-steel-fretboard.js?v=answer-fretboard-20260611"></script>' in html
+    assert '<script src="answer-client.js?v=pitch-engine-fretboard-20260612"></script>' in html
+    assert '<script src="pedal-steel-fretboard.js?v=pitch-engine-fretboard-20260612"></script>' in html
     assert '<script src="mock-answer-data.js"></script>' not in html
     assert "STEEL_RAG_ANSWER_UI.requestAnswer" in html
     assert "STEEL_RAG_ANSWER_UI.requestSession" in html
     assert "No sources returned" in html
+
+
+def test_answer_ui_includes_home_hero_hanging_sign_without_changing_answer_logo() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+
+    assert 'class="hero-hanging-sign"' in html
+    assert 'data-src="brand/steel-guitar-rag-hanging-sign.webm"' in html
+    assert 'poster="brand/steel-guitar-rag-hanging-sign-fallback.png"' in html
+    assert "left: 0;" in html
+    assert "top: 14px;" in html
+    assert "width: clamp(240px, 22vw, 360px);" in html
+    assert "transform: translate(-8px, -10px) rotate(-1.5deg);" in html
+    assert "padding: clamp(170px, 14vw, 220px) 0 24px;" in html
+    assert "padding-top: clamp(120px, 20vw, 170px);" in html
+    assert "padding-top: 120px;" in html
+    assert "width: clamp(150px, 48vw, 210px);" in html
+    assert "transform: translate(-4px, 0) rotate(-1.5deg);" in html
+    assert ".hero-hanging-sign.is-animated video" in html
+    assert ".hero-hanging-sign.is-animated img" in html
+    assert "object-fit: contain;" in html
+    assert "object-position: top left;" in html
+    assert "image-rendering: auto;" in html
+    assert 'prefers-reduced-motion: reduce' in html
+    assert ".brand-home {\n      display: none;" in html
+    assert ".page.is-answering .brand-home {\n      display: block;" in html
+    assert ".page.is-answering .hero-hanging-sign" in html
+    assert '<img class="brand-logo" src="assets/steel-guitar-rag-logo-transparent.png" alt="Steel Guitar RAG">' in html
+    assert Path("ui/brand/steel-guitar-rag-hanging-sign.webm").is_file()
+    assert Path("ui/brand/steel-guitar-rag-hanging-sign-fallback.png").is_file()
 
 
 def test_frontend_answer_client_formats_sectioned_and_bullet_text() -> None:
@@ -253,6 +282,9 @@ const visualized = answerUi.normalizeAnswerResponse({
         role: "No pedals",
         notes: "Open G pocket"
       }
+    ],
+    legend: [
+      { id: "primary", label: "Open/no-pedal position", color: "primary" }
     ]
   },
   sources: []
@@ -265,6 +297,56 @@ assert.equal(JSON.stringify(visualized.fretboard.tuningLabels), JSON.stringify([
 assert.equal(visualized.fretboard.positions[0].id, "g-open-3");
 assert.equal(visualized.fretboard.positions[0].notes, "Open G pocket");
 assert.equal(JSON.stringify(visualized.fretboard.highlights), JSON.stringify([]));
+assert.equal(visualized.fretboard.legend[0].id, "primary");
+
+const productionNestedVisualized = answerUi.normalizeAnswerResponse({
+  question: "Where can I play a G chord?",
+  answer: "Use G at frets 3, 6, and 10.",
+  response: {
+    fretboard: {
+      title: "G major positions",
+      description: "Production-like nested response payload.",
+      positions: [
+        {
+          id: "g-open-3",
+          label: "G major",
+          fret: 3,
+          strings: [4, 5, 6],
+          grip: "4-5-6"
+        }
+      ]
+    }
+  },
+  sources: []
+});
+assert.equal(productionNestedVisualized.fretboard.title, "G major positions");
+assert.equal(productionNestedVisualized.fretboard.positions[0].id, "g-open-3");
+
+const nestedShapes = [
+  ["response", { response: { fretboard: { positions: [{ id: "from-response", fret: 3, strings: [4, 5, 6] }] } } }],
+  ["data", { data: { fretboard: { positions: [{ id: "from-data", fret: 6, strings: [4, 5, 6] }] } } }],
+  ["result", { result: { fretboard: { positions: [{ id: "from-result", fret: 10, strings: [4, 5, 6] }] } } }],
+  ["answer", { answer: { text: "Nested object answer.", fretboard: { positions: [{ id: "from-answer", fret: 12, strings: [4, 5, 6] }] } } }]
+];
+for (const [name, payload] of nestedShapes) {
+  const normalized = answerUi.normalizeAnswerResponse({
+    question: `Nested ${name}`,
+    answer_text: "Nested fretboard data should survive.",
+    ...payload
+  });
+  assert.equal(normalized.fretboard.positions[0].id, `from-${name}`);
+}
+
+const emptyVisualized = answerUi.normalizeAnswerResponse({
+  answer: "No supported fretboard data.",
+  fretboard: {
+    title: "Empty view",
+    positions: [],
+    highlights: []
+  },
+  sources: []
+});
+assert.equal("fretboard" in emptyVisualized, false);
 
 const positionsWinVisualized = answerUi.normalizeAnswerResponse({
   question: "Where can I play a G chord?",
@@ -800,21 +882,23 @@ const sandbox = {
         question: "What is my copedent?",
         answer: COPEDENT_ANSWER,
         sections: [{ title: "Answer", style: "lead", body: COPEDENT_ANSWER }],
-        fretboard: {
-          title: "G major positions",
-          description: "Three common G major locations on E9.",
-          maxFret: 24,
-          stringCount: 10,
-          positions: [
-            {
-              id: "g-open-3",
-              label: "G major",
-              fret: 3,
-              strings: [4, 5, 6],
-              grip: [4, 5, 6],
-              role: "No pedals"
-            }
-          ]
+        response: {
+          fretboard: {
+            title: "G major positions",
+            description: "Three common G major locations on E9.",
+            maxFret: 24,
+            stringCount: 10,
+            positions: [
+              {
+                id: "g-open-3",
+                label: "G major",
+                fret: 3,
+                strings: [4, 5, 6],
+                grip: [4, 5, 6],
+                role: "No pedals"
+              }
+            ]
+          }
         },
         sources: [],
         followups: []
@@ -1285,6 +1369,7 @@ def test_answer_ui_wires_optional_fretboard_visualization_section() -> None:
     assert ".fretboard-card" in html
     assert "function renderFretboardVisualization(fretboard)" in html
     assert "window.STEEL_RAG_FRETBOARD.mountPedalSteelFretboard(answerFretboardMount" in html
+    assert "legend: fretboard.legend" in html
     assert "function clearFretboardVisualization()" in html
     assert "clearFretboardVisualization();" in html
     assert 'window.matchMedia("(max-width: 640px)").matches' in html
