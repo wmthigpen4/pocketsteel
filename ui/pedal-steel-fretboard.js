@@ -1086,6 +1086,100 @@
     return highlight.grip === gripFilter;
   }
 
+  function normalizedControlName(value, { combo = false } = {}) {
+    const text = normalizeMetadataText(value);
+    const token = normalizeToken(text);
+    if (!token) return "";
+    if (
+      token === "e" ||
+      token === "e-lower" ||
+      token === "e-lowered" ||
+      token === "elower" ||
+      token === "e-lower-lever" ||
+      token.includes("e-lower")
+    ) {
+      return combo ? "E-lower" : "E-lower";
+    }
+    if (
+      token === "f" ||
+      token === "f-lever" ||
+      token.includes("f-lever") ||
+      token.includes("e-raise")
+    ) {
+      return combo ? "F" : "F lever";
+    }
+    if (token === "vertical" || token === "v" || token.includes("vertical")) {
+      return "Vertical";
+    }
+    return text;
+  }
+
+  function pedalLeverOptionForPosition(highlight) {
+    const controls = [
+      ...highlight.pedals.map((control) => normalizedControlName(control, { combo: true })),
+      ...highlight.levers.map((control) => normalizedControlName(control, { combo: highlight.pedals.length > 0 })),
+    ].filter(Boolean);
+    if (!controls.length) {
+      return { key: "none", label: "No pedals/levers" };
+    }
+    const label = controls.join("+");
+    return {
+      key: normalizeToken(label),
+      label,
+    };
+  }
+
+  function uniquePedalLeverOptions(highlights) {
+    const byKey = new Map();
+    highlights.forEach((highlight) => {
+      const option = pedalLeverOptionForPosition(highlight);
+      if (!byKey.has(option.key)) {
+        byKey.set(option.key, option);
+      }
+    });
+    const priority = new Map([
+      ["none", 0],
+      ["a+b", 1],
+      ["a+f", 2],
+      ["e-lower", 3],
+      ["f-lever", 4],
+      ["b+c", 5],
+      ["vertical", 6],
+    ]);
+    return Array.from(byKey.values()).sort((left, right) => {
+      const leftPriority = priority.has(left.key) ? priority.get(left.key) : 50;
+      const rightPriority = priority.has(right.key) ? priority.get(right.key) : 50;
+      if (leftPriority !== rightPriority) {
+        return leftPriority - rightPriority;
+      }
+      return left.label.localeCompare(right.label);
+    });
+  }
+
+  function normalizePedalLeverFilters(value, pedalLeverOptions, hasPedalLeverControls) {
+    if (!hasPedalLeverControls) {
+      return [];
+    }
+    const validKeys = new Set(pedalLeverOptions.map((option) => option.key));
+    const requestedValues = Array.isArray(value)
+      ? value
+      : String(value || "all").split(",");
+    const normalizedValues = requestedValues
+      .map((item) => normalizeToken(item || ""))
+      .filter(Boolean);
+    if (normalizedValues.length === 0 || normalizedValues.includes("all")) {
+      return [];
+    }
+    return Array.from(new Set(normalizedValues.filter((item) => validKeys.has(item))));
+  }
+
+  function positionMatchesPedalLever(highlight, pedalLeverFilters) {
+    if (!pedalLeverFilters || pedalLeverFilters.length === 0) {
+      return true;
+    }
+    return pedalLeverFilters.includes(pedalLeverOptionForPosition(highlight).key);
+  }
+
   function uniqueGripOptions(highlights) {
     return Array.from(new Set(
       highlights
@@ -1214,15 +1308,26 @@
     const hasVoicingControls = hasFilterControls && hasUsefulVoicingControls(allHighlights, voicingOptions);
     const gripOptions = uniqueGripOptions(allHighlights);
     const hasGripControls = hasFilterControls && gripOptions.length > 1;
+    const pedalLeverOptions = hasFilterControls ? uniquePedalLeverOptions(allHighlights) : [];
+    const hasPedalLeverControls = hasFilterControls &&
+      (hasVoicingControls || hasGripControls) &&
+      pedalLeverOptions.length > 1;
     const voicingFilter = normalizeVoicingFilter(options.voicingFilter || options.voicingTypeFilter, hasVoicingControls);
     const gripFilters = normalizeGripFilters(options.gripFilters || options.gripFilter || options.grip, gripOptions, hasGripControls);
     const gripFilter = gripFilters[0] || "all";
+    const pedalLeverFilters = normalizePedalLeverFilters(
+      options.pedalLeverFilters || options.pedalLeverFilter || options.controlFilters || options.controlFilter,
+      pedalLeverOptions,
+      hasPedalLeverControls
+    );
     const filteredHighlights = allHighlights.filter((highlight) =>
       positionMatchesVoicing(highlight, voicingFilter) &&
-      positionMatchesGrip(highlight, gripFilters)
+      positionMatchesGrip(highlight, gripFilters) &&
+      positionMatchesPedalLever(highlight, pedalLeverFilters)
     );
     const hasRecommendedLimit = voicingFilter === "recommended" &&
       gripFilters.length === 0 &&
+      pedalLeverFilters.length === 0 &&
       filteredHighlights.length > MAX_RECOMMENDED_VISIBLE_POSITIONS;
     const highlights = hasRecommendedLimit
       ? filteredHighlights.slice(0, MAX_RECOMMENDED_VISIBLE_POSITIONS)
@@ -1246,12 +1351,15 @@
       voicingFilter,
       gripFilter,
       gripFilters,
-      hasFilters: hasVoicingControls || hasGripControls,
+      hasFilters: hasVoicingControls || hasGripControls || hasPedalLeverControls,
       hasVoicingControls,
       hasGripControls,
+      hasPedalLeverControls,
       voicingCategories,
       voicingOptions,
       gripOptions,
+      pedalLeverOptions,
+      pedalLeverFilters,
       hasRecommendedLimit,
       hasRecommendedCapAvailable: hasRecommendedLimit,
       recommendedHiddenIds,
@@ -1344,7 +1452,9 @@
   function renderHighlight(highlight) {
     const color = getColorRole(highlight.colorRole);
     const colorStyle = `--fretboard-swatch: ${color.dot}; --fretboard-glow: ${color.glow}; --fretboard-band: ${color.band};`;
+    const hiddenStyle = highlight.isHiddenByFilter ? " display: none;" : "";
     const voicingCategory = voicingCategoryForPosition(highlight);
+    const pedalLeverOption = pedalLeverOptionForPosition(highlight);
     const minY = Math.min(...highlight.stringYs);
     const maxY = Math.max(...highlight.stringYs);
     const bandHeight = Math.max(34, maxY - minY + 26);
@@ -1360,7 +1470,7 @@
         return `<rect data-highlight-dot ${dataAttrs} data-highlight-string="${stringNumber}" x="${(highlight.x - 15).toFixed(3)}" y="${(y - 9).toFixed(3)}" width="30" height="18" rx="9" fill="${color.dot}" fill-opacity="0.95" stroke="#fff6df" stroke-opacity="0.38" filter="url(#fretboard-glow)" />`;
       })
       .join("");
-    return `<g class="pedal-steel-fretboard__highlight${highlight.isSelected ? " is-selected" : ""}${highlight.isHiddenByFilter ? " is-filter-hidden" : ""}" ${dataAttrs} data-position-family="${escapeHtml(highlight.family)}" data-position-tier="${escapeHtml(highlight.tier)}" data-position-kind="${escapeHtml(highlight.positionKind)}" data-position-grip="${escapeHtml(highlight.grip)}" data-voicing-type="${escapeHtml(highlight.voicingType)}" data-voicing-category="${escapeHtml(voicingCategory)}" data-is-root-position="${highlight.isRootPosition ? "true" : "false"}" data-is-inversion="${highlight.isInversion ? "true" : "false"}" data-is-partial-voicing="${highlight.isPartialVoicing ? "true" : "false"}" data-is-rootless="${highlight.isRootless ? "true" : "false"}" data-visible-by-default="${highlight.visibleByDefault ? "true" : "false"}" data-has-levers="${highlight.levers.length ? "true" : "false"}" data-is-starter="${isStarterPosition(highlight) ? "true" : "false"}" data-is-full-chord="${isFullChordPosition(highlight) ? "true" : "false"}" data-is-dominant="${isDominantPosition(highlight) ? "true" : "false"}" data-is-advanced="${isAdvancedPosition(highlight) ? "true" : "false"}" data-is-more="${isMorePosition(highlight) ? "true" : "false"}" data-recommended-extra="${highlight.isRecommendedExtra ? "true" : "false"}" data-filter-visible="${highlight.isHiddenByFilter ? "false" : "true"}" style="${colorStyle}"${highlight.isHiddenByFilter ? " hidden" : ""}>
+    return `<g class="pedal-steel-fretboard__highlight${highlight.isSelected ? " is-selected" : ""}${highlight.isHiddenByFilter ? " is-filter-hidden" : ""}" ${dataAttrs} data-position-family="${escapeHtml(highlight.family)}" data-position-tier="${escapeHtml(highlight.tier)}" data-position-kind="${escapeHtml(highlight.positionKind)}" data-position-grip="${escapeHtml(highlight.grip)}" data-position-pedal-lever-key="${escapeHtml(pedalLeverOption.key)}" data-position-pedal-lever-label="${escapeHtml(pedalLeverOption.label)}" data-voicing-type="${escapeHtml(highlight.voicingType)}" data-voicing-category="${escapeHtml(voicingCategory)}" data-is-root-position="${highlight.isRootPosition ? "true" : "false"}" data-is-inversion="${highlight.isInversion ? "true" : "false"}" data-is-partial-voicing="${highlight.isPartialVoicing ? "true" : "false"}" data-is-rootless="${highlight.isRootless ? "true" : "false"}" data-visible-by-default="${highlight.visibleByDefault ? "true" : "false"}" data-has-levers="${highlight.levers.length ? "true" : "false"}" data-is-starter="${isStarterPosition(highlight) ? "true" : "false"}" data-is-full-chord="${isFullChordPosition(highlight) ? "true" : "false"}" data-is-dominant="${isDominantPosition(highlight) ? "true" : "false"}" data-is-advanced="${isAdvancedPosition(highlight) ? "true" : "false"}" data-is-more="${isMorePosition(highlight) ? "true" : "false"}" data-recommended-extra="${highlight.isRecommendedExtra ? "true" : "false"}" data-filter-visible="${highlight.isHiddenByFilter ? "false" : "true"}" style="${colorStyle}${hiddenStyle}"${highlight.isHiddenByFilter ? " hidden" : ""}>
       ${band}
       ${dots}
       <text data-highlight-label="${escapeHtml(highlight.id)}" x="${highlight.x.toFixed(3)}" y="${labelY.toFixed(3)}" text-anchor="middle" fill="${color.text}" font-size="18" font-weight="700">${escapeHtml(highlight.label)}</text>
@@ -1433,13 +1543,15 @@
     const isVisible = visibleIds.has(highlight.id);
     const isSelected = highlight.id === selectedPositionId;
     const voicingCategory = voicingCategoryForPosition(highlight);
+    const pedalLeverOption = pedalLeverOptionForPosition(highlight);
+    const hiddenStyle = isVisible && isSelected ? "" : " display: none;";
     const voicingValue = voicingExplanation(highlight) || highlight.voicingType || highlight.inversionLabel;
     const kindValue = [
       highlight.positionKind,
       highlight.isPartial ? "partial" : "",
       highlight.isRootless ? "rootless" : "",
     ].filter(Boolean).join(" · ");
-    return `<section class="pedal-steel-fretboard__detail" data-position-detail="${escapeHtml(highlight.id)}" data-color-role="${escapeHtml(highlight.colorRole)}" data-position-family="${escapeHtml(highlight.family)}" data-position-tier="${escapeHtml(highlight.tier)}" data-position-kind="${escapeHtml(highlight.positionKind)}" data-position-grip="${escapeHtml(highlight.grip)}" data-voicing-type="${escapeHtml(highlight.voicingType)}" data-voicing-category="${escapeHtml(voicingCategory)}" data-is-root-position="${highlight.isRootPosition ? "true" : "false"}" data-is-inversion="${highlight.isInversion ? "true" : "false"}" data-is-partial-voicing="${highlight.isPartialVoicing ? "true" : "false"}" data-is-rootless="${highlight.isRootless ? "true" : "false"}" data-visible-by-default="${highlight.visibleByDefault ? "true" : "false"}" data-has-levers="${highlight.levers.length ? "true" : "false"}" data-is-starter="${isStarterPosition(highlight) ? "true" : "false"}" data-is-full-chord="${isFullChordPosition(highlight) ? "true" : "false"}" data-is-dominant="${isDominantPosition(highlight) ? "true" : "false"}" data-is-advanced="${isAdvancedPosition(highlight) ? "true" : "false"}" data-is-more="${isMorePosition(highlight) ? "true" : "false"}" data-filter-visible="${isVisible ? "true" : "false"}" style="${colorStyle}" aria-live="polite"${isVisible && isSelected ? "" : " hidden"}>
+    return `<section class="pedal-steel-fretboard__detail" data-position-detail="${escapeHtml(highlight.id)}" data-color-role="${escapeHtml(highlight.colorRole)}" data-position-family="${escapeHtml(highlight.family)}" data-position-tier="${escapeHtml(highlight.tier)}" data-position-kind="${escapeHtml(highlight.positionKind)}" data-position-grip="${escapeHtml(highlight.grip)}" data-position-pedal-lever-key="${escapeHtml(pedalLeverOption.key)}" data-position-pedal-lever-label="${escapeHtml(pedalLeverOption.label)}" data-voicing-type="${escapeHtml(highlight.voicingType)}" data-voicing-category="${escapeHtml(voicingCategory)}" data-is-root-position="${highlight.isRootPosition ? "true" : "false"}" data-is-inversion="${highlight.isInversion ? "true" : "false"}" data-is-partial-voicing="${highlight.isPartialVoicing ? "true" : "false"}" data-is-rootless="${highlight.isRootless ? "true" : "false"}" data-visible-by-default="${highlight.visibleByDefault ? "true" : "false"}" data-has-levers="${highlight.levers.length ? "true" : "false"}" data-is-starter="${isStarterPosition(highlight) ? "true" : "false"}" data-is-full-chord="${isFullChordPosition(highlight) ? "true" : "false"}" data-is-dominant="${isDominantPosition(highlight) ? "true" : "false"}" data-is-advanced="${isAdvancedPosition(highlight) ? "true" : "false"}" data-is-more="${isMorePosition(highlight) ? "true" : "false"}" data-filter-visible="${isVisible ? "true" : "false"}" style="${colorStyle}${hiddenStyle}" aria-live="polite"${isVisible && isSelected ? "" : " hidden"}>
       <p class="pedal-steel-fretboard__detail-title"><span class="pedal-steel-fretboard__detail-marker" data-color-role="${escapeHtml(highlight.colorRole)}" aria-hidden="true"></span><strong>${escapeHtml(highlight.label)}</strong><span>${escapeHtml(positionSelectorLabel(highlight))}</span></p>
       <div class="pedal-steel-fretboard__detail-grid">
         ${renderDetailItem("Fret", highlight.fret, "", { hideEmpty: false })}
@@ -1472,7 +1584,7 @@
   }
 
   function renderFretboardFilterControls(model) {
-    if (!model.hasVoicingControls && !model.hasGripControls) {
+    if (!model.hasVoicingControls && !model.hasGripControls && !model.hasPedalLeverControls) {
       return "";
     }
     const voicingControls = model.hasVoicingControls
@@ -1491,9 +1603,20 @@
         }).join("")}
       </div>`
       : "";
+    const pedalLeverControls = model.hasPedalLeverControls
+      ? `<div class="pedal-steel-fretboard__filter-group" aria-label="Filter by pedal and lever combination">
+        <span class="pedal-steel-fretboard__filter-label">Pedals / Levers</span>
+        <button class="pedal-steel-fretboard__filter-button${model.pedalLeverFilters.length === 0 ? " is-selected" : ""}" type="button" data-pedal-lever-filter="all" aria-pressed="${model.pedalLeverFilters.length === 0 ? "true" : "false"}">All</button>
+        ${model.pedalLeverOptions.map((option) => {
+          const isSelected = model.pedalLeverFilters.includes(option.key);
+          return `<button class="pedal-steel-fretboard__filter-button${isSelected ? " is-selected" : ""}" type="button" data-pedal-lever-filter="${escapeHtml(option.key)}" aria-pressed="${isSelected ? "true" : "false"}">${escapeHtml(option.label)}</button>`;
+        }).join("")}
+      </div>`
+      : "";
     return `<div class="pedal-steel-fretboard__filter-panel" data-fretboard-filter-panel>
       ${voicingControls}
       ${gripControls}
+      ${pedalLeverControls}
     </div>`;
   }
 
@@ -1506,11 +1629,13 @@
     const buttons = model.allHighlights
       .map((highlight) => {
         const color = getColorRole(highlight.colorRole);
-        const colorStyle = `--fretboard-swatch: ${color.dot}; --fretboard-glow: ${color.glow}; --fretboard-band: ${color.band}; --fretboard-card-border: ${color.dot};`;
         const isVisible = visibleIds.has(highlight.id);
+        const colorStyle = `--fretboard-swatch: ${color.dot}; --fretboard-glow: ${color.glow}; --fretboard-band: ${color.band}; --fretboard-card-border: ${color.dot};`;
+        const hiddenStyle = isVisible ? "" : " display: none;";
         const isSelected = highlight.id === selectedPositionId;
         const isRecommendedExtra = model.recommendedHiddenIds.has(highlight.id);
         const voicingCategory = voicingCategoryForPosition(highlight);
+        const pedalLeverOption = pedalLeverOptionForPosition(highlight);
         const voicingText = voicingExplanation(highlight);
         const controls = [...highlight.pedals, ...highlight.levers];
         const kindTags = [
@@ -1525,7 +1650,7 @@
           controls.length ? controls.join(" + ") : "no pedals/levers",
           kindTags.join(" · "),
         ].filter(Boolean);
-        return `<button class="pedal-steel-fretboard__selector${isSelected ? " is-selected" : ""}" type="button" data-position-selector="${escapeHtml(highlight.id)}" data-color-role="${escapeHtml(highlight.colorRole)}" data-position-family="${escapeHtml(highlight.family)}" data-position-tier="${escapeHtml(highlight.tier)}" data-position-kind="${escapeHtml(highlight.positionKind)}" data-position-grip="${escapeHtml(highlight.grip)}" data-voicing-type="${escapeHtml(highlight.voicingType)}" data-voicing-category="${escapeHtml(voicingCategory)}" data-is-root-position="${highlight.isRootPosition ? "true" : "false"}" data-is-inversion="${highlight.isInversion ? "true" : "false"}" data-is-partial-voicing="${highlight.isPartialVoicing ? "true" : "false"}" data-is-rootless="${highlight.isRootless ? "true" : "false"}" data-visible-by-default="${highlight.visibleByDefault ? "true" : "false"}" data-has-levers="${highlight.levers.length ? "true" : "false"}" data-is-starter="${isStarterPosition(highlight) ? "true" : "false"}" data-is-full-chord="${isFullChordPosition(highlight) ? "true" : "false"}" data-is-dominant="${isDominantPosition(highlight) ? "true" : "false"}" data-is-advanced="${isAdvancedPosition(highlight) ? "true" : "false"}" data-is-more="${isMorePosition(highlight) ? "true" : "false"}" data-recommended-extra="${isRecommendedExtra ? "true" : "false"}" data-filter-visible="${isVisible ? "true" : "false"}" style="${colorStyle}" aria-pressed="${isSelected ? "true" : "false"}"${isVisible ? "" : " hidden"}>
+        return `<button class="pedal-steel-fretboard__selector${isSelected ? " is-selected" : ""}" type="button" data-position-selector="${escapeHtml(highlight.id)}" data-color-role="${escapeHtml(highlight.colorRole)}" data-position-family="${escapeHtml(highlight.family)}" data-position-tier="${escapeHtml(highlight.tier)}" data-position-kind="${escapeHtml(highlight.positionKind)}" data-position-grip="${escapeHtml(highlight.grip)}" data-position-pedal-lever-key="${escapeHtml(pedalLeverOption.key)}" data-position-pedal-lever-label="${escapeHtml(pedalLeverOption.label)}" data-voicing-type="${escapeHtml(highlight.voicingType)}" data-voicing-category="${escapeHtml(voicingCategory)}" data-is-root-position="${highlight.isRootPosition ? "true" : "false"}" data-is-inversion="${highlight.isInversion ? "true" : "false"}" data-is-partial-voicing="${highlight.isPartialVoicing ? "true" : "false"}" data-is-rootless="${highlight.isRootless ? "true" : "false"}" data-visible-by-default="${highlight.visibleByDefault ? "true" : "false"}" data-has-levers="${highlight.levers.length ? "true" : "false"}" data-is-starter="${isStarterPosition(highlight) ? "true" : "false"}" data-is-full-chord="${isFullChordPosition(highlight) ? "true" : "false"}" data-is-dominant="${isDominantPosition(highlight) ? "true" : "false"}" data-is-advanced="${isAdvancedPosition(highlight) ? "true" : "false"}" data-is-more="${isMorePosition(highlight) ? "true" : "false"}" data-recommended-extra="${isRecommendedExtra ? "true" : "false"}" data-filter-visible="${isVisible ? "true" : "false"}" style="${colorStyle}${hiddenStyle}" aria-pressed="${isSelected ? "true" : "false"}"${isVisible ? "" : " hidden"}>
         <span class="pedal-steel-fretboard__selector-marker" data-color-role="${escapeHtml(highlight.colorRole)}" aria-hidden="true"></span>
         <span class="pedal-steel-fretboard__selector-main">${escapeHtml(positionSelectorLabel(highlight))}</span>
         <span class="pedal-steel-fretboard__selector-sub">${escapeHtml(metaParts.join(" · "))}</span>
@@ -1543,7 +1668,7 @@
       ${recommendedNote}
       <div class="pedal-steel-fretboard__selector-list" aria-label="Choose a fretboard position">${buttons}</div>
       ${showAllButton}
-      <p class="pedal-steel-fretboard__empty" data-position-empty${model.highlights.length ? " hidden" : ""}>No positions match these filters. Try All grips or All positions.</p>
+      <p class="pedal-steel-fretboard__empty" data-position-empty${model.highlights.length ? " hidden" : ""}>No positions match these filters. Try All grips, All pedals/levers, or All positions.</p>
       ${details}
     </div>`;
   }
@@ -1593,7 +1718,7 @@
     const selectedPositionId = model.selectedPositionId;
     // Decorative underlay only. Functional strings, frets, fret markers, labels,
     // and interaction targets are drawn by SVG geometry below/above this layer.
-    const html = `<figure class="pedal-steel-fretboard" data-component="PedalSteelFretboard" data-max-fret="${model.maxFret}" data-string-count="${model.stringCount}" data-spacing="equal-temperament" data-has-voicing-filters="${model.hasVoicingControls ? "true" : "false"}" data-has-grip-filters="${model.hasGripControls ? "true" : "false"}" data-active-grip-filters="${escapeHtml(model.gripFilters.join(","))}" data-recommended-limited="${model.hasRecommendedLimit ? "true" : "false"}" data-recommended-cap-available="${model.hasRecommendedCapAvailable ? "true" : "false"}" data-selected-position-id="${escapeHtml(selectedPositionId)}">
+    const html = `<figure class="pedal-steel-fretboard" data-component="PedalSteelFretboard" data-max-fret="${model.maxFret}" data-string-count="${model.stringCount}" data-spacing="equal-temperament" data-has-voicing-filters="${model.hasVoicingControls ? "true" : "false"}" data-has-grip-filters="${model.hasGripControls ? "true" : "false"}" data-has-pedal-lever-filters="${model.hasPedalLeverControls ? "true" : "false"}" data-active-grip-filters="${escapeHtml(model.gripFilters.join(","))}" data-active-pedal-lever-filters="${escapeHtml(model.pedalLeverFilters.join(","))}" data-recommended-limited="${model.hasRecommendedLimit ? "true" : "false"}" data-recommended-cap-available="${model.hasRecommendedCapAvailable ? "true" : "false"}" data-selected-position-id="${escapeHtml(selectedPositionId)}">
       ${renderFretboardFilterControls(model)}
       <div class="pedal-steel-fretboard__stage">
         <svg class="pedal-steel-fretboard__svg" viewBox="0 0 ${SVG_WIDTH} ${SVG_HEIGHT}" role="img" aria-label="10-string E9 pedal steel fretboard with highlighted positions" xmlns="http://www.w3.org/2000/svg">
@@ -1681,6 +1806,16 @@
     return Array.from(new Set(selected));
   }
 
+  function readActivePedalLeverFilters(figure) {
+    if (figure?.dataset?.hasPedalLeverFilters !== "true") {
+      return [];
+    }
+    const selected = Array.from(figure.querySelectorAll("[data-pedal-lever-filter].is-selected"))
+      .map((button) => button.getAttribute("data-pedal-lever-filter") || "")
+      .filter((value) => value && value !== "all");
+    return Array.from(new Set(selected));
+  }
+
   function positionElementMatchesVoicing(element, voicingFilter) {
     if (!voicingFilter || voicingFilter === "all") {
       return true;
@@ -1708,6 +1843,13 @@
       return true;
     }
     return element.getAttribute("data-position-grip") === gripFilter;
+  }
+
+  function positionElementMatchesPedalLever(element, pedalLeverFilters) {
+    if (!pedalLeverFilters || pedalLeverFilters.length === 0) {
+      return true;
+    }
+    return pedalLeverFilters.includes(element.getAttribute("data-position-pedal-lever-key"));
   }
 
   function setPositionElementFilterVisibility(element, isVisible) {
@@ -1776,23 +1918,57 @@
     }
   }
 
-  function updatePositionFilter(figure, changedVoicingFilter, changedGripFilter) {
+  function updateSelectedPedalLeverFilterButtons(figure, changedPedalLeverFilter) {
+    if (!changedPedalLeverFilter) return;
+    const allButton = figure.querySelector('[data-pedal-lever-filter="all"]');
+    const pedalLeverButtons = Array.from(figure.querySelectorAll('[data-pedal-lever-filter]:not([data-pedal-lever-filter="all"])'));
+    if (changedPedalLeverFilter === "all") {
+      pedalLeverButtons.forEach((button) => {
+        button.classList.remove("is-selected");
+        button.setAttribute("aria-pressed", "false");
+      });
+      allButton?.classList.add("is-selected");
+      allButton?.setAttribute("aria-pressed", "true");
+      return;
+    }
+    const changedButton = figure.querySelector(`[data-pedal-lever-filter="${escapeSelectorValue(changedPedalLeverFilter)}"]`);
+    if (!changedButton) return;
+    const nextSelected = !changedButton.classList.contains("is-selected");
+    changedButton.classList.toggle("is-selected", nextSelected);
+    changedButton.setAttribute("aria-pressed", String(nextSelected));
+    const hasSelectedPedalLever = pedalLeverButtons.some((button) => button.classList.contains("is-selected"));
+    if (allButton) {
+      allButton.classList.toggle("is-selected", !hasSelectedPedalLever);
+      allButton.setAttribute("aria-pressed", String(!hasSelectedPedalLever));
+    }
+  }
+
+  function updatePositionFilter(figure, changedVoicingFilter, changedGripFilter, changedPedalLeverFilter) {
     if (!figure) return;
     if (changedVoicingFilter) {
       updateSelectedFilterButton(figure, "[data-voicing-filter]", "data-voicing-filter", changedVoicingFilter);
       if (changedVoicingFilter === "all" && !changedGripFilter) {
         updateSelectedGripFilterButtons(figure, "all");
       }
+      if (changedVoicingFilter === "all" && !changedPedalLeverFilter) {
+        updateSelectedPedalLeverFilterButtons(figure, "all");
+      }
     }
     if (changedGripFilter) {
       updateSelectedGripFilterButtons(figure, changedGripFilter);
     }
+    if (changedPedalLeverFilter) {
+      updateSelectedPedalLeverFilterButtons(figure, changedPedalLeverFilter);
+    }
     const voicingFilter = readActiveVoicingFilter(figure);
     const gripFilters = readActiveGripFilters(figure);
+    const pedalLeverFilters = readActivePedalLeverFilters(figure);
     figure.dataset.activeGripFilters = gripFilters.join(",");
+    figure.dataset.activePedalLeverFilters = pedalLeverFilters.join(",");
     const limitRecommended = figure.dataset.recommendedCapAvailable === "true" &&
       voicingFilter === "recommended" &&
-      gripFilters.length === 0;
+      gripFilters.length === 0 &&
+      pedalLeverFilters.length === 0;
     figure.dataset.recommendedLimited = String(limitRecommended);
     const showAll = figure.querySelector("[data-show-all-positions]");
     if (showAll) {
@@ -1806,6 +1982,7 @@
     figure.querySelectorAll("[data-position-selector]").forEach((item) => {
       const isVisible = positionElementMatchesVoicing(item, voicingFilter) &&
         positionElementMatchesGrip(item, gripFilters) &&
+        positionElementMatchesPedalLever(item, pedalLeverFilters) &&
         !(limitRecommended && item.dataset.recommendedExtra === "true");
       if (isVisible) {
         visibleIds.add(item.getAttribute("data-position-selector"));
@@ -1829,7 +2006,7 @@
 
   function showAllRecommendedPositions(figure) {
     if (!figure) return;
-    updatePositionFilter(figure, "all", "");
+    updatePositionFilter(figure, "all", "all", "all");
   }
 
   function bindFretboardInteractions(figure) {
@@ -1844,7 +2021,12 @@
     });
     figure.querySelectorAll("[data-grip-filter]").forEach((button) => {
       button.addEventListener("click", () => {
-        updatePositionFilter(figure, "", button.getAttribute("data-grip-filter") || "all");
+        updatePositionFilter(figure, "", button.getAttribute("data-grip-filter") || "all", "");
+      });
+    });
+    figure.querySelectorAll("[data-pedal-lever-filter]").forEach((button) => {
+      button.addEventListener("click", () => {
+        updatePositionFilter(figure, "", "", button.getAttribute("data-pedal-lever-filter") || "all");
       });
     });
     figure.querySelectorAll("[data-position-selector]").forEach((button) => {
