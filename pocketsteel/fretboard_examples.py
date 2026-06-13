@@ -1931,6 +1931,8 @@ def fretboard_payload_for_question(question: str) -> dict | None:
     major_request = major_chord_location_request_for_question(q)
     if major_request is not None:
         return get_fretboard_examples("major_positions", major_request.normalized_key)
+    if q in {"show me the fretboard", "show the fretboard", "show me an e9 fretboard", "show me the e9 fretboard"}:
+        return get_fretboard_examples("major_positions", "G")
     if q == "show me common grips for g":
         return get_fretboard_examples("common_grips", "G")
     return None
@@ -1951,9 +1953,10 @@ def major_chord_location_request_for_question(question: str) -> MajorChordLocati
         r"^where are (?:some )?places to play (?:a|an)?\s*([a-g](?:#|b)?)(?:\s+(?:major|major chords?|chords?))?$",
         r"^where(?: all)? can i play (?:a|an)?\s*([a-g](?:#|b)?)(?:\s+(?:major|major chords?|chords?))?$",
         r"^where(?: all)? can i play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?$",
+        r"^where do i play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?(?: on (?:the )?e9)?$",
         r"^where can i find (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?$",
         r"^how do i play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?$",
-        r"^how do i play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)? on e9$",
+        r"^how do i play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)? on (?:the )?e9$",
         r"^how do i plan (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)$",
         r"^how do i make (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?$",
         r"^where is ([a-g](?:#|b)?) major$",
@@ -1975,6 +1978,7 @@ def major_chord_location_request_for_question(question: str) -> MajorChordLocati
         r"^show me (?:more|advanced) ([a-g](?:#|b)?) (?:major )?chord positions$",
         r"^show me ([a-g](?:#|b)?) (?:major )?chord positions with levers$",
         r"^what grips can i use for ([a-g](?:#|b)?) major$",
+        r"^where the the ([a-g](?:#|b)?) chords?$",
     )
     for pattern in patterns:
         match = re.search(pattern, q)

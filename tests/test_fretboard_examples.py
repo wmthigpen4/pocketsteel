@@ -430,6 +430,36 @@ def test_d_major_across_fretboard_position_prompts_are_supported() -> None:
         assert by_id["d-e-lower-5-7-8-3"]["levers"] == ["E"]
 
 
+def test_smoke_ready_chord_position_prompt_variants_are_supported() -> None:
+    cases = [
+        ("How do I play a G chord on the E9?", "G", {"g-open-3", "g-af-6", "g-ab-10"}),
+        ("Where do I play a G chord on the E9?", "G", {"g-open-3", "g-af-6", "g-ab-10"}),
+        ("Where the the G chords?", "G", {"g-open-3", "g-af-6", "g-ab-10"}),
+        ("How do I play an A chord?", "A", {"a-open-5", "a-af-8", "a-ab-12"}),
+        ("How do I play a D chord?", "D", {"d-open-10", "d-af-13", "d-ab-17"}),
+    ]
+
+    for question, expected_key, expected_ids in cases:
+        request = major_chord_location_request_for_question(question)
+        payload = fretboard_payload_for_question(question)
+
+        assert request is not None, question
+        assert request.normalized_key == expected_key
+        assert payload is not None, question
+        assert payload["title"] == f"{expected_key} major positions on E9"
+        assert_valid_visualization_payload(payload)
+        assert expected_ids.issubset({position["id"] for position in payload["positions"]})
+
+
+def test_show_me_the_fretboard_returns_default_e9_reference_payload() -> None:
+    payload = fretboard_payload_for_question("Show me the fretboard")
+
+    assert payload is not None
+    assert payload["title"] == "G major positions on E9"
+    assert_valid_visualization_payload(payload)
+    assert {"g-open-3", "g-af-6", "g-ab-10"}.issubset({position["id"] for position in payload["positions"]})
+
+
 def test_c_sharp_major_position_prompts_are_supported() -> None:
     expected_ids = ["csharp-open-9", "csharp-af-12", "csharp-ab-16"]
 

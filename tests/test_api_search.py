@@ -2570,6 +2570,53 @@ def test_valid_g_and_f_chord_questions_still_return_fretboard_payloads() -> None
     assert_deterministic_fretboard_sources_are_clean(f_payload)
 
 
+def test_smoke_ready_chord_fretboard_prompts_route_deterministically() -> None:
+    cases = [
+        ("How do I play a G chord on the E9?", "G major positions on E9", ("3rd fret", "10th fret")),
+        ("Where do I play a G chord on the E9?", "G major positions on E9", ("3rd fret", "10th fret")),
+        ("Where the the G chords?", "G major positions on E9", ("3rd fret", "10th fret")),
+        ("How do I play an A chord?", "A major positions on E9", ("5th fret", "12th fret")),
+        ("How do I play a D chord?", "D major positions on E9", ("10th fret", "17th fret")),
+        (
+            "How do I play a D chord across the fretboard of the E9?",
+            "D major positions on E9",
+            ("10th fret", "5th fret with A+B pedals", "3rd fret with E-lower"),
+        ),
+    ]
+
+    for question, title, expected_terms in cases:
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert_clean_answer_body(payload)
+        assert "several useful" in payload["answer"] or "starter positions" in payload["answer"]
+        for term in expected_terms:
+            assert term in payload["answer"]
+        assert "I don’t have enough reliable information" not in payload["answer"]
+        assert "If we play an Am7 scale over a D Chord" not in payload["answer"]
+        assert "Essentially one has to use the open D string" not in payload["answer"]
+        assert "[object Object]" not in payload["answer"]
+        assert "fretboard" in payload
+        assert payload["fretboard"]["title"] == title
+        assert_valid_fretboard_payload(payload)
+        assert_deterministic_fretboard_sources_are_clean(payload)
+
+
+def test_show_me_the_fretboard_returns_default_visual_without_retrieval_fragments() -> None:
+    payload = answer_for_question("Show me the fretboard", noisy_practical_sources())
+
+    assert_clean_answer_body(payload)
+    assert payload["answer"].startswith("Here’s a starter standard E9 fretboard view")
+    assert "3rd fret, no pedals" in payload["answer"]
+    assert "6th fret with A pedal + F lever" in payload["answer"]
+    assert "10th fret with A+B pedals" in payload["answer"]
+    assert "I don’t have enough reliable information" not in payload["answer"]
+    assert "[object Object]" not in payload["answer"]
+    assert "fretboard" in payload
+    assert payload["fretboard"]["title"] == "G major positions on E9"
+    assert_valid_fretboard_payload(payload)
+    assert_deterministic_fretboard_sources_are_clean(payload)
+
+
 def test_location_based_g_chord_answer_includes_fretboard_payload() -> None:
     payload = answer_for_question("Where can I play a G chord?", noisy_practical_sources())
 

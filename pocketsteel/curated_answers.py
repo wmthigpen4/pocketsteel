@@ -170,6 +170,19 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
                 "Use this as a simple map before adding more positions or passing chords."
             ),
         )
+    if q in {"show me the fretboard", "show the fretboard", "show me an e9 fretboard", "show me the e9 fretboard"}:
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=(
+                "Here’s a starter standard E9 fretboard view using G major as the reference chord.\n\n"
+                "Start with these common G positions:\n"
+                "- 3rd fret, no pedals: open-position G major.\n"
+                "- 6th fret with A pedal + F lever: A+F G major position.\n"
+                "- 10th fret with A+B pedals: A+B G major position.\n\n"
+                "Use the selector to compare grips and position families. If you want a different map, ask for a chord or key, such as “show me D chord positions on E9.”"
+            ),
+        )
     function_chord_answer = function_chord_answer_for_question(question)
     if function_chord_answer is not None:
         return CuratedAnswer(
