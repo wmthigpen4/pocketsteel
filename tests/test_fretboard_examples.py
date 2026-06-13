@@ -959,6 +959,7 @@ def test_fretboard_payload_for_question_matches_only_mvp_triggers() -> None:
         {position["id"] for position in fretboard_payload_for_question("Where can I play an A chord?")["positions"]}
     )
     assert fretboard_payload_for_question("Where can I play an A major chord?")["title"] == "A major positions on E9"
+    assert fretboard_payload_for_question("How do you play a C chord?")["title"] == "C major positions on E9"
     assert fretboard_payload_for_question("How do I play a C#?")["title"] == "C# major positions on E9"
     assert fretboard_payload_for_question("Show me places to play an A major chord.")["title"] == "A major positions on E9"
     assert fretboard_payload_for_question("Show me places to play a G major chord.")["title"] == "G major positions on E9"

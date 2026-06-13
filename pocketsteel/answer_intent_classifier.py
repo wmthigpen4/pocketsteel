@@ -225,7 +225,7 @@ COPEDENT_RE = re.compile(
 POSITION_LANGUAGE_RE = re.compile(
     r"\b(?:"
     r"where|location|find|show\s+me|places?|positions?|frets?\s+(?:give|for)|"
-    r"how\s+do\s+i\s+(?:play|make)|on\s+(?:the\s+)?e9|pedal\s+steel|from\s+a\s*\+\s*b"
+    r"how\s+do\s+(?:i|you)\s+(?:play|make)|on\s+(?:the\s+)?e9|pedal\s+steel|from\s+a\s*\+\s*b"
     r")\b",
     re.I,
 )
@@ -237,7 +237,7 @@ CONCRETE_CHORD_RE = re.compile(
 )
 VISUAL_POSITION_RE = re.compile(
     r"\b(?:"
-    r"where\s+(?:are|is|can|all|should|does)|"
+    r"where\s+(?:are|is|can|all|should|does|do)|"
     r"show(?:\s+me)?|"
     r"find|"
     r"location|"
@@ -577,7 +577,7 @@ def _mentions_visual_position(question: str) -> bool:
         or CONCRETE_CHORD_RE.search(question)
     ):
         return True
-    if re.search(r"\bhow\s+do\s+i\s+(?:play|make)\b", question) and CONCRETE_CHORD_RE.search(question):
+    if re.search(r"\bhow\s+do\s+(?:i|you)\s+(?:play|make)\b", question) and CONCRETE_CHORD_RE.search(question):
         return True
     if re.search(r"\b(?:what\s+frets?|frets?\s+give)\b", question) and CONCRETE_CHORD_RE.search(question):
         return True

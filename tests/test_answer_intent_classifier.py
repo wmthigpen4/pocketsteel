@@ -404,7 +404,11 @@ def test_non_position_steel_questions_do_not_request_fretboard() -> None:
 def test_explicit_position_questions_request_fretboard() -> None:
     for question in (
         "Where are my G chord positions?",
+        "How do you play a C chord?",
+        "How do I play a C chord?",
+        "Where do I play a C chord?",
         "Show me C positions on E9.",
+        "Show me C chord positions.",
         "Where are my 1-3-5 grips?",
         "Show A+B positions for the IV chord.",
         "What frets give me a G chord?",

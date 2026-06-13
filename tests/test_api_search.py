@@ -2534,6 +2534,13 @@ def test_position_questions_can_still_return_fretboard_payloads() -> None:
     for question, title in [
         ("Where can I play a G chord?", "G major positions on E9"),
         ("Where can I play a C chord?", "C major positions on E9"),
+        ("How do you play a C chord?", "C major positions on E9"),
+        ("How do I play a C chord?", "C major positions on E9"),
+        ("Where do I play a C chord?", "C major positions on E9"),
+        ("Show me C chord positions.", "C major positions on E9"),
+        ("How do you play a G chord?", "G major positions on E9"),
+        ("How do you play an A chord?", "A major positions on E9"),
+        ("How do you play a D chord?", "D major positions on E9"),
     ]:
         search_index = FakeSearchIndex({"results": noisy_practical_sources(), "warnings": ["should not appear"]})
 
@@ -2551,6 +2558,12 @@ def test_position_questions_can_still_return_fretboard_payloads() -> None:
         assert payload["warnings"] == []
         assert payload["fretboard"]["title"] == title
         assert_valid_fretboard_payload(payload)
+
+    theory = answer_for_question("What is a C chord?", noisy_practical_sources())
+    assert "C-E-G" in theory["answer"]
+    assert theory["sources"] == []
+    assert theory["warnings"] == []
+    assert "fretboard" not in theory
 
 
 def test_scope_guardrail_for_large_output_and_off_domain_prompts() -> None:
