@@ -259,6 +259,24 @@ def test_quality_eval_flags_source_fragments_for_suffixless_chord_position_quest
     assert "missing_deterministic_chord_route" in keys
 
 
+def test_quality_eval_flags_plan_typo_chord_position_fallback_fragments() -> None:
+    result = evaluate_quality_result(
+        row(question="How do I plan an F chord?", category="e9_fretboard_copedent", expected_contract="copedent_fretboard"),
+        status_code=200,
+        payload=payload(
+            (
+                "Other chords based on an A root might also work with an F chord. "
+                "F#7 > B7 > E7 > A7 comes from a Mel Bay chord chart."
+            )
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "fail"
+    assert "chord_position_typo_fallback_failure" in keys
+    assert "missing_deterministic_chord_route" in keys
+
+
 def test_quality_eval_flags_source_fragments_for_b_chord_position_question() -> None:
     result = evaluate_quality_result(
         row(question="Where all can I play a B chord?", category="e9_fretboard_copedent", expected_contract="copedent_fretboard"),
@@ -332,6 +350,51 @@ def test_quality_eval_flags_weak_source_language_for_chord_position_question() -
     assert result.outcome == "fail"
     assert "missing_deterministic_chord_route" in keys
     assert "deterministic_chord_weak_warning" in keys
+
+
+def test_quality_eval_flags_chord_position_typo_fallback_failure() -> None:
+    result = evaluate_quality_result(
+        row(question="How do I plan an F chord?", category="e9_fretboard_copedent", expected_contract="copedent_fretboard"),
+        status_code=200,
+        payload=payload(
+            (
+                "Source support was weak, but a forum fragment says to plan around whatever F chord sounds right. "
+                "Use the source cards for the rest."
+            ),
+            sources=[source_card()],
+            warnings=["curated answer used; source support was weak"],
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "fail"
+    assert "chord_position_typo_fallback_failure" in keys
+    assert "missing_fretboard_payload_for_chord_position" in keys
+    assert "missing_deterministic_chord_route" in keys
+    assert "deterministic_chord_weak_warning" in keys
+    assert "deterministic_chord_source_leakage" in keys
+
+
+def test_quality_eval_passes_clean_f_chord_typo_position_answer() -> None:
+    result = evaluate_quality_result(
+        row(question="How do I plan an F chord?", category="e9_fretboard_copedent", expected_contract="copedent_fretboard"),
+        status_code=200,
+        payload=payload(
+            (
+                "On standard E9, useful F major positions include the 1st fret with no pedals, "
+                "the 4th fret with A pedal + F lever, and the 8th fret with A+B pedals. "
+                "Use grips 4-5-6, 3-4-5, or 6-8-10 and move between the positions slowly."
+            ),
+            sources=[],
+            fretboard=fretboard_payload("F", (1, 4, 8)),
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "pass"
+    assert "chord_position_typo_fallback_failure" not in keys
+    assert "missing_fretboard_payload_for_chord_position" not in keys
+    assert "missing_deterministic_chord_route" not in keys
 
 
 def test_quality_eval_flags_starter_only_b_payload_and_missing_alternate() -> None:

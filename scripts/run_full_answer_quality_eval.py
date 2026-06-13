@@ -66,6 +66,7 @@ DETERMINISTIC_CHORD_POSITION_FAILURE_BUCKETS = {
     "object_object_rendering_failure",
     "deterministic_chord_weak_warning",
     "deterministic_chord_source_leakage",
+    "chord_position_typo_fallback_failure",
 }
 
 Outcome = Literal["pass", "warn", "fail"]
@@ -110,12 +111,13 @@ SONG_GUARDRAIL_RE = re.compile(r"\b(?:approach|style|chord|progression|public do
 PRIVATE_PROFILE_RE = re.compile(r"\b(?:your saved 10-string E9 profile|your private|my common grips|your E9 copedent)\b", re.I)
 SENSITIVE_IDENTITY_RE = re.compile(r"\b(?:gay|identity|private trait|orientation|race|religion|medical)\b", re.I)
 CHORD_POSITION_LOCATION_RE = re.compile(
-    r"\b(?:where\s+(?:all\s+)?can\s+i\s+play|where\s+can\s+i\s+find|how\s+do\s+i\s+play|"
+    r"\b(?:where\s+(?:all\s+)?can\s+i\s+play|where\s+can\s+i\s+find|how\s+do\s+i\s+play|how\s+do\s+i\s+plan|"
     r"how\s+do\s+i\s+make|show\s+me(?:\s+places\s+to\s+play)?|where\s+are|where\s+is|what\s+frets\s+give\s+me)\b"
     r".*?\b(?:an?\s+)?(?P<key>[A-G](?:#|b)?)(?:\s+(?:major\s+)?(?:chord|positions?)|\s+major\b|\b)",
     re.I,
 )
 GRIP_POSITION_LOCATION_RE = re.compile(r"\bwhat\s+grips\s+can\s+i\s+use\s+for\s+(?P<key>[A-G](?:#|b)?)\s+major\b", re.I)
+CHORD_POSITION_TYPO_RE = re.compile(r"\bhow\s+do\s+i\s+plan\s+(?:an?\s+)?(?P<key>[A-G](?:#|b)?)(?:\s+(?:major\s+)?chord)?\b", re.I)
 KEYED_MAJOR_CHORD_RE = re.compile(r"\b(?P<key>[A-G](?:#|b)?)\s+(?:major|chord)\b", re.I)
 DOMINANT_SEVENTH_CHORD_RE = re.compile(r"\b(?P<key>[A-G](?:#|b)?)7\b", re.I)
 DOMINANT_CONTEXT_RE = re.compile(
@@ -143,6 +145,14 @@ WEAK_SOURCE_CHORD_ROUTE_RE = re.compile(
 )
 E_LOWER_578_B9_QUESTION_RE = re.compile(
     r"(?=.*\b5\s*[-/ ]\s*7\s*[-/ ]\s*8\b)(?=.*\bE[- ]?lower(?:ed)?\b)(?=.*\bB9\b)",
+    re.I,
+)
+E_LOWER_578_DIAGNOSTIC_QUESTION_RE = re.compile(
+    r"(?=.*\b5\s*[-/ ]\s*7\s*[-/ ]\s*8\b)(?=.*\bE[- ]?lower(?:ed)?\b)(?=.*\b(?:at|on)\s+(?:the\s+)?\d{1,2}(?:st|nd|rd|th)?\s+fret\b)",
+    re.I,
+)
+FUNCTIONAL_POCKET_QUESTION_RE = re.compile(
+    r"\b(?:show me|where are|give me)\s+(?:v|5|five)(?:\s+chord)?\s+pockets?\s+in\s+[A-G](?:#|b)?\b",
     re.I,
 )
 B9_NEGATION_RE = re.compile(
@@ -268,6 +278,19 @@ def requested_chord_position_request(question: str) -> Any | None:
 
 def is_deterministic_chord_position_question(question: str) -> bool:
     return requested_chord_position_request(question) is not None
+
+
+def is_chord_position_typo_question(question: str) -> bool:
+    return bool(CHORD_POSITION_TYPO_RE.search(question or ""))
+
+
+def is_deterministic_pitch_rule_question(question: str) -> bool:
+    return bool(
+        is_deterministic_chord_position_question(question)
+        or E_LOWER_578_DIAGNOSTIC_QUESTION_RE.search(question or "")
+        or E_LOWER_578_B9_QUESTION_RE.search(question or "")
+        or FUNCTIONAL_POCKET_QUESTION_RE.search(question or "")
+    )
 
 
 def requested_chord_position_key(question: str) -> str:
@@ -451,6 +474,7 @@ def evaluate_deterministic_chord_position_response(
     request = requested_chord_position_request(question)
     if request is None:
         return
+    typo_question = is_chord_position_typo_question(question)
     if not answer_mentions_required_major_positions(answer, request.normalized_key):
         add_finding(
             findings,
@@ -458,6 +482,13 @@ def evaluate_deterministic_chord_position_response(
             "missing_deterministic_chord_route",
             f"{request.normalized_key} chord-position answer did not route to deterministic E9 frets",
         )
+        if typo_question:
+            add_finding(
+                findings,
+                "fail",
+                "chord_position_typo_fallback_failure",
+                "typo chord-position answer did not route to deterministic E9 frets",
+            )
     if WEAK_SOURCE_CHORD_ROUTE_RE.search(answer) or any(WEAK_SOURCE_CHORD_ROUTE_RE.search(warning) for warning in warnings):
         add_finding(
             findings,
@@ -471,6 +502,13 @@ def evaluate_deterministic_chord_position_response(
             "deterministic_chord_weak_warning",
             "deterministic chord-position answer exposed weak-source warning language",
         )
+        if typo_question:
+            add_finding(
+                findings,
+                "fail",
+                "chord_position_typo_fallback_failure",
+                "typo chord-position answer exposed weak-source fallback language",
+            )
     if "[object Object]" in answer:
         add_finding(
             findings,
@@ -485,6 +523,13 @@ def evaluate_deterministic_chord_position_response(
             "missing_fretboard_payload_for_chord_position",
             "deterministic chord-position answer did not include response.fretboard",
         )
+        if typo_question:
+            add_finding(
+                findings,
+                "fail",
+                "chord_position_typo_fallback_failure",
+                "typo chord-position answer did not include response.fretboard",
+            )
     elif not fretboard_payload_has_expected_chord_positions(payload, request.normalized_key):
         add_finding(
             findings,
@@ -492,6 +537,13 @@ def evaluate_deterministic_chord_position_response(
             "missing_fretboard_payload_for_chord_position",
             "response.fretboard did not contain the expected deterministic chord positions",
         )
+        if typo_question:
+            add_finding(
+                findings,
+                "fail",
+                "chord_position_typo_fallback_failure",
+                "typo chord-position fretboard omitted expected positions",
+            )
     positions = fretboard_positions(payload)
     if positions and not all(position_has_required_filter_metadata(position) for position in positions):
         add_finding(
@@ -527,6 +579,13 @@ def evaluate_deterministic_chord_position_response(
             "fail",
             "deterministic_chord_source_leakage",
             "deterministic chord-position answer returned SGF source cards",
+        )
+    if typo_question and sources:
+        add_finding(
+            findings,
+            "fail",
+            "chord_position_typo_fallback_failure",
+            "typo chord-position answer returned source cards instead of a deterministic no-source answer",
         )
 
 
@@ -567,7 +626,7 @@ def evaluate_source_cards(
     findings: list[QualityFinding],
 ) -> None:
     if not sources:
-        if is_deterministic_chord_position_question(row.get("question", "")):
+        if is_deterministic_pitch_rule_question(row.get("question", "")):
             return
         if fallback_expected(row):
             add_finding(findings, "warn", "no_source_fallback", "answer used fallback/no-source path; review fallback quality")

@@ -46,6 +46,10 @@ def test_question_bank_has_large_representative_set() -> None:
             "What does 5-7-8 with E lowered give me at the 3rd fret?",
             "Is 5-7-8 with E lowered a B9 pocket?",
             "Show me V chord pockets in A.",
+            "How do I plan an F chord?",
+            "How do I play an F chord?",
+            "How do I make an F chord?",
+            "Where can I play an F chord?",
         }
     }
     assert set(a_position_questions) == {
@@ -63,13 +67,15 @@ def test_question_bank_has_large_representative_set() -> None:
         "What does 5-7-8 with E lowered give me at the 3rd fret?",
         "Is 5-7-8 with E lowered a B9 pocket?",
         "Show me V chord pockets in A.",
+        "How do I plan an F chord?",
+        "How do I play an F chord?",
+        "How do I make an F chord?",
+        "Where can I play an F chord?",
     }
     assert all(row["category"] == "e9_fretboard_copedent" for row in a_position_questions.values())
-    assert a_position_questions["Is 5-7-8 with E lowered a B9 pocket?"]["expected_contract"] == ""
     assert all(
         row["expected_contract"] == "copedent_fretboard"
-        for question, row in a_position_questions.items()
-        if question != "Is 5-7-8 with E lowered a B9 pocket?"
+        for row in a_position_questions.values()
     )
     chord_fuzz_rows = [row for row in questions if row["id"].startswith("CF")]
     assert len(chord_fuzz_rows) == 64
