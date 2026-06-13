@@ -56,6 +56,7 @@ COMMON_FORBIDDEN: tuple[tuple[str, str], ...] = (
     ("orphan Practical answer heading", r"(?m)^\s*Practical answer\s*:?\s*$"),
     ("duplicate answer headings", r"(?s)(?m)^\s*Answer\s*:?\s*$.*^\s*Practical answer\s*:?\s*$"),
     ("forum question fragment", r"\b(?:Does anyone know|Has anyone compared|I am looking for tablature)\b"),
+    ("forum chatter fragment", r"\b(?:which someone else is probably playing|I may be learning)\b"),
     ("inline citation marker", r"\[\d+\]"),
     ("obvious source typo", r"\b(?:tje|teh)\b"),
 )
@@ -436,6 +437,48 @@ CONTRACTS: dict[str, AnswerContract] = {
     ),
 }
 
+CONTRACTS.update(
+    {
+        "scope_guardrail": AnswerContract(
+            intent="scope_guardrail",
+            forbidden_answer_patterns=COMMON_FORBIDDEN,
+            fallback_answer=(
+                "That request is outside Steel Guitar RAG’s scope. "
+                "Try asking about E9 positions, grips, pedals/levers, tone, gear, blocking, bar movement, practice plans, or steel-guitar forum wisdom."
+            ),
+        ),
+        "technique_coach": AnswerContract(
+            intent="technique_coach",
+            required_answer_elements=(("practical technique guidance", r"\b(?:drill|practice|listen|strings?|fret|grip|bar|blocking|pedal)\b"),),
+            forbidden_answer_patterns=COMMON_FORBIDDEN,
+            fallback_answer="Use one small E9 technique drill: pick a grip, slow it down, block cleanly after each note, and listen for even timing.",
+        ),
+        "fretboard_concept": AnswerContract(
+            intent="fretboard_concept",
+            required_answer_elements=(("steel fretboard concept", r"\b(?:E9|fret|pedal|lever|grip|chord|interval|position)\b"),),
+            forbidden_answer_patterns=COMMON_FORBIDDEN,
+            fallback_answer="Think of the E9 neck as related position families: open/no-pedals, A+B, A+F, and E-lower colors.",
+        ),
+        "movement_from_position": AnswerContract(
+            intent="movement_from_position",
+            required_answer_elements=(("position movement", r"\b(?:A\+B|open|A\+F|E-lower|fret|position|move)\b"),),
+            forbidden_answer_patterns=COMMON_FORBIDDEN,
+            fallback_answer="Choose the next E9 move by chord function: open/no-pedals, A+B, A+F, or E-lower, then keep the grip simple.",
+        ),
+        "missing_context_clarifier": AnswerContract(
+            intent="missing_context_clarifier",
+            required_answer_elements=(("missing context", r"\b(?:chord|key|fret|strings?|grip|pedals?|levers?)\b"),),
+            forbidden_answer_patterns=COMMON_FORBIDDEN,
+            fallback_answer="I need the chord or key, fret, strings or grip, and pedals/levers before I can answer that accurately.",
+        ),
+        "copedent_mismatch_guardrail": AnswerContract(
+            intent="copedent_mismatch_guardrail",
+            forbidden_answer_patterns=COMMON_FORBIDDEN,
+            fallback_answer="That does not match the current 10-string E9 setup I can safely reason about, so I would verify the copedent before mapping it.",
+        ),
+    }
+)
+
 
 INTENT_ALIASES = {
     "player_history": "subjective_ranking",
@@ -475,6 +518,8 @@ def contract_for_intent(intent: str | None) -> AnswerContract:
 
 def infer_contract_intent(question: str, mode: str = "ask") -> str:
     q = re.sub(r"\s+", " ", question or "").strip().lower()
+    if _mentions_scope_guardrail(q):
+        return "scope_guardrail"
     if re.search(r"\b(?:gay people|gay players|lgbtq|sexual orientation)\b", q):
         return "sensitive_identity"
     if re.search(r"\bwho\s+plays\s+for\s+[a-z0-9'. -]+\??$", q):
@@ -507,6 +552,16 @@ def infer_contract_intent(question: str, mode: str = "ask") -> str:
         return "gig_advice"
     if "emergency" in q and "gig" in q and "kit" in q:
         return "gig_advice"
+    if re.search(r"\b(?:this\s+(?:position|chord|grip|move|lick)|that\s+(?:position|chord|grip|move|lick)|from\s+here)\b", q):
+        return "missing_context_clarifier"
+    if re.search(r"\bclassic\s+country\s+move\b|\bclean\s+up\s+my\s+blocking\b|\bbar\s+movement\b|\bslides?\s+sound\s+smoother\b|\bvolume\s+pedal\s+sounds\s+jumpy\b|\bsound\s+less\s+busy\b|\boverplaying\s+fills?\b", q):
+        return "technique_coach"
+    if "practice rut" in q or "rut breaker" in q or re.search(r"\b(?:7[-\s]?day|10[-\s]?minute|20[-\s]?minute|25[-\s]?minute).*\bpractice\b", q):
+        return "practice_plan"
+    if re.search(r"\b(?:better way to think about the neck|stop getting lost on the fretboard|connect open position|iv from open position|minor walkdown from a\+b)\b", q):
+        return "fretboard_concept"
+    if re.search(r"\b(?:where should i go after a\+b|where do i go after a\+b|after a\+b)\b", q):
+        return "movement_from_position"
     if "what should i practice" in q or "practice plan" in q or "practice routine" in q or mode == "practice":
         return "practice_plan"
     if re.search(r"\bwhere\s+can\s+i\s+buy\b|\bwhat\s+brands\s+make\b", q):
@@ -636,6 +691,15 @@ def _mentions_song_learning_or_tab(question: str) -> bool:
         or re.search(r"\b(?:approach playing|explain the style of|chord progression|original e9 lick|song arrangement)\b", question)
         or re.search(r"\b(?:play a song|teach me how to play anything specific)\b", question)
         or re.search(r"\b(?:panhandle rag|together again|amazing grace|slow country ballad)\b", question)
+    )
+
+
+def _mentions_scope_guardrail(question: str) -> bool:
+    return bool(
+        re.search(r"\ball\s+(?:of\s+)?(?:the\s+)?numbers?\s+between\s+\d[\d,]*\s+(?:and|to)\s+\d[\d,]*\b", question)
+        or re.search(r"\b(?:numbers?|integers?)\s+from\s+\d[\d,]*\s+(?:to|through)\s+\d[\d,]*\b", question)
+        or re.search(r"\b(?:write|repeat|print|list|show)\b.*\b(?:word|phrase|steel guitar|numbers?)\b.*?\d[\d,]*\s+times\b", question)
+        or re.search(r"\b(?:weather\s+in|capital\s+of|recipe\s+for|who\s+won\s+the\s+super\s+bowl|super\s+bowl\s+winner)\b", question)
     )
 
 

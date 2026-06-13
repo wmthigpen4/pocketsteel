@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import logging
 import json
+import subprocess
 from collections.abc import Iterable
 from datetime import datetime, timezone
 from pathlib import Path
@@ -130,6 +131,11 @@ class RetrievalApi:
     def __call__(self, environ: dict[str, Any], start_response: Any) -> Iterable[bytes]:
         method = environ.get("REQUEST_METHOD", "GET")
         path = environ.get("PATH_INFO", "")
+
+        if path == "/api/version":
+            if method != "GET":
+                return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"})
+            return self._json_response(start_response, "200 OK", self._version_payload())
 
         if path == "/api/search":
             if method != "GET":
@@ -614,6 +620,30 @@ class RetrievalApi:
             return ""
         digest = hashlib.sha256(f"steel-rag-access:{normalized}".encode("utf-8")).hexdigest()
         return f"email_sha256:{digest}"
+
+    def _version_payload(self) -> dict[str, Any]:
+        return {
+            "git_sha": self._git_value("rev-parse", "--short", "HEAD"),
+            "git_branch": self._git_value("branch", "--show-current"),
+            "server_started_at": datetime.now(timezone.utc).isoformat(),
+            "python_module": "pocketsteel.api",
+            "retrieval_mode": self.retrieval_config.requested_mode.value,
+            "auth_provider": self.auth_provider,
+        }
+
+    @staticmethod
+    def _git_value(*args: str) -> str:
+        try:
+            result = subprocess.run(
+                ("git", *args),
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=2,
+            )
+        except Exception:
+            return "unknown"
+        return result.stdout.strip() or "unknown"
 
     @staticmethod
     def _json_response(start_response: Any, status: str, payload: dict[str, Any]) -> list[bytes]:

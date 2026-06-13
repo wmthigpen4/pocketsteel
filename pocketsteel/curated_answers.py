@@ -6,6 +6,7 @@ import re
 from dataclasses import dataclass
 from typing import Literal
 
+from pocketsteel.basic_chord_answers import basic_chord_theory_answer_for_question, chord_change_answer_for_question
 from pocketsteel.curated_source_registry import slide_bar_vendor_bullets
 from pocketsteel.fretboard_examples import (
     chord_concept_answer_for_question,
@@ -134,6 +135,23 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
             confidence="curated_high",
             answer=rootless_quality_answer,
         )
+    basic_theory_answer = basic_chord_theory_answer_for_question(question)
+    if basic_theory_answer is not None:
+        return CuratedAnswer(
+            intent="fretboard_concept",
+            confidence="curated_high",
+            answer=basic_theory_answer,
+        )
+    chord_change_answer = chord_change_answer_for_question(question)
+    if chord_change_answer is not None:
+        return CuratedAnswer(
+            intent="fretboard_concept",
+            confidence="curated_high",
+            answer=chord_change_answer,
+        )
+    unknown_identity_answer = unknown_identity_guardrail_answer(q)
+    if unknown_identity_answer is not None:
+        return unknown_identity_answer
     symbol_guardrail_answer = chord_symbol_guardrail_answer_for_question(question)
     if symbol_guardrail_answer is not None:
         return CuratedAnswer(
@@ -1196,6 +1214,10 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
     if player_bio is not None:
         return player_bio
 
+    unknown_identity_answer = unknown_identity_guardrail_answer(q)
+    if unknown_identity_answer is not None:
+        return unknown_identity_answer
+
     if mentions_company_status(q):
         return CuratedAnswer(
             intent="current_entity_status",
@@ -1710,6 +1732,35 @@ def player_bio_answer(question: str) -> CuratedAnswer | None:
                 answer=answer,
             )
     return None
+
+
+def unknown_identity_guardrail_answer(question: str) -> CuratedAnswer | None:
+    normalized = re.sub(r"\s+", " ", question or "").strip().lower().rstrip("?!.")
+    if re.search(r"^who\s+is\s+<[^>]+>$", normalized) or re.search(
+        r"\b(?:private_person|private person|placeholder|redacted)\b", normalized
+    ):
+        return CuratedAnswer(
+            intent="sensitive_identity",
+            confidence="curated_high",
+            answer=(
+                "I can answer steel-guitar topics, public players, gear, and technique, "
+                "but I should not infer a private or unknown person’s identity from forum snippets."
+            ),
+        )
+    if not re.search(r"^who\s+is\s+[a-z][a-z'. -]{1,60}$", normalized):
+        return None
+    if any(name in normalized for name in PLAYER_BIOS):
+        return None
+    if re.search(r"\b(?:shania|twain|band|tour|lineup|roster)\b", normalized):
+        return None
+    return CuratedAnswer(
+        intent="sensitive_identity",
+        confidence="curated_high",
+        answer=(
+            "I can answer steel-guitar topics, public players, gear, and technique, "
+            "but I should not infer a private or unknown person’s identity from forum snippets."
+        ),
+    )
 
 
 def mentions_g_chord_sixth_fret(question: str) -> bool:

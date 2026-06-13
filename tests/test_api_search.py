@@ -2875,9 +2875,9 @@ def test_deterministic_fretboard_regressions_still_beat_intent_mode() -> None:
     concept = answer_for_question("What's a G chord even mean?", noisy_practical_sources())
     assert_clean_answer_body(concept)
     assert "G major chord means the notes G-B-D" in concept["answer"]
-    assert "fretboard" in concept
-    assert_valid_fretboard_payload(concept)
-    assert_deterministic_fretboard_sources_are_clean(concept)
+    assert "fretboard" not in concept
+    assert concept["sources"] == []
+    assert concept["warnings"] == []
 
     location = answer_for_question("Where is a G chord?", noisy_practical_sources())
     assert_clean_answer_body(location)
@@ -3006,6 +3006,86 @@ def test_rootless_chord_quality_questions_are_teacher_first_and_source_free() ->
         assert payload["warnings"] == []
 
 
+def test_major_seventh_questions_are_teacher_first_and_source_free() -> None:
+    for question in ("How do I play a Fmaj7?", "How do I play an F major 7th?", "What is Fmaj7?"):
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert_clean_answer_body(payload)
+        assert "Fmaj7 is F-A-C-E" in payload["answer"]
+        assert "root, major 3rd, perfect 5th, and major 7th" in payload["answer"]
+        assert "does not yet claim exact major-7 positions" in payload["answer"]
+        assert "fretboard" not in payload
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+
+
+def test_chord_change_questions_are_teacher_first_and_source_free() -> None:
+    cases = {
+        "What is a chord change?": "moves from one chord to another",
+        "What does chord change mean?": "G -> C -> D -> G",
+        "What is a chord progression?": "ordered sequence of chord changes",
+    }
+    for question, expected in cases.items():
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert_clean_answer_body(payload)
+        assert expected in payload["answer"]
+        assert "fretboard" not in payload
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+
+
+def test_suspended_chord_punctuation_variants_are_teacher_first_and_source_free() -> None:
+    for question in ("How do I play a B-sus chord/", "How do I play a B sus chord?", "How do I play Bsus?"):
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert_clean_answer_body(payload)
+        assert "Bsus4 is a B suspended chord" in payload["answer"]
+        assert "B-E-F#" in payload["answer"]
+        assert "root, 4th, and perfect 5th" in payload["answer"]
+        assert "fretboard" not in payload
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+
+
+def test_unknown_person_identity_questions_do_not_retrieve_random_fragments() -> None:
+    noisy_person_sources = [
+        {
+            "score": 0.9,
+            "excerpt": "Top does anyone know this person from an unrelated forum thread?",
+            "forum_name": "Steel Players",
+            "thread_title": "Unrelated person chatter",
+            "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=450202",
+            "chunk_id": "chunk-private-person",
+            "post_uid": "p-private-person",
+            "source_system": "sgf_phpbb_current",
+        }
+    ]
+    for question in ("Who is Private Example?", "Who is Example Person?", "Who is <PRIVATE_PERSON_PLACEHOLDER>?"):
+        payload = answer_for_question(question, noisy_person_sources)
+
+        assert_clean_answer_body(payload)
+        assert "should not infer a private or unknown person’s identity" in payload["answer"]
+        assert "Top does anyone know" not in payload["answer"]
+        assert "fretboard" not in payload
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+
+
+def test_primary_answer_gate_rejects_named_sgf_chatter_fragments() -> None:
+    noisy = (
+        "Which someone else is probably playing, and I MAY BE LEARNING this from a random forum reply. "
+        "Top Hi All."
+    )
+
+    cleaned = final_answer_quality_gate(noisy, "What is a G chord?")
+
+    assert "which someone else is probably playing" not in cleaned.lower()
+    assert "i may be learning" not in cleaned.lower()
+    assert "Top Hi All" not in cleaned
+    assert "G-B-D" in cleaned
+
+
 def test_rooted_unsupported_chord_quality_questions_explain_tones_without_forum_fragments() -> None:
     cases = {
         "How do I play Gdim on E9?": ("G diminished", "root, flat 3rd, and flat 5th"),
@@ -3014,6 +3094,7 @@ def test_rooted_unsupported_chord_quality_questions_explain_tones_without_forum_
         "How do I play Dsus2 on E9?": ("D sus2", "sus2 = root, 2nd, 5th"),
         "How do I play G7 on E9?": ("G dominant 7", "root, major 3rd, perfect 5th, and flat 7th"),
         "How do I play D7 on E9?": ("D dominant 7", "D7 is the V7 chord"),
+        "How do I play Fmaj7 on E9?": ("F major 7", "root, major 3rd, perfect 5th, and major 7th"),
     }
 
     for question, expected_phrases in cases.items():
@@ -3201,19 +3282,19 @@ def test_product_red_team_practice_and_fretboard_concept_cluster() -> None:
 def test_product_red_team_deterministic_beginner_and_ab_in_g_visuals() -> None:
     notes = answer_for_question("What notes are in D?", noisy_home_prompt_sources())
     assert_clean_answer_body(notes)
-    assert "D major chord means the notes D-F#-A" in notes["answer"]
+    assert "D major chord is D-F#-A" in notes["answer"]
     assert "root, major 3rd, and perfect 5th" in notes["answer"]
-    assert "fretboard" in notes
-    assert_valid_fretboard_payload(notes)
-    assert_deterministic_fretboard_sources_are_clean(notes)
+    assert "fretboard" not in notes
+    assert notes["sources"] == []
+    assert notes["warnings"] == []
 
     minor = answer_for_question("What makes E minor minor?", noisy_home_prompt_sources())
     assert_clean_answer_body(minor)
     assert "E minor chord means the notes E-G-B" in minor["answer"]
     assert "minor 3rd" in minor["answer"]
-    assert "fretboard" in minor
-    assert_valid_fretboard_payload(minor)
-    assert_deterministic_fretboard_sources_are_clean(minor)
+    assert "fretboard" not in minor
+    assert minor["sources"] == []
+    assert minor["warnings"] == []
 
     vi = answer_for_question("What is the vi chord in G?", noisy_home_prompt_sources())
     assert_clean_answer_body(vi)
@@ -3322,7 +3403,7 @@ def test_location_based_g_chord_answer_includes_fretboard_payload() -> None:
     assert_deterministic_fretboard_sources_are_clean(payload)
 
 
-def test_beginner_g_chord_concept_question_uses_deterministic_theory_and_fretboard_payload() -> None:
+def test_beginner_g_chord_concept_question_uses_source_free_theory_without_fretboard() -> None:
     payload = answer_for_question(
         "What's a G chord even mean?",
         [
@@ -3340,10 +3421,6 @@ def test_beginner_g_chord_concept_question_uses_deterministic_theory_and_fretboa
     )
 
     assert_clean_answer_body(payload)
-    assert "fretboard" in payload
-    assert_valid_fretboard_payload(payload)
-    assert payload["fretboard"]["title"] == "G major positions on E9"
-    assert visible_fretboard_ids(payload) == ["g-open-3", "g-af-6", "g-ab-10"]
     assert "A G major chord means the notes G-B-D" in payload["answer"]
     assert "root, major 3rd, and perfect 5th" in payload["answer"]
     assert "On E9, common G major starter positions include" in payload["answer"]
@@ -3351,26 +3428,27 @@ def test_beginner_g_chord_concept_question_uses_deterministic_theory_and_fretboa
     assert "10th fret" in payload["answer"]
     assert "Top" not in payload["answer"]
     assert "open strings" not in payload["answer"].lower()
-    assert_deterministic_fretboard_sources_are_clean(payload)
+    assert "fretboard" not in payload
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
 
 
-def test_beginner_chord_meaning_and_note_questions_use_deterministic_payloads() -> None:
+def test_basic_chord_definition_questions_use_source_free_theory_without_fretboard() -> None:
     cases = [
-        ("What does a C chord mean?", "C major positions on E9", "C-E-G", ["c-open-8", "c-af-11", "c-ab-15"]),
-        ("What notes are in a D chord?", "D major positions on E9", "D-F#-A", ["d-open-10", "d-af-13", "d-ab-17"]),
+        ("What is a G chord?", "G-B-D"),
+        ("What does a C chord mean?", "C-E-G"),
+        ("What notes are in a D chord?", "D-F#-A"),
     ]
-    for question, title, spelling, visible_ids in cases:
+    for question, spelling in cases:
         payload = answer_for_question(question, noisy_practical_sources())
 
         assert_clean_answer_body(payload)
-        assert "fretboard" in payload, question
-        assert_valid_fretboard_payload(payload)
-        assert payload["fretboard"]["title"] == title
-        assert visible_fretboard_ids(payload) == visible_ids
         assert spelling in payload["answer"]
         assert "root, major 3rd, and perfect 5th" in payload["answer"]
-        assert "On E9" in payload["answer"]
-        assert_deterministic_fretboard_sources_are_clean(payload)
+        assert "source" not in payload["answer"].lower()
+        assert "fretboard" not in payload
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
 
 
 def test_where_is_and_show_me_g_variants_use_deterministic_fretboard_payloads() -> None:
@@ -3386,22 +3464,16 @@ def test_where_is_and_show_me_g_variants_use_deterministic_fretboard_payloads() 
         assert_deterministic_fretboard_sources_are_clean(payload)
 
 
-def test_e_minor_chord_concept_question_explains_minor_third_and_returns_payload() -> None:
+def test_e_minor_chord_concept_question_explains_minor_third_without_fretboard() -> None:
     payload = answer_for_question("What makes an E minor chord minor?", noisy_practical_sources())
 
     assert_clean_answer_body(payload)
-    assert "fretboard" in payload
-    assert_valid_fretboard_payload(payload)
-    assert payload["fretboard"]["title"] == "E minor positions on E9"
-    assert visible_fretboard_ids(payload) == [
-        "e-minor-a_pedal_minor-4-5-6-3",
-        "e-minor-e_lower_minor-4-5-6-8",
-        "e-minor-b_c_minor-4-5-6-10",
-    ]
     assert "An E minor chord means the notes E-G-B" in payload["answer"]
     assert "root, minor 3rd, and perfect 5th" in payload["answer"]
     assert "lowered 3rd" in payload["answer"]
-    assert_deterministic_fretboard_sources_are_clean(payload)
+    assert "fretboard" not in payload
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
 
 
 def test_vi_chord_question_uses_deterministic_function_route() -> None:

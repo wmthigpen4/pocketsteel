@@ -12,7 +12,12 @@ from typing import Any, Literal, Protocol, cast
 
 from pocketsteel.api_contract import AnswerMode, SourceCitation
 
+from pocketsteel.basic_chord_answers import basic_chord_theory_answer_for_question, chord_change_answer_for_question
 from pocketsteel.curated_source_registry import answer_contains_unapproved_url, is_approved_curated_url, slide_bar_vendor_bullets
+from pocketsteel.fretboard_examples import (
+    generic_chord_concept_answer_for_question,
+    rootless_chord_quality_answer_for_question,
+)
 from pocketsteel.steel_rules import answer_from_rules
 from pocketsteel.text import shorten
 from pocketsteel.user_copedent import (
@@ -653,6 +658,8 @@ def classify_source_sentence(sentence: str) -> str:
     lowered = stripped.lower()
     if re.search(r"\b(?:gay|fag|retard)\b", lowered):
         return "unsafe_or_offensive"
+    if re.search(r"\b(?:which someone else is probably playing|i may be learning)\b", lowered):
+        return "forum_boilerplate"
     if is_low_value_sentence(stripped):
         return "forum_boilerplate"
     if any(pattern.search(stripped) for pattern in QUESTION_FRAGMENT_PATTERNS):
@@ -1326,6 +1333,8 @@ def answer_has_quality_issue(answer: str, *, allow_contact_info: bool = False) -
         r"\border\s+(?:form|page|link|online|through)\b",
         r"(?m)^\s*[-*]?\s*(?:I|My)\s+(?:play|use|had|never|rarely|usually|guitar|amp)\b",
         r"\bother hand I rarely\b",
+        r"\bwhich someone else is probably playing\b",
+        r"\bI may be learning\b",
         r"\btje\b|\bteh\b",
     ]
     if not allow_contact_info:
@@ -1382,6 +1391,14 @@ def fallback_answer_for_category(category: FallbackCategory, question: str) -> s
         rule_answer = answer_from_rules(question)
         if rule_answer is not None:
             return rule_answer.answer
+    for deterministic_answer in (
+        rootless_chord_quality_answer_for_question(question),
+        basic_chord_theory_answer_for_question(question),
+        chord_change_answer_for_question(question),
+        generic_chord_concept_answer_for_question(question),
+    ):
+        if deterministic_answer is not None:
+            return deterministic_answer
     if category == "current_info_not_in_corpus":
         return (
             "I don’t know the current roster from the information I have. "
