@@ -42,45 +42,86 @@ def source_card(**overrides: object) -> dict[str, object]:
 
 def fretboard_payload(key: str, frets: tuple[int, int, int]) -> dict[str, object]:
     open_fret, af_fret, ab_fret = frets
+    slug = key.lower().replace("#", "sharp")
+    positions: list[dict[str, object]] = [
+        {
+            "id": f"{slug}-open-{open_fret}",
+            "label": f"{key} major",
+            "fret": open_fret,
+            "strings": [4, 5, 6],
+            "grip": "4-5-6",
+            "pedals": [],
+            "levers": [],
+            "role": "Open position",
+            "family": "major_triad",
+            "tier": "beginner",
+            "colorRole": "primary",
+            "visibleByDefault": True,
+            "sortOrder": 10,
+        },
+        {
+            "id": f"{slug}-af-{af_fret}",
+            "label": f"{key} major",
+            "fret": af_fret,
+            "strings": [4, 5, 6],
+            "grip": "4-5-6",
+            "pedals": ["A"],
+            "levers": ["F"],
+            "role": "A+F position",
+            "family": "major_triad",
+            "tier": "beginner",
+            "colorRole": "secondary",
+            "visibleByDefault": True,
+            "sortOrder": 20,
+        },
+        {
+            "id": f"{slug}-ab-{ab_fret}",
+            "label": f"{key} major",
+            "fret": ab_fret,
+            "strings": [4, 5, 6],
+            "grip": "4-5-6",
+            "pedals": ["A", "B"],
+            "levers": [],
+            "role": "A+B position",
+            "family": "major_triad",
+            "tier": "beginner",
+            "colorRole": "alternate",
+            "visibleByDefault": True,
+            "sortOrder": 30,
+        },
+    ]
+    if key == "B":
+        positions.append(
+            {
+                "id": "b-ab-2-lower-octave",
+                "label": "B major",
+                "fret": 2,
+                "strings": [4, 5, 6],
+                "grip": "4-5-6",
+                "pedals": ["A", "B"],
+                "levers": [],
+                "role": "A+B lower-octave alternate",
+                "family": "major_triad",
+                "tier": "alternate",
+                "colorRole": "alternate",
+                "visibleByDefault": False,
+                "sortOrder": 40,
+            }
+        )
     return {
         "type": "e9-fretboard-diagram",
         "title": f"{key} major positions on E9",
         "tuning": "E9",
         "key": key,
         "strings": {"count": 10},
-        "positions": [
-            {
-                "id": f"{key.lower().replace('#', 'sharp')}-open-{open_fret}",
-                "label": f"{key} major",
-                "fret": open_fret,
-                "strings": [4, 5, 6],
-                "grip": "4-5-6",
-                "pedals": [],
-                "levers": [],
-                "role": "Open position",
-            },
-            {
-                "id": f"{key.lower().replace('#', 'sharp')}-af-{af_fret}",
-                "label": f"{key} major",
-                "fret": af_fret,
-                "strings": [4, 5, 6],
-                "grip": "4-5-6",
-                "pedals": ["A"],
-                "levers": ["F"],
-                "role": "A+F position",
-            },
-            {
-                "id": f"{key.lower().replace('#', 'sharp')}-ab-{ab_fret}",
-                "label": f"{key} major",
-                "fret": ab_fret,
-                "strings": [4, 5, 6],
-                "grip": "4-5-6",
-                "pedals": ["A", "B"],
-                "levers": [],
-                "role": "A+B position",
-            },
-        ],
+        "positions": positions,
     }
+
+
+def starter_only_fretboard_payload(key: str, frets: tuple[int, int, int]) -> dict[str, object]:
+    payload = fretboard_payload(key, frets)
+    payload["positions"] = payload["positions"][:3]
+    return payload
 
 
 def payload(
@@ -254,6 +295,7 @@ def test_quality_eval_flags_sgf_sources_for_deterministic_chord_position_answer(
     keys = finding_keys(result)
     assert result.outcome == "fail"
     assert "unrelated_sgf_sources_for_deterministic_answer" in keys
+    assert "deterministic_chord_source_leakage" in keys
 
 
 def test_quality_eval_flags_missing_fretboard_for_clean_chord_position_text() -> None:
@@ -289,6 +331,153 @@ def test_quality_eval_flags_weak_source_language_for_chord_position_question() -
     keys = finding_keys(result)
     assert result.outcome == "fail"
     assert "missing_deterministic_chord_route" in keys
+    assert "deterministic_chord_weak_warning" in keys
+
+
+def test_quality_eval_flags_starter_only_b_payload_and_missing_alternate() -> None:
+    result = evaluate_quality_result(
+        row(question="Where all can I play a B chord?", category="e9_fretboard_copedent", expected_contract="copedent_fretboard"),
+        status_code=200,
+        payload=payload(
+            (
+                "On standard E9, useful B major positions include the 7th fret with no pedals, "
+                "the 10th fret with A pedal + F lever, and the 14th fret with A+B pedals."
+            ),
+            sources=[],
+            fretboard=starter_only_fretboard_payload("B", (7, 10, 14)),
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "fail"
+    assert "starter_only_fretboard_catalog" in keys
+    assert "missing_alternate_position" in keys
+
+
+def test_quality_eval_flags_missing_position_filter_metadata() -> None:
+    result = evaluate_quality_result(
+        row(question="Show me advanced B chord positions.", category="e9_fretboard_copedent", expected_contract="copedent_fretboard"),
+        status_code=200,
+        payload=payload(
+            (
+                "On standard E9, useful B major positions include the 7th fret with no pedals, "
+                "the 10th fret with A pedal + F lever, and the 14th fret with A+B pedals."
+            ),
+            sources=[],
+            fretboard={
+                "type": "e9-fretboard-diagram",
+                "title": "B major positions on E9",
+                "tuning": "E9",
+                "strings": {"count": 10},
+                "positions": [
+                    {
+                        "id": "b-open-7",
+                        "label": "B major",
+                        "fret": 7,
+                        "strings": [4, 5, 6],
+                        "grip": "4-5-6",
+                        "pedals": [],
+                        "levers": [],
+                        "role": "Open position",
+                    },
+                    {
+                        "id": "b-af-10",
+                        "label": "B major",
+                        "fret": 10,
+                        "strings": [4, 5, 6],
+                        "grip": "4-5-6",
+                        "pedals": ["A"],
+                        "levers": ["F"],
+                        "role": "A+F position",
+                    },
+                    {
+                        "id": "b-ab-14",
+                        "label": "B major",
+                        "fret": 14,
+                        "strings": [4, 5, 6],
+                        "grip": "4-5-6",
+                        "pedals": ["A", "B"],
+                        "levers": [],
+                        "role": "A+B position",
+                    },
+                    {
+                        "id": "b-ab-2-lower-octave",
+                        "label": "B major",
+                        "fret": 2,
+                        "strings": [4, 5, 6],
+                        "grip": "4-5-6",
+                        "pedals": ["A", "B"],
+                        "levers": [],
+                        "role": "A+B lower-octave alternate",
+                    },
+                ],
+            },
+        ),
+    )
+
+    assert result.outcome == "fail"
+    assert "missing_fretboard_filters" in finding_keys(result)
+
+
+def test_quality_eval_flags_object_object_rendering_failure() -> None:
+    result = evaluate_quality_result(
+        row(question="Where can I play a B chord?", category="e9_fretboard_copedent", expected_contract="copedent_fretboard"),
+        status_code=200,
+        payload=payload(
+            (
+                "On standard E9, useful B major positions include the 7th fret with no pedals, "
+                "the 10th fret with A pedal + F lever, and the 14th fret with A+B pedals. [object Object]"
+            ),
+            sources=[],
+            fretboard=fretboard_payload("B", (7, 10, 14)),
+        ),
+    )
+
+    assert result.outcome == "fail"
+    assert "object_object_rendering_failure" in finding_keys(result)
+
+
+def test_quality_eval_flags_b9_pocket_misclassification_without_rootless_disclosure() -> None:
+    result = evaluate_quality_result(
+        row(question="Is 5-7-8 with E lowered a B9 pocket?", category="e9_fretboard_copedent"),
+        status_code=200,
+        payload=payload(
+            "Yes, 5-7-8 with E lowered is a B9 pocket at the 3rd fret. Use it as your B9 grip.",
+            sources=[],
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "fail"
+    assert "e_lower_578_b9_misclassification" in keys
+    assert "missing_rootless_partial_disclosure" in keys
+
+
+def test_quality_eval_passes_clear_5_7_8_b9_negative_with_rootless_disclosure() -> None:
+    result = evaluate_quality_result(
+        row(question="Is 5-7-8 with E lowered a B9 pocket?", category="e9_fretboard_copedent"),
+        status_code=200,
+        payload=payload(
+            (
+                "No: at the 3rd fret with E lowered, strings 5-7-8 resolve to D major, not a B9 pocket. "
+                "Use it as a pitch-checked D major grip; against a B root, those notes can also sound like "
+                "a rootless B minor 7 color because the B root is omitted."
+            ),
+            sources=[
+                source_card(
+                    title="Pitch-rule source",
+                    forumName="Rules",
+                    url="https://example.test/pitch-rules/e-lower-578",
+                    excerpt="Pitch rules classify 5-7-8 with E lowered at fret 3 as D major, with optional rootless B minor 7 color.",
+                )
+            ],
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "pass"
+    assert "e_lower_578_b9_misclassification" not in keys
+    assert "missing_rootless_partial_disclosure" not in keys
 
 
 def test_quality_eval_flags_unrequested_dominant_in_a_chord_position_answer() -> None:

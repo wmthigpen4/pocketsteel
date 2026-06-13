@@ -60,6 +60,12 @@ DETERMINISTIC_CHORD_POSITION_FAILURE_BUCKETS = {
     "source_fragment_chord_answer_failure",
     "unrelated_sgf_sources_for_deterministic_answer",
     "enharmonic_chord_position_failure",
+    "starter_only_fretboard_catalog",
+    "missing_alternate_position",
+    "missing_fretboard_filters",
+    "object_object_rendering_failure",
+    "deterministic_chord_weak_warning",
+    "deterministic_chord_source_leakage",
 }
 
 Outcome = Literal["pass", "warn", "fail"]
@@ -109,6 +115,7 @@ CHORD_POSITION_LOCATION_RE = re.compile(
     r".*?\b(?:an?\s+)?(?P<key>[A-G](?:#|b)?)(?:\s+(?:major\s+)?(?:chord|positions?)|\s+major\b|\b)",
     re.I,
 )
+GRIP_POSITION_LOCATION_RE = re.compile(r"\bwhat\s+grips\s+can\s+i\s+use\s+for\s+(?P<key>[A-G](?:#|b)?)\s+major\b", re.I)
 KEYED_MAJOR_CHORD_RE = re.compile(r"\b(?P<key>[A-G](?:#|b)?)\s+(?:major|chord)\b", re.I)
 DOMINANT_SEVENTH_CHORD_RE = re.compile(r"\b(?P<key>[A-G](?:#|b)?)7\b", re.I)
 DOMINANT_CONTEXT_RE = re.compile(
@@ -133,6 +140,18 @@ WEAK_SOURCE_CHORD_ROUTE_RE = re.compile(
     r"\b(?:source support was weak|source support is weak|curated answer used;\s*source support was weak|"
     r"API warning indicates weak/no source|no strong source match|retrieval match was weak|sources are weak)\b",
     re.I,
+)
+E_LOWER_578_B9_QUESTION_RE = re.compile(
+    r"(?=.*\b5\s*[-/ ]\s*7\s*[-/ ]\s*8\b)(?=.*\bE[- ]?lower(?:ed)?\b)(?=.*\bB9\b)",
+    re.I,
+)
+B9_NEGATION_RE = re.compile(
+    r"\b(?:not|isn't|is\s+not|no)\b.{0,80}\bB9\b|\bB9\b.{0,80}\b(?:not|isn't|is\s+not)\b",
+    re.I | re.S,
+)
+E_LOWER_578_DISCLOSURE_RE = re.compile(
+    r"\bD\s+major\b.*\brootless\s+B\s+minor\s+7\b|\brootless\s+B\s+minor\s+7\b.*\bD\s+major\b",
+    re.I | re.S,
 )
 
 FALLBACK_CATEGORIES = {
@@ -238,7 +257,7 @@ def requested_chord_position_request(question: str) -> Any | None:
     request = major_chord_location_request_for_question(question)
     if request is not None:
         return request
-    match = CHORD_POSITION_LOCATION_RE.search(question or "")
+    match = CHORD_POSITION_LOCATION_RE.search(question or "") or GRIP_POSITION_LOCATION_RE.search(question or "")
     if not match:
         return None
     try:
@@ -303,6 +322,42 @@ def fretboard_payload_has_expected_chord_positions(payload: dict[str, Any], key:
         and position.get("strings") == [4, 5, 6]
     }
     return expected <= actual
+
+
+def fretboard_positions(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    fretboard = payload.get("fretboard")
+    if not isinstance(fretboard, dict):
+        return []
+    positions = fretboard.get("positions")
+    if not isinstance(positions, list):
+        return []
+    return [position for position in positions if isinstance(position, dict)]
+
+
+def has_expanded_catalog_intent(question: str, key: str) -> bool:
+    return key == "B" and bool(re.search(r"\b(?:all|more|advanced|with\s+levers|grips?)\b", question or "", re.I))
+
+
+def position_has_required_filter_metadata(position: dict[str, Any]) -> bool:
+    return (
+        isinstance(position.get("family"), str)
+        and bool(position.get("family"))
+        and isinstance(position.get("tier"), str)
+        and bool(position.get("tier"))
+        and isinstance(position.get("colorRole"), str)
+        and bool(position.get("colorRole"))
+        and isinstance(position.get("visibleByDefault"), bool)
+        and isinstance(position.get("sortOrder"), int)
+    )
+
+
+def has_b_fret_two_ab_alternate(positions: list[dict[str, Any]]) -> bool:
+    return any(
+        position.get("fret") == 2
+        and position.get("pedals") == ["A", "B"]
+        and position.get("strings") == [4, 5, 6]
+        for position in positions
+    )
 
 
 def is_sgf_forum_source(source: dict[str, Any]) -> bool:
@@ -410,6 +465,19 @@ def evaluate_deterministic_chord_position_response(
             "missing_deterministic_chord_route",
             "deterministic chord-position answer exposed weak/no-source retrieval fallback language",
         )
+        add_finding(
+            findings,
+            "fail",
+            "deterministic_chord_weak_warning",
+            "deterministic chord-position answer exposed weak-source warning language",
+        )
+    if "[object Object]" in answer:
+        add_finding(
+            findings,
+            "fail",
+            "object_object_rendering_failure",
+            "answer rendered an object as [object Object]",
+        )
     if not has_fretboard_payload(payload):
         add_finding(
             findings,
@@ -424,12 +492,41 @@ def evaluate_deterministic_chord_position_response(
             "missing_fretboard_payload_for_chord_position",
             "response.fretboard did not contain the expected deterministic chord positions",
         )
+    positions = fretboard_positions(payload)
+    if positions and not all(position_has_required_filter_metadata(position) for position in positions):
+        add_finding(
+            findings,
+            "fail",
+            "missing_fretboard_filters",
+            "response.fretboard positions are missing metadata required for frontend filters",
+        )
+    if has_expanded_catalog_intent(question, request.normalized_key):
+        if positions and len(positions) <= 3:
+            add_finding(
+                findings,
+                "fail",
+                "starter_only_fretboard_catalog",
+                "expanded chord-position question returned only starter positions",
+            )
+        if positions and not has_b_fret_two_ab_alternate(positions):
+            add_finding(
+                findings,
+                "fail",
+                "missing_alternate_position",
+                "expanded B major payload omitted fret 2 A+B alternate",
+            )
     if any(is_sgf_forum_source(source) for source in sources):
         add_finding(
             findings,
             "fail",
             "unrelated_sgf_sources_for_deterministic_answer",
             "deterministic chord-position answer returned top-level SGF source cards",
+        )
+        add_finding(
+            findings,
+            "fail",
+            "deterministic_chord_source_leakage",
+            "deterministic chord-position answer returned SGF source cards",
         )
 
 
@@ -520,6 +617,7 @@ def evaluate_category_specific(row: dict[str, str], answer: str, sources: list[d
     lower_answer = answer.lower()
 
     evaluate_chord_position_key_leakage(question, answer, findings)
+    evaluate_e_lower_578_b9_disclosure(question, answer, findings)
 
     if family == "player/teacher bio":
         if not answer_mentions_question_subject(question, answer):
@@ -594,6 +692,25 @@ def evaluate_category_specific(row: dict[str, str], answer: str, sources: list[d
 
     if first and len(first.split()) > 55:
         add_finding(findings, "warn", "first_sentence_too_long", "first sentence is too long for a direct answer")
+
+
+def evaluate_e_lower_578_b9_disclosure(question: str, answer: str, findings: list[QualityFinding]) -> None:
+    if not E_LOWER_578_B9_QUESTION_RE.search(question or ""):
+        return
+    if not B9_NEGATION_RE.search(answer or ""):
+        add_finding(
+            findings,
+            "fail",
+            "e_lower_578_b9_misclassification",
+            "5-7-8 E-lower B9-pocket answer did not clearly reject B9 classification under current pitch rules",
+        )
+    if not E_LOWER_578_DISCLOSURE_RE.search(answer or ""):
+        add_finding(
+            findings,
+            "fail",
+            "missing_rootless_partial_disclosure",
+            "5-7-8 E-lower B9-pocket answer should disclose D major plus rootless B minor 7 color",
+        )
 
 
 def evaluate_quality_result(
