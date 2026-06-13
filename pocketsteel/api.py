@@ -39,6 +39,7 @@ from pocketsteel.access_control import (
 from pocketsteel.answer_usage import InMemoryAnswerRateLimiter, answer_rate_limit_key
 from pocketsteel.api_contract import AnswerResponse
 from pocketsteel.answer_contracts import enforce_answer_contract, infer_contract_intent
+from pocketsteel.answer_intent_classifier import classify_answer_request
 from pocketsteel.chroma_search import (
     CHROMA_COLLECTION_ENV,
     CHROMA_PATH_ENV,
@@ -195,6 +196,8 @@ class RetrievalApi:
                     error_status="400 Bad Request",
                 )
                 return self._json_response(start_response, "400 Bad Request", {"error": error or "invalid request"})
+
+            _answer_intent_decision = classify_answer_request(answer_request.question, answer_request.mode)
 
             deterministic_chord_answer = visual_fretboard_curated_answer(answer_request.question)
             if deterministic_chord_answer is None:
