@@ -91,11 +91,21 @@ Codex must ask before taking action on:
 - Do not use `git add .`.
 - Stage exact paths only. Use hunk-level staging when overlapping lane changes share files.
 - Treat `docs/handoffs/task-completions/integration-status.md` as a coordination artifact unless the user explicitly asks to commit it.
-- When QA approves a scoped slice and names the approved files or hunks, Repo Steward should proceed with exact-path or exact-hunk staging and commit. Do not ask the user for another approval. If the approved scope is missing, contradictory, or includes unrelated or unsafe files, stop and write a blocker handoff instead.
+- Repo Steward approval rule: when QA approves a scoped slice and names the approved files or hunks, Repo Steward should proceed with exact-path or exact-hunk staging and commit. Do not ask the user for another approval. If the approved scope is missing, contradictory, unsafe, or includes unrelated parked work, stop and write a blocker handoff instead.
+
+## Prompt Hygiene And Privacy
+
+- Do not carry every historical bug, caveat, or stale checklist item forward into every new task.
+- Historical regression checks should appear only when relevant to the touched area or smoke target.
+- Object-string rendering checks belong in broad browser smoke, UI rendering, answer-card/source-card/fretboard rendering, and regression suites. Do not repeat them in metadata-only, docs-only, corpus-registry, privacy-cleanup, or backend-only prompts unless that backend change affects rendered structured output.
+- Weak-source warnings and raw source fragments belong in answer-composer/browser-smoke QA, not every task.
+- Do not include stale checklist items just because they appeared in earlier prompts.
+- Do not refer to the user by personal name in prompts, handoffs, UI text, docs, source notes, or smoke reports. Use "the user," "you," or neutral phrasing.
+- If local filesystem paths expose a personal username, prefer path-neutral forms such as `~/Documents/Pocket Steel` in documentation and handoffs where executable precision is not required.
 
 ## User Smoke Bug Autopilot
 
-When the user pastes a user-smoke bug and explicitly says `autopilot` or `handle this end-to-end`, Codex should proceed without asking for repeated approval, subject to the stop conditions below.
+When the user provides an `AUTOPILOT USER SMOKE BUG`, `AUTOPILOT USER SMOKE ADJUSTMENT`, or explicitly says `autopilot` or `handle this end-to-end`, Codex should proceed without asking for repeated approval, subject to the stop conditions below.
 
 Allowed actions:
 
@@ -109,8 +119,9 @@ Allowed actions:
 8. Run browser smoke or API fallback with an explicit `Smoke Target` block.
 9. Write a handoff in `docs/handoffs/task-completions/`.
 10. If tests and smoke pass, stage exact paths/hunks and commit without asking the user for another approval.
-11. If protected preview restart is required and the approved restart command is documented, run it and verify.
-12. Stop after restart/verify and report the exact URL the user should test.
+11. After a successful autopilot fix and commit, update `docs/handoffs/task-completions/integration-status.md`.
+12. If protected preview restart is explicitly required by the task and the approved restart command is documented, run it and verify.
+13. Stop after restart/verify and report the exact URL the user should test.
 
 Required `Smoke Target` block for autopilot runs:
 
@@ -132,9 +143,9 @@ Smoke Target:
 
 Stop and write a blocker handoff instead of proceeding if:
 
-1. The worktree has dirty implementation files unrelated to the bug and they cannot be isolated safely.
+1. The worktree has dirty runtime or implementation files unrelated to the bug and they cannot be isolated safely.
 2. The fix would require destructive git actions such as reset, checkout, clean, or dropping changes.
-3. The fix touches secrets, auth policy, Cloudflare Access policy, DNS, corpus, Chroma, embeddings, private source data, or scraping.
+3. The fix touches secrets, auth policy, Cloudflare Access policy, DNS, corpus, Chroma, embeddings, private source data, source-inbox, or scraping.
 4. Tests fail and the failure is not clearly caused by the current bug.
 5. The approved file/hunk scope is unclear.
 6. The bug appears to require product judgment rather than implementation.
@@ -162,6 +173,45 @@ Every autopilot run must produce one final handoff with:
 - exact URL the user should test
 - remaining caveats
 - whether user smoke can continue
+
+After a successful autopilot fix and commit, the integration-status refresh must include:
+
+- current HEAD
+- bug or adjustment summary
+- commit hash
+- files committed
+- tests run
+- smoke target
+- smoke result
+- protected-preview restart status if run
+- exact URL the user should test
+- whether user smoke may continue
+- remaining caveats
+- dirty worktree summary
+- parked files
+
+Do not mix the implementation commit and integration-status refresh in the same commit unless the existing repo protocol explicitly allows it.
+
+## User Smoke Freeze
+
+During user smoke testing, do not start broad feature development.
+
+Allowed during the freeze:
+
+- smoke-blocking bug fixes
+- small smoke-readiness adjustments
+- tests for observed failures
+- protected-preview verification
+- exact scoped commits
+
+Park during the freeze:
+
+- new major features
+- auth/paywall changes
+- corpus/Chroma/scraping changes
+- broad visual redesign
+- deployment architecture changes
+- large refactors
 
 Example autopilot prompt the user can paste:
 
