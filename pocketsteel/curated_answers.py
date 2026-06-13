@@ -12,9 +12,11 @@ from pocketsteel.fretboard_examples import (
     e_lower_578_answer_for_question,
     e_lower_grip_answer_for_question,
     e_lower_grip_usage_answer_for_question,
+    function_chord_answer_for_question,
     functional_pocket_answer_for_question,
     get_e9_major_chord_positions,
     major_chord_location_request_for_question,
+    minor_chord_answer_for_question,
     unsupported_chord_location_request_for_question,
 )
 from pocketsteel.steel_rules import answer_from_rules
@@ -136,6 +138,32 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
             confidence="curated_high",
             answer=functional_pocket_answer,
         )
+    if mentions_g_i_iv_v_visual_question(q):
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=(
+                "On standard E9, a compact 1-4-5 in G is:\n\n"
+                "- G: 3rd fret, no pedals.\n"
+                "- C: 3rd fret with A+B pedals.\n"
+                "- D: 5th fret with A+B pedals.\n\n"
+                "Use this as a simple map before adding more positions or passing chords."
+            ),
+        )
+    function_chord_answer = function_chord_answer_for_question(question)
+    if function_chord_answer is not None:
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=function_chord_answer,
+        )
+    minor_chord_answer = minor_chord_answer_for_question(question)
+    if minor_chord_answer is not None:
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=minor_chord_answer,
+        )
     major_request = major_chord_location_request_for_question(question)
     if major_request is not None:
         major_key = major_request.normalized_key
@@ -179,18 +207,6 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
             intent="copedent_fretboard",
             confidence="curated_high",
             answer="\n".join(lines),
-        )
-    if mentions_g_i_iv_v_visual_question(q):
-        return CuratedAnswer(
-            intent="copedent_fretboard",
-            confidence="curated_high",
-            answer=(
-                "On standard E9, a compact 1-4-5 in G is:\n\n"
-                "- G: 3rd fret, no pedals.\n"
-                "- C: 3rd fret with A+B pedals.\n"
-                "- D: 5th fret with A+B pedals.\n\n"
-                "Use this as a simple map before adding more positions or passing chords."
-            ),
         )
     if mentions_g_common_grips_visual_question(q):
         return CuratedAnswer(

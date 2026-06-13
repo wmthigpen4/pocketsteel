@@ -21,6 +21,8 @@ from pocketsteel.fretboard_examples import (
     e_lower_grip_answer_for_question,
     e_lower_grip_position_at_fret,
     major_chord_location_request_for_question,
+    function_chord_request_for_question,
+    minor_chord_location_request_for_question,
     validate_fretboard_payload,
 )
 
@@ -386,6 +388,9 @@ def test_c_major_position_prompts_are_supported() -> None:
     expected_ids = ["c-open-8", "c-af-11", "c-ab-15"]
 
     assert set(expected_ids).issubset({position["id"] for position in fretboard_payload_for_question("Where can I play a C chord?")["positions"]})
+    assert set(expected_ids).issubset({position["id"] for position in fretboard_payload_for_question("Where are some places to play C chords?")["positions"]})
+    assert fretboard_payload_for_question("Where can I play C chord?")["title"] == "C major positions on E9"
+    assert fretboard_payload_for_question("Where can I play C major?")["title"] == "C major positions on E9"
     assert fretboard_payload_for_question("Where is C major?")["title"] == "C major positions on E9"
     assert fretboard_payload_for_question("Show me C positions.")["title"] == "C major positions on E9"
     assert fretboard_payload_for_question("What frets give me a C chord?")["title"] == "C major positions on E9"
@@ -416,6 +421,51 @@ def test_plan_typo_major_position_prompt_routes_to_deterministic_fretboard() -> 
     assert by_id["f-af-4"]["fret"] == 4
     assert by_id["f-ab-8"]["fret"] == 8
     assert fretboard_payload_for_question("How do I plan my practice tonight?") is None
+
+
+def test_function_and_direct_minor_questions_route_to_e_minor_positions() -> None:
+    function_request = function_chord_request_for_question("I am in the key of G. Where can I play a 6m chord?")
+    vi_request = function_chord_request_for_question("Show me the vi chord in G")
+    direct_minor_request = minor_chord_location_request_for_question("Where is Em on E9?")
+
+    assert function_request is not None
+    assert function_request.key == "G"
+    assert function_request.degree == 6
+    assert function_request.root == "E"
+    assert function_request.quality == "minor"
+    assert vi_request is not None
+    assert vi_request.root == "E"
+    assert vi_request.quality == "minor"
+    assert direct_minor_request is not None
+    assert direct_minor_request.normalized_key == "E"
+
+    for question in [
+        "I am in the key of G. Where can I play a 6m chord?",
+        "In G, where is the 6 minor?",
+        "Where can I play the vi chord in G?",
+        "Show me the 6m in G.",
+        "Where is Em on E9?",
+    ]:
+        payload = fretboard_payload_for_question(question)
+        assert payload is not None, question
+        assert_valid_visualization_payload(payload)
+        assert payload["title"] == "E minor positions on E9"
+        by_id = {position["id"]: position for position in payload["positions"]}
+        assert {
+            "e-minor-a_pedal_minor-4-5-6-3",
+            "e-minor-e_lower_minor-4-5-6-8",
+            "e-minor-b_c_minor-4-5-6-10",
+        }.issubset(by_id)
+        assert [position["id"] for position in payload["positions"] if position["visibleByDefault"]] == [
+            "e-minor-a_pedal_minor-4-5-6-3",
+            "e-minor-e_lower_minor-4-5-6-8",
+            "e-minor-b_c_minor-4-5-6-10",
+        ]
+        for position in by_id.values():
+            assert position["root"] == "E"
+            assert position["quality"] == "minor"
+            assert position["validationStatus"] == "pitch_validated"
+            assert set(position["intervals"].values()) == {"1", "b3", "5"}
 
 
 def test_b_major_position_prompt_variants_are_supported() -> None:

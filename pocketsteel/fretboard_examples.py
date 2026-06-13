@@ -50,7 +50,7 @@ E_LOWER_DOMINANT_GRIPS: tuple[tuple[int, ...], ...] = (
     (6, 8, 10),
 )
 
-FretboardIntent = Literal["major_positions", "minor_grips", "i_iv_v", "common_grips"]
+FretboardIntent = Literal["major_positions", "minor_positions", "minor_grips", "i_iv_v", "common_grips"]
 
 
 @dataclass(frozen=True)
@@ -86,6 +86,21 @@ class FunctionalPocketRequest:
     key: str
     function: str
     target_root: str
+
+
+@dataclass(frozen=True)
+class FunctionChordRequest:
+    key: str
+    requested_function: str
+    degree: int
+    root: str
+    quality: str
+
+
+@dataclass(frozen=True)
+class MinorChordLocationRequest:
+    requested_root: str
+    normalized_key: str
 
 
 NOTE_TO_SEMITONE: dict[str, int] = {
@@ -175,6 +190,39 @@ CHORD_ALIASES: dict[str, str] = {
     "minor 7": "minor7",
     "minor7": "minor7",
     "m7": "minor7",
+}
+
+MAJOR_SCALE_INTERVALS: dict[int, int] = {
+    1: 0,
+    2: 2,
+    3: 4,
+    4: 5,
+    5: 7,
+    6: 9,
+    7: 11,
+}
+
+FUNCTION_QUALITIES: dict[int, str] = {
+    1: "major",
+    2: "minor",
+    3: "minor",
+    4: "major",
+    5: "major",
+    6: "minor",
+    7: "diminished",
+}
+
+ROMAN_FUNCTIONS: dict[str, int] = {
+    "i": 1,
+    "ii": 2,
+    "iii": 3,
+    "iv": 4,
+    "v": 5,
+    "vi": 6,
+    "vii": 7,
+    "vii°": 7,
+    "viio": 7,
+    "vii0": 7,
 }
 
 
@@ -924,6 +972,8 @@ def get_fretboard_examples(intent: str, key: str = "G") -> dict:
     normalized_key = normalize_key(key)
     if normalized_intent == "major_positions":
         return major_positions(normalized_key).to_payload()
+    if normalized_intent == "minor_positions":
+        return minor_positions(normalized_key).to_payload()
     if normalized_intent == "minor_grips":
         return minor_grips(normalized_key).to_payload()
     if normalized_intent == "i_iv_v":
@@ -1316,6 +1366,220 @@ def functional_pocket_answer_for_question(question: str) -> str | None:
     return "\n".join(lines)
 
 
+def key_context_for_question(question: str) -> str | None:
+    q = re.sub(r"\s+", " ", question or "").strip().lower().rstrip("?!.")
+    match = re.search(r"\b(?:in\s+the\s+key\s+of|key\s+of|in)\s+([a-g](?:#|b)?)\b", q)
+    if not match:
+        return None
+    return normalize_key(match.group(1))
+
+
+def function_root_for_key(key: str, degree: int) -> str:
+    return CANONICAL_NOTES[(semitone_for_note(normalize_key(key)) + MAJOR_SCALE_INTERVALS[degree]) % 12]
+
+
+def function_token_to_degree_and_quality(token: str, explicit_quality: str = "") -> tuple[int, str] | None:
+    normalized = re.sub(r"\s+", "", (token or "").strip().lower()).replace("º", "°")
+    if not normalized:
+        return None
+    numeric = re.match(r"^([1-7])(?:(m|minor|dim|diminished))?$", normalized)
+    if numeric:
+        degree = int(numeric.group(1))
+        quality = normalize_chord_quality(numeric.group(2) or explicit_quality or FUNCTION_QUALITIES[degree])
+        return degree, quality
+    roman = ROMAN_FUNCTIONS.get(normalized)
+    if roman is None:
+        return None
+    return roman, FUNCTION_QUALITIES[roman]
+
+
+def function_chord_request_for_question(question: str) -> FunctionChordRequest | None:
+    q = re.sub(r"\s+", " ", question or "").strip().lower().rstrip("?!.")
+    if not q:
+        return None
+    if re.search(r"\b1\s*[-/]\s*4\s*[-/]\s*5\b", q):
+        return None
+    key = key_context_for_question(q)
+    if key is None:
+        return None
+    numeric_match = re.search(
+        r"\b(?P<token>[1-7]\s*(?:m|minor|dim|diminished)?)\b(?:\s*(?:chord|minor|major|diminished|dim))?",
+        q,
+    )
+    roman_match = re.search(
+        r"\b(?:the\s+)?(?P<token>vii°|viiº|viio|vii0|vii|vi|iii|ii|iv|v|i)\s+chord\b",
+        q,
+    ) or re.search(
+        r"\bshow me\s+(?:the\s+)?(?P<token>vii°|viiº|viio|vii0|vii|vi|iii|ii|iv|v|i)\s+in\b",
+        q,
+    )
+    function_match = numeric_match or roman_match
+    if not function_match:
+        return None
+    requested = re.sub(r"\s+", "", function_match.group("token")).replace("º", "°")
+    explicit_quality = ""
+    trailing = q[function_match.end() : function_match.end() + 18]
+    if "minor" in trailing:
+        explicit_quality = "minor"
+    elif "dim" in trailing or "diminished" in trailing:
+        explicit_quality = "diminished"
+    parsed = function_token_to_degree_and_quality(requested, explicit_quality)
+    if parsed is None:
+        return None
+    degree, quality = parsed
+    root = function_root_for_key(key, degree)
+    return FunctionChordRequest(
+        key=key,
+        requested_function=requested,
+        degree=degree,
+        root=root,
+        quality=quality,
+    )
+
+
+def minor_chord_location_request_for_question(question: str) -> MinorChordLocationRequest | None:
+    q = re.sub(r"\s+", " ", question or "").strip().lower().rstrip("?!.")
+    if not q:
+        return None
+    patterns = (
+        r"^where is ([a-g](?:#|b)?)(?:m| minor)(?: chord)?(?: on e9)?$",
+        r"^where can i play (?:a|an)?\s*([a-g](?:#|b)?)(?:m| minor)(?: chord)?(?: on e9)?$",
+        r"^show me ([a-g](?:#|b)?)(?:m| minor) positions$",
+        r"^what frets give me (?:a|an)?\s*([a-g](?:#|b)?)(?:m| minor)(?: chord)?$",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, q)
+        if match:
+            requested_root = normalize_requested_root(match.group(1))
+            return MinorChordLocationRequest(
+                requested_root=requested_root,
+                normalized_key=normalize_key(requested_root),
+            )
+    return None
+
+
+def function_chord_payload_for_question(question: str) -> dict | None:
+    request = function_chord_request_for_question(question)
+    if request is None:
+        return None
+    if request.quality == "major":
+        return major_positions(request.root).to_payload()
+    if request.quality == "minor":
+        return minor_positions(request.root).to_payload()
+    return None
+
+
+def minor_chord_payload_for_question(question: str) -> dict | None:
+    request = minor_chord_location_request_for_question(question)
+    if request is None:
+        return None
+    return minor_positions(request.normalized_key).to_payload()
+
+
+def function_chord_answer_for_question(question: str) -> str | None:
+    request = function_chord_request_for_question(question)
+    if request is None:
+        return None
+    if request.quality == "major":
+        positions = major_positions(request.root).to_payload()["positions"]
+        visible = [position for position in positions if position["visibleByDefault"]]
+        lines = [
+            f"{request.requested_function} in {request.key} is {request.root} major.",
+            "",
+            f"Useful {request.root} major starter positions on E9:",
+        ]
+        for position in visible:
+            controls = " + ".join([*position["pedals"], *position["levers"]]) or "no pedals"
+            lines.append(f"- {fret_label(position['fret'])} with {controls}: {position['role']}.")
+        return "\n".join(lines)
+    if request.quality == "minor":
+        if request.degree == 2:
+            return two_minor_function_answer(request)
+        return minor_position_answer(
+            request.root,
+            prefix=f"{request.requested_function} in {request.key} is {request.root} minor ({minor_triad_spelling(request.root)}).",
+        )
+    if request.quality == "diminished":
+        return (
+            f"{request.requested_function} in {request.key} is {request.root} diminished. "
+            "The deterministic fretboard view currently supports major and minor position diagrams first, so I would not use SGF snippets for a diminished-position answer. "
+            "Give me the exact strings/pedals/levers you want checked and I can calculate the notes directly."
+        )
+    return None
+
+
+def minor_chord_answer_for_question(question: str) -> str | None:
+    request = minor_chord_location_request_for_question(question)
+    if request is None:
+        return None
+    return minor_position_answer(request.normalized_key)
+
+
+def minor_triad_spelling(root: str) -> str:
+    return f"{normalize_key(root)}-{transpose(normalize_key(root), 3)}-{transpose(normalize_key(root), 7)}"
+
+
+def minor_position_answer(root: str, *, prefix: str | None = None) -> str:
+    key = normalize_key(root)
+    payload = minor_positions(key).to_payload()
+    visible = [position for position in payload["positions"] if position["visibleByDefault"]]
+    lines = [
+        prefix or f"On E9, useful deterministic {key} minor positions include:",
+    ]
+    if prefix:
+        lines.extend(["", f"Useful {key} minor positions on E9:"])
+    for position in visible:
+        controls = " + ".join([*position["pedals"], *position["levers"]]) or "no pedals"
+        lines.append(f"- {fret_label(position['fret'])} with {controls}: {position['role']}, grip {position['grip']}.")
+    lines.extend(
+        [
+            "",
+            "Minor-position support is pitch-math based and still limited to validated common grips, so treat this as a practical map rather than every possible minor voicing.",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def two_minor_function_answer(request: FunctionChordRequest) -> str:
+    payload = minor_positions(request.root).to_payload()
+    positions = payload["positions"]
+    bc = next(
+        (
+            position
+            for position in positions
+            if position["family"] == "b_c_minor" and position["fret"] == 3 and position["grip"] == "4-5-6"
+        ),
+        None,
+    )
+    a_pedal = next(
+        (
+            position
+            for position in positions
+            if position["family"] == "a_pedal_minor" and position["fret"] == 8 and position["grip"] == "4-5-6"
+        ),
+        None,
+    )
+    five_dominant = transpose(request.key, 7)
+    lines = [
+        f"{request.requested_function} chord is {request.root} minor ({minor_triad_spelling(request.root)}).",
+        f"A 2m is 1-b3-5 built on scale degree 2 in {request.key}.",
+        "",
+        "Practical E9 options:",
+    ]
+    if bc is not None:
+        lines.append(f"- {fret_label(bc['fret'])} with B+C pedals: {request.root} minor on grip {bc['grip']}.")
+    if a_pedal is not None:
+        lines.append(f"- {fret_label(a_pedal['fret'])} with A pedal: {request.root} minor on grip {a_pedal['grip']}.")
+    lines.extend(
+        [
+            f"- In {request.key}, this can connect into {five_dominant}7, the 5-dominant chord in {request.key}, for a 2m-to-5 movement.",
+            "",
+            "The fretboard payload shows only pitch-validated minor positions; it does not use SGF snippets to decide the chord.",
+        ]
+    )
+    return "\n".join(lines)
+
+
 def fretboard_payload_for_question(question: str) -> dict | None:
     """Return MVP fretboard visualization data for a narrow curated question set."""
     q = re.sub(r"\s+", " ", question or "").strip().lower().rstrip("?!.")
@@ -1330,11 +1594,17 @@ def fretboard_payload_for_question(question: str) -> dict | None:
     functional_payload = functional_pocket_payload_for_question(q)
     if functional_payload is not None:
         return functional_payload
+    if q == "show me a 1-4-5 in g":
+        return get_fretboard_examples("i_iv_v", "G")
+    function_chord_payload = function_chord_payload_for_question(q)
+    if function_chord_payload is not None:
+        return function_chord_payload
+    minor_chord_payload = minor_chord_payload_for_question(q)
+    if minor_chord_payload is not None:
+        return minor_chord_payload
     major_request = major_chord_location_request_for_question(q)
     if major_request is not None:
         return get_fretboard_examples("major_positions", major_request.normalized_key)
-    if q == "show me a 1-4-5 in g":
-        return get_fretboard_examples("i_iv_v", "G")
     if q == "show me common grips for g":
         return get_fretboard_examples("common_grips", "G")
     return None
@@ -1352,6 +1622,8 @@ def major_chord_location_request_for_question(question: str) -> MajorChordLocati
     if not q:
         return None
     patterns = (
+        r"^where are (?:some )?places to play (?:a|an)?\s*([a-g](?:#|b)?)(?:\s+(?:major|major chords?|chords?))?$",
+        r"^where(?: all)? can i play (?:a|an)?\s*([a-g](?:#|b)?)(?:\s+(?:major|major chords?|chords?))?$",
         r"^where(?: all)? can i play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?$",
         r"^where can i find (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?$",
         r"^how do i play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?$",
@@ -1466,6 +1738,10 @@ def normalize_intent(intent: str) -> FretboardIntent:
         "major_chord": "major_positions",
         "major_chords": "major_positions",
         "positions": "major_positions",
+        "minor_position": "minor_positions",
+        "minor_positions": "minor_positions",
+        "minor_chord": "minor_positions",
+        "minor_chords": "minor_positions",
         "minor": "minor_grips",
         "minor_examples": "minor_grips",
         "145": "i_iv_v",
@@ -1476,7 +1752,7 @@ def normalize_intent(intent: str) -> FretboardIntent:
         "common_e9_grips": "common_grips",
     }
     normalized = aliases.get(normalized, normalized)
-    if normalized not in {"major_positions", "minor_grips", "i_iv_v", "common_grips"}:
+    if normalized not in {"major_positions", "minor_positions", "minor_grips", "i_iv_v", "common_grips"}:
         raise ValueError(f"Unsupported fretboard example intent: {intent}")
     return normalized  # type: ignore[return-value]
 
@@ -1795,6 +2071,79 @@ def major_positions(key: str) -> FretboardVisualizationPayload:
     return FretboardVisualizationPayload(
         title=f"{key} major positions on E9",
         subtitle=f"Common places to find {key} major.",
+        key=key,
+        positions=positions,
+    )
+
+
+def minor_positions(key: str) -> FretboardVisualizationPayload:
+    """Return pitch-validated minor triad positions for a requested minor root."""
+    key = normalize_key(key)
+    family_specs = (
+        ("a_pedal_minor", "A-pedal minor position", ("A",), (), "primary", "primary", 20),
+        ("e_lower_minor", "E-lower minor position", (), ("E",), "secondary", "secondary", 120),
+        ("b_c_minor", "B+C minor position", ("B", "C"), (), "alternate", "alternate", 220),
+        ("open_minor", "Open minor grip", (), (), "reference", "reference", 320),
+        ("a_b_minor", "A+B minor color", ("A", "B"), (), "reference", "reference", 420),
+        ("a_f_minor", "A+F minor color", ("A",), ("F",), "reference", "reference", 520),
+    )
+    candidates: list[FretboardPosition] = []
+    visible_families: set[str] = set()
+    for family, role_prefix, pedals, levers, color, color_role, sort_base in family_specs:
+        for fret in range(25):
+            for grip_index, grip in enumerate(COMMON_E9_VISUAL_GRIPS):
+                candidate = major_position_candidate(
+                    key=key,
+                    quality="minor",
+                    suffix=f"minor-{family}-{grip_label(grip)}-{fret}",
+                    fret=fret,
+                    strings=grip,
+                    pedals=pedals,
+                    levers=levers,
+                    color=color,
+                    role=f"{role_prefix} {grip_label(grip)}",
+                    family=family,
+                    tier="common",
+                    color_role=color_role,
+                    visible_by_default=False,
+                    sort_order=sort_base + fret * 10 + grip_index,
+                    explanation=f"{role_prefix} at fret {fret} gives an {key} minor grip on strings {grip_label(grip)}.",
+                    function="minor",
+                    key_context=key,
+                    why_use_it=f"Use this as a pitch-validated {key} minor grip.",
+                    allow_added_intervals=False,
+                )
+                if candidate is None or not candidate.is_full_chord:
+                    continue
+                visible = (
+                    family in {"a_pedal_minor", "e_lower_minor", "b_c_minor"}
+                    and grip == (4, 5, 6)
+                    and family not in visible_families
+                )
+                if visible:
+                    visible_families.add(family)
+                candidates.append(
+                    replace(
+                        candidate,
+                        tier="beginner" if visible else "common",
+                        visible_by_default=visible,
+                        role=role_prefix if visible else f"{role_prefix} {grip_label(grip)}",
+                        color=color if visible else "reference",
+                        color_role=color_role if visible else "reference",
+                        why_use_it=(
+                            f"Use this as a starter {key} minor position."
+                            if visible
+                            else f"Use this as another pitch-validated {key} minor grip."
+                        ),
+                    )
+                )
+
+    positions = tuple(sorted(candidates, key=lambda position: position.sort_order))
+    if not positions:
+        raise ValueError(f"No pitch-validated {key} minor positions were generated")
+    return FretboardVisualizationPayload(
+        title=f"{key} minor positions on E9",
+        subtitle=f"Pitch-validated common-grip positions for {key} minor.",
         key=key,
         positions=positions,
     )

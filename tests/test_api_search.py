@@ -2435,6 +2435,95 @@ def test_location_based_c_chord_answer_uses_c_positions() -> None:
     assert_deterministic_fretboard_sources_are_clean(payload)
 
 
+def test_plural_c_chord_places_question_uses_deterministic_positions_not_sgf_fragments() -> None:
+    payload = answer_for_question(
+        "Where are some places to play C chords?",
+        [
+            {
+                "score": 0.91,
+                "excerpt": "Top Try arpeggios or open strings and see what works.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "Unrelated arpeggio chatter",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=404001",
+                "chunk_id": "noisy-c-arpeggio",
+                "post_uid": "noisy-c-arpeggio",
+                "source_system": "sgf_phpbb_current",
+            }
+        ],
+    )
+
+    assert_clean_answer_body(payload)
+    assert "fretboard" in payload
+    assert_valid_fretboard_payload(payload)
+    assert payload["fretboard"]["title"] == "C major positions on E9"
+    assert visible_fretboard_ids(payload) == ["c-open-8", "c-af-11", "c-ab-15"]
+    assert "On standard E9, several useful C major starter positions are" in payload["answer"]
+    assert "8th fret, no pedals" in payload["answer"]
+    assert "11th fret with A pedal + F lever" in payload["answer"]
+    assert "15th fret with A+B pedals" in payload["answer"]
+    assert "arpeggios" not in payload["answer"].lower()
+    assert "open strings" not in payload["answer"].lower()
+    assert_deterministic_fretboard_sources_are_clean(payload)
+
+
+def test_g_key_six_minor_question_uses_deterministic_e_minor_positions_not_sgf_fragments() -> None:
+    payload = answer_for_question(
+        "I am in the key of G. Where can I play a 6m chord?",
+        [
+            {
+                "score": 0.91,
+                "excerpt": "Open G and Em work all over if you just listen.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "Open G Em forum fragment",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=404002",
+                "chunk_id": "noisy-g-em",
+                "post_uid": "noisy-g-em",
+                "source_system": "sgf_phpbb_current",
+            }
+        ],
+    )
+
+    assert_clean_answer_body(payload)
+    assert "fretboard" in payload
+    assert_valid_fretboard_payload(payload)
+    assert payload["fretboard"]["title"] == "E minor positions on E9"
+    assert visible_fretboard_ids(payload) == [
+        "e-minor-a_pedal_minor-4-5-6-3",
+        "e-minor-e_lower_minor-4-5-6-8",
+        "e-minor-b_c_minor-4-5-6-10",
+    ]
+    assert "6m in G is E minor" in payload["answer"]
+    assert "E-G-B" in payload["answer"]
+    assert "3rd fret with A" in payload["answer"]
+    assert "8th fret with E" in payload["answer"]
+    assert "10th fret with B + C" in payload["answer"]
+    assert "Minor-position support is pitch-math based" in payload["answer"]
+    assert "Open G" not in payload["answer"]
+    assert "just listen" not in payload["answer"]
+    assert_deterministic_fretboard_sources_are_clean(payload)
+
+
+def test_vi_and_direct_em_questions_route_to_deterministic_e_minor_positions() -> None:
+    cases = [
+        "Show me the vi chord in G",
+        "Where is Em on E9?",
+    ]
+    for question in cases:
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert_clean_answer_body(payload)
+        assert "fretboard" in payload, question
+        assert_valid_fretboard_payload(payload)
+        assert payload["fretboard"]["title"] == "E minor positions on E9"
+        assert visible_fretboard_ids(payload) == [
+            "e-minor-a_pedal_minor-4-5-6-3",
+            "e-minor-e_lower_minor-4-5-6-8",
+            "e-minor-b_c_minor-4-5-6-10",
+        ]
+        assert "E minor" in payload["answer"]
+        assert_deterministic_fretboard_sources_are_clean(payload)
+
+
 def test_i_iv_v_question_includes_fretboard_payload() -> None:
     payload = answer_for_question("Show me a 1-4-5 in G.", noisy_practical_sources())
 
