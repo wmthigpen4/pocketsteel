@@ -278,7 +278,7 @@ assert.equal((html.match(/href="\\/brand\\/pedal-steel-fretboard-background\\.sv
     run_node(script)
 
 
-def test_default_position_dots_use_one_amber_style_without_unexplained_color_split() -> None:
+def test_position_dots_use_distinct_explained_color_roles() -> None:
     script = component_eval_script(
         """
 const model = fretboard.buildFretboardModel({ positions: fretboard.DEMO_POSITIONS });
@@ -291,8 +291,9 @@ assert.equal((html.match(/data-color-role="warning"/g) || []).length, 0);
 assert.equal((html.match(/data-color-role="primary"/g) || []).length, 0);
 assert.equal((html.match(/data-color-role="secondary"/g) || []).length, 0);
 assert.equal((html.match(/data-color-role="alternate"/g) || []).length, 0);
-assert.doesNotMatch(html, /#8fd5ff/);
-assert.doesNotMatch(html, /#ff9f6e/);
+assert.match(html, /#f0bf69/);
+assert.match(html, /#8fd5ff/);
+assert.match(html, /#8de391/);
 """
     )
 
@@ -763,8 +764,8 @@ const allModel = fretboard.buildFretboardModel({ positions: bPositions, filterMo
 assert.deepEqual(allModel.highlights.map((item) => item.id), ["b-open-7", "b-af-10", "b-ab-14", "b-ab-2-lower-octave"]);
 const alternateModel = fretboard.buildFretboardModel({ positions: bPositions, filterMode: "more" });
 assert.deepEqual(alternateModel.highlights.map((item) => item.id), ["b-ab-2-lower-octave"]);
-const leverModel = fretboard.buildFretboardModel({ positions: bPositions, includeLeverPositions: true });
-assert.deepEqual(leverModel.highlights.map((item) => item.id), ["b-open-7", "b-af-10", "b-ab-14"]);
+const leverOptionModel = fretboard.buildFretboardModel({ positions: bPositions, includeLeverPositions: true });
+assert.deepEqual(leverOptionModel.highlights.map((item) => item.id), ["b-open-7", "b-af-10", "b-ab-14"]);
 
 const html = fretboard.renderPedalSteelFretboard({
   positions: bPositions,
@@ -779,7 +780,9 @@ assert.match(html, /data-position-tab="more"/);
 assert.match(html, /data-position-tab="dominant"/);
 assert.match(html, /data-position-tab="advanced"/);
 assert.match(html, /data-position-tab="show-all"/);
-assert.match(html, /data-include-levers/);
+assert.doesNotMatch(html, /data-include-levers/);
+assert.doesNotMatch(html, /Include lever positions/);
+assert.match(html, /data-has-tabs="true"/);
 assert.match(html, /data-position-selector="b-ab-2-lower-octave"[^>]*hidden/);
 assert.match(html, /data-highlight-id="b-ab-2-lower-octave"[^>]*data-visible-by-default="false"[^>]*hidden/);
 assert.match(html, /2 A\\+B/);
@@ -790,6 +793,8 @@ assert.match(html, /String 6: F# \\/ 5/);
 assert.match(html, /data-position-selector="b-open-7"[^>]*data-color-role="open"/);
 assert.match(html, /data-position-selector="b-af-10"[^>]*data-color-role="a-f"/);
 assert.match(html, /data-position-selector="b-ab-14"[^>]*data-color-role="a-b"/);
+assert.match(html, /data-position-selector="b-af-10"[^>]*style="[^"]*--fretboard-swatch: #8fd5ff/);
+assert.match(html, /data-position-selector="b-ab-14"[^>]*style="[^"]*--fretboard-swatch: #8de391/);
 assert.match(html, /data-position-detail="b-af-10"[^>]*data-color-role="a-f"/);
 assert.match(html, /data-highlight-id="b-af-10"[^>]*data-color-role="a-f"/);
 assert.match(html, /data-legend-id="secondary" data-color-role="a-f"/);
@@ -950,11 +955,12 @@ const defaultModel = fretboard.buildFretboardModel({ positions });
 assert.deepEqual(defaultModel.highlights.map((item) => item.id), ["starter-open"]);
 const advancedModel = fretboard.buildFretboardModel({ positions, filterMode: "advanced" });
 assert.deepEqual(advancedModel.highlights.map((item) => item.id), ["advanced-pass"]);
-const leverModel = fretboard.buildFretboardModel({ positions, includeLeverPositions: true });
-assert.deepEqual(leverModel.highlights.map((item) => item.id), ["starter-open", "advanced-pass"]);
+const legacyLeverOptionModel = fretboard.buildFretboardModel({ positions, includeLeverPositions: true });
+assert.deepEqual(legacyLeverOptionModel.highlights.map((item) => item.id), ["starter-open"]);
 const html = fretboard.renderPedalSteelFretboard({ positions });
 assert.match(html, /data-position-selector="advanced-pass"[^>]*data-position-tier="advanced"[^>]*data-visible-by-default="false"[^>]*data-has-levers="true"[^>]*hidden/);
 assert.match(html, /data-color-role="e-lower"/);
+assert.match(html, /#c7a5ff/);
 assert.match(html, /String 4: D# \\/ confidence: level: draft/);
 assert.match(html, /Use sparingly \\/ context: lane: advanced/);
 assert.match(html, /Watch intonation \\/ detail: reason: high fret/);
@@ -973,8 +979,66 @@ def test_filter_interaction_source_resets_hidden_selection_to_first_visible() ->
     assert "selectPosition(figure, firstVisible.getAttribute(\"data-position-selector\"));" in source
     assert "if (selector?.hidden) return;" in source
     assert "data-position-empty" in source
-    assert "function positionElementMatchesTab(element, tabMode, includeLeverPositions)" in source
-    assert "[data-include-levers]" in source
+    assert "function positionElementMatchesTab(element, tabMode)" in source
+    assert "data-include-levers" not in source
+    assert "Include lever positions" not in source
+    assert 'figure?.dataset?.hasTabs !== "true"' in source
+
+
+def test_direct_diagnostic_payload_hides_tabs_but_keeps_focused_position_visible() -> None:
+    script = component_eval_script(
+        """
+const positions = [
+  {
+    id: "d-e-lower-578-3",
+    label: "D E-lower grip",
+    fret: 3,
+    strings: [5, 7, 8],
+    grip: "5-7-8",
+    pedals: [],
+    levers: ["E lower"],
+    family: "e_lower_578",
+    tier: "advanced",
+    positionKind: "grip_diagnostic",
+    colorRole: "e-lower",
+    visibleByDefault: false,
+    validationStatus: "pitch_validated",
+    notes: {"5": "B", "7": "F#", "8": "D"},
+    intervals: {"5": "6/13", "7": "3", "8": "1"},
+    omittedIntervals: ["5"],
+    caveats: [{label: "Not a full triad", detail: {reason: "fifth omitted"}}],
+    explanation: {summary: "This is a D color with E lowered at fret 3."}
+  }
+];
+const model = fretboard.buildFretboardModel({ positions });
+assert.equal(model.hasTabs, false);
+assert.equal(model.tabMode, "show-all");
+assert.deepEqual(model.highlights.map((item) => item.id), ["d-e-lower-578-3"]);
+assert.equal(model.highlights[0].colorRole, "e-lower");
+
+const html = fretboard.renderPedalSteelFretboard({ positions });
+assert.match(html, /data-has-tabs="false"/);
+assert.doesNotMatch(html, /data-position-tab="/);
+assert.doesNotMatch(html, /Starter/);
+assert.doesNotMatch(html, /Dominant pockets/);
+assert.match(html, /data-position-selector="d-e-lower-578-3"/);
+assert.doesNotMatch(html, /data-position-selector="d-e-lower-578-3"[^>]*hidden/);
+assert.match(html, /data-highlight-id="d-e-lower-578-3"[^>]*data-color-role="e-lower"/);
+assert.doesNotMatch(html, /data-highlight-id="d-e-lower-578-3"[^>]*hidden/);
+assert.match(html, /data-position-detail="d-e-lower-578-3"[^>]*data-color-role="e-lower"/);
+assert.match(html, /#c7a5ff/);
+assert.match(html, /String 5: B/);
+assert.match(html, /String 7: F#/);
+assert.match(html, /String 8: D/);
+assert.match(html, /String 5: 6\\/13/);
+assert.match(html, /Omitted intervals/);
+assert.match(html, /5/);
+assert.match(html, /Not a full triad \\/ detail: reason: fifth omitted/);
+assert.doesNotMatch(html, /\\[object Object\\]/);
+"""
+    )
+
+    run_node(script)
 
 
 def test_missing_or_partial_fretboard_payload_omits_selector_cleanly() -> None:
