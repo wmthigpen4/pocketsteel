@@ -167,11 +167,13 @@ Provider values:
 
 - `scaffold`: reads `X-Steel-Rag-Access-Role` in production-like mode. This is
   only a pre-Cloudflare scaffold and must not be used for public beta.
-- `cloudflare_access`: reads `Cf-Access-Jwt-Assertion`, validates the Access JWT
-  issuer, audience, expiry/not-before, and RS256 signature against the Access
-  JWKS, then maps the verified email to `beta_user` or `admin` from allowlists.
-  Browser-supplied role headers and local-dev mock headers are ignored in this
-  provider unless `STEEL_RAG_ANSWER_AUTH_MODE=local_dev`.
+- `cloudflare_access`: reads `Cf-Access-Jwt-Assertion`, or the browser
+  `CF_Authorization` Access cookie when the origin header is absent, then
+  validates the Access JWT issuer, audience, expiry/not-before, and RS256
+  signature against the Access JWKS. It maps the verified email to `beta_user`
+  or `admin` from allowlists. Browser-supplied role headers, email headers, and
+  local-dev mock headers are ignored in this provider unless
+  `STEEL_RAG_ANSWER_AUTH_MODE=local_dev`.
 
 Cloudflare Access provider configuration:
 
@@ -349,9 +351,11 @@ Rate-limit failures return `429 Too Many Requests`:
 authenticated. It uses the same auth provider boundary as `/api/answer`, but it
 does not run retrieval or answer generation.
 
-In `cloudflare_access` mode, the endpoint validates `Cf-Access-Jwt-Assertion`
-and maps the verified email to `beta_user` or `admin`. Missing, invalid, or
-unlisted identities return an anonymous status in the response body.
+In `cloudflare_access` mode, the endpoint validates the Access JWT from
+`Cf-Access-Jwt-Assertion`, or from the browser `CF_Authorization` Access cookie
+when the origin header is absent, and maps the verified email to `beta_user` or
+`admin`. Missing, invalid, or unlisted identities return an anonymous status in
+the response body.
 
 In `local_dev` mode, the endpoint may accept the explicit local dev mock access
 header so `?access=beta_user` and the Backstage preview controls remain useful

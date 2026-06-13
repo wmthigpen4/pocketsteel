@@ -33,6 +33,7 @@ from pocketsteel.api import create_app
 from pocketsteel.access_control import DEV_ACCESS_ROLE_ENVIRON, TRUSTED_AUTH_ROLE_ENVIRON
 from pocketsteel.answer_usage import InMemoryAnswerRateLimiter
 from pocketsteel.cloudflare_access import (
+    CLOUDFLARE_ACCESS_AUTHORIZATION_COOKIE,
     CLOUDFLARE_ACCESS_JWT_ENVIRON,
     CloudflareAccessClaims,
     CloudflareAccessError,
@@ -54,6 +55,7 @@ def call_app(
     access_header: str = "dev",
     auth_provider: str = "scaffold",
     cloudflare_token: str | None = None,
+    cloudflare_cookie_token: str | None = None,
     cloudflare_verifier: Any = None,
     private_search_index: Any | None = None,
     retrieval_config: RetrievalModeConfig | None = None,
@@ -85,6 +87,8 @@ def call_app(
         environ[DEV_ACCESS_ROLE_ENVIRON if access_header == "dev" else TRUSTED_AUTH_ROLE_ENVIRON] = access_role
     if cloudflare_token is not None:
         environ[CLOUDFLARE_ACCESS_JWT_ENVIRON] = cloudflare_token
+    if cloudflare_cookie_token is not None:
+        environ["HTTP_COOKIE"] = f"{CLOUDFLARE_ACCESS_AUTHORIZATION_COOKIE}={cloudflare_cookie_token}"
     response_body = b"".join(app(environ, start_response))
     return captured["status"], captured["headers"], json.loads(response_body)
 
@@ -98,6 +102,7 @@ def call_existing_app(
     access_role: str | None = "beta_user",
     access_header: str = "dev",
     cloudflare_token: str | None = None,
+    cloudflare_cookie_token: str | None = None,
 ) -> tuple[str, dict[str, str], dict[str, Any]]:
     captured: dict[str, Any] = {}
     body = json.dumps(json_body or {}).encode("utf-8") if json_body is not None else b""
@@ -118,6 +123,8 @@ def call_existing_app(
         environ[DEV_ACCESS_ROLE_ENVIRON if access_header == "dev" else TRUSTED_AUTH_ROLE_ENVIRON] = access_role
     if cloudflare_token is not None:
         environ[CLOUDFLARE_ACCESS_JWT_ENVIRON] = cloudflare_token
+    if cloudflare_cookie_token is not None:
+        environ["HTTP_COOKIE"] = f"{CLOUDFLARE_ACCESS_AUTHORIZATION_COOKIE}={cloudflare_cookie_token}"
     response_body = b"".join(app(environ, start_response))
     return captured["status"], captured["headers"], json.loads(response_body)
 
@@ -1137,6 +1144,30 @@ def test_api_session_cloudflare_access_valid_beta_email(monkeypatch: Any) -> Non
     assert "email" not in payload
 
 
+def test_api_session_cloudflare_access_valid_beta_cookie_unlocks(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
+
+    status, _, payload = call_app(
+        "/api/session",
+        method="GET",
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_cookie_token="valid-beta",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        access_role=None,
+    )
+
+    assert status == "200 OK"
+    assert payload == {
+        "authenticated": True,
+        "role": "beta_user",
+        "authProvider": "cloudflare_access",
+    }
+    assert "email" not in payload
+
+
 def test_api_answer_cloudflare_access_allows_valid_admin_email(monkeypatch: Any) -> None:
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
@@ -1179,6 +1210,73 @@ def test_api_session_cloudflare_access_valid_admin_email(monkeypatch: Any) -> No
         "authProvider": "cloudflare_access",
     }
     assert "email" not in payload
+
+
+def test_api_session_cloudflare_access_valid_admin_cookie_unlocks(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_ADMIN_EMAILS", "admin@example.test")
+
+    status, _, payload = call_app(
+        "/api/session",
+        method="GET",
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_cookie_token="valid-admin",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        access_role=None,
+    )
+
+    assert status == "200 OK"
+    assert payload == {
+        "authenticated": True,
+        "role": "admin",
+        "authProvider": "cloudflare_access",
+    }
+    assert "email" not in payload
+
+
+def test_api_answer_cloudflare_access_allows_valid_beta_cookie(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
+
+    status, _, payload = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={"question": "How do I play a G chord on the E9?"},
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_cookie_token="valid-beta",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        access_role=None,
+    )
+
+    assert status == "200 OK"
+    assert payload["answer"]
+
+
+def test_api_session_cloudflare_access_invalid_cookie_stays_anonymous(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
+
+    status, _, payload = call_app(
+        "/api/session",
+        method="GET",
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_cookie_token="invalid",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        access_role=None,
+    )
+
+    assert status == "200 OK"
+    assert payload == {
+        "authenticated": False,
+        "role": "anonymous",
+        "authProvider": "cloudflare_access",
+    }
 
 
 def test_api_answer_cloudflare_access_blocks_unlisted_valid_email(monkeypatch: Any) -> None:

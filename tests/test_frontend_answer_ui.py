@@ -44,6 +44,7 @@ let capturedRequest;
 
   assert.equal(capturedRequest.url, "/api/answer");
   assert.equal(capturedRequest.options.method, "POST");
+  assert.equal(capturedRequest.options.credentials, "same-origin");
   assert.equal(capturedRequest.options.headers["Content-Type"], "application/json");
   assert.equal(capturedRequest.options.headers["X-Steel-Rag-Dev-Access-Role"], "beta_user");
   const legacyHeader = ["X", "Turn" + "around", "Dev", "Access", "Role"].join("-");
@@ -107,6 +108,7 @@ let capturedRequest;
 
   assert.equal(capturedRequest.url, "/api/session");
   assert.equal(capturedRequest.options.method, "GET");
+  assert.equal(capturedRequest.options.credentials, "same-origin");
   assert.equal(capturedRequest.options.headers.Accept, "application/json");
   assert.equal(capturedRequest.options.headers["X-Steel-Rag-Dev-Access-Role"], "beta_user");
   assert.equal(JSON.stringify(beta), JSON.stringify({

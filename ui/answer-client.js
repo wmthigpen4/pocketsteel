@@ -380,6 +380,7 @@ const STEEL_RAG_ANSWER_UI = (() => {
 
     const response = await fetchImpl(ANSWER_ENDPOINT, {
       method: "POST",
+      credentials: "same-origin",
       headers,
       body: JSON.stringify({ question })
     });
@@ -405,6 +406,7 @@ const STEEL_RAG_ANSWER_UI = (() => {
   async function requestSession({ fetchImpl = window.fetch, accessRole = ACCESS_ROLES.ANONYMOUS } = {}) {
     const response = await fetchImpl(SESSION_ENDPOINT, {
       method: "GET",
+      credentials: "same-origin",
       headers: {
         Accept: "application/json",
         ...devAccessHeaders(accessRole)

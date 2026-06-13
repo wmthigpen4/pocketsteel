@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from http.cookies import SimpleCookie
 from typing import Any, Literal
 from urllib.parse import parse_qs
 
 from pocketsteel.cloudflare_access import (
+    CLOUDFLARE_ACCESS_AUTHORIZATION_COOKIE,
     CLOUDFLARE_ACCESS_JWT_ENVIRON,
     CloudflareAccessConfig,
     CloudflareAccessError,
@@ -92,7 +94,7 @@ def _authorize_with_cloudflare_access(
     environ: dict[str, object],
     cloudflare_verifier: Any,
 ) -> AnswerAccessDecision:
-    token = str(environ.get(CLOUDFLARE_ACCESS_JWT_ENVIRON) or "").strip()
+    token = _access_jwt_from_environ(environ)
     if not token:
         return AnswerAccessDecision(
             allowed=False,
@@ -125,6 +127,23 @@ def _authorize_with_cloudflare_access(
         error="/api/answer requires beta_user or admin access",
         identity_email=email,
     )
+
+
+def _access_jwt_from_environ(environ: dict[str, object]) -> str:
+    header_token = str(environ.get(CLOUDFLARE_ACCESS_JWT_ENVIRON) or "").strip()
+    if header_token:
+        return header_token
+
+    cookie_header = str(environ.get("HTTP_COOKIE") or "")
+    if not cookie_header:
+        return ""
+    cookie = SimpleCookie()
+    try:
+        cookie.load(cookie_header)
+    except Exception:
+        return ""
+    morsel = cookie.get(CLOUDFLARE_ACCESS_AUTHORIZATION_COOKIE)
+    return str(morsel.value).strip() if morsel else ""
 
 
 def authorize_answer_request(
