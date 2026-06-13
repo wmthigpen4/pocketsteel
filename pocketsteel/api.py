@@ -92,6 +92,14 @@ def _curated_answer_should_be_source_free(intent: str) -> bool:
         "sensitive_personal_attribute",
         "style_how_to",
         "safety_adjacent",
+        "teach_me_something",
+        "movement_request",
+        "progression_intro_request",
+        "pocket_request",
+        "lick_request",
+        "vague_learning_request",
+        "frustrated_learning_request",
+        "everyday_context",
     }
 
 

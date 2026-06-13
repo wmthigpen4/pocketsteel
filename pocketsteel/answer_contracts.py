@@ -503,6 +503,14 @@ INTENT_ALIASES = {
     "curated_fact_source_check": "yes_no_source_check",
     "unknown": "fallback_unknown",
     "safety_boundary": "general_forum_wisdom",
+    "teach_me_something": "fretboard_concept",
+    "movement_request": "movement_from_position",
+    "progression_intro_request": "fretboard_concept",
+    "pocket_request": "practical_concept_explanation",
+    "lick_request": "technique_coach",
+    "vague_learning_request": "fretboard_concept",
+    "frustrated_learning_request": "fretboard_concept",
+    "everyday_context": "fretboard_concept",
 }
 
 
@@ -552,6 +560,18 @@ def infer_contract_intent(question: str, mode: str = "ask") -> str:
         return "gig_advice"
     if "emergency" in q and "gig" in q and "kit" in q:
         return "gig_advice"
+    if re.search(r"\b(?:worse\s+than\s+google|not\s+a\s+teacher|aren't\s+a\s+teacher|answering\s+machine|play\s+anything|just\s+one\s+thing|teach\s+me\s+anything|tell\s+me\s+something|might\s+not\s+already\s+know|show\s+me\s+anything)\b", q):
+        return "practice_plan"
+    if re.search(r"\b(?:where\s+should\s+i\s+go|where\s+do\s+i\s+go|move\s+up\s+the\s+neck|not\s+staying\s+still)\b", q):
+        return "movement_from_position"
+    if re.search(r"\b1\s*[-/]\s*4\s*[-/]\s*5\s*[-/]\s*1\b", q):
+        return "practice_plan"
+    if re.search(r"\bpocket\b", q) and re.search(r"\b(?:show|give|specific|learn)\b", q):
+        return "practical_concept_explanation"
+    if re.search(r"\blick\b", q) and re.search(r"\b(?:show|give|one|example)\b", q):
+        return "technique_coach"
+    if re.search(r"\b(?:kitchen|chew\s+gum|gum)\b", q) and re.search(r"\b(?:play|practice|pedal\s+steel|steel)\b", q):
+        return "practice_plan"
     if re.search(r"\b(?:this\s+(?:position|chord|grip|move|lick)|that\s+(?:position|chord|grip|move|lick)|from\s+here)\b", q):
         return "missing_context_clarifier"
     if re.search(r"\bclassic\s+country\s+move\b|\bclean\s+up\s+my\s+blocking\b|\bbar\s+movement\b|\bslides?\s+sound\s+smoother\b|\bvolume\s+pedal\s+sounds\s+jumpy\b|\bsound\s+less\s+busy\b|\boverplaying\s+fills?\b", q):

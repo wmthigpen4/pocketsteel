@@ -37,6 +37,14 @@ IntentMode = Literal[
     "sensitive_personal_attribute",
     "style_how_to",
     "safety_adjacent",
+    "teach_me_something",
+    "movement_request",
+    "progression_intro_request",
+    "pocket_request",
+    "lick_request",
+    "vague_learning_request",
+    "frustrated_learning_request",
+    "everyday_context",
     "technique_coach",
     "tone_coach",
     "practice_plan",
@@ -391,6 +399,22 @@ def intent_mode_for_question(question: str) -> IntentMode:
         return "safety_adjacent"
     if _mentions_style_how_to(q):
         return "style_how_to"
+    if _mentions_frustrated_learning_request(q):
+        return "frustrated_learning_request"
+    if _mentions_movement_request(q):
+        return "movement_request"
+    if _mentions_progression_intro_request(q):
+        return "progression_intro_request"
+    if _mentions_pocket_request(q):
+        return "pocket_request"
+    if _mentions_lick_request(q):
+        return "lick_request"
+    if _mentions_teach_me_something(q):
+        return "teach_me_something"
+    if _mentions_vague_learning_request(q):
+        return "vague_learning_request"
+    if _mentions_everyday_context_playing(q):
+        return "everyday_context"
     if _mentions_missing_context_home_prompt(q):
         return "missing_context_clarifier"
     if _mentions_timeboxed_practice_prompt(q):
@@ -491,6 +515,126 @@ def intent_mode_curated_answer(question: str) -> CuratedAnswer | None:
                 "- leave more space\n"
                 "- use fewer notes with better touch"
             ),
+        )
+    if mode == "teach_me_something":
+        return CuratedAnswer(
+            intent="teach_me_something",
+            confidence="curated_high",
+            answer=(
+                "One thing many beginners miss: on E9, the same major chord usually lives in position families, not just one fret.\n\n"
+                "Example in G:\n"
+                "- G: 3rd fret, no pedals, grip 4-5-6.\n"
+                "- G: 6th fret with A pedal + F lever, same grip.\n"
+                "- G: 10th fret with A+B, same grip.\n\n"
+                "Thing to try: play those three G positions slowly, block after each grip, and listen for how open/no-pedals, A+F, and A+B give you movement without changing the chord name."
+            ),
+        )
+    if mode == "movement_request":
+        return CuratedAnswer(
+            intent="movement_request",
+            confidence="curated_high",
+            answer=(
+                "You are starting from G at the 3rd fret open/no pedals. The 4 chord in G is C.\n\n"
+                "Since you do not want to stay at fret 3 and press A+B, move up to C at the 8th fret open/no pedals.\n\n"
+                "Why it works:\n"
+                "- 3rd fret open is the straight-bar G family.\n"
+                "- 8th fret open is the straight-bar C family.\n"
+                "- The move gives you a clear up-neck I-to-IV sound without changing pedal state.\n\n"
+                "One alternate: if you want a smoother connected color later, compare C at 3rd fret with A+B, but use the 8th fret open move first so your ear hears the chord function moving up the neck."
+            ),
+        )
+    if mode == "progression_intro_request":
+        return CuratedAnswer(
+            intent="progression_intro_request",
+            confidence="curated_high",
+            answer=(
+                "Here is a simple 1-4-5-1 intro in G: G - C - D - G.\n\n"
+                "A 1-4-5-1 turnaround means I-IV-V-I: the home chord, the IV chord, the V chord, then back home.\n\n"
+                "Example in G: G - C - D - G.\n\n"
+                "Straight-bar E9 path:\n"
+                "- G: 3rd fret open/no pedals; G: 3rd fret, no pedals, same grip.\n"
+                "- C: 8th fret open/no pedals.\n"
+                "- D: 10th fret open/no pedals.\n"
+                "- G: return to 3rd fret open, or land at 15th fret open for the higher octave.\n\n"
+                "Practice pattern: use one grip, such as 4-5-6 or 3-4-5. Play each chord as a slow two-beat grip, block cleanly, then move the bar. Keep it plain before adding slides or pedal movement."
+            ),
+        )
+    if mode == "pocket_request":
+        return CuratedAnswer(
+            intent="pocket_request",
+            confidence="curated_high",
+            answer=(
+                "Try this G major pocket around the 3rd fret.\n\n"
+                "Pocket map:\n"
+                "- G home: 3rd fret open/no pedals, grips 3-4-5 or 4-5-6.\n"
+                "- C sound: same fret with A+B.\n"
+                "- D sound: 5th fret with A+B.\n\n"
+                "Practice idea: stay in that small zone and make one two-beat answer after each chord. Use only one grip first, block after every grip, and listen for I-IV-V movement instead of hunting for more frets."
+            ),
+        )
+    if mode == "lick_request":
+        return CuratedAnswer(
+            intent="lick_request",
+            confidence="curated_high",
+            answer=(
+                "Here is one simple original E9 lick in G.\n\n"
+                "Use fret 3, grip 4-5-6:\n"
+                "- Pick strings 4-5-6 open/no pedals for G.\n"
+                "- Press A+B while the chord rings for a C lift.\n"
+                "- Release A+B back to G.\n"
+                "- Block, then repeat it softer as an answer phrase.\n\n"
+                "What it teaches: pedal timing and clean blocking. Keep it slow enough that the pedal change sounds like a musical word, not a smear."
+            ),
+        )
+    if mode == "vague_learning_request":
+        return CuratedAnswer(
+            intent="vague_learning_request",
+            confidence="curated_high",
+            answer=(
+                "Yes. Here is one concrete thing to play right now.\n\n"
+                "In G on E9:\n"
+                "- Put the bar at the 3rd fret.\n"
+                "- Pick strings 4-5-6 with no pedals for G.\n"
+                "- Press A+B at the same fret for C.\n"
+                "- Release A+B back to G and block cleanly.\n\n"
+                "Practice goal: make the pedal change even and the silence after each grip clean. That one move teaches chord function, pedal timing, and blocking."
+            ),
+        )
+    if mode == "frustrated_learning_request":
+        return CuratedAnswer(
+            intent="frustrated_learning_request",
+            confidence="curated_high",
+            answer=(
+                "Fair criticism: a useful steel answer should teach a playable move, not dump forum fragments.\n\n"
+                "Try this one thing in G:\n"
+                "- 3rd fret open/no pedals on strings 4-5-6 is G.\n"
+                "- Press A+B at the same fret for C.\n"
+                "- Move to 5th fret with A+B for D.\n"
+                "- Return to 3rd fret open for G.\n\n"
+                "That is a complete 1-4-5-1 path. Play it slowly, block after every grip, and listen for the function change before adding licks."
+            ),
+        )
+    if mode == "everyday_context":
+        if "gum" in q:
+            answer = (
+                "You can chew gum and play pedal steel, but it is not a useful practice goal.\n\n"
+                "Better test: keep your jaw and shoulders relaxed while you play one slow grip. "
+                "At the 3rd fret in G, pick strings 4-5-6, press A+B for C, release, and block cleanly. "
+                "If gum makes your timing, breathing, or focus worse, skip it."
+            )
+        else:
+            answer = (
+                "Yes, you can practice pedal steel in a kitchen if the guitar is stable and you keep the setup safe.\n\n"
+                "Simple kitchen-friendly drill:\n"
+                "- Keep volume low or use headphones if your rig supports it.\n"
+                "- At the 3rd fret, play G open/no pedals on strings 4-5-6.\n"
+                "- Press A+B for C, release back to G, and block after each grip.\n"
+                "- Stop after 10 focused minutes before fatigue makes the bar and pedals sloppy."
+            )
+        return CuratedAnswer(
+            intent="everyday_context",
+            confidence="curated_high",
+            answer=answer,
         )
     if mode == "missing_context_clarifier":
         if _mentions_full_partial_voicing_context(q):
@@ -1876,6 +2020,64 @@ def _mentions_safety_adjacent_playing(question: str) -> bool:
     )
 
 
+def _mentions_teach_me_something(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:tell\s+me\s+something|teach\s+me\s+something|one\s+thing|learn\s+something\s+new|might\s+not\s+already\s+know)\b", question)
+        and re.search(r"\b(?:pedal\s+steel|steel\s+guitar|steel|e9)\b", question)
+    )
+
+
+def _mentions_movement_request(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:where\s+should\s+i\s+go|where\s+do\s+i\s+go|how\s+do\s+i\s+move|move\s+up\s+the\s+neck|move\s+up|not\s+staying\s+still)\b", question)
+        and re.search(r"\b(?:4\s+chord|iv\s+chord|one\s+to\s+four|1\s*[- ]\s*4|i\s*[- ]\s*iv|move\s+up\s+the\s+neck|not\s+staying\s+still)\b", question)
+        and re.search(r"\b(?:chord|fret|position|neck|a\+b|open|pedal|g|c)\b", question)
+    )
+
+
+def _mentions_progression_intro_request(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:1\s*[-/]\s*4\s*[-/]\s*5\s*[-/]\s*1|i\s*[-/]\s*iv\s*[-/]\s*v\s*[-/]\s*i)\b", question)
+        and re.search(r"\b(?:intro|example|progression|turnaround|show|play|practice|use|learn)\b", question)
+    )
+
+
+def _mentions_pocket_request(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:show\s+me|give\s+me|teach\s+me|specific|one)\b", question)
+        and re.search(r"\bpocket\b", question)
+    )
+
+
+def _mentions_lick_request(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:give\s+me|show\s+me|teach\s+me|example|one|just\s+one)\b", question)
+        and re.search(r"\blick\b", question)
+        and re.search(r"\b(?:steel|pedal\s+steel|steel\s+guitar|e9)\b", question)
+    )
+
+
+def _mentions_vague_learning_request(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:how\s+to\s+play\s+anything|play\s+anything|just\s+one\s+thing|teach\s+me\s+anything|show\s+me\s+anything)\b", question)
+        and re.search(r"\b(?:steel|pedal\s+steel|steel\s+guitar|e9|play)\b", question)
+        and not re.search(r"\b(?:specific|song|tune)\b", question)
+    )
+
+
+def _mentions_frustrated_learning_request(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:worse\s+than\s+google|not\s+a\s+teacher|aren't\s+a\s+teacher|are\s+not\s+a\s+teacher|answering\s+machine|you\s+cannot\s+teach|you\s+can't\s+teach)\b", question)
+    )
+
+
+def _mentions_everyday_context_playing(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:kitchen|chew\s+gum|gum)\b", question)
+        and re.search(r"\b(?:play|practice|pedal\s+steel|steel\s+guitar|steel)\b", question)
+    )
+
+
 def mentions_current_roster_question(question: str) -> bool:
     return bool(re.search(r"\bwho\s+plays\s+for\s+[a-z0-9'. -]+\??$", question))
 
@@ -1883,23 +2085,24 @@ def mentions_current_roster_question(question: str) -> bool:
 def teacher_first_turnaround_answer(question: str) -> CuratedAnswer | None:
     if not re.search(r"\b1\s*[-/]\s*4\s*[-/]\s*5\s*[-/]\s*1\b", question):
         return None
-    if "turnaround" not in question and not re.search(r"\b(?:play|practice|use|learn)\b", question):
+    if "turnaround" not in question and not re.search(r"\b(?:play|practice|use|learn|intro|example|progression|show)\b", question):
         return None
     return CuratedAnswer(
-        intent="practice_plan",
+        intent="progression_intro_request",
         confidence="curated_high",
         answer=(
             "A 1-4-5-1 turnaround means I-IV-V-I: the home chord, the IV chord, the V chord, then back home.\n\n"
             "Example in G:\n"
+            "In G, that is G - C - D - G.\n"
             "- 1 chord: G\n"
             "- 4 chord: C\n"
             "- 5 chord: D\n"
             "- back to 1: G\n\n"
             "One practical E9 path:\n"
             "- G: 3rd fret, no pedals, grip 4-5-6.\n"
-            "- C: 3rd fret with A+B, same grip.\n"
-            "- D: 5th fret with A+B, same grip.\n"
-            "- G: return to the 3rd fret open, or use the 6th fret with A pedal + F lever for a smoother color.\n\n"
+            "- C: 8th fret open/no pedals, same grip.\n"
+            "- D: 10th fret open/no pedals, same grip.\n"
+            "- G: return to the 3rd fret open, or land at 15th fret open for the higher octave.\n\n"
             "Practice it: play the chords slowly as whole notes first, then make one two-beat fill between C and D. "
             "The goal is to hear the function change, not to memorize a forum lick."
         ),

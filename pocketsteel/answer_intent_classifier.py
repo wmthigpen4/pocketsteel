@@ -315,6 +315,17 @@ def classify_answer_request(question: str, mode: str = "ask") -> AnswerIntentPay
             allowed_answer_shape="practice_plan",
         )
 
+    if _mentions_default_teaching_request(q):
+        return _decision(
+            domain="steel_guitar",
+            intent="practice_plan",
+            needs_sources=False,
+            needs_fretboard=False,
+            needs_copedent=False,
+            retrieval_allowed=False,
+            allowed_answer_shape="practice_plan",
+        )
+
     mode_decision = _decision_from_mode(q, normalized_mode)
     if mode_decision is not None:
         return mode_decision
@@ -582,6 +593,69 @@ def _mentions_safety_adjacent_playing(question: str) -> bool:
     return bool(
         re.search(r"\b(?:drunk|impaired|intoxicated|high|stoned)\b", question)
         and re.search(r"\b(?:play|gig|perform|steel|pedal\s+steel|steel\s+guitar)\b", question)
+    )
+
+
+def _mentions_default_teaching_request(question: str) -> bool:
+    if _mentions_frustrated_learning_request(question):
+        return True
+    if _mentions_everyday_context_playing(question):
+        return True
+    if _mentions_movement_request(question):
+        return True
+    if _mentions_progression_intro_request(question):
+        return True
+    if _mentions_pocket_request(question):
+        return True
+    if _mentions_lick_request(question):
+        return True
+    return bool(
+        re.search(r"\b(?:tell\s+me\s+something|teach\s+me\s+something|one\s+thing|learn\s+something\s+new|might\s+not\s+already\s+know|how\s+to\s+play\s+anything|play\s+anything|just\s+one\s+thing|teach\s+me\s+anything|show\s+me\s+anything)\b", question)
+        and re.search(r"\b(?:pedal\s+steel|steel\s+guitar|steel|e9|play)\b", question)
+        and not re.search(r"\b(?:specific|song|tune)\b", question)
+    )
+
+
+def _mentions_movement_request(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:where\s+should\s+i\s+go|where\s+do\s+i\s+go|how\s+do\s+i\s+move|move\s+up\s+the\s+neck|move\s+up|not\s+staying\s+still)\b", question)
+        and re.search(r"\b(?:4\s+chord|iv\s+chord|one\s+to\s+four|1\s*[- ]\s*4|i\s*[- ]\s*iv|move\s+up\s+the\s+neck|not\s+staying\s+still)\b", question)
+        and re.search(r"\b(?:chord|fret|position|neck|a\+b|open|pedal|g|c)\b", question)
+    )
+
+
+def _mentions_progression_intro_request(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:1\s*[-/]\s*4\s*[-/]\s*5\s*[-/]\s*1|i\s*[-/]\s*iv\s*[-/]\s*v\s*[-/]\s*i)\b", question)
+        and re.search(r"\b(?:intro|example|progression|turnaround|show|play|practice|use|learn)\b", question)
+    )
+
+
+def _mentions_pocket_request(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:show\s+me|give\s+me|teach\s+me|specific|one)\b", question)
+        and re.search(r"\bpocket\b", question)
+    )
+
+
+def _mentions_lick_request(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:give\s+me|show\s+me|teach\s+me|example|one|just\s+one)\b", question)
+        and re.search(r"\blick\b", question)
+        and re.search(r"\b(?:steel|pedal\s+steel|steel\s+guitar|e9)\b", question)
+    )
+
+
+def _mentions_frustrated_learning_request(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:worse\s+than\s+google|not\s+a\s+teacher|aren't\s+a\s+teacher|are\s+not\s+a\s+teacher|answering\s+machine|you\s+cannot\s+teach|you\s+can't\s+teach)\b", question)
+    )
+
+
+def _mentions_everyday_context_playing(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:kitchen|chew\s+gum|gum)\b", question)
+        and re.search(r"\b(?:play|practice|pedal\s+steel|steel\s+guitar|steel)\b", question)
     )
 
 

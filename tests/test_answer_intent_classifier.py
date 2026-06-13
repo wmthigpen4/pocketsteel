@@ -398,6 +398,15 @@ def test_non_position_steel_questions_do_not_request_fretboard() -> None:
         "Are there gay steel guitar players?",
         "Can I play rock and roll on the steel guitar? How?",
         "Can you play steel guitar drunk?",
+        "Tell me something about pedal steel I might not already know",
+        "I am playing a G chord on 3rd fret and need to move up the neck to a 4 chord (not staying still and going to A+B). Where should I go?",
+        "Show me an example of a 1-4-5-1 intro",
+        "Show me a specific pocket so I can learn something new",
+        "Give me an example of just one steel guitar lick",
+        "Can you tell me how to play anything? Just one thing!",
+        "Can I play steel guitar in my kitchen?",
+        "Can you chew gum and play pedal steel?",
+        "You aren't a teacher. So far you are a worse-than-Google answering machine.",
     ):
         decision = classify_answer_intent(question)
         assert_contract_shape(decision)
@@ -423,6 +432,51 @@ def test_user_smoke_question_type_gates_disable_retrieval() -> None:
             "allowed_answer_shape": "practice_plan",
         },
         "Can you play steel guitar drunk?": {
+            "intent": "practice_plan",
+            "needs_sources": False,
+            "allowed_answer_shape": "practice_plan",
+        },
+        "Tell me something about pedal steel I might not already know": {
+            "intent": "practice_plan",
+            "needs_sources": False,
+            "allowed_answer_shape": "practice_plan",
+        },
+        "I am playing a G chord on 3rd fret and need to move up the neck to a 4 chord (not staying still and going to A+B). Where should I go?": {
+            "intent": "practice_plan",
+            "needs_sources": False,
+            "allowed_answer_shape": "practice_plan",
+        },
+        "Show me an example of a 1-4-5-1 intro": {
+            "intent": "practice_plan",
+            "needs_sources": False,
+            "allowed_answer_shape": "practice_plan",
+        },
+        "Show me a specific pocket so I can learn something new": {
+            "intent": "practice_plan",
+            "needs_sources": False,
+            "allowed_answer_shape": "practice_plan",
+        },
+        "Give me an example of just one steel guitar lick": {
+            "intent": "practice_plan",
+            "needs_sources": False,
+            "allowed_answer_shape": "practice_plan",
+        },
+        "Can you tell me how to play anything? Just one thing!": {
+            "intent": "practice_plan",
+            "needs_sources": False,
+            "allowed_answer_shape": "practice_plan",
+        },
+        "Can I play steel guitar in my kitchen?": {
+            "intent": "practice_plan",
+            "needs_sources": False,
+            "allowed_answer_shape": "practice_plan",
+        },
+        "Can you chew gum and play pedal steel?": {
+            "intent": "practice_plan",
+            "needs_sources": False,
+            "allowed_answer_shape": "practice_plan",
+        },
+        "You aren't a teacher. So far you are a worse-than-Google answering machine.": {
             "intent": "practice_plan",
             "needs_sources": False,
             "allowed_answer_shape": "practice_plan",

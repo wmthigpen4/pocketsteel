@@ -2921,10 +2921,11 @@ def test_teacher_first_screenshot_prompt_regressions_are_synthesized() -> None:
     assert "1-4-5-1 turnaround means I-IV-V-I" in turnaround["answer"]
     assert "Example in G" in turnaround["answer"]
     assert "G: 3rd fret, no pedals" in turnaround["answer"]
-    assert "C: 3rd fret with A+B" in turnaround["answer"]
-    assert "D: 5th fret with A+B" in turnaround["answer"]
+    assert "C: 8th fret open/no pedals" in turnaround["answer"]
+    assert "D: 10th fret open/no pedals" in turnaround["answer"]
     assert "fretboard" not in turnaround
-    assert turnaround["sources"]
+    assert turnaround["sources"] == []
+    assert turnaround["warnings"] == []
 
     swing_waltz = answer_for_question("What’s it mean for a song to be a swing or a waltz?", noisy_practical_sources())
     assert_clean_answer_body(swing_waltz)
@@ -2934,6 +2935,97 @@ def test_teacher_first_screenshot_prompt_regressions_are_synthesized() -> None:
     assert "bar movement, blocking, and volume-pedal swells" in swing_waltz["answer"]
     assert "fretboard" not in swing_waltz
     assert swing_waltz["sources"]
+
+
+def test_default_teaching_mode_prompts_do_not_fall_into_forum_fragments() -> None:
+    noisy_sources = [
+        {
+            "score": 0.91,
+            "excerpt": "Top Hi All. I was fascinated by this thread and someone said they owned three brands. Does anyone know where to order? A random lick tab fragment follows.",
+            "forum_name": "Pedal Steel",
+            "thread_title": "Unrelated forum teaching fragments",
+            "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=410001",
+            "chunk_id": "chunk-teaching-fragments",
+            "post_uid": "p-teaching-fragments",
+            "source_system": "sgf_phpbb_current",
+        }
+    ]
+
+    cases = {
+        "Tell me something about pedal steel I might not already know": [
+            "position families",
+            "3rd fret",
+            "A+F",
+            "A+B",
+            "Thing to try",
+        ],
+        "I am playing a G chord on 3rd fret and need to move up the neck to a 4 chord (not staying still and going to A+B). Where should I go?": [
+            "starting from G at the 3rd fret",
+            "4 chord in G is C",
+            "8th fret open/no pedals",
+            "straight-bar",
+        ],
+        "Show me an example of a 1-4-5-1 intro": [
+            "G - C - D - G",
+            "G: 3rd fret open/no pedals",
+            "C: 8th fret open/no pedals",
+            "D: 10th fret open/no pedals",
+            "grip",
+        ],
+        "Show me a specific pocket so I can learn something new": [
+            "G major pocket",
+            "3rd fret",
+            "A+B",
+            "5th fret with A+B",
+            "Practice idea",
+        ],
+        "Give me an example of just one steel guitar lick": [
+            "fret 3",
+            "grip 4-5-6",
+            "Press A+B",
+            "Release A+B",
+            "blocking",
+        ],
+        "Can you tell me how to play anything? Just one thing!": [
+            "one concrete thing",
+            "3rd fret",
+            "strings 4-5-6",
+            "Press A+B",
+            "Practice goal",
+        ],
+        "Can I play steel guitar in my kitchen?": [
+            "Yes",
+            "practice pedal steel in a kitchen",
+            "3rd fret",
+            "A+B",
+            "10 focused minutes",
+        ],
+        "Can you chew gum and play pedal steel?": [
+            "chew gum",
+            "not a useful practice goal",
+            "3rd fret",
+            "A+B",
+            "timing",
+        ],
+        "You aren't a teacher. So far you are a worse-than-Google answering machine.": [
+            "Fair criticism",
+            "playable move",
+            "3rd fret open/no pedals",
+            "1-4-5-1 path",
+        ],
+    }
+
+    for question, required_phrases in cases.items():
+        payload = answer_for_question(question, noisy_sources)
+        assert_clean_answer_body(payload)
+        for phrase in required_phrases:
+            assert phrase in payload["answer"]
+        assert "fascinated by this thread" not in payload["answer"]
+        assert "someone said they owned" not in payload["answer"]
+        assert "random lick tab fragment" not in payload["answer"]
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+        assert "fretboard" not in payload
 
 
 def test_invalid_chord_symbol_question_clarifies_without_retrieval_or_fretboard() -> None:
