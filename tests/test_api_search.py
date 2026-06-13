@@ -22,7 +22,12 @@ from pocketsteel.answering import (
     final_answer_quality_gate,
 )
 from pocketsteel.chroma_search import ChromaSearchIndex
-from pocketsteel.curated_answers import CURATED_FACT_WEAK_WARNING, WEAK_RETRIEVAL_WARNING, lookup_curated_answer
+from pocketsteel.curated_answers import (
+    CURATED_FACT_WEAK_WARNING,
+    WEAK_RETRIEVAL_WARNING,
+    intent_mode_for_question,
+    lookup_curated_answer,
+)
 from pocketsteel.fretboard_examples import DEFAULT_PEDAL_LEVER_LABELS
 from pocketsteel.api import create_app
 from pocketsteel.access_control import DEV_ACCESS_ROLE_ENVIRON, TRUSTED_AUTH_ROLE_ENVIRON
@@ -258,6 +263,9 @@ def test_answer_contract_registry_covers_major_intents() -> None:
         "fallback_unknown",
         "technique_improvement",
         "tone_touch",
+        "gear_advice",
+        "gig_advice",
+        "forum_wisdom",
         "yes_no_source_check",
         "general_forum_wisdom",
     }
@@ -275,6 +283,9 @@ def test_contract_intent_inference_for_common_questions() -> None:
     assert infer_contract_intent("How do I soften my attack?") == "tone_touch"
     assert infer_contract_intent("Help me sound less mechanical") == "technique_improvement"
     assert infer_contract_intent("My playing sounds mechanical. What should I practice?") == "technique_improvement"
+    assert infer_contract_intent("How do people power their StroboPlus tuner when playing a gig? My batteries run out very fast.") == "gear_advice"
+    assert infer_contract_intent("I broke a string during a show. Has that happened to anyone else? What do people do?") == "gig_advice"
+    assert infer_contract_intent("What do players say about breaking strings on stage?") == "forum_wisdom"
     assert infer_contract_intent("Where can I buy a slide bar?") == "vendor_buying_guidance"
     assert infer_contract_intent("Is Mullen or MSA better?") == "brand_comparison"
     assert infer_contract_intent("Who is Lloyd Green?") == "player_bio"
@@ -282,6 +293,15 @@ def test_contract_intent_inference_for_common_questions() -> None:
     assert infer_contract_intent("Who plays for Shania Twain?") == "current_roster"
     assert infer_contract_intent("Do any gay people play pedal steel?") == "sensitive_identity"
     assert normalize_intent("song_learning_or_tab_request") == "song_learning"
+
+
+def test_intent_mode_classifier_for_practical_advice_questions() -> None:
+    assert intent_mode_for_question("Where is a G chord?") == "instrument_visual"
+    assert intent_mode_for_question("How do people power their StroboPlus tuner when playing a gig? My batteries run out very fast.") == "gear_advice"
+    assert intent_mode_for_question("Should delay go before my volume pedal or after it?") == "gear_advice"
+    assert intent_mode_for_question("I broke a string during a show. Has that happened to anyone else? What do people do?") == "gig_advice"
+    assert intent_mode_for_question("What should be in a pedal steel emergency gig kit?") == "gig_advice"
+    assert intent_mode_for_question("What do players say about breaking strings on stage?") == "forum_wisdom"
 
 
 def test_contract_validation_catches_template_leakage() -> None:
@@ -2044,6 +2064,161 @@ def noisy_practical_sources() -> list[dict[str, Any]]:
     ]
 
 
+def test_stroboplus_gig_power_uses_practical_advice_before_sources() -> None:
+    payload = answer_for_question(
+        "How do people power their StroboPlus tuner when playing a gig? My batteries run out very fast.",
+        [
+            {
+                "score": 0.89,
+                "excerpt": "A Peterson StroboPlus is a strobe-style electronic tuner. Top I use mine until the battery dies.",
+                "forum_name": "Electronics",
+                "thread_title": "StroboPlus battery story",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=450001",
+                "chunk_id": "chunk-strobo-battery",
+                "post_uid": "p-strobo-battery",
+                "source_system": "sgf_phpbb_current",
+            }
+        ],
+    )
+
+    assert_clean_answer_body(payload)
+    assert payload["answer"].startswith("Short answer:")
+    assert "tuner power source" in payload["answer"]
+    assert "exact StroboPlus model and manual" in payload["answer"]
+    assert "external USB power" in payload["answer"]
+    assert "fresh spare batteries" in payload["answer"]
+    assert "backup tuner" in payload["answer"]
+    assert "A Peterson StroboPlus is a strobe-style" not in payload["answer"].splitlines()[0]
+    assert "fretboard" not in payload
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+
+
+def test_broken_string_during_show_uses_gig_advice_not_anecdote_fragments() -> None:
+    payload = answer_for_question(
+        "I broke a string during a show. Has that happened to anyone else? What do people do?",
+        [
+            {
+                "score": 0.91,
+                "excerpt": "Top embarrassing string break story with blood and glass and everyone laughed at the bump.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "String broke on stage",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=450002",
+                "chunk_id": "chunk-string-stage",
+                "post_uid": "p-string-stage",
+                "source_system": "sgf_phpbb_current",
+            }
+        ],
+    )
+
+    assert_clean_answer_body(payload)
+    assert payload["answer"].startswith("Short answer:")
+    assert "strings break on stage" in payload["answer"]
+    assert "Stay calm" in payload["answer"]
+    assert "Shift grips or positions" in payload["answer"]
+    assert "set break" in payload["answer"]
+    assert "spare strings" in payload["answer"]
+    assert "cutters" in payload["answer"]
+    assert "winder" in payload["answer"]
+    assert "tuner" in payload["answer"]
+    assert "glass" not in payload["answer"].lower()
+    assert "blood" not in payload["answer"].lower()
+    assert "embarrass" not in payload["answer"].lower()
+    assert "fretboard" not in payload
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+
+
+def test_practical_advice_modes_cover_gig_kit_delay_and_live_tuners() -> None:
+    delay = answer_for_question("Should delay go before my volume pedal or after it?", noisy_practical_sources())
+    assert_clean_answer_body(delay)
+    assert delay["answer"].startswith("Short answer:")
+    assert "after the volume pedal" in delay["answer"]
+    assert "before the pedal" in delay["answer"]
+    assert "fretboard" not in delay
+    assert delay["sources"] == []
+
+    kit = answer_for_question("What should be in a pedal steel emergency gig kit?", noisy_practical_sources())
+    assert_clean_answer_body(kit)
+    assert kit["answer"].startswith("Short answer:")
+    assert "spare E9 strings" in kit["answer"]
+    assert "cutters" in kit["answer"]
+    assert "small flashlight" in kit["answer"]
+    assert "fretboard" not in kit
+    assert kit["sources"] == []
+
+    tuners = answer_for_question("Do steel players use battery-powered tuners live?", noisy_practical_sources())
+    assert_clean_answer_body(tuners)
+    assert tuners["answer"].startswith("Short answer:")
+    assert "battery-powered tuners live" in tuners["answer"]
+    assert "fresh batteries" in tuners["answer"]
+    assert "backup tuner" in tuners["answer"]
+    assert "fretboard" not in tuners
+    assert tuners["sources"] == []
+
+
+def test_string_breaking_forum_wisdom_is_synthesized_not_raw_anecdotes() -> None:
+    payload = answer_for_question(
+        "What do players say about breaking strings on stage?",
+        [
+            {
+                "score": 0.8,
+                "excerpt": "Top funny story: I broke a string and there was blood, glass, and a big embarrassment.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "Stage string stories",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=450003",
+                "chunk_id": "chunk-stage-string-stories",
+                "post_uid": "p-stage-string-stories",
+                "source_system": "sgf_phpbb_current",
+            }
+        ],
+    )
+
+    assert_clean_answer_body(payload)
+    assert payload["answer"].startswith("Short answer:")
+    assert "players generally" in payload["answer"]
+    assert "Practical takeaway" in payload["answer"]
+    assert "spare high strings" in payload["answer"]
+    assert "blood" not in payload["answer"].lower()
+    assert "glass" not in payload["answer"].lower()
+    assert "embarrass" not in payload["answer"].lower()
+    assert "fretboard" not in payload
+    assert payload["sources"] == []
+
+
+def test_amp_hum_advice_stays_diagnostic_and_non_visual() -> None:
+    payload = answer_for_question("My amp hums until I touch the changer. What should I check first?", noisy_practical_sources())
+
+    assert_clean_answer_body(payload)
+    assert "Start by isolating" in payload["answer"]
+    assert "touching the strings or changer" in payload["answer"]
+    assert "grounding" in payload["answer"]
+    assert "Safety:" in payload["answer"]
+    assert "fretboard" not in payload
+
+
+def test_deterministic_fretboard_regressions_still_beat_intent_mode() -> None:
+    concept = answer_for_question("What's a G chord even mean?", noisy_practical_sources())
+    assert_clean_answer_body(concept)
+    assert "G major chord means the notes G-B-D" in concept["answer"]
+    assert "fretboard" in concept
+    assert_valid_fretboard_payload(concept)
+    assert_deterministic_fretboard_sources_are_clean(concept)
+
+    location = answer_for_question("Where is a G chord?", noisy_practical_sources())
+    assert_clean_answer_body(location)
+    assert "fretboard" in location
+    assert_valid_fretboard_payload(location)
+    assert_deterministic_fretboard_sources_are_clean(location)
+
+    b9 = answer_for_question("Is 5-7-8 with E lowered a B9 pocket?", noisy_practical_sources())
+    assert_clean_answer_body(b9)
+    assert "not a full B9 pocket" in b9["answer"]
+    assert "fretboard" in b9
+    assert_valid_fretboard_payload(b9)
+    assert_deterministic_fretboard_sources_are_clean(b9)
+
+
 def test_location_based_g_chord_answer_includes_fretboard_payload() -> None:
     payload = answer_for_question("Where can I play a G chord?", noisy_practical_sources())
 
@@ -2061,6 +2236,116 @@ def test_location_based_g_chord_answer_includes_fretboard_payload() -> None:
     assert "10th fret" in payload["answer"]
     assert "I " not in payload["answer"]
     assert_deterministic_fretboard_sources_are_clean(payload)
+
+
+def test_beginner_g_chord_concept_question_uses_deterministic_theory_and_fretboard_payload() -> None:
+    payload = answer_for_question(
+        "What's a G chord even mean?",
+        [
+            {
+                "score": 0.91,
+                "excerpt": "Top I just think of G somewhere around open strings and move around.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "Loose G chord chatter",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=405001",
+                "chunk_id": "noisy-g-concept",
+                "post_uid": "noisy-g-concept",
+                "source_system": "sgf_phpbb_current",
+            }
+        ],
+    )
+
+    assert_clean_answer_body(payload)
+    assert "fretboard" in payload
+    assert_valid_fretboard_payload(payload)
+    assert payload["fretboard"]["title"] == "G major positions on E9"
+    assert visible_fretboard_ids(payload) == ["g-open-3", "g-af-6", "g-ab-10"]
+    assert "A G major chord means the notes G-B-D" in payload["answer"]
+    assert "root, major 3rd, and perfect 5th" in payload["answer"]
+    assert "On E9, common G major starter positions include" in payload["answer"]
+    assert "3rd fret" in payload["answer"]
+    assert "10th fret" in payload["answer"]
+    assert "Top" not in payload["answer"]
+    assert "open strings" not in payload["answer"].lower()
+    assert_deterministic_fretboard_sources_are_clean(payload)
+
+
+def test_beginner_chord_meaning_and_note_questions_use_deterministic_payloads() -> None:
+    cases = [
+        ("What does a C chord mean?", "C major positions on E9", "C-E-G", ["c-open-8", "c-af-11", "c-ab-15"]),
+        ("What notes are in a D chord?", "D major positions on E9", "D-F#-A", ["d-open-10", "d-af-13", "d-ab-17"]),
+    ]
+    for question, title, spelling, visible_ids in cases:
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert_clean_answer_body(payload)
+        assert "fretboard" in payload, question
+        assert_valid_fretboard_payload(payload)
+        assert payload["fretboard"]["title"] == title
+        assert visible_fretboard_ids(payload) == visible_ids
+        assert spelling in payload["answer"]
+        assert "root, major 3rd, and perfect 5th" in payload["answer"]
+        assert "On E9" in payload["answer"]
+        assert_deterministic_fretboard_sources_are_clean(payload)
+
+
+def test_where_is_and_show_me_g_variants_use_deterministic_fretboard_payloads() -> None:
+    for question in ("Where is a G chord?", "How do I play G on E9?", "Show me a G chord"):
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert_clean_answer_body(payload)
+        assert "fretboard" in payload, question
+        assert_valid_fretboard_payload(payload)
+        assert payload["fretboard"]["title"] == "G major positions on E9"
+        assert visible_fretboard_ids(payload) == ["g-open-3", "g-af-6", "g-ab-10"]
+        assert "G major starter positions" in payload["answer"]
+        assert_deterministic_fretboard_sources_are_clean(payload)
+
+
+def test_e_minor_chord_concept_question_explains_minor_third_and_returns_payload() -> None:
+    payload = answer_for_question("What makes an E minor chord minor?", noisy_practical_sources())
+
+    assert_clean_answer_body(payload)
+    assert "fretboard" in payload
+    assert_valid_fretboard_payload(payload)
+    assert payload["fretboard"]["title"] == "E minor positions on E9"
+    assert visible_fretboard_ids(payload) == [
+        "e-minor-a_pedal_minor-4-5-6-3",
+        "e-minor-e_lower_minor-4-5-6-8",
+        "e-minor-b_c_minor-4-5-6-10",
+    ]
+    assert "An E minor chord means the notes E-G-B" in payload["answer"]
+    assert "root, minor 3rd, and perfect 5th" in payload["answer"]
+    assert "lowered 3rd" in payload["answer"]
+    assert_deterministic_fretboard_sources_are_clean(payload)
+
+
+def test_vi_chord_question_uses_deterministic_function_route() -> None:
+    payload = answer_for_question("What is the vi chord in G?", noisy_practical_sources())
+
+    assert_clean_answer_body(payload)
+    assert "fretboard" in payload
+    assert_valid_fretboard_payload(payload)
+    assert payload["fretboard"]["title"] == "E minor positions on E9"
+    assert "vi in G is E minor" in payload["answer"]
+    assert "E-G-B" in payload["answer"]
+    assert_deterministic_fretboard_sources_are_clean(payload)
+
+
+def test_generic_chord_concept_questions_do_not_use_forum_fragments() -> None:
+    for question, expected in (
+        ("What makes something a minor chord?", "root, minor 3rd, and perfect 5th"),
+        ("What is a 1 chord?", "home chord of the key"),
+        ("Why is A+B a chord?", "A+B is not a chord by itself"),
+    ):
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert_clean_answer_body(payload)
+        assert "fretboard" not in payload
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+        assert expected in payload["answer"]
+        assert "Top" not in payload["answer"]
 
 
 def test_location_based_b_chord_question_uses_b_positions_not_source_fragments() -> None:
@@ -2643,13 +2928,15 @@ def test_e_lower_5_7_8_usage_question_is_deterministic_and_separates_forum_evide
     assert "[object Object]" not in payload["answer"]
 
 
-def test_e_lower_5_7_8_b9_pocket_question_does_not_invent_visual_payload_or_b9_classification() -> None:
+def test_e_lower_5_7_8_b9_pocket_question_returns_focused_visual_payload_without_b9_misclassification() -> None:
     payload = answer_for_question("Is 5-7-8 with E lowered a B9 pocket?", noisy_practical_sources())
 
     assert_clean_answer_body(payload)
-    assert "fretboard" not in payload
+    assert "fretboard" in payload
+    assert_valid_fretboard_payload(payload)
     assert payload["sources"] == []
     assert payload["warnings"] == []
+    assert_deterministic_fretboard_sources_are_clean(payload)
     assert "[object Object]" not in payload["answer"]
     assert "is a B9 pocket" not in payload["answer"]
     assert "gives you B9" not in payload["answer"]
@@ -2657,6 +2944,14 @@ def test_e_lower_5_7_8_b9_pocket_question_does_not_invent_visual_payload_or_b9_c
     assert "D major" in payload["answer"]
     assert "rootless B minor 7 color" in payload["answer"]
     assert "Top" not in payload["answer"]
+    assert payload["fretboard"]["title"] == "5-7-8 E-lower B9 check"
+    assert payload["fretboard"]["positions"]
+    position = payload["fretboard"]["positions"][0]
+    assert position["id"] == "b9-check-e-lower-5-7-8-3"
+    assert position["root"] == "D"
+    assert position["quality"] == "major"
+    assert position["notes"] == {"5": "D", "7": "A", "8": "F#"}
+    assert position["function"] == "B9 check"
 
 
 def test_v_chord_pockets_in_a_use_deterministic_pitch_payload() -> None:

@@ -379,6 +379,7 @@ def test_quality_eval_flags_weak_source_language_for_chord_position_question() -
     assert result.outcome == "fail"
     assert "missing_deterministic_chord_route" in keys
     assert "deterministic_chord_weak_warning" in keys
+    assert "weak_source_leakage" in keys
 
 
 def test_quality_eval_flags_chord_position_typo_fallback_failure() -> None:
@@ -472,6 +473,171 @@ def test_quality_eval_flags_chord_position_router_escape_for_vi_minor_prompt() -
     keys = finding_keys(result)
     assert result.outcome == "fail"
     assert "chord_position_router_escape" in keys
+
+
+def test_quality_eval_flags_beginner_chord_concept_router_escape() -> None:
+    result = evaluate_quality_result(
+        row(
+            question="What's a G chord even mean?",
+            category="e9_fretboard_copedent",
+            expected_contract="copedent_fretboard",
+        ),
+        status_code=200,
+        payload=payload(
+            (
+                "I spell each chord from its tonic, and boy got to remember that 7th fret for the chord. "
+                "Use the source cards for the rest."
+            ),
+            sources=[source_card()],
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "fail"
+    assert "beginner_chord_concept_router_escape" in keys
+    assert "missing_fretboard_payload_for_chord_position" in keys
+    assert "missing_deterministic_chord_route" in keys
+    assert "deterministic_chord_source_leakage" in keys
+
+
+def test_quality_eval_passes_clean_beginner_major_chord_concept_answer() -> None:
+    result = evaluate_quality_result(
+        row(
+            question="What notes are in a D chord?",
+            category="e9_fretboard_copedent",
+            expected_contract="copedent_fretboard",
+        ),
+        status_code=200,
+        payload=payload(
+            (
+                "A D major chord means the root D, the major third F#, and the fifth A. "
+                "On E9, useful D major positions include the 10th fret with no pedals, "
+                "the 13th fret with A pedal + F lever, and the 17th fret with A+B pedals. "
+                "Practice the 4-5-6 grip first, then move slowly between those three frets."
+            ),
+            sources=[],
+            fretboard=fretboard_payload("D", (10, 13, 17)),
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "pass"
+    assert "beginner_chord_concept_router_escape" not in keys
+
+
+def test_quality_eval_passes_clean_beginner_minor_chord_concept_answer() -> None:
+    result = evaluate_quality_result(
+        row(
+            question="What makes an E minor chord minor?",
+            category="e9_fretboard_copedent",
+            expected_contract="copedent_fretboard",
+        ),
+        status_code=200,
+        payload=payload(
+            (
+                "E minor uses the root E, a flat third G, and the fifth B. "
+                "On E9, the 3rd-fret strings 5-6-8 visual reference gives you a practical way to hear that color; "
+                "practice it by playing the grip slowly and comparing it with E major."
+            ),
+            sources=[],
+            fretboard=minor_function_fretboard_payload(),
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "pass"
+    assert "beginner_chord_concept_router_escape" not in keys
+
+
+def test_quality_eval_flags_practical_advice_background_only_answer() -> None:
+    result = evaluate_quality_result(
+        row(
+            question="How do people power their StroboPlus tuner when playing a gig? My batteries run out very fast.",
+            category="gear_effects_tone",
+        ),
+        status_code=200,
+        payload=payload(
+            "A StroboPlus is a Peterson strobe-style tuner with sweetened temperaments for pedal steel.",
+            sources=[source_card()],
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "fail"
+    assert "advice_question_must_answer_directly" in keys
+    assert "gear_question_background_only_failure" in keys
+
+
+def test_quality_eval_flags_practical_advice_fragments_and_anecdotes() -> None:
+    result = evaluate_quality_result(
+        row(
+            question="I broke a string during a show. Has that happened to anyone else? What do people do?",
+            category="maintenance_parts_safety",
+        ),
+        status_code=200,
+        payload=payload(
+            "Has that happened to anyone else? One time at a gig I cut my finger and everybody laughed.",
+            sources=[source_card()],
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "fail"
+    assert "advice_question_must_answer_directly" in keys
+    assert "advice_question_raw_fragment_failure" in keys
+    assert "advice_question_joke_anecdote_failure" in keys
+
+
+def test_quality_eval_passes_clean_practical_gear_advice() -> None:
+    result = evaluate_quality_result(
+        row(
+            question="How do people power their StroboPlus tuner when playing a gig? My batteries run out very fast.",
+            category="gear_effects_tone",
+        ),
+        status_code=200,
+        payload=payload(
+            (
+                "For a gig, power the StroboPlus from a reliable adapter or fully charged supply, and keep fresh batteries as a backup. "
+                "Before the gig, check the cable, confirm the tuner stays on for a full set, and carry spare batteries in your seat."
+            ),
+            sources=[
+                source_card(
+                    excerpt="Players discuss powering tuners at gigs with adapters, spare batteries, and reliable cables."
+                )
+            ],
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "pass"
+    assert "advice_question_must_answer_directly" not in keys
+    assert "gear_question_background_only_failure" not in keys
+
+
+def test_quality_eval_passes_clean_practical_string_break_advice() -> None:
+    result = evaluate_quality_result(
+        row(
+            question="I broke a string during a show. Has that happened to anyone else? What do people do?",
+            category="maintenance_parts_safety",
+        ),
+        status_code=200,
+        payload=payload(
+            (
+                "During the show, replace the broken string if there is a pause; otherwise finish the tune by avoiding that grip. "
+                "Carry spare 3rd and 5th strings, a winder, cutters, and a small tuner, then check the changer finger after the set."
+            ),
+            sources=[
+                source_card(
+                    excerpt="Players recommend carrying spare strings, a winder, cutters, and checking the changer after a string breaks."
+                )
+            ],
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "pass"
+    assert "advice_question_must_answer_directly" not in keys
+    assert "advice_question_raw_fragment_failure" not in keys
 
 
 @pytest.mark.parametrize(
@@ -633,6 +799,7 @@ def test_quality_eval_flags_object_object_rendering_failure() -> None:
 
     assert result.outcome == "fail"
     assert "object_object_rendering_failure" in finding_keys(result)
+    assert "object_object_rendering" in finding_keys(result)
 
 
 def test_quality_eval_flags_b9_pocket_misclassification_without_rootless_disclosure() -> None:
@@ -661,14 +828,23 @@ def test_quality_eval_passes_clear_5_7_8_b9_negative_with_rootless_disclosure() 
                 "Use it as a pitch-checked D major grip; against a B root, those notes can also sound like "
                 "a rootless B minor 7 color because the B root is omitted."
             ),
-            sources=[
-                source_card(
-                    title="Pitch-rule source",
-                    forumName="Rules",
-                    url="https://example.test/pitch-rules/e-lower-578",
-                    excerpt="Pitch rules classify 5-7-8 with E lowered at fret 3 as D major, with optional rootless B minor 7 color.",
-                )
-            ],
+            sources=[],
+            fretboard={
+                "type": "e9-fretboard-diagram",
+                "title": "5-7-8 with E lowered",
+                "tuning": "E9",
+                "positions": [
+                    {
+                        "id": "b9-check-e-lower-5-7-8-3",
+                        "label": "D major / rootless B minor 7 color",
+                        "fret": 3,
+                        "strings": [5, 7, 8],
+                        "grip": "5-7-8",
+                        "pedals": [],
+                        "levers": ["E-lower"],
+                    }
+                ],
+            },
         ),
     )
 

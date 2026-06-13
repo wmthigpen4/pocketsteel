@@ -10,6 +10,8 @@ from pocketsteel.fretboard_examples import (
     E9_OPEN_STRINGS,
     FRETBOARD_PAYLOAD_TYPE,
     build_e9_major_chord_fretboard,
+    chord_concept_answer_for_question,
+    chord_concept_request_for_question,
     e_lower_578_answer_for_question,
     e_lower_578_b9_answer_for_question,
     e_lower_578_position_at_fret,
@@ -684,6 +686,7 @@ def test_e_lower_5_7_8_at_third_fret_is_not_misclassified_as_b9() -> None:
     position = e_lower_578_position_at_fret(3)
     answer = e_lower_578_answer_for_question("What does 5-7-8 with E lowered give me at the 3rd fret?")
     b9_answer = e_lower_578_b9_answer_for_question("Is 5-7-8 with E lowered a B9 pocket?")
+    b9_payload = fretboard_payload_for_question("Is 5-7-8 with E lowered a B9 pocket?")
 
     assert position.root == "D"
     assert position.quality == "major"
@@ -702,7 +705,21 @@ def test_e_lower_5_7_8_at_third_fret_is_not_misclassified_as_b9() -> None:
     assert "D major" in b9_answer
     assert "rootless B minor 7 color" in b9_answer
     assert "frets 0, 12, 24" in b9_answer
-    assert fretboard_payload_for_question("Is 5-7-8 with E lowered a B9 pocket?") is None
+    assert b9_payload is not None
+    assert b9_payload["title"] == "5-7-8 E-lower B9 check"
+    assert b9_payload["sourceContext"][0]["kind"] == "rule"
+    assert b9_payload["sourceContext"][0]["sourceId"] == "pocketsteel.fretboard_examples"
+    assert len(b9_payload["positions"]) == 1
+    b9_position = b9_payload["positions"][0]
+    assert b9_position["id"] == "b9-check-e-lower-5-7-8-3"
+    assert b9_position["root"] == "D"
+    assert b9_position["quality"] == "major"
+    assert b9_position["notes"] == {"5": "D", "7": "A", "8": "F#"}
+    assert b9_position["intervals"] == {"5": "1", "7": "5", "8": "3"}
+    assert b9_position["function"] == "B9 check"
+    assert b9_position["family"] == "e_lower_578_b9_check"
+    assert b9_position["visibleByDefault"] is True
+    assert "[object Object]" not in str(b9_payload)
 
 
 def test_v_chord_pockets_in_a_are_generated_from_e_pitch_math() -> None:
@@ -757,6 +774,40 @@ def test_fretboard_payload_for_question_matches_only_mvp_triggers() -> None:
     assert fretboard_payload_for_question("Show me a 1-4-5 in G.")["title"] == "I-IV-V in G on E9"
     assert fretboard_payload_for_question("Show me common grips for G.")["title"] == "Common G major grips on E9"
     assert fretboard_payload_for_question("What are common Fender Steel King settings?") is None
+
+
+def test_beginner_chord_concept_questions_route_to_deterministic_payloads() -> None:
+    g_request = chord_concept_request_for_question("What's a G chord even mean?")
+    assert g_request is not None
+    assert g_request.normalized_key == "G"
+    assert g_request.quality == "major"
+    g_answer = chord_concept_answer_for_question("What's a G chord even mean?")
+    assert g_answer is not None
+    assert "G-B-D" in g_answer
+    assert "root, major 3rd, and perfect 5th" in g_answer
+    assert "3rd fret" in g_answer
+    assert "10th fret" in g_answer
+    assert fretboard_payload_for_question("What's a G chord even mean?")["title"] == "G major positions on E9"
+
+    c_answer = chord_concept_answer_for_question("What does a C chord mean?")
+    assert c_answer is not None
+    assert "C-E-G" in c_answer
+    assert fretboard_payload_for_question("What does a C chord mean?")["title"] == "C major positions on E9"
+
+    d_answer = chord_concept_answer_for_question("What notes are in a D chord?")
+    assert d_answer is not None
+    assert "D-F#-A" in d_answer
+    assert fretboard_payload_for_question("What notes are in a D chord?")["title"] == "D major positions on E9"
+
+    e_minor_request = chord_concept_request_for_question("What makes an E minor chord minor?")
+    assert e_minor_request is not None
+    assert e_minor_request.normalized_key == "E"
+    assert e_minor_request.quality == "minor"
+    e_minor_answer = chord_concept_answer_for_question("What makes an E minor chord minor?")
+    assert e_minor_answer is not None
+    assert "E-G-B" in e_minor_answer
+    assert "minor 3rd" in e_minor_answer
+    assert fretboard_payload_for_question("What makes an E minor chord minor?")["title"] == "E minor positions on E9"
 
 
 def test_validation_rejects_raw_geometry_and_unknown_labels() -> None:

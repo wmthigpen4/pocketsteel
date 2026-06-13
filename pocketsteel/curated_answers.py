@@ -8,6 +8,7 @@ from typing import Literal
 
 from pocketsteel.curated_source_registry import slide_bar_vendor_bullets
 from pocketsteel.fretboard_examples import (
+    chord_concept_answer_for_question,
     e_lower_578_b9_answer_for_question,
     e_lower_578_answer_for_question,
     e_lower_grip_answer_for_question,
@@ -15,6 +16,7 @@ from pocketsteel.fretboard_examples import (
     function_chord_answer_for_question,
     functional_pocket_answer_for_question,
     get_e9_major_chord_positions,
+    generic_chord_concept_answer_for_question,
     major_chord_location_request_for_question,
     minor_chord_answer_for_question,
     unsupported_chord_location_request_for_question,
@@ -23,6 +25,16 @@ from pocketsteel.steel_rules import answer_from_rules
 
 
 CuratedConfidence = Literal["curated_high", "curated_medium", "rag_only"]
+IntentMode = Literal[
+    "instrument_visual",
+    "gear_advice",
+    "gig_advice",
+    "forum_wisdom",
+    "lesson_navigation",
+    "tab_explainer",
+    "history_player_context",
+    "unknown_low_confidence",
+]
 
 
 @dataclass(frozen=True)
@@ -157,6 +169,20 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
             confidence="curated_high",
             answer=function_chord_answer,
         )
+    chord_concept_answer = chord_concept_answer_for_question(question)
+    if chord_concept_answer is not None:
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=chord_concept_answer,
+        )
+    generic_chord_concept_answer = generic_chord_concept_answer_for_question(question)
+    if generic_chord_concept_answer is not None:
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=generic_chord_concept_answer,
+        )
     minor_chord_answer = minor_chord_answer_for_question(question)
     if minor_chord_answer is not None:
         return CuratedAnswer(
@@ -238,6 +264,141 @@ def unsupported_chord_position_curated_answer(question: str) -> CuratedAnswer | 
     )
 
 
+def intent_mode_for_question(question: str) -> IntentMode:
+    q = normalize(question)
+    if _mentions_gear_advice_intent(q):
+        return "gear_advice"
+    if _mentions_forum_wisdom_intent(q):
+        return "forum_wisdom"
+    if _mentions_gig_advice_intent(q):
+        return "gig_advice"
+    if _mentions_instrument_visual_intent(q):
+        return "instrument_visual"
+    if _mentions_lesson_navigation_intent(q):
+        return "lesson_navigation"
+    if _mentions_tab_explainer_intent(q):
+        return "tab_explainer"
+    if _mentions_history_player_context_intent(q):
+        return "history_player_context"
+    return "unknown_low_confidence"
+
+
+def intent_mode_curated_answer(question: str) -> CuratedAnswer | None:
+    q = normalize(question)
+    mode = intent_mode_for_question(q)
+    if mode == "gear_advice":
+        if _mentions_stroboplus_power_problem(q):
+            return CuratedAnswer(
+                intent="gear_advice",
+                confidence="curated_high",
+                answer=(
+                    "Short answer: treat the tuner power source as part of your gig rig, not an afterthought.\n\n"
+                    "Practical steps:\n"
+                    "- Check the exact StroboPlus model and manual for supported external power or charging behavior.\n"
+                    "- If your model supports external USB power while running, use only that supported method on gigs.\n"
+                    "- Start the set with fresh batteries or a fully charged tuner.\n"
+                    "- Carry fresh spare batteries or a charged backup tuner.\n"
+                    "- Do not rely on one weak battery source during a show.\n\n"
+                    "What to check before buying or changing anything:\n"
+                    "- exact model and power spec\n"
+                    "- whether external power runs the tuner, charges it, or only charges while off\n"
+                    "- cable, adapter, and jack reliability\n\n"
+                    "What players commonly do: treat tuners like other gig-critical gear, with fresh power and a backup way to tune."
+                ),
+            )
+        if _mentions_delay_volume_pedal_order(q):
+            return CuratedAnswer(
+                intent="gear_advice",
+                confidence="curated_high",
+                answer=(
+                    "Short answer: start with delay after the volume pedal, then move it before the pedal only if you want that special effect.\n\n"
+                    "Practical steps:\n"
+                    "- After the volume pedal, delay repeats follow your swells and usually sound smoother for pedal steel.\n"
+                    "- Before the volume pedal, the pedal can fade the repeats along with the dry note; that can be useful, but it is less common as a starting point.\n"
+                    "- Try both at gig volume, because repeats that sound fine at home can clutter a band mix.\n\n"
+                    "What to check before rewiring anything:\n"
+                    "- amp input vs. effects loop levels\n"
+                    "- noise from power supplies and patch cables\n"
+                    "- whether the delay gets too bright or too loud after volume swells\n\n"
+                    "What players commonly report: after-volume-pedal delay is the safe first setup; before-volume-pedal delay is a color choice."
+                ),
+            )
+        if _mentions_battery_tuner_live(q):
+            return CuratedAnswer(
+                intent="gear_advice",
+                confidence="curated_high",
+                answer=(
+                    "Short answer: yes, steel players can use battery-powered tuners live, but the batteries need to be part of the gig checklist.\n\n"
+                    "Practical steps:\n"
+                    "- Start the gig with fresh batteries or a fully charged tuner.\n"
+                    "- Carry spare batteries and a backup tuner.\n"
+                    "- If the tuner supports external power, use the supported power method and test it before the show.\n"
+                    "- Keep one non-battery backup option available if tuning is mission-critical.\n\n"
+                    "What to check before buying or changing anything:\n"
+                    "- battery type and expected runtime\n"
+                    "- display brightness needs on stage\n"
+                    "- whether the tuner mutes cleanly in your signal chain"
+                ),
+            )
+    if mode == "gig_advice":
+        if _mentions_emergency_gig_kit(q):
+            return CuratedAnswer(
+                intent="gig_advice",
+                confidence="curated_high",
+                answer=(
+                    "Short answer: your pedal-steel emergency kit should cover strings, tuning, small hardware, light, and quick fixes.\n\n"
+                    "Practical kit:\n"
+                    "- spare E9 strings, especially 3rd G#, 5th B, and any gauges your guitar breaks often\n"
+                    "- string winder, cutters, tuner, bar, picks, and thumb pick\n"
+                    "- small flashlight or headlamp\n"
+                    "- hex keys, small screwdrivers, spare nylon tuners if your guitar uses them, and a few useful screws/clips\n"
+                    "- extra cables, volume-pedal power or string if relevant, and a backup tuner\n\n"
+                    "What to check before the next gig: confirm the kit matches your exact guitar, pedal bar, rods, tuner, and volume pedal."
+                ),
+            )
+        if _mentions_broken_string_gig(q):
+            third_string = "3rd" in q or "third" in q or "string 3" in q
+            extra = (
+                "\n- If it is the 3rd string, keep multiple spare G# strings in your seat or case because that string works hard on E9."
+                if third_string
+                else ""
+            )
+            return CuratedAnswer(
+                intent="gig_advice",
+                confidence="curated_high",
+                answer=(
+                    "Short answer: yes, strings break on stage; plan for recovery, not panic.\n\n"
+                    "Practical steps:\n"
+                    "- Stay calm and finish the phrase or song if you can.\n"
+                    "- Shift grips or positions around the missing string when possible.\n"
+                    "- Use a backup instrument if one is available and the break stops the part.\n"
+                    "- Change the string at the set break rather than turning it into the whole show.\n"
+                    "- Carry spare strings, cutters, winder, tuner, and a small light." + extra + "\n\n"
+                    "What to check before the next gig:\n"
+                    "- burrs at the changer finger, roller, nut, or pull path\n"
+                    "- old strings, wrong gauge, sharp winding, or unusually aggressive pedal travel\n"
+                    "- whether the same string keeps breaking in the same place\n\n"
+                    "What players commonly do: carry spares and tools, then adapt musically until there is a clean moment to change the string."
+                ),
+            )
+    if mode == "forum_wisdom":
+        if _mentions_stage_string_forum_wisdom(q):
+            return CuratedAnswer(
+                intent="forum_wisdom",
+                confidence="curated_high",
+                answer=(
+                    "Short answer: players generally treat a broken string on stage as normal gig risk, not a disaster.\n\n"
+                    "Practical takeaway:\n"
+                    "- Keep playing if the song can survive it.\n"
+                    "- Move to nearby grips or positions that avoid the broken string.\n"
+                    "- Replace it at a set break if possible.\n"
+                    "- Carry spare high strings, cutters, a winder, tuner, and a light.\n\n"
+                    "What players commonly report: preparation matters more than the story. The useful lesson is to have spares, tools, and enough fretboard knowledge to route around the missing string."
+                ),
+            )
+    return None
+
+
 def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer | None:
     q = normalize(question)
     fretboard_answer = visual_fretboard_curated_answer(q)
@@ -254,6 +415,10 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             confidence="curated_high",
             answer=rule_answer.answer,
         )
+
+    intent_mode_answer = intent_mode_curated_answer(q)
+    if intent_mode_answer is not None:
+        return intent_mode_answer
 
     if mentions_sensitive_demographic_question(q):
         return CuratedAnswer(
@@ -1156,6 +1321,89 @@ def mentions_fourth_finger_pick(question: str) -> bool:
 
 def mentions_stroboplus(question: str) -> bool:
     return bool(re.search(r"\b(?:stroboplus|strobo\s*plus)\b", question))
+
+
+def _mentions_stroboplus_power_problem(question: str) -> bool:
+    return bool(
+        mentions_stroboplus(question)
+        and re.search(r"\b(?:power|battery|batteries|charge|charging|usb|external|gig|gigs|live|show|run out|runs out)\b", question)
+    )
+
+
+def _mentions_delay_volume_pedal_order(question: str) -> bool:
+    return bool(
+        re.search(r"\bdelay\b", question)
+        and re.search(r"\bvolume\s+pedal\b", question)
+        and re.search(r"\b(?:before|after|where|go|order|chain|signal)\b", question)
+    )
+
+
+def _mentions_battery_tuner_live(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:battery|batteries|battery-powered)\b", question)
+        and re.search(r"\btuners?\b", question)
+        and re.search(r"\b(?:live|gig|show|stage)\b", question)
+    )
+
+
+def _mentions_broken_string_gig(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:broke|break|breaking|broken|keeps\s+breaking)\b", question)
+        and re.search(r"\bstrings?\b", question)
+        and re.search(r"\b(?:show|gig|gigs|stage|set|live|carry)\b", question)
+    )
+
+
+def _mentions_emergency_gig_kit(question: str) -> bool:
+    return bool(
+        re.search(r"\bemergency\b", question)
+        and re.search(r"\bgig\s+kit\b|\bkit\b", question)
+        and re.search(r"\b(?:pedal steel|steel|gig|show)\b", question)
+    )
+
+
+def _mentions_stage_string_forum_wisdom(question: str) -> bool:
+    return bool(
+        re.search(r"\bwhat\s+do\s+players\s+say\b", question)
+        and re.search(r"\b(?:break|broke|broken|breaking)\b", question)
+        and re.search(r"\bstrings?\b|\bstage\b|\bshow\b|\bgig\b", question)
+    )
+
+
+def _mentions_instrument_visual_intent(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:where|show|what frets|how do i play|how do i make|what does|what notes|what makes)\b", question)
+        and re.search(r"\b(?:chords?|major|minor|fret|frets|positions?|e9|strings?|grips?|pedals?|levers?|vi|6m|b9|e lowered|e-lower)\b", question)
+    )
+
+
+def _mentions_gear_advice_intent(question: str) -> bool:
+    return bool(
+        _mentions_stroboplus_power_problem(question)
+        or _mentions_delay_volume_pedal_order(question)
+        or _mentions_battery_tuner_live(question)
+        or re.search(r"\b(?:amp\s+hums?|amp\s+buzz|hum\s+until\s+i\s+touch|buzz\s+until\s+i\s+touch)\b", question)
+    )
+
+
+def _mentions_gig_advice_intent(question: str) -> bool:
+    return bool(_mentions_broken_string_gig(question) or _mentions_emergency_gig_kit(question))
+
+
+def _mentions_forum_wisdom_intent(question: str) -> bool:
+    return bool(_mentions_stage_string_forum_wisdom(question) or _mentions_battery_tuner_live(question))
+
+
+def _mentions_lesson_navigation_intent(question: str) -> bool:
+    return bool(re.search(r"\b(?:lesson|course|where should i start|learn first)\b", question))
+
+
+def _mentions_tab_explainer_intent(question: str) -> bool:
+    return bool(re.search(r"\b(?:tab|tablature|notation)\b", question))
+
+
+def _mentions_history_player_context_intent(question: str) -> bool:
+    return bool(re.search(r"\b(?:who is|tell me about|history|played with|recorded with)\b", question))
 
 
 def mentions_jeff_newman(question: str) -> bool:

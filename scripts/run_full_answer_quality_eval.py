@@ -68,6 +68,16 @@ DETERMINISTIC_CHORD_POSITION_FAILURE_BUCKETS = {
     "deterministic_chord_source_leakage",
     "chord_position_typo_fallback_failure",
     "chord_position_router_escape",
+    "beginner_chord_concept_router_escape",
+    "deterministic_visual_missing_fretboard",
+    "weak_source_leakage",
+    "object_object_rendering",
+}
+ADVICE_FAILURE_BUCKETS = {
+    "advice_question_must_answer_directly",
+    "advice_question_raw_fragment_failure",
+    "advice_question_joke_anecdote_failure",
+    "gear_question_background_only_failure",
 }
 
 Outcome = Literal["pass", "warn", "fail"]
@@ -128,6 +138,18 @@ MINOR_FUNCTION_ROUTER_ESCAPE_RE = re.compile(
     r"\b(?:key\s+of\s+G\b.*\b(?:6m|vi)\s+chord\b|show\s+me\s+the\s+vi\s+chord\s+in\s+G\b|where\s+is\s+Em\s+on\s+E9\b)",
     re.I,
 )
+BEGINNER_MAJOR_CHORD_CONCEPT_RE = re.compile(
+    r"\b(?:what(?:'s|\s+is)\s+(?:an?\s+)?(?P<what_key>[A-G](?:#|b)?)\s+chord(?:\s+even)?\s+mean|"
+    r"what\s+does\s+(?:an?\s+)?(?P<does_key>[A-G](?:#|b)?)\s+chord\s+mean|"
+    r"what\s+notes\s+are\s+in\s+(?:an?\s+)?(?P<notes_key>[A-G](?:#|b)?)\s+chord|"
+    r"where\s+is\s+(?:an?\s+)?(?P<where_key>[A-G](?:#|b)?)\s+chord|"
+    r"how\s+do\s+i\s+play\s+(?:an?\s+)?(?P<play_key>[A-G](?:#|b)?)\s+on\s+E9)\b",
+    re.I,
+)
+BEGINNER_MINOR_CHORD_CONCEPT_RE = re.compile(
+    r"\bwhat\s+makes\s+(?:an?\s+)?(?P<key>[A-G](?:#|b)?)\s+minor\s+chord\s+minor\b",
+    re.I,
+)
 KEYED_MAJOR_CHORD_RE = re.compile(r"\b(?P<key>[A-G](?:#|b)?)\s+(?:major|chord)\b", re.I)
 DOMINANT_SEVENTH_CHORD_RE = re.compile(r"\b(?P<key>[A-G](?:#|b)?)7\b", re.I)
 DOMINANT_CONTEXT_RE = re.compile(
@@ -146,6 +168,29 @@ RAW_CHORD_FRAGMENT_RE = re.compile(
     r"G#>F#|B's\s+to\s+Bb|with\s+your\s+middle\s+finger|lowering\s+G#|"
     r"You either tune it|I've played it this way|starting with the first string|"
     r"RKL\s+fully\s+engaged|B9\s+chord)\b",
+    re.I,
+)
+PRACTICAL_ADVICE_QUESTION_RE = re.compile(
+    r"\b(?:power\b.*\bStroboPlus\b|StroboPlus\b.*\b(?:gig|batter(?:y|ies)|power)|"
+    r"broke\s+a\s+string|string\s+keeps\s+breaking|breaking\s+strings?\s+on\s+stage|"
+    r"emergency\s+gig\s+kit|amp\s+hums?\b.*\bchanger|delay\s+go\s+before|"
+    r"battery-powered\s+tuners?\s+live)\b",
+    re.I,
+)
+ADVICE_ACTION_RE = re.compile(
+    r"\b(?:check|carry|pack|bring|replace|swap|test|use|power|plug|charge|keep|change|"
+    r"put|place|run|isolate|try|do\s+next|first|before\s+the\s+gig|during\s+the\s+show)\b",
+    re.I,
+)
+ADVICE_FRAGMENT_RE = re.compile(
+    r"\b(?:Has that happened to anyone else|What do players say|Somebody said|I remember when|"
+    r"one time|years ago|on stage I|at a gig I|forum post|thread says|"
+    r"Bill Lowe\s*/\s*\d{1,2}\s+\w+\s+\d{4})\b",
+    re.I,
+)
+ADVICE_JOKE_ANECDOTE_RE = re.compile(
+    r"\b(?:funny|joke|laugh|embarrass(?:ed|ing)?|blood|bleed(?:ing)?|gore|injur(?:y|ed)|"
+    r"cut my finger|horror story|war story|everybody laughed)\b",
     re.I,
 )
 WEAK_SOURCE_CHORD_ROUTE_RE = re.compile(
@@ -279,6 +324,9 @@ def requested_chord_position_request(question: str) -> Any | None:
     request = major_chord_location_request_for_question(question)
     if request is not None:
         return request
+    request = beginner_major_chord_concept_request(question)
+    if request is not None:
+        return request
     match = (
         CHORD_POSITION_LOCATION_RE.search(question or "")
         or CHORD_POSITION_ROUTER_ESCAPE_RE.search(question or "")
@@ -307,10 +355,18 @@ def is_chord_position_router_escape_question(question: str) -> bool:
     )
 
 
+def is_beginner_chord_concept_question(question: str) -> bool:
+    return bool(
+        BEGINNER_MAJOR_CHORD_CONCEPT_RE.search(question or "")
+        or BEGINNER_MINOR_CHORD_CONCEPT_RE.search(question or "")
+    )
+
+
 def is_deterministic_pitch_rule_question(question: str) -> bool:
     return bool(
         is_deterministic_chord_position_question(question)
         or is_chord_position_router_escape_question(question)
+        or is_beginner_chord_concept_question(question)
         or E_LOWER_578_DIAGNOSTIC_QUESTION_RE.search(question or "")
         or E_LOWER_578_B9_QUESTION_RE.search(question or "")
         or FUNCTIONAL_POCKET_QUESTION_RE.search(question or "")
@@ -320,6 +376,19 @@ def is_deterministic_pitch_rule_question(question: str) -> bool:
 def requested_chord_position_key(question: str) -> str:
     request = requested_chord_position_request(question)
     return request.normalized_key if request else ""
+
+
+def beginner_major_chord_concept_request(question: str) -> Any | None:
+    match = BEGINNER_MAJOR_CHORD_CONCEPT_RE.search(question or "")
+    if not match:
+        return None
+    key = next((value for value in match.groupdict().values() if value), "")
+    if not key:
+        return None
+    try:
+        return major_chord_location_request_for_question(f"Where can I play a {key} chord?")
+    except ValueError:
+        return None
 
 
 def answer_mentions_required_major_positions(answer: str, key: str) -> bool:
@@ -335,6 +404,85 @@ def answer_mentions_required_major_positions(answer: str, key: str) -> bool:
         re.search(rf"\b{fret}(?:st|nd|rd|th)?\s+fret\b", answer, re.I)
         for fret in required_frets
     )
+
+
+def answer_has_beginner_chord_explanation(answer: str, question: str) -> bool:
+    request = beginner_major_chord_concept_request(question)
+    if request is not None:
+        expected_tones = {
+            "G": (r"\bG\b", r"\bB\b", r"\bD\b"),
+            "C": (r"\bC\b", r"\bE\b", r"\bG\b"),
+            "D": (r"\bD\b", r"(?<![A-G#b])F#(?![A-G#b])", r"\bA\b"),
+        }.get(request.normalized_key, (rf"\b{re.escape(request.normalized_key)}\b",))
+        return (
+            all(re.search(tone, answer or "", re.I) for tone in expected_tones)
+            and bool(re.search(r"\b(?:root|1)\b", answer or "", re.I))
+            and bool(re.search(r"\b(?:major\s+)?(?:third|3rd|3)\b", answer or "", re.I))
+            and bool(re.search(r"\b(?:perfect\s+)?(?:fifth|5th|5)\b", answer or "", re.I))
+            and bool(re.search(r"\b(?:E9|steel|fret|pedal|lever|grip)\b", answer or "", re.I))
+        )
+    if BEGINNER_MINOR_CHORD_CONCEPT_RE.search(question or ""):
+        return (
+            bool(re.search(r"\bE\b.*\bG\b.*\bB\b|\bE-G-B\b", answer or "", re.I | re.S))
+            and bool(re.search(r"\bminor\b", answer or "", re.I))
+            and bool(re.search(r"\b(?:flat|lowered)\s+(?:the\s+)?(?:third|3rd|3)\b|\bb3\b|\bminor\s+(?:third|3rd|3)\b", answer or "", re.I))
+            and bool(re.search(r"\b(?:E9|steel|fret|pedal|lever|grip)\b", answer or "", re.I))
+        )
+    return True
+
+
+def is_practical_advice_question(question: str, category: str) -> bool:
+    return bool(
+        PRACTICAL_ADVICE_QUESTION_RE.search(question or "")
+        or (
+            category in {"gear_effects_tone", "maintenance_parts_safety", "diagnostic_troubleshooting"}
+            and re.search(r"\b(?:what should i|what do people do|what should i check|where should|should delay|what should be in)\b", question, re.I)
+        )
+    )
+
+
+def question_needs_beginner_chord_explanation(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:what(?:'s|\s+is).+chord(?:\s+even)?\s+mean|what\s+does.+chord\s+mean|what\s+notes\s+are\s+in)\b", question or "", re.I)
+        or BEGINNER_MINOR_CHORD_CONCEPT_RE.search(question or "")
+    )
+
+
+def advice_answer_has_practical_steps(answer: str) -> bool:
+    if not ADVICE_ACTION_RE.search(answer or ""):
+        return False
+    return bool(
+        re.search(
+            r"\b(?:step|first|check|carry|pack|bring|spare|string|battery|power|adapter|cable|tuner|"
+            r"volume pedal|delay|signal chain|ground|hum|kit|show|gig)\b",
+            answer or "",
+            re.I,
+        )
+    )
+
+
+def advice_answer_addresses_question(answer: str, question: str) -> bool:
+    text = answer or ""
+    q = question or ""
+    if re.search(r"\bStroboPlus\b.*\b(?:gig|batter(?:y|ies)|power)|\bpower\b.*\bStroboPlus\b", q, re.I):
+        return bool(re.search(r"\b(?:batter(?:y|ies)|adapter|USB|power\s+supply|charger|outlet|external\s+power|fresh\s+batteries)\b", text, re.I))
+    if re.search(r"\bbattery-powered\s+tuners?\s+live\b", q, re.I):
+        return bool(re.search(r"\b(?:battery-powered|batter(?:y|ies)|adapter|USB|power|live|gig)\b", text, re.I))
+    if re.search(r"\bbroke\s+a\s+string|string\s+keeps\s+breaking|breaking\s+strings?\s+on\s+stage\b", q, re.I):
+        return bool(re.search(r"\b(?:spare\s+strings?|replace|carry|winder|cutters?|3rd\s+string|changer|finish\s+the\s+tune)\b", text, re.I))
+    if re.search(r"\bemergency\s+gig\s+kit\b", q, re.I):
+        return bool(re.search(r"\b(?:spare\s+strings?|winder|cutters?|bar|picks?|battery|cable|tuner|hex|kit)\b", text, re.I))
+    if re.search(r"\bamp\s+hums?\b.*\bchanger\b", q, re.I):
+        return bool(re.search(r"\b(?:ground|cable|outlet|amp|changer|touch|qualified|tech|unplug|isolate)\b", text, re.I))
+    if re.search(r"\bdelay\s+go\s+before\b", q, re.I):
+        return bool(re.search(r"\b(?:before|after|volume\s+pedal|delay|signal\s+chain|effects\s+loop)\b", text, re.I))
+    return True
+
+
+def advice_answer_is_background_only(answer: str) -> bool:
+    text = answer or ""
+    has_background = bool(re.search(r"\b(?:is a|is an|StroboPlus is|tuner is|delay is|volume pedal is)\b", text, re.I))
+    return has_background and not advice_answer_has_practical_steps(text)
 
 
 def expected_chord_position_frets(key: str) -> list[int]:
@@ -500,6 +648,8 @@ def evaluate_deterministic_chord_position_response(
         return
     typo_question = is_chord_position_typo_question(question)
     router_escape_question = is_chord_position_router_escape_question(question)
+    beginner_concept_question = beginner_major_chord_concept_request(question) is not None
+    beginner_theory_question = question_needs_beginner_chord_explanation(question)
     if not answer_mentions_required_major_positions(answer, request.normalized_key):
         add_finding(
             findings,
@@ -521,6 +671,20 @@ def evaluate_deterministic_chord_position_response(
                 "chord_position_router_escape",
                 "router-escape chord-position answer did not route to deterministic E9 frets",
             )
+        if beginner_concept_question:
+            add_finding(
+                findings,
+                "fail",
+                "beginner_chord_concept_router_escape",
+                "beginner chord concept answer did not route to deterministic E9 frets",
+            )
+    if beginner_theory_question and beginner_concept_question and not answer_has_beginner_chord_explanation(answer, question):
+        add_finding(
+            findings,
+            "fail",
+            "beginner_chord_concept_router_escape",
+            "beginner chord concept answer lacks chord tones, interval explanation, or steel-specific application",
+        )
     if WEAK_SOURCE_CHORD_ROUTE_RE.search(answer) or any(WEAK_SOURCE_CHORD_ROUTE_RE.search(warning) for warning in warnings):
         add_finding(
             findings,
@@ -547,6 +711,13 @@ def evaluate_deterministic_chord_position_response(
                 "fail",
                 "chord_position_router_escape",
                 "router-escape chord-position answer exposed weak-source fallback language",
+            )
+        if beginner_concept_question:
+            add_finding(
+                findings,
+                "fail",
+                "beginner_chord_concept_router_escape",
+                "beginner chord concept answer exposed weak-source fallback language",
             )
     if "[object Object]" in answer:
         add_finding(
@@ -576,6 +747,13 @@ def evaluate_deterministic_chord_position_response(
                 "chord_position_router_escape",
                 "router-escape chord-position answer did not include response.fretboard",
             )
+        if beginner_concept_question:
+            add_finding(
+                findings,
+                "fail",
+                "beginner_chord_concept_router_escape",
+                "beginner chord concept answer did not include response.fretboard",
+            )
     elif not fretboard_payload_has_expected_chord_positions(payload, request.normalized_key):
         add_finding(
             findings,
@@ -596,6 +774,13 @@ def evaluate_deterministic_chord_position_response(
                 "fail",
                 "chord_position_router_escape",
                 "router-escape chord-position fretboard omitted expected positions",
+            )
+        if beginner_concept_question:
+            add_finding(
+                findings,
+                "fail",
+                "beginner_chord_concept_router_escape",
+                "beginner chord concept fretboard omitted expected positions",
             )
     positions = fretboard_positions(payload)
     if positions and not all(position_has_required_filter_metadata(position) for position in positions):
@@ -646,6 +831,115 @@ def evaluate_deterministic_chord_position_response(
             "fail",
             "chord_position_router_escape",
             "router-escape chord-position answer returned source cards instead of a deterministic no-source answer",
+        )
+    if beginner_concept_question and sources:
+        add_finding(
+            findings,
+            "fail",
+            "beginner_chord_concept_router_escape",
+            "beginner chord concept answer returned source cards instead of a deterministic no-source answer",
+        )
+
+
+def evaluate_beginner_minor_chord_concept_response(
+    *,
+    question: str,
+    answer: str,
+    warnings: list[str],
+    sources: list[dict[str, Any]],
+    payload: dict[str, Any],
+    findings: list[QualityFinding],
+) -> None:
+    if not question_needs_beginner_chord_explanation(question) or not BEGINNER_MINOR_CHORD_CONCEPT_RE.search(question or ""):
+        return
+    if not answer_has_beginner_chord_explanation(answer, question):
+        add_finding(
+            findings,
+            "fail",
+            "beginner_chord_concept_router_escape",
+            "beginner minor chord concept answer lacks chord tones, flat-third explanation, or steel-specific application",
+        )
+    if WEAK_SOURCE_CHORD_ROUTE_RE.search(answer) or any(WEAK_SOURCE_CHORD_ROUTE_RE.search(warning) for warning in warnings):
+        add_finding(
+            findings,
+            "fail",
+            "beginner_chord_concept_router_escape",
+            "beginner minor chord concept answer exposed weak-source fallback language",
+        )
+    if RAW_CHORD_FRAGMENT_RE.search(answer) or INTERNAL_LANGUAGE_RE.search(answer) or FORUM_FRAGMENT_RE.search(answer):
+        add_finding(
+            findings,
+            "fail",
+            "beginner_chord_concept_router_escape",
+            "beginner minor chord concept answer appears to contain SGF/source fragment text",
+        )
+    if sources:
+        add_finding(
+            findings,
+            "fail",
+            "beginner_chord_concept_router_escape",
+            "beginner minor chord concept answer returned source cards instead of a deterministic no-source answer",
+        )
+    if not has_fretboard_payload(payload):
+        add_finding(
+            findings,
+            "fail",
+            "beginner_chord_concept_router_escape",
+            "beginner minor chord concept answer did not include response.fretboard",
+        )
+
+
+def evaluate_practical_advice_response(
+    *,
+    row: dict[str, str],
+    answer: str,
+    warnings: list[str],
+    findings: list[QualityFinding],
+) -> None:
+    question = row.get("question", "")
+    if not is_practical_advice_question(question, row.get("category", "")):
+        return
+    first = first_sentence(answer)
+    if (
+        not first
+        or first.startswith("-")
+        or DIRECTNESS_BAD_START_RE.search(first)
+        or not advice_answer_has_practical_steps(answer)
+        or not advice_answer_addresses_question(answer, question)
+    ):
+        add_finding(
+            findings,
+            "fail",
+            "advice_question_must_answer_directly",
+            "practical advice answer lacks direct actionable guidance",
+        )
+    if RAW_CHORD_FRAGMENT_RE.search(answer) or FORUM_FRAGMENT_RE.search(answer) or ADVICE_FRAGMENT_RE.search(answer) or first.startswith("-"):
+        add_finding(
+            findings,
+            "fail",
+            "advice_question_raw_fragment_failure",
+            "practical advice answer appears to be raw fragments or source snippets",
+        )
+    if ADVICE_JOKE_ANECDOTE_RE.search(answer):
+        add_finding(
+            findings,
+            "fail",
+            "advice_question_joke_anecdote_failure",
+            "practical advice answer leans on jokes, anecdotes, injury, or embarrassment stories",
+        )
+    if advice_answer_is_background_only(answer):
+        add_finding(
+            findings,
+            "fail",
+            "gear_question_background_only_failure",
+            "gear/gig advice answer gives background without practical next steps",
+        )
+    if WEAK_SOURCE_CHORD_ROUTE_RE.search(answer) or any(WEAK_SOURCE_CHORD_ROUTE_RE.search(warning) for warning in warnings):
+        add_finding(
+            findings,
+            "fail",
+            "weak_source_leakage",
+            "practical advice answer exposed weak-source wording",
         )
 
 
@@ -941,6 +1235,11 @@ def evaluate_quality_result(
         add_finding(findings, "fail", "raw_contact_order_link_junk", "answer contains PayPal/contact/order/raw-link junk")
     if FORUM_FRAGMENT_RE.search(answer):
         add_finding(findings, "fail", "raw_forum_fragment", "answer contains username/date forum fragment")
+    if WEAK_SOURCE_CHORD_ROUTE_RE.search(answer) or any(WEAK_SOURCE_CHORD_ROUTE_RE.search(warning) for warning in warnings):
+        add_finding(findings, "fail", "weak_source_leakage", "answer or warning visibly says source support was weak")
+    if "[object Object]" in answer:
+        add_finding(findings, "fail", "object_object_rendering_failure", "answer rendered an object as [object Object]")
+        add_finding(findings, "fail", "object_object_rendering", "answer rendered an object as [object Object]")
     if re.search(r"\[\d+\]", answer):
         add_finding(findings, "warn", "inline_citation_marker", "answer contains inline numeric citation markers")
     if not fallback_expected(row) and not ACTION_RE.search(answer) and category_family(row) not in {"player/teacher bio", "subjective ranking"}:
@@ -982,6 +1281,27 @@ def evaluate_quality_result(
         warnings=warnings,
         sources=sources,
         payload=payload,
+        findings=findings,
+    )
+    evaluate_beginner_minor_chord_concept_response(
+        question=row["question"],
+        answer=answer,
+        warnings=warnings,
+        sources=sources,
+        payload=payload,
+        findings=findings,
+    )
+    if is_deterministic_pitch_rule_question(row["question"]) and not has_fretboard_payload(payload):
+        add_finding(
+            findings,
+            "fail",
+            "deterministic_visual_missing_fretboard",
+            "visualizable deterministic question did not include response.fretboard",
+        )
+    evaluate_practical_advice_response(
+        row=row,
+        answer=answer,
+        warnings=warnings,
         findings=findings,
     )
     evaluate_source_cards(row=row, sources=sources, access_role=access_role, findings=findings)

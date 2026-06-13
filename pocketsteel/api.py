@@ -50,6 +50,7 @@ from pocketsteel.chroma_search import (
 from pocketsteel.curated_answers import (
     CURATED_FACT_WEAK_WARNING,
     WEAK_RETRIEVAL_WARNING,
+    intent_mode_curated_answer,
     lookup_curated_answer,
     retrieval_looks_weak_for_curated,
     unsupported_chord_position_curated_answer,
@@ -212,6 +213,29 @@ class RetrievalApi:
                 }
                 if fretboard_payload is not None:
                     payload["fretboard"] = fretboard_payload
+                self._log_answer_attempt(
+                    request_payload,
+                    role=access.role,
+                    identity_email=access.identity_email,
+                    access_status="authorized",
+                    authorized=True,
+                    source_count=0,
+                    warning_count=0,
+                )
+                return self._json_response(start_response, "200 OK", payload)
+
+            practical_intent_answer = intent_mode_curated_answer(answer_request.question)
+            if practical_intent_answer is not None:
+                final_answer = final_answer_quality_gate(practical_intent_answer.answer, answer_request.question)
+                contract_validation = enforce_answer_contract(final_answer, practical_intent_answer.intent)
+                final_answer = contract_validation.answer
+                payload: AnswerResponse = {
+                    "answer": final_answer,
+                    "mode": answer_request.mode,
+                    "sources": [],
+                    "warnings": [],
+                    "sections": build_sections(final_answer),
+                }
                 self._log_answer_attempt(
                     request_payload,
                     role=access.role,

@@ -45,7 +45,8 @@ class ContractValidation:
 
 
 COMMON_FORBIDDEN: tuple[tuple[str, str], ...] = (
-    ("internal source-backed fallback language", r"\bThe cleanest source-backed answer\b|\bHere is the safest answer I can support from the retrieved material\b|\bretrieved material\b|\bsource cards as supporting evidence\b|\bUseful distilled points\b|\bUseful source-backed points\b"),
+    ("internal source-backed fallback language", r"\bThe cleanest source-backed answer\b|\bHere is the safest answer I can support from the retrieved material\b|\bI found a few related practical points\b|\bmatch is limited\b|\bretrieved material\b|\bsource cards as supporting evidence\b|\bUseful distilled points\b|\bUseful source-backed points\b"),
+    ("raw link removed marker", r"\[link removed\]"),
     ("raw Top boilerplate", r"^\s*Top\b|\sTop\s"),
     ("raw link-share fragment", r"\bsp=sharing\b"),
     ("raw email address", r"\b[\w.+-]+@[\w.-]+\.[a-z]{2,}\b"),
@@ -149,9 +150,9 @@ CONTRACTS: dict[str, AnswerContract] = {
     "right_hand_technique": AnswerContract(
         intent="right_hand_technique",
         required_answer_elements=(
-            ("right-hand pick context", r"\b(?:thumb pick|fingerpicks?|ring-finger|fourth)\b"),
-            ("four-note or grip reason", r"\b(?:four-note|grips?|wider chords?|C6|extended)\b"),
-            ("optional caveat", r"\b(?:optional|not required|do not need|awkward)\b"),
+            ("right-hand pick context", r"\b(?:thumb pick|fingerpicks?|finger picks?|ring-finger|fourth|picks?)\b"),
+            ("practical pick reason", r"\b(?:volume|attack|clarity|string separation|consistency|tone|four-note|grips?|wider chords?|C6|extended)\b"),
+            ("optional or adjustment caveat", r"\b(?:optional|not required|do not need|awkward|adjustment|beginner|standard pedal steel)\b"),
         ),
         forbidden_answer_patterns=COMMON_FORBIDDEN
         + (
@@ -172,6 +173,69 @@ CONTRACTS: dict[str, AnswerContract] = {
             ("private profile leakage", r"\b(?:Your private profile|Open tuning|Pedals\s*$|Levers\s*$)\b"),
         ),
     ),
+    "gear_advice": AnswerContract(
+        intent="gear_advice",
+        required_answer_elements=(
+            ("short practical answer", r"\bShort answer\b|\bstart with\b|\bpractical\b"),
+            ("practical steps", r"\b(?:Practical steps|check|try|carry|use|start)\b"),
+            ("before buying or changing check", r"\b(?:What to check|before buying|before changing|manual|model|signal chain|adapter|power|battery|volume pedal)\b"),
+        ),
+        forbidden_answer_patterns=COMMON_FORBIDDEN
+        + (
+            ("anecdote as answer", r"\b(?:funny story|embarrass|blood|gore|injury|fell off|laughed)\b"),
+            ("definition-only StroboPlus answer", r"^\s*A Peterson StroboPlus is\b"),
+            ("raw forum fragment", r"\b(?:I couldn't agree more|tell the sound guy|with your middle finger|Mel Bay)\b"),
+        ),
+        default_section_labels=("short answer", "practical steps", "what to check"),
+        fallback_answer=(
+            "Short answer: start with the practical setup problem, then change one thing at a time.\n\n"
+            "Practical steps:\n"
+            "- Check the exact model, manual, power, cable, and signal-chain requirements.\n"
+            "- Test the rig at gig volume before buying or changing anything.\n"
+            "- Carry a simple backup for any gig-critical item."
+        ),
+    ),
+    "gig_advice": AnswerContract(
+        intent="gig_advice",
+        required_answer_elements=(
+            ("short practical answer", r"\bShort answer\b"),
+            ("gig recovery steps", r"\b(?:stay calm|finish|set break|shift grips|positions|backup instrument|carry)\b"),
+            ("gig kit or check", r"\b(?:spare strings|cutters|winder|tuner|light|kit|burrs|changer)\b"),
+        ),
+        forbidden_answer_patterns=COMMON_FORBIDDEN
+        + (
+            ("joke or injury anecdote", r"\b(?:funny story|embarrass|blood|gore|injury|glass|bump)\b"),
+            ("raw forum fragment", r"\b(?:I couldn't agree more|Top\s+I|with your middle finger)\b"),
+        ),
+        default_section_labels=("short answer", "practical steps", "what to check"),
+        fallback_answer=(
+            "Short answer: prepare for gig problems before they happen.\n\n"
+            "Practical steps:\n"
+            "- Stay calm and finish the song if possible.\n"
+            "- Route around the missing note or faulty item until the set break.\n"
+            "- Carry spare strings, cutters, a winder, tuner, and a small light."
+        ),
+    ),
+    "forum_wisdom": AnswerContract(
+        intent="forum_wisdom",
+        required_answer_elements=(
+            ("synthesized player takeaway", r"\b(?:players generally|players commonly|what players commonly|practical takeaway)\b"),
+            ("practical advice", r"\b(?:carry|check|try|practice|replace|adapt|backup)\b"),
+        ),
+        forbidden_answer_patterns=COMMON_FORBIDDEN
+        + (
+            ("raw anecdote or joke", r"\b(?:funny story|embarrass|blood|gore|injury|glass|bump)\b"),
+            ("fragment-only forum quote", r"\b(?:Top\s+|I couldn't agree more|Can some of you possibly post)\b"),
+        ),
+        default_section_labels=("short answer", "practical takeaway"),
+        curated_answer_may_lead=True,
+        rag_excerpts_may_appear_in_answer_body=False,
+        source_context_in_source_cards_only=True,
+        fallback_answer=(
+            "Short answer: treat forum discussion as a source of practical patterns, not as text to copy.\n\n"
+            "Practical takeaway: look for what multiple players actually do, then apply the cleanest setup or practice step to your own guitar."
+        ),
+    ),
     "player_teacher_bio": AnswerContract(
         intent="player_teacher_bio",
         required_answer_elements=(
@@ -189,10 +253,10 @@ CONTRACTS: dict[str, AnswerContract] = {
     "copedent_fretboard": AnswerContract(
         intent="copedent_fretboard",
         required_answer_elements=(
-            ("what changes or provides", r"\b(?:raise|raises|lower|lowers|changes?|takes|string|gives|provides|note)\b"),
+            ("what changes or provides", r"\b(?:raise|raises|lower|lowers|changes?|takes|string|gives|provides|note|positions?|available|places?|find)\b"),
             ("chord or interval result", r"\b(?:chord|interval|triad|dominant|major|minor|seventh|scale tone|color)\b"),
             ("fret/string/pedal example", r"\b(?:fret|pedal|lever|string|grip)\b"),
-            ("practical use", r"\b(?:use|practical|players use|practice|connect|movement)\b"),
+            ("practical use", r"\b(?:use|practical|players use|practice|connect|movement|try|common grips?)\b"),
         ),
         forbidden_answer_patterns=COMMON_FORBIDDEN,
         default_section_labels=("direct answer", "why it works"),
@@ -428,6 +492,21 @@ def infer_contract_intent(question: str, mode: str = "ask") -> str:
         q,
     ):
         return "technique_improvement"
+    if re.search(r"\b(?:stroboplus|strobo\s*plus)\b", q) and re.search(
+        r"\b(?:power|battery|batteries|charge|charging|usb|external|gig|live|show|run out|runs out)\b",
+        q,
+    ):
+        return "gear_advice"
+    if "delay" in q and "volume pedal" in q:
+        return "gear_advice"
+    if re.search(r"\b(?:battery-powered|battery|batteries)\b", q) and "tuner" in q and re.search(r"\b(?:live|gig|show|stage)\b", q):
+        return "gear_advice"
+    if re.search(r"\bwhat\s+do\s+players\s+say\b", q) and "string" in q and re.search(r"\b(?:break|broke|broken|breaking)\b", q):
+        return "forum_wisdom"
+    if re.search(r"\b(?:broke|break|breaking|broken|keeps breaking)\b", q) and "string" in q and re.search(r"\b(?:show|gig|stage|set|live|carry)\b", q):
+        return "gig_advice"
+    if "emergency" in q and "gig" in q and "kit" in q:
+        return "gig_advice"
     if "what should i practice" in q or "practice plan" in q or "practice routine" in q or mode == "practice":
         return "practice_plan"
     if re.search(r"\bwhere\s+can\s+i\s+buy\b|\bwhat\s+brands\s+make\b", q):

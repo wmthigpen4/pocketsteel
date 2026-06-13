@@ -103,6 +103,13 @@ class MinorChordLocationRequest:
     normalized_key: str
 
 
+@dataclass(frozen=True)
+class ChordConceptRequest:
+    requested_root: str
+    normalized_key: str
+    quality: str
+
+
 NOTE_TO_SEMITONE: dict[str, int] = {
     "C": 0,
     "B#": 0,
@@ -1156,6 +1163,43 @@ def e_lower_578_payload_for_question(question: str) -> dict | None:
     ).to_payload()
 
 
+def e_lower_578_b9_payload_for_question(question: str) -> dict | None:
+    if not e_lower_578_b9_question(question):
+        return None
+    position = replace(
+        e_lower_578_position_at_fret(3),
+        id="b9-check-e-lower-5-7-8-3",
+        role="B9 check: 5-7-8 with E-lower at fret 3",
+        function="B9 check",
+        key_context="B",
+        family="e_lower_578_b9_check",
+        color="warning",
+        color_role="warning",
+        sort_order=0,
+        why_use_it=(
+            "Use this focused pitch check to hear why the grip is D major at the 3rd fret, "
+            "not a complete B9 pocket by itself."
+        ),
+        tier_reason="Diagnostic: this card verifies a named grip/fret claim by pitch math.",
+        when_to_use="Use it when checking whether 5-7-8 with E-lower is really a B9 pocket.",
+        sound_character="Complete D major at the 3rd fret; against B it can suggest rootless B minor 7 color, not B9.",
+        movement_use="Useful as a named-pitch diagnostic before applying the grip in context.",
+        resolution_use="Resolve by ear to a true B, B7, or B9 voicing if the song needs B as the harmonic center.",
+        explanation_short="At fret 3, 5-7-8 with E-lower spells D major, not B9.",
+        explanation_long=(
+            "The confirmed E9 copedent lowers string 8 E to D#. At fret 3, strings 5, 7, and 8 become "
+            "D, A, and F#, which are the root, fifth, and third of D major. Those notes omit the B root, "
+            "b7, and 9 needed for a full B9 label."
+        ),
+    )
+    return FretboardVisualizationPayload(
+        title="5-7-8 E-lower B9 check",
+        subtitle="Pitch-math check for whether 5-7-8 with E-lower is a B9 pocket.",
+        key="B",
+        positions=(position,),
+    ).to_payload()
+
+
 def e_lower_grip_answer_for_question(question: str) -> str | None:
     request = e_lower_grip_request_for_question(question)
     if request is None:
@@ -1476,6 +1520,15 @@ def minor_chord_payload_for_question(question: str) -> dict | None:
     return minor_positions(request.normalized_key).to_payload()
 
 
+def chord_concept_payload_for_question(question: str) -> dict | None:
+    request = chord_concept_request_for_question(question)
+    if request is None:
+        return None
+    if request.quality == "minor":
+        return minor_positions(request.normalized_key).to_payload()
+    return major_positions(request.normalized_key).to_payload()
+
+
 def function_chord_answer_for_question(question: str) -> str | None:
     request = function_chord_request_for_question(question)
     if request is None:
@@ -1513,6 +1566,97 @@ def minor_chord_answer_for_question(question: str) -> str | None:
     if request is None:
         return None
     return minor_position_answer(request.normalized_key)
+
+
+def chord_concept_request_for_question(question: str) -> ChordConceptRequest | None:
+    q = re.sub(r"\s+", " ", question or "").strip().lower().rstrip("?!.")
+    if not q:
+        return None
+    root_pattern = r"(?P<root>[a-g](?:#|b)?)"
+    patterns = (
+        rf"^what(?:'s|’s| is)\s+(?:a|an)?\s*{root_pattern}\s+(?P<quality>major|minor)?\s*chord\s+(?:even\s+)?mean$",
+        rf"^what\s+does\s+(?:a|an)?\s*{root_pattern}\s+(?P<quality>major|minor)?\s*chord\s+mean$",
+        rf"^what\s+notes\s+are\s+in\s+(?:a|an)?\s*{root_pattern}\s+(?P<quality>major|minor)?\s*chord$",
+        rf"^what\s+makes\s+(?:a|an)?\s*{root_pattern}\s+minor\s+chord\s+minor$",
+        rf"^what\s+makes\s+(?:a|an)?\s*{root_pattern}\s+major\s+chord\s+major$",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, q)
+        if match:
+            requested_root = normalize_requested_root(match.group("root"))
+            quality = normalize_chord_quality(match.groupdict().get("quality") or "")
+            if not quality and " minor chord" in q:
+                quality = "minor"
+            if not quality and " major chord" in q:
+                quality = "major"
+            if not quality:
+                quality = "major"
+            if quality not in {"major", "minor"}:
+                return None
+            return ChordConceptRequest(
+                requested_root=requested_root,
+                normalized_key=normalize_key(requested_root),
+                quality=quality,
+            )
+    return None
+
+
+def chord_concept_answer_for_question(question: str) -> str | None:
+    request = chord_concept_request_for_question(question)
+    if request is None:
+        return None
+    key = request.normalized_key
+    if request.quality == "minor":
+        third = transpose(key, 3)
+        fifth = transpose(key, 7)
+        prefix = (
+            f"An {key} minor chord means the notes {key}-{third}-{fifth}: "
+            "root, minor 3rd, and perfect 5th. What makes it minor is the lowered 3rd."
+        )
+        return minor_position_answer(key, prefix=prefix)
+
+    third = transpose(key, 4)
+    fifth = transpose(key, 7)
+    payload = major_positions(key).to_payload()
+    visible = [position for position in payload["positions"] if position["visibleByDefault"]]
+    lines = [
+        f"A {key} major chord means the notes {key}-{third}-{fifth}: root, major 3rd, and perfect 5th.",
+        "",
+        f"On E9, common {key} major starter positions include:",
+    ]
+    for position in visible:
+        controls = " + ".join([*position["pedals"], *position["levers"]]) or "no pedals"
+        lines.append(f"- {fret_label(position['fret'])} with {controls}: {position['role']}, grip {position['grip']}.")
+    lines.extend(
+        [
+            "",
+            "Think of the chord name as the target sound; the fretboard positions are different ways to spell the same root-3rd-5th idea on the steel.",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def generic_chord_concept_answer_for_question(question: str) -> str | None:
+    q = re.sub(r"\s+", " ", question or "").strip().lower().rstrip("?!.")
+    if re.search(r"^what\s+makes\s+(?:something|a chord)\s+(?:a\s+)?minor\s+chord(?:\s+minor)?$", q):
+        return (
+            "A minor chord is a three-note chord built from root, minor 3rd, and perfect 5th. "
+            "The minor color comes from lowering the 3rd by one half-step compared with a major chord. "
+            "For example, E minor is E-G-B, while E major is E-G#-B."
+        )
+    if re.search(r"^what(?:'s|’s| is)\s+(?:a\s+)?1\s+chord$", q):
+        return (
+            "A 1 chord is the home chord of the key, also called the tonic. "
+            "In G, the 1 chord is G major; in C, it is C major. "
+            "Give me the key and I can map the 1 chord to E9 fretboard positions."
+        )
+    if re.search(r"^why\s+is\s+a\+b\s+a\s+chord$", q):
+        return (
+            "A+B is not a chord by itself; it is a pedal combination that changes the notes under a grip. "
+            "At the right fret, those changed notes can spell a major chord. "
+            "For example, on standard E9, A+B at the 10th fret gives a G major position on common grips."
+        )
+    return None
 
 
 def minor_triad_spelling(root: str) -> str:
@@ -1585,6 +1729,9 @@ def fretboard_payload_for_question(question: str) -> dict | None:
     q = re.sub(r"\s+", " ", question or "").strip().lower().rstrip("?!.")
     if not q:
         return None
+    b9_payload = e_lower_578_b9_payload_for_question(q)
+    if b9_payload is not None:
+        return b9_payload
     e_lower_grip_payload = e_lower_grip_payload_for_question(q)
     if e_lower_grip_payload is not None:
         return e_lower_grip_payload
@@ -1602,6 +1749,9 @@ def fretboard_payload_for_question(question: str) -> dict | None:
     minor_chord_payload = minor_chord_payload_for_question(q)
     if minor_chord_payload is not None:
         return minor_chord_payload
+    chord_concept_payload = chord_concept_payload_for_question(q)
+    if chord_concept_payload is not None:
+        return chord_concept_payload
     major_request = major_chord_location_request_for_question(q)
     if major_request is not None:
         return get_fretboard_examples("major_positions", major_request.normalized_key)
@@ -1627,11 +1777,14 @@ def major_chord_location_request_for_question(question: str) -> MajorChordLocati
         r"^where(?: all)? can i play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?$",
         r"^where can i find (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?$",
         r"^how do i play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?$",
+        r"^how do i play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)? on e9$",
         r"^how do i plan (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)$",
         r"^how do i make (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?$",
         r"^where is ([a-g](?:#|b)?) major$",
         r"^where is ([a-g](?:#|b)?)(?: major)? on e9$",
+        r"^where is (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)$",
         r"^show me ([a-g](?:#|b)?) (?:major )?positions$",
+        r"^show me (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)$",
         r"^what frets give me (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?$",
         r"^show me places to play (?:a|an)?\s*([a-g](?:#|b)?)(?: major)?(?: chord)?$",
         r"^where are ([a-g](?:#|b)?) major positions on e9$",
