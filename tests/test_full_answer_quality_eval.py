@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from scripts.run_full_answer_quality_eval import (
     evaluate_quality_result,
     render_markdown_report,
@@ -115,6 +117,33 @@ def fretboard_payload(key: str, frets: tuple[int, int, int]) -> dict[str, object
         "key": key,
         "strings": {"count": 10},
         "positions": positions,
+    }
+
+
+def minor_function_fretboard_payload() -> dict[str, object]:
+    return {
+        "type": "e9-fretboard-diagram",
+        "title": "E minor positions on E9",
+        "tuning": "E9",
+        "key": "E minor",
+        "strings": {"count": 10},
+        "positions": [
+            {
+                "id": "em-vi-g-reference",
+                "label": "E minor",
+                "fret": 3,
+                "strings": [5, 6, 8],
+                "grip": "5-6-8",
+                "pedals": [],
+                "levers": [],
+                "role": "E minor / vi in G reference",
+                "family": "minor_grip",
+                "tier": "reference",
+                "colorRole": "reference",
+                "visibleByDefault": True,
+                "sortOrder": 10,
+            }
+        ],
     }
 
 
@@ -395,6 +424,112 @@ def test_quality_eval_passes_clean_f_chord_typo_position_answer() -> None:
     assert "chord_position_typo_fallback_failure" not in keys
     assert "missing_fretboard_payload_for_chord_position" not in keys
     assert "missing_deterministic_chord_route" not in keys
+
+
+def test_quality_eval_flags_chord_position_router_escape_for_plural_c_prompt() -> None:
+    result = evaluate_quality_result(
+        row(
+            question="Where are some places to play C chords?",
+            category="e9_fretboard_copedent",
+            expected_contract="copedent_fretboard",
+        ),
+        status_code=200,
+        payload=payload(
+            (
+                "The retrieved material says source cards mention C chord places, but source support was weak. "
+                "Use the source cards rather than a fixed fretboard map."
+            ),
+            sources=[source_card()],
+            warnings=["curated answer used; source support was weak"],
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "fail"
+    assert "chord_position_router_escape" in keys
+    assert "missing_fretboard_payload_for_chord_position" in keys
+    assert "deterministic_chord_weak_warning" in keys
+
+
+def test_quality_eval_flags_chord_position_router_escape_for_vi_minor_prompt() -> None:
+    result = evaluate_quality_result(
+        row(
+            question="I am in the key of G. Where can I play a 6m chord?",
+            category="e9_fretboard_copedent",
+            expected_contract="copedent_fretboard",
+        ),
+        status_code=200,
+        payload=payload(
+            (
+                "Source support was weak, but a forum fragment says RKL and B7 positions can work. "
+                "Use the source cards for the rest."
+            ),
+            sources=[source_card()],
+            warnings=["curated answer used; source support was weak"],
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "fail"
+    assert "chord_position_router_escape" in keys
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "Where are some places to play C chords?",
+        "Where can I play C chord?",
+        "Show me C positions.",
+        "What frets give me C?",
+    ],
+)
+def test_quality_eval_passes_clean_c_router_escape_position_answers(question: str) -> None:
+    result = evaluate_quality_result(
+        row(question=question, category="e9_fretboard_copedent", expected_contract="copedent_fretboard"),
+        status_code=200,
+        payload=payload(
+            (
+                "On standard E9, useful C major positions include the 8th fret with no pedals, "
+                "the 11th fret with A pedal + F lever, and the 15th fret with A+B pedals. "
+                "Use grips 4-5-6, 3-4-5, or 6-8-10 and move between those positions slowly."
+            ),
+            sources=[],
+            fretboard=fretboard_payload("C", (8, 11, 15)),
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "pass"
+    assert "chord_position_router_escape" not in keys
+    assert "missing_fretboard_payload_for_chord_position" not in keys
+    assert "deterministic_chord_source_leakage" not in keys
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "I am in the key of G. Where can I play a 6m chord?",
+        "Show me the vi chord in G.",
+        "Where is Em on E9?",
+    ],
+)
+def test_quality_eval_passes_clean_minor_function_router_escape_answers(question: str) -> None:
+    result = evaluate_quality_result(
+        row(question=question, category="e9_fretboard_copedent", expected_contract="copedent_fretboard"),
+        status_code=200,
+        payload=payload(
+            (
+                "In G, the vi or 6m chord is E minor (Em). On E9, use the 3rd fret as a visual reference "
+                "for an E minor grip, then check the notes against the position before moving it."
+            ),
+            sources=[],
+            fretboard=minor_function_fretboard_payload(),
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "pass"
+    assert "chord_position_router_escape" not in keys
 
 
 def test_quality_eval_flags_starter_only_b_payload_and_missing_alternate() -> None:

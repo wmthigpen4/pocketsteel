@@ -67,6 +67,7 @@ DETERMINISTIC_CHORD_POSITION_FAILURE_BUCKETS = {
     "deterministic_chord_weak_warning",
     "deterministic_chord_source_leakage",
     "chord_position_typo_fallback_failure",
+    "chord_position_router_escape",
 }
 
 Outcome = Literal["pass", "warn", "fail"]
@@ -118,6 +119,15 @@ CHORD_POSITION_LOCATION_RE = re.compile(
 )
 GRIP_POSITION_LOCATION_RE = re.compile(r"\bwhat\s+grips\s+can\s+i\s+use\s+for\s+(?P<key>[A-G](?:#|b)?)\s+major\b", re.I)
 CHORD_POSITION_TYPO_RE = re.compile(r"\bhow\s+do\s+i\s+plan\s+(?:an?\s+)?(?P<key>[A-G](?:#|b)?)(?:\s+(?:major\s+)?chord)?\b", re.I)
+CHORD_POSITION_ROUTER_ESCAPE_RE = re.compile(
+    r"\b(?:where\s+are\s+some\s+places\s+to\s+play|where\s+can\s+i\s+play|show\s+me|what\s+frets\s+give\s+me)\s+"
+    r"(?P<key>[A-G](?:#|b)?)(?:\s+(?:major\s+)?(?:chords?|positions?))?\b",
+    re.I,
+)
+MINOR_FUNCTION_ROUTER_ESCAPE_RE = re.compile(
+    r"\b(?:key\s+of\s+G\b.*\b(?:6m|vi)\s+chord\b|show\s+me\s+the\s+vi\s+chord\s+in\s+G\b|where\s+is\s+Em\s+on\s+E9\b)",
+    re.I,
+)
 KEYED_MAJOR_CHORD_RE = re.compile(r"\b(?P<key>[A-G](?:#|b)?)\s+(?:major|chord)\b", re.I)
 DOMINANT_SEVENTH_CHORD_RE = re.compile(r"\b(?P<key>[A-G](?:#|b)?)7\b", re.I)
 DOMINANT_CONTEXT_RE = re.compile(
@@ -264,10 +274,16 @@ def normalize_chord_key(key: str) -> str:
 
 
 def requested_chord_position_request(question: str) -> Any | None:
+    if MINOR_FUNCTION_ROUTER_ESCAPE_RE.search(question or ""):
+        return None
     request = major_chord_location_request_for_question(question)
     if request is not None:
         return request
-    match = CHORD_POSITION_LOCATION_RE.search(question or "") or GRIP_POSITION_LOCATION_RE.search(question or "")
+    match = (
+        CHORD_POSITION_LOCATION_RE.search(question or "")
+        or CHORD_POSITION_ROUTER_ESCAPE_RE.search(question or "")
+        or GRIP_POSITION_LOCATION_RE.search(question or "")
+    )
     if not match:
         return None
     try:
@@ -284,9 +300,17 @@ def is_chord_position_typo_question(question: str) -> bool:
     return bool(CHORD_POSITION_TYPO_RE.search(question or ""))
 
 
+def is_chord_position_router_escape_question(question: str) -> bool:
+    return bool(
+        CHORD_POSITION_ROUTER_ESCAPE_RE.search(question or "")
+        or MINOR_FUNCTION_ROUTER_ESCAPE_RE.search(question or "")
+    )
+
+
 def is_deterministic_pitch_rule_question(question: str) -> bool:
     return bool(
         is_deterministic_chord_position_question(question)
+        or is_chord_position_router_escape_question(question)
         or E_LOWER_578_DIAGNOSTIC_QUESTION_RE.search(question or "")
         or E_LOWER_578_B9_QUESTION_RE.search(question or "")
         or FUNCTIONAL_POCKET_QUESTION_RE.search(question or "")
@@ -475,6 +499,7 @@ def evaluate_deterministic_chord_position_response(
     if request is None:
         return
     typo_question = is_chord_position_typo_question(question)
+    router_escape_question = is_chord_position_router_escape_question(question)
     if not answer_mentions_required_major_positions(answer, request.normalized_key):
         add_finding(
             findings,
@@ -488,6 +513,13 @@ def evaluate_deterministic_chord_position_response(
                 "fail",
                 "chord_position_typo_fallback_failure",
                 "typo chord-position answer did not route to deterministic E9 frets",
+            )
+        if router_escape_question:
+            add_finding(
+                findings,
+                "fail",
+                "chord_position_router_escape",
+                "router-escape chord-position answer did not route to deterministic E9 frets",
             )
     if WEAK_SOURCE_CHORD_ROUTE_RE.search(answer) or any(WEAK_SOURCE_CHORD_ROUTE_RE.search(warning) for warning in warnings):
         add_finding(
@@ -508,6 +540,13 @@ def evaluate_deterministic_chord_position_response(
                 "fail",
                 "chord_position_typo_fallback_failure",
                 "typo chord-position answer exposed weak-source fallback language",
+            )
+        if router_escape_question:
+            add_finding(
+                findings,
+                "fail",
+                "chord_position_router_escape",
+                "router-escape chord-position answer exposed weak-source fallback language",
             )
     if "[object Object]" in answer:
         add_finding(
@@ -530,6 +569,13 @@ def evaluate_deterministic_chord_position_response(
                 "chord_position_typo_fallback_failure",
                 "typo chord-position answer did not include response.fretboard",
             )
+        if router_escape_question:
+            add_finding(
+                findings,
+                "fail",
+                "chord_position_router_escape",
+                "router-escape chord-position answer did not include response.fretboard",
+            )
     elif not fretboard_payload_has_expected_chord_positions(payload, request.normalized_key):
         add_finding(
             findings,
@@ -543,6 +589,13 @@ def evaluate_deterministic_chord_position_response(
                 "fail",
                 "chord_position_typo_fallback_failure",
                 "typo chord-position fretboard omitted expected positions",
+            )
+        if router_escape_question:
+            add_finding(
+                findings,
+                "fail",
+                "chord_position_router_escape",
+                "router-escape chord-position fretboard omitted expected positions",
             )
     positions = fretboard_positions(payload)
     if positions and not all(position_has_required_filter_metadata(position) for position in positions):
@@ -586,6 +639,13 @@ def evaluate_deterministic_chord_position_response(
             "fail",
             "chord_position_typo_fallback_failure",
             "typo chord-position answer returned source cards instead of a deterministic no-source answer",
+        )
+    if router_escape_question and sources:
+        add_finding(
+            findings,
+            "fail",
+            "chord_position_router_escape",
+            "router-escape chord-position answer returned source cards instead of a deterministic no-source answer",
         )
 
 
@@ -772,6 +832,80 @@ def evaluate_e_lower_578_b9_disclosure(question: str, answer: str, findings: lis
         )
 
 
+def answer_mentions_expected_minor_function(answer: str) -> bool:
+    return bool(re.search(r"\b(?:E\s+minor|Em)\b", answer or "", re.I))
+
+
+def evaluate_chord_position_router_escape_response(
+    *,
+    question: str,
+    answer: str,
+    warnings: list[str],
+    sources: list[dict[str, Any]],
+    payload: dict[str, Any],
+    findings: list[QualityFinding],
+) -> None:
+    if not is_chord_position_router_escape_question(question):
+        return
+
+    if WEAK_SOURCE_CHORD_ROUTE_RE.search(answer) or any(WEAK_SOURCE_CHORD_ROUTE_RE.search(warning) for warning in warnings):
+        add_finding(
+            findings,
+            "fail",
+            "chord_position_router_escape",
+            "router-escape answer exposed weak-source fallback language",
+        )
+    if RAW_CHORD_FRAGMENT_RE.search(answer) or INTERNAL_LANGUAGE_RE.search(answer) or FORUM_FRAGMENT_RE.search(answer):
+        add_finding(
+            findings,
+            "fail",
+            "chord_position_router_escape",
+            "router-escape answer appears to contain SGF/source fragment text",
+        )
+    if sources:
+        add_finding(
+            findings,
+            "fail",
+            "chord_position_router_escape",
+            "router-escape answer returned source cards instead of a deterministic no-source answer",
+        )
+    if not has_fretboard_payload(payload):
+        add_finding(
+            findings,
+            "fail",
+            "chord_position_router_escape",
+            "router-escape visualizable chord/function answer did not include response.fretboard",
+        )
+
+    if MINOR_FUNCTION_ROUTER_ESCAPE_RE.search(question or ""):
+        if not answer_mentions_expected_minor_function(answer):
+            add_finding(
+                findings,
+                "fail",
+                "chord_position_router_escape",
+                "router-escape function/minor answer did not resolve the request to E minor",
+            )
+        return
+
+    request = requested_chord_position_request(question)
+    if request is None:
+        return
+    if not answer_mentions_required_major_positions(answer, request.normalized_key):
+        add_finding(
+            findings,
+            "fail",
+            "chord_position_router_escape",
+            f"router-escape {request.normalized_key} chord answer did not include deterministic fret positions",
+        )
+    if has_fretboard_payload(payload) and not fretboard_payload_has_expected_chord_positions(payload, request.normalized_key):
+        add_finding(
+            findings,
+            "fail",
+            "chord_position_router_escape",
+            f"router-escape fretboard omitted expected {request.normalized_key} positions",
+        )
+
+
 def evaluate_quality_result(
     row: dict[str, str],
     *,
@@ -825,7 +959,7 @@ def evaluate_quality_result(
         severity: Severity = "fail"
         if legacy.group == "source weakness / no-source" and fallback_expected(row) and fallback_quality_is_good(answer):
             severity = "warn"
-        if legacy.group == "source weakness / no-source" and is_deterministic_chord_position_question(row["question"]):
+        if legacy.group == "source weakness / no-source" and is_deterministic_pitch_rule_question(row["question"]):
             continue
         add_finding(findings, severity, f"legacy_{legacy.group.replace(' ', '_').replace('/', '_')}", legacy.reason)
 
@@ -835,6 +969,14 @@ def evaluate_quality_result(
         add_finding(findings, "fail", f"directness_{directness.group.replace(' ', '_').replace('/', '_')}", directness.reason)
 
     evaluate_deterministic_chord_position_response(
+        question=row["question"],
+        answer=answer,
+        warnings=warnings,
+        sources=sources,
+        payload=payload,
+        findings=findings,
+    )
+    evaluate_chord_position_router_escape_response(
         question=row["question"],
         answer=answer,
         warnings=warnings,

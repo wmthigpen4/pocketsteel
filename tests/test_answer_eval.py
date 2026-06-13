@@ -50,6 +50,13 @@ def test_question_bank_has_large_representative_set() -> None:
             "How do I play an F chord?",
             "How do I make an F chord?",
             "Where can I play an F chord?",
+            "Where are some places to play C chords?",
+            "Where can I play C chord?",
+            "Show me C positions.",
+            "What frets give me C?",
+            "I am in the key of G. Where can I play a 6m chord?",
+            "Show me the vi chord in G.",
+            "Where is Em on E9?",
         }
     }
     assert set(a_position_questions) == {
@@ -71,6 +78,13 @@ def test_question_bank_has_large_representative_set() -> None:
         "How do I play an F chord?",
         "How do I make an F chord?",
         "Where can I play an F chord?",
+        "Where are some places to play C chords?",
+        "Where can I play C chord?",
+        "Show me C positions.",
+        "What frets give me C?",
+        "I am in the key of G. Where can I play a 6m chord?",
+        "Show me the vi chord in G.",
+        "Where is Em on E9?",
     }
     assert all(row["category"] == "e9_fretboard_copedent" for row in a_position_questions.values())
     assert all(
