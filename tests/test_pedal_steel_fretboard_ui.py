@@ -1008,6 +1008,18 @@ def test_filter_interaction_source_resets_hidden_selection_to_first_visible() ->
     source = (REPO_ROOT / COMPONENT).read_text(encoding="utf-8")
 
     assert "function updatePositionFilter(figure, changedVoicingFilter, changedGripFilter)" in source
+    assert "function setPositionElementFilterVisibility(element, isVisible)" in source
+    assert "function syncPositionElementVisibility(figure, visibleIds)" in source
+    assert 'figure.querySelectorAll("[data-position-selector]").forEach((selector)' in source
+    assert 'figure.querySelectorAll("[data-position-detail]").forEach((detail)' in source
+    assert 'figure.querySelectorAll(".pedal-steel-fretboard__highlight").forEach((highlight)' in source
+    assert 'figure.querySelectorAll("[data-legend-id]").forEach((legend)' in source
+    assert 'element.style.display = isVisible ? "" : "none";' in source
+    assert "const visibleIds = new Set();" in source
+    assert "visibleIds.add(item.getAttribute(\"data-position-selector\"));" in source
+    assert "syncPositionElementVisibility(figure, visibleIds);" in source
+    assert 'if (changedVoicingFilter === "all" && !changedGripFilter)' in source
+    assert 'updateSelectedGripFilterButtons(figure, "all");' in source
     assert 'const firstVisible = figure.querySelector("[data-position-selector]:not([hidden])");' in source
     assert "selectPosition(figure, firstVisible.getAttribute(\"data-position-selector\"));" in source
     assert "if (selector?.hidden) return;" in source
@@ -1340,10 +1352,27 @@ assert.doesNotMatch(root345Html, /data-position-selector="g-root-345"[^>]*hidden
 assert.match(root345Html, /data-position-selector="g-root-456"[^>]*hidden/);
 assert.match(root345Html, /data-position-selector="g-first-345"[^>]*hidden/);
 assert.match(root345Html, /data-position-selector="g-second-456"[^>]*hidden/);
+assert.match(root345Html, /data-position-selector="g-elower-578"[^>]*hidden/);
 assert.match(root345Html, /data-position-detail="g-root-345"[^>]*aria-live="polite"/);
 assert.match(root345Html, /data-position-detail="g-root-456"[^>]*data-filter-visible="false"[^>]*hidden/);
+assert.match(root345Html, /data-position-detail="g-first-345"[^>]*data-filter-visible="false"[^>]*hidden/);
+assert.match(root345Html, /data-position-detail="g-second-456"[^>]*data-filter-visible="false"[^>]*hidden/);
+assert.match(root345Html, /data-position-detail="g-elower-578"[^>]*data-filter-visible="false"[^>]*hidden/);
 assert.match(root345Html, /data-highlight-id="g-root-345"[^>]*data-filter-visible="true"/);
 assert.match(root345Html, /data-highlight-id="g-root-456"[^>]*data-filter-visible="false"[^>]*hidden/);
+assert.match(root345Html, /data-highlight-id="g-first-345"[^>]*data-filter-visible="false"[^>]*hidden/);
+assert.match(root345Html, /data-highlight-id="g-second-456"[^>]*data-filter-visible="false"[^>]*hidden/);
+assert.match(root345Html, /data-highlight-id="g-elower-578"[^>]*data-filter-visible="false"[^>]*hidden/);
+
+const grip456Html = fretboard.renderPedalSteelFretboard({ positions, gripFilter: "4-5-6" });
+assert.match(grip456Html, /data-grip-filter="4-5-6" aria-pressed="true"/);
+assert.match(grip456Html, /data-position-selector="g-root-456"/);
+assert.match(grip456Html, /data-position-selector="g-second-456"/);
+assert.match(grip456Html, /data-position-selector="g-root-345"[^>]*data-filter-visible="false"[^>]*hidden/);
+assert.match(grip456Html, /data-position-selector="g-first-345"[^>]*data-filter-visible="false"[^>]*hidden/);
+assert.match(grip456Html, /data-position-selector="g-elower-578"[^>]*data-filter-visible="false"[^>]*hidden/);
+assert.match(grip456Html, /data-position-detail="g-root-345"[^>]*data-filter-visible="false"[^>]*hidden/);
+assert.match(grip456Html, /data-highlight-id="g-root-345"[^>]*data-filter-visible="false"[^>]*hidden/);
 
 const noMatchHtml = fretboard.renderPedalSteelFretboard({ positions, voicingFilter: "root-position", gripFilter: "5-7-8" });
 assert.match(noMatchHtml, /No positions match these filters\\. Try All grips or All positions\\./);

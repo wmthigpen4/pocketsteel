@@ -1639,7 +1639,9 @@
     });
     figure.querySelectorAll("[data-position-detail]").forEach((detail) => {
       const visibleByFilter = detail.dataset.filterVisible !== "false";
-      detail.hidden = !visibleByFilter || detail.getAttribute("data-position-detail") !== positionId;
+      const isSelectedDetail = detail.getAttribute("data-position-detail") === positionId;
+      detail.hidden = !visibleByFilter || !isSelectedDetail;
+      detail.style.display = visibleByFilter && isSelectedDetail ? "" : "none";
     });
     figure.querySelectorAll(".pedal-steel-fretboard__highlight").forEach((highlight) => {
       const visibleByFilter = highlight.dataset.filterVisible !== "false";
@@ -1653,6 +1655,7 @@
       const visiblePosition = figure.querySelector(`[data-position-selector="${escapeSelectorValue(legendId)}"]`);
       if (visiblePosition) {
         legend.hidden = visiblePosition.hidden;
+        legend.style.display = visiblePosition.hidden ? "none" : "";
       }
     });
   }
@@ -1707,6 +1710,34 @@
     return element.getAttribute("data-position-grip") === gripFilter;
   }
 
+  function setPositionElementFilterVisibility(element, isVisible) {
+    element.dataset.filterVisible = String(isVisible);
+    element.hidden = !isVisible;
+    element.style.display = isVisible ? "" : "none";
+    element.classList.toggle("is-filter-hidden", !isVisible);
+  }
+
+  function syncPositionElementVisibility(figure, visibleIds) {
+    figure.querySelectorAll("[data-position-selector]").forEach((selector) => {
+      setPositionElementFilterVisibility(selector, visibleIds.has(selector.getAttribute("data-position-selector")));
+    });
+    figure.querySelectorAll("[data-position-detail]").forEach((detail) => {
+      setPositionElementFilterVisibility(detail, visibleIds.has(detail.getAttribute("data-position-detail")));
+    });
+    figure.querySelectorAll(".pedal-steel-fretboard__highlight").forEach((highlight) => {
+      setPositionElementFilterVisibility(highlight, visibleIds.has(highlight.getAttribute("data-highlight-id")));
+    });
+    figure.querySelectorAll("[data-legend-id]").forEach((legend) => {
+      const legendId = legend.getAttribute("data-legend-id");
+      const matchingSelector = legendId
+        ? figure.querySelector(`[data-position-selector="${escapeSelectorValue(legendId)}"]`)
+        : null;
+      if (matchingSelector) {
+        setPositionElementFilterVisibility(legend, visibleIds.has(legendId));
+      }
+    });
+  }
+
   function updateSelectedFilterButton(figure, selector, attributeName, value) {
     const button = figure.querySelector(`[${attributeName}="${escapeSelectorValue(value)}"]`);
     if (!button) return;
@@ -1749,6 +1780,9 @@
     if (!figure) return;
     if (changedVoicingFilter) {
       updateSelectedFilterButton(figure, "[data-voicing-filter]", "data-voicing-filter", changedVoicingFilter);
+      if (changedVoicingFilter === "all" && !changedGripFilter) {
+        updateSelectedGripFilterButtons(figure, "all");
+      }
     }
     if (changedGripFilter) {
       updateSelectedGripFilterButtons(figure, changedGripFilter);
@@ -1768,17 +1802,16 @@
     if (note) {
       note.hidden = !limitRecommended;
     }
-    figure.querySelectorAll("[data-position-selector], [data-position-detail], .pedal-steel-fretboard__highlight").forEach((item) => {
+    const visibleIds = new Set();
+    figure.querySelectorAll("[data-position-selector]").forEach((item) => {
       const isVisible = positionElementMatchesVoicing(item, voicingFilter) &&
         positionElementMatchesGrip(item, gripFilters) &&
         !(limitRecommended && item.dataset.recommendedExtra === "true");
-      item.dataset.filterVisible = String(isVisible);
-      item.hidden = !isVisible;
-      if (item.classList.contains("pedal-steel-fretboard__highlight")) {
-        item.style.display = isVisible ? "" : "none";
+      if (isVisible) {
+        visibleIds.add(item.getAttribute("data-position-selector"));
       }
-      item.classList.toggle("is-filter-hidden", !isVisible);
     });
+    syncPositionElementVisibility(figure, visibleIds);
     const emptyState = figure.querySelector("[data-position-empty]");
     const firstVisible = figure.querySelector("[data-position-selector]:not([hidden])");
     if (firstVisible) {
