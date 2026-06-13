@@ -85,6 +85,8 @@ class FretboardPosition(TypedDict):
     levers: list[str]
     color: str
     role: NotRequired[str]
+    function: str
+    keyContext: str
     family: str
     tier: str
     colorRole: str
@@ -93,9 +95,11 @@ class FretboardPosition(TypedDict):
     notes: dict[str, str]
     intervals: dict[str, str]
     omittedIntervals: list[str]
+    addedIntervals: list[str]
     isFullChord: bool
     isPartial: bool
     isRootless: bool
+    whyUseIt: str
     caveats: list[str]
     validationStatus: str
     explanation: str

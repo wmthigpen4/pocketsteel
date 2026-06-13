@@ -8,7 +8,7 @@ highlight data without relying on RAG snippets or hand-entered claims.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Literal
 
 from pocketsteel.user_copedent import USER_E9_COPEDENT, apply_changes, open_strings_dict, supports_standard_major_position_changes
@@ -36,6 +36,20 @@ COMMON_E9_VISUAL_GRIPS: tuple[tuple[int, ...], ...] = (
 
 E_LOWER_578_GRIP: tuple[int, ...] = (5, 7, 8)
 
+E_LOWER_MAJOR_GRIPS: tuple[tuple[int, ...], ...] = (
+    (5, 7, 8),
+    (7, 8, 10),
+    (4, 5, 7),
+    (1, 4, 5),
+)
+
+E_LOWER_DOMINANT_GRIPS: tuple[tuple[int, ...], ...] = (
+    (3, 4, 5),
+    (4, 5, 6),
+    (5, 6, 8),
+    (6, 8, 10),
+)
+
 FretboardIntent = Literal["major_positions", "minor_grips", "i_iv_v", "common_grips"]
 
 
@@ -59,6 +73,13 @@ class UnsupportedChordLocationRequest:
 @dataclass(frozen=True)
 class ELower578Request:
     fret: int
+
+
+@dataclass(frozen=True)
+class FunctionalPocketRequest:
+    key: str
+    function: str
+    target_root: str
 
 
 NOTE_TO_SEMITONE: dict[str, int] = {
@@ -127,6 +148,14 @@ CHORD_INTERVALS: dict[str, tuple[str, ...]] = {
     "minor7": ("1", "b3", "5", "b7"),
 }
 
+CHORD_ADDED_INTERVALS: dict[str, tuple[str, ...]] = {
+    "major": ("2/9", "6/13"),
+    "minor": ("2/9", "4/11", "b7"),
+    "dominant7": ("2/9", "6/13"),
+    "dominant9": ("6/13",),
+    "minor7": ("2/9", "4/11"),
+}
+
 CHORD_ALIASES: dict[str, str] = {
     "major": "major",
     "minor": "minor",
@@ -157,6 +186,8 @@ class FretboardPosition:
     levers: tuple[str, ...] = ()
     color: str = "primary"
     role: str = ""
+    function: str = ""
+    key_context: str = ""
     notes: dict[str, str] | None = None
     intervals: dict[str, str] | None = None
     explanation: str = ""
@@ -166,9 +197,11 @@ class FretboardPosition:
     visible_by_default: bool = True
     sort_order: int = 0
     omitted_intervals: tuple[str, ...] = ()
+    added_intervals: tuple[str, ...] = ()
     is_full_chord: bool = False
     is_partial: bool = False
     is_rootless: bool = False
+    why_use_it: str = ""
     validation_status: str = "pitch_validated"
     caveats: tuple[str, ...] = ()
 
@@ -187,15 +220,19 @@ class FretboardPosition:
             "levers": list(self.levers),
             "color": self.color,
             "role": self.role,
+            "function": self.function,
+            "keyContext": self.key_context,
             "family": self.family,
             "tier": self.tier,
             "colorRole": color_role,
             "visibleByDefault": self.visible_by_default,
             "sortOrder": self.sort_order,
             "omittedIntervals": list(self.omitted_intervals),
+            "addedIntervals": list(self.added_intervals),
             "isFullChord": self.is_full_chord,
             "isPartial": self.is_partial,
             "isRootless": self.is_rootless,
+            "whyUseIt": self.why_use_it,
             "validationStatus": self.validation_status,
             "caveats": list(self.caveats),
             "notes": dict(self.notes or {}),
@@ -335,6 +372,10 @@ def validate_fretboard_payload(payload: dict) -> None:
             raise ValueError(f"Fretboard position {position_id} is missing quality")
         if not isinstance(position.get("positionKind"), str) or not position.get("positionKind"):
             raise ValueError(f"Fretboard position {position_id} is missing positionKind")
+        if not isinstance(position.get("function"), str):
+            raise ValueError(f"Fretboard position {position_id} has invalid function")
+        if not isinstance(position.get("keyContext"), str):
+            raise ValueError(f"Fretboard position {position_id} has invalid keyContext")
         if not isinstance(position.get("tier"), str) or not position.get("tier"):
             raise ValueError(f"Fretboard position {position_id} is missing tier")
         if not isinstance(position.get("colorRole"), str) or not position.get("colorRole"):
@@ -345,6 +386,8 @@ def validate_fretboard_payload(payload: dict) -> None:
             raise ValueError(f"Fretboard position {position_id} has invalid sortOrder")
         if not isinstance(position.get("omittedIntervals"), list):
             raise ValueError(f"Fretboard position {position_id} has invalid omittedIntervals")
+        if not isinstance(position.get("addedIntervals"), list):
+            raise ValueError(f"Fretboard position {position_id} has invalid addedIntervals")
         if not isinstance(position.get("isFullChord"), bool):
             raise ValueError(f"Fretboard position {position_id} has invalid isFullChord")
         if not isinstance(position.get("isPartial"), bool):
@@ -366,6 +409,8 @@ def validate_fretboard_payload(payload: dict) -> None:
             raise ValueError(f"Fretboard position {position_id} has invalid intervals")
         if not isinstance(position.get("explanation"), str):
             raise ValueError(f"Fretboard position {position_id} has invalid explanation")
+        if not isinstance(position.get("whyUseIt"), str):
+            raise ValueError(f"Fretboard position {position_id} has invalid whyUseIt")
         for note_key, note_value in notes.items():
             if int(note_key) not in strings:
                 raise ValueError(f"Fretboard position {position_id} has note outside strings")
@@ -448,10 +493,19 @@ def resolve_grip_notes(fret: int, strings: tuple[int, ...], controls: tuple[str,
     return notes
 
 
-def classify_voicing(root: str, quality: str, notes: dict[str, str]) -> dict[str, object] | None:
+def classify_voicing(
+    root: str,
+    quality: str,
+    notes: dict[str, str],
+    *,
+    allow_added_intervals: bool = False,
+) -> dict[str, object] | None:
     """Classify notes against a target chord quality without trusting labels."""
-    required = chord_required_intervals(quality)
+    quality_key = chord_quality_key(quality)
+    required = chord_required_intervals(quality_key)
     allowed = set(required)
+    if allow_added_intervals:
+        allowed.update(CHORD_ADDED_INTERVALS.get(quality_key, ()))
     intervals: dict[str, str] = {}
     for string, note in notes.items():
         interval = interval_for_note(root, note)
@@ -462,14 +516,18 @@ def classify_voicing(root: str, quality: str, notes: dict[str, str]) -> dict[str
     present = set(intervals.values())
     if len(present) < 2:
         return None
+    if not present.intersection(required):
+        return None
 
     omitted = tuple(interval for interval in required if interval not in present)
+    added = tuple(interval for interval in present if interval not in required)
     is_full = not omitted
     return {
         "intervals": intervals,
         "omitted_intervals": omitted,
+        "added_intervals": added,
         "is_full_chord": is_full,
-        "is_partial": not is_full,
+        "is_partial": not is_full or bool(added),
         "is_rootless": "1" not in present,
     }
 
@@ -481,15 +539,17 @@ def classify_grip_against_root(
     fret: int,
     strings: tuple[int, ...],
     controls: tuple[str, ...],
-) -> tuple[dict[str, str], dict[str, str], tuple[str, ...], bool, bool, bool] | None:
+    allow_added_intervals: bool = False,
+) -> tuple[dict[str, str], dict[str, str], tuple[str, ...], tuple[str, ...], bool, bool, bool] | None:
     notes = resolve_grip_notes(fret, strings, controls)
-    classification = classify_voicing(root, quality, notes)
+    classification = classify_voicing(root, quality, notes, allow_added_intervals=allow_added_intervals)
     if classification is None:
         return None
     return (
         notes,
         classification["intervals"],  # type: ignore[return-value]
         classification["omitted_intervals"],  # type: ignore[return-value]
+        classification["added_intervals"],  # type: ignore[return-value]
         bool(classification["is_full_chord"]),
         bool(classification["is_partial"]),
         bool(classification["is_rootless"]),
@@ -501,7 +561,7 @@ def major_triad_match(key: str, fret: int, strings: tuple[int, ...], controls: t
     classification = classify_grip_against_root(key, "major", fret=fret, strings=strings, controls=controls)
     if classification is None:
         return None
-    notes, intervals, omitted, _, _, _ = classification
+    notes, intervals, omitted, _, _, _, _ = classification
     if omitted:
         return None
     return notes, intervals
@@ -536,6 +596,7 @@ def best_grip_classification(fret: int, strings: tuple[int, ...], controls: tupl
             "notes": notes,
             "intervals": {},
             "omitted_intervals": (),
+            "added_intervals": (),
             "is_full_chord": False,
             "is_partial": False,
             "is_rootless": False,
@@ -561,19 +622,39 @@ def major_position_candidate(
     visible_by_default: bool,
     sort_order: int,
     explanation: str,
+    function: str = "",
+    key_context: str = "",
+    why_use_it: str = "",
     caveats: tuple[str, ...] = (),
+    allow_added_intervals: bool = True,
 ) -> FretboardPosition | None:
     controls = pedals + levers
-    classification = classify_grip_against_root(key, quality, fret=fret, strings=strings, controls=controls)
+    classification = classify_grip_against_root(
+        key,
+        quality,
+        fret=fret,
+        strings=strings,
+        controls=controls,
+        allow_added_intervals=allow_added_intervals,
+    )
     if classification is None:
         return None
-    notes, intervals, omitted_intervals, is_full_chord, is_partial, is_rootless = classification
+    notes, intervals, omitted_intervals, added_intervals, is_full_chord, is_partial, is_rootless = classification
+    quality_key = chord_quality_key(quality)
+    position_kind = position_kind_for_classification(
+        family=family,
+        quality=quality_key,
+        is_full_chord=is_full_chord,
+        is_partial=is_partial,
+        is_rootless=is_rootless,
+        added_intervals=added_intervals,
+    )
     return FretboardPosition(
         id=f"{slug(key)}-{suffix}",
         label=f"{key} {quality_label(quality)}",
         root=key,
         quality=chord_quality_key(quality),
-        position_kind=position_kind_for_family(family, visible_by_default),
+        position_kind=position_kind,
         fret=fret,
         strings=strings,
         grip=grip_label(strings),
@@ -581,6 +662,8 @@ def major_position_candidate(
         levers=levers,
         color=color,
         role=role,
+        function=function,
+        key_context=key_context,
         notes=notes,
         intervals=intervals,
         explanation=explanation,
@@ -590,9 +673,11 @@ def major_position_candidate(
         visible_by_default=visible_by_default,
         sort_order=sort_order,
         omitted_intervals=omitted_intervals,
+        added_intervals=added_intervals,
         is_full_chord=is_full_chord,
         is_partial=is_partial,
         is_rootless=is_rootless,
+        why_use_it=why_use_it or explanation,
         validation_status="pitch_validated",
         caveats=caveats,
     )
@@ -612,6 +697,28 @@ def quality_label(quality: str) -> str:
         "dominant9": "dominant 9",
         "minor7": "minor 7",
     }.get(chord_quality_key(quality), quality)
+
+
+def position_kind_for_classification(
+    *,
+    family: str,
+    quality: str,
+    is_full_chord: bool,
+    is_partial: bool,
+    is_rootless: bool,
+    added_intervals: tuple[str, ...],
+) -> str:
+    if family in {"i_iv_v", "grip_reference", "minor_grip"}:
+        return "movement_pocket"
+    if quality in {"dominant7", "dominant9"}:
+        return "rootless_voicing" if is_rootless else "dominant_pocket"
+    if is_rootless:
+        return "rootless_voicing"
+    if is_full_chord and not is_partial and not added_intervals:
+        return "full_chord_position"
+    if is_partial:
+        return "partial_chord_grip"
+    return "uncertain_or_unvalidated"
 
 
 def position_kind_for_family(family: str, visible_by_default: bool) -> str:
@@ -692,18 +799,36 @@ def e_lower_578_position_at_fret(fret: int) -> FretboardPosition:
         role = f"E-lower 5-7-8 {quality_text} grip"
         label = f"{root} {quality_text}"
         explanation = f"With E lowered at fret {fret}, strings 5-7-8 resolve by pitch math to a {root} {quality_text} grip."
+    quality_key = chord_quality_key(quality) if quality in CHORD_INTERVALS else quality
+    added = classification.get("added_intervals", ())
+    if not isinstance(added, tuple):
+        added = tuple()
+    position_kind = (
+        position_kind_for_classification(
+            family="e_lower_578",
+            quality=quality_key,
+            is_full_chord=bool(classification["is_full_chord"]),
+            is_partial=bool(classification["is_partial"]),
+            is_rootless=bool(classification["is_rootless"]),
+            added_intervals=added,
+        )
+        if quality in CHORD_INTERVALS
+        else "uncertain_or_unvalidated"
+    )
     return FretboardPosition(
         id=f"{slug(root) if root != 'unknown' else 'unknown'}-e-lower-5-7-8-{fret}",
         label=label,
         root=root,
-        quality=quality,
-        position_kind="grip_analysis",
+        quality=quality_key,
+        position_kind=position_kind,
         fret=fret,
         strings=E_LOWER_578_GRIP,
         grip=grip_label(E_LOWER_578_GRIP),
         levers=("E",),
         color="reference",
         role=role,
+        function="diagnostic",
+        key_context=root if root != "unknown" else "",
         notes=notes if isinstance(notes, dict) else {},
         intervals=intervals if isinstance(intervals, dict) else {},
         explanation=explanation,
@@ -713,9 +838,11 @@ def e_lower_578_position_at_fret(fret: int) -> FretboardPosition:
         visible_by_default=True,
         sort_order=10,
         omitted_intervals=omitted if isinstance(omitted, tuple) else tuple(),
+        added_intervals=added,
         is_full_chord=bool(classification["is_full_chord"]),
         is_partial=bool(classification["is_partial"]),
         is_rootless=bool(classification["is_rootless"]),
+        why_use_it="Use this as a focused pitch diagnostic for the selected grip and lever.",
         validation_status="pitch_validated",
         caveats=("Assumes E-lower lowers strings 4 and 8 E to D#/Eb.",),
     )
@@ -769,6 +896,134 @@ def e_lower_578_answer_for_question(question: str) -> str | None:
     return "\n".join(lines)
 
 
+def e_lower_578_b9_question(question: str) -> bool:
+    q = re.sub(r"\s+", " ", question or "").strip().lower().rstrip("?!.")
+    if not q:
+        return False
+    return bool(
+        re.search(r"\b5\s*[-/ ]\s*7\s*[-/ ]\s*8\b", q)
+        and re.search(r"\b(?:e[- ]?lower|e lowered|e's lowered|es lowered|lowered e)\b", q)
+        and re.search(r"\bb9\b", q)
+    )
+
+
+def e_lower_578_b9_answer_for_question(question: str) -> str | None:
+    if not e_lower_578_b9_question(question):
+        return None
+    fret_three = e_lower_578_position_at_fret(3)
+    b_major_frets: list[str] = []
+    for fret in (0, 12, 24):
+        position = e_lower_578_position_at_fret(fret)
+        if position.root == "B" and position.quality == "major":
+            b_major_frets.append(str(fret))
+    b_major_text = ", ".join(b_major_frets)
+    note_list = ", ".join(f"string {string} = {note}" for string, note in (fret_three.notes or {}).items())
+    return (
+        "No: 5-7-8 with E lowered is not a full B9 pocket by itself under the confirmed E9 copedent.\n\n"
+        f"- At the 3rd fret it resolves to D major ({note_list}), not B9; against a B root, those notes can also sound like a rootless B minor 7 color because the B root is omitted.\n"
+        f"- At frets {b_major_text}, the same grip spells B major, which can be a useful B pocket, but it omits the b7 and 9 that would make a full B9 sound.\n"
+        "- So I would treat it as pitch-dependent: B major at the matching frets, D major at the 3rd fret, and not a complete B9 grip unless other notes supply the missing dominant color."
+    )
+
+
+def functional_pocket_request_for_question(question: str) -> FunctionalPocketRequest | None:
+    q = re.sub(r"\s+", " ", question or "").strip().lower().rstrip("?!.")
+    if not q:
+        return None
+    match = re.search(
+        r"^(?:show me|where are|give me)\s+(?P<function>v|5|five)(?:\s+chord)?\s+pockets?\s+in\s+(?P<key>[a-g](?:#|b)?)$",
+        q,
+    )
+    if not match:
+        return None
+    key = normalize_key(match.group("key"))
+    target_root = transpose(key, 7)
+    return FunctionalPocketRequest(key=key, function="V", target_root=target_root)
+
+
+def functional_pocket_positions(request: FunctionalPocketRequest) -> tuple[FretboardPosition, ...]:
+    source = major_positions(request.target_root).positions
+    allowed_families = {
+        "open_no_pedals",
+        "a_f",
+        "a_b",
+        "a_b_lower_octave",
+        "e_lower_578",
+        "e_lower_major",
+        "e_lower_dominant_pocket",
+    }
+    positions: list[FretboardPosition] = []
+    for index, position in enumerate(source):
+        if position.family not in allowed_families:
+            continue
+        pocket_family = "v_" + position.family
+        pocket_role = f"V chord in {request.key}: {position.role}"
+        position_kind = position.position_kind
+        if position.family == "e_lower_dominant_pocket":
+            position_kind = "dominant_pocket" if not position.is_rootless else "rootless_voicing"
+        positions.append(
+            replace(
+                position,
+                id=f"{slug(request.key)}-v-{position.id}",
+                role=pocket_role,
+                function=request.function,
+                key_context=request.key,
+                family=pocket_family,
+                position_kind=position_kind,
+                sort_order=index * 10,
+                why_use_it=(
+                    f"Use this as a {request.target_root} V-chord pocket in {request.key}; "
+                    "major positions give the stable V sound, while E-lower dominant pockets add partial/rootless dominant color."
+                ),
+            )
+        )
+    return tuple(positions)
+
+
+def functional_pocket_payload_for_question(question: str) -> dict | None:
+    request = functional_pocket_request_for_question(question)
+    if request is None:
+        return None
+    return FretboardVisualizationPayload(
+        title=f"V chord pockets in {request.key} ({request.target_root})",
+        subtitle=(
+            f"Pitch-validated {request.target_root} major and dominant-color pockets for the V chord in {request.key}."
+        ),
+        key=request.key,
+        positions=functional_pocket_positions(request),
+    ).to_payload()
+
+
+def functional_pocket_answer_for_question(question: str) -> str | None:
+    request = functional_pocket_request_for_question(question)
+    if request is None:
+        return None
+    payload = functional_pocket_payload_for_question(question)
+    if payload is None:
+        return None
+    visible = [position for position in payload["positions"] if position["visibleByDefault"]]
+    dominant = [position for position in payload["positions"] if position["family"] == "v_e_lower_dominant_pocket"]
+    lines = [
+        f"In {request.key}, the V chord is {request.target_root}. Use these pitch-validated {request.target_root} pockets as a practical map.",
+        "",
+        "Starter V positions",
+    ]
+    for position in visible:
+        controls = " + ".join([*position["pedals"], *position["levers"]]) or "no pedals"
+        lines.append(f"- {fret_label(position['fret'])} with {controls}: {position['role'].split(': ', 1)[-1]}, grip {position['grip']}.")
+    if dominant:
+        lines.extend(["", "Dominant-color pockets"])
+        for position in dominant[:4]:
+            intervals = ", ".join(dict(position["intervals"]).values())
+            omitted = ", ".join(position["omittedIntervals"]) or "none"
+            lines.append(
+                f"- {fret_label(position['fret'])} with E-lower on {position['grip']}: intervals {intervals}; omitted {omitted}."
+            )
+    lines.append("")
+    lines.append("Treat the dominant pockets as partial/rootless colors unless the missing chord tones are supplied elsewhere.")
+    return "\n".join(lines)
+
+
 def fretboard_payload_for_question(question: str) -> dict | None:
     """Return MVP fretboard visualization data for a narrow curated question set."""
     q = re.sub(r"\s+", " ", question or "").strip().lower().rstrip("?!.")
@@ -777,6 +1032,9 @@ def fretboard_payload_for_question(question: str) -> dict | None:
     e_lower_payload = e_lower_578_payload_for_question(q)
     if e_lower_payload is not None:
         return e_lower_payload
+    functional_payload = functional_pocket_payload_for_question(q)
+    if functional_payload is not None:
+        return functional_payload
     major_request = major_chord_location_request_for_question(q)
     if major_request is not None:
         return get_fretboard_examples("major_positions", major_request.normalized_key)
@@ -802,6 +1060,7 @@ def major_chord_location_request_for_question(question: str) -> MajorChordLocati
         r"^where(?: all)? can i play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?$",
         r"^where can i find (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?$",
         r"^how do i play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?$",
+        r"^how do i plan (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)$",
         r"^how do i make (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?$",
         r"^where is ([a-g](?:#|b)?) major$",
         r"^where is ([a-g](?:#|b)?)(?: major)? on e9$",
@@ -836,6 +1095,7 @@ def unsupported_chord_location_request_for_question(question: str) -> Unsupporte
         r"where can i find",
         r"where is",
         r"how do i play",
+        r"how do i plan",
         r"how do i make",
         r"show me places to play",
         r"show me",
@@ -950,6 +1210,9 @@ def reference_position(
     visible_by_default: bool,
     sort_order: int,
     explanation: str,
+    function: str = "",
+    key_context: str = "",
+    why_use_it: str = "",
     caveats: tuple[str, ...] = (),
 ) -> FretboardPosition:
     controls = pedals + levers
@@ -958,12 +1221,23 @@ def reference_position(
     required = CHORD_INTERVALS.get(CHORD_ALIASES.get(quality, quality), ())
     present = set(intervals.values())
     omitted = tuple(interval for interval in required if interval not in present)
+    added = tuple(interval for interval in present if interval not in required)
+    quality_key = CHORD_ALIASES.get(quality, quality)
     return FretboardPosition(
         id=position_id,
         label=label,
         root=root,
-        quality=CHORD_ALIASES.get(quality, quality),
-        position_kind=position_kind,
+        quality=quality_key,
+        position_kind=position_kind
+        if position_kind != "auto"
+        else position_kind_for_classification(
+            family=family,
+            quality=quality_key,
+            is_full_chord=bool(required) and not omitted and not added,
+            is_partial=bool(required) and (bool(omitted) or bool(added)),
+            is_rootless=bool(required) and "1" not in present,
+            added_intervals=added,
+        ),
         fret=fret,
         strings=strings,
         grip=grip_label(strings),
@@ -971,6 +1245,8 @@ def reference_position(
         levers=levers,
         color=color,
         role=role,
+        function=function,
+        key_context=key_context,
         notes=notes,
         intervals=intervals,
         explanation=explanation,
@@ -980,9 +1256,11 @@ def reference_position(
         visible_by_default=visible_by_default,
         sort_order=sort_order,
         omitted_intervals=omitted,
-        is_full_chord=bool(required) and not omitted,
-        is_partial=bool(required) and bool(omitted),
+        added_intervals=added,
+        is_full_chord=bool(required) and not omitted and not added,
+        is_partial=bool(required) and (bool(omitted) or bool(added)),
         is_rootless=bool(required) and "1" not in present,
+        why_use_it=why_use_it or explanation,
         validation_status="pitch_validated",
         caveats=caveats,
     )
@@ -1014,13 +1292,12 @@ def major_positions(key: str) -> FretboardVisualizationPayload:
         tier: str = "beginner",
         grip_tier: str = "common",
         required_starter: bool = False,
-        lower_octave: bool = False,
+        variant_suffix: str = "",
         starter_visible_by_default: bool = True,
     ) -> None:
         for index, grip in enumerate(COMMON_E9_VISUAL_GRIPS):
             is_starter = grip == (4, 5, 6)
-            lower_suffix = "-lower-octave" if lower_octave else ""
-            suffix = f"{starter_suffix_prefix}-{fret}{lower_suffix}" if is_starter else f"{starter_suffix_prefix}-grip-{grip_label(grip)}-{fret}{lower_suffix}"
+            suffix = f"{starter_suffix_prefix}-{fret}{variant_suffix}" if is_starter else f"{starter_suffix_prefix}-grip-{grip_label(grip)}-{fret}{variant_suffix}"
             candidate = major_position_candidate(
                 key=key,
                 suffix=suffix,
@@ -1036,6 +1313,9 @@ def major_positions(key: str) -> FretboardVisualizationPayload:
                 visible_by_default=is_starter and starter_visible_by_default,
                 sort_order=sort_base + index * 10,
                 explanation=f"{explanation_prefix} on strings {grip_label(grip)}.",
+                function="I",
+                key_context=key,
+                why_use_it=f"Use this as a {key} major grip in the {starter_role.lower()} family.",
             )
             if is_starter and required_starter:
                 candidates.append(require_major_position(candidate, key=key, role=starter_role))
@@ -1055,6 +1335,23 @@ def major_positions(key: str) -> FretboardVisualizationPayload:
         starter_suffix_prefix="open",
         required_starter=True,
     )
+    if open_fret + 12 <= 24:
+        add_grip_family(
+            fret=open_fret + 12,
+            starter_family="open_octave",
+            grip_family="open_octave_grip",
+            starter_role="Open octave alternate",
+            grip_role_prefix="Open-octave alternate",
+            color="primary",
+            color_role="primary",
+            sort_base=70,
+            explanation_prefix=f"No-pedal fret {open_fret + 12} gives an octave-up {key} major grip",
+            starter_suffix_prefix="open",
+            tier="alternate",
+            grip_tier="alternate",
+            variant_suffix="-octave",
+            starter_visible_by_default=False,
+        )
     add_grip_family(
         fret=af_fret,
         pedals=("A",),
@@ -1070,6 +1367,25 @@ def major_positions(key: str) -> FretboardVisualizationPayload:
         starter_suffix_prefix="af",
         required_starter=True,
     )
+    if af_fret + 12 <= 24:
+        add_grip_family(
+            fret=af_fret + 12,
+            pedals=("A",),
+            levers=("F",),
+            starter_family="a_f_octave",
+            grip_family="a_f_octave_grip",
+            starter_role="A+F octave alternate",
+            grip_role_prefix="A+F octave alternate",
+            color="secondary",
+            color_role="secondary",
+            sort_base=150,
+            explanation_prefix=f"A+F at fret {af_fret + 12} gives an octave-up {key} major grip",
+            starter_suffix_prefix="af",
+            tier="alternate",
+            grip_tier="alternate",
+            variant_suffix="-octave",
+            starter_visible_by_default=False,
+        )
     add_grip_family(
         fret=ab_fret,
         pedals=("A", "B"),
@@ -1084,6 +1400,24 @@ def major_positions(key: str) -> FretboardVisualizationPayload:
         starter_suffix_prefix="ab",
         required_starter=True,
     )
+    if ab_fret + 12 <= 24:
+        add_grip_family(
+            fret=ab_fret + 12,
+            pedals=("A", "B"),
+            starter_family="a_b_octave",
+            grip_family="a_b_octave_grip",
+            starter_role="A+B octave alternate",
+            grip_role_prefix="A+B octave alternate",
+            color="alternate",
+            color_role="alternate",
+            sort_base=230,
+            explanation_prefix=f"A+B at fret {ab_fret + 12} gives an octave-up {key} major grip",
+            starter_suffix_prefix="ab",
+            tier="alternate",
+            grip_tier="alternate",
+            variant_suffix="-octave",
+            starter_visible_by_default=False,
+        )
 
     lower_octave_ab_fret = ab_fret % 12
     if lower_octave_ab_fret != ab_fret and lower_octave_ab_fret < ab_fret:
@@ -1101,7 +1435,7 @@ def major_positions(key: str) -> FretboardVisualizationPayload:
             starter_suffix_prefix="ab",
             tier="alternate",
             grip_tier="alternate",
-            lower_octave=True,
+            variant_suffix="-lower-octave",
             starter_visible_by_default=False,
         )
 
@@ -1109,24 +1443,58 @@ def major_positions(key: str) -> FretboardVisualizationPayload:
     for index, fret in enumerate((e_lower_fret, e_lower_fret + 12)):
         if fret > 24:
             continue
-        e_lower = major_position_candidate(
-            key=key,
-            suffix=f"e-lower-5-7-8-{fret}",
-            fret=fret,
-            strings=E_LOWER_578_GRIP,
-            levers=("E",),
-            color="reference",
-            role="E-lower 5-7-8 major color",
-            family="e_lower_578",
-            tier="advanced",
-            color_role="reference",
-            visible_by_default=False,
-            sort_order=55 + index * 125,
-            explanation=f"E-lower at fret {fret} gives a {key} major 5-7-8 grip when strings 4 and 8 lower from E to D#/Eb.",
-            caveats=("Assumes E-lower lowers strings 4 and 8 E to D#/Eb.",),
-        )
-        if e_lower is not None:
-            candidates.append(e_lower)
+        octave_sort_offset = index * 125
+        for grip_index, grip in enumerate(E_LOWER_MAJOR_GRIPS):
+            family = "e_lower_578" if grip == E_LOWER_578_GRIP else "e_lower_major"
+            e_lower = major_position_candidate(
+                key=key,
+                suffix=f"e-lower-{grip_label(grip)}-{fret}",
+                fret=fret,
+                strings=grip,
+                levers=("E",),
+                color="reference",
+                role=f"E-lower {grip_label(grip)} major color",
+                family=family,
+                tier="advanced",
+                color_role="e-lower",
+                visible_by_default=False,
+                sort_order=55 + grip_index + octave_sort_offset,
+                explanation=f"E-lower at fret {fret} gives a {key} major {grip_label(grip)} grip when strings 4 and 8 lower from E to D#/Eb.",
+                function="I",
+                key_context=key,
+                why_use_it=f"Use this as an E-lower {key} major pocket after you know the starter positions.",
+                caveats=("Assumes E-lower lowers strings 4 and 8 E to D#/Eb.",),
+            )
+            if e_lower is not None:
+                candidates.append(e_lower)
+
+    dominant_fret = (e_lower_fret - 2) % 12
+    for octave_index, fret in enumerate((dominant_fret, dominant_fret + 12)):
+        if fret > 24:
+            continue
+        for grip_index, grip in enumerate(E_LOWER_DOMINANT_GRIPS):
+            dominant = major_position_candidate(
+                key=key,
+                quality="dominant9",
+                suffix=f"e-lower-dominant-{grip_label(grip)}-{fret}",
+                fret=fret,
+                strings=grip,
+                levers=("E",),
+                color="reference",
+                role=f"E-lower {grip_label(grip)} dominant color",
+                family="e_lower_dominant_pocket",
+                tier="advanced",
+                color_role="dominant",
+                visible_by_default=False,
+                sort_order=500 + octave_index * 100 + grip_index * 10,
+                explanation=f"E-lower at fret {fret} gives a rootless/partial {key} dominant-9 color on strings {grip_label(grip)}.",
+                function="dominant",
+                key_context=key,
+                why_use_it=f"Use this as a dominant color that wants to resolve back toward {key} or a nearby tonic.",
+                caveats=("This is a partial/rootless dominant color, not a full dominant chord by itself.",),
+            )
+            if dominant is not None:
+                candidates.append(dominant)
 
     positions = tuple(sorted(candidates, key=lambda position: position.sort_order))
     return FretboardVisualizationPayload(
@@ -1303,6 +1671,15 @@ def fret_for_root(key: str, root_at_zero: int) -> int:
 
 def transpose(key: str, semitones: int) -> str:
     return CANONICAL_NOTES[(semitone_for_note(normalize_key(key)) + semitones) % 12]
+
+
+def fret_label(fret: int) -> str:
+    if fret == 0:
+        return "fret 0"
+    suffix = "th"
+    if fret % 100 not in {11, 12, 13}:
+        suffix = {1: "st", 2: "nd", 3: "rd"}.get(fret % 10, "th")
+    return f"{fret}{suffix} fret"
 
 
 def slug(key: str) -> str:

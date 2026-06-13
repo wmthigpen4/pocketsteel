@@ -1919,6 +1919,8 @@ def assert_valid_fretboard_payload(payload: dict[str, Any]) -> None:
             "pedals",
             "levers",
             "color",
+            "function",
+            "keyContext",
             "family",
             "tier",
             "colorRole",
@@ -1927,9 +1929,11 @@ def assert_valid_fretboard_payload(payload: dict[str, Any]) -> None:
             "notes",
             "intervals",
             "omittedIntervals",
+            "addedIntervals",
             "isFullChord",
             "isPartial",
             "isRootless",
+            "whyUseIt",
             "caveats",
             "validationStatus",
             "explanation",
@@ -1944,6 +1948,8 @@ def assert_valid_fretboard_payload(payload: dict[str, Any]) -> None:
         assert position["grip"] == "-".join(str(string) for string in position["strings"])
         assert all(label in DEFAULT_PEDAL_LEVER_LABELS for label in position["pedals"])
         assert all(label in DEFAULT_PEDAL_LEVER_LABELS for label in position["levers"])
+        assert isinstance(position["function"], str)
+        assert isinstance(position["keyContext"], str)
         assert position["family"]
         assert position["tier"]
         assert position["colorRole"]
@@ -1952,9 +1958,11 @@ def assert_valid_fretboard_payload(payload: dict[str, Any]) -> None:
         assert isinstance(position["notes"], dict)
         assert isinstance(position["intervals"], dict)
         assert isinstance(position["omittedIntervals"], list)
+        assert isinstance(position["addedIntervals"], list)
         assert isinstance(position["isFullChord"], bool)
         assert isinstance(position["isPartial"], bool)
         assert isinstance(position["isRootless"], bool)
+        assert isinstance(position["whyUseIt"], str)
         assert isinstance(position["caveats"], list)
         assert position["validationStatus"] == "pitch_validated"
         assert isinstance(position["explanation"], str)
@@ -2256,6 +2264,58 @@ def test_location_based_c_sharp_question_without_chord_suffix_uses_positions_not
     assert not any("starting with the first string" in source.get("excerpt", "") for source in payload["sources"])
 
 
+def test_plan_typo_f_chord_question_uses_deterministic_positions_not_source_fragments() -> None:
+    payload = answer_for_question(
+        "How do I plan an F chord?",
+        [
+            {
+                "score": 0.91,
+                "excerpt": "Other chords based on an A root might also work with an F chord.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "Unrelated chord thread",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=403001",
+                "chunk_id": "noisy-f-plan-1",
+                "post_uid": "noisy-f-plan-1",
+                "source_system": "sgf_phpbb_current",
+            },
+            {
+                "score": 0.88,
+                "excerpt": "F#7 > B7 > E7 > A7 and the Mel Bay chord chart shows another way.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "Mel Bay chord chart",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=403002",
+                "chunk_id": "noisy-f-plan-2",
+                "post_uid": "noisy-f-plan-2",
+                "source_system": "sgf_phpbb_current",
+            },
+        ],
+    )
+
+    assert_clean_answer_body(payload)
+    assert "fretboard" in payload
+    assert_valid_fretboard_payload(payload)
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert payload["fretboard"]["title"] == "F major positions on E9"
+    assert visible_fretboard_ids(payload) == ["f-open-1", "f-af-4", "f-ab-8"]
+    assert "On standard E9, several useful F major starter positions are" in payload["answer"]
+    assert "1st fret, no pedals" in payload["answer"]
+    assert "4th fret with A pedal + F lever" in payload["answer"]
+    assert "8th fret with A+B pedals" in payload["answer"]
+    assert "Mel Bay" not in payload["answer"]
+    assert "F#7 > B7" not in payload["answer"]
+    assert "A root" not in payload["answer"]
+    assert_deterministic_fretboard_sources_are_clean(payload)
+
+
+def test_non_chord_plan_question_does_not_force_fretboard_route() -> None:
+    payload = answer_for_question("How do I plan my practice tonight?", noisy_practical_sources())
+
+    assert "fretboard" not in payload
+    assert payload["answer"]
+    assert "F major" not in payload["answer"]
+
+
 def test_location_based_b_sharp_chord_answer_uses_c_positions_not_source_fragments() -> None:
     payload = answer_for_question(
         "How do I play a B# chord?",
@@ -2421,9 +2481,49 @@ def test_e_lower_5_7_8_b9_pocket_question_does_not_invent_visual_payload_or_b9_c
 
     assert_clean_answer_body(payload)
     assert "fretboard" not in payload
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
     assert "[object Object]" not in payload["answer"]
     assert "is a B9 pocket" not in payload["answer"]
     assert "gives you B9" not in payload["answer"]
+    assert "not a full B9 pocket" in payload["answer"]
+    assert "D major" in payload["answer"]
+    assert "rootless B minor 7 color" in payload["answer"]
+    assert "Top" not in payload["answer"]
+
+
+def test_v_chord_pockets_in_a_use_deterministic_pitch_payload() -> None:
+    payload = answer_for_question(
+        "Show me V chord pockets in A.",
+        [
+            {
+                "score": 0.91,
+                "excerpt": "Top I call them pockets and just move around until it sounds right.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "Generic pockets chatter",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=402101",
+                "chunk_id": "noisy-pocket-question",
+                "post_uid": "noisy-pocket-question",
+                "source_system": "sgf_phpbb_current",
+            }
+        ],
+    )
+
+    assert_clean_answer_body(payload)
+    assert "fretboard" in payload
+    assert_valid_fretboard_payload(payload)
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert payload["fretboard"]["title"] == "V chord pockets in A (E)"
+    assert "In A, the V chord is E" in payload["answer"]
+    assert "Dominant-color pockets" in payload["answer"]
+    assert "Top" not in payload["answer"]
+    assert "forum" not in payload["answer"].lower()
+    assert {"a-v-e-open-0", "a-v-e-af-3", "a-v-e-ab-7"}.issubset(
+        {position["id"] for position in payload["fretboard"]["positions"]}
+    )
+    assert all(position["function"] == "V" for position in payload["fretboard"]["positions"])
+    assert all(position["keyContext"] == "A" for position in payload["fretboard"]["positions"])
 
 
 def test_non_location_answer_omits_fretboard_payload() -> None:

@@ -11,8 +11,11 @@ from pocketsteel.fretboard_examples import (
     FRETBOARD_PAYLOAD_TYPE,
     build_e9_major_chord_fretboard,
     e_lower_578_answer_for_question,
+    e_lower_578_b9_answer_for_question,
     e_lower_578_position_at_fret,
     fretboard_payload_for_question,
+    functional_pocket_answer_for_question,
+    functional_pocket_payload_for_question,
     get_fretboard_examples,
     get_e9_major_chord_positions,
     major_chord_location_request_for_question,
@@ -66,6 +69,8 @@ def assert_valid_visualization_payload(payload: dict) -> None:
             "levers",
             "color",
             "role",
+            "function",
+            "keyContext",
             "family",
             "tier",
             "colorRole",
@@ -74,9 +79,11 @@ def assert_valid_visualization_payload(payload: dict) -> None:
             "notes",
             "intervals",
             "omittedIntervals",
+            "addedIntervals",
             "isFullChord",
             "isPartial",
             "isRootless",
+            "whyUseIt",
             "caveats",
             "validationStatus",
         }.issubset(position)
@@ -90,6 +97,8 @@ def assert_valid_visualization_payload(payload: dict) -> None:
         assert all(label in CANONICAL_PEDAL_LABELS for label in position["pedals"])
         assert all(label in CANONICAL_LEVER_LABELS for label in position["levers"])
         assert position["family"]
+        assert isinstance(position["function"], str)
+        assert isinstance(position["keyContext"], str)
         assert position["root"]
         assert position["quality"]
         assert position["positionKind"]
@@ -100,9 +109,11 @@ def assert_valid_visualization_payload(payload: dict) -> None:
         assert isinstance(position["notes"], dict)
         assert isinstance(position["intervals"], dict)
         assert isinstance(position["omittedIntervals"], list)
+        assert isinstance(position["addedIntervals"], list)
         assert isinstance(position["isFullChord"], bool)
         assert isinstance(position["isPartial"], bool)
         assert isinstance(position["isRootless"], bool)
+        assert isinstance(position["whyUseIt"], str)
         assert isinstance(position["caveats"], list)
         assert position["validationStatus"] == "pitch_validated"
         assert "x" not in position
@@ -167,18 +178,22 @@ def test_g_major_positions_have_stable_ids_and_roles() -> None:
     assert by_id["g-open-3"]["label"] == "G major"
     assert by_id["g-open-3"]["root"] == "G"
     assert by_id["g-open-3"]["quality"] == "major"
-    assert by_id["g-open-3"]["positionKind"] == "starter"
+    assert by_id["g-open-3"]["positionKind"] == "full_chord_position"
     assert by_id["g-open-3"]["fret"] == 3
     assert by_id["g-open-3"]["strings"] == [4, 5, 6]
     assert by_id["g-open-3"]["pedals"] == []
     assert by_id["g-open-3"]["levers"] == []
     assert by_id["g-open-3"]["family"] == "open_no_pedals"
+    assert by_id["g-open-3"]["function"] == "I"
+    assert by_id["g-open-3"]["keyContext"] == "G"
     assert by_id["g-open-3"]["visibleByDefault"] is True
     assert by_id["g-open-3"]["notes"] == {"4": "G", "5": "D", "6": "B"}
     assert by_id["g-open-3"]["intervals"] == {"4": "1", "5": "5", "6": "3"}
     assert by_id["g-open-3"]["isFullChord"] is True
     assert by_id["g-open-3"]["isPartial"] is False
     assert by_id["g-open-3"]["isRootless"] is False
+    assert by_id["g-open-3"]["addedIntervals"] == []
+    assert by_id["g-open-3"]["whyUseIt"]
     assert by_id["g-af-6"]["fret"] == 6
     assert by_id["g-af-6"]["strings"] == [4, 5, 6]
     assert by_id["g-af-6"]["pedals"] == ["A"]
@@ -356,6 +371,22 @@ def test_c_sharp_major_position_prompts_are_supported() -> None:
     assert fretboard_payload_for_question("Show me places to play C# major.")["title"] == "C# major positions on E9"
 
 
+def test_plan_typo_major_position_prompt_routes_to_deterministic_fretboard() -> None:
+    request = major_chord_location_request_for_question("How do I plan an F chord?")
+    payload = fretboard_payload_for_question("How do I plan an F chord?")
+
+    assert request is not None
+    assert request.requested_root == "F"
+    assert request.normalized_key == "F"
+    assert payload["title"] == "F major positions on E9"
+    by_id = {position["id"]: position for position in payload["positions"]}
+    assert {"f-open-1", "f-af-4", "f-ab-8"}.issubset(by_id)
+    assert by_id["f-open-1"]["fret"] == 1
+    assert by_id["f-af-4"]["fret"] == 4
+    assert by_id["f-ab-8"]["fret"] == 8
+    assert fretboard_payload_for_question("How do I plan my practice tonight?") is None
+
+
 def test_b_major_position_prompt_variants_are_supported() -> None:
     expected_ids = {"b-open-7", "b-af-10", "b-ab-14", "b-ab-2-lower-octave", "b-e-lower-5-7-8-0"}
 
@@ -410,6 +441,51 @@ def test_b_major_expanded_catalog_has_beginner_visible_defaults_and_hidden_alter
             first_grip_order.append(position["grip"])
     assert first_grip_order == ["3-4-5", "4-5-6", "5-6-8", "5-7-8", "6-8-10"]
     assert [position["fret"] for position in positions if position["family"] == "e_lower_578"] == [0, 12]
+
+
+def test_g_major_expanded_catalog_includes_pitch_valid_common_grips_and_e_lower_positions() -> None:
+    payload = fretboard_payload_for_question("Where all can I play a G chord?")
+    positions = payload["positions"]
+    by_id = {position["id"]: position for position in positions}
+
+    assert {"g-open-3", "g-af-6", "g-ab-10"}.issubset(by_id)
+    assert [position["id"] for position in positions if position["visibleByDefault"]] == [
+        "g-open-3",
+        "g-af-6",
+        "g-ab-10",
+    ]
+    assert len(positions) > 3
+    assert {"g-open-15-octave", "g-af-18-octave", "g-ab-22-octave"}.issubset(by_id)
+
+    open_grips = [
+        position["grip"]
+        for position in positions
+        if position["family"] in {"open_grip", "open_no_pedals"} and position["fret"] == 3
+    ]
+    assert open_grips == ["3-4-5", "4-5-6", "5-6-8", "5-7-8", "6-8-10"]
+
+    e_lower_full = {
+        (position["fret"], position["grip"])
+        for position in positions
+        if position["family"] in {"e_lower_578", "e_lower_major"} and position["isFullChord"]
+    }
+    assert {
+        (8, "5-7-8"),
+        (8, "7-8-10"),
+        (8, "4-5-7"),
+        (8, "1-4-5"),
+        (20, "5-7-8"),
+        (20, "7-8-10"),
+        (20, "4-5-7"),
+        (20, "1-4-5"),
+    } <= e_lower_full
+
+    dominant_pockets = [
+        position for position in positions if position["family"] == "e_lower_dominant_pocket"
+    ]
+    assert dominant_pockets
+    assert all(position["positionKind"] == "rootless_voicing" for position in dominant_pockets)
+    assert all(position["isRootless"] for position in dominant_pockets)
 
 
 def test_i_iv_v_examples_in_requested_keys_are_stable() -> None:
@@ -474,6 +550,7 @@ def test_e_lower_5_7_8_is_classified_by_pitch_math() -> None:
 def test_e_lower_5_7_8_at_third_fret_is_not_misclassified_as_b9() -> None:
     position = e_lower_578_position_at_fret(3)
     answer = e_lower_578_answer_for_question("What does 5-7-8 with E lowered give me at the 3rd fret?")
+    b9_answer = e_lower_578_b9_answer_for_question("Is 5-7-8 with E lowered a B9 pocket?")
 
     assert position.root == "D"
     assert position.quality == "major"
@@ -487,7 +564,40 @@ def test_e_lower_5_7_8_at_third_fret_is_not_misclassified_as_b9() -> None:
     assert "rootless B minor 7 color" in answer
     assert "B9" not in answer
     assert "dominant 9" not in answer
+    assert b9_answer is not None
+    assert "not a full B9 pocket" in b9_answer
+    assert "D major" in b9_answer
+    assert "rootless B minor 7 color" in b9_answer
+    assert "frets 0, 12, 24" in b9_answer
     assert fretboard_payload_for_question("Is 5-7-8 with E lowered a B9 pocket?") is None
+
+
+def test_v_chord_pockets_in_a_are_generated_from_e_pitch_math() -> None:
+    payload = functional_pocket_payload_for_question("Show me V chord pockets in A.")
+    answer = functional_pocket_answer_for_question("Show me V chord pockets in A.")
+
+    assert payload is not None
+    assert answer is not None
+    assert_valid_visualization_payload(payload)
+    assert payload["title"] == "V chord pockets in A (E)"
+    assert "In A, the V chord is E" in answer
+    assert "Dominant-color pockets" in answer
+    assert "forum" not in answer.lower()
+
+    positions = payload["positions"]
+    by_id = {position["id"]: position for position in positions}
+    assert {"a-v-e-open-0", "a-v-e-af-3", "a-v-e-ab-7"}.issubset(by_id)
+    assert [position["id"] for position in positions if position["visibleByDefault"]] == [
+        "a-v-e-open-0",
+        "a-v-e-af-3",
+        "a-v-e-ab-7",
+    ]
+    assert all(position["function"] == "V" for position in positions)
+    assert all(position["keyContext"] == "A" for position in positions)
+    dominant = [position for position in positions if position["family"] == "v_e_lower_dominant_pocket"]
+    assert dominant
+    assert all(position["positionKind"] == "rootless_voicing" for position in dominant)
+    assert all(position["isPartial"] for position in dominant)
 
 
 def test_aliases_and_validation_errors() -> None:

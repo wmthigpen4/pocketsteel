@@ -8,7 +8,9 @@ from typing import Literal
 
 from pocketsteel.curated_source_registry import slide_bar_vendor_bullets
 from pocketsteel.fretboard_examples import (
+    e_lower_578_b9_answer_for_question,
     e_lower_578_answer_for_question,
+    functional_pocket_answer_for_question,
     get_e9_major_chord_positions,
     major_chord_location_request_for_question,
     unsupported_chord_location_request_for_question,
@@ -97,12 +99,26 @@ PLAYER_BIOS = {
 
 def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
     q = normalize(question)
+    b9_answer = e_lower_578_b9_answer_for_question(question)
+    if b9_answer is not None:
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=b9_answer,
+        )
     e_lower_answer = e_lower_578_answer_for_question(question)
     if e_lower_answer is not None:
         return CuratedAnswer(
             intent="copedent_fretboard",
             confidence="curated_high",
             answer=e_lower_answer,
+        )
+    functional_pocket_answer = functional_pocket_answer_for_question(question)
+    if functional_pocket_answer is not None:
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=functional_pocket_answer,
         )
     major_request = major_chord_location_request_for_question(question)
     if major_request is not None:
