@@ -824,7 +824,11 @@ const positions = [
     colorRole: "open",
     visibleByDefault: true,
     validationStatus: "pitch_validated",
-    intervals: {"4": "1", "5": "5", "6": "3"}
+    intervals: {"4": "1", "5": "5", "6": "3"},
+    tierReason: "straight-bar reference",
+    whenToUse: "Use as the home-base pocket before reaching for pedals.",
+    soundCharacter: "stable major triad",
+    forumEvidenceStatus: "deterministic pitch-engine result; forum usage not checked"
   },
   {
     id: "a-v-dominant-3",
@@ -843,7 +847,11 @@ const positions = [
     notes: {"5": {note: "B", interval: "5"}, "7": {note: "F#", interval: "9"}, "8": {note: "D", interval: "b7"}},
     intervals: {"5": "5", "7": "9", "8": "b7"},
     omittedIntervals: ["1", "3"],
-    caveats: [{label: "No root in this grip", detail: {reason: "rootless dominant color"}}]
+    caveats: [{label: "No root in this grip", detail: {reason: "rootless dominant color"}}],
+    tierReason: "resolves to I",
+    whenToUse: "Use it before resolving back to the I chord.",
+    resolutionUse: "resolves to I",
+    forumEvidenceStatus: {status: "not linked", note: "needs SGF evidence"}
   },
   {
     id: "a-v-rootless-5",
@@ -862,7 +870,12 @@ const positions = [
     isRootless: true,
     validationStatus: "pitch_validated",
     omittedIntervals: ["1"],
-    explanation: {summary: "Useful passing dominant color", context: {resolution: "A"}}
+    explanation: {summary: "Useful passing dominant color", context: {resolution: "A"}},
+    tierReason: {summary: "partial E-lower color"},
+    whenToUse: "Use as a passing dominant color when the band covers the root.",
+    explanationShort: "partial E-lower color",
+    explanationLong: {summary: "Works as a compact color grip", movement: {to: "A"}},
+    forumEvidenceStatus: "not yet linked"
   },
   {
     id: "advanced-e-lower-10",
@@ -877,7 +890,11 @@ const positions = [
     positionKind: "advanced_reference",
     colorRole: "e-lower",
     visibleByDefault: false,
-    validationStatus: "pitch_validated"
+    validationStatus: "pitch_validated",
+    tierReason: "partial E-lower color",
+    whenToUse: "Use when you want a thinner color tone instead of a full grip.",
+    soundCharacter: "tense E-lower color",
+    forumEvidenceStatus: "computed only"
   }
 ];
 const defaultModel = fretboard.buildFretboardModel({ positions });
@@ -907,6 +924,20 @@ assert.match(html, /data-position-selector="advanced-e-lower-10"[^>]*data-color-
 assert.match(html, /Position kind/);
 assert.match(html, /Validation status/);
 assert.match(html, /Omitted intervals/);
+assert.match(html, /Why classified/);
+assert.match(html, /When to use/);
+assert.match(html, /What is omitted/);
+assert.match(html, /Forum usage evidence/);
+assert.match(html, /Sound character/);
+assert.match(html, /Movement use/);
+assert.match(html, /Resolution use/);
+assert.match(html, /Extended explanation/);
+assert.match(html, /starter: straight-bar reference/);
+assert.match(html, /dominant pocket: resolves to I/);
+assert.match(html, /advanced: partial E-lower color/);
+assert.match(html, /Use as the home-base pocket before reaching for pedals\\./);
+assert.match(html, /needs SGF evidence \\/ status: not linked/);
+assert.match(html, /Works as a compact color grip \\/ movement: to: A/);
 assert.match(html, /partial · rootless/);
 assert.match(html, /pitch_validated/);
 assert.match(html, /No root in this grip \\/ detail: reason: rootless dominant color/);

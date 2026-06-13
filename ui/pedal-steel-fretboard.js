@@ -641,6 +641,14 @@
       intervals: normalizeDetailList(item.intervals),
       omittedIntervals,
       caveats: normalizeDetailList(item.caveats),
+      tierReason: normalizeMetadataText(item.tierReason || item.tier_reason),
+      whenToUse: normalizeMetadataText(item.whenToUse || item.when_to_use),
+      soundCharacter: normalizeMetadataText(item.soundCharacter || item.sound_character),
+      movementUse: normalizeMetadataText(item.movementUse || item.movement_use),
+      resolutionUse: normalizeMetadataText(item.resolutionUse || item.resolution_use),
+      explanationShort: normalizeMetadataText(item.explanationShort || item.explanation_short),
+      explanationLong: normalizeMetadataText(item.explanationLong || item.explanation_long),
+      forumEvidenceStatus: normalizeMetadataText(item.forumEvidenceStatus || item.forum_evidence_status),
       positionKind,
       family: normalizeMetadataText(item.family),
       tier: normalizeTier(item.tier),
@@ -659,7 +667,23 @@
         Object.prototype.hasOwnProperty.call(item, "omittedIntervals") ||
         Object.prototype.hasOwnProperty.call(item, "omitted_intervals") ||
         Object.prototype.hasOwnProperty.call(item, "validationStatus") ||
-        Object.prototype.hasOwnProperty.call(item, "validation_status"),
+        Object.prototype.hasOwnProperty.call(item, "validation_status") ||
+        Object.prototype.hasOwnProperty.call(item, "tierReason") ||
+        Object.prototype.hasOwnProperty.call(item, "tier_reason") ||
+        Object.prototype.hasOwnProperty.call(item, "whenToUse") ||
+        Object.prototype.hasOwnProperty.call(item, "when_to_use") ||
+        Object.prototype.hasOwnProperty.call(item, "soundCharacter") ||
+        Object.prototype.hasOwnProperty.call(item, "sound_character") ||
+        Object.prototype.hasOwnProperty.call(item, "movementUse") ||
+        Object.prototype.hasOwnProperty.call(item, "movement_use") ||
+        Object.prototype.hasOwnProperty.call(item, "resolutionUse") ||
+        Object.prototype.hasOwnProperty.call(item, "resolution_use") ||
+        Object.prototype.hasOwnProperty.call(item, "explanationShort") ||
+        Object.prototype.hasOwnProperty.call(item, "explanation_short") ||
+        Object.prototype.hasOwnProperty.call(item, "explanationLong") ||
+        Object.prototype.hasOwnProperty.call(item, "explanation_long") ||
+        Object.prototype.hasOwnProperty.call(item, "forumEvidenceStatus") ||
+        Object.prototype.hasOwnProperty.call(item, "forum_evidence_status"),
     };
   }
 
@@ -727,6 +751,84 @@
 
   function isMorePosition(highlight) {
     return !isStarterPosition(highlight) && !isDominantPosition(highlight) && !isAdvancedPosition(highlight);
+  }
+
+  function positionReasonLabel(highlight) {
+    if (isDominantPosition(highlight)) {
+      return "dominant pocket";
+    }
+    if (isAdvancedPosition(highlight)) {
+      return "advanced";
+    }
+    if (highlight.isPartial || highlight.isRootless || highlight.colorRole === "partial-rootless") {
+      return "partial/rootless";
+    }
+    if (isStarterPosition(highlight)) {
+      return "starter";
+    }
+    return highlight.tier || "position";
+  }
+
+  function fallbackPositionReason(highlight) {
+    const controls = [...highlight.pedals, ...highlight.levers].join("+").toLowerCase();
+    const omitted = highlight.omittedIntervals.length ? `omits ${highlight.omittedIntervals.join(", ")}` : "";
+    if (isDominantPosition(highlight)) {
+      return highlight.resolutionUse || "resolves to I";
+    }
+    if (highlight.isPartial || highlight.isRootless || highlight.colorRole === "partial-rootless") {
+      return omitted || "partial color";
+    }
+    if (highlight.colorRole === "e-lower" || controls.includes("e lower") || controls.includes("e-lower")) {
+      return omitted ? `E-lower color, ${omitted}` : "E-lower color";
+    }
+    if (highlight.colorRole === "a-f" || controls.includes("f")) {
+      return "A+F pocket";
+    }
+    if (highlight.colorRole === "a-b" || (controls.includes("a") && controls.includes("b"))) {
+      return "pedals-down pocket";
+    }
+    if (isStarterPosition(highlight)) {
+      return "straight-bar reference";
+    }
+    return highlight.soundCharacter || highlight.role || "useful position";
+  }
+
+  function positionCardReason(highlight) {
+    const label = positionReasonLabel(highlight);
+    const reason = highlight.explanationShort ||
+      highlight.tierReason ||
+      highlight.soundCharacter ||
+      highlight.whenToUse ||
+      fallbackPositionReason(highlight);
+    return `${label}: ${reason}`;
+  }
+
+  function classificationReason(highlight) {
+    return highlight.tierReason ||
+      highlight.explanationShort ||
+      fallbackPositionReason(highlight);
+  }
+
+  function whenToUseReason(highlight) {
+    return highlight.whenToUse ||
+      highlight.movementUse ||
+      highlight.resolutionUse ||
+      highlight.soundCharacter ||
+      "Use when this pocket matches the sound and movement you need.";
+  }
+
+  function omittedIntervalReason(highlight) {
+    if (highlight.omittedIntervals.length) {
+      return highlight.omittedIntervals;
+    }
+    if (highlight.isPartial || highlight.isRootless || highlight.colorRole === "partial-rootless") {
+      return "not specified";
+    }
+    return "none";
+  }
+
+  function forumEvidenceReason(highlight) {
+    return highlight.forumEvidenceStatus || "not yet linked";
   }
 
   function positionMatchesTab(highlight, tabMode) {
@@ -972,7 +1074,15 @@
         ${renderDetailItem("Notes", highlight.notes, "is-wide")}
         ${renderDetailItem("Intervals", highlight.intervals, "is-wide")}
         ${renderDetailItem("Omitted intervals", highlight.omittedIntervals, "is-wide")}
+        ${renderDetailItem("Why classified", classificationReason(highlight), "is-wide")}
+        ${renderDetailItem("When to use", whenToUseReason(highlight), "is-wide")}
+        ${renderDetailItem("What is omitted", omittedIntervalReason(highlight), "is-wide")}
+        ${renderDetailItem("Forum usage evidence", forumEvidenceReason(highlight), "is-wide")}
+        ${renderDetailItem("Sound character", highlight.soundCharacter, "is-wide")}
+        ${renderDetailItem("Movement use", highlight.movementUse, "is-wide")}
+        ${renderDetailItem("Resolution use", highlight.resolutionUse, "is-wide")}
         ${renderDetailItem("Explanation", highlight.explanation, "is-wide")}
+        ${renderDetailItem("Extended explanation", highlight.explanationLong, "is-wide")}
         ${renderDetailItem("Caveats", highlight.caveats, "is-wide")}
       </div>
     </section>`;
@@ -1002,10 +1112,10 @@
           highlight.isRootless ? "rootless" : "",
         ].filter(Boolean);
         const metaParts = [
+          positionCardReason(highlight),
           highlight.grip ? `grip ${highlight.grip}` : `strings ${highlight.strings.join("-")}`,
           controls.length ? controls.join(" + ") : "no pedals/levers",
           kindTags.join(" · "),
-          highlight.tier,
         ].filter(Boolean);
         return `<button class="pedal-steel-fretboard__selector${isSelected ? " is-selected" : ""}" type="button" data-position-selector="${escapeHtml(highlight.id)}" data-color-role="${escapeHtml(highlight.colorRole)}" data-position-family="${escapeHtml(highlight.family)}" data-position-tier="${escapeHtml(highlight.tier)}" data-position-kind="${escapeHtml(highlight.positionKind)}" data-visible-by-default="${highlight.visibleByDefault ? "true" : "false"}" data-has-levers="${highlight.levers.length ? "true" : "false"}" data-is-dominant="${isDominantPosition(highlight) ? "true" : "false"}" data-is-advanced="${isAdvancedPosition(highlight) ? "true" : "false"}" data-is-more="${isMorePosition(highlight) ? "true" : "false"}" data-filter-visible="${isVisible ? "true" : "false"}" style="${colorStyle}" aria-pressed="${isSelected ? "true" : "false"}"${isVisible ? "" : " hidden"}>
         <span class="pedal-steel-fretboard__selector-marker" data-color-role="${escapeHtml(highlight.colorRole)}" aria-hidden="true"></span>
