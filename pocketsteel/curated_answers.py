@@ -205,6 +205,23 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
         open_position = next(position for position in positions if position["role"] == "Open position")
         af_position = next(position for position in positions if position["role"] == "A+F position")
         ab_position = next(position for position in positions if position["role"] == "A+B position")
+        wants_across_fretboard = "across" in q and "fretboard" in q
+        lower_ab_position = next(
+            (
+                position
+                for position in positions
+                if position["role"] == "A+B lower-octave alternate" and position.get("grip") == "4-5-6"
+            ),
+            None,
+        )
+        e_lower_position = next(
+            (
+                position
+                for position in positions
+                if position.get("family") == "e_lower_578" and position.get("grip") == "5-7-8"
+            ),
+            None,
+        )
         lines: list[str] = []
         if major_request.is_enharmonic:
             lines.extend(
@@ -230,6 +247,16 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
                 "Common grips to try are 3-4-5, 4-5-6, 5-6-8, 5-7-8 when it validates, and 6-8-10. The fretboard selector may include alternate octaves, grip variants, and lever pockets, so treat these as several useful places rather than every possible position.",
             ]
         )
+        if wants_across_fretboard and (lower_ab_position is not None or e_lower_position is not None):
+            lines.extend(["", "Useful across-the-fretboard alternates:"])
+            if lower_ab_position is not None:
+                lines.append(
+                    f"- {fret_label(lower_ab_position['fret'])} with A+B pedals: lower-octave A+B {major_key} major alternate on grip {lower_ab_position['grip']}."
+                )
+            if e_lower_position is not None:
+                lines.append(
+                    f"- {fret_label(e_lower_position['fret'])} with E-lower: pitch-validated {major_key} major color on grip {e_lower_position['grip']}."
+                )
         if major_request.is_enharmonic:
             lines.extend(
                 [

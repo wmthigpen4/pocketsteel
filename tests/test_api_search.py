@@ -2422,6 +2422,20 @@ def test_remaining_retrieval_gating_smoke_failures_get_teacher_first_answers() -
     assert_valid_fretboard_payload(c_positions)
     assert_deterministic_fretboard_sources_are_clean(c_positions)
 
+    d_positions = answer_for_question("How do I play a D chord across the fretboard of the E9?", noisy_practical_sources())
+    assert_clean_answer_body(d_positions)
+    assert "D major starter positions" in d_positions["answer"]
+    assert "10th fret, no pedals" in d_positions["answer"]
+    assert "17th fret with A+B pedals" in d_positions["answer"]
+    assert "5th fret with A+B pedals" in d_positions["answer"]
+    assert "3rd fret with E-lower" in d_positions["answer"]
+    assert "raw SGF" not in d_positions["answer"]
+    assert "If we play an Am7 scale over a D Chord" not in d_positions["answer"]
+    assert "Essentially one has to use the open D string" not in d_positions["answer"]
+    assert "fretboard" in d_positions
+    assert_valid_fretboard_payload(d_positions)
+    assert_deterministic_fretboard_sources_are_clean(d_positions)
+
     bc = answer_for_question("Explain B+C pedals.", noisy_practical_sources())
     assert_clean_answer_body(bc)
     assert "B+C" in bc["answer"]
