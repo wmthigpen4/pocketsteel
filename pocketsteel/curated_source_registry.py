@@ -131,6 +131,38 @@ def slide_bar_vendor_bullets() -> list[str]:
     return format_curated_links(sources)
 
 
+def slide_bar_vendor_source_cards() -> list[dict[str, Any]]:
+    ordered_names = {
+        "Steel Guitar Shopper": 0,
+        "BJS Steel Guitar Bars": 1,
+        "Jim Dunlop Tonebars": 2,
+        "Steel Guitar Forum Classifieds / Forum Store": 3,
+    }
+    sources = get_curated_sources_for_intent(
+        "vendor_buying_guidance",
+        tags=("tone_bars", "used_market"),
+    )
+    sources.sort(key=lambda source: ordered_names.get(str(source.get("name") or ""), 99))
+    cards: list[dict[str, Any]] = []
+    for source in sources:
+        description = str(source.get("description") or source.get("short_description") or "").strip()
+        caveat = str(source.get("caveat") or "").strip()
+        excerpt = " ".join(piece for piece in (description, caveat) if piece)
+        cards.append(
+            {
+                "thread_title": source.get("name") or "Curated source",
+                "forum_name": "Pocket Steel curated source",
+                "thread_url": source.get("url") or "",
+                "excerpt": excerpt,
+                "score": 1.0,
+                "chunk_id": source.get("id") or "",
+                "post_uid": None,
+                "source_system": "curated_source_registry",
+            }
+        )
+    return cards
+
+
 def approved_curated_domains() -> set[str]:
     domains: set[str] = set()
     for source in filter_active_sources(load_curated_sources()):

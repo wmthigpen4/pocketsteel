@@ -8,6 +8,7 @@ from pocketsteel.curated_source_registry import (
     get_curated_sources_for_intent,
     is_approved_curated_url,
     slide_bar_vendor_bullets,
+    slide_bar_vendor_source_cards,
 )
 
 
@@ -51,6 +52,25 @@ def test_slide_bar_vendor_bullets_use_curated_registry_order_and_caveats() -> No
     assert "https://www.jimdunlop.com/products/accessories/slides-tonebars/tonebars/" in text
     assert "https://bb.steelguitarforum.com/viewforum.php?f=9" in text
     assert "current availability" in text.lower() or "inventory" in text.lower()
+
+
+def test_slide_bar_vendor_source_cards_use_curated_registry_metadata() -> None:
+    cards = slide_bar_vendor_source_cards()
+    titles = [card["thread_title"] for card in cards]
+
+    assert titles[:4] == [
+        "Steel Guitar Shopper",
+        "BJS Steel Guitar Bars",
+        "Jim Dunlop Tonebars",
+        "Steel Guitar Forum Classifieds / Forum Store",
+    ]
+    assert all(card["source_system"] == "curated_source_registry" for card in cards)
+    assert all(card["forum_name"] == "Pocket Steel curated source" for card in cards)
+    assert all(card["score"] == 1.0 for card in cards)
+    assert all(card["chunk_id"] for card in cards)
+    assert all(card["thread_url"].startswith("https://") for card in cards)
+    assert any("current inventory" in card["excerpt"].lower() for card in cards)
+    assert not any("PayPal" in card["excerpt"] or "@" in card["excerpt"] for card in cards)
 
 
 def test_final_answer_url_gate_allows_only_approved_curated_domains() -> None:
