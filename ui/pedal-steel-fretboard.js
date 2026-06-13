@@ -260,6 +260,10 @@
   text-align: left;
 }
 
+.pedal-steel-fretboard__selector[hidden] {
+  display: none;
+}
+
 .pedal-steel-fretboard__selector:hover,
 .pedal-steel-fretboard__selector:focus-visible,
 .pedal-steel-fretboard__selector.is-selected {
@@ -1073,6 +1077,9 @@
   }
 
   function positionMatchesGrip(highlight, gripFilter) {
+    if (Array.isArray(gripFilter)) {
+      return gripFilter.length === 0 || gripFilter.includes(highlight.grip);
+    }
     if (!gripFilter || gripFilter === "all") {
       return true;
     }
@@ -1148,12 +1155,20 @@
     return requested;
   }
 
-  function normalizeGripFilter(value, gripOptions, hasGripControls) {
-    const requested = normalizeMetadataText(value || "all");
-    if (!hasGripControls || requested === "all" || !gripOptions.includes(requested)) {
-      return "all";
+  function normalizeGripFilters(value, gripOptions, hasGripControls) {
+    if (!hasGripControls) {
+      return [];
     }
-    return requested;
+    const requestedValues = Array.isArray(value)
+      ? value
+      : String(value || "all").split(",");
+    const normalizedValues = requestedValues
+      .map((item) => normalizeMetadataText(item || ""))
+      .filter(Boolean);
+    if (normalizedValues.length === 0 || normalizedValues.includes("all")) {
+      return [];
+    }
+    return Array.from(new Set(normalizedValues.filter((item) => gripOptions.includes(item))));
   }
 
   function buildFretboardModel(options = {}) {
@@ -1200,13 +1215,14 @@
     const gripOptions = uniqueGripOptions(allHighlights);
     const hasGripControls = hasFilterControls && gripOptions.length > 1;
     const voicingFilter = normalizeVoicingFilter(options.voicingFilter || options.voicingTypeFilter, hasVoicingControls);
-    const gripFilter = normalizeGripFilter(options.gripFilter || options.grip, gripOptions, hasGripControls);
+    const gripFilters = normalizeGripFilters(options.gripFilters || options.gripFilter || options.grip, gripOptions, hasGripControls);
+    const gripFilter = gripFilters[0] || "all";
     const filteredHighlights = allHighlights.filter((highlight) =>
       positionMatchesVoicing(highlight, voicingFilter) &&
-      positionMatchesGrip(highlight, gripFilter)
+      positionMatchesGrip(highlight, gripFilters)
     );
     const hasRecommendedLimit = voicingFilter === "recommended" &&
-      gripFilter === "all" &&
+      gripFilters.length === 0 &&
       filteredHighlights.length > MAX_RECOMMENDED_VISIBLE_POSITIONS;
     const highlights = hasRecommendedLimit
       ? filteredHighlights.slice(0, MAX_RECOMMENDED_VISIBLE_POSITIONS)
@@ -1229,6 +1245,7 @@
       tabMode: "all",
       voicingFilter,
       gripFilter,
+      gripFilters,
       hasFilters: hasVoicingControls || hasGripControls,
       hasVoicingControls,
       hasGripControls,
@@ -1467,8 +1484,11 @@
     const gripControls = model.hasGripControls
       ? `<div class="pedal-steel-fretboard__filter-group" aria-label="Filter by grip">
         <span class="pedal-steel-fretboard__filter-label">Grip</span>
-        <button class="pedal-steel-fretboard__filter-button${model.gripFilter === "all" ? " is-selected" : ""}" type="button" data-grip-filter="all" aria-pressed="${model.gripFilter === "all" ? "true" : "false"}">All grips</button>
-        ${model.gripOptions.map((grip) => `<button class="pedal-steel-fretboard__filter-button${model.gripFilter === grip ? " is-selected" : ""}" type="button" data-grip-filter="${escapeHtml(grip)}" aria-pressed="${model.gripFilter === grip ? "true" : "false"}">${escapeHtml(grip)}</button>`).join("")}
+        <button class="pedal-steel-fretboard__filter-button${model.gripFilters.length === 0 ? " is-selected" : ""}" type="button" data-grip-filter="all" aria-pressed="${model.gripFilters.length === 0 ? "true" : "false"}">All grips</button>
+        ${model.gripOptions.map((grip) => {
+          const isSelected = model.gripFilters.includes(grip);
+          return `<button class="pedal-steel-fretboard__filter-button${isSelected ? " is-selected" : ""}" type="button" data-grip-filter="${escapeHtml(grip)}" aria-pressed="${isSelected ? "true" : "false"}">${escapeHtml(grip)}</button>`;
+        }).join("")}
       </div>`
       : "";
     return `<div class="pedal-steel-fretboard__filter-panel" data-fretboard-filter-panel>
@@ -1523,7 +1543,7 @@
       ${recommendedNote}
       <div class="pedal-steel-fretboard__selector-list" aria-label="Choose a fretboard position">${buttons}</div>
       ${showAllButton}
-      <p class="pedal-steel-fretboard__empty" data-position-empty${model.highlights.length ? " hidden" : ""}>No positions match these filters. Try All positions or a different grip.</p>
+      <p class="pedal-steel-fretboard__empty" data-position-empty${model.highlights.length ? " hidden" : ""}>No positions match these filters. Try All grips or All positions.</p>
       ${details}
     </div>`;
   }
@@ -1573,7 +1593,7 @@
     const selectedPositionId = model.selectedPositionId;
     // Decorative underlay only. Functional strings, frets, fret markers, labels,
     // and interaction targets are drawn by SVG geometry below/above this layer.
-    const html = `<figure class="pedal-steel-fretboard" data-component="PedalSteelFretboard" data-max-fret="${model.maxFret}" data-string-count="${model.stringCount}" data-spacing="equal-temperament" data-has-voicing-filters="${model.hasVoicingControls ? "true" : "false"}" data-has-grip-filters="${model.hasGripControls ? "true" : "false"}" data-recommended-limited="${model.hasRecommendedLimit ? "true" : "false"}" data-recommended-cap-available="${model.hasRecommendedCapAvailable ? "true" : "false"}" data-selected-position-id="${escapeHtml(selectedPositionId)}">
+    const html = `<figure class="pedal-steel-fretboard" data-component="PedalSteelFretboard" data-max-fret="${model.maxFret}" data-string-count="${model.stringCount}" data-spacing="equal-temperament" data-has-voicing-filters="${model.hasVoicingControls ? "true" : "false"}" data-has-grip-filters="${model.hasGripControls ? "true" : "false"}" data-active-grip-filters="${escapeHtml(model.gripFilters.join(","))}" data-recommended-limited="${model.hasRecommendedLimit ? "true" : "false"}" data-recommended-cap-available="${model.hasRecommendedCapAvailable ? "true" : "false"}" data-selected-position-id="${escapeHtml(selectedPositionId)}">
       ${renderFretboardFilterControls(model)}
       <div class="pedal-steel-fretboard__stage">
         <svg class="pedal-steel-fretboard__svg" viewBox="0 0 ${SVG_WIDTH} ${SVG_HEIGHT}" role="img" aria-label="10-string E9 pedal steel fretboard with highlighted positions" xmlns="http://www.w3.org/2000/svg">
@@ -1645,10 +1665,17 @@
   }
 
   function readActiveGripFilter(figure) {
+    return readActiveGripFilters(figure)[0] || "all";
+  }
+
+  function readActiveGripFilters(figure) {
     if (figure?.dataset?.hasGripFilters !== "true") {
-      return "all";
+      return [];
     }
-    return figure.querySelector("[data-grip-filter].is-selected")?.getAttribute("data-grip-filter") || "all";
+    const selected = Array.from(figure.querySelectorAll("[data-grip-filter].is-selected"))
+      .map((button) => button.getAttribute("data-grip-filter") || "")
+      .filter((value) => value && value !== "all");
+    return Array.from(new Set(selected));
   }
 
   function positionElementMatchesVoicing(element, voicingFilter) {
@@ -1671,6 +1698,9 @@
   }
 
   function positionElementMatchesGrip(element, gripFilter) {
+    if (Array.isArray(gripFilter)) {
+      return gripFilter.length === 0 || gripFilter.includes(element.getAttribute("data-position-grip"));
+    }
     if (!gripFilter || gripFilter === "all") {
       return true;
     }
@@ -1690,19 +1720,45 @@
     });
   }
 
+  function updateSelectedGripFilterButtons(figure, changedGripFilter) {
+    if (!changedGripFilter) return;
+    const allButton = figure.querySelector('[data-grip-filter="all"]');
+    const gripButtons = Array.from(figure.querySelectorAll('[data-grip-filter]:not([data-grip-filter="all"])'));
+    if (changedGripFilter === "all") {
+      gripButtons.forEach((button) => {
+        button.classList.remove("is-selected");
+        button.setAttribute("aria-pressed", "false");
+      });
+      allButton?.classList.add("is-selected");
+      allButton?.setAttribute("aria-pressed", "true");
+      return;
+    }
+    const changedButton = figure.querySelector(`[data-grip-filter="${escapeSelectorValue(changedGripFilter)}"]`);
+    if (!changedButton) return;
+    const nextSelected = !changedButton.classList.contains("is-selected");
+    changedButton.classList.toggle("is-selected", nextSelected);
+    changedButton.setAttribute("aria-pressed", String(nextSelected));
+    const hasSelectedGrip = gripButtons.some((button) => button.classList.contains("is-selected"));
+    if (allButton) {
+      allButton.classList.toggle("is-selected", !hasSelectedGrip);
+      allButton.setAttribute("aria-pressed", String(!hasSelectedGrip));
+    }
+  }
+
   function updatePositionFilter(figure, changedVoicingFilter, changedGripFilter) {
     if (!figure) return;
     if (changedVoicingFilter) {
       updateSelectedFilterButton(figure, "[data-voicing-filter]", "data-voicing-filter", changedVoicingFilter);
     }
     if (changedGripFilter) {
-      updateSelectedFilterButton(figure, "[data-grip-filter]", "data-grip-filter", changedGripFilter);
+      updateSelectedGripFilterButtons(figure, changedGripFilter);
     }
     const voicingFilter = readActiveVoicingFilter(figure);
-    const gripFilter = readActiveGripFilter(figure);
+    const gripFilters = readActiveGripFilters(figure);
+    figure.dataset.activeGripFilters = gripFilters.join(",");
     const limitRecommended = figure.dataset.recommendedCapAvailable === "true" &&
       voicingFilter === "recommended" &&
-      gripFilter === "all";
+      gripFilters.length === 0;
     figure.dataset.recommendedLimited = String(limitRecommended);
     const showAll = figure.querySelector("[data-show-all-positions]");
     if (showAll) {
@@ -1714,7 +1770,7 @@
     }
     figure.querySelectorAll("[data-position-selector], [data-position-detail], .pedal-steel-fretboard__highlight").forEach((item) => {
       const isVisible = positionElementMatchesVoicing(item, voicingFilter) &&
-        positionElementMatchesGrip(item, gripFilter) &&
+        positionElementMatchesGrip(item, gripFilters) &&
         !(limitRecommended && item.dataset.recommendedExtra === "true");
       item.dataset.filterVisible = String(isVisible);
       item.hidden = !isVisible;

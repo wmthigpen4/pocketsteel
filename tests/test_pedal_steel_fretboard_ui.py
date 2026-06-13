@@ -1011,10 +1011,17 @@ def test_filter_interaction_source_resets_hidden_selection_to_first_visible() ->
     assert 'const firstVisible = figure.querySelector("[data-position-selector]:not([hidden])");' in source
     assert "selectPosition(figure, firstVisible.getAttribute(\"data-position-selector\"));" in source
     assert "if (selector?.hidden) return;" in source
+    assert ".pedal-steel-fretboard__selector[hidden]" in source
     assert "data-position-empty" in source
     assert "function positionElementMatchesTab(element, tabMode)" not in source
     assert "function positionElementMatchesVoicing(element, voicingFilter)" in source
     assert "function positionElementMatchesGrip(element, gripFilter)" in source
+    assert "function readActiveGripFilters(figure)" in source
+    assert "function updateSelectedGripFilterButtons(figure, changedGripFilter)" in source
+    assert 'if (changedGripFilter === "all")' in source
+    assert "const nextSelected = !changedButton.classList.contains(\"is-selected\");" in source
+    assert "const hasSelectedGrip = gripButtons.some((button) => button.classList.contains(\"is-selected\"));" in source
+    assert "figure.dataset.activeGripFilters = gripFilters.join(\",\");" in source
     assert 'voicingFilter === "recommended"' in source
     assert 'data-visible-by-default") === "true"' in source
     assert 'voicingFilter === "starter"' in source
@@ -1025,7 +1032,7 @@ def test_filter_interaction_source_resets_hidden_selection_to_first_visible() ->
     assert 'data-is-dominant") === "true"' in source
     assert 'data-is-starter="${isStarterPosition(highlight) ? "true" : "false"}"' in source
     assert 'data-is-full-chord="${isFullChordPosition(highlight) ? "true" : "false"}"' in source
-    assert "No positions match these filters. Try All positions or a different grip." in source
+    assert "No positions match these filters. Try All grips or All positions." in source
     assert "data-position-tab" not in source
     assert "data-include-levers" not in source
     assert "Include lever positions" not in source
@@ -1276,7 +1283,7 @@ const noMatchHtml = fretboard.renderPedalSteelFretboard({
 });
 assert.match(noMatchHtml, /data-voicing-filter="root-position" aria-pressed="true"/);
 assert.match(noMatchHtml, /data-grip-filter="3-4-5" aria-pressed="true"/);
-assert.match(noMatchHtml, /<p class="pedal-steel-fretboard__empty" data-position-empty>No positions match these filters\\. Try All positions or a different grip\\.<\\/p>/);
+assert.match(noMatchHtml, /<p class="pedal-steel-fretboard__empty" data-position-empty>No positions match these filters\\. Try All grips or All positions\\.<\\/p>/);
 assert.match(noMatchHtml, /data-position-detail="c-root-8"[^>]*data-filter-visible="false"[^>]*hidden/);
 assert.match(noMatchHtml, /data-position-detail="c-first-11"[^>]*data-filter-visible="false"[^>]*hidden/);
 assert.match(noMatchHtml, /data-highlight-id="c-root-8"[^>]*data-filter-visible="false"[^>]*hidden/);
@@ -1285,6 +1292,64 @@ const oldPayloadHtml = fretboard.renderPedalSteelFretboard({ positions: fretboar
 assert.doesNotMatch(oldPayloadHtml, /data-fretboard-filter-panel/);
 assert.doesNotMatch(oldPayloadHtml, /data-voicing-filter=/);
 assert.doesNotMatch(oldPayloadHtml, /data-grip-filter=/);
+"""
+    )
+
+    run_node(script)
+
+
+def test_grip_filters_support_multi_select_and_filter_all_visible_outputs() -> None:
+    script = component_eval_script(
+        """
+const positions = [
+  { id: "g-root-345", label: "G root grip", fret: 3, strings: [3, 4, 5], grip: "3-4-5", pedals: [], levers: [], tier: "beginner", visibleByDefault: true, voicingType: "root_position", isRootPosition: true, notes: {"3": "G", "4": "B", "5": "D"} },
+  { id: "g-root-456", label: "G root grip", fret: 3, strings: [4, 5, 6], grip: "4-5-6", pedals: [], levers: [], tier: "beginner", visibleByDefault: true, voicingType: "root_position", isRootPosition: true, notes: {"4": "G", "5": "D", "6": "B"} },
+  { id: "g-first-345", label: "G first inversion", fret: 6, strings: [3, 4, 5], grip: "3-4-5", pedals: ["A"], levers: ["F"], tier: "beginner", visibleByDefault: true, voicingType: "first_inversion", isInversion: true, notes: {"3": "B", "4": "G", "5": "D"} },
+  { id: "g-second-456", label: "G second inversion", fret: 10, strings: [4, 5, 6], grip: "4-5-6", pedals: ["A", "B"], levers: [], tier: "beginner", visibleByDefault: true, voicingType: "second_inversion", isInversion: true, notes: {"4": "B", "5": "G", "6": "D"} },
+  { id: "g-elower-578", label: "G E-lower color", fret: 8, strings: [5, 7, 8], grip: "5-7-8", pedals: [], levers: ["E lower"], tier: "advanced", visibleByDefault: false, voicingType: "rootless", isRootless: true, isPartialVoicing: true, omittedIntervals: ["1"], notes: {"5": "D", "7": "A", "8": "F"} }
+];
+
+const root345Model = fretboard.buildFretboardModel({ positions, voicingFilter: "root-position", gripFilter: "3-4-5" });
+assert.deepEqual(root345Model.highlights.map((item) => item.id), ["g-root-345"]);
+assert.equal(root345Model.selectedPositionId, "g-root-345");
+
+const full456Model = fretboard.buildFretboardModel({ positions, voicingFilter: "full-chord", gripFilter: "4-5-6" });
+assert.deepEqual(full456Model.highlights.map((item) => item.id), ["g-root-456", "g-second-456"]);
+assert.equal(full456Model.selectedPositionId, "g-root-456");
+
+const multiGripModel = fretboard.buildFretboardModel({ positions, voicingFilter: "all", gripFilters: ["3-4-5", "4-5-6"] });
+assert.deepEqual(Array.from(multiGripModel.gripFilters), ["3-4-5", "4-5-6"]);
+assert.deepEqual(multiGripModel.highlights.map((item) => item.id), ["g-root-345", "g-root-456", "g-first-345", "g-second-456"]);
+
+const multiGripHtml = fretboard.renderPedalSteelFretboard({ positions, voicingFilter: "all", gripFilters: ["3-4-5", "4-5-6"] });
+assert.match(multiGripHtml, /data-active-grip-filters="3-4-5,4-5-6"/);
+assert.match(multiGripHtml, /data-grip-filter="all" aria-pressed="false"/);
+assert.match(multiGripHtml, /data-grip-filter="3-4-5" aria-pressed="true"/);
+assert.match(multiGripHtml, /data-grip-filter="4-5-6" aria-pressed="true"/);
+assert.match(multiGripHtml, /data-position-selector="g-root-345"/);
+assert.match(multiGripHtml, /data-position-selector="g-root-456"/);
+assert.match(multiGripHtml, /data-position-selector="g-first-345"/);
+assert.match(multiGripHtml, /data-position-selector="g-second-456"/);
+assert.match(multiGripHtml, /data-position-selector="g-elower-578"[^>]*data-filter-visible="false"[^>]*hidden/);
+assert.match(multiGripHtml, /data-position-detail="g-elower-578"[^>]*data-filter-visible="false"[^>]*hidden/);
+assert.match(multiGripHtml, /data-highlight-id="g-elower-578"[^>]*data-filter-visible="false"[^>]*hidden/);
+
+const root345Html = fretboard.renderPedalSteelFretboard({ positions, voicingFilter: "root-position", gripFilter: "3-4-5" });
+assert.match(root345Html, /data-position-selector="g-root-345"/);
+assert.doesNotMatch(root345Html, /data-position-selector="g-root-345"[^>]*hidden/);
+assert.match(root345Html, /data-position-selector="g-root-456"[^>]*hidden/);
+assert.match(root345Html, /data-position-selector="g-first-345"[^>]*hidden/);
+assert.match(root345Html, /data-position-selector="g-second-456"[^>]*hidden/);
+assert.match(root345Html, /data-position-detail="g-root-345"[^>]*aria-live="polite"/);
+assert.match(root345Html, /data-position-detail="g-root-456"[^>]*data-filter-visible="false"[^>]*hidden/);
+assert.match(root345Html, /data-highlight-id="g-root-345"[^>]*data-filter-visible="true"/);
+assert.match(root345Html, /data-highlight-id="g-root-456"[^>]*data-filter-visible="false"[^>]*hidden/);
+
+const noMatchHtml = fretboard.renderPedalSteelFretboard({ positions, voicingFilter: "root-position", gripFilter: "5-7-8" });
+assert.match(noMatchHtml, /No positions match these filters\\. Try All grips or All positions\\./);
+assert.match(noMatchHtml, /data-position-detail="g-root-345"[^>]*data-filter-visible="false"[^>]*hidden/);
+assert.match(noMatchHtml, /data-highlight-id="g-root-345"[^>]*data-filter-visible="false"[^>]*hidden/);
+assert.doesNotMatch(noMatchHtml, /\\[object Object\\]/);
 """
     )
 
