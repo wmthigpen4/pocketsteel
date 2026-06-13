@@ -2372,6 +2372,66 @@ def test_amp_hum_advice_stays_diagnostic_and_non_visual() -> None:
     assert "fretboard" not in payload
 
 
+def test_remaining_retrieval_gating_smoke_failures_get_teacher_first_answers() -> None:
+    diminished = answer_for_question("How do players approach diminished chords on E9?", noisy_practical_sources())
+    assert_clean_answer_body(diminished)
+    assert "diminished chords on E9" in diminished["answer"]
+    assert "root, b3, and b5" in diminished["answer"]
+    assert "passing color" in diminished["answer"]
+    assert "fretboard" not in diminished
+    assert diminished["sources"]
+
+    steel_king = answer_for_question("What are common Fender Steel King settings?", noisy_practical_sources())
+    assert_clean_answer_body(steel_king)
+    assert "Steel King settings" in steel_king["answer"]
+    assert "adjust for the room" in steel_king["answer"]
+    assert "EQ" in steel_king["answer"]
+    assert "fretboard" not in steel_king
+    assert steel_king["sources"]
+
+    hum = answer_for_question(
+        "How do players diagnose hum that changes when touching the changer?",
+        noisy_practical_sources(),
+    )
+    assert_clean_answer_body(hum)
+    assert "Start by isolating" in hum["answer"]
+    assert "Likely causes" in hum["answer"]
+    assert "Diagnostic path" in hum["answer"]
+    assert "touching the strings or changer" in hum["answer"]
+    assert "Safety:" in hum["answer"]
+    assert "fretboard" not in hum
+    assert hum["sources"]
+
+    g_positions = answer_for_question("Where are my G chord positions?", noisy_practical_sources())
+    assert_clean_answer_body(g_positions)
+    assert "G major starter positions" in g_positions["answer"]
+    assert "3rd fret, no pedals" in g_positions["answer"]
+    assert "6th fret with A pedal + F lever" in g_positions["answer"]
+    assert "10th fret with A+B pedals" in g_positions["answer"]
+    assert "fretboard" in g_positions
+    assert_valid_fretboard_payload(g_positions)
+    assert_deterministic_fretboard_sources_are_clean(g_positions)
+
+    c_positions = answer_for_question("Show me C positions on E9.", noisy_practical_sources())
+    assert_clean_answer_body(c_positions)
+    assert "C major starter positions" in c_positions["answer"]
+    assert "8th fret, no pedals" in c_positions["answer"]
+    assert "11th fret with A pedal + F lever" in c_positions["answer"]
+    assert "15th fret with A+B pedals" in c_positions["answer"]
+    assert "fretboard" in c_positions
+    assert_valid_fretboard_payload(c_positions)
+    assert_deterministic_fretboard_sources_are_clean(c_positions)
+
+    bc = answer_for_question("Explain B+C pedals.", noisy_practical_sources())
+    assert_clean_answer_body(bc)
+    assert "B+C" in bc["answer"]
+    assert "strings 3-4-5" in bc["answer"]
+    assert "passing movement" in bc["answer"]
+    assert "pedal timing and blocking" in bc["answer"]
+    assert "fretboard" not in bc
+    assert bc["sources"]
+
+
 def test_deterministic_fretboard_regressions_still_beat_intent_mode() -> None:
     concept = answer_for_question("What's a G chord even mean?", noisy_practical_sources())
     assert_clean_answer_body(concept)

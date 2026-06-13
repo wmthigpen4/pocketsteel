@@ -1193,6 +1193,54 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             ),
         )
 
+    if _mentions_steel_king_settings_forum_wisdom(q):
+        return CuratedAnswer(
+            intent="forum_wisdom",
+            confidence="curated_medium",
+            answer=(
+                "Players tend to treat Steel King settings as starting points, then adjust for the room, pickup, and speaker height.\n\n"
+                "Likely causes or common settings:\n"
+                "- Keep the EQ moderate first rather than extreme.\n"
+                "- Set volume at gig level before judging treble or presence.\n"
+                "- If the sound is thin, reduce brightness and pick slightly farther from the changer.\n"
+                "- If the sound is muddy, lower bass before adding treble.\n\n"
+                "Diagnostic steps:\n"
+                "- Start flat or near the middle, then change one EQ control at a time.\n"
+                "- Listen from where the audience or mic hears the amp, not only from above the speaker.\n"
+                "- Save forum settings as reference notes, not as guaranteed settings for every guitar.\n\n"
+                "Safety/caution: if noise, heat, burning smell, or electrical problems are part of the issue, stop adjusting settings and have the amp checked."
+            ),
+        )
+
+    if _mentions_diminished_chords_forum_wisdom(q):
+        return CuratedAnswer(
+            intent="forum_wisdom",
+            confidence="curated_medium",
+            answer=(
+                "Players usually approach diminished chords on E9 as movable passing sounds, not as one fixed grip.\n\n"
+                "Practical approach:\n"
+                "- First spell the sound: a diminished triad is root, b3, and b5; a diminished-7th adds bb7.\n"
+                "- Use the diminished sound to connect nearby chords, especially when moving by half-step or minor-third shapes.\n"
+                "- Check the grip by notes before trusting a tab fragment; small pedal/lever differences can change the chord quality.\n"
+                "- Practice it as a passing color into a target chord rather than parking on it too long.\n\n"
+                "What players commonly mean: find the tension, know where it resolves, and keep the bar movement clean."
+            ),
+        )
+
+    if _mentions_bc_pedals_forum_wisdom(q):
+        return CuratedAnswer(
+            intent="forum_wisdom",
+            confidence="curated_medium",
+            answer=(
+                "Players usually talk about B+C as a melodic and position-shift tool, not just a static chord grip.\n\n"
+                "Practical summary:\n"
+                "- Work strings 3-4-5 slowly so the B and C pedals move together.\n"
+                "- Compare the no-pedal sound and B+C sound at the same fret.\n"
+                "- Use it for passing movement, short fills, and minor-family colors after pitch-checking the grip.\n\n"
+                "Keep the exercise slow until the pedal timing and blocking sound intentional."
+            ),
+        )
+
     if "wound" in q and ("6th" in q or "sixth" in q or "string 6" in q):
         return CuratedAnswer(
             intent="copedent_fretboard",
@@ -1399,7 +1447,12 @@ def _mentions_gig_advice_intent(question: str) -> bool:
 
 
 def _mentions_forum_wisdom_intent(question: str) -> bool:
-    return bool(_mentions_stage_string_forum_wisdom(question) or _mentions_battery_tuner_live(question))
+    return bool(
+        _mentions_stage_string_forum_wisdom(question)
+        or _mentions_steel_king_settings_forum_wisdom(question)
+        or _mentions_bc_pedals_forum_wisdom(question)
+        or _mentions_battery_tuner_live(question)
+    )
 
 
 def _mentions_lesson_navigation_intent(question: str) -> bool:
@@ -1408,6 +1461,27 @@ def _mentions_lesson_navigation_intent(question: str) -> bool:
 
 def _mentions_tab_explainer_intent(question: str) -> bool:
     return bool(re.search(r"\b(?:tab|tablature|notation)\b", question))
+
+
+def _mentions_steel_king_settings_forum_wisdom(question: str) -> bool:
+    return bool(
+        re.search(r"\bsteel\s+king\s+settings?\b", question)
+        and re.search(r"\b(?:what\s+do\s+players\s+say|common|settings?|starting|eq|fender)\b", question)
+    )
+
+
+def _mentions_bc_pedals_forum_wisdom(question: str) -> bool:
+    return bool(
+        re.search(r"\bb\s*\+\s*c\s+pedals?\b|\bb\s+and\s+c\s+pedals?\b", question)
+        and re.search(r"\b(?:what\s+do\s+players\s+say|common|uses?|explain|what\s+does|how\s+do|practice|learn)\b", question)
+    )
+
+
+def _mentions_diminished_chords_forum_wisdom(question: str) -> bool:
+    return bool(
+        re.search(r"\bdiminished\b", question)
+        and re.search(r"\b(?:players?\s+(?:approach|use|talk|say)|approach|use|common|how\s+do|on\s+e9)\b", question)
+    )
 
 
 def _mentions_history_player_context_intent(question: str) -> bool:
@@ -1523,7 +1597,7 @@ def mentions_technique_improvement(question: str) -> bool:
 def mentions_diagnostic_troubleshooting(question: str) -> bool:
     return bool(
         re.search(
-            r"\b(?:amp\s+(?:buzz|buzzes|hum|hums)|buzz\s+at\s+idle|amp\s+hum|hums?\s+until\s+i\s+touch|noise\s+when\s+nothing\s+is\s+plugged\s+in|ground\s+buzz|touching\s+(?:the\s+)?(?:strings?|changer).*(?:buzz|hum))\b",
+            r"\b(?:amp\s+(?:buzz|buzzes|hum|hums)|buzz\s+at\s+idle|amp\s+hum|hums?\s+until\s+i\s+touch|noise\s+when\s+nothing\s+is\s+plugged\s+in|ground\s+buzz|touching\s+(?:the\s+)?(?:strings?|changer).*(?:buzz|hum)|(?:buzz|hum)\w*.{0,80}(?:touch(?:ing)?).{0,80}(?:strings?|changer))\b",
             question,
         )
     )

@@ -1000,7 +1000,7 @@ def question_mentions_diagnostic_troubleshooting(question: str) -> bool:
     lowered = question.lower()
     return bool(
         re.search(
-            r"\b(?:amp\s+(?:buzz|buzzes|hum|hums)|buzz\s+at\s+idle|amp\s+hum|hums?\s+until\s+i\s+touch|noise\s+when\s+nothing\s+is\s+plugged\s+in|ground\s+buzz|touching\s+(?:the\s+)?(?:strings?|changer).*(?:buzz|hum))\b",
+            r"\b(?:amp\s+(?:buzz|buzzes|hum|hums)|buzz\s+at\s+idle|amp\s+hum|hums?\s+until\s+i\s+touch|noise\s+when\s+nothing\s+is\s+plugged\s+in|ground\s+buzz|touching\s+(?:the\s+)?(?:strings?|changer).*(?:buzz|hum)|(?:buzz|hum)\w*.{0,80}(?:touch(?:ing)?).{0,80}(?:strings?|changer))\b",
             lowered,
         )
     )
