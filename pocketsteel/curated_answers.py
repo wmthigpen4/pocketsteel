@@ -10,6 +10,8 @@ from pocketsteel.curated_source_registry import slide_bar_vendor_bullets
 from pocketsteel.fretboard_examples import (
     e_lower_578_b9_answer_for_question,
     e_lower_578_answer_for_question,
+    e_lower_grip_answer_for_question,
+    e_lower_grip_usage_answer_for_question,
     functional_pocket_answer_for_question,
     get_e9_major_chord_positions,
     major_chord_location_request_for_question,
@@ -113,6 +115,20 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
             confidence="curated_high",
             answer=e_lower_answer,
         )
+    e_lower_grip_answer = e_lower_grip_answer_for_question(question)
+    if e_lower_grip_answer is not None:
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=e_lower_grip_answer,
+        )
+    e_lower_usage_answer = e_lower_grip_usage_answer_for_question(question)
+    if e_lower_usage_answer is not None:
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=e_lower_usage_answer,
+        )
     functional_pocket_answer = functional_pocket_answer_for_question(question)
     if functional_pocket_answer is not None:
         return CuratedAnswer(
@@ -143,8 +159,13 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
                 f"- {fret_label(af_position['fret'])} with A pedal + F lever: A+F {major_key} major position.",
                 f"- {fret_label(ab_position['fret'])} with A+B pedals: A+B {major_key} major position.",
                 "",
-                "Common grips to try are 3-4-5, 4-5-6, 5-6-8, and 6-8-10; the selector may also show validated 5-7-8 E-lower positions when they fit the chord.",
-                "The fretboard selector may also include alternate octaves, grip variants, and validated lever positions.",
+                "Why these families matter:",
+                "- Open/no-pedals grips are the easiest straight-bar reference for intonation and quick fills.",
+                "- A+F gives a smooth pedal/lever color that is useful for connected movement.",
+                "- A+B is the strong pedals-down home position and octave/register alternate.",
+                "- E-lower grips are more context-dependent; the selector may show pitch-validated 5-7-8, 7-8-10, 4-5-7, and 1-4-5 positions when they truly spell the chord or a useful partial/rootless color.",
+                "",
+                "Common grips to try are 3-4-5, 4-5-6, 5-6-8, 5-7-8 when it validates, and 6-8-10. The fretboard selector may include alternate octaves, grip variants, and lever pockets, so treat these as several useful places rather than every possible position.",
             ]
         )
         if major_request.is_enharmonic:

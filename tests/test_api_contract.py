@@ -115,6 +115,15 @@ def test_optional_fretboard_payload_contract_shape() -> None:
                     "caveats": [],
                     "validationStatus": "pitch_validated",
                     "explanation": "No-pedal fret 3 gives a G major grip.",
+                    "tierReason": "Starter because it is a common home-position family.",
+                    "whenToUse": "Use it as the straight-bar reference.",
+                    "soundCharacter": "Complete G major sound.",
+                    "movementUse": "Good for anchoring the bar.",
+                    "resolutionUse": "Stable enough to use as an arrival point.",
+                    "forumEvidence": [],
+                    "forumEvidenceStatus": "not_found",
+                    "explanationShort": "3rd fret with no pedals gives G major.",
+                    "explanationLong": "3rd fret with no pedals gives G major with notes G, D, and B.",
                 }
             ],
             "highlights": [
@@ -169,6 +178,15 @@ def test_optional_fretboard_payload_contract_shape() -> None:
         "caveats",
         "validationStatus",
         "explanation",
+        "tierReason",
+        "whenToUse",
+        "soundCharacter",
+        "movementUse",
+        "resolutionUse",
+        "forumEvidence",
+        "forumEvidenceStatus",
+        "explanationShort",
+        "explanationLong",
     }
     assert position["grip"] == "4-5-6"
     assert position["color"] == "primary"

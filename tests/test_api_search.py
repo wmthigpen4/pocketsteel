@@ -1937,6 +1937,15 @@ def assert_valid_fretboard_payload(payload: dict[str, Any]) -> None:
             "caveats",
             "validationStatus",
             "explanation",
+            "tierReason",
+            "whenToUse",
+            "soundCharacter",
+            "movementUse",
+            "resolutionUse",
+            "forumEvidence",
+            "forumEvidenceStatus",
+            "explanationShort",
+            "explanationLong",
         }.issubset(position)
         assert isinstance(position["id"], str) and position["id"]
         assert isinstance(position["root"], str) and position["root"]
@@ -1966,6 +1975,21 @@ def assert_valid_fretboard_payload(payload: dict[str, Any]) -> None:
         assert isinstance(position["caveats"], list)
         assert position["validationStatus"] == "pitch_validated"
         assert isinstance(position["explanation"], str)
+        assert isinstance(position["tierReason"], str) and position["tierReason"]
+        assert isinstance(position["whenToUse"], str) and position["whenToUse"]
+        assert isinstance(position["soundCharacter"], str) and position["soundCharacter"]
+        assert isinstance(position["movementUse"], str) and position["movementUse"]
+        assert isinstance(position["resolutionUse"], str) and position["resolutionUse"]
+        assert isinstance(position["forumEvidence"], list)
+        assert all(isinstance(item, str) for item in position["forumEvidence"])
+        assert position["forumEvidenceStatus"] in {"not_found", "found", "not_searched"}
+        assert isinstance(position["explanationShort"], str) and position["explanationShort"]
+        assert isinstance(position["explanationLong"], str) and position["explanationLong"]
+        for value in position.values():
+            if isinstance(value, dict):
+                assert all(isinstance(child, str) for child in value.values())
+            elif isinstance(value, list):
+                assert all(not isinstance(child, dict) for child in value)
         assert "x" not in position
         assert "y" not in position
     for highlight in fretboard["highlights"]:
@@ -2087,6 +2111,10 @@ def test_location_based_b_chord_question_uses_b_positions_not_source_fragments()
     assert "7th fret, no pedals" in payload["answer"]
     assert "10th fret with A pedal + F lever" in payload["answer"]
     assert "14th fret with A+B pedals" in payload["answer"]
+    assert "Why these families matter" in payload["answer"]
+    assert "Open/no-pedals grips" in payload["answer"]
+    assert "A+F gives a smooth pedal/lever color" in payload["answer"]
+    assert "E-lower grips are more context-dependent" in payload["answer"]
     assert "RKL" not in payload["answer"]
     assert "B7" not in payload["answer"]
     assert "B9" not in payload["answer"]
@@ -2474,6 +2502,56 @@ def test_e_lower_5_7_8_question_uses_pitch_math_not_sources() -> None:
     assert "D major" in payload["answer"]
     assert "rootless B minor 7 color" in payload["answer"]
     assert "Top" not in payload["answer"]
+
+
+def test_twelve_e_strings_1_4_5_question_uses_pitch_math_not_sources() -> None:
+    payload = answer_for_question(
+        "What is 12E on strings 1-4-5?",
+        [
+            {
+                "score": 0.91,
+                "excerpt": "Top What does this grip mean in the tab?",
+                "forum_name": "Pedal Steel",
+                "thread_title": "Unrelated tab question",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=402201",
+                "chunk_id": "noisy-12e-question",
+                "post_uid": "noisy-12e-question",
+                "source_system": "sgf_phpbb_current",
+            }
+        ],
+    )
+
+    assert_clean_answer_body(payload)
+    assert "fretboard" in payload
+    assert_valid_fretboard_payload(payload)
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert payload["fretboard"]["title"] == "1-4-5 with E-lower at fret 12"
+    position = payload["fretboard"]["positions"][0]
+    assert position["root"] == "B"
+    assert position["quality"] == "major"
+    assert position["notes"] == {"1": "F#", "4": "D#", "5": "B"}
+    assert position["intervals"] == {"1": "5", "4": "3", "5": "1"}
+    assert position["isFullChord"] is True
+    assert "At fret 12 with E lowered, strings 1-4-5 resolve to B major" in payload["answer"]
+    assert "full B major" in payload["answer"]
+    assert "Top" not in payload["answer"]
+    assert "[object Object]" not in payload["answer"]
+
+
+def test_e_lower_5_7_8_usage_question_is_deterministic_and_separates_forum_evidence() -> None:
+    payload = answer_for_question("When would I use 5-7-8 with my E-lower?", noisy_practical_sources())
+
+    assert_clean_answer_body(payload)
+    assert "fretboard" not in payload
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert "Use 5-7-8 with E-lower as an advanced lever-pocket grip" in payload["answer"]
+    assert "Pitch-math examples" in payload["answer"]
+    assert "7-8-10, 4-5-7, and 1-4-5" in payload["answer"]
+    assert "source support was weak" not in payload["answer"].lower()
+    assert "Top" not in payload["answer"]
+    assert "[object Object]" not in payload["answer"]
 
 
 def test_e_lower_5_7_8_b9_pocket_question_does_not_invent_visual_payload_or_b9_classification() -> None:

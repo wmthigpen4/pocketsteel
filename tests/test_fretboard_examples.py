@@ -18,6 +18,8 @@ from pocketsteel.fretboard_examples import (
     functional_pocket_payload_for_question,
     get_fretboard_examples,
     get_e9_major_chord_positions,
+    e_lower_grip_answer_for_question,
+    e_lower_grip_position_at_fret,
     major_chord_location_request_for_question,
     validate_fretboard_payload,
 )
@@ -86,6 +88,15 @@ def assert_valid_visualization_payload(payload: dict) -> None:
             "whyUseIt",
             "caveats",
             "validationStatus",
+            "tierReason",
+            "whenToUse",
+            "soundCharacter",
+            "movementUse",
+            "resolutionUse",
+            "forumEvidence",
+            "forumEvidenceStatus",
+            "explanationShort",
+            "explanationLong",
         }.issubset(position)
         assert isinstance(position["id"], str) and position["id"]
         assert isinstance(position["label"], str) and position["label"]
@@ -116,6 +127,21 @@ def assert_valid_visualization_payload(payload: dict) -> None:
         assert isinstance(position["whyUseIt"], str)
         assert isinstance(position["caveats"], list)
         assert position["validationStatus"] == "pitch_validated"
+        assert isinstance(position["tierReason"], str) and position["tierReason"]
+        assert isinstance(position["whenToUse"], str) and position["whenToUse"]
+        assert isinstance(position["soundCharacter"], str) and position["soundCharacter"]
+        assert isinstance(position["movementUse"], str) and position["movementUse"]
+        assert isinstance(position["resolutionUse"], str) and position["resolutionUse"]
+        assert isinstance(position["forumEvidence"], list)
+        assert all(isinstance(item, str) for item in position["forumEvidence"])
+        assert position["forumEvidenceStatus"] in {"not_found", "found", "not_searched"}
+        assert isinstance(position["explanationShort"], str) and position["explanationShort"]
+        assert isinstance(position["explanationLong"], str) and position["explanationLong"]
+        for value in position.values():
+            if isinstance(value, dict):
+                assert all(isinstance(child, str) for child in value.values())
+            elif isinstance(value, list):
+                assert all(not isinstance(child, dict) for child in value)
         assert "x" not in position
         assert "y" not in position
     for highlight in payload["highlights"]:
@@ -194,6 +220,11 @@ def test_g_major_positions_have_stable_ids_and_roles() -> None:
     assert by_id["g-open-3"]["isRootless"] is False
     assert by_id["g-open-3"]["addedIntervals"] == []
     assert by_id["g-open-3"]["whyUseIt"]
+    assert "Starter" in by_id["g-open-3"]["tierReason"]
+    assert "straight-bar" in by_id["g-open-3"]["whenToUse"]
+    assert "Complete G major" in by_id["g-open-3"]["soundCharacter"]
+    assert by_id["g-open-3"]["forumEvidenceStatus"] == "not_found"
+    assert by_id["g-open-3"]["forumEvidence"] == []
     assert by_id["g-af-6"]["fret"] == 6
     assert by_id["g-af-6"]["strings"] == [4, 5, 6]
     assert by_id["g-af-6"]["pedals"] == ["A"]
@@ -545,6 +576,58 @@ def test_e_lower_5_7_8_is_classified_by_pitch_math() -> None:
     assert position["isPartial"] is False
     assert position["isRootless"] is False
     assert position["validationStatus"] == "pitch_validated"
+    assert "advanced" in position["tierReason"].lower()
+    assert "E-lower pocket" in position["whenToUse"]
+    assert "Complete D major" in position["soundCharacter"]
+    assert position["forumEvidenceStatus"] == "not_found"
+
+
+def test_e_lower_major_grip_families_are_classified_by_pitch_math() -> None:
+    cases = [
+        ((5, 7, 8), 3, "D", {"5": "D", "7": "A", "8": "F#"}, {"5": "1", "7": "5", "8": "3"}),
+        ((7, 8, 10), 3, "D", {"7": "A", "8": "F#", "10": "D"}, {"7": "5", "8": "3", "10": "1"}),
+        ((4, 5, 7), 3, "D", {"4": "F#", "5": "D", "7": "A"}, {"4": "3", "5": "1", "7": "5"}),
+        ((1, 4, 5), 3, "D", {"1": "A", "4": "F#", "5": "D"}, {"1": "5", "4": "3", "5": "1"}),
+    ]
+
+    for grip, fret, root, notes, intervals in cases:
+        position = e_lower_grip_position_at_fret(fret, grip)
+        payload = position.to_position_payload()
+
+        assert position.root == root
+        assert position.quality == "major"
+        assert position.is_full_chord is True
+        assert position.is_partial is False
+        assert position.is_rootless is False
+        assert payload["notes"] == notes
+        assert payload["intervals"] == intervals
+        assert payload["tierReason"]
+        assert payload["whenToUse"]
+        assert payload["explanationLong"]
+        assert payload["forumEvidenceStatus"] == "not_found"
+        assert payload["forumEvidence"] == []
+
+
+def test_twelve_e_strings_1_4_5_diagnostic_answer_is_pitch_math_only() -> None:
+    payload = fretboard_payload_for_question("What is 12E on strings 1-4-5?")
+    answer = e_lower_grip_answer_for_question("What is 12E on strings 1-4-5?")
+
+    assert payload is not None
+    assert answer is not None
+    assert payload["title"] == "1-4-5 with E-lower at fret 12"
+    position = payload["positions"][0]
+    assert position["id"] == "b-e-lower-1-4-5-12"
+    assert position["root"] == "B"
+    assert position["quality"] == "major"
+    assert position["fret"] == 12
+    assert position["strings"] == [1, 4, 5]
+    assert position["levers"] == ["E"]
+    assert position["notes"] == {"1": "F#", "4": "D#", "5": "B"}
+    assert position["intervals"] == {"1": "5", "4": "3", "5": "1"}
+    assert position["isFullChord"] is True
+    assert "B major" in answer
+    assert "full B major" in answer
+    assert "Use:" in answer
 
 
 def test_e_lower_5_7_8_at_third_fret_is_not_misclassified_as_b9() -> None:

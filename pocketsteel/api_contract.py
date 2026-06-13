@@ -103,6 +103,15 @@ class FretboardPosition(TypedDict):
     caveats: list[str]
     validationStatus: str
     explanation: str
+    tierReason: str
+    whenToUse: str
+    soundCharacter: str
+    movementUse: str
+    resolutionUse: str
+    forumEvidence: list[str]
+    forumEvidenceStatus: str
+    explanationShort: str
+    explanationLong: str
 
 
 class FretboardPayload(TypedDict):
