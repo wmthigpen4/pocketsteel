@@ -109,6 +109,27 @@ Fail when:
 - Duplicate `Practical answer` or orphan headings appear.
 - Stale cache-bust strings hide newer UI behavior.
 
+## Browser Smoke Target Clarity
+
+Pass when browser-smoke reports identify the real target before the test begins:
+
+- `Smoke Target` block is present with target type, result type, exact browser URL tested, cache-busted URL tested when needed, exact URL Cory should use, auth requirements, auth provider, Cloudflare Access login result, local backend URL, expected port, expected git HEAD, version endpoint result or version inference, root-path actual and expected behavior, `/ui/steel-guitar-rag-mock.html` actual and expected behavior, tester owner, URLs not to test, and caveats.
+- `URL tested` and `URL user should test` are both recorded in QA handoffs.
+- Protected-preview reports say whether Cloudflare Access login succeeded before protected-preview behavior was tested.
+- Local `127.0.0.1` results are labeled local and are not treated as proof of protected-preview behavior.
+- API-only checks are labeled `API fallback, not browser smoke`.
+
+Fail when:
+
+- Browser smoke pass/fail is reported without the exact URL tested.
+- API fallback smoke is reported as browser smoke.
+- A handoff says only "test app.steelguitarrag.com" when the intended target is `/ui/steel-guitar-rag-mock.html`.
+- Root `/` is assumed to work without saying whether it is wired for that smoke.
+- Cache-sensitive UI checks omit the complete `?v=...` URL.
+- Protected-preview smoke omits whether Cloudflare Access login succeeded.
+- Protected-preview, production-root, local, and API fallback evidence are mixed together without labels.
+- The user cannot tell which URL Cory should open.
+
 ## Regression Rules
 
 Add or preserve regression coverage for:

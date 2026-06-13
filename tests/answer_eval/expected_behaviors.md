@@ -123,6 +123,35 @@ Fail if the app guesses randomly, retrieves unrelated forum fragments, or shows 
 
 ## Browser Smoke Notes
 
+Every browser smoke report, protected-preview smoke report, production smoke report, or API fallback used because browser tooling could not run must include this block before pass/fail results:
+
+```text
+Smoke Target:
+- Target type: local | protected-preview | production-root | API-fallback
+- Result type: browser smoke | API fallback, not browser smoke
+- Exact browser URL tested:
+- Cache-busted URL tested:
+- Exact URL Cory should use:
+- Auth required: yes/no
+- Auth provider: Cloudflare Access / none / other
+- Cloudflare Access login result: succeeded / failed / not required / not attempted
+- Local backend URL:
+- Expected backend port:
+- Expected git HEAD:
+- Version endpoint:
+- Version endpoint result:
+- If version endpoint missing, how version is inferred:
+- Whether app root `/` works:
+- Whether app root `/` is expected to work:
+- Whether `/ui/steel-guitar-rag-mock.html` works:
+- Whether `/ui/steel-guitar-rag-mock.html` is expected to work:
+- Who should test this URL: Codex / Cory / both
+- Do not test these URLs:
+- Known caveats:
+```
+
+Browser smoke pass/fail is invalid unless the exact URL tested is recorded. API fallback must be labeled `API fallback, not browser smoke`, protected-preview smoke must say whether Cloudflare Access login succeeded, and any root URL that is not expected to work must be called out explicitly.
+
 For UI smoke, also verify:
 
 - source cards have useful titles, labels, URLs, and readable excerpts

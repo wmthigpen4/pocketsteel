@@ -91,6 +91,7 @@ Codex must ask before taking action on:
 - Do not use `git add .`.
 - Stage exact paths only. Use hunk-level staging when overlapping lane changes share files.
 - Treat `docs/handoffs/task-completions/integration-status.md` as a coordination artifact unless the user explicitly asks to commit it.
+- When QA approves a scoped slice and names the approved files or hunks, Repo Steward should proceed with exact-path or exact-hunk staging and commit. Do not ask Cory for another approval. If the approved scope is missing, contradictory, or includes unrelated or unsafe files, stop and write a blocker handoff instead.
 
 ## Required Handoff Behavior
 
@@ -111,6 +112,47 @@ Every handoff must include:
 - Risk assessment: low/medium/high, why, rollback notes if relevant.
 - Commit readiness: exactly one of `Safe to commit`, `Not ready to commit`, or `Needs human review first`.
 - Suggested next step: recommended lane and exact prompt/task for that lane.
+
+## Browser Smoke Target Clarity
+
+Every browser smoke prompt, browser smoke handoff, protected-preview smoke report, production smoke report, or API fallback used in place of browser tooling must include this block before test steps:
+
+```text
+Smoke Target:
+- Target type: local | protected-preview | production-root | API-fallback
+- Result type: browser smoke | API fallback, not browser smoke
+- Exact browser URL tested:
+- Cache-busted URL tested:
+- Exact URL Cory should use:
+- Auth required: yes/no
+- Auth provider: Cloudflare Access / none / other
+- Cloudflare Access login result: succeeded / failed / not required / not attempted
+- Local backend URL:
+- Expected backend port:
+- Expected git HEAD:
+- Version endpoint:
+- Version endpoint result:
+- If version endpoint missing, how version is inferred:
+- Whether app root `/` works:
+- Whether app root `/` is expected to work:
+- Whether `/ui/steel-guitar-rag-mock.html` works:
+- Whether `/ui/steel-guitar-rag-mock.html` is expected to work:
+- Who should test this URL: Codex / Cory / both
+- Do not test these URLs:
+- Known caveats:
+```
+
+Additional rules:
+
+- If the correct URL is `/ui/steel-guitar-rag-mock.html`, do not simply say "test app.steelguitarrag.com."
+- If root `/` is not wired or is not the canonical target, say that explicitly.
+- Browser smoke pass/fail is invalid unless the exact URL tested is recorded.
+- API fallback smoke must not be reported as browser smoke.
+- If Cloudflare Access login is required, say whether login succeeded before protected-preview behavior was tested.
+- If cache-busting is needed, include the complete `?v=...` URL.
+- If browser tooling fails and API fallback is used, label the result as `API fallback, not browser smoke`.
+- If a result comes from local `127.0.0.1`, do not imply that it proves protected-preview or production behavior.
+- Every QA handoff that includes browser smoke must include `URL tested` and `URL user should test`.
 
 ## Safe Staging And Commit Rules
 
