@@ -15,6 +15,13 @@ from pocketsteel.api_contract import AnswerMode, SourceCitation
 from pocketsteel.curated_source_registry import answer_contains_unapproved_url, is_approved_curated_url, slide_bar_vendor_bullets
 from pocketsteel.steel_rules import answer_from_rules
 from pocketsteel.text import shorten
+from pocketsteel.user_copedent import (
+    format_common_grips_sentence,
+    format_control_answer,
+    format_levers_markdown,
+    format_rkl_practice_answer,
+    format_user_copedent_markdown,
+)
 
 
 FallbackCategory = Literal[
@@ -67,6 +74,8 @@ def source_to_card(source: dict[str, Any]) -> SourceCitation:
         "chunkId": source.get("chunk_id") or "",
         "postUid": source.get("post_uid") or None,
     }
+    if source.get("source_system") and source.get("source_system") not in {"sgf_phpbb_current", "sgf_ubb_legacy"}:
+        card["source_system"] = source.get("source_system") or ""
     if source.get("visibility") == "private" or source.get("source_kind") == "private_source_chunk":
         card.update(
             {
@@ -101,62 +110,39 @@ def private_profile_answer(question: str, sources: list[dict[str, Any]]) -> str 
 
     lowered = question.lower()
     if "grip" in lowered:
+        return format_common_grips_sentence()
+    if question_mentions_af_pedal_lever(lowered):
         return (
-            "For your saved 10-string E9 profile, your common grips are "
-            + ", ".join(PRIVATE_PROFILE_GRIPS[:-1])
-            + f", and {PRIVATE_PROFILE_GRIPS[-1]}."
+            "On your saved 10-string E9 profile, A+F means using the A pedal with the F lever.\n\n"
+            "What changes\n"
+            "- The A pedal raises strings 5 and 10 B to C#.\n"
+            "- The F lever raises strings 4 and 8 E to F.\n"
+            "- Together they give a movable major-chord position three frets above the open major position.\n\n"
+            "For your saved setup, useful grips include 3-4-5, 4-5-6, 5-6-8, and 6-8-10."
         )
+    if "rkl" in lowered and question_mentions_practice_or_learning_request(lowered):
+        return format_rkl_practice_answer()
+    if "rkl" in lowered:
+        return format_control_answer("RKLL")
+    if "rkr" in lowered:
+        return format_control_answer("RKRR")
+    if "f lever" in lowered or re.search(r"\bf\s+lever\b|\blkl\b", lowered):
+        return format_control_answer("LKL")
+    if "e-lower" in lowered or "e lower" in lowered or "lkr" in lowered:
+        return format_control_answer("LKR")
     if "lever" in lowered:
-        return (
-            "Your private E9 profile lists these knee levers:\n"
-            "- F lever: raises strings 4 and 8 E to F.\n"
-            "- E-lower: lowers strings 4 and 8 E to D#.\n"
-            "- RKL: raises string 1 F# to G/G#, raises string 2 D# to E, and lowers string 6 G# to F#.\n"
-            "- RKR: lowers string 2 D# to D/C# and lowers string 9 D to C#."
-        )
+        return format_levers_markdown()
 
-    return (
-        "Your private profile describes a 10-string E9 setup.\n\n"
-        "Open tuning\n"
-        "| String | Note |\n"
-        "| --- | --- |\n"
-        "| 1 | F# |\n"
-        "| 2 | D# |\n"
-        "| 3 | G# |\n"
-        "| 4 | E |\n"
-        "| 5 | B |\n"
-        "| 6 | G# |\n"
-        "| 7 | F# |\n"
-        "| 8 | E |\n"
-        "| 9 | D |\n"
-        "| 10 | B |\n\n"
-        "Pedals\n"
-        "| Pedal | Change |\n"
-        "| --- | --- |\n"
-        "| A | raises strings 5 and 10 B to C# |\n"
-        "| B | raises strings 3 and 6 G# to A |\n"
-        "| C | raises string 4 E to F# and string 5 B to C# |\n\n"
-        "Levers\n"
-        "| Lever | Change |\n"
-        "| --- | --- |\n"
-        "| F lever | raises strings 4 and 8 E to F |\n"
-        "| E-lower | lowers strings 4 and 8 E to D# |\n"
-        "| RKL | raises string 1 F# to G/G#, raises string 2 D# to E, lowers string 6 G# to F# |\n"
-        "| RKR | lowers string 2 D# to D/C#, lowers string 9 D to C# |\n\n"
-        "Common grips\n"
-        "- 3-4-5\n"
-        "- 4-5-6\n"
-        "- 5-6-8\n"
-        "- 6-8-10"
-    )
+    return format_user_copedent_markdown()
 
 
 def bc_pedal_exercise_answer(question: str, sources: list[dict[str, Any]]) -> str | None:
     if not question_mentions_bc_pedal_exercises(question):
         return None
+    use_personal_profile = first_private_e9_profile_source(sources) is not None and question_explicitly_mentions_user_setup(question)
     setup_prefix = (
         "On your saved 10-string E9 setup"
-        if first_private_e9_profile_source(sources) is not None
+        if use_personal_profile
         else "On standard E9"
     )
     intro = (
@@ -188,15 +174,26 @@ def bc_pedal_exercise_answer(question: str, sources: list[dict[str, Any]]) -> st
 
 def question_mentions_private_profile(question: str) -> bool:
     lowered = re.sub(r"\s+", " ", (question or "").strip().lower())
-    if question_mentions_practice_or_learning_request(lowered):
-        return False
-    return bool(
+    explicit_profile = bool(
         re.search(
             r"\bmy\s+(?:e9\s+)?(?:copedent|setup|common\s+grips?|grips?|knee\s+levers?|levers?|pedals|rkl|rkr|e-lower|f\s+lever)\b",
             lowered,
         )
+        or re.search(r"\bon\s+my\s+guitar\b", lowered)
         or re.search(r"\bwhat\s+(?:levers?|pedals?)\s+(?:do\s+i\s+have|are\s+on\s+my\s+setup)\b", lowered)
         or re.search(r"\b(?:show|list|describe)\s+(?:me\s+)?my\s+(?:e9\s+)?(?:copedent|setup|levers?|pedals?|grips?)\b", lowered)
+    )
+    if question_mentions_practice_or_learning_request(lowered) and not explicit_profile:
+        return False
+    return explicit_profile
+
+
+def question_explicitly_mentions_user_setup(question: str) -> bool:
+    lowered = re.sub(r"\s+", " ", (question or "").strip().lower())
+    return bool(
+        re.search(r"\b(?:my|mine)\b", lowered)
+        or re.search(r"\bon\s+my\s+guitar\b", lowered)
+        or re.search(r"\byour\s+saved\s+(?:10-string\s+)?e9\b", lowered)
     )
 
 
@@ -251,7 +248,9 @@ def is_personal_private_source(source: dict[str, Any]) -> bool:
 
 
 def question_allows_personal_private_sources(question: str) -> bool:
-    return question_mentions_private_profile(question) or question_mentions_bc_pedal_exercises(question)
+    return question_mentions_private_profile(question) or (
+        question_mentions_bc_pedal_exercises(question) and question_explicitly_mentions_user_setup(question)
+    )
 
 
 def filter_sources_for_question(question: str, sources: list[dict[str, Any]]) -> list[dict[str, Any]]:

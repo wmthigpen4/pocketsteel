@@ -8,6 +8,7 @@ from typing import Literal
 
 from pocketsteel.curated_source_registry import slide_bar_vendor_bullets
 from pocketsteel.fretboard_examples import (
+    e_lower_578_answer_for_question,
     get_e9_major_chord_positions,
     major_chord_location_request_for_question,
     unsupported_chord_location_request_for_question,
@@ -96,6 +97,13 @@ PLAYER_BIOS = {
 
 def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
     q = normalize(question)
+    e_lower_answer = e_lower_578_answer_for_question(question)
+    if e_lower_answer is not None:
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=e_lower_answer,
+        )
     major_request = major_chord_location_request_for_question(question)
     if major_request is not None:
         major_key = major_request.normalized_key
@@ -113,13 +121,14 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
             )
         lines.extend(
             [
-                f"On standard E9, useful {major_key} major positions include:",
+                f"On standard E9, several useful {major_key} major starter positions are:",
                 "",
                 f"- {fret_label(open_position['fret'])}, no pedals: open-position {major_key} major.",
                 f"- {fret_label(af_position['fret'])} with A pedal + F lever: A+F {major_key} major position.",
                 f"- {fret_label(ab_position['fret'])} with A+B pedals: A+B {major_key} major position.",
                 "",
-                "Common grips to try are 4-5-6, 3-4-5, 5-6-8, and 6-8-10.",
+                "Common grips to try are 3-4-5, 4-5-6, 5-6-8, and 6-8-10; the selector may also show validated 5-7-8 E-lower positions when they fit the chord.",
+                "The fretboard selector may also include alternate octaves, grip variants, and validated lever positions.",
             ]
         )
         if major_request.is_enharmonic:
@@ -151,7 +160,8 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
             intent="copedent_fretboard",
             confidence="curated_high",
             answer=(
-                "For G at the 3rd fret open position on standard E9, common grips include 4-5-6, 3-4-5, 5-6-8, and 6-8-10."
+                "For G at the 3rd fret open position on standard E9, common grips include 3-4-5, 4-5-6, 5-6-8, and 6-8-10. "
+                "The fretboard view may also show 5-7-8 when a pedal/lever combination validates it by pitch."
             ),
         )
     return None
@@ -745,10 +755,10 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             answer=(
                 "I do not provide full copyrighted lyrics by default.\n\n"
                 "What I can do instead:\n"
-                "- summarize the song’s theme or mood\n"
-                "- discuss how to arrange it for pedal steel\n"
-                "- suggest chord/position strategy and tone ideas\n"
-                "- work from a short excerpt or chart you provide"
+                "- I can summarize the song’s theme or mood.\n"
+                "- I can discuss how to arrange it for pedal steel.\n"
+                "- I can suggest chord/position strategy and tone ideas.\n"
+                "- I can work from a short excerpt or chart you provide."
             ),
         )
 

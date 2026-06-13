@@ -1910,20 +1910,54 @@ def assert_valid_fretboard_payload(payload: dict[str, Any]) -> None:
         assert {
             "id",
             "label",
+            "root",
+            "quality",
+            "positionKind",
             "fret",
             "strings",
             "grip",
             "pedals",
             "levers",
             "color",
+            "family",
+            "tier",
+            "colorRole",
+            "visibleByDefault",
+            "sortOrder",
+            "notes",
+            "intervals",
+            "omittedIntervals",
+            "isFullChord",
+            "isPartial",
+            "isRootless",
+            "caveats",
+            "validationStatus",
+            "explanation",
         }.issubset(position)
         assert isinstance(position["id"], str) and position["id"]
+        assert isinstance(position["root"], str) and position["root"]
+        assert isinstance(position["quality"], str) and position["quality"]
+        assert isinstance(position["positionKind"], str) and position["positionKind"]
         assert 0 <= position["fret"] <= 24
         assert position["strings"]
         assert all(1 <= string <= 10 for string in position["strings"])
         assert position["grip"] == "-".join(str(string) for string in position["strings"])
         assert all(label in DEFAULT_PEDAL_LEVER_LABELS for label in position["pedals"])
         assert all(label in DEFAULT_PEDAL_LEVER_LABELS for label in position["levers"])
+        assert position["family"]
+        assert position["tier"]
+        assert position["colorRole"]
+        assert isinstance(position["visibleByDefault"], bool)
+        assert isinstance(position["sortOrder"], int)
+        assert isinstance(position["notes"], dict)
+        assert isinstance(position["intervals"], dict)
+        assert isinstance(position["omittedIntervals"], list)
+        assert isinstance(position["isFullChord"], bool)
+        assert isinstance(position["isPartial"], bool)
+        assert isinstance(position["isRootless"], bool)
+        assert isinstance(position["caveats"], list)
+        assert position["validationStatus"] == "pitch_validated"
+        assert isinstance(position["explanation"], str)
         assert "x" not in position
         assert "y" not in position
     for highlight in fretboard["highlights"]:
@@ -1942,8 +1976,13 @@ def assert_deterministic_fretboard_sources_are_clean(payload: dict[str, Any]) ->
     assert payload["sources"] == []
     assert payload["warnings"] == []
     assert "fretboard" in payload
+    assert "[object Object]" not in payload["answer"]
     assert payload["fretboard"]["sourceContext"][0]["kind"] == "rule"
     assert payload["fretboard"]["sourceContext"][0]["sourceId"] == "pocketsteel.fretboard_examples"
+
+
+def visible_fretboard_ids(payload: dict[str, Any]) -> list[str]:
+    return [position["id"] for position in payload["fretboard"]["positions"] if position["visibleByDefault"]]
 
 
 def noisy_practical_sources() -> list[dict[str, Any]]:
@@ -1980,8 +2019,11 @@ def test_location_based_g_chord_answer_includes_fretboard_payload() -> None:
     assert "fretboard" in payload
     assert_valid_fretboard_payload(payload)
     assert payload["fretboard"]["title"] == "G major positions on E9"
-    assert [highlight["id"] for highlight in payload["fretboard"]["highlights"]] == ["g-open-3", "g-af-6", "g-ab-10"]
-    assert "On standard E9, useful G major positions include" in payload["answer"]
+    assert {"g-open-3", "g-af-6", "g-ab-10"}.issubset(
+        {highlight["id"] for highlight in payload["fretboard"]["highlights"]}
+    )
+    assert visible_fretboard_ids(payload) == ["g-open-3", "g-af-6", "g-ab-10"]
+    assert "On standard E9, several useful G major starter positions are" in payload["answer"]
     assert "3rd fret" in payload["answer"]
     assert "6th fret" in payload["answer"]
     assert "10th fret" in payload["answer"]
@@ -2020,8 +2062,20 @@ def test_location_based_b_chord_question_uses_b_positions_not_source_fragments()
     assert "fretboard" in payload
     assert_valid_fretboard_payload(payload)
     assert payload["fretboard"]["title"] == "B major positions on E9"
-    assert [highlight["id"] for highlight in payload["fretboard"]["highlights"]] == ["b-open-7", "b-af-10", "b-ab-14"]
-    assert "On standard E9, useful B major positions include" in payload["answer"]
+    assert {"b-open-7", "b-af-10", "b-ab-14", "b-ab-2-lower-octave", "b-e-lower-5-7-8-0"}.issubset(
+        {highlight["id"] for highlight in payload["fretboard"]["highlights"]}
+    )
+    by_id = {position["id"]: position for position in payload["fretboard"]["positions"]}
+    assert len(payload["fretboard"]["positions"]) > 3
+    assert by_id["b-ab-2-lower-octave"]["fret"] == 2
+    assert by_id["b-ab-2-lower-octave"]["pedals"] == ["A", "B"]
+    assert by_id["b-ab-2-lower-octave"]["visibleByDefault"] is False
+    assert [position["id"] for position in payload["fretboard"]["positions"] if position["visibleByDefault"]] == [
+        "b-open-7",
+        "b-af-10",
+        "b-ab-14",
+    ]
+    assert "On standard E9, several useful B major starter positions are" in payload["answer"]
     assert "7th fret, no pedals" in payload["answer"]
     assert "10th fret with A pedal + F lever" in payload["answer"]
     assert "14th fret with A+B pedals" in payload["answer"]
@@ -2064,6 +2118,11 @@ def test_deterministic_chord_position_answer_runs_before_retrieval() -> None:
     assert payload["sources"] == []
     assert payload["warnings"] == []
     assert payload["fretboard"]["title"] == "B major positions on E9"
+    assert len(payload["fretboard"]["positions"]) > 3
+    assert any(
+        position["fret"] == 2 and position["pedals"] == ["A", "B"] and not position["visibleByDefault"]
+        for position in payload["fretboard"]["positions"]
+    )
 
 
 def test_unsupported_chord_quality_location_question_does_not_use_sgf_fragments() -> None:
@@ -2123,8 +2182,11 @@ def test_location_based_a_chord_answer_uses_a_positions_not_source_fragments() -
     assert "fretboard" in payload
     assert_valid_fretboard_payload(payload)
     assert payload["fretboard"]["title"] == "A major positions on E9"
-    assert [highlight["id"] for highlight in payload["fretboard"]["highlights"]] == ["a-open-5", "a-af-8", "a-ab-12"]
-    assert "On standard E9, useful A major positions include" in payload["answer"]
+    assert {"a-open-5", "a-af-8", "a-ab-12"}.issubset(
+        {highlight["id"] for highlight in payload["fretboard"]["highlights"]}
+    )
+    assert visible_fretboard_ids(payload) == ["a-open-5", "a-af-8", "a-ab-12"]
+    assert "On standard E9, several useful A major starter positions are" in payload["answer"]
     assert "5th fret, no pedals" in payload["answer"]
     assert "8th fret with A pedal + F lever" in payload["answer"]
     assert "12th fret with A+B pedals" in payload["answer"]
@@ -2175,12 +2237,11 @@ def test_location_based_c_sharp_question_without_chord_suffix_uses_positions_not
     assert "fretboard" in payload
     assert_valid_fretboard_payload(payload)
     assert payload["fretboard"]["title"] == "C# major positions on E9"
-    assert [highlight["id"] for highlight in payload["fretboard"]["highlights"]] == [
-        "csharp-open-9",
-        "csharp-af-12",
-        "csharp-ab-16",
-    ]
-    assert "On standard E9, useful C# major positions include" in payload["answer"]
+    assert {"csharp-open-9", "csharp-af-12", "csharp-ab-16"}.issubset(
+        {highlight["id"] for highlight in payload["fretboard"]["highlights"]}
+    )
+    assert visible_fretboard_ids(payload) == ["csharp-open-9", "csharp-af-12", "csharp-ab-16"]
+    assert "On standard E9, several useful C# major starter positions are" in payload["answer"]
     assert "9th fret, no pedals" in payload["answer"]
     assert "12th fret with A pedal + F lever" in payload["answer"]
     assert "16th fret with A+B pedals" in payload["answer"]
@@ -2226,9 +2287,12 @@ def test_location_based_b_sharp_chord_answer_uses_c_positions_not_source_fragmen
     assert "fretboard" in payload
     assert_valid_fretboard_payload(payload)
     assert payload["fretboard"]["title"] == "C major positions on E9"
-    assert [highlight["id"] for highlight in payload["fretboard"]["highlights"]] == ["c-open-8", "c-af-11", "c-ab-15"]
+    assert {"c-open-8", "c-af-11", "c-ab-15"}.issubset(
+        {highlight["id"] for highlight in payload["fretboard"]["highlights"]}
+    )
+    assert visible_fretboard_ids(payload) == ["c-open-8", "c-af-11", "c-ab-15"]
     assert "B# is the same pitch as C" in payload["answer"]
-    assert "C major positions" in payload["answer"]
+    assert "C major starter positions" in payload["answer"]
     assert "8th fret, no pedals" in payload["answer"]
     assert "11th fret with A pedal + F lever" in payload["answer"]
     assert "15th fret with A+B pedals" in payload["answer"]
@@ -2241,6 +2305,29 @@ def test_location_based_b_sharp_chord_answer_uses_c_positions_not_source_fragmen
     assert_deterministic_fretboard_sources_are_clean(payload)
 
 
+def test_visualizable_position_questions_have_deterministic_payloads_without_source_leakage() -> None:
+    cases = [
+        ("Where all can I play a G chord?", "G major positions on E9", ["g-open-3", "g-af-6", "g-ab-10"], ["3rd fret", "6th fret", "10th fret"]),
+        ("Where all can I play a B chord?", "B major positions on E9", ["b-open-7", "b-af-10", "b-ab-14"], ["7th fret", "10th fret", "14th fret"]),
+        ("How do I play a C#?", "C# major positions on E9", ["csharp-open-9", "csharp-af-12", "csharp-ab-16"], ["9th fret", "12th fret", "16th fret"]),
+        ("How do I play a B# chord?", "C major positions on E9", ["c-open-8", "c-af-11", "c-ab-15"], ["8th fret", "11th fret", "15th fret"]),
+    ]
+
+    for question, title, visible_ids, answer_frets in cases:
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert_clean_answer_body(payload)
+        assert "fretboard" in payload, question
+        assert_valid_fretboard_payload(payload)
+        assert payload["fretboard"]["title"] == title
+        assert visible_fretboard_ids(payload) == visible_ids
+        for fret in answer_frets:
+            assert fret in payload["answer"], question
+        assert "source support was weak" not in payload["answer"].lower()
+        assert "[object Object]" not in payload["answer"]
+        assert_deterministic_fretboard_sources_are_clean(payload)
+
+
 def test_location_based_c_chord_answer_uses_c_positions() -> None:
     payload = answer_for_question("Where can I play a C chord?", noisy_practical_sources())
 
@@ -2248,8 +2335,11 @@ def test_location_based_c_chord_answer_uses_c_positions() -> None:
     assert "fretboard" in payload
     assert_valid_fretboard_payload(payload)
     assert payload["fretboard"]["title"] == "C major positions on E9"
-    assert [highlight["id"] for highlight in payload["fretboard"]["highlights"]] == ["c-open-8", "c-af-11", "c-ab-15"]
-    assert "On standard E9, useful C major positions include" in payload["answer"]
+    assert {"c-open-8", "c-af-11", "c-ab-15"}.issubset(
+        {highlight["id"] for highlight in payload["fretboard"]["highlights"]}
+    )
+    assert visible_fretboard_ids(payload) == ["c-open-8", "c-af-11", "c-ab-15"]
+    assert "On standard E9, several useful C major starter positions are" in payload["answer"]
     assert "8th fret, no pedals" in payload["answer"]
     assert "11th fret with A pedal + F lever" in payload["answer"]
     assert "15th fret with A+B pedals" in payload["answer"]
@@ -2283,13 +2373,57 @@ def test_common_grips_question_includes_fretboard_payload() -> None:
     assert_valid_fretboard_payload(payload)
     assert payload["fretboard"]["title"] == "Common G major grips on E9"
     assert [highlight["strings"] for highlight in payload["fretboard"]["highlights"]] == [
-        [4, 5, 6],
         [3, 4, 5],
+        [4, 5, 6],
         [5, 6, 8],
+        [5, 7, 8],
         [6, 8, 10],
     ]
-    assert "common grips include 4-5-6, 3-4-5, 5-6-8, and 6-8-10" in payload["answer"]
+    assert "common grips include 3-4-5, 4-5-6, 5-6-8, and 6-8-10" in payload["answer"]
     assert_deterministic_fretboard_sources_are_clean(payload)
+
+
+def test_e_lower_5_7_8_question_uses_pitch_math_not_sources() -> None:
+    payload = answer_for_question(
+        "What does 5-7-8 with E lowered give me at the 3rd fret?",
+        [
+            {
+                "score": 0.91,
+                "excerpt": "Top Does anyone know what this grip is supposed to be?",
+                "forum_name": "Pedal Steel",
+                "thread_title": "Unrelated grip question",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=402001",
+                "chunk_id": "noisy-grip-question",
+                "post_uid": "noisy-grip-question",
+                "source_system": "sgf_phpbb_current",
+            }
+        ],
+    )
+
+    assert_clean_answer_body(payload)
+    assert "fretboard" in payload
+    assert_valid_fretboard_payload(payload)
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert payload["fretboard"]["title"] == "5-7-8 with E-lower at fret 3"
+    position = payload["fretboard"]["positions"][0]
+    assert position["root"] == "D"
+    assert position["quality"] == "major"
+    assert position["notes"] == {"5": "D", "7": "A", "8": "F#"}
+    assert position["intervals"] == {"5": "1", "7": "5", "8": "3"}
+    assert "D major" in payload["answer"]
+    assert "rootless B minor 7 color" in payload["answer"]
+    assert "Top" not in payload["answer"]
+
+
+def test_e_lower_5_7_8_b9_pocket_question_does_not_invent_visual_payload_or_b9_classification() -> None:
+    payload = answer_for_question("Is 5-7-8 with E lowered a B9 pocket?", noisy_practical_sources())
+
+    assert_clean_answer_body(payload)
+    assert "fretboard" not in payload
+    assert "[object Object]" not in payload["answer"]
+    assert "is a B9 pocket" not in payload["answer"]
+    assert "gives you B9" not in payload["answer"]
 
 
 def test_non_location_answer_omits_fretboard_payload() -> None:
@@ -2297,6 +2431,17 @@ def test_non_location_answer_omits_fretboard_payload() -> None:
 
     assert "fretboard" not in payload
     assert payload["sources"]
+
+
+def test_non_position_questions_do_not_get_fretboard_payloads() -> None:
+    for question in [
+        "What are common Fender Steel King settings?",
+        "What should I practice tonight?",
+        "Who is Buddy Emmons?",
+    ]:
+        payload = answer_for_question(question, noisy_practical_sources())
+        assert "fretboard" not in payload, question
+        assert "[object Object]" not in payload["answer"]
 
 
 def test_pockets_answer_is_practical_not_weak_source_dump() -> None:
@@ -2794,6 +2939,11 @@ def test_slide_bar_buying_routes_to_vendor_guidance() -> None:
     assert "/api/answer" not in payload["answer"]
     assert "@" not in payload["answer"]
     assert payload["sources"]
+    source_titles = {source["title"] for source in payload["sources"]}
+    assert "Steel Guitar Shopper" in source_titles
+    assert "BJS Steel Guitar Bars" in source_titles
+    assert "Jim Dunlop Tonebars" in source_titles
+    assert all(source.get("source_system") == "curated_source_registry" for source in payload["sources"])
 
 
 def test_source_cards_clean_contact_order_and_forum_junk() -> None:
@@ -2813,8 +2963,12 @@ def test_source_cards_clean_contact_order_and_forum_junk() -> None:
         ],
     )
 
-    source_excerpt = payload["sources"][0]["excerpt"]
-    assert "Several players mention BJS" in source_excerpt
+    source_titles = {source["title"] for source in payload["sources"]}
+    assert "Steel Guitar Shopper" in source_titles
+    assert "BJS Steel Guitar Bars" in source_titles
+    assert "slide bar source" not in source_titles
+    source_excerpt = " ".join(source["excerpt"] for source in payload["sources"])
+    assert "tone bars" in source_excerpt.lower()
     assert "PayPal" not in source_excerpt
     assert "bob@example.com" not in source_excerpt
     assert "Does anyone know" not in source_excerpt
@@ -2908,6 +3062,7 @@ def test_practice_tonight_routes_to_practice_plan_not_player_ranking() -> None:
         assert player not in payload["answer"]
     assert "25-minute plan:" in payload["answer"]
     assert "3-4-5" in payload["answer"]
+    assert WEAK_RETRIEVAL_WARNING not in payload["warnings"]
     assert "A pedal + F lever" in payload["answer"]
     assert "blocking" in payload["answer"]
     assert "volume-pedal control" in payload["answer"]

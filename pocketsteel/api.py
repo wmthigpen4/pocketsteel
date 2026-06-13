@@ -55,6 +55,7 @@ from pocketsteel.curated_answers import (
     unsupported_chord_position_curated_answer,
     visual_fretboard_curated_answer,
 )
+from pocketsteel.curated_source_registry import slide_bar_vendor_source_cards
 from pocketsteel.fretboard_examples import fretboard_payload_for_question
 from pocketsteel.rag_guardrails import sanitize_retrieved_sources
 from pocketsteel.rag_guardrails import is_injection_like
@@ -74,6 +75,11 @@ from pocketsteel.retrieval_modes import (
 )
 
 LOGGER = logging.getLogger(__name__)
+
+
+def _question_mentions_slide_bar_item(question: str) -> bool:
+    lowered = (question or "").lower()
+    return "slide bar" in lowered or "steel bar" in lowered or "tone bar" in lowered
 
 
 class RetrievalApi:
@@ -255,11 +261,17 @@ class RetrievalApi:
                     contract_intent = curated_answer.intent
                     if curated_answer.intent == "curated_fact_source_check":
                         warnings.append(CURATED_FACT_WEAK_WARNING)
-                    if retrieval_looks_weak_for_curated(answer_request.question, curated_answer, strong_sources):
+                    if curated_answer.intent == "curated_fact_source_check" and retrieval_looks_weak_for_curated(
+                        answer_request.question, curated_answer, strong_sources
+                    ):
                         warnings.append(WEAK_RETRIEVAL_WARNING)
                     if answer_is_no_source(answer):
                         sources = []
                         warnings.append("no strong source match")
+                    elif curated_answer.intent == "vendor_buying_guidance" and _question_mentions_slide_bar_item(
+                        answer_request.question
+                    ):
+                        sources = concise_source_cards(slide_bar_vendor_source_cards())
                     else:
                         sources = concise_source_cards(strong_sources)
                 elif user_prompt_injection:

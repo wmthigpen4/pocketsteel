@@ -356,17 +356,26 @@ def test_private_profile_copedent_answer_uses_profile_facts_not_sgf_chatter() ->
     assert "| Lever | Change |" in answer
     assert "1 F#" in answer
     assert "10 B" in answer
-    assert "| A | raises strings 5 and 10 B to C# |" in answer
-    assert "| B | raises strings 3 and 6 G# to A |" in answer
-    assert "| C | raises string 4 E to F# and string 5 B to C# |" in answer
+    assert "| P1 / A pedal | raises strings 5 and 10 B to C# |" in answer
+    assert "| P2 / B pedal | raises strings 3 and 6 G# to A |" in answer
+    assert "| P3 / C pedal | raises string 4 E to F#; raises string 5 B to C# |" in answer
     assert "F lever" in answer
     assert "E-lower" in answer
+    assert "LKV / vertical/Bb" in answer
     assert "RKL" in answer
-    assert "raises string 1 F# to G/G#" in answer
-    assert "raises string 2 D# to E" in answer
+    assert "RKL / RKL half-stop" in answer
+    assert "RKL / RKLL full-stop" in answer
+    assert "raises string 1 F# to G" in answer
+    assert "raises string 1 F# to G#" not in answer
+    assert "raises string 2 D# to E" not in answer
+    assert "lowers string 6 G# to G" in answer
     assert "lowers string 6 G# to F#" in answer
+    assert "string 7 F# to G" not in answer
     assert "RKR" in answer
-    assert "lowers string 2 D# to D/C#" in answer
+    assert "RKR / RKR half-stop" in answer
+    assert "RKR / RKRR full-stop" in answer
+    assert "lowers string 2 D# to D" in answer
+    assert "lowers string 2 D# to C#" in answer
     assert "lowers string 9 D to C#" in answer
     assert "3-4-5" in answer
     assert "4-5-6" in answer
@@ -398,7 +407,7 @@ def test_private_profile_common_grips_answer_stays_clean() -> None:
     assert "80% of steelers" not in answer
 
 
-def test_bc_pedal_exercise_answer_uses_saved_profile_without_forum_question_text() -> None:
+def test_generic_bc_pedal_exercise_answer_does_not_leak_saved_profile() -> None:
     status, payload = call_answer(
         question="What are some good B&C pedal exercises?",
         search_index=FakeSearchIndex(
@@ -427,7 +436,8 @@ def test_bc_pedal_exercise_answer_uses_saved_profile_without_forum_question_text
 
     assert status == "200 OK"
     answer = payload["answer"]
-    assert "On your saved 10-string E9 setup" in answer
+    assert "On standard E9" in answer
+    assert "On your saved 10-string E9 setup" not in answer
     assert "B raises strings 3 and 6 G# to A" in answer
     assert "C raises string 4 E to F#" in answer
     assert "string 5 B to C#" in answer
@@ -439,6 +449,7 @@ def test_bc_pedal_exercise_answer_uses_saved_profile_without_forum_question_text
     assert "Strings, frets, pedals, and levers mentioned by sources" not in answer
     assert "Start with the musical function named in the sources" not in answer
     assert "Can some of you possibly post tab" not in answer
+    assert all(source.get("visibility") != "private" for source in payload["sources"])
 
 
 def test_bc_pedal_learning_plan_does_not_return_full_private_copedent_profile() -> None:
@@ -452,7 +463,8 @@ def test_bc_pedal_learning_plan_does_not_return_full_private_copedent_profile() 
 
     assert status == "200 OK"
     answer = payload["answer"]
-    assert "On your saved 10-string E9 setup" in answer
+    assert "On standard E9" in answer
+    assert "On your saved 10-string E9 setup" not in answer
     assert "B raises strings 3 and 6 G# to A" in answer
     assert "C raises string 4 E to F#" in answer
     assert "20-minute practice plan" in answer
@@ -465,6 +477,49 @@ def test_bc_pedal_learning_plan_does_not_return_full_private_copedent_profile() 
     assert "| String | Note |" not in answer
     assert "Open tuning" not in answer
     assert "Your private profile describes" not in answer
+    assert "Bobs copedent" not in answer
+    assert all(source.get("visibility") != "private" for source in payload["sources"])
+
+
+def test_personal_af_question_uses_private_profile_wording() -> None:
+    status, payload = call_answer(
+        question="What does A+F do on my guitar?",
+        search_index=FakeSearchIndex(sgf_copedent_chatter_response()),
+        private_search_index=FakeSearchIndex(private_response()),
+        config=retrieval_config("hybrid_private_first", private_enabled=True),
+        access_role="beta_user",
+    )
+
+    assert status == "200 OK"
+    answer = payload["answer"]
+    assert "On your saved 10-string E9 profile" in answer
+    assert "A pedal" in answer
+    assert "F lever" in answer
+    assert "strings 5 and 10 B to C#" in answer
+    assert "strings 4 and 8 E to F" in answer
+    assert "Bobs copedent" not in answer
+
+
+def test_personal_rkl_practice_uses_private_profile_wording() -> None:
+    status, payload = call_answer(
+        question="How should I practice my RKL?",
+        search_index=FakeSearchIndex(sgf_copedent_chatter_response()),
+        private_search_index=FakeSearchIndex(private_response()),
+        config=retrieval_config("hybrid_private_first", private_enabled=True),
+        access_role="beta_user",
+    )
+
+    assert status == "200 OK"
+    answer = payload["answer"]
+    assert "On your saved 10-string E9 profile" in answer
+    assert "RKL is the partial-travel RKL state" in answer
+    assert "RKLL is the full-travel state" in answer
+    assert "RKL: raises string 1 F# to G" in answer
+    assert "lowers string 6 G# to G" in answer
+    assert "RKLL: raises string 1 F# to G" in answer
+    assert "lowers string 6 G# to F#" in answer
+    assert "raises string 2 D# to E" not in answer
+    assert "Practice it this way" in answer
     assert "Bobs copedent" not in answer
 
 

@@ -75,6 +75,9 @@ class FretboardHighlight(TypedDict):
 class FretboardPosition(TypedDict):
     id: str
     label: str
+    root: str
+    quality: str
+    positionKind: str
     fret: int
     strings: list[int]
     grip: str
@@ -82,9 +85,20 @@ class FretboardPosition(TypedDict):
     levers: list[str]
     color: str
     role: NotRequired[str]
-    notes: NotRequired[dict[str, str]]
-    intervals: NotRequired[dict[str, str]]
-    explanation: NotRequired[str]
+    family: str
+    tier: str
+    colorRole: str
+    visibleByDefault: bool
+    sortOrder: int
+    notes: dict[str, str]
+    intervals: dict[str, str]
+    omittedIntervals: list[str]
+    isFullChord: bool
+    isPartial: bool
+    isRootless: bool
+    caveats: list[str]
+    validationStatus: str
+    explanation: str
 
 
 class FretboardPayload(TypedDict):

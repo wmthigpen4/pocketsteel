@@ -87,6 +87,9 @@ def test_optional_fretboard_payload_contract_shape() -> None:
                 {
                     "id": "g-open-3",
                     "label": "G major",
+                    "root": "G",
+                    "quality": "major",
+                    "positionKind": "starter",
                     "fret": 3,
                     "strings": [4, 5, 6],
                     "grip": "4-5-6",
@@ -94,6 +97,20 @@ def test_optional_fretboard_payload_contract_shape() -> None:
                     "levers": [],
                     "color": "primary",
                     "role": "Open position",
+                    "family": "major_triad",
+                    "tier": "beginner",
+                    "colorRole": "primary",
+                    "visibleByDefault": True,
+                    "sortOrder": 10,
+                    "notes": {"4": "G", "5": "D", "6": "B"},
+                    "intervals": {"4": "1", "5": "5", "6": "3"},
+                    "omittedIntervals": [],
+                    "isFullChord": True,
+                    "isPartial": False,
+                    "isRootless": False,
+                    "caveats": [],
+                    "validationStatus": "pitch_validated",
+                    "explanation": "No-pedal fret 3 gives a G major grip.",
                 }
             ],
             "highlights": [
@@ -117,9 +134,41 @@ def test_optional_fretboard_payload_contract_shape() -> None:
     assert fretboard["tuning"] == "E9"
     assert fretboard["strings"]["count"] == 10
     position = fretboard["positions"][0]
-    assert set(position) == {"id", "label", "fret", "strings", "grip", "pedals", "levers", "color", "role"}
+    assert set(position) == {
+        "id",
+        "label",
+        "root",
+        "quality",
+        "positionKind",
+        "fret",
+        "strings",
+        "grip",
+        "pedals",
+        "levers",
+        "color",
+        "role",
+        "family",
+        "tier",
+        "colorRole",
+        "visibleByDefault",
+        "sortOrder",
+        "notes",
+        "intervals",
+        "omittedIntervals",
+        "isFullChord",
+        "isPartial",
+        "isRootless",
+        "caveats",
+        "validationStatus",
+        "explanation",
+    }
     assert position["grip"] == "4-5-6"
     assert position["color"] == "primary"
+    assert position["family"] == "major_triad"
+    assert position["tier"] == "beginner"
+    assert position["colorRole"] == "primary"
+    assert position["visibleByDefault"] is True
+    assert position["sortOrder"] == 10
     highlight = fretboard["highlights"][0]
     assert set(highlight) == {"id", "label", "fret", "strings", "pedals", "levers", "role"}
     assert 0 <= highlight["fret"] <= 24
