@@ -969,7 +969,7 @@ def test_fretboard_payload_for_question_matches_only_mvp_triggers() -> None:
     assert fretboard_payload_for_question("What are common Fender Steel King settings?") is None
 
 
-def test_beginner_chord_concept_questions_route_to_deterministic_payloads() -> None:
+def test_beginner_chord_concept_questions_route_to_deterministic_answers_without_payloads() -> None:
     g_request = chord_concept_request_for_question("What's a G chord even mean?")
     assert g_request is not None
     assert g_request.normalized_key == "G"
@@ -980,17 +980,17 @@ def test_beginner_chord_concept_questions_route_to_deterministic_payloads() -> N
     assert "root, major 3rd, and perfect 5th" in g_answer
     assert "3rd fret" in g_answer
     assert "10th fret" in g_answer
-    assert fretboard_payload_for_question("What's a G chord even mean?")["title"] == "G major positions on E9"
+    assert fretboard_payload_for_question("What's a G chord even mean?") is None
 
     c_answer = chord_concept_answer_for_question("What does a C chord mean?")
     assert c_answer is not None
     assert "C-E-G" in c_answer
-    assert fretboard_payload_for_question("What does a C chord mean?")["title"] == "C major positions on E9"
+    assert fretboard_payload_for_question("What does a C chord mean?") is None
 
     d_answer = chord_concept_answer_for_question("What notes are in a D chord?")
     assert d_answer is not None
     assert "D-F#-A" in d_answer
-    assert fretboard_payload_for_question("What notes are in a D chord?")["title"] == "D major positions on E9"
+    assert fretboard_payload_for_question("What notes are in a D chord?") is None
 
     e_minor_request = chord_concept_request_for_question("What makes an E minor chord minor?")
     assert e_minor_request is not None
@@ -1000,7 +1000,7 @@ def test_beginner_chord_concept_questions_route_to_deterministic_payloads() -> N
     assert e_minor_answer is not None
     assert "E-G-B" in e_minor_answer
     assert "minor 3rd" in e_minor_answer
-    assert fretboard_payload_for_question("What makes an E minor chord minor?")["title"] == "E minor positions on E9"
+    assert fretboard_payload_for_question("What makes an E minor chord minor?") is None
 
 
 def test_invalid_chord_symbol_guardrail_clarifies_before_retrieval() -> None:

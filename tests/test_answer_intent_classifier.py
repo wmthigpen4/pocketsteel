@@ -394,11 +394,50 @@ def test_non_position_steel_questions_do_not_request_fretboard() -> None:
         "How do I make this smoother?",
         "Is this an E-lower position?",
         "Explain this tab in intervals.",
+        "Who was Buddy Emmons married to?",
+        "Are there gay steel guitar players?",
+        "Can I play rock and roll on the steel guitar? How?",
+        "Can you play steel guitar drunk?",
     ):
         decision = classify_answer_intent(question)
         assert_contract_shape(decision)
         assert decision["domain"] == "steel_guitar"
         assert decision["needs_fretboard"] is False
+
+
+def test_user_smoke_question_type_gates_disable_retrieval() -> None:
+    cases = {
+        "Who was Buddy Emmons married to?": {
+            "intent": "forum_wisdom",
+            "needs_sources": True,
+            "allowed_answer_shape": "guardrail_refusal",
+        },
+        "Are there gay steel guitar players?": {
+            "intent": "unknown",
+            "needs_sources": False,
+            "allowed_answer_shape": "guardrail_refusal",
+        },
+        "Can I play rock and roll on the steel guitar? How?": {
+            "intent": "practice_plan",
+            "needs_sources": False,
+            "allowed_answer_shape": "practice_plan",
+        },
+        "Can you play steel guitar drunk?": {
+            "intent": "practice_plan",
+            "needs_sources": False,
+            "allowed_answer_shape": "practice_plan",
+        },
+    }
+
+    for question, expected in cases.items():
+        decision = classify_answer_intent(question)
+        assert_contract_shape(decision)
+        assert decision["domain"] == "steel_guitar"
+        assert decision["retrieval_allowed"] is False
+        assert decision["needs_fretboard"] is False
+        assert decision["needs_copedent"] is False
+        for key, value in expected.items():
+            assert decision[key] == value
 
 
 def test_explicit_position_questions_request_fretboard() -> None:

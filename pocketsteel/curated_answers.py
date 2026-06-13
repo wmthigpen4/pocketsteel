@@ -33,6 +33,10 @@ CuratedConfidence = Literal["curated_high", "curated_medium", "rag_only"]
 IntentMode = Literal[
     "instrument_visual",
     "scope_guardrail",
+    "factual_biography",
+    "sensitive_personal_attribute",
+    "style_how_to",
+    "safety_adjacent",
     "technique_coach",
     "tone_coach",
     "practice_plan",
@@ -379,6 +383,14 @@ def intent_mode_for_question(question: str) -> IntentMode:
     q = normalize(question)
     if _mentions_scope_guardrail(q):
         return "scope_guardrail"
+    if _mentions_sensitive_personal_attribute(q):
+        return "sensitive_personal_attribute"
+    if _mentions_specific_biography_fact(q):
+        return "factual_biography"
+    if _mentions_safety_adjacent_playing(q):
+        return "safety_adjacent"
+    if _mentions_style_how_to(q):
+        return "style_how_to"
     if _mentions_missing_context_home_prompt(q):
         return "missing_context_clarifier"
     if _mentions_timeboxed_practice_prompt(q):
@@ -428,6 +440,56 @@ def intent_mode_curated_answer(question: str) -> CuratedAnswer | None:
             answer=(
                 "That request is outside Steel Guitar RAG’s scope, and it would be too large to display usefully. "
                 "Try asking about E9 positions, grips, pedals/levers, tone, gear, blocking, bar movement, practice plans, or steel-guitar forum wisdom."
+            ),
+        )
+    if mode == "factual_biography":
+        return CuratedAnswer(
+            intent="factual_biography",
+            confidence="curated_high",
+            answer=(
+                "I don’t have a reliable source for that specific biographical detail.\n\n"
+                "I can help with public steel-guitar context, recordings, technique, gear, and playing influence, but I should not replace an unsupported specific fact with a generic biography."
+            ),
+        )
+    if mode == "sensitive_personal_attribute":
+        return CuratedAnswer(
+            intent="sensitive_personal_attribute",
+            confidence="curated_high",
+            answer=(
+                "I should not infer or identify private attributes of players from forum posts. "
+                "Steel guitar communities include many kinds of people; I can help with players, recordings, technique, gear, or inclusive community questions."
+            ),
+        )
+    if mode == "style_how_to":
+        return CuratedAnswer(
+            intent="style_how_to",
+            confidence="curated_high",
+            answer=(
+                "Yes. Steel guitar can work in rock and roll when you treat it like a strong melodic and rhythmic voice, not only a country pad.\n\n"
+                "Practical approaches:\n"
+                "- Use overdrive, sustain, and a slightly firmer attack without letting the tone get harsh.\n"
+                "- Practice clean blocking so short rock phrases punch instead of smearing together.\n"
+                "- Use pentatonic and blues phrasing, especially short call-and-response ideas.\n"
+                "- Try power-chord-style double-stops and two-note grips instead of only full triads.\n"
+                "- Use A+B, E-lower, slides, and glisses tastefully so the steel adds motion without crowding the band.\n"
+                "- Listen for where the guitar part leaves space, then answer it with a short steel phrase.\n\n"
+                "Start with fewer notes, stronger time, and a tone that sits with the rhythm section."
+            ),
+        )
+    if mode == "safety_adjacent":
+        return CuratedAnswer(
+            intent="safety_adjacent",
+            confidence="curated_high",
+            answer=(
+                "You can physically try, but it is not a good idea to play pedal steel impaired.\n\n"
+                "Alcohol can hurt timing, bar control, intonation, coordination, judgment, and safety around gear. "
+                "If you are performing, avoid playing impaired.\n\n"
+                "If what you want is a loose honky-tonk feel, use musical choices instead:\n"
+                "- play slightly behind the beat\n"
+                "- use gentle bar vibrato\n"
+                "- keep fills simple\n"
+                "- leave more space\n"
+                "- use fewer notes with better touch"
             ),
         )
     if mode == "missing_context_clarifier":
@@ -1768,7 +1830,50 @@ def mentions_g_chord_sixth_fret(question: str) -> bool:
 
 
 def mentions_sensitive_demographic_question(question: str) -> bool:
-    return bool(re.search(r"\b(?:gay people|gay players|lgbtq|sexual orientation)\b", question))
+    return _mentions_sensitive_personal_attribute(question)
+
+
+def _mentions_sensitive_personal_attribute(question: str) -> bool:
+    return bool(
+        re.search(
+            r"\b(?:"
+            r"gay|lesbian|bisexual|trans|transgender|lgbtq|sexual\s+orientation|"
+            r"religion|religious|politics|political|health|diagnosis|addiction|"
+            r"private\s+(?:identity|attribute|life)"
+            r")\b",
+            question,
+        )
+        and (
+            re.search(r"\b(?:players?|steel|pedal\s+steel|steel\s+guitar|guitarists?|people|who)\b", question)
+            or "<" in question
+            or "public_player_placeholder" in question
+            or any(name in question for name in PLAYER_BIOS)
+        )
+    )
+
+
+def _mentions_specific_biography_fact(question: str) -> bool:
+    return bool(
+        re.search(r"\bwho\s+was\s+[a-z][a-z'. -]{1,60}\s+married\s+to\b", question)
+        or re.search(r"\bwho\s+is\s+[a-z][a-z'. -]{1,60}\s+married\s+to\b", question)
+        or re.search(r"\b(?:spouse|wife|husband|partner|married)\b", question)
+        and any(name in question for name in PLAYER_BIOS)
+    )
+
+
+def _mentions_style_how_to(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:rock\s+and\s+roll|rock\s+music|rock)\b", question)
+        and re.search(r"\b(?:can\s+i|how\s+do\s+i|make|work|play|use)\b", question)
+        and re.search(r"\b(?:steel\s+guitar|pedal\s+steel|steel)\b", question)
+    )
+
+
+def _mentions_safety_adjacent_playing(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:drunk|impaired|intoxicated|high|stoned)\b", question)
+        and re.search(r"\b(?:play|gig|perform|steel|pedal\s+steel|steel\s+guitar)\b", question)
+    )
 
 
 def mentions_current_roster_question(question: str) -> bool:

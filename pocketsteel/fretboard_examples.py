@@ -1769,12 +1769,7 @@ def minor_chord_payload_for_question(question: str) -> dict | None:
 
 
 def chord_concept_payload_for_question(question: str) -> dict | None:
-    request = chord_concept_request_for_question(question)
-    if request is None:
-        return None
-    if request.quality == "minor":
-        return minor_positions(request.normalized_key).to_payload()
-    return major_positions(request.normalized_key).to_payload()
+    return None
 
 
 def function_chord_answer_for_question(question: str) -> str | None:

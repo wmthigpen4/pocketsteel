@@ -282,6 +282,39 @@ def classify_answer_request(question: str, mode: str = "ask") -> AnswerIntentPay
     if guardrail_decision is not None:
         return guardrail_decision
 
+    if _mentions_sensitive_personal_attribute(q):
+        return _decision(
+            domain="steel_guitar",
+            intent="unknown",
+            needs_sources=False,
+            needs_fretboard=False,
+            needs_copedent=False,
+            retrieval_allowed=False,
+            allowed_answer_shape="guardrail_refusal",
+        )
+
+    if _mentions_specific_biography_fact(q):
+        return _decision(
+            domain="steel_guitar",
+            intent="forum_wisdom",
+            needs_sources=True,
+            needs_fretboard=False,
+            needs_copedent=False,
+            retrieval_allowed=False,
+            allowed_answer_shape="guardrail_refusal",
+        )
+
+    if _mentions_style_how_to(q) or _mentions_safety_adjacent_playing(q):
+        return _decision(
+            domain="steel_guitar",
+            intent="practice_plan",
+            needs_sources=False,
+            needs_fretboard=False,
+            needs_copedent=False,
+            retrieval_allowed=False,
+            allowed_answer_shape="practice_plan",
+        )
+
     mode_decision = _decision_from_mode(q, normalized_mode)
     if mode_decision is not None:
         return mode_decision
@@ -506,6 +539,50 @@ def _mentions_steel(question: str) -> bool:
 
 def _mentions_gear_diagnosis(question: str) -> bool:
     return bool(GEAR_RE.search(question) and (GEAR_DIAGNOSIS_RE.search(question) or "fender steel king" in question))
+
+
+def _mentions_sensitive_personal_attribute(question: str) -> bool:
+    return bool(
+        re.search(
+            r"\b(?:"
+            r"gay|lesbian|bisexual|trans|transgender|lgbtq|sexual\s+orientation|"
+            r"religion|religious|politics|political|health|diagnosis|addiction|"
+            r"private\s+(?:identity|attribute|life)"
+            r")\b",
+            question,
+        )
+        and (
+            re.search(r"\b(?:players?|steel|pedal\s+steel|steel\s+guitar|guitarists?|people|who)\b", question)
+            or "<" in question
+            or "public_player_placeholder" in question
+            or PLAYER_CONTEXT_RE.search(question)
+        )
+    )
+
+
+def _mentions_specific_biography_fact(question: str) -> bool:
+    return bool(
+        re.search(r"\bwho\s+(?:was|is)\s+[a-z][a-z'. -]{1,60}\s+married\s+to\b", question)
+        or (
+            PLAYER_CONTEXT_RE.search(question) is not None
+            and re.search(r"\b(?:spouse|wife|husband|partner|married)\b", question)
+        )
+    )
+
+
+def _mentions_style_how_to(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:rock\s+and\s+roll|rock\s+music|rock)\b", question)
+        and re.search(r"\b(?:can\s+i|how\s+do\s+i|make|work|play|use)\b", question)
+        and re.search(r"\b(?:steel\s+guitar|pedal\s+steel|steel)\b", question)
+    )
+
+
+def _mentions_safety_adjacent_playing(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:drunk|impaired|intoxicated|high|stoned)\b", question)
+        and re.search(r"\b(?:play|gig|perform|steel|pedal\s+steel|steel\s+guitar)\b", question)
+    )
 
 
 def _source_backed_steel_decision(question: str) -> AnswerIntentPayload | None:

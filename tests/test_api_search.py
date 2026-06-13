@@ -5580,12 +5580,12 @@ def test_sensitive_demographic_and_current_roster_questions_do_not_speculate() -
 
     demographic = answer_for_question("Do any gay people play pedal steel?", noisy_source)
     assert_clean_answer_body(demographic)
-    assert demographic["answer"] == (
-        "I don’t know. "
-        "I would not want to guess about anyone’s private identity."
-    )
+    assert "should not infer or identify private attributes" in demographic["answer"]
+    assert "Steel guitar communities include many kinds of people" in demographic["answer"]
     assert "corpus" not in demographic["answer"].lower()
     assert "Top Hi All" not in demographic["answer"]
+    assert demographic["sources"] == []
+    assert demographic["warnings"] == []
 
     roster = answer_for_question("Who plays for Shania Twain?", noisy_source)
     assert_clean_answer_body(roster)
@@ -5595,6 +5595,72 @@ def test_sensitive_demographic_and_current_roster_questions_do_not_speculate() -
     assert "corpus" not in roster["answer"].lower()
     assert "source cards" not in roster["answer"].lower()
     assert "For guitars" not in roster["answer"]
+
+
+def test_user_smoke_question_type_gate_prevents_forum_fragment_answers() -> None:
+    noisy_sources = [
+        {
+            "score": 0.84,
+            "excerpt": "Top Hi All. A forum member drifted into unrelated personal chatter, rock gigs, jokes, and a generic Buddy Emmons biography without answering the question.",
+            "forum_name": "Steel Players",
+            "thread_title": "Unrelated forum chatter",
+            "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400035",
+            "chunk_id": "chunk-question-type",
+            "post_uid": "p-question-type",
+            "source_system": "sgf_phpbb_current",
+        }
+    ]
+
+    biography = answer_for_question("Who was Buddy Emmons married to?", noisy_sources)
+    assert_clean_answer_body(biography)
+    assert "reliable source for that specific biographical detail" in biography["answer"]
+    assert "generic biography" in biography["answer"]
+    assert "one of the most influential" not in biography["answer"]
+    assert "forum member" not in biography["answer"].lower()
+    assert biography["sources"] == []
+    assert biography["warnings"] == []
+    assert "fretboard" not in biography
+
+    for question in (
+        "Are there gay steel guitar players?",
+        "Was <PUBLIC_PLAYER_PLACEHOLDER> gay?",
+        "Who are the gay steel guitar players?",
+    ):
+        sensitive = answer_for_question(question, noisy_sources)
+        assert_clean_answer_body(sensitive)
+        assert "should not infer or identify private attributes" in sensitive["answer"]
+        assert "Steel guitar communities include many kinds of people" in sensitive["answer"]
+        assert "forum member" not in sensitive["answer"].lower()
+        assert sensitive["sources"] == []
+        assert sensitive["warnings"] == []
+        assert "fretboard" not in sensitive
+
+    for question in (
+        "Can I play rock and roll on the steel guitar? How?",
+        "How do I make steel guitar work in rock music?",
+    ):
+        style = answer_for_question(question, noisy_sources)
+        assert_clean_answer_body(style)
+        assert "Steel guitar can work in rock and roll" in style["answer"]
+        assert "overdrive" in style["answer"]
+        assert "pentatonic" in style["answer"]
+        assert "A+B" in style["answer"]
+        assert "forum member" not in style["answer"].lower()
+        assert style["sources"] == []
+        assert style["warnings"] == []
+        assert "fretboard" not in style
+
+    for question in ("Can you play steel guitar drunk?", "Should I play a gig drunk?"):
+        safety = answer_for_question(question, noisy_sources)
+        assert_clean_answer_body(safety)
+        assert "not a good idea" in safety["answer"]
+        assert "timing" in safety["answer"]
+        assert "bar control" in safety["answer"]
+        assert "behind the beat" in safety["answer"]
+        assert "forum member" not in safety["answer"].lower()
+        assert safety["sources"] == []
+        assert safety["warnings"] == []
+        assert "fretboard" not in safety
 
 
 def test_broken_pedal_rod_answer_remains_specific_after_fallback_changes() -> None:

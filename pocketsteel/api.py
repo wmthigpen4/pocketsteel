@@ -85,6 +85,16 @@ def _question_mentions_slide_bar_item(question: str) -> bool:
     return "slide bar" in lowered or "steel bar" in lowered or "tone bar" in lowered
 
 
+def _curated_answer_should_be_source_free(intent: str) -> bool:
+    return intent in {
+        "factual_biography",
+        "sensitive_identity",
+        "sensitive_personal_attribute",
+        "style_how_to",
+        "safety_adjacent",
+    }
+
+
 def _answer_intent_guardrail_answer(domain: str) -> str:
     if domain == "unsafe_or_impossible":
         return (
@@ -345,7 +355,9 @@ class RetrievalApi:
                         answer_request.question, curated_answer, strong_sources
                     ):
                         warnings.append(WEAK_RETRIEVAL_WARNING)
-                    if answer_is_no_source(answer):
+                    if _curated_answer_should_be_source_free(curated_answer.intent):
+                        sources = []
+                    elif answer_is_no_source(answer):
                         sources = []
                         warnings.append("no strong source match")
                     elif curated_answer.intent == "vendor_buying_guidance" and _question_mentions_slide_bar_item(
