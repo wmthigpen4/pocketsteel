@@ -1267,6 +1267,25 @@
       gap: 13px;
     }
 
+    .answer-section.is-wide {
+      grid-column: 1 / -1;
+    }
+
+    .answer-section.is-wide .try-list {
+      column-gap: 34px;
+      columns: 2 280px;
+      max-width: 100%;
+    }
+
+    .answer-section.is-wide .try-list li {
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .answer-section.is-wide p {
+      max-width: none;
+    }
+
     .answer-section.is-caveat {
       border-left: 2px solid rgba(240, 191, 105, 0.42);
       padding-left: 12px;
@@ -1669,6 +1688,10 @@
       .answer-detail-grid,
       .source-grid {
         grid-template-columns: 1fr;
+      }
+
+      .answer-section.is-wide .try-list {
+        columns: 1;
       }
 
       .followup-chips {
@@ -3282,6 +3305,21 @@
       appendAnswerBulletList(container, section.bullets, section.ordered);
     }
 
+    function shouldUseWideAnswerSection(section) {
+      const title = String(section?.title || "").trim().toLowerCase();
+      if (title.includes("why these families matter")) {
+        return true;
+      }
+      const bulletCount = section?.bullets?.length || section?.blocks?.reduce((count, block) => (
+        count + (block.type === "bullets" ? block.items?.length || 0 : 0)
+      ), 0) || 0;
+      return bulletCount >= 4 && (
+        title.includes("why it works") ||
+        title.includes("how to use") ||
+        title.includes("position families")
+      );
+    }
+
     function shouldOpenFretboardByDefault() {
       return !window.matchMedia || !window.matchMedia("(max-width: 640px)").matches;
     }
@@ -3343,6 +3381,9 @@
         sectionEl.className = "answer-section";
         if (section.style) {
           sectionEl.classList.add(`is-${section.style}`);
+        }
+        if (shouldUseWideAnswerSection(section)) {
+          sectionEl.classList.add("is-wide");
         }
 
         const title = document.createElement("p");

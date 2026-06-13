@@ -1329,11 +1329,18 @@ def test_answer_ui_styles_sections_and_bullets_as_readable_answer_content() -> N
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
 
     assert "sectionEl.classList.add(`is-${section.style}`);" in html
+    assert "function shouldUseWideAnswerSection(section)" in html
+    assert 'title.includes("why these families matter")' in html
+    assert 'sectionEl.classList.add("is-wide");' in html
     assert 'title.className = "answer-section-title";' in html
     assert 'const list = document.createElement(ordered ? "ol" : "ul");' in html
     assert "section.blocks?.length" in html
     assert 'list.className = "try-list";' in html
     assert ".answer-section.is-bullets" in html
+    assert ".answer-section.is-wide" in html
+    assert "grid-column: 1 / -1;" in html
+    assert "columns: 2 280px;" in html
+    assert re.search(r"@media \(max-width: 960px\)[\s\S]*?\.answer-section\.is-wide \.try-list\s*\{[^}]*columns:\s*1;", html)
     assert re.search(r"\.try-list\s*\{[^}]*font-size:\s*18px;", html, re.S)
     assert re.search(r"\.answer-section p\s*\{[^}]*font-size:\s*17px;", html, re.S)
     assert "sourceGrid.appendChild(card);" in html
