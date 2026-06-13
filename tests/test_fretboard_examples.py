@@ -12,6 +12,8 @@ from pocketsteel.fretboard_examples import (
     build_e9_major_chord_fretboard,
     chord_concept_answer_for_question,
     chord_concept_request_for_question,
+    chord_symbol_from_chord_like_question,
+    chord_symbol_guardrail_answer_for_question,
     e_lower_578_answer_for_question,
     e_lower_578_b9_answer_for_question,
     e_lower_578_position_at_fret,
@@ -808,6 +810,42 @@ def test_beginner_chord_concept_questions_route_to_deterministic_payloads() -> N
     assert "E-G-B" in e_minor_answer
     assert "minor 3rd" in e_minor_answer
     assert fretboard_payload_for_question("What makes an E minor chord minor?")["title"] == "E minor positions on E9"
+
+
+def test_invalid_chord_symbol_guardrail_clarifies_before_retrieval() -> None:
+    assert chord_symbol_from_chord_like_question("how. do I play a GF chord?") == "GF"
+    gf_answer = chord_symbol_guardrail_answer_for_question("how. do I play a GF chord?")
+    assert gf_answer is not None
+    assert "I don’t recognize “GF” as a standard chord name." in gf_answer
+    assert "G/F" in gf_answer
+    assert "say it with a slash" in gf_answer
+    assert fretboard_payload_for_question("how. do I play a GF chord?") is None
+
+    h_answer = chord_symbol_guardrail_answer_for_question("how do I play an H chord?")
+    assert h_answer is not None
+    assert "I don’t recognize “H” as a standard chord name." in h_answer
+    assert "A through G" in h_answer
+
+    assert chord_symbol_guardrail_answer_for_question("where is a Cmajorish chord?") is not None
+    assert chord_symbol_guardrail_answer_for_question("what is a Zm chord?") is not None
+    assert chord_symbol_guardrail_answer_for_question("show me a GmF chord") is not None
+
+
+def test_valid_chord_symbols_are_not_blocked_by_guardrail() -> None:
+    for question in (
+        "how do I play a G chord?",
+        "how do I play an F chord?",
+        "how do I play an Em chord?",
+        "how do I play a G7 chord?",
+        "how do I play a B9 chord?",
+    ):
+        assert chord_symbol_guardrail_answer_for_question(question) is None
+
+    slash_answer = chord_symbol_guardrail_answer_for_question("how do I play a G/F chord?")
+    assert slash_answer is not None
+    assert "G/F is a slash chord" in slash_answer
+    assert "does not yet generate a separate bass-note/slash-chord diagram" in slash_answer
+    assert fretboard_payload_for_question("how do I play a G/F chord?") is None
 
 
 def test_validation_rejects_raw_geometry_and_unknown_labels() -> None:

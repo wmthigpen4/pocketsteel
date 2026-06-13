@@ -110,6 +110,12 @@ class ChordConceptRequest:
     quality: str
 
 
+@dataclass(frozen=True)
+class ChordSymbolGuardrailRequest:
+    symbol: str
+    answer: str
+
+
 NOTE_TO_SEMITONE: dict[str, int] = {
     "C": 0,
     "B#": 0,
@@ -1559,6 +1565,146 @@ def function_chord_answer_for_question(question: str) -> str | None:
             "Give me the exact strings/pedals/levers you want checked and I can calculate the notes directly."
         )
     return None
+
+
+def chord_symbol_guardrail_answer_for_question(question: str) -> str | None:
+    request = invalid_chord_symbol_request_for_question(question)
+    return request.answer if request is not None else None
+
+
+def invalid_chord_symbol_request_for_question(question: str) -> ChordSymbolGuardrailRequest | None:
+    symbol = chord_symbol_from_chord_like_question(question)
+    if symbol is None:
+        return None
+    normalized_symbol = symbol.strip().replace("♯", "#").replace("♭", "b")
+    if not normalized_symbol:
+        return None
+    if "/" in normalized_symbol and is_supported_slash_chord_symbol(normalized_symbol):
+        return ChordSymbolGuardrailRequest(
+            symbol=normalized_symbol,
+            answer=slash_chord_clarification_answer(normalized_symbol),
+        )
+    if is_supported_chord_symbol(normalized_symbol):
+        return None
+    return ChordSymbolGuardrailRequest(
+        symbol=normalized_symbol,
+        answer=invalid_chord_symbol_clarification_answer(normalized_symbol),
+    )
+
+
+def chord_symbol_from_chord_like_question(question: str) -> str | None:
+    q = re.sub(r"[?!.,;:]+", " ", question or "")
+    q = re.sub(r"\s+", " ", q).strip().lower()
+    if not q:
+        return None
+    patterns = (
+        r"^how do i (?:play|make|plan) (?:a|an)?\s*(?P<symbol>[a-z][a-z#b/0-9]*)\s+chord$",
+        r"^where is (?:a|an)?\s*(?P<symbol>[a-z][a-z#b/0-9]*)\s+chord$",
+        r"^what is (?:a|an)?\s*(?P<symbol>[a-z][a-z#b/0-9]*)\s+chord$",
+        r"^what(?:'s|’s) (?:a|an)?\s*(?P<symbol>[a-z][a-z#b/0-9]*)\s+chord$",
+        r"^show me (?:a|an)?\s*(?P<symbol>[a-z][a-z#b/0-9]*)\s+chord$",
+        r"^what does (?:a|an)?\s*(?P<symbol>[a-z][a-z#b/0-9]*)\s+chord mean$",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, q)
+        if match:
+            return normalize_chord_symbol_display(match.group("symbol"))
+    return None
+
+
+def normalize_chord_symbol_display(symbol: str) -> str:
+    symbol = (symbol or "").strip().replace("♯", "#").replace("♭", "b")
+    if not symbol:
+        return symbol
+    if "/" in symbol:
+        left, right = symbol.split("/", 1)
+        return f"{normalize_chord_symbol_display(left)}/{normalize_chord_symbol_display(right)}"
+    root = symbol[:1].upper()
+    rest = symbol[1:]
+    if len(symbol) == 2 and symbol[:1].lower() in "abcdefg" and symbol[1:].lower() in "abcdefg":
+        return symbol.upper()
+    if rest.startswith(("#", "b")):
+        accidental = rest[:1]
+        quality = rest[1:]
+    else:
+        accidental = ""
+        quality = rest
+    quality_aliases = {
+        "m": "m",
+        "min": "m",
+        "minor": "m",
+        "maj": "maj",
+        "major": "",
+        "dim": "dim",
+        "aug": "aug",
+        "sus": "sus",
+    }
+    quality = quality_aliases.get(quality.lower(), quality)
+    return f"{root}{accidental}{quality}"
+
+
+def is_supported_chord_symbol(symbol: str) -> bool:
+    if "/" in symbol:
+        return is_supported_slash_chord_symbol(symbol)
+    match = re.match(r"^(?P<root>[A-G](?:#|b)?)(?P<quality>m|7|9|m7|maj7|dim|aug|sus2?|sus4?)?$", symbol)
+    if not match:
+        return False
+    return note_lookup_key(match.group("root")) in NOTE_TO_SEMITONE
+
+
+def is_supported_slash_chord_symbol(symbol: str) -> bool:
+    parts = symbol.split("/")
+    if len(parts) != 2 or not parts[0] or not parts[1]:
+        return False
+    chord, bass = parts
+    if "/" in chord or "/" in bass:
+        return False
+    if not re.match(r"^[A-G](?:#|b)?(?:m|7|9|m7|maj7|dim|aug|sus2?|sus4?)?$", chord):
+        return False
+    if not re.match(r"^[A-G](?:#|b)?$", bass):
+        return False
+    return note_lookup_key(chord[:2] if len(chord) > 1 and chord[1] in "#b" else chord[:1]) in NOTE_TO_SEMITONE and note_lookup_key(bass) in NOTE_TO_SEMITONE
+
+
+def invalid_chord_symbol_clarification_answer(symbol: str) -> str:
+    if len(symbol) == 2 and symbol[0] in "ABCDEFG" and symbol[1] in "ABCDEFG":
+        first, second = symbol[0], symbol[1]
+        return (
+            f"I don’t recognize “{symbol}” as a standard chord name.\n\n"
+            "Did you mean:\n"
+            f"- {first}\n"
+            f"- {second}\n"
+            f"- {first}/{second}, a {first} chord over a {second} bass note\n\n"
+            f"If you meant {first}, I can show common {first} positions on E9. "
+            f"If you meant {second}, I can show {second} positions. "
+            f"If you meant {first}/{second}, say it with a slash."
+        )
+    if symbol[:1] not in "ABCDEFG":
+        return (
+            f"I don’t recognize “{symbol}” as a standard chord name. "
+            "In this app, chord roots should use A through G, with optional sharps or flats, such as G, F, C#, Bb, Em, G7, or B9.\n\n"
+            "Tell me the chord root you meant and I can map it to E9 positions."
+        )
+    return (
+        f"I don’t recognize “{symbol}” as a standard chord name.\n\n"
+        "Try a clearer chord symbol such as:\n"
+        "- G\n"
+        "- F\n"
+        "- Em\n"
+        "- G7\n"
+        "- B9\n"
+        "- G/F for a slash chord\n\n"
+        "Once the chord name is clear, I can map it to E9 positions."
+    )
+
+
+def slash_chord_clarification_answer(symbol: str) -> str:
+    chord, bass = symbol.split("/", 1)
+    return (
+        f"{symbol} is a slash chord: {chord} over a {bass} bass note.\n\n"
+        "The current fretboard visualizer maps chord positions by the chord sound on the steel, but it does not yet generate a separate bass-note/slash-chord diagram. "
+        f"If you want the chord part, ask for {chord} positions. If you need the bass-note function, say what key or progression you are in."
+    )
 
 
 def minor_chord_answer_for_question(question: str) -> str | None:

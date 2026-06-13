@@ -2219,6 +2219,77 @@ def test_deterministic_fretboard_regressions_still_beat_intent_mode() -> None:
     assert_deterministic_fretboard_sources_are_clean(b9)
 
 
+def test_invalid_chord_symbol_question_clarifies_without_retrieval_or_fretboard() -> None:
+    payload = answer_for_question(
+        "how. do I play a GF chord?",
+        [
+            {
+                "score": 0.9,
+                "excerpt": "Top other chords based on an A root might also work with an F chord. F#7 > B7 > E7 > A7. Mel Bay chord chart.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "GF chord fragment",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=450101",
+                "chunk_id": "chunk-gf-fragment",
+                "post_uid": "p-gf-fragment",
+                "source_system": "sgf_phpbb_current",
+            }
+        ],
+    )
+
+    assert_clean_answer_body(payload)
+    assert "I don’t recognize “GF” as a standard chord name." in payload["answer"]
+    assert "Did you mean:" in payload["answer"]
+    assert "- G" in payload["answer"]
+    assert "- F" in payload["answer"]
+    assert "G/F" in payload["answer"]
+    assert "Mel Bay" not in payload["answer"]
+    assert "F#7 > B7" not in payload["answer"]
+    assert "[object Object]" not in payload["answer"]
+    assert "fretboard" not in payload
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+
+
+def test_invalid_chord_symbol_variants_and_slash_chord_are_source_free() -> None:
+    for question, expected in (
+        ("where is a GF chord?", "I don’t recognize “GF” as a standard chord name."),
+        ("what is a GF chord?", "I don’t recognize “GF” as a standard chord name."),
+        ("how do I play an H chord?", "I don’t recognize “H” as a standard chord name."),
+    ):
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert_clean_answer_body(payload)
+        assert expected in payload["answer"]
+        assert "fretboard" not in payload
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+
+    slash = answer_for_question("how do I play a G/F chord?", noisy_practical_sources())
+    assert_clean_answer_body(slash)
+    assert "G/F is a slash chord" in slash["answer"]
+    assert "does not yet generate a separate bass-note/slash-chord diagram" in slash["answer"]
+    assert "fretboard" not in slash
+    assert slash["sources"] == []
+    assert slash["warnings"] == []
+
+
+def test_valid_g_and_f_chord_questions_still_return_fretboard_payloads() -> None:
+    g_payload = answer_for_question("how do I play a G chord?", noisy_practical_sources())
+    assert_clean_answer_body(g_payload)
+    assert "fretboard" in g_payload
+    assert_valid_fretboard_payload(g_payload)
+    assert g_payload["fretboard"]["title"] == "G major positions on E9"
+    assert_deterministic_fretboard_sources_are_clean(g_payload)
+
+    f_payload = answer_for_question("how do I play an F chord?", noisy_practical_sources())
+    assert_clean_answer_body(f_payload)
+    assert "fretboard" in f_payload
+    assert_valid_fretboard_payload(f_payload)
+    assert f_payload["fretboard"]["title"] == "F major positions on E9"
+    assert visible_fretboard_ids(f_payload) == ["f-open-1", "f-af-4", "f-ab-8"]
+    assert_deterministic_fretboard_sources_are_clean(f_payload)
+
+
 def test_location_based_g_chord_answer_includes_fretboard_payload() -> None:
     payload = answer_for_question("Where can I play a G chord?", noisy_practical_sources())
 

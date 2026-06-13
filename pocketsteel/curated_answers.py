@@ -9,6 +9,7 @@ from typing import Literal
 from pocketsteel.curated_source_registry import slide_bar_vendor_bullets
 from pocketsteel.fretboard_examples import (
     chord_concept_answer_for_question,
+    chord_symbol_guardrail_answer_for_question,
     e_lower_578_b9_answer_for_question,
     e_lower_578_answer_for_question,
     e_lower_grip_answer_for_question,
@@ -115,6 +116,13 @@ PLAYER_BIOS = {
 
 def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
     q = normalize(question)
+    symbol_guardrail_answer = chord_symbol_guardrail_answer_for_question(question)
+    if symbol_guardrail_answer is not None:
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=symbol_guardrail_answer,
+        )
     b9_answer = e_lower_578_b9_answer_for_question(question)
     if b9_answer is not None:
         return CuratedAnswer(
