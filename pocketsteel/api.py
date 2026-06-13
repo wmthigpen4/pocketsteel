@@ -151,6 +151,7 @@ class RetrievalApi:
             if method != "GET":
                 return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"})
 
+            params = parse_qs(environ.get("QUERY_STRING", ""), keep_blank_values=True)
             access = authorize_local_dev_request(
                 environ,
                 self.answer_auth_mode,
@@ -163,6 +164,12 @@ class RetrievalApi:
                 "role": access.role if access.allowed else "anonymous",
                 "authProvider": auth_provider,
             }
+            if params.get("debug") == ["auth"]:
+                payload["accessDebug"] = {
+                    "authProvider": auth_provider,
+                    "answerAuthMode": self.answer_auth_mode,
+                    **access.diagnostics,
+                }
             return self._json_response(start_response, "200 OK", payload)
 
         if path == "/api/answer":

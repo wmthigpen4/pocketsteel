@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from dataclasses import field
 from http.cookies import SimpleCookie
 from typing import Any, Literal
 from urllib.parse import parse_qs
@@ -49,6 +50,7 @@ class AnswerAccessDecision:
     status: str = "200 OK"
     error: str = ""
     identity_email: str = ""
+    diagnostics: dict[str, object] = field(default_factory=dict)
 
 
 def normalize_access_role(value: object) -> AccessRole:
@@ -94,16 +96,30 @@ def _authorize_with_cloudflare_access(
     environ: dict[str, object],
     cloudflare_verifier: Any,
 ) -> AnswerAccessDecision:
-    token = _access_jwt_from_environ(environ)
+    token, diagnostics = _access_jwt_from_environ(environ)
     if not token:
         return AnswerAccessDecision(
             allowed=False,
             role=ANONYMOUS,
             status="401 Unauthorized",
             error="/api/answer requires Cloudflare Access identity",
+            diagnostics={
+                **diagnostics,
+                "accessIdentityVerified": False,
+                "emailPresent": False,
+                "emailAllowlisted": False,
+                "betaAllowed": False,
+            },
         )
 
     config = CloudflareAccessConfig.from_env()
+    diagnostics = {
+        **diagnostics,
+        "accessIssuerConfigured": bool(config.issuer),
+        "accessAudienceConfigured": bool(config.audience),
+        "accessJwksConfigured": bool(config.jwks_url),
+        "accessAllowlistConfigured": bool(config.beta_user_emails or config.admin_emails),
+    }
     verifier = cloudflare_verifier or CloudflareAccessJwtVerifier()
     try:
         claims = verifier.validate(token, config)
@@ -113,37 +129,80 @@ def _authorize_with_cloudflare_access(
             role=ANONYMOUS,
             status="401 Unauthorized",
             error="/api/answer requires valid Cloudflare Access identity",
+            diagnostics={
+                **diagnostics,
+                "accessIdentityVerified": False,
+                "emailPresent": False,
+                "emailAllowlisted": False,
+                "betaAllowed": False,
+            },
         )
 
     email = claims.email.strip().lower()
     if email in config.admin_emails:
-        return AnswerAccessDecision(allowed=True, role=ADMIN, identity_email=email)
+        return AnswerAccessDecision(
+            allowed=True,
+            role=ADMIN,
+            identity_email=email,
+            diagnostics={
+                **diagnostics,
+                "accessIdentityVerified": True,
+                "emailPresent": True,
+                "emailAllowlisted": True,
+                "betaAllowed": True,
+            },
+        )
     if email in config.beta_user_emails:
-        return AnswerAccessDecision(allowed=True, role=BETA_USER, identity_email=email)
+        return AnswerAccessDecision(
+            allowed=True,
+            role=BETA_USER,
+            identity_email=email,
+            diagnostics={
+                **diagnostics,
+                "accessIdentityVerified": True,
+                "emailPresent": True,
+                "emailAllowlisted": True,
+                "betaAllowed": True,
+            },
+        )
     return AnswerAccessDecision(
         allowed=False,
         role=ANONYMOUS,
         status="403 Forbidden",
         error="/api/answer requires beta_user or admin access",
         identity_email=email,
+        diagnostics={
+            **diagnostics,
+            "accessIdentityVerified": True,
+            "emailPresent": True,
+            "emailAllowlisted": False,
+            "betaAllowed": False,
+        },
     )
 
 
-def _access_jwt_from_environ(environ: dict[str, object]) -> str:
+def _access_jwt_from_environ(environ: dict[str, object]) -> tuple[str, dict[str, object]]:
     header_token = str(environ.get(CLOUDFLARE_ACCESS_JWT_ENVIRON) or "").strip()
-    if header_token:
-        return header_token
-
+    cookie_token = ""
+    cookie_parse_error = False
     cookie_header = str(environ.get("HTTP_COOKIE") or "")
-    if not cookie_header:
-        return ""
-    cookie = SimpleCookie()
-    try:
-        cookie.load(cookie_header)
-    except Exception:
-        return ""
-    morsel = cookie.get(CLOUDFLARE_ACCESS_AUTHORIZATION_COOKIE)
-    return str(morsel.value).strip() if morsel else ""
+    if cookie_header:
+        cookie = SimpleCookie()
+        try:
+            cookie.load(cookie_header)
+            morsel = cookie.get(CLOUDFLARE_ACCESS_AUTHORIZATION_COOKIE)
+            cookie_token = str(morsel.value).strip() if morsel else ""
+        except Exception:
+            cookie_parse_error = True
+    diagnostics = {
+        "accessHeaderPresent": bool(header_token),
+        "accessCookiePresent": bool(cookie_token),
+        "accessCookieParseError": cookie_parse_error,
+        "accessTokenSource": "header" if header_token else "cookie" if cookie_token else "none",
+    }
+    if header_token:
+        return header_token, diagnostics
+    return cookie_token, diagnostics
 
 
 def authorize_answer_request(

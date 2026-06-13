@@ -997,6 +997,41 @@ def test_api_session_cloudflare_access_blocks_missing_jwt_as_anonymous(monkeypat
     }
 
 
+def test_api_session_cloudflare_access_debug_reports_missing_identity_without_secrets(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
+
+    status, _, payload = call_app(
+        "/api/session",
+        {"debug": "auth"},
+        method="GET",
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        access_role=None,
+    )
+
+    assert status == "200 OK"
+    assert payload["authenticated"] is False
+    assert payload["role"] == "anonymous"
+    assert payload["authProvider"] == "cloudflare_access"
+    assert payload["accessDebug"] == {
+        "authProvider": "cloudflare_access",
+        "answerAuthMode": "production",
+        "accessHeaderPresent": False,
+        "accessCookiePresent": False,
+        "accessCookieParseError": False,
+        "accessTokenSource": "none",
+        "accessIdentityVerified": False,
+        "emailPresent": False,
+        "emailAllowlisted": False,
+        "betaAllowed": False,
+    }
+    assert "email" not in payload
+    assert "beta@example.test" not in json.dumps(payload)
+
+
 def test_api_session_normalizes_cli_style_auth_aliases(monkeypatch: Any) -> None:
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
@@ -1168,6 +1203,47 @@ def test_api_session_cloudflare_access_valid_beta_cookie_unlocks(monkeypatch: An
     assert "email" not in payload
 
 
+def test_api_session_cloudflare_access_debug_reports_valid_cookie_without_secrets(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
+
+    status, _, payload = call_app(
+        "/api/session",
+        {"debug": "auth"},
+        method="GET",
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_cookie_token="valid-beta",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        access_role=None,
+    )
+
+    assert status == "200 OK"
+    assert payload["authenticated"] is True
+    assert payload["role"] == "beta_user"
+    assert payload["accessDebug"] == {
+        "authProvider": "cloudflare_access",
+        "answerAuthMode": "production",
+        "accessHeaderPresent": False,
+        "accessCookiePresent": True,
+        "accessCookieParseError": False,
+        "accessTokenSource": "cookie",
+        "accessIssuerConfigured": True,
+        "accessAudienceConfigured": True,
+        "accessJwksConfigured": True,
+        "accessAllowlistConfigured": True,
+        "accessIdentityVerified": True,
+        "emailPresent": True,
+        "emailAllowlisted": True,
+        "betaAllowed": True,
+    }
+    event_json = json.dumps(payload, sort_keys=True)
+    assert "email" not in payload
+    assert "beta@example.test" not in event_json
+    assert "valid-beta" not in event_json
+
+
 def test_api_answer_cloudflare_access_allows_valid_admin_email(monkeypatch: Any) -> None:
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
@@ -1279,6 +1355,33 @@ def test_api_session_cloudflare_access_invalid_cookie_stays_anonymous(monkeypatc
     }
 
 
+def test_api_session_cloudflare_access_debug_reports_invalid_cookie_without_secret_value(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
+
+    status, _, payload = call_app(
+        "/api/session",
+        {"debug": "auth"},
+        method="GET",
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_cookie_token="invalid",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        access_role=None,
+    )
+
+    assert status == "200 OK"
+    assert payload["authenticated"] is False
+    assert payload["role"] == "anonymous"
+    assert payload["accessDebug"]["accessCookiePresent"] is True
+    assert payload["accessDebug"]["accessTokenSource"] == "cookie"
+    assert payload["accessDebug"]["accessIdentityVerified"] is False
+    assert payload["accessDebug"]["emailAllowlisted"] is False
+    assert payload["accessDebug"]["betaAllowed"] is False
+    assert "invalid" not in json.dumps(payload)
+
+
 def test_api_answer_cloudflare_access_blocks_unlisted_valid_email(monkeypatch: Any) -> None:
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
@@ -1324,6 +1427,37 @@ def test_api_session_cloudflare_access_unlisted_valid_email_is_anonymous(monkeyp
         "authProvider": "cloudflare_access",
     }
     assert "email" not in payload
+
+
+def test_api_session_cloudflare_access_debug_reports_unlisted_identity_without_email(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
+
+    status, _, payload = call_app(
+        "/api/session",
+        {"debug": "auth"},
+        method="GET",
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_token="valid-unlisted",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        access_role=None,
+    )
+
+    assert status == "200 OK"
+    assert payload["authenticated"] is False
+    assert payload["role"] == "anonymous"
+    assert payload["accessDebug"]["accessHeaderPresent"] is True
+    assert payload["accessDebug"]["accessTokenSource"] == "header"
+    assert payload["accessDebug"]["accessIdentityVerified"] is True
+    assert payload["accessDebug"]["emailPresent"] is True
+    assert payload["accessDebug"]["emailAllowlisted"] is False
+    assert payload["accessDebug"]["betaAllowed"] is False
+    event_json = json.dumps(payload, sort_keys=True)
+    assert "email" not in payload
+    assert "unlisted@example.test" not in event_json
+    assert "valid-unlisted" not in event_json
 
 
 def test_api_answer_cloudflare_access_ignores_dev_mock_header(monkeypatch: Any) -> None:

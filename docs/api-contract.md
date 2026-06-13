@@ -357,6 +357,16 @@ when the origin header is absent, and maps the verified email to `beta_user` or
 `admin`. Missing, invalid, or unlisted identities return an anonymous status in
 the response body.
 
+For private-preview diagnosis, `GET /api/session?debug=auth` may include a
+non-secret `accessDebug` object. This object is limited to booleans and coarse
+state such as whether an Access header or cookie reached the origin, whether the
+token verified, whether an email claim was present, whether the verified
+identity matched the beta/admin allowlists, the effective auth provider, and the
+answer auth mode. It must not include JWTs, cookie values, auth headers, full
+email addresses, secrets, private env values, or source text. The normal
+frontend unlock still depends only on `authenticated`, `role`, and
+`authProvider`.
+
 In `local_dev` mode, the endpoint may accept the explicit local dev mock access
 header so `?access=beta_user` and the Backstage preview controls remain useful
 for local testing.
