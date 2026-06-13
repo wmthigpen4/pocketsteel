@@ -595,8 +595,8 @@ assert.match(html, /data-position-detail="csharp-open-9"[^>]*aria-live="polite">
 assert.match(html, /data-position-detail="csharp-af-12"[^>]*aria-live="polite" hidden>/);
 assert.match(html, /<span class="pedal-steel-fretboard__detail-label">Fret<\\/span>\\s*<span class="pedal-steel-fretboard__detail-value">9<\\/span>/);
 assert.match(html, /<span class="pedal-steel-fretboard__detail-label">Grip<\\/span>\\s*<span class="pedal-steel-fretboard__detail-value">4-5-6<\\/span>/);
-assert.match(html, /<span class="pedal-steel-fretboard__detail-label">Pedals<\\/span>\\s*<span class="pedal-steel-fretboard__detail-value">none<\\/span>/);
-assert.match(html, /<span class="pedal-steel-fretboard__detail-label">Levers<\\/span>\\s*<span class="pedal-steel-fretboard__detail-value">none<\\/span>/);
+assert.doesNotMatch(html, /<span class="pedal-steel-fretboard__detail-label">Pedals<\\/span>\\s*<span class="pedal-steel-fretboard__detail-value">none<\\/span>/);
+assert.doesNotMatch(html, /<span class="pedal-steel-fretboard__detail-label">Levers<\\/span>\\s*<span class="pedal-steel-fretboard__detail-value">none<\\/span>/);
 assert.match(html, /String 4: C#/);
 assert.match(html, /String 5: G#/);
 assert.match(html, /String 6: E#/);
@@ -759,13 +759,11 @@ const coreModel = fretboard.buildFretboardModel({ positions: bPositions });
 assert.deepEqual(coreModel.highlights.map((item) => item.id), ["b-open-7", "b-af-10", "b-ab-14"]);
 assert.equal(coreModel.allHighlights.length, 4);
 assert.equal(coreModel.allHighlights.find((item) => item.id === "b-ab-2-lower-octave").fret, 2);
+assert.equal(coreModel.hasFilters, true);
+assert.equal(coreModel.voicingFilter, "recommended");
 
-const allModel = fretboard.buildFretboardModel({ positions: bPositions, filterMode: "all" });
+const allModel = fretboard.buildFretboardModel({ positions: bPositions, voicingFilter: "all" });
 assert.deepEqual(allModel.highlights.map((item) => item.id), ["b-open-7", "b-af-10", "b-ab-14", "b-ab-2-lower-octave"]);
-const alternateModel = fretboard.buildFretboardModel({ positions: bPositions, filterMode: "more" });
-assert.deepEqual(alternateModel.highlights.map((item) => item.id), ["b-ab-2-lower-octave"]);
-const leverOptionModel = fretboard.buildFretboardModel({ positions: bPositions, includeLeverPositions: true });
-assert.deepEqual(leverOptionModel.highlights.map((item) => item.id), ["b-open-7", "b-af-10", "b-ab-14"]);
 
 const html = fretboard.renderPedalSteelFretboard({
   positions: bPositions,
@@ -775,16 +773,18 @@ const html = fretboard.renderPedalSteelFretboard({
     { id: "alternate", label: "A+B position", color: "alternate", description: "A and B pedals together." }
   ]
 });
-assert.match(html, /data-position-tab="starter"/);
-assert.match(html, /data-position-tab="more"/);
-assert.match(html, /data-position-tab="dominant"/);
-assert.match(html, /data-position-tab="advanced"/);
-assert.match(html, /data-position-tab="show-all"/);
+assert.doesNotMatch(html, /data-position-tab="/);
+assert.doesNotMatch(html, /pedal-steel-fretboard__tab/);
 assert.doesNotMatch(html, /data-include-levers/);
 assert.doesNotMatch(html, /Include lever positions/);
-assert.match(html, /data-has-tabs="true"/);
+assert.doesNotMatch(html, /data-has-tabs=/);
+assert.match(html, /data-fretboard-filter-panel/);
+assert.match(html, /data-voicing-filter="recommended" aria-pressed="true"/);
+assert.match(html, /data-voicing-filter="all"/);
+assert.match(html, /data-position-selector="b-ab-2-lower-octave"/);
 assert.match(html, /data-position-selector="b-ab-2-lower-octave"[^>]*hidden/);
-assert.match(html, /data-highlight-id="b-ab-2-lower-octave"[^>]*data-visible-by-default="false"[^>]*hidden/);
+assert.match(html, /data-highlight-id="b-ab-2-lower-octave"[^>]*data-visible-by-default="false"/);
+assert.match(html, /data-highlight-id="b-ab-2-lower-octave"[^>]*hidden/);
 assert.match(html, /2 A\\+B/);
 assert.doesNotMatch(html, /\\[object Object\\]/);
 assert.match(html, /String 4: D# \\/ 3/);
@@ -899,21 +899,22 @@ const positions = [
 ];
 const defaultModel = fretboard.buildFretboardModel({ positions });
 assert.deepEqual(defaultModel.highlights.map((item) => item.id), ["g-open-3"]);
+assert.equal(defaultModel.voicingFilter, "recommended");
 
-const dominantModel = fretboard.buildFretboardModel({ positions, filterMode: "dominant" });
-assert.deepEqual(dominantModel.highlights.map((item) => item.id), ["a-v-dominant-3", "a-v-rootless-5"]);
-assert.deepEqual(dominantModel.highlights.map((item) => item.colorRole), ["dominant", "partial-rootless"]);
+const grip578Model = fretboard.buildFretboardModel({ positions, voicingFilter: "all", gripFilter: "5-7-8" });
+assert.deepEqual(grip578Model.highlights.map((item) => item.id), ["a-v-dominant-3", "advanced-e-lower-10"]);
+assert.deepEqual(grip578Model.highlights.map((item) => item.colorRole), ["dominant", "e-lower"]);
 
-const advancedModel = fretboard.buildFretboardModel({ positions, filterMode: "advanced" });
-assert.deepEqual(advancedModel.highlights.map((item) => item.id), ["advanced-e-lower-10"]);
-assert.equal(advancedModel.highlights[0].colorRole, "e-lower");
-
-const showAllModel = fretboard.buildFretboardModel({ positions, filterMode: "show-all" });
-assert.deepEqual(showAllModel.highlights.map((item) => item.id), ["g-open-3", "a-v-dominant-3", "a-v-rootless-5", "advanced-e-lower-10"]);
+const grip568Model = fretboard.buildFretboardModel({ positions, voicingFilter: "all", gripFilter: "5-6-8" });
+assert.deepEqual(grip568Model.highlights.map((item) => item.id), ["a-v-rootless-5"]);
+assert.equal(grip568Model.highlights[0].colorRole, "partial-rootless");
 
 const html = fretboard.renderPedalSteelFretboard({ positions });
-assert.match(html, /data-position-tab="dominant"/);
+assert.doesNotMatch(html, /data-position-tab="/);
+assert.match(html, /data-voicing-filter="recommended" aria-pressed="true"/);
 assert.match(html, /Dominant pockets/);
+assert.match(html, /data-grip-filter="5-7-8"/);
+assert.match(html, /data-grip-filter="5-6-8"/);
 assert.match(html, /data-position-selector="a-v-dominant-3"[^>]*data-color-role="dominant"[^>]*hidden/);
 assert.match(html, /data-position-detail="a-v-dominant-3"[^>]*data-color-role="dominant"/);
 assert.match(html, /data-highlight-id="a-v-dominant-3"[^>]*data-color-role="dominant"[^>]*hidden/);
@@ -921,6 +922,7 @@ assert.match(html, /data-position-selector="a-v-rootless-5"[^>]*data-color-role=
 assert.match(html, /data-position-detail="a-v-rootless-5"[^>]*data-color-role="partial-rootless"/);
 assert.match(html, /data-highlight-id="a-v-rootless-5"[^>]*data-color-role="partial-rootless"[^>]*hidden/);
 assert.match(html, /data-position-selector="advanced-e-lower-10"[^>]*data-color-role="e-lower"[^>]*hidden/);
+assert.match(html, /Technical details/);
 assert.match(html, /Position kind/);
 assert.match(html, /Validation status/);
 assert.match(html, /Omitted intervals/);
@@ -929,7 +931,6 @@ assert.match(html, /When to use/);
 assert.match(html, /What is omitted/);
 assert.match(html, /Forum usage evidence/);
 assert.match(html, /Sound character/);
-assert.match(html, /Movement use/);
 assert.match(html, /Resolution use/);
 assert.match(html, /Extended explanation/);
 assert.match(html, /starter: straight-bar reference/);
@@ -941,7 +942,8 @@ assert.match(html, /Works as a compact color grip \\/ movement: to: A/);
 assert.match(html, /partial · rootless/);
 assert.match(html, /pitch_validated/);
 assert.match(html, /No root in this grip \\/ detail: reason: rootless dominant color/);
-assert.match(html, /Useful passing dominant color \\/ context: resolution: A/);
+assert.match(html, /Short explanation/);
+assert.match(html, /partial E-lower color/);
 assert.doesNotMatch(html, /\\[object Object\\]/);
 """
     )
@@ -984,12 +986,11 @@ const positions = [
 ];
 const defaultModel = fretboard.buildFretboardModel({ positions });
 assert.deepEqual(defaultModel.highlights.map((item) => item.id), ["starter-open"]);
-const advancedModel = fretboard.buildFretboardModel({ positions, filterMode: "advanced" });
-assert.deepEqual(advancedModel.highlights.map((item) => item.id), ["advanced-pass"]);
-const legacyLeverOptionModel = fretboard.buildFretboardModel({ positions, includeLeverPositions: true });
-assert.deepEqual(legacyLeverOptionModel.highlights.map((item) => item.id), ["starter-open"]);
+const allModel = fretboard.buildFretboardModel({ positions, voicingFilter: "all" });
+assert.deepEqual(allModel.highlights.map((item) => item.id), ["starter-open", "advanced-pass"]);
 const html = fretboard.renderPedalSteelFretboard({ positions });
-assert.match(html, /data-position-selector="advanced-pass"[^>]*data-position-tier="advanced"[^>]*data-visible-by-default="false"[^>]*data-has-levers="true"[^>]*hidden/);
+assert.match(html, /data-position-selector="advanced-pass"[^>]*data-position-tier="advanced"[^>]*data-visible-by-default="false"[^>]*data-has-levers="true"/);
+assert.match(html, /data-position-selector="advanced-pass"[^>]*hidden/);
 assert.match(html, /data-color-role="e-lower"/);
 assert.match(html, /#c7a5ff/);
 assert.match(html, /String 4: D# \\/ confidence: level: draft/);
@@ -1005,15 +1006,28 @@ assert.doesNotMatch(html, /\\[object Object\\]/);
 def test_filter_interaction_source_resets_hidden_selection_to_first_visible() -> None:
     source = (REPO_ROOT / COMPONENT).read_text(encoding="utf-8")
 
-    assert "function updatePositionFilter(figure, changedTab)" in source
+    assert "function updatePositionFilter(figure, changedVoicingFilter, changedGripFilter)" in source
     assert 'const firstVisible = figure.querySelector("[data-position-selector]:not([hidden])");' in source
     assert "selectPosition(figure, firstVisible.getAttribute(\"data-position-selector\"));" in source
     assert "if (selector?.hidden) return;" in source
     assert "data-position-empty" in source
-    assert "function positionElementMatchesTab(element, tabMode)" in source
+    assert "function positionElementMatchesTab(element, tabMode)" not in source
+    assert "function positionElementMatchesVoicing(element, voicingFilter)" in source
+    assert "function positionElementMatchesGrip(element, gripFilter)" in source
+    assert 'voicingFilter === "recommended"' in source
+    assert 'data-visible-by-default") === "true"' in source
+    assert 'voicingFilter === "starter"' in source
+    assert 'data-is-starter") === "true"' in source
+    assert 'voicingFilter === "full-chord"' in source
+    assert 'data-is-full-chord") === "true"' in source
+    assert 'voicingFilter === "dominant"' in source
+    assert 'data-is-dominant") === "true"' in source
+    assert 'data-is-starter="${isStarterPosition(highlight) ? "true" : "false"}"' in source
+    assert 'data-is-full-chord="${isFullChordPosition(highlight) ? "true" : "false"}"' in source
+    assert "No positions match these filters. Try All positions or a different grip." in source
+    assert "data-position-tab" not in source
     assert "data-include-levers" not in source
     assert "Include lever positions" not in source
-    assert 'figure?.dataset?.hasTabs !== "true"' in source
 
 
 def test_direct_diagnostic_payload_hides_tabs_but_keeps_focused_position_visible() -> None:
@@ -1042,13 +1056,13 @@ const positions = [
   }
 ];
 const model = fretboard.buildFretboardModel({ positions });
-assert.equal(model.hasTabs, false);
-assert.equal(model.tabMode, "show-all");
+assert.equal(model.hasFilters, false);
+assert.equal(model.tabMode, "all");
 assert.deepEqual(model.highlights.map((item) => item.id), ["d-e-lower-578-3"]);
 assert.equal(model.highlights[0].colorRole, "e-lower");
 
 const html = fretboard.renderPedalSteelFretboard({ positions });
-assert.match(html, /data-has-tabs="false"/);
+assert.doesNotMatch(html, /data-has-tabs=/);
 assert.doesNotMatch(html, /data-position-tab="/);
 assert.doesNotMatch(html, /Starter/);
 assert.doesNotMatch(html, /Dominant pockets/);
@@ -1088,6 +1102,239 @@ const partialHtml = fretboard.renderPedalSteelFretboard({
 assert.doesNotMatch(partialHtml, /data-position-selector="/);
 assert.doesNotMatch(partialHtml, /missing-strings/);
 assert.doesNotMatch(partialHtml, /bad-strings/);
+"""
+    )
+
+    run_node(script)
+
+
+def test_voicing_type_and_grip_filters_render_only_when_payload_supports_them() -> None:
+    script = component_eval_script(
+        """
+const positions = [
+  {
+    id: "c-root-8",
+    label: "C major",
+    fret: 8,
+    strings: [4, 5, 6],
+    grip: "4-5-6",
+    pedals: [],
+    levers: [],
+    tier: "beginner",
+    visibleByDefault: true,
+    voicingType: "root_position",
+    isRootPosition: true,
+    notes: {"4": "C", "5": "G", "6": "E"}
+  },
+  {
+    id: "c-first-11",
+    label: "C major",
+    fret: 11,
+    strings: [3, 4, 5],
+    grip: "3-4-5",
+    pedals: ["A"],
+    levers: ["F"],
+    tier: "beginner",
+    visibleByDefault: true,
+    voicingType: "first_inversion",
+    isInversion: true,
+    inversionLabel: "1st inversion",
+    notes: {"3": "E", "4": "C", "5": "G"}
+  },
+  {
+    id: "c-second-15",
+    label: "C major",
+    fret: 15,
+    strings: [4, 5, 6],
+    grip: "4-5-6",
+    pedals: ["A", "B"],
+    levers: [],
+    tier: "beginner",
+    visibleByDefault: true,
+    voicingType: "second_inversion",
+    isInversion: true,
+    inversionLabel: "2nd inversion",
+    notes: {"4": "E", "5": "C", "6": "G"}
+  },
+  {
+    id: "c-rootless-5",
+    label: "C rootless",
+    fret: 5,
+    strings: [5, 7, 8],
+    grip: "5-7-8",
+    pedals: ["A"],
+    levers: ["E lower"],
+    tier: "beginner",
+    visibleByDefault: true,
+    voicingType: "rootless",
+    isRootless: true,
+    isPartialVoicing: true,
+    omittedIntervals: ["1"],
+    notes: {"5": "E", "7": "D", "8": "Bb"}
+  }
+];
+
+const rootModel = fretboard.buildFretboardModel({ positions, voicingFilter: "root-position" });
+assert.deepEqual(rootModel.highlights.map((item) => item.id), ["c-root-8"]);
+
+const inversionModel = fretboard.buildFretboardModel({ positions, voicingFilter: "inversions" });
+assert.deepEqual(inversionModel.highlights.map((item) => item.id), ["c-first-11", "c-second-15"]);
+
+const partialModel = fretboard.buildFretboardModel({ positions, voicingFilter: "partial-rootless" });
+assert.deepEqual(partialModel.highlights.map((item) => item.id), ["c-rootless-5"]);
+
+const gripModel = fretboard.buildFretboardModel({ positions, gripFilter: "3-4-5" });
+assert.deepEqual(gripModel.highlights.map((item) => item.id), ["c-first-11"]);
+assert.equal(gripModel.selectedPositionId, "c-first-11");
+
+const recommendedModel = fretboard.buildFretboardModel({ positions });
+assert.equal(recommendedModel.voicingFilter, "recommended");
+assert.ok(recommendedModel.highlights.length > 0);
+assert.deepEqual(recommendedModel.highlights.map((item) => item.id), ["c-root-8", "c-first-11", "c-second-15", "c-rootless-5"]);
+
+const starterModel = fretboard.buildFretboardModel({ positions, voicingFilter: "starter" });
+assert.deepEqual(starterModel.highlights.map((item) => item.id), ["c-root-8", "c-first-11", "c-second-15", "c-rootless-5"]);
+
+const fullChordModel = fretboard.buildFretboardModel({ positions, voicingFilter: "full-chord" });
+assert.deepEqual(fullChordModel.highlights.map((item) => item.id), ["c-root-8", "c-first-11", "c-second-15"]);
+
+const fullChordGripModel = fretboard.buildFretboardModel({ positions, voicingFilter: "full-chord", gripFilter: "4-5-6" });
+assert.deepEqual(fullChordGripModel.highlights.map((item) => item.id), ["c-root-8", "c-second-15"]);
+
+const noMatchModel = fretboard.buildFretboardModel({ positions, voicingFilter: "root-position", gripFilter: "3-4-5" });
+assert.deepEqual(noMatchModel.highlights.map((item) => item.id), []);
+assert.equal(noMatchModel.selectedPositionId, "");
+
+const html = fretboard.renderPedalSteelFretboard({ positions });
+assert.match(html, /data-fretboard-filter-panel/);
+assert.match(html, /data-voicing-filter="recommended" aria-pressed="true"/);
+assert.match(html, /data-voicing-filter="all"/);
+assert.match(html, /data-voicing-filter="starter"/);
+assert.match(html, /data-voicing-filter="full-chord"/);
+assert.match(html, /data-voicing-filter="root-position"/);
+assert.match(html, /data-voicing-filter="inversions"/);
+assert.match(html, /data-voicing-filter="partial-rootless"/);
+assert.match(html, /data-grip-filter="all"/);
+assert.match(html, /data-grip-filter="3-4-5"/);
+assert.match(html, /data-grip-filter="4-5-6"/);
+assert.match(html, /data-grip-filter="5-7-8"/);
+assert.match(html, /data-position-selector="c-root-8"[^>]*data-voicing-category="root-position"[^>]*data-is-starter="true"[^>]*data-is-full-chord="true"/);
+assert.match(html, /data-position-selector="c-first-11"[^>]*data-voicing-category="inversions"[^>]*data-is-starter="true"[^>]*data-is-full-chord="true"/);
+assert.match(html, /data-position-selector="c-rootless-5"[^>]*data-voicing-category="partial-rootless"[^>]*data-is-starter="true"[^>]*data-is-full-chord="false"/);
+assert.match(html, /data-highlight-id="c-first-11"[^>]*data-position-grip="3-4-5"/);
+assert.match(html, /Root position: root in the bass/);
+assert.match(html, /1st inversion: 3rd in the bass/);
+assert.match(html, /2nd inversion: 5th in the bass/);
+assert.match(html, /Rootless: root is omitted/);
+assert.doesNotMatch(html, /\\[object Object\\]/);
+
+const gripFilteredHtml = fretboard.renderPedalSteelFretboard({ positions, gripFilter: "4-5-6" });
+assert.match(gripFilteredHtml, /data-grip-filter="4-5-6" aria-pressed="true"/);
+assert.match(gripFilteredHtml, /data-position-selector="c-root-8"/);
+assert.match(gripFilteredHtml, /data-position-selector="c-second-15"/);
+assert.match(gripFilteredHtml, /data-position-selector="c-first-11"[^>]*hidden/);
+assert.match(gripFilteredHtml, /data-position-selector="c-rootless-5"[^>]*hidden/);
+assert.match(gripFilteredHtml, /data-position-detail="c-first-11"[^>]*data-filter-visible="false"[^>]*hidden/);
+assert.match(gripFilteredHtml, /data-highlight-id="c-first-11"[^>]*data-filter-visible="false"[^>]*hidden/);
+assert.match(gripFilteredHtml, /data-highlight-id="c-rootless-5"[^>]*data-filter-visible="false"[^>]*hidden/);
+
+const combinedFilteredHtml = fretboard.renderPedalSteelFretboard({
+  positions,
+  voicingFilter: "inversions",
+  gripFilter: "4-5-6"
+});
+assert.match(combinedFilteredHtml, /data-voicing-filter="inversions" aria-pressed="true"/);
+assert.match(combinedFilteredHtml, /data-grip-filter="4-5-6" aria-pressed="true"/);
+assert.match(combinedFilteredHtml, /data-position-selector="c-second-15"/);
+assert.doesNotMatch(combinedFilteredHtml, /data-position-selector="c-second-15"[^>]*hidden/);
+assert.match(combinedFilteredHtml, /data-position-selector="c-root-8"[^>]*hidden/);
+assert.match(combinedFilteredHtml, /data-position-selector="c-first-11"[^>]*hidden/);
+assert.match(combinedFilteredHtml, /data-position-selector="c-rootless-5"[^>]*hidden/);
+assert.match(combinedFilteredHtml, /data-highlight-id="c-second-15"[^>]*data-filter-visible="true"/);
+assert.match(combinedFilteredHtml, /data-highlight-id="c-root-8"[^>]*data-filter-visible="false"[^>]*hidden/);
+
+const fullChordGripHtml = fretboard.renderPedalSteelFretboard({
+  positions,
+  voicingFilter: "full-chord",
+  gripFilter: "4-5-6"
+});
+assert.match(fullChordGripHtml, /data-voicing-filter="full-chord" aria-pressed="true"/);
+assert.match(fullChordGripHtml, /data-grip-filter="4-5-6" aria-pressed="true"/);
+assert.match(fullChordGripHtml, /data-position-selector="c-root-8"/);
+assert.doesNotMatch(fullChordGripHtml, /data-position-selector="c-root-8"[^>]*hidden/);
+assert.match(fullChordGripHtml, /data-position-selector="c-second-15"/);
+assert.doesNotMatch(fullChordGripHtml, /data-position-selector="c-second-15"[^>]*hidden/);
+assert.match(fullChordGripHtml, /data-position-selector="c-first-11"[^>]*hidden/);
+assert.match(fullChordGripHtml, /data-position-selector="c-rootless-5"[^>]*hidden/);
+assert.match(fullChordGripHtml, /data-position-detail="c-root-8"[^>]*aria-live="polite"/);
+
+const noMatchHtml = fretboard.renderPedalSteelFretboard({
+  positions,
+  voicingFilter: "root-position",
+  gripFilter: "3-4-5"
+});
+assert.match(noMatchHtml, /data-voicing-filter="root-position" aria-pressed="true"/);
+assert.match(noMatchHtml, /data-grip-filter="3-4-5" aria-pressed="true"/);
+assert.match(noMatchHtml, /<p class="pedal-steel-fretboard__empty" data-position-empty>No positions match these filters\\. Try All positions or a different grip\\.<\\/p>/);
+assert.match(noMatchHtml, /data-position-detail="c-root-8"[^>]*data-filter-visible="false"[^>]*hidden/);
+assert.match(noMatchHtml, /data-position-detail="c-first-11"[^>]*data-filter-visible="false"[^>]*hidden/);
+assert.match(noMatchHtml, /data-highlight-id="c-root-8"[^>]*data-filter-visible="false"[^>]*hidden/);
+
+const oldPayloadHtml = fretboard.renderPedalSteelFretboard({ positions: fretboard.DEMO_POSITIONS });
+assert.doesNotMatch(oldPayloadHtml, /data-fretboard-filter-panel/);
+assert.doesNotMatch(oldPayloadHtml, /data-voicing-filter=/);
+assert.doesNotMatch(oldPayloadHtml, /data-grip-filter=/);
+"""
+    )
+
+    run_node(script)
+
+
+def test_large_position_payload_starts_with_recommended_set_and_can_show_all() -> None:
+    script = component_eval_script(
+        """
+const positions = Array.from({ length: 7 }, (_, index) => ({
+  id: `g-option-${index + 1}`,
+  label: "G major",
+  fret: index + 3,
+  strings: [4, 5, 6],
+  grip: index < 5 ? "4-5-6" : "3-4-5",
+  pedals: index % 3 === 0 ? [] : index % 3 === 1 ? ["A"] : ["A", "B"],
+  levers: index % 3 === 1 ? ["F"] : [],
+  tier: index < 5 ? "starter" : "alternate",
+  visibleByDefault: true,
+  voicingType: index < 5 ? "root_position" : "first_inversion",
+  isRootPosition: index < 5,
+  isInversion: index >= 5,
+  sortOrder: index + 1
+}));
+
+const model = fretboard.buildFretboardModel({ positions });
+assert.equal(model.allHighlights.length, 7);
+assert.equal(model.highlights.length, 5);
+assert.equal(model.hasRecommendedLimit, true);
+assert.deepEqual(model.highlights.map((item) => item.id), [
+  "g-option-1",
+  "g-option-2",
+  "g-option-3",
+  "g-option-4",
+  "g-option-5"
+]);
+assert.equal(model.recommendedHiddenIds.has("g-option-6"), true);
+assert.equal(model.recommendedHiddenIds.has("g-option-7"), true);
+
+const html = fretboard.renderPedalSteelFretboard({ positions });
+assert.match(html, /data-recommended-limited="true"/);
+assert.match(html, /Showing 5 recommended positions first/);
+assert.match(html, /data-show-all-positions/);
+assert.match(html, /data-position-selector="g-option-6"[^>]*data-recommended-extra="true"[^>]*hidden/);
+assert.match(html, /data-position-selector="g-option-7"[^>]*data-recommended-extra="true"[^>]*hidden/);
+assert.match(html, /data-highlight-id="g-option-6"[^>]*data-recommended-extra="true"[^>]*hidden/);
+assert.match(html, /data-highlight-id="g-option-7"[^>]*data-recommended-extra="true"[^>]*hidden/);
+
+const inversionModel = fretboard.buildFretboardModel({ positions, voicingFilter: "inversions" });
+assert.equal(inversionModel.hasRecommendedLimit, false);
+assert.deepEqual(inversionModel.highlights.map((item) => item.id), ["g-option-6", "g-option-7"]);
 """
     )
 
