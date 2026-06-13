@@ -1,8 +1,34 @@
 # Agent Operating Model
 
-This repo uses a human-in-the-loop workflow. Codex should classify every task before acting and should not continue into a second phase automatically unless the user explicitly approves it.
+This repo uses a human-in-the-loop workflow. Codex must classify every task before acting and must not continue into a second phase automatically unless the user explicitly approves it.
 
-The user-facing app name is The Turnaround. Keep `pocketsteel`, `pocket-steel`, and `pocket_steel` as internal technical names unless the user explicitly approves a rename.
+The current repo instruction is that the user-facing app name is **The Turnaround**. Many current product docs, UI files, tests, and handoffs still refer to **Steel Guitar RAG**. Do not perform a broad rename in either direction without explicit approval. Keep `pocketsteel`, `pocket-steel`, and `pocket_steel` as internal technical names unless the user explicitly approves a rename.
+
+## Project Purpose
+
+This project builds a steel-guitar learning/search assistant: a retrieval-augmented, source-aware answer system for pedal steel guitar. The product promise is not a generic chatbot. It should answer like a steel-guitar assistant that understands strings, frets, pedals, levers, grips, intervals, copedents, tone/gear symptoms, practice work, and forum wisdom.
+
+The system is expected to combine:
+
+- Steel Guitar Forum retrieval and source cards.
+- Deterministic E9 rules and fretboard/copedent logic.
+- Curated source/vendor registry answers.
+- Private/profile-backed copedent and lesson data behind auth gates.
+- Future lesson transcripts, PDFs/OCR notes, manuals, tab docs, and source-inbox material after provenance review.
+
+## Active Lanes
+
+Coordinate work by lane. If a task spans lanes, 01 Repo Steward should split or sequence it.
+
+- `01 Repo Steward`: repo-wide coordination, git hygiene, commit splitting, handoff/status snapshots, integration decisions.
+- `02 Corpus Pipeline`: corpus ingestion, normalization, cleaning, chunking, provenance preparation, embed preflight. Do not run scraping or embeddings unless explicitly approved.
+- `05 Backend / RAG Integration`: answer-routing, RAG implementation, deterministic rules, answer contracts, source-card behavior, retrieval wiring.
+- `06 UX/UI Design`: frontend presentation, answer rendering, fretboard UI, prompt chips, copy, browser smoke.
+- `11 Auth / Security`: Cloudflare Access, auth modes, paywall/access-control, privacy/security reviews.
+- `12 Self-Hosted Deployment`: runtime startup, private-preview operations, Cloudflare Tunnel/Pages deployment planning, protected-preview smoke.
+- `15 QA / Answer Eval`: answer eval, red-team matrices, smoke scripts, browser smoke reports, regression buckets.
+- `18 Product / Architecture`: product decisions, API/component contracts, answer/fretboard architecture docs.
+- `19 Visual Design / Assets`: logos, brand assets, visual systems, generated images, motion/design source files.
 
 ## Standing Safety Rules
 
@@ -11,6 +37,8 @@ The user-facing app name is The Turnaround. Keep `pocketsteel`, `pocket-steel`, 
 - Do not delete files or data unless the user explicitly approves the exact deletion.
 - Do not commit raw data, SQLite databases, credentials, logs, vector indexes, Chroma stores, embeddings, private transcripts, paid transcripts, or licensing metadata dumps.
 - Preserve raw corpus data exactly as received. Derived corpus files must stay in ignored generated-output locations unless the user approves a different path.
+- Do not expose private source text, private source metadata, private env values, Cloudflare tokens, or credentials.
+- Do not touch `corpus-private/`, `corpus-v2/`, Chroma/vector stores, embeddings, `source-inbox` raw files, `source-inbox/provenance.json`, `.wrangler/`, DNS/deploy secrets, `public/`, `ui/brand/`, `Neon Sign/`, raw design assets, or generated reports unless the task explicitly names them and the lane permits it.
 
 ## Task Modes
 
@@ -36,6 +64,8 @@ Codex may inspect and propose a plan or diff, but must stop before applying or c
 - dependency changes
 - UI flow changes
 - new scripts touching corpus outputs
+- broad answer-routing changes
+- corpus/source-ingestion pipeline changes
 
 ### RED - Ask Before Action
 
@@ -49,6 +79,67 @@ Codex must ask before taking action on:
 - modifying database migrations
 - auth/payment/access-control changes
 - anything affecting private transcripts or licensing metadata
+- deployment, DNS, Tunnel, Cloudflare Access, or secrets changes
+
+## Required Workflow
+
+- Inspect current code before editing implementation. Do not patch by memory.
+- Read relevant handoffs in `docs/handoffs/task-completions/` before touching overlapping lanes.
+- For YELLOW or RED tasks, produce a plan/diff and stop for approval unless the user has already explicitly approved implementation.
+- Do not implement a second phase automatically. For example, do not proceed from docs planning into code, code into commit, or local smoke into deployment without approval.
+- Do not commit unless explicitly instructed.
+- Do not use `git add .`.
+- Stage exact paths only. Use hunk-level staging when overlapping lane changes share files.
+- Treat `docs/handoffs/task-completions/integration-status.md` as a coordination artifact unless the user explicitly asks to commit it.
+
+## Required Handoff Behavior
+
+Every task must write a markdown report to:
+
+`docs/handoffs/task-completions/`
+
+Use the filename format:
+
+`YYYY-MM-DD-HHMM-<lane-number>-<short-task-name>.md`
+
+Every handoff must include:
+
+- Task summary: what was requested, what was completed, what was intentionally not changed.
+- Files changed: changed files, created files, deleted files, generated artifacts.
+- Tests and checks: exact commands run, results, skipped tests and why.
+- Integration notes: what another lane needs to know, schema/API/component/data contract changes, assumptions, blockers, human decisions needed.
+- Risk assessment: low/medium/high, why, rollback notes if relevant.
+- Commit readiness: exactly one of `Safe to commit`, `Not ready to commit`, or `Needs human review first`.
+- Suggested next step: recommended lane and exact prompt/task for that lane.
+
+## Safe Staging And Commit Rules
+
+- Commit only scoped, test-green, exact-path changes.
+- Keep unrelated dirty worktree files parked.
+- Never stage generated/private/corpus/vector/design/deploy artifacts unless the user explicitly approves that exact lane and exact paths.
+- Backend answer changes and QA tooling often overlap in `pocketsteel/curated_answers.py`, `pocketsteel/answer_contracts.py`, `pocketsteel/fretboard_examples.py`, `tests/test_api_search.py`, `scripts/run_exploratory_answer_smoke.py`, and `scripts/run_product_red_team_smoke.py`. Inspect diffs carefully and patch-stage when needed.
+- UI copy and UI rendering often overlap in `ui/steel-guitar-rag-mock.html` and `tests/test_frontend_answer_ui.py`. Do not mix UI-copy commits with backend/RAG commits.
+
+## Test Expectations
+
+- Docs-only changes: run `git diff --check`; run any existing doc lint if the repo defines one.
+- Backend answer-routing/RAG changes: run focused API/search/contract/eval tests where possible, then full pytest when reasonable.
+- Answer-engine changes require answer/eval tests where possible: `tests/test_api_search.py`, `tests/test_api_contract.py`, `tests/test_answer_eval.py`, `tests/test_full_answer_quality_eval.py`, and relevant smoke tests.
+- QA/eval script changes: run the script’s unit tests and, when practical, the relevant smoke/eval command.
+- UI changes require browser smoke where possible. At minimum run JS syntax checks and focused frontend tests.
+- Fretboard/UI changes should run `node --check ui/answer-client.js`, `node --check ui/pedal-steel-fretboard.js`, and relevant frontend/fretboard tests.
+- If a test is skipped, the handoff must say why.
+
+## Answer And Product Guidance
+
+Permanent guidance lives in:
+
+- `docs/llm-guidance/answer-contract.md`
+- `docs/llm-guidance/eval-rubric.md`
+- `docs/llm-guidance/product-memory.md`
+- `docs/llm-guidance/known-failures.md`
+
+Future LLM/Codex lanes should read those files before changing answer routing, evals, UI answer rendering, product copy, or source/corpus behavior.
 
 ## Required Closeout
 
