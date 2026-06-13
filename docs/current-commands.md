@@ -31,7 +31,7 @@ Start the same-origin answer UI smoke/dev server:
 
 ```bash
 PYTHONPATH=. \
-STEEL_RAG_CHROMA_PATH="/Users/cory/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma" \
+STEEL_RAG_CHROMA_PATH="~/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma" \
 STEEL_RAG_CHROMA_COLLECTION="steel_guitar_unified" \
 .venv/bin/python scripts/serve_answer_smoke.py --controlled-states --port 8770
 ```
@@ -39,7 +39,7 @@ STEEL_RAG_CHROMA_COLLECTION="steel_guitar_unified" \
 Start the same-origin answer UI against Cloudflare Access auth config for private-preview verification:
 
 ```bash
-cd /Users/cory/Documents/Pocket\ Steel
+cd ~/Documents/Pocket\ Steel
 source .venv/bin/activate
 set -a
 source ~/.steel-rag/env/private-preview.env

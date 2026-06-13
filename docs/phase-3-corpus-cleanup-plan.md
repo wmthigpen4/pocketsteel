@@ -8,13 +8,13 @@ Task mode: GREEN for this planning document. Later implementation phases that ch
 
 The current unified SGF index is usable for read-only retrieval smoke tests, but it is not production-quality signed off. Existing audits show:
 
-- Current v1 chunks: `/Users/cory/Documents/sgf-scrape-test/corpus-unified/chunks.jsonl`
-- Current v1 Chroma store: `/Users/cory/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma`
-- Current v1 Chroma SQLite: `/Users/cory/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma/chroma.sqlite3`
+- Current v1 chunks: `~/Documents/sgf-scrape-test/corpus-unified/chunks.jsonl`
+- Current v1 Chroma store: `~/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma`
+- Current v1 Chroma SQLite: `~/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma/chroma.sqlite3`
 - Current Chroma collection: `steel_guitar_unified`
 - Embedded vectors: `401,100`
 - Chunk rows: `401,100`
-- Current chunk issue report: `/Users/cory/Documents/sgf-scrape-test/corpus-unified/reports/unified_chunk_issues.tsv`
+- Current chunk issue report: `~/Documents/sgf-scrape-test/corpus-unified/reports/unified_chunk_issues.tsv`
 
 Known v1 quality risks from `docs/embedding-audit.md`, `docs/chunk-quality-triage.md`, and the unified review report:
 
@@ -30,31 +30,31 @@ Known v1 quality risks from `docs/embedding-audit.md`, `docs/chunk-quality-triag
 
 Raw parsed SGF JSONL:
 
-- Current phpBB parsed thread JSONL: `/Users/cory/Documents/sgf-scrape-test/sgf-output/jsonl/forum-{forum_id}/*.jsonl`
-- Current phpBB manifest: `/Users/cory/Documents/sgf-scrape-test/sgf-output/manifest.sqlite`
+- Current phpBB parsed thread JSONL: `~/Documents/sgf-scrape-test/sgf-output/jsonl/forum-{forum_id}/*.jsonl`
+- Current phpBB manifest: `~/Documents/sgf-scrape-test/sgf-output/manifest.sqlite`
 - Forums present in parsed JSONL: `forum-5`, `forum-8`, `forum-11`, `forum-13`, `forum-15`, `forum-21`, `forum-22`, `forum-27`, `forum-31`, `forum-34`, `forum-35`
 
 Current clean corpus files used by the unified build:
 
-- Current phpBB clean posts: `/Users/cory/Documents/sgf-scrape-test/corpus-clean/current-phpbb/clean_posts.jsonl`
-- Current phpBB skipped posts: `/Users/cory/Documents/sgf-scrape-test/corpus-clean/current-phpbb/skipped_posts.jsonl`
-- Current phpBB clean report: `/Users/cory/Documents/sgf-scrape-test/corpus-clean/current-phpbb/clean_corpus_report.json`
-- Legacy UBB clean posts: `/Users/cory/Documents/sgf-scrape-test/corpus-clean/legacy-ubb/clean_posts.jsonl`
-- Legacy UBB skipped posts: `/Users/cory/Documents/sgf-scrape-test/corpus-clean/legacy-ubb/skipped_posts.jsonl`
-- Legacy UBB clean report: `/Users/cory/Documents/sgf-scrape-test/corpus-clean/legacy-ubb/clean_corpus_report.json`
+- Current phpBB clean posts: `~/Documents/sgf-scrape-test/corpus-clean/current-phpbb/clean_posts.jsonl`
+- Current phpBB skipped posts: `~/Documents/sgf-scrape-test/corpus-clean/current-phpbb/skipped_posts.jsonl`
+- Current phpBB clean report: `~/Documents/sgf-scrape-test/corpus-clean/current-phpbb/clean_corpus_report.json`
+- Legacy UBB clean posts: `~/Documents/sgf-scrape-test/corpus-clean/legacy-ubb/clean_posts.jsonl`
+- Legacy UBB skipped posts: `~/Documents/sgf-scrape-test/corpus-clean/legacy-ubb/skipped_posts.jsonl`
+- Legacy UBB clean report: `~/Documents/sgf-scrape-test/corpus-clean/legacy-ubb/clean_corpus_report.json`
 
 Current unified corpus files:
 
-- Unified corpus SQLite: `/Users/cory/Documents/sgf-scrape-test/corpus-unified/unified_corpus.sqlite`
-- Unified corpus manifest: `/Users/cory/Documents/sgf-scrape-test/corpus-unified/unified_corpus_manifest.jsonl`
-- Unified threads manifest: `/Users/cory/Documents/sgf-scrape-test/corpus-unified/unified_threads_manifest.jsonl`
-- Unified build report: `/Users/cory/Documents/sgf-scrape-test/corpus-unified/reports/unified_build_report.md`
-- Unified review report: `/Users/cory/Documents/sgf-scrape-test/corpus-unified/reports/unified_review_report.md`
+- Unified corpus SQLite: `~/Documents/sgf-scrape-test/corpus-unified/unified_corpus.sqlite`
+- Unified corpus manifest: `~/Documents/sgf-scrape-test/corpus-unified/unified_corpus_manifest.jsonl`
+- Unified threads manifest: `~/Documents/sgf-scrape-test/corpus-unified/unified_threads_manifest.jsonl`
+- Unified build report: `~/Documents/sgf-scrape-test/corpus-unified/reports/unified_build_report.md`
+- Unified review report: `~/Documents/sgf-scrape-test/corpus-unified/reports/unified_review_report.md`
 
 Current v1 retrieval artifacts:
 
-- Current chunks JSONL: `/Users/cory/Documents/sgf-scrape-test/corpus-unified/chunks.jsonl`
-- Current Chroma path: `/Users/cory/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma`
+- Current chunks JSONL: `~/Documents/sgf-scrape-test/corpus-unified/chunks.jsonl`
+- Current Chroma path: `~/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma`
 
 ## Target V2 Outputs
 
@@ -207,7 +207,7 @@ Compare v1 and v2 side by side after v2 embedding is approved and built beside v
 
 Evaluation setup:
 
-- v1 Chroma: `/Users/cory/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma`
+- v1 Chroma: `~/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma`
 - v1 collection: `steel_guitar_unified`
 - v2 Chroma: `corpus-v2/vector-stores/chroma`
 - v2 collection: `steel_guitar_unified_v2`
@@ -340,12 +340,12 @@ Exit criteria:
 
 ## Guardrails
 
-- Do not modify `/Users/cory/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma`.
+- Do not modify `~/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma`.
 - Do not reset Chroma.
 - Do not regenerate embeddings until Phase 3D is explicitly approved.
 - Do not delete corpus files.
 - Do not run live SGF scraping.
-- Do not overwrite `/Users/cory/Documents/sgf-scrape-test/corpus-unified/chunks.jsonl`.
+- Do not overwrite `~/Documents/sgf-scrape-test/corpus-unified/chunks.jsonl`.
 - Do not change backend answer code.
 - Do not commit raw data, SQLite databases, vector stores, embeddings, logs, private transcripts, paid transcripts, or licensing metadata dumps.
 
@@ -361,11 +361,11 @@ Task mode: GREEN only if strictly read-only.
 Do not modify Chroma, reset Chroma, regenerate embeddings, delete corpus files, run live SGF scraping, overwrite corpus-unified/chunks.jsonl, or change backend answer code.
 
 Inspect these inputs:
-- /Users/cory/Documents/sgf-scrape-test/corpus-clean/current-phpbb/clean_posts.jsonl
-- /Users/cory/Documents/sgf-scrape-test/corpus-clean/legacy-ubb/clean_posts.jsonl
-- /Users/cory/Documents/sgf-scrape-test/corpus-unified/chunks.jsonl
-- /Users/cory/Documents/sgf-scrape-test/corpus-unified/reports/unified_chunk_issues.tsv
-- /Users/cory/Documents/sgf-scrape-test/corpus-unified/unified_corpus.sqlite in read-only mode
+- ~/Documents/sgf-scrape-test/corpus-clean/current-phpbb/clean_posts.jsonl
+- ~/Documents/sgf-scrape-test/corpus-clean/legacy-ubb/clean_posts.jsonl
+- ~/Documents/sgf-scrape-test/corpus-unified/chunks.jsonl
+- ~/Documents/sgf-scrape-test/corpus-unified/reports/unified_chunk_issues.tsv
+- ~/Documents/sgf-scrape-test/corpus-unified/unified_corpus.sqlite in read-only mode
 
 Create a read-only profiling report at docs/phase-3a-corpus-profile.md that estimates counts and representative samples for:
 - forum boilerplate and Top duplication
@@ -384,4 +384,4 @@ End with files changed, tests run, risks, human decision needed, recommended nex
 
 ## Current V1 Chroma Statement
 
-This plan does not modify the current v1 Chroma store. The current v1 path remains `/Users/cory/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma`, and the v2 plan keeps all new vector data under `corpus-v2/vector-stores/chroma`.
+This plan does not modify the current v1 Chroma store. The current v1 path remains `~/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma`, and the v2 plan keeps all new vector data under `corpus-v2/vector-stores/chroma`.

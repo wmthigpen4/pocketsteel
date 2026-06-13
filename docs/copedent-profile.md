@@ -66,7 +66,7 @@ Example context block:
 
 ```text
 User copedent profile:
-- Setup: Cory's main E9
+- Setup: the user's main E9
 - Family: E9, 10 strings
 - Open tuning: 1 F#, 2 D#, 3 G#, 4 E, 5 B, 6 G#, 7 F#, 8 E, 9 D, 10 B
 - Controls:

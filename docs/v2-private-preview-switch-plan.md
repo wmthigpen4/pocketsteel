@@ -65,7 +65,7 @@ No outside testers should be invited until post-switch smoke passes.
 This is the known rollback command for the current v1 private preview:
 
 ```bash
-cd /Users/cory/Documents/Pocket\ Steel
+cd ~/Documents/Pocket\ Steel
 source .venv/bin/activate
 set -a
 source ~/.steel-rag/env/private-preview.env
@@ -89,7 +89,7 @@ STEEL_RAG_CF_ACCESS_AUD=<Cloudflare Access AUD tag>
 STEEL_RAG_CF_ACCESS_JWKS_URL=<Cloudflare Access JWKS URL>
 STEEL_RAG_BETA_USER_EMAILS=<comma-separated tester emails>
 STEEL_RAG_ADMIN_EMAILS=<comma-separated admin emails>
-STEEL_RAG_CHROMA_PATH=/Users/cory/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma
+STEEL_RAG_CHROMA_PATH=~/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma
 STEEL_RAG_CHROMA_COLLECTION=steel_guitar_unified
 OLLAMA_URL=http://127.0.0.1:11434
 ```
@@ -100,7 +100,7 @@ Use this only for loopback smoke testing on `127.0.0.1:8781`. This command keeps
 local-dev mock access enabled and must not be routed publicly:
 
 ```bash
-cd /Users/cory/Documents/Pocket\ Steel
+cd ~/Documents/Pocket\ Steel
 source .venv/bin/activate
 
 PYTHONPATH=. \
@@ -120,7 +120,7 @@ auth. Do not route `app.steelguitarrag.com` to this process unless it is started
 with production auth and Cloudflare Access provider settings.
 
 ```bash
-cd /Users/cory/Documents/Pocket\ Steel
+cd ~/Documents/Pocket\ Steel
 source .venv/bin/activate
 set -a
 source ~/.steel-rag/env/private-preview.env
@@ -129,7 +129,7 @@ set +a
 PYTHONPATH=. \
 STEEL_RAG_AUTH_PROVIDER=cloudflare_access \
 STEEL_RAG_ANSWER_AUTH_MODE=production \
-STEEL_RAG_CHROMA_PATH="/Users/cory/Documents/Pocket Steel/corpus-v2/vector-stores/chroma" \
+STEEL_RAG_CHROMA_PATH="~/Documents/Pocket Steel/corpus-v2/vector-stores/chroma" \
 STEEL_RAG_CHROMA_COLLECTION="steel_guitar_unified_v2" \
 .venv/bin/python scripts/serve_v2_rerank_smoke.py \
   --host 127.0.0.1 \
@@ -171,7 +171,7 @@ STEEL_RAG_ADMIN_EMAILS=<comma-separated admin emails>
 V2 Chroma:
 
 ```text
-STEEL_RAG_CHROMA_PATH=/Users/cory/Documents/Pocket Steel/corpus-v2/vector-stores/chroma
+STEEL_RAG_CHROMA_PATH=~/Documents/Pocket Steel/corpus-v2/vector-stores/chroma
 STEEL_RAG_CHROMA_COLLECTION=steel_guitar_unified_v2
 ```
 
@@ -335,7 +335,7 @@ If any stop condition triggers, roll back immediately.
 2. Restart v1 on `8770`:
 
    ```bash
-   cd /Users/cory/Documents/Pocket\ Steel
+   cd ~/Documents/Pocket\ Steel
    source .venv/bin/activate
    set -a
    source ~/.steel-rag/env/private-preview.env

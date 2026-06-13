@@ -219,7 +219,7 @@ Do not bind the beta app to `0.0.0.0` unless there is a separate local firewall 
 Candidate app service command, to be finalized before beta:
 
 ```text
-cd /Users/cory/Documents/Pocket\ Steel
+cd ~/Documents/Pocket\ Steel
 source .venv/bin/activate
 STEEL_RAG_CHROMA_PATH=<approved local Chroma path> \
 STEEL_RAG_CHROMA_COLLECTION=steel_guitar_unified \
@@ -265,7 +265,7 @@ STEEL_RAG_CHROMA_COLLECTION=steel_guitar_unified
 If the production beta uses the external unified corpus path from local docs, set it explicitly, for example:
 
 ```text
-STEEL_RAG_CHROMA_PATH=/Users/cory/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma
+STEEL_RAG_CHROMA_PATH=~/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma
 STEEL_RAG_CHROMA_COLLECTION=steel_guitar_unified
 ```
 

@@ -49,7 +49,7 @@
 - Version endpoint result: `{"git_sha":"f6d8ad2","git_branch":"feature/answer-api","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"scaffold"}`
 - Root URL status: not used as proof
 - API fallback status: API fallback only, not browser smoke
-- Exact URL Cory should test: protected-preview UI path after Lane 12 restart/verification for the committed hash
+- Exact URL the user should test: protected-preview UI path after Lane 12 restart/verification for the committed hash
 
 ## Smoke result
 
@@ -102,7 +102,7 @@ Smoke Target:
 - Version endpoint result: record if available
 - Root URL status: record observed behavior; do not use root as a substitute for the UI path
 - API fallback status: browser smoke required for protected preview
-- Exact URL Cory should test: same cache-busted protected-preview URL after Cloudflare Access login
+- Exact URL the user should test: same cache-busted protected-preview URL after Cloudflare Access login
 
 Verify:
 - `How do I play a sus chord?` explains suspended quality and asks for a root/key.

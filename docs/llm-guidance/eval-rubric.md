@@ -113,7 +113,7 @@ Fail when:
 
 Pass when browser-smoke reports identify the real target before the test begins:
 
-- `Smoke Target` block is present with target type, result type, exact browser URL tested, cache-busted URL tested when needed, exact URL Cory should use, auth requirements, auth provider, Cloudflare Access login result, local backend URL, expected port, expected git HEAD, version endpoint result or version inference, root-path actual and expected behavior, `/ui/steel-guitar-rag-mock.html` actual and expected behavior, tester owner, URLs not to test, and caveats.
+- `Smoke Target` block is present with target type, result type, exact browser URL tested, cache-busted URL tested when needed, exact URL the user should use, auth requirements, auth provider, Cloudflare Access login result, local backend URL, expected port, expected git HEAD, version endpoint result or version inference, root-path actual and expected behavior, `/ui/steel-guitar-rag-mock.html` actual and expected behavior, tester owner, URLs not to test, and caveats.
 - `URL tested` and `URL user should test` are both recorded in QA handoffs.
 - Protected-preview reports say whether Cloudflare Access login succeeded before protected-preview behavior was tested.
 - Local `127.0.0.1` results are labeled local and are not treated as proof of protected-preview behavior.
@@ -128,7 +128,7 @@ Fail when:
 - Cache-sensitive UI checks omit the complete `?v=...` URL.
 - Protected-preview smoke omits whether Cloudflare Access login succeeded.
 - Protected-preview, production-root, local, and API fallback evidence are mixed together without labels.
-- The user cannot tell which URL Cory should open.
+- The user cannot tell which URL the user should open.
 
 ## Regression Rules
 

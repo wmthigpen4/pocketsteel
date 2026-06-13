@@ -10,8 +10,8 @@ Phase 3D should build a new corpus-v2 vector store beside the current v1 store o
 
 Current v1 paths remain untouched:
 
-- v1 chunks: `/Users/cory/Documents/sgf-scrape-test/corpus-unified/chunks.jsonl`
-- v1 Chroma: `/Users/cory/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma`
+- v1 chunks: `~/Documents/sgf-scrape-test/corpus-unified/chunks.jsonl`
+- v1 Chroma: `~/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma`
 - v1 collection: `steel_guitar_unified`
 - v1 vector count: `401,100`
 
@@ -41,7 +41,7 @@ Run these checks against `corpus-v2/clean_classified_chunks.jsonl` and `corpus-v
 - Confirm both v2 input files exist and are generated from approved Phase 3B/3C scripts.
 - Confirm `corpus-v2/chunks-v2.jsonl` is newer than or traceably derived from `corpus-v2/clean_classified_chunks.jsonl`.
 - Record cleaner version, chunker version, command arguments, timestamp, and config hash in the report.
-- Confirm no command reads from or writes to `/Users/cory/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma`.
+- Confirm no command reads from or writes to `~/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma`.
 
 ### Chunk Count
 
@@ -191,7 +191,7 @@ Phase 3E should compare v1 and v2 after, and only after, v2 is embedded beside v
 
 Inputs:
 
-- v1 Chroma: `/Users/cory/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma`
+- v1 Chroma: `~/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma`
 - v1 collection: `steel_guitar_unified`
 - v2 Chroma: `corpus-v2/vector-stores/chroma`
 - v2 collection: `steel_guitar_unified_v2`
@@ -228,7 +228,7 @@ V2 should not win only because it is cleaner. It must maintain or improve useful
 - v2 is opt-in for local evaluation only until Phase 3E proves it wins.
 - Phase 3F config switch requires explicit human approval after A/B results are reviewed.
 - Rollback is simply leaving app configuration pointed at v1, or switching it back to:
-  `/Users/cory/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma`
+  `~/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma`
 
 If v2 fails preflight, embedding should not start. If v2 fails A/B evaluation, keep v1 as production and archive the v2 reports for future cleanup work.
 

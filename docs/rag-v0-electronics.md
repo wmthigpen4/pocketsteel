@@ -13,7 +13,7 @@ keep their current technical names.
 
 If the scraper output lives outside this repo, either run the scripts from a checkout
 that has `sgf-output/` at the project root, symlink/copy that folder locally, or pass
-explicit paths such as `--input-glob /Users/cory/Documents/sgf-scrape-test/sgf-output/jsonl/forum-11/*.jsonl`.
+explicit paths such as `--input-glob ~/Documents/sgf-scrape-test/sgf-output/jsonl/forum-11/*.jsonl`.
 
 Tablature, paid/private lesson transcripts, and copedent-aware reasoning are intentionally out of scope for this version.
 

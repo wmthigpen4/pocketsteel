@@ -23,7 +23,7 @@ from pocketsteel.chroma_search import ChromaSearchIndex
 from scripts.run_answer_eval import load_question_bank
 
 
-DEFAULT_V1_CHROMA_PATH = Path("/Users/cory/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma")
+DEFAULT_V1_CHROMA_PATH = Path("~/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma").expanduser()
 DEFAULT_V1_COLLECTION = "steel_guitar_unified"
 DEFAULT_V2_CHROMA_PATH = Path("corpus-v2/vector-stores/chroma")
 DEFAULT_V2_COLLECTION = "steel_guitar_unified_v2"

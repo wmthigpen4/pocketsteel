@@ -7,13 +7,13 @@
 
 ## Task Summary
 
-Requested: add a permanent User Smoke Bug Autopilot protocol so Cory can paste one bug report and Codex can fix, validate, commit, and prepare restart verification without repeated approval prompts.
+Requested: add a permanent User Smoke Bug Autopilot protocol so the user can paste one bug report and Codex can fix, validate, commit, and prepare restart verification without repeated approval prompts.
 
 Completed:
 
 - Added the autopilot protocol to `AGENTS.md`.
 - Added the same operational protocol to `docs/process/codex-completion-protocol.md`.
-- Included allowed actions, stop conditions, commit rule, required smoke target block, required final handoff fields, and one example prompt Cory can paste.
+- Included allowed actions, stop conditions, commit rule, required smoke target block, required final handoff fields, and one example prompt the user can paste.
 
 Intentionally not changed:
 

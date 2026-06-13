@@ -8,7 +8,7 @@ Prepare a repeatable v1 vs v2 retrieval comparison for The Turnaround after Phas
 
 ## Inputs
 
-- v1 Chroma path: `/Users/cory/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma`
+- v1 Chroma path: `~/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma`
 - v1 collection: `steel_guitar_unified`
 - v2 Chroma path: `corpus-v2/vector-stores/chroma`
 - v2 collection: `steel_guitar_unified_v2`
@@ -55,7 +55,7 @@ Run only after the v2 embedding process has fully completed and the v2 Chroma st
   --run-v1 \
   --run-v2 \
   --confirm-v2-ready \
-  --v1-chroma-path /Users/cory/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma \
+  --v1-chroma-path ~/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma \
   --v1-collection steel_guitar_unified \
   --v2-chroma-path corpus-v2/vector-stores/chroma \
   --v2-collection steel_guitar_unified_v2 \

@@ -19,7 +19,7 @@ Only the Mac mini app should be reachable through the tunnel. Ollama and Chroma 
 Run from the repo root on the Mac mini:
 
 ```bash
-cd /Users/cory/Documents/Pocket\ Steel
+cd ~/Documents/Pocket\ Steel
 source .venv/bin/activate
 
 set -a

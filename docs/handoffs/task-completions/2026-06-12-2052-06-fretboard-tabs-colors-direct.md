@@ -19,7 +19,7 @@
 - `.venv/bin/python -m pytest` - passed, 489 passed
 - `git diff --check` - passed
 - Browser smoke server command:
-  - `PYTHONPATH=. STEEL_RAG_CHROMA_PATH='/Users/cory/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma' STEEL_RAG_CHROMA_COLLECTION='steel_guitar_unified' .venv/bin/python scripts/serve_answer_smoke.py --host 127.0.0.1 --port 8771 --answer-auth-mode local_dev --auth-provider scaffold --controlled-states`
+  - `PYTHONPATH=. STEEL_RAG_CHROMA_PATH='~/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma' STEEL_RAG_CHROMA_COLLECTION='steel_guitar_unified' .venv/bin/python scripts/serve_answer_smoke.py --host 127.0.0.1 --port 8771 --answer-auth-mode local_dev --auth-provider scaffold --controlled-states`
 - Browser smoke URL:
   - `http://127.0.0.1:8771/ui/steel-guitar-rag-mock.html?access=beta_user&v=fretboard-ui-tabs-color-smoke-1`
 - Browser smoke results:

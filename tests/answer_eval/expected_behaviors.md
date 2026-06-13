@@ -131,7 +131,7 @@ Smoke Target:
 - Result type: browser smoke | API fallback, not browser smoke
 - Exact browser URL tested:
 - Cache-busted URL tested:
-- Exact URL Cory should use:
+- Exact URL the user should use:
 - Auth required: yes/no
 - Auth provider: Cloudflare Access / none / other
 - Cloudflare Access login result: succeeded / failed / not required / not attempted
@@ -145,7 +145,7 @@ Smoke Target:
 - Whether app root `/` is expected to work:
 - Whether `/ui/steel-guitar-rag-mock.html` works:
 - Whether `/ui/steel-guitar-rag-mock.html` is expected to work:
-- Who should test this URL: Codex / Cory / both
+- Who should test this URL: Codex / the user / both
 - Do not test these URLs:
 - Known caveats:
 ```

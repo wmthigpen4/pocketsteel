@@ -16,7 +16,7 @@ No embeddings were run. No Chroma store was created or modified.
 
 Input source, read only:
 
-- `/Users/cory/Documents/sgf-scrape-test/corpus-unified/chunks.jsonl`
+- `~/Documents/sgf-scrape-test/corpus-unified/chunks.jsonl`
 
 Temporary output path:
 
@@ -243,7 +243,7 @@ Full corpus-v2 generation is reasonable next only as a non-embedding generated-o
 - `.venv/bin/python -m pytest tests/test_phase3_clean_classify_chunks.py tests/test_phase3_chunk_v2.py tests/test_phase3_embed_v2_preflight.py`
 - `.venv/bin/python scripts/phase3_clean_classify_chunks.py --input /tmp/steel-rag-corpus-v2-large-preflight/large_input_sample.jsonl --output /tmp/steel-rag-corpus-v2-large-preflight/clean_classified_chunks.jsonl --report /tmp/steel-rag-corpus-v2-large-preflight/phase3b-large-report.md`
 - `.venv/bin/python scripts/phase3_chunk_v2.py --input /tmp/steel-rag-corpus-v2-large-preflight/clean_classified_chunks.jsonl --output /tmp/steel-rag-corpus-v2-large-preflight/chunks-v2.jsonl --report /tmp/steel-rag-corpus-v2-large-preflight/phase3c-large-report.md --target-words 180 --max-words 240 --min-words 8`
-- `.venv/bin/python scripts/phase3_embed_v2_preflight.py --clean-input /tmp/steel-rag-corpus-v2-large-preflight/clean_classified_chunks.jsonl --chunk-input /tmp/steel-rag-corpus-v2-large-preflight/chunks-v2.jsonl --target-chroma-path /Users/cory/Documents/Pocket\\ Steel/corpus-v2/vector-stores/chroma --planned-output-path /Users/cory/Documents/Pocket\\ Steel/corpus-v2/chunks-v2.jsonl --report /tmp/steel-rag-corpus-v2-large-preflight/phase3d-preflight-report.md --json-report /tmp/steel-rag-corpus-v2-large-preflight/phase3d-preflight.json`
+- `.venv/bin/python scripts/phase3_embed_v2_preflight.py --clean-input /tmp/steel-rag-corpus-v2-large-preflight/clean_classified_chunks.jsonl --chunk-input /tmp/steel-rag-corpus-v2-large-preflight/chunks-v2.jsonl --target-chroma-path ~/Documents/Pocket\\ Steel/corpus-v2/vector-stores/chroma --planned-output-path ~/Documents/Pocket\\ Steel/corpus-v2/chunks-v2.jsonl --report /tmp/steel-rag-corpus-v2-large-preflight/phase3d-preflight-report.md --json-report /tmp/steel-rag-corpus-v2-large-preflight/phase3d-preflight.json`
 - `.venv/bin/python - <<'PY' ... PY` to create `/tmp/steel-rag-corpus-v2-large-preflight/large_preflight_analysis_after_fixes.json`
 - `.venv/bin/python -m pytest`
 

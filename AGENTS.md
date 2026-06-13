@@ -91,11 +91,11 @@ Codex must ask before taking action on:
 - Do not use `git add .`.
 - Stage exact paths only. Use hunk-level staging when overlapping lane changes share files.
 - Treat `docs/handoffs/task-completions/integration-status.md` as a coordination artifact unless the user explicitly asks to commit it.
-- When QA approves a scoped slice and names the approved files or hunks, Repo Steward should proceed with exact-path or exact-hunk staging and commit. Do not ask Cory for another approval. If the approved scope is missing, contradictory, or includes unrelated or unsafe files, stop and write a blocker handoff instead.
+- When QA approves a scoped slice and names the approved files or hunks, Repo Steward should proceed with exact-path or exact-hunk staging and commit. Do not ask the user for another approval. If the approved scope is missing, contradictory, or includes unrelated or unsafe files, stop and write a blocker handoff instead.
 
 ## User Smoke Bug Autopilot
 
-When Cory pastes a user-smoke bug and explicitly says `autopilot` or `handle this end-to-end`, Codex should proceed without asking for repeated approval, subject to the stop conditions below.
+When the user pastes a user-smoke bug and explicitly says `autopilot` or `handle this end-to-end`, Codex should proceed without asking for repeated approval, subject to the stop conditions below.
 
 Allowed actions:
 
@@ -108,9 +108,9 @@ Allowed actions:
 7. Run broader relevant tests if the touched area requires it.
 8. Run browser smoke or API fallback with an explicit `Smoke Target` block.
 9. Write a handoff in `docs/handoffs/task-completions/`.
-10. If tests and smoke pass, stage exact paths/hunks and commit without asking Cory for another approval.
+10. If tests and smoke pass, stage exact paths/hunks and commit without asking the user for another approval.
 11. If protected preview restart is required and the approved restart command is documented, run it and verify.
-12. Stop after restart/verify and report the exact URL Cory should test.
+12. Stop after restart/verify and report the exact URL the user should test.
 
 Required `Smoke Target` block for autopilot runs:
 
@@ -127,7 +127,7 @@ Smoke Target:
 - Version endpoint result:
 - Root URL status:
 - API fallback status:
-- Exact URL Cory should test:
+- Exact URL the user should test:
 ```
 
 Stop and write a blocker handoff instead of proceeding if:
@@ -143,7 +143,7 @@ Stop and write a blocker handoff instead of proceeding if:
 
 Commit rule:
 
-- If focused tests, required smoke, and QA criteria pass, commit the scoped fix without asking Cory for another approval.
+- If focused tests, required smoke, and QA criteria pass, commit the scoped fix without asking the user for another approval.
 - Use exact-path or exact-hunk staging.
 - Never stage unrelated parked files.
 
@@ -159,11 +159,11 @@ Every autopilot run must produce one final handoff with:
 - smoke result
 - commit hash if committed
 - preview restart result if run
-- exact URL Cory should test
+- exact URL the user should test
 - remaining caveats
 - whether user smoke can continue
 
-Example autopilot prompt Cory can paste:
+Example autopilot prompt the user can paste:
 
 ```text
 Autopilot: The protected preview answer for "How do I play a G chord on the E9?" shows no fretboard cards in Recommended. Handle this end-to-end. Use the current integration-status.md, keep unrelated dirty files parked, add a regression test, run focused UI/API tests and browser smoke with a Smoke Target block, commit only the scoped fix if green, and report the exact URL I should test.
@@ -199,7 +199,7 @@ Smoke Target:
 - Result type: browser smoke | API fallback, not browser smoke
 - Exact browser URL tested:
 - Cache-busted URL tested:
-- Exact URL Cory should use:
+- Exact URL the user should use:
 - Auth required: yes/no
 - Auth provider: Cloudflare Access / none / other
 - Cloudflare Access login result: succeeded / failed / not required / not attempted
@@ -213,7 +213,7 @@ Smoke Target:
 - Whether app root `/` is expected to work:
 - Whether `/ui/steel-guitar-rag-mock.html` works:
 - Whether `/ui/steel-guitar-rag-mock.html` is expected to work:
-- Who should test this URL: Codex / Cory / both
+- Who should test this URL: Codex / the user / both
 - Do not test these URLs:
 - Known caveats:
 ```

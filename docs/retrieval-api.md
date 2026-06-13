@@ -7,7 +7,7 @@ vector DB into this app repo.
 For local development, point the app at the completed Chroma store:
 
 ```bash
-export STEEL_RAG_CHROMA_PATH="/Users/cory/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma"
+export STEEL_RAG_CHROMA_PATH="~/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma"
 ```
 
 The completed unified store currently uses this Chroma collection:

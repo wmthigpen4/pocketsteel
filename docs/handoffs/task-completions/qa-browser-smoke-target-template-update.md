@@ -2,7 +2,7 @@
 
 ## Task summary
 
-- Requested: update QA/browser-smoke planning docs so smoke reports tell Cory exactly where to test and clearly separate browser smoke from API fallback.
+- Requested: update QA/browser-smoke planning docs so smoke reports tell the user exactly where to test and clearly separate browser smoke from API fallback.
 - Completed: tightened the existing browser-smoke target template and added the same required target block to answer-eval expected behaviors.
 - Intentionally not changed: implementation files, UI files, Chroma/vector stores, corpus data, deployment config, generated reports, and historical smoke handoffs.
 
@@ -28,7 +28,7 @@ Smoke Target:
 - Result type: browser smoke | API fallback, not browser smoke
 - Exact browser URL tested:
 - Cache-busted URL tested:
-- Exact URL Cory should use:
+- Exact URL the user should use:
 - Auth required: yes/no
 - Auth provider: Cloudflare Access / none / other
 - Cloudflare Access login result: succeeded / failed / not required / not attempted
@@ -42,7 +42,7 @@ Smoke Target:
 - Whether app root `/` is expected to work:
 - Whether `/ui/steel-guitar-rag-mock.html` works:
 - Whether `/ui/steel-guitar-rag-mock.html` is expected to work:
-- Who should test this URL: Codex / Cory / both
+- Who should test this URL: Codex / the user / both
 - Do not test these URLs:
 - Known caveats:
 ```
@@ -64,7 +64,7 @@ Smoke Target:
 - Result type: browser smoke
 - Exact browser URL tested: https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=verify-77ff8f6-chord-fretboard-routing
 - Cache-busted URL tested: https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=verify-77ff8f6-chord-fretboard-routing
-- Exact URL Cory should use: https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=verify-77ff8f6-chord-fretboard-routing after Cloudflare Access login
+- Exact URL the user should use: https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=verify-77ff8f6-chord-fretboard-routing after Cloudflare Access login
 - Auth required: yes
 - Auth provider: Cloudflare Access
 - Cloudflare Access login result: succeeded
@@ -91,7 +91,7 @@ Smoke Target:
 - Result type: browser smoke
 - Exact browser URL tested: http://127.0.0.1:8783/ui/steel-guitar-rag-mock.html?v=local-smoke
 - Cache-busted URL tested: http://127.0.0.1:8783/ui/steel-guitar-rag-mock.html?v=local-smoke
-- Exact URL Cory should use: http://127.0.0.1:8783/ui/steel-guitar-rag-mock.html?v=local-smoke
+- Exact URL the user should use: http://127.0.0.1:8783/ui/steel-guitar-rag-mock.html?v=local-smoke
 - Auth required: no
 - Auth provider: none
 - Cloudflare Access login result: not required
@@ -118,7 +118,7 @@ Smoke Target:
 - Result type: API fallback, not browser smoke
 - Exact browser URL tested: none
 - Cache-busted URL tested: none
-- Exact URL Cory should use: https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=verify-77ff8f6-chord-fretboard-routing after Cloudflare Access login
+- Exact URL the user should use: https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=verify-77ff8f6-chord-fretboard-routing after Cloudflare Access login
 - Auth required: yes for protected-preview browser smoke
 - Auth provider: Cloudflare Access
 - Cloudflare Access login result: not attempted
@@ -132,7 +132,7 @@ Smoke Target:
 - Whether app root `/` is expected to work: unknown or not canonical, as applicable
 - Whether `/ui/steel-guitar-rag-mock.html` works: not tested
 - Whether `/ui/steel-guitar-rag-mock.html` is expected to work: yes for browser smoke
-- Who should test this URL: Cory or Lane 12 after browser access is available
+- Who should test this URL: the user or Lane 12 after browser access is available
 - Do not test these URLs: do not treat API URL as browser smoke
 - Known caveats: API fallback cannot validate UI rendering, Cloudflare Access, cache-busting, or static asset freshness
 ```
@@ -168,4 +168,4 @@ Safe to commit
 ## Suggested next step
 
 - Lane: 12 Self-Hosted Deployment or 15 QA / Answer Eval.
-- Exact task: rerun protected-preview browser smoke with the required `Smoke Target` block and report the exact URL Cory should use.
+- Exact task: rerun protected-preview browser smoke with the required `Smoke Target` block and report the exact URL the user should use.

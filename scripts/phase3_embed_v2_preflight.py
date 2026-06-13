@@ -16,9 +16,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from scripts.phase3_clean_classify_chunks import as_list, word_count
 
 
-V1_CHUNKS_PATH = Path("/Users/cory/Documents/sgf-scrape-test/corpus-unified/chunks.jsonl")
-V1_CHROMA_PATH = Path("/Users/cory/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma")
-V1_UNIFIED_ROOT = Path("/Users/cory/Documents/sgf-scrape-test/corpus-unified")
+V1_CHUNKS_PATH = Path("~/Documents/sgf-scrape-test/corpus-unified/chunks.jsonl").expanduser()
+V1_CHROMA_PATH = Path("~/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma").expanduser()
+V1_UNIFIED_ROOT = Path("~/Documents/sgf-scrape-test/corpus-unified").expanduser()
 
 REQUIRED_CHUNK_FIELDS = (
     "chunk_id",

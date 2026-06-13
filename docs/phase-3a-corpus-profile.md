@@ -6,10 +6,10 @@ No Chroma store, embedding output, scraper output, corpus file, backend code, or
 
 ## Inputs Profiled
 
-- Chunk source: `/Users/cory/Documents/sgf-scrape-test/corpus-unified/chunks.jsonl`
-- SQLite mirror: `/Users/cory/Documents/sgf-scrape-test/corpus-unified/unified_corpus.sqlite`, opened with `mode=ro`
-- Issue TSV: `/Users/cory/Documents/sgf-scrape-test/corpus-unified/reports/unified_chunk_issues.tsv`
-- Current v1 Chroma path, not opened for writes: `/Users/cory/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma`
+- Chunk source: `~/Documents/sgf-scrape-test/corpus-unified/chunks.jsonl`
+- SQLite mirror: `~/Documents/sgf-scrape-test/corpus-unified/unified_corpus.sqlite`, opened with `mode=ro`
+- Issue TSV: `~/Documents/sgf-scrape-test/corpus-unified/reports/unified_chunk_issues.tsv`
+- Current v1 Chroma path, not opened for writes: `~/Documents/sgf-scrape-test/corpus-unified/vector-stores/chroma`
 
 ## Summary
 
@@ -186,8 +186,8 @@ Use docs/phase-3-corpus-cleanup-plan.md and docs/phase-3a-corpus-profile.md.
 Do not modify v1 Chroma, reset Chroma, regenerate embeddings, delete corpus files, run live SGF scraping, overwrite corpus-unified/chunks.jsonl, change backend answer code, or change frontend code.
 
 Design and implement a cleaner/classifier that reads existing current/legacy clean posts from:
-- /Users/cory/Documents/sgf-scrape-test/corpus-clean/current-phpbb/clean_posts.jsonl
-- /Users/cory/Documents/sgf-scrape-test/corpus-clean/legacy-ubb/clean_posts.jsonl
+- ~/Documents/sgf-scrape-test/corpus-clean/current-phpbb/clean_posts.jsonl
+- ~/Documents/sgf-scrape-test/corpus-clean/legacy-ubb/clean_posts.jsonl
 
 Target output paths only under corpus-v2/:
 - corpus-v2/clean_corpus.jsonl
@@ -214,8 +214,8 @@ All commands were read-only except creating this Markdown report.
 - `git status --short`
 - `test -f .../chunks.jsonl && test -f .../unified_chunk_issues.tsv && test -f .../unified_corpus.sqlite`
 - Read-only Python profiling attempts against `chunks.jsonl`; these were stopped because full regex scans over the 1.7GB JSONL were too slow.
-- Read-only SQLite aggregate queries against `file:/Users/cory/Documents/sgf-scrape-test/corpus-unified/unified_corpus.sqlite?mode=ro`
-- `awk -F '\t'` count of `/Users/cory/Documents/sgf-scrape-test/corpus-unified/reports/unified_chunk_issues.tsv`
+- Read-only SQLite aggregate queries against `file:~/Documents/sgf-scrape-test/corpus-unified/unified_corpus.sqlite?mode=ro`
+- `awk -F '\t'` count of `~/Documents/sgf-scrape-test/corpus-unified/reports/unified_chunk_issues.tsv`
 - Read-only SQLite sample queries for representative chunks.
 - `git diff --check -- docs/phase-3a-corpus-profile.md`
 - `ps ...` checks to confirm no profiling process was left running.

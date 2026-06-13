@@ -32,7 +32,7 @@ Use `production` auth mode with the `cloudflare_access` provider for any preview
 Planning command:
 
 ```bash
-cd /Users/cory/Documents/Pocket\ Steel
+cd ~/Documents/Pocket\ Steel
 source .venv/bin/activate
 
 set -a

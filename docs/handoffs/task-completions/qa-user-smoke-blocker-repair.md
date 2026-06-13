@@ -39,7 +39,7 @@ Smoke Target:
 - Result type: browser smoke
 - Exact browser URL tested: http://127.0.0.1:8784/ui/steel-guitar-rag-mock.html?access=beta_user&v=qa-user-smoke-blocker-repair-97071e6
 - Cache-busted URL tested: http://127.0.0.1:8784/ui/steel-guitar-rag-mock.html?access=beta_user&v=qa-user-smoke-blocker-repair-97071e6
-- Exact URL Cory should use: for this local QA target, rerun the startup command and open http://127.0.0.1:8784/ui/steel-guitar-rag-mock.html?access=beta_user&v=qa-user-smoke-blocker-repair-97071e6; protected-preview user smoke still needs a Lane 12 URL after deployment/root-route verification
+- Exact URL the user should use: for this local QA target, rerun the startup command and open http://127.0.0.1:8784/ui/steel-guitar-rag-mock.html?access=beta_user&v=qa-user-smoke-blocker-repair-97071e6; protected-preview user smoke still needs a Lane 12 URL after deployment/root-route verification
 - Auth required: no for this local smoke
 - Auth provider: scaffold
 - Cloudflare Access login result: not required
@@ -53,7 +53,7 @@ Smoke Target:
 - Whether app root `/` is expected to work: yes for this local smoke server
 - Whether `/ui/steel-guitar-rag-mock.html` works: yes, returned HTTP 200
 - Whether `/ui/steel-guitar-rag-mock.html` is expected to work: yes
-- Who should test this URL: Codex for this local smoke; Cory after Lane 12 provides a protected-preview URL
+- Who should test this URL: Codex for this local smoke; the user after Lane 12 provides a protected-preview URL
 - Do not test these URLs: bare protected-preview root as proof of this local result; local 127.0.0.1 as proof of Cloudflare Access/protected-preview behavior
 - Known caveats: local browser smoke does not prove protected-preview cache, auth, tunnel, root-route, or deployment freshness
 ```

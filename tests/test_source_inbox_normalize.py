@@ -21,7 +21,7 @@ def write_provenance(path: Path, source_path: Path, **overrides: object) -> None
         "source_url": None,
         "notes": "Reviewed for private personal use.",
         "reviewed_at": "2026-05-29",
-        "reviewed_by": "cory",
+        "reviewed_by": "user",
     }
     record.update(overrides)
     path.write_text(json.dumps({"sources": [record]}), encoding="utf-8")

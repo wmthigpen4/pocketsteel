@@ -12,20 +12,20 @@ This was a final non-embedding cleanup and full corpus-v2 candidate regeneration
 
 Input v1 chunks:
 
-- `/Users/cory/Documents/sgf-scrape-test/corpus-unified/chunks.jsonl`
+- `~/Documents/sgf-scrape-test/corpus-unified/chunks.jsonl`
 
 Regenerated corpus-v2 outputs:
 
-- `/Users/cory/Documents/Pocket Steel/corpus-v2/clean_classified_chunks.jsonl`
-- `/Users/cory/Documents/Pocket Steel/corpus-v2/chunks-v2.jsonl`
-- `/Users/cory/Documents/Pocket Steel/corpus-v2/reports/phase3b-full-report.md`
-- `/Users/cory/Documents/Pocket Steel/corpus-v2/reports/phase3c-full-report.md`
-- `/Users/cory/Documents/Pocket Steel/corpus-v2/reports/phase3d-full-preflight-report.md`
-- `/Users/cory/Documents/Pocket Steel/corpus-v2/reports/phase3d-full-preflight.json`
+- `~/Documents/Pocket Steel/corpus-v2/clean_classified_chunks.jsonl`
+- `~/Documents/Pocket Steel/corpus-v2/chunks-v2.jsonl`
+- `~/Documents/Pocket Steel/corpus-v2/reports/phase3b-full-report.md`
+- `~/Documents/Pocket Steel/corpus-v2/reports/phase3c-full-report.md`
+- `~/Documents/Pocket Steel/corpus-v2/reports/phase3d-full-preflight-report.md`
+- `~/Documents/Pocket Steel/corpus-v2/reports/phase3d-full-preflight.json`
 
 Planned v2 Chroma path checked by preflight only:
 
-- `/Users/cory/Documents/Pocket Steel/corpus-v2/vector-stores/chroma`
+- `~/Documents/Pocket Steel/corpus-v2/vector-stores/chroma`
 
 That Chroma path was not created.
 
@@ -159,13 +159,13 @@ These source rows had stable v1 `chunk_id` values and source/thread metadata, bu
 
 | Path | Size |
 | --- | ---: |
-| `/Users/cory/Documents/Pocket Steel/corpus-v2/` | 5.8G |
-| `/Users/cory/Documents/Pocket Steel/corpus-v2/clean_classified_chunks.jsonl` | 4.6G |
-| `/Users/cory/Documents/Pocket Steel/corpus-v2/chunks-v2.jsonl` | 1.1G |
-| `/Users/cory/Documents/Pocket Steel/corpus-v2/reports/phase3b-full-report.md` | 4.0K |
-| `/Users/cory/Documents/Pocket Steel/corpus-v2/reports/phase3c-full-report.md` | 4.0K |
-| `/Users/cory/Documents/Pocket Steel/corpus-v2/reports/phase3d-full-preflight-report.md` | 4.0K |
-| `/Users/cory/Documents/Pocket Steel/corpus-v2/reports/phase3d-full-preflight.json` | 4.0K |
+| `~/Documents/Pocket Steel/corpus-v2/` | 5.8G |
+| `~/Documents/Pocket Steel/corpus-v2/clean_classified_chunks.jsonl` | 4.6G |
+| `~/Documents/Pocket Steel/corpus-v2/chunks-v2.jsonl` | 1.1G |
+| `~/Documents/Pocket Steel/corpus-v2/reports/phase3b-full-report.md` | 4.0K |
+| `~/Documents/Pocket Steel/corpus-v2/reports/phase3c-full-report.md` | 4.0K |
+| `~/Documents/Pocket Steel/corpus-v2/reports/phase3d-full-preflight-report.md` | 4.0K |
+| `~/Documents/Pocket Steel/corpus-v2/reports/phase3d-full-preflight.json` | 4.0K |
 
 ## Interpretation
 
@@ -183,7 +183,7 @@ The remaining signature leakage count is below threshold, but it is not zero. Hu
 
 ```bash
 .venv/bin/python -m pytest tests/test_phase3_clean_classify_chunks.py tests/test_phase3_chunk_v2.py tests/test_phase3_embed_v2_preflight.py
-.venv/bin/python scripts/phase3_clean_classify_chunks.py --input /Users/cory/Documents/sgf-scrape-test/corpus-unified/chunks.jsonl --output corpus-v2/clean_classified_chunks.jsonl --report corpus-v2/reports/phase3b-full-report.md
+.venv/bin/python scripts/phase3_clean_classify_chunks.py --input ~/Documents/sgf-scrape-test/corpus-unified/chunks.jsonl --output corpus-v2/clean_classified_chunks.jsonl --report corpus-v2/reports/phase3b-full-report.md
 .venv/bin/python scripts/phase3_chunk_v2.py --input corpus-v2/clean_classified_chunks.jsonl --output corpus-v2/chunks-v2.jsonl --report corpus-v2/reports/phase3c-full-report.md --target-words 180 --max-words 240 --min-words 8
 .venv/bin/python scripts/phase3_embed_v2_preflight.py --clean-input corpus-v2/clean_classified_chunks.jsonl --chunk-input corpus-v2/chunks-v2.jsonl --target-chroma-path corpus-v2/vector-stores/chroma --planned-output-path corpus-v2/chunks-v2.jsonl --report corpus-v2/reports/phase3d-full-preflight-report.md --json-report corpus-v2/reports/phase3d-full-preflight.json
 .venv/bin/python -m pytest
