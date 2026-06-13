@@ -2064,6 +2064,181 @@ def noisy_practical_sources() -> list[dict[str, Any]]:
     ]
 
 
+
+def assert_scope_guardrail_answer(payload: dict[str, Any], *, large_output: bool = False) -> None:
+    assert_clean_answer_body(payload)
+    assert "outside Steel Guitar RAG’s scope" in payload["answer"]
+    assert "E9 positions" in payload["answer"]
+    assert "grips" in payload["answer"]
+    assert "pedals/levers" in payload["answer"]
+    assert "blocking" in payload["answer"]
+    assert "bar movement" in payload["answer"]
+    if large_output:
+        assert "too large to display usefully" in payload["answer"]
+    assert "I found one related source point" not in payload["answer"]
+    assert "retrieved" not in payload["answer"].lower()
+    assert "source support was weak" not in payload["answer"].lower()
+    assert "[object Object]" not in payload["answer"]
+    assert "fretboard" not in payload
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+
+
+def test_scope_guardrail_for_numbers_prompt_runs_before_retrieval() -> None:
+    search_index = FakeSearchIndex(
+        {
+            "results": [
+                {
+                    "score": 0.91,
+                    "excerpt": "I found one related source point in a random thread.",
+                    "forum_name": "Pedal Steel",
+                    "thread_title": "Unrelated numbers fragment",
+                    "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=470001",
+                    "chunk_id": "numbers-fragment",
+                    "post_uid": "p-numbers-fragment",
+                    "source_system": "sgf_phpbb_current",
+                }
+            ],
+            "warnings": ["should not appear"],
+        }
+    )
+
+    status, _, payload = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={"question": "Show me all of the numbers between 1 and 1 million.", "mode": "ask", "topK": 6},
+        search_index=search_index,
+        answer_provider=DeterministicAnswerProvider(),
+    )
+
+    assert status == "200 OK"
+    assert search_index.calls == []
+    assert_scope_guardrail_answer(payload, large_output=True)
+
+
+def test_classifier_gates_unsafe_prompt_before_retrieval() -> None:
+    search_index = FakeSearchIndex(
+        {
+            "results": [
+                {
+                    "score": 0.91,
+                    "excerpt": "This unrelated forum fragment should not be searched or displayed.",
+                    "forum_name": "Pedal Steel",
+                    "thread_title": "Unrelated scraping fragment",
+                    "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=470101",
+                    "chunk_id": "unsafe-fragment",
+                    "post_uid": "p-unsafe-fragment",
+                    "source_system": "sgf_phpbb_current",
+                }
+            ],
+            "warnings": ["should not appear"],
+        }
+    )
+
+    status, _, payload = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={"question": "Write me a Python script to scrape Instagram.", "mode": "ask", "topK": 6},
+        search_index=search_index,
+        answer_provider=DeterministicAnswerProvider(),
+    )
+
+    assert status == "200 OK"
+    assert search_index.calls == []
+    assert set(payload) == {"answer", "mode", "sources", "warnings", "sections"}
+    assert_scope_guardrail_answer(payload, large_output=True)
+    assert "scrape Instagram" not in payload["answer"]
+
+
+def test_classifier_gates_off_domain_prompt_before_retrieval() -> None:
+    search_index = FakeSearchIndex(
+        {
+            "results": [
+                {
+                    "score": 0.91,
+                    "excerpt": "I found one related source point in a random steel thread.",
+                    "forum_name": "Pedal Steel",
+                    "thread_title": "Unrelated trivia fragment",
+                    "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=470102",
+                    "chunk_id": "off-domain-fragment",
+                    "post_uid": "p-off-domain-fragment",
+                    "source_system": "sgf_phpbb_current",
+                }
+            ],
+            "warnings": ["should not appear"],
+        }
+    )
+
+    status, _, payload = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={"question": "What is the capital of France?", "mode": "ask", "topK": 6},
+        search_index=search_index,
+        answer_provider=DeterministicAnswerProvider(),
+    )
+
+    assert status == "200 OK"
+    assert search_index.calls == []
+    assert set(payload) == {"answer", "mode", "sources", "warnings", "sections"}
+    assert_scope_guardrail_answer(payload)
+
+
+def test_classifier_gate_preserves_source_backed_steel_retrieval() -> None:
+    questions = [
+        "What are common uses for the E9 9th string?",
+        "Who was Buddy Emmons?",
+        "Is Mullen or MSA a better guitar?",
+        "What vendors sell pedal steel accessories?",
+    ]
+    for question in questions:
+        search_index = FakeSearchIndex({"results": noisy_practical_sources(), "warnings": []})
+
+        status, _, payload = call_app(
+            "/api/answer",
+            method="POST",
+            json_body={"question": question, "mode": "ask", "topK": 6},
+            search_index=search_index,
+            answer_provider=DeterministicAnswerProvider(),
+        )
+
+        assert status == "200 OK"
+        assert search_index.calls == [
+            {
+                "query": question,
+                "limit": 6,
+                "source_system": None,
+                "forum_name": None,
+            }
+        ]
+        assert payload["sources"]
+        assert "fretboard" not in payload
+        assert "domain" not in payload
+        assert "intent" not in payload
+
+
+def test_position_questions_can_still_return_fretboard_payloads() -> None:
+    for question, title in [
+        ("Where can I play a G chord?", "G major positions on E9"),
+        ("Where can I play a C chord?", "C major positions on E9"),
+    ]:
+        search_index = FakeSearchIndex({"results": noisy_practical_sources(), "warnings": ["should not appear"]})
+
+        status, _, payload = call_app(
+            "/api/answer",
+            method="POST",
+            json_body={"question": question, "mode": "ask", "topK": 6},
+            search_index=search_index,
+            answer_provider=DeterministicAnswerProvider(),
+        )
+
+        assert status == "200 OK"
+        assert search_index.calls == []
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+        assert payload["fretboard"]["title"] == title
+        assert_valid_fretboard_payload(payload)
+
+
 def test_stroboplus_gig_power_uses_practical_advice_before_sources() -> None:
     payload = answer_for_question(
         "How do people power their StroboPlus tuner when playing a gig? My batteries run out very fast.",

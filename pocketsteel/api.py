@@ -84,6 +84,26 @@ def _question_mentions_slide_bar_item(question: str) -> bool:
     return "slide bar" in lowered or "steel bar" in lowered or "tone bar" in lowered
 
 
+def _answer_intent_guardrail_answer(domain: str) -> str:
+    if domain == "unsafe_or_impossible":
+        return (
+            "That request is outside Steel Guitar RAG’s scope, and it may be unsafe or too large to display usefully. "
+            "Try asking about E9 positions, grips, pedals/levers, tone, gear, blocking, bar movement, practice plans, "
+            "or steel-guitar forum wisdom."
+        )
+    return (
+        "That request is outside Steel Guitar RAG’s scope. "
+        "Try asking about E9 positions, grips, pedals/levers, tone, gear, blocking, bar movement, practice plans, "
+        "or steel-guitar forum wisdom."
+    )
+
+
+def _should_gate_answer_intent(decision: dict[str, Any]) -> bool:
+    if decision.get("domain") == "unsafe_or_impossible":
+        return True
+    return decision.get("domain") == "off_domain" and decision.get("intent") == "small_talk"
+
+
 class RetrievalApi:
     def __init__(
         self,
@@ -197,7 +217,27 @@ class RetrievalApi:
                 )
                 return self._json_response(start_response, "400 Bad Request", {"error": error or "invalid request"})
 
-            _answer_intent_decision = classify_answer_request(answer_request.question, answer_request.mode)
+            answer_intent_decision = classify_answer_request(answer_request.question, answer_request.mode)
+
+            if _should_gate_answer_intent(answer_intent_decision):
+                final_answer = _answer_intent_guardrail_answer(answer_intent_decision["domain"])
+                payload: AnswerResponse = {
+                    "answer": final_answer,
+                    "mode": answer_request.mode,
+                    "sources": [],
+                    "warnings": [],
+                    "sections": build_sections(final_answer),
+                }
+                self._log_answer_attempt(
+                    request_payload,
+                    role=access.role,
+                    identity_email=access.identity_email,
+                    access_status="authorized",
+                    authorized=True,
+                    source_count=0,
+                    warning_count=0,
+                )
+                return self._json_response(start_response, "200 OK", payload)
 
             deterministic_chord_answer = visual_fretboard_curated_answer(answer_request.question)
             if deterministic_chord_answer is None:
