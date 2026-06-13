@@ -27,6 +27,9 @@ from pocketsteel.fretboard_examples import (
     major_chord_location_request_for_question,
     function_chord_request_for_question,
     minor_chord_location_request_for_question,
+    normalize_rootless_chord_quality_alias,
+    rootless_chord_quality_answer_for_question,
+    rootless_chord_quality_request_for_question,
     validate_fretboard_payload,
 )
 
@@ -1016,6 +1019,62 @@ def test_invalid_chord_symbol_guardrail_clarifies_before_retrieval() -> None:
     assert chord_symbol_guardrail_answer_for_question("where is a Cmajorish chord?") is not None
     assert chord_symbol_guardrail_answer_for_question("what is a Zm chord?") is not None
     assert chord_symbol_guardrail_answer_for_question("show me a GmF chord") is not None
+
+
+def test_rootless_chord_quality_aliases_bypass_invalid_symbol_guardrail() -> None:
+    cases = {
+        "sus": ("sus", False),
+        "suspended": ("sus", False),
+        "sus2": ("sus2", False),
+        "sus4": ("sus4", False),
+        "dominant": ("dominant7", False),
+        "dom": ("dominant7", False),
+        "dom7": ("dominant7", False),
+        "dominant 7": ("dominant7", False),
+        "7th": ("dominant7", False),
+        "V7": ("dominant7", True),
+        "5 dominant 7": ("dominant7", True),
+        "5 dom 7": ("dominant7", True),
+        "5^7": ("dominant7", True),
+        "five dominant seven": ("dominant7", True),
+        "dim": ("diminished", False),
+        "diminished": ("diminished", False),
+        "dim7": ("diminished7", False),
+        "aug": ("augmented", False),
+        "augmented": ("augmented", False),
+        "+ chord": ("augmented", False),
+    }
+
+    for alias, (quality, is_function) in cases.items():
+        request = normalize_rootless_chord_quality_alias(alias)
+        assert request is not None, alias
+        assert request.quality == quality
+        assert request.is_function is is_function
+
+        question = f"How do I play a {alias}?"
+        answer = rootless_chord_quality_answer_for_question(question)
+        assert answer is not None, question
+        assert "Give me" in answer
+        assert chord_symbol_guardrail_answer_for_question(question) is None
+        assert fretboard_payload_for_question(question) is None
+
+
+def test_rootless_chord_quality_answers_explain_without_fretboard() -> None:
+    expected_phrases = {
+        "What is a sus chord?": ("sus4 = root, 4th, 5th", "sus2 = root, 2nd, 5th", "no 3rd"),
+        "How do I play a dominant 7 chord?": ("root, major 3rd, perfect 5th, and flat 7th", "D7 is the V7 chord"),
+        "What is 5^7?": ("scale degree 5", "Give me the key"),
+        "What is a dim7 chord?": ("root, flat 3rd, flat 5th, and double-flat 7th", "passing movement"),
+        "How do I play an aug chord?": ("root, major 3rd, and sharp 5th", "half-step motion"),
+    }
+
+    for question, phrases in expected_phrases.items():
+        answer = rootless_chord_quality_answer_for_question(question)
+        assert answer is not None
+        for phrase in phrases:
+            assert phrase in answer
+        assert "I don’t recognize" not in answer
+        assert fretboard_payload_for_question(question) is None
 
 
 def test_valid_chord_symbols_are_not_blocked_by_guardrail() -> None:

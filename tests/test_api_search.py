@@ -2745,6 +2745,56 @@ def test_invalid_chord_symbol_variants_and_slash_chord_are_source_free() -> None
     assert slash["warnings"] == []
 
 
+def test_rootless_chord_quality_questions_are_teacher_first_and_source_free() -> None:
+    cases = {
+        "What is a sus chord?": ("Suspended is a standard chord quality.", "sus4 = root, 4th, 5th", "no 3rd"),
+        "How do I play a sus chord?": ("Suspended is a standard chord quality.", "Give me a root or key"),
+        "What is a dominant chord?": ("Dominant 7 is a standard chord quality.", "flat 7th"),
+        "How do I play a dominant 7 chord?": ("Dominant 7 is a standard chord quality.", "D7 is the V7 chord"),
+        "What is a dom7 chord?": ("Dominant 7 is a standard chord quality.", "root, major 3rd"),
+        "How do I play 5 dom 7?": ("scale degree 5", "Give me the key"),
+        "What is 5^7?": ("scale degree 5", "in G the V7 is D7"),
+        "What is a diminished chord?": ("Diminished is a standard chord quality.", "root, flat 3rd, and flat 5th"),
+        "How do I play a dim chord?": ("Diminished is a standard chord quality.", "passing or tension"),
+        "What is a dim7 chord?": ("Diminished 7 is a standard chord quality.", "double-flat 7th"),
+        "What is an augmented chord?": ("Augmented is a standard chord quality.", "sharp 5th"),
+        "How do I play an aug chord?": ("Augmented is a standard chord quality.", "half-step motion"),
+        "What is a + chord?": ("Augmented is a standard chord quality.", "Give me a root or key"),
+    }
+
+    for question, expected_phrases in cases.items():
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert_clean_answer_body(payload)
+        for phrase in expected_phrases:
+            assert phrase in payload["answer"]
+        assert "I don’t recognize" not in payload["answer"]
+        assert "fretboard" not in payload
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+
+
+def test_rooted_unsupported_chord_quality_questions_explain_tones_without_forum_fragments() -> None:
+    cases = {
+        "How do I play Gdim on E9?": ("G diminished", "root, flat 3rd, and flat 5th"),
+        "How do I play Gaug on E9?": ("G augmented", "root, major 3rd, and sharp 5th"),
+        "How do I play Gsus4 on E9?": ("G sus4", "sus4 = root, 4th, 5th"),
+        "How do I play Dsus2 on E9?": ("D sus2", "sus2 = root, 2nd, 5th"),
+        "How do I play G7 on E9?": ("G dominant 7", "root, major 3rd, perfect 5th, and flat 7th"),
+        "How do I play D7 on E9?": ("D dominant 7", "D7 is the V7 chord"),
+    }
+
+    for question, expected_phrases in cases.items():
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert_clean_answer_body(payload)
+        for phrase in expected_phrases:
+            assert phrase in payload["answer"]
+        assert "fretboard" not in payload
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+
+
 def test_valid_g_and_f_chord_questions_still_return_fretboard_payloads() -> None:
     g_payload = answer_for_question("how do I play a G chord?", noisy_practical_sources())
     assert_clean_answer_body(g_payload)
@@ -5153,11 +5203,13 @@ def test_two_minor_in_g_and_tab_notation_questions_route_to_fretboard_guidance()
 
     notation = answer_for_question("What is a 5^7?", noisy_source)
     assert_clean_answer_body(notation)
-    assert "ambiguous" in notation["answer"]
-    assert "5 dominant 7" in notation["answer"]
+    assert "5^7 means a dominant 7 chord built on scale degree 5" in notation["answer"]
     assert "V7" in notation["answer"]
-    assert "slide from fret 5 to fret 7" in notation["answer"]
-    assert "surrounding tab or chord line" in notation["answer"]
+    assert "Give me the key before I map it to E9 positions" in notation["answer"]
+    assert "in G the V7 is D7" in notation["answer"]
+    assert "fretboard" not in notation
+    assert notation["sources"] == []
+    assert notation["warnings"] == []
     assert "diminished" not in notation["answer"].lower()
 
 

@@ -131,6 +131,13 @@ class ChordConceptRequest:
 
 
 @dataclass(frozen=True)
+class RootlessChordQualityRequest:
+    quality: str
+    label: str
+    is_function: bool = False
+
+
+@dataclass(frozen=True)
 class ChordSymbolGuardrailRequest:
     symbol: str
     answer: str
@@ -214,8 +221,11 @@ CHORD_ALIASES: dict[str, str] = {
     "major": "major",
     "minor": "minor",
     "m": "minor",
+    "dominant": "dominant7",
     "dominant 7": "dominant7",
     "dominant7": "dominant7",
+    "dom": "dominant7",
+    "dom7": "dominant7",
     "7": "dominant7",
     "dominant 9": "dominant9",
     "dominant9": "dominant9",
@@ -223,6 +233,35 @@ CHORD_ALIASES: dict[str, str] = {
     "minor 7": "minor7",
     "minor7": "minor7",
     "m7": "minor7",
+}
+
+ROOTLESS_CHORD_QUALITY_ALIASES: dict[str, RootlessChordQualityRequest] = {
+    "sus": RootlessChordQualityRequest("sus", "suspended"),
+    "sus2": RootlessChordQualityRequest("sus2", "sus2"),
+    "sus4": RootlessChordQualityRequest("sus4", "sus4"),
+    "suspended": RootlessChordQualityRequest("sus", "suspended"),
+    "suspended 2": RootlessChordQualityRequest("sus2", "sus2"),
+    "suspended 4": RootlessChordQualityRequest("sus4", "sus4"),
+    "dominant": RootlessChordQualityRequest("dominant7", "dominant 7"),
+    "dom": RootlessChordQualityRequest("dominant7", "dominant 7"),
+    "dom7": RootlessChordQualityRequest("dominant7", "dominant 7"),
+    "dom 7": RootlessChordQualityRequest("dominant7", "dominant 7"),
+    "dominant 7": RootlessChordQualityRequest("dominant7", "dominant 7"),
+    "dominant seventh": RootlessChordQualityRequest("dominant7", "dominant 7"),
+    "7th": RootlessChordQualityRequest("dominant7", "dominant 7"),
+    "v7": RootlessChordQualityRequest("dominant7", "V7", True),
+    "5 dominant 7": RootlessChordQualityRequest("dominant7", "5 dominant 7", True),
+    "5 dom 7": RootlessChordQualityRequest("dominant7", "5 dominant 7", True),
+    "5^7": RootlessChordQualityRequest("dominant7", "5^7", True),
+    "five dominant seven": RootlessChordQualityRequest("dominant7", "5 dominant 7", True),
+    "dim": RootlessChordQualityRequest("diminished", "diminished"),
+    "diminished": RootlessChordQualityRequest("diminished", "diminished"),
+    "dim7": RootlessChordQualityRequest("diminished7", "diminished 7"),
+    "dim 7": RootlessChordQualityRequest("diminished7", "diminished 7"),
+    "diminished 7": RootlessChordQualityRequest("diminished7", "diminished 7"),
+    "aug": RootlessChordQualityRequest("augmented", "augmented"),
+    "augmented": RootlessChordQualityRequest("augmented", "augmented"),
+    "+": RootlessChordQualityRequest("augmented", "augmented"),
 }
 
 MAJOR_SCALE_INTERVALS: dict[int, int] = {
@@ -1776,6 +1815,8 @@ def chord_symbol_guardrail_answer_for_question(question: str) -> str | None:
 
 
 def invalid_chord_symbol_request_for_question(question: str) -> ChordSymbolGuardrailRequest | None:
+    if rootless_chord_quality_request_for_question(question) is not None:
+        return None
     symbol = chord_symbol_from_chord_like_question(question)
     if symbol is None:
         return None
@@ -1841,8 +1882,11 @@ def normalize_chord_symbol_display(symbol: str) -> str:
         "maj": "maj",
         "major": "",
         "dim": "dim",
+        "dim7": "dim7",
         "aug": "aug",
         "sus": "sus",
+        "sus2": "sus2",
+        "sus4": "sus4",
     }
     quality = quality_aliases.get(quality.lower(), quality)
     return f"{root}{accidental}{quality}"
@@ -1910,6 +1954,102 @@ def slash_chord_clarification_answer(symbol: str) -> str:
         "The current fretboard visualizer maps chord positions by the chord sound on the steel, but it does not yet generate a separate bass-note/slash-chord diagram. "
         f"If you want the chord part, ask for {chord} positions. If you need the bass-note function, say what key or progression you are in."
     )
+
+
+def normalize_rootless_chord_quality_alias(text: str) -> RootlessChordQualityRequest | None:
+    q = (text or "").strip().lower().replace("♯", "#").replace("♭", "b")
+    q = q.replace("’", "'")
+    q = re.sub(r"\bseven\b", "7", q)
+    q = re.sub(r"\bfive\b", "5", q)
+    q = re.sub(r"\bseventh\b", "seventh", q)
+    q = re.sub(r"\bchords?\b", "", q)
+    q = re.sub(r"\bquality\b", "", q)
+    q = re.sub(r"\bthe\b", "", q)
+    q = re.sub(r"\ba(?:n)?\b", "", q)
+    q = re.sub(r"\s*\^\s*", "^", q)
+    q = re.sub(r"\s*\+\s*", "+", q)
+    q = re.sub(r"[-_]+", " ", q)
+    q = re.sub(r"\s+", " ", q).strip()
+    compact = q.replace(" ", "")
+    return ROOTLESS_CHORD_QUALITY_ALIASES.get(q) or ROOTLESS_CHORD_QUALITY_ALIASES.get(compact)
+
+
+def rootless_chord_quality_request_for_question(question: str) -> RootlessChordQualityRequest | None:
+    q = re.sub(r"[?!.,;:]+", " ", question or "")
+    q = re.sub(r"\s+", " ", q).strip().lower()
+    if not q:
+        return None
+    patterns = (
+        r"^what(?:'s| is)\s+(?P<body>.+)$",
+        r"^what\s+does\s+(?P<body>.+?)\s+mean$",
+        r"^how\s+do\s+i\s+(?:play|make|use)\s+(?P<body>.+)$",
+        r"^tell\s+me\s+about\s+(?P<body>.+)$",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, q)
+        if not match:
+            continue
+        body = match.group("body").strip()
+        body = re.sub(r"\bon\s+(?:e9|pedal\s+steel|the\s+e9)\b$", "", body).strip()
+        request = normalize_rootless_chord_quality_alias(body)
+        if request is not None:
+            return request
+    return normalize_rootless_chord_quality_alias(q)
+
+
+def chord_quality_definition_lines(quality: str) -> list[str]:
+    normalized = normalize_chord_quality(quality)
+    if normalized in {"sus", "sus2", "sus4", "suspended"}:
+        return [
+            "A suspended chord replaces the 3rd with a suspended tone, so it has an unresolved sound.",
+            "- sus4 = root, 4th, 5th.",
+            "- sus2 = root, 2nd, 5th.",
+            "- There is no 3rd, so the sound is neither plain major nor plain minor until it resolves.",
+        ]
+    if normalized in {"dominant7", "dominant 7"}:
+        return [
+            "A dominant 7 chord is built from root, major 3rd, perfect 5th, and flat 7th.",
+            "In the key of G, D7 is the V7 chord: D-F#-A-C.",
+            "On E9, dominant sounds can be full, partial, or rootless depending on the grip and pedal/lever setup, so the key/root matters before mapping positions.",
+        ]
+    if normalized == "diminished":
+        return [
+            "A diminished triad is built from root, flat 3rd, and flat 5th.",
+            "Players often use diminished sounds as passing or tension chords because the flat 5 wants to resolve.",
+        ]
+    if normalized in {"diminished7", "diminished 7", "dim7"}:
+        return [
+            "A diminished 7 chord is built from root, flat 3rd, flat 5th, and double-flat 7th.",
+            "That symmetrical tension makes diminished-7 sounds useful for passing movement and connecting nearby chord positions.",
+        ]
+    if normalized == "augmented":
+        return [
+            "An augmented chord is built from root, major 3rd, and sharp 5th.",
+            "It creates tension and often leads by half-step motion into a more stable chord.",
+        ]
+    return []
+
+
+def rootless_chord_quality_answer_for_question(question: str) -> str | None:
+    request = rootless_chord_quality_request_for_question(question)
+    if request is None:
+        return None
+    lines = chord_quality_definition_lines(request.quality)
+    if not lines:
+        return None
+    if request.is_function:
+        lines = [
+            f"{request.label} means a dominant 7 chord built on scale degree 5.",
+            *lines,
+            "Give me the key before I map it to E9 positions; for example, in G the V7 is D7.",
+        ]
+    else:
+        lines = [
+            f"{request.label.capitalize()} is a standard chord quality.",
+            *lines,
+            "Give me a root or key before I map it to E9 positions, for example Gsus4, D7, or the V7 chord in G.",
+        ]
+    return "\n".join(lines)
 
 
 def minor_chord_answer_for_question(question: str) -> str | None:
@@ -2242,7 +2382,7 @@ def unsupported_chord_location_request_for_question(question: str) -> Unsupporte
     body = re.sub(r"\bpositions?\b$", "", body).strip()
     body = re.sub(r"\bchord\b$", "", body).strip()
     quality_match = re.match(
-        r"^(?P<root>[a-g](?:#|b)?)(?P<compact>m(?!ajor)|7|dim|aug)?(?:\s+(?P<quality>minor|minor\s+7|m7|dominant(?:\s+7)?|seventh|7|diminished|dim|augmented|aug|sus(?:2|4)?|major\s+7|maj7))?$",
+        r"^(?P<root>[a-g](?:#|b)?)(?P<compact>m(?!ajor)|7|dim7?|aug|sus(?:2|4)?)?(?:\s+(?P<quality>minor|minor\s+7|m7|dominant(?:\s+7)?|seventh|7|diminished(?:\s+7)?|dim7?|augmented|aug|sus(?:2|4)?|suspended(?:\s+[24])?|major\s+7|maj7))?$",
         body,
     )
     if not quality_match:
@@ -2265,11 +2405,21 @@ def normalize_chord_quality(quality: str) -> str:
         "m": "minor",
         "m7": "minor 7",
         "7": "dominant 7",
+        "7th": "dominant 7",
         "seventh": "dominant 7",
+        "dom": "dominant 7",
+        "dom7": "dominant 7",
         "dominant": "dominant 7",
         "dominant 7": "dominant 7",
         "dim": "diminished",
+        "dim7": "diminished 7",
+        "diminished7": "diminished 7",
+        "diminished 7": "diminished 7",
         "aug": "augmented",
+        "+": "augmented",
+        "suspended": "sus",
+        "suspended 2": "sus2",
+        "suspended 4": "sus4",
         "maj7": "major 7",
     }
     return aliases.get(q, q)

@@ -21,6 +21,8 @@ from pocketsteel.fretboard_examples import (
     generic_chord_concept_answer_for_question,
     major_chord_location_request_for_question,
     minor_chord_answer_for_question,
+    rootless_chord_quality_answer_for_question,
+    chord_quality_definition_lines,
     unsupported_chord_location_request_for_question,
 )
 from pocketsteel.steel_rules import answer_from_rules
@@ -125,6 +127,13 @@ PLAYER_BIOS = {
 
 def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
     q = normalize(question)
+    rootless_quality_answer = rootless_chord_quality_answer_for_question(question)
+    if rootless_quality_answer is not None:
+        return CuratedAnswer(
+            intent="fretboard_concept",
+            confidence="curated_high",
+            answer=rootless_quality_answer,
+        )
     symbol_guardrail_answer = chord_symbol_guardrail_answer_for_question(question)
     if symbol_guardrail_answer is not None:
         return CuratedAnswer(
@@ -335,11 +344,14 @@ def unsupported_chord_position_curated_answer(question: str) -> CuratedAnswer | 
         requested = unsupported_request.requested_root
     else:
         requested = f"{unsupported_request.requested_root} (same pitch as {unsupported_request.normalized_key})"
+    definition = "\n".join(chord_quality_definition_lines(unsupported_request.quality))
+    definition_block = f"\n\n{definition}" if definition else ""
     return CuratedAnswer(
         intent="copedent_fretboard",
         confidence="curated_high",
         answer=(
-            f"The deterministic fretboard view currently supports major-position diagrams first, so I would not use SGF snippets for a {requested} {unsupported_request.quality} answer.\n\n"
+            f"The deterministic fretboard view currently supports major-position diagrams first, so I would not use SGF snippets for a {requested} {unsupported_request.quality} answer."
+            f"{definition_block}\n\n"
             f"For a major-chord map, use {unsupported_request.normalized_key} major positions; for {unsupported_request.quality}, tell me the tuning/copedent context you want and I can keep the answer explicit instead of guessing."
         ),
     )
