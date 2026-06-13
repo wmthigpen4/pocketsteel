@@ -91,7 +91,51 @@ Codex must ask before taking action on:
 - Do not use `git add .`.
 - Stage exact paths only. Use hunk-level staging when overlapping lane changes share files.
 - Treat `docs/handoffs/task-completions/integration-status.md` as a coordination artifact unless the user explicitly asks to commit it.
-- Repo Steward approval rule: when QA approves a scoped slice and names the approved files or hunks, Repo Steward should proceed with exact-path or exact-hunk staging and commit. Do not ask the user for another approval. If the approved scope is missing, contradictory, unsafe, or includes unrelated parked work, stop and write a blocker handoff instead.
+
+## Repo Steward Auto-Approval Rule
+
+Repo Steward should not ask the user for approval when a slice has already been approved by QA, an `AUTOPILOT USER SMOKE BUG` run, an `AUTOPILOT USER SMOKE ADJUSTMENT` run, or a clear handoff that names the approved files/hunks.
+
+When the approved scope is clear, Repo Steward must proceed with:
+
+1. Inspect current git status.
+2. Identify the approved files/hunks from the handoff.
+3. Identify unrelated dirty/parked files.
+4. Stage exact approved paths or hunks only.
+5. Run required staged-diff checks.
+6. Commit with the agreed scoped commit message.
+7. Write a Repo Steward handoff.
+8. Update `integration-status.md` if the protocol requires a refresh.
+
+Repo Steward should say what it is about to do, but should not stop for user approval. Use this wording:
+
+> Proceeding under Repo Steward auto-approval because QA/autopilot approved the slice and the file scope is clear.
+
+Stop and write a blocker handoff only if:
+
+1. The approved file/hunk list is missing.
+2. The approved file/hunk list is contradictory.
+3. The staged diff includes unrelated parked work.
+4. The staged diff includes secrets, tokens, credentials, env files, private data, Chroma/vector data, corpus/source data, scraping outputs, or deployment/auth policy changes not explicitly approved.
+5. The diff requires destructive git actions such as reset, checkout, clean, deleting files, or dropping changes.
+6. Tests/checks fail.
+7. The task is a product decision rather than a scoped commit.
+8. Dirty runtime files make it unclear what should be committed.
+
+If a stop condition is hit, Repo Steward should not ask vague approval questions. It should write the exact blocker, exact files involved, why auto-approval could not proceed, and the proposed safe next step.
+
+Bad Repo Steward behavior when QA/autopilot has already approved the scoped slice:
+
+- Do not say "Human decision needed: approve commit?"
+- Do not say "Should I proceed?"
+- Do not say "Waiting for approval."
+- Do not say "Would you like me to commit this?"
+
+Good Repo Steward behavior:
+
+- "QA approved this scoped slice. Proceeding with exact-hunk staging."
+- "Auto-approval applies. Staging only the approved files."
+- "Stopped because the approved scope conflicts with dirty parked files."
 
 ## Prompt Hygiene And Privacy
 
