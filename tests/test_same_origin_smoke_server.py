@@ -85,6 +85,14 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     assert b"PedalSteelFretboard" in script
 
 
+def test_same_origin_server_redirects_root_to_ui_shell() -> None:
+    status, headers, body = call_app(smoke_app(), "/")
+
+    assert status == "302 Found"
+    assert headers["Location"] == "/ui/steel-guitar-rag-mock.html"
+    assert b"Redirecting to /ui/steel-guitar-rag-mock.html" in body
+
+
 def test_same_origin_server_serves_public_fretboard_background() -> None:
     status, headers, body = call_app(smoke_app(), "/brand/pedal-steel-fretboard-background.svg")
 
@@ -109,6 +117,28 @@ def test_same_origin_server_delegates_answer_api() -> None:
     assert payload["sources"][0]["title"] == "Steel King Settings"
     assert payload["sources"][0]["excerpt"] == "Steel King settings excerpt."
     assert payload["sources"][0]["url"] == "https://example.test/source"
+
+
+def test_same_origin_server_keeps_production_answer_api_protected() -> None:
+    app = build_app(
+        api_app=create_smoke_api_app(
+            answer_auth_mode="production",
+            auth_provider="cloudflare-access",
+            search_index=object(),
+        ),
+        ui_root=Path("ui"),
+    )
+
+    status, headers, body = call_app(
+        app,
+        "/api/answer",
+        method="POST",
+        json_body={"question": "How do I play a G chord on the E9?"},
+    )
+
+    assert status == "401 Unauthorized"
+    assert headers["Content-Type"] == "application/json; charset=utf-8"
+    assert json.loads(body) == {"error": "/api/answer requires Cloudflare Access identity"}
 
 
 def test_same_origin_server_can_control_no_source_and_error_states() -> None:

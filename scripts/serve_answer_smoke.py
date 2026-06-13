@@ -45,6 +45,19 @@ def text_response(start_response: StartResponse, status: str, body: str) -> list
     return [encoded]
 
 
+def redirect_response(start_response: StartResponse, location: str) -> list[bytes]:
+    body = f"Redirecting to {location}\n".encode("utf-8")
+    start_response(
+        "302 Found",
+        [
+            ("Location", location),
+            ("Content-Type", "text/plain; charset=utf-8"),
+            ("Content-Length", str(len(body))),
+        ],
+    )
+    return [body]
+
+
 def read_json_body(environ: dict[str, Any]) -> dict[str, Any]:
     try:
         content_length = int(environ.get("CONTENT_LENGTH") or 0)
@@ -114,7 +127,9 @@ def build_app(
                 restore_wsgi_input(environ, raw_body)
             return api_app(environ, start_response)
 
-        if path in {"/", "/ui", "/ui/"}:
+        if path == "/":
+            return redirect_response(start_response, "/ui/steel-guitar-rag-mock.html")
+        if path in {"/ui", "/ui/"}:
             path = "/ui/steel-guitar-rag-mock.html"
         if not path.startswith("/ui/"):
             return text_response(start_response, "404 Not Found", "not found")
