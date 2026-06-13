@@ -3153,6 +3153,75 @@ def test_suspended_chord_punctuation_variants_are_teacher_first_and_source_free(
         assert payload["warnings"] == []
 
 
+def test_direct_yes_no_practical_answers_start_directly_without_sgf_fragments() -> None:
+    payload = answer_for_question("Can I make a pedal steel guitar out of a box of cereal?", noisy_practical_sources())
+
+    assert_clean_answer_body(payload)
+    assert payload["answer"].startswith("No, not as a real functional pedal steel guitar.")
+    assert "cereal box could be a toy model" in payload["answer"]
+    assert "rigid body" in payload["answer"]
+    assert "changer" in payload["answer"]
+    assert "strings under real tension" in payload["answer"]
+    assert "Forum discussions" in payload["answer"]
+    assert "Top Does anyone know" not in payload["answer"]
+    assert "inherited pedal steel" not in payload["answer"].lower()
+    assert "homemade instruments" not in payload["answer"].lower()
+    assert "fretboard" not in payload
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+
+
+def test_rooted_dominant_seventh_answers_are_direct_and_source_free() -> None:
+    cases = {
+        "How do I play a G dom 7?": "G7, or G dominant 7, is G-B-D-F",
+        "How do I play a G7?": "G7, or G dominant 7, is G-B-D-F",
+        "What is a G dominant 7?": "G7, or G dominant 7, is G-B-D-F",
+    }
+    for question, first_phrase in cases.items():
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert_clean_answer_body(payload)
+        assert payload["answer"].startswith(first_phrase)
+        assert "root, major 3rd, perfect 5th, and flat 7th" in payload["answer"]
+        assert "think G major first" in payload["answer"]
+        assert "chord tones you are looking for are G-B-D-F" in payload["answer"]
+        assert "7th fret" not in payload["answer"]
+        assert "Emin7" not in payload["answer"]
+        assert "fretboard" not in payload
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+
+
+def test_suspended_usage_answers_directly_without_fretboard_or_sources() -> None:
+    for question in ("When would I ever play a sus chord?", "When do I use a sus chord?"):
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert_clean_answer_body(payload)
+        assert payload["answer"].startswith("Use a sus chord when you want tension that wants to resolve.")
+        assert "sus4 replaces the 3rd with the 4th" in payload["answer"]
+        assert "held chord" in payload["answer"]
+        assert "intro ending" in payload["answer"]
+        assert "Chord Police" not in payload["answer"]
+        assert "fretboard" not in payload
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+
+
+def test_rooted_suspended_answers_are_clean_direct_theory() -> None:
+    payload = answer_for_question("How do I play a G sus chord?", noisy_practical_sources())
+
+    assert_clean_answer_body(payload)
+    assert payload["answer"].startswith("Gsus usually means Gsus4.")
+    assert "G-C-D" in payload["answer"]
+    assert "It has no B" in payload["answer"]
+    assert "neither plain major nor minor" in payload["answer"]
+    assert "exact E9 sus-position mapping is still limited" in payload["answer"]
+    assert "deterministic fretboard view" not in payload["answer"]
+    assert "fretboard" not in payload
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+
+
 def test_unknown_person_identity_questions_do_not_retrieve_random_fragments() -> None:
     noisy_person_sources = [
         {

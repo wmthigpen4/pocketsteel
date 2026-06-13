@@ -34,6 +34,7 @@ def _normalize_chord_quality(quality: str) -> str:
         "7th": "dominant 7",
         "seventh": "dominant 7",
         "dom": "dominant 7",
+        "dom 7": "dominant 7",
         "dom7": "dominant 7",
         "dominant": "dominant 7",
         "dominant 7": "dominant 7",
@@ -65,7 +66,7 @@ def basic_chord_theory_request_for_question(question: str) -> BasicChordTheoryRe
         r"major\s+7th|major\s+seventh|major\s+7|maj7|"
         r"sus(?:2|4)?|suspended(?:\s+[24])?|"
         r"dim(?:inished)?7?|diminished(?:\s+7)?|"
-        r"aug(?:mented)?|dominant(?:\s+7)?|dom7?|7th|7|"
+        r"aug(?:mented)?|dominant(?:\s+7)?|dom(?:\s+7)?|7th|7|"
         r"major|minor|m"
         r")"
     )
@@ -147,6 +148,20 @@ def major_seventh_spelling_for_answer(root: str) -> str:
     return preferred.get(key, f"{major_triad_spelling_for_answer(key)}-{transpose(key, 11)}")
 
 
+def dominant_seventh_spelling_for_answer(root: str) -> str:
+    key = normalize_key(root)
+    preferred = {
+        "C": "C-E-G-Bb",
+        "D": "D-F#-A-C",
+        "E": "E-G#-B-D",
+        "F": "F-A-C-Eb",
+        "G": "G-B-D-F",
+        "A": "A-C#-E-G",
+        "B": "B-D#-F#-A",
+    }
+    return preferred.get(key, f"{major_triad_spelling_for_answer(key)}-{transpose(key, 10)}")
+
+
 def suspended_spelling_for_answer(root: str, quality: str) -> tuple[str, str]:
     key = normalize_key(root)
     if quality == "sus2":
@@ -187,14 +202,19 @@ def basic_chord_theory_answer_for_question(question: str) -> str | None:
             else "It leaves out the 3rd, so it wants to resolve."
         )
         return (
-            f"{key}{spelling_quality} is a {key} suspended chord ({key} {spelling_quality}): {spelling}, built from {formula}.\n\n"
-            f"{compact_formula}. {extra} The current deterministic E9 map does not yet claim exact suspended positions for every grip."
+            f"{key}sus usually means {key}sus4. {key}{spelling_quality} is a {key} suspended chord ({key} {spelling_quality}): {spelling}, built from {formula}.\n\n"
+            f"{compact_formula}. It has no {transpose(key, 4)}, so it is neither plain major nor minor until it resolves. "
+            f"{extra} On E9, start by thinking of the {key} major position, then look for a way to replace or avoid the 3rd with the suspended tone. "
+            "I can explain the chord tones now; exact E9 sus-position mapping is still limited."
         )
     if quality == "dominant 7":
+        spelling = dominant_seventh_spelling_for_answer(key)
         return (
-            f"{key}7 is {key} dominant 7: root, major 3rd, perfect 5th, and flat 7th.\n\n"
-            f"For example, {key}7 is the V7 chord in the key a perfect 4th above {key}. "
-            "On E9, dominant sounds can be full, partial, or rootless depending on the grip and pedal/lever setup, so give the key or position if you want a fretboard map."
+            f"{key}7, or {key} dominant 7, is {spelling}: root, major 3rd, perfect 5th, and flat 7th.\n\n"
+            f"On E9, a simple starting point is to think {key} major first, then add or imply the flat 7. "
+            f"The chord tones you are looking for are {spelling}. "
+            f"For example, {key}7 is the V7 chord in {transpose(key, 5)}. "
+            "The current deterministic map may not show every dominant-7 grip yet, but this chord spelling is the safe target."
         )
     if quality == "diminished":
         return (
@@ -212,6 +232,19 @@ def basic_chord_theory_answer_for_question(question: str) -> str | None:
             "The current deterministic E9 map does not yet claim exact augmented positions for every grip, so use the chord tones as the safe starting point."
         )
     return None
+
+
+def sus_chord_usage_answer_for_question(question: str) -> str | None:
+    q = re.sub(r"\s+", " ", question or "").strip().lower().rstrip("?!.")
+    if not re.search(r"\bwhen\b.*\b(?:use|play)\b.*\bsus(?:pended)?\s+chord\b", q):
+        return None
+    return (
+        "Use a sus chord when you want tension that wants to resolve.\n\n"
+        "A sus4 replaces the 3rd with the 4th, so it sounds suspended until it resolves back to the major chord. "
+        "For example, Gsus4 is G-C-D; resolving it to G major puts the B back in the chord.\n\n"
+        "On pedal steel, that sound is useful on a held chord, an intro ending, a gospel-style lift, or a country phrase where you want the chord to lean for a moment before settling. "
+        "Think of it as a musical “not yet” that resolves into the plain major chord."
+    )
 
 
 def chord_change_answer_for_question(question: str) -> str | None:

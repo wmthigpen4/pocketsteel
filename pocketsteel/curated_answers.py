@@ -6,7 +6,11 @@ import re
 from dataclasses import dataclass
 from typing import Literal
 
-from pocketsteel.basic_chord_answers import basic_chord_theory_answer_for_question, chord_change_answer_for_question
+from pocketsteel.basic_chord_answers import (
+    basic_chord_theory_answer_for_question,
+    chord_change_answer_for_question,
+    sus_chord_usage_answer_for_question,
+)
 from pocketsteel.curated_source_registry import slide_bar_vendor_bullets
 from pocketsteel.fretboard_examples import (
     chord_concept_answer_for_question,
@@ -140,6 +144,16 @@ PLAYER_BIOS = {
 
 def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
     q = normalize(question)
+    practical_direct_answer = direct_yes_no_practical_answer(q)
+    if practical_direct_answer is not None:
+        return practical_direct_answer
+    sus_usage_answer = sus_chord_usage_answer_for_question(question)
+    if sus_usage_answer is not None:
+        return CuratedAnswer(
+            intent="when_to_use_musical_context",
+            confidence="curated_high",
+            answer=sus_usage_answer,
+        )
     rootless_quality_answer = rootless_chord_quality_answer_for_question(question)
     if rootless_quality_answer is not None:
         return CuratedAnswer(
@@ -361,6 +375,22 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
             answer=(
                 "For G at the 3rd fret open position on standard E9, common grips include 3-4-5, 4-5-6, 5-6-8, and 6-8-10. "
                 "The fretboard view may also show 5-7-8 when a pedal/lever combination validates it by pitch."
+            ),
+        )
+    return None
+
+
+def direct_yes_no_practical_answer(question: str) -> CuratedAnswer | None:
+    if re.search(r"\b(?:make|build|construct)\b.*\bpedal\s+steel(?:\s+guitar)?\b.*\b(?:cereal|cardboard)\b", question) or re.search(
+        r"\b(?:cereal|cardboard)\b.*\bpedal\s+steel(?:\s+guitar)?\b", question
+    ):
+        return CuratedAnswer(
+            intent="direct_yes_no_practical",
+            confidence="curated_high",
+            answer=(
+                "No, not as a real functional pedal steel guitar.\n\n"
+                "A cereal box could be a toy model, classroom prop, or visual teaching aid, but a playable pedal steel needs a rigid body, changer, nut or roller system, strings under real tension, pedals, rods, levers, and stable tuning hardware.\n\n"
+                "Forum discussions about homemade and improvised steel builds can be useful context, but the practical answer is that a cereal box will not hold the tension, mechanics, or tuning stability needed for a working pedal steel."
             ),
         )
     return None

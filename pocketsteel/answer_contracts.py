@@ -476,6 +476,35 @@ CONTRACTS.update(
             forbidden_answer_patterns=COMMON_FORBIDDEN,
             fallback_answer="That does not match the current 10-string E9 setup I can safely reason about, so I would verify the copedent before mapping it.",
         ),
+        "direct_yes_no_practical": AnswerContract(
+            intent="direct_yes_no_practical",
+            required_answer_elements=(("direct yes/no", r"^\s*(?:No|Yes|It depends|Not exactly)\b"),),
+            forbidden_answer_patterns=COMMON_FORBIDDEN,
+            fallback_answer="Not exactly. I can give the practical steel-guitar answer first, then use sources only as supporting context.",
+        ),
+        "chord_quality_theory": AnswerContract(
+            intent="chord_quality_theory",
+            required_answer_elements=(("chord tones or intervals", r"\b(?:root|3rd|5th|7th|chord tones?|flat 7|sus4)\b"),),
+            forbidden_answer_patterns=COMMON_FORBIDDEN,
+            fallback_answer="Start with the chord tones first, then map them to E9 only when the position is supported.",
+        ),
+        "unsupported_exact_mapping": AnswerContract(
+            intent="unsupported_exact_mapping",
+            required_answer_elements=(("limited mapping statement", r"\b(?:limited|does not yet|not show every|exact)\b"),),
+            forbidden_answer_patterns=COMMON_FORBIDDEN,
+            fallback_answer="The exact E9 mapping is limited here, but the chord spelling can still be answered directly.",
+        ),
+        "forum_context_secondary": AnswerContract(
+            intent="forum_context_secondary",
+            forbidden_answer_patterns=COMMON_FORBIDDEN,
+            fallback_answer="Forum discussions are useful context, but the practical answer should come first.",
+        ),
+        "when_to_use_musical_context": AnswerContract(
+            intent="when_to_use_musical_context",
+            required_answer_elements=(("musical use case", r"\b(?:use|resolve|tension|phrase|intro|ending|held chord)\b"),),
+            forbidden_answer_patterns=COMMON_FORBIDDEN,
+            fallback_answer="Use that sound when you want a clear musical effect, then resolve or move it intentionally.",
+        ),
     }
 )
 
