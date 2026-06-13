@@ -10,6 +10,7 @@ from pocketsteel.curated_source_registry import slide_bar_vendor_bullets
 from pocketsteel.fretboard_examples import (
     chord_concept_answer_for_question,
     chord_symbol_guardrail_answer_for_question,
+    display_major_key_for_request,
     e_lower_578_b9_answer_for_question,
     e_lower_578_answer_for_question,
     e_lower_grip_answer_for_question,
@@ -28,6 +29,14 @@ from pocketsteel.steel_rules import answer_from_rules
 CuratedConfidence = Literal["curated_high", "curated_medium", "rag_only"]
 IntentMode = Literal[
     "instrument_visual",
+    "scope_guardrail",
+    "technique_coach",
+    "tone_coach",
+    "practice_plan",
+    "fretboard_concept",
+    "movement_from_position",
+    "missing_context_clarifier",
+    "copedent_mismatch_guardrail",
     "gear_advice",
     "gig_advice",
     "forum_wisdom",
@@ -170,6 +179,21 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
                 "Use this as a simple map before adding more positions or passing chords."
             ),
         )
+    if _mentions_after_ab_in_g(q):
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=(
+                "If you are at the A+B G position, treat it as one G home base and move to nearby E9 families instead of grabbing random licks.\n\n"
+                "In G:\n"
+                "- G: 10th fret with A+B.\n"
+                "- G: 6th fret with A pedal + F lever for a smoother connected color.\n"
+                "- G: 3rd fret open/no pedals for the straight-bar reference.\n"
+                "- C: 3rd fret with A+B for the IV chord.\n"
+                "- D: 5th fret with A+B for the V chord.\n\n"
+                "Practice tip: play one short A+B phrase, move to one nearby family, then leave space before answering it."
+            ),
+        )
     if q in {"show me the fretboard", "show the fretboard", "show me an e9 fretboard", "show me the e9 fretboard"}:
         return CuratedAnswer(
             intent="copedent_fretboard",
@@ -214,11 +238,13 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
     major_request = major_chord_location_request_for_question(question)
     if major_request is not None:
         major_key = major_request.normalized_key
+        display_key = display_major_key_for_request(major_request)
         positions = get_e9_major_chord_positions(major_key)
         open_position = next(position for position in positions if position["role"] == "Open position")
         af_position = next(position for position in positions if position["role"] == "A+F position")
         ab_position = next(position for position in positions if position["role"] == "A+B position")
         wants_across_fretboard = "across" in q and "fretboard" in q
+        wants_ab_specific = re.search(r"\b(?:a\s*\+\s*b|a\s+and\s+b)\b", q) is not None
         lower_ab_position = next(
             (
                 position
@@ -236,20 +262,27 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
             None,
         )
         lines: list[str] = []
-        if major_request.is_enharmonic:
+        if major_request.requested_root != display_key:
             lines.extend(
                 [
-                    f"{major_request.requested_root} is the same pitch as {major_key}. On E9, think of it as a {major_key} major chord.",
+                    f"{major_request.requested_root} is the same pitch as {display_key}. On E9, think of it as a {display_key} major chord.",
+                    "",
+                ]
+            )
+        if wants_ab_specific:
+            lines.extend(
+                [
+                    f"With A+B, {display_key} major is at the {fret_label(ab_position['fret'])} on standard E9.",
                     "",
                 ]
             )
         lines.extend(
             [
-                f"On standard E9, several useful {major_key} major starter positions are:",
+                f"On standard E9, several useful {display_key} major starter positions are:",
                 "",
-                f"- {fret_label(open_position['fret'])}, no pedals: open-position {major_key} major.",
-                f"- {fret_label(af_position['fret'])} with A pedal + F lever: A+F {major_key} major position.",
-                f"- {fret_label(ab_position['fret'])} with A+B pedals: A+B {major_key} major position.",
+                f"- {fret_label(open_position['fret'])}, no pedals: open-position {display_key} major.",
+                f"- {fret_label(af_position['fret'])} with A pedal + F lever: A+F {display_key} major position.",
+                f"- {fret_label(ab_position['fret'])} with A+B pedals: A+B {display_key} major position.",
                 "",
                 "Why these families matter:",
                 "- Open/no-pedals grips are the easiest straight-bar reference for intonation and quick fills.",
@@ -264,17 +297,17 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
             lines.extend(["", "Useful across-the-fretboard alternates:"])
             if lower_ab_position is not None:
                 lines.append(
-                    f"- {fret_label(lower_ab_position['fret'])} with A+B pedals: lower-octave A+B {major_key} major alternate on grip {lower_ab_position['grip']}."
+                    f"- {fret_label(lower_ab_position['fret'])} with A+B pedals: lower-octave A+B {display_key} major alternate on grip {lower_ab_position['grip']}."
                 )
             if e_lower_position is not None:
                 lines.append(
-                    f"- {fret_label(e_lower_position['fret'])} with E-lower: pitch-validated {major_key} major color on grip {e_lower_position['grip']}."
+                    f"- {fret_label(e_lower_position['fret'])} with E-lower: pitch-validated {display_key} major color on grip {e_lower_position['grip']}."
                 )
-        if major_request.is_enharmonic:
+        if major_request.requested_root != display_key:
             lines.extend(
                 [
                     "",
-                    f"Most players would call this {major_key}, not {major_request.requested_root}, unless you are reading notation where that spelling is required by the key.",
+                    f"Most players would call this {display_key}, not {major_request.requested_root}, unless you are reading notation where that spelling is required by the key.",
                 ]
             )
         return CuratedAnswer(
@@ -314,6 +347,30 @@ def unsupported_chord_position_curated_answer(question: str) -> CuratedAnswer | 
 
 def intent_mode_for_question(question: str) -> IntentMode:
     q = normalize(question)
+    if _mentions_scope_guardrail(q):
+        return "scope_guardrail"
+    if _mentions_missing_context_home_prompt(q):
+        return "missing_context_clarifier"
+    if _mentions_timeboxed_practice_prompt(q):
+        return "practice_plan"
+    if (
+        _mentions_classic_country_move(q)
+        or _mentions_blocking_coach(q)
+        or _mentions_bar_movement_coach(q)
+        or _mentions_fill_restraint_coach(q)
+        or _mentions_slide_smoothness_coach(q)
+        or _mentions_volume_pedal_coach(q)
+        or _mentions_movement_without_sliding(q)
+    ):
+        return "technique_coach"
+    if _mentions_tone_thin_coach(q) or _mentions_hearing_chord_movement(q):
+        return "tone_coach"
+    if _mentions_practice_rut_breaker(q):
+        return "practice_plan"
+    if _mentions_neck_thinking(q):
+        return "fretboard_concept"
+    if _mentions_ab_movement(q):
+        return "movement_from_position"
     if _mentions_gear_advice_intent(q):
         return "gear_advice"
     if _mentions_forum_wisdom_intent(q):
@@ -334,6 +391,254 @@ def intent_mode_for_question(question: str) -> IntentMode:
 def intent_mode_curated_answer(question: str) -> CuratedAnswer | None:
     q = normalize(question)
     mode = intent_mode_for_question(q)
+    if mode == "scope_guardrail":
+        return CuratedAnswer(
+            intent="scope_guardrail",
+            confidence="curated_high",
+            answer=(
+                "That request is outside Steel Guitar RAG’s scope, and it would be too large to display usefully. "
+                "Try asking about E9 positions, grips, pedals/levers, tone, gear, blocking, bar movement, practice plans, or steel-guitar forum wisdom."
+            ),
+        )
+    if mode == "missing_context_clarifier":
+        if _mentions_full_partial_voicing_context(q):
+            return CuratedAnswer(
+                intent="missing_context_clarifier",
+                confidence="curated_high",
+                answer=(
+                    "I need the missing context before I can tell whether it is a full chord or a partial voicing.\n\n"
+                    "Send:\n"
+                    "- fret\n"
+                    "- strings or grip\n"
+                    "- pedals or levers engaged\n"
+                    "- chord or key you are hearing\n\n"
+                    "Then I can name the notes, intervals, omitted chord tones, and whether the grip is a full chord, partial voicing, rootless color, or something else."
+                ),
+            )
+        return CuratedAnswer(
+            intent="missing_context_clarifier",
+            confidence="curated_high",
+            answer=(
+                "I need the missing context before I can give a useful steel-guitar answer.\n\n"
+                "Send the details you have:\n"
+                "- chord or key\n"
+                "- fret\n"
+                "- strings or grip\n"
+                "- pedals or levers engaged\n\n"
+                "Example: “G at the 3rd fret, strings 4-5-6, no pedals” or “A+B at the 10th fret in G.”"
+            ),
+        )
+    if mode == "tab_explainer":
+        if _mentions_string_five_a_pedal_interval(q):
+            return CuratedAnswer(
+                intent="copedent_fretboard",
+                confidence="curated_high",
+                answer=(
+                    "On 10-string E9, string 5 is B open, and the A pedal raises it to C#.\n\n"
+                    "Interval context:\n"
+                    "- Against an A chord, C# is the major 3rd.\n"
+                    "- Against a C# minor sound, C# can be the root.\n"
+                    "- In an A+B position, the interval depends on the fret, key, and the other strings in the grip, so do not treat string 5 with A pedal as one universal interval.\n\n"
+                    "Practical check: name the chord root first, then compare C# to that root. That tells you whether string 5 is acting as root, 3rd, 5th, or a color tone."
+                ),
+            )
+        if _mentions_full_partial_voicing_context(q):
+            return CuratedAnswer(
+                intent="missing_context_clarifier",
+                confidence="curated_high",
+                answer=(
+                    "I need the missing context before I can tell whether it is a full chord or a partial voicing.\n\n"
+                    "Send:\n"
+                    "- fret\n"
+                    "- strings or grip\n"
+                    "- pedals or levers engaged\n"
+                    "- chord or key you are hearing\n\n"
+                    "Then I can name the notes, intervals, omitted chord tones, and whether the grip is a full chord, partial voicing, rootless color, or something else."
+                ),
+            )
+    if mode == "technique_coach":
+        if _mentions_movement_without_sliding(q):
+            return CuratedAnswer(
+                intent="technique_coach",
+                confidence="curated_high",
+                answer=(
+                    "Use position families first, then slide only when the slide itself is the musical point.\n\n"
+                    "Drill:\n"
+                    "- In G, play 3rd fret open/no-pedals on grip 4-5-6.\n"
+                    "- Move to 6th fret with A pedal + F lever (A+F) for another G color.\n"
+                    "- Move to 10th fret with A+B for the pedals-down G position.\n"
+                    "- Repeat on grips 3-4-5, 5-6-8, and 6-8-10.\n\n"
+                    "What to listen for: each position should sound like a deliberate chord color, not a bar slide looking for the note."
+                ),
+            )
+        if _mentions_classic_country_move(q):
+            return CuratedAnswer(
+                intent="technique_coach",
+                confidence="curated_high",
+                answer=(
+                    "Try this classic-country E9 move: use a simple I-to-IV sound at one fret, then answer it with space.\n\n"
+                    "Drill:\n"
+                    "- At the 3rd fret, pick strings 4-5-6 with no pedals for G.\n"
+                    "- Press A+B at the same fret for C, keeping the bar still.\n"
+                    "- Release A+B cleanly back to G, then leave a beat of silence.\n"
+                    "- Repeat the same idea on strings 3-4-5 and 5-6-8.\n\n"
+                    "What to listen for: even pedal timing, clean blocking after each grip, and a relaxed answer-the-singer feel instead of a busy lick."
+                ),
+            )
+        if _mentions_fill_restraint_coach(q):
+            return CuratedAnswer(
+                intent="technique_coach",
+                confidence="curated_high",
+                answer=(
+                    "Tasteful fills start by protecting the vocal, then answering it.\n\n"
+                    "Drill:\n"
+                    "- Pick one two-beat space after a sung phrase and leave it alone afterward.\n"
+                    "- Play one short answer on strings 4-5-6, then stop cleanly.\n"
+                    "- Repeat the same fill at half volume with a slower volume-pedal entry.\n"
+                    "- Leave one full measure empty before the next fill.\n\n"
+                    "What to listen for: the singer should still feel like the center of the band. If the fill covers a word, starts too early, or keeps going after the phrase, simplify it."
+                ),
+            )
+        if _mentions_blocking_coach(q):
+            return CuratedAnswer(
+                intent="technique_coach",
+                confidence="curated_high",
+                answer=(
+                    "Short diagnosis: messy blocking usually comes from unclear note endings, not from needing more licks.\n\n"
+                    "Likely causes:\n"
+                    "- both hands are letting notes ring longer than intended\n"
+                    "- the next pick stroke starts before the previous grip is muted\n"
+                    "- the volume pedal is hiding noise instead of shaping clean notes\n\n"
+                    "Drills:\n"
+                    "- On strings 4-5-6, pick one grip and stop it with palm blocking; repeat slowly until the silence is clean.\n"
+                    "- On strings 3-4-5, alternate pick blocking and palm blocking so each note has a clear end.\n"
+                    "- Move the same grip from fret 3 to fret 5 and back, blocking after every move.\n\n"
+                    "What to listen for: clean starts, clean stops, no sympathetic ringing, and no volume-pedal swell covering up rough endings."
+                ),
+            )
+        if _mentions_volume_pedal_coach(q):
+            return CuratedAnswer(
+                intent="technique_coach",
+                confidence="curated_high",
+                answer=(
+                    "A jumpy volume pedal usually means the foot is moving before the pick attack is controlled.\n\n"
+                    "Drills:\n"
+                    "- Pick strings 4-5-6 with the pedal slightly backed off, then bring the volume in after the note starts.\n"
+                    "- Hold one chord for four beats and make the volume rise evenly, with no bump at the start.\n"
+                    "- Play the same phrase loud, soft, short, and long without changing bar pressure.\n\n"
+                    "What to listen for: the note blooms after the pick, without jumping out or disappearing between grips."
+                ),
+            )
+        if _mentions_slide_smoothness_coach(q):
+            return CuratedAnswer(
+                intent="technique_coach",
+                confidence="curated_high",
+                answer=(
+                    "Smooth slides come from timing and landing pitch, not from sliding more slowly forever.\n\n"
+                    "Drills:\n"
+                    "- Pick the first note, slide from fret 3 to fret 5, and block exactly when the slide ends.\n"
+                    "- Practice landing slightly early, then correct the bar to the fret line before adding vibrato.\n"
+                    "- Use less bar pressure and keep the bar straight across the strings.\n\n"
+                    "What to listen for: no scraping, no overshoot, and no vibrato until the pitch is centered."
+                ),
+            )
+        if _mentions_bar_movement_coach(q):
+            return CuratedAnswer(
+                intent="technique_coach",
+                confidence="curated_high",
+                answer=(
+                    "Short diagnosis: rough bar movement usually comes from pressure, angle, timing, or overshooting the fret.\n\n"
+                    "Likely causes:\n"
+                    "- too much downward bar pressure\n"
+                    "- the bar is tilted or not tracking straight across the fret\n"
+                    "- the bar moves before the pick/blocking hand is ready\n"
+                    "- lifting noise or overshoot makes the slide sound nervous\n\n"
+                    "Drills:\n"
+                    "- Slide slowly between frets 3 and 5 on strings 4-5-6, then block before changing direction.\n"
+                    "- Play the same move with half the bar pressure and keep the bar centered over the fret line.\n"
+                    "- Record four slow slides and listen for scraping, pitch overshoot, or a late stop.\n\n"
+                    "What not to do: do not press harder to fix intonation, and do not use vibrato until the bar lands in tune."
+                ),
+            )
+    if mode == "tone_coach":
+        if _mentions_tone_thin_coach(q):
+            return CuratedAnswer(
+                intent="tone_touch",
+                confidence="curated_high",
+                answer=(
+                    "Thin tone usually comes from a mix of right-hand attack, amp EQ, pickup height, and volume-pedal timing.\n\n"
+                    "What to check:\n"
+                    "- Pick a little farther from the changer for a rounder sound.\n"
+                    "- Back off excessive treble or presence before adding more effects.\n"
+                    "- Bring the volume pedal in smoothly after the pick so the note blooms.\n"
+                    "- Use enough bar pressure for a clean note, but not so much that the bar feels stiff.\n\n"
+                    "Practice it: play one phrase on strings 4-5-6 at three picking locations, record it, and keep the setting that sounds full without getting muddy."
+                ),
+            )
+        if _mentions_hearing_chord_movement(q):
+            return CuratedAnswer(
+                intent="fretboard_concept",
+                confidence="curated_high",
+                answer=(
+                    "If the chord movement is hard to hear, reduce the exercise to one grip and name the intervals as they move.\n\n"
+                    "Drill:\n"
+                    "- Use strings 4-5-6 only.\n"
+                    "- Play G at the 3rd fret open/no pedals.\n"
+                    "- Press A+B at the same fret for C.\n"
+                    "- Move to the 5th fret with A+B for D.\n"
+                    "- Resolve back to G, then say the function out loud: 1, 4, 5, 1.\n\n"
+                    "What to listen for: the bassless steel grip should still imply the chord function through root, 3rd, and 5th motion."
+                ),
+            )
+    if mode == "practice_plan":
+        if _mentions_timeboxed_practice_prompt(q):
+            return CuratedAnswer(
+                intent="practice_plan",
+                confidence="curated_high",
+                answer=(
+                    "Use a focused 25-minute E9 routine with one measurable result.\n\n"
+                    "25-minute plan:\n"
+                    "- 5 minutes: play G at fret 3 open/no pedals on grips 3-4-5, 4-5-6, and 5-6-8.\n"
+                    "- 5 minutes: press A+B at the same fret for C, blocking after every grip.\n"
+                    "- 5 minutes: move to D at fret 5 with A+B, keeping the bar and pedals synchronized.\n"
+                    "- 5 minutes: make two vocal-response fills and leave space after each one.\n"
+                    "- 5 minutes: record one pass and mark the roughest bar move, block, or volume-pedal swell.\n"
+                    "- Use one A pedal + F lever move so your ear compares open, A+F, and A+B colors.\n\n"
+                    "Goal: one clean I-IV-V path in time, not a pile of new licks. Clean beats fast tonight."
+                ),
+            )
+        if _mentions_practice_rut_breaker(q):
+            return CuratedAnswer(
+                intent="practice_plan",
+                confidence="curated_high",
+                answer=(
+                    "Use a 10-minute rut breaker that forces one small musical result instead of another vague practice session.\n\n"
+                    "10-minute drill:\n"
+                    "- 2 minutes: play G at the 3rd fret open on grips 3-4-5, 4-5-6, and 5-6-8.\n"
+                    "- 2 minutes: move to C at the same fret with A+B, blocking after each grip.\n"
+                    "- 2 minutes: move to D at the 5th fret with A+B, keeping the bar and pedals together.\n"
+                    "- 2 minutes: make one two-measure fill that answers an imaginary vocal line.\n"
+                    "- 2 minutes: record it and keep only the cleanest three repetitions.\n\n"
+                    "Measurable goal: three clean passes in time, with no extra ringing and no rushed bar movement."
+                ),
+            )
+    if mode == "fretboard_concept":
+        return _fretboard_concept_curated_answer(q)
+    if mode == "movement_from_position":
+        return CuratedAnswer(
+            intent="movement_from_position",
+            confidence="curated_high",
+            answer=(
+                "A+B is a position family, so the next move depends on the chord function you want, but you have several reliable E9 choices nearby.\n\n"
+                "Useful moves after A+B:\n"
+                "- Release A+B at the same fret for a different color, then block so the change sounds intentional.\n"
+                "- Move to the open/no-pedals version of the same chord family, such as G at fret 3 if your A+B G is at fret 10.\n"
+                "- Move to the A+F version, such as G at fret 6 with A pedal + F lever, for a smoother connected major sound.\n"
+                "- Try E-lower movement for minor or dominant-family color when the chord calls for it.\n"
+                "- Keep the grip simple first: 3-4-5, 4-5-6, 5-6-8, or 6-8-10.\n\n"
+                "Practice tip: choose one A+B fret, play a two-beat phrase, move to one nearby family, then leave space before answering it."
+            ),
+        )
     if mode == "gear_advice":
         if _mentions_stroboplus_power_problem(q):
             return CuratedAnswer(
@@ -1294,7 +1599,7 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             intent="copedent_fretboard",
             confidence="curated_high",
             answer=(
-                "A wound 6th string is a tradeoff. Some players like the sound and feel, and some feel it can make cabinet-drop behavior feel better. "
+                "Players describe a wound 6th string as a tradeoff. Some like the sound and feel, and some feel it can make cabinet-drop behavior feel better. "
                 "The big caution is mechanical: if your guitar lowers string 6 from G# to F#, a wound string may need more changer travel than the guitar can comfortably provide.\n\n"
                 "What to try:\n"
                 "- Try a wound 6th if you prefer its tone and your guitar can make the G# to F# lower cleanly.\n"
@@ -1546,6 +1851,7 @@ def _mentions_gig_advice_intent(question: str) -> bool:
 def _mentions_forum_wisdom_intent(question: str) -> bool:
     return bool(
         _mentions_stage_string_forum_wisdom(question)
+        or _mentions_wound_sixth_forum_wisdom(question)
         or _mentions_steel_king_settings_forum_wisdom(question)
         or _mentions_bc_pedals_forum_wisdom(question)
         or _mentions_battery_tuner_live(question)
@@ -1557,7 +1863,242 @@ def _mentions_lesson_navigation_intent(question: str) -> bool:
 
 
 def _mentions_tab_explainer_intent(question: str) -> bool:
-    return bool(re.search(r"\b(?:tab|tablature|notation)\b", question))
+    return bool(
+        re.search(r"\b(?:tab|tablature|notation)\b", question)
+        or _mentions_string_five_a_pedal_interval(question)
+        or _mentions_full_partial_voicing_context(question)
+    )
+
+
+def _mentions_string_five_a_pedal_interval(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:interval|note)\b", question)
+        and re.search(r"\b(?:string\s+5|5th\s+string|fifth\s+string)\b", question)
+        and re.search(r"\b(?:a\s+pedal|with\s+a)\b", question)
+    )
+
+
+def _mentions_full_partial_voicing_context(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:full\s+chord|partial\s+voicing|partial\s+chord|rootless\s+voicing)\b", question)
+        and re.search(r"\b(?:this|that|grip)\b", question)
+    )
+
+
+def _mentions_history_player_context_intent(question: str) -> bool:
+    return bool(re.search(r"\b(?:who is|tell me about|history|played with|recorded with)\b", question))
+
+
+def _mentions_scope_guardrail(question: str) -> bool:
+    return bool(
+        _mentions_large_output_request(question)
+        or _mentions_off_domain_request(question)
+        or _mentions_break_test_request(question)
+    )
+
+
+def _mentions_large_output_request(question: str) -> bool:
+    if re.search(r"\ball\s+(?:of\s+)?(?:the\s+)?numbers?\s+between\s+\d[\d,]*\s+(?:and|to)\s+\d[\d,]*\b", question):
+        return True
+    if re.search(r"\b(?:numbers?|integers?)\s+from\s+\d[\d,]*\s+(?:to|through)\s+\d[\d,]*\b", question):
+        return True
+    repeat_match = re.search(
+        r"\b(?:write|repeat|print|list|show)\b.*\b(?:word|phrase|steel guitar|numbers?)\b.*?([0-9][0-9,]*)\s+times\b",
+        question,
+    )
+    if repeat_match:
+        return _number_token_value(repeat_match.group(1)) >= 1000
+    return False
+
+
+def _mentions_off_domain_request(question: str) -> bool:
+    return bool(
+        re.search(r"\bweather\s+in\s+[a-z]", question)
+        or re.search(r"\bcapital\s+of\s+[a-z]", question)
+        or re.search(r"\brecipe\s+for\s+[a-z]", question)
+        or re.search(r"\b(?:pancake|pancakes|recipe)\s+recipe\b", question)
+        or re.search(r"\bwho\s+won\s+the\s+super\s+bowl\b", question)
+        or re.search(r"\bsuper\s+bowl\s+winner\b", question)
+    )
+
+
+def _mentions_break_test_request(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:benchmark|break[- ]?test|stress[- ]?test)\b", question)
+        and re.search(r"\b(?:repeat|list|print|show|numbers?|million|thousand)\b", question)
+    )
+
+
+def _number_token_value(value: str) -> int:
+    try:
+        return int(value.replace(",", ""))
+    except ValueError:
+        return 0
+
+
+def _mentions_missing_context_home_prompt(question: str) -> bool:
+    return bool(
+        (
+            re.search(r"\b(?:this|that)\s+(?:chord|position|grip|move|lick|change)\b", question)
+            or _mentions_full_partial_voicing_context(question)
+            or re.search(r"\bfrom\s+here\b", question)
+        )
+        and re.search(r"\b(?:show|help|better|approach|pros?|grip|where|after|use|play|practice|explain|pedal)\b", question)
+    )
+
+
+def _mentions_classic_country_move(question: str) -> bool:
+    return bool(re.search(r"\bclassic\s+country\s+move\b|\bsmoother\s+turnaround\b", question))
+
+
+def _mentions_blocking_coach(question: str) -> bool:
+    return bool(re.search(r"\b(?:clean\s+up\s+my\s+blocking|blocking\s+(?:clean|drill|practice|problem)|pick\s+blocking|palm\s+blocking)\b", question))
+
+
+def _mentions_bar_movement_coach(question: str) -> bool:
+    return bool(
+        re.search(r"\bbar\s+movement\b", question)
+        or re.search(r"\bbar\b.*\b(?:rough|scratchy|noisy|overshoot|pressure)\b", question)
+        or re.search(r"\b(?:rough|scratchy|noisy)\b.*\bbar\b", question)
+    )
+
+
+def _mentions_fill_restraint_coach(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:tasteful\s+fills?|fills?\s+behind\s+a\s+singer|overplaying\s+fills?|stop\s+overplaying|playing\s+behind\s+a\s+singer)\b", question)
+    )
+
+
+def _mentions_volume_pedal_coach(question: str) -> bool:
+    return bool(
+        re.search(r"\bvolume\s+pedal\b", question)
+        and re.search(r"\b(?:awkward|jumpy|jump|practice|rough|control|feel)\b", question)
+    )
+
+
+def _mentions_slide_smoothness_coach(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:slides?\s+sound\s+smoother|smooth\s+slides?|overshooting\s+frets?|stop\s+overshooting|overshoot\s+frets?)\b", question)
+    )
+
+
+def _mentions_movement_without_sliding(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:movement\s+without\s+sliding|without\s+sliding\s+everywhere|connect\s+open\s+position\s+to\s+pedals\s+down)\b", question)
+    )
+
+
+def _mentions_tone_thin_coach(question: str) -> bool:
+    return bool(re.search(r"\b(?:tone\s+sound\s+thin|tone\s+sounds\s+thin|sound\s+thin|sounds\s+thin|thin\s+tone)\b", question))
+
+
+def _mentions_hearing_chord_movement(question: str) -> bool:
+    return bool(re.search(r"\b(?:hear\s+the\s+chord\s+movement|hearing\s+chord\s+movement|simplest\s+way\s+to\s+hear\s+this\s+change)\b", question))
+
+
+def _mentions_practice_rut_breaker(question: str) -> bool:
+    return bool(re.search(r"\b(?:practice\s+rut|rut\s+breaker|stuck\s+in\s+a\s+rut|woodshed\s+tonight)\b", question))
+
+
+def _mentions_timeboxed_practice_prompt(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:20-minute|10-minute|twenty-minute|ten-minute|practice\s+routine|practice\s+plan|blocking\s+workout|7-day\s+plan|seven-day\s+plan)\b", question)
+        or re.search(r"\bwhat\s+should\s+i\s+woodshed\s+tonight\b", question)
+        or re.search(r"\bpractice\s+playing\s+behind\s+a\s+singer\b", question)
+    )
+
+
+def _mentions_neck_thinking(question: str) -> bool:
+    return bool(
+        re.search(
+            r"\b(?:better\s+way\s+to\s+think\s+about\s+the\s+neck|think\s+about\s+the\s+neck|understand\s+the\s+neck|fretboard\s+concept|lost\s+on\s+the\s+fretboard|no-pedals|pedals\s+down)\b",
+            question,
+        )
+        or re.search(r"\bshow\s+me\s+i\s*[-/]\s*iv\s*[-/]\s*v\s+positions\s+on\s+e9\b", question)
+        or re.search(r"\bshow\s+me\s+iv\s+from\s+open\s+position\b", question)
+        or re.search(r"\bbetter\s+grip\s+for\s+(?:a\s+)?g\s+chord\s+at\s+fret\s+3\b", question)
+        or re.search(r"\b1\s*[-/]\s*3\s*[-/]\s*5\s+grips?\b.*\b6\s*[-/]\s*8\s*[-/]\s*10\b", question)
+    )
+
+
+def _mentions_ab_movement(question: str) -> bool:
+    return bool(
+        re.search(r"\bwhere\s+should\s+i\s+go\s+after\s+a\s*\+\s*b\b", question)
+        or re.search(r"\bafter\s+a\s*\+\s*b\b", question)
+        or re.search(r"\bafter\s+ab\b", question)
+        or re.search(r"\bapproach\s+(?:the\s+)?a\s*\+\s*b\s+position\b", question)
+        or re.search(r"\b(?:better\s+way\s+into|way\s+into)\s+(?:the\s+)?iv\s+chord\b", question)
+        or re.search(r"\bminor\s+walkdown\s+from\s+a\s*\+\s*b\b", question)
+    )
+
+
+def _mentions_after_ab_in_g(question: str) -> bool:
+    return bool(re.search(r"\bwhere\s+(?:should\s+i|do\s+i)\s+go\s+after\s+a\s*\+\s*b\s+in\s+g\b", question))
+
+
+def _fretboard_concept_curated_answer(question: str) -> CuratedAnswer:
+    if re.search(r"\bshow\s+me\s+i\s*[-/]\s*iv\s*[-/]\s*v\s+positions\s+on\s+e9\b", question):
+        answer = (
+            "Pick a key first; the I-IV-V map is a function map, not one fixed fret.\n\n"
+            "Example in G on E9:\n"
+            "- I: G at the 3rd fret open/no pedals.\n"
+            "- IV: C at the 3rd fret with A+B.\n"
+            "- V: D at the 5th fret with A+B.\n\n"
+            "Practice it on grip 4-5-6 first, then repeat on 3-4-5 and 5-6-8."
+        )
+    elif re.search(r"\bshow\s+me\s+iv\s+from\s+open\s+position\b", question):
+        answer = (
+            "From an open/no-pedals major position on E9, the IV chord is often right under the bar with A+B at the same fret.\n\n"
+            "Example:\n"
+            "- G at the 3rd fret open/no pedals is the I chord.\n"
+            "- C at the 3rd fret with A+B is the IV chord.\n"
+            "- Keep the grip simple first: 3-4-5, 4-5-6, or 5-6-8.\n\n"
+            "This is why A+B feels like a home-base pedal move: it lets one fret carry related chord functions."
+        )
+    elif re.search(r"\bbetter\s+grip\s+for\s+(?:a\s+)?g\s+chord\s+at\s+fret\s+3\b", question):
+        answer = (
+            "At fret 3 for G on E9, start with grips that clearly spell the chord before reaching for wider color.\n\n"
+            "Useful grips:\n"
+            "- 3-4-5: bright upper-register G color.\n"
+            "- 4-5-6: balanced starter grip for G.\n"
+            "- 5-6-8: warmer middle-register grip.\n"
+            "- 6-8-10: lower, thicker G color.\n\n"
+            "Practice it: play each grip once, block cleanly, then choose the grip that leaves the best space for the singer."
+        )
+    elif re.search(r"\b1\s*[-/]\s*3\s*[-/]\s*5\s+grips?\b.*\b6\s*[-/]\s*8\s*[-/]\s*10\b", question):
+        answer = (
+            "On E9, strings 6-8-10 can work as a 1-3-5 style grip in the right position, but the chord depends on fret and pedals/levers.\n\n"
+            "How to check it:\n"
+            "- Name the notes on strings 6, 8, and 10 at the fret.\n"
+            "- Compare them to the chord tones: root, 3rd, and 5th.\n"
+            "- Add pedals/levers only after the open grip is clear.\n\n"
+            "For a concrete map, give me the chord or fret, such as “G at fret 3” or “A+B at fret 10.”"
+        )
+    elif re.search(r"\b(?:lost\s+on\s+the\s+fretboard|think\s+about\s+the\s+e9\s+neck|no-pedals|pedals\s+down)\b", question):
+        answer = (
+            "Think of the E9 neck as a small set of position families that repeat, not as isolated fret numbers.\n\n"
+            "Core map:\n"
+            "- Open/no-pedals is your straight-bar reference family.\n"
+            "- A+F gives the same major chord three frets above the open position.\n"
+            "- A+B gives another strong major position seven frets above the open position.\n"
+            "- E-lower positions give minor, dominant, or rootless colors when the grip validates by pitch.\n\n"
+            "Practice it: choose G, then compare fret 3 open, fret 6 A+F, and fret 10 A+B on grips 3-4-5, 4-5-6, and 5-6-8. Say the chord tones out loud: root, 3rd, 5th."
+        )
+    else:
+        answer = (
+            "A better way to think about the E9 neck is by position families, not isolated fret numbers.\n\n"
+            "Core concept:\n"
+            "- Open/no-pedals is your straight-bar reference family.\n"
+            "- A+F gives the same major chord three frets above the open position.\n"
+            "- A+B gives another strong home position seven frets above the open position.\n"
+            "- Common grips such as 3-4-5, 4-5-6, 5-6-8, and 6-8-10 show you which chord tones are under your hand.\n\n"
+            "Practice it: pick one key, find the same major chord in those three families, then say the intervals out loud: root, 3rd, 5th."
+        )
+    return CuratedAnswer(intent="fretboard_concept", confidence="curated_high", answer=answer)
+
+
+def _mentions_wound_sixth_forum_wisdom(question: str) -> bool:
+    return bool(re.search(r"\bwhat\s+do\s+players\s+say\b", question) and re.search(r"\bwound\b", question) and re.search(r"\b(?:6th|sixth|string\s+6)\b", question))
 
 
 def _mentions_steel_king_settings_forum_wisdom(question: str) -> bool:
@@ -1579,10 +2120,6 @@ def _mentions_diminished_chords_forum_wisdom(question: str) -> bool:
         re.search(r"\bdiminished\b", question)
         and re.search(r"\b(?:players?\s+(?:approach|use|talk|say)|approach|use|common|how\s+do|on\s+e9)\b", question)
     )
-
-
-def _mentions_history_player_context_intent(question: str) -> bool:
-    return bool(re.search(r"\b(?:who is|tell me about|history|played with|recorded with)\b", question))
 
 
 def mentions_jeff_newman(question: str) -> bool:
@@ -1656,6 +2193,7 @@ def mentions_af_pedal_lever(question: str) -> bool:
         re.search(r"\ba\s*\+\s*f\b", question)
         or re.search(r"\ba\s+pedal\b.*\bf\s+lever\b", question)
         or re.search(r"\bf\s+lever\b.*\ba\s+pedal\b", question)
+        or re.search(r"\bwhat\s+does\s+(?:the\s+)?f\s+lever\s+do\b", question)
     )
 
 

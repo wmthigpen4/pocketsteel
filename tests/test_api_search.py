@@ -258,10 +258,16 @@ def test_answer_contract_registry_covers_major_intents() -> None:
         "current_company_status",
         "performance_context_guidance",
         "song_learning",
+        "scope_guardrail",
         "current_roster",
         "sensitive_identity",
         "fallback_unknown",
         "technique_improvement",
+        "technique_coach",
+        "fretboard_concept",
+        "movement_from_position",
+        "missing_context_clarifier",
+        "copedent_mismatch_guardrail",
         "tone_touch",
         "gear_advice",
         "gig_advice",
@@ -286,6 +292,13 @@ def test_contract_intent_inference_for_common_questions() -> None:
     assert infer_contract_intent("How do people power their StroboPlus tuner when playing a gig? My batteries run out very fast.") == "gear_advice"
     assert infer_contract_intent("I broke a string during a show. Has that happened to anyone else? What do people do?") == "gig_advice"
     assert infer_contract_intent("What do players say about breaking strings on stage?") == "forum_wisdom"
+    assert infer_contract_intent("Show me all of the numbers between 1 and 1 million.") == "scope_guardrail"
+    assert infer_contract_intent("Tell me the weather in Dallas.") == "scope_guardrail"
+    assert infer_contract_intent("Show me a classic country move") == "technique_coach"
+    assert infer_contract_intent("Give me a practice rut breaker") == "practice_plan"
+    assert infer_contract_intent("Give me a better way to think about the neck") == "fretboard_concept"
+    assert infer_contract_intent("Show me how pros approach this position") == "missing_context_clarifier"
+    assert infer_contract_intent("Where should I go after A+B?") == "movement_from_position"
     assert infer_contract_intent("Where can I buy a slide bar?") == "vendor_buying_guidance"
     assert infer_contract_intent("Is Mullen or MSA better?") == "brand_comparison"
     assert infer_contract_intent("Who is Lloyd Green?") == "player_bio"
@@ -302,6 +315,16 @@ def test_intent_mode_classifier_for_practical_advice_questions() -> None:
     assert intent_mode_for_question("I broke a string during a show. Has that happened to anyone else? What do people do?") == "gig_advice"
     assert intent_mode_for_question("What should be in a pedal steel emergency gig kit?") == "gig_advice"
     assert intent_mode_for_question("What do players say about breaking strings on stage?") == "forum_wisdom"
+    assert intent_mode_for_question("Show me all of the numbers between 1 and 1 million.") == "scope_guardrail"
+    assert intent_mode_for_question("Write the word steel guitar 10,000 times.") == "scope_guardrail"
+    assert intent_mode_for_question("Tell me the weather in Dallas.") == "scope_guardrail"
+    assert intent_mode_for_question("What is the capital of France?") == "scope_guardrail"
+    assert intent_mode_for_question("Show me a classic country move") == "technique_coach"
+    assert intent_mode_for_question("Give me a practice rut breaker") == "practice_plan"
+    assert intent_mode_for_question("Give me a better way to think about the neck") == "fretboard_concept"
+    assert intent_mode_for_question("Show me how pros approach this position") == "missing_context_clarifier"
+    assert intent_mode_for_question("What’s a better grip for this chord?") == "missing_context_clarifier"
+    assert intent_mode_for_question("Where should I go after A+B?") == "movement_from_position"
 
 
 def test_contract_validation_catches_template_leakage() -> None:
@@ -483,6 +506,39 @@ def test_api_session_local_dev_query_access_beta_user() -> None:
         "role": "beta_user",
         "authProvider": "local_dev",
     }
+
+
+def test_api_version_reports_runtime_identity_without_auth_or_secrets() -> None:
+    status, _, payload = call_app(
+        "/api/version",
+        method="GET",
+        access_role=None,
+        retrieval_config=retrieval_config("hybrid_private_first", private_enabled=True),
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+    )
+
+    assert status == "200 OK"
+    assert payload["git_sha"]
+    assert payload["git_branch"]
+    assert payload["server_started_at"]
+    assert payload["python_module"] == "pocketsteel.api"
+    assert payload["retrieval_mode"] == "hybrid_private_first"
+    assert payload["auth_provider"] == "cloudflare_access"
+    assert "email" not in payload
+    assert "token" not in json.dumps(payload).lower()
+    assert "/Users/" not in json.dumps(payload)
+
+
+def test_api_version_rejects_non_get_method() -> None:
+    status, _, payload = call_app(
+        "/api/version",
+        method="POST",
+        access_role=None,
+    )
+
+    assert status == "405 Method Not Allowed"
+    assert payload == {"error": "method not allowed"}
 
 
 def test_api_search_local_dev_query_access_can_use_private_when_enabled() -> None:
@@ -2064,6 +2120,32 @@ def noisy_practical_sources() -> list[dict[str, Any]]:
     ]
 
 
+def noisy_home_prompt_sources() -> list[dict[str, Any]]:
+    return noisy_practical_sources() + [
+        {
+            "score": 0.81,
+            "excerpt": "Top I use string 12 for this position and here is a raw tab fragment nobody explained.",
+            "forum_name": "Extended E9",
+            "thread_title": "Random 12-string fragment",
+            "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=460001",
+            "chunk_id": "chunk-string-12-fragment",
+            "post_uid": "p-string-12-fragment",
+            "source_system": "sgf_phpbb_current",
+        }
+    ]
+
+
+def assert_home_coach_answer_is_clean(payload: dict[str, Any]) -> None:
+    assert_clean_answer_body(payload)
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert "fretboard" not in payload
+    assert "[object Object]" not in payload["answer"]
+    assert "string 12" not in payload["answer"].lower()
+    assert "12th string" not in payload["answer"].lower()
+    assert "raw tab fragment" not in payload["answer"].lower()
+    assert "Top" not in payload["answer"]
+
 
 def assert_scope_guardrail_answer(payload: dict[str, Any], *, large_output: bool = False) -> None:
     assert_clean_answer_body(payload)
@@ -2239,6 +2321,39 @@ def test_position_questions_can_still_return_fretboard_payloads() -> None:
         assert_valid_fretboard_payload(payload)
 
 
+def test_scope_guardrail_for_large_output_and_off_domain_prompts() -> None:
+    cases = [
+        ("Write the word steel guitar 10,000 times.", True),
+        ("Tell me the weather in Dallas.", False),
+        ("What is the capital of France?", False),
+        ("Give me a recipe for pancakes.", False),
+        ("Who won the Super Bowl?", False),
+    ]
+    for question, large_output in cases:
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert_scope_guardrail_answer(payload, large_output=large_output)
+
+
+def test_scope_guardrail_does_not_block_valid_steel_guitar_prompts() -> None:
+    ninth = answer_for_question("What are common uses for the E9 9th string?", noisy_practical_sources())
+    assert_clean_answer_body(ninth)
+    assert "9th string" in ninth["answer"]
+    assert "dominant-7th" in ninth["answer"]
+    assert "fretboard" not in ninth
+
+    blocking = answer_for_question("Help me clean up my blocking.", noisy_practical_sources())
+    assert_home_coach_answer_is_clean(blocking)
+    assert "Drills" in blocking["answer"]
+
+    kit = answer_for_question("What should be in a pedal steel emergency gig kit?", noisy_practical_sources())
+    assert_clean_answer_body(kit)
+    assert kit["answer"].startswith("Short answer:")
+    assert "spare E9 strings" in kit["answer"]
+    assert "fretboard" not in kit
+    assert kit["sources"] == []
+
+
 def test_stroboplus_gig_power_uses_practical_advice_before_sources() -> None:
     payload = answer_for_question(
         "How do people power their StroboPlus tuner when playing a gig? My batteries run out very fast.",
@@ -2330,6 +2445,84 @@ def test_practical_advice_modes_cover_gig_kit_delay_and_live_tuners() -> None:
     assert "backup tuner" in tuners["answer"]
     assert "fretboard" not in tuners
     assert tuners["sources"] == []
+
+
+def test_home_prompt_classic_country_move_returns_coach_drill_not_fragments() -> None:
+    payload = answer_for_question("Show me a classic country move", noisy_home_prompt_sources())
+
+    assert_home_coach_answer_is_clean(payload)
+    assert payload["answer"].startswith("Try this classic-country E9 move")
+    assert "3rd fret" in payload["answer"]
+    assert "strings 4-5-6" in payload["answer"]
+    assert "A+B" in payload["answer"]
+    assert "What to listen for" in payload["answer"]
+
+
+def test_home_prompt_practice_rut_breaker_returns_timeboxed_drill() -> None:
+    payload = answer_for_question("Give me a practice rut breaker", noisy_home_prompt_sources())
+
+    assert_home_coach_answer_is_clean(payload)
+    assert payload["answer"].startswith("Use a 10-minute rut breaker")
+    assert "10-minute drill" in payload["answer"]
+    assert "3-4-5" in payload["answer"]
+    assert "4-5-6" in payload["answer"]
+    assert "5-6-8" in payload["answer"]
+    assert "Measurable goal" in payload["answer"]
+
+
+def test_home_prompt_neck_thinking_returns_fretboard_concept_answer() -> None:
+    payload = answer_for_question("Give me a better way to think about the neck", noisy_home_prompt_sources())
+
+    assert_home_coach_answer_is_clean(payload)
+    assert "position families" in payload["answer"]
+    assert "Open/no-pedals" in payload["answer"]
+    assert "A+F" in payload["answer"]
+    assert "A+B" in payload["answer"]
+    assert "root, 3rd, 5th" in payload["answer"]
+
+
+def test_home_prompt_missing_context_questions_clarify_before_searching() -> None:
+    for question in ("Show me how pros approach this position", "What’s a better grip for this chord?"):
+        payload = answer_for_question(question, noisy_home_prompt_sources())
+
+        assert_home_coach_answer_is_clean(payload)
+        assert payload["answer"].startswith("I need the missing context")
+        assert "chord or key" in payload["answer"]
+        assert "fret" in payload["answer"]
+        assert "strings or grip" in payload["answer"]
+        assert "pedals or levers" in payload["answer"]
+
+
+def test_home_prompt_blocking_and_bar_movement_return_drills() -> None:
+    blocking = answer_for_question("Help me clean up my blocking", noisy_home_prompt_sources())
+    assert_home_coach_answer_is_clean(blocking)
+    assert blocking["answer"].startswith("Short diagnosis:")
+    assert "Likely causes" in blocking["answer"]
+    assert "Drills" in blocking["answer"]
+    assert "pick blocking" in blocking["answer"]
+    assert "palm blocking" in blocking["answer"]
+    assert "What to listen for" in blocking["answer"]
+
+    bar = answer_for_question("Why does my bar movement sound rough?", noisy_home_prompt_sources())
+    assert_home_coach_answer_is_clean(bar)
+    assert bar["answer"].startswith("Short diagnosis:")
+    assert "pressure" in bar["answer"]
+    assert "angle" in bar["answer"]
+    assert "overshoot" in bar["answer"]
+    assert "Drills" in bar["answer"]
+    assert "What not to do" in bar["answer"]
+
+
+def test_home_prompt_after_ab_returns_position_movement_guidance() -> None:
+    payload = answer_for_question("Where should I go after A+B?", noisy_home_prompt_sources())
+
+    assert_home_coach_answer_is_clean(payload)
+    assert payload["answer"].startswith("A+B is a position family")
+    assert "open/no-pedals" in payload["answer"]
+    assert "E-lower" in payload["answer"]
+    assert "F lever" in payload["answer"]
+    assert "3-4-5" in payload["answer"]
+    assert "Practice tip" in payload["answer"]
 
 
 def test_string_breaking_forum_wisdom_is_synthesized_not_raw_anecdotes() -> None:
@@ -2498,7 +2691,6 @@ def test_teacher_first_screenshot_prompt_regressions_are_synthesized() -> None:
     assert swing_waltz["sources"]
 
 
-
 def test_invalid_chord_symbol_question_clarifies_without_retrieval_or_fretboard() -> None:
     payload = answer_for_question(
         "how. do I play a GF chord?",
@@ -2575,6 +2767,18 @@ def test_smoke_ready_chord_fretboard_prompts_route_deterministically() -> None:
         ("How do I play a G chord on the E9?", "G major positions on E9", ("3rd fret", "10th fret")),
         ("Where do I play a G chord on the E9?", "G major positions on E9", ("3rd fret", "10th fret")),
         ("Where the the G chords?", "G major positions on E9", ("3rd fret", "10th fret")),
+        ("How do I play an E chord on the E9 neck?", "E major positions on E9", ("E major", "3rd fret", "7th fret")),
+        (
+            "How do I play a B-flat chord on the E9 pedal steel?",
+            "Bb major positions on E9",
+            ("Bb major", "6th fret", "9th fret", "13th fret"),
+        ),
+        ("How do I play a Bb chord on E9?", "Bb major positions on E9", ("Bb major", "6th fret", "13th fret")),
+        (
+            "What is the location for a G chord with A+B?",
+            "G major positions on E9",
+            ("With A+B, G major is at the 10th fret", "10th fret with A+B pedals"),
+        ),
         ("How do I play an A chord?", "A major positions on E9", ("5th fret", "12th fret")),
         ("How do I play a D chord?", "D major positions on E9", ("10th fret", "17th fret")),
         (
@@ -2594,6 +2798,8 @@ def test_smoke_ready_chord_fretboard_prompts_route_deterministically() -> None:
         assert "I don’t have enough reliable information" not in payload["answer"]
         assert "If we play an Am7 scale over a D Chord" not in payload["answer"]
         assert "Essentially one has to use the open D string" not in payload["answer"]
+        assert "C6th" not in payload["answer"]
+        assert "random tab" not in payload["answer"].lower()
         assert "[object Object]" not in payload["answer"]
         assert "fretboard" in payload
         assert payload["fretboard"]["title"] == title
@@ -2615,6 +2821,204 @@ def test_show_me_the_fretboard_returns_default_visual_without_retrieval_fragment
     assert payload["fretboard"]["title"] == "G major positions on E9"
     assert_valid_fretboard_payload(payload)
     assert_deterministic_fretboard_sources_are_clean(payload)
+
+
+def test_product_red_team_invalid_and_off_domain_variants_do_not_retrieve() -> None:
+    cases = [
+        ("Show me all numbers from 1 to 1 million.", "outside Steel Guitar RAG’s scope"),
+        ("Write steel guitar 10,000 times.", "too large to display usefully"),
+        ("Give me a pancake recipe.", "outside Steel Guitar RAG’s scope"),
+        ("what is Cmajorish?", "I don’t recognize “Cmajorish” as a standard chord name."),
+        ("where is a Zm chord?", "I don’t recognize “Zm” as a standard chord name."),
+        ("how do I play G/F?", "G/F is a slash chord"),
+    ]
+    for question, expected in cases:
+        payload = answer_for_question(question, noisy_home_prompt_sources())
+
+        assert_clean_answer_body(payload)
+        assert expected in payload["answer"]
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+        assert "fretboard" not in payload
+        assert "raw tab fragment" not in payload["answer"].lower()
+        assert "[object Object]" not in payload["answer"]
+
+
+def test_product_red_team_missing_context_prompts_clarify_without_sources() -> None:
+    for question in (
+        "How should I play this lick?",
+        "Where do I go from here?",
+        "What pedal should I use for that chord?",
+        "Explain this lick like a steel player would",
+    ):
+        payload = answer_for_question(question, noisy_home_prompt_sources())
+
+        assert_home_coach_answer_is_clean(payload)
+        assert payload["answer"].startswith("I need the missing context")
+        assert "chord or key" in payload["answer"]
+        assert "fret" in payload["answer"]
+        assert "strings or grip" in payload["answer"]
+        assert "pedals or levers" in payload["answer"]
+
+
+def test_product_red_team_home_prompt_coach_cluster_returns_practical_answers() -> None:
+    cases = [
+        ("Show movement without sliding everywhere", ("position families", "3rd fret", "A+F")),
+        ("Show tasteful fills behind a singer", ("Tasteful fills", "vocal", "leave")),
+        ("Help me stop overplaying fills", ("Tasteful fills", "vocal", "simplify")),
+        ("Why does my tone sound thin?", ("Thin tone", "right-hand attack", "treble")),
+        ("What’s the simplest way to hear this change?", ("chord movement", "1, 4, 5, 1", "strings 4-5-6")),
+        ("Why can’t I hear the chord movement clearly?", ("chord movement", "root, 3rd, and 5th", "strings 4-5-6")),
+        ("My volume pedal sounds jumpy. What should I practice?", ("jumpy volume pedal", "Drills", "blooms")),
+        ("How do I make slides sound smoother?", ("Smooth slides", "Drills", "overshoot")),
+        ("How do I stop overshooting frets?", ("Smooth slides", "Drills", "pitch is centered")),
+    ]
+    for question, expected_terms in cases:
+        payload = answer_for_question(question, noisy_home_prompt_sources())
+
+        assert_home_coach_answer_is_clean(payload)
+        for term in expected_terms:
+            assert term in payload["answer"]
+        assert any(marker in payload["answer"] for marker in ("Drill", "Drills", "Practice it", "What to listen for", "What to check"))
+
+
+def test_product_red_team_practice_and_fretboard_concept_cluster() -> None:
+    practice_cases = [
+        "What should I woodshed tonight?",
+        "What’s a good 20-minute practice routine?",
+        "Build a 10-minute blocking workout.",
+        "Give me a 7-day plan for A+B to E-lower movement.",
+        "Help me practice playing behind a singer.",
+    ]
+    for question in practice_cases:
+        payload = answer_for_question(question, noisy_home_prompt_sources())
+
+        assert_home_coach_answer_is_clean(payload)
+        assert "minute" in payload["answer"]
+        assert "Goal" in payload["answer"]
+
+    concept_cases = [
+        ("Show me I-IV-V positions on E9", ("I: G", "IV: C", "V: D")),
+        ("Show me IV from open position.", ("IV chord", "A+B", "same fret")),
+        ("Show me a minor walkdown from A+B.", ("A+B is a position family", "E-lower", "Practice tip")),
+        ("Give me a better way into the IV chord", ("A+B is a position family", "open/no-pedals", "Practice tip")),
+        ("Help me connect open position to pedals down", ("position families", "A+B", "no-pedals")),
+        ("Help me think about the E9 neck as no-pedals, A+B, E-lower, and F-lever positions.", ("position families", "E-lower", "A+F")),
+        ("Help me stop getting lost on the fretboard", ("position families", "fret 3 open", "fret 10 A+B")),
+        ("What’s a better grip for a G chord at fret 3?", ("3-4-5", "4-5-6", "6-8-10")),
+        ("Where are my 1-3-5 grips on strings 6-8-10?", ("strings 6-8-10", "root, 3rd, and 5th", "chord or fret")),
+    ]
+    for question, expected_terms in concept_cases:
+        payload = answer_for_question(question, noisy_home_prompt_sources())
+
+        assert_home_coach_answer_is_clean(payload)
+        for term in expected_terms:
+            assert term in payload["answer"]
+
+
+def test_product_red_team_deterministic_beginner_and_ab_in_g_visuals() -> None:
+    notes = answer_for_question("What notes are in D?", noisy_home_prompt_sources())
+    assert_clean_answer_body(notes)
+    assert "D major chord means the notes D-F#-A" in notes["answer"]
+    assert "root, major 3rd, and perfect 5th" in notes["answer"]
+    assert "fretboard" in notes
+    assert_valid_fretboard_payload(notes)
+    assert_deterministic_fretboard_sources_are_clean(notes)
+
+    minor = answer_for_question("What makes E minor minor?", noisy_home_prompt_sources())
+    assert_clean_answer_body(minor)
+    assert "E minor chord means the notes E-G-B" in minor["answer"]
+    assert "minor 3rd" in minor["answer"]
+    assert "fretboard" in minor
+    assert_valid_fretboard_payload(minor)
+    assert_deterministic_fretboard_sources_are_clean(minor)
+
+    vi = answer_for_question("What is the vi chord in G?", noisy_home_prompt_sources())
+    assert_clean_answer_body(vi)
+    assert "vi in G is E minor" in vi["answer"]
+    assert "fretboard" in vi
+    assert_valid_fretboard_payload(vi)
+    assert_deterministic_fretboard_sources_are_clean(vi)
+
+    after_ab = answer_for_question("Where should I go after A+B in G?", noisy_home_prompt_sources())
+    assert_clean_answer_body(after_ab)
+    assert "G: 10th fret with A+B" in after_ab["answer"]
+    assert "C: 3rd fret with A+B" in after_ab["answer"]
+    assert "D: 5th fret with A+B" in after_ab["answer"]
+    assert "fretboard" in after_ab
+    assert_valid_fretboard_payload(after_ab)
+    assert_deterministic_fretboard_sources_are_clean(after_ab)
+
+
+def test_final_red_team_blockers_route_to_deterministic_answers_or_clarifiers() -> None:
+    ab_concept = answer_for_question("Why does A+B make a chord?", noisy_home_prompt_sources())
+    assert_clean_answer_body(ab_concept)
+    assert "A+B is not a chord by itself" in ab_concept["answer"]
+    assert "A pedal raises the B strings to C#" in ab_concept["answer"]
+    assert "B pedal raises the G# strings to A" in ab_concept["answer"]
+    assert "root, major 3rd, and perfect 5th" in ab_concept["answer"]
+    assert "10-string E9" in ab_concept["answer"]
+    assert "fretboard" not in ab_concept
+    assert ab_concept["sources"] == []
+    assert ab_concept["warnings"] == []
+
+    g_on_e9 = answer_for_question("Where is a G chord on E9?", noisy_home_prompt_sources())
+    assert_clean_answer_body(g_on_e9)
+    assert "G major" in g_on_e9["answer"]
+    assert "3rd fret" in g_on_e9["answer"]
+    assert "10th fret" in g_on_e9["answer"]
+    assert "fretboard" in g_on_e9
+    assert_valid_fretboard_payload(g_on_e9)
+    assert_deterministic_fretboard_sources_are_clean(g_on_e9)
+
+    after_ab = answer_for_question("Where do I go after A+B in G?", noisy_home_prompt_sources())
+    assert_clean_answer_body(after_ab)
+    assert "G: 10th fret with A+B" in after_ab["answer"]
+    assert "fretboard" in after_ab
+    assert_valid_fretboard_payload(after_ab)
+    assert_deterministic_fretboard_sources_are_clean(after_ab)
+
+    interval = answer_for_question("What interval is string 5 with the A pedal?", noisy_home_prompt_sources())
+    assert_clean_answer_body(interval)
+    assert "string 5 is B open" in interval["answer"]
+    assert "A pedal raises it to C#" in interval["answer"]
+    assert "Against an A chord, C# is the major 3rd" in interval["answer"]
+    assert "depends on the fret, key, and the other strings" in interval["answer"]
+    assert "fretboard" not in interval
+    assert interval["sources"] == []
+    assert interval["warnings"] == []
+
+    note = answer_for_question("What note is string 5 with the A pedal?", noisy_home_prompt_sources())
+    assert_clean_answer_body(note)
+    assert "string 5 is B open" in note["answer"]
+    assert "A pedal raises it to C#" in note["answer"]
+    assert note["sources"] == []
+    assert note["warnings"] == []
+
+    for question in ("Is this a full chord or partial voicing?", "Is this grip a full chord?"):
+        voicing = answer_for_question(question, noisy_home_prompt_sources())
+        assert_home_coach_answer_is_clean(voicing)
+        assert voicing["answer"].startswith("I need the missing context")
+        assert "fret" in voicing["answer"]
+        assert "strings or grip" in voicing["answer"]
+        assert "pedals or levers" in voicing["answer"]
+        assert "full chord, partial voicing" in voicing["answer"]
+
+
+def test_product_red_team_forum_wisdom_keeps_supporting_source_cards() -> None:
+    for question, expected_terms in (
+        ("What do players say about wound 6th strings?", ("Players", "tradeoff", "changer travel")),
+        ("What do players say about Steel King settings?", ("Players", "settings", "room")),
+        ("What do players say about B+C pedals?", ("Players", "B+C", "passing movement")),
+    ):
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert_clean_answer_body(payload)
+        for term in expected_terms:
+            assert term in payload["answer"]
+        assert payload["sources"]
+        assert "fretboard" not in payload
+        assert "raw tab fragment" not in payload["answer"].lower()
 
 
 def test_location_based_g_chord_answer_includes_fretboard_payload() -> None:

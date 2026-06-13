@@ -67,12 +67,24 @@ def assert_valid_visualization_payload(payload: dict) -> None:
         assert {
             "id",
             "label",
+            "chordRoot",
+            "chordQuality",
+            "chordTones",
+            "lowestSoundingNote",
+            "lowestChordToneRole",
+            "voicingType",
+            "inversionLabel",
+            "inversionExplanation",
             "root",
             "quality",
             "positionKind",
             "fret",
             "strings",
             "grip",
+            "intervalsLowToHigh",
+            "isRootPosition",
+            "isInversion",
+            "isPartialVoicing",
             "pedals",
             "levers",
             "color",
@@ -118,6 +130,28 @@ def assert_valid_visualization_payload(payload: dict) -> None:
         assert isinstance(position["keyContext"], str)
         assert position["root"]
         assert position["quality"]
+        assert position["chordRoot"] == position["root"]
+        assert position["chordQuality"] == position["quality"]
+        assert isinstance(position["chordTones"], list)
+        assert all(isinstance(item, str) for item in position["chordTones"])
+        assert isinstance(position["lowestSoundingNote"], str)
+        assert isinstance(position["lowestChordToneRole"], str)
+        assert position["voicingType"] in {
+            "root_position",
+            "first_inversion",
+            "second_inversion",
+            "third_inversion",
+            "partial",
+            "rootless",
+            "color_voicing",
+        }
+        assert isinstance(position["inversionLabel"], str) and position["inversionLabel"]
+        assert isinstance(position["inversionExplanation"], str) and position["inversionExplanation"]
+        assert isinstance(position["intervalsLowToHigh"], list)
+        assert all(isinstance(item, str) for item in position["intervalsLowToHigh"])
+        assert isinstance(position["isRootPosition"], bool)
+        assert isinstance(position["isInversion"], bool)
+        assert isinstance(position["isPartialVoicing"], bool)
         assert position["positionKind"]
         assert position["tier"] in {"beginner", "common", "alternate", "advanced", "reference"}
         assert position["colorRole"]
@@ -388,6 +422,80 @@ def test_generated_major_positions_lock_requested_roots_metadata_and_pitch_annot
         assert alternate["sortOrder"] > by_id["b-ab-14"]["sortOrder"]
 
 
+def test_g_major_voicing_metadata_identifies_root_position_and_inversions_by_pitch_order() -> None:
+    payload = get_fretboard_examples("major_positions", "G")
+    by_id = {position["id"]: position for position in payload["positions"]}
+
+    root_position = by_id["g-open-grip-5-6-8-3"]
+    assert root_position["grip"] == "5-6-8"
+    assert root_position["lowestSoundingNote"] == "G"
+    assert root_position["lowestChordToneRole"] == "root"
+    assert root_position["voicingType"] == "root_position"
+    assert root_position["inversionLabel"] == "Root position"
+    assert root_position["isRootPosition"] is True
+    assert root_position["isInversion"] is False
+    assert root_position["isPartialVoicing"] is False
+    assert root_position["intervalsLowToHigh"] == [
+        "1 on string 8 (G)",
+        "3 on string 6 (B)",
+        "5 on string 5 (D)",
+    ]
+
+    first_inversion = by_id["g-open-3"]
+    assert first_inversion["grip"] == "4-5-6"
+    assert first_inversion["lowestSoundingNote"] == "B"
+    assert first_inversion["lowestChordToneRole"] == "major 3rd"
+    assert first_inversion["voicingType"] == "first_inversion"
+    assert first_inversion["inversionLabel"] == "1st inversion"
+    assert first_inversion["isRootPosition"] is False
+    assert first_inversion["isInversion"] is True
+
+    second_inversion = by_id["g-open-grip-3-4-5-3"]
+    assert second_inversion["grip"] == "3-4-5"
+    assert second_inversion["lowestSoundingNote"] == "D"
+    assert second_inversion["lowestChordToneRole"] == "5th"
+    assert second_inversion["voicingType"] == "second_inversion"
+    assert second_inversion["inversionLabel"] == "2nd inversion"
+    assert second_inversion["isInversion"] is True
+
+
+def test_partial_and_rootless_voicings_are_labeled_for_filtering() -> None:
+    payload = get_fretboard_examples("major_positions", "B")
+    by_id = {position["id"]: position for position in payload["positions"]}
+
+    partial = by_id["b-open-grip-5-7-8-7"]
+    assert partial["grip"] == "5-7-8"
+    assert partial["isPartial"] is True
+    assert partial["isPartialVoicing"] is True
+    assert partial["isRootless"] is False
+    assert partial["voicingType"] == "partial"
+    assert partial["inversionLabel"] == "Partial voicing"
+    assert partial["chordTones"] == ["1 (root)", "5 (5th)"]
+    assert partial["omittedIntervals"] == ["3"]
+
+    rootless = by_id["b-e-lower-dominant-4-5-6-10"]
+    assert rootless["quality"] == "dominant9"
+    assert rootless["isRootless"] is True
+    assert rootless["voicingType"] == "rootless"
+    assert rootless["inversionLabel"] == "Rootless voicing"
+    assert rootless["isRootPosition"] is False
+    assert rootless["isInversion"] is False
+    assert "omits the root" in rootless["inversionExplanation"]
+
+
+def test_common_grip_labels_remain_available_in_canonical_order() -> None:
+    payload = get_fretboard_examples("major_positions", "G")
+    first_fret_family = [
+        position["grip"]
+        for position in payload["positions"]
+        if position["fret"] == 3 and position["family"] in {"open_no_pedals", "open_grip"}
+    ]
+
+    assert first_fret_family == ["3-4-5", "4-5-6", "5-6-8", "5-7-8", "6-8-10"]
+    assert all(max(position["strings"]) <= 10 for position in payload["positions"])
+    assert not any("11" in position["grip"] or "12" in position["grip"] for position in payload["positions"])
+
+
 def test_c_major_position_prompts_are_supported() -> None:
     expected_ids = ["c-open-8", "c-af-11", "c-ab-15"]
 
@@ -435,6 +543,10 @@ def test_smoke_ready_chord_position_prompt_variants_are_supported() -> None:
         ("How do I play a G chord on the E9?", "G", {"g-open-3", "g-af-6", "g-ab-10"}),
         ("Where do I play a G chord on the E9?", "G", {"g-open-3", "g-af-6", "g-ab-10"}),
         ("Where the the G chords?", "G", {"g-open-3", "g-af-6", "g-ab-10"}),
+        ("How do I play an E chord on the E9 neck?", "E", {"e-open-0", "e-af-3", "e-ab-7"}),
+        ("How do I play a B-flat chord on the E9 pedal steel?", "A#", {"asharp-open-6", "asharp-af-9", "asharp-ab-13"}),
+        ("How do I play a Bb chord on E9?", "A#", {"asharp-open-6", "asharp-af-9", "asharp-ab-13"}),
+        ("What is the location for a G chord with A+B?", "G", {"g-open-3", "g-af-6", "g-ab-10"}),
         ("How do I play an A chord?", "A", {"a-open-5", "a-af-8", "a-ab-12"}),
         ("How do I play a D chord?", "D", {"d-open-10", "d-af-13", "d-ab-17"}),
     ]
@@ -446,7 +558,10 @@ def test_smoke_ready_chord_position_prompt_variants_are_supported() -> None:
         assert request is not None, question
         assert request.normalized_key == expected_key
         assert payload is not None, question
-        assert payload["title"] == f"{expected_key} major positions on E9"
+        if "flat" in question.lower() or "bb" in question.lower():
+            assert payload["title"] == "Bb major positions on E9"
+        else:
+            assert payload["title"] == f"{expected_key} major positions on E9"
         assert_valid_visualization_payload(payload)
         assert expected_ids.issubset({position["id"] for position in payload["positions"]})
 
@@ -542,7 +657,6 @@ def test_hyphenated_minor_chord_questions_route_to_minor_positions() -> None:
     assert payload is not None
     assert payload["title"] == "G minor positions on E9"
     assert_valid_visualization_payload(payload)
-
 
 
 def test_b_major_position_prompt_variants_are_supported() -> None:

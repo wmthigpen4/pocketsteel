@@ -50,6 +50,19 @@ E_LOWER_DOMINANT_GRIPS: tuple[tuple[int, ...], ...] = (
     (6, 8, 10),
 )
 
+OPEN_STRING_ABSOLUTE_PITCHES: dict[int, int] = {
+    1: 66,
+    2: 63,
+    3: 68,
+    4: 64,
+    5: 59,
+    6: 56,
+    7: 54,
+    8: 52,
+    9: 50,
+    10: 47,
+}
+
 FretboardIntent = Literal["major_positions", "minor_positions", "minor_grips", "i_iv_v", "common_grips"]
 
 
@@ -61,6 +74,13 @@ class MajorChordLocationRequest:
     @property
     def is_enharmonic(self) -> bool:
         return self.requested_root != self.normalized_key
+
+
+def display_major_key_for_request(request: MajorChordLocationRequest) -> str:
+    """Choose the user-facing root spelling for a deterministic major request."""
+    if request.requested_root.endswith("b") and request.requested_root not in {"Cb", "Fb"}:
+        return request.requested_root
+    return request.normalized_key
 
 
 @dataclass(frozen=True)
@@ -152,21 +172,6 @@ CANONICAL_NOTES: dict[int, str] = {
     8: "G#",
     9: "A",
     10: "A#",
-    11: "B",
-}
-
-FLAT_NOTES: dict[int, str] = {
-    0: "C",
-    1: "Db",
-    2: "D",
-    3: "Eb",
-    4: "E",
-    5: "F",
-    6: "Gb",
-    7: "G",
-    8: "Ab",
-    9: "A",
-    10: "Bb",
     11: "B",
 }
 
@@ -305,15 +310,28 @@ class FretboardPosition:
         resolution_use = self.resolution_use or default_resolution_use(self)
         explanation_short = self.explanation_short or default_explanation_short(self)
         explanation_long = self.explanation_long or default_explanation_long(self)
+        voicing_metadata = voicing_metadata_for_position(self)
         payload: dict = {
             "id": self.id,
             "label": self.label,
+            "chordRoot": self.root,
+            "chordQuality": self.quality,
+            "chordTones": voicing_metadata["chordTones"],
+            "lowestSoundingNote": voicing_metadata["lowestSoundingNote"],
+            "lowestChordToneRole": voicing_metadata["lowestChordToneRole"],
+            "voicingType": voicing_metadata["voicingType"],
+            "inversionLabel": voicing_metadata["inversionLabel"],
+            "inversionExplanation": voicing_metadata["inversionExplanation"],
             "root": self.root,
             "quality": self.quality,
             "positionKind": self.position_kind,
             "fret": self.fret,
             "strings": list(self.strings),
             "grip": self.grip,
+            "intervalsLowToHigh": voicing_metadata["intervalsLowToHigh"],
+            "isRootPosition": voicing_metadata["isRootPosition"],
+            "isInversion": voicing_metadata["isInversion"],
+            "isPartialVoicing": voicing_metadata["isPartialVoicing"],
             "pedals": list(self.pedals),
             "levers": list(self.levers),
             "color": self.color,
@@ -477,6 +495,42 @@ def validate_fretboard_payload(payload: dict) -> None:
             raise ValueError(f"Fretboard position {position_id} is missing root")
         if not isinstance(position.get("quality"), str) or not position.get("quality"):
             raise ValueError(f"Fretboard position {position_id} is missing quality")
+        if position.get("chordRoot") != position.get("root"):
+            raise ValueError(f"Fretboard position {position_id} has inconsistent chordRoot")
+        if position.get("chordQuality") != position.get("quality"):
+            raise ValueError(f"Fretboard position {position_id} has inconsistent chordQuality")
+        if not isinstance(position.get("chordTones"), list) or any(
+            not isinstance(tone, str) for tone in position.get("chordTones", [])
+        ):
+            raise ValueError(f"Fretboard position {position_id} has invalid chordTones")
+        if not isinstance(position.get("lowestSoundingNote"), str):
+            raise ValueError(f"Fretboard position {position_id} has invalid lowestSoundingNote")
+        if not isinstance(position.get("lowestChordToneRole"), str):
+            raise ValueError(f"Fretboard position {position_id} has invalid lowestChordToneRole")
+        if position.get("voicingType") not in {
+            "root_position",
+            "first_inversion",
+            "second_inversion",
+            "third_inversion",
+            "partial",
+            "rootless",
+            "color_voicing",
+        }:
+            raise ValueError(f"Fretboard position {position_id} has invalid voicingType")
+        if not isinstance(position.get("inversionLabel"), str) or not position.get("inversionLabel"):
+            raise ValueError(f"Fretboard position {position_id} has invalid inversionLabel")
+        if not isinstance(position.get("inversionExplanation"), str) or not position.get("inversionExplanation"):
+            raise ValueError(f"Fretboard position {position_id} has invalid inversionExplanation")
+        if not isinstance(position.get("intervalsLowToHigh"), list) or any(
+            not isinstance(interval, str) for interval in position.get("intervalsLowToHigh", [])
+        ):
+            raise ValueError(f"Fretboard position {position_id} has invalid intervalsLowToHigh")
+        if not isinstance(position.get("isRootPosition"), bool):
+            raise ValueError(f"Fretboard position {position_id} has invalid isRootPosition")
+        if not isinstance(position.get("isInversion"), bool):
+            raise ValueError(f"Fretboard position {position_id} has invalid isInversion")
+        if not isinstance(position.get("isPartialVoicing"), bool):
+            raise ValueError(f"Fretboard position {position_id} has invalid isPartialVoicing")
         if not isinstance(position.get("positionKind"), str) or not position.get("positionKind"):
             raise ValueError(f"Fretboard position {position_id} is missing positionKind")
         if not isinstance(position.get("function"), str):
@@ -714,6 +768,139 @@ def note_at_fret(open_note: str, fret: int) -> str:
 
 def interval_for_note(root: str, note: str) -> str:
     return INTERVAL_NAMES[(semitone_for_note(note) - semitone_for_note(root)) % 12]
+
+
+def absolute_pitch_for_string(string: int, fret: int, controls: tuple[str, ...]) -> int:
+    changed_notes = notes_for_controls(controls)
+    open_pitch = OPEN_STRING_ABSOLUTE_PITCHES[string]
+    open_pitch_class = semitone_for_copedent_note(E9_OPEN_STRINGS[string])
+    changed_pitch_class = semitone_for_copedent_note(changed_notes[string])
+    delta = (changed_pitch_class - open_pitch_class) % 12
+    if delta > 6:
+        delta -= 12
+    return open_pitch + delta + fret
+
+
+INTERVAL_ROLE_LABELS: dict[str, str] = {
+    "1": "root",
+    "b3": "minor 3rd",
+    "3": "major 3rd",
+    "5": "5th",
+    "b7": "7th",
+    "7": "7th",
+    "2/9": "9th",
+    "6/13": "13th",
+}
+
+
+def voicing_metadata_for_position(position: FretboardPosition) -> dict[str, object]:
+    notes = dict(position.notes or {})
+    intervals = dict(position.intervals or {})
+    controls = tuple(position.pedals + position.levers)
+    strings_low_to_high = sorted(
+        position.strings,
+        key=lambda string: (absolute_pitch_for_string(string, position.fret, controls), string),
+    )
+    intervals_low_to_high: list[str] = []
+    lowest_interval = ""
+    lowest_note = ""
+    for string in strings_low_to_high:
+        interval = intervals.get(str(string), "")
+        note = notes.get(str(string), "")
+        if interval and note:
+            intervals_low_to_high.append(f"{interval} on string {string} ({note})")
+            if not lowest_interval:
+                lowest_interval = interval
+                lowest_note = note
+
+    required_intervals = chord_required_intervals(position.quality) if position.quality in CHORD_INTERVALS else tuple()
+    chord_tones = [
+        f"{interval} ({INTERVAL_ROLE_LABELS.get(interval, interval)})"
+        for interval in required_intervals
+        if interval in set(intervals.values())
+    ]
+    if not chord_tones:
+        chord_tones = [
+            f"{interval} ({INTERVAL_ROLE_LABELS.get(interval, interval)})"
+            for interval in sorted(set(intervals.values()), key=lambda interval: intervals_low_to_high.index(next(item for item in intervals_low_to_high if item.startswith(interval + ' '))) if any(item.startswith(interval + " ") for item in intervals_low_to_high) else 99)
+        ]
+
+    voicing_type, inversion_label, is_root_position, is_inversion = classify_inversion_type(
+        lowest_interval=lowest_interval,
+        is_partial=position.is_partial,
+        is_rootless=position.is_rootless,
+        required_intervals=required_intervals,
+    )
+    lowest_role = INTERVAL_ROLE_LABELS.get(lowest_interval, lowest_interval or "unknown")
+    return {
+        "chordTones": chord_tones,
+        "lowestSoundingNote": lowest_note,
+        "lowestChordToneRole": lowest_role,
+        "voicingType": voicing_type,
+        "inversionLabel": inversion_label,
+        "inversionExplanation": inversion_explanation(
+            position=position,
+            lowest_note=lowest_note,
+            lowest_role=lowest_role,
+            voicing_type=voicing_type,
+        ),
+        "intervalsLowToHigh": intervals_low_to_high,
+        "isRootPosition": is_root_position,
+        "isInversion": is_inversion,
+        "isPartialVoicing": position.is_partial,
+    }
+
+
+def classify_inversion_type(
+    *,
+    lowest_interval: str,
+    is_partial: bool,
+    is_rootless: bool,
+    required_intervals: tuple[str, ...],
+) -> tuple[str, str, bool, bool]:
+    if is_rootless:
+        return "rootless", "Rootless voicing", False, False
+    if is_partial:
+        return "partial", "Partial voicing", False, False
+    if lowest_interval == "1":
+        return "root_position", "Root position", True, False
+    if lowest_interval in {"3", "b3"}:
+        return "first_inversion", "1st inversion", False, True
+    if lowest_interval == "5":
+        return "second_inversion", "2nd inversion", False, True
+    if lowest_interval in {"b7", "7"} and any(interval in required_intervals for interval in ("b7", "7")):
+        return "third_inversion", "3rd inversion", False, True
+    return "color_voicing", "Color voicing", False, False
+
+
+def inversion_explanation(
+    *,
+    position: FretboardPosition,
+    lowest_note: str,
+    lowest_role: str,
+    voicing_type: str,
+) -> str:
+    quality_text = quality_label(position.quality) if position.quality in CHORD_INTERVALS else position.quality
+    if voicing_type == "rootless":
+        return (
+            f"This {position.root} {quality_text} voicing omits the root, so it is labeled rootless rather than as an inversion."
+        )
+    if voicing_type == "partial":
+        omitted = ", ".join(position.omitted_intervals) or "none"
+        added = ", ".join(position.added_intervals) or "none"
+        return (
+            f"This is a partial {position.root} {quality_text} voicing; omitted interval(s): {omitted}; "
+            f"added color(s): {added}."
+        )
+    if voicing_type == "root_position":
+        return f"The chord root {lowest_note} is the lowest sounding chord tone."
+    if voicing_type == "first_inversion":
+        return f"The {lowest_role} ({lowest_note}) is the lowest sounding chord tone."
+    if voicing_type == "second_inversion":
+        return f"The 5th ({lowest_note}) is the lowest sounding chord tone."
+    if voicing_type == "third_inversion":
+        return f"The 7th ({lowest_note}) is the lowest sounding chord tone."
+    return f"The lowest sounding chord tone is {lowest_role} ({lowest_note}); use this as a color voicing."
 
 
 def chord_quality_key(quality: str) -> str:
@@ -1615,8 +1802,10 @@ def chord_symbol_from_chord_like_question(question: str) -> str | None:
         return None
     patterns = (
         r"^how do i (?:play|make|plan) (?:a|an)?\s*(?P<symbol>[a-z][a-z#b/0-9]*)\s+chord$",
+        r"^how do i play (?:a|an)?\s*(?P<symbol>[a-g][a-z#b/0-9/]+)$",
         r"^where is (?:a|an)?\s*(?P<symbol>[a-z][a-z#b/0-9]*)\s+chord$",
         r"^what is (?:a|an)?\s*(?P<symbol>[a-z][a-z#b/0-9]*)\s+chord$",
+        r"^what is (?P<symbol>[a-g][a-z#b/0-9/]+)$",
         r"^what(?:'s|’s) (?:a|an)?\s*(?P<symbol>[a-z][a-z#b/0-9]*)\s+chord$",
         r"^show me (?:a|an)?\s*(?P<symbol>[a-z][a-z#b/0-9]*)\s+chord$",
         r"^what does (?:a|an)?\s*(?P<symbol>[a-z][a-z#b/0-9]*)\s+chord mean$",
@@ -1746,7 +1935,9 @@ def chord_concept_request_for_question(question: str) -> ChordConceptRequest | N
         rf"^what(?:'s|’s| is)\s+(?:a|an)?\s*{root_pattern}\s+(?P<quality>major|minor)?\s*chord\s+(?:even\s+)?mean$",
         rf"^what\s+does\s+(?:a|an)?\s*{root_pattern}\s+(?P<quality>major|minor)?\s*chord\s+mean$",
         rf"^what\s+notes\s+are\s+in\s+(?:a|an)?\s*{root_pattern}\s+(?P<quality>major|minor)?\s*chord$",
+        rf"^what\s+notes\s+are\s+in\s+(?:a|an)?\s*{root_pattern}\s*(?P<quality>major|minor)?$",
         rf"^what\s+makes\s+(?:a|an)?\s*{root_pattern}\s+minor\s+chord\s+minor$",
+        rf"^what\s+makes\s+(?:a|an)?\s*{root_pattern}\s+minor\s+minor$",
         rf"^what\s+makes\s+(?:a|an)?\s*{root_pattern}\s+major\s+chord\s+major$",
     )
     for pattern in patterns:
@@ -1755,6 +1946,8 @@ def chord_concept_request_for_question(question: str) -> ChordConceptRequest | N
             requested_root = normalize_requested_root(match.group("root"))
             quality = normalize_chord_quality(match.groupdict().get("quality") or "")
             if not quality and " minor chord" in q:
+                quality = "minor"
+            if not quality and re.search(r"\bminor\s+minor\b", q):
                 quality = "minor"
             if not quality and " major chord" in q:
                 quality = "major"
@@ -1776,10 +1969,8 @@ def chord_concept_answer_for_question(question: str) -> str | None:
         return None
     key = request.normalized_key
     if request.quality == "minor":
-        third = transpose(key, 3)
-        fifth = transpose(key, 7)
         prefix = (
-            f"An {key} minor chord means the notes {key}-{third}-{fifth}: "
+            f"An {key} minor chord means the notes {minor_triad_spelling_for_answer(key)}: "
             "root, minor 3rd, and perfect 5th. What makes it minor is the lowered 3rd."
         )
         return minor_position_answer(key, prefix=prefix)
@@ -1819,11 +2010,13 @@ def generic_chord_concept_answer_for_question(question: str) -> str | None:
             "In G, the 1 chord is G major; in C, it is C major. "
             "Give me the key and I can map the 1 chord to E9 fretboard positions."
         )
-    if re.search(r"^why\s+is\s+a\+b\s+a\s+chord$", q):
+    if re.search(r"^why\s+(?:is|does)\s+a\+b\s+(?:make\s+)?a\s+chord$", q) or re.search(r"^what\s+does\s+a\+b\s+do$", q):
         return (
-            "A+B is not a chord by itself; it is a pedal combination that changes the notes under a grip. "
-            "At the right fret, those changed notes can spell a major chord. "
-            "For example, on standard E9, A+B at the 10th fret gives a G major position on common grips."
+            "A+B is not a chord by itself; it is a pedal combination that can make a grip spell chord tones on E9. "
+            "The A pedal raises the B strings to C#, and the B pedal raises the G# strings to A. "
+            "At the right fret, those changed notes can line up as root, major 3rd, and perfect 5th.\n\n"
+            "Example: on standard 10-string E9, A+B at the 10th fret gives a G major position on common grips such as 3-4-5, 4-5-6, 5-6-8, and 6-8-10. "
+            "That works because the pedals change the intervals under the bar; the fret and grip tell you which chord those intervals spell."
         )
     return None
 
@@ -1834,9 +2027,21 @@ def minor_triad_spelling(root: str) -> str:
 
 def minor_triad_spelling_for_answer(root: str) -> str:
     key = normalize_key(root)
-    minor_third = FLAT_NOTES[(semitone_for_note(key) + 3) % 12]
-    fifth = CANONICAL_NOTES[(semitone_for_note(key) + 7) % 12]
-    return f"{key}-{minor_third}-{fifth}"
+    preferred = {
+        "C": "C-Eb-G",
+        "C#": "C#-E-G#",
+        "D": "D-F-A",
+        "D#": "D#-F#-A#",
+        "E": "E-G-B",
+        "F": "F-Ab-C",
+        "F#": "F#-A-C#",
+        "G": "G-Bb-D",
+        "G#": "G#-B-D#",
+        "A": "A-C-E",
+        "A#": "A#-C#-E#",
+        "B": "B-D-F#",
+    }
+    return preferred.get(key, minor_triad_spelling(key))
 
 
 def minor_position_answer(root: str, *, prefix: str | None = None) -> str:
@@ -1902,7 +2107,7 @@ def two_minor_function_answer(request: FunctionChordRequest) -> str:
 
 def fretboard_payload_for_question(question: str) -> dict | None:
     """Return MVP fretboard visualization data for a narrow curated question set."""
-    q = re.sub(r"\s+", " ", question or "").strip().lower().rstrip("?!.")
+    q = normalize_chord_words_in_text(re.sub(r"\s+", " ", question or "").strip().lower().rstrip("?!."))
     if not q:
         return None
     b9_payload = e_lower_578_b9_payload_for_question(q)
@@ -1919,6 +2124,8 @@ def fretboard_payload_for_question(question: str) -> dict | None:
         return functional_payload
     if q == "show me a 1-4-5 in g":
         return get_fretboard_examples("i_iv_v", "G")
+    if re.search(r"\bwhere\s+(?:should\s+i|do\s+i)\s+go\s+after\s+a\s*\+\s*b\s+in\s+g\b", q):
+        return get_fretboard_examples("major_positions", "G")
     function_chord_payload = function_chord_payload_for_question(q)
     if function_chord_payload is not None:
         return function_chord_payload
@@ -1930,7 +2137,17 @@ def fretboard_payload_for_question(question: str) -> dict | None:
         return chord_concept_payload
     major_request = major_chord_location_request_for_question(q)
     if major_request is not None:
-        return get_fretboard_examples("major_positions", major_request.normalized_key)
+        payload = get_fretboard_examples("major_positions", major_request.normalized_key)
+        display_key = display_major_key_for_request(major_request)
+        if display_key != major_request.normalized_key:
+            payload = dict(payload)
+            payload["title"] = f"{display_key} major positions on E9"
+            payload["key"] = display_key
+            payload["subtitle"] = str(payload.get("subtitle", "")).replace(major_request.normalized_key, display_key)
+            payload["description"] = str(payload.get("description", "")).replace(
+                major_request.normalized_key, display_key
+            )
+        return payload
     if q in {"show me the fretboard", "show the fretboard", "show me an e9 fretboard", "show me the e9 fretboard"}:
         return get_fretboard_examples("major_positions", "G")
     if q == "show me common grips for g":
@@ -1946,30 +2163,32 @@ def major_chord_location_key_for_question(question: str) -> str | None:
 
 def major_chord_location_request_for_question(question: str) -> MajorChordLocationRequest | None:
     """Extract a deterministic major-chord request and preserve spelling."""
-    q = re.sub(r"\s+", " ", question or "").strip().lower().rstrip("?!.")
+    q = normalize_chord_words_in_text(re.sub(r"\s+", " ", question or "").strip().lower().rstrip("?!."))
     if not q:
         return None
+    e9_context = r"(?:on|across|of|for)\s+(?:the\s+)?(?:e9(?:\s+(?:neck|pedal\s+steel))?|pedal\s+steel|neck)"
+    optional_context = rf"(?:\s+{e9_context})?"
     patterns = (
         r"^where are (?:some )?places to play (?:a|an)?\s*([a-g](?:#|b)?)(?:\s+(?:major|major chords?|chords?))?$",
-        r"^where(?: all)? can i play (?:a|an)?\s*([a-g](?:#|b)?)(?:\s+(?:major|major chords?|chords?))?$",
-        r"^where(?: all)? can i play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?$",
-        r"^where do i play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?(?: on (?:the )?e9)?$",
-        r"^where can i find (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?$",
-        r"^how do i play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?$",
-        r"^how do i play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)? on (?:the )?e9$",
-        r"^how do i plan (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)$",
-        r"^how do i make (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?$",
-        r"^where is ([a-g](?:#|b)?) major$",
-        r"^where is ([a-g](?:#|b)?)(?: major)? on e9$",
-        r"^where is (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)(?: on e9)?$",
-        r"^where are (?:my\s+)?([a-g](?:#|b)?) (?:major )?chord positions(?: on e9)?$",
-        r"^show me ([a-g](?:#|b)?) (?:major )?positions$",
-        r"^show me ([a-g](?:#|b)?) positions on e9$",
-        r"^show me ([a-g](?:#|b)?) (?:major )?chord positions(?: on e9)?$",
-        r"^show me (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)$",
-        r"^what frets give me (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?$",
-        r"^show me places to play (?:a|an)?\s*([a-g](?:#|b)?)(?: major)?(?: chord)?$",
-        r"^where are ([a-g](?:#|b)?) major positions on e9$",
+        rf"^where(?: all)? can i play (?:a|an)?\s*([a-g](?:#|b)?)(?:\s+(?:major|major chords?|chords?))?{optional_context}$",
+        rf"^where(?: all)? can i play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?{optional_context}$",
+        rf"^where do i play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?{optional_context}$",
+        rf"^where can i find (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?{optional_context}$",
+        rf"^how do i play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?{optional_context}$",
+        rf"^how do i plan (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord){optional_context}$",
+        rf"^how do i make (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?{optional_context}$",
+        rf"^where is ([a-g](?:#|b)?) major{optional_context}$",
+        rf"^where is ([a-g](?:#|b)?)(?: major)?{optional_context}$",
+        rf"^where is (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord){optional_context}$",
+        rf"^where are (?:my\s+)?([a-g](?:#|b)?) (?:major )?chord positions{optional_context}$",
+        rf"^show me ([a-g](?:#|b)?) (?:major )?positions{optional_context}$",
+        rf"^show me ([a-g](?:#|b)?) (?:major )?chord positions{optional_context}$",
+        rf"^show me (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord){optional_context}$",
+        rf"^what frets give me (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?{optional_context}$",
+        rf"^what is the location for (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?(?: with [a-g]\s*\+\s*[a-g])?{optional_context}$",
+        rf"^what is the location of (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?(?: with [a-g]\s*\+\s*[a-g])?{optional_context}$",
+        rf"^show me places to play (?:a|an)?\s*([a-g](?:#|b)?)(?: major)?(?: chord)?{optional_context}$",
+        rf"^where are ([a-g](?:#|b)?) major positions{optional_context}$",
         r"^how do i play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)? across (?:the )?fretboard(?: of (?:the )?e9| on e9)?$",
         r"^([a-g](?:#|b)?) major across (?:the )?e9 fretboard$",
         r"^([a-g](?:#|b)?) (?:major )?chord across (?:the )?e9 fretboard$",
@@ -1989,6 +2208,14 @@ def major_chord_location_request_for_question(question: str) -> MajorChordLocati
                 normalized_key=normalize_key(requested_root),
             )
     return None
+
+
+def normalize_chord_words_in_text(text: str) -> str:
+    """Normalize spelled accidentals in user chord prompts before regex parsing."""
+    normalized = (text or "").replace("♯", "#").replace("♭", "b")
+    normalized = re.sub(r"\b([a-g])[\s-]+sharp\b", lambda match: f"{match.group(1)}#", normalized, flags=re.I)
+    normalized = re.sub(r"\b([a-g])[\s-]+flat\b", lambda match: f"{match.group(1)}b", normalized, flags=re.I)
+    return normalized
 
 
 def unsupported_chord_location_request_for_question(question: str) -> UnsupportedChordLocationRequest | None:

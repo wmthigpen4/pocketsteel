@@ -109,7 +109,7 @@
     { id: "inversions", label: "Inversions" },
     { id: "partial-rootless", label: "Partial/rootless" },
     { id: "dominant", label: "Dominant pockets" },
-    { id: "all", label: "All" },
+    { id: "all", label: "All positions" },
   ];
   const MAX_RECOMMENDED_VISIBLE_POSITIONS = 5;
 

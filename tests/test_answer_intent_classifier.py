@@ -214,6 +214,42 @@ def assert_contract_shape(decision: dict[str, object]) -> None:
             },
         ),
         (
+            "How do I play an E chord on the E9 neck?",
+            {
+                "domain": "steel_guitar",
+                "intent": "copedent_position",
+                "needs_sources": False,
+                "needs_fretboard": True,
+                "needs_copedent": True,
+                "retrieval_allowed": False,
+                "allowed_answer_shape": "copedent_position",
+            },
+        ),
+        (
+            "How do I play a B-flat chord on the E9 pedal steel?",
+            {
+                "domain": "steel_guitar",
+                "intent": "copedent_position",
+                "needs_sources": False,
+                "needs_fretboard": True,
+                "needs_copedent": True,
+                "retrieval_allowed": False,
+                "allowed_answer_shape": "copedent_position",
+            },
+        ),
+        (
+            "What is the location for a G chord with A+B?",
+            {
+                "domain": "steel_guitar",
+                "intent": "copedent_position",
+                "needs_sources": False,
+                "needs_fretboard": True,
+                "needs_copedent": True,
+                "retrieval_allowed": False,
+                "allowed_answer_shape": "copedent_position",
+            },
+        ),
+        (
             "What is the capital of France?",
             {
                 "domain": "off_domain",

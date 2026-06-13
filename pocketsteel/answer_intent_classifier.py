@@ -224,13 +224,13 @@ COPEDENT_RE = re.compile(
 )
 POSITION_LANGUAGE_RE = re.compile(
     r"\b(?:"
-    r"where|find|show\s+me|places?|positions?|frets?\s+(?:give|for)|"
-    r"how\s+do\s+i\s+(?:play|make)|on\s+e9|from\s+a\s*\+\s*b"
+    r"where|location|find|show\s+me|places?|positions?|frets?\s+(?:give|for)|"
+    r"how\s+do\s+i\s+(?:play|make)|on\s+(?:the\s+)?e9|pedal\s+steel|from\s+a\s*\+\s*b"
     r")\b",
     re.I,
 )
 CONCRETE_CHORD_RE = re.compile(
-    r"\b(?:[a-g](?:#|b)?(?:\s*(?:major|minor|m|7|9|dim|diminished))?\s*(?:chord|positions?)|"
+    r"\b(?:[a-g](?:#|b|[-\s]+flat|[-\s]+sharp)?(?:\s*(?:major|minor|m|7|9|dim|diminished))?\s*(?:chord|positions?)|"
     r"[a-g](?:#|b)?\s+on\s+e9|"
     r"\d\s*m\s+chord|(?:vi|ii|iii|iv|v|i)\s+chord)\b",
     re.I,
@@ -240,6 +240,7 @@ VISUAL_POSITION_RE = re.compile(
     r"where\s+(?:are|is|can|all|should|does)|"
     r"show(?:\s+me)?|"
     r"find|"
+    r"location|"
     r"what\s+frets?|"
     r"frets?\s+give|"
     r"places?\s+to\s+play"
@@ -247,7 +248,7 @@ VISUAL_POSITION_RE = re.compile(
     re.I,
 )
 EXPLICIT_VISUAL_OBJECT_RE = re.compile(
-    r"\b(?:positions?|frets?|grips?|pockets?|chord\s+positions?|on\s+e9|1[-\s]?3[-\s]?5)\b",
+    r"\b(?:positions?|location|frets?|grips?|pockets?|chord\s+positions?|on\s+(?:the\s+)?e9|pedal\s+steel|1[-\s]?3[-\s]?5)\b",
     re.I,
 )
 MISSING_CONTEXT_VISUAL_RE = re.compile(
