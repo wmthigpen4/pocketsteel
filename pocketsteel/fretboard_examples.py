@@ -83,6 +83,13 @@ def display_major_key_for_request(request: MajorChordLocationRequest) -> str:
     return request.normalized_key
 
 
+def display_minor_key_for_request(request: "MinorChordLocationRequest") -> str:
+    """Choose the user-facing spelling for deterministic minor requests."""
+    if request.requested_root.endswith("b") and request.requested_root not in {"Cb", "Fb"}:
+        return request.requested_root
+    return request.normalized_key
+
+
 @dataclass(frozen=True)
 class UnsupportedChordLocationRequest:
     requested_root: str
@@ -1847,7 +1854,15 @@ def minor_chord_payload_for_question(question: str) -> dict | None:
     request = minor_chord_location_request_for_question(question)
     if request is None:
         return None
-    return minor_positions(request.normalized_key).to_payload()
+    payload = minor_positions(request.normalized_key).to_payload()
+    display_key = display_minor_key_for_request(request)
+    if display_key != request.normalized_key:
+        payload = dict(payload)
+        payload["title"] = f"{display_key} minor positions on E9"
+        payload["key"] = display_key
+        payload["subtitle"] = str(payload.get("subtitle", "")).replace(request.normalized_key, display_key)
+        payload["description"] = str(payload.get("description", "")).replace(request.normalized_key, display_key)
+    return payload
 
 
 def chord_concept_payload_for_question(question: str) -> dict | None:
@@ -1944,14 +1959,14 @@ def normalize_chord_symbol_display(symbol: str) -> str:
         return f"{normalize_chord_symbol_display(left)}/{normalize_chord_symbol_display(right)}"
     root = symbol[:1].upper()
     rest = symbol[1:]
-    if len(symbol) == 2 and symbol[:1].lower() in "abcdefg" and symbol[1:].lower() in "abcdefg":
-        return symbol.upper()
     if rest.startswith(("#", "b")):
         accidental = rest[:1]
         quality = rest[1:]
     else:
         accidental = ""
         quality = rest
+        if len(symbol) == 2 and symbol[:1].lower() in "abcdefg" and symbol[1:].lower() in "abcdefg":
+            return symbol.upper()
     quality_aliases = {
         "m": "m",
         "min": "m",
@@ -2134,8 +2149,11 @@ def minor_chord_answer_for_question(question: str) -> str | None:
     if request is None:
         return None
     key = request.normalized_key
+    display_key = display_minor_key_for_request(request)
     if request.requested_root == "D#":
         prefix = "D# minor is D#-F#-A#. You can also think of it as Eb minor: Eb-Gb-Bb."
+    elif display_key != key:
+        prefix = f"{display_key} minor is {minor_triad_spelling_for_answer(display_key)}: root, minor 3rd, and perfect 5th. You can also think of it as {key} minor on the pitch map."
     else:
         prefix = f"{key} minor is {minor_triad_spelling_for_answer(key)}: root, minor 3rd, and perfect 5th."
     return minor_position_answer(
@@ -2244,6 +2262,16 @@ def minor_triad_spelling(root: str) -> str:
 
 
 def minor_triad_spelling_for_answer(root: str) -> str:
+    raw = (root or "").strip().replace("♭", "b").replace("♯", "#")
+    flat_preferred = {
+        "Db": "Db-Fb-Ab",
+        "Eb": "Eb-Gb-Bb",
+        "Gb": "Gb-Bbb-Db",
+        "Ab": "Ab-Cb-Eb",
+        "Bb": "Bb-Db-F",
+    }
+    if raw in flat_preferred:
+        return flat_preferred[raw]
     key = normalize_key(root)
     preferred = {
         "C": "C-Eb-G",
@@ -2347,6 +2375,10 @@ def fretboard_payload_for_question(question: str) -> dict | None:
         return get_fretboard_examples("i_iv_v", "G")
     if re.search(r"\bwhere\s+(?:should\s+i|do\s+i)\s+go\s+after\s+a\s*\+\s*b\s+in\s+g\b", q):
         return get_fretboard_examples("major_positions", "G")
+    if re.search(r"\bgrips?\b.*\ba\s*\+\s*b\b.*\b10(?:th)?\s+fret\b", q):
+        return get_fretboard_examples("major_positions", "G")
+    if re.search(r"\bwhere\s+is\s+the\s+iv\s+chord\s+from\s+open\s+g\b", q):
+        return get_fretboard_examples("major_positions", "C")
     function_chord_payload = function_chord_payload_for_question(q)
     if function_chord_payload is not None:
         return function_chord_payload
@@ -2400,7 +2432,10 @@ def major_chord_location_request_for_question(question: str) -> MajorChordLocati
         rf"^where do i play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?{optional_context}$",
         rf"^where can i find (?:a|an)?\s*([a-g](?:#|b)?)(?:\s+(?:major|major chords?|chords?))?{optional_context}$",
         rf"^where can i find (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?{optional_context}$",
+        rf"^where do i find (?:a|an)?\s*([a-g](?:#|b)?)(?:\s+(?:major|major chords?|chords?|positions?))?{optional_context}$",
+        rf"^where do i find ([a-g](?:#|b)?)\s+major\s+positions{optional_context}$",
         rf"^how do (?:i|you) play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?{optional_context}$",
+        rf"^how do (?:i|you) play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?\s+(?:at|on)\s+(?:the\s+)?\d+(?:st|nd|rd|th)?\s+fret{optional_context}$",
         rf"^how do i plan (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord){optional_context}$",
         rf"^how do i make (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?{optional_context}$",
         rf"^where is ([a-g](?:#|b)?) major{optional_context}$",
@@ -2415,7 +2450,8 @@ def major_chord_location_request_for_question(question: str) -> MajorChordLocati
         rf"^positions for ([a-g](?:#|b)?)(?: (?:major )?chords?)?{optional_context}$",
         rf"^([a-g](?:#|b)?)(?: (?:major )?chord)?{optional_context}$",
         rf"^where is ([a-g](?:#|b)?) on (?:the )?fretboard$",
-        rf"^what frets give me (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?{optional_context}$",
+        rf"^what frets give me (?:a|an)?\s*([a-g](?:#|b)?)(?:\s+(?:major|major chord|chord))?{optional_context}$",
+        rf"^which frets are (?:a|an)?\s*([a-g](?:#|b)?)(?:\s+(?:major|major chord|chord))?{optional_context}$",
         rf"^what is the location for (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?(?: with [a-g]\s*\+\s*[a-g])?{optional_context}$",
         rf"^what is the location of (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?(?: with [a-g]\s*\+\s*[a-g])?{optional_context}$",
         rf"^show me places to play (?:a|an)?\s*([a-g](?:#|b)?)(?: major)?(?: chord)?{optional_context}$",
@@ -2464,8 +2500,8 @@ def normalize_chord_intent_text(text: str) -> str:
 
 def chord_context_pattern() -> str:
     return (
-        r"(?:on|across|of|for)\s+(?:the\s+)?"
-        r"(?:e9(?:\s+(?:neck|pedal\s+steel))?|pedal\s+steel(?:\s+e9)?|steel(?:\s+e9)?|neck|fretboard)"
+        r"(?:on|across|of|for)\s+(?:the\s+|my\s+)?"
+        r"(?:e9(?:\s+(?:neck|pedal\s+steel|setup))?|pedal\s+steel(?:\s+e9)?|steel(?:\s+e9)?|neck|fretboard|guitar)"
     )
 
 

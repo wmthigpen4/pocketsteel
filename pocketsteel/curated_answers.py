@@ -288,6 +288,52 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
                 "Use the selector to compare grips and position families. If you want a different map, ask for a chord or key, such as “show me D chord positions on E9.”"
             ),
         )
+    if mentions_user_vertical_lever_lower(q):
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=(
+                "On your saved 10-string E9 setup, the vertical lever (LKV) lowers strings 5 and 10 from B to Bb/A#.\n\n"
+                "That change is useful for half-step movement from the B strings, especially when you want a suspended, passing, or altered-color sound without moving the bar."
+            ),
+        )
+    if mentions_user_c_pedal_strings_4_5(q):
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=(
+                "On your saved 10-string E9 setup, the C pedal changes strings 4 and 5 this way:\n\n"
+                "- String 4: E raises to F#.\n"
+                "- String 5: B raises to C#.\n\n"
+                "Use it for B+C pedal movement, melodic harmonies, and raised-position minor/major colors where those two notes need to move together."
+            ),
+        )
+    if mentions_ab_tenth_fret_grips(q):
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=(
+                "A+B at the 10th fret is a strong G major position on E9.\n\n"
+                "Useful grips to try, in order:\n"
+                "- 3-4-5\n"
+                "- 4-5-6\n"
+                "- 5-6-8\n"
+                "- 6-8-10\n\n"
+                "Start with 4-5-6 for the cleanest reference, then compare the brighter 3-4-5 grip and the lower 6-8-10 color."
+            ),
+        )
+    if mentions_iv_from_open_g(q):
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=(
+                "The IV chord from open G is C.\n\n"
+                "On E9, two useful C positions from a G open-position idea are:\n"
+                "- 3rd fret with A+B: C at the same fret as the 3rd-fret open G home position.\n"
+                "- 8th fret, no pedals: straight-bar C.\n\n"
+                "Use the same-fret A+B move first if you want a compact I-to-IV sound; use the 8th-fret open position if you want a clearer bar move up the neck."
+            ),
+        )
     function_chord_answer = function_chord_answer_for_question(question)
     if function_chord_answer is not None:
         return CuratedAnswer(
@@ -324,7 +370,7 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
         open_position = next(position for position in positions if position["role"] == "Open position")
         af_position = next(position for position in positions if position["role"] == "A+F position")
         ab_position = next(position for position in positions if position["role"] == "A+B position")
-        wants_across_fretboard = "across" in q and "fretboard" in q
+        wants_across_fretboard = "across" in q and ("fretboard" in q or "guitar" in q or "neck" in q)
         wants_ab_specific = re.search(r"\b(?:a\s*\+\s*b|a\s+and\s+b)\b", q) is not None
         lower_ab_position = next(
             (
@@ -388,10 +434,19 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
                 "- E-lower grips are more context-dependent; the selector may show pitch-validated 5-7-8, 7-8-10, 4-5-7, and 1-4-5 positions when they truly spell the chord or a useful partial/rootless color.",
                 "",
                 "Common grips to try are 3-4-5, 4-5-6, 5-6-8, 5-7-8 when it validates, and 6-8-10. The fretboard selector may include alternate octaves, grip variants, and lever pockets, so treat these as several useful places rather than every possible position.",
+                "",
+                "Terminology note: the A+F position is the A-pedal + F-lever position.",
             ]
         )
         if wants_across_fretboard and (lower_ab_position is not None or e_lower_position is not None):
-            lines.extend(["", "Useful across-the-fretboard alternates:"])
+            lines.extend(
+                [
+                    "",
+                    f"Starter map: {fret_label(open_position['fret'])}: open/no pedals; {fret_label(af_position['fret'])}: A pedal + F lever (A-pedal + F-lever); {fret_label(ab_position['fret'])}: A+B pedals.",
+                    "",
+                    "Useful across-the-fretboard alternates:",
+                ]
+            )
             if lower_ab_position is not None:
                 lines.append(
                     f"- {fret_label(lower_ab_position['fret'])} with A+B pedals: lower-octave A+B {display_key} major alternate on grip {lower_ab_position['grip']}."
@@ -1764,9 +1819,9 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             intent="curated_fact_source_check",
             confidence="curated_medium",
             answer=(
-                "The information I have here does not show strong support for Telonics slide bars, "
-                "but curated/user-known information says Telonics has made at least some slide bars. "
-                "Treat that as curated knowledge rather than something proven by the listed sources."
+                "I do not have a strong sourced answer showing Telonics made a slide bar from the listed forum material.\n\n"
+                "Separately, I have a limited curated note that Telonics has made at least some slide bars. "
+                "Before relying on that, check Telonics directly, a current dealer listing, or the exact model name."
             ),
         )
 
@@ -2364,6 +2419,7 @@ def _mentions_off_domain_request(question: str) -> bool:
         or re.search(r"\b(?:pancake|pancakes|recipe)\s+recipe\b", question)
         or re.search(r"\bwho\s+won\s+the\s+super\s+bowl\b", question)
         or re.search(r"\bsuper\s+bowl\s+winner\b", question)
+        or re.search(r"\b(?:javascript|python\s+code|python\s+script|quicksort|sorting\s+algorithm|dishwasher)\b", question)
     )
 
 
@@ -2627,6 +2683,33 @@ def mentions_generic_song_learning(question: str) -> bool:
 
 def mentions_g_chord_across_guitar(question: str) -> bool:
     return bool(re.search(r"\bg\s+chord\b", question) and ("across the guitar" in question or "across the neck" in question))
+
+
+def mentions_user_vertical_lever_lower(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:my\s+)?vertical\s+lever\b", question)
+        and re.search(r"\b(?:lower|lowers|do|does|change|changes)\b", question)
+    )
+
+
+def mentions_user_c_pedal_strings_4_5(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:my\s+)?c\s+pedal\b", question)
+        and re.search(r"\b(?:strings?\s+)?4\s+(?:and|&)\s+5\b", question)
+        and re.search(r"\b(?:change|changes|raise|raises|do|does)\b", question)
+    )
+
+
+def mentions_ab_tenth_fret_grips(question: str) -> bool:
+    return bool(
+        re.search(r"\bgrips?\b", question)
+        and re.search(r"\ba\s*\+\s*b\b", question)
+        and re.search(r"\b10(?:th)?\s+fret\b|\btenth\s+fret\b", question)
+    )
+
+
+def mentions_iv_from_open_g(question: str) -> bool:
+    return bool(re.search(r"\bwhere\s+is\s+the\s+iv\s+chord\s+from\s+open\s+g\b", question))
 
 
 def mentions_bc_second_fret(question: str) -> bool:

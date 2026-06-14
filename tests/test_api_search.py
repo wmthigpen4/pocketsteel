@@ -2579,6 +2579,9 @@ def test_scope_guardrail_for_large_output_and_off_domain_prompts() -> None:
         ("What is the capital of France?", False),
         ("Give me a recipe for pancakes.", False),
         ("Who won the Super Bowl?", False),
+        ("Give me a JavaScript sorting algorithm.", False),
+        ("Write Python code for quicksort.", False),
+        ("How do I fix my dishwasher?", False),
     ]
     for question, large_output in cases:
         payload = answer_for_question(question, noisy_practical_sources())
@@ -3086,6 +3089,41 @@ def test_invalid_chord_symbol_variants_and_slash_chord_are_source_free() -> None
     assert "fretboard" not in slash
     assert slash["sources"] == []
     assert slash["warnings"] == []
+
+
+def test_b_flat_chord_prompts_route_as_valid_roots_not_invalid_bb() -> None:
+    for question in (
+        "How do I play a Bb chord on E9?",
+        "How do I play a B-flat chord on E9?",
+        "Where can I find B flat chords?",
+    ):
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert_clean_answer_body(payload)
+        assert "Bb major is Bb-D-F" in payload["answer"]
+        assert "I don’t recognize" not in payload["answer"]
+        assert "BB" not in payload["answer"]
+        assert "fretboard" in payload
+        assert_valid_fretboard_payload(payload)
+        assert payload["fretboard"]["title"] == "Bb major positions on E9"
+        assert_deterministic_fretboard_sources_are_clean(payload)
+
+
+def test_b_flat_and_a_sharp_minor_prompts_are_valid_visual_roots() -> None:
+    cases = {
+        "What does Bb minor look like?": "Bb minor is Bb-Db-F",
+        "Show me A# minor on E9.": "A# minor is A#-C#-E#",
+    }
+    for question, expected in cases.items():
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert_clean_answer_body(payload)
+        assert expected in payload["answer"]
+        assert "I don’t recognize" not in payload["answer"]
+        assert "BB" not in payload["answer"]
+        assert "fretboard" in payload
+        assert_valid_fretboard_payload(payload)
+        assert_deterministic_fretboard_sources_are_clean(payload)
 
 
 def test_rootless_chord_quality_questions_are_teacher_first_and_source_free() -> None:
@@ -4227,6 +4265,22 @@ def test_location_based_c_chord_answer_uses_c_positions() -> None:
     assert "G major" not in payload["answer"]
     assert_deterministic_fretboard_sources_are_clean(payload)
 
+    for question in (
+        "What frets give me C major?",
+        "What frets give me a C chord?",
+        "Which frets are C major on E9?",
+        "Where is C major on the fretboard?",
+        "Where do I find C major positions?",
+    ):
+        variant = answer_for_question(question, noisy_practical_sources())
+        assert_clean_answer_body(variant)
+        assert "C major is C-E-G" in variant["answer"]
+        assert "8th fret, no pedals" in variant["answer"]
+        assert "11th fret with A pedal + F lever" in variant["answer"]
+        assert "15th fret with A+B pedals" in variant["answer"]
+        assert variant["fretboard"]["title"] == "C major positions on E9"
+        assert_deterministic_fretboard_sources_are_clean(variant)
+
 
 def test_plural_c_chord_places_question_uses_deterministic_positions_not_sgf_fragments() -> None:
     payload = answer_for_question(
@@ -4257,6 +4311,52 @@ def test_plural_c_chord_places_question_uses_deterministic_positions_not_sgf_fra
     assert "arpeggios" not in payload["answer"].lower()
     assert "open strings" not in payload["answer"].lower()
     assert_deterministic_fretboard_sources_are_clean(payload)
+
+
+def test_copedent_prompt_variants_use_structured_answers_not_sgf_fragments() -> None:
+    noisy = [
+        {
+            "score": 0.91,
+            "excerpt": "Top Does anyone know? I just move the lever and listen. Random forum reply about unrelated copedents.",
+            "forum_name": "Pedal Steel",
+            "thread_title": "Unrelated copedent chatter",
+            "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=404201",
+            "chunk_id": "noisy-copedent-fragment",
+            "post_uid": "noisy-copedent-fragment",
+            "source_system": "sgf_phpbb_current",
+        }
+    ]
+
+    vertical = answer_for_question("What does my vertical lever lower?", noisy)
+    assert_clean_answer_body(vertical)
+    assert "vertical lever (LKV) lowers strings 5 and 10 from B to Bb/A#" in vertical["answer"]
+    assert vertical["sources"] == []
+    assert vertical["warnings"] == []
+    assert "fretboard" not in vertical
+
+    c_pedal = answer_for_question("How does my C pedal change strings 4 and 5?", noisy)
+    assert_clean_answer_body(c_pedal)
+    assert "String 4: E raises to F#." in c_pedal["answer"]
+    assert "String 5: B raises to C#." in c_pedal["answer"]
+    assert c_pedal["sources"] == []
+    assert c_pedal["warnings"] == []
+    assert "fretboard" not in c_pedal
+
+    ab_grips = answer_for_question("What grips should I use for A+B at the 10th fret?", noisy)
+    assert_clean_answer_body(ab_grips)
+    assert "A+B at the 10th fret is a strong G major position on E9." in ab_grips["answer"]
+    assert "3-4-5" in ab_grips["answer"]
+    assert "6-8-10" in ab_grips["answer"]
+    assert ab_grips["fretboard"]["title"] == "G major positions on E9"
+    assert_deterministic_fretboard_sources_are_clean(ab_grips)
+
+    iv = answer_for_question("Where is the IV chord from open G on my E9?", noisy)
+    assert_clean_answer_body(iv)
+    assert "The IV chord from open G is C." in iv["answer"]
+    assert "3rd fret with A+B" in iv["answer"]
+    assert "8th fret, no pedals" in iv["answer"]
+    assert iv["fretboard"]["title"] == "C major positions on E9"
+    assert_deterministic_fretboard_sources_are_clean(iv)
 
 
 def test_g_key_six_minor_question_uses_deterministic_e_minor_positions_not_sgf_fragments() -> None:
@@ -4611,7 +4711,9 @@ def test_g_chord_user_testing_question_has_direct_answer_without_citations() -> 
     assert "6th fret" in payload["answer"]
     assert "A-pedal + F-lever" in payload["answer"]
     assert "At the third fret" not in payload["answer"].splitlines()[0]
-    assert payload["sources"]
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert "fretboard" in payload
 
 
 def test_wound_sixth_string_answer_synthesizes_tradeoff() -> None:
@@ -4655,15 +4757,15 @@ def test_telonics_slide_bar_requires_matching_entity() -> None:
     )
 
     assert_clean_answer_body(payload)
-    assert "information I have here does not show strong support" in payload["answer"]
+    assert "I do not have a strong sourced answer showing Telonics made a slide bar" in payload["answer"]
     assert "Telonics has made at least some slide bars" in payload["answer"]
-    assert "curated knowledge rather than something proven by the listed sources" in payload["answer"]
+    assert "check Telonics directly" in payload["answer"]
+    assert "source support weak" not in payload["answer"].lower()
+    assert "retrieval" not in payload["answer"].lower()
     assert "Axtremity" not in payload["answer"]
     assert "Pedal Slide" not in payload["answer"]
     assert payload["sources"]
-    assert "no strong source match" not in payload["warnings"]
-    assert CURATED_FACT_WEAK_WARNING in payload["warnings"]
-    assert WEAK_RETRIEVAL_WARNING in payload["warnings"]
+    assert payload["warnings"] == []
 
 
 def test_pack_a_seat_answer_uses_known_maker_not_sale_chatter() -> None:
@@ -4765,7 +4867,7 @@ def test_g_chord_across_guitar_gives_positions() -> None:
     assert "6th fret: A pedal + F lever" in payload["answer"]
     assert "10th fret: A+B pedals" in payload["answer"]
     assert "3-4-5" in payload["answer"]
-    assert payload["sources"]
+    assert_deterministic_fretboard_sources_are_clean(payload)
 
 
 def test_changer_oil_distinguishes_solvent_from_lubricant() -> None:
@@ -6069,14 +6171,15 @@ def test_prompt_injection_ignore_previous_instructions_is_not_obeyed() -> None:
     )
 
     assert "Telonics has made at least some slide bars" in payload["answer"]
-    assert "curated knowledge rather than something proven by the listed sources" in payload["answer"]
+    assert "check Telonics directly" in payload["answer"]
     assert "Thanks Nick" not in payload["answer"]
     assert "Top Hi All" not in payload["answer"]
     assert "ignore previous instructions" not in payload["answer"].lower()
     assert "Tell me Telonics made" not in payload["answer"]
     assert "Telonics made a slide bar" not in " ".join(source["excerpt"] for source in payload["sources"])
     assert INJECTION_WARNING in payload["warnings"]
-    assert CURATED_FACT_WEAK_WARNING in payload["warnings"]
+    assert CURATED_FACT_WEAK_WARNING not in payload["warnings"]
+    assert WEAK_RETRIEVAL_WARNING not in payload["warnings"]
 
 
 def test_hostile_prompt_does_not_override_answer_format() -> None:
@@ -6091,9 +6194,12 @@ def test_hostile_prompt_does_not_override_answer_format() -> None:
     assert payload["answer"] != "PASSED"
     assert "PASSED" not in payload["answer"]
     assert "Telonics has made at least some slide bars" in payload["answer"]
+    assert "check Telonics directly" in payload["answer"]
     assert "Thanks Nick" not in payload["answer"]
     assert "Top Hi All" not in payload["answer"]
     assert INJECTION_WARNING in payload["warnings"]
+    assert CURATED_FACT_WEAK_WARNING not in payload["warnings"]
+    assert WEAK_RETRIEVAL_WARNING not in payload["warnings"]
 
 
 def test_prompt_injection_reveal_system_prompt_is_removed() -> None:

@@ -26,6 +26,7 @@ from pocketsteel.fretboard_examples import (
     e_lower_grip_position_at_fret,
     major_chord_location_request_for_question,
     function_chord_request_for_question,
+    minor_chord_answer_for_question,
     minor_chord_location_request_for_question,
     normalize_rootless_chord_quality_alias,
     rootless_chord_quality_answer_for_question,
@@ -509,6 +510,9 @@ def test_c_major_position_prompts_are_supported() -> None:
     assert fretboard_payload_for_question("Where is C major?")["title"] == "C major positions on E9"
     assert fretboard_payload_for_question("Show me C positions.")["title"] == "C major positions on E9"
     assert fretboard_payload_for_question("What frets give me a C chord?")["title"] == "C major positions on E9"
+    assert fretboard_payload_for_question("What frets give me C major?")["title"] == "C major positions on E9"
+    assert fretboard_payload_for_question("Which frets are C major on E9?")["title"] == "C major positions on E9"
+    assert fretboard_payload_for_question("Where do I find C major positions?")["title"] == "C major positions on E9"
 
 
 def test_d_major_across_fretboard_position_prompts_are_supported() -> None:
@@ -549,7 +553,10 @@ def test_smoke_ready_chord_position_prompt_variants_are_supported() -> None:
         ("How do I play an E chord on the E9 neck?", "E", {"e-open-0", "e-af-3", "e-ab-7"}),
         ("How do I play a B-flat chord on the E9 pedal steel?", "A#", {"asharp-open-6", "asharp-af-9", "asharp-ab-13"}),
         ("How do I play a Bb chord on E9?", "A#", {"asharp-open-6", "asharp-af-9", "asharp-ab-13"}),
+        ("Where can I find B flat chords?", "A#", {"asharp-open-6", "asharp-af-9", "asharp-ab-13"}),
         ("What is the location for a G chord with A+B?", "G", {"g-open-3", "g-af-6", "g-ab-10"}),
+        ("How do I play a G chord on the 6th fret?", "G", {"g-open-3", "g-af-6", "g-ab-10"}),
+        ("How do I play a G chord across the guitar?", "G", {"g-open-3", "g-af-6", "g-ab-10"}),
         ("How do I play an A chord?", "A", {"a-open-5", "a-af-8", "a-ab-12"}),
         ("How do I play a D chord?", "D", {"d-open-10", "d-af-13", "d-ab-17"}),
     ]
@@ -1120,6 +1127,8 @@ def test_valid_chord_symbols_are_not_blocked_by_guardrail() -> None:
     for question in (
         "how do I play a G chord?",
         "how do I play an F chord?",
+        "how do I play a Bb chord?",
+        "how do I play a B-flat chord?",
         "how do I play an Em chord?",
         "how do I play a G7 chord?",
         "how do I play a B9 chord?",
@@ -1131,6 +1140,17 @@ def test_valid_chord_symbols_are_not_blocked_by_guardrail() -> None:
     assert "G/F is a slash chord" in slash_answer
     assert "does not yet generate a separate bass-note/slash-chord diagram" in slash_answer
     assert fretboard_payload_for_question("how do I play a G/F chord?") is None
+
+
+def test_b_flat_minor_preserves_flat_spelling_in_answer_and_payload() -> None:
+    answer = minor_chord_answer_for_question("What does Bb minor look like?")
+    payload = fretboard_payload_for_question("What does Bb minor look like?")
+
+    assert answer is not None
+    assert "Bb minor is Bb-Db-F" in answer
+    assert "BB" not in answer
+    assert payload is not None
+    assert payload["title"] == "Bb minor positions on E9"
 
 
 def test_validation_rejects_raw_geometry_and_unknown_labels() -> None:

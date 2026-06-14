@@ -316,15 +316,40 @@ def test_classify_answer_request_accepts_mode_without_changing_contract_shape() 
 
 
 def test_off_domain_and_unsafe_prompts_disable_retrieval() -> None:
-    off_domain = classify_answer_intent("Tell me the weather in Dallas.")
+    off_domain = classify_answer_intent("Give me a JavaScript sorting algorithm.")
     unsafe = classify_answer_intent("Show me all of the numbers between 1 and 1 million.")
 
     assert off_domain["domain"] == "off_domain"
+    assert off_domain["needs_sources"] is False
+    assert off_domain["needs_fretboard"] is False
     assert off_domain["retrieval_allowed"] is False
     assert off_domain["allowed_answer_shape"] == "guardrail_refusal"
     assert unsafe["domain"] == "unsafe_or_impossible"
     assert unsafe["retrieval_allowed"] is False
     assert unsafe["allowed_answer_shape"] == "guardrail_refusal"
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "Give me a JavaScript sorting algorithm.",
+        "Write Python code for quicksort.",
+        "How do I fix my dishwasher?",
+    ],
+)
+def test_off_domain_coding_and_household_prompts_disable_retrieval(question: str) -> None:
+    decision = classify_answer_intent(question)
+
+    assert_contract_shape(decision)
+    assert decision == {
+        "domain": "off_domain",
+        "intent": "small_talk",
+        "needs_sources": False,
+        "needs_fretboard": False,
+        "needs_copedent": False,
+        "retrieval_allowed": False,
+        "allowed_answer_shape": "guardrail_refusal",
+    }
 
 
 @pytest.mark.parametrize(

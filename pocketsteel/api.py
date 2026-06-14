@@ -357,9 +357,14 @@ class RetrievalApi:
                 elif curated_answer is not None:
                     answer = curated_answer.answer
                     contract_intent = curated_answer.intent
-                    if curated_answer.intent == "curated_fact_source_check":
+                    clean_telonics_slide_check = (
+                        curated_answer.intent == "curated_fact_source_check"
+                        and "telonics" in answer_request.question.lower()
+                        and _question_mentions_slide_bar_item(answer_request.question)
+                    )
+                    if curated_answer.intent == "curated_fact_source_check" and not clean_telonics_slide_check:
                         warnings.append(CURATED_FACT_WEAK_WARNING)
-                    if curated_answer.intent == "curated_fact_source_check" and retrieval_looks_weak_for_curated(
+                    if curated_answer.intent == "curated_fact_source_check" and not clean_telonics_slide_check and retrieval_looks_weak_for_curated(
                         answer_request.question, curated_answer, strong_sources
                     ):
                         warnings.append(WEAK_RETRIEVAL_WARNING)
