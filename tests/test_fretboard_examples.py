@@ -662,6 +662,44 @@ def test_hyphenated_minor_chord_questions_route_to_minor_positions() -> None:
     assert_valid_visualization_payload(payload)
 
 
+def test_natural_language_chord_intent_variants_route_to_pitch_payloads() -> None:
+    major_cases = {
+        "Where can I find D# chords on the pedal steel E9?": ("D#", "D# major positions on E9"),
+        "Where can I find Eb chords on E9?": ("D#", "Eb major positions on E9"),
+        "Where are D sharp chords on pedal steel?": ("D#", "D# major positions on E9"),
+        "How in the hell do you play a C major chord?": ("C", "C major positions on E9"),
+        "Show me C major.": ("C", "C major positions on E9"),
+        "Give me C chord positions.": ("C", "C major positions on E9"),
+        "Where is C on the fretboard?": ("C", "C major positions on E9"),
+    }
+    for question, (normalized_key, title) in major_cases.items():
+        request = major_chord_location_request_for_question(question)
+        payload = fretboard_payload_for_question(question)
+
+        assert request is not None, question
+        assert request.normalized_key == normalized_key
+        assert payload is not None
+        assert payload["title"] == title
+        assert_valid_visualization_payload(payload)
+
+    minor_cases = {
+        "How do I play a D-sharp minor on E9?": ("D#", "D# minor positions on E9"),
+        "How do I play D sharp minor?": ("D#", "D# minor positions on E9"),
+        "How do I play uh A minor on E9?": ("A", "A minor positions on E9"),
+        "What's a B minor look like?": ("B", "B minor positions on E9"),
+        "What does B minor look like on E9?": ("B", "B minor positions on E9"),
+    }
+    for question, (normalized_key, title) in minor_cases.items():
+        request = minor_chord_location_request_for_question(question)
+        payload = fretboard_payload_for_question(question)
+
+        assert request is not None, question
+        assert request.normalized_key == normalized_key
+        assert payload is not None
+        assert payload["title"] == title
+        assert_valid_visualization_payload(payload)
+
+
 def test_b_major_position_prompt_variants_are_supported() -> None:
     expected_ids = {"b-open-7", "b-af-10", "b-ab-14", "b-ab-2-lower-octave", "b-e-lower-5-7-8-0"}
 

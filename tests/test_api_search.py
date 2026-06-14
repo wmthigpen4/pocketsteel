@@ -2915,7 +2915,7 @@ def test_deterministic_fretboard_regressions_still_beat_intent_mode() -> None:
 def test_teacher_first_screenshot_prompt_regressions_are_synthesized() -> None:
     g_minor = answer_for_question("How do I play a G-minor chord?", noisy_practical_sources())
     assert_clean_answer_body(g_minor)
-    assert "G minor chord means the notes G-Bb-D" in g_minor["answer"]
+    assert "G minor is G-Bb-D" in g_minor["answer"]
     assert "root, minor 3rd, and perfect 5th" in g_minor["answer"]
     assert "Useful G minor positions on E9" in g_minor["answer"]
     assert "fretboard" in g_minor
@@ -3285,13 +3285,90 @@ def test_minor_show_requests_are_teacher_first_and_visual() -> None:
         payload = answer_for_question(question, noisy_practical_sources())
 
         assert_clean_answer_body(payload)
-        assert "E minor chord means the notes E-G-B" in payload["answer"]
+        assert "E minor is E-G-B" in payload["answer"]
         assert "A-pedal minor" in payload["answer"]
         assert "B+C minor" in payload["answer"]
         assert_no_internal_answer_language(payload["answer"])
         assert "fretboard" in payload
         assert_valid_fretboard_payload(payload)
         assert payload["fretboard"]["title"] == "E minor positions on E9"
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+
+
+def test_natural_language_major_chord_position_prompts_normalize_before_retrieval() -> None:
+    cases = (
+        (
+            "Where can I find D# chords on the pedal steel E9?",
+            "D# major positions on E9",
+            ("D# is usually easier to think of as Eb on E9.", "Eb major is Eb-G-Bb"),
+        ),
+        (
+            "Where can I find Eb chords on E9?",
+            "Eb major positions on E9",
+            ("Eb major is Eb-G-Bb", "11th fret"),
+        ),
+        (
+            "Where are D sharp chords on pedal steel?",
+            "D# major positions on E9",
+            ("D# is usually easier to think of as Eb on E9.", "Eb major is Eb-G-Bb"),
+        ),
+        (
+            "How in the hell do you play a C major chord?",
+            "C major positions on E9",
+            ("C major is C-E-G", "8th fret"),
+        ),
+        ("Show me C major.", "C major positions on E9", ("C major is C-E-G", "8th fret")),
+        ("Give me C chord positions.", "C major positions on E9", ("C major is C-E-G", "8th fret")),
+        ("Where is C on the fretboard?", "C major positions on E9", ("C major is C-E-G", "8th fret")),
+    )
+
+    for question, title, expected_phrases in cases:
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert_clean_answer_body(payload)
+        for phrase in expected_phrases:
+            assert phrase in payload["answer"]
+        assert "C6" not in payload["answer"]
+        assert "sacred steel" not in payload["answer"].lower()
+        assert "instructional material" not in payload["answer"].lower()
+        assert_no_internal_answer_language(payload["answer"])
+        assert "fretboard" in payload
+        assert_valid_fretboard_payload(payload)
+        assert payload["fretboard"]["title"] == title
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+
+
+def test_natural_language_minor_chord_position_prompts_normalize_before_retrieval() -> None:
+    cases = (
+        (
+            "How do I play a D-sharp minor on E9?",
+            "D# minor positions on E9",
+            ("D# minor is D#-F#-A#.", "Eb minor: Eb-Gb-Bb"),
+        ),
+        (
+            "How do I play D sharp minor?",
+            "D# minor positions on E9",
+            ("D# minor is D#-F#-A#.", "Eb minor: Eb-Gb-Bb"),
+        ),
+        ("How do I play uh A minor on E9?", "A minor positions on E9", ("A minor is A-C-E",)),
+        ("What's a B minor look like?", "B minor positions on E9", ("B minor is B-D-F#",)),
+        ("What does B minor look like on E9?", "B minor positions on E9", ("B minor is B-D-F#",)),
+    )
+
+    for question, title, expected_phrases in cases:
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert_clean_answer_body(payload)
+        for phrase in expected_phrases:
+            assert phrase in payload["answer"]
+        assert "B6" not in payload["answer"]
+        assert "for amusement" not in payload["answer"].lower()
+        assert_no_internal_answer_language(payload["answer"])
+        assert "fretboard" in payload
+        assert_valid_fretboard_payload(payload)
+        assert payload["fretboard"]["title"] == title
         assert payload["sources"] == []
         assert payload["warnings"] == []
 

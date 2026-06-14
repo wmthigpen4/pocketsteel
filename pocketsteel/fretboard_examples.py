@@ -1735,17 +1735,23 @@ def function_chord_request_for_question(question: str) -> FunctionChordRequest |
 
 
 def minor_chord_location_request_for_question(question: str) -> MinorChordLocationRequest | None:
-    q = re.sub(r"\s+", " ", question or "").strip().lower().rstrip("?!.")
+    q = normalize_chord_intent_text(question)
     if not q:
         return None
+    e9_context = chord_context_pattern()
+    optional_context = rf"(?:\s+{e9_context})?"
     patterns = (
-        r"^where is ([a-g](?:#|b)?)(?:m|[- ]minor)(?: chord)?(?: on e9)?$",
-        r"^where can i play (?:a|an)?\s*([a-g](?:#|b)?)(?:m|[- ]minor)(?: chord)?(?: on e9)?$",
-        r"^how do i play (?:a|an)?\s*([a-g](?:#|b)?)(?:m|[- ]minor)(?: chord)?(?: on e9)?$",
-        r"^show me (?:a|an)?\s*([a-g](?:#|b)?)(?:m|[- ]minor)(?: chord)?(?: on (?:the )?(?:e9|fretboard))?$",
-        r"^show me ([a-g](?:#|b)?)(?:m|[- ]minor) positions$",
-        r"^show me ([a-g](?:#|b)?)(?:m|[- ]minor) on (?:the )?fretboard$",
-        r"^what frets give me (?:a|an)?\s*([a-g](?:#|b)?)(?:m|[- ]minor)(?: chord)?$",
+        rf"^where is (?:a|an)?\s*([a-g](?:#|b)?)(?:m|[- ]minor)(?: chords?)?{optional_context}$",
+        rf"^where are (?:some\s+)?(?:places\s+to\s+play\s+)?(?:a|an)?\s*([a-g](?:#|b)?)(?:m|[- ]minor)(?: chords?)?{optional_context}$",
+        rf"^where can i (?:play|find) (?:a|an)?\s*([a-g](?:#|b)?)(?:m|[- ]minor)(?: chords?)?{optional_context}$",
+        rf"^how do (?:i|you) play (?:a|an)?\s*([a-g](?:#|b)?)(?:m|[- ]minor)(?: chord)?{optional_context}$",
+        rf"^show me (?:a|an)?\s*([a-g](?:#|b)?)(?:m|[- ]minor)(?: chord| positions?)?{optional_context}$",
+        rf"^show me ([a-g](?:#|b)?)(?:m|[- ]minor) on (?:the )?fretboard$",
+        rf"^give me ([a-g](?:#|b)?)(?:m|[- ]minor)(?: chord)? positions{optional_context}$",
+        rf"^positions for ([a-g](?:#|b)?)(?:m|[- ]minor)(?: chords?)?{optional_context}$",
+        rf"^what frets give me (?:a|an)?\s*([a-g](?:#|b)?)(?:m|[- ]minor)(?: chord)?{optional_context}$",
+        rf"^what(?:'s| is) (?:a|an)?\s*([a-g](?:#|b)?)\s+(?:minor|min|m)\s+look like{optional_context}$",
+        rf"^what does (?:a|an)?\s*([a-g](?:#|b)?)\s+(?:minor|min|m)\s+look like{optional_context}$",
     )
     for pattern in patterns:
         match = re.search(pattern, q)
@@ -1759,7 +1765,7 @@ def minor_chord_location_request_for_question(question: str) -> MinorChordLocati
 
 
 def multi_chord_location_request_for_question(question: str) -> MultiChordLocationRequest | None:
-    q = normalize_chord_words_in_text(re.sub(r"\s+", " ", question or "").strip().lower().rstrip("?!."))
+    q = normalize_chord_intent_text(question)
     if not q:
         return None
     patterns = (
@@ -2128,12 +2134,13 @@ def minor_chord_answer_for_question(question: str) -> str | None:
     if request is None:
         return None
     key = request.normalized_key
+    if request.requested_root == "D#":
+        prefix = "D# minor is D#-F#-A#. You can also think of it as Eb minor: Eb-Gb-Bb."
+    else:
+        prefix = f"{key} minor is {minor_triad_spelling_for_answer(key)}: root, minor 3rd, and perfect 5th."
     return minor_position_answer(
         key,
-        prefix=(
-            f"{indefinite_article(key).capitalize()} {key} minor chord means the notes {minor_triad_spelling_for_answer(key)}: "
-            "root, minor 3rd, and perfect 5th."
-        ),
+        prefix=prefix,
     )
 
 
@@ -2318,7 +2325,7 @@ def two_minor_function_answer(request: FunctionChordRequest) -> str:
 
 def fretboard_payload_for_question(question: str) -> dict | None:
     """Return MVP fretboard visualization data for a narrow curated question set."""
-    q = normalize_chord_words_in_text(re.sub(r"\s+", " ", question or "").strip().lower().rstrip("?!."))
+    q = normalize_chord_intent_text(question)
     if not q:
         return None
     multi_chord_payload = multi_chord_payload_for_question(q)
@@ -2380,16 +2387,18 @@ def major_chord_location_key_for_question(question: str) -> str | None:
 
 def major_chord_location_request_for_question(question: str) -> MajorChordLocationRequest | None:
     """Extract a deterministic major-chord request and preserve spelling."""
-    q = normalize_chord_words_in_text(re.sub(r"\s+", " ", question or "").strip().lower().rstrip("?!."))
+    q = normalize_chord_intent_text(question)
     if not q:
         return None
-    e9_context = r"(?:on|across|of|for)\s+(?:the\s+)?(?:e9(?:\s+(?:neck|pedal\s+steel))?|pedal\s+steel|neck)"
+    e9_context = chord_context_pattern()
     optional_context = rf"(?:\s+{e9_context})?"
     patterns = (
-        r"^where are (?:some )?places to play (?:a|an)?\s*([a-g](?:#|b)?)(?:\s+(?:major|major chords?|chords?))?$",
+        rf"^where are (?:some )?places to play (?:a|an)?\s*([a-g](?:#|b)?)(?:\s+(?:major|major chords?|chords?))?{optional_context}$",
+        rf"^where are (?:some\s+)?([a-g](?:#|b)?)(?:\s+(?:major|major chords?|chords?))?{optional_context}$",
         rf"^where(?: all)? can i play (?:a|an)?\s*([a-g](?:#|b)?)(?:\s+(?:major|major chords?|chords?))?{optional_context}$",
         rf"^where(?: all)? can i play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?{optional_context}$",
         rf"^where do i play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?{optional_context}$",
+        rf"^where can i find (?:a|an)?\s*([a-g](?:#|b)?)(?:\s+(?:major|major chords?|chords?))?{optional_context}$",
         rf"^where can i find (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?{optional_context}$",
         rf"^how do (?:i|you) play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?{optional_context}$",
         rf"^how do i plan (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord){optional_context}$",
@@ -2400,7 +2409,12 @@ def major_chord_location_request_for_question(question: str) -> MajorChordLocati
         rf"^where are (?:my\s+)?([a-g](?:#|b)?) (?:major )?chord positions{optional_context}$",
         rf"^show me ([a-g](?:#|b)?) (?:major )?positions{optional_context}$",
         rf"^show me ([a-g](?:#|b)?) (?:major )?chord positions{optional_context}$",
+        rf"^show me ([a-g](?:#|b)?) major{optional_context}$",
         rf"^show me (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord){optional_context}$",
+        rf"^give me ([a-g](?:#|b)?)(?: (?:major )?chord)? positions{optional_context}$",
+        rf"^positions for ([a-g](?:#|b)?)(?: (?:major )?chords?)?{optional_context}$",
+        rf"^([a-g](?:#|b)?)(?: (?:major )?chord)?{optional_context}$",
+        rf"^where is ([a-g](?:#|b)?) on (?:the )?fretboard$",
         rf"^what frets give me (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?{optional_context}$",
         rf"^what is the location for (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?(?: with [a-g]\s*\+\s*[a-g])?{optional_context}$",
         rf"^what is the location of (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?(?: with [a-g]\s*\+\s*[a-g])?{optional_context}$",
@@ -2435,9 +2449,29 @@ def normalize_chord_words_in_text(text: str) -> str:
     return normalized
 
 
+def normalize_chord_intent_text(text: str) -> str:
+    """Normalize casual chord-position phrasing before deterministic parsing."""
+    normalized = normalize_chord_words_in_text(text or "")
+    normalized = normalized.replace("’", "'").replace("“", '"').replace("”", '"')
+    normalized = normalized.lower()
+    normalized = re.sub(r"[?!.,;:]+", " ", normalized)
+    normalized = re.sub(r"\bcan you\b", " ", normalized)
+    normalized = re.sub(r"\b(?:in\s+the\s+hell|the\s+hell|hell|heck|freaking)\b", " ", normalized)
+    normalized = re.sub(r"\b(?:uh|um|er|please|just)\b", " ", normalized)
+    normalized = re.sub(r"\s+", " ", normalized).strip()
+    return normalized
+
+
+def chord_context_pattern() -> str:
+    return (
+        r"(?:on|across|of|for)\s+(?:the\s+)?"
+        r"(?:e9(?:\s+(?:neck|pedal\s+steel))?|pedal\s+steel(?:\s+e9)?|steel(?:\s+e9)?|neck|fretboard)"
+    )
+
+
 def unsupported_chord_location_request_for_question(question: str) -> UnsupportedChordLocationRequest | None:
     """Detect location-style chord questions with unsupported non-major qualities."""
-    q = re.sub(r"\s+", " ", question or "").strip().lower().rstrip("?!.")
+    q = normalize_chord_intent_text(question)
     if not q:
         return None
     prefixes = (

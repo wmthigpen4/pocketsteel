@@ -78,6 +78,26 @@ class CuratedAnswer:
 WEAK_RETRIEVAL_WARNING = "curated answer used; source support was weak"
 CURATED_FACT_WEAK_WARNING = "curated fact used; source support weak"
 
+MAJOR_CHORD_SPELLINGS: dict[str, str] = {
+    "C": "C-E-G",
+    "C#": "C#-E#-G#",
+    "Db": "Db-F-Ab",
+    "D": "D-F#-A",
+    "D#": "D#-F##-A#",
+    "Eb": "Eb-G-Bb",
+    "E": "E-G#-B",
+    "F": "F-A-C",
+    "F#": "F#-A#-C#",
+    "Gb": "Gb-Bb-Db",
+    "G": "G-B-D",
+    "G#": "G#-B#-D#",
+    "Ab": "Ab-C-Eb",
+    "A": "A-C#-E",
+    "A#": "A#-C##-E#",
+    "Bb": "Bb-D-F",
+    "B": "B-D#-F#",
+}
+
 PLAYER_BIOS = {
     "buddy emmons": (
         "Buddy Emmons was one of the most influential pedal steel guitarists in the instrument’s history. "
@@ -323,13 +343,29 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
             None,
         )
         lines: list[str] = []
-        if major_request.requested_root != display_key:
+        if major_request.requested_root == "D#":
+            lines.extend(
+                [
+                    "D# is usually easier to think of as Eb on E9. Eb major is Eb-G-Bb.",
+                    "",
+                ]
+            )
+        elif major_request.requested_root != display_key:
             lines.extend(
                 [
                     f"{major_request.requested_root} is the same pitch as {display_key}. On E9, think of it as a {display_key} major chord.",
                     "",
                 ]
             )
+        else:
+            spelling = MAJOR_CHORD_SPELLINGS.get(display_key)
+            if spelling is not None:
+                lines.extend(
+                    [
+                        f"{display_key} major is {spelling}: root, major 3rd, and perfect 5th.",
+                        "",
+                    ]
+                )
         if wants_ab_specific:
             lines.extend(
                 [
