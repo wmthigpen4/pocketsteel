@@ -605,6 +605,10 @@ def generic_sgf_quarantine_fallback_answer(question: str) -> CuratedAnswer:
 def sgf_quarantine_teacher_answer(question: str) -> CuratedAnswer | None:
     q = normalize(question).replace("’", "'").replace("“", '"').replace("”", '"')
 
+    repair_answer = mechanical_repair_curated_answer(q)
+    if repair_answer is not None:
+        return repair_answer
+
     if re.search(r"\blongest\s+response\b", q):
         return CuratedAnswer(
             intent="lesson_navigation",
@@ -866,6 +870,42 @@ def unsupported_chord_position_curated_answer(question: str) -> CuratedAnswer | 
             f"Start with {unsupported_request.normalized_key} major positions as the visual reference, then target the extra chord tone or altered tone that makes it {unsupported_request.quality}."
         ),
     )
+
+
+def mechanical_repair_curated_answer(question: str) -> CuratedAnswer | None:
+    q = normalize(question)
+    if _mentions_pedal_rod_noise(q):
+        return CuratedAnswer(
+            intent="gear_advice",
+            confidence="curated_high",
+            answer=(
+                "Start by isolating exactly where the pedal-rod noise is coming from.\n\n"
+                "What to check first:\n"
+                "- Move the pedal slowly by hand and listen for whether the sound is at the pedal rod, bell crank, cross shaft, pedal rack, pull train, nylon tuner, changer finger, or loose hardware.\n"
+                "- Look for metal-on-metal contact, especially rods touching each other, a rod rubbing the body, or a connector touching the pedal rack.\n"
+                "- Check loose clips, hooks, collars, ball joints, connectors, and set screws.\n"
+                "- Watch the pedal return and stop contact; a hard stop or loose pedal stop can sound like rod noise.\n"
+                "- Check whether the noise happens only on one pedal, one string pull, or only when the guitar is under string tension.\n\n"
+                "Lubrication caution: use only a small amount of appropriate light lubricant where the guitar maker recommends it. Do not over-lubricate, and do not spray random products near the changer, wood, finish, or electronics.\n\n"
+                "If it is still unclear, note the guitar make/model, which pedal is noisy, whether the noise happens on press or release, and where your ear hears it. A steel-guitar repair forum or a qualified steel tech can help from that specific symptom list."
+            ),
+        )
+    if _mentions_general_steel_buzz(q):
+        return CuratedAnswer(
+            intent="gear_advice",
+            confidence="curated_high",
+            answer=(
+                "First decide what kind of buzz it is: mechanical buzz, string buzz, amp/electrical hum, or a cabinet/hardware rattle.\n\n"
+                "Fast isolation path:\n"
+                "- Play the guitar unplugged. If the buzz is still there acoustically, look for string buzz, bar pressure, loose legs, pedal bar, rods, bell cranks, tuning nuts, pickup mount, changer area, or cabinet hardware.\n"
+                "- If it only appears through the amp, test guitar straight into the amp with a known-good cable, then add volume pedal, effects, and power supplies one at a time.\n"
+                "- Check bar pressure and picking first; too little bar pressure or a tilted bar can sound like a mechanical problem.\n"
+                "- Check whether one string, one fret area, one pedal/lever, or one cabinet part triggers the buzz.\n"
+                "- If touching the strings or changer changes the noise, separate that as an electrical grounding/shielding symptom rather than a rod or body rattle.\n\n"
+                "If the buzz remains, write down the guitar make/model, whether the buzz is acoustic or amplified, which strings/frets/pedals cause it, and whether touching metal parts changes it. Then ask a steel-guitar repair forum or a qualified tech with those details."
+            ),
+        )
+    return None
 
 
 def intent_mode_for_question(question: str) -> IntentMode:
@@ -1361,6 +1401,9 @@ def intent_mode_curated_answer(question: str) -> CuratedAnswer | None:
             ),
         )
     if mode == "gear_advice":
+        repair_answer = mechanical_repair_curated_answer(q)
+        if repair_answer is not None:
+            return repair_answer
         if _mentions_stroboplus_power_problem(q):
             return CuratedAnswer(
                 intent="gear_advice",
@@ -2733,7 +2776,24 @@ def _mentions_gear_advice_intent(question: str) -> bool:
         _mentions_stroboplus_power_problem(question)
         or _mentions_delay_volume_pedal_order(question)
         or _mentions_battery_tuner_live(question)
+        or _mentions_pedal_rod_noise(question)
+        or _mentions_general_steel_buzz(question)
         or re.search(r"\b(?:amp\s+hums?|amp\s+buzz|hum\s+until\s+i\s+touch|buzz\s+until\s+i\s+touch)\b", question)
+    )
+
+
+def _mentions_pedal_rod_noise(question: str) -> bool:
+    return bool(
+        re.search(r"\bpedal\s+rods?\b", question)
+        and re.search(r"\b(?:noisy|noise|buzz|buzzing|rattle|rattling|squeak|squeaking|click|clicking|clank|clanking|check)\b", question)
+    )
+
+
+def _mentions_general_steel_buzz(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:stop|fix|diagnose|check|find|trace)\b", question)
+        and re.search(r"\b(?:pedal\s+steel|steel\s+guitar|steel)\b", question)
+        and re.search(r"\b(?:buzz|buzzing|rattle|rattling|hum|humming)\b", question)
     )
 
 

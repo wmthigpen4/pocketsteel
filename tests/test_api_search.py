@@ -3356,6 +3356,94 @@ def test_sgf_quarantine_user_smoke_prompts_are_teacher_composed_and_source_free(
             assert_valid_fretboard_payload(payload)
 
 
+def test_repair_prompts_return_diagnostic_guidance_not_meta_quarantine_text() -> None:
+    noisy_sgf = noisy_practical_sources() + [
+        {
+            "score": 0.92,
+            "excerpt": (
+                "Top Hi All Does anyone know. I found this in limited source support; treat it as a clue rather than consensus. "
+                "Can someone please tell me whether the rods are noisy."
+            ),
+            "forum_name": "Pedal Steel",
+            "thread_title": "Noisy repair fragments",
+            "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=499702",
+            "chunk_id": "noisy-repair-fragment",
+            "post_uid": "noisy-repair-fragment",
+            "source_system": "sgf_phpbb_current",
+        }
+    ]
+    cases = {
+        "What should I check if my pedal rods are noisy?": (
+            "Start by isolating exactly where the pedal-rod noise is coming from.",
+            [
+                "pedal rod",
+                "bell crank",
+                "cross shaft",
+                "pedal rack",
+                "pull train",
+                "nylon tuner",
+                "changer finger",
+                "metal-on-metal contact",
+                "loose clips",
+                "rods touching each other",
+                "appropriate light lubricant",
+                "Do not over-lubricate",
+                "guitar make/model",
+                "qualified steel tech",
+            ],
+        ),
+        "How do I stop my pedal steel from buzzing?": (
+            "First decide what kind of buzz it is:",
+            [
+                "mechanical buzz",
+                "string buzz",
+                "amp/electrical hum",
+                "Play the guitar unplugged",
+                "bar pressure",
+                "loose legs",
+                "pedal bar",
+                "bell cranks",
+                "tuning nuts",
+                "pickup mount",
+                "changer area",
+                "known-good cable",
+                "grounding/shielding",
+                "guitar make/model",
+            ],
+        ),
+    }
+
+    banned = (
+        "Forum snippets should not become the main answer",
+        "SGF leakage",
+        "quarantine",
+        "fallback",
+        "retrieval",
+        "source fragment",
+        "deterministic map",
+        "rules engine",
+        "payload",
+        "classifier",
+        "contract",
+        "Top Hi All",
+        "Does anyone know",
+        "limited source support",
+    )
+    for question, (prefix, required_bits) in cases.items():
+        payload = answer_for_question(question, noisy_sgf)
+
+        assert_clean_answer_body(payload)
+        assert_no_internal_answer_language(payload["answer"])
+        assert payload["answer"].startswith(prefix)
+        for bit in required_bits:
+            assert bit in payload["answer"]
+        for bit in banned:
+            assert bit.lower() not in payload["answer"].lower()
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+        assert "fretboard" not in payload
+
+
 def test_sgf_quarantine_backstop_replaces_bad_provider_body() -> None:
     class BadForumProvider:
         def answer(self, request: Any, sources: list[dict[str, Any]]) -> str:

@@ -554,6 +554,30 @@ def test_explicit_position_questions_request_fretboard() -> None:
 @pytest.mark.parametrize(
     "question",
     [
+        "How do I play a G dom 7?",
+        "How do I play a G7?",
+        "What is a G dominant 7?",
+        "How do I play an F maj 7?",
+        "How do I play an Fmaj7?",
+        "How do I play an F major 7th?",
+    ],
+)
+def test_rooted_seventh_chord_questions_classify_as_steel_not_off_domain(question: str) -> None:
+    decision = classify_answer_intent(question)
+
+    assert_contract_shape(decision)
+    assert decision["domain"] == "steel_guitar"
+    assert decision["intent"] == "copedent_position"
+    assert decision["retrieval_allowed"] is False
+    assert decision["needs_sources"] is False
+    assert decision["allowed_answer_shape"] == "copedent_position"
+    if question.lower().startswith("how do i play"):
+        assert decision["needs_fretboard"] is True
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
         "Who was Buddy Emmons?",
         "Who was Lloyd Green?",
         "Tell me about Paul Franklin.",

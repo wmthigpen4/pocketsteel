@@ -258,6 +258,13 @@ MISSING_CONTEXT_VISUAL_RE = re.compile(
     re.I,
 )
 BUYING_RE = re.compile(r"\b(?:buy|where\s+can\s+i\s+buy|purchase|order|for\s+sale)\b", re.I)
+ROOTED_CHORD_QUALITY_RE = re.compile(
+    r"(?<![-\w])[a-g](?:#|b|[-\s]+flat|[-\s]+sharp)?\s*(?:"
+    r"dom\s*7|dom7|dominant\s*7|7th|7(?![-\w])|"
+    r"maj\s*7|maj7|major\s*7|major\s*7th|major\s+seventh"
+    r")(?![-\w])",
+    re.I,
+)
 
 
 def classify_answer_request(question: str, mode: str = "ask") -> AnswerIntentPayload:
@@ -335,6 +342,10 @@ def classify_answer_request(question: str, mode: str = "ask") -> AnswerIntentPay
     source_backed_decision = _source_backed_steel_decision(q)
     if source_backed_decision is not None:
         return source_backed_decision
+
+    rooted_quality_decision = _rooted_chord_quality_decision(q)
+    if rooted_quality_decision is not None:
+        return rooted_quality_decision
 
     if SOURCE_SEEKING_RE.search(q) and _mentions_steel(q):
         return _decision(
@@ -552,6 +563,23 @@ def _mentions_steel(question: str) -> bool:
 
 def _mentions_gear_diagnosis(question: str) -> bool:
     return bool(GEAR_RE.search(question) and (GEAR_DIAGNOSIS_RE.search(question) or "fender steel king" in question))
+
+
+def _rooted_chord_quality_decision(question: str) -> AnswerIntentPayload | None:
+    if ROOTED_CHORD_QUALITY_RE.search(question) is None:
+        return None
+    wants_position = bool(
+        re.search(r"\b(?:how\s+do\s+i\s+play|how\s+do\s+you\s+play|show|where|what\s+frets?|positions?|on\s+(?:the\s+)?e9)\b", question)
+    )
+    return _decision(
+        domain="steel_guitar",
+        intent="copedent_position",
+        needs_sources=False,
+        needs_fretboard=wants_position,
+        needs_copedent=wants_position,
+        retrieval_allowed=False,
+        allowed_answer_shape="copedent_position",
+    )
 
 
 def _mentions_sensitive_personal_attribute(question: str) -> bool:
