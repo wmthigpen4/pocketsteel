@@ -4359,6 +4359,131 @@ def test_copedent_prompt_variants_use_structured_answers_not_sgf_fragments() -> 
     assert_deterministic_fretboard_sources_are_clean(iv)
 
 
+def test_remaining_true_p1_visual_prompts_are_deterministic_source_free_and_visual() -> None:
+    noisy = [
+        {
+            "score": 0.91,
+            "excerpt": "Top random SGF reply with unrelated copedent fragments and HTML tab text.",
+            "forum_name": "Pedal Steel",
+            "thread_title": "Unrelated visual chatter",
+            "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=404301",
+            "chunk_id": "noisy-visual-fragment",
+            "post_uid": "noisy-visual-fragment",
+            "source_system": "sgf_phpbb_current",
+        }
+    ]
+    cases = [
+        (
+            "Where does my E-lower position give me a minor sound?",
+            "G# minor positions on E9",
+            ["E-lower position gives a minor sound", "G# minor family", "diagram"],
+        ),
+        (
+            "Where is an E minor pocket on my E9?",
+            "E minor positions on E9",
+            ["E minor pocket", "E-G-B", "diagram"],
+        ),
+        (
+            "Where are A+B positions for D major?",
+            "D major positions on E9",
+            ["D major with A+B", "17th fret", "5th fret"],
+        ),
+        (
+            "Show me a D major position with A+B.",
+            "D major positions on E9",
+            ["D major with A+B", "17th fret", "5th fret"],
+        ),
+        (
+            "Show me a G A+F position.",
+            "G major positions on E9",
+            ["G major with A+F", "6th fret", "F lever"],
+        ),
+    ]
+
+    for question, expected_title, required_bits in cases:
+        payload = answer_for_question(question, noisy)
+
+        assert_clean_answer_body(payload)
+        assert_no_internal_answer_language(payload["answer"])
+        for bit in required_bits:
+            assert bit in payload["answer"]
+        assert "random SGF reply" not in payload["answer"]
+        assert "HTML tab" not in payload["answer"]
+        assert payload["fretboard"]["title"] == expected_title
+        assert_valid_fretboard_payload(payload)
+        assert_deterministic_fretboard_sources_are_clean(payload)
+
+
+def test_remaining_true_p1_guardrails_and_clarifiers_are_source_free() -> None:
+    noisy = [
+        {
+            "score": 0.91,
+            "excerpt": "Raw forum contact fragment with e-mail, source chatter, and unrelated message-board text.",
+            "forum_name": "Pedal Steel",
+            "thread_title": "Unrelated source chatter",
+            "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=404302",
+            "chunk_id": "noisy-guardrail-fragment",
+            "post_uid": "noisy-guardrail-fragment",
+            "source_system": "sgf_phpbb_current",
+        }
+    ]
+    cases = [
+        (
+            "Give me a harmonized-scale workout on E9.",
+            ["harmonized-scale workout", "10-minute drill", "A+B"],
+            False,
+        ),
+        (
+            "Give me the full lyrics to Crazy",
+            ["do not provide full copyrighted lyrics", "arrange it for pedal steel"],
+            False,
+        ),
+        (
+            "Who is b0b?",
+            ["Bobby Lee", "Steel Guitar Forum", "not replace that with raw forum contact snippets"],
+            False,
+        ),
+        (
+            "Is this a diminished chord?",
+            ["need the actual notes", "fret, strings, pedals, and levers", "diminished triad"],
+            False,
+        ),
+        (
+            "What should I do next?",
+            ["Tell me what musical situation", "key, chord, fret, strings"],
+            False,
+        ),
+        (
+            "Tell me a bedtime story about a castle.",
+            ["outside Steel Guitar RAG’s scope", "Try asking about E9 positions"],
+            False,
+        ),
+    ]
+
+    for question, required_bits, expect_fretboard in cases:
+        payload = answer_for_question(question, noisy)
+
+        assert_clean_answer_body(payload)
+        assert_no_internal_answer_language(payload["answer"])
+        for bit in required_bits:
+            assert bit in payload["answer"]
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+        assert ("fretboard" in payload) is expect_fretboard
+        assert "Raw forum contact fragment" not in payload["answer"]
+        assert "source chatter" not in payload["answer"]
+
+
+def test_string_two_major_seventh_answer_uses_user_facing_diagram_wording() -> None:
+    payload = answer_for_question("Does string 2 D# act as a major 7th in E?", noisy_practical_sources())
+
+    assert_clean_answer_body(payload)
+    assert_no_internal_answer_language(payload["answer"])
+    assert "diagram shows only pitch-validated minor positions" in payload["answer"]
+    assert "payload" not in payload["answer"].lower()
+    assert_deterministic_fretboard_sources_are_clean(payload)
+
+
 def test_g_key_six_minor_question_uses_deterministic_e_minor_positions_not_sgf_fragments() -> None:
     payload = answer_for_question(
         "I am in the key of G. Where can I play a 6m chord?",
@@ -5519,30 +5644,35 @@ def test_song_tab_policy_allows_teaching_without_full_copyrighted_tab() -> None:
             "Can you give me tab for Panhandle Rag?",
             ["work toward “Panhandle Rag,”", "full note-for-note copyrighted tab", "Learning approach:", "Western-swing"],
             ["random email", "e-mail", "full lyrics"],
+            True,
         ),
         (
             "How should I approach playing Together Again on E9?",
             ["For “Together Again” on E9", "chord movement", "common major grips", "full note-for-note copyrighted tab"],
             ["I can’t", "cannot discuss"],
+            True,
         ),
         (
             "What chord progression is common in Amazing Grace?",
             ["“Amazing Grace” is public domain", "A common simple progression in G", "A pedal + F lever"],
             ["not provide", "cannot discuss"],
+            True,
         ),
         (
             "Can you write me an original E9 lick in the style of a slow country ballad?",
             ["original slow-country E9 exercise", "Original mini-exercise in G", "A+B", "A pedal + F lever"],
             ["copyrighted song tab", "random email"],
+            True,
         ),
         (
             "Give me the full lyrics to Crazy",
             ["do not provide full copyrighted lyrics", "summarize the song", "arrange it for pedal steel"],
             ["full lyrics to", "random email"],
+            False,
         ),
     ]
 
-    for question, required, forbidden in cases:
+    for question, required, forbidden, expect_sources in cases:
         payload = answer_for_question(question, noisy_source)
         assert_clean_answer_body(payload)
         for bit in required:
@@ -5552,7 +5682,11 @@ def test_song_tab_policy_allows_teaching_without_full_copyrighted_tab() -> None:
                 assert bit not in payload["answer"]
             else:
                 assert bit.lower() not in payload["answer"].lower()
-        assert payload["sources"]
+        if expect_sources:
+            assert payload["sources"]
+        else:
+            assert payload["sources"] == []
+            assert payload["warnings"] == []
 
 
 def test_amp_buzz_questions_return_diagnostic_path_not_forum_questions() -> None:

@@ -250,30 +250,13 @@ class RetrievalApi:
 
             answer_intent_decision = classify_answer_request(answer_request.question, answer_request.mode)
 
-            if _should_gate_answer_intent(answer_intent_decision):
-                final_answer = _answer_intent_guardrail_answer(answer_intent_decision["domain"])
-                payload: AnswerResponse = {
-                    "answer": final_answer,
-                    "mode": answer_request.mode,
-                    "sources": [],
-                    "warnings": [],
-                    "sections": build_sections(final_answer),
-                }
-                self._log_answer_attempt(
-                    request_payload,
-                    role=access.role,
-                    identity_email=access.identity_email,
-                    access_status="authorized",
-                    authorized=True,
-                    source_count=0,
-                    warning_count=0,
-                )
-                return self._json_response(start_response, "200 OK", payload)
-
             deterministic_chord_answer = visual_fretboard_curated_answer(answer_request.question)
             if deterministic_chord_answer is None:
                 deterministic_chord_answer = unsupported_chord_position_curated_answer(answer_request.question)
-            if deterministic_chord_answer is not None:
+            if (
+                deterministic_chord_answer is not None
+                and answer_intent_decision.get("domain") != "unsafe_or_impossible"
+            ):
                 final_answer = final_answer_quality_gate(deterministic_chord_answer.answer, answer_request.question)
                 contract_validation = enforce_answer_contract(final_answer, deterministic_chord_answer.intent)
                 final_answer = contract_validation.answer
@@ -287,6 +270,26 @@ class RetrievalApi:
                 }
                 if fretboard_payload is not None:
                     payload["fretboard"] = fretboard_payload
+                self._log_answer_attempt(
+                    request_payload,
+                    role=access.role,
+                    identity_email=access.identity_email,
+                    access_status="authorized",
+                    authorized=True,
+                    source_count=0,
+                    warning_count=0,
+                )
+                return self._json_response(start_response, "200 OK", payload)
+
+            if _should_gate_answer_intent(answer_intent_decision):
+                final_answer = _answer_intent_guardrail_answer(answer_intent_decision["domain"])
+                payload: AnswerResponse = {
+                    "answer": final_answer,
+                    "mode": answer_request.mode,
+                    "sources": [],
+                    "warnings": [],
+                    "sections": build_sections(final_answer),
+                }
                 self._log_answer_attempt(
                     request_payload,
                     role=access.role,

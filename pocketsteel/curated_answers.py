@@ -168,6 +168,45 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
     practical_direct_answer = direct_yes_no_practical_answer(q)
     if practical_direct_answer is not None:
         return practical_direct_answer
+    lyrics_answer = full_lyrics_guardrail_answer(q)
+    if lyrics_answer is not None:
+        return lyrics_answer
+    if mentions_harmonized_scale_workout(q):
+        return CuratedAnswer(
+            intent="practice_plan",
+            confidence="curated_high",
+            answer=(
+                "Here is a practical E9 harmonized-scale workout in G.\n\n"
+                "10-minute drill:\n"
+                "- 2 minutes: play G at the 3rd fret open/no pedals on grip 4-5-6, then C at the same fret with A+B, then D at the 5th fret with A+B.\n"
+                "- 3 minutes: move a simple two-note harmony up the scale on strings 4 and 5, saying the scale degree out loud.\n"
+                "- 3 minutes: repeat the idea on grip 3-4-5, blocking after every grip.\n"
+                "- 2 minutes: make a two-measure phrase, leave a beat of space, then answer it lower on the neck.\n\n"
+                "Goal: hear the scale as chord movement, not as memorized forum licks."
+            ),
+        )
+    if mentions_this_diminished_missing_context(q):
+        return CuratedAnswer(
+            intent="missing_context_clarifier",
+            confidence="curated_high",
+            answer=(
+                "I can tell you whether it is diminished, but I need the actual notes or the E9 location first.\n\n"
+                "Send one of these:\n"
+                "- the notes in the grip\n"
+                "- the fret, strings, pedals, and levers\n"
+                "- a short tab line\n\n"
+                "A diminished triad needs root, b3, and b5. A diminished-7th sound adds bb7."
+            ),
+        )
+    if mentions_vague_next_step_question(q):
+        return CuratedAnswer(
+            intent="missing_context_clarifier",
+            confidence="curated_high",
+            answer=(
+                "Tell me what musical situation you mean, and I can give you a useful next step.\n\n"
+                "The missing context is: key, chord, fret, strings, and whether you are using pedals or levers. For example: “I’m at G on fret 3 with no pedals; where should I go next?”"
+            ),
+        )
     sus_usage_answer = sus_chord_usage_answer_for_question(question)
     if sus_usage_answer is not None:
         return CuratedAnswer(
@@ -233,6 +272,48 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
             intent="copedent_fretboard",
             confidence="curated_high",
             answer=e_lower_usage_answer,
+        )
+    if mentions_e_lower_minor_sound_position(q):
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=(
+                "Your E-lower position gives a minor sound when the lowered E strings help complete a pitch-validated minor grip.\n\n"
+                "A useful reference on your 10-string E9 is the G# minor family with E-lower: the lowered E strings become D#/Eb, which can supply the 5th of G# minor while other strings supply G# and B.\n\n"
+                "Start by checking the visible E-lower minor positions in the diagram, then listen for the lowered-third minor color rather than treating every E-lower grip as automatically minor."
+            ),
+        )
+    if mentions_e_minor_pocket_position(q):
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=(
+                "On E9, treat an E minor pocket as E-G-B and use only pitch-validated grips that actually contain those chord tones.\n\n"
+                "Useful starter references:\n"
+                "- A-pedal minor families can give E minor in the right fret/grip combination.\n"
+                "- E-lower and B+C families can also create validated minor colors, depending on fret and grip.\n\n"
+                "Use the diagram as the map, then practice one grip slowly and say the notes out loud: E, G, and B."
+            ),
+        )
+    if mentions_ab_d_major_position(q):
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=(
+                "For D major with A+B on standard E9, start at the 17th fret for the main A+B D major position.\n\n"
+                "A lower-octave A+B D position is also available at the 5th fret when the pitch engine validates the grip.\n\n"
+                "Try common grips in this order: 3-4-5, 4-5-6, 5-6-8, and 6-8-10. Treat these as D major position families, not forum-tab fragments."
+            ),
+        )
+    if mentions_g_af_position(q):
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=(
+                "G major with A+F is at the 6th fret on standard E9.\n\n"
+                "Use the A pedal plus the F lever there to get the G major A+F family. Start with grip 4-5-6, then compare 3-4-5, 5-6-8, and 6-8-10 in the diagram.\n\n"
+                "Use it when you want a smoother connected G color than jumping straight between the open 3rd-fret G and the A+B 10th-fret G."
+            ),
         )
     multi_chord_answer = multi_chord_answer_for_question(question)
     if multi_chord_answer is not None:
@@ -495,6 +576,23 @@ def direct_yes_no_practical_answer(question: str) -> CuratedAnswer | None:
     return None
 
 
+def full_lyrics_guardrail_answer(question: str) -> CuratedAnswer | None:
+    if not mentions_full_lyrics_request(question):
+        return None
+    return CuratedAnswer(
+        intent="song_learning",
+        confidence="curated_high",
+        answer=(
+            "I do not provide full copyrighted lyrics by default.\n\n"
+            "What I can do instead:\n"
+            "- I can summarize the song’s theme or mood.\n"
+            "- I can discuss how to arrange it for pedal steel.\n"
+            "- I can suggest chord/position strategy and tone ideas.\n"
+            "- I can work from a short excerpt or chart you provide."
+        ),
+    )
+
+
 def unsupported_chord_position_curated_answer(question: str) -> CuratedAnswer | None:
     unsupported_request = unsupported_chord_location_request_for_question(question)
     if unsupported_request is None:
@@ -585,13 +683,17 @@ def intent_mode_for_question(question: str) -> IntentMode:
 
 def intent_mode_curated_answer(question: str) -> CuratedAnswer | None:
     q = normalize(question)
+    lyrics_answer = full_lyrics_guardrail_answer(q)
+    if lyrics_answer is not None:
+        return lyrics_answer
     mode = intent_mode_for_question(q)
     if mode == "scope_guardrail":
+        size_phrase = ", and it would be too large to display usefully" if _mentions_large_output_request(q) else ""
         return CuratedAnswer(
             intent="scope_guardrail",
             confidence="curated_high",
             answer=(
-                "That request is outside Steel Guitar RAG’s scope, and it would be too large to display usefully. "
+                f"That request is outside Steel Guitar RAG’s scope{size_phrase}. "
                 "Try asking about E9 positions, grips, pedals/levers, tone, gear, blocking, bar movement, practice plans, or steel-guitar forum wisdom."
             ),
         )
@@ -2071,6 +2173,15 @@ def player_bio_answer(question: str) -> CuratedAnswer | None:
 
 def unknown_identity_guardrail_answer(question: str) -> CuratedAnswer | None:
     normalized = re.sub(r"\s+", " ", question or "").strip().lower().rstrip("?!.")
+    if normalized in {"who is b0b", "who is bob"}:
+        return CuratedAnswer(
+            intent="history_player_context",
+            confidence="curated_high",
+            answer=(
+                "b0b usually refers to Bobby Lee, the founder and longtime administrator of the Steel Guitar Forum.\n\n"
+                "He is important in steel-guitar context because the forum became a central place for players to share gear, tuning, technique, and community knowledge. I should not replace that with raw forum contact snippets."
+            ),
+        )
     if re.search(r"^who\s+is\s+<[^>]+>$", normalized) or re.search(
         r"\b(?:private_person|private person|placeholder|redacted)\b", normalized
     ):
@@ -2100,6 +2211,34 @@ def unknown_identity_guardrail_answer(question: str) -> CuratedAnswer | None:
 
 def mentions_g_chord_sixth_fret(question: str) -> bool:
     return bool(re.search(r"\bg\s+chord\b", question) and re.search(r"\b6(?:th)?\s+fret\b|\bsixth\s+fret\b", question))
+
+
+def mentions_this_diminished_missing_context(question: str) -> bool:
+    return bool(re.search(r"\b(?:is|does|would)\s+this\b", question) and re.search(r"\bdiminished\s+chord\b|\bdiminished\b", question))
+
+
+def mentions_vague_next_step_question(question: str) -> bool:
+    return bool(re.fullmatch(r"what\s+should\s+i\s+do\s+next[?.!]?", question))
+
+
+def mentions_harmonized_scale_workout(question: str) -> bool:
+    return bool(re.search(r"\bharmonized[-\s]+scales?\b", question) and re.search(r"\b(?:workout|practice|drill|plan)\b", question))
+
+
+def mentions_e_lower_minor_sound_position(question: str) -> bool:
+    return bool(re.search(r"\be[- ]?lower\b", question) and re.search(r"\bminor\s+sound\b", question))
+
+
+def mentions_e_minor_pocket_position(question: str) -> bool:
+    return bool(re.search(r"\bwhere\s+is\b", question) and re.search(r"\be\s+minor\s+pocket\b", question))
+
+
+def mentions_ab_d_major_position(question: str) -> bool:
+    return bool(re.search(r"\ba\s*\+\s*b\b", question) and re.search(r"\bd\s+major\b", question))
+
+
+def mentions_g_af_position(question: str) -> bool:
+    return bool(re.search(r"\bg(?:\s+major)?\s+a\s*\+\s*f\s+position\b", question) or re.search(r"\ba\s*\+\s*f\b.*\bg\s+major\b", question))
 
 
 def mentions_sensitive_demographic_question(question: str) -> bool:
@@ -2419,7 +2558,7 @@ def _mentions_off_domain_request(question: str) -> bool:
         or re.search(r"\b(?:pancake|pancakes|recipe)\s+recipe\b", question)
         or re.search(r"\bwho\s+won\s+the\s+super\s+bowl\b", question)
         or re.search(r"\bsuper\s+bowl\s+winner\b", question)
-        or re.search(r"\b(?:javascript|python\s+code|python\s+script|quicksort|sorting\s+algorithm|dishwasher)\b", question)
+        or re.search(r"\b(?:javascript|python\s+code|python\s+script|quicksort|sorting\s+algorithm|dishwasher|bedtime\s+story|castle)\b", question)
     )
 
 

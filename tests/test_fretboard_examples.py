@@ -1014,6 +1014,26 @@ def test_fretboard_payload_for_question_matches_only_mvp_triggers() -> None:
     assert fretboard_payload_for_question("What are common Fender Steel King settings?") is None
 
 
+def test_remaining_broad_p1_visual_prompts_get_fretboard_payloads() -> None:
+    e_lower = fretboard_payload_for_question("Where does my E-lower position give me a minor sound?")
+    assert e_lower is not None
+    assert e_lower["title"] == "G# minor positions on E9"
+
+    e_minor = fretboard_payload_for_question("Where is an E minor pocket on my E9?")
+    assert e_minor is not None
+    assert e_minor["title"] == "E minor positions on E9"
+
+    d_ab = fretboard_payload_for_question("Where are A+B positions for D major?")
+    assert d_ab is not None
+    assert d_ab["title"] == "D major positions on E9"
+    assert any(position["fret"] == 17 and "A" in position["pedals"] and "B" in position["pedals"] for position in d_ab["positions"])
+
+    g_af = fretboard_payload_for_question("Show me a G A+F position.")
+    assert g_af is not None
+    assert g_af["title"] == "G major positions on E9"
+    assert any(position["fret"] == 6 and "A" in position["pedals"] and "F" in position["levers"] for position in g_af["positions"])
+
+
 def test_beginner_chord_concept_questions_route_to_deterministic_answers_without_payloads() -> None:
     g_request = chord_concept_request_for_question("What's a G chord even mean?")
     assert g_request is not None

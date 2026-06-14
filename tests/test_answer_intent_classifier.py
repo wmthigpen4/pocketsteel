@@ -262,6 +262,18 @@ def assert_contract_shape(decision: dict[str, object]) -> None:
             },
         ),
         (
+            "Tell me a bedtime story about a castle.",
+            {
+                "domain": "off_domain",
+                "intent": "small_talk",
+                "needs_sources": False,
+                "needs_fretboard": False,
+                "needs_copedent": False,
+                "retrieval_allowed": False,
+                "allowed_answer_shape": "guardrail_refusal",
+            },
+        ),
+        (
             "Write me a Python script to scrape Instagram.",
             {
                 "domain": "unsafe_or_impossible",

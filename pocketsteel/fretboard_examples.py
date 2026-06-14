@@ -2345,7 +2345,7 @@ def two_minor_function_answer(request: FunctionChordRequest) -> str:
         [
             f"- In {request.key}, this can connect into {five_dominant}7, the 5-dominant chord in {request.key}, for a 2m-to-5 movement.",
             "",
-            "The fretboard payload shows only pitch-validated minor positions; it does not use SGF snippets to decide the chord.",
+            "The diagram shows only pitch-validated minor positions; it does not use forum snippets to decide the chord.",
         ]
     )
     return "\n".join(lines)
@@ -2356,6 +2356,14 @@ def fretboard_payload_for_question(question: str) -> dict | None:
     q = normalize_chord_intent_text(question)
     if not q:
         return None
+    if re.search(r"\be[- ]?lower\b.*\bminor\s+sound\b", q):
+        return get_fretboard_examples("minor_positions", "G#")
+    if re.search(r"\be\s+minor\s+pocket\b", q):
+        return get_fretboard_examples("minor_positions", "E")
+    if re.search(r"\ba\s*\+\s*b\b.*\bd\s+major\b|\bd\s+major\b.*\ba\s*\+\s*b\b", q):
+        return get_fretboard_examples("major_positions", "D")
+    if re.search(r"\bg\s+a\s*\+\s*f\s+position\b|\bg\s+major\b.*\ba\s*\+\s*f\b|\ba\s*\+\s*f\b.*\bg\s+major\b", q):
+        return get_fretboard_examples("major_positions", "G")
     multi_chord_payload = multi_chord_payload_for_question(q)
     if multi_chord_payload is not None:
         return multi_chord_payload
