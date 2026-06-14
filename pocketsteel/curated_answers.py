@@ -564,6 +564,15 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
 
 
 SGF_QUARANTINE_PATTERNS: tuple[str, ...] = (
+    r"\A\s*-\s+",
+    r"(?m)^\s*-\s*(?:I've|I'm|We|My|Our|One\s+time|I\s+(?:play|use|had|never|rarely|usually|found|only\s+found|can't|messed|am\s+looking))\b",
+    r"\bwrote:\s*:",
+    r"<font\b",
+    r"<pre\b",
+    r"\b(?:Bill Lowe|Thanks Nick|Top Hi All|Does anyone know|Has anyone compared)\b",
+    r"\b(?:I found this|I only found|The retrieved excerpts|Related source detail|One related point)\b",
+    r"\b(?:I can't offer any help|I've messed with the tuning|For new players out there|If I may|as far as I'm concerned|somebody said|forum thread|source cards?)\b",
+    r"\b(?:I|I've|I'm|we|my)\b.{0,80}\b(?:thread|played it|found this|messed with|can't offer|as far as I'm concerned)\b",
     r"\bi know when i first started\b",
     r"\bcan someone please tell me\b",
     r"\blolol thank god\b",
@@ -587,8 +596,8 @@ def generic_sgf_quarantine_fallback_answer(question: str) -> CuratedAnswer:
         intent="unknown_low_confidence",
         confidence="curated_medium",
         answer=(
-            "I should not turn forum snippets into the main answer.\n\n"
-            "Ask me for a specific steel-guitar topic, such as an E9 position, pedal or lever, grip, chord, tone problem, repair symptom, practice plan, song approach, or player context, and I’ll answer it directly first."
+            "Forum snippets should not become the main answer.\n\n"
+            "Ask for a specific steel-guitar topic, such as an E9 position, pedal or lever, grip, chord, tone problem, repair symptom, practice plan, song approach, or player context, and The Turnaround will answer directly first."
         ),
     )
 
@@ -634,6 +643,20 @@ def sgf_quarantine_teacher_answer(question: str) -> CuratedAnswer | None:
                 "- A minor has A as the root and C as the minor 3rd.\n"
                 "- C major has C as the root and E as the major 3rd.\n\n"
                 "On E9, use the fretboard cards to keep the two sounds separate: A minor positions for A-C-E, and C major positions for C-E-G. Pick one grip at a time, say the notes out loud, and listen for the minor color of A-C-E against the brighter C-E-G sound."
+            ),
+        )
+    if re.search(r"\b(?:find|play|locate)\s+minors?\b|\bminor\s+chords?\s+on\s+e9\b", q):
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=(
+                "To find minor chords on E9, start from the chord tones: root, flat 3rd, and 5th.\n\n"
+                "Practical ways to search:\n"
+                "- Use the relative-minor relationship: C major and A minor share notes, but the root changes.\n"
+                "- Try A-pedal minor positions, where raising the B strings can create a compact minor grip.\n"
+                "- Try E-lower positions for darker minor colors when the lowered E strings supply the needed chord tone.\n"
+                "- Check the notes in the grip before naming it; a useful minor sound should include or imply root, flat 3rd, and 5th.\n\n"
+                "Practice: pick one key, name the three minor-chord tones, then test one grip at a time instead of memorizing random fret numbers."
             ),
         )
     if re.search(r"\breal\s+lesson\b|\blesson\s+now\b", q):
@@ -814,12 +837,12 @@ def full_lyrics_guardrail_answer(question: str) -> CuratedAnswer | None:
         intent="song_learning",
         confidence="curated_high",
         answer=(
-            "I do not provide full copyrighted lyrics by default.\n\n"
+            "The Turnaround does not provide full copyrighted lyrics by default.\n\n"
             "What I can do instead:\n"
-            "- I can summarize the song’s theme or mood.\n"
-            "- I can discuss how to arrange it for pedal steel.\n"
-            "- I can suggest chord/position strategy and tone ideas.\n"
-            "- I can work from a short excerpt or chart you provide."
+            "- Summarize the song’s theme or mood.\n"
+            "- Discuss how to arrange it for pedal steel.\n"
+            "- Suggest chord/position strategy and tone ideas.\n"
+            "- Work from a short excerpt or chart you provide."
         ),
     )
 
@@ -1494,9 +1517,9 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             intent="current_roster",
             confidence="curated_medium",
             answer=(
-                "I don’t know the current roster from the information I have. "
+                "The current roster is not clear from the information here. "
                 "For the current touring or recording lineup, check official tour credits, album/session credits, or the artist’s current band listings. "
-                "I can also help interpret any credits you find."
+                "The Turnaround can help interpret any credits you find."
             ),
         )
 
@@ -1634,7 +1657,7 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             intent="player_brand_usage",
             confidence="curated_medium",
             answer=(
-                f"I do not have a strong, current roster of players using {brand} guitars today from the information I have.\n\n"
+                f"No strong, current roster of players using {brand} guitars today is available from the information here.\n\n"
                 "Use any listed sources as leads, but treat forum mentions as historical or source-specific unless a source clearly says the player currently uses that brand. "
                 "For a current roster, the safest path is the maker’s official artist list, recent player interviews, or recent live/session credits."
             ),
@@ -2034,12 +2057,12 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             intent="song_learning",
             confidence="curated_high",
             answer=(
-                "I do not provide full copyrighted lyrics by default.\n\n"
+                "The Turnaround does not provide full copyrighted lyrics by default.\n\n"
                 "What I can do instead:\n"
-                "- I can summarize the song’s theme or mood.\n"
-                "- I can discuss how to arrange it for pedal steel.\n"
-                "- I can suggest chord/position strategy and tone ideas.\n"
-                "- I can work from a short excerpt or chart you provide."
+                "- Summarize the song’s theme or mood.\n"
+                "- Discuss how to arrange it for pedal steel.\n"
+                "- Suggest chord/position strategy and tone ideas.\n"
+                "- Work from a short excerpt or chart you provide."
             ),
         )
 
@@ -2410,7 +2433,7 @@ def unknown_identity_guardrail_answer(question: str) -> CuratedAnswer | None:
             confidence="curated_high",
             answer=(
                 "b0b usually refers to Bobby Lee, the founder and longtime administrator of the Steel Guitar Forum.\n\n"
-                "He is important in steel-guitar context because the forum became a central place for players to share gear, tuning, technique, and community knowledge. I should not replace that with raw forum contact snippets."
+                "He is important in steel-guitar context because the forum became a central place for players to share gear, tuning, technique, and community knowledge. That answer should not be replaced with raw forum contact snippets."
             ),
         )
     if re.search(r"^who\s+is\s+<[^>]+>$", normalized) or re.search(

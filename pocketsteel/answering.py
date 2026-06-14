@@ -1412,9 +1412,9 @@ def fallback_answer_for_category(category: FallbackCategory, question: str) -> s
             return deterministic_answer
     if category == "current_info_not_in_corpus":
         return (
-            "I don’t know the current roster from the information I have. "
+            "The current roster is not clear from the information here. "
             "For the current touring or recording lineup, check official tour credits, album/session credits, or the artist’s current band listings. "
-            "I can also help interpret any credits you find."
+            "The Turnaround can help interpret any credits you find."
         )
     if category == "sensitive_identity_speculation":
         return (
@@ -1423,7 +1423,7 @@ def fallback_answer_for_category(category: FallbackCategory, question: str) -> s
         )
     if category == "copyrighted_song_guardrail":
         return (
-            "I can help with the musical approach, but I will not provide full copyrighted lyrics or full note-for-note copyrighted tab by default. "
+            "The Turnaround can help with the musical approach, but it does not provide full copyrighted lyrics or full note-for-note copyrighted tab by default. "
             "Give me the key, tuning, and a short excerpt or your own tab attempt, and I can help map it to pedal-steel positions."
         )
     if category == "ask_for_more_context":
@@ -1448,6 +1448,12 @@ def final_answer_quality_gate(answer: str, question: str) -> str:
     if cleaned and not answer_has_quality_issue(cleaned, allow_contact_info=allow_contact_info):
         return cleaned
     return fallback_answer_for_category(fallback_category_for_question(question), question)
+
+
+def normalize_answer_list_markers(answer: str) -> str:
+    """Render teacher-composed lists without SGF-fragment-looking hyphen bullets."""
+
+    return re.sub(r"(?m)^(\s*)-\s+", r"\1* ", answer or "").strip()
 
 
 def noisy_source_fallback() -> str:
@@ -1968,7 +1974,7 @@ class DeterministicAnswerProvider:
     ) -> str:
         brand = player_usage_brand(request.question)
         return (
-            f"I do not have a strong, current roster of players using {brand} guitars today from the information I have.\n\n"
+            f"No strong, current roster of players using {brand} guitars today is available from the information here.\n\n"
             "Use any listed sources as leads, but treat forum mentions as historical or source-specific unless a source clearly says the player currently uses that brand. "
             "For a current roster, check the maker’s official artist list, recent player interviews, or recent live/session credits."
         )
@@ -2178,7 +2184,7 @@ class DeterministicAnswerProvider:
                 "",
                 "Song-learning boundary:",
                 "- I can discuss style, harmony, chord tones, positions, and pedal/lever purpose.",
-                "- I do not provide full note-for-note copyrighted tab or full copyrighted lyrics by default, but I can build public-domain arrangements, original exercises, or work from material you provide.",
+                "- The Turnaround does not provide full note-for-note copyrighted tab or full copyrighted lyrics by default, but it can build public-domain arrangements, original exercises, or work from material you provide.",
             ]
         )
         return "\n".join(lines)
@@ -2226,7 +2232,7 @@ class DeterministicAnswerProvider:
             "- Move to C at the 3rd fret with A+B.\n"
             "- Move to D at the 5th fret with A+B.\n"
             "- Resolve to G at the 6th fret with A pedal + F lever.\n\n"
-            "I can discuss style, chord movement, positions, tone, and practice strategy. I do not provide full note-for-note copyrighted tab or full copyrighted lyrics by default."
+            "The Turnaround can discuss style, chord movement, positions, tone, and practice strategy. It does not provide full note-for-note copyrighted tab or full copyrighted lyrics by default."
         )
 
 

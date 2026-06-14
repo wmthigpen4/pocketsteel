@@ -20,6 +20,7 @@ from pocketsteel.answering import (
     fallback_answer_for_category,
     fallback_category_for_question,
     final_answer_quality_gate,
+    normalize_answer_list_markers,
 )
 from pocketsteel.chroma_search import ChromaSearchIndex
 from pocketsteel.curated_answers import (
@@ -197,6 +198,16 @@ class FakeAnswerProvider:
         if request.mode == "practice":
             return "1. Isolate the move. 2. Repeat it slowly. 3. Move it to another fret. [1]"
         return "A source-backed answer grounded in the retrieved forum discussion. [1]"
+
+
+class RawForumFragmentAnswerProvider:
+    def __init__(self, answer: str) -> None:
+        self.answer_text = answer
+        self.calls: list[dict[str, Any]] = []
+
+    def answer(self, request: Any, sources: list[dict[str, Any]]) -> str:
+        self.calls.append({"request": request, "sources": sources})
+        return self.answer_text
 
 
 class FakeCloudflareVerifier:
@@ -2169,6 +2180,67 @@ def assert_no_internal_answer_language(answer: str) -> None:
         assert phrase not in lowered
 
 
+def test_api_answer_quarantines_raw_sgf_primary_answer_body() -> None:
+    status, _, payload = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={"question": "What is a useful steel guitar setup clue?", "mode": "ask", "topK": 6},
+        search_index=FakeSearchIndex(
+            {
+                "results": [
+                    {
+                        "score": 0.86,
+                        "excerpt": "A forum reply says I found this in limited source support, so treat it as a clue rather than consensus.",
+                        "forum_name": "Pedal Steel",
+                        "thread_title": "Forum fragment",
+                        "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400031",
+                        "chunk_id": "chunk-raw-forum",
+                        "post_uid": "p-raw-forum",
+                        "source_system": "sgf_phpbb_current",
+                    }
+                ],
+                "warnings": [],
+            }
+        ),
+        answer_provider=RawForumFragmentAnswerProvider(
+            "- I found this in limited source support, so treat it as a clue rather than consensus.\n"
+            "- Besides that, I've messed with the tuning."
+        ),
+    )
+
+    assert status == "200 OK"
+    assert_clean_answer_body(payload)
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert "Forum snippets" in payload["answer"]
+    assert "limited source support" not in payload["answer"]
+    assert "messed with the tuning" not in payload["answer"]
+
+
+def test_api_answer_renders_teacher_lists_without_sgf_fragment_bullets() -> None:
+    payload = answer_for_question(
+        "What does A pedal and F lever give me?",
+        [
+            {
+                "score": 0.82,
+                "excerpt": "A pedal and F lever give a major chord position.",
+                "forum_name": "Pedal Steel",
+                "thread_title": "A and F",
+                "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=400032",
+                "chunk_id": "chunk-af",
+                "post_uid": "p-af",
+                "source_system": "sgf_phpbb_current",
+            }
+        ],
+    )
+
+    assert_clean_answer_body(payload)
+    assert "A+F means" in payload["answer"]
+    assert "* The A pedal raises the B strings to C#." in payload["answer"]
+    assert "- The A pedal" not in payload["answer"]
+    assert normalize_answer_list_markers("- The A pedal raises the B strings.") == "* The A pedal raises the B strings."
+
+
 def test_bc_pedal_exercises_return_practical_drills_not_source_fragments() -> None:
     payload = answer_for_question(
         "What are some good B&C pedal exercises?",
@@ -3068,8 +3140,8 @@ def test_invalid_chord_symbol_question_clarifies_without_retrieval_or_fretboard(
     assert_clean_answer_body(payload)
     assert "I don’t recognize “GF” as a standard chord name." in payload["answer"]
     assert "Did you mean:" in payload["answer"]
-    assert "- G" in payload["answer"]
-    assert "- F" in payload["answer"]
+    assert "G" in payload["answer"]
+    assert "F" in payload["answer"]
     assert "G/F" in payload["answer"]
     assert "Mel Bay" not in payload["answer"]
     assert "F#7 > B7" not in payload["answer"]
@@ -3309,7 +3381,7 @@ def test_sgf_quarantine_backstop_replaces_bad_provider_body() -> None:
 
     assert status == "200 OK"
     assert_clean_answer_body(quarantined)
-    assert quarantined["answer"].startswith("I should not turn forum snippets into the main answer.")
+    assert quarantined["answer"].startswith("Forum snippets should not become the main answer.")
     assert quarantined["sources"] == []
     assert quarantined["warnings"] == []
     assert "fretboard" not in quarantined
@@ -4539,12 +4611,12 @@ def test_remaining_true_p1_guardrails_and_clarifiers_are_source_free() -> None:
         ),
         (
             "Give me the full lyrics to Crazy",
-            ["do not provide full copyrighted lyrics", "arrange it for pedal steel"],
+            ["does not provide full copyrighted lyrics", "arrange it for pedal steel"],
             False,
         ),
         (
             "Who is b0b?",
-            ["Bobby Lee", "Steel Guitar Forum", "not replace that with raw forum contact snippets"],
+            ["Bobby Lee", "Steel Guitar Forum", "should not be replaced with raw forum contact snippets"],
             False,
         ),
         (
@@ -4910,7 +4982,7 @@ def test_willie_nelson_player_answer_stays_clean() -> None:
 
     assert_clean_answer_body(payload)
     assert "Willie Nelson" in payload["answer"]
-    assert "- Jimmy Day" in payload["answer"]
+    assert "Jimmy Day" in payload["answer"]
     assert "Practical answer Jimmy Day" not in payload["answer"]
     assert "Bob Example" not in payload["answer"]
     assert "Top Does" not in payload["answer"]
@@ -5070,7 +5142,7 @@ def test_bc_pedals_second_fret_answers_function_directly() -> None:
     assert "G# major" in payload["answer"]
     assert "2-minor" in payload["answer"]
     assert "How to hear it:" in payload["answer"]
-    assert "- String 3" in payload["answer"]
+    assert "String 3" in payload["answer"]
     assert "Practical answer" not in payload["answer"]
 
 
@@ -5286,7 +5358,7 @@ def test_player_brand_usage_does_not_answer_company_status() -> None:
 
     assert_clean_answer_body(payload)
     assert "current roster of players using Emmons guitars today" in payload["answer"]
-    assert "information I have" in payload["answer"]
+    assert "information here" in payload["answer"]
     assert "players using Emmons guitars today" in payload["answer"]
     assert "operating today through its official site" not in payload["answer"]
     assert "ReSound’65" not in payload["answer"]
@@ -5770,7 +5842,7 @@ def test_song_tab_policy_allows_teaching_without_full_copyrighted_tab() -> None:
         ),
         (
             "Give me the full lyrics to Crazy",
-            ["do not provide full copyrighted lyrics", "summarize the song", "arrange it for pedal steel"],
+            ["does not provide full copyrighted lyrics", "Summarize the song", "arrange it for pedal steel"],
             ["full lyrics to", "random email"],
             False,
         ),
@@ -6268,9 +6340,9 @@ def test_sensitive_demographic_and_current_roster_questions_do_not_speculate() -
 
     roster = answer_for_question("Who plays for Shania Twain?", noisy_source)
     assert_clean_answer_body(roster)
-    assert "current roster from the information I have" in roster["answer"]
+    assert "current roster is not clear from the information here" in roster["answer"]
     assert "official tour credits" in roster["answer"]
-    assert "I can also help interpret any credits you find" in roster["answer"]
+    assert "The Turnaround can help interpret any credits you find" in roster["answer"]
     assert "corpus" not in roster["answer"].lower()
     assert "source cards" not in roster["answer"].lower()
     assert "For guitars" not in roster["answer"]

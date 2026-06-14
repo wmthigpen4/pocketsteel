@@ -24,6 +24,7 @@ from pocketsteel.answering import (
     configured_answer_provider,
     final_answer_quality_gate,
     filter_sources_for_question,
+    normalize_answer_list_markers,
     parse_answer_request,
     private_profile_answer,
 )
@@ -263,6 +264,7 @@ class RetrievalApi:
                 final_answer = final_answer_quality_gate(deterministic_chord_answer.answer, answer_request.question)
                 contract_validation = enforce_answer_contract(final_answer, deterministic_chord_answer.intent)
                 final_answer = contract_validation.answer
+                final_answer = normalize_answer_list_markers(final_answer)
                 fretboard_payload = fretboard_payload_for_question(answer_request.question)
                 payload: AnswerResponse = {
                     "answer": final_answer,
@@ -286,6 +288,7 @@ class RetrievalApi:
 
             if _should_gate_answer_intent(answer_intent_decision):
                 final_answer = _answer_intent_guardrail_answer(answer_intent_decision["domain"])
+                final_answer = normalize_answer_list_markers(final_answer)
                 payload: AnswerResponse = {
                     "answer": final_answer,
                     "mode": answer_request.mode,
@@ -309,6 +312,7 @@ class RetrievalApi:
                 final_answer = final_answer_quality_gate(practical_intent_answer.answer, answer_request.question)
                 contract_validation = enforce_answer_contract(final_answer, practical_intent_answer.intent)
                 final_answer = contract_validation.answer
+                final_answer = normalize_answer_list_markers(final_answer)
                 payload: AnswerResponse = {
                     "answer": final_answer,
                     "mode": answer_request.mode,
@@ -417,6 +421,7 @@ class RetrievalApi:
             if contract_validation.violations and contract_validation.answer != final_answer:
                 warnings.append(f"answer contract enforced: {contract_validation.intent}")
             final_answer = contract_validation.answer
+            final_answer = normalize_answer_list_markers(final_answer)
             fretboard_payload = fretboard_payload_for_question(answer_request.question)
             if fretboard_payload is not None:
                 sources = []
