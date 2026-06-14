@@ -3609,6 +3609,130 @@ def test_quarantine_smoke_concrete_resolvers_are_direct_source_free_and_visual_w
         assert payload["fretboard"]["title"] == expectation["fretboard_title"]
 
 
+def assert_foundation_answer(payload: dict[str, Any], required_phrases: tuple[str, ...]) -> None:
+    assert_clean_answer_body(payload)
+    assert_no_smoke_internal_language(payload["answer"])
+    assert "I need a more specific steel-guitar question" not in payload["answer"]
+    for phrase in required_phrases:
+        assert phrase in payload["answer"]
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert "fretboard" not in payload
+
+
+def test_steel_guitar_101_foundation_concepts_are_teacher_first_and_source_free() -> None:
+    cases: dict[str, tuple[str, ...]] = {
+        "What is a steel guitar?": ("smooth steel bar", "Lap steel has no pedals", "pedal steel adds pedals and knee levers"),
+        "What is a pedal steel?": ("floor pedals", "knee levers", "while the notes are ringing"),
+        "What is a lap steel?": ("without pedals or knee levers", "bar movement", "slants"),
+        "What is a console steel?": ("legs or a stand", "does not use the pedal-and-knee-lever mechanism"),
+        "What does E9 mean?": ("most common pedal-steel tuning", "dominant-ninth", "standard 10-string E9"),
+        "What is E9 tuning?": ("most common pedal-steel tuning", "dominant-ninth", "pedals and knee levers"),
+        "What does C6 mean?": ("C6 chord: C-E-G-A", "western swing", "jazzier chord voicings"),
+        "What is C6 tuning?": ("C6 chord: C-E-G-A", "western swing", "extended harmony"),
+        "What is universal tuning?": ("combine E9-style and C6-style jobs", "one neck"),
+        "What is extended E9?": ("adds lower strings", "12-string neck", "bass range"),
+        "What is a copedent?": ("chart of a pedal steel’s tuning", "open string note", "pedal and knee lever"),
+        "What is a changer?": ("bridge-end mechanism", "raises and lowers string pitch"),
+        "What is a pedal?": ("floor control", "changes selected string pitches"),
+        "What is a knee lever?": ("moved by your knee", "raises or lowers selected strings"),
+        "What is a volume pedal?": ("controls loudness", "sustain", "smooth swells"),
+        "What is a steel bar?": ("smooth metal bar", "intonation", "sustain"),
+        "What are picks?": ("picking hand", "thumb pick", "fingerpicks"),
+        "What are grips?": ("string groups", "3-4-5", "4-5-6"),
+        "What is a pocket?": ("small area of the neck", "related notes, chords, and pedal moves"),
+        "What is a slant?": ("bar is angled", "different strings touch different frets"),
+        "What is the A pedal?": ("raises the B strings", "strings 5 and 10", "C#"),
+        "What does the B pedal do?": ("raises the G# strings", "strings 3 and 6", "A"),
+        "What is the C pedal for?": ("string 4 E to F#", "string 5 B to C#"),
+        "What is the E-lower lever?": ("lowers the E strings", "strings 4 and 8", "D#/Eb"),
+        "What is the F lever?": ("raises the E strings", "strings 4 and 8", "A pedal"),
+        "What is a split?": ("raise and a lower", "same string", "in-between pitch"),
+        "What is a raise/lower?": ("raise moves the pitch up", "lower moves it down"),
+        "What is cabinet drop?": ("guitar flexing", "pedals are pressed"),
+        "What is a scale?": ("ordered set of notes", "positions, grips, pedals, levers"),
+        "What is a chord?": ("root, 3rd, and 5th", "several frets"),
+        "What is a tuning?": ("open-string notes", "pedals and levers change those open notes"),
+        "What is it called pedal steel?": ("called pedal steel because", "steel bar", "floor pedals"),
+    }
+    for question, required_phrases in cases.items():
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert_foundation_answer(payload, required_phrases)
+
+
+def test_steel_guitar_101_foundation_comparisons_are_teacher_first_and_source_free() -> None:
+    cases: dict[str, tuple[str, ...]] = {
+        "What is the difference between lap steel and pedal steel?": (
+            "both played with a steel bar",
+            "pedal steel adds floor pedals and knee levers",
+        ),
+        "What is the difference between E9 and C6?": (
+            "two different steel-guitar tuning worlds",
+            "E9 is the common country pedal-steel tuning",
+            "C6 is built around C-E-G-A",
+        ),
+        "Is dobro the same as steel guitar?": (
+            "not the same as pedal steel",
+            "resonator guitar",
+            "without pedals",
+        ),
+        "How is pedal steel different from regular guitar?": (
+            "steel bar instead of fretting with your fingers",
+            "pedals and knee levers change string pitches",
+        ),
+    }
+    for question, required_phrases in cases.items():
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert_foundation_answer(payload, required_phrases)
+
+
+def test_steel_guitar_101_router_preserves_recent_resolvers_and_guardrails() -> None:
+    cmaj7 = answer_for_question("What is a C maj 7 and where do I play it?", noisy_practical_sources())
+    assert_clean_answer_body(cmaj7)
+    assert "Cmaj7 is C-E-G-B" in cmaj7["answer"]
+    assert "fretboard" in cmaj7
+    assert_valid_fretboard_payload(cmaj7)
+    assert cmaj7["sources"] == []
+    assert cmaj7["warnings"] == []
+
+    mixed = answer_for_question("Show me a minor and b flat", noisy_practical_sources())
+    assert_clean_answer_body(mixed)
+    assert "I’m reading that as A minor and B-flat major" in mixed["answer"]
+    assert "fretboard" in mixed
+    assert_valid_fretboard_payload(mixed)
+    assert mixed["sources"] == []
+    assert mixed["warnings"] == []
+
+    diagnostic = answer_for_question(
+        "What do you get with strings 4-5-6 on the 8th fret with the A pedal engaged?",
+        noisy_practical_sources(),
+    )
+    assert_clean_answer_body(diagnostic)
+    assert "You get A minor" in diagnostic["answer"]
+    assert "voiced as C-A-E" in diagnostic["answer"]
+    assert "fretboard" in diagnostic
+    assert_valid_fretboard_payload(diagnostic)
+    assert diagnostic["sources"] == []
+    assert diagnostic["warnings"] == []
+
+    rods = answer_for_question("What should I check if my pedal rods are noisy?", noisy_practical_sources())
+    assert_clean_answer_body(rods)
+    assert "Start by isolating exactly where the pedal-rod noise is coming from." in rods["answer"]
+    assert "What to check first" in rods["answer"]
+    assert rods["sources"] == []
+    assert rods["warnings"] == []
+    assert "fretboard" not in rods
+
+    off_domain = answer_for_question("Give me a JavaScript sorting algorithm.", noisy_practical_sources())
+    assert_clean_answer_body(off_domain)
+    assert "outside Steel Guitar RAG’s scope" in off_domain["answer"]
+    assert off_domain["sources"] == []
+    assert off_domain["warnings"] == []
+    assert "fretboard" not in off_domain
+
+
 def test_quarantine_smoke_frustration_prompts_are_source_free() -> None:
     cases = {
         "You are an idiot": "I’m here to help. Ask me a steel guitar question and I’ll answer directly.",

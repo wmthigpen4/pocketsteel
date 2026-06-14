@@ -604,6 +604,303 @@ def generic_sgf_quarantine_fallback_answer(question: str) -> CuratedAnswer:
     )
 
 
+FOUNDATION_CONCEPT_ANSWERS: dict[str, str] = {
+    "steel guitar": (
+        "A steel guitar is a guitar played with a smooth steel bar instead of pressing the strings down with your fingers. "
+        "The bar slides across the strings, which gives the instrument its smooth gliding sound. "
+        "Lap steel has no pedals; pedal steel adds pedals and knee levers that change string pitches while you play."
+    ),
+    "pedal steel": (
+        "A pedal steel is a steel guitar with floor pedals and knee levers that change selected string pitches while the notes are ringing. "
+        "You still play it with a steel bar, but the pedals and levers let one chord move into another without moving the bar as much."
+    ),
+    "lap steel": (
+        "A lap steel is a steel guitar played with a bar, usually without pedals or knee levers. "
+        "You change notes mostly with bar movement, slants, tuning choices, and picking technique rather than mechanical pitch changes."
+    ),
+    "console steel": (
+        "A console steel is a non-pedal steel guitar built on legs or a stand instead of held on the lap. "
+        "It often has one or more necks and tunings, but it does not use the pedal-and-knee-lever mechanism of a pedal steel."
+    ),
+    "e9": (
+        "E9 is the most common pedal-steel tuning for country-style playing. "
+        "E is the tuning center, and 9 refers to the dominant-ninth flavor built into the tuning. "
+        "On standard 10-string E9, pedals and knee levers let the player move between major, minor, dominant, and passing sounds."
+    ),
+    "e9 tuning": (
+        "E9 is the most common pedal-steel tuning for country-style playing. "
+        "E is the tuning center, and 9 refers to the dominant-ninth flavor built into the tuning. "
+        "On standard 10-string E9, pedals and knee levers let the player move between major, minor, dominant, and passing sounds."
+    ),
+    "c6": (
+        "C6 is a steel-guitar tuning built around a C6 chord: C-E-G-A. "
+        "It is associated with western swing, jazzier chord voicings, richer chord melody, and many double-neck pedal steels. "
+        "Compared with E9, C6 is often used more for swing and extended harmony."
+    ),
+    "c6 tuning": (
+        "C6 is a steel-guitar tuning built around a C6 chord: C-E-G-A. "
+        "It is associated with western swing, jazzier chord voicings, richer chord melody, and many double-neck pedal steels. "
+        "Compared with E9, C6 is often used more for swing and extended harmony."
+    ),
+    "universal tuning": (
+        "A universal tuning is a pedal-steel setup meant to combine E9-style and C6-style jobs on one neck, often on a 12-string guitar. "
+        "The idea is to cover country E9 sounds and richer C6-style harmony without carrying a double-neck guitar."
+    ),
+    "extended e9": (
+        "Extended E9 keeps the E9 idea but adds lower strings, usually on a 12-string neck. "
+        "Those extra strings extend the bass range while keeping the familiar E9 pedal-and-lever language."
+    ),
+    "copedent": (
+        "A copedent is the chart of a pedal steel’s tuning and mechanical changes. "
+        "It shows each open string note and what every pedal and knee lever raises or lowers."
+    ),
+    "changer": (
+        "The changer is the bridge-end mechanism that raises and lowers string pitch on a pedal steel. "
+        "Pedals and knee levers pull parts of the changer so a string can move to a new note and then return to pitch."
+    ),
+    "pedal": (
+        "A pedal is a floor control that changes selected string pitches on a pedal steel. "
+        "For example, on standard E9 the A pedal raises the B strings to C#, and the B pedal raises G# strings to A."
+    ),
+    "knee lever": (
+        "A knee lever is a lever moved by your knee that raises or lowers selected strings. "
+        "On E9, common knee levers raise or lower the E strings and add important chord and scale movement."
+    ),
+    "volume pedal": (
+        "A volume pedal controls loudness with your foot while you play. "
+        "Steel players use it for sustain, phrasing, and smooth swells, not as a substitute for picking cleanly."
+    ),
+    "steel bar": (
+        "A steel bar is the smooth metal bar used instead of fretting the strings with your fingers. "
+        "Its pressure, angle, and movement shape intonation, sustain, vibrato, and the gliding steel-guitar sound."
+    ),
+    "picks": (
+        "Picks are worn on the picking hand to get a clear attack from the strings. "
+        "Most E9 players use a thumb pick and two fingerpicks, though some use more depending on their grip style."
+    ),
+    "grips": (
+        "Grips are string groups you pick together, such as 3-4-5, 4-5-6, 5-6-8, or 6-8-10 on E9. "
+        "A grip is useful because the chosen strings often spell a chord or a partial chord at a given fret and pedal setup."
+    ),
+    "pockets": (
+        "A pocket is a small area of the neck where related notes, chords, and pedal moves live close together. "
+        "Thinking in pockets helps you connect musical ideas instead of jumping to random fret numbers."
+    ),
+    "slants": (
+        "A slant is when the bar is angled so different strings touch different frets. "
+        "Slants are especially important on non-pedal steel and can create harmony or passing movement without pedals."
+    ),
+    "a pedal": (
+        "On standard E9, the A pedal raises the B strings, usually strings 5 and 10, to C#. "
+        "It is central to major-chord movement, minor sounds, and the familiar A+B pedals-down position."
+    ),
+    "b pedal": (
+        "On standard E9, the B pedal raises the G# strings, usually strings 3 and 6, to A. "
+        "Together with the A pedal, it creates the classic pedals-down major position."
+    ),
+    "c pedal": (
+        "On standard E9, the C pedal usually raises string 4 E to F# and string 5 B to C#. "
+        "It is useful for minor-position sounds, passing movement, and connected E9 melody work."
+    ),
+    "e-lower lever": (
+        "The E-lower lever lowers the E strings, usually strings 4 and 8, to D#/Eb. "
+        "That change is one of the main ways E9 players get minor colors, dominant movement, and connected chord transitions."
+    ),
+    "f lever": (
+        "The F lever raises the E strings, usually strings 4 and 8, to F. "
+        "With the A pedal, it creates a major-chord position three frets above the open no-pedals position."
+    ),
+    "split": (
+        "A split is a tuned note created when a raise and a lower work together on the same string. "
+        "Players use splits to get an in-between pitch accurately instead of relying on a rough mechanical compromise."
+    ),
+    "raise/lower": (
+        "Raise and lower describe what a pedal or lever does to a string: a raise moves the pitch up, and a lower moves it down. "
+        "A copedent lists those changes so you know what each control does."
+    ),
+    "cabinet drop": (
+        "Cabinet drop is a small pitch change caused by the guitar flexing slightly when pedals are pressed. "
+        "Good setup, stable strings, and careful tuning habits help keep it manageable."
+    ),
+    "scale": (
+        "A scale is an ordered set of notes used for melody and harmony. "
+        "On E9, scales are usually learned through positions, grips, pedals, levers, and how they connect to nearby chords."
+    ),
+    "chord": (
+        "A chord is a group of notes heard together, usually built from a root, 3rd, and 5th. "
+        "On pedal steel, the same chord can often be found at several frets with different pedal and lever combinations."
+    ),
+    "tuning": (
+        "A tuning is the set of open-string notes on the guitar. "
+        "On pedal steel, the tuning works together with the copedent, because pedals and levers change those open notes while you play."
+    ),
+}
+
+FOUNDATION_COMPARISON_ANSWERS: dict[tuple[str, str], str] = {
+    ("lap steel", "pedal steel"): (
+        "Lap steel and pedal steel are both played with a steel bar, but pedal steel adds floor pedals and knee levers that change string pitches while you play. "
+        "Lap steel relies more on bar movement, slants, and tuning choices; pedal steel adds mechanical chord movement and the classic country E9 sound."
+    ),
+    ("e9", "c6"): (
+        "E9 and C6 are two different steel-guitar tuning worlds. "
+        "E9 is the common country pedal-steel tuning, strong for vocal-like melody, bends, and major/minor/dominant movement. "
+        "C6 is built around C-E-G-A and is associated more with western swing, jazzier harmony, and chord melody."
+    ),
+    ("dobro", "steel guitar"): (
+        "Dobro is related to steel guitar, but it is not the same as pedal steel. "
+        "A dobro is a resonator guitar played with a bar, usually acoustically and without pedals. "
+        "Steel guitar is the broader family; pedal steel is the version with pedals and knee levers."
+    ),
+    ("pedal steel", "regular guitar"): (
+        "Pedal steel is different from regular guitar because you use a steel bar instead of fretting with your fingers, and pedals and knee levers change string pitches while notes sustain. "
+        "Regular guitar is usually fretted by hand; pedal steel is built around sliding intonation, grips, pedals, levers, and a volume pedal."
+    ),
+}
+
+FOUNDATION_ALIASES: dict[str, str] = {
+    "steel": "steel guitar",
+    "steel guitar": "steel guitar",
+    "a steel guitar": "steel guitar",
+    "pedal steel guitar": "pedal steel",
+    "a pedal steel": "pedal steel",
+    "pedal steel": "pedal steel",
+    "dobro": "dobro",
+    "regular guitar": "regular guitar",
+    "lap steel guitar": "lap steel",
+    "lap steel": "lap steel",
+    "console steel guitar": "console steel",
+    "console steel": "console steel",
+    "e9": "e9",
+    "e9 tuning": "e9 tuning",
+    "c6": "c6",
+    "c6 tuning": "c6 tuning",
+    "universal": "universal tuning",
+    "universal tuning": "universal tuning",
+    "extended e9": "extended e9",
+    "copedent": "copedent",
+    "changer": "changer",
+    "a pedal": "a pedal",
+    "the a pedal": "a pedal",
+    "p1": "a pedal",
+    "b pedal": "b pedal",
+    "the b pedal": "b pedal",
+    "p2": "b pedal",
+    "c pedal": "c pedal",
+    "the c pedal": "c pedal",
+    "p3": "c pedal",
+    "pedal": "pedal",
+    "pedals": "pedal",
+    "knee lever": "knee lever",
+    "knee levers": "knee lever",
+    "lever": "knee lever",
+    "volume pedal": "volume pedal",
+    "steel bar": "steel bar",
+    "bar": "steel bar",
+    "tone bar": "steel bar",
+    "picks": "picks",
+    "finger picks": "picks",
+    "fingerpicks": "picks",
+    "grip": "grips",
+    "grips": "grips",
+    "pocket": "pockets",
+    "pockets": "pockets",
+    "slant": "slants",
+    "slants": "slants",
+    "e lower lever": "e-lower lever",
+    "e-lower lever": "e-lower lever",
+    "e lower": "e-lower lever",
+    "e-lower": "e-lower lever",
+    "e lever": "e-lower lever",
+    "f lever": "f lever",
+    "split": "split",
+    "splits": "split",
+    "raise": "raise/lower",
+    "lower": "raise/lower",
+    "raise lower": "raise/lower",
+    "raise/lower": "raise/lower",
+    "cabinet drop": "cabinet drop",
+    "scale": "scale",
+    "scales": "scale",
+    "chord": "chord",
+    "chords": "chord",
+    "tuning": "tuning",
+    "tunings": "tuning",
+}
+
+
+def normalize_foundation_concept(text: str) -> str | None:
+    raw_phrase = normalize(text)
+    if raw_phrase == "the a pedal":
+        return "a pedal"
+    phrase = raw_phrase
+    phrase = phrase.replace("’", "'").replace("“", '"').replace("”", '"')
+    phrase = re.sub(r"[?!.,;:]+$", "", phrase).strip()
+    phrase = re.sub(r"\b(?:the|a|an)\s+", "", phrase)
+    phrase = phrase.replace("pedalsteel", "pedal steel")
+    phrase = re.sub(r"\be\s+9\b", "e9", phrase)
+    phrase = re.sub(r"\bc\s+6\b", "c6", phrase)
+    phrase = re.sub(r"\be\s+lower\b", "e lower", phrase)
+    phrase = re.sub(r"\s+", " ", phrase).strip()
+    if phrase in FOUNDATION_ALIASES:
+        return FOUNDATION_ALIASES[phrase]
+    return None
+
+
+def foundation_comparison_answer(question: str) -> str | None:
+    q = normalize(question).replace("’", "'")
+    patterns = (
+        r"what(?:'s| is)\s+the\s+difference\s+between\s+(?P<left>.+?)\s+and\s+(?P<right>.+?)\??$",
+        r"how\s+is\s+(?P<left>.+?)\s+different\s+from\s+(?P<right>.+?)\??$",
+        r"is\s+(?P<left>.+?)\s+the\s+same\s+as\s+(?P<right>.+?)\??$",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, q)
+        if not match:
+            continue
+        left = normalize_foundation_concept(match.group("left"))
+        right = normalize_foundation_concept(match.group("right"))
+        if left is None or right is None:
+            continue
+        key = (left, right)
+        reverse_key = (right, left)
+        if key in FOUNDATION_COMPARISON_ANSWERS:
+            return FOUNDATION_COMPARISON_ANSWERS[key]
+        if reverse_key in FOUNDATION_COMPARISON_ANSWERS:
+            return FOUNDATION_COMPARISON_ANSWERS[reverse_key]
+    return None
+
+
+def foundation_concept_answer_for_question(question: str) -> str | None:
+    comparison = foundation_comparison_answer(question)
+    if comparison is not None:
+        return comparison
+    q = normalize(question).replace("’", "'")
+    q = re.sub(r"\s+", " ", q).strip()
+    patterns = (
+        r"^what(?:'s| is)\s+(?P<concept>.+?)\??$",
+        r"^what\s+are\s+(?P<concept>.+?)\??$",
+        r"^what\s+does\s+(?P<concept>.+?)\s+mean\??$",
+        r"^what\s+does\s+(?P<concept>.+?)\s+do\??$",
+        r"^why\s+is\s+it\s+called\s+(?P<concept>.+?)\??$",
+        r"^what(?:'s| is)\s+(?P<concept>.+?)\s+for\??$",
+        r"^what\s+is\s+it\s+called\s+(?P<concept>.+?)\??$",
+        r"^explain\s+(?P<concept>.+?)\??$",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, q)
+        if not match:
+            continue
+        concept = normalize_foundation_concept(match.group("concept"))
+        if concept is not None and concept in FOUNDATION_CONCEPT_ANSWERS:
+            if concept == "pedal steel" and re.match(r"^why\s+is\s+it\s+called|^what\s+is\s+it\s+called", q):
+                return (
+                    "It is called pedal steel because it is played with a steel bar, and floor pedals change the pitch of selected strings while you play. "
+                    "Knee levers also change pitches. Those moving pitch changes are what separate pedal steel from lap steel."
+                )
+            return FOUNDATION_CONCEPT_ANSWERS[concept]
+    return None
+
+
 def sgf_quarantine_teacher_answer(question: str) -> CuratedAnswer | None:
     q = normalize(question).replace("’", "'").replace("“", '"').replace("”", '"')
 
@@ -626,6 +923,13 @@ def sgf_quarantine_teacher_answer(question: str) -> CuratedAnswer | None:
             intent="copedent_fretboard",
             confidence="curated_high",
             answer=casual_multi_chord_answer,
+        )
+    foundation_answer = foundation_concept_answer_for_question(q)
+    if foundation_answer is not None:
+        return CuratedAnswer(
+            intent="fretboard_concept",
+            confidence="curated_high",
+            answer=foundation_answer,
         )
 
     if re.search(r"\blongest\s+response\b", q):
