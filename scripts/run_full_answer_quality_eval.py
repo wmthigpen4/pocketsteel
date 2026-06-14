@@ -100,6 +100,26 @@ FORUM_FRAGMENT_RE = re.compile(
     r"(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Sept|Oct|Nov|Dec)[a-z]*\s+\d{4}",
     re.I,
 )
+SGF_PRIMARY_SNIPPET_RE = re.compile(
+    r"(?:"
+    r"^\s*-\s*(?:I|I've|I'm|We|I've|It|That|The|And|But|If|Like|Anyway|Besides)\b|"
+    r"\bwrote:\s*:|"
+    r"\b(?:I found this|I only found|The retrieved excerpts|Related source detail|One related point)\b|"
+    r"\b(?:I can't offer any help|I've messed with the tuning|For new players out there|If I may|"
+    r"as far as I'm concerned|somebody said|forum thread|source cards?)\b|"
+    r"<font\b|<pre\b|"
+    r"\b(?:Bill Lowe|Thanks Nick|Top Hi All|Does anyone know|Has anyone compared)\b"
+    r")",
+    re.I | re.M,
+)
+FORUM_FIRST_PERSON_FRAGMENT_RE = re.compile(
+    r"(?:"
+    r"^\s*-\s*(?:I|I've|I'm|We|My|Our|One\s+time)\b|"
+    r"\b(?:I|I've|I'm|we|my)\b.{0,80}\b(?:gig|tuning|copedant|pedals?|source|forum|thread|played it|"
+    r"found this|messed with|can't offer|as far as I'm concerned)\b"
+    r")",
+    re.I | re.M | re.S,
+)
 DIRECTNESS_BAD_START_RE = re.compile(
     r"^\s*(?:Top\b|I found\b|The retrieved\b|Retrieved\b|Useful\b|Source\b|Forum\b|"
     r"Here is the safest\b|The cleanest source-backed\b|It depends\b)",
@@ -195,9 +215,30 @@ ADVICE_JOKE_ANECDOTE_RE = re.compile(
 )
 WEAK_SOURCE_CHORD_ROUTE_RE = re.compile(
     r"\b(?:source support was weak|source support is weak|curated answer used;\s*source support was weak|"
-    r"API warning indicates weak/no source|no strong source match|retrieval match was weak|sources are weak)\b",
+    r"API warning indicates weak/no source|no strong source match|retrieval match was weak|sources are weak|"
+    r"related source point|source point, but it is thin|limited source support)\b",
     re.I,
 )
+WEAK_SOURCE_PRIMARY_RE = re.compile(
+    r"^\s*(?:I found|The available matches|The retrieved excerpts|Related source detail|One related point|"
+    r"I don'?t have enough reliable information|I only found).*?\b(?:source support|weak match|limited source|"
+    r"source point|related source point|thin|retrieved excerpts|source cards?)\b",
+    re.I | re.S,
+)
+FORUM_QUOTE_REQUEST_RE = re.compile(r"\b(?:quote|verbatim|exact\s+forum|forum\s+quotes?)\b", re.I)
+OFF_DOMAIN_QUESTION_RE = re.compile(
+    r"\b(?:longest response|numbers? from|capital of|weather|pancake|bedtime story|castle|tax return|"
+    r"medical symptoms|legal advice|stock should|vacation to|photosynthesis|quantum computing|"
+    r"fart on|died playing)\b",
+    re.I,
+)
+LESSON_REQUEST_RE = re.compile(r"\b(?:give me|teach me|show me|build me).{0,30}\b(?:lesson|real lesson)\b|\bteach me something\b", re.I)
+LESSON_SHAPE_RE = re.compile(r"\b(?:lesson|step|exercise|practice|try|play|goal|listen|minute|drill|fret|string|grip)\b", re.I)
+SCALE_REQUEST_RE = re.compile(r"\b(?:major\s+scale|minor\s+scale|scale\s+in\s+(?P<key>[A-G](?:#|b)?))\b", re.I)
+LICK_REQUEST_RE = re.compile(r"\b(?:lick|tab)\b", re.I)
+PLAYABLE_LICK_RE = re.compile(r"(?:\b(?:string|strings|fret|pedal|lever|grip)\b.*\b\d+\b|\b\d+(?:[-/]\d+){1,}\b|```|\|.*\b(?:string|fret)\b)", re.I | re.S)
+SONG_TITLE_REQUEST_RE = re.compile(r'"(?P<title>[^"]{2,80})"|“(?P<curly>[^”]{2,80})”|\b(?:over the rainbow|crazy|panhandle rag|together again)\b', re.I)
+REPAIR_INSTRUCTION_RE = re.compile(r"\b(?:repair|fix|replace|adjust|install|clean|lubricat|won'?t|will not|broken|changer|buzz|hum)\b", re.I)
 E_LOWER_578_B9_QUESTION_RE = re.compile(
     r"(?=.*\b5\s*[-/ ]\s*7\s*[-/ ]\s*8\b)(?=.*\bE[- ]?lower(?:ed)?\b)(?=.*\bB9\b)",
     re.I,
@@ -312,6 +353,125 @@ def excerpt(text: str, width: int = 260) -> str:
 
 def add_finding(findings: list[QualityFinding], severity: Severity, key: str, message: str) -> None:
     findings.append(QualityFinding(severity=severity, key=key, message=message))
+
+
+def is_explicit_forum_quote_request(question: str) -> bool:
+    return bool(FORUM_QUOTE_REQUEST_RE.search(question or ""))
+
+
+def answer_looks_like_sgf_primary(answer: str) -> bool:
+    text = (answer or "").strip()
+    if not text:
+        return False
+    first = first_sentence(text)
+    bullet_lines = re.findall(r"(?m)^\s*-\s+", text)
+    return bool(
+        SGF_PRIMARY_SNIPPET_RE.search(text)
+        or first.startswith("-")
+        or len(bullet_lines) >= 3 and FORUM_FIRST_PERSON_FRAGMENT_RE.search(text)
+    )
+
+
+def answer_has_forum_first_person_fragments(answer: str) -> bool:
+    return bool(FORUM_FIRST_PERSON_FRAGMENT_RE.search(answer or ""))
+
+
+def is_deterministic_or_teacher_prompt(row: dict[str, str]) -> bool:
+    question = row.get("question", "")
+    family = category_family(row)
+    return bool(
+        is_deterministic_pitch_rule_question(question)
+        or question_needs_beginner_chord_explanation(question)
+        or family in {"practice/exercises", "copedent/fretboard", "song/tab/guardrail"}
+        or LESSON_REQUEST_RE.search(question)
+        or SCALE_REQUEST_RE.search(question)
+        or LICK_REQUEST_RE.search(question)
+    )
+
+
+def is_off_domain_or_guardrail_row(row: dict[str, str]) -> bool:
+    question = row.get("question", "")
+    category = row.get("category", "")
+    expected = normalize_intent(row.get("expected_contract") or row.get("expected_intent") or "")
+    return bool(
+        OFF_DOMAIN_QUESTION_RE.search(question)
+        or "off-domain" in category.lower()
+        or "guardrail" in category.lower()
+        or expected in {"scope_guardrail", "guardrail_refusal"}
+    )
+
+
+def scale_notes_for_question(question: str) -> set[str]:
+    text = question or ""
+    if re.search(r"\bG\b.*\bmajor\s+scale\b|\bmajor\s+scale\s+in\s+G\b|\bscale\s+in\s+G\b", text, re.I):
+        return {"G", "A", "B", "C", "D", "E", "F#"}
+    return set()
+
+
+def answer_names_scale_notes(answer: str, question: str) -> bool:
+    notes = scale_notes_for_question(question)
+    if not notes:
+        return True
+    return all(re.search(rf"(?<![A-G#b]){re.escape(note)}(?![A-G#b])", answer or "", re.I) for note in notes)
+
+
+def answer_is_actual_lesson(answer: str) -> bool:
+    text = answer or ""
+    return bool(LESSON_SHAPE_RE.search(text) and re.search(r"\b(?:1\.|first|step|exercise|drill|practice|try|play)\b", text, re.I))
+
+
+def answer_is_related_song_answer(question: str, answer: str) -> bool:
+    title_match = SONG_TITLE_REQUEST_RE.search(question or "")
+    if not title_match:
+        return True
+    title = (title_match.groupdict().get("title") or title_match.groupdict().get("curly") or title_match.group(0) or "").strip('"“”')
+    if title and re.search(rf"\b{re.escape(title)}\b", answer or "", re.I):
+        return True
+    if re.search(r"\b(?:song|title|key|progression|melody|copyright|public domain|lyrics|tab)\b", answer or "", re.I):
+        return True
+    return False
+
+
+def evaluate_sgf_primary_answer_leakage(
+    row: dict[str, str],
+    *,
+    answer: str,
+    warnings: list[str],
+    sources: list[dict[str, Any]],
+    findings: list[QualityFinding],
+) -> None:
+    question = row.get("question", "")
+    quote_requested = is_explicit_forum_quote_request(question)
+    sgf_primary = answer_looks_like_sgf_primary(answer)
+    first_person_fragments = answer_has_forum_first_person_fragments(answer)
+    weak_source = bool(WEAK_SOURCE_CHORD_ROUTE_RE.search(answer) or any(WEAK_SOURCE_CHORD_ROUTE_RE.search(warning) for warning in warnings))
+    weak_source_primary = bool(WEAK_SOURCE_PRIMARY_RE.search(answer) or DIRECTNESS_BAD_START_RE.search(first_sentence(answer)))
+
+    if sgf_primary and not quote_requested:
+        add_finding(findings, "fail", "sgf_primary_answer_leakage", "answer body appears copied from retrieved SGF/forum snippets")
+    if first_person_fragments and not quote_requested:
+        add_finding(findings, "fail", "forum_first_person_fragment_leakage", "answer contains forum-like first-person fragments")
+    if is_deterministic_or_teacher_prompt(row) and sgf_primary:
+        add_finding(findings, "fail", "deterministic_teacher_answer_source_fragment", "deterministic/teacher prompt was answered with source fragments")
+    if weak_source:
+        add_finding(
+            findings,
+            "fail" if weak_source_primary else "warn",
+            "weak_source_boilerplate_in_answer",
+            "answer body exposes weak-source boilerplate",
+        )
+    if is_off_domain_or_guardrail_row(row) and any(is_sgf_forum_source(source) for source in sources):
+        add_finding(findings, "fail", "off_domain_sgf_source_cards", "off-domain or guardrail answer returned SGF source cards")
+    if LESSON_REQUEST_RE.search(question) and not answer_is_actual_lesson(answer):
+        add_finding(findings, "fail", "lesson_request_without_lesson", "lesson request did not provide an actual playable lesson")
+    if SCALE_REQUEST_RE.search(question) and not answer_names_scale_notes(answer, question):
+        add_finding(findings, "fail", "scale_request_missing_notes", "scale request did not name the scale notes")
+    if LICK_REQUEST_RE.search(question) and not PLAYABLE_LICK_RE.search(answer or ""):
+        add_finding(findings, "fail", "lick_request_without_playable_lick", "lick/tab request did not provide a playable lick or tab")
+    if SONG_TITLE_REQUEST_RE.search(question) and not answer_is_related_song_answer(question, answer):
+        add_finding(findings, "fail", "song_title_unrelated_theory_fragments", "song/title question was answered with unrelated theory fragments")
+    if REPAIR_INSTRUCTION_RE.search(question) and sgf_primary and not quote_requested:
+        add_finding(findings, "fail", "repair_instruction_source_fragment_failure", "repair/instruction question was answered with unrelated source fragments")
 
 
 def normalize_chord_key(key: str) -> str:
@@ -1244,6 +1404,14 @@ def evaluate_quality_result(
         add_finding(findings, "warn", "inline_citation_marker", "answer contains inline numeric citation markers")
     if not fallback_expected(row) and not ACTION_RE.search(answer) and category_family(row) not in {"player/teacher bio", "subjective ranking"}:
         add_finding(findings, "warn", "low_actionable_teaching_value", "answer has low actionable teaching value")
+
+    evaluate_sgf_primary_answer_leakage(
+        row,
+        answer=answer,
+        warnings=warnings,
+        sources=sources,
+        findings=findings,
+    )
 
     legacy_failures = evaluate_answer(
         row["question"],

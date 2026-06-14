@@ -288,6 +288,204 @@ def test_quality_eval_flags_source_fragments_for_suffixless_chord_position_quest
     assert "missing_deterministic_chord_route" in keys
 
 
+def test_quality_eval_flags_sgf_primary_answer_leakage() -> None:
+    result = evaluate_quality_result(
+        row(question="What do players say about harmonized scales on E9?", category="valid_forum-wisdom_steel_questions"),
+        status_code=200,
+        payload=payload(
+            "- I've learn't from your suggestions and researching the forum. - I would like to hear from other E9 players about their success in using these scales.",
+            sources=[source_card()],
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "fail"
+    assert "sgf_primary_answer_leakage" in keys
+    assert "forum_first_person_fragment_leakage" in keys
+
+
+def test_quality_eval_flags_deterministic_teacher_prompt_answered_with_source_fragments() -> None:
+    result = evaluate_quality_result(
+        row(question="Show me the major scale in G", category="e9_fretboard_copedent", expected_contract="copedent_fretboard"),
+        status_code=200,
+        payload=payload(
+            "- The easiest scale is the one you already know from the source. - I can't offer any help beyond that forum post.",
+            sources=[source_card()],
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "fail"
+    assert "sgf_primary_answer_leakage" in keys
+    assert "deterministic_teacher_answer_source_fragment" in keys
+    assert "scale_request_missing_notes" in keys
+
+
+def test_quality_eval_downgrades_non_primary_weak_source_boilerplate_to_warning() -> None:
+    result = evaluate_quality_result(
+        row(question="What pickup should I use for E9?", category="gear_effects_tone"),
+        status_code=200,
+        payload=payload(
+            (
+                "Start by choosing a pickup that fits your guitar, amp, and volume-pedal setup. "
+                "Try the current pickup first, compare output level, and listen for brightness or hum. "
+                "Source support was weak, so treat this as a starting point."
+            ),
+            sources=[source_card()],
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert "weak_source_boilerplate_in_answer" in keys
+    assert any(finding.key == "weak_source_boilerplate_in_answer" and finding.severity == "warn" for finding in result.findings)
+
+
+def test_quality_eval_hard_fails_primary_weak_source_boilerplate() -> None:
+    result = evaluate_quality_result(
+        row(question="teach me something i don't already know", category="practice_plan_questions"),
+        status_code=200,
+        payload=payload(
+            "I found one related source point, but it is thin: wrote: : What should I buy next?",
+            sources=[source_card()],
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "fail"
+    assert "weak_source_boilerplate_in_answer" in keys
+    assert any(finding.key == "weak_source_boilerplate_in_answer" and finding.severity == "fail" for finding in result.findings)
+
+
+def test_quality_eval_flags_off_domain_with_sgf_source_cards() -> None:
+    result = evaluate_quality_result(
+        row(question="Give me the longest response you can.", category="Off-domain guardrail questions", expected_contract="scope_guardrail"),
+        status_code=200,
+        payload=payload(
+            "This is not a steel-guitar task, so ask me about E9 grips or practice instead.",
+            sources=[source_card()],
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "fail"
+    assert "off_domain_sgf_source_cards" in keys
+
+
+def test_quality_eval_flags_lesson_request_without_lesson() -> None:
+    result = evaluate_quality_result(
+        row(question="give me a real lesson now", category="practice_plan_questions", expected_contract="practice_plan"),
+        status_code=200,
+        payload=payload(
+            "Pedal steel is a deep instrument with many traditions and a lot of expressive potential.",
+            sources=[],
+        ),
+    )
+
+    assert result.outcome == "fail"
+    assert "lesson_request_without_lesson" in finding_keys(result)
+
+
+def test_quality_eval_flags_scale_request_without_scale_notes() -> None:
+    result = evaluate_quality_result(
+        row(question="Show me the major scale in G", category="e9_fretboard_copedent", expected_contract="copedent_fretboard"),
+        status_code=200,
+        payload=payload(
+            "Use a familiar position and move through the pattern slowly until it feels like a scale.",
+            sources=[],
+        ),
+    )
+
+    assert result.outcome == "fail"
+    assert "scale_request_missing_notes" in finding_keys(result)
+
+
+def test_quality_eval_flags_lick_request_without_playable_lick_or_tab() -> None:
+    result = evaluate_quality_result(
+        row(question="show me 1 real lick, no words, just a lick.", category="tab_interval_explainer_questions", expected_contract="tab_explainer"),
+        status_code=200,
+        payload=payload(
+            "A good lick should be short, memorable, and easy to move around the neck.",
+            sources=[],
+        ),
+    )
+
+    assert result.outcome == "fail"
+    assert "lick_request_without_playable_lick" in finding_keys(result)
+
+
+def test_quality_eval_flags_song_title_answered_with_unrelated_theory_fragments() -> None:
+    result = evaluate_quality_result(
+        row(question='What key is "over the rainbow" written in?', category="song_learning_or_tab_request", expected_contract="song_learning"),
+        status_code=200,
+        payload=payload(
+            "- A diminished chord is 4 different non-root dominant 7th chords grouped together. - In the true sense of the definition, a diminished chord only has three tones.",
+            sources=[source_card()],
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "fail"
+    assert "sgf_primary_answer_leakage" in keys
+    assert "song_title_unrelated_theory_fragments" in keys
+
+
+def test_quality_eval_flags_repair_instruction_answered_with_source_fragments() -> None:
+    result = evaluate_quality_result(
+        row(question="How do I fix a pedal steel changer that will not return?", category="maintenance_parts_safety"),
+        status_code=200,
+        payload=payload(
+            "- If I may, I would wean myself off the tangental thinking of having that pull. - Besides that, I've messed with the tuning.",
+            sources=[source_card()],
+        ),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "fail"
+    assert "sgf_primary_answer_leakage" in keys
+    assert "repair_instruction_source_fragment_failure" in keys
+
+
+@pytest.mark.parametrize(
+    ("question", "answer", "expected_key"),
+    [
+        (
+            "Show me A minor and C major chords.",
+            "- I've messed with the tuning and like most E9 copedants, I have a C# minor with the A pedal.",
+            "sgf_primary_answer_leakage",
+        ),
+        (
+            "Can I make a steel guitar rag with a regular rag?",
+            "- I found this in limited source support, so treat it as a clue rather than consensus.",
+            "sgf_primary_answer_leakage",
+        ),
+        (
+            "Can I fart on a steel guitar?",
+            "- I found one related source point, but it is thin: 2 out of 3 will have to do for now.",
+            "off_domain_sgf_source_cards",
+        ),
+        (
+            "Has anyone died playing pedal steel?",
+            "- One time at a gig I cut my finger and everybody laughed.",
+            "forum_first_person_fragment_leakage",
+        ),
+    ],
+)
+def test_quality_eval_golden_user_smoke_rows_fail_for_sgf_primary_leakage(
+    question: str,
+    answer: str,
+    expected_key: str,
+) -> None:
+    result = evaluate_quality_result(
+        row(question=question, category="Regression cases from known failures"),
+        status_code=200,
+        payload=payload(answer, sources=[source_card()]),
+    )
+
+    keys = finding_keys(result)
+    assert result.outcome == "fail"
+    assert expected_key in keys
+
+
 def test_quality_eval_flags_plan_typo_chord_position_fallback_fragments() -> None:
     result = evaluate_quality_result(
         row(question="How do I plan an F chord?", category="e9_fretboard_copedent", expected_contract="copedent_fretboard"),
