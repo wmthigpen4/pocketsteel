@@ -1331,6 +1331,7 @@ def test_answer_ui_styles_sections_and_bullets_as_readable_answer_content() -> N
     assert "sectionEl.classList.add(`is-${section.style}`);" in html
     assert "function shouldUseWideAnswerSection(section)" in html
     assert 'title.includes("why these families matter")' in html
+    assert 'title.includes("terminology note")' in html
     assert 'sectionEl.classList.add("is-wide");' in html
     assert 'title.className = "answer-section-title";' in html
     assert 'const list = document.createElement(ordered ? "ol" : "ul");' in html
@@ -1338,8 +1339,13 @@ def test_answer_ui_styles_sections_and_bullets_as_readable_answer_content() -> N
     assert 'list.className = "try-list";' in html
     assert ".answer-section.is-bullets" in html
     assert ".answer-section.is-wide" in html
+    assert ".answer-detail-grid:empty" in html
+    assert "display: none;" in html
     assert "grid-column: 1 / -1;" in html
+    assert "grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));" in html
     assert "columns: 2 280px;" in html
+    assert re.search(r"\.answer-lead\s*\{[^}]*max-width:\s*100%;", html, re.S)
+    assert re.search(r"\.answer-fretboard-description\s*\{[^}]*max-width:\s*100%;", html, re.S)
     assert re.search(r"@media \(max-width: 960px\)[\s\S]*?\.answer-section\.is-wide \.try-list\s*\{[^}]*columns:\s*1;", html)
     assert re.search(r"\.try-list\s*\{[^}]*font-size:\s*18px;", html, re.S)
     assert re.search(r"\.answer-section p\s*\{[^}]*font-size:\s*17px;", html, re.S)

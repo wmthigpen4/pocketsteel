@@ -1154,7 +1154,7 @@
     .answer-workspace {
       width: 100%;
       display: grid;
-      gap: 16px;
+      gap: 14px;
       align-items: start;
       color: var(--cream);
     }
@@ -1229,13 +1229,13 @@
     }
 
     .answer-card {
-      padding: 24px 26px;
+      padding: 22px 24px;
       border-radius: 17px;
     }
 
     .answer-lead {
-      margin: 13px 0 22px;
-      max-width: 800px;
+      margin: 12px 0 18px;
+      max-width: 100%;
       color: #fff1db;
       font-family: var(--font-lesson);
       font-size: clamp(22px, 2.4vw, 30px);
@@ -1246,10 +1246,14 @@
 
     .answer-detail-grid {
       display: grid;
-      grid-template-columns: 1.08fr 1fr 1fr;
-      gap: 18px;
-      padding-top: 18px;
+      grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
+      gap: 16px 18px;
+      padding-top: 16px;
       border-top: 1px solid rgba(244, 234, 214, 0.12);
+    }
+
+    .answer-detail-grid:empty {
+      display: none;
     }
 
     .answer-detail-grid.is-structured-answer {
@@ -1381,7 +1385,7 @@
     }
 
     .fretboard-card {
-      padding: 18px 20px 20px;
+      padding: 16px 18px 18px;
       border-radius: 17px;
     }
 
@@ -1424,7 +1428,7 @@
     }
 
     .answer-fretboard-description {
-      max-width: 760px;
+      max-width: 100%;
       margin: 0;
       color: rgba(244, 234, 214, 0.76);
       font-size: 15px;
@@ -3308,6 +3312,9 @@
     function shouldUseWideAnswerSection(section) {
       const title = String(section?.title || "").trim().toLowerCase();
       if (title.includes("why these families matter")) {
+        return true;
+      }
+      if (title.includes("terminology note")) {
         return true;
       }
       const bulletCount = section?.bullets?.length || section?.blocks?.reduce((count, block) => (
