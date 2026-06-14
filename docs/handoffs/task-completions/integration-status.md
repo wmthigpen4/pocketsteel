@@ -1,432 +1,288 @@
-# Integration Status Snapshot
+# Integration Status - Browser-Ready 05e8748 Reset Snapshot
 
 Generated for ChatGPT reset/guidance on branch `feature/answer-api`.
 
-## 1. Current overall project state
+## 1. Current Overall Project State
 
-- Current branch: `feature/answer-api`.
-- Current HEAD: `7be3ce0 Add invalid chord symbol guardrail`.
-- Current `git diff --check`: passed.
-- Current index: empty; nothing is staged.
-- Private preview remains protected by Cloudflare Access.
-- Latest full pytest reported by handoffs: `585 passed` from Lane 05 final red-team blocker fix.
-- Latest Lane 15 final red-team rerun did not rerun full pytest because it changed no runtime/QA files, but targeted checks passed.
-- Latest smoke status from handoffs:
-  - Protected-preview invalid-chord smoke: `17/17` prompts passed.
-  - Home-prompt hard failures: `18 -> 0 -> 0`.
-  - Product red-team hard failures: `28 -> 4 -> 0`.
-  - Final product red-team matrix: `51 total / 51 pass / 0 warn / 0 fail`.
-- Outside testers are no longer blocked by these covered QA suites, but still need a human burn-in/go-live decision.
-- New coordination/guidance work is present but uncommitted:
-  - expanded `AGENTS.md`
-  - `docs/llm-guidance/`
-  - `tests/answer_eval/`
-  - `docs/handoffs/task-completions/llm-guidance-bootstrap.md`
-  - `docs/handoffs/task-completions/answer-eval-question-bank.md`
-- `docs/handoffs/task-completions/integration-status.md` is a coordination artifact and should remain unstaged unless explicitly approved.
+- Current repository HEAD: `449cdee docs: record 05e8748 browser-ready verification`.
+- Verified protected-preview runtime HEAD: `05e8748 backend: replace quarantine fallback with teacher routes`.
+- Current app readiness: browser-ready for user smoke/use.
+- Exact user smoke URL: `https://app.steelguitarrag.com/`.
+- Root behavior: protected-preview root redirects to `/ui/steel-guitar-rag-mock.html` and was verified in an authenticated Cloudflare Access browser session.
+- Q&A unlock: passed after session initialization.
+- Do not reopen completed `05e8748` smoke work unless new evidence shows a real user-facing blocker.
+- Do not restart broad QA today unless a new real blocker is found.
 
-## 2. Recent tasks completed, grouped by active lane
+## 2. Recent Tasks Completed By Active Lane
 
-### 01 Repo Steward
+### Lane 01 Repo Steward
 
-- Committed deterministic answer-routing and QA work in `3bb0ded`.
-- Committed invalid chord-symbol guardrail in `7be3ce0`.
-- Refreshed integration status after protected-preview invalid-chord smoke and final red-team reruns.
-- Added uncommitted guidance bootstrap docs for future Codex/LLM lanes:
-  - repo protocol in `AGENTS.md`
-  - answer contract guidance
-  - eval rubric
-  - product memory
-  - known failures
+- Committed browser-ready verification docs:
+  - `449cdee docs: record 05e8748 browser-ready verification`
+  - committed `minimal-browser-verification-05e8748.md`
+  - committed `2026-06-14-1700-15-runtime-05e8748-automated-qa.md`
+  - committed `root-user-smoke-verification-after-resolver-fix-05e8748.md`
+- Refreshed final readiness docs:
+  - `docs/handoffs/task-completions/integration-status.md`
+  - `docs/handoffs/task-completions/final-readiness-refresh-05e8748.md`
+- Cleaned trailing whitespace in `docs/answer-eval-report.md` so `git diff --check` passes, but did not commit it because the file also contains a large parked generated-report rewrite.
 
-### 05 Backend / RAG Integration
+### Lane 05 Backend / RAG Integration
 
-- Committed:
-  - B9/E-lower fretboard payload
-  - beginner chord-concept deterministic routing
-  - practical advice intent-mode routing
-  - invalid chord-symbol guardrail
-- Latest uncommitted backend work from Lane 05 final red-team handoffs:
-  - A+B concept prompts route to deterministic pedal-combination explanation.
-  - `Where is a G chord on E9?` routes to deterministic G major positions with top-level fretboard payload.
-  - string-5-with-A-pedal interval questions answer from E9 string/pedal facts.
-  - full/partial voicing prompts ask for missing fret, strings/grip, pedals/levers, and chord/key before classification.
-  - broader home/red-team guardrails and practical coaching routes remain test-green in handoffs but not yet committed.
+- `05e8748 backend: replace quarantine fallback with teacher routes`
+  - replaced remaining quarantine/backstop leakage paths with teacher routes;
+  - fixed deterministic resolver issues for off-domain math bait, A-minor/B-flat parsing, string/fret/pedal diagnostics, Cmaj7/C7 where-to-play prompts, frustration prompts, repair prompts, and SGF quarantine regressions.
+- Prior supporting backend fixes remain committed:
+  - `24fd8e9 backend: fix repair fallback and chord classifier drift`
+  - `1f91ed2 backend: block sgf primary answer leakage`
+  - `c8b0d3b backend: quarantine sgf text from answer body`
+  - `fd89e2d backend: fix remaining broad qa p1 blockers`
+  - `a9eaa82 backend: fix broad qa chord and guardrail blockers`
+  - `2cdea8a backend: normalize natural chord intent prompts`
+  - `36ab10e backend: route chord qualities to fretboard answers`
+  - `658c069 backend: answer practical chord questions directly`
 
-### 06 UX/UI Design
+### Lane 06 UX/UI Design
 
-- Committed fretboard UI positions, reasons, tabs/colors/direct display, cache-bust behavior, and interactive selector work.
-- Uncommitted UI copy candidates remain:
-  - home-underneath copy
-  - home prompt quality pass
-- Minor UI polish note remains from protected-preview smoke:
-  - deterministic selector text can expose implementation-style metadata such as `full_chord_position`.
+- `6a5f978 ui: improve answer page spacing`
+- `28ae8f4 Fix answer card desktop section width`
+- Recent user-smoke UI/layout work is not the blocker now; app root/browser readiness is verified for runtime `05e8748`.
+- Known static/UI full-suite caveats remain backlog unless reclassified:
+  - landing source vs deployed static HTML mismatch;
+  - missing public fretboard background route in same-origin static smoke.
 
-### 12 Self-Hosted Deployment / Ops
+### Lane 12 Self-Hosted Deployment
 
-- Protected-preview invalid-chord smoke passed using a human-authenticated Cloudflare Access session.
-- No DNS, deployment, Tunnel, Access, `.wrangler`, private env, or server config changes are part of the current safe-to-stage candidates.
+- Root protected-preview verification after `05e8748`: passed.
+- Verified:
+  - runtime `/api/version` reported `05e8748`;
+  - root URL loaded through Cloudflare Access and redirected to `/ui/steel-guitar-rag-mock.html`;
+  - Q&A unlocked in the authenticated browser session;
+  - fallback `/ui/steel-guitar-rag-mock.html` worked;
+  - authenticated browser smoke passed.
 
-### 15 QA / Answer Eval
+### Lane 15 QA / Answer Eval
 
-- Product red-team matrix is clear at `51 pass / 0 warn / 0 fail`.
-- Home-prompt smoke is clear for hard failures at `34 pass / 5 warn / 0 fail`.
-- Recurring invalid-chord smoke coverage is handoff-green.
-- New uncommitted broad answer-eval planning fixture exists under `tests/answer_eval/`:
-  - `264` JSONL prompts across `12` buckets.
-  - Focused validation/tests reported `133 passed`.
-  - Not wired into runtime or CI yet.
+- Runtime `05e8748` automated QA:
+  - focused automated API fallback smoke: `36` prompts, `36` true pass / `0` true blockers;
+  - strict scorer SGF leakage gates: `0` hits across SGF primary leakage, forum-fragment leakage, weak-source primary wording, off-domain source cards, lesson/scale/lick hard gates, and deterministic teacher answer source fragments;
+  - focused pytest set: `376 passed`.
+- Minimal authenticated browser verification:
+  - six requested prompts passed;
+  - off-domain source cards absent;
+  - fretboard rendered where expected;
+  - Q&A unlocked after Cloudflare Access session initialization.
 
-### 18 Product / Architecture
+## 3. Files Changed Across Recent Tasks
 
-- Product/contract docs remain parked unless explicitly requested.
-- New `docs/llm-guidance/product-memory.md` captures product identity, promise, source layers, and current user copedent facts.
+Committed in `449cdee`:
 
-### 19 Visual Design / Assets
+- `docs/handoffs/task-completions/minimal-browser-verification-05e8748.md`
+- `docs/handoffs/task-completions/2026-06-14-1700-15-runtime-05e8748-automated-qa.md`
+- `docs/handoffs/task-completions/root-user-smoke-verification-after-resolver-fix-05e8748.md`
 
-- Visual/design assets and raw brand files remain parked.
-- Do not stage `Neon Sign/`, `public/`, `ui/brand/`, large `.mov`, `.aep`, autosaves, or design-working files without dedicated review.
+Currently changed by recent coordination/cleanup:
 
-## 3. Files changed across recent tasks
+- `docs/handoffs/task-completions/integration-status.md`
+- `docs/handoffs/task-completions/final-readiness-refresh-05e8748.md`
+- `docs/handoffs/task-completions/repo-steward-05e8748-browser-ready-docs-commit.md`
+- `docs/handoffs/task-completions/repo-steward-answer-eval-whitespace-cleanup.md`
+- `docs/answer-eval-report.md` (trailing whitespace cleaned, but content rewrite remains parked/uncommitted)
 
-### Committed baseline
+Broad parked dirty/untracked files remain outside the 05e8748 readiness scope, including docs/corpus/source metadata, root RAG scripts, landing/static/design assets, source-inbox metadata, historical handoffs/assets, `public/`, `ui/brand/`, `Neon Sign/`, and private-lesson helper scripts/data.
 
-- `7be3ce0 Add invalid chord symbol guardrail`
-  - `pocketsteel/curated_answers.py`
-  - `pocketsteel/fretboard_examples.py`
-  - `tests/test_api_search.py`
-  - `tests/test_fretboard_examples.py`
-  - `docs/handoffs/task-completions/2026-06-13-2352-05-invalid-chord-symbol-guardrail.md`
+## 4. Conflicts Or Overlapping Changes
 
-### Lane 05 backend red-team fixes
+- `docs/answer-eval-report.md` is the main overlap risk:
+  - whitespace has been cleaned;
+  - `git diff --check` passes;
+  - the file still contains a large generated report-content rewrite, so it is not safe to stage as a whitespace-only change.
+- `docs/handoffs/task-completions/integration-status.md` is a coordination artifact and should not be bundled with implementation commits.
+- Many untracked handoffs/assets are historical or parked; do not stage them without exact scope.
+- Static/UI full-suite caveats should not be mixed with backend answer/RAG commits.
 
-- `pocketsteel/answer_contracts.py`
-- `pocketsteel/curated_answers.py`
-- `pocketsteel/fretboard_examples.py`
-- `tests/test_api_search.py`
-- `docs/handoffs/task-completions/2026-06-14-0117-05-red-team-blocker-cluster-fix.md`
-- `docs/handoffs/task-completions/2026-06-14-0127-05-final-red-team-blockers.md`
+## 5. Schema / API / Component / Data Contract Changes
 
-### Lane 15 QA smoke/red-team tooling
+- No new `/api/answer` schema change is pending from this readiness refresh.
+- Runtime `05e8748` confirms answer routing behavior is ready without schema migration.
+- Protected-preview `/api/version` was used as the runtime identity source.
+- Root route behavior: `/` redirects to `/ui/steel-guitar-rag-mock.html`; this is verified and acceptable for current user smoke.
+- API fallback QA must remain labeled as API fallback, not browser smoke.
+- No corpus, Chroma/vector, embedding, source-inbox, scraping, auth-policy, DNS, or deployment contract changes are part of the current ready state.
 
-- `scripts/run_exploratory_answer_smoke.py`
-- `tests/test_exploratory_answer_smoke.py`
-- `scripts/run_product_red_team_smoke.py`
-- `tests/fixtures/product_red_team_prompt_matrix.json`
-- `tests/test_product_red_team_smoke.py`
-- `docs/handoffs/task-completions/2026-06-14-0032-15-recurring-invalid-chord-smoke-coverage.md`
-- `docs/handoffs/task-completions/2026-06-14-0052-15-home-prompt-answer-smoke.md`
-- `docs/handoffs/task-completions/2026-06-14-0101-15-product-red-team-matrix.md`
-- `docs/handoffs/task-completions/2026-06-14-0120-15-red-team-rerun-after-cluster-fix.md`
-- `docs/handoffs/task-completions/2026-06-14-0129-15-final-red-team-rerun.md`
+## 6. Tests Reported By Lane
 
-### LLM guidance and eval-planning docs
+### Lane 05 Backend
 
-- `AGENTS.md`
-- `docs/llm-guidance/answer-contract.md`
-- `docs/llm-guidance/eval-rubric.md`
-- `docs/llm-guidance/product-memory.md`
-- `docs/llm-guidance/known-failures.md`
-- `docs/handoffs/task-completions/llm-guidance-bootstrap.md`
-- `tests/answer_eval/README.md`
-- `tests/answer_eval/expected_behaviors.md`
-- `tests/answer_eval/question_bank.jsonl`
-- `docs/handoffs/task-completions/answer-eval-question-bank.md`
+- `05e8748` implementation handoff reported:
+  - focused answer/classifier/API tests: `364 passed`;
+  - contract/eval tests: `68 passed`;
+  - full pytest: `703 passed, 2 failed`.
+- The two full-suite failures were classified as unrelated static/UI failures:
+  - landing source vs deployed static HTML mismatch;
+  - missing public fretboard background route.
 
-### UI copy candidates
+### Lane 12 Deployment / Protected Preview
 
-- `ui/steel-guitar-rag-mock.html`
-- `tests/test_frontend_answer_ui.py`
-- `docs/handoffs/task-completions/2026-06-14-0031-06-home-underneath-rag-copy.md`
-- `docs/handoffs/task-completions/2026-06-14-0039-06-home-prompt-quality-pass.md`
+- Authenticated protected-preview browser smoke: passed.
+- `/api/version`: reported `05e8748`.
+- Root route: passed.
+- Fallback UI route: passed.
+- Unauthenticated local `/api/answer`: still returned `401`, as expected.
 
-### Parked dirty lanes
+### Lane 15 QA
 
-- Provenance/legal/source policy:
+- Focused automated API fallback smoke: `36` true pass / `0` true blockers.
+- Strict scorer:
+  - `295` questions;
+  - `152` pass, `33` warn, `110` fail by broad scorer;
+  - true blocker count for requested runtime QA scope: `0`;
+  - strict SGF leakage hard gates all `0`.
+- Focused pytest set: `376 passed`.
+- Minimal browser verification: six prompt smoke passed.
+
+### Lane 01 Repo Steward
+
+- `git diff --check`: passed after `docs/answer-eval-report.md` trailing whitespace cleanup.
+- Browser-ready handoff docs committed in `449cdee`.
+- Current coordination refresh not committed.
+
+## 7. Blockers Or Human Decisions Needed
+
+- User smoke/use is ready now at `https://app.steelguitarrag.com/`.
+- No human decision is needed before using the app.
+- Human decision is needed only if someone wants to commit parked docs/report/source/static work.
+- Do not treat broad strict eval failures as user-smoke blockers unless a future lane reclassifies a specific row as a true product failure.
+- Do not restart broad QA today unless a new real blocker appears.
+
+## 8. Dirty Worktree / Commit Readiness
+
+- Current worktree is broadly dirty with parked non-runtime work.
+- `git diff --check`: passes.
+- Runtime readiness remains based on committed runtime `05e8748` and committed verification docs, not the broad dirty worktree.
+- Dirty tracked files include:
   - `README.md`
   - `corpus_metadata/source_policies/README.md`
   - `corpus_metadata/source_registry.json`
+  - `deploy/landing/index.html`
+  - `docs/answer-eval-report.md`
+  - `docs/cloudflare-pages-landing.md`
   - `docs/copyright-provenance.md`
   - `docs/corpus-license-policy.md`
-  - related provenance/source-policy docs/scripts
-- Landing/Cloudflare Pages:
-  - `deploy/landing/index.html`
-  - `docs/cloudflare-pages-landing.md`
-  - `tests/test_public_landing_page.py`
-  - `ui/steel-guitar-rag-landing.html`
-  - `deploy/landing/brand/`
-  - `public/`
-  - `ui/brand/`
-- Source-inbox/private ingestion:
-  - `docs/source-inbox-inventory.md`
-  - `source-inbox/inventory.json`
-  - `source-inbox/provenance.json`
-  - private/source ingestion scripts and configs
-- Root RAG/build/chunk scripts:
-  - `rag_answer.py`
-  - `rag_build_clean_corpus.py`
-  - `rag_chunk_corpus.py`
-  - `rag_embed_chroma.py`
-  - `scripts/chunk_corpus.py`
-  - `tests/test_chunk_corpus.py`
-- Deployment/smoke docs/server:
   - `docs/current-commands.md`
-  - `scripts/serve_answer_smoke.py`
-
-## 4. Conflicts or overlapping changes
-
-- `pocketsteel/answer_contracts.py`, `pocketsteel/curated_answers.py`, `pocketsteel/fretboard_examples.py`, and `tests/test_api_search.py` overlap between multiple backend answer-routing lanes.
-- `scripts/run_product_red_team_smoke.py` overlaps between product red-team matrix tooling and QA matcher updates.
-- `scripts/run_exploratory_answer_smoke.py` and `tests/test_exploratory_answer_smoke.py` overlap between recurring invalid-chord and home-prompt smoke coverage.
-- `ui/steel-guitar-rag-mock.html` and `tests/test_frontend_answer_ui.py` overlap between home-underneath copy and home prompt quality pass.
-- `AGENTS.md`, `docs/llm-guidance/`, and `tests/answer_eval/` are docs/planning guidance and should not be mixed with runtime answer-routing commits.
-- Hunk-level staging may be needed if committing overlapping backend or UI lanes separately.
-- Do not use `git add .`.
-
-## 5. Schema/API/component/data contract changes
-
-- Public `/api/answer` response shape remains unchanged.
-- `response.fretboard.positions` remains the frontend fretboard visual contract.
-- Latest uncommitted backend behavior additions:
-  - expanded `scope_guardrail` for off-domain and large-output prompts
-  - expanded malformed chord guardrail for `Cmajorish` and `G/F`
-  - expanded home-prompt coaching modes
-  - expanded missing-context clarification
-  - concrete deterministic A+B-in-G movement answer with fretboard payload
-  - A+B concept deterministic explanation
-  - G-on-E9 deterministic visual routing
-  - string-5-with-A-pedal interval explanation
-  - full/partial voicing missing-context clarifier
-  - source-backed forum-wisdom summaries with source cards preserved where appropriate
-- New guidance/planning contracts:
-  - `docs/llm-guidance/answer-contract.md` defines the answer classification shape and allowed answer behaviors.
-  - `docs/llm-guidance/eval-rubric.md` defines pass/fail expectations.
-  - `tests/answer_eval/question_bank.jsonl` defines a planning fixture schema for broad answer-quality smoke.
-- No Chroma/vector, embedding, scraper, DNS, deployment, auth, or storage contract changed.
-
-## 6. Tests reported by each lane
-
-- Invalid chord guardrail commit:
-  - full pytest: `551 passed`
-  - `git diff --check`: passed
-- Protected-preview invalid chord smoke:
-  - all `17` protected-preview prompts passed
-  - targeted pytest: `206 passed` and `54 passed`
-  - `git diff --check`: passed
-- Lane 05 red-team blocker-cluster fix:
-  - `tests/test_api_search.py`: `182 passed`
-  - `tests/test_api_contract.py`: `4 passed`
-  - focused answer/eval group: `236 passed`
-  - `tests/test_fretboard_examples.py`: `39 passed`
-  - full pytest: `584 passed`
-  - `git diff --check`: passed
-- Lane 15 red-team rerun after cluster fix:
-  - home-prompt smoke: `39 total / 34 pass / 5 warn / 0 fail`
-  - product red-team smoke: `51 total / 47 pass / 0 warn / 4 fail`
-  - `tests/test_product_red_team_smoke.py -q`: `9 passed`
-  - full pytest: `584 passed`
-  - `git diff --check`: passed
-- Lane 05 final red-team blocker fix:
-  - focused four-blocker regression: `1 passed`
-  - focused answer/eval suite: `237 passed`
-  - fretboard suite: `39 passed`
-  - full pytest: `585 passed`
-  - `git diff --check`: passed
-- Lane 15 final red-team rerun:
-  - direct checks for the four former failures: all passed
-  - home-prompt smoke: `39 total / 34 pass / 5 warn / 0 fail`
-  - product red-team smoke: `51 total / 51 pass / 0 warn / 0 fail`
-  - answer/full eval subset: `50 passed`
-  - API/fretboard/contract subset: `226 passed`
-  - `git diff --check`: passed
-- LLM guidance bootstrap:
-  - `git diff --check`: passed
-  - no doc lint target found in `pyproject.toml`
-  - full pytest skipped because docs/config guidance only
-- Answer eval question bank:
-  - JSONL validation: `264` rows, `22` in each of `12` buckets
-  - focused pytest set: `133 passed`
-  - `git diff --check`: passed
-
-## 7. Blockers or human decisions needed
-
-- No remaining hard failures are reported for home-prompt smoke.
-- No remaining hard failures are reported for the product red-team matrix.
-- Outside testers are no longer blocked by these two QA suites, but a human burn-in/go-live decision is still required.
-- Human decision needed: approve commit splitting for backend, QA, UI, guidance docs, and eval-planning chunks.
-- Human decision needed: decide whether the new LLM guidance layer should be committed before or after backend/QA split commits.
-- Human decision needed: decide whether the broad `tests/answer_eval/` planning bank should be committed now or wait until a runner is planned.
-- Human decision needed: decide whether protected-preview smoke should rerun after backend/QA chunks are committed.
-
-## 8. Dirty worktree / commit readiness
-
-- Ready for scoped commit splitting with explicit approval:
-  - Lane 05 backend red-team fixes.
-  - Lane 15 recurring invalid-chord/home-prompt/product-red-team QA tooling.
-  - Lane 06 home-underneath/home prompt quality UI copy.
-  - LLM guidance docs.
-  - Answer-eval planning bank.
-- Needs exact-path/hunk staging because several files overlap across lanes.
-- Coordination artifacts should stay unstaged unless explicitly approved:
   - `docs/handoffs/task-completions/integration-status.md`
-  - Repo Steward refresh handoffs
-- Parked:
-  - provenance/legal/source policy
-  - landing/Cloudflare Pages and brand assets
-  - source-inbox/private ingestion
-  - root RAG/build/chunk scripts
-  - deployment/smoke docs/server changes
-  - visual/design docs/assets
+  - `docs/handoffs/task-completions/qa-no-op-answer-intent-classifier-source-backed-fix.md`
+  - `docs/source-inbox-inventory.md`
+  - root RAG scripts
+  - `source-inbox/inventory.json`
+- Many untracked historical handoffs/assets and design/source/corpus helper files remain parked.
 
-## 9. Which files are safe to stage
+## 9. Files Safe To Stage
 
-Exact paths only, with explicit approval:
+Safe only if a docs-only coordination commit is explicitly requested:
 
-- Lane 05 backend red-team fixes:
-  - `pocketsteel/answer_contracts.py`
-  - `pocketsteel/curated_answers.py`
-  - `pocketsteel/fretboard_examples.py`
-  - `tests/test_api_search.py`
-  - `docs/handoffs/task-completions/2026-06-14-0117-05-red-team-blocker-cluster-fix.md`
-  - `docs/handoffs/task-completions/2026-06-14-0127-05-final-red-team-blockers.md`
-- Lane 15 QA smoke/red-team tooling:
-  - `scripts/run_exploratory_answer_smoke.py`
-  - `tests/test_exploratory_answer_smoke.py`
-  - `scripts/run_product_red_team_smoke.py`
-  - `tests/fixtures/product_red_team_prompt_matrix.json`
-  - `tests/test_product_red_team_smoke.py`
-  - `docs/handoffs/task-completions/2026-06-14-0032-15-recurring-invalid-chord-smoke-coverage.md`
-  - `docs/handoffs/task-completions/2026-06-14-0052-15-home-prompt-answer-smoke.md`
-  - `docs/handoffs/task-completions/2026-06-14-0101-15-product-red-team-matrix.md`
-  - `docs/handoffs/task-completions/2026-06-14-0120-15-red-team-rerun-after-cluster-fix.md`
-  - `docs/handoffs/task-completions/2026-06-14-0129-15-final-red-team-rerun.md`
-- Lane 06 UI copy:
-  - `ui/steel-guitar-rag-mock.html`
-  - `tests/test_frontend_answer_ui.py`
-  - `docs/handoffs/task-completions/2026-06-14-0031-06-home-underneath-rag-copy.md`
-  - `docs/handoffs/task-completions/2026-06-14-0039-06-home-prompt-quality-pass.md`
-- LLM guidance layer:
-  - `AGENTS.md`
-  - `docs/llm-guidance/answer-contract.md`
-  - `docs/llm-guidance/eval-rubric.md`
-  - `docs/llm-guidance/product-memory.md`
-  - `docs/llm-guidance/known-failures.md`
-  - `docs/handoffs/task-completions/llm-guidance-bootstrap.md`
-- Answer-eval planning bank:
-  - `tests/answer_eval/README.md`
-  - `tests/answer_eval/expected_behaviors.md`
-  - `tests/answer_eval/question_bank.jsonl`
-  - `docs/handoffs/task-completions/answer-eval-question-bank.md`
-- Coordination-only, only with explicit approval:
-  - `docs/handoffs/task-completions/integration-status.md`
+- `docs/handoffs/task-completions/integration-status.md`
+- `docs/handoffs/task-completions/final-readiness-refresh-05e8748.md`
+- `docs/handoffs/task-completions/repo-steward-05e8748-browser-ready-docs-commit.md`
+- `docs/handoffs/task-completions/repo-steward-answer-eval-whitespace-cleanup.md`
 
-## 10. Which files should remain unstaged
+Safe only if explicitly approving the generated report-content rewrite as its own docs/report slice:
 
-- `corpus-private/`, `corpus-v2/`, Chroma/vector stores, embeddings, DBs, logs, generated reports.
-- `/tmp` smoke/eval reports.
-- Raw `source-inbox` content and `source-inbox/provenance.json`.
-- `.wrangler/`, private env files, deployment secrets, DNS/deploy artifacts.
-- `Neon Sign/`, `public/`, `ui/brand/`, `deploy/landing/brand/`, large `.mov`, `.aep`, autosaves, and design-working files.
-- Provenance/legal/source-policy files unless explicitly requested.
-- Root RAG/build scripts unless explicitly requested.
-- Landing/Cloudflare Pages files unless explicitly requested.
-- Any broad dirty lane not listed in the exact safe-to-stage paths above.
+- `docs/answer-eval-report.md`
 
-## 11. Recommended next tasks by lane
+## 10. Files That Should Remain Unstaged
 
-- 01 Repo Steward:
-  - Split and commit the test-green backend, QA, UI, guidance, and eval-planning chunks using exact-path/hunk staging.
-- 15 QA / Answer Eval:
-  - Decide whether to wire `tests/answer_eval/question_bank.jsonl` into a local-only evaluator.
-- 12 Self-Hosted Deployment / Ops:
-  - After commit splitting, rerun protected-preview smoke if the human wants preview confidence before outside testers.
-- 06 UX/UI Design:
-  - Optionally handle selector metadata polish after commit splitting.
+Keep unstaged unless a later exact lane approves them:
 
-## 12. Exact Codex prompts for the next recommended tasks
+- implementation/runtime files not part of a current scoped task;
+- root RAG/build scripts;
+- corpus metadata/source policy files;
+- `source-inbox/` inventory/provenance files;
+- `public/`, `ui/brand/`, `Neon Sign/`, raw/generated design assets;
+- deployment/static files such as `deploy/landing/index.html` unless a Lane 06/static task owns them;
+- broad historical handoffs/assets;
+- `docs/answer-eval-report.md` unless committing the full generated report-content update is explicitly approved.
 
-### Lane 01 Repo Steward - split current safe commits
+## 11. Recommended Next Tasks By Lane
+
+- Primary action: use the app at `https://app.steelguitarrag.com/`.
+- Lane 12: no action unless runtime becomes unavailable or a new protected-preview issue appears.
+- Lane 15: optional scorer calibration backlog only; do not run broad QA today unless a new real blocker appears.
+- Lane 06: optional static/full-suite cleanup only if someone wants full-suite cleanliness.
+- Lane 01: optional docs-only coordination commit if desired.
+- Lane 05: only open new backend work for a new true user-facing blocker.
+
+## 12. Exact Codex Prompts For Next Recommended Tasks
+
+### Primary User Smoke / Use
 
 ```text
-LANE: 01 Repo Steward
-REASONING: HIGH
-Branch: feature/answer-api
-
-Split and commit the cleared backend/QA/UI/guidance chunks documented in docs/handoffs/task-completions/integration-status.md.
-
-Do not use git add .
-Do not stage corpus-private/, corpus-v2/, Chroma/vector stores, embeddings, source-inbox raw/provenance files, generated reports, .wrangler/, public/, ui/brand/, Neon Sign/, DNS/deploy/secrets files, provenance/legal files, root RAG/build scripts, landing/Cloudflare Pages files, or unrelated dirty lanes.
-
-Recommended order:
-1. Lane 05 backend red-team fixes.
-2. Lane 15 QA smoke/red-team tooling.
-3. Lane 06 UI copy changes.
-4. LLM guidance layer docs.
-5. Answer-eval planning bank.
-6. Coordination-doc commit only if explicitly approved.
-
-Before each commit:
-git diff --cached --name-only
-git diff --cached --check
-
-After all commits:
-.venv/bin/python -m pytest
-git diff --check
-
-Expected handoff:
-docs/handoffs/task-completions/2026-06-13-HHMM-01-guidance-and-final-red-team-commit-split.md
+Use https://app.steelguitarrag.com/ for authenticated protected-preview user smoke. If a new issue appears, report the exact prompt, expected behavior, actual browser behavior, and whether the issue is visible in the UI or only in API output. Do not reopen completed 05e8748 smoke work unless new evidence contradicts the committed handoffs.
 ```
 
-### Lane 15 QA / Answer Eval - wire planning bank
+### Optional Lane 15 Scorer Calibration
 
 ```text
 LANE: 15 QA / Answer Eval
-REASONING: MEDIUM
+REASONING: LOW
 Branch: feature/answer-api
 
-Plan a local-only evaluator for tests/answer_eval/question_bank.jsonl without changing runtime answer behavior.
+Calibrate scorer false positives from the 05e8748 runtime QA run without changing backend product behavior.
 
-Hard exclusions:
-Do not touch Chroma/vector stores, embeddings, corpus-private/, corpus-v2/, source-inbox raw/provenance files, generated reports, .wrangler/, DNS/deploy/secrets files, provenance/legal files, public/, ui/brand/, Neon Sign/, or unrelated dirty lanes.
+Read:
+- docs/handoffs/task-completions/2026-06-14-1700-15-runtime-05e8748-automated-qa.md
+- scripts/run_full_answer_quality_eval.py
+- tests/test_full_answer_quality_eval.py
 
-Inspect:
-tests/answer_eval/README.md
-tests/answer_eval/expected_behaviors.md
-tests/answer_eval/question_bank.jsonl
-scripts/run_answer_eval.py
-scripts/run_full_answer_quality_eval.py
-scripts/run_product_red_team_smoke.py
+Focus only on scorer/eval noise:
+- music-theory notation such as I-to-IV being mistaken for first-person forum fragments;
+- direct capability caveats being mistaken for raw SGF/forum text;
+- joke/song-title prompts where the scorer overstates unrelated theory fragments.
 
-Stop after a plan unless implementation is explicitly approved.
+Do not modify backend answer behavior, UI, deployment, auth, corpus, Chroma/vector stores, embeddings, source-inbox, scraping, DNS, secrets, or visual assets.
 
-Expected handoff:
-docs/handoffs/task-completions/2026-06-13-HHMM-15-answer-eval-bank-runner-plan.md
+Run focused scorer tests and write a handoff. Do not commit unless Repo Steward is explicitly invoked.
 ```
 
-### Lane 12 Self-Hosted Deployment - protected-preview smoke after commit split
+### Optional Lane 06 Static / Full-Suite Cleanup
 
 ```text
-LANE: 12 Self-Hosted Deployment
+LANE: 06 UX/UI Design
 REASONING: MEDIUM
 Branch: feature/answer-api
 
-After Repo Steward commits the backend/QA chunks, rerun authenticated protected-preview smoke for invalid chords, home prompts, and product red-team sentinel prompts.
+Fix only the two unrelated static/UI full-suite failures if full-suite cleanliness is desired:
+- landing source vs deployed static HTML mismatch;
+- missing public fretboard background route in same-origin static smoke.
 
-Hard exclusions:
-Do not deploy, change DNS, modify auth, touch Chroma/vector stores, embeddings, corpus-private/, corpus-v2/, source-inbox raw files, provenance/legal files, .wrangler/, public/, ui/brand/, Neon Sign/, or design assets unless explicitly approved.
+Read:
+- AGENTS.md
+- tests/test_public_landing_page.py
+- tests/test_same_origin_smoke_server.py
+- deploy/landing/index.html
+- relevant public/static files
 
-Run only smoke/read-only checks against the approved preview target.
+Do not touch backend answer routing, /api/answer schema, corpus, Chroma/vector stores, embeddings, source-inbox, scraping, DNS, auth policy, secrets, or unrelated handoffs.
 
-Expected handoff:
-docs/handoffs/task-completions/2026-06-13-HHMM-12-protected-preview-final-red-team-smoke.md
+Run the two focused static tests and any minimal related frontend/static checks. Write a handoff naming exact files/hunks for Repo Steward.
 ```
 
-Recommended immediate next step: Repo Steward should split and commit the safe docs/backend/QA/UI chunks with exact-path/hunk review, starting with the backend red-team fixes or the docs-only LLM guidance layer depending on human priority.
+### Optional Lane 01 Docs Coordination Commit
 
-Commit readiness: partially ready. Several chunks are handoff-green and safe with exact staging, but the worktree is broad and dirty, so `git add .` is not acceptable.
+```text
+LANE: 01 Repo Steward
+REASONING: LOW
+Branch: feature/answer-api
 
-Whether browser smoke is needed: not before commit splitting. Protected-preview smoke is recommended after backend/QA commits if the human wants preview confidence before outside testers.
+Commit only the docs-only final readiness coordination refresh if desired.
 
-Whether answer eval is needed: not for this docs-only refresh. The answer-eval planning bank needs a separate Lane 15 decision before wiring.
+Candidate files:
+- docs/handoffs/task-completions/integration-status.md
+- docs/handoffs/task-completions/final-readiness-refresh-05e8748.md
+- docs/handoffs/task-completions/repo-steward-05e8748-browser-ready-docs-commit.md
+- docs/handoffs/task-completions/repo-steward-answer-eval-whitespace-cleanup.md
 
-Whether product/design work is safe to start: safe to plan, but commit splitting should happen first to reduce worktree risk.
+Do not stage docs/answer-eval-report.md unless separately approving the full generated report-content rewrite. Do not stage implementation files, UI files, deployment/auth/DNS files, corpus/source-inbox/Chroma/embedding data, design assets, or unrelated handoffs.
+
+Run git diff --cached --check, git diff --cached --name-only, and git diff --cached before committing.
+```
