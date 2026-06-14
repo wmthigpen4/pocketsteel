@@ -110,12 +110,13 @@ def _curated_answer_should_be_source_free(intent: str) -> bool:
 def _answer_intent_guardrail_answer(domain: str) -> str:
     if domain == "unsafe_or_impossible":
         return (
-            "That request is outside Steel Guitar RAG’s scope, and it may be unsafe or too large to display usefully. "
+            "This app is focused on pedal steel guitar. That request is outside Steel Guitar RAG’s scope, "
+            "and it may be unsafe or too large to display usefully. "
             "Try asking about E9 positions, grips, pedals/levers, tone, gear, blocking, bar movement, practice plans, "
             "or steel-guitar forum wisdom."
         )
     return (
-        "That request is outside Steel Guitar RAG’s scope. "
+        "This app is focused on pedal steel guitar. That request is outside Steel Guitar RAG’s scope. "
         "Try asking about E9 positions, grips, pedals/levers, tone, gear, blocking, bar movement, practice plans, "
         "or steel-guitar forum wisdom."
     )

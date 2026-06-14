@@ -59,6 +59,7 @@ def _normalize_chord_quality(quality: str) -> str:
 def basic_chord_theory_request_for_question(question: str) -> BasicChordTheoryRequest | None:
     q = normalize_chord_words_in_text(re.sub(r"\s+", " ", question or "").strip().lower())
     q = re.sub(r"[?!.,;:/]+$", "", q).strip()
+    q = re.sub(r"(?:[?!.,;:]+|\s+and)\s+where\s+(?:do|can|should)\s+i\s+play\s+it$", "", q).strip()
     if not q:
         return None
     root_pattern = r"(?P<root>[a-g](?:#|b)?)"
@@ -117,50 +118,72 @@ def basic_chord_theory_request_for_question(question: str) -> BasicChordTheoryRe
 
 
 def major_triad_spelling_for_answer(root: str) -> str:
-    key = normalize_key(root)
+    key = display_key_for_answer(root)
     preferred = {
         "C": "C-E-G",
         "C#": "C#-E#-G#",
+        "Db": "Db-F-Ab",
         "D": "D-F#-A",
         "D#": "D#-F##-A#",
+        "Eb": "Eb-G-Bb",
         "E": "E-G#-B",
         "F": "F-A-C",
         "F#": "F#-A#-C#",
+        "Gb": "Gb-Bb-Db",
         "G": "G-B-D",
         "G#": "G#-B#-D#",
+        "Ab": "Ab-C-Eb",
         "A": "A-C#-E",
         "A#": "A#-C##-E#",
+        "Bb": "Bb-D-F",
         "B": "B-D#-F#",
     }
     return preferred.get(key, f"{key}-{transpose(key, 4)}-{transpose(key, 7)}")
 
 
 def major_seventh_spelling_for_answer(root: str) -> str:
-    key = normalize_key(root)
+    key = display_key_for_answer(root)
     preferred = {
         "C": "C-E-G-B",
+        "Db": "Db-F-Ab-C",
         "D": "D-F#-A-C#",
+        "Eb": "Eb-G-Bb-D",
         "E": "E-G#-B-D#",
         "F": "F-A-C-E",
+        "Gb": "Gb-Bb-Db-F",
         "G": "G-B-D-F#",
+        "Ab": "Ab-C-Eb-G",
         "A": "A-C#-E-G#",
+        "Bb": "Bb-D-F-A",
         "B": "B-D#-F#-A#",
     }
     return preferred.get(key, f"{major_triad_spelling_for_answer(key)}-{transpose(key, 11)}")
 
 
 def dominant_seventh_spelling_for_answer(root: str) -> str:
-    key = normalize_key(root)
+    key = display_key_for_answer(root)
     preferred = {
         "C": "C-E-G-Bb",
+        "Db": "Db-F-Ab-Cb",
         "D": "D-F#-A-C",
+        "Eb": "Eb-G-Bb-Db",
         "E": "E-G#-B-D",
         "F": "F-A-C-Eb",
+        "Gb": "Gb-Bb-Db-Fb",
         "G": "G-B-D-F",
+        "Ab": "Ab-C-Eb-Gb",
         "A": "A-C#-E-G",
+        "Bb": "Bb-D-F-Ab",
         "B": "B-D#-F#-A",
     }
     return preferred.get(key, f"{major_triad_spelling_for_answer(key)}-{transpose(key, 10)}")
+
+
+def display_key_for_answer(root: str) -> str:
+    requested = normalize_requested_root(root)
+    if requested.endswith("b") and requested not in {"Cb", "Fb"}:
+        return requested
+    return normalize_key(requested)
 
 
 def suspended_spelling_for_answer(root: str, quality: str) -> tuple[str, str]:
@@ -174,7 +197,7 @@ def basic_chord_theory_answer_for_question(question: str) -> str | None:
     request = basic_chord_theory_request_for_question(question)
     if request is None:
         return None
-    key = request.normalized_key
+    key = display_key_for_answer(request.requested_root)
     quality = request.quality
     if quality == "major":
         return (

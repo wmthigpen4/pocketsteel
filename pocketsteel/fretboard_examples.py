@@ -109,6 +109,18 @@ class ELowerGripRequest:
 
 
 @dataclass(frozen=True)
+class FretStringPedalRequest:
+    fret: int
+    strings: tuple[int, ...]
+    pedals: tuple[str, ...]
+    levers: tuple[str, ...]
+
+    @property
+    def controls(self) -> tuple[str, ...]:
+        return self.pedals + self.levers
+
+
+@dataclass(frozen=True)
 class FunctionalPocketRequest:
     key: str
     function: str
@@ -1824,6 +1836,40 @@ def mixed_a_minor_c_major_payload_for_question(question: str) -> dict | None:
     ).to_payload()
 
 
+def mixed_a_minor_bflat_major_question(question: str) -> bool:
+    q = normalize_chord_intent_text(question)
+    return bool(
+        re.search(r"\ba\s+minor\b", q)
+        and re.search(r"\bbb(?:\s+major)?\b", q)
+        and re.search(r"\b(?:show|where|play|chords?|positions?|fretboard)\b", q)
+    )
+
+
+def mixed_a_minor_bflat_major_payload_for_question(question: str) -> dict | None:
+    if not mixed_a_minor_bflat_major_question(question):
+        return None
+    positions = list(minor_positions("A").positions)
+    positions.extend(major_positions("Bb").positions)
+    payload = FretboardVisualizationPayload(
+        title="A minor and Bb major positions on E9",
+        subtitle="Combined pitch-validated A minor and Bb major positions.",
+        key="A minor / Bb major",
+        positions=tuple(positions),
+    ).to_payload()
+    return payload
+
+
+def mixed_a_minor_bflat_major_answer_for_question(question: str) -> str | None:
+    if not mixed_a_minor_bflat_major_question(question):
+        return None
+    return (
+        "I’m reading that as A minor and B-flat major.\n\n"
+        "A minor = A-C-E: root, minor 3rd, and perfect 5th.\n\n"
+        "B-flat major = Bb-D-F: root, major 3rd, and perfect 5th.\n\n"
+        "The fretboard view can show supported E9 locations for those two sounds. Use the labels to keep the minor sound and the B-flat major sound separate."
+    )
+
+
 def multi_chord_answer_for_question(question: str) -> str | None:
     request = multi_chord_location_request_for_question(question)
     if request is None:
@@ -1853,6 +1899,198 @@ def multi_chord_answer_for_question(question: str) -> str | None:
         ]
     )
     return "\n".join(lines)
+
+
+def fret_string_pedal_request_for_question(question: str) -> FretStringPedalRequest | None:
+    q = re.sub(r"\s+", " ", (question or "").strip().lower())
+    if not q or "string" not in q or "fret" not in q:
+        return None
+    strings_match = re.search(r"\bstrings?\s+(?P<strings>\d{1,2}(?:\s*(?:-|,|and|\s)\s*\d{1,2})*)\b", q)
+    if not strings_match:
+        return None
+    strings = parse_grip_strings(strings_match.group("strings"))
+    if strings is None:
+        return None
+    fret_match = re.search(r"\b(?:on|at)\s+(?:the\s+)?(?P<fret>\d{1,2})(?:st|nd|rd|th)?\s+fret\b", q) or re.search(
+        r"\bfret\s+(?P<fret>\d{1,2})\b", q
+    )
+    if not fret_match:
+        return None
+    fret = int(fret_match.group("fret"))
+    if fret < 0 or fret > 24:
+        return None
+    pedals: list[str] = []
+    levers: list[str] = []
+    if re.search(r"\ba\s*(?:\+|&)\s*b\b|\ba\s+and\s+b\b|\ba\s+pedal\b.*\bb\s+pedal\b|\bb\s+pedal\b.*\ba\s+pedal\b", q):
+        pedals.extend(["A", "B"])
+    else:
+        if re.search(r"\ba\s+pedal\b|\bpedal\s+a\b|\ba\s+engaged\b", q):
+            pedals.append("A")
+        if re.search(r"\bb\s+pedal\b|\bpedal\s+b\b|\bb\s+engaged\b", q):
+            pedals.append("B")
+    if re.search(r"\bb\s*(?:\+|&)\s*c\b|\bb\s+and\s+c\b", q):
+        for pedal in ("B", "C"):
+            if pedal not in pedals:
+                pedals.append(pedal)
+    elif re.search(r"\bc\s+pedal\b|\bpedal\s+c\b|\bc\s+engaged\b", q):
+        pedals.append("C")
+    if re.search(r"\be[-\s]?lower\b|\be\s+lowered\b|\blower(?:ed)?\s+e\b", q):
+        levers.append("E")
+    if re.search(r"\bf\s+lever\b|\be[-\s]?raise\b", q):
+        levers.append("F")
+    if re.search(r"\bvertical\b|\blkv\b|\bbb\s+lever\b", q):
+        levers.append("V")
+    return FretStringPedalRequest(
+        fret=fret,
+        strings=strings,
+        pedals=tuple(dict.fromkeys(pedals)),
+        levers=tuple(dict.fromkeys(levers)),
+    )
+
+
+def classify_notes_as_simple_chord(notes: dict[str, str]) -> dict[str, object]:
+    candidates: list[dict[str, object]] = []
+    for root in CANONICAL_NOTES.values():
+        for quality in ("major", "minor", "dominant7", "minor7"):
+            classification = classify_voicing(root, quality, notes)
+            if classification is None:
+                continue
+            present = set(classification["intervals"].values())  # type: ignore[union-attr]
+            full_bonus = 100 if classification["is_full_chord"] else 0
+            quality_bonus = {"major": 40, "minor": 40, "dominant7": 20, "minor7": 20}[quality]
+            candidates.append(
+                {
+                    "root": root,
+                    "quality": quality,
+                    "score": full_bonus + quality_bonus + len(present),
+                    **classification,
+                }
+            )
+    if not candidates:
+        return {"root": "", "quality": "unknown", "intervals": {}, "omitted_intervals": (), "is_full_chord": False}
+    return sorted(candidates, key=lambda candidate: int(candidate["score"]), reverse=True)[0]
+
+
+def diagnostic_root_display(root: str, quality: str) -> tuple[str, str]:
+    if root == "D#" and quality == "major":
+        return "Eb", "Eb major, also called D# major enharmonically"
+    return root, f"{root} {quality_label(quality) if quality in CHORD_INTERVALS else quality}"
+
+
+def diagnostic_spelling(root: str, quality: str) -> str:
+    if root == "D#" and quality == "major":
+        return "Eb-G-Bb"
+    intervals = CHORD_INTERVALS.get(CHORD_ALIASES.get(quality, quality), ())
+    if not intervals:
+        return ""
+    semitone_offsets = {"1": 0, "b3": 3, "3": 4, "5": 7, "b7": 10, "2/9": 2}
+    return "-".join(transpose(root, semitone_offsets[interval]) for interval in intervals if interval in semitone_offsets)
+
+
+def diagnostic_controls_text(request: FretStringPedalRequest) -> str:
+    if request.pedals == ("B", "C") and not request.levers:
+        return "B+C pedals"
+    if request.pedals == ("A", "B") and not request.levers:
+        return "A+B pedals"
+    if len(request.pedals) == 1 and not request.levers:
+        return f"{request.pedals[0]} pedal"
+    return " + ".join((*request.pedals, *request.levers)) or "no pedals or levers"
+
+
+def fret_string_pedal_position(request: FretStringPedalRequest) -> FretboardPosition:
+    notes = resolve_grip_notes(request.fret, request.strings, request.controls)
+    classification = classify_notes_as_simple_chord(notes)
+    root = str(classification.get("root") or "unknown")
+    quality = str(classification.get("quality") or "unknown")
+    intervals = classification.get("intervals") if isinstance(classification.get("intervals"), dict) else {}
+    omitted = classification.get("omitted_intervals") if isinstance(classification.get("omitted_intervals"), tuple) else tuple()
+    added = classification.get("added_intervals") if isinstance(classification.get("added_intervals"), tuple) else tuple()
+    _, display_label = diagnostic_root_display(root, quality)
+    controls_text = diagnostic_controls_text(request)
+    return FretboardPosition(
+        id=f"diagnostic-{grip_label(request.strings)}-{request.fret}-{'-'.join(request.controls) or 'open'}".lower().replace("+", "plus"),
+        label=display_label,
+        root=root,
+        quality=CHORD_ALIASES.get(quality, quality),
+        position_kind="full_chord_position" if bool(classification.get("is_full_chord")) else "partial_chord_grip",
+        fret=request.fret,
+        strings=request.strings,
+        grip=grip_label(request.strings),
+        pedals=request.pedals,
+        levers=request.levers,
+        color="primary",
+        role=f"Pitch check for strings {grip_label(request.strings)} at fret {request.fret}",
+        function="diagnostic",
+        key_context=root,
+        notes=notes,
+        intervals=intervals,  # type: ignore[arg-type]
+        explanation=f"Strings {grip_label(request.strings)} at fret {request.fret} with {controls_text} resolve by pitch math to {display_label}.",
+        family="fret_string_pedal_diagnostic",
+        tier="reference",
+        color_role="primary",
+        visible_by_default=True,
+        sort_order=10,
+        omitted_intervals=omitted,  # type: ignore[arg-type]
+        added_intervals=added,  # type: ignore[arg-type]
+        is_full_chord=bool(classification.get("is_full_chord")),
+        is_partial=bool(classification.get("is_partial")),
+        is_rootless=bool(classification.get("is_rootless")),
+        why_use_it="Use this card as a direct pitch check for the exact strings, fret, and controls in the question.",
+        validation_status="pitch_validated",
+    )
+
+
+def fret_string_pedal_answer_for_question(question: str) -> str | None:
+    request = fret_string_pedal_request_for_question(question)
+    if request is None:
+        return None
+    position = fret_string_pedal_position(request)
+    notes = position.notes or {}
+    if position.root == "D#" and position.quality == "major":
+        display_notes = {"D#": "Eb/D#", "A#": "Bb/A#", "G": "G"}
+    else:
+        display_notes = {}
+    note_parts = [f"string {string} = {display_notes.get(note, note)}" for string, note in notes.items()]
+    note_text = "; ".join(note_parts)
+    display_root, display_label = diagnostic_root_display(position.root, position.quality)
+    spelling = diagnostic_spelling(position.root, position.quality)
+    controls_text = diagnostic_controls_text(request)
+    voiced = "-".join(notes[str(string)] for string in request.strings)
+    if position.root == "A" and position.quality == "minor":
+        return (
+            f"You get A minor: A-C-E, likely voiced as {voiced} across strings {grip_label(request.strings)}.\n\n"
+            f"String check at the {fret_label(request.fret)} with {controls_text}:\n"
+            + "\n".join(f"- {part}" for part in note_parts)
+        )
+    if position.root == "D#" and position.quality == "major":
+        return (
+            "You get Eb major, also called D# major enharmonically: Eb-G-Bb.\n\n"
+            f"String check at the {fret_label(request.fret)} with {controls_text}:\n"
+            + "\n".join(f"- {part}" for part in note_parts)
+        )
+    if spelling:
+        return (
+            f"You get {display_label}: {spelling}.\n\n"
+            f"String check at the {fret_label(request.fret)} with {controls_text}:\n"
+            + "\n".join(f"- {part}" for part in note_parts)
+        )
+    return (
+        f"Those strings at fret {request.fret} with {controls_text} give these notes: {note_text}.\n\n"
+        "I do not classify that exact grip as a simple major, minor, dominant, or minor-7 chord yet."
+    )
+
+
+def fret_string_pedal_payload_for_question(question: str) -> dict | None:
+    request = fret_string_pedal_request_for_question(question)
+    if request is None:
+        return None
+    position = fret_string_pedal_position(request)
+    return FretboardVisualizationPayload(
+        title=f"{position.label} pitch check on E9",
+        subtitle=f"Strings {grip_label(request.strings)} at fret {request.fret}.",
+        key=position.root,
+        positions=(position,),
+    ).to_payload()
 
 
 def function_chord_payload_for_question(question: str) -> dict | None:
@@ -2372,6 +2610,9 @@ def fretboard_payload_for_question(question: str) -> dict | None:
     q = normalize_chord_intent_text(question)
     if not q:
         return None
+    diagnostic_payload = fret_string_pedal_payload_for_question(q)
+    if diagnostic_payload is not None:
+        return diagnostic_payload
     if re.search(r"\be[- ]?lower\b.*\bminor\s+sound\b", q):
         return get_fretboard_examples("minor_positions", "G#")
     if re.search(r"\be\s+minor\s+pocket\b", q):
@@ -2383,6 +2624,9 @@ def fretboard_payload_for_question(question: str) -> dict | None:
     mixed_a_minor_c_major_payload = mixed_a_minor_c_major_payload_for_question(q)
     if mixed_a_minor_c_major_payload is not None:
         return mixed_a_minor_c_major_payload
+    mixed_a_minor_bflat_major_payload = mixed_a_minor_bflat_major_payload_for_question(q)
+    if mixed_a_minor_bflat_major_payload is not None:
+        return mixed_a_minor_bflat_major_payload
     multi_chord_payload = multi_chord_payload_for_question(q)
     if multi_chord_payload is not None:
         return multi_chord_payload
@@ -2547,12 +2791,18 @@ def unsupported_chord_location_request_for_question(question: str) -> Unsupporte
         r"show me places to play",
         r"show me",
         r"what frets give me",
+        r"what is",
+        r"what(?:'s|’s)",
     )
-    prefix_match = re.match(rf"^(?:{'|'.join(prefixes)})\s+(?:an|a)?\s*(?P<body>.+)$", q)
+    prefix_match = re.match(rf"^(?P<prefix>{'|'.join(prefixes)})\s+(?:an|a)?\s*(?P<body>.+)$", q)
     if not prefix_match:
+        return None
+    prefix = prefix_match.group("prefix")
+    if prefix.startswith("what") and not re.search(r"\b(?:where|play|positions?|frets?|fretboard)\b", q):
         return None
     body = prefix_match.group("body")
     body = re.sub(r"\bon e9\b$", "", body).strip()
+    body = re.sub(r"\b(?:and\s+)?where\s+(?:do|can|should)\s+i\s+play\s+it$", "", body).strip()
     body = re.sub(r"\bpositions?\b$", "", body).strip()
     body = re.sub(r"\bchord\b$", "", body).strip()
     quality_match = re.match(

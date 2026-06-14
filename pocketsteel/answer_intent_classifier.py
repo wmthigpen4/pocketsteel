@@ -145,10 +145,11 @@ OFF_DOMAIN_RE = re.compile(
     r"weather|capital\s+of\s+france|recipe|pancakes?|super\s+bowl|nba|nfl|stock\s+price|"
     r"bitcoin|election|president\s+of|movie\s+times|flight\s+status|"
     r"javascript|python\s+code|python\s+script|quicksort|sorting\s+algorithm|dishwasher|"
-    r"bedtime\s+story|castle"
+    r"bedtime\s+story|castle|math\s+answer"
     r")\b",
     re.I,
 )
+MATH_EXPRESSION_RE = re.compile(r"\b\d[\d,]*\s*(?:x|\*)\s*\d[\d,]*\b", re.I)
 SOURCE_SEEKING_RE = re.compile(
     r"\b(?:what\s+do\s+(?:players|people|forum|steelers)|players?\s+(?:say|describe)|forum\s+(?:players|wisdom|opinions?)|"
     r"players?\s+(?:use|talk\s+about|prefer)|common\s+(?:uses?|opinions?|comments?|views?)|"
@@ -473,7 +474,7 @@ def _guardrail_decision(question: str) -> AnswerIntentPayload | None:
             retrieval_allowed=False,
             allowed_answer_shape="guardrail_refusal",
         )
-    if OFF_DOMAIN_RE.search(question) and not _mentions_steel(question):
+    if (OFF_DOMAIN_RE.search(question) or MATH_EXPRESSION_RE.search(question)) and not _mentions_steel(question):
         return _decision(
             domain="off_domain",
             intent="small_talk",

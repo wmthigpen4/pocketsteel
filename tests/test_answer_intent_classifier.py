@@ -346,6 +346,7 @@ def test_off_domain_and_unsafe_prompts_disable_retrieval() -> None:
     [
         "Give me a JavaScript sorting algorithm.",
         "Write Python code for quicksort.",
+        "Show me the math answer to 1000000000x1000000000000000000.",
         "How do I fix my dishwasher?",
     ],
 )

@@ -2180,6 +2180,31 @@ def assert_no_internal_answer_language(answer: str) -> None:
         assert phrase not in lowered
 
 
+SMOKE_INTERNAL_BANNED_PHRASES = (
+    "Forum snippets should not become the main answer",
+    "SGF leakage",
+    "quarantine",
+    "fallback",
+    "retrieval",
+    "source fragment",
+    "deterministic map",
+    "rules engine",
+    "payload",
+    "classifier",
+    "contract",
+    "weak-source wording",
+    "I found this in limited source support",
+    "treat it as a clue rather than consensus",
+    "related source point",
+)
+
+
+def assert_no_smoke_internal_language(answer: str) -> None:
+    lowered = answer.lower()
+    for phrase in SMOKE_INTERNAL_BANNED_PHRASES:
+        assert phrase.lower() not in lowered
+
+
 def test_api_answer_quarantines_raw_sgf_primary_answer_body() -> None:
     status, _, payload = call_app(
         "/api/answer",
@@ -2212,7 +2237,8 @@ def test_api_answer_quarantines_raw_sgf_primary_answer_body() -> None:
     assert_clean_answer_body(payload)
     assert payload["sources"] == []
     assert payload["warnings"] == []
-    assert "Forum snippets" in payload["answer"]
+    assert "I need a more specific steel-guitar question" in payload["answer"]
+    assert_no_smoke_internal_language(payload["answer"])
     assert "limited source support" not in payload["answer"]
     assert "messed with the tuning" not in payload["answer"]
 
@@ -3469,7 +3495,8 @@ def test_sgf_quarantine_backstop_replaces_bad_provider_body() -> None:
 
     assert status == "200 OK"
     assert_clean_answer_body(quarantined)
-    assert quarantined["answer"].startswith("Forum snippets should not become the main answer.")
+    assert quarantined["answer"].startswith("I need a more specific steel-guitar question")
+    assert_no_smoke_internal_language(quarantined["answer"])
     assert quarantined["sources"] == []
     assert quarantined["warnings"] == []
     assert "fretboard" not in quarantined
@@ -3484,6 +3511,118 @@ def test_off_domain_user_smoke_prompt_stays_guardrailed_without_sources() -> Non
     assert payload["sources"] == []
     assert payload["warnings"] == []
     assert "fretboard" not in payload
+
+
+def test_quarantine_smoke_math_bait_is_guardrailed_without_retrieval() -> None:
+    search_index = FakeSearchIndex(
+        {
+            "results": [
+                {
+                    "score": 0.93,
+                    "excerpt": "I found one related source point in an unrelated forum thread.",
+                    "forum_name": "Pedal Steel",
+                    "thread_title": "Unrelated arithmetic thread",
+                    "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=500001",
+                    "chunk_id": "math-bait-fragment",
+                    "post_uid": "p-math-bait-fragment",
+                    "source_system": "sgf_phpbb_current",
+                }
+            ],
+            "warnings": ["should not appear"],
+        }
+    )
+
+    status, _, payload = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={
+            "question": "Show me the math answer to 1000000000x1000000000000000000.",
+            "mode": "ask",
+            "topK": 6,
+        },
+        search_index=search_index,
+        answer_provider=DeterministicAnswerProvider(),
+    )
+
+    assert status == "200 OK"
+    assert search_index.calls == []
+    assert_clean_answer_body(payload)
+    assert payload["answer"].startswith("This app is focused on pedal steel guitar.")
+    assert "outside Steel Guitar RAG’s scope" in payload["answer"]
+    assert "1,000,000,000,000,000,000,000,000,000" not in payload["answer"]
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert "fretboard" not in payload
+    assert_no_smoke_internal_language(payload["answer"])
+
+
+def test_quarantine_smoke_concrete_resolvers_are_direct_source_free_and_visual_when_supported() -> None:
+    cases: dict[str, dict[str, Any]] = {
+        "Show me a minor and b flat": {
+            "required": ("I’m reading that as A minor and B-flat major", "A minor = A-C-E", "B-flat major = Bb-D-F"),
+            "fretboard_title": "A minor and Bb major positions on E9",
+        },
+        "What do you get with strings 4-5-6 on the 8th fret with the A pedal engaged?": {
+            "required": ("You get A minor", "A-C-E", "voiced as C-A-E", "string 4 = C", "string 5 = A", "string 6 = E"),
+            "fretboard_title": "A minor pitch check on E9",
+        },
+        "What chord do you get on the 6th fret with strings 3-4-5 and the A+B pedals?": {
+            "required": (
+                "You get Eb major",
+                "D# major enharmonically",
+                "Eb-G-Bb",
+                "string 3 = Eb/D#",
+                "string 4 = Bb/A#",
+                "string 5 = G",
+            ),
+            "fretboard_title": "Eb major, also called D# major enharmonically pitch check on E9",
+        },
+        "What is a C maj 7 and where do I play it?": {
+            "required": ("Cmaj7 is C-E-G-B", "major 7th", "target B as the major 7"),
+            "fretboard_title": "C major positions on E9",
+        },
+        "What is a Cmaj7 and where do I play it?": {
+            "required": ("Cmaj7 is C-E-G-B", "major 7th", "target B as the major 7"),
+            "fretboard_title": "C major positions on E9",
+        },
+        "How do I play a C major 7th?": {
+            "required": ("Cmaj7 is C-E-G-B", "major 7th", "target B as the major 7"),
+            "fretboard_title": "C major positions on E9",
+        },
+        "What is a C dom 7? Where do I play it?": {
+            "required": ("C7, or C dominant 7, is C-E-G-Bb", "flat 7th", "think C major first"),
+            "fretboard_title": "C major positions on E9",
+        },
+    }
+
+    for question, expectation in cases.items():
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert_clean_answer_body(payload)
+        assert_no_smoke_internal_language(payload["answer"])
+        for required in expectation["required"]:
+            assert required in payload["answer"]
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+        assert "fretboard" in payload
+        assert_valid_fretboard_payload(payload)
+        assert payload["fretboard"]["title"] == expectation["fretboard_title"]
+
+
+def test_quarantine_smoke_frustration_prompts_are_source_free() -> None:
+    cases = {
+        "You are an idiot": "I’m here to help. Ask me a steel guitar question and I’ll answer directly.",
+        "This app sucks": "I’m sorry it’s frustrating. Tell me what you were trying to learn or play, and I’ll give a direct steel-guitar answer.",
+    }
+    for question, expected in cases.items():
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert_clean_answer_body(payload)
+        assert payload["answer"] == expected
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+        assert "fretboard" not in payload
+        assert_no_smoke_internal_language(payload["answer"])
 
 
 def test_rooted_dominant_seventh_answers_are_direct_and_source_free() -> None:
@@ -5227,10 +5366,15 @@ def test_bc_pedals_second_fret_answers_function_directly() -> None:
     assert_clean_answer_body(payload)
     assert "B+C pedals" in payload["answer"]
     assert "2nd fret" in payload["answer"]
-    assert "G# major" in payload["answer"]
-    assert "2-minor" in payload["answer"]
-    assert "How to hear it:" in payload["answer"]
-    assert "String 3" in payload["answer"]
+    assert "G# minor" in payload["answer"]
+    assert "G#-B-D#" in payload["answer"]
+    assert "string 3 = B" in payload["answer"]
+    assert "string 4 = G#" in payload["answer"]
+    assert "string 5 = D#" in payload["answer"]
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert "fretboard" in payload
+    assert_valid_fretboard_payload(payload)
     assert "Practical answer" not in payload["answer"]
 
 

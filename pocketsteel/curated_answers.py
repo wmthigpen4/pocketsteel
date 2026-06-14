@@ -20,10 +20,12 @@ from pocketsteel.fretboard_examples import (
     e_lower_578_answer_for_question,
     e_lower_grip_answer_for_question,
     e_lower_grip_usage_answer_for_question,
+    fret_string_pedal_answer_for_question,
     function_chord_answer_for_question,
     functional_pocket_answer_for_question,
     get_e9_major_chord_positions,
     generic_chord_concept_answer_for_question,
+    mixed_a_minor_bflat_major_answer_for_question,
     major_chord_location_request_for_question,
     minor_chord_answer_for_question,
     multi_chord_answer_for_question,
@@ -596,8 +598,8 @@ def generic_sgf_quarantine_fallback_answer(question: str) -> CuratedAnswer:
         intent="unknown_low_confidence",
         confidence="curated_medium",
         answer=(
-            "Forum snippets should not become the main answer.\n\n"
-            "Ask for a specific steel-guitar topic, such as an E9 position, pedal or lever, grip, chord, tone problem, repair symptom, practice plan, song approach, or player context, and The Turnaround will answer directly first."
+            "I need a more specific steel-guitar question to give a useful answer.\n\n"
+            "Try asking about an E9 position, pedal or lever, grip, chord, tone problem, repair symptom, practice plan, song approach, or player context."
         ),
     )
 
@@ -608,6 +610,23 @@ def sgf_quarantine_teacher_answer(question: str) -> CuratedAnswer | None:
     repair_answer = mechanical_repair_curated_answer(q)
     if repair_answer is not None:
         return repair_answer
+    frustration_answer = frustrated_feedback_answer(q)
+    if frustration_answer is not None:
+        return frustration_answer
+    string_fret_answer = fret_string_pedal_answer_for_question(q)
+    if string_fret_answer is not None:
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=string_fret_answer,
+        )
+    casual_multi_chord_answer = mixed_a_minor_bflat_major_answer_for_question(q)
+    if casual_multi_chord_answer is not None:
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=casual_multi_chord_answer,
+        )
 
     if re.search(r"\blongest\s+response\b", q):
         return CuratedAnswer(
@@ -903,6 +922,26 @@ def mechanical_repair_curated_answer(question: str) -> CuratedAnswer | None:
                 "- Check whether one string, one fret area, one pedal/lever, or one cabinet part triggers the buzz.\n"
                 "- If touching the strings or changer changes the noise, separate that as an electrical grounding/shielding symptom rather than a rod or body rattle.\n\n"
                 "If the buzz remains, write down the guitar make/model, whether the buzz is acoustic or amplified, which strings/frets/pedals cause it, and whether touching metal parts changes it. Then ask a steel-guitar repair forum or a qualified tech with those details."
+            ),
+        )
+    return None
+
+
+def frustrated_feedback_answer(question: str) -> CuratedAnswer | None:
+    q = normalize(question)
+    if re.search(r"\byou\s+are\s+(?:an\s+)?idiot\b|\byou(?:'re| are)\s+(?:stupid|dumb|useless)\b", q):
+        return CuratedAnswer(
+            intent="frustrated_learning_request",
+            confidence="curated_high",
+            answer="I’m here to help. Ask me a steel guitar question and I’ll answer directly.",
+        )
+    if re.search(r"\b(?:this\s+app|the\s+app|app)\s+(?:sucks|is\s+terrible|is\s+bad|is\s+useless)\b", q):
+        return CuratedAnswer(
+            intent="frustrated_learning_request",
+            confidence="curated_high",
+            answer=(
+                "I’m sorry it’s frustrating. Tell me what you were trying to learn or play, "
+                "and I’ll give a direct steel-guitar answer."
             ),
         )
     return None
