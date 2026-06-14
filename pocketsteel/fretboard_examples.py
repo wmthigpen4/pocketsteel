@@ -1808,6 +1808,22 @@ def multi_chord_payload_for_question(question: str) -> dict | None:
     ).to_payload()
 
 
+def mixed_a_minor_c_major_payload_for_question(question: str) -> dict | None:
+    q = normalize_chord_intent_text(question)
+    if not re.search(r"\ba\s+minor\b", q) or not re.search(r"\bc\s+major\b", q):
+        return None
+    if not re.search(r"\b(?:show|where|play|chords?|positions?|fretboard)\b", q):
+        return None
+    positions = list(minor_positions("A").positions)
+    positions.extend(major_positions("C").positions)
+    return FretboardVisualizationPayload(
+        title="A minor and C major positions on E9",
+        subtitle="Combined pitch-validated A minor and C major positions.",
+        key="A minor / C major",
+        positions=tuple(positions),
+    ).to_payload()
+
+
 def multi_chord_answer_for_question(question: str) -> str | None:
     request = multi_chord_location_request_for_question(question)
     if request is None:
@@ -2364,6 +2380,9 @@ def fretboard_payload_for_question(question: str) -> dict | None:
         return get_fretboard_examples("major_positions", "D")
     if re.search(r"\bg\s+a\s*\+\s*f\s+position\b|\bg\s+major\b.*\ba\s*\+\s*f\b|\ba\s*\+\s*f\b.*\bg\s+major\b", q):
         return get_fretboard_examples("major_positions", "G")
+    mixed_a_minor_c_major_payload = mixed_a_minor_c_major_payload_for_question(q)
+    if mixed_a_minor_c_major_payload is not None:
+        return mixed_a_minor_c_major_payload
     multi_chord_payload = multi_chord_payload_for_question(q)
     if multi_chord_payload is not None:
         return multi_chord_payload

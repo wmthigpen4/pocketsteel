@@ -52,9 +52,12 @@ from pocketsteel.chroma_search import (
 from pocketsteel.curated_answers import (
     CURATED_FACT_WEAK_WARNING,
     WEAK_RETRIEVAL_WARNING,
+    generic_sgf_quarantine_fallback_answer,
     intent_mode_curated_answer,
     lookup_curated_answer,
     retrieval_looks_weak_for_curated,
+    sgf_answer_body_needs_quarantine,
+    sgf_quarantine_teacher_answer,
     unsupported_chord_position_curated_answer,
     visual_fretboard_curated_answer,
 )
@@ -400,7 +403,16 @@ class RetrievalApi:
                     else:
                         sources = concise_source_cards(strong_sources)
             answer = apply_private_profile_wording(answer, answer_request.question, strong_sources)
+            raw_answer_needed_quarantine = sgf_answer_body_needs_quarantine(answer)
             final_answer = final_answer_quality_gate(answer, answer_request.question)
+            if raw_answer_needed_quarantine or sgf_answer_body_needs_quarantine(final_answer):
+                quarantine_answer = sgf_quarantine_teacher_answer(
+                    answer_request.question
+                ) or generic_sgf_quarantine_fallback_answer(answer_request.question)
+                final_answer = final_answer_quality_gate(quarantine_answer.answer, answer_request.question)
+                contract_intent = quarantine_answer.intent
+                sources = []
+                warnings = []
             contract_validation = enforce_answer_contract(final_answer, contract_intent)
             if contract_validation.violations and contract_validation.answer != final_answer:
                 warnings.append(f"answer contract enforced: {contract_validation.intent}")

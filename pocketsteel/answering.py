@@ -1287,7 +1287,7 @@ def classify_answer_line(line: str) -> str:
     if not stripped:
         return "answer_candidate"
     if re.search(
-        r"\b(?:useful source-backed points|useful distilled points|source cards as supporting evidence|the cleanest source-backed answer|here is the safest answer i can support from the retrieved material|i found a few related practical points|match is limited|retrieved material|\[link removed\]|interval-first answer|strings, frets, pedals, and levers mentioned by sources|start with the musical function named in the sources)\b",
+        r"\b(?:useful source-backed points|useful distilled points|source cards as supporting evidence|the cleanest source-backed answer|here is the safest answer i can support from the retrieved material|i found a few related practical points|match is limited|retrieved material|\[link removed\]|interval-first answer|strings, frets, pedals, and levers mentioned by sources|start with the musical function named in the sources|i know when i first started|can someone please tell me|lolol thank god|you desire more information|have a couple of students|beyond simply facilitating|further he went on to state|you can also build a 7 string instrument|it seems that playing steel guitar has a lot in common|i found this in limited source support|treat it as a clue rather than consensus)\b",
         stripped,
         re.I,
     ):
@@ -1329,6 +1329,17 @@ def answer_has_quality_issue(answer: str, *, allow_contact_info: bool = False) -
         r"(?m)^\s*Practical answer\s*:?\s*$",
         r"\b(?:Does anyone know|Has anyone compared|I am looking for tablature)\b",
         r"\bCan some of you possibly post tab\b",
+        r"\bI know when I first started\b",
+        r"\bCan someone please tell me\b",
+        r"\blolol Thank God\b",
+        r"\byou desire more information\b",
+        r"\bhave a couple of students\b",
+        r"\bbeyond simply facilitating\b",
+        r"\bFurther he went on to state\b",
+        r"\bYou can also build a 7 string instrument\b",
+        r"\bIt seems that playing steel guitar has a lot in common\b",
+        r"\bI found this in limited source support\b",
+        r"\btreat it as a clue rather than consensus\b",
         r"\bPayPal\b",
         r"\border\s+(?:form|page|link|online|through)\b",
         r"(?m)^\s*[-*]?\s*(?:I|My)\s+(?:play|use|had|never|rarely|usually|guitar|amp)\b",

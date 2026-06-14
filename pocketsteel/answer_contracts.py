@@ -57,6 +57,7 @@ COMMON_FORBIDDEN: tuple[tuple[str, str], ...] = (
     ("duplicate answer headings", r"(?s)(?m)^\s*Answer\s*:?\s*$.*^\s*Practical answer\s*:?\s*$"),
     ("forum question fragment", r"\b(?:Does anyone know|Has anyone compared|I am looking for tablature)\b"),
     ("forum chatter fragment", r"\b(?:which someone else is probably playing|I may be learning)\b"),
+    ("raw SGF body fragment", r"\b(?:I know when I first started|Can someone please tell me|lolol Thank God|you desire more information|have a couple of students|beyond simply facilitating|Further he went on to state|You can also build a 7 string instrument|It seems that playing steel guitar has a lot in common|I found this in limited source support|treat it as a clue rather than consensus)\b"),
     ("inline citation marker", r"\[\d+\]"),
     ("obvious source typo", r"\b(?:tje|teh)\b"),
 )

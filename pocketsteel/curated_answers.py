@@ -165,6 +165,9 @@ PLAYER_BIOS = {
 
 def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
     q = normalize(question)
+    quarantine_teacher_answer = sgf_quarantine_teacher_answer(q)
+    if quarantine_teacher_answer is not None:
+        return quarantine_teacher_answer
     practical_direct_answer = direct_yes_no_practical_answer(q)
     if practical_direct_answer is not None:
         return practical_direct_answer
@@ -555,6 +558,234 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
             answer=(
                 "For G at the 3rd fret open position on standard E9, common grips include 3-4-5, 4-5-6, 5-6-8, and 6-8-10. "
                 "The fretboard view may also show 5-7-8 when a pedal/lever combination validates it by pitch."
+            ),
+        )
+    return None
+
+
+SGF_QUARANTINE_PATTERNS: tuple[str, ...] = (
+    r"\bi know when i first started\b",
+    r"\bcan someone please tell me\b",
+    r"\blolol thank god\b",
+    r"\byou desire more information\b",
+    r"\bhave a couple of students\b",
+    r"\bbeyond simply facilitating\b",
+    r"\bfurther he went on to state\b",
+    r"\byou can also build a 7 string instrument\b",
+    r"\bit seems that playing steel guitar has a lot in common\b",
+    r"\bi found this in limited source support\b",
+    r"\btreat it as a clue rather than consensus\b",
+)
+
+
+def sgf_answer_body_needs_quarantine(answer: str) -> bool:
+    return any(re.search(pattern, answer or "", re.I) for pattern in SGF_QUARANTINE_PATTERNS)
+
+
+def generic_sgf_quarantine_fallback_answer(question: str) -> CuratedAnswer:
+    return CuratedAnswer(
+        intent="unknown_low_confidence",
+        confidence="curated_medium",
+        answer=(
+            "I should not turn forum snippets into the main answer.\n\n"
+            "Ask me for a specific steel-guitar topic, such as an E9 position, pedal or lever, grip, chord, tone problem, repair symptom, practice plan, song approach, or player context, and I’ll answer it directly first."
+        ),
+    )
+
+
+def sgf_quarantine_teacher_answer(question: str) -> CuratedAnswer | None:
+    q = normalize(question).replace("’", "'").replace("“", '"').replace("”", '"')
+
+    if re.search(r"\blongest\s+response\b", q):
+        return CuratedAnswer(
+            intent="lesson_navigation",
+            confidence="curated_high",
+            answer=(
+                "I can give a detailed steel-guitar lesson, but I need a topic to make a long answer useful.\n\n"
+                "Here is a useful default lesson: on E9, major chords live in position families. In G, compare the 3rd fret with no pedals, the 6th fret with A pedal + F lever, and the 10th fret with A+B. Play the same grip, block after each chord, and listen to how the chord name stays G while the color and movement change.\n\n"
+                "If you want a longer lesson, give me one focus: a chord, key, pedal/lever, grip, lick, tone problem, or practice goal."
+            ),
+        )
+    if re.search(r"\bmajor\s+scale\s+in\s+g\b|\bg\s+major\s+scale\b", q):
+        return CuratedAnswer(
+            intent="fretboard_concept",
+            confidence="curated_high",
+            answer=(
+                "G major is G A B C D E F# G.\n\n"
+                "Scale degrees:\n"
+                "- 1: G\n"
+                "- 2: A\n"
+                "- 3: B\n"
+                "- 4: C\n"
+                "- 5: D\n"
+                "- 6: E\n"
+                "- 7: F#\n"
+                "- 1: G\n\n"
+                "On E9, start by hearing the scale around your G chord positions: 3rd fret open/no pedals, 6th fret with A pedal + F lever, and 10th fret with A+B. The useful practice is not just naming notes; it is connecting those notes back to G, C, and D chord movement."
+            ),
+        )
+    if re.search(r"\ba\s+minor\b.*\bc\s+major\b|\bc\s+major\b.*\ba\s+minor\b", q):
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=(
+                "A minor = A-C-E. C major = C-E-G.\n\n"
+                "The useful difference:\n"
+                "- A minor has A as the root and C as the minor 3rd.\n"
+                "- C major has C as the root and E as the major 3rd.\n\n"
+                "On E9, use the fretboard cards to keep the two sounds separate: A minor positions for A-C-E, and C major positions for C-E-G. Pick one grip at a time, say the notes out loud, and listen for the minor color of A-C-E against the brighter C-E-G sound."
+            ),
+        )
+    if re.search(r"\breal\s+lesson\b|\blesson\s+now\b", q):
+        return CuratedAnswer(
+            intent="lesson_navigation",
+            confidence="curated_high",
+            answer=(
+                "Lesson: find I-to-IV movement on E9.\n\n"
+                "Objective: hear how pedals create chord movement without moving the bar.\n\n"
+                "Concept: at the 3rd fret, no pedals gives you G. At that same fret, A+B gives you C, the IV chord in G.\n\n"
+                "Example:\n"
+                "- Fret 3, strings 4-5-6, no pedals: G.\n"
+                "- Same fret and grip, press A+B: C.\n"
+                "- Release A+B cleanly back to G.\n\n"
+                "Exercise: set a slow metronome, play two beats of G, two beats of C, then block. Do that for five minutes and listen for smooth pedal timing, clean blocking, and steady bar pressure."
+            ),
+        )
+    if "steel guitar rag" in q and "regular rag" in q:
+        return CuratedAnswer(
+            intent="direct_yes_no_practical",
+            confidence="curated_high",
+            answer=(
+                "If you mean a cloth rag, no: a rag will not make music or turn into a steel guitar.\n\n"
+                "If you mean writing a ragtime-style tune called Steel Guitar Rag, yes. Use a bouncy ragtime feel, simple I-IV-V harmony, and a clear melody that a steel guitar can sing with slides, bar movement, and clean blocking."
+            ),
+        )
+    if re.search(r"\bfart\b.*\bsteel\s+guitar\b|\bsteel\s+guitar\b.*\bfart\b", q):
+        return CuratedAnswer(
+            intent="direct_yes_no_practical",
+            confidence="curated_high",
+            answer=(
+                "Yes, physically, but it has nothing to do with playing pedal steel.\n\n"
+                "Keep the instrument clean and dry. For actual sound, use the bar, picks, pedals, levers, and volume pedal."
+            ),
+        )
+    if re.search(r"\b(?:died|die|death)\b.*\b(?:pedal\s+steel|steel\s+guitar)\b|\b(?:pedal\s+steel|steel\s+guitar)\b.*\b(?:died|die|death)\b", q):
+        return CuratedAnswer(
+            intent="safety_adjacent",
+            confidence="curated_high",
+            answer=(
+                "I do not have reliable evidence of a known person dying because of playing pedal steel.\n\n"
+                "If you mean safety, the realistic risks are posture strain, hearing damage from volume, lifting heavy gear, trip hazards around cables and pedal rods, and electrical safety with amps and power. Use sane volume, lift carefully, keep cables tidy, and have questionable electrical gear checked by a qualified tech."
+            ),
+        )
+    if re.search(r"\b(?:one|1)\s+real\s+lick\b", q) and re.search(r"\bno\s+words\b|\bjust\s+a\s+lick\b", q):
+        return CuratedAnswer(
+            intent="lick_request",
+            confidence="curated_high",
+            answer=(
+                "```text\n"
+                "E9 G lick\n"
+                "Fret 3: strings 3-4-5, A+B down\n"
+                "Fret 3: release A, keep B\n"
+                "Fret 3: no pedals, strings 4-5-6\n"
+                "Fret 5: A+B, strings 4-5-6\n"
+                "Fret 3: no pedals, strings 4-5-6\n"
+                "```"
+            ),
+        )
+    if re.search(r"\bteach me something\b", q):
+        return CuratedAnswer(
+            intent="teach_me_something",
+            confidence="curated_high",
+            answer=(
+                "On E9, the same chord can be a place, not just a name.\n\n"
+                "Example: G can live at the 3rd fret with no pedals, the 6th fret with A pedal + F lever, and the 10th fret with A+B. Those are all G major, but each one leads your hands and feet toward different next moves.\n\n"
+                "Try this: play G at all three spots using grip 4-5-6, then ask which one most naturally wants to move to C or D. That is how the neck starts feeling like connected pockets instead of isolated frets."
+            ),
+        )
+    if "over the rainbow" in q and re.search(r"\bkey\b|\bwritten\b", q):
+        return CuratedAnswer(
+            intent="song_learning",
+            confidence="curated_medium",
+            answer=(
+                "The famous Wizard of Oz version of “Over the Rainbow” is commonly associated with E-flat major.\n\n"
+                "Keys can vary by singer, arrangement, and chart, so treat E-flat as the common reference version rather than a rule for every performance."
+            ),
+        )
+    if "steel guitar rag" in q:
+        if re.search(r"\bwho\s+wrote\b|\bcomposer\b|\bauthor\b", q):
+            answer = (
+                "“Steel Guitar Rag” is commonly credited to Leon McAuliffe, and it is strongly associated with the Bob Wills/Texas Playboys western-swing world.\n\n"
+                "Recordings, arrangements, and printed credits can vary, so check the specific chart or recording if you need citation-level detail."
+            )
+        elif re.search(r"\bwhat\s+key\b|\bkey\s+is\b", q):
+            answer = (
+                "“Steel Guitar Rag” is often taught and played in E, but the key can vary by arrangement, player, or band.\n\n"
+                "If you have a specific recording or chart, use that version’s key as the authority."
+            )
+        elif re.search(r"\bhow\s+do\s+i\s+play\b|\bplay\b", q):
+            answer = (
+                "To learn “Steel Guitar Rag,” start with the melody and the I-IV-V movement before chasing a full note-for-note solo.\n\n"
+                "Practice plan:\n"
+                "- Learn the melody slowly in one key, often E for common steel arrangements.\n"
+                "- Mark the I, IV, and V chords so the tune feels like a ragtime/western-swing form instead of a pile of licks.\n"
+                "- Add simple slides and clean blocking first.\n"
+                "- Then add signature steel ornaments a little at a time.\n\n"
+                "I can help map a short public-domain-style phrase or your own tab attempt, but I won’t dump a full copyrighted tab by default."
+            )
+        elif "song or the app" in q or ("app" in q and "song" in q):
+            answer = (
+                "“Steel Guitar Rag” is a classic steel-guitar tune. This app’s user-facing name is The Turnaround.\n\n"
+                "Some project docs may still use Steel Guitar RAG as a technical description, but the song and the app are not the same thing."
+            )
+        else:
+            answer = (
+                "“Steel Guitar Rag” is a classic steel-guitar instrumental associated with western swing and the early electric-steel vocabulary.\n\n"
+                "The tune is a useful study because it combines a clear melody, ragtime bounce, I-IV-V harmony, and steel-specific phrasing such as slides, sustain, and clean blocking."
+            )
+        return CuratedAnswer(intent="song_learning", confidence="curated_medium", answer=answer)
+    if re.search(r"\bnoisy\s+volume\s+pedal\b|\bvolume\s+pedal\b.*\b(?:noise|noisy|scratch|scratchy|crackle)\b", q):
+        return CuratedAnswer(
+            intent="gear_diagnosis",
+            confidence="curated_high",
+            answer=(
+                "Start with the simple checks: isolate whether the noise is the volume pedal, a cable, the amp input, or power.\n\n"
+                "Diagnostic path:\n"
+                "- Plug guitar straight into the amp. If the noise disappears, the pedal or pedal cables are likely involved.\n"
+                "- Swap both cables connected to the volume pedal.\n"
+                "- Move the pedal slowly and listen for scratch, crackle, or dropouts.\n"
+                "- If it is a pot pedal, the pot may be dirty or worn.\n"
+                "- If it is an active/optical pedal, check power supply, battery, jacks, and internal connections.\n\n"
+                "Do not keep spraying random cleaners inside the pedal. If the noise remains, have a steel-guitar tech or electronics repair person inspect it."
+            ),
+        )
+    if re.search(r"\b(?:won't|wont|will not|won’t)\s+stay\s+in\s+tune\b|\bstay\s+in\s+tune\b.*\b(?:check|what)\b", q):
+        return CuratedAnswer(
+            intent="gear_diagnosis",
+            confidence="curated_high",
+            answer=(
+                "If a pedal steel will not stay in tune, check the simple mechanical causes before changing the setup.\n\n"
+                "First checks:\n"
+                "- Confirm the strings are fresh and stretched.\n"
+                "- Check that the changer fingers return cleanly to pitch.\n"
+                "- Look for binding at the nut rollers, keyhead, pedal rods, bellcranks, and pull rods.\n"
+                "- Make sure nylon tuners are not overtightened or fighting each other.\n"
+                "- Tune open strings first, then pedals and levers, then recheck returns.\n\n"
+                "If one pull is sharp or flat only after a pedal/lever move, tell me the string, pedal/lever, and whether it returns sharp or flat."
+            ),
+        )
+    if re.search(r"\b(?:repair\s+person|repairman|repair\s+tech|technician|luthier)\b", q):
+        return CuratedAnswer(
+            intent="web_required",
+            confidence="curated_medium",
+            answer=(
+                "I do not have a current live directory of pedal-steel repair people loaded here.\n\n"
+                "Best next steps:\n"
+                "- Ask in the Steel Guitar Forum repair/electronics area with your city or region.\n"
+                "- Check the builder or brand support channel for your guitar.\n"
+                "- Ask local steel players, steel teachers, or country musicians for a current referral.\n"
+                "- Describe the exact symptom, brand, model, and copedent so the right kind of tech can respond.\n\n"
+                "Avoid shipping a steel or changing linkage parts until you know whether the problem is tuning, changer return, rods/bellcranks, electronics, or setup."
             ),
         )
     return None

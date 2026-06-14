@@ -2150,6 +2150,17 @@ def assert_clean_answer_body(payload: dict[str, Any]) -> None:
     assert "sound guy" not in answer.lower()
     assert "bite ya" not in answer.lower()
     assert "road cases" not in answer.lower()
+    assert "I know when I first started" not in answer
+    assert "Can someone please tell me" not in answer
+    assert "lolol Thank God" not in answer
+    assert "you desire more information" not in answer
+    assert "have a couple of students" not in answer
+    assert "beyond simply facilitating" not in answer
+    assert "Further he went on to state" not in answer
+    assert "You can also build a 7 string instrument" not in answer
+    assert "playing steel guitar has a lot in common" not in answer
+    assert "I found this in limited source support" not in answer
+    assert "treat it as a clue rather than consensus" not in answer
 
 
 def assert_no_internal_answer_language(answer: str) -> None:
@@ -3220,6 +3231,99 @@ def test_direct_yes_no_practical_answers_start_directly_without_sgf_fragments() 
     assert "fretboard" not in payload
     assert payload["sources"] == []
     assert payload["warnings"] == []
+
+
+def test_sgf_quarantine_user_smoke_prompts_are_teacher_composed_and_source_free() -> None:
+    noisy_sgf = noisy_practical_sources() + [
+        {
+            "score": 0.93,
+            "excerpt": (
+                "I know when I first started you desire more information, I’ll try to answer your questions as best I can. "
+                "Can someone please tell me lolol Thank God have a couple of students. "
+                "Beyond simply facilitating, Further he went on to state, You can also build a 7 string instrument. "
+                "It seems that playing steel guitar has a lot in common. I found this in limited source support; treat it as a clue rather than consensus."
+            ),
+            "forum_name": "Pedal Steel",
+            "thread_title": "Noisy forum fragments",
+            "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=499701",
+            "chunk_id": "noisy-sgf-quarantine",
+            "post_uid": "noisy-sgf-quarantine",
+            "source_system": "sgf_phpbb_current",
+        }
+    ]
+    cases = {
+        "Give me the longest response you can.": ("detailed steel-guitar lesson", None),
+        "Show me the major scale in G": ("G major is G A B C D E F# G", None),
+        "Show me A minor and C major chords.": ("A minor = A-C-E. C major = C-E-G.", "A minor and C major positions on E9"),
+        "give me a real lesson now": ("Lesson: find I-to-IV movement on E9.", None),
+        "Can I make a steel guitar rag with a regular rag?": ("If you mean a cloth rag, no", None),
+        "Can I fart on a steel guitar?": ("Yes, physically, but it has nothing to do with playing pedal steel.", None),
+        "Has anyone died playing pedal steel?": ("I do not have reliable evidence", None),
+        "show me 1 real lick, no words, just a lick.": ("```text", None),
+        "teach me something i don't already know": ("On E9, the same chord can be a place", None),
+        'What key is "over the rainbow" written in?': ("E-flat major", None),
+        "What is Steel Guitar Rag?": ("classic steel-guitar instrumental", None),
+        "Who wrote Steel Guitar Rag?": ("commonly credited to Leon McAuliffe", None),
+        "How do I fix a noisy volume pedal?": ("Start with the simple checks", None),
+        "My pedal steel won’t stay in tune. What should I check?": ("If a pedal steel will not stay in tune", None),
+        "Where can I find a steel guitar repair person?": ("I do not have a current live directory", None),
+    }
+
+    for question, (expected, expected_fretboard_title) in cases.items():
+        payload = answer_for_question(question, noisy_sgf)
+
+        assert_clean_answer_body(payload)
+        assert_no_internal_answer_language(payload["answer"])
+        assert expected in payload["answer"]
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+        if expected_fretboard_title is None:
+            assert "fretboard" not in payload
+        else:
+            assert payload["fretboard"]["title"] == expected_fretboard_title
+            assert_valid_fretboard_payload(payload)
+
+
+def test_sgf_quarantine_backstop_replaces_bad_provider_body() -> None:
+    class BadForumProvider:
+        def answer(self, request: Any, sources: list[dict[str, Any]]) -> str:
+            return (
+                "you desire more information, I’ll try to answer your questions as best I can. "
+                "I found this in limited source support; treat it as a clue rather than consensus."
+            )
+
+    payload = answer_for_question(
+        "What is a good steel guitar topic?",
+        noisy_practical_sources(),
+    )
+    # Sanity check the normal fake provider remains clean for this broad steel prompt.
+    assert_clean_answer_body(payload)
+
+    status, _, quarantined = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={"question": "What is a good steel guitar topic?", "mode": "ask", "topK": 6},
+        search_index=FakeSearchIndex({"results": noisy_practical_sources(), "warnings": []}),
+        answer_provider=BadForumProvider(),
+    )
+
+    assert status == "200 OK"
+    assert_clean_answer_body(quarantined)
+    assert quarantined["answer"].startswith("I should not turn forum snippets into the main answer.")
+    assert quarantined["sources"] == []
+    assert quarantined["warnings"] == []
+    assert "fretboard" not in quarantined
+
+
+def test_off_domain_user_smoke_prompt_stays_guardrailed_without_sources() -> None:
+    payload = answer_for_question("Give me a JavaScript sorting algorithm.", noisy_practical_sources())
+
+    assert_clean_answer_body(payload)
+    assert "outside Steel Guitar RAG’s scope" in payload["answer"]
+    assert "E9 positions" in payload["answer"]
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert "fretboard" not in payload
 
 
 def test_rooted_dominant_seventh_answers_are_direct_and_source_free() -> None:

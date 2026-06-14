@@ -669,6 +669,19 @@ def test_hyphenated_minor_chord_questions_route_to_minor_positions() -> None:
     assert_valid_visualization_payload(payload)
 
 
+def test_mixed_a_minor_c_major_payload_combines_pitch_validated_positions() -> None:
+    payload = fretboard_payload_for_question("Show me A minor and C major chords.")
+
+    assert payload is not None
+    assert payload["title"] == "A minor and C major positions on E9"
+    assert_valid_visualization_payload(payload)
+    labels = " ".join(position["label"] for position in payload["positions"])
+    assert "A minor" in labels
+    assert "C major" in labels
+    assert any(position["root"] == "A" and position["quality"] == "minor" for position in payload["positions"])
+    assert any(position["root"] == "C" and position["quality"] == "major" for position in payload["positions"])
+
+
 def test_natural_language_chord_intent_variants_route_to_pitch_payloads() -> None:
     major_cases = {
         "Where can I find D# chords on the pedal steel E9?": ("D#", "D# major positions on E9"),
