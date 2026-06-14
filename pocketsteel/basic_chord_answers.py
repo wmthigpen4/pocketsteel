@@ -47,6 +47,7 @@ def _normalize_chord_quality(quality: str) -> str:
         "suspended": "sus",
         "suspended 2": "sus2",
         "suspended 4": "sus4",
+        "maj 7": "major 7",
         "maj7": "major 7",
         "major 7": "major 7",
         "major 7th": "major 7",
@@ -63,7 +64,7 @@ def basic_chord_theory_request_for_question(question: str) -> BasicChordTheoryRe
     root_pattern = r"(?P<root>[a-g](?:#|b)?)"
     quality_pattern = (
         r"(?P<quality>"
-        r"major\s+7th|major\s+seventh|major\s+7|maj7|"
+        r"major\s+7th|major\s+seventh|major\s+7|maj\s+7|maj7|"
         r"sus(?:2|4)?|suspended(?:\s+[24])?|"
         r"dim(?:inished)?7?|diminished(?:\s+7)?|"
         r"aug(?:mented)?|dominant(?:\s+7)?|dom(?:\s+7)?|7th|7|"
@@ -189,8 +190,8 @@ def basic_chord_theory_answer_for_question(question: str) -> str | None:
         return (
             f"{key}maj7 is {major_seventh_spelling_for_answer(key)}: root, major 3rd, perfect 5th, and major 7th. "
             f"{key} major 7 is the same chord label written out.\n\n"
-            "The current deterministic E9 map does not yet claim exact major-7 positions for every grip. "
-            "Start by spelling the chord tones, then ask for nearby major positions or a specific copedent context."
+            f"The exact {key}maj7 grip may require a partial voicing or choosing which chord tones to include. "
+            f"Start by finding {key} major positions, then target {transpose(key, 11)} as the major 7."
         )
     if quality in {"sus", "sus2", "sus4"}:
         spelling_quality = "sus4" if quality == "sus" else quality
@@ -214,22 +215,22 @@ def basic_chord_theory_answer_for_question(question: str) -> str | None:
             f"On E9, a simple starting point is to think {key} major first, then add or imply the flat 7. "
             f"The chord tones you are looking for are {spelling}. "
             f"For example, {key}7 is the V7 chord in {transpose(key, 5)}. "
-            "The current deterministic map may not show every dominant-7 grip yet, but this chord spelling is the safe target."
+            "I can show the reliable major positions first, then explain where the flat 7 lives."
         )
     if quality == "diminished":
         return (
             f"{key} diminished is built from root, flat 3rd, and flat 5th.\n\n"
-            "The current deterministic E9 map does not yet claim exact diminished positions for every grip, so I would spell the tones before mapping it."
+            "A clean exact E9 grip depends on which strings and pedals/levers you want to use, so I would spell the tones before mapping it."
         )
     if quality == "diminished 7":
         return (
             f"{key} diminished 7 is built from root, flat 3rd, flat 5th, and double-flat 7th.\n\n"
-            "That symmetrical sound is useful for passing movement, but the current deterministic E9 map does not yet claim exact diminished-7 positions for every grip."
+            "That symmetrical sound is useful for passing movement, but a clean exact E9 grip depends on which strings and pedals/levers you want to use."
         )
     if quality == "augmented":
         return (
             f"{key} augmented is built from root, major 3rd, and sharp 5th.\n\n"
-            "The current deterministic E9 map does not yet claim exact augmented positions for every grip, so use the chord tones as the safe starting point."
+            "A clean exact E9 grip depends on which strings and pedals/levers you want to use, so use the chord tones as the safe starting point."
         )
     return None
 

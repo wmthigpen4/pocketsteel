@@ -26,6 +26,7 @@ from pocketsteel.fretboard_examples import (
     generic_chord_concept_answer_for_question,
     major_chord_location_request_for_question,
     minor_chord_answer_for_question,
+    multi_chord_answer_for_question,
     rootless_chord_quality_answer_for_question,
     chord_quality_definition_lines,
     unsupported_chord_location_request_for_question,
@@ -212,6 +213,13 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
             intent="copedent_fretboard",
             confidence="curated_high",
             answer=e_lower_usage_answer,
+        )
+    multi_chord_answer = multi_chord_answer_for_question(question)
+    if multi_chord_answer is not None:
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=multi_chord_answer,
         )
     functional_pocket_answer = functional_pocket_answer_for_question(question)
     if functional_pocket_answer is not None:
@@ -410,9 +418,9 @@ def unsupported_chord_position_curated_answer(question: str) -> CuratedAnswer | 
         intent="copedent_fretboard",
         confidence="curated_high",
         answer=(
-            f"The deterministic fretboard view currently supports major-position diagrams first, so I would not use SGF snippets for a {requested} {unsupported_request.quality} answer."
+            f"I can explain the chord tones and show the closest reliable E9 positions, but I do not have a clean exact grip for {requested} {unsupported_request.quality} yet."
             f"{definition_block}\n\n"
-            f"For a major-chord map, use {unsupported_request.normalized_key} major positions; for {unsupported_request.quality}, tell me the tuning/copedent context you want and I can keep the answer explicit instead of guessing."
+            f"Start with {unsupported_request.normalized_key} major positions as the visual reference, then target the extra chord tone or altered tone that makes it {unsupported_request.quality}."
         ),
     )
 

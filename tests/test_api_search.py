@@ -2152,6 +2152,12 @@ def assert_clean_answer_body(payload: dict[str, Any]) -> None:
     assert "road cases" not in answer.lower()
 
 
+def assert_no_internal_answer_language(answer: str) -> None:
+    lowered = answer.lower()
+    for phrase in ("deterministic map", "rules engine", "payload", "classifier", "contract"):
+        assert phrase not in lowered
+
+
 def test_bc_pedal_exercises_return_practical_drills_not_source_fragments() -> None:
     payload = answer_for_question(
         "What are some good B&C pedal exercises?",
@@ -3118,8 +3124,15 @@ def test_major_seventh_questions_are_teacher_first_and_source_free() -> None:
         assert_clean_answer_body(payload)
         assert "Fmaj7 is F-A-C-E" in payload["answer"]
         assert "root, major 3rd, perfect 5th, and major 7th" in payload["answer"]
-        assert "does not yet claim exact major-7 positions" in payload["answer"]
-        assert "fretboard" not in payload
+        assert "exact Fmaj7 grip may require a partial voicing" in payload["answer"]
+        assert "target E as the major 7" in payload["answer"]
+        assert_no_internal_answer_language(payload["answer"])
+        if question.startswith("How do I play"):
+            assert "fretboard" in payload
+            assert_valid_fretboard_payload(payload)
+            assert payload["fretboard"]["title"] == "F major positions on E9"
+        else:
+            assert "fretboard" not in payload
         assert payload["sources"] == []
         assert payload["warnings"] == []
 
@@ -3185,11 +3198,51 @@ def test_rooted_dominant_seventh_answers_are_direct_and_source_free() -> None:
         assert "root, major 3rd, perfect 5th, and flat 7th" in payload["answer"]
         assert "think G major first" in payload["answer"]
         assert "chord tones you are looking for are G-B-D-F" in payload["answer"]
+        assert "reliable major positions" in payload["answer"]
+        assert_no_internal_answer_language(payload["answer"])
         assert "7th fret" not in payload["answer"]
         assert "Emin7" not in payload["answer"]
-        assert "fretboard" not in payload
+        if question.startswith("How do I play"):
+            assert "fretboard" in payload
+            assert_valid_fretboard_payload(payload)
+            assert payload["fretboard"]["title"] == "G major positions on E9"
+        else:
+            assert "fretboard" not in payload
         assert payload["sources"] == []
         assert payload["warnings"] == []
+
+
+def test_major_seventh_play_questions_are_direct_and_visual_when_supported() -> None:
+    cases = (
+        "How do I play an F maj 7?",
+        "How do I play an Fmaj7?",
+        "How do I play an F major 7th?",
+    )
+    for question in cases:
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert_clean_answer_body(payload)
+        assert payload["answer"].startswith("Fmaj7 is F-A-C-E")
+        assert "root, major 3rd, perfect 5th, and major 7th" in payload["answer"]
+        assert "target E as the major 7" in payload["answer"]
+        assert_no_internal_answer_language(payload["answer"])
+        assert "fretboard" in payload
+        assert_valid_fretboard_payload(payload)
+        assert payload["fretboard"]["title"] == "F major positions on E9"
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+
+
+def test_major_seventh_definition_stays_source_free_without_forcing_fretboard() -> None:
+    payload = answer_for_question("What is Fmaj7?", noisy_practical_sources())
+
+    assert_clean_answer_body(payload)
+    assert payload["answer"].startswith("Fmaj7 is F-A-C-E")
+    assert "root, major 3rd, perfect 5th, and major 7th" in payload["answer"]
+    assert_no_internal_answer_language(payload["answer"])
+    assert "fretboard" not in payload
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
 
 
 def test_suspended_usage_answers_directly_without_fretboard_or_sources() -> None:
@@ -3216,10 +3269,52 @@ def test_rooted_suspended_answers_are_clean_direct_theory() -> None:
     assert "It has no B" in payload["answer"]
     assert "neither plain major nor minor" in payload["answer"]
     assert "exact E9 sus-position mapping is still limited" in payload["answer"]
-    assert "deterministic fretboard view" not in payload["answer"]
+    assert_no_internal_answer_language(payload["answer"])
     assert "fretboard" not in payload
     assert payload["sources"] == []
     assert payload["warnings"] == []
+
+
+def test_minor_show_requests_are_teacher_first_and_visual() -> None:
+    cases = (
+        "Show me an E minor chord.",
+        "How do I play E minor on E9?",
+        "Show me E minor on the fretboard.",
+    )
+    for question in cases:
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert_clean_answer_body(payload)
+        assert "E minor chord means the notes E-G-B" in payload["answer"]
+        assert "A-pedal minor" in payload["answer"]
+        assert "B+C minor" in payload["answer"]
+        assert_no_internal_answer_language(payload["answer"])
+        assert "fretboard" in payload
+        assert_valid_fretboard_payload(payload)
+        assert payload["fretboard"]["title"] == "E minor positions on E9"
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+
+
+def test_multi_target_major_minor_show_request_answers_both_with_combined_fretboard() -> None:
+    for question in ("Show me an E major and E minor.", "Show me G major and G minor."):
+        payload = answer_for_question(question, noisy_practical_sources())
+        root = "E" if "E major" in question else "G"
+
+        assert_clean_answer_body(payload)
+        assert payload["answer"].startswith(f"Here are both {root} major and {root} minor on E9.")
+        assert f"{root} major means" in payload["answer"]
+        assert f"{root} minor means" in payload["answer"]
+        assert "Useful" in payload["answer"]
+        assert_no_internal_answer_language(payload["answer"])
+        assert "fretboard" in payload
+        assert_valid_fretboard_payload(payload)
+        assert payload["fretboard"]["title"] == f"{root} major and {root} minor positions on E9"
+        labels = " ".join(position["label"] for position in payload["fretboard"]["positions"])
+        assert f"{root} major" in labels
+        assert f"{root} minor" in labels
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
 
 
 def test_unknown_person_identity_questions_do_not_retrieve_random_fragments() -> None:
@@ -3277,7 +3372,11 @@ def test_rooted_unsupported_chord_quality_questions_explain_tones_without_forum_
         assert_clean_answer_body(payload)
         for phrase in expected_phrases:
             assert phrase in payload["answer"]
-        assert "fretboard" not in payload
+        if "G7" in question or "D7" in question or "Fmaj7" in question:
+            assert "fretboard" in payload
+            assert_valid_fretboard_payload(payload)
+        else:
+            assert "fretboard" not in payload
         assert payload["sources"] == []
         assert payload["warnings"] == []
 
@@ -3793,10 +3892,12 @@ def test_unsupported_chord_quality_location_question_does_not_use_sgf_fragments(
         ],
     )
 
-    assert "fretboard" not in payload
+    assert "fretboard" in payload
+    assert_valid_fretboard_payload(payload)
+    assert payload["fretboard"]["title"] == "B major positions on E9"
     assert payload["sources"] == []
     assert payload["warnings"] == []
-    assert "supports major-position diagrams first" in payload["answer"]
+    assert "closest reliable E9 positions" in payload["answer"]
     assert "B dominant 7" in payload["answer"]
     assert "RKL" not in payload["answer"]
     assert "B9" not in payload["answer"]

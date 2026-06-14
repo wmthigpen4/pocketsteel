@@ -124,6 +124,12 @@ class MinorChordLocationRequest:
 
 
 @dataclass(frozen=True)
+class MultiChordLocationRequest:
+    root: str
+    qualities: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class ChordConceptRequest:
     requested_root: str
     normalized_key: str
@@ -1736,7 +1742,9 @@ def minor_chord_location_request_for_question(question: str) -> MinorChordLocati
         r"^where is ([a-g](?:#|b)?)(?:m|[- ]minor)(?: chord)?(?: on e9)?$",
         r"^where can i play (?:a|an)?\s*([a-g](?:#|b)?)(?:m|[- ]minor)(?: chord)?(?: on e9)?$",
         r"^how do i play (?:a|an)?\s*([a-g](?:#|b)?)(?:m|[- ]minor)(?: chord)?(?: on e9)?$",
+        r"^show me (?:a|an)?\s*([a-g](?:#|b)?)(?:m|[- ]minor)(?: chord)?(?: on (?:the )?(?:e9|fretboard))?$",
         r"^show me ([a-g](?:#|b)?)(?:m|[- ]minor) positions$",
+        r"^show me ([a-g](?:#|b)?)(?:m|[- ]minor) on (?:the )?fretboard$",
         r"^what frets give me (?:a|an)?\s*([a-g](?:#|b)?)(?:m|[- ]minor)(?: chord)?$",
     )
     for pattern in patterns:
@@ -1748,6 +1756,74 @@ def minor_chord_location_request_for_question(question: str) -> MinorChordLocati
                 normalized_key=normalize_key(requested_root),
             )
     return None
+
+
+def multi_chord_location_request_for_question(question: str) -> MultiChordLocationRequest | None:
+    q = normalize_chord_words_in_text(re.sub(r"\s+", " ", question or "").strip().lower().rstrip("?!."))
+    if not q:
+        return None
+    patterns = (
+        r"^show me (?:a|an)?\s*([a-g](?:#|b)?)\s+major\s+and\s+(?:a|an)?\s*(?:\1\s+)?minor(?:\s+chords?)?(?:\s+on\s+(?:the\s+)?(?:e9|fretboard))?$",
+        r"^show me (?:a|an)?\s*([a-g](?:#|b)?)\s+minor\s+and\s+(?:a|an)?\s*(?:\1\s+)?major(?:\s+chords?)?(?:\s+on\s+(?:the\s+)?(?:e9|fretboard))?$",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, q)
+        if match:
+            root = normalize_key(normalize_requested_root(match.group(1)))
+            if "minor and" in q:
+                return MultiChordLocationRequest(root=root, qualities=("minor", "major"))
+            return MultiChordLocationRequest(root=root, qualities=("major", "minor"))
+    return None
+
+
+def multi_chord_payload_for_question(question: str) -> dict | None:
+    request = multi_chord_location_request_for_question(question)
+    if request is None:
+        return None
+    payloads = {
+        "major": major_positions(request.root),
+        "minor": minor_positions(request.root),
+    }
+    positions: list[FretboardPosition] = []
+    for quality in request.qualities:
+        positions.extend(payloads[quality].positions)
+    return FretboardVisualizationPayload(
+        title=f"{request.root} major and {request.root} minor positions on E9",
+        subtitle=f"Combined pitch-validated {request.root} major and {request.root} minor positions.",
+        key=request.root,
+        positions=tuple(positions),
+    ).to_payload()
+
+
+def multi_chord_answer_for_question(question: str) -> str | None:
+    request = multi_chord_location_request_for_question(question)
+    if request is None:
+        return None
+    root = request.root
+    lines = [
+        f"Here are both {root} major and {root} minor on E9.",
+        "",
+        f"{root} major means {root}-{transpose(root, 4)}-{transpose(root, 7)}: root, major 3rd, and perfect 5th.",
+        f"{root} minor means {minor_triad_spelling_for_answer(root)}: root, minor 3rd, and perfect 5th.",
+        "",
+        f"Useful {root} major starter positions:",
+    ]
+    major_visible = [position for position in major_positions(root).to_payload()["positions"] if position["visibleByDefault"]]
+    for position in major_visible:
+        controls = " + ".join([*position["pedals"], *position["levers"]]) or "no pedals"
+        lines.append(f"- {fret_label(position['fret'])} with {controls}: {position['role']}, grip {position['grip']}.")
+    lines.extend(["", f"Useful {root} minor positions:"])
+    minor_visible = [position for position in minor_positions(root).to_payload()["positions"] if position["visibleByDefault"]]
+    for position in minor_visible:
+        controls = " + ".join([*position["pedals"], *position["levers"]]) or "no pedals"
+        lines.append(f"- {fret_label(position['fret'])} with {controls}: {position['role']}, grip {position['grip']}.")
+    lines.extend(
+        [
+            "",
+            "The fretboard combines the major and minor cards in one view here. Use the card labels to separate the two sounds.",
+        ]
+    )
+    return "\n".join(lines)
 
 
 def function_chord_payload_for_question(question: str) -> dict | None:
@@ -2055,7 +2131,7 @@ def minor_chord_answer_for_question(question: str) -> str | None:
     return minor_position_answer(
         key,
         prefix=(
-            f"A {key} minor chord means the notes {minor_triad_spelling_for_answer(key)}: "
+            f"{indefinite_article(key).capitalize()} {key} minor chord means the notes {minor_triad_spelling_for_answer(key)}: "
             "root, minor 3rd, and perfect 5th."
         ),
     )
@@ -2245,6 +2321,9 @@ def fretboard_payload_for_question(question: str) -> dict | None:
     q = normalize_chord_words_in_text(re.sub(r"\s+", " ", question or "").strip().lower().rstrip("?!."))
     if not q:
         return None
+    multi_chord_payload = multi_chord_payload_for_question(q)
+    if multi_chord_payload is not None:
+        return multi_chord_payload
     b9_payload = e_lower_578_b9_payload_for_question(q)
     if b9_payload is not None:
         return b9_payload
@@ -2287,6 +2366,9 @@ def fretboard_payload_for_question(question: str) -> dict | None:
         return get_fretboard_examples("major_positions", "G")
     if q == "show me common grips for g":
         return get_fretboard_examples("common_grips", "G")
+    unsupported_request = unsupported_chord_location_request_for_question(q)
+    if unsupported_request is not None and unsupported_request.quality in {"dominant 7", "major 7"}:
+        return get_fretboard_examples("major_positions", unsupported_request.normalized_key)
     return None
 
 
@@ -2369,7 +2451,7 @@ def unsupported_chord_location_request_for_question(question: str) -> Unsupporte
         r"show me",
         r"what frets give me",
     )
-    prefix_match = re.match(rf"^(?:{'|'.join(prefixes)})\s+(?:a|an)?\s*(?P<body>.+)$", q)
+    prefix_match = re.match(rf"^(?:{'|'.join(prefixes)})\s+(?:an|a)?\s*(?P<body>.+)$", q)
     if not prefix_match:
         return None
     body = prefix_match.group("body")
@@ -2377,7 +2459,7 @@ def unsupported_chord_location_request_for_question(question: str) -> Unsupporte
     body = re.sub(r"\bpositions?\b$", "", body).strip()
     body = re.sub(r"\bchord\b$", "", body).strip()
     quality_match = re.match(
-        r"^(?P<root>[a-g](?:#|b)?)(?P<compact>m(?!ajor)|7|dim7?|aug|sus(?:2|4)?)?(?:\s+(?P<quality>minor|minor\s+7|m7|dominant(?:\s+7)?|seventh|7|diminished(?:\s+7)?|dim7?|augmented|aug|sus(?:2|4)?|suspended(?:\s+[24])?|major\s+7|maj7))?$",
+        r"^(?P<root>[a-g](?:#|b)?)(?P<compact>m(?!ajor|aj)|maj7|7|dim7?|aug|sus(?:2|4)?)?(?:\s+(?P<quality>minor|minor\s+7|m7|dominant(?:\s+7)?|dom(?:\s+7)?|seventh|7|diminished(?:\s+7)?|dim7?|augmented|aug|sus(?:2|4)?|suspended(?:\s+[24])?|major\s+7th|major\s+seventh|major\s+7|maj\s+7|maj7))?$",
         body,
     )
     if not quality_match:
@@ -2403,6 +2485,7 @@ def normalize_chord_quality(quality: str) -> str:
         "7th": "dominant 7",
         "seventh": "dominant 7",
         "dom": "dominant 7",
+        "dom 7": "dominant 7",
         "dom7": "dominant 7",
         "dominant": "dominant 7",
         "dominant 7": "dominant 7",
@@ -2415,7 +2498,11 @@ def normalize_chord_quality(quality: str) -> str:
         "suspended": "sus",
         "suspended 2": "sus2",
         "suspended 4": "sus4",
+        "maj 7": "major 7",
         "maj7": "major 7",
+        "major 7": "major 7",
+        "major 7th": "major 7",
+        "major seventh": "major 7",
     }
     return aliases.get(q, q)
 
