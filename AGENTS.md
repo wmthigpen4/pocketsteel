@@ -30,6 +30,19 @@ Coordinate work by lane. If a task spans lanes, 01 Repo Steward should split or 
 - `18 Product / Architecture`: product decisions, API/component contracts, answer/fretboard architecture docs.
 - `19 Visual Design / Assets`: logos, brand assets, visual systems, generated images, motion/design source files.
 
+## Lane Operating Model
+
+Use these lane defaults when the user gives a short workflow command. Task-specific handoffs, smoke docs, or user instructions override lane defaults only within the named scope.
+
+- `01 Repo Steward`: owns exact-path staging, commit splitting, integration-status refreshes, dirty-worktree triage, and final commit hygiene. Lane 01 must never use `git add .` and must not commit product decisions or unclear scopes.
+- `05 Backend / RAG Integration`: owns answer routing, deterministic rules, answer contracts in code, retrieval orchestration, source-card behavior, backend API behavior, and feature-flagged backend integrations. Broad answer-routing, retrieval, Chroma, SGF, or prompt changes are YELLOW unless the user explicitly approves implementation.
+- `06 UX/UI Design`: owns answer presentation, frontend rendering, fretboard UI, prompt chips, copy, responsive layout, and browser smoke for UI behavior. UI changes require focused frontend checks and browser smoke when practical.
+- `11 Auth / Security`: owns Cloudflare Access, auth modes, privacy/security review, access-control decisions, secrets handling guidance, and private-data exposure review. Auth/security changes are RED unless explicitly approved.
+- `12 Self-Hosted Deployment`: owns runtime startup, protected-preview restart/verification, Cloudflare Tunnel/Pages deployment planning, version verification, and deployment smoke. Deployment, DNS, Tunnel, Access, and secrets actions are RED unless explicitly approved.
+- `15 QA / Answer Eval`: owns answer evals, red-team matrices, smoke scripts, regression buckets, browser smoke reports, and QA design review. Lane 15 verifies behavior and writes QA handoffs; it does not implement product/code changes unless explicitly asked.
+- `18 Product / Architecture`: owns product decisions, API/component contracts, answer/fretboard architecture docs, routing policy design, and cross-lane implementation recommendations. Lane 18 should not implement runtime behavior unless explicitly instructed.
+- `19 Visual Design / Assets`: owns brand assets, visual systems, generated images, motion/design source files, and visual design directions. Do not touch `ui/brand/`, `Neon Sign/`, raw design assets, or generated visual artifacts unless the task explicitly names them.
+
 ## Standing Safety Rules
 
 - Do not modify scraper behavior unless the user explicitly approves that RED task.
@@ -39,6 +52,24 @@ Coordinate work by lane. If a task spans lanes, 01 Repo Steward should split or 
 - Preserve raw corpus data exactly as received. Derived corpus files must stay in ignored generated-output locations unless the user approves a different path.
 - Do not expose private source text, private source metadata, private env values, Cloudflare tokens, or credentials.
 - Do not touch `corpus-private/`, `corpus-v2/`, Chroma/vector stores, embeddings, `source-inbox` raw files, `source-inbox/provenance.json`, `.wrangler/`, DNS/deploy secrets, `public/`, `ui/brand/`, `Neon Sign/`, raw design assets, or generated reports unless the task explicitly names them and the lane permits it.
+
+## Private Corpus Guardrails
+
+- `corpus-private/` must remain uncommitted.
+- Generated private JSONL files, eval outputs, reports, and derived private artifacts must remain ignored unless the user explicitly approves exact paths.
+- Private-review guidance must not be exposed as public source material.
+- Do not use broad staging around private or generated corpus material.
+- Do not add public answer routing for private material without explicit protected-preview/auth design and approval.
+- Do not copy large private guidance bodies into prompts, answers, source cards, handoffs, or smoke reports.
+- Private/profile-backed material must stay behind the correct auth and review controls.
+
+## Production Wiring Guardrails
+
+- Do not modify `/api/answer`, Chroma/vector stores, SGF retrieval, UI rendering, auth, DNS, deployment, or Cloudflare configuration unless the task explicitly says so.
+- Feature flags for private, experimental, protected-preview, or retrieval-related work must default off.
+- Public production behavior must not change as a side effect of docs, QA, protected-preview, or private-review work.
+- API fallback does not prove browser behavior, protected-preview UI behavior, or Cloudflare Access behavior.
+- Do not deploy, restart protected preview, change DNS, or touch secrets unless the user explicitly approves that lane/task.
 
 ## Task Modes
 
@@ -83,6 +114,8 @@ Codex must ask before taking action on:
 
 ## Required Workflow
 
+- Every lane task must start with the Universal Task Start checklist below.
+- Every lane task must finish with the Universal Task Finish checklist below.
 - Inspect current code before editing implementation. Do not patch by memory.
 - Read relevant handoffs in `docs/handoffs/task-completions/` before touching overlapping lanes.
 - For YELLOW or RED tasks, produce a plan/diff and stop for approval unless the user has already explicitly approved implementation.
@@ -91,6 +124,121 @@ Codex must ask before taking action on:
 - Do not use `git add .`.
 - Stage exact paths only. Use hunk-level staging when overlapping lane changes share files.
 - Treat `docs/handoffs/task-completions/integration-status.md` as a coordination artifact unless the user explicitly asks to commit it.
+
+### Universal Task Start
+
+At the start of every lane task:
+
+1. Read `AGENTS.md`.
+2. Read the user-specified handoff, workflow file, or latest relevant handoff for the lane.
+3. Run `git status --short`.
+4. Identify whether the task is docs-only, code, QA, deployment, commit, or mixed.
+5. Identify the lane and task mode: GREEN, YELLOW, or RED.
+6. Respect no-stage/no-commit unless the user explicitly instructed staging or committing.
+7. Name any protected paths or unrelated dirty files that constrain the work.
+
+### Universal Task Finish
+
+At the end of every lane task:
+
+1. Write a markdown handoff under `docs/handoffs/task-completions/`.
+2. Run the required checks for the task type, including `git diff --check` for docs-only changes.
+3. Run `git status --short` after changes.
+4. Do not stage or commit unless explicitly instructed or an approved autopilot/Repo Steward rule applies.
+5. In the final response, report the handoff path, checks run, files touched, risks, human decisions needed, and recommended next lane.
+
+Every handoff must include:
+
+- task summary,
+- files changed,
+- tests/checks run,
+- risks,
+- human decision needed,
+- safe-to-stage exact file list,
+- files that must not be staged,
+- recommended next lane,
+- commit readiness.
+
+## Named Workflows
+
+Short workflow commands should rely on these standing rules plus the referenced handoff or user prompt for task-specific details.
+
+### ProtectedPreviewSmoke
+
+Lane ownership: `12 Self-Hosted Deployment`.
+
+Standing rules:
+
+- Lane 12 owns protected-preview restart and verification.
+- Do not modify files unless explicitly requested.
+- Do not stage or commit.
+- Read deployment/preview docs and the referenced smoke or readiness handoff.
+- Run `git status --short` before and after.
+- Verify current `HEAD`.
+- Verify `/api/version` matches expected `HEAD`.
+- API fallback does not count as a browser pass.
+- Cloudflare Access browser smoke is required when the task or handoff specifies it.
+- Stop before restart if dirty runtime-affecting files are present and cannot be isolated.
+- Write a root/user-smoke verification handoff.
+
+The task prompt or referenced handoff must provide:
+
+- exact smoke URL,
+- fallback URL,
+- version query string,
+- prompt list,
+- feature-specific pass criteria.
+
+### Lane15DesignReview
+
+Lane ownership: `15 QA / Answer Eval`.
+
+Standing rules:
+
+- Docs/design review only unless explicitly told otherwise.
+- Do not change code.
+- Do not stage.
+- Do not commit.
+- Read the referenced design handoff and relevant product/answer guidance.
+- Verify design guardrails, protected paths, auth/private-data constraints, source-card behavior, and next-lane readiness.
+- Write a QA handoff under `docs/handoffs/task-completions/`.
+
+### Lane15Smoke
+
+Lane ownership: `15 QA / Answer Eval`.
+
+Standing rules:
+
+- Run the tests and smoke checks specified by the user prompt or referenced handoff.
+- Inspect relevant handoffs before running checks.
+- Verify feature flag behavior when the feature is flag-gated.
+- Verify no unintended production, deployment, auth, corpus, Chroma, SGF, or UI changes occurred.
+- Include the Browser Smoke Target block when browser smoke or API fallback is involved.
+- Write a smoke/QA handoff under `docs/handoffs/task-completions/`.
+
+### ExactPathCommit
+
+Lane ownership: `01 Repo Steward` only.
+
+Standing rules:
+
+- Use only when a QA/autopilot/user-approved handoff names exact files or hunks to commit.
+- Never use `git add .`.
+- Stage only exact files or hunks approved by the QA handoff.
+- Leave unrelated dirty files untouched.
+- Run `git diff --cached --check`.
+- Review `git diff --cached --name-only`.
+- Review the cached diff before committing.
+- Commit only after exact-path review confirms no unrelated files, secrets, credentials, private data, Chroma/vector data, corpus/source data, scraping outputs, deployment changes, auth changes, or generated artifacts are staged without explicit approval.
+- Write a Repo Steward handoff after the commit attempt, whether it succeeds or stops on a blocker.
+
+## Short-Command Examples
+
+- `Lane 15: Run Lane15DesignReview for docs/handoffs/task-completions/curated-guidance-routing-design.md.`
+- `Lane 12: Run ProtectedPreviewSmoke using docs/handoffs/task-completions/<file>.md with version <version>.`
+- `Lane 01: Run ExactPathCommit using docs/handoffs/task-completions/<qa-file>.md.`
+- `Lane 15: Run Lane15Smoke using docs/handoffs/task-completions/<smoke-plan>.md.`
+- `Lane 18: Update the product contract using docs/handoffs/task-completions/<design-input>.md.`
 
 ## Repo Steward Auto-Approval Rule
 
@@ -280,6 +428,10 @@ Every handoff must include:
 - Tests and checks: exact commands run, results, skipped tests and why.
 - Integration notes: what another lane needs to know, schema/API/component/data contract changes, assumptions, blockers, human decisions needed.
 - Risk assessment: low/medium/high, why, rollback notes if relevant.
+- Human decision needed: yes/no, with exact decision if yes.
+- Safe-to-stage exact file list, or `None`.
+- Files that must not be staged.
+- Recommended next lane.
 - Commit readiness: exactly one of `Safe to commit`, `Not ready to commit`, or `Needs human review first`.
 - Suggested next step: recommended lane and exact prompt/task for that lane.
 
