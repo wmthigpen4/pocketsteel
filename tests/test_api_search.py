@@ -60,6 +60,7 @@ def call_app(
     cloudflare_verifier: Any = None,
     private_search_index: Any | None = None,
     retrieval_config: RetrievalModeConfig | None = None,
+    curated_guidance_search: Any | None = None,
 ) -> tuple[str, dict[str, str], dict[str, Any]]:
     app = create_app(
         search_index or fake_search_index(),
@@ -69,6 +70,7 @@ def call_app(
         cloudflare_verifier=cloudflare_verifier,
         private_search_index=private_search_index,
         retrieval_config=retrieval_config,
+        curated_guidance_search=curated_guidance_search,
     )
     captured: dict[str, Any] = {}
     body = json.dumps(json_body or {}).encode("utf-8") if json_body is not None else b""
@@ -227,6 +229,19 @@ class FakeCloudflareVerifier:
             audience=(config.audience,),
             raw={"email": email, "iss": config.issuer, "aud": config.audience},
         )
+
+
+class FakeCuratedGuidanceSearch:
+    def __init__(self, results: list[dict[str, Any]] | None = None, *, fail: bool = False) -> None:
+        self.results = results if results is not None else []
+        self.fail = fail
+        self.calls: list[dict[str, Any]] = []
+
+    def __call__(self, query: str, **kwargs: Any) -> list[dict[str, Any]]:
+        self.calls.append({"query": query, **kwargs})
+        if self.fail:
+            raise RuntimeError("test curated guidance failure")
+        return self.results
 
 
 def fake_search_index(collection: FakeCollection | None = None) -> ChromaSearchIndex:
@@ -886,6 +901,198 @@ def test_api_answer_allows_admin_in_production_like_mode() -> None:
 
     assert status == "200 OK"
     assert "source-backed answer" in payload["answer"]
+
+
+def _enable_curated_guidance_answer_flags(monkeypatch: Any) -> None:
+    monkeypatch.setenv("ENABLE_PRIVATE_REVIEW_SOURCES", "1")
+    monkeypatch.setenv("ENABLE_CURATED_GUIDANCE_RETRIEVAL", "1")
+    monkeypatch.setenv("ENABLE_CURATED_GUIDANCE_IN_ANSWER", "1")
+
+
+def test_api_answer_curated_guidance_disabled_by_default_does_not_call_retriever(monkeypatch: Any) -> None:
+    monkeypatch.delenv("ENABLE_PRIVATE_REVIEW_SOURCES", raising=False)
+    monkeypatch.delenv("ENABLE_CURATED_GUIDANCE_RETRIEVAL", raising=False)
+    monkeypatch.delenv("ENABLE_CURATED_GUIDANCE_IN_ANSWER", raising=False)
+    curated_guidance = FakeCuratedGuidanceSearch(
+        [
+            {
+                "title": "Private teaching guidance",
+                "source_filename": "private-guidance.md",
+                "source_path": "private/path/private-guidance.md",
+                "content_layer": "curated_guidance",
+                "visibility": "private_review",
+                "score": 10.0,
+                "quality_flags": [],
+                "excerpt": "Private-review excerpt should not appear.",
+            }
+        ]
+    )
+    app = create_app(
+        fake_search_index(),
+        answer_provider=FakeAnswerProvider(),
+        answer_auth_mode="local_dev",
+        curated_guidance_search=curated_guidance,
+    )
+
+    status, _, payload = call_existing_app(
+        app,
+        "/api/answer",
+        method="POST",
+        json_body={"question": "What is pick blocking?"},
+        access_role="admin",
+    )
+
+    assert status == "200 OK"
+    assert curated_guidance.calls == []
+    event = app.answer_request_log[-1]
+    assert event["curatedGuidanceStatus"] == "disabled"
+    assert event["curatedGuidanceCount"] == 0
+    assert "Private-review excerpt" not in json.dumps(payload)
+
+
+def test_api_answer_curated_guidance_admin_flags_route_without_public_exposure(monkeypatch: Any) -> None:
+    _enable_curated_guidance_answer_flags(monkeypatch)
+    private_result = {
+        "title": "Internal split tuning draft",
+        "source_filename": "private-guidance.md",
+        "source_path": "summary-draft/private-guidance.md",
+        "content_layer": "curated_guidance",
+        "visibility": "private_review",
+        "score": 10.0,
+        "quality_flags": [],
+        "excerpt": "Private-review guidance excerpt should stay out of the public payload.",
+    }
+    curated_guidance = FakeCuratedGuidanceSearch([private_result])
+    app = create_app(
+        fake_search_index(),
+        answer_provider=FakeAnswerProvider(),
+        answer_auth_mode="local_dev",
+        curated_guidance_search=curated_guidance,
+    )
+
+    status, _, payload = call_existing_app(
+        app,
+        "/api/answer",
+        method="POST",
+        json_body={"question": "How do I tune a split on string 6?", "topK": 3},
+        access_role="admin",
+    )
+
+    assert status == "200 OK"
+    assert curated_guidance.calls == [{"query": "How do I tune a split on string 6?", "top_k": 3}]
+    payload_text = json.dumps(payload, sort_keys=True)
+    assert "private_review" not in payload_text
+    assert "curated_guidance" not in payload_text
+    assert "private-guidance.md" not in payload_text
+    assert "summary-draft" not in payload_text
+    assert "Private-review guidance excerpt" not in payload_text
+    event = app.answer_request_log[-1]
+    assert event["curatedGuidanceStatus"] == "retrieved"
+    assert event["curatedGuidanceCount"] == 1
+
+
+def test_api_answer_curated_guidance_beta_user_blocked_even_when_flags_enabled(monkeypatch: Any) -> None:
+    _enable_curated_guidance_answer_flags(monkeypatch)
+    curated_guidance = FakeCuratedGuidanceSearch([{"excerpt": "private"}])
+    app = create_app(
+        fake_search_index(),
+        answer_provider=FakeAnswerProvider(),
+        answer_auth_mode="local_dev",
+        curated_guidance_search=curated_guidance,
+    )
+
+    status, _, payload = call_existing_app(
+        app,
+        "/api/answer",
+        method="POST",
+        json_body={"question": "What is pick blocking?"},
+        access_role="beta_user",
+    )
+
+    assert status == "200 OK"
+    assert curated_guidance.calls == []
+    assert "private" not in json.dumps(payload).lower()
+    event = app.answer_request_log[-1]
+    assert event["curatedGuidanceStatus"] == "role_blocked"
+    assert event["curatedGuidanceCount"] == 0
+
+
+def test_api_answer_curated_guidance_not_used_for_unauthenticated_public_request(monkeypatch: Any) -> None:
+    _enable_curated_guidance_answer_flags(monkeypatch)
+    curated_guidance = FakeCuratedGuidanceSearch([{"excerpt": "private"}])
+    app = create_app(
+        fake_search_index(),
+        answer_provider=FakeAnswerProvider(),
+        answer_auth_mode="production",
+        curated_guidance_search=curated_guidance,
+    )
+
+    status, _, payload = call_existing_app(
+        app,
+        "/api/answer",
+        method="POST",
+        json_body={"question": "What is pick blocking?"},
+        access_role=None,
+    )
+
+    assert status == "401 Unauthorized"
+    assert payload == {"error": "/api/answer requires authenticated beta_user or admin access"}
+    assert curated_guidance.calls == []
+    assert app.answer_request_log[-1]["accessStatus"] == "blocked"
+
+
+def test_api_answer_curated_guidance_not_used_for_explicit_forum_wisdom(monkeypatch: Any) -> None:
+    _enable_curated_guidance_answer_flags(monkeypatch)
+    curated_guidance = FakeCuratedGuidanceSearch([{"excerpt": "private"}])
+    app = create_app(
+        fake_search_index(),
+        answer_provider=FakeAnswerProvider(),
+        answer_auth_mode="local_dev",
+        curated_guidance_search=curated_guidance,
+    )
+
+    status, _, payload = call_existing_app(
+        app,
+        "/api/answer",
+        method="POST",
+        json_body={"question": "What do players say about wound 6th strings?"},
+        access_role="admin",
+    )
+
+    assert status == "200 OK"
+    assert curated_guidance.calls == []
+    assert "private" not in json.dumps(payload).lower()
+    event = app.answer_request_log[-1]
+    assert event["curatedGuidanceStatus"] == "ineligible"
+    assert event["curatedGuidanceCount"] == 0
+
+
+def test_api_answer_curated_guidance_missing_corpus_falls_back_without_private_warning(monkeypatch: Any) -> None:
+    _enable_curated_guidance_answer_flags(monkeypatch)
+    curated_guidance = FakeCuratedGuidanceSearch([])
+    app = create_app(
+        fake_search_index(),
+        answer_provider=FakeAnswerProvider(),
+        answer_auth_mode="local_dev",
+        curated_guidance_search=curated_guidance,
+    )
+
+    status, _, payload = call_existing_app(
+        app,
+        "/api/answer",
+        method="POST",
+        json_body={"question": "How should I practice right-hand blocking?"},
+        access_role="admin",
+    )
+
+    assert status == "200 OK"
+    payload_text = json.dumps(payload, sort_keys=True).lower()
+    assert "corpus-private" not in payload_text
+    assert "private_review" not in payload_text
+    assert all("private" not in json.dumps(source).lower() for source in payload["sources"])
+    event = app.answer_request_log[-1]
+    assert event["curatedGuidanceStatus"] == "empty"
+    assert event["curatedGuidanceCount"] == 0
 
 
 def test_api_answer_dev_override_only_works_when_explicitly_enabled() -> None:

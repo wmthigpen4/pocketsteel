@@ -6,11 +6,13 @@ import argparse
 import hashlib
 import logging
 import json
+import os
+import re
 import subprocess
 from collections.abc import Iterable
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 from urllib.parse import parse_qs
 from wsgiref.simple_server import make_server
 
@@ -62,6 +64,11 @@ from pocketsteel.curated_answers import (
     unsupported_chord_position_curated_answer,
     visual_fretboard_curated_answer,
 )
+from pocketsteel.curated_guidance_retriever import (
+    ENABLE_CURATED_GUIDANCE_ENV,
+    is_teaching_style_query,
+    search_curated_guidance,
+)
 from pocketsteel.curated_source_registry import slide_bar_vendor_source_cards
 from pocketsteel.fretboard_examples import fretboard_payload_for_question
 from pocketsteel.rag_guardrails import sanitize_retrieved_sources
@@ -82,6 +89,15 @@ from pocketsteel.retrieval_modes import (
 )
 
 LOGGER = logging.getLogger(__name__)
+
+ENABLE_PRIVATE_REVIEW_SOURCES_ENV = "ENABLE_PRIVATE_REVIEW_SOURCES"
+ENABLE_CURATED_GUIDANCE_IN_ANSWER_ENV = "ENABLE_CURATED_GUIDANCE_IN_ANSWER"
+CURATED_GUIDANCE_ADMIN_ROLES = {"admin", "dev", "developer", "backstage"}
+CURATED_GUIDANCE_FORUM_WISDOM_RE = re.compile(
+    r"\b(?:what\s+do\s+(?:players|people|forum|steelers)|players?\s+(?:say|think|report)|"
+    r"forum\s+(?:players|wisdom|opinions?)|owner\s+reports?|public\s+forum)\b",
+    re.I,
+)
 
 
 def _question_mentions_slide_bar_item(question: str) -> bool:
@@ -128,6 +144,35 @@ def _should_gate_answer_intent(decision: dict[str, Any]) -> bool:
     return decision.get("domain") == "off_domain" and decision.get("intent") == "small_talk"
 
 
+def _env_flag(name: str, env: dict[str, str] | None = None) -> bool:
+    value = (env or os.environ).get(name, "")
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _curated_guidance_answer_flags_enabled(env: dict[str, str] | None = None) -> bool:
+    return (
+        _env_flag(ENABLE_PRIVATE_REVIEW_SOURCES_ENV, env)
+        and _env_flag(ENABLE_CURATED_GUIDANCE_ENV, env)
+        and _env_flag(ENABLE_CURATED_GUIDANCE_IN_ANSWER_ENV, env)
+    )
+
+
+def _curated_guidance_role_allowed(role: str | None) -> bool:
+    return str(role or "").strip().lower() in CURATED_GUIDANCE_ADMIN_ROLES
+
+
+def _curated_guidance_query_eligible(question: str, decision: dict[str, Any]) -> bool:
+    if decision.get("domain") != "steel_guitar":
+        return False
+    if decision.get("needs_fretboard"):
+        return False
+    if decision.get("allowed_answer_shape") == "guardrail_refusal":
+        return False
+    if CURATED_GUIDANCE_FORUM_WISDOM_RE.search(question or ""):
+        return False
+    return is_teaching_style_query(question or "")
+
+
 class RetrievalApi:
     def __init__(
         self,
@@ -140,9 +185,11 @@ class RetrievalApi:
         answer_rate_limiter: InMemoryAnswerRateLimiter | None = None,
         private_search_index: Any | None = None,
         retrieval_config: RetrievalModeConfig | None = None,
+        curated_guidance_search: Callable[..., list[dict[str, object]]] | None = None,
     ) -> None:
         self.search_index = search_index
         self.private_search_index = private_search_index
+        self.curated_guidance_search = curated_guidance_search or search_curated_guidance
         self.answer_provider = configured_answer_provider(answer_provider)
         self.answer_auth_mode = normalize_answer_auth_mode(answer_auth_mode or configured_answer_auth_mode())
         self.auth_provider = normalize_auth_provider(auth_provider or configured_auth_provider())
@@ -254,6 +301,8 @@ class RetrievalApi:
                 return self._json_response(start_response, "400 Bad Request", {"error": error or "invalid request"})
 
             answer_intent_decision = classify_answer_request(answer_request.question, answer_request.mode)
+            curated_guidance_status: str | None = None
+            curated_guidance_count: int | None = None
 
             deterministic_chord_answer = visual_fretboard_curated_answer(answer_request.question)
             if deterministic_chord_answer is None:
@@ -308,6 +357,14 @@ class RetrievalApi:
                 )
                 return self._json_response(start_response, "200 OK", payload)
 
+            curated_guidance_results, curated_guidance_status = self._curated_guidance_for_answer(
+                answer_request.question,
+                role=access.role,
+                answer_intent_decision=answer_intent_decision,
+                limit=answer_request.top_k,
+            )
+            curated_guidance_count = len(curated_guidance_results)
+
             practical_intent_answer = intent_mode_curated_answer(answer_request.question)
             if practical_intent_answer is not None:
                 final_answer = final_answer_quality_gate(practical_intent_answer.answer, answer_request.question)
@@ -329,6 +386,8 @@ class RetrievalApi:
                     authorized=True,
                     source_count=0,
                     warning_count=0,
+                    curated_guidance_count=curated_guidance_count,
+                    curated_guidance_status=curated_guidance_status,
                 )
                 return self._json_response(start_response, "200 OK", payload)
 
@@ -443,6 +502,8 @@ class RetrievalApi:
                 authorized=True,
                 source_count=len(sources),
                 warning_count=len(warnings),
+                curated_guidance_count=curated_guidance_count,
+                curated_guidance_status=curated_guidance_status,
             )
             return self._json_response(start_response, "200 OK", payload)
 
@@ -595,6 +656,27 @@ class RetrievalApi:
             )
         return SearchResponse(results=list(response or []), warnings=[])
 
+    def _curated_guidance_for_answer(
+        self,
+        question: str,
+        *,
+        role: str,
+        answer_intent_decision: dict[str, Any],
+        limit: int,
+    ) -> tuple[list[dict[str, object]], str]:
+        if not _curated_guidance_answer_flags_enabled():
+            return [], "disabled"
+        if not _curated_guidance_role_allowed(role):
+            return [], "role_blocked"
+        if not _curated_guidance_query_eligible(question, answer_intent_decision):
+            return [], "ineligible"
+        try:
+            results = self.curated_guidance_search(question, top_k=min(max(limit, 1), 5))
+        except Exception:
+            LOGGER.exception("curated guidance retrieval failed")
+            return [], "error"
+        return list(results), "retrieved" if results else "empty"
+
     def _search_role(self, environ: dict[str, Any]) -> str:
         access = authorize_local_dev_request(
             environ,
@@ -640,6 +722,8 @@ class RetrievalApi:
         source_count: int | None = None,
         warning_count: int = 0,
         error_status: str = "",
+        curated_guidance_count: int | None = None,
+        curated_guidance_status: str | None = None,
     ) -> None:
         question = str(request_payload.get("question") or "")
         mode = str(request_payload.get("mode") or "ask")
@@ -656,6 +740,9 @@ class RetrievalApi:
             "warningCount": warning_count,
             "errorStatus": error_status,
         }
+        if curated_guidance_status is not None:
+            event["curatedGuidanceStatus"] = curated_guidance_status
+            event["curatedGuidanceCount"] = int(curated_guidance_count or 0)
         self.answer_request_log.append(event)
         LOGGER.info("answer request event: %s", json.dumps(event, sort_keys=True))
 
@@ -714,6 +801,7 @@ def create_app(
     answer_rate_limiter: InMemoryAnswerRateLimiter | None = None,
     private_search_index: Any | None = None,
     retrieval_config: RetrievalModeConfig | None = None,
+    curated_guidance_search: Callable[..., list[dict[str, object]]] | None = None,
 ) -> RetrievalApi:
     retrieval_config = retrieval_config or configured_retrieval_mode_config()
     private_requested = retrieval_config.requested_mode in {
@@ -735,6 +823,7 @@ def create_app(
         answer_rate_limiter=answer_rate_limiter,
         private_search_index=private_search_index,
         retrieval_config=retrieval_config,
+        curated_guidance_search=curated_guidance_search,
     )
 
 
