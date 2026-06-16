@@ -632,6 +632,12 @@ def _mentions_default_teaching_request(question: str) -> bool:
         return True
     if _mentions_everyday_context_playing(question):
         return True
+    if _mentions_b_c_pedal_skills_request(question):
+        return True
+    if _mentions_turnaround_teaching_request(question):
+        return True
+    if _mentions_chord_family_teaching_request(question):
+        return True
     if _mentions_movement_request(question):
         return True
     if _mentions_progression_intro_request(question):
@@ -662,6 +668,30 @@ def _mentions_progression_intro_request(question: str) -> bool:
     )
 
 
+def _mentions_turnaround_teaching_request(question: str) -> bool:
+    return bool(
+        re.search(r"\bturnarounds?\b", question)
+        and re.search(r"\b(?:teach|what(?:'s| is)|explain|learn|show|play|use|about)\b", question)
+    )
+
+
+def _mentions_b_c_pedal_skills_request(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:b\s*(?:&|\+|and)?\s*c|b\s+c)\s+pedals?\b", question)
+        and re.search(r"\b(?:teach|skill|skills|practice|drill|exercise|learn|use|lick|phrase)\b", question)
+    ) or bool(
+        re.search(r"\bpedal\s+skills?\b", question)
+        and re.search(r"\b(?:teach|learn|practice|drill|exercise)\b", question)
+    )
+
+
+def _mentions_chord_family_teaching_request(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:teach|explain|learn|what(?:'s| is)|about)\b", question)
+        and re.search(r"\b(?:major|minor)\s+chords?\b", question)
+    )
+
+
 def _mentions_pocket_request(question: str) -> bool:
     return bool(
         re.search(r"\b(?:show\s+me|give\s+me|teach\s+me|specific|one)\b", question)
@@ -670,10 +700,11 @@ def _mentions_pocket_request(question: str) -> bool:
 
 
 def _mentions_lick_request(question: str) -> bool:
+    if re.search(r"\b(?:this|that)\s+lick\b", question):
+        return False
     return bool(
-        re.search(r"\b(?:give\s+me|show\s+me|teach\s+me|example|one|just\s+one)\b", question)
+        re.search(r"\b(?:give\s+me|show\s+me|teach\s+me|example|one|just\s+one|another|country|practice)\b", question)
         and re.search(r"\blick\b", question)
-        and re.search(r"\b(?:steel|pedal\s+steel|steel\s+guitar|e9)\b", question)
     )
 
 

@@ -1265,6 +1265,12 @@ def intent_mode_for_question(question: str) -> IntentMode:
         return "style_how_to"
     if _mentions_frustrated_learning_request(q):
         return "frustrated_learning_request"
+    if _mentions_b_c_pedal_skills_request(q):
+        return "practice_plan"
+    if _mentions_turnaround_teaching_request(q):
+        return "progression_intro_request"
+    if _mentions_chord_family_teaching_request(q):
+        return "fretboard_concept"
     if _mentions_movement_request(q):
         return "movement_request"
     if _mentions_progression_intro_request(q):
@@ -1334,6 +1340,14 @@ def intent_mode_curated_answer(question: str) -> CuratedAnswer | None:
                 "Try asking about E9 positions, grips, pedals/levers, tone, gear, blocking, bar movement, practice plans, or steel-guitar forum wisdom."
             ),
         )
+    teaching_answer = (
+        teacher_first_bc_pedal_skills_answer(q)
+        or teacher_first_general_lick_answer(q)
+        or teacher_first_general_turnaround_answer(q)
+        or teacher_first_chord_family_answer(q)
+    )
+    if teaching_answer is not None:
+        return teaching_answer
     if mode == "factual_biography":
         return CuratedAnswer(
             intent="factual_biography",
@@ -1440,7 +1454,7 @@ def intent_mode_curated_answer(question: str) -> CuratedAnswer | None:
                 "Practice idea: stay in that small zone and make one two-beat answer after each chord. Use only one grip first, block after every grip, and listen for I-IV-V movement instead of hunting for more frets."
             ),
         )
-    if mode == "lick_request":
+    if mode == "lick_request" and not mentions_original_style_lick(q):
         return CuratedAnswer(
             intent="lick_request",
             confidence="curated_high",
@@ -1883,6 +1897,10 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
     swing_waltz_answer = teacher_first_swing_waltz_answer(q)
     if swing_waltz_answer is not None:
         return swing_waltz_answer
+
+    original_style_answer = original_style_lick_curated_answer(q)
+    if original_style_answer is not None:
+        return original_style_answer
 
     intent_mode_answer = intent_mode_curated_answer(q)
     if intent_mode_answer is not None:
@@ -2499,20 +2517,9 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             ),
         )
 
-    if mentions_original_style_lick(q):
-        return CuratedAnswer(
-            intent="song_learning",
-            confidence="curated_high",
-            answer=(
-                "Yes. Here is an original slow-country E9 exercise, not a copied song lick.\n\n"
-                "Original mini-exercise in G:\n"
-                "- Start on strings 5-6-8 at the 3rd fret, no pedals.\n"
-                "- Pick the grip, let it bloom with the volume pedal, then slide to the 5th fret with A+B for D.\n"
-                "- Resolve to the 6th fret with A pedal + F lever for a higher G color.\n"
-                "- Add slow vibrato only after each chord settles.\n\n"
-                "Keep it sparse and vocal-like; the point is phrasing, not speed."
-            ),
-        )
+    original_style_answer = original_style_lick_curated_answer(q)
+    if original_style_answer is not None:
+        return original_style_answer
 
     if mentions_random_tab_request(q):
         return CuratedAnswer(
@@ -2950,6 +2957,30 @@ def _mentions_progression_intro_request(question: str) -> bool:
     )
 
 
+def _mentions_turnaround_teaching_request(question: str) -> bool:
+    return bool(
+        re.search(r"\bturnarounds?\b", question)
+        and re.search(r"\b(?:teach|what(?:'s| is)|explain|learn|show|play|use|about)\b", question)
+    )
+
+
+def _mentions_b_c_pedal_skills_request(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:b\s*(?:&|\+|and)?\s*c|b\s+c)\s+pedals?\b", question)
+        and re.search(r"\b(?:teach|skill|skills|practice|drill|exercise|learn|use|lick|phrase)\b", question)
+    ) or bool(
+        re.search(r"\bpedal\s+skills?\b", question)
+        and re.search(r"\b(?:teach|learn|practice|drill|exercise)\b", question)
+    )
+
+
+def _mentions_chord_family_teaching_request(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:teach|explain|learn|what(?:'s| is)|about)\b", question)
+        and re.search(r"\b(?:major|minor)\s+chords?\b", question)
+    )
+
+
 def _mentions_pocket_request(question: str) -> bool:
     return bool(
         re.search(r"\b(?:show\s+me|give\s+me|teach\s+me|specific|one)\b", question)
@@ -2958,10 +2989,11 @@ def _mentions_pocket_request(question: str) -> bool:
 
 
 def _mentions_lick_request(question: str) -> bool:
+    if re.search(r"\b(?:this|that)\s+lick\b", question):
+        return False
     return bool(
-        re.search(r"\b(?:give\s+me|show\s+me|teach\s+me|example|one|just\s+one)\b", question)
+        re.search(r"\b(?:give\s+me|show\s+me|teach\s+me|example|one|just\s+one|another|country|practice)\b", question)
         and re.search(r"\blick\b", question)
-        and re.search(r"\b(?:steel|pedal\s+steel|steel\s+guitar|e9)\b", question)
     )
 
 
@@ -2988,6 +3020,181 @@ def _mentions_everyday_context_playing(question: str) -> bool:
 
 def mentions_current_roster_question(question: str) -> bool:
     return bool(re.search(r"\bwho\s+plays\s+for\s+[a-z0-9'. -]+\??$", question))
+
+
+def original_style_lick_curated_answer(question: str) -> CuratedAnswer | None:
+    if not mentions_original_style_lick(question):
+        return None
+    return CuratedAnswer(
+        intent="song_learning",
+        confidence="curated_high",
+        answer=(
+            "Yes. Here is an original slow-country E9 exercise, not a copied song lick.\n\n"
+            "Original mini-exercise in G:\n"
+            "- Start on strings 5-6-8 at the 3rd fret, no pedals.\n"
+            "- Pick the grip, let it bloom with the volume pedal, then slide to the 5th fret with A+B for D.\n"
+            "- Resolve to the 6th fret with A pedal + F lever for a higher G color.\n"
+            "- Add slow vibrato only after each chord settles.\n\n"
+            "Keep it sparse and vocal-like; the point is phrasing, not speed."
+        ),
+    )
+
+
+def teacher_first_bc_pedal_skills_answer(question: str) -> CuratedAnswer | None:
+    if not _mentions_b_c_pedal_skills_request(question):
+        return None
+    return CuratedAnswer(
+        intent="practice_plan",
+        confidence="curated_high",
+        answer=(
+            "On E9, B+C pedal work is a pedal-timing and melodic-position skill, not just a lick button.\n\n"
+            "Tuning assumption: standard 10-string E9.\n"
+            "Starting key: G.\n"
+            "Fret and grip: use the 3rd fret on strings 3-4-5.\n"
+            "Pedals/levers: press B+C together. The B pedal raises strings 3 and 6 G# to A; the C pedal raises string 4 E to F# and string 5 B to C#.\n\n"
+            "Short phrase:\n"
+            "- Pick strings 3-4-5 with no pedals and let the notes settle.\n"
+            "- Press B+C slowly enough that strings 4 and 5 move together.\n"
+            "- Release B+C cleanly, then block the grip.\n"
+            "- Answer it once on strings 4-5-6 with no pedals so the phrase breathes.\n\n"
+            "What it teaches: coordinated pedal timing, raised-position color, and blocking after a moving grip.\n\n"
+            "Practice instruction: set a metronome slow, play four clean repetitions, and speed up only when the pedal motion and the block are even."
+        ),
+    )
+
+
+def teacher_first_general_lick_answer(question: str) -> CuratedAnswer | None:
+    if not _mentions_lick_request(question):
+        return None
+    if mentions_original_style_lick(question):
+        return None
+
+    if re.search(r"\bc\s+minor\b|\bcm\b", question):
+        return CuratedAnswer(
+            intent="lick_request",
+            confidence="curated_high",
+            answer=(
+                "Here is a simple E9 lick in C minor.\n\n"
+                "Tuning assumption: standard 10-string E9.\n"
+                "Key: C minor.\n"
+                "Fret and grip: use fret 6 on strings 3-4-5.\n"
+                "Pedals/levers: press B+C together to outline C-Eb-G on that grip.\n\n"
+                "Short phrase:\n"
+                "- Pick strings 3-4-5 with B+C down and let the C minor color ring.\n"
+                "- Release the pedals lightly, block, then return to B+C for the answer.\n"
+                "- Finish by holding the B+C grip for one beat longer than feels natural.\n\n"
+                "What it teaches: hearing the minor 3rd against the root and keeping B+C pedal movement controlled.\n\n"
+                "Practice instruction: play the lick at half speed and say the chord tones out loud: C, Eb, G."
+            ),
+        )
+
+    if re.search(r"\bd\s*(?:#|[-\s]+sharp)\b|\beb\b", question):
+        return CuratedAnswer(
+            intent="lick_request",
+            confidence="curated_high",
+            answer=(
+                "I’ll treat D-sharp as Eb/D# for easier fretboard thinking. Here is a simple E9 lick in that key area.\n\n"
+                "Tuning assumption: standard 10-string E9.\n"
+                "Key: Eb/D#.\n"
+                "Fret and grip: use fret 11 on strings 4-5-6.\n"
+                "Pedals/levers: start with no pedals, then add A+B briefly as a country lift.\n\n"
+                "Short phrase:\n"
+                "- Pick strings 4-5-6 at fret 11 with no pedals.\n"
+                "- Press A+B for a quick lift, then release back to the straight-bar chord.\n"
+                "- Block the grip and answer it softer on the same strings.\n\n"
+                "What it teaches: using the straight-bar Eb/D# home position and keeping the A+B color from turning into a smear.\n\n"
+                "Practice instruction: play it slowly enough that the release lands exactly back on the 11th-fret sound."
+            ),
+        )
+
+    default_intro = "Here is one simple original E9 lick in G."
+    if "another" in question:
+        default_intro = "With no previous lick context available, I’ll give you another simple default E9 lick in G."
+    elif "country" in question:
+        default_intro = "Here is a simple country E9 lick in G."
+
+    return CuratedAnswer(
+        intent="lick_request",
+        confidence="curated_high",
+        answer=(
+            f"{default_intro}\n\n"
+            "Tuning assumption: standard 10-string E9.\n"
+            "Key: G.\n"
+            "Fret and grip: use fret 3, grip 4-5-6.\n"
+            "Pedals/levers: start with no pedals, then press A+B for the IV-chord lift.\n\n"
+            "Short phrase:\n"
+            "- Pick strings 4-5-6 open/no pedals for G.\n"
+            "- Press A+B while the chord rings for a C lift.\n"
+            "- Release A+B back to G.\n"
+            "- Block, then repeat it softer as an answer phrase.\n\n"
+            "What it teaches: pedal timing, simple country call-and-response, and clean blocking.\n\n"
+            "Practice instruction: keep it slow enough that the pedal change sounds like a musical word, not a smear."
+        ),
+    )
+
+
+def teacher_first_general_turnaround_answer(question: str) -> CuratedAnswer | None:
+    if not _mentions_turnaround_teaching_request(question):
+        return None
+    if re.search(r"\b1\s*[-/]\s*4\s*[-/]\s*5\s*[-/]\s*1\b", question):
+        return None
+    return CuratedAnswer(
+        intent="progression_intro_request",
+        confidence="curated_high",
+        answer=(
+            "A turnaround is a short chord move that points the music back to the next phrase, often back to the 1 chord.\n\n"
+            "Tuning assumption: standard 10-string E9.\n"
+            "Example key: G.\n"
+            "A simple country turnaround path is G - C - D - G.\n\n"
+            "E9 path:\n"
+            "- G: 3rd fret, no pedals, grip 4-5-6.\n"
+            "- C: 8th fret, no pedals, same grip, or 3rd fret with A+B.\n"
+            "- D: 10th fret, no pedals, same grip, or 5th fret with A+B.\n"
+            "- G: return to the 3rd fret with no pedals.\n\n"
+            "What it teaches: hearing I-IV-V-I movement and leaving space before the next vocal line.\n\n"
+            "Practice instruction: play each chord as two beats, block after every grip, and do not add licks until the chord path feels obvious."
+        ),
+    )
+
+
+def teacher_first_chord_family_answer(question: str) -> CuratedAnswer | None:
+    if not _mentions_chord_family_teaching_request(question):
+        return None
+    if "minor" in question:
+        return CuratedAnswer(
+            intent="fretboard_concept",
+            confidence="curated_high",
+            answer=(
+                "A minor chord is built from root, minor 3rd, and perfect 5th. Compared with major, the 3rd is lowered a half step.\n\n"
+                "Tuning assumption: standard 10-string E9.\n"
+                "Example: C minor is C-Eb-G.\n"
+                "Practical E9 starting point: fret 6 with B+C pedals on strings 3-4-5 gives a C minor grip.\n\n"
+                "How to practice it:\n"
+                "- Pick strings 3-4-5 at fret 6 with B+C down.\n"
+                "- Say the notes C, Eb, G.\n"
+                "- Release, block, and repeat slowly so the minor color is clear.\n\n"
+                "What it teaches: the sound of the flat 3rd and how pedal movement can create a minor color."
+            ),
+        )
+
+    if "major" in question:
+        return CuratedAnswer(
+            intent="fretboard_concept",
+            confidence="curated_high",
+            answer=(
+                "A major chord is built from root, major 3rd, and perfect 5th.\n\n"
+                "Tuning assumption: standard 10-string E9.\n"
+                "Example: G major is G-B-D.\n"
+                "Practical E9 starting positions:\n"
+                "- G at the 3rd fret, no pedals, grip 4-5-6.\n"
+                "- G at the 6th fret with A pedal + F lever.\n"
+                "- G at the 10th fret with A+B.\n\n"
+                "What it teaches: E9 major chords live in position families, so the same chord can have open/no-pedals, A+F, and A+B colors.\n\n"
+                "Practice instruction: play those three G positions slowly and listen for the same chord name with different pedal color."
+            ),
+        )
+
+    return None
 
 
 def teacher_first_turnaround_answer(question: str) -> CuratedAnswer | None:

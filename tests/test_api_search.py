@@ -3353,6 +3353,69 @@ def test_default_teaching_mode_prompts_do_not_fall_into_forum_fragments() -> Non
         assert "fretboard" not in payload
 
 
+def test_user_smoke_teaching_and_lick_prompts_do_not_hit_specificity_gate() -> None:
+    noisy_sources = [
+        {
+            "score": 0.91,
+            "excerpt": "Top Hi All. The available matches are too thin, then someone posted an unrelated tab lick fragment.",
+            "forum_name": "Pedal Steel",
+            "thread_title": "Unrelated teaching fragment",
+            "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=510001",
+            "chunk_id": "chunk-teaching-fragment",
+            "post_uid": "p-teaching-fragment",
+            "source_system": "sgf_phpbb_current",
+        }
+    ]
+    cases: dict[str, tuple[str, ...]] = {
+        "Teach me some B&C pedal skills.": ("B+C", "standard 10-string E9", "strings 3-4-5", "Practice instruction"),
+        "Show me another lick.": ("default E9 lick in G", "fret 3", "strings 4-5-6", "A+B"),
+        "Show me a lick in C minor.": ("C minor", "fret 6", "strings 3-4-5", "B+C"),
+        "Show me a lick.": ("simple original E9 lick in G", "fret 3", "grip", "A+B"),
+        "Show me a steel guitar lick.": ("simple original E9 lick in G", "fret 3", "strings 4-5-6", "A+B"),
+        "Show me a country lick in G.": ("country E9 lick in G", "fret 3", "strings 4-5-6", "A+B"),
+        "Teach me a lick in D-sharp.": ("D-sharp as Eb/D#", "fret 11", "strings 4-5-6", "A+B"),
+        "Teach me about turnarounds.": ("turnaround is a short chord move", "G - C - D - G", "fret", "grip"),
+        "What is a turnaround?": ("turnaround is a short chord move", "I-IV-V-I", "standard 10-string E9", "Practice instruction"),
+        "Teach me about minor chords.": ("minor chord", "C-Eb-G", "fret 6", "B+C"),
+        "Teach me about major chords.": ("major chord", "G-B-D", "3rd fret", "A+B"),
+    }
+
+    for question, required_phrases in cases.items():
+        payload = answer_for_question(question, noisy_sources)
+        assert_clean_answer_body(payload)
+        for phrase in required_phrases:
+            assert phrase in payload["answer"], question
+        assert "I need a more specific steel-guitar question" not in payload["answer"]
+        assert "available matches are too thin" not in payload["answer"].lower()
+        assert "unrelated tab lick fragment" not in payload["answer"].lower()
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+        assert "fretboard" not in payload
+
+    javascript = answer_for_question("Give me a JavaScript sorting algorithm.", noisy_sources)
+    assert_clean_answer_body(javascript)
+    assert "outside Steel Guitar RAG’s scope" in javascript["answer"]
+    assert "I need a more specific steel-guitar question" not in javascript["answer"]
+    assert javascript["sources"] == []
+    assert javascript["warnings"] == []
+    assert "fretboard" not in javascript
+
+
+def test_original_style_lick_route_precedes_generic_lick_route() -> None:
+    payload = answer_for_question(
+        "Can you write me an original E9 lick in the style of a slow country ballad?",
+        noisy_practical_sources(),
+    )
+
+    assert_clean_answer_body(payload)
+    assert "original slow-country E9 exercise" in payload["answer"]
+    assert "Original mini-exercise in G" in payload["answer"]
+    assert "A+B" in payload["answer"]
+    assert "A pedal + F lever" in payload["answer"]
+    assert "Here is a simple country E9 lick in G" not in payload["answer"]
+    assert "available matches are too thin" not in payload["answer"].lower()
+
+
 def test_invalid_chord_symbol_question_clarifies_without_retrieval_or_fretboard() -> None:
     payload = answer_for_question(
         "how. do I play a GF chord?",
