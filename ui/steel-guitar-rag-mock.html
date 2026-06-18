@@ -86,20 +86,20 @@
 
     .hero-hanging-sign {
       position: absolute;
-      top: 14px;
-      left: 0;
-      width: clamp(240px, 22vw, 360px);
+      top: clamp(18px, 3vw, 40px);
+      left: -12px;
+      width: clamp(300px, 23vw, 340px);
       z-index: 2;
       pointer-events: none;
-      transform: translate(-8px, -10px) rotate(-1.5deg);
+      transform: rotate(-1.5deg);
       transform-origin: top left;
       filter:
         drop-shadow(0 18px 28px rgba(0, 0, 0, 0.55))
         drop-shadow(0 0 22px rgba(255, 106, 0, 0.22));
     }
 
-    .hero-hanging-sign video,
-    .hero-hanging-sign img {
+    .landing-sign,
+    .landing-sign-fallback {
       display: block;
       width: 100%;
       height: auto;
@@ -108,24 +108,24 @@
       image-rendering: auto;
     }
 
-    .hero-hanging-sign video {
+    .landing-sign {
       display: none;
     }
 
-    .hero-hanging-sign.is-animated video {
+    .hero-hanging-sign.is-animated .landing-sign {
       display: block;
     }
 
-    .hero-hanging-sign.is-animated img {
+    .hero-hanging-sign.is-animated .landing-sign-fallback {
       display: none;
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .hero-hanging-sign.is-animated video {
+      .hero-hanging-sign.is-animated .landing-sign {
         display: none;
       }
 
-      .hero-hanging-sign.is-animated img {
+      .hero-hanging-sign.is-animated .landing-sign-fallback {
         display: block;
       }
     }
@@ -1904,10 +1904,10 @@
       }
 
       .hero-hanging-sign {
-        width: clamp(190px, 30vw, 270px);
-        top: 12px;
-        left: 0;
-        transform: translate(-7px, -8px) rotate(-1.5deg);
+        width: clamp(220px, 30vw, 300px);
+        top: 34px;
+        left: -12px;
+        transform: rotate(-1.5deg);
       }
 
       .hero {
@@ -2037,29 +2037,28 @@
 
     @media (max-width: 520px) {
       main {
-        padding-top: 120px;
+        padding-top: 200px;
       }
 
       .hero-hanging-sign {
         display: block;
-        top: 8px;
-        left: 0;
-        width: clamp(150px, 48vw, 210px);
-        transform: translate(-4px, 0) rotate(-1.5deg);
+        top: 48px;
+        left: -14px;
+        width: clamp(190px, 55vw, 240px);
+        transform: rotate(-1.5deg);
         z-index: 2;
         pointer-events: none;
       }
 
-      .hero-hanging-sign video,
-      .hero-hanging-sign.is-animated video {
-        display: none;
-      }
-
-      .hero-hanging-sign img,
-      .hero-hanging-sign.is-animated img {
+      .landing-sign,
+      .hero-hanging-sign.is-animated .landing-sign {
         display: block;
         width: 100%;
         height: auto;
+      }
+
+      .hero-hanging-sign.is-animated .landing-sign-fallback {
+        display: none;
       }
     }
   </style>
@@ -2079,8 +2078,10 @@
     </header>
 
     <div class="hero-hanging-sign" aria-hidden="true">
-      <video muted loop playsinline poster="brand/steel-guitar-rag-hanging-sign-fallback.png" preload="none" data-src="brand/steel-guitar-rag-hanging-sign.webm"></video>
-      <img src="brand/steel-guitar-rag-hanging-sign-fallback.png" alt="">
+      <video class="landing-sign" autoplay muted loop playsinline poster="brand/steel-guitar-rag-landing-fallback-alpha.png" preload="metadata">
+        <source src="brand/steel-guitar-rag-landing-alpha.webm" type="video/webm">
+      </video>
+      <img class="landing-sign-fallback" src="brand/steel-guitar-rag-landing-fallback-alpha.png" alt="">
     </div>
 
     <main>
@@ -2933,16 +2934,14 @@
     function initializeHeroHangingSigns() {
       const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
       if (prefersReducedMotion) return;
-      document.querySelectorAll(".hero-hanging-sign video[data-src]").forEach((video) => {
-        const source = document.createElement("source");
-        source.src = video.dataset.src;
-        source.type = "video/webm";
-        video.appendChild(source);
-        video.removeAttribute("data-src");
-        video.closest(".hero-hanging-sign")?.classList.add("is-animated");
+      document.querySelectorAll(".hero-hanging-sign video").forEach((video) => {
+        const sign = video.closest(".hero-hanging-sign");
+        const showFallback = () => sign?.classList.remove("is-animated");
+        video.addEventListener("error", showFallback, { once: true });
+        sign?.classList.add("is-animated");
         video.load();
         video.play?.().catch(() => {
-          video.closest(".hero-hanging-sign")?.classList.remove("is-animated");
+          showFallback();
         });
       });
     }

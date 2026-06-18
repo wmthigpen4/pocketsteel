@@ -179,19 +179,24 @@ def test_answer_ui_includes_home_hero_hanging_sign_without_changing_answer_logo(
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
 
     assert 'class="hero-hanging-sign"' in html
-    assert 'data-src="brand/steel-guitar-rag-hanging-sign.webm"' in html
-    assert 'poster="brand/steel-guitar-rag-hanging-sign-fallback.png"' in html
-    assert "left: 0;" in html
-    assert "top: 14px;" in html
-    assert "width: clamp(240px, 22vw, 360px);" in html
-    assert "transform: translate(-8px, -10px) rotate(-1.5deg);" in html
+    assert 'class="landing-sign" autoplay muted loop playsinline' in html
+    assert 'poster="brand/steel-guitar-rag-landing-fallback-alpha.png"' in html
+    assert 'src="brand/steel-guitar-rag-landing-alpha.webm"' in html
+    assert 'type="video/webm"' in html
+    assert 'type="video/mp4"' not in html
+    assert 'class="landing-sign-fallback" src="brand/steel-guitar-rag-landing-fallback-alpha.png"' in html
+    assert "top: clamp(18px, 3vw, 40px);" in html
+    assert "left: -12px;" in html
+    assert "width: clamp(300px, 23vw, 340px);" in html
+    assert "transform: rotate(-1.5deg);" in html
     assert "padding: clamp(170px, 14vw, 220px) 0 24px;" in html
     assert "padding-top: clamp(120px, 20vw, 170px);" in html
-    assert "padding-top: 120px;" in html
-    assert "width: clamp(150px, 48vw, 210px);" in html
-    assert "transform: translate(-4px, 0) rotate(-1.5deg);" in html
-    assert ".hero-hanging-sign.is-animated video" in html
-    assert ".hero-hanging-sign.is-animated img" in html
+    assert "padding-top: 200px;" in html
+    assert "top: 48px;" in html
+    assert "left: -14px;" in html
+    assert "width: clamp(190px, 55vw, 240px);" in html
+    assert ".hero-hanging-sign.is-animated .landing-sign" in html
+    assert ".hero-hanging-sign.is-animated .landing-sign-fallback" in html
     assert "object-fit: contain;" in html
     assert "object-position: top left;" in html
     assert "image-rendering: auto;" in html
@@ -200,8 +205,8 @@ def test_answer_ui_includes_home_hero_hanging_sign_without_changing_answer_logo(
     assert ".page.is-answering .brand-home {\n      display: block;" in html
     assert ".page.is-answering .hero-hanging-sign" in html
     assert '<img class="brand-logo" src="assets/steel-guitar-rag-logo-transparent.png" alt="Steel Guitar RAG">' in html
-    assert Path("ui/brand/steel-guitar-rag-hanging-sign.webm").is_file()
-    assert Path("ui/brand/steel-guitar-rag-hanging-sign-fallback.png").is_file()
+    assert Path("ui/brand/steel-guitar-rag-landing-alpha.webm").is_file()
+    assert Path("ui/brand/steel-guitar-rag-landing-fallback-alpha.png").is_file()
 
 
 def test_frontend_answer_client_formats_sectioned_and_bullet_text() -> None:
