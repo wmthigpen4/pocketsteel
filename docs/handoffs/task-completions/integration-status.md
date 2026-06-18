@@ -286,3 +286,38 @@ Do not stage docs/answer-eval-report.md unless separately approving the full gen
 
 Run git diff --cached --check, git diff --cached --name-only, and git diff --cached before committing.
 ```
+
+## 2026-06-18 Tab Engine UI And Planning Follow-On
+
+- Current repository HEAD after Repo Steward reconciliation: `54a28c7 fix: clear tab examples on stage return`.
+- Relevant committed tab-engine follow-on commits:
+  - `0bd0780 test: add tab engine ui QA coverage`
+  - `07f9b9d feat: render tab examples on answer page`
+  - `54a28c7 fix: clear tab examples on stage return`
+- Backend baseline remains `686fd3c feat: add deterministic tab engine slice`.
+- UI state:
+  - Answer-page tab rendering is committed.
+  - Tab examples render from normalized backend/API tab payloads; no fake frontend tab generator was added.
+  - Follow-up fix clears tab examples when returning from answer workspace to the home/stage view.
+- Planning handoffs to keep with this follow-on work:
+  - `docs/handoffs/task-completions/2026-06-18-05-answer-triggered-tab-examples-implementation-plan.md`
+  - `docs/handoffs/task-completions/2026-06-18-12-tab-engine-deploy-smoke-plan.md`
+  - `docs/handoffs/task-completions/2026-06-18-18-answer-triggered-tab-examples-architecture.md`
+  - `docs/handoffs/task-completions/2026-06-18-19-tab-card-visual-guidance.md`
+- Focused checks run by Repo Steward:
+  - `.venv/bin/python -m py_compile pocketsteel/tab_engine.py pocketsteel/api.py`: passed.
+  - `.venv/bin/python -m pytest tests/test_tab_engine.py -q`: `16 passed`.
+  - `.venv/bin/python -m pytest tests/test_api_contract.py -q`: `4 passed`.
+  - `.venv/bin/python -m pytest tests/test_api_search.py -q`: `246 passed`.
+  - `node --check ui/answer-client.js`: passed.
+  - `node --check ui/pedal-steel-fretboard.js`: passed.
+  - `.venv/bin/python -m pytest tests/test_frontend_answer_ui.py -q`: `20 passed`.
+  - `.venv/bin/python -m pytest tests/test_pedal_steel_fretboard_ui.py -q`: `29 passed`.
+  - `git diff --check`: passed.
+  - `.venv/bin/python -m pytest -q`: `738 passed, 2 failed`.
+- Full-suite failures remain the known unrelated static/UI caveats:
+  - `tests/test_public_landing_page.py::test_cloudflare_pages_static_output_matches_landing_source`
+  - `tests/test_same_origin_smoke_server.py::test_same_origin_server_serves_public_fretboard_background`
+- Dirty runtime caveat:
+  - `ui/steel-guitar-rag-mock.html` and `tests/test_frontend_answer_ui.py` still contain unrelated landing-sign cache-bust changes after the tab-specific hunk was committed.
+- Next recommended slice: Lane 05 answer-triggered deterministic tab examples using the architecture and implementation-plan handoffs above.
