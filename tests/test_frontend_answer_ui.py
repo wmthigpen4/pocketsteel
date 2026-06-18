@@ -1376,6 +1376,91 @@ def test_answer_ui_styles_markdown_tables_as_readable_answer_content() -> None:
     assert re.search(r"\.answer-table\s*\{[^}]*font-size:\s*16px;", html, re.S)
 
 
+def test_frontend_answer_client_normalizes_tab_render_payloads() -> None:
+    script = r"""
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const vm = require("node:vm");
+
+const code = fs.readFileSync("ui/answer-client.js", "utf8");
+const sandbox = { window: {} };
+vm.createContext(sandbox);
+vm.runInContext(code, sandbox);
+const answerUi = vm.runInContext("STEEL_RAG_ANSWER_UI", sandbox);
+
+const tabText = "Strings | 5  4\\nFret    | 3A 3";
+const result = answerUi.normalizeAnswerResponse({
+  ok: true,
+  tab: tabText,
+  issues: [],
+  metadata: {
+    profile: "default_e9",
+    event_count: 2
+  }
+});
+
+assert.equal(result.tabs.length, 1);
+assert.equal(result.tabs[0].title, "Tab example");
+assert.equal(result.tabs[0].tabText, tabText);
+assert.equal(result.tabs[0].validation, "Validated");
+assert.equal(result.tabs[0].metadata.profile, "default_e9");
+assert.equal(result.tabs[0].metadata.event_count, 2);
+
+const tabList = answerUi.normalizeAnswerResponse({
+  tabs: [
+    {
+      title: "G grip",
+      tabText,
+      context: { key: "G", tuning: "E9" },
+      metadata: { grip: "4-5-6", difficulty: "Beginner" },
+      intervals: ["root", { third: "B" }],
+      chordTones: ["G", "B", "D"],
+      issues: [{ code: "educational", message: "Short validated example" }]
+    }
+  ]
+});
+
+assert.equal(tabList.tabs.length, 1);
+assert.equal(tabList.tabs[0].context, "");
+assert.equal(tabList.tabs[0].metadata.grip, "4-5-6");
+assert.deepEqual(tabList.tabs[0].intervals, ["root", "third: B"]);
+assert.equal(tabList.tabs[0].issues[0].message, "Short validated example");
+assert.equal(JSON.stringify(tabList.tabs).includes("[object Object]"), false);
+"""
+
+    result = subprocess.run(
+        ["node", "-e", script],
+        cwd=Path(__file__).resolve().parents[1],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_answer_ui_wires_tab_examples_between_answer_and_fretboard() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+
+    answer_card_index = html.index('<article class="answer-card">')
+    tab_index = html.index('<section class="answer-tab" id="answer-tab"')
+    fretboard_index = html.index('<section class="answer-fretboard" id="answer-fretboard"')
+    source_index = html.index('<section class="source-section" aria-labelledby="source-notes-title">')
+    assert answer_card_index < tab_index < fretboard_index < source_index
+    assert 'id="answer-tab-list"' in html
+    assert ".answer-tab[hidden]" in html
+    assert ".tab-card" in html
+    assert ".tab-block" in html
+    assert "font-family: ui-monospace" in html
+    assert "white-space: pre;" in html
+    assert "overflow-x: auto;" in html
+    assert "function renderTabExamples(tabs)" in html
+    assert "function renderTabCard(tab)" in html
+    assert "function clearTabExamples()" in html
+    assert "renderTabExamples(response.tabs);" in html
+    assert "clearTabExamples();" in html
+
+
 def test_answer_ui_wires_optional_fretboard_visualization_section() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
 

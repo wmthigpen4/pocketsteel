@@ -16,8 +16,33 @@ const STEEL_RAG_ANSWER_UI = (() => {
     return values.find((value) => value !== undefined && value !== null && String(value).trim() !== "") || "";
   }
 
+  function firstTextValue(...values) {
+    return values.find((value) => (
+      value !== undefined
+        && value !== null
+        && typeof value !== "object"
+        && String(value).trim() !== ""
+    )) || "";
+  }
+
   function isObjectRecord(value) {
     return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+  }
+
+  function compactValueLabel(value) {
+    if (Array.isArray(value)) {
+      return value.map(compactValueLabel).filter(Boolean).join(", ");
+    }
+    if (isObjectRecord(value)) {
+      return Object.entries(value)
+        .map(([key, item]) => {
+          const label = compactValueLabel(item);
+          return label ? `${key}: ${label}` : "";
+        })
+        .filter(Boolean)
+        .join("; ");
+    }
+    return String(value || "").trim();
   }
 
   function hasSubmittableQuestion(value) {
@@ -332,6 +357,114 @@ const STEEL_RAG_ANSWER_UI = (() => {
     return normalized;
   }
 
+  function normalizeStringList(value) {
+    if (Array.isArray(value)) {
+      return value.map(compactValueLabel).filter(Boolean);
+    }
+    const label = compactValueLabel(value);
+    if (!label) {
+      return [];
+    }
+    return [label];
+  }
+
+  function normalizeTabIssue(issue) {
+    if (isObjectRecord(issue)) {
+      return {
+        code: firstTextValue(issue.code),
+        message: firstTextValue(issue.message, issue.detail, issue.text, issue.code) || compactValueLabel(issue) || "Tab issue"
+      };
+    }
+    return {
+      code: "",
+      message: String(issue || "").trim()
+    };
+  }
+
+  function normalizeTabMetadata(metadata, fallback = {}) {
+    const source = isObjectRecord(metadata) ? metadata : {};
+    const context = isObjectRecord(fallback.context) ? fallback.context : {};
+    return {
+      key: firstTextValue(source.key, context.key, fallback.key),
+      tuning: firstTextValue(source.tuning, context.tuning, fallback.tuning),
+      grip: firstTextValue(source.grip, context.grip, fallback.grip),
+      difficulty: firstTextValue(source.difficulty, context.difficulty, fallback.difficulty),
+      profile: firstTextValue(source.profile, context.profile, fallback.profile),
+      event_count: firstTextValue(source.event_count, source.eventCount, fallback.event_count, fallback.eventCount)
+    };
+  }
+
+  function normalizeTabPayload(tabPayload, index = 0) {
+    const payload = isObjectRecord(tabPayload)
+      ? tabPayload
+      : { tab: tabPayload };
+    const tabText = firstTextValue(payload.tabText, payload.tab_text, payload.text, payload.tab);
+    if (!tabText) {
+      return null;
+    }
+
+    const rawIssues = Array.isArray(payload.issues)
+      ? payload.issues
+      : normalizeStringList(payload.issues);
+    const issues = rawIssues
+      .map(normalizeTabIssue)
+      .filter((issue) => issue.message);
+    const ok = payload.ok === undefined ? issues.length === 0 : Boolean(payload.ok);
+    const validation = isObjectRecord(payload.validation) ? payload.validation : {};
+    const validationLabel = firstTextValue(
+      validation.label,
+      validation.status,
+      payload.validationStatus,
+      payload.validation_status,
+      ok ? "Validated" : "Needs review"
+    );
+
+    return {
+      id: firstTextValue(payload.id, `tab-${index + 1}`),
+      title: firstTextValue(payload.title, index === 0 ? "Tab example" : `Tab example ${index + 1}`),
+      context: firstTextValue(payload.contextLine, payload.context_line, payload.context),
+      tabText,
+      ok,
+      validation: validationLabel,
+      issues,
+      metadata: normalizeTabMetadata(payload.metadata, payload),
+      why: firstTextValue(payload.whyItWorks, payload.why_it_works, payload.explanation, payload.why),
+      intervals: normalizeStringList(payload.intervals),
+      chordTones: normalizeStringList(payload.chordTones || payload.chord_tones),
+      sourceNote: firstTextValue(payload.sourceNote, payload.source_note)
+    };
+  }
+
+  function normalizeTabPayloads(payload) {
+    const tabs = [];
+    const candidateTabs = Array.isArray(payload?.tabs) ? payload.tabs : [];
+    candidateTabs.forEach((tabPayload, index) => {
+      const tab = normalizeTabPayload(tabPayload, index);
+      if (tab) tabs.push(tab);
+    });
+
+    if (!tabs.length && payload?.tab !== undefined) {
+      const tab = normalizeTabPayload({
+        tab: payload.tab,
+        ok: payload.ok,
+        issues: payload.issues,
+        metadata: payload.metadata,
+        title: payload.title,
+        context: payload.context,
+        validation: payload.validation,
+        validationStatus: payload.validationStatus,
+        whyItWorks: payload.whyItWorks,
+        explanation: payload.explanation,
+        intervals: payload.intervals,
+        chordTones: payload.chordTones,
+        sourceNote: payload.sourceNote
+      });
+      if (tab) tabs.push(tab);
+    }
+
+    return tabs;
+  }
+
   function findFretboardPayload(payload) {
     const candidates = [
       payload?.fretboard,
@@ -367,6 +500,10 @@ const STEEL_RAG_ANSWER_UI = (() => {
     const fretboard = normalizeFretboard(findFretboardPayload(payload));
     if (fretboard) {
       normalized.fretboard = fretboard;
+    }
+    const tabs = normalizeTabPayloads(payload);
+    if (tabs.length) {
+      normalized.tabs = tabs;
     }
     return normalized;
   }
@@ -434,6 +571,8 @@ const STEEL_RAG_ANSWER_UI = (() => {
     normalizeSessionResponse,
     normalizeFretboard,
     findFretboardPayload,
+    normalizeTabPayload,
+    normalizeTabPayloads,
     normalizeSections,
     normalizeAnswerResponse,
     requestSession,

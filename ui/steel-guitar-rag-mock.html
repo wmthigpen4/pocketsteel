@@ -1384,6 +1384,84 @@
       display: none;
     }
 
+    .answer-tab[hidden] {
+      display: none;
+    }
+
+    .answer-tab {
+      display: grid;
+      gap: 12px;
+    }
+
+    .tab-card {
+      border: 1px solid rgba(240, 191, 105, 0.22);
+      border-radius: 17px;
+      background:
+        radial-gradient(circle at 50% 0%, rgba(240, 191, 105, 0.08), transparent 42%),
+        linear-gradient(180deg, rgba(30, 32, 31, 0.88), rgba(13, 14, 14, 0.86));
+      box-shadow: 0 22px 54px rgba(0, 0, 0, 0.34);
+      padding: 17px 18px;
+    }
+
+    .tab-card + .tab-card {
+      margin-top: 12px;
+    }
+
+    .tab-card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .tab-validation-badge {
+      flex: 0 0 auto;
+      border: 1px solid rgba(240, 191, 105, 0.3);
+      border-radius: 999px;
+      background: rgba(240, 191, 105, 0.1);
+      color: rgba(255, 246, 223, 0.86);
+      font-size: 12px;
+      font-weight: 750;
+      line-height: 1;
+      padding: 7px 10px;
+      white-space: nowrap;
+    }
+
+    .tab-context,
+    .tab-explanation,
+    .tab-meta,
+    .tab-issues {
+      margin: 10px 0 0;
+      color: rgba(244, 234, 214, 0.76);
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    .tab-block {
+      max-width: 100%;
+      margin: 14px 0 0;
+      overflow-x: auto;
+      border: 1px solid rgba(240, 191, 105, 0.2);
+      border-radius: 12px;
+      background: rgba(5, 7, 7, 0.56);
+      color: rgba(255, 246, 223, 0.92);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      font-size: 16px;
+      line-height: 1.55;
+      padding: 14px;
+      tab-size: 4;
+      white-space: pre;
+    }
+
+    .tab-block code {
+      font: inherit;
+      white-space: inherit;
+    }
+
+    .tab-issues {
+      color: rgba(255, 211, 137, 0.84);
+    }
+
     .fretboard-card {
       padding: 16px 18px 18px;
       border-radius: 17px;
@@ -2136,6 +2214,10 @@
           <div class="answer-detail-grid" id="answer-section-grid"></div>
         </article>
 
+        <section class="answer-tab" id="answer-tab" aria-label="Pedal steel tab examples" hidden>
+          <div id="answer-tab-list"></div>
+        </section>
+
         <section class="answer-fretboard" id="answer-fretboard" aria-labelledby="answer-fretboard-title" hidden>
           <div class="fretboard-card">
             <details class="answer-fretboard-details" id="answer-fretboard-details">
@@ -2616,6 +2698,8 @@
     const answerLead = document.querySelector("#answer-lead");
     const answerStatus = document.querySelector("#answer-status");
     const answerSectionGrid = document.querySelector("#answer-section-grid");
+    const answerTab = document.querySelector("#answer-tab");
+    const answerTabList = document.querySelector("#answer-tab-list");
     const answerFretboard = document.querySelector("#answer-fretboard");
     const answerFretboardDetails = document.querySelector("#answer-fretboard-details");
     const answerFretboardTitle = document.querySelector("#answer-fretboard-title");
@@ -3330,6 +3414,81 @@
       return !window.matchMedia || !window.matchMedia("(max-width: 640px)").matches;
     }
 
+    function clearTabExamples() {
+      answerTab.hidden = true;
+      answerTabList.innerHTML = "";
+    }
+
+    function tabContextParts(tab) {
+      const parts = [];
+      if (tab.context) {
+        parts.push(tab.context);
+      }
+      const metadata = tab.metadata || {};
+      if (metadata.key) parts.push(`Key: ${metadata.key}`);
+      if (metadata.tuning) parts.push(`Tuning: ${metadata.tuning}`);
+      if (metadata.grip) parts.push(`Grip: ${metadata.grip}`);
+      if (metadata.difficulty) parts.push(`Difficulty: ${metadata.difficulty}`);
+      if (metadata.profile) parts.push(`Profile: ${metadata.profile}`);
+      if (metadata.event_count) parts.push(`${metadata.event_count} event${String(metadata.event_count) === "1" ? "" : "s"}`);
+      return parts;
+    }
+
+    function appendTabTextLine(card, className, label, values) {
+      const items = Array.isArray(values) ? values.filter(Boolean) : [values].filter(Boolean);
+      if (!items.length) return;
+      const line = document.createElement("p");
+      line.className = className;
+      line.textContent = label ? `${label}: ${items.join(", ")}` : items.join(", ");
+      card.appendChild(line);
+    }
+
+    function renderTabCard(tab) {
+      const card = document.createElement("article");
+      card.className = "tab-card";
+
+      const header = document.createElement("div");
+      header.className = "tab-card-header";
+      const title = document.createElement("p");
+      title.className = "answer-section-title";
+      title.textContent = tab.title || "Tab example";
+      const badge = document.createElement("span");
+      badge.className = "tab-validation-badge";
+      badge.textContent = tab.validation || (tab.ok === false ? "Needs review" : "Validated");
+      header.append(title, badge);
+      card.appendChild(header);
+
+      appendTabTextLine(card, "tab-context", "", tabContextParts(tab));
+
+      const pre = document.createElement("pre");
+      pre.className = "tab-block";
+      pre.setAttribute("aria-label", `${tab.title || "Pedal steel"} tab`);
+      const code = document.createElement("code");
+      code.textContent = tab.tabText || "";
+      pre.appendChild(code);
+      card.appendChild(pre);
+
+      appendTabTextLine(card, "tab-meta", "Intervals", tab.intervals);
+      appendTabTextLine(card, "tab-meta", "Chord tones", tab.chordTones);
+      appendTabTextLine(card, "tab-explanation", "Why this works", tab.why);
+      appendTabTextLine(card, "tab-meta", "Source note", tab.sourceNote);
+
+      const issues = (tab.issues || []).map((issue) => issue.message || issue.code).filter(Boolean);
+      appendTabTextLine(card, "tab-issues", "Validation notes", issues);
+      return card;
+    }
+
+    function renderTabExamples(tabs) {
+      clearTabExamples();
+      if (!Array.isArray(tabs) || !tabs.length) {
+        return;
+      }
+      answerTab.hidden = false;
+      tabs.slice(0, 3).forEach((tab) => {
+        answerTabList.appendChild(renderTabCard(tab));
+      });
+    }
+
     function clearFretboardVisualization() {
       answerFretboard.hidden = true;
       answerFretboardTitle.textContent = "Fretboard view";
@@ -3402,6 +3561,7 @@
         answerSectionGrid.appendChild(sectionEl);
       });
 
+      renderTabExamples(response.tabs);
       renderFretboardVisualization(response.fretboard);
 
       sourceGrid.innerHTML = "";
@@ -3481,6 +3641,7 @@
       answerStatus.textContent = "Retrieving a source-backed answer.";
       answerSectionGrid.innerHTML = "";
       answerSectionGrid.classList.remove("is-structured-answer");
+      clearTabExamples();
       clearFretboardVisualization();
       sourceGrid.innerHTML = "";
       const loadingCard = document.createElement("article");
@@ -3498,6 +3659,7 @@
       answerStatus.textContent = message || "Try again once the local API is running.";
       answerSectionGrid.innerHTML = "";
       answerSectionGrid.classList.remove("is-structured-answer");
+      clearTabExamples();
       clearFretboardVisualization();
       sourceGrid.innerHTML = "";
       const errorCard = document.createElement("article");
