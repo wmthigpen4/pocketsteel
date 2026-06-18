@@ -402,10 +402,24 @@ const STEEL_RAG_ANSWER_UI = (() => {
     };
   }
 
+  function shouldDisplayTabPayload(payload) {
+    if (!isObjectRecord(payload)) {
+      return true;
+    }
+    if (payload.display_tab === false || payload.displayTab === false) {
+      return false;
+    }
+    const preferredDisplay = firstTextValue(payload.preferred_display, payload.preferredDisplay).toLowerCase();
+    return preferredDisplay !== "fretboard_only";
+  }
+
   function normalizeTabPayload(tabPayload, index = 0) {
     const payload = isObjectRecord(tabPayload)
       ? tabPayload
       : { tab: tabPayload };
+    if (!shouldDisplayTabPayload(payload)) {
+      return null;
+    }
     const tabText = firstTextValue(
       payload.tabText,
       payload.tab_text,
