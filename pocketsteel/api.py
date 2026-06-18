@@ -87,6 +87,7 @@ from pocketsteel.retrieval_modes import (
     private_sources_allowed,
     retrieval_plan_for_role,
 )
+from pocketsteel.tab_engine import render_tab_from_payload
 
 LOGGER = logging.getLogger(__name__)
 
@@ -247,6 +248,12 @@ class RetrievalApi:
                     **access.diagnostics,
                 }
             return self._json_response(start_response, "200 OK", payload)
+
+        if path == "/api/tab/render":
+            if method != "POST":
+                return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"})
+            request_payload = self._read_json_body(environ)
+            return self._json_response(start_response, "200 OK", render_tab_from_payload(request_payload).to_dict())
 
         if path == "/api/answer":
             if method != "POST":
