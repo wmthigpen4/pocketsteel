@@ -488,6 +488,8 @@ const STEEL_RAG_ANSWER_UI = (() => {
   function findFretboardPayload(payload) {
     const candidates = [
       payload?.fretboard,
+      payload?.tab_example?.fretboard,
+      payload?.tabExample?.fretboard,
       payload?.response?.fretboard,
       payload?.data?.fretboard,
       payload?.result?.fretboard
@@ -517,11 +519,20 @@ const STEEL_RAG_ANSWER_UI = (() => {
       searched_domains: searchedDomains,
       followups: Array.isArray(payload?.followups) ? payload.followups : []
     };
-    const fretboard = normalizeFretboard(findFretboardPayload(payload));
+    const tabs = normalizeTabPayloads(payload);
+    const rawFretboard = findFretboardPayload(payload);
+    const fretboard = normalizeFretboard(rawFretboard);
     if (fretboard) {
+      const isTabExampleFretboard = rawFretboard === payload?.tab_example?.fretboard
+        || rawFretboard === payload?.tabExample?.fretboard;
+      if (isTabExampleFretboard && tabs[0] && !firstTextValue(rawFretboard.title)) {
+        fretboard.title = tabs[0].title;
+      }
+      if (isTabExampleFretboard && tabs[0]?.why && !firstTextValue(rawFretboard.description)) {
+        fretboard.description = tabs[0].why;
+      }
       normalized.fretboard = fretboard;
     }
-    const tabs = normalizeTabPayloads(payload);
     if (tabs.length) {
       normalized.tabs = tabs;
     }

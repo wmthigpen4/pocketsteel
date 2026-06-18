@@ -979,12 +979,57 @@ vm.runInContext(inlineScript, sandbox);
   assert.equal(sandbox.mountedFretboardOptions.positions[0].id, "g-open-3");
   assert.equal(sandbox.mountedFretboardOptions.positions[0].role, "No pedals");
 
+  const tabSection = getElement("#answer-tab");
+  const tabList = getElement("#answer-tab-list");
+  sandbox.renderResponse({
+    answer: "Here is a G major grip.",
+    sections: [{ title: "Answer", style: "lead", body: "Here is a G major grip." }],
+    tabs: [
+      {
+        title: "G major 4-5-6 grip",
+        context: "",
+        tabText: "Strings | 4  5  6\\nFret    | 3  3  3",
+        ok: true,
+        validation: "Validated",
+        metadata: { key: "G", tuning: "E9", grip: "4-5-6", difficulty: "beginner" },
+        why: "A compact validated G grip.",
+        intervals: ["1", "3", "5"],
+        chordTones: ["G", "B", "D"],
+        issues: []
+      }
+    ],
+    fretboard: {
+      title: "G major 4-5-6 grip",
+      description: "Strings 4-5-6 at fret 3.",
+      positions: [
+        {
+          id: "g-major-456-open-1",
+          label: "G major",
+          fret: 3,
+          strings: [4, 5, 6],
+          grip: [4, 5, 6]
+        }
+      ]
+    },
+    sources: [],
+    followups: []
+  });
+  assert.equal(tabSection.hidden, false);
+  assert.equal(tabList.textContent.includes("G major 4-5-6 grip"), true);
+  assert.equal(tabList.textContent.includes("Strings | 4  5  6\\nFret    | 3  3  3"), true);
+  assert.equal(fretboardSection.hidden, false);
+  assert.equal(fretboardTitle.textContent, "G major 4-5-6 grip");
+  assert.equal(fretboardDescription.textContent, "Strings 4-5-6 at fret 3.");
+  assert.equal(sandbox.mountedFretboardOptions.positions[0].id, "g-major-456-open-1");
+
   sandbox.renderResponse({
     answer: "No fretboard here.",
     sections: [{ title: "Answer", style: "lead", body: "No fretboard here." }],
     sources: [],
     followups: []
   });
+  assert.equal(tabSection.hidden, true);
+  assert.equal(tabList.children.length, 0);
   assert.equal(fretboardSection.hidden, true);
   assert.equal(fretboardTitle.textContent, "Fretboard view");
   assert.equal(fretboardDescription.textContent, "");
@@ -1426,6 +1471,37 @@ assert.equal(tabExample.tabs[0].tabText, tabText);
 assert.equal(tabExample.tabs[0].metadata.difficulty, "beginner");
 assert.equal(tabExample.tabs[0].metadata.event_count, 2);
 assert.equal(tabExample.tabs[0].why, "A compact validated G grip.");
+assert.equal("fretboard" in tabExample, false);
+
+const tabExampleWithFretboard = answerUi.normalizeAnswerResponse({
+  tab_example: {
+    id: "g-major-456-open",
+    title: "G major 4-5-6 grip",
+    context: { tuning: "E9", profile: "default_e9", difficulty: "beginner" },
+    rendered_tab: tabText,
+    validation: { ok: true, issues: [], profile: "default_e9", eventCount: 1 },
+    explanation: "A compact validated G grip.",
+    fretboard: {
+      description: "Strings 4-5-6 at fret 3.",
+      positions: [
+        {
+          id: "g-major-456-open-1",
+          label: "G major",
+          fret: 3,
+          strings: [4, 5, 6],
+          grip: [4, 5, 6],
+          colorRole: "open"
+        }
+      ]
+    }
+  }
+});
+
+assert.equal(tabExampleWithFretboard.tabs.length, 1);
+assert.equal(tabExampleWithFretboard.fretboard.title, "G major 4-5-6 grip");
+assert.equal(tabExampleWithFretboard.fretboard.description, "Strings 4-5-6 at fret 3.");
+assert.equal(tabExampleWithFretboard.fretboard.positions[0].id, "g-major-456-open-1");
+assert.deepEqual(Array.from(tabExampleWithFretboard.fretboard.positions[0].strings), [4, 5, 6]);
 
 const tabList = answerUi.normalizeAnswerResponse({
   tabs: [

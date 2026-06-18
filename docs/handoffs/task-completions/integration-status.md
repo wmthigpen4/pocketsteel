@@ -415,3 +415,44 @@ Verify:
 - no `[object Object]`
 - normal answer/source/fretboard rendering remains healthy
 ```
+
+## 2026-06-18 Tab Example Fretboard Payload And Rendering Reconciliation
+
+- Current repository HEAD before final Repo Steward UI commit: `12eef1d fix: align tab examples with fretboard payloads`.
+- Backend tab-example/fretboard payload status:
+  - committed in `12eef1d`
+  - safe tab prompts attach deterministic `tab_example` and a compatible `fretboard` payload
+  - fretboard payload is derived from deterministic tab events/registry, not frontend invention or LLM-generated tab
+  - unsupported/copyright/full-song/transcription requests do not attach tab or tab-derived fretboard examples
+- Corrected beginner lick semantics:
+  - the beginner G lick A+B press event now uses only strings 5 and 6
+  - string 8 is not shown as affected by A+B in that press event
+  - G-to-C and A+B examples now use clearer action/position semantics from the backend registry
+- UI fretboard rendering status:
+  - `ui/answer-client.js` normalizes backend-provided nested `tab_example.fretboard` and `tabExample.fretboard`
+  - top-level `fretboard` behavior remains unchanged
+  - frontend does not invent fretboard positions when backend payload is absent
+  - tab and fretboard render together when both payloads are present and clear on later non-tab responses
+- Focused checks run by Repo Steward:
+  - `git diff --check`: passed
+  - `.venv/bin/python -m py_compile pocketsteel/tab_engine.py pocketsteel/api.py pocketsteel/answer_tab_examples.py`: passed
+  - `.venv/bin/python -m pytest tests/test_tab_engine.py -q`: `22 passed`
+  - `.venv/bin/python -m pytest tests/test_api_contract.py -q`: `5 passed`
+  - `.venv/bin/python -m pytest tests/test_api_search.py -q`: `257 passed`
+  - `node --check ui/answer-client.js`: passed
+  - `node --check ui/pedal-steel-fretboard.js`: passed
+  - `.venv/bin/python -m pytest tests/test_frontend_answer_ui.py -q`: `20 passed`
+  - `.venv/bin/python -m pytest tests/test_pedal_steel_fretboard_ui.py -q`: `29 passed`
+  - `.venv/bin/python -m pytest -q`: `756 passed, 2 failed`
+- Full-suite failures remain known unrelated static/UI caveats:
+  - `tests/test_public_landing_page.py::test_cloudflare_pages_static_output_matches_landing_source`
+  - `tests/test_same_origin_smoke_server.py::test_same_origin_server_serves_public_fretboard_background`
+- Unrelated dirty work remains parked:
+  - landing/sign cache-bust work in `ui/steel-guitar-rag-mock.html`, `ui/brand/steel-guitar-rag-landing-fallback-alpha.png`, and the unrelated hunk in `tests/test_frontend_answer_ui.py`
+  - corpus/source/provenance docs and root RAG scripts
+  - source-inbox and broad historical handoff/assets inventory
+- Next recommended smoke:
+  - Lane 12 should run protected-preview current-HEAD smoke after this Repo Steward commit
+  - exact root URL: `https://app.steelguitarrag.com/?v=tab-example-fretboard-<HEAD>`
+  - verify `Show me a G major grip`, `Show me a G to C move`, `How do I use A+B pedals?`, `Show me an E-lower move`, and `Give me a beginner lick in G`
+  - expected: safe prompts show deterministic tab plus fretboard; no tab/fretboard for unrelated or copyrighted/full-song tab prompts
