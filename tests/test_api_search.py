@@ -2668,6 +2668,42 @@ def assert_valid_tab_example_payload(payload: dict[str, Any], expected_id: str) 
     assert "[object Object]" not in payload["answer"]
 
 
+def assert_valid_tab_example_fretboard_payload(payload: dict[str, Any]) -> None:
+    tab_example = payload["tab_example"]
+    fretboard = payload["fretboard"]
+    assert fretboard["type"] == "e9-fretboard-diagram"
+    assert fretboard["tuning"] == "E9"
+    assert fretboard["sourceContext"][0]["kind"] == "rule"
+    assert fretboard["sourceContext"][0]["sourceId"] == "pocketsteel.answer_tab_examples"
+    assert len(fretboard["positions"]) == len(tab_example["events"])
+    assert len(fretboard["highlights"]) == len(tab_example["events"])
+    for index, (event, position) in enumerate(zip(tab_example["events"], fretboard["positions"]), start=1):
+        assert position["id"] == f"{tab_example['id']}-event-{index}"
+        assert position["positionKind"] == "tab_example_event"
+        assert position["family"] == "tab_example"
+        assert position["visibleByDefault"] is True
+        assert position["sortOrder"] == index * 10
+        assert all(label in DEFAULT_PEDAL_LEVER_LABELS for label in position["pedals"])
+        assert all(label in DEFAULT_PEDAL_LEVER_LABELS for label in position["levers"])
+        assert all(not isinstance(value, dict) for value in position.values() if isinstance(value, list))
+        assert "x" not in position
+        assert "y" not in position
+        event_strings = [note["string"] for note in event["notes"]]
+        event_frets = {note["fret"] for note in event["notes"]}
+        event_changes = {change for note in event["notes"] for change in note["changes"]}
+        assert position["strings"] == event_strings
+        assert len(event_frets) == 1
+        assert position["fret"] == next(iter(event_frets))
+        if event_changes & {"A", "B", "C"}:
+            assert set(position["pedals"]) == event_changes & {"A", "B", "C"}
+        assert position["notes"]
+        assert position["intervals"]
+    for highlight, position in zip(fretboard["highlights"], fretboard["positions"]):
+        assert set(highlight) == {"id", "label", "fret", "strings", "pedals", "levers", "role"}
+        assert highlight["id"] == position["id"]
+        assert highlight["strings"] == position["strings"]
+
+
 def assert_no_tab_specificity_fallback(payload: dict[str, Any]) -> None:
     answer = payload["answer"].lower()
     assert "i need a more specific steel-guitar question" not in answer
@@ -7278,7 +7314,7 @@ def test_answer_attaches_tab_example_for_supported_g_major_grip_request() -> Non
     assert_valid_tab_example_payload(payload, "g-major-456-open")
     assert_no_tab_specificity_fallback(payload)
     assert payload["answer"].startswith("Here is a simple G major grip on E9.")
-    assert "fretboard" not in payload
+    assert_valid_tab_example_fretboard_payload(payload)
 
 
 def test_answer_attaches_tab_example_for_supported_four_five_six_grip_request() -> None:
@@ -7286,6 +7322,7 @@ def test_answer_attaches_tab_example_for_supported_four_five_six_grip_request() 
 
     assert "tab_example" in payload
     assert_valid_tab_example_payload(payload, "g-major-456-open")
+    assert_valid_tab_example_fretboard_payload(payload)
     assert_no_tab_specificity_fallback(payload)
     assert payload["tab_example"]["context"]["grip"] == "4-5-6"
 
@@ -7295,9 +7332,16 @@ def test_answer_attaches_tab_example_for_supported_a_b_request() -> None:
 
     assert "tab_example" in payload
     assert_valid_tab_example_payload(payload, "a-b-pedal-major-position")
+    assert_valid_tab_example_fretboard_payload(payload)
     assert_no_tab_specificity_fallback(payload)
     assert payload["answer"].startswith("Here is a basic A+B pedal example.")
     assert "A+B" in payload["tab_example"]["title"]
+    assert payload["tab_example"]["events"][0]["notes"] == [
+        {"string": 3, "fret": 10, "changes": ["B"]},
+        {"string": 4, "fret": 10, "changes": []},
+        {"string": 5, "fret": 10, "changes": ["A"]},
+    ]
+    assert payload["fretboard"]["positions"][0]["notes"] == {"3": "G", "4": "D", "5": "B"}
 
 
 def test_answer_attaches_tab_example_for_supported_a_b_example_request() -> None:
@@ -7305,6 +7349,7 @@ def test_answer_attaches_tab_example_for_supported_a_b_example_request() -> None
 
     assert "tab_example" in payload
     assert_valid_tab_example_payload(payload, "a-b-pedal-major-position")
+    assert_valid_tab_example_fretboard_payload(payload)
     assert_no_tab_specificity_fallback(payload)
     assert payload["answer"].startswith("Here is a basic A+B pedal example.")
 
@@ -7314,6 +7359,7 @@ def test_answer_attaches_tab_example_for_supported_e_lower_request() -> None:
 
     assert "tab_example" in payload
     assert_valid_tab_example_payload(payload, "e-lower-color-move")
+    assert_valid_tab_example_fretboard_payload(payload)
     assert_no_tab_specificity_fallback(payload)
     assert payload["answer"].startswith("Here is a small E-lower color move.")
     assert "E-lower" in payload["tab_example"]["title"]
@@ -7324,9 +7370,11 @@ def test_answer_attaches_tab_example_for_supported_g_to_c_move() -> None:
 
     assert "tab_example" in payload
     assert_valid_tab_example_payload(payload, "g-to-c-456-beginner")
+    assert_valid_tab_example_fretboard_payload(payload)
     assert_no_tab_specificity_fallback(payload)
     assert payload["answer"].startswith("Here is a simple G to C movement on E9.")
     assert payload["tab_example"]["validation"]["eventCount"] == 2
+    assert len(payload["fretboard"]["positions"]) == 2
 
 
 def test_answer_attaches_tab_example_for_supported_beginner_lick() -> None:
@@ -7334,20 +7382,31 @@ def test_answer_attaches_tab_example_for_supported_beginner_lick() -> None:
 
     assert "tab_example" in payload
     assert_valid_tab_example_payload(payload, "beginner-g-two-event-lick")
+    assert_valid_tab_example_fretboard_payload(payload)
     assert_no_tab_specificity_fallback(payload)
     assert payload["tab_example"]["validation"]["eventCount"] == 3
+    press_event = payload["tab_example"]["events"][1]
+    assert press_event["lyric"] == "press"
+    assert press_event["notes"] == [
+        {"string": 5, "fret": 3, "changes": ["A"]},
+        {"string": 6, "fret": 3, "changes": ["B"]},
+    ]
+    assert "string 8" not in payload["answer"].lower()
+    assert "string 8" not in payload["tab_example"]["explanation"].lower()
 
 
 def test_answer_omits_tab_example_for_unrelated_questions() -> None:
     payload = answer_for_question("Where can I buy a slide bar?", noisy_practical_sources())
 
     assert "tab_example" not in payload
+    assert "fretboard" not in payload
 
 
 def test_unrelated_vague_prompt_can_still_use_specificity_fallback_without_tab_example() -> None:
     payload = answer_for_question("Show me something vague.", noisy_practical_sources())
 
     assert "tab_example" not in payload
+    assert "fretboard" not in payload
     assert (
         "I need a more specific steel-guitar question" in payload["answer"]
         or "I don’t have enough reliable information" in payload["answer"]
@@ -7358,6 +7417,7 @@ def test_answer_omits_tab_example_for_copyrighted_song_tab_requests() -> None:
     payload = answer_for_question("Can you give me tab for Panhandle Rag?", noisy_practical_sources(), mode="tab")
 
     assert "tab_example" not in payload
+    assert "fretboard" not in payload
     assert "full note-for-note copyrighted tab" in payload["answer"]
 
 

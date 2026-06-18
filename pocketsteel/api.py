@@ -41,7 +41,11 @@ from pocketsteel.access_control import (
     normalize_auth_provider,
 )
 from pocketsteel.answer_usage import InMemoryAnswerRateLimiter, answer_rate_limit_key
-from pocketsteel.answer_tab_examples import answer_body_for_tab_example, tab_example_payload_for_question
+from pocketsteel.answer_tab_examples import (
+    answer_body_for_tab_example,
+    fretboard_payload_for_tab_example,
+    tab_example_payload_for_question,
+)
 from pocketsteel.api_contract import AnswerResponse
 from pocketsteel.answer_contracts import enforce_answer_contract, infer_contract_intent
 from pocketsteel.answer_intent_classifier import classify_answer_request
@@ -155,6 +159,10 @@ def _attach_tab_example_if_available(
     tab_example = tab_example_payload_for_question(question, answer_intent=answer_intent_decision)
     if tab_example is not None:
         payload["tab_example"] = tab_example
+        if "fretboard" not in payload:
+            fretboard = fretboard_payload_for_tab_example(tab_example)
+            if fretboard is not None:
+                payload["fretboard"] = fretboard
         if _answer_is_generic_tab_fallback(payload.get("answer", "")):
             replacement = answer_body_for_tab_example(tab_example)
             if replacement:

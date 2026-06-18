@@ -393,14 +393,14 @@ def tab_examples() -> dict[str, tuple[TabEvent, ...]]:
                 notes=(TabNote(4, 3), TabNote(5, 3), TabNote(6, 3)),
             ),
             TabEvent(
-                chord="C",
-                notes=(TabNote(5, 3, ("A",)), TabNote(6, 3, ("B",)), TabNote(8, 3)),
+                chord="C partial",
+                notes=(TabNote(5, 3, ("A",)), TabNote(6, 3, ("B",))),
             ),
         ),
         "ab_major": (
             TabEvent(
                 chord="A+B",
-                notes=(TabNote(3, 10, ("B",)), TabNote(5, 10, ("A",)), TabNote(6, 10, ("B",))),
+                notes=(TabNote(3, 10, ("B",)), TabNote(4, 10), TabNote(5, 10, ("A",))),
             ),
         ),
         "e_lower_color": (
@@ -416,9 +416,9 @@ def tab_examples() -> dict[str, tuple[TabEvent, ...]]:
                 notes=(TabNote(4, 3), TabNote(5, 3), TabNote(6, 3)),
             ),
             TabEvent(
-                chord="C",
+                chord="C partial",
                 lyric="press",
-                notes=(TabNote(5, 3, ("A",)), TabNote(6, 3, ("B",)), TabNote(8, 3)),
+                notes=(TabNote(5, 3, ("A",)), TabNote(6, 3, ("B",))),
             ),
             TabEvent(
                 chord="G",

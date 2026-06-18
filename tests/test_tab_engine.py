@@ -5,7 +5,11 @@ import json
 from typing import Any
 
 from pocketsteel.api import create_app
-from pocketsteel.answer_tab_examples import answer_body_for_tab_example, tab_example_payload_for_question
+from pocketsteel.answer_tab_examples import (
+    answer_body_for_tab_example,
+    fretboard_payload_for_tab_example,
+    tab_example_payload_for_question,
+)
 from pocketsteel.tab_engine import (
     TabEvent,
     TabNote,
@@ -170,6 +174,10 @@ def test_answer_tab_example_selector_returns_valid_g_major_payload() -> None:
         {"string": 6, "fret": 3, "changes": []},
     ]
     assert answer_body_for_tab_example(payload).startswith("Here is a simple G major grip on E9.")
+    fretboard = fretboard_payload_for_tab_example(payload)
+    assert fretboard is not None
+    assert fretboard["sourceContext"][0]["sourceId"] == "pocketsteel.answer_tab_examples"
+    assert fretboard["positions"][0]["strings"] == [4, 5, 6]
 
 
 def test_answer_tab_example_selector_supports_safe_first_examples() -> None:
@@ -188,6 +196,39 @@ def test_answer_tab_example_selector_supports_safe_first_examples() -> None:
         assert payload["rendered_tab"]
         assert payload["validation"]["ok"] is True
         assert payload["validation"]["issues"] == []
+        assert fretboard_payload_for_tab_example(payload) is not None
+
+
+def test_beginner_g_lick_press_event_only_contains_changed_a_b_strings() -> None:
+    payload = tab_example_payload_for_question("Give me a beginner lick in G.")
+
+    assert payload is not None
+    press_event = payload["events"][1]
+    assert press_event["lyric"] == "press"
+    assert press_event["chord"] == "C partial"
+    assert press_event["notes"] == [
+        {"string": 5, "fret": 3, "changes": ["A"]},
+        {"string": 6, "fret": 3, "changes": ["B"]},
+    ]
+    assert "string 8" not in payload["explanation"].lower()
+    assert "strings 5 and 6" in answer_body_for_tab_example(payload)
+
+
+def test_a_b_tab_example_is_pitch_consistent_g_major_grip() -> None:
+    payload = tab_example_payload_for_question("Show me an A+B example.")
+
+    assert payload is not None
+    event = payload["events"][0]
+    assert event["notes"] == [
+        {"string": 3, "fret": 10, "changes": ["B"]},
+        {"string": 4, "fret": 10, "changes": []},
+        {"string": 5, "fret": 10, "changes": ["A"]},
+    ]
+    fretboard = fretboard_payload_for_tab_example(payload)
+    assert fretboard is not None
+    position = fretboard["positions"][0]
+    assert position["notes"] == {"3": "G", "4": "D", "5": "B"}
+    assert position["intervals"] == {"3": "1", "4": "5", "5": "3"}
 
 
 def test_answer_tab_example_selector_blocks_unsafe_or_unsupported_requests() -> None:
