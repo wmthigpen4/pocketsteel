@@ -206,9 +206,9 @@ def test_answer_ui_includes_home_hero_hanging_sign_without_changing_answer_logo(
     assert ".page.is-answering .brand-home {\n      display: inline-flex;" in html
     assert ".page.is-answering .hero-hanging-sign" in html
     assert 'class="answer-brand-badge" autoplay muted loop playsinline' in html
-    assert 'poster="brand/steel-guitar-rag-answer-badge-fallback-alpha.png"' in html
-    assert 'src="brand/steel-guitar-rag-answer-badge-alpha.webm"' in html
-    assert 'class="answer-brand-fallback" src="brand/steel-guitar-rag-answer-badge-fallback-alpha.png"' in html
+    assert 'poster="brand/steel-guitar-rag-answer-badge-fallback-alpha.png?v=answer-badge-rag-artwork-3c4dedb"' in html
+    assert 'src="brand/steel-guitar-rag-answer-badge-alpha.webm?v=answer-badge-rag-artwork-3c4dedb"' in html
+    assert 'class="answer-brand-fallback" src="brand/steel-guitar-rag-answer-badge-fallback-alpha.png?v=answer-badge-rag-artwork-3c4dedb"' in html
     assert "width: clamp(160px, 18vw, 240px);" in html
     assert "max-height: 86px;" in html
     assert Path("ui/brand/steel-guitar-rag-landing-alpha.webm").is_file()
