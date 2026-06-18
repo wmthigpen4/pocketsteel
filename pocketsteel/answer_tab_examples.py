@@ -21,6 +21,7 @@ class AnswerTabExample:
     id: str
     engine_example_id: str
     title: str
+    answer_body: str
     explanation: str
     context: dict[str, Any]
     intervals: list[dict[str, Any]]
@@ -41,6 +42,16 @@ def tab_example_payload_for_question(
     for example in _answer_tab_examples():
         if example.matcher(normalized):
             return _payload_for_example(example)
+    return None
+
+
+def answer_body_for_tab_example(tab_example: dict[str, Any]) -> str | None:
+    """Return direct answer prose for a selected deterministic tab example."""
+
+    tab_id = str(tab_example.get("id") or "")
+    for example in _answer_tab_examples():
+        if example.id == tab_id:
+            return example.answer_body
     return None
 
 
@@ -76,6 +87,10 @@ def _answer_tab_examples() -> tuple[AnswerTabExample, ...]:
             id="g-major-456-open",
             engine_example_id="g_major_open",
             title="G major 4-5-6 grip",
+            answer_body=(
+                "Here is a simple G major grip on E9. "
+                "This keeps the bar movement minimal and uses a beginner-safe 4-5-6 grip."
+            ),
             explanation="A simple G major grip at the 3rd fret on strings 4, 5, and 6.",
             context={
                 "key": "G",
@@ -100,6 +115,10 @@ def _answer_tab_examples() -> tuple[AnswerTabExample, ...]:
             id="g-to-c-456-beginner",
             engine_example_id="g_to_c",
             title="G to C beginner move",
+            answer_body=(
+                "Here is a simple G to C movement on E9. "
+                "The example keeps the grip compact so you can hear the chord change without chasing the neck."
+            ),
             explanation="Keep the bar at fret 3, then press A+B for a short G-to-C move.",
             context={
                 "key": "G",
@@ -118,6 +137,10 @@ def _answer_tab_examples() -> tuple[AnswerTabExample, ...]:
             id="a-b-pedal-major-position",
             engine_example_id="ab_major",
             title="A+B pedal major position",
+            answer_body=(
+                "Here is a basic A+B pedal example. "
+                "The pedals raise the chord tones into a familiar major-position sound while keeping the bar still."
+            ),
             explanation="A compact A+B pedal-position example using string-aware pedal markings.",
             context={
                 "key": "G",
@@ -135,6 +158,10 @@ def _answer_tab_examples() -> tuple[AnswerTabExample, ...]:
             id="e-lower-color-move",
             engine_example_id="e_lower_color",
             title="E-lower color move",
+            answer_body=(
+                "Here is a small E-lower color move. "
+                "Listen for how the lever changes the color of the chord without requiring a large bar move."
+            ),
             explanation="A short E-lower color example that keeps the bar still and changes the harmony with the lever.",
             context={
                 "key": "G",
@@ -152,6 +179,10 @@ def _answer_tab_examples() -> tuple[AnswerTabExample, ...]:
             id="beginner-g-two-event-lick",
             engine_example_id="beginner_lick",
             title="Beginner E9 lick in G",
+            answer_body=(
+                "Here is a short beginner-safe lick. "
+                "Keep the timing slow, let the notes sustain, and focus on clean movement between events."
+            ),
             explanation="A short original G lick: pick the grip, press into the C sound, then release back to G.",
             context={
                 "key": "G",

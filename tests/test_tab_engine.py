@@ -5,7 +5,7 @@ import json
 from typing import Any
 
 from pocketsteel.api import create_app
-from pocketsteel.answer_tab_examples import tab_example_payload_for_question
+from pocketsteel.answer_tab_examples import answer_body_for_tab_example, tab_example_payload_for_question
 from pocketsteel.tab_engine import (
     TabEvent,
     TabNote,
@@ -169,6 +169,7 @@ def test_answer_tab_example_selector_returns_valid_g_major_payload() -> None:
         {"string": 5, "fret": 3, "changes": []},
         {"string": 6, "fret": 3, "changes": []},
     ]
+    assert answer_body_for_tab_example(payload).startswith("Here is a simple G major grip on E9.")
 
 
 def test_answer_tab_example_selector_supports_safe_first_examples() -> None:

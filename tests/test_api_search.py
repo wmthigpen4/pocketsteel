@@ -2668,6 +2668,14 @@ def assert_valid_tab_example_payload(payload: dict[str, Any], expected_id: str) 
     assert "[object Object]" not in payload["answer"]
 
 
+def assert_no_tab_specificity_fallback(payload: dict[str, Any]) -> None:
+    answer = payload["answer"].lower()
+    assert "i need a more specific steel-guitar question" not in answer
+    assert "i don't have enough reliable information" not in answer
+    assert "i don’t have enough reliable information" not in answer
+    assert "available matches are too thin" not in answer
+
+
 def visible_fretboard_ids(payload: dict[str, Any]) -> list[str]:
     return [position["id"] for position in payload["fretboard"]["positions"] if position["visibleByDefault"]]
 
@@ -7268,6 +7276,8 @@ def test_answer_attaches_tab_example_for_supported_g_major_grip_request() -> Non
 
     assert "tab_example" in payload
     assert_valid_tab_example_payload(payload, "g-major-456-open")
+    assert_no_tab_specificity_fallback(payload)
+    assert payload["answer"].startswith("Here is a simple G major grip on E9.")
     assert "fretboard" not in payload
 
 
@@ -7276,6 +7286,7 @@ def test_answer_attaches_tab_example_for_supported_four_five_six_grip_request() 
 
     assert "tab_example" in payload
     assert_valid_tab_example_payload(payload, "g-major-456-open")
+    assert_no_tab_specificity_fallback(payload)
     assert payload["tab_example"]["context"]["grip"] == "4-5-6"
 
 
@@ -7284,7 +7295,18 @@ def test_answer_attaches_tab_example_for_supported_a_b_request() -> None:
 
     assert "tab_example" in payload
     assert_valid_tab_example_payload(payload, "a-b-pedal-major-position")
+    assert_no_tab_specificity_fallback(payload)
+    assert payload["answer"].startswith("Here is a basic A+B pedal example.")
     assert "A+B" in payload["tab_example"]["title"]
+
+
+def test_answer_attaches_tab_example_for_supported_a_b_example_request() -> None:
+    payload = answer_for_question("Show me an A+B example.", noisy_practical_sources())
+
+    assert "tab_example" in payload
+    assert_valid_tab_example_payload(payload, "a-b-pedal-major-position")
+    assert_no_tab_specificity_fallback(payload)
+    assert payload["answer"].startswith("Here is a basic A+B pedal example.")
 
 
 def test_answer_attaches_tab_example_for_supported_e_lower_request() -> None:
@@ -7292,6 +7314,8 @@ def test_answer_attaches_tab_example_for_supported_e_lower_request() -> None:
 
     assert "tab_example" in payload
     assert_valid_tab_example_payload(payload, "e-lower-color-move")
+    assert_no_tab_specificity_fallback(payload)
+    assert payload["answer"].startswith("Here is a small E-lower color move.")
     assert "E-lower" in payload["tab_example"]["title"]
 
 
@@ -7300,6 +7324,8 @@ def test_answer_attaches_tab_example_for_supported_g_to_c_move() -> None:
 
     assert "tab_example" in payload
     assert_valid_tab_example_payload(payload, "g-to-c-456-beginner")
+    assert_no_tab_specificity_fallback(payload)
+    assert payload["answer"].startswith("Here is a simple G to C movement on E9.")
     assert payload["tab_example"]["validation"]["eventCount"] == 2
 
 
@@ -7308,6 +7334,7 @@ def test_answer_attaches_tab_example_for_supported_beginner_lick() -> None:
 
     assert "tab_example" in payload
     assert_valid_tab_example_payload(payload, "beginner-g-two-event-lick")
+    assert_no_tab_specificity_fallback(payload)
     assert payload["tab_example"]["validation"]["eventCount"] == 3
 
 
@@ -7315,6 +7342,16 @@ def test_answer_omits_tab_example_for_unrelated_questions() -> None:
     payload = answer_for_question("Where can I buy a slide bar?", noisy_practical_sources())
 
     assert "tab_example" not in payload
+
+
+def test_unrelated_vague_prompt_can_still_use_specificity_fallback_without_tab_example() -> None:
+    payload = answer_for_question("Show me something vague.", noisy_practical_sources())
+
+    assert "tab_example" not in payload
+    assert (
+        "I need a more specific steel-guitar question" in payload["answer"]
+        or "I don’t have enough reliable information" in payload["answer"]
+    )
 
 
 def test_answer_omits_tab_example_for_copyrighted_song_tab_requests() -> None:
