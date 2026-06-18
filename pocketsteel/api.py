@@ -44,6 +44,8 @@ from pocketsteel.answer_usage import InMemoryAnswerRateLimiter, answer_rate_limi
 from pocketsteel.answer_tab_examples import (
     answer_body_for_tab_example,
     fretboard_payload_for_tab_example,
+    static_answer_body_for_question,
+    static_fretboard_payload_for_question,
     tab_example_payload_for_question,
 )
 from pocketsteel.api_contract import AnswerResponse
@@ -156,6 +158,17 @@ def _attach_tab_example_if_available(
     *,
     answer_intent_decision: dict[str, Any] | None = None,
 ) -> None:
+    static_fretboard = static_fretboard_payload_for_question(question)
+    if static_fretboard is not None:
+        if "fretboard" not in payload:
+            payload["fretboard"] = static_fretboard
+        if _answer_is_generic_tab_fallback(payload.get("answer", "")):
+            replacement = static_answer_body_for_question(question)
+            if replacement:
+                payload["answer"] = replacement
+                payload["sections"] = build_sections(replacement)
+        return
+
     tab_example = tab_example_payload_for_question(question, answer_intent=answer_intent_decision)
     if tab_example is not None:
         payload["tab_example"] = tab_example

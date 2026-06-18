@@ -8,6 +8,8 @@ from pocketsteel.api import create_app
 from pocketsteel.answer_tab_examples import (
     answer_body_for_tab_example,
     fretboard_payload_for_tab_example,
+    static_answer_body_for_question,
+    static_fretboard_payload_for_question,
     tab_example_payload_for_question,
 )
 from pocketsteel.tab_engine import (
@@ -152,37 +154,27 @@ def test_examples_all_validate() -> None:
         assert result.issues == ()
 
 
-def test_answer_tab_example_selector_returns_valid_g_major_payload() -> None:
-    payload = tab_example_payload_for_question("Show me a G major grip.")
+def test_static_g_major_grip_uses_fretboard_without_tab_payload() -> None:
+    assert tab_example_payload_for_question("Show me a G major grip.") is None
+    assert static_answer_body_for_question("Show me a G major grip.").startswith("Here is a simple G major grip on E9.")
 
-    assert payload is not None
-    assert payload["id"] == "g-major-456-open"
-    assert payload["context"]["tuning"] == "E9"
-    assert payload["context"]["profile"] == "default_e9"
-    assert payload["context"]["grip"] == "4-5-6"
-    assert payload["validation"] == {
-        "ok": True,
-        "issues": [],
-        "profile": "default_e9",
-        "eventCount": 1,
-    }
-    assert payload["rendered_tab"]
-    assert " 4 |3" in payload["rendered_tab"]
-    assert payload["events"][0]["notes"] == [
-        {"string": 4, "fret": 3, "changes": []},
-        {"string": 5, "fret": 3, "changes": []},
-        {"string": 6, "fret": 3, "changes": []},
-    ]
-    assert answer_body_for_tab_example(payload).startswith("Here is a simple G major grip on E9.")
-    fretboard = fretboard_payload_for_tab_example(payload)
+    fretboard = static_fretboard_payload_for_question("Show me a G major grip.")
     assert fretboard is not None
     assert fretboard["sourceContext"][0]["sourceId"] == "pocketsteel.answer_tab_examples"
     assert fretboard["positions"][0]["strings"] == [4, 5, 6]
+    assert fretboard["positions"][0]["notes"] == {"4": "G", "5": "D", "6": "B"}
+
+
+def test_static_four_five_six_grip_uses_fretboard_without_tab_payload() -> None:
+    assert tab_example_payload_for_question("Show me a 4-5-6 grip.") is None
+    fretboard = static_fretboard_payload_for_question("Show me a 4-5-6 grip.")
+
+    assert fretboard is not None
+    assert fretboard["positions"][0]["grip"] == "4-5-6"
 
 
 def test_answer_tab_example_selector_supports_safe_first_examples() -> None:
     cases = [
-        ("Show me a 4-5-6 grip.", "g-major-456-open"),
         ("Show me a G to C move.", "g-to-c-456-beginner"),
         ("How do I use A+B pedals?", "a-b-pedal-major-position"),
         ("Show me an E-lower move.", "e-lower-color-move"),

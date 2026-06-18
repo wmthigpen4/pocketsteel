@@ -34,6 +34,8 @@ class AnswerTabExample:
     explanation: str
     context: dict[str, Any]
     intervals: list[dict[str, Any]]
+    kind: str
+    display_mode: str
     matcher: Matcher
 
 
@@ -49,8 +51,39 @@ def tab_example_payload_for_question(
     if not normalized or _is_blocked_tab_request(normalized):
         return None
     for example in _answer_tab_examples():
+        if example.display_mode != "tab_and_fretboard":
+            continue
         if example.matcher(normalized):
             return _payload_for_example(example)
+    return None
+
+
+def static_fretboard_payload_for_question(question: str) -> dict[str, Any] | None:
+    """Return a fretboard-only payload for static grip/chord prompts."""
+
+    normalized = _normalize_question(question)
+    if not normalized or _is_blocked_tab_request(normalized):
+        return None
+    for example in _answer_tab_examples():
+        if example.display_mode != "fretboard_only":
+            continue
+        if example.matcher(normalized):
+            payload = _payload_for_example(example)
+            if payload is None:
+                return None
+            return fretboard_payload_for_tab_example(payload)
+    return None
+
+
+def static_answer_body_for_question(question: str) -> str | None:
+    """Return direct answer prose for static fretboard-first prompts."""
+
+    normalized = _normalize_question(question)
+    if not normalized or _is_blocked_tab_request(normalized):
+        return None
+    for example in _answer_tab_examples():
+        if example.display_mode == "fretboard_only" and example.matcher(normalized):
+            return example.answer_body
     return None
 
 
@@ -150,6 +183,9 @@ def _payload_for_example(example: AnswerTabExample) -> dict[str, Any] | None:
     return {
         "id": example.id,
         "title": example.title,
+        "kind": example.kind,
+        "display_tab": example.display_mode == "tab_and_fretboard",
+        "preferred_display": example.display_mode,
         "context": dict(example.context),
         "rendered_tab": result.tab,
         "validation": {
@@ -326,6 +362,8 @@ def _answer_tab_examples() -> tuple[AnswerTabExample, ...]:
             intervals=[
                 {"eventId": "g-major-456-open-1", "chord": "G", "byString": {"4": "1", "5": "5", "6": "3"}}
             ],
+            kind="static_grip",
+            display_mode="fretboard_only",
             matcher=lambda q: (
                 _matches_g_major_grip_request(q)
                 or _has_any(q, ("4-5-6 grip", "456 grip", "strings 4-5-6", "strings 4 5 6"))
@@ -352,6 +390,8 @@ def _answer_tab_examples() -> tuple[AnswerTabExample, ...]:
                 {"eventId": "g-to-c-1", "chord": "G", "byString": {"4": "1", "5": "5", "6": "3"}},
                 {"eventId": "g-to-c-2", "chord": "C partial", "byString": {"5": "3", "6": "1"}},
             ],
+            kind="movement",
+            display_mode="tab_and_fretboard",
             matcher=lambda q: _has_any(q, ("g to c", "g-to-c", "i to iv", "1 to 4", "one to four")),
         ),
         AnswerTabExample(
@@ -373,6 +413,8 @@ def _answer_tab_examples() -> tuple[AnswerTabExample, ...]:
             intervals=[
                 {"eventId": "a-b-pedal-major-1", "chord": "G", "byString": {"3": "1", "4": "5", "5": "3"}}
             ],
+            kind="pedal_move",
+            display_mode="tab_and_fretboard",
             matcher=_matches_ab_tab_request,
         ),
         AnswerTabExample(
@@ -394,6 +436,8 @@ def _answer_tab_examples() -> tuple[AnswerTabExample, ...]:
             intervals=[
                 {"eventId": "e-lower-color-1", "chord": "E-lower", "byString": {"4": "color", "5": "5", "6": "3"}}
             ],
+            kind="pedal_move",
+            display_mode="tab_and_fretboard",
             matcher=lambda q: _mentions_e_lower(q) and _has_word_any(q, ("move", "example", "show", "color")),
         ),
         AnswerTabExample(
@@ -420,6 +464,8 @@ def _answer_tab_examples() -> tuple[AnswerTabExample, ...]:
                 {"eventId": "beginner-g-lick-2", "chord": "C partial", "byString": {"5": "3", "6": "1"}},
                 {"eventId": "beginner-g-lick-3", "chord": "G", "byString": {"4": "1", "5": "5", "6": "3"}},
             ],
+            kind="lick",
+            display_mode="tab_and_fretboard",
             matcher=lambda q: "lick" in q and _has_any(q, ("beginner", "simple beginner")),
         ),
     )

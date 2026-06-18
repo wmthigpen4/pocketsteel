@@ -2704,6 +2704,26 @@ def assert_valid_tab_example_fretboard_payload(payload: dict[str, Any]) -> None:
         assert highlight["strings"] == position["strings"]
 
 
+def assert_valid_static_grip_fretboard_payload(payload: dict[str, Any]) -> None:
+    fretboard = payload["fretboard"]
+    assert fretboard["type"] == "e9-fretboard-diagram"
+    assert fretboard["tuning"] == "E9"
+    assert fretboard["sourceContext"][0]["kind"] == "rule"
+    assert fretboard["sourceContext"][0]["sourceId"] == "pocketsteel.answer_tab_examples"
+    assert len(fretboard["positions"]) == 1
+    position = fretboard["positions"][0]
+    assert position["id"] == "g-major-456-open-event-1"
+    assert position["positionKind"] == "tab_example_event"
+    assert position["family"] == "tab_example"
+    assert position["fret"] == 3
+    assert position["strings"] == [4, 5, 6]
+    assert position["grip"] == "4-5-6"
+    assert position["pedals"] == []
+    assert position["levers"] == []
+    assert position["notes"] == {"4": "G", "5": "D", "6": "B"}
+    assert position["intervals"] == {"4": "1", "5": "5", "6": "3"}
+
+
 def assert_no_tab_specificity_fallback(payload: dict[str, Any]) -> None:
     answer = payload["answer"].lower()
     assert "i need a more specific steel-guitar question" not in answer
@@ -7307,24 +7327,40 @@ def mode_payload(mode: str) -> dict[str, Any]:
     return payload
 
 
-def test_answer_attaches_tab_example_for_supported_g_major_grip_request() -> None:
+def test_answer_uses_fretboard_first_for_static_g_major_grip_request() -> None:
     payload = answer_for_question("Show me a G major grip.", noisy_practical_sources())
 
-    assert "tab_example" in payload
-    assert_valid_tab_example_payload(payload, "g-major-456-open")
+    assert "tab_example" not in payload
+    assert "fretboard" in payload
     assert_no_tab_specificity_fallback(payload)
     assert payload["answer"].startswith("Here is a simple G major grip on E9.")
-    assert_valid_tab_example_fretboard_payload(payload)
+    assert_valid_static_grip_fretboard_payload(payload)
 
 
-def test_answer_attaches_tab_example_for_supported_four_five_six_grip_request() -> None:
+def test_answer_uses_fretboard_first_for_static_four_five_six_grip_request() -> None:
     payload = answer_for_question("Show me a 4-5-6 grip.", noisy_practical_sources())
 
-    assert "tab_example" in payload
-    assert_valid_tab_example_payload(payload, "g-major-456-open")
-    assert_valid_tab_example_fretboard_payload(payload)
+    assert "tab_example" not in payload
+    assert "fretboard" in payload
+    assert_valid_static_grip_fretboard_payload(payload)
     assert_no_tab_specificity_fallback(payload)
-    assert payload["tab_example"]["context"]["grip"] == "4-5-6"
+
+
+def test_answer_uses_fretboard_first_for_static_g_chord_string_request() -> None:
+    payload = answer_for_question("Show me a G chord on strings 4-5-6.", noisy_practical_sources())
+
+    assert "tab_example" not in payload
+    assert "fretboard" in payload
+    assert_valid_static_grip_fretboard_payload(payload)
+    assert_no_tab_specificity_fallback(payload)
+
+
+def test_answer_uses_fretboard_without_tab_for_static_g_location_request() -> None:
+    payload = answer_for_question("Where is G on E9?", noisy_practical_sources())
+
+    assert "tab_example" not in payload
+    assert "fretboard" in payload
+    assert_no_tab_specificity_fallback(payload)
 
 
 def test_answer_attaches_tab_example_for_supported_a_b_request() -> None:
