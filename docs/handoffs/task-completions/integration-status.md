@@ -321,3 +321,97 @@ Run git diff --cached --check, git diff --cached --name-only, and git diff --cac
 - Dirty runtime caveat:
   - `ui/steel-guitar-rag-mock.html` and `tests/test_frontend_answer_ui.py` still contain unrelated landing-sign cache-bust changes after the tab-specific hunk was committed.
 - Next recommended slice: Lane 05 answer-triggered deterministic tab examples using the architecture and implementation-plan handoffs above.
+
+## 2026-06-18 Answer-Triggered Tab Examples Reconciliation
+
+- Current repository HEAD before final Repo Steward commit: `dc1f4b8 feat: attach deterministic tab examples to answers`.
+- Already committed answer-triggered tab work:
+  - `2bf2767 docs: define answer-triggered tab UX behavior`
+  - `812b46a test: define answer-triggered tab example QA`
+  - `dc1f4b8 feat: attach deterministic tab examples to answers`
+- This reconciliation found and fixed one small API/UI contract bridge:
+  - backend emits optional `tab_example.rendered_tab`
+  - committed browser renderer consumes normalized `response.tabs`
+  - `ui/answer-client.js` now normalizes `tab_example.rendered_tab` into the existing tab-card model
+  - `tests/test_frontend_answer_ui.py` now covers the `tab_example` API shape
+- Handoffs ready to commit with this reconciliation:
+  - `docs/handoffs/task-completions/2026-06-18-12-answer-triggered-tab-examples-smoke.md`
+  - `docs/handoffs/task-completions/2026-06-18-18-answer-triggered-tab-architecture-review.md`
+  - `docs/handoffs/task-completions/2026-06-18-01-answer-triggered-tab-repo-steward-commit.md`
+- Supported answer-triggered tab examples from the committed backend slice:
+  - G major grip / 4-5-6 grip
+  - G to C move
+  - A+B pedal major position
+  - E-lower color move
+  - beginner G lick
+- Blocked/no-tab cases remain intentional:
+  - unrelated gear/vendor/history questions
+  - named copyrighted/full-song tab requests
+  - full solos or recording transcriptions
+  - unsupported arbitrary tab requests
+- Focused checks run by Repo Steward:
+  - `node --check ui/answer-client.js`: passed
+  - `node --check ui/pedal-steel-fretboard.js`: passed
+  - `.venv/bin/python -m py_compile pocketsteel/tab_engine.py pocketsteel/answer_tab_examples.py pocketsteel/api.py pocketsteel/api_contract.py`: passed
+  - `.venv/bin/python -m pytest tests/test_tab_engine.py -q`: `20 passed`
+  - `.venv/bin/python -m pytest tests/test_api_contract.py -q`: `5 passed`
+  - `.venv/bin/python -m pytest tests/test_api_search.py -q`: `255 passed`
+  - `.venv/bin/python -m pytest tests/test_frontend_answer_ui.py -q`: `20 passed`
+  - `.venv/bin/python -m pytest tests/test_pedal_steel_fretboard_ui.py -q`: `29 passed`
+  - `.venv/bin/python -m pytest tests/test_tab_engine.py tests/test_api_contract.py tests/test_api_search.py tests/test_frontend_answer_ui.py -q`: `300 passed`
+  - `git diff --check`: passed
+  - `.venv/bin/python -m pytest -q`: `752 passed, 2 failed`
+- Full-suite failures remain known unrelated static/UI caveats:
+  - `tests/test_public_landing_page.py::test_cloudflare_pages_static_output_matches_landing_source`
+  - `tests/test_same_origin_smoke_server.py::test_same_origin_server_serves_public_fretboard_background`
+- Dirty runtime / parked files:
+  - unrelated landing-sign cache-bust hunks remain in `ui/steel-guitar-rag-mock.html` and `tests/test_frontend_answer_ui.py`; only the tab-example hunk in the shared test file should be staged for this reconciliation
+  - broad parked docs/corpus/source/provenance/visual-design files remain untouched
+- Protected-preview status:
+  - not restarted by Repo Steward
+  - Lane 12 should restart or verify after the reconciliation commit if no dirty runtime gate blocks it
+- Exact next Lane 12 prompt:
+
+```text
+Lane: 12 Self-Hosted Deployment
+Reasoning level: MEDIUM-HIGH
+
+Restart protected preview from the clean committed answer-triggered tab examples HEAD and run browser smoke.
+
+Read:
+- AGENTS.md
+- docs/handoffs/task-completions/2026-06-18-12-answer-triggered-tab-examples-smoke.md
+- docs/handoffs/task-completions/2026-06-18-05-answer-triggered-tab-examples.md
+- docs/handoffs/task-completions/2026-06-18-15-answer-triggered-tab-examples-qa.md
+- docs/handoffs/task-completions/2026-06-18-01-answer-triggered-tab-repo-steward-commit.md
+
+Do not modify files, stage, commit, change DNS, change Cloudflare Access policy, touch corpus/Chroma/vector stores/embeddings/source-inbox/private source data, or run scraping.
+
+First verify the runtime dirty gate. Stop before restart if dirty runtime-affecting files are present unless the task explicitly authorizes dirty-state smoke.
+
+Smoke Target:
+- Target type: protected-preview
+- Result type: browser smoke
+- Exact browser URL tested: https://app.steelguitarrag.com/
+- Cache-busted URL tested: https://app.steelguitarrag.com/?v=answer-tabs-<HEAD>
+- Exact URL the user should use: https://app.steelguitarrag.com/?v=answer-tabs-<HEAD> after Cloudflare Access login
+- Auth required: yes
+- Auth provider: Cloudflare Access
+- Local backend URL: http://127.0.0.1:8770
+- Expected backend port: 8770
+- Expected git HEAD: committed reconciliation HEAD or later
+- Version endpoint: /api/version
+- Version endpoint result: record exact response
+- Root URL status: record observed behavior
+- API fallback status: not sufficient for browser tab rendering
+
+Verify:
+- `Show me a G major grip` displays a deterministic tab card
+- `Show me a G to C move` displays a deterministic tab card
+- `How do I use A+B pedals?` displays a deterministic tab card
+- unrelated gear/history/vendor prompts show no tab
+- named copyrighted/full-song tab requests show no generated tab
+- tab rows remain aligned and readable
+- no `[object Object]`
+- normal answer/source/fretboard rendering remains healthy
+```

@@ -384,13 +384,21 @@ const STEEL_RAG_ANSWER_UI = (() => {
   function normalizeTabMetadata(metadata, fallback = {}) {
     const source = isObjectRecord(metadata) ? metadata : {};
     const context = isObjectRecord(fallback.context) ? fallback.context : {};
+    const validation = isObjectRecord(fallback.validation) ? fallback.validation : {};
     return {
       key: firstTextValue(source.key, context.key, fallback.key),
       tuning: firstTextValue(source.tuning, context.tuning, fallback.tuning),
       grip: firstTextValue(source.grip, context.grip, fallback.grip),
       difficulty: firstTextValue(source.difficulty, context.difficulty, fallback.difficulty),
       profile: firstTextValue(source.profile, context.profile, fallback.profile),
-      event_count: firstTextValue(source.event_count, source.eventCount, fallback.event_count, fallback.eventCount)
+      event_count: firstTextValue(
+        source.event_count,
+        source.eventCount,
+        fallback.event_count,
+        fallback.eventCount,
+        validation.event_count,
+        validation.eventCount
+      )
     };
   }
 
@@ -398,7 +406,14 @@ const STEEL_RAG_ANSWER_UI = (() => {
     const payload = isObjectRecord(tabPayload)
       ? tabPayload
       : { tab: tabPayload };
-    const tabText = firstTextValue(payload.tabText, payload.tab_text, payload.text, payload.tab);
+    const tabText = firstTextValue(
+      payload.tabText,
+      payload.tab_text,
+      payload.renderedTab,
+      payload.rendered_tab,
+      payload.text,
+      payload.tab
+    );
     if (!tabText) {
       return null;
     }
@@ -442,6 +457,11 @@ const STEEL_RAG_ANSWER_UI = (() => {
       const tab = normalizeTabPayload(tabPayload, index);
       if (tab) tabs.push(tab);
     });
+
+    if (!tabs.length && isObjectRecord(payload?.tab_example)) {
+      const tab = normalizeTabPayload(payload.tab_example);
+      if (tab) tabs.push(tab);
+    }
 
     if (!tabs.length && payload?.tab !== undefined) {
       const tab = normalizeTabPayload({

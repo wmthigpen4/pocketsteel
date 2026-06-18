@@ -1406,6 +1406,27 @@ assert.equal(result.tabs[0].validation, "Validated");
 assert.equal(result.tabs[0].metadata.profile, "default_e9");
 assert.equal(result.tabs[0].metadata.event_count, 2);
 
+const tabExample = answerUi.normalizeAnswerResponse({
+  tab_example: {
+    id: "g-major-456-open",
+    title: "G major 4-5-6 grip",
+    context: { tuning: "E9", profile: "default_e9", difficulty: "beginner" },
+    rendered_tab: tabText,
+    validation: { ok: true, issues: [], profile: "default_e9", eventCount: 2 },
+    explanation: "A compact validated G grip.",
+    intervals: [{ role: "root", note: "G" }],
+    events: []
+  }
+});
+
+assert.equal(tabExample.tabs.length, 1);
+assert.equal(tabExample.tabs[0].id, "g-major-456-open");
+assert.equal(tabExample.tabs[0].title, "G major 4-5-6 grip");
+assert.equal(tabExample.tabs[0].tabText, tabText);
+assert.equal(tabExample.tabs[0].metadata.difficulty, "beginner");
+assert.equal(tabExample.tabs[0].metadata.event_count, 2);
+assert.equal(tabExample.tabs[0].why, "A compact validated G grip.");
+
 const tabList = answerUi.normalizeAnswerResponse({
   tabs: [
     {
