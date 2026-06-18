@@ -218,6 +218,27 @@ def test_api_tab_render_returns_tab_and_issues() -> None:
     assert "10 |" in payload["tab"]
 
 
+def test_api_tab_render_accepts_string_aware_a_pedal_on_string_five() -> None:
+    status, payload = _call_tab_api(
+        {
+            "events": [
+                {
+                    "notes": [
+                        {"string": 5, "fret": 3, "changes": ["A"]},
+                    ],
+                }
+            ],
+        }
+    )
+
+    assert status == "200 OK"
+    assert payload["ok"] is True
+    assert payload["issues"] == []
+    assert payload["metadata"] == {"profile": "default_e9", "event_count": 1}
+    assert "3A" in _row(payload["tab"], " 5 |")
+    assert "3A" not in _row(payload["tab"], " 4 |")
+
+
 def test_api_tab_render_reports_validation_issues() -> None:
     status, payload = _call_tab_api(
         {
@@ -234,7 +255,15 @@ def test_api_tab_render_reports_validation_issues() -> None:
     assert status == "200 OK"
     assert payload["ok"] is False
     assert payload["tab"] == ""
-    assert payload["issues"][0]["code"] == "unaffected_string_change"
+    assert payload["metadata"] == {"profile": "default_e9", "event_count": 1}
+    assert payload["issues"] == [
+        {
+            "code": "unaffected_string_change",
+            "eventIndex": 0,
+            "message": "Change A does not affect string 4.",
+            "noteIndex": 0,
+        }
+    ]
 
 
 def _call_tab_api(json_body: dict[str, Any]) -> tuple[str, dict[str, Any]]:
