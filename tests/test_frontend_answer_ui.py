@@ -185,12 +185,13 @@ def test_answer_ui_includes_home_hero_hanging_sign_without_changing_answer_logo(
     assert 'type="video/webm"' in html
     assert 'type="video/mp4"' not in html
     assert 'class="landing-sign-fallback" src="brand/steel-guitar-rag-landing-fallback-alpha.png"' in html
-    assert "top: clamp(18px, 3vw, 40px);" in html
+    assert "top: clamp(-42px, -3vw, -24px);" in html
     assert "left: -12px;" in html
     assert "width: clamp(300px, 23vw, 340px);" in html
     assert "transform: rotate(-1.5deg);" in html
     assert "padding: clamp(170px, 14vw, 220px) 0 24px;" in html
     assert "padding-top: clamp(120px, 20vw, 170px);" in html
+    assert "top: 8px;" in html
     assert "padding-top: 200px;" in html
     assert "top: 48px;" in html
     assert "left: -14px;" in html
