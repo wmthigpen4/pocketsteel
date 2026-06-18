@@ -203,11 +203,20 @@ def test_answer_ui_includes_home_hero_hanging_sign_without_changing_answer_logo(
     assert "image-rendering: auto;" in html
     assert 'prefers-reduced-motion: reduce' in html
     assert ".brand-home {\n      display: none;" in html
-    assert ".page.is-answering .brand-home {\n      display: block;" in html
+    assert ".page.is-answering .brand-home {\n      display: inline-flex;" in html
     assert ".page.is-answering .hero-hanging-sign" in html
-    assert '<img class="brand-logo" src="assets/steel-guitar-rag-logo-transparent.png" alt="Steel Guitar RAG">' in html
+    assert 'class="answer-brand-badge" autoplay muted loop playsinline' in html
+    assert 'poster="brand/steel-guitar-rag-answer-badge-fallback-alpha.png"' in html
+    assert 'src="brand/steel-guitar-rag-answer-badge-alpha.webm"' in html
+    assert 'class="answer-brand-fallback" src="brand/steel-guitar-rag-answer-badge-fallback-alpha.png"' in html
+    assert "width: clamp(160px, 18vw, 240px);" in html
+    assert "max-height: 86px;" in html
     assert Path("ui/brand/steel-guitar-rag-landing-alpha.webm").is_file()
     assert Path("ui/brand/steel-guitar-rag-landing-fallback-alpha.png").is_file()
+    assert Path("ui/brand/steel-guitar-rag-answer-badge-alpha.webm").is_file()
+    assert Path("ui/brand/steel-guitar-rag-answer-badge-fallback-alpha.png").is_file()
+    assert Path("public/brand/steel-guitar-rag-answer-badge-alpha.webm").is_file()
+    assert Path("public/brand/steel-guitar-rag-answer-badge-fallback-alpha.png").is_file()
 
 
 def test_frontend_answer_client_formats_sectioned_and_bullet_text() -> None:

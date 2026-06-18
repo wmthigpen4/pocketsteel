@@ -146,7 +146,8 @@
     }
 
     .page.is-answering .brand-home {
-      display: block;
+      display: inline-flex;
+      align-items: center;
     }
 
     .brand-home:focus-visible {
@@ -160,6 +161,16 @@
       display: block;
       flex: 0 0 auto;
       filter: drop-shadow(0 0 14px rgba(240, 128, 24, 0.22)) drop-shadow(0 0 28px rgba(240, 191, 105, 0.12));
+    }
+
+    .answer-brand-badge,
+    .answer-brand-fallback {
+      width: clamp(160px, 18vw, 240px);
+      max-height: 86px;
+      height: auto;
+      display: block;
+      object-fit: contain;
+      filter: drop-shadow(0 0 12px rgba(240, 128, 24, 0.18)) drop-shadow(0 0 20px rgba(240, 191, 105, 0.1));
     }
 
     .backstage-trigger {
@@ -1928,6 +1939,12 @@
         width: min(210px, 56vw);
       }
 
+      .answer-brand-badge,
+      .answer-brand-fallback {
+        width: clamp(140px, 42vw, 190px);
+        max-height: 72px;
+      }
+
       .backstage-trigger {
         min-height: 40px;
         padding: 0 12px;
@@ -2146,7 +2163,10 @@
     <header>
       <div class="brand">
         <button class="brand-home" type="button" aria-label="Return to Steel Guitar RAG home">
-          <img class="brand-logo" src="assets/steel-guitar-rag-logo-transparent.png" alt="Steel Guitar RAG">
+          <video class="answer-brand-badge" autoplay muted loop playsinline poster="brand/steel-guitar-rag-answer-badge-fallback-alpha.png" preload="metadata" aria-label="Steel Guitar RAG">
+            <source src="brand/steel-guitar-rag-answer-badge-alpha.webm" type="video/webm">
+            <img class="answer-brand-fallback" src="brand/steel-guitar-rag-answer-badge-fallback-alpha.png" alt="Steel Guitar RAG">
+          </video>
         </button>
       </div>
       <button class="backstage-trigger" type="button" aria-haspopup="dialog" aria-controls="backstage" aria-expanded="false">
