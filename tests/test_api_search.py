@@ -2643,6 +2643,31 @@ def assert_deterministic_fretboard_sources_are_clean(payload: dict[str, Any]) ->
     assert payload["fretboard"]["sourceContext"][0]["sourceId"] == "pocketsteel.fretboard_examples"
 
 
+def assert_valid_tab_example_payload(payload: dict[str, Any], expected_id: str) -> None:
+    tab_example = payload["tab_example"]
+    assert tab_example["id"] == expected_id
+    assert isinstance(tab_example["title"], str) and tab_example["title"]
+    assert tab_example["context"]["tuning"] == "E9"
+    assert tab_example["context"]["profile"] == "default_e9"
+    assert isinstance(tab_example["context"]["difficulty"], str)
+    assert tab_example["rendered_tab"]
+    assert tab_example["validation"]["ok"] is True
+    assert tab_example["validation"]["issues"] == []
+    assert tab_example["validation"]["profile"] == "default_e9"
+    assert tab_example["validation"]["eventCount"] == len(tab_example["events"])
+    assert isinstance(tab_example["explanation"], str) and tab_example["explanation"]
+    assert isinstance(tab_example["intervals"], list)
+    assert tab_example["events"]
+    for event in tab_example["events"]:
+        assert event["notes"]
+        for note in event["notes"]:
+            assert set(note).issubset({"string", "fret", "changes", "articulation"})
+            assert 1 <= note["string"] <= 10
+            assert 0 <= note["fret"] <= 24
+            assert isinstance(note["changes"], list)
+    assert "[object Object]" not in payload["answer"]
+
+
 def visible_fretboard_ids(payload: dict[str, Any]) -> list[str]:
     return [position["id"] for position in payload["fretboard"]["positions"] if position["visibleByDefault"]]
 
@@ -7236,6 +7261,73 @@ def mode_payload(mode: str) -> dict[str, Any]:
     )
     assert status == "200 OK"
     return payload
+
+
+def test_answer_attaches_tab_example_for_supported_g_major_grip_request() -> None:
+    payload = answer_for_question("Show me a G major grip.", noisy_practical_sources())
+
+    assert "tab_example" in payload
+    assert_valid_tab_example_payload(payload, "g-major-456-open")
+    assert "fretboard" not in payload
+
+
+def test_answer_attaches_tab_example_for_supported_four_five_six_grip_request() -> None:
+    payload = answer_for_question("Show me a 4-5-6 grip.", noisy_practical_sources())
+
+    assert "tab_example" in payload
+    assert_valid_tab_example_payload(payload, "g-major-456-open")
+    assert payload["tab_example"]["context"]["grip"] == "4-5-6"
+
+
+def test_answer_attaches_tab_example_for_supported_a_b_request() -> None:
+    payload = answer_for_question("How do I use A+B pedals?", noisy_practical_sources())
+
+    assert "tab_example" in payload
+    assert_valid_tab_example_payload(payload, "a-b-pedal-major-position")
+    assert "A+B" in payload["tab_example"]["title"]
+
+
+def test_answer_attaches_tab_example_for_supported_e_lower_request() -> None:
+    payload = answer_for_question("Show me an E-lower move.", noisy_practical_sources())
+
+    assert "tab_example" in payload
+    assert_valid_tab_example_payload(payload, "e-lower-color-move")
+    assert "E-lower" in payload["tab_example"]["title"]
+
+
+def test_answer_attaches_tab_example_for_supported_g_to_c_move() -> None:
+    payload = answer_for_question("Show me a G to C move.", noisy_practical_sources())
+
+    assert "tab_example" in payload
+    assert_valid_tab_example_payload(payload, "g-to-c-456-beginner")
+    assert payload["tab_example"]["validation"]["eventCount"] == 2
+
+
+def test_answer_attaches_tab_example_for_supported_beginner_lick() -> None:
+    payload = answer_for_question("Give me a beginner lick in G.", noisy_practical_sources())
+
+    assert "tab_example" in payload
+    assert_valid_tab_example_payload(payload, "beginner-g-two-event-lick")
+    assert payload["tab_example"]["validation"]["eventCount"] == 3
+
+
+def test_answer_omits_tab_example_for_unrelated_questions() -> None:
+    payload = answer_for_question("Where can I buy a slide bar?", noisy_practical_sources())
+
+    assert "tab_example" not in payload
+
+
+def test_answer_omits_tab_example_for_copyrighted_song_tab_requests() -> None:
+    payload = answer_for_question("Can you give me tab for Panhandle Rag?", noisy_practical_sources(), mode="tab")
+
+    assert "tab_example" not in payload
+    assert "full note-for-note copyrighted tab" in payload["answer"]
+
+
+def test_answer_omits_tab_example_for_full_solo_transcription_requests() -> None:
+    payload = answer_for_question("Transcribe this recording and tab the whole solo.", noisy_practical_sources(), mode="tab")
+
+    assert "tab_example" not in payload
 
 
 def test_gear_mode_returns_diagnostic_style_structure() -> None:

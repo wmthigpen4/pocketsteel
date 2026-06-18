@@ -63,7 +63,7 @@ def test_api_contract_fixture_matches_required_shapes() -> None:
     assert answer["mode"] in VALID_MODES
     required_answer_keys = {"answer", "mode", "sources", "warnings", "sections"}
     assert required_answer_keys.issubset(answer)
-    assert set(answer).issubset(required_answer_keys | {"fretboard"})
+    assert set(answer).issubset(required_answer_keys | {"fretboard", "tab_example"})
     assert "fretboard" not in answer
     assert set(answer["sources"][0]) == {"title", "forumName", "url", "excerpt", "score", "chunkId", "postUid"}
     assert set(answer["sections"][0]) == {"title", "style", "body"}
@@ -199,6 +199,84 @@ def test_optional_fretboard_payload_contract_shape() -> None:
     assert set(highlight) == {"id", "label", "fret", "strings", "pedals", "levers", "role"}
     assert 0 <= highlight["fret"] <= 24
     assert all(1 <= string <= 10 for string in highlight["strings"])
+
+
+def test_optional_tab_example_payload_contract_shape() -> None:
+    answer = {
+        "answer": "Try a simple G major grip at the 3rd fret on strings 4, 5, and 6.",
+        "mode": "ask",
+        "sources": [],
+        "warnings": [],
+        "sections": [
+            {
+                "title": "Answer",
+                "style": "lead",
+                "body": "Try a simple G major grip at the 3rd fret on strings 4, 5, and 6.",
+            }
+        ],
+        "tab_example": {
+            "id": "g-major-456-open",
+            "title": "G major 4-5-6 grip",
+            "context": {
+                "key": "G",
+                "tuning": "E9",
+                "profile": "default_e9",
+                "difficulty": "beginner",
+                "grip": "4-5-6",
+            },
+            "rendered_tab": "Ch |G\n 4 |3\n 5 |3\n 6 |3",
+            "validation": {
+                "ok": True,
+                "issues": [],
+                "profile": "default_e9",
+                "eventCount": 1,
+            },
+            "explanation": "A simple G major grip at fret 3.",
+            "intervals": [
+                {
+                    "eventId": "g-major-456-open-1",
+                    "chord": "G",
+                    "byString": {"4": "1", "5": "5", "6": "3"},
+                }
+            ],
+            "events": [
+                {
+                    "chord": "G",
+                    "notes": [
+                        {"string": 4, "fret": 3, "changes": []},
+                        {"string": 5, "fret": 3, "changes": []},
+                        {"string": 6, "fret": 3, "changes": []},
+                    ],
+                }
+            ],
+        },
+    }
+
+    assert answer["mode"] in VALID_MODES
+    tab_example = answer["tab_example"]
+    assert set(tab_example) == {
+        "id",
+        "title",
+        "context",
+        "rendered_tab",
+        "validation",
+        "explanation",
+        "intervals",
+        "events",
+    }
+    assert tab_example["context"]["tuning"] == "E9"
+    assert tab_example["context"]["profile"] == "default_e9"
+    assert tab_example["validation"] == {
+        "ok": True,
+        "issues": [],
+        "profile": "default_e9",
+        "eventCount": 1,
+    }
+    assert tab_example["rendered_tab"]
+    note = tab_example["events"][0]["notes"][0]
+    assert set(note) == {"string", "fret", "changes"}
+    assert 1 <= note["string"] <= 10
+    assert 0 <= note["fret"] <= 24
 
 
 def test_access_role_contract_gates_live_answer_access() -> None:

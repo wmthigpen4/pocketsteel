@@ -5,6 +5,7 @@ import json
 from typing import Any
 
 from pocketsteel.api import create_app
+from pocketsteel.answer_tab_examples import tab_example_payload_for_question
 from pocketsteel.tab_engine import (
     TabEvent,
     TabNote,
@@ -145,6 +146,64 @@ def test_examples_all_validate() -> None:
         result = render_example(name)
         assert result.ok, name
         assert result.issues == ()
+
+
+def test_answer_tab_example_selector_returns_valid_g_major_payload() -> None:
+    payload = tab_example_payload_for_question("Show me a G major grip.")
+
+    assert payload is not None
+    assert payload["id"] == "g-major-456-open"
+    assert payload["context"]["tuning"] == "E9"
+    assert payload["context"]["profile"] == "default_e9"
+    assert payload["context"]["grip"] == "4-5-6"
+    assert payload["validation"] == {
+        "ok": True,
+        "issues": [],
+        "profile": "default_e9",
+        "eventCount": 1,
+    }
+    assert payload["rendered_tab"]
+    assert " 4 |3" in payload["rendered_tab"]
+    assert payload["events"][0]["notes"] == [
+        {"string": 4, "fret": 3, "changes": []},
+        {"string": 5, "fret": 3, "changes": []},
+        {"string": 6, "fret": 3, "changes": []},
+    ]
+
+
+def test_answer_tab_example_selector_supports_safe_first_examples() -> None:
+    cases = [
+        ("Show me a 4-5-6 grip.", "g-major-456-open"),
+        ("Show me a G to C move.", "g-to-c-456-beginner"),
+        ("How do I use A+B pedals?", "a-b-pedal-major-position"),
+        ("Show me an E-lower move.", "e-lower-color-move"),
+        ("Give me a beginner lick in G.", "beginner-g-two-event-lick"),
+    ]
+
+    for question, expected_id in cases:
+        payload = tab_example_payload_for_question(question)
+        assert payload is not None, question
+        assert payload["id"] == expected_id
+        assert payload["rendered_tab"]
+        assert payload["validation"]["ok"] is True
+        assert payload["validation"]["issues"] == []
+
+
+def test_answer_tab_example_selector_blocks_unsafe_or_unsupported_requests() -> None:
+    assert tab_example_payload_for_question("Where can I buy a slide bar?") is None
+    assert tab_example_payload_for_question("Tab the whole solo from Together Again.") is None
+    assert tab_example_payload_for_question("Transcribe this recording into tab.") is None
+
+
+def test_answer_tab_example_selector_omits_payload_when_validation_fails(monkeypatch) -> None:
+    class BrokenRenderResult:
+        ok = False
+        tab = ""
+        metadata = {"profile": "default_e9", "event_count": 0}
+
+    monkeypatch.setattr("pocketsteel.answer_tab_examples.render_example", lambda name: BrokenRenderResult())
+
+    assert tab_example_payload_for_question("Show me a G major grip.") is None
 
 
 def test_fake_tab_global_ab_changes_are_rejected_but_string_aware_version_passes() -> None:

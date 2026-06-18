@@ -41,6 +41,7 @@ from pocketsteel.access_control import (
     normalize_auth_provider,
 )
 from pocketsteel.answer_usage import InMemoryAnswerRateLimiter, answer_rate_limit_key
+from pocketsteel.answer_tab_examples import tab_example_payload_for_question
 from pocketsteel.api_contract import AnswerResponse
 from pocketsteel.answer_contracts import enforce_answer_contract, infer_contract_intent
 from pocketsteel.answer_intent_classifier import classify_answer_request
@@ -143,6 +144,17 @@ def _should_gate_answer_intent(decision: dict[str, Any]) -> bool:
     if decision.get("domain") == "unsafe_or_impossible":
         return True
     return decision.get("domain") == "off_domain" and decision.get("intent") == "small_talk"
+
+
+def _attach_tab_example_if_available(
+    payload: AnswerResponse,
+    question: str,
+    *,
+    answer_intent_decision: dict[str, Any] | None = None,
+) -> None:
+    tab_example = tab_example_payload_for_question(question, answer_intent=answer_intent_decision)
+    if tab_example is not None:
+        payload["tab_example"] = tab_example
 
 
 def _env_flag(name: str, env: dict[str, str] | None = None) -> bool:
@@ -332,6 +344,11 @@ class RetrievalApi:
                 }
                 if fretboard_payload is not None:
                     payload["fretboard"] = fretboard_payload
+                _attach_tab_example_if_available(
+                    payload,
+                    answer_request.question,
+                    answer_intent_decision=answer_intent_decision,
+                )
                 self._log_answer_attempt(
                     request_payload,
                     role=access.role,
@@ -385,6 +402,11 @@ class RetrievalApi:
                     "warnings": [],
                     "sections": build_sections(final_answer),
                 }
+                _attach_tab_example_if_available(
+                    payload,
+                    answer_request.question,
+                    answer_intent_decision=answer_intent_decision,
+                )
                 self._log_answer_attempt(
                     request_payload,
                     role=access.role,
@@ -501,6 +523,11 @@ class RetrievalApi:
             }
             if fretboard_payload is not None:
                 payload["fretboard"] = fretboard_payload
+            _attach_tab_example_if_available(
+                payload,
+                answer_request.question,
+                answer_intent_decision=answer_intent_decision,
+            )
             self._log_answer_attempt(
                 request_payload,
                 role=access.role,

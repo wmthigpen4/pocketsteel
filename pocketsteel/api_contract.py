@@ -131,6 +131,24 @@ class FretboardPayload(TypedDict):
     sourceContext: NotRequired[list[dict[str, Any]]]
 
 
+class TabExampleValidation(TypedDict):
+    ok: bool
+    issues: list[dict[str, Any]]
+    profile: str
+    eventCount: int
+
+
+class TabExamplePayload(TypedDict):
+    id: str
+    title: str
+    context: dict[str, Any]
+    rendered_tab: str
+    validation: TabExampleValidation
+    explanation: str
+    intervals: list[dict[str, Any]]
+    events: list[dict[str, Any]]
+
+
 class AnswerResponse(TypedDict):
     answer: str
     mode: AnswerMode
@@ -138,3 +156,4 @@ class AnswerResponse(TypedDict):
     warnings: list[str]
     sections: list[AnswerSection]
     fretboard: NotRequired[FretboardPayload]
+    tab_example: NotRequired[TabExamplePayload]
