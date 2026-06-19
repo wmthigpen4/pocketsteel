@@ -2,6 +2,103 @@
 
 Generated for ChatGPT reset/guidance on branch `feature/answer-api`.
 
+## 2026-06-19 Private-Preview Public Landing Refresh
+
+- Current repository HEAD: `3f1b3dc docs: record private preview landing smoke`.
+- Public landing refresh implementation: committed in `0bbdef0 refresh private preview landing page`.
+- Deployment/smoke handoff: committed in `3f1b3dc docs: record private preview landing smoke`.
+- Status: refreshed private-preview public landing copy is implemented, deployed, smoked, and documented.
+- Verified public landing URLs:
+  - `https://steelguitarrag.com/?v=0bbdef0`
+  - `https://www.steelguitarrag.com/?v=0bbdef0`
+  - `https://841e0459.steel-guitar-rag-landing.pages.dev/?v=0bbdef0`
+- Verified behavior:
+  - refreshed landing copy is live on public root, `www`, and Pages deployment URLs;
+  - desktop and mobile browser smoke passed;
+  - no horizontal overflow observed;
+  - no relevant console errors observed;
+  - interest form remains present and points to `/api/interest`;
+  - no `/api/answer` exposure was found on the public landing page.
+- Protected app separation:
+  - `https://app.steelguitarrag.com/` remains the Cloudflare Access-protected app route;
+  - it is separate from the public Pages landing page;
+  - this landing slice did not change protected app behavior.
+- Checks and deploy evidence:
+  - `cmp -s ui/steel-guitar-rag-landing.html deploy/landing/index.html`: passed.
+  - `.venv/bin/python -m pytest tests/test_public_landing_page.py -q`: `31 passed`.
+  - `git diff --check`: passed.
+  - Cloudflare Pages deploy completed with Wrangler Direct Upload.
+  - Browser smoke covered desktop/mobile public landing page.
+  - Header/content checks covered public root, `www`, Pages deployment, and protected app root behavior.
+- Unchanged systems:
+  - no backend behavior changed;
+  - no auth, DNS, Cloudflare Access policy, deployment config, Chroma/vector stores, embeddings, scraping, corpus, private source, or protected app behavior changed.
+- Risk/caveat:
+  - Cloudflare Pages Direct Upload means a future stale manual Cloudflare Pages upload could overwrite the refreshed artifact.
+- Control-loop state:
+  - stop the landing-page slice;
+  - choose the next product slice;
+  - if continuing tab-engine work, use Lane 18 or Lane 05 for parameterized chord-movement examples;
+  - if the refreshed landing page gets visual/copy feedback, route back to Lane 06.
+
+## 2026-06-18 Deterministic Tab Engine Slice
+
+- Current repository HEAD after Repo Steward commit: `686fd3c feat: add deterministic tab engine slice`.
+- Tab-engine status: committed.
+- Implementation summary:
+  - Added deterministic `pocketsteel/tab_engine.py` with default 10-string E9 profile, structured tab events, validation issues, fixed-width rendering, deterministic examples, and payload rendering.
+  - Added `POST /api/tab/render` in `pocketsteel/api.py`; `/api/answer`, RAG retrieval, Chroma, corpus, auth, deployment, and UI rendering were not changed.
+  - Added focused coverage in `tests/test_tab_engine.py`.
+- Active-lane handoffs committed:
+  - `docs/handoffs/task-completions/2026-06-18-05-tab-engine-first-slice.md`
+  - `docs/handoffs/task-completions/2026-06-18-15-tab-engine-qa-matrix.md`
+  - `docs/handoffs/task-completions/2026-06-18-1516-06-tab-engine-answer-ux.md`
+  - `docs/handoffs/task-completions/2026-06-18-18-tab-engine-product-architecture.md`
+- Checks run by Repo Steward:
+  - `.venv/bin/python -m py_compile pocketsteel/tab_engine.py pocketsteel/api.py`: passed.
+  - `.venv/bin/python -m pytest tests/test_tab_engine.py -q`: `15 passed`.
+  - `.venv/bin/python -m pytest tests/test_api_contract.py -q`: `4 passed`.
+  - `.venv/bin/python -m pytest tests/test_api_search.py -q`: `246 passed`.
+  - `git diff --check`: passed.
+  - `.venv/bin/python -m pytest -q`: `735 passed, 2 failed`.
+- Full-suite failures are unchanged unrelated static/UI caveats:
+  - `tests/test_public_landing_page.py::test_cloudflare_pages_static_output_matches_landing_source`.
+  - `tests/test_same_origin_smoke_server.py::test_same_origin_server_serves_public_fretboard_background`.
+- Dirty worktree remains broad with unrelated docs/corpus/source/static/design/UI files parked. Do not stage broad changes around `integration-status.md`; exact-path or exact-hunk staging remains required.
+- Recommended next slices:
+  - Lane 06 can implement answer-page tab rendering from the committed `/api/tab/render` contract when explicitly requested.
+  - Lane 18/Product can refine tab feature guardrails and answer integration scope.
+  - Lane 15 can add browser/UI tab smoke only after UI rendering exists.
+
+## 2026-06-14 Steel Guitar 101 Foundation Router Update
+
+- Current repository HEAD: `36f53ea backend: add steel guitar 101 foundation answers`.
+- Backend smoke-bug fix committed:
+  - Added deterministic Steel Guitar 101 foundation answers for beginner concepts including steel guitar, pedal steel, lap steel, console steel, E9, C6, copedent, changer, pedals/levers, grips, pockets, slants, and basic steel-guitar vocabulary.
+  - Added source-free comparison answers for lap steel vs pedal steel, E9 vs C6, dobro vs steel guitar, and pedal steel vs regular guitar.
+  - Preserved off-domain guardrails and existing chord/fretboard deterministic resolvers.
+- Files committed:
+  - `pocketsteel/curated_answers.py`
+  - `tests/test_api_search.py`
+  - `docs/handoffs/task-completions/steel-guitar-101-foundation-router-fix.md`
+- Tests run:
+  - `git diff --check`: passed.
+  - Focused 101/API tests: `5 passed, 233 deselected`.
+  - `.venv/bin/python -m pytest tests/test_answer_intent_classifier.py tests/test_api_search.py tests/test_fretboard_examples.py -q`: `367 passed`.
+  - `.venv/bin/python -m pytest tests/test_answer_eval.py tests/test_full_answer_quality_eval.py tests/test_api_contract.py -q`: `68 passed`.
+  - `.venv/bin/python scripts/run_full_answer_quality_eval.py`: `151 pass / 33 warn / 111 fail`, private-source behavior correct.
+  - `.venv/bin/python -m pytest`: `706 passed, 2 failed`.
+- Known unrelated full-suite caveats remain unchanged:
+  - `tests/test_public_landing_page.py::test_cloudflare_pages_static_output_matches_landing_source`.
+  - `tests/test_same_origin_smoke_server.py::test_same_origin_server_serves_public_fretboard_background`.
+- Generated private eval reports from the strict eval remain unstaged and must stay unstaged:
+  - `corpus-private/reports/full-answer-quality-eval.md`
+  - `corpus-private/reports/full-answer-quality-eval.json`
+- Protected-preview restart status: not run for this backend-only commit.
+- User smoke may continue after protected preview is restarted to a runtime that includes `36f53ea`.
+- Exact URL for user smoke remains: `https://app.steelguitarrag.com/`.
+- Dirty worktree remains broad with parked docs/corpus/source/static/design/private/generated files; do not stage them without an exact lane-approved scope.
+
 ## 1. Current Overall Project State
 
 - Current repository HEAD: `449cdee docs: record 05e8748 browser-ready verification`.
