@@ -82,13 +82,19 @@
     }
 
     .site-header {
+      position: relative;
+      z-index: 4;
       width: min(1160px, calc(100% - 40px));
       margin: 0 auto;
       padding: 18px 0 8px;
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: flex-end;
       gap: 18px;
+    }
+
+    .brand-link {
+      display: none;
     }
 
     .brand-logo {
@@ -96,6 +102,52 @@
       height: auto;
       display: block;
       filter: drop-shadow(0 0 14px rgba(240, 128, 24, 0.24)) drop-shadow(0 0 26px rgba(240, 191, 105, 0.13));
+    }
+
+    .hero-hanging-sign {
+      position: absolute;
+      top: clamp(-42px, -3vw, -24px);
+      left: -18px;
+      width: clamp(300px, 23vw, 340px);
+      z-index: 2;
+      pointer-events: none;
+      transform: rotate(-1.5deg);
+      transform-origin: top left;
+      filter:
+        drop-shadow(0 18px 28px rgba(0, 0, 0, 0.55))
+        drop-shadow(0 0 22px rgba(255, 106, 0, 0.22));
+    }
+
+    .hero-hanging-sign video,
+    .hero-hanging-sign img {
+      display: block;
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+      object-position: top left;
+      image-rendering: auto;
+    }
+
+    .hero-hanging-sign video {
+      display: none;
+    }
+
+    .hero-hanging-sign.is-animated video {
+      display: block;
+    }
+
+    .hero-hanging-sign.is-animated img {
+      display: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .hero-hanging-sign.is-animated video {
+        display: none;
+      }
+
+      .hero-hanging-sign.is-animated img {
+        display: block;
+      }
     }
 
     .header-actions {
@@ -164,10 +216,12 @@
     }
 
     .hero {
+      position: relative;
+      z-index: 4;
       display: grid;
       gap: 24px;
       max-width: 780px;
-      padding: 44px 0 64px;
+      padding: clamp(150px, 15vw, 205px) 0 64px;
     }
 
     .eyebrow,
@@ -560,7 +614,14 @@
       }
 
       .hero {
-        padding-top: 28px;
+        padding-top: clamp(80px, 18vw, 135px);
+      }
+
+      .hero-hanging-sign {
+        width: clamp(220px, 30vw, 300px);
+        top: 8px;
+        left: -18px;
+        transform: rotate(-1.5deg);
       }
 
       .feature-grid,
@@ -603,7 +664,30 @@
       }
 
       .hero {
+        padding-top: 120px;
         padding-bottom: 40px;
+      }
+
+      .hero-hanging-sign {
+        display: block;
+        top: 8px;
+        left: -18px;
+        width: clamp(190px, 55vw, 240px);
+        transform: rotate(-1.5deg);
+        z-index: 2;
+        pointer-events: none;
+      }
+
+      .hero-hanging-sign video,
+      .hero-hanging-sign.is-animated video {
+        display: none;
+      }
+
+      .hero-hanging-sign img,
+      .hero-hanging-sign.is-animated img {
+        display: block;
+        width: 100%;
+        height: auto;
       }
 
       .hero-actions,
@@ -626,7 +710,7 @@
 <body>
   <div class="page">
     <header class="site-header">
-      <a href="#top" aria-label="Steel Guitar RAG home">
+      <a class="brand-link" href="#top" aria-label="Steel Guitar RAG home">
         <img class="brand-logo" src="assets/steel-guitar-rag-logo-transparent.png" alt="Steel Guitar RAG">
       </a>
       <div class="header-actions">
@@ -634,6 +718,11 @@
         <a class="backstage-link" href="#interest-form">Request early access</a>
       </div>
     </header>
+
+    <div class="hero-hanging-sign" aria-hidden="true">
+      <video muted loop playsinline poster="brand/steel-guitar-rag-landing-fallback-alpha.png" preload="none" data-src="brand/steel-guitar-rag-landing-alpha.webm"></video>
+      <img src="brand/steel-guitar-rag-landing-fallback-alpha.png" alt="">
+    </div>
 
     <main id="top">
       <section class="hero" aria-labelledby="hero-title">
@@ -764,8 +853,27 @@
 
   <script>
     (() => {
+      function initializeHeroHangingSigns() {
+        const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+        if (prefersReducedMotion) return;
+        document.querySelectorAll(".hero-hanging-sign video[data-src]").forEach((video) => {
+          const source = document.createElement("source");
+          source.src = video.dataset.src;
+          source.type = "video/webm";
+          video.appendChild(source);
+          video.removeAttribute("data-src");
+          video.closest(".hero-hanging-sign")?.classList.add("is-animated");
+          video.load();
+          video.play?.().catch(() => {
+            video.closest(".hero-hanging-sign")?.classList.remove("is-animated");
+          });
+        });
+      }
+
       const form = document.querySelector("#interest-form");
       const status = document.querySelector("#interest-form-status");
+
+      initializeHeroHangingSigns();
 
       function valuesFor(formData, name) {
         return formData.getAll(name).map((value) => String(value)).filter(Boolean);

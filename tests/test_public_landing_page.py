@@ -41,6 +41,14 @@ def test_public_landing_page_is_static_and_uses_local_assets() -> None:
     html = LANDING_PAGE.read_text(encoding="utf-8")
 
     assert 'src="assets/steel-guitar-rag-logo-transparent.png"' in html
+    assert 'class="hero-hanging-sign"' in html
+    assert 'data-src="brand/steel-guitar-rag-landing-alpha.webm"' in html
+    assert 'poster="brand/steel-guitar-rag-landing-fallback-alpha.png"' in html
+    assert 'src="brand/steel-guitar-rag-landing-fallback-alpha.png"' in html
+    assert "top: clamp(-42px, -3vw, -24px);" in html
+    assert "left: -18px;" in html
+    assert "width: clamp(300px, 23vw, 340px);" in html
+    assert "width: clamp(190px, 55vw, 240px);" in html
     assert 'url("assets/steel_on_stage2.png")' in html
     assert "/api/answer" not in html
     assert 'action="/api/interest"' in html
@@ -62,6 +70,8 @@ def test_cloudflare_pages_static_output_matches_landing_source() -> None:
     assert deploy_html == source_html
     assert Path("deploy/landing/assets/steel-guitar-rag-logo-transparent.png").is_file()
     assert Path("deploy/landing/assets/steel_on_stage2.png").is_file()
+    assert Path("deploy/landing/brand/steel-guitar-rag-landing-alpha.webm").is_file()
+    assert Path("deploy/landing/brand/steel-guitar-rag-landing-fallback-alpha.png").is_file()
 
 
 def test_cloudflare_pages_static_output_does_not_expose_private_app_or_rag() -> None:

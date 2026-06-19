@@ -186,7 +186,7 @@ def test_answer_ui_includes_home_hero_hanging_sign_without_changing_answer_logo(
     assert 'type="video/mp4"' not in html
     assert 'class="landing-sign-fallback" src="brand/steel-guitar-rag-landing-fallback-alpha.png?v=landing-alpha-app-20260618"' in html
     assert "top: clamp(-42px, -3vw, -24px);" in html
-    assert "left: -12px;" in html
+    assert "left: -18px;" in html
     assert "width: clamp(300px, 23vw, 340px);" in html
     assert "transform: rotate(-1.5deg);" in html
     assert "padding: clamp(170px, 14vw, 220px) 0 24px;" in html
@@ -195,7 +195,7 @@ def test_answer_ui_includes_home_hero_hanging_sign_without_changing_answer_logo(
     assert "padding-top: 200px;" in html
     assert "top: 8px;" in html
     assert "top: 48px;" not in html
-    assert "left: -14px;" in html
+    assert "left: -18px;" in html
     assert "width: clamp(190px, 55vw, 240px);" in html
     assert ".hero-hanging-sign.is-animated .landing-sign" in html
     assert ".hero-hanging-sign.is-animated .landing-sign-fallback" in html
