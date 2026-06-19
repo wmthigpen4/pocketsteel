@@ -172,6 +172,9 @@ PLAYER_BIOS = {
 
 def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
     q = normalize(question)
+    song_tab_guardrail = full_song_tab_guardrail_answer(q)
+    if song_tab_guardrail is not None:
+        return song_tab_guardrail
     quarantine_teacher_answer = sgf_quarantine_teacher_answer(q)
     if quarantine_teacher_answer is not None:
         return quarantine_teacher_answer
@@ -1150,6 +1153,24 @@ def full_lyrics_guardrail_answer(question: str) -> CuratedAnswer | None:
             "- Discuss how to arrange it for pedal steel.\n"
             "- Suggest chord/position strategy and tone ideas.\n"
             "- Work from a short excerpt or chart you provide."
+        ),
+    )
+
+
+def full_song_tab_guardrail_answer(question: str) -> CuratedAnswer | None:
+    if not mentions_full_song_tab_or_transcription_request(question):
+        return None
+    return CuratedAnswer(
+        intent="song_copyright_guardrail",
+        confidence="curated_high",
+        answer=(
+            "I can’t provide a full copyrighted song tab, full modern arrangement, full solo transcription, or YouTube/recording transcription.\n\n"
+            "That boundary exists because full note-for-note song tabs and modern arrangements need clear rights, user-provided material, or explicit public-domain provenance. A title alone is not enough to infer that a full tab is safe.\n\n"
+            "Safe alternatives:\n"
+            "- I can explain the song’s history, form, chord movement, tone, or style.\n"
+            "- I can make a short original E9 exercise inspired by the technique.\n"
+            "- I can help with a short excerpt, chart, or tab you provide.\n"
+            "- I can work from public-domain material when the provenance is explicit."
         ),
     )
 
@@ -3760,6 +3781,27 @@ def mentions_tone_touch(question: str) -> bool:
 
 def mentions_full_lyrics_request(question: str) -> bool:
     return bool(re.search(r"\b(?:full|all|complete)\b.*\blyrics?\b|\blyrics?\b.*\b(?:full|all|complete)\b", question))
+
+
+def mentions_full_song_tab_or_transcription_request(question: str) -> bool:
+    q = normalize(question)
+    if re.search(r"\b(?:transcribe|transcription|recording|youtube)\b", q) and re.search(
+        r"\b(?:tab|tablature|solo|arrangement|song|recording|youtube)\b", q
+    ):
+        return True
+    if re.search(r"\b(?:tab|tablature)\b.*\b(?:whole|entire|complete|full)\b", q):
+        return True
+    if re.search(r"\b(?:whole|entire|complete|full)\b.*\b(?:tab|tablature|solo|arrangement)\b", q):
+        return True
+    if re.search(r"\bmodern\s+copyrighted\b.*\b(?:song|arrangement|tab|tablature)\b", q):
+        return True
+    if re.search(r"\bcopyrighted\b.*\b(?:song|arrangement|tab|tablature|solo)\b", q) and re.search(
+        r"\b(?:full|whole|entire|complete|modern)\b", q
+    ):
+        return True
+    if re.search(r"\b(?:tab|tablature)\b.*\b(?:modern\s+copyrighted|copyrighted\s+song)\b", q):
+        return True
+    return False
 
 
 def mentions_random_tab_request(question: str) -> bool:

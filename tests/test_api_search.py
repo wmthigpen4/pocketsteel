@@ -3806,6 +3806,50 @@ def test_steel_guitar_rag_variations_question_uses_curated_reference() -> None:
     assert any(source.get("source_system") == "curated_reference" for source in payload["sources"])
 
 
+def test_full_song_tab_and_transcription_requests_refuse_clearly() -> None:
+    cases = [
+        "Give me the full modern copyrighted arrangement of Steel Guitar Rag.",
+        "Transcribe this YouTube recording into Steel Guitar Rag tab.",
+        "Tab the whole solo from Together Again.",
+        "Give me the full tab for a modern copyrighted song.",
+    ]
+
+    for question in cases:
+        payload = answer_for_question(question, noisy_practical_sources(), mode="tab")
+        assert_clean_answer_body(payload)
+        assert payload["answer"].startswith("I can’t provide a full copyrighted song tab")
+        assert "full modern arrangement" in payload["answer"]
+        assert "full solo transcription" in payload["answer"]
+        assert "YouTube/recording transcription" in payload["answer"]
+        assert "A title alone is not enough" in payload["answer"]
+        assert "short original E9 exercise" in payload["answer"]
+        assert "public-domain material when the provenance is explicit" in payload["answer"]
+        assert "```text" not in payload["answer"]
+        assert "E9 original Western-swing rag study" not in payload["answer"]
+        assert "tab_example" not in payload
+        assert "fretboard" not in payload
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+
+
+def test_steel_guitar_rag_safe_curated_questions_still_work_after_full_tab_guardrail() -> None:
+    safe_cases = {
+        "Who wrote Steel Guitar Rag?": ("Sylvester Weaver", True),
+        "What is the history of Steel Guitar Rag?": ("1936 Bob Wills/Texas Playboys recording", True),
+        "Teach me Steel Guitar Rag.": ("E9 original Western-swing rag study", True),
+        "What are common variations of Steel Guitar Rag?": ("three distinct 16-bar sections: A, B, and C", True),
+    }
+
+    for question, (expected, expect_sources) in safe_cases.items():
+        payload = answer_for_question(question, noisy_practical_sources())
+        assert_clean_answer_body(payload)
+        assert expected in payload["answer"]
+        assert "I can’t provide a full copyrighted song tab" not in payload["answer"]
+        assert payload["warnings"] == []
+        if expect_sources:
+            assert any(source.get("source_system") == "curated_reference" for source in payload["sources"])
+
+
 def test_repair_prompts_return_diagnostic_guidance_not_meta_quarantine_text() -> None:
     noisy_sgf = noisy_practical_sources() + [
         {
