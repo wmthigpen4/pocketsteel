@@ -2137,7 +2137,7 @@
 
       .hero-hanging-sign {
         display: block;
-        top: 48px;
+        top: 8px;
         left: -14px;
         width: clamp(190px, 55vw, 240px);
         transform: rotate(-1.5deg);
@@ -2147,13 +2147,14 @@
 
       .landing-sign,
       .hero-hanging-sign.is-animated .landing-sign {
-        display: block;
+        display: none;
         width: 100%;
         height: auto;
       }
 
+      .landing-sign-fallback,
       .hero-hanging-sign.is-animated .landing-sign-fallback {
-        display: none;
+        display: block;
       }
     }
   </style>
@@ -2176,10 +2177,10 @@
     </header>
 
     <div class="hero-hanging-sign" aria-hidden="true">
-      <video class="landing-sign" autoplay muted loop playsinline poster="brand/steel-guitar-rag-landing-fallback-alpha.png" preload="metadata">
-        <source src="brand/steel-guitar-rag-landing-alpha.webm" type="video/webm">
+      <video class="landing-sign" autoplay muted loop playsinline poster="brand/steel-guitar-rag-landing-fallback-alpha.png?v=landing-alpha-app-20260618" preload="metadata">
+        <source src="brand/steel-guitar-rag-landing-alpha.webm?v=landing-alpha-app-20260618" type="video/webm">
       </video>
-      <img class="landing-sign-fallback" src="brand/steel-guitar-rag-landing-fallback-alpha.png" alt="">
+      <img class="landing-sign-fallback" src="brand/steel-guitar-rag-landing-fallback-alpha.png?v=landing-alpha-app-20260618" alt="">
     </div>
 
     <main>

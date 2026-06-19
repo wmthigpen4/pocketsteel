@@ -180,11 +180,11 @@ def test_answer_ui_includes_home_hero_hanging_sign_without_changing_answer_logo(
 
     assert 'class="hero-hanging-sign"' in html
     assert 'class="landing-sign" autoplay muted loop playsinline' in html
-    assert 'poster="brand/steel-guitar-rag-landing-fallback-alpha.png"' in html
-    assert 'src="brand/steel-guitar-rag-landing-alpha.webm"' in html
+    assert 'poster="brand/steel-guitar-rag-landing-fallback-alpha.png?v=landing-alpha-app-20260618"' in html
+    assert 'src="brand/steel-guitar-rag-landing-alpha.webm?v=landing-alpha-app-20260618"' in html
     assert 'type="video/webm"' in html
     assert 'type="video/mp4"' not in html
-    assert 'class="landing-sign-fallback" src="brand/steel-guitar-rag-landing-fallback-alpha.png"' in html
+    assert 'class="landing-sign-fallback" src="brand/steel-guitar-rag-landing-fallback-alpha.png?v=landing-alpha-app-20260618"' in html
     assert "top: clamp(-42px, -3vw, -24px);" in html
     assert "left: -12px;" in html
     assert "width: clamp(300px, 23vw, 340px);" in html
@@ -193,11 +193,13 @@ def test_answer_ui_includes_home_hero_hanging_sign_without_changing_answer_logo(
     assert "padding-top: clamp(120px, 20vw, 170px);" in html
     assert "top: 8px;" in html
     assert "padding-top: 200px;" in html
-    assert "top: 48px;" in html
+    assert "top: 8px;" in html
+    assert "top: 48px;" not in html
     assert "left: -14px;" in html
     assert "width: clamp(190px, 55vw, 240px);" in html
     assert ".hero-hanging-sign.is-animated .landing-sign" in html
     assert ".hero-hanging-sign.is-animated .landing-sign-fallback" in html
+    assert ".landing-sign-fallback,\n      .hero-hanging-sign.is-animated .landing-sign-fallback {\n        display: block;" in html
     assert "object-fit: contain;" in html
     assert "object-position: top left;" in html
     assert "image-rendering: auto;" in html
