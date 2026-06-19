@@ -1,10 +1,43 @@
-# Integration Status - Browser-Ready 05e8748 Reset Snapshot
+# Integration Status - Current Reset Snapshot
 
 Generated for ChatGPT reset/guidance on branch `feature/answer-api`.
 
+## 2026-06-19 Repo Steward Review / Next Slice Gate
+
+- Review start HEAD: `d10fb85 docs: refresh integration status after landing smoke`.
+- Current HEAD observed before final review staging: `ca699a0 docs: define parameterized chord movement contract`.
+- Current branch at review: `feature/answer-api`.
+- Index at review start: clean; no staged files.
+- Integration-status audit result: current enough after this review update. The completed landing-page slice, deploy/smoke commit, public URLs, protected-app separation, Direct Upload caveat, parameterized chord-movement contract, and next control-loop state are recorded here.
+- Recent committed chain reviewed:
+  - `ca699a0 docs: define parameterized chord movement contract`
+  - `d10fb85 docs: refresh integration status after landing smoke`
+  - `3f1b3dc docs: record private preview landing smoke`
+  - `0bbdef0 refresh private preview landing page`
+  - `ae1d669 fix blocked song tab routing`
+  - `b2190c9 fix song tab copyright refusal wording`
+  - `7a36b71 docs: record hanging sign protected preview smoke`
+  - `4b8ac0c fix: align hanging sign placement`
+  - `6f51493 test: add Steel Guitar Rag curated QA`
+  - `edae8ef docs: add ChatGPT project context bundle`
+  - `bb6745b add steel guitar rag curated reference`
+  - `56277fd docs: design public-domain song tab architecture`
+- Recent handoffs reflected or intentionally left as historical:
+  - `2026-06-19-18-parameterized-chord-movement-contract.md` is committed and defines the next backend implementation contract;
+  - landing refresh and landing deploy/smoke are reflected in the landing section below;
+  - Steel Guitar Rag curated/reference work is committed and QA-reviewed;
+  - hanging sign/logo/layout work is committed and protected-preview smoke-reviewed;
+  - blocked song-tab routing and copyright wording fixes are committed, with historical Lane 12 smoke handoffs showing the earlier failures that led to the subsequent fixes;
+  - tab-engine and fretboard-first guidance remains preserved as the recommended next product direction.
+- Dirty worktree status: not clean. Broad unrelated parked work remains in docs, source/corpus metadata, root RAG scripts, source-inbox metadata, UI/static/brand assets, private/generated helper files, and historical handoffs. Do not broad-stage.
+- Known parked dirty tracked paths at review include `README.md`, `corpus_metadata/source_policies/README.md`, `corpus_metadata/source_registry.json`, `docs/answer-eval-report.md`, `docs/cloudflare-pages-landing.md`, `docs/copyright-provenance.md`, `docs/corpus-license-policy.md`, `docs/current-commands.md`, `docs/handoffs/task-completions/qa-no-op-answer-intent-classifier-source-backed-fix.md`, `docs/source-inbox-inventory.md`, root RAG scripts, `source-inbox/inventory.json`, and `ui/brand/steel-guitar-rag-landing-*` assets.
+- Safety result: safe to proceed to the next product slice only with exact-path scope. If the next slice overlaps any dirty parked file, route or isolate that parked work before implementation.
+- Next recommended slice: Lane 05 Backend / RAG Integration for parameterized chord-movement implementation using the committed Lane 18 contract.
+- Stop conditions for the next slice: do not run deployment, protected-preview restart, scraping, embeddings, Chroma/vector rebuilds, corpus jobs, DNS/auth changes, or Cloudflare Access changes unless the next prompt explicitly names that lane and action.
+
 ## 2026-06-19 Private-Preview Public Landing Refresh
 
-- Current repository HEAD: `3f1b3dc docs: record private preview landing smoke`.
+- Landing deploy/smoke baseline before the docs refresh: `3f1b3dc docs: record private preview landing smoke`.
 - Public landing refresh implementation: committed in `0bbdef0 refresh private preview landing page`.
 - Deployment/smoke handoff: committed in `3f1b3dc docs: record private preview landing smoke`.
 - Status: refreshed private-preview public landing copy is implemented, deployed, smoked, and documented.
