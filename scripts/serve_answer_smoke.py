@@ -111,9 +111,35 @@ def build_app(
     *,
     api_app: WsgiApp,
     ui_root: Path,
+    public_root: Path = Path("public"),
     controlled_states: bool = False,
 ) -> WsgiApp:
     resolved_ui_root = ui_root.resolve()
+    resolved_public_root = public_root.resolve()
+
+    def static_file_response(
+        start_response: StartResponse,
+        *,
+        file_path: Path,
+        root: Path,
+    ) -> Iterable[bytes]:
+        try:
+            file_path.relative_to(root)
+        except ValueError:
+            return text_response(start_response, "403 Forbidden", "forbidden")
+        if not file_path.is_file():
+            return text_response(start_response, "404 Not Found", "not found")
+
+        body = file_path.read_bytes()
+        content_type = mimetypes.guess_type(str(file_path))[0] or "application/octet-stream"
+        if content_type.startswith("text/") or content_type in {
+            "application/javascript",
+            "application/json",
+            "image/svg+xml",
+        }:
+            content_type = f"{content_type}; charset=utf-8"
+        start_response("200 OK", [("Content-Type", content_type), ("Content-Length", str(len(body)))])
+        return [body]
 
     def same_origin_app(environ: dict[str, Any], start_response: StartResponse) -> Iterable[bytes]:
         path = environ.get("PATH_INFO", "") or "/"
@@ -131,23 +157,14 @@ def build_app(
             return redirect_response(start_response, "/ui/steel-guitar-rag-mock.html")
         if path in {"/ui", "/ui/"}:
             path = "/ui/steel-guitar-rag-mock.html"
+        if path.startswith("/brand/"):
+            file_path = (resolved_public_root / path.removeprefix("/")).resolve()
+            return static_file_response(start_response, file_path=file_path, root=resolved_public_root)
         if not path.startswith("/ui/"):
             return text_response(start_response, "404 Not Found", "not found")
 
         file_path = (resolved_ui_root / path.removeprefix("/ui/")).resolve()
-        try:
-            file_path.relative_to(resolved_ui_root)
-        except ValueError:
-            return text_response(start_response, "403 Forbidden", "forbidden")
-        if not file_path.is_file():
-            return text_response(start_response, "404 Not Found", "not found")
-
-        body = file_path.read_bytes()
-        content_type = mimetypes.guess_type(str(file_path))[0] or "application/octet-stream"
-        if content_type.startswith("text/") or content_type in {"application/javascript", "application/json"}:
-            content_type = f"{content_type}; charset=utf-8"
-        start_response("200 OK", [("Content-Type", content_type), ("Content-Length", str(len(body)))])
-        return [body]
+        return static_file_response(start_response, file_path=file_path, root=resolved_ui_root)
 
     return same_origin_app
 

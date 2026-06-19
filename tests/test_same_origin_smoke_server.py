@@ -102,6 +102,14 @@ def test_same_origin_server_serves_public_fretboard_background() -> None:
     assert b'data-layer="10-tuning-keys"' in body
 
 
+def test_same_origin_server_serves_cloudflare_login_brand_png() -> None:
+    status, headers, body = call_app(smoke_app(), "/brand/steel-guitar-rag-hanging-sign-cloudflare-login.png")
+
+    assert status == "200 OK"
+    assert headers["Content-Type"] == "image/png"
+    assert body.startswith(b"\x89PNG\r\n\x1a\n")
+
+
 def test_same_origin_server_delegates_answer_api() -> None:
     status, headers, body = call_app(
         smoke_app(),
