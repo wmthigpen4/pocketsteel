@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 from pathlib import Path
@@ -28,6 +29,10 @@ from pocketsteel.curated_answers import (
     WEAK_RETRIEVAL_WARNING,
     intent_mode_for_question,
     lookup_curated_answer,
+)
+from pocketsteel.curated_song_references import (
+    STEEL_GUITAR_RAG_REFERENCE_PATH,
+    load_steel_guitar_rag_reference,
 )
 from pocketsteel.fretboard_examples import DEFAULT_PEDAL_LEVER_LABELS
 from pocketsteel.api import create_app
@@ -3719,8 +3724,6 @@ def test_sgf_quarantine_user_smoke_prompts_are_teacher_composed_and_source_free(
         "show me 1 real lick, no words, just a lick.": ("```text", None),
         "teach me something i don't already know": ("On E9, the same chord can be a place", None),
         'What key is "over the rainbow" written in?': ("E-flat major", None),
-        "What is Steel Guitar Rag?": ("classic steel-guitar instrumental", None),
-        "Who wrote Steel Guitar Rag?": ("commonly credited to Leon McAuliffe", None),
         "How do I fix a noisy volume pedal?": ("Start with the simple checks", None),
         "My pedal steel won’t stay in tune. What should I check?": ("If a pedal steel will not stay in tune", None),
         "Where can I find a steel guitar repair person?": ("I do not have a current live directory", None),
@@ -3739,6 +3742,68 @@ def test_sgf_quarantine_user_smoke_prompts_are_teacher_composed_and_source_free(
         else:
             assert payload["fretboard"]["title"] == expected_fretboard_title
             assert_valid_fretboard_payload(payload)
+
+
+def test_steel_guitar_rag_curated_reference_is_available_with_expected_checksum() -> None:
+    assert STEEL_GUITAR_RAG_REFERENCE_PATH.exists()
+    assert hashlib.sha256(STEEL_GUITAR_RAG_REFERENCE_PATH.read_bytes()).hexdigest() == (
+        "996b7b8cbf12ff09592726421d6ea4cf7cbd072ebd531d230bbd30b6bbf83c8a"
+    )
+    reference = load_steel_guitar_rag_reference()
+    assert "# Steel Guitar Rag — Expert Reference for Steel Guitar RAG" in reference
+    assert "```text" in reference
+    assert "E9 original Western-swing rag study" in reference
+
+
+def test_steel_guitar_rag_curated_reference_answers_history_and_authorship() -> None:
+    noisy_sgf = noisy_practical_sources()
+
+    what_payload = answer_for_question("What is Steel Guitar Rag?", noisy_sgf)
+    assert_clean_answer_body(what_payload)
+    assert "landmark steel-guitar instrumental" in what_payload["answer"]
+    assert "1936 Bob Wills/Texas Playboys recording" in what_payload["answer"]
+    assert "Leon McAuliffe" in what_payload["answer"]
+    assert what_payload["warnings"] == []
+    assert "fretboard" not in what_payload
+    assert any(source.get("source_system") == "curated_reference" for source in what_payload["sources"])
+    assert any("adp.library.ucsb.edu" in source["url"] for source in what_payload["sources"])
+
+    author_payload = answer_for_question("Who wrote Steel Guitar Rag?", noisy_sgf)
+    assert_clean_answer_body(author_payload)
+    assert "Leon McAuliffe" in author_payload["answer"]
+    assert "Sylvester Weaver" in author_payload["answer"]
+    assert "Guitar Rag" in author_payload["answer"]
+    assert "Cliffie Stone" in author_payload["answer"]
+    assert "Merle Travis" in author_payload["answer"]
+    assert author_payload["warnings"] == []
+    assert any("Steel Guitar Rag expert reference" in source["title"] for source in author_payload["sources"])
+    assert any("secondhandsongs.com" in source["url"] for source in author_payload["sources"])
+
+
+def test_steel_guitar_rag_tab_question_uses_curated_reference_and_preserves_tab_formatting() -> None:
+    payload = answer_for_question("Show me Steel Guitar Rag tab", noisy_practical_sources())
+
+    assert_clean_answer_body(payload)
+    assert "short educational Steel Guitar Rag-style E9 study" in payload["answer"]
+    assert "full note-for-note copyrighted arrangement" in payload["answer"]
+    assert "```text" in payload["answer"]
+    assert "E9 original Western-swing rag study" in payload["answer"]
+    assert "F#|--------------------------------------------------------------------------------|" in payload["answer"]
+    assert payload["warnings"] == []
+    assert any(source.get("source_system") == "curated_reference" for source in payload["sources"])
+    assert any("Easy Song" in source["forumName"] for source in payload["sources"])
+
+
+def test_steel_guitar_rag_variations_question_uses_curated_reference() -> None:
+    payload = answer_for_question("What are common variations of Steel Guitar Rag?", noisy_practical_sources())
+
+    assert_clean_answer_body(payload)
+    assert "three distinct 16-bar sections: A, B, and C" in payload["answer"]
+    assert "C6 steel version" in payload["answer"]
+    assert "E9 teaching arrangement" in payload["answer"]
+    assert "Buddy Emmons" in payload["answer"]
+    assert payload["warnings"] == []
+    assert any(source.get("source_system") == "curated_reference" for source in payload["sources"])
 
 
 def test_repair_prompts_return_diagnostic_guidance_not_meta_quarantine_text() -> None:

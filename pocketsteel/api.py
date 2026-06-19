@@ -374,10 +374,11 @@ class RetrievalApi:
                 final_answer = contract_validation.answer
                 final_answer = normalize_answer_list_markers(final_answer)
                 fretboard_payload = fretboard_payload_for_question(answer_request.question)
+                curated_sources = concise_source_cards(list(deterministic_chord_answer.source_cards))
                 payload: AnswerResponse = {
                     "answer": final_answer,
                     "mode": answer_request.mode,
-                    "sources": [],
+                    "sources": curated_sources,
                     "warnings": [],
                     "sections": build_sections(final_answer),
                 }
@@ -394,7 +395,7 @@ class RetrievalApi:
                     identity_email=access.identity_email,
                     access_status="authorized",
                     authorized=True,
-                    source_count=0,
+                    source_count=len(curated_sources),
                     warning_count=0,
                 )
                 return self._json_response(start_response, "200 OK", payload)
@@ -508,6 +509,8 @@ class RetrievalApi:
                         warnings.append(WEAK_RETRIEVAL_WARNING)
                     if _curated_answer_should_be_source_free(curated_answer.intent):
                         sources = []
+                    elif curated_answer.source_cards:
+                        sources = concise_source_cards(list(curated_answer.source_cards))
                     elif answer_is_no_source(answer):
                         sources = []
                         warnings.append("no strong source match")

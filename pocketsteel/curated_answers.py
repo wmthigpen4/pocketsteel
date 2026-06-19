@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 from pocketsteel.basic_chord_answers import (
     basic_chord_theory_answer_for_question,
@@ -12,6 +12,10 @@ from pocketsteel.basic_chord_answers import (
     sus_chord_usage_answer_for_question,
 )
 from pocketsteel.curated_source_registry import slide_bar_vendor_bullets
+from pocketsteel.curated_song_references import (
+    steel_guitar_rag_answer_for_question,
+    steel_guitar_rag_source_cards,
+)
 from pocketsteel.fretboard_examples import (
     chord_concept_answer_for_question,
     chord_symbol_guardrail_answer_for_question,
@@ -75,6 +79,7 @@ class CuratedAnswer:
     answer: str
     confidence: CuratedConfidence
     source_url: str | None = None
+    source_cards: tuple[dict[str, Any], ...] = ()
 
 
 WEAK_RETRIEVAL_WARNING = "curated answer used; source support was weak"
@@ -1063,37 +1068,12 @@ def sgf_quarantine_teacher_answer(question: str) -> CuratedAnswer | None:
             ),
         )
     if "steel guitar rag" in q:
-        if re.search(r"\bwho\s+wrote\b|\bcomposer\b|\bauthor\b", q):
-            answer = (
-                "“Steel Guitar Rag” is commonly credited to Leon McAuliffe, and it is strongly associated with the Bob Wills/Texas Playboys western-swing world.\n\n"
-                "Recordings, arrangements, and printed credits can vary, so check the specific chart or recording if you need citation-level detail."
-            )
-        elif re.search(r"\bwhat\s+key\b|\bkey\s+is\b", q):
-            answer = (
-                "“Steel Guitar Rag” is often taught and played in E, but the key can vary by arrangement, player, or band.\n\n"
-                "If you have a specific recording or chart, use that version’s key as the authority."
-            )
-        elif re.search(r"\bhow\s+do\s+i\s+play\b|\bplay\b", q):
-            answer = (
-                "To learn “Steel Guitar Rag,” start with the melody and the I-IV-V movement before chasing a full note-for-note solo.\n\n"
-                "Practice plan:\n"
-                "- Learn the melody slowly in one key, often E for common steel arrangements.\n"
-                "- Mark the I, IV, and V chords so the tune feels like a ragtime/western-swing form instead of a pile of licks.\n"
-                "- Add simple slides and clean blocking first.\n"
-                "- Then add signature steel ornaments a little at a time.\n\n"
-                "I can help map a short public-domain-style phrase or your own tab attempt, but I won’t dump a full copyrighted tab by default."
-            )
-        elif "song or the app" in q or ("app" in q and "song" in q):
-            answer = (
-                "“Steel Guitar Rag” is a classic steel-guitar tune. This app’s user-facing name is The Turnaround.\n\n"
-                "Some project docs may still use Steel Guitar RAG as a technical description, but the song and the app are not the same thing."
-            )
-        else:
-            answer = (
-                "“Steel Guitar Rag” is a classic steel-guitar instrumental associated with western swing and the early electric-steel vocabulary.\n\n"
-                "The tune is a useful study because it combines a clear melody, ragtime bounce, I-IV-V harmony, and steel-specific phrasing such as slides, sustain, and clean blocking."
-            )
-        return CuratedAnswer(intent="song_learning", confidence="curated_medium", answer=answer)
+        return CuratedAnswer(
+            intent="song_learning",
+            confidence="curated_high",
+            answer=steel_guitar_rag_answer_for_question(question) or "",
+            source_cards=steel_guitar_rag_source_cards(),
+        )
     if re.search(r"\bnoisy\s+volume\s+pedal\b|\bvolume\s+pedal\b.*\b(?:noise|noisy|scratch|scratchy|crackle)\b", q):
         return CuratedAnswer(
             intent="gear_diagnosis",
