@@ -12,14 +12,29 @@ INTEREST_DIGEST_WORKER = Path("workers/interest-digest.js")
 def test_public_landing_page_has_required_beta_copy_and_ctas() -> None:
     html = LANDING_PAGE.read_text(encoding="utf-8")
 
-    assert "Steel Guitar RAG is a source-backed AI assistant" in html or "Source-backed AI for pedal steel players." in html
+    assert "The steel-guitar answers you wish were easier to find." in html
+    assert "Steel Guitar RAG is a private-preview assistant built for E9 players" in html
+    assert "forum wisdom, practical teaching answers, fretboard-aware positions, and safe deterministic practice examples" in html
     assert "Private preview in preparation" in html
     assert "Join the interest list" in html
     assert "Request early access" in html
     assert "See example questions" in html
     assert "Live AI access requires login and is not public yet." in html
-    assert "Tell me what you play and what you want Steel Guitar RAG to help with. I’ll use this list to invite early testers when the private preview opens." in html
+    assert "Tell me what you play and what you want Steel Guitar RAG to help with. This list is for inviting preview testers while the corpus, fretboard behavior, and beta access model are tuned." in html
     assert '<form class="interest-form" id="interest-form" action="/api/interest" method="post">' in html
+
+
+def test_public_landing_page_describes_pedal_steel_specific_preview() -> None:
+    html = LANDING_PAGE.read_text(encoding="utf-8")
+
+    assert "Not generic guitar theory with a steel label." in html
+    assert "Ask about grips, pedals, levers, tone, copedents, blocking, positions, practice" in html
+    assert "Fretboard-aware teaching" in html
+    assert "Source-aware SGF and curated guidance can support answers when relevant." in html
+    assert "full copyrighted song tabs" in html
+    assert "transcribe recorded solos on demand" in html
+    assert "Practice examples are original and deterministic unless reviewed source provenance supports something more specific." in html
+    assert "Pocket Steel" not in html
 
 
 def test_public_landing_page_lists_expected_example_questions() -> None:
@@ -27,8 +42,8 @@ def test_public_landing_page_lists_expected_example_questions() -> None:
 
     expected_questions = [
         "What are common Fender Steel King settings?",
-        "How do I use the E9 6th string lower?",
-        "What should I practice tonight?",
+        "Where can I play a G chord on E9?",
+        "Help me clean up palm blocking on strings 4-5-6.",
         "Why does my amp buzz until I touch the changer?",
         "How do players use B+C pedals?",
     ]
