@@ -3815,21 +3815,24 @@ def test_full_song_tab_and_transcription_requests_refuse_clearly() -> None:
     ]
 
     for question in cases:
-        payload = answer_for_question(question, noisy_practical_sources(), mode="tab")
-        assert_clean_answer_body(payload)
-        assert payload["answer"].startswith("I can’t provide a full copyrighted song tab")
-        assert "full modern arrangement" in payload["answer"]
-        assert "full solo transcription" in payload["answer"]
-        assert "YouTube/recording transcription" in payload["answer"]
-        assert "A title alone is not enough" in payload["answer"]
-        assert "short original E9 exercise" in payload["answer"]
-        assert "public-domain material when the provenance is explicit" in payload["answer"]
-        assert "```text" not in payload["answer"]
-        assert "E9 original Western-swing rag study" not in payload["answer"]
-        assert "tab_example" not in payload
-        assert "fretboard" not in payload
-        assert payload["sources"] == []
-        assert payload["warnings"] == []
+        for mode in ("ask", "tab"):
+            payload = answer_for_question(question, noisy_practical_sources(), mode=mode)
+            assert_clean_answer_body(payload)
+            assert payload["answer"].startswith("I can’t provide a full copyrighted song tab")
+            assert "full modern arrangement" in payload["answer"]
+            assert "full solo transcription" in payload["answer"]
+            assert "YouTube/recording transcription" in payload["answer"]
+            assert "A title alone is not enough" in payload["answer"]
+            assert "short original E9 exercise" in payload["answer"]
+            assert "public-domain material when the provenance is explicit" in payload["answer"]
+            assert "```text" not in payload["answer"]
+            assert "short educational Steel Guitar Rag-style E9 study" not in payload["answer"]
+            assert "E9 original Western-swing rag study" not in payload["answer"]
+            assert "three distinct 16-bar sections" not in payload["answer"]
+            assert "tab_example" not in payload
+            assert "fretboard" not in payload
+            assert payload["sources"] == []
+            assert payload["warnings"] == []
 
 
 def test_steel_guitar_rag_safe_curated_questions_still_work_after_full_tab_guardrail() -> None:

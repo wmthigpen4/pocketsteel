@@ -62,6 +62,7 @@ from pocketsteel.chroma_search import (
 from pocketsteel.curated_answers import (
     CURATED_FACT_WEAK_WARNING,
     WEAK_RETRIEVAL_WARNING,
+    full_song_tab_guardrail_answer,
     generic_sgf_quarantine_fallback_answer,
     intent_mode_curated_answer,
     lookup_curated_answer,
@@ -361,6 +362,29 @@ class RetrievalApi:
             answer_intent_decision = classify_answer_request(answer_request.question, answer_request.mode)
             curated_guidance_status: str | None = None
             curated_guidance_count: int | None = None
+
+            blocked_song_tab_answer = full_song_tab_guardrail_answer(answer_request.question)
+            if blocked_song_tab_answer is not None:
+                final_answer = final_answer_quality_gate(blocked_song_tab_answer.answer, answer_request.question)
+                contract_validation = enforce_answer_contract(final_answer, blocked_song_tab_answer.intent)
+                final_answer = normalize_answer_list_markers(contract_validation.answer)
+                payload: AnswerResponse = {
+                    "answer": final_answer,
+                    "mode": answer_request.mode,
+                    "sources": [],
+                    "warnings": [],
+                    "sections": build_sections(final_answer),
+                }
+                self._log_answer_attempt(
+                    request_payload,
+                    role=access.role,
+                    identity_email=access.identity_email,
+                    access_status="authorized",
+                    authorized=True,
+                    source_count=0,
+                    warning_count=0,
+                )
+                return self._json_response(start_response, "200 OK", payload)
 
             deterministic_chord_answer = visual_fretboard_curated_answer(answer_request.question)
             if deterministic_chord_answer is None:
