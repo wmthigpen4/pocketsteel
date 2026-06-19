@@ -175,7 +175,7 @@ def test_static_four_five_six_grip_uses_fretboard_without_tab_payload() -> None:
 
 def test_answer_tab_example_selector_supports_safe_first_examples() -> None:
     cases = [
-        ("Show me a G to C move.", "g-to-c-456-beginner"),
+        ("Show me a G to C move.", "movement-g-i-iv-v1"),
         ("How do I use A+B pedals?", "a-b-pedal-major-position"),
         ("Show me an E-lower move.", "e-lower-color-move"),
         ("Give me a beginner lick in G.", "beginner-g-two-event-lick"),
@@ -189,6 +189,49 @@ def test_answer_tab_example_selector_supports_safe_first_examples() -> None:
         assert payload["validation"]["ok"] is True
         assert payload["validation"]["issues"] == []
         assert fretboard_payload_for_tab_example(payload) is not None
+
+
+def test_parameterized_chord_movement_selector_supports_major_key_progressions() -> None:
+    cases = [
+        ("Show me a I to IV move in G.", "movement-g-i-iv-v1", "I-IV", ["G", "C"], ["I", "IV"]),
+        ("Show me a I to V move in G.", "movement-g-i-v-v1", "I-V", ["G", "D"], ["I", "V"]),
+        (
+            "Show me a G C D G movement.",
+            "movement-g-i-iv-v-i-v1",
+            "I-IV-V-I",
+            ["G", "C", "D", "G"],
+            ["I", "IV", "V", "I"],
+        ),
+        ("Give me a simple I-IV move in A.", "movement-a-i-iv-v1", "I-IV", ["A", "D"], ["I", "IV"]),
+    ]
+
+    for question, expected_id, progression, chords, functions in cases:
+        payload = tab_example_payload_for_question(question)
+        assert payload is not None, question
+        assert payload["id"] == expected_id
+        assert payload["kind"] == "parameterized_chord_movement"
+        assert payload["display_tab"] is True
+        assert payload["preferred_display"] == "tab_and_fretboard"
+        assert payload["context"]["progression"] == progression
+        assert payload["context"]["chords"] == chords
+        assert payload["context"]["rightsStatus"] == "original_educational_example"
+        assert payload["context"]["provenanceType"] == "deterministic_exercise"
+        assert payload["context"]["sourcePolicy"] == "no_external_song_source"
+        assert payload["context"]["generator"] == "parameterized_e9_chord_movement_v1"
+        assert [event["function"] for event in payload["events"]] == functions
+        assert payload["validation"]["ok"] is True
+        assert payload["validation"]["eventCount"] == len(payload["events"])
+        assert answer_body_for_tab_example(payload).startswith("Here is a short original")
+        assert fretboard_payload_for_tab_example(payload) is not None
+
+
+def test_parameterized_chord_movement_defaults_numeral_only_requests_to_g() -> None:
+    payload = tab_example_payload_for_question("How do I move from the I chord to the IV chord on E9?")
+
+    assert payload is not None
+    assert payload["id"] == "movement-g-i-iv-v1"
+    assert payload["context"]["defaultedKey"] is True
+    assert "defaulting to G" in answer_body_for_tab_example(payload)
 
 
 def test_beginner_g_lick_press_event_only_contains_changed_a_b_strings() -> None:
@@ -227,6 +270,9 @@ def test_answer_tab_example_selector_blocks_unsafe_or_unsupported_requests() -> 
     assert tab_example_payload_for_question("Where can I buy a slide bar?") is None
     assert tab_example_payload_for_question("Tab the whole solo from Together Again.") is None
     assert tab_example_payload_for_question("Transcribe this recording into tab.") is None
+    assert tab_example_payload_for_question("Give me a minor I-IV-V move in G.") is None
+    assert tab_example_payload_for_question("Show a blues I7-IV7-V7 turnaround.") is None
+    assert tab_example_payload_for_question("Use my custom copedent for a I-IV move.") is None
 
 
 def test_answer_tab_example_selector_omits_payload_when_validation_fails(monkeypatch) -> None:

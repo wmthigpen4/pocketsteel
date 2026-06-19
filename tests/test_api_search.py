@@ -7517,12 +7517,68 @@ def test_answer_attaches_tab_example_for_supported_g_to_c_move() -> None:
     payload = answer_for_question("Show me a G to C move.", noisy_practical_sources())
 
     assert "tab_example" in payload
-    assert_valid_tab_example_payload(payload, "g-to-c-456-beginner")
+    assert_valid_tab_example_payload(payload, "movement-g-i-iv-v1")
     assert_valid_tab_example_fretboard_payload(payload)
     assert_no_tab_specificity_fallback(payload)
-    assert payload["answer"].startswith("Here is a simple G to C movement on E9.")
+    assert payload["answer"].startswith("Here is a short original G I-IV movement on E9.")
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert payload["tab_example"]["kind"] == "parameterized_chord_movement"
+    assert payload["tab_example"]["context"]["progression"] == "I-IV"
+    assert payload["tab_example"]["context"]["chords"] == ["G", "C"]
+    assert payload["tab_example"]["context"]["provenanceType"] == "deterministic_exercise"
+    assert payload["tab_example"]["context"]["sourcePolicy"] == "no_external_song_source"
     assert payload["tab_example"]["validation"]["eventCount"] == 2
     assert len(payload["fretboard"]["positions"]) == 2
+
+
+def test_answer_attaches_parameterized_tab_example_for_i_to_v_move() -> None:
+    payload = answer_for_question("Show me a I to V move in G.", noisy_practical_sources())
+
+    assert "tab_example" in payload
+    assert_valid_tab_example_payload(payload, "movement-g-i-v-v1")
+    assert_valid_tab_example_fretboard_payload(payload)
+    assert_no_tab_specificity_fallback(payload)
+    assert payload["answer"].startswith("Here is a short original G I-V movement on E9.")
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert payload["tab_example"]["context"]["progression"] == "I-V"
+    assert payload["tab_example"]["context"]["chords"] == ["G", "D"]
+    assert [event["function"] for event in payload["tab_example"]["events"]] == ["I", "V"]
+    assert payload["tab_example"]["events"][1]["notes"] == [
+        {"string": 3, "fret": 5, "changes": ["B"]},
+        {"string": 4, "fret": 5, "changes": []},
+        {"string": 5, "fret": 5, "changes": ["A"]},
+    ]
+
+
+def test_answer_attaches_parameterized_tab_example_for_i_iv_v_i_move() -> None:
+    payload = answer_for_question("Show me a G C D G movement.", noisy_practical_sources())
+
+    assert "tab_example" in payload
+    assert_valid_tab_example_payload(payload, "movement-g-i-iv-v-i-v1")
+    assert_valid_tab_example_fretboard_payload(payload)
+    assert_no_tab_specificity_fallback(payload)
+    assert payload["answer"].startswith("Here is a short original G I-IV-V-I movement on E9.")
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert payload["tab_example"]["context"]["progression"] == "I-IV-V-I"
+    assert payload["tab_example"]["context"]["chords"] == ["G", "C", "D", "G"]
+    assert [event["function"] for event in payload["tab_example"]["events"]] == ["I", "IV", "V", "I"]
+    assert payload["tab_example"]["validation"]["eventCount"] == 4
+    assert len(payload["fretboard"]["positions"]) == 4
+
+
+def test_answer_attaches_parameterized_tab_example_for_default_key_i_to_iv_move() -> None:
+    payload = answer_for_question("How do I move from the I chord to the IV chord on E9?", noisy_practical_sources())
+
+    assert "tab_example" in payload
+    assert_valid_tab_example_payload(payload, "movement-g-i-iv-v1")
+    assert_valid_tab_example_fretboard_payload(payload)
+    assert "defaulting to G" in payload["answer"]
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert payload["tab_example"]["context"]["defaultedKey"] is True
 
 
 def test_answer_attaches_tab_example_for_supported_beginner_lick() -> None:
@@ -7573,6 +7629,13 @@ def test_answer_omits_tab_example_for_full_solo_transcription_requests() -> None
     payload = answer_for_question("Transcribe this recording and tab the whole solo.", noisy_practical_sources(), mode="tab")
 
     assert "tab_example" not in payload
+
+
+def test_answer_omits_parameterized_tab_for_unsupported_progression_requests() -> None:
+    payload = answer_for_question("Give me a minor I-IV-V move in G.", noisy_practical_sources())
+
+    assert "tab_example" not in payload
+    assert "fretboard" not in payload
 
 
 def test_gear_mode_returns_diagnostic_style_structure() -> None:

@@ -20,9 +20,54 @@ from pocketsteel.fretboard_examples import (
     validate_fretboard_payload,
 )
 from pocketsteel.tab_engine import default_e9_copedent_profile, render_example, tab_examples
+from pocketsteel.tab_engine import render_tab, TabEvent, TabNote
 
 
 Matcher = Callable[[str], bool]
+
+PITCH_CLASSES: dict[str, int] = {
+    "C": 0,
+    "C#": 1,
+    "DB": 1,
+    "D": 2,
+    "D#": 3,
+    "EB": 3,
+    "E": 4,
+    "F": 5,
+    "F#": 6,
+    "GB": 6,
+    "G": 7,
+    "G#": 8,
+    "AB": 8,
+    "A": 9,
+    "A#": 10,
+    "BB": 10,
+    "B": 11,
+}
+DISPLAY_ROOTS_BY_PC = {
+    0: "C",
+    1: "C#",
+    2: "D",
+    3: "Eb",
+    4: "E",
+    5: "F",
+    6: "F#",
+    7: "G",
+    8: "Ab",
+    9: "A",
+    10: "Bb",
+    11: "B",
+}
+ROOT_PATTERN = r"(?:c#|c sharp|db|c|d#|d sharp|eb|d|e|f#|f sharp|gb|f|g#|g sharp|ab|g|a#|a sharp|bb|a|b)"
+
+
+@dataclass(frozen=True)
+class ParameterizedMovementRequest:
+    key: str
+    key_pc: int
+    progression: str
+    chords: tuple[str, ...]
+    defaulted_key: bool = False
 
 
 @dataclass(frozen=True)
@@ -50,6 +95,9 @@ def tab_example_payload_for_question(
     normalized = _normalize_question(question)
     if not normalized or _is_blocked_tab_request(normalized):
         return None
+    parameterized = _parameterized_movement_payload_for_question(normalized)
+    if parameterized is not None:
+        return parameterized
     for example in _answer_tab_examples():
         if example.display_mode != "tab_and_fretboard":
             continue
@@ -91,6 +139,8 @@ def answer_body_for_tab_example(tab_example: dict[str, Any]) -> str | None:
     """Return direct answer prose for a selected deterministic tab example."""
 
     tab_id = str(tab_example.get("id") or "")
+    if tab_id.startswith("movement-") and tab_example.get("kind") == "parameterized_chord_movement":
+        return _parameterized_answer_body(tab_example)
     for example in _answer_tab_examples():
         if example.id == tab_id:
             return example.answer_body
@@ -198,6 +248,334 @@ def _payload_for_example(example: AnswerTabExample) -> dict[str, Any] | None:
         "intervals": list(example.intervals),
         "events": [event.normalized(profile).to_dict() for event in events],
     }
+
+
+def _parameterized_movement_payload_for_question(question: str) -> dict[str, Any] | None:
+    request = _parse_parameterized_movement_request(question)
+    if request is None:
+        return None
+
+    events, event_metadata, intervals = _parameterized_events_for_request(request)
+    result = render_tab(events)
+    if not result.ok:
+        return None
+
+    profile = default_e9_copedent_profile()
+    event_payloads: list[dict[str, Any]] = []
+    for event, metadata in zip(events, event_metadata):
+        payload = event.normalized(profile).to_dict()
+        payload.update(metadata)
+        event_payloads.append(payload)
+
+    movement_slug = _slug_for_progression(request.progression)
+    key_slug = _slug_for_root(request.key)
+    tab_id = f"movement-{key_slug}-{movement_slug}-v1"
+    context = {
+        "key": request.key,
+        "root": request.key,
+        "quality": "major",
+        "progression": request.progression,
+        "chords": list(request.chords),
+        "movementType": request.progression,
+        "tuning": "E9",
+        "profile": "default_e9",
+        "difficulty": "beginner",
+        "tier": "starter",
+        "grip": "4-5-6",
+        "rightsStatus": "original_educational_example",
+        "provenanceType": "deterministic_exercise",
+        "sourcePolicy": "no_external_song_source",
+        "generator": "parameterized_e9_chord_movement_v1",
+    }
+    if request.defaulted_key:
+        context["defaultedKey"] = True
+
+    return {
+        "id": tab_id,
+        "title": f"{request.key} {request.progression} beginner move",
+        "kind": "parameterized_chord_movement",
+        "display_tab": True,
+        "preferred_display": "tab_and_fretboard",
+        "context": context,
+        "rendered_tab": result.tab,
+        "validation": {
+            "ok": True,
+            "issues": [],
+            "profile": str(result.metadata.get("profile") or profile.id),
+            "eventCount": int(result.metadata.get("event_count") or len(events)),
+        },
+        "explanation": _parameterized_explanation(request),
+        "intervals": intervals,
+        "events": event_payloads,
+    }
+
+
+def _parse_parameterized_movement_request(question: str) -> ParameterizedMovementRequest | None:
+    if _is_blocked_tab_request(question):
+        return None
+    if re.search(r"\b(?:strings?|grip|routine|workout|plan|turnaround|intro|pocket)\b", question):
+        return None
+    if _mentions_ab_pedals(question) and _mentions_e_lower(question):
+        return None
+    if re.search(r"\b(?:minor|7th|seventh|dominant|blues|solo|song|recording|youtube|custom copedent)\b", question):
+        return None
+    if not _looks_like_movement_request(question):
+        return None
+
+    direct = _parse_direct_chord_movement(question)
+    if direct is not None:
+        return direct
+
+    progression = _parse_progression_label(question)
+    if progression is None:
+        return None
+
+    key = _parse_key_context(question) or "G"
+    key_info = _normalize_root_token(key)
+    if key_info is None:
+        return None
+    key_label, key_pc = key_info
+    chords = _chords_for_progression(key_pc, progression)
+    return ParameterizedMovementRequest(
+        key=key_label,
+        key_pc=key_pc,
+        progression=progression,
+        chords=chords,
+        defaulted_key=_parse_key_context(question) is None,
+    )
+
+
+def _looks_like_movement_request(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:move|movement|transition|phrase|walk|go from|from|beginner example|short example|pedal move)\b", question)
+        or re.search(r"\b(?:i|1)(?:\s+chord)?\s*to\s*(?:the\s+)?(?:iv|4)(?:\s+chord)?\b", question)
+        or re.search(r"\b(?:i|1)(?:\s+chord)?\s*to\s*(?:the\s+)?(?:v|5)(?:\s+chord)?\b", question)
+        or re.search(r"\b(?:i|1)\s*[- ]\s*(?:iv|4)\s*[- ]\s*(?:v|5)\s*[- ]\s*(?:i|1)\b", question)
+    )
+
+
+def _parse_progression_label(question: str) -> str | None:
+    compact = re.sub(r"\s+", " ", question.replace("–", "-").replace("—", "-"))
+    if re.search(r"\b(?:i|1)\s*[- ]\s*(?:iv|4)\s*[- ]\s*(?:v|5)\s*[- ]\s*(?:i|1)\b", compact):
+        return "I-IV-V-I"
+    if re.search(r"\b(?:i|1)\s*[- ]\s*(?:iv|4)\s*[- ]\s*(?:v|5)\b", compact):
+        return None
+    if re.search(r"\b(?:i|1)\s*-\s*(?:iv|4)\b", compact):
+        return "I-IV"
+    if re.search(r"\b(?:i|1)\s*-\s*(?:v|5)\b", compact):
+        return "I-V"
+    if re.search(r"\b(?:i|1)(?:\s+chord)?\s*to\s*(?:the\s+)?(?:iv|4)(?:\s+chord)?\b", compact):
+        return "I-IV"
+    if re.search(r"\b(?:i|1)(?:\s+chord)?\s*to\s*(?:the\s+)?(?:v|5)(?:\s+chord)?\b", compact):
+        return "I-V"
+    return None
+
+
+def _parse_direct_chord_movement(question: str) -> ParameterizedMovementRequest | None:
+    roots = _root_tokens_in_question(question)
+    if len(roots) < 2:
+        return None
+
+    normalized = [_normalize_root_token(root) for root in roots]
+    if any(root is None for root in normalized):
+        return None
+    labels = tuple(root[0] for root in normalized if root is not None)
+    pcs = tuple(root[1] for root in normalized if root is not None)
+    key_label = labels[0]
+    key_pc = pcs[0]
+    iv_pc = (key_pc + 5) % 12
+    v_pc = (key_pc + 7) % 12
+
+    if len(pcs) >= 4 and pcs[:4] == (key_pc, iv_pc, v_pc, key_pc):
+        return ParameterizedMovementRequest(key=key_label, key_pc=key_pc, progression="I-IV-V-I", chords=labels[:4])
+    if pcs[:2] == (key_pc, iv_pc):
+        return ParameterizedMovementRequest(key=key_label, key_pc=key_pc, progression="I-IV", chords=labels[:2])
+    if pcs[:2] == (key_pc, v_pc):
+        return ParameterizedMovementRequest(key=key_label, key_pc=key_pc, progression="I-V", chords=labels[:2])
+    return None
+
+
+def _root_tokens_in_question(question: str) -> tuple[str, ...]:
+    normalized = _normalize_spelled_accidentals(question)
+    pair_match = re.search(rf"\b({ROOT_PATTERN})\s+(?:to|-)\s+({ROOT_PATTERN})\b", normalized)
+    if pair_match:
+        return (pair_match.group(1), pair_match.group(2))
+    tokens = list(re.findall(rf"\b({ROOT_PATTERN})\b", normalized))
+    if len(tokens) >= 4 and tokens[0] == "a":
+        maybe_key = _normalize_root_token(tokens[1])
+        maybe_fourth = _normalize_root_token(tokens[2])
+        if maybe_key and maybe_fourth and maybe_fourth[1] == (maybe_key[1] + 5) % 12:
+            tokens = tokens[1:]
+    ignored = {"i"}
+    return tuple(token for token in tokens if token not in ignored)
+
+
+def _parse_key_context(question: str) -> str | None:
+    match = re.search(rf"\b(?:in the key of|key of|in)\s+({ROOT_PATTERN})\b", _normalize_spelled_accidentals(question))
+    return match.group(1) if match else None
+
+
+def _normalize_spelled_accidentals(question: str) -> str:
+    return (
+        question.replace(" sharp", "#")
+        .replace("-sharp", "#")
+        .replace(" flat", "b")
+        .replace("-flat", "b")
+    )
+
+
+def _normalize_root_token(root: str) -> tuple[str, int] | None:
+    token = str(root or "").strip().upper().replace(" SHARP", "#").replace("-SHARP", "#")
+    token = token.replace(" FLAT", "B").replace("-FLAT", "B")
+    token = token.replace("♯", "#").replace("♭", "B")
+    pc = PITCH_CLASSES.get(token)
+    if pc is None:
+        return None
+    return DISPLAY_ROOTS_BY_PC[pc], pc
+
+
+def _chords_for_progression(key_pc: int, progression: str) -> tuple[str, ...]:
+    root = DISPLAY_ROOTS_BY_PC[key_pc]
+    fourth = DISPLAY_ROOTS_BY_PC[(key_pc + 5) % 12]
+    fifth = DISPLAY_ROOTS_BY_PC[(key_pc + 7) % 12]
+    if progression == "I-IV":
+        return (root, fourth)
+    if progression == "I-V":
+        return (root, fifth)
+    return (root, fourth, fifth, root)
+
+
+def _parameterized_events_for_request(
+    request: ParameterizedMovementRequest,
+) -> tuple[tuple[TabEvent, ...], tuple[dict[str, str], ...], list[dict[str, Any]]]:
+    tab_id = f"movement-{_slug_for_root(request.key)}-{_slug_for_progression(request.progression)}-v1"
+    root_fret = _open_major_fret(request.key_pc)
+    fifth_pc = (request.key_pc + 7) % 12
+    fifth_fret = _closest_ab_fret(fifth_pc, root_fret)
+    events: list[TabEvent] = []
+    metadata: list[dict[str, str]] = []
+    intervals: list[dict[str, Any]] = []
+
+    def append_event(label: str, chord: str, event: TabEvent, by_string: dict[str, str]) -> None:
+        index = len(events) + 1
+        event_id = f"{tab_id}-event-{index}"
+        events.append(event)
+        metadata.append({"id": event_id, "label": label, "function": label})
+        intervals.append({"eventId": event_id, "chord": chord, "byString": by_string})
+
+    append_event(
+        "I",
+        request.chords[0],
+        TabEvent(
+            chord=request.chords[0],
+            lyric="pick",
+            notes=(TabNote(4, root_fret), TabNote(5, root_fret), TabNote(6, root_fret)),
+        ),
+        {"4": "1", "5": "5", "6": "3"},
+    )
+
+    if request.progression in {"I-IV", "I-IV-V-I"}:
+        append_event(
+            "IV",
+            f"{request.chords[1]} partial",
+            TabEvent(
+                chord=f"{request.chords[1]} partial",
+                lyric="press",
+                notes=(TabNote(5, root_fret, ("A",)), TabNote(6, root_fret, ("B",))),
+            ),
+            {"5": "3", "6": "1"},
+        )
+
+    if request.progression in {"I-V", "I-IV-V-I"}:
+        fifth_chord = request.chords[1] if request.progression == "I-V" else request.chords[2]
+        append_event(
+            "V",
+            fifth_chord,
+            TabEvent(
+                chord=fifth_chord,
+                lyric="move",
+                notes=(TabNote(3, fifth_fret, ("B",)), TabNote(4, fifth_fret), TabNote(5, fifth_fret, ("A",))),
+            ),
+            {"3": "1", "4": "5", "5": "3"},
+        )
+
+    if request.progression == "I-IV-V-I":
+        append_event(
+            "I",
+            request.chords[3],
+            TabEvent(
+                chord=request.chords[3],
+                lyric="resolve",
+                notes=(TabNote(4, root_fret), TabNote(5, root_fret), TabNote(6, root_fret)),
+            ),
+            {"4": "1", "5": "5", "6": "3"},
+        )
+
+    return tuple(events), tuple(metadata), intervals
+
+
+def _open_major_fret(root_pc: int) -> int:
+    return (root_pc - PITCH_CLASSES["E"]) % 12
+
+
+def _closest_ab_fret(root_pc: int, reference_fret: int) -> int:
+    base = _open_major_fret(root_pc) + 7
+    candidates = [fret for fret in (base - 12, base, base + 12) if 0 <= fret <= 24]
+    return min(candidates, key=lambda fret: (abs(fret - reference_fret), fret))
+
+
+def _parameterized_explanation(request: ParameterizedMovementRequest) -> str:
+    if request.progression == "I-IV":
+        return (
+            f"A short original {request.key} I-IV movement. Start on {request.chords[0]} with no pedals, "
+            f"then press A+B on strings 5 and 6 for a compact {request.chords[1]} partial without moving the bar."
+        )
+    if request.progression == "I-V":
+        return (
+            f"A short original {request.key} I-V movement. Start on {request.chords[0]} with no pedals, "
+            f"then move to a nearby A+B {request.chords[1]} position."
+        )
+    return (
+        f"A short original {request.key} I-IV-V-I movement. It connects {request.chords[0]}, "
+        f"{request.chords[1]} partial, {request.chords[2]}, and back to {request.chords[3]}."
+    )
+
+
+def _parameterized_answer_body(tab_example: dict[str, Any]) -> str | None:
+    context = tab_example.get("context")
+    if not isinstance(context, dict):
+        return None
+    key = str(context.get("key") or "G")
+    progression = str(context.get("progression") or "I-IV")
+    chords = context.get("chords")
+    if not isinstance(chords, list) or not chords:
+        return None
+    default_note = " I’m defaulting to G because you did not name a key." if context.get("defaultedKey") else ""
+    if progression == "I-IV":
+        return (
+            f"Here is a short original {key} I-IV movement on E9.{default_note} "
+            f"Start with {chords[0]} at the no-pedals position, then press A+B on strings 5 and 6 for a compact {chords[1]} partial. "
+            "Keep the bar still, pick slowly, and listen to the pedals create the chord change."
+        )
+    if progression == "I-V":
+        return (
+            f"Here is a short original {key} I-V movement on E9.{default_note} "
+            f"Start with {chords[0]} at the no-pedals position, then move to the nearby A+B position for {chords[1]}. "
+            "Practice it as two clean events: pick, block, move, and pick again."
+        )
+    return (
+        f"Here is a short original {key} I-IV-V-I movement on E9.{default_note} "
+        f"It walks {', '.join(str(chord) for chord in chords)} as a compact beginner phrase. "
+        "Keep the time slow and make each pedal change sound intentional before adding speed."
+    )
+
+
+def _slug_for_root(root: str) -> str:
+    return root.lower().replace("#", "sharp").replace("b", "flat")
+
+
+def _slug_for_progression(progression: str) -> str:
+    return progression.lower().replace("-", "-")
 
 
 def _position_for_tab_event(
@@ -329,7 +707,7 @@ def _root_quality_for_event(tab_example: dict[str, Any], chord: str) -> tuple[st
     context_key = str(tab_example.get("context", {}).get("key") or "G")
     if "a+b" in lowered or "e-lower" in lowered or "e lower" in lowered:
         return context_key, "color" if "e" in lowered else "major"
-    for root in ("C", "G", "D", "A", "E", "F", "B"):
+    for root in ("C#", "Db", "D#", "Eb", "F#", "Gb", "G#", "Ab", "A#", "Bb", "C", "G", "D", "A", "E", "F", "B"):
         if lowered.startswith(root.lower()):
             return root, "major"
     return context_key, "color"

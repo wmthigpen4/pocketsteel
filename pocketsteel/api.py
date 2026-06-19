@@ -173,11 +173,16 @@ def _attach_tab_example_if_available(
     tab_example = tab_example_payload_for_question(question, answer_intent=answer_intent_decision)
     if tab_example is not None:
         payload["tab_example"] = tab_example
+        if tab_example.get("kind") == "parameterized_chord_movement":
+            payload["sources"] = []
+            payload["warnings"] = []
         if "fretboard" not in payload:
             fretboard = fretboard_payload_for_tab_example(tab_example)
             if fretboard is not None:
                 payload["fretboard"] = fretboard
-        if _answer_is_generic_tab_fallback(payload.get("answer", "")):
+        if tab_example.get("kind") == "parameterized_chord_movement" or _answer_is_generic_tab_fallback(
+            payload.get("answer", "")
+        ):
             replacement = answer_body_for_tab_example(tab_example)
             if replacement:
                 payload["answer"] = replacement
