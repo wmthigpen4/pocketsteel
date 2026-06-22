@@ -304,7 +304,12 @@ const visualized = answerUi.normalizeAnswerResponse({
     ],
     legend: [
       { id: "primary", label: "Open/no-pedal position", color: "primary" }
-    ]
+    ],
+    query: {
+      display_scale_notes: {
+        natural_minor: ["G", "A", "Bb", "C", "D", "Eb", "F"]
+      }
+    }
   },
   sources: []
 });
@@ -317,6 +322,7 @@ assert.equal(visualized.fretboard.positions[0].id, "g-open-3");
 assert.equal(visualized.fretboard.positions[0].notes, "Open G pocket");
 assert.equal(JSON.stringify(visualized.fretboard.highlights), JSON.stringify([]));
 assert.equal(visualized.fretboard.legend[0].id, "primary");
+assert.equal(visualized.fretboard.query.display_scale_notes.natural_minor.join(" "), "G A Bb C D Eb F");
 
 const productionNestedVisualized = answerUi.normalizeAnswerResponse({
   question: "Where can I play a G chord?",
@@ -916,7 +922,12 @@ const sandbox = {
                 grip: [4, 5, 6],
                 role: "No pedals"
               }
-            ]
+            ],
+            query: {
+              display_scale_notes: {
+                natural_minor: ["G", "A", "Bb", "C", "D", "Eb", "F"]
+              }
+            }
           }
         },
         sources: [],
@@ -989,6 +1000,7 @@ vm.runInContext(inlineScript, sandbox);
   assert.equal(sandbox.mountedFretboardOptions.stringCount, 10);
   assert.equal(sandbox.mountedFretboardOptions.positions[0].id, "g-open-3");
   assert.equal(sandbox.mountedFretboardOptions.positions[0].role, "No pedals");
+  assert.equal(sandbox.mountedFretboardOptions.query.display_scale_notes.natural_minor.join(" "), "G A Bb C D Eb F");
 
   const tabSection = getElement("#answer-tab");
   const tabList = getElement("#answer-tab-list");

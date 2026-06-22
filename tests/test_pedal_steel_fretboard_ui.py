@@ -1112,6 +1112,107 @@ assert.doesNotMatch(html, /\\[object Object\\]/);
     run_node(script)
 
 
+def test_explorer_payload_uses_key_aware_display_fields_for_learner_text() -> None:
+    script = component_eval_script(
+        """
+const explorerPositions = [
+  {
+    id: "g-natural-minor-core-456",
+    key: "G",
+    scale_type: "natural_minor",
+    harmony_type: "three_string_diatonic",
+    scale_degree: 3,
+    chord_function: "III",
+    chord_name: "Bb",
+    chord_quality: "major",
+    fret: 6,
+    string_group: "4-5-6",
+    strings: [4, 5, 6],
+    notes: {"4": "A#", "5": "F", "6": "D"},
+    display_notes: {"4": "Bb", "5": "F", "6": "D"},
+    intervals: {"4": "1", "5": "5", "6": "3"},
+    top_voice: {"string": 4, "note": "A#", "interval": "1"},
+    display_top_voice: {"string": 4, "note": "Bb", "interval": "1"},
+    display_summary: "Bb on strings 4-5-6 at fret 6: Bb, F, D.",
+    position_family: "no_pedals_no_levers",
+    difficulty_tier: "starter",
+    pitch_validated: true
+  },
+  {
+    id: "g-natural-minor-e-lower-578",
+    key: "G",
+    scale_type: "natural_minor",
+    harmony_type: "advanced_pocket",
+    scale_degree: 6,
+    chord_function: "VI",
+    chord_name: "Eb",
+    chord_quality: "major",
+    fret: 11,
+    string_group: "5-7-8",
+    strings: [5, 7, 8],
+    levers: ["E-lower"],
+    notes: {"5": "A#", "7": "F", "8": "D#"},
+    display_notes: {"5": "Bb", "7": "F", "8": "Eb"},
+    intervals: {"5": "5", "7": "2/9", "8": "1"},
+    top_voice: {"string": 5, "note": "A#", "interval": "5"},
+    display_top_voice: {"string": 5, "note": "Bb", "interval": "5"},
+    display_summary: "Eb on strings 5-7-8 at fret 11: Bb, F, Eb.",
+    position_family: "e_lower_pocket",
+    difficulty_tier: "advanced",
+    per_string_changes: {"8": {"from": "E", "to": "Eb/D#", "controls": "E-lower"}},
+    warnings: ["This is an advanced E-lower pocket; check the missing chord tones before treating it as a full grip."],
+    omitted_intervals: ["3"],
+    pitch_validated: true
+  }
+];
+const query = {
+  key: "G",
+  display_scale_notes: {
+    major: ["G", "A", "B", "C", "D", "E", "F#"],
+    natural_minor: ["G", "A", "Bb", "C", "D", "Eb", "F"]
+  }
+};
+
+const model = fretboard.buildFretboardModel({ positions: explorerPositions, query, voicingFilter: "all" });
+assert.equal(model.displayScaleNotes.find((item) => item.scaleType === "natural minor").notes.join(" "), "G A Bb C D Eb F");
+assert.equal(model.allHighlights.find((item) => item.id === "g-natural-minor-core-456").notes.join("; "), "String 4: Bb; String 5: F; String 6: D");
+assert.equal(model.allHighlights.find((item) => item.id === "g-natural-minor-core-456").topVoice, "Bb / 1 / string: 4");
+assert.equal(model.allHighlights.find((item) => item.id === "g-natural-minor-core-456").displaySummary, "Bb on strings 4-5-6 at fret 6: Bb, F, D.");
+assert.equal(model.allHighlights.find((item) => item.id === "g-natural-minor-e-lower-578").grip, "5-7-8");
+assert.equal(model.allHighlights.find((item) => item.id === "g-natural-minor-e-lower-578").tier, "advanced");
+assert.equal(model.allHighlights.find((item) => item.id === "g-natural-minor-e-lower-578").colorRole, "partial-rootless");
+assert.equal(JSON.stringify(model.gripOptions), JSON.stringify(["4-5-6", "5-7-8"]));
+
+const html = fretboard.renderPedalSteelFretboard({ positions: explorerPositions, query, voicingFilter: "all" });
+assert.match(html, /natural minor<\\/span>: G A Bb C D Eb F/);
+assert.doesNotMatch(html, /G A A# C D D# F/);
+assert.match(html, /String 4: Bb/);
+assert.match(html, /String 5: Bb/);
+assert.match(html, /String 8: Eb/);
+assert.doesNotMatch(html, /String 4: A#/);
+assert.doesNotMatch(html, /String 5: A#/);
+assert.doesNotMatch(html, /String 8: D#/);
+assert.match(html, /Top voice/);
+assert.match(html, /Bb \\/ 1 \\/ string: 4/);
+assert.match(html, /Bb \\/ 5 \\/ string: 5/);
+assert.doesNotMatch(html, /A# \\/ 1 \\/ string: 4/);
+assert.match(html, /Bb on strings 4-5-6 at fret 6: Bb, F, D\\./);
+assert.match(html, /Eb on strings 5-7-8 at fret 11: Bb, F, Eb\\./);
+assert.match(html, /String changes/);
+assert.match(html, /String 8: controls: E-lower \\/ from: E \\/ to: Eb\\/D#/);
+assert.match(html, /Warnings/);
+assert.match(html, /advanced E-lower pocket/);
+assert.match(html, /data-position-selector="g-natural-minor-core-456"[^>]*data-position-family="no_pedals_no_levers"[^>]*data-position-tier="starter"/);
+assert.match(html, /data-position-selector="g-natural-minor-e-lower-578"[^>]*data-position-family="e_lower_pocket"[^>]*data-position-tier="advanced"[^>]*data-position-grip="5-7-8"/);
+assert.match(html, /data-position-selector="g-natural-minor-e-lower-578"[^>]*data-color-role="partial-rootless"/);
+assert.doesNotMatch(html, /RAG generated/);
+assert.doesNotMatch(html, /\\[object Object\\]/);
+"""
+    )
+
+    run_node(script)
+
+
 def test_missing_or_partial_fretboard_payload_omits_selector_cleanly() -> None:
     script = component_eval_script(
         """

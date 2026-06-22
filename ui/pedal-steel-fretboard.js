@@ -165,6 +165,29 @@
   margin: 14px 0 0;
 }
 
+.pedal-steel-fretboard__scale-strip {
+  border: 1px solid rgba(240, 191, 105, 0.2);
+  border-radius: 12px;
+  color: rgba(255, 246, 223, 0.82);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 9px 11px;
+}
+
+.pedal-steel-fretboard__scale-item {
+  background: rgba(255, 246, 223, 0.04);
+  border-radius: 999px;
+  padding: 5px 8px;
+}
+
+.pedal-steel-fretboard__scale-name {
+  color: rgba(240, 191, 105, 0.78);
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
 .pedal-steel-fretboard__filter-panel {
   display: grid;
   gap: 9px;
@@ -565,10 +588,12 @@
       return aliasedRole;
     }
 
-    const family = normalizeMetadataText(item.family).toLowerCase();
-    const positionKind = normalizeMetadataText(item.positionKind || item.position_kind).toLowerCase();
+    const family = normalizeMetadataText(item.family || item.positionFamily || item.position_family).toLowerCase();
+    const positionKind = normalizeMetadataText(
+      item.positionKind || item.position_kind || item.harmonyType || item.harmony_type
+    ).toLowerCase();
     const role = normalizeMetadataText(item.role).toLowerCase();
-    const tier = normalizeMetadataText(item.tier).toLowerCase();
+    const tier = normalizeMetadataText(item.tier || item.difficultyTier || item.difficulty_tier).toLowerCase();
     const pedals = normalizeTextList(item.pedals).join("+").toLowerCase();
     const levers = normalizeTextList(item.levers).join("+").toLowerCase();
     const omittedIntervals = normalizeDetailList(item.omittedIntervals || item.omitted_intervals);
@@ -814,8 +839,10 @@
       ? Array.isArray(item.grip)
         ? gripStrings.join("-")
         : String(item.grip)
+      : item.string_group !== undefined
+        ? String(item.string_group)
       : uniqueStrings.join("-");
-    const positionKind = normalizeMetadataText(item.positionKind || item.position_kind);
+    const positionKind = normalizeMetadataText(item.positionKind || item.position_kind || item.harmonyType || item.harmony_type);
     const omittedIntervals = normalizeDetailList(item.omittedIntervals || item.omitted_intervals);
     const isPartial = Boolean(item.isPartial || item.is_partial);
     const isRootless = Boolean(item.isRootless || item.is_rootless);
@@ -834,12 +861,17 @@
       grip,
       pedals: normalizeTextList(item.pedals),
       levers: normalizeTextList(item.levers),
-      role: String(item.role || ""),
-      notes: normalizeDetailList(item.notes),
+      role: String(item.role || item.chord_function || ""),
+      notes: normalizeDetailList(item.displayNotes || item.display_notes || item.notes),
+      topVoice: normalizeMetadataText(item.displayTopVoice || item.display_top_voice || item.topVoice || item.top_voice),
       explanation: normalizeMetadataText(item.explanation),
+      explanationSummary: normalizeMetadataText(item.explanationSummary || item.explanation_summary),
       intervals: normalizeDetailList(item.intervals),
       omittedIntervals,
       caveats: normalizeDetailList(item.caveats),
+      warnings: normalizeDetailList(item.warnings),
+      perStringChanges: normalizeDetailList(item.perStringChanges || item.per_string_changes),
+      displaySummary: normalizeMetadataText(item.displaySummary || item.display_summary),
       tierReason: normalizeMetadataText(item.tierReason || item.tier_reason),
       whenToUse: normalizeMetadataText(item.whenToUse || item.when_to_use),
       soundCharacter: normalizeMetadataText(item.soundCharacter || item.sound_character),
@@ -849,8 +881,8 @@
       explanationLong: normalizeMetadataText(item.explanationLong || item.explanation_long),
       forumEvidenceStatus: normalizeMetadataText(item.forumEvidenceStatus || item.forum_evidence_status),
       positionKind,
-      family: normalizeMetadataText(item.family),
-      tier: normalizeTier(item.tier),
+      family: normalizeMetadataText(item.family || item.positionFamily || item.position_family),
+      tier: normalizeTier(item.tier || item.difficultyTier || item.difficulty_tier),
       isPartial,
       isRootless,
       voicingType,
@@ -864,10 +896,25 @@
       sourceType,
       colorRole,
       hasFilterMetadata: Object.prototype.hasOwnProperty.call(item, "family") ||
+        Object.prototype.hasOwnProperty.call(item, "positionFamily") ||
+        Object.prototype.hasOwnProperty.call(item, "position_family") ||
         Object.prototype.hasOwnProperty.call(item, "tier") ||
+        Object.prototype.hasOwnProperty.call(item, "difficultyTier") ||
+        Object.prototype.hasOwnProperty.call(item, "difficulty_tier") ||
         Object.prototype.hasOwnProperty.call(item, "visibleByDefault") ||
+        Object.prototype.hasOwnProperty.call(item, "displayNotes") ||
+        Object.prototype.hasOwnProperty.call(item, "display_notes") ||
+        Object.prototype.hasOwnProperty.call(item, "displayTopVoice") ||
+        Object.prototype.hasOwnProperty.call(item, "display_top_voice") ||
+        Object.prototype.hasOwnProperty.call(item, "displaySummary") ||
+        Object.prototype.hasOwnProperty.call(item, "display_summary") ||
+        Object.prototype.hasOwnProperty.call(item, "string_group") ||
+        Object.prototype.hasOwnProperty.call(item, "perStringChanges") ||
+        Object.prototype.hasOwnProperty.call(item, "per_string_changes") ||
         Object.prototype.hasOwnProperty.call(item, "voicingType") ||
         Object.prototype.hasOwnProperty.call(item, "voicing_type") ||
+        Object.prototype.hasOwnProperty.call(item, "harmonyType") ||
+        Object.prototype.hasOwnProperty.call(item, "harmony_type") ||
         Object.prototype.hasOwnProperty.call(item, "isRootPosition") ||
         Object.prototype.hasOwnProperty.call(item, "is_root_position") ||
         Object.prototype.hasOwnProperty.call(item, "isInversion") ||
@@ -902,8 +949,33 @@
         Object.prototype.hasOwnProperty.call(item, "explanationLong") ||
         Object.prototype.hasOwnProperty.call(item, "explanation_long") ||
         Object.prototype.hasOwnProperty.call(item, "forumEvidenceStatus") ||
-        Object.prototype.hasOwnProperty.call(item, "forum_evidence_status"),
+        Object.prototype.hasOwnProperty.call(item, "forum_evidence_status") ||
+        Object.prototype.hasOwnProperty.call(item, "warnings"),
     };
+  }
+
+  function normalizeDisplayScaleNotes(query) {
+    const source = query && typeof query === "object"
+      ? query.displayScaleNotes || query.display_scale_notes
+      : null;
+    if (!source || typeof source !== "object" || Array.isArray(source)) {
+      return [];
+    }
+    return Object.entries(source)
+      .sort(compareEntryKeys)
+      .map(([scaleType, notes]) => {
+        const noteList = Array.isArray(notes)
+          ? notes.map(formatDetailValue).filter(Boolean)
+          : normalizeDetailList(notes);
+        if (!noteList.length) {
+          return null;
+        }
+        return {
+          scaleType: normalizeMetadataText(scaleType).replace(/_/g, " "),
+          notes: noteList,
+        };
+      })
+      .filter(Boolean);
   }
 
   function hasPositionMetadata(highlights) {
@@ -1367,6 +1439,7 @@
       allHighlights,
       highlights,
       legend: normalizeLegend(options.legend),
+      displayScaleNotes: normalizeDisplayScaleNotes(options.query),
     };
   }
 
@@ -1558,10 +1631,13 @@
         ${renderDetailItem("Grip", highlight.grip || highlight.strings.join("-"), "", { hideEmpty: false })}
         ${renderDetailItem("Pedals", highlight.pedals)}
         ${renderDetailItem("Levers", highlight.levers)}
+        ${renderDetailItem("String changes", highlight.perStringChanges, "is-wide")}
         ${renderDetailItem("Notes", highlight.notes, "is-wide")}
+        ${renderDetailItem("Top voice", highlight.topVoice, "is-wide")}
         ${renderDetailItem("Intervals", highlight.intervals, "is-wide")}
         ${renderDetailItem("When to use", whenToUseReason(highlight), "is-wide")}
-        ${renderDetailItem("Short explanation", highlight.explanationShort || highlight.explanation, "is-wide")}
+        ${renderDetailItem("Short explanation", highlight.displaySummary || highlight.explanationShort || highlight.explanationSummary || highlight.explanation, "is-wide")}
+        ${renderDetailItem("Warnings", highlight.warnings, "is-wide")}
       </div>
       ${renderTechnicalDetails([
         renderDetailItem("Validation status", highlight.validationStatus),
@@ -1620,6 +1696,16 @@
     </div>`;
   }
 
+  function renderScaleDisplay(model) {
+    if (!model.displayScaleNotes.length) {
+      return "";
+    }
+    const items = model.displayScaleNotes.map((item) =>
+      `<span class="pedal-steel-fretboard__scale-item" data-scale-notes="${escapeHtml(item.scaleType)}"><span class="pedal-steel-fretboard__scale-name">${escapeHtml(item.scaleType)}</span>: ${escapeHtml(item.notes.join(" "))}</span>`
+    ).join("");
+    return `<div class="pedal-steel-fretboard__scale-strip" aria-label="Key-aware scale spellings">${items}</div>`;
+  }
+
   function renderPositionTools(model) {
     if (model.allHighlights.length === 0) {
       return "";
@@ -1645,6 +1731,7 @@
           highlight.isRootless ? "rootless" : "",
         ].filter(Boolean);
         const metaParts = [
+          highlight.displaySummary,
           positionCardReason(highlight),
           highlight.grip ? `grip ${highlight.grip}` : `strings ${highlight.strings.join("-")}`,
           controls.length ? controls.join(" + ") : "no pedals/levers",
@@ -1693,6 +1780,8 @@
           highlight.role,
           highlight.intervals.length ? `intervals ${highlight.intervals.join("; ")}` : "",
           highlight.notes.length ? highlight.notes.join("; ") : "",
+          highlight.topVoice ? `top voice ${highlight.topVoice}` : "",
+          highlight.displaySummary,
           highlight.explanation,
         ].filter(Boolean);
         return {
@@ -1736,6 +1825,7 @@
           ${renderFretNumbers(model)}
         </svg>
       </div>
+      ${renderScaleDisplay(model)}
       ${renderPositionTools(model)}
       ${renderLegend(model)}
     </figure>`;

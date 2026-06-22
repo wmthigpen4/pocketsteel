@@ -353,6 +353,9 @@ const STEEL_RAG_ANSWER_UI = (() => {
     if (Array.isArray(fretboard.legend)) {
       normalized.legend = fretboard.legend;
     }
+    if (isObjectRecord(fretboard.query)) {
+      normalized.query = fretboard.query;
+    }
 
     return normalized;
   }
