@@ -6,58 +6,54 @@ Lane: 12 Self-Hosted Deployment / Protected Preview
 
 Requested:
 - Verify the exact protected-preview E9 Fretboard Explorer URL after Lane 15 local smoke passed but protected-preview smoke was blocked by Cloudflare Access.
-- Use an authenticated Cloudflare Access browser session where available.
+- Use an authenticated Cloudflare Access browser session.
 - Do not modify app code, corpus, embeddings, Chroma, scraper output, auth config, DNS, deployment config, assets, or private source data.
 
 Completed:
 - Read the required E9 Explorer handoffs and current integration status.
-- Confirmed repo branch and HEAD.
-- Confirmed the local protected-preview runtime on `127.0.0.1:8770` reports commit `a9dfd70`, which includes both commits under test.
-- Attempted the exact protected-preview URL in the in-app browser.
-- Attempted Chrome authenticated-browser fallback after the in-app browser landed on Cloudflare Access.
-- Ran all requested automated checks.
-- Confirmed local same-origin asset route for the expected fretboard background asset.
-- Confirmed unauthenticated protected-preview requests to the Explorer URL and background asset redirect to Cloudflare Access.
+- Confirmed branch and current repo HEAD.
+- Confirmed `/api/version` reports a runtime commit that contains the Explorer surface.
+- Used the authenticated in-app browser session to smoke the exact protected-preview Explorer URL.
+- Verified the Explorer controls, G major rows, G natural-minor spelling, E9 mechanical spellings, advanced `5-7-8` E-lower pocket, warnings/per-string details, protected asset loading, app mock entry link, console status, and narrow viewport.
+- Ran the requested automated checks.
 
 Intentionally not changed:
 - No implementation files.
 - No backend, UI, auth, DNS, deployment config, assets, corpus, embeddings, Chroma, scraper output, source-inbox, private source data, or vector data.
 - No protected-preview restart or deployment was performed.
 
+Historical note:
+- An earlier Lane 12 attempt in this same handoff was blocked because the in-app browser landed on Cloudflare Access login and Chrome browser control was unavailable. The authenticated rerun below supersedes that blocked result.
+
 ## Pass / Warn / Fail
 
-**Warn / blocked for authenticated protected-preview browser smoke.**
+**Pass.**
 
-Runtime/version evidence is current, and all requested automated checks passed. The exact protected-preview Explorer URL still cannot be product-smoked in an authenticated browser from this environment because:
-
-- the in-app browser opens the Cloudflare Access login page, not the authenticated Explorer page;
-- Chrome extension browser control is unavailable after the required retry.
-
-This is an authenticated-browser tooling/session blocker, not a confirmed E9 Explorer product defect.
+The exact protected-preview Explorer URL loaded in an authenticated Cloudflare Access browser session and matched the expected local-smoke behavior.
 
 ## Smoke Target
 
 - Target type: protected-preview
-- Result type: browser smoke blocked by Cloudflare Access / unavailable authenticated browser control
+- Result type: authenticated browser smoke
 - Exact browser URL tested: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=e9-explorer-browser-surface-20260622`
 - Cache-busted URL tested: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=e9-explorer-browser-surface-20260622`
 - Exact URL the user should use: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=e9-explorer-browser-surface-20260622`
 - Auth required: yes
 - Auth provider: Cloudflare Access
-- Cloudflare Access login result: not authenticated in the in-app browser; exact URL redirected to Cloudflare Access login
+- Cloudflare Access login result: succeeded; the in-app browser loaded the Explorer page, not the Access login page
 - Local backend URL: `http://127.0.0.1:8770`
 - Expected backend port: `8770`
-- Expected git HEAD: `a9dfd70`, containing `a5389f2` and `a9dfd70`
+- Expected git HEAD: `a5389f2` or later containing `a5389f2` and `a9dfd70`
 - Version endpoint: `/api/version`
-- Version endpoint result: `{"git_sha":"a9dfd70","git_branch":"feature/answer-api","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
+- Version endpoint result: `{"git_sha":"7bb46b8","git_branch":"feature/answer-api","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
 - If version endpoint missing, how version is inferred: not needed; endpoint exists
 - Whether app root `/` works: not retested for this Explorer-specific smoke
 - Whether app root `/` is expected to work: yes, but this task targets the direct Explorer URL
-- Whether `/ui/steel-guitar-rag-mock.html` works: not retested in authenticated browser
+- Whether `/ui/steel-guitar-rag-mock.html` works: yes; checked to verify the `Explore the E9 Fretboard` entry
 - Whether `/ui/steel-guitar-rag-mock.html` is expected to work: yes
-- Who should test this URL: the user or Lane 12 with a working authenticated browser session
+- Who should test this URL: the user and Lane 12
 - Do not test these URLs: local `127.0.0.1` as proof of protected-preview browser behavior; app root as a substitute for the Explorer URL
-- Known caveats: API/local evidence does not prove authenticated protected-preview UI behavior
+- Known caveats: current repo HEAD is `7bb46b8`, a docs-only smoke handoff commit on top of `a9dfd70`; runtime includes the Explorer implementation commit `a5389f2`
 
 ## Commit / Runtime Evidence
 
@@ -67,35 +63,27 @@ Branch:
 feature/answer-api
 ```
 
-Current HEAD:
+Current repo HEAD at task start:
 
 ```text
-a9dfd70
+7bb46b8
 ```
 
-Recent commits include:
+Commits under test are present in recent history:
 
 ```text
+7bb46b8 docs: record E9 explorer protected-preview smoke
 a9dfd70 docs: record E9 explorer browser smoke
 a5389f2 feat: add e9 fretboard explorer surface
-cabb639 docs: record E9 explorer display QA
-a3fc8a4 fix: render explorer display spellings in fretboard UI
-c42b236 fix: add key-aware explorer display spelling
-```
-
-Local protected-preview process:
-
-```text
-Python PID 82107 listening on 127.0.0.1:8770
 ```
 
 `/api/version`:
 
 ```json
 {
-  "git_sha": "a9dfd70",
+  "git_sha": "7bb46b8",
   "git_branch": "feature/answer-api",
-  "server_started_at": "2026-06-22T19:38:25.673547+00:00",
+  "server_started_at": "2026-06-22T19:43:46.515970+00:00",
   "python_module": "pocketsteel.api",
   "retrieval_mode": "hybrid_private_first",
   "auth_provider": "cloudflare_access"
@@ -104,113 +92,125 @@ Python PID 82107 listening on 127.0.0.1:8770
 
 ## Browser Smoke Results
 
-### In-App Browser
-
-Exact URL opened:
+Exact URL:
 
 ```text
 https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=e9-explorer-browser-surface-20260622
 ```
 
-Observed:
+Authenticated page load:
+- Passed.
+- Browser title: `E9 Fretboard Explorer - Steel Guitar RAG`.
+- Browser URL remained the exact protected-preview URL.
+- Page entry/header identified `E9 Fretboard Explorer`.
 
-```text
-Title: Sign in ・ Cloudflare Access
-URL: https://late-waterfall-73da.cloudflareaccess.com/cdn-cgi/access/login/app.steelguitarrag.com?...&redirect_url=%2Fui%2Fe9-fretboard-explorer.html%3Fv%3De9-explorer-browser-surface-20260622
-```
+Controls:
+- Passed.
+- Four selectors rendered:
+  - `explorer-key`: `G only`.
+  - `explorer-scale`: `G major`, `G natural minor`.
+  - `explorer-harmony`: `2-string harmonized scale`, `3-string diatonic harmony`.
+  - `explorer-string-group`: `All string groups`, core grips, advanced swaps, and 2-string pairs.
 
-Result:
+G major rows:
+- Passed.
+- Default G major / 3-string / `4-5-6` view rendered `8 validated rows`.
+- Scale notes showed `G A B C D E F#`.
+- Fretboard SVG mounted.
 
-- Cloudflare Access redirected the unauthenticated in-app browser to login.
-- Redirect preserved the Explorer path and cache-bust query in `redirect_url`.
-- The Explorer page did not load in the in-app browser session.
+G natural minor spelling:
+- Passed.
+- Switching to `G natural minor` rendered `G A Bb C D Eb F`.
+- Bad learner-facing sequence `G A A# C D D# F` was not present.
+- Natural-minor rows used flat spellings such as `Bb` and `Eb`.
 
-### Chrome Authenticated Fallback
+Sharp-oriented E9 mechanical labels:
+- Passed.
+- The page retained E9 tuning/mechanical spellings including `F#`, `D#`, and `G#`.
+- In the `5-7-8` E-lower pocket details, per-string changes showed `Eb/D#`.
 
-Attempted because the task requires authenticated Cloudflare Access browser verification and the in-app browser was not authenticated.
+Core grips and advanced swaps:
+- Passed.
+- The string-group selector separates core grips from advanced swaps.
+- Page explanatory text states core grips are separated from advanced swaps.
 
-Result:
+`5-7-8` advanced E-lower pocket:
+- Passed.
+- Switching back to `G major` and selecting `5-7-8` rendered `2 validated rows`.
+- Both rows were labeled `ADVANCED SWAP - E-LOWER POCKET`.
+- Rows appeared at frets `8` and `20`.
+- Per-string details showed string 8 E-lower change: `from: E; to: Eb/D#`.
 
-```text
-Browser is not available: extension
-```
+Partial diminished / partial m7b5 warnings:
+- Passed.
+- Warning text remained visible, including partial-warning language in natural-minor rows and the page note about partial diminished or partial m7b5 rows.
 
-After reading Chrome troubleshooting guidance, a lightweight retry was performed. Retry result:
+Per-string pedal/lever changes:
+- Passed.
+- The `5-7-8` E-lower pocket details showed per-string changes.
 
-```json
-{
-  "available": false,
-  "error": "Browser is not available: extension"
-}
-```
+`[object Object]`:
+- Passed.
+- No `[object Object]` appeared in the Explorer page, natural-minor view, advanced-pocket view, mobile view, or mock-entry check.
 
-No Chrome browser smoke was possible.
-
-### Checklist Status
-
-Because the authenticated protected page did not load, these protected-preview browser checks remain blocked rather than passed:
-
-- Exact URL loads after Cloudflare Access authentication.
-- Page title/entry identifies E9 Fretboard Explorer.
-- Controls render.
-- G major rows display.
-- G natural minor displays `G A Bb C D Eb F`.
-- Sharp-oriented E9 mechanical labels remain visible.
-- Core grips and advanced swaps are visually separated.
-- `5-7-8` appears only as advanced / E-lower pocket.
-- Partial diminished / partial m7b5 warnings are visible.
-- Per-string pedal/lever changes are visible.
-- No `[object Object]`.
-- No console errors.
-- Landing entry exists on protected-preview mock/landing surface.
-- Narrow/mobile protected-preview viewport is usable.
-
-Those behaviors passed previously in local same-origin Lane 15 smoke, but they are not re-claimed here as protected-preview browser passes.
+Landing/app mock entry:
+- Passed.
+- `https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=e9-explorer-browser-surface-20260622` contained the link text `Explore the E9 Fretboard`.
+- The link target was `e9-fretboard-explorer.html`.
 
 ## Asset Routing Result
 
-Local same-origin asset route:
+Protected-preview page asset inventory showed:
 
-```bash
-curl -sSI http://127.0.0.1:8770/brand/pedal-steel-fretboard-background.svg
+```text
+https://app.steelguitarrag.com/ui/pedal-steel-fretboard.js?v=e9-explorer-browser-surface-20260622
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer-data.js?v=e9-explorer-browser-surface-20260622
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer.js?v=e9-explorer-browser-surface-20260622
+https://app.steelguitarrag.com/brand/pedal-steel-fretboard-background.svg
+```
+
+The page asset inventory reported:
+
+```text
+scripts: 4
+images: 2
+stylesheet: 1
+inline SVGs: 1
+```
+
+The inline SVG was named:
+
+```text
+10-string E9 pedal steel fretboard with highlighted positions
 ```
 
 Result:
-
-```text
-HTTP/1.0 200 OK
-Content-Type: image/svg+xml; charset=utf-8
-```
-
-Protected-preview unauthenticated asset route:
-
-```bash
-curl -sSI https://app.steelguitarrag.com/brand/pedal-steel-fretboard-background.svg
-```
-
-Result:
-
-```text
-HTTP/2 302
-location: https://late-waterfall-73da.cloudflareaccess.com/cdn-cgi/access/login/app.steelguitarrag.com?...redirect_url=%2Fbrand%2Fpedal-steel-fretboard-background.svg
-www-authenticate: Cloudflare-Access ...
-```
-
-Interpretation:
-- The asset exists and serves locally from the running protected-preview app process.
-- The protected-preview hostname correctly gates the asset behind Cloudflare Access for unauthenticated requests.
-- Authenticated protected-preview asset loading remains unverified because authenticated browser access was blocked.
+- Passed.
+- The expected fretboard background asset loaded from the protected-preview hostname.
+- The pedal-steel fretboard SVG mounted.
 
 ## Console Errors
 
-- In-app browser: no Explorer-page console errors could be evaluated because the page did not pass Cloudflare Access.
-- Chrome: unavailable.
+Passed.
+
+Browser console error logs for the Explorer page and mobile viewport were empty.
 
 ## Mobile / Narrow Viewport Result
 
-Not tested on protected preview because authenticated browser access was blocked.
+Tested at `390x844`.
 
-Previous Lane 15 local fallback smoke verified narrow viewport usability, but this handoff does not count that as protected-preview browser evidence.
+Result:
+- Passed for MVP usability.
+- Page title remained `E9 Fretboard Explorer - Steel Guitar RAG`.
+- Page content still identified `E9 Fretboard Explorer`.
+- All four controls were visible at `336px` width.
+- No document-level horizontal overflow: `scrollWidth` was `390` and viewport width was `390`.
+- Fretboard SVG remained present.
+- No `[object Object]`.
+- No console errors.
+
+Caveat:
+- The SVG itself measured wider than the viewport (`700px`) inside its scrollable/contained region, but it did not cause document-level horizontal overflow. This is acceptable for MVP protected-preview smoke.
 
 ## Automated Tests Run
 
@@ -230,19 +230,18 @@ git diff --check
 ```
 
 Results:
-
 - Branch: `feature/answer-api`.
-- HEAD: `a9dfd70`.
+- HEAD at task start: `7bb46b8`.
 - JS syntax checks: passed.
 - `tests/test_pedal_steel_fretboard_ui.py -q`: 31 passed.
 - `tests/test_frontend_answer_ui.py -q`: 22 passed.
 - `tests/test_fretboard_explorer.py -q`: 11 passed.
 - Full pytest: 790 passed.
-- `git diff --check`: passed before this handoff was created.
+- `git diff --check`: passed after this handoff update.
 
 ## Files Changed
 
-Created:
+Modified:
 
 - `docs/handoffs/task-completions/2026-06-22-e9-fretboard-explorer-protected-preview-smoke.md`
 
@@ -250,40 +249,30 @@ No implementation files were changed.
 
 ## Issues Found
 
-Authenticated browser verification is blocked from this environment:
-
-- in-app browser is unauthenticated and reaches Cloudflare Access login;
-- Chrome extension browser control is unavailable.
-
-No product defect was found by automated checks or runtime version checks.
+No protected-preview product issues found.
 
 ## Blockers
 
-Protected-preview browser smoke cannot be completed until an authenticated browser session is available to the automation surface or the user manually verifies the exact URL.
+None for the E9 Fretboard Explorer protected-preview smoke.
 
 ## Risks
 
-Risk: medium.
+Risk: low.
 
 Why:
-- Runtime identity and automated checks are current and green.
-- Local protected-preview server can serve the expected background asset.
-- The exact protected-preview URL is gated by Cloudflare Access as expected.
-- The actual authenticated protected-preview Explorer UI remains unverified in browser in this run.
+- Exact protected-preview URL loaded after Cloudflare Access authentication.
+- Runtime reports a commit containing the Explorer implementation.
+- Browser smoke matched the local Lane 15 behavior.
+- Automated checks passed.
+- No code/config/deployment/auth/data changes were made.
 
 Rollback notes:
-- No code/config changes were made; no rollback required.
+- No runtime changes were made by this Lane 12 smoke.
+- If a future issue appears, route UI/product behavior to Lane 06 and protected-preview runtime issues to Lane 12.
 
 ## Human Decision Needed
 
-Yes.
-
-Decision needed:
-- Either provide/restore an authenticated browser automation session that can pass Cloudflare Access for `app.steelguitarrag.com`, or manually smoke the exact URL:
-
-```text
-https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=e9-explorer-browser-surface-20260622
-```
+No.
 
 ## Safe-To-Stage Exact File List
 
@@ -302,18 +291,16 @@ Do not stage unrelated dirty or untracked files, especially:
 
 ## Recommended Next Lane
 
-Lane 12 Self-Hosted Deployment / Protected Preview.
-
-Suggested next prompt:
-
-```text
-Lane 12: Re-run authenticated protected-preview browser smoke for https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=e9-explorer-browser-surface-20260622 after confirming the browser automation session is authenticated through Cloudflare Access. Verify the full E9 Explorer checklist from the previous handoff and record whether the protected-preview page matches local smoke.
-```
+Lane 01 Repo Steward, only if integration status should be refreshed with the E9 Explorer protected-preview pass.
 
 ## Commit Readiness
 
-Safe to commit as a docs-only blocked protected-preview smoke handoff.
+Safe to commit as a docs-only protected-preview smoke handoff update.
 
 ## Suggested Next Step
 
-Restore an authenticated browser session for protected-preview smoke, then rerun this exact verification. Do not route this back to Lane 06 or Lane 05 unless the authenticated protected-preview page loads and shows an actual Explorer UI defect.
+User smoke can continue on the exact Explorer URL:
+
+```text
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=e9-explorer-browser-surface-20260622
+```
