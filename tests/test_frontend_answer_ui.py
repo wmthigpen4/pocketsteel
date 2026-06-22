@@ -239,9 +239,9 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "E9 Fretboard Explorer" in html
     assert "Validated Explorer data" in html
     assert "not corpus retrieval or RAG-generated fretboard positions" in html
-    assert '<script src="pedal-steel-fretboard.js?v=e9-explorer-user-smoke-fixes-20260622b"></script>' in html
-    assert '<script src="e9-fretboard-explorer-data.js?v=e9-explorer-user-smoke-fixes-20260622b"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=e9-explorer-user-smoke-fixes-20260622b"></script>' in html
+    assert '<script src="pedal-steel-fretboard.js?v=e9-explorer-tooltip-detail-ux-20260622"></script>' in html
+    assert '<script src="e9-fretboard-explorer-data.js?v=e9-explorer-tooltip-detail-ux-20260622"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=e9-explorer-tooltip-detail-ux-20260622"></script>' in html
     assert '<option value="major">G major</option>' in html
     assert '<option value="natural_minor">G natural minor</option>' in html
     assert '<option value="two_string_harmonized">2-string harmonized scale</option>' in html
