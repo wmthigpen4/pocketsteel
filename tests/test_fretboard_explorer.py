@@ -5,7 +5,9 @@ import pytest
 from pocketsteel.fretboard_explorer import (
     E9_OPEN_STRINGS,
     ExplorerCandidate,
+    build_explorer_payload,
     build_g_explorer_payload,
+    explorer_rows,
     g_advanced_e_lower_pocket_rows,
     g_explorer_rows,
     g_major_three_string_rows,
@@ -74,6 +76,89 @@ def test_g_explorer_payload_shape_and_row_model() -> None:
     assert row["string_group"] == "-".join(str(string) for string in row["strings"])
     assert set(row["display_notes"]) == {str(string) for string in row["strings"]}
     assert row["display_summary"]
+
+
+def test_transposed_major_payloads_validate_for_representative_keys() -> None:
+    expected_i_rows = {
+        "C": (8, {"4": "C", "5": "G", "6": "E"}),
+        "D": (10, {"4": "D", "5": "A", "6": "F#"}),
+        "F": (1, {"4": "F", "5": "C", "6": "A"}),
+        "Bb": (6, {"4": "Bb", "5": "F", "6": "D"}),
+    }
+
+    for key, (expected_fret, expected_display_notes) in expected_i_rows.items():
+        payload = build_explorer_payload(key)
+        validate_explorer_payload(payload)
+
+        assert payload["query"]["key"] == key
+        row = next(
+            position
+            for position in payload["positions"]
+            if position["scale_type"] == "major"
+            and position["harmony_type"] == "three_string_diatonic"
+            and position["string_group"] == "4-5-6"
+            and position["scale_degree"] == 1
+            and position["chord_function"] == "I"
+        )
+        assert row["chord_name"] == key
+        assert row["fret"] == expected_fret
+        assert row["display_notes"] == expected_display_notes
+        assert row["pitch_validated"] is True
+
+
+def test_transposed_natural_minor_payloads_use_key_aware_display_scale_notes() -> None:
+    payload = build_explorer_payload("C")
+    validate_explorer_payload(payload)
+
+    assert payload["query"]["display_scale_notes"]["natural_minor"] == [
+        "C",
+        "D",
+        "Eb",
+        "F",
+        "G",
+        "Ab",
+        "Bb",
+    ]
+
+    flat_display_values = {
+        note
+        for row in payload["positions"]
+        if row["scale_type"] == "natural_minor"
+        for note in row["display_notes"].values()
+    }
+    assert {"Eb", "Ab", "Bb"}.issubset(flat_display_values)
+    assert "D#" not in flat_display_values
+    assert "G#" not in flat_display_values
+    assert "A#" not in flat_display_values
+
+
+def test_flat_major_keys_prefer_flat_learner_display_spellings() -> None:
+    payload = build_explorer_payload("Bb")
+    validate_explorer_payload(payload)
+
+    assert payload["query"]["display_scale_notes"]["major"] == ["Bb", "C", "D", "Eb", "F", "G", "A"]
+    iv_row = next(
+        position
+        for position in payload["positions"]
+        if position["scale_type"] == "major"
+        and position["string_group"] == "4-5-6"
+        and position["chord_function"] == "IV"
+    )
+    assert iv_row["chord_name"] == "Eb"
+    assert iv_row["notes"] == {"4": "D#", "5": "A#", "6": "G"}
+    assert iv_row["display_notes"] == {"4": "Eb", "5": "Bb", "6": "G"}
+
+
+def test_transposed_rows_keep_mode_and_advanced_grip_rules() -> None:
+    rows = [row.to_dict() for row in explorer_rows("F")]
+    validate_explorer_payload(build_explorer_payload("F"))
+
+    assert {row["string_group"] for row in rows if row["harmony_type"] == "three_string_diatonic"}.issuperset(
+        {"3-4-5", "4-5-6", "5-6-8", "6-8-10", "5-6-7", "6-7-10"}
+    )
+    assert {row["string_group"] for row in rows if row["harmony_type"] == "advanced_pocket"} == {"5-7-8"}
+    assert all(row["harmony_type"] != "advanced_pocket" or row["difficulty_tier"] == "advanced" for row in rows)
+    assert all(row["pitch_validated"] is True for row in rows)
 
 
 def test_g_major_three_string_diatonic_harmony_core_grips() -> None:

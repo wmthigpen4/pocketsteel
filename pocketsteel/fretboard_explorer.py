@@ -1,9 +1,8 @@
 """Deterministic E9 Fretboard Explorer rows.
 
 This module is intentionally independent from RAG/corpus retrieval. It uses
-pitch math against a standard 10-string E9 copedent to generate the first
-G-only Explorer rows for validated harmonized-scale and diatonic-harmony
-surfaces.
+pitch math against a standard 10-string E9 copedent to generate validated
+harmonized-scale and diatonic-harmony surfaces.
 """
 
 from __future__ import annotations
@@ -33,6 +32,28 @@ SUPPORTED_GRIPS: tuple[str, ...] = CORE_GRIPS + ADVANCED_GRIPS
 
 G_MAJOR_SCALE_NOTES: tuple[str, ...] = ("G", "A", "B", "C", "D", "E", "F#")
 G_NATURAL_MINOR_SCALE_NOTES: tuple[str, ...] = ("G", "A", "Bb", "C", "D", "Eb", "F")
+SUPPORTED_EXPLORER_KEYS: tuple[str, ...] = (
+    "C",
+    "C#",
+    "Db",
+    "D",
+    "D#",
+    "Eb",
+    "E",
+    "F",
+    "F#",
+    "Gb",
+    "G",
+    "G#",
+    "Ab",
+    "A",
+    "A#",
+    "Bb",
+    "B",
+)
+
+MAJOR_SCALE_INTERVALS: tuple[str, ...] = ("1", "2/9", "3", "4/11", "5", "6/13", "7")
+NATURAL_MINOR_SCALE_INTERVALS: tuple[str, ...] = ("1", "2/9", "b3", "4/11", "5", "b6", "b7")
 
 STANDARD_E9_CONTROL_CHANGES: dict[str, dict[int, str]] = {
     "A": {5: "C#", 10: "C#"},
@@ -69,6 +90,7 @@ INTERVAL_TO_SEMITONES: dict[str, int] = {
     "4/11": 5,
     "b5/#11": 6,
     "5": 7,
+    "b6": 8,
     "#5/b6": 8,
     "6/13": 9,
     "b7": 10,
@@ -84,6 +106,7 @@ INTERVAL_TO_LETTER_STEPS: dict[str, int] = {
     "4/11": 3,
     "b5/#11": 4,
     "5": 4,
+    "b6": 5,
     "#5/b6": 5,
     "6/13": 5,
     "b7": 6,
@@ -181,6 +204,51 @@ class ExplorerCandidate:
 
 def grip_label(strings: tuple[int, ...]) -> str:
     return "-".join(str(string) for string in strings)
+
+
+def normalize_explorer_key(key: str) -> str:
+    normalized = key.strip()
+    if not normalized:
+        raise ValueError("Explorer key is required")
+    normalized = normalized[0].upper() + normalized[1:]
+    if len(normalized) > 1:
+        normalized = normalized[0] + normalized[1:].replace("♭", "b").replace("♯", "#")
+    if normalized not in SUPPORTED_EXPLORER_KEYS:
+        raise ValueError(f"Unsupported Explorer key: {key}")
+    return normalized
+
+
+def key_slug(key: str) -> str:
+    return key.lower().replace("#", "sharp").replace("b", "flat")
+
+
+def transpose_offset_from_g(key: str) -> int:
+    offset = (semitone_for_note(key) - semitone_for_note("G")) % 12
+    if offset > 6:
+        offset -= 12
+    return offset
+
+
+def transpose_fret_from_g(g_fret: int, key: str) -> int:
+    fret = g_fret + transpose_offset_from_g(key)
+    if g_fret >= 12 and fret <= 12:
+        fret += 12
+    while fret > 24:
+        fret -= 12
+    while fret < 0:
+        fret += 12
+    return fret
+
+
+def scale_notes_for_key(key: str, scale_type: ExplorerScaleType) -> tuple[str, ...]:
+    root = normalize_explorer_key(key)
+    intervals = MAJOR_SCALE_INTERVALS if scale_type == "major" else NATURAL_MINOR_SCALE_INTERVALS
+    return tuple(spell_note_for_interval(root, interval) for interval in intervals)
+
+
+def chord_name_for_scale_degree(key: str, scale_type: ExplorerScaleType, degree: int) -> str:
+    scale_notes = scale_notes_for_key(key, scale_type)
+    return scale_notes[(degree - 1) % 7]
 
 
 def controls_to_pedals_levers(controls: tuple[str, ...]) -> tuple[tuple[str, ...], tuple[str, ...]]:
@@ -300,6 +368,7 @@ def display_note_for_scale(note: str, scale_notes: tuple[str, ...]) -> str:
 
 def display_notes_for_row(
     *,
+    key: str,
     chord_root: str,
     harmony_type: ExplorerHarmonyType,
     scale_type: ExplorerScaleType,
@@ -307,7 +376,7 @@ def display_notes_for_row(
     intervals: dict[str, str],
 ) -> dict[str, str]:
     if harmony_type == "two_string_harmonized":
-        scale_notes = G_MAJOR_SCALE_NOTES if scale_type == "major" else G_NATURAL_MINOR_SCALE_NOTES
+        scale_notes = scale_notes_for_key(key, scale_type)
         return {string: display_note_for_scale(note, scale_notes) for string, note in notes.items()}
     return {
         string: spell_note_for_interval(chord_root, intervals[string])
@@ -355,8 +424,7 @@ def classify_inversion(intervals: dict[str, str], strings: tuple[int, ...], *, v
 
 
 def validate_explorer_candidate(candidate: ExplorerCandidate) -> ExplorerRow:
-    if candidate.key != "G":
-        raise ValueError("Explorer MVP supports key G only")
+    key = normalize_explorer_key(candidate.key)
     if candidate.fret < 0 or candidate.fret > 24:
         raise ValueError("Explorer frets must be 0-24")
     if any(string < 1 or string > 10 for string in candidate.strings):
@@ -374,7 +442,7 @@ def validate_explorer_candidate(candidate: ExplorerCandidate) -> ExplorerRow:
     omitted_intervals: tuple[str, ...] = ()
 
     if candidate.harmony_type == "two_string_harmonized":
-        scale_notes = G_MAJOR_SCALE_NOTES if candidate.scale_type == "major" else G_NATURAL_MINOR_SCALE_NOTES
+        scale_notes = scale_notes_for_key(key, candidate.scale_type)
         if not all(note_in_scale(note, scale_notes) for note in notes.values()):
             raise ValueError("Two-string row contains notes outside the target scale")
         voicing_status = "partial"
@@ -397,6 +465,7 @@ def validate_explorer_candidate(candidate: ExplorerCandidate) -> ExplorerRow:
             )
 
     display_notes = display_notes_for_row(
+        key=key,
         chord_root=candidate.chord_name.rstrip("*"),
         harmony_type=candidate.harmony_type,
         scale_type=candidate.scale_type,
@@ -409,7 +478,7 @@ def validate_explorer_candidate(candidate: ExplorerCandidate) -> ExplorerRow:
     pedals, levers = controls_to_pedals_levers(candidate.controls)
     row_id = "-".join(
         [
-            "g",
+            key_slug(key),
             candidate.scale_type.replace("_", "-"),
             candidate.harmony_type.replace("_", "-"),
             grip_label(candidate.strings),
@@ -420,7 +489,7 @@ def validate_explorer_candidate(candidate: ExplorerCandidate) -> ExplorerRow:
     ).lower()
     return ExplorerRow(
         id=row_id,
-        key=candidate.key,
+        key=key,
         scale_type=candidate.scale_type,
         harmony_type=candidate.harmony_type,
         scale_degree=candidate.scale_degree,
@@ -451,7 +520,20 @@ def validate_explorer_candidate(candidate: ExplorerCandidate) -> ExplorerRow:
     )
 
 
-def _major_candidate_rows_for_grip(strings: tuple[int, ...]) -> tuple[ExplorerCandidate, ...]:
+def validate_unique_candidates(candidates: list[ExplorerCandidate] | tuple[ExplorerCandidate, ...]) -> list[ExplorerRow]:
+    rows: list[ExplorerRow] = []
+    row_ids: set[str] = set()
+    for candidate in candidates:
+        row = validate_explorer_candidate(candidate)
+        if row.id in row_ids:
+            continue
+        row_ids.add(row.id)
+        rows.append(row)
+    return rows
+
+
+def _major_candidate_rows_for_grip(strings: tuple[int, ...], *, key: str = "G") -> tuple[ExplorerCandidate, ...]:
+    key = normalize_explorer_key(key)
     if strings in {(4, 5, 6), (3, 4, 5)}:
         minor_controls = ("B", "C")
         minor_strings = strings
@@ -463,45 +545,50 @@ def _major_candidate_rows_for_grip(strings: tuple[int, ...]) -> tuple[ExplorerCa
         minor_strings = (6, 7, 10)
     else:
         raise ValueError(f"Unsupported major grip: {strings}")
-    base_ref = "e9-harmony-guidance:g-major-three-string"
+    base_ref = "e9-harmony-guidance:major-three-string"
     rows = [
-        (1, "I", "G", "major", 3, (), strings, "no_pedals_no_levers"),
-        (2, "ii", "A", "minor", 3, minor_controls, minor_strings, "bc_minor" if "C" in minor_controls else "ab_minor"),
-        (3, "iii", "B", "minor", 5, minor_controls, minor_strings, "bc_minor" if "C" in minor_controls else "ab_minor"),
-        (4, "IV", "C", "major", 8, (), strings, "no_pedals_no_levers"),
-        (5, "V", "D", "major", 10, (), strings, "no_pedals_no_levers"),
-        (6, "vi", "E", "minor", 10, minor_controls, minor_strings, "bc_minor" if "C" in minor_controls else "ab_minor"),
-        (7, "vii° / partial viiø", "F#", "diminished", 13, ("E-raise",), strings, "e_raise_diminished"),
-        (1, "I", "G", "major", 15, (), strings, "no_pedals_no_levers"),
+        (1, "I", "major", 3, (), strings, "no_pedals_no_levers"),
+        (2, "ii", "minor", 3, minor_controls, minor_strings, "bc_minor" if "C" in minor_controls else "ab_minor"),
+        (3, "iii", "minor", 5, minor_controls, minor_strings, "bc_minor" if "C" in minor_controls else "ab_minor"),
+        (4, "IV", "major", 8, (), strings, "no_pedals_no_levers"),
+        (5, "V", "major", 10, (), strings, "no_pedals_no_levers"),
+        (6, "vi", "minor", 10, minor_controls, minor_strings, "bc_minor" if "C" in minor_controls else "ab_minor"),
+        (7, "vii° / partial viiø", "diminished", 13, ("E-raise",), strings, "e_raise_diminished"),
+        (1, "I", "major", 15, (), strings, "no_pedals_no_levers"),
     ]
     return tuple(
         ExplorerCandidate(
-            key="G",
+            key=key,
             scale_type="major",
             harmony_type="three_string_diatonic",
             scale_degree=degree,
             chord_function=function,
-            chord_name=chord,
+            chord_name=chord_name_for_scale_degree(key, "major", degree),
             chord_quality=quality,
-            fret=fret,
+            fret=transpose_fret_from_g(fret, key),
             strings=row_strings,
             controls=controls,
             position_family=family,
             difficulty_tier="advanced" if row_strings != strings else "starter",
             source_guidance_refs=(base_ref,),
         )
-        for degree, function, chord, quality, fret, controls, row_strings, family in rows
+        for degree, function, quality, fret, controls, row_strings, family in rows
     )
 
 
-def g_major_three_string_rows() -> list[ExplorerRow]:
+def major_three_string_rows(key: str = "G") -> list[ExplorerRow]:
     candidates: list[ExplorerCandidate] = []
     for grip in ((3, 4, 5), (4, 5, 6), (5, 6, 8), (6, 8, 10)):
-        candidates.extend(_major_candidate_rows_for_grip(grip))
-    return [validate_explorer_candidate(candidate) for candidate in candidates]
+        candidates.extend(_major_candidate_rows_for_grip(grip, key=key))
+    return validate_unique_candidates(candidates)
 
 
-def _natural_minor_candidate_rows_for_grip(strings: tuple[int, ...]) -> tuple[ExplorerCandidate, ...]:
+def g_major_three_string_rows() -> list[ExplorerRow]:
+    return major_three_string_rows("G")
+
+
+def _natural_minor_candidate_rows_for_grip(strings: tuple[int, ...], *, key: str = "G") -> tuple[ExplorerCandidate, ...]:
+    key = normalize_explorer_key(key)
     if strings in {(4, 5, 6), (3, 4, 5)}:
         minor_controls = ("B", "C")
         minor_strings = strings
@@ -513,139 +600,162 @@ def _natural_minor_candidate_rows_for_grip(strings: tuple[int, ...]) -> tuple[Ex
         minor_strings = (6, 7, 10)
     else:
         raise ValueError(f"Unsupported natural minor grip: {strings}")
-    base_ref = "e9-harmony-guidance:g-natural-minor-three-string"
+    base_ref = "e9-harmony-guidance:natural-minor-three-string"
     rows = [
-        (1, "i", "G", "minor", 1, minor_controls, minor_strings, "bc_minor" if "C" in minor_controls else "ab_minor"),
-        (2, "ii° / partial iiø", "A", "diminished", 4, ("E-raise",), strings, "e_raise_diminished"),
-        (3, "III", "Bb", "major", 6, (), strings, "no_pedals_no_levers"),
-        (4, "iv", "C", "minor", 6, minor_controls, minor_strings, "bc_minor" if "C" in minor_controls else "ab_minor"),
-        (5, "v", "D", "minor", 8, minor_controls, minor_strings, "bc_minor" if "C" in minor_controls else "ab_minor"),
-        (6, "VI", "Eb", "major", 11, (), strings, "no_pedals_no_levers"),
-        (7, "VII", "F", "major", 13, (), strings, "no_pedals_no_levers"),
-        (1, "i", "G", "minor", 13, minor_controls, minor_strings, "bc_minor" if "C" in minor_controls else "ab_minor"),
+        (1, "i", "minor", 1, minor_controls, minor_strings, "bc_minor" if "C" in minor_controls else "ab_minor"),
+        (2, "ii° / partial iiø", "diminished", 4, ("E-raise",), strings, "e_raise_diminished"),
+        (3, "III", "major", 6, (), strings, "no_pedals_no_levers"),
+        (4, "iv", "minor", 6, minor_controls, minor_strings, "bc_minor" if "C" in minor_controls else "ab_minor"),
+        (5, "v", "minor", 8, minor_controls, minor_strings, "bc_minor" if "C" in minor_controls else "ab_minor"),
+        (6, "VI", "major", 11, (), strings, "no_pedals_no_levers"),
+        (7, "VII", "major", 13, (), strings, "no_pedals_no_levers"),
+        (1, "i", "minor", 13, minor_controls, minor_strings, "bc_minor" if "C" in minor_controls else "ab_minor"),
     ]
     return tuple(
         ExplorerCandidate(
-            key="G",
+            key=key,
             scale_type="natural_minor",
             harmony_type="three_string_diatonic",
             scale_degree=degree,
             chord_function=function,
-            chord_name=chord,
+            chord_name=chord_name_for_scale_degree(key, "natural_minor", degree),
             chord_quality=quality,
-            fret=fret,
+            fret=transpose_fret_from_g(fret, key),
             strings=row_strings,
             controls=controls,
             position_family=family,
             difficulty_tier="advanced" if row_strings != strings else "starter",
             source_guidance_refs=(base_ref,),
         )
-        for degree, function, chord, quality, fret, controls, row_strings, family in rows
+        for degree, function, quality, fret, controls, row_strings, family in rows
     )
 
 
-def g_natural_minor_three_string_rows() -> list[ExplorerRow]:
+def natural_minor_three_string_rows(key: str = "G") -> list[ExplorerRow]:
     candidates: list[ExplorerCandidate] = []
     for grip in ((3, 4, 5), (4, 5, 6), (5, 6, 8), (6, 8, 10)):
-        candidates.extend(_natural_minor_candidate_rows_for_grip(grip))
-    return [validate_explorer_candidate(candidate) for candidate in candidates]
+        candidates.extend(_natural_minor_candidate_rows_for_grip(grip, key=key))
+    return validate_unique_candidates(candidates)
 
 
-def _two_string_candidates() -> tuple[ExplorerCandidate, ...]:
-    rows: list[tuple[int, str, int, tuple[str, ...], tuple[int, ...], str]] = []
+def g_natural_minor_three_string_rows() -> list[ExplorerRow]:
+    return natural_minor_three_string_rows("G")
+
+
+def _two_string_candidates(key: str = "G") -> tuple[ExplorerCandidate, ...]:
+    key = normalize_explorer_key(key)
+    rows: list[tuple[int, int, tuple[str, ...], tuple[int, ...], str]] = []
     for strings in ((3, 5), (5, 6), (6, 10)):
         rows.extend(
             [
-                (3, "B", 3, (), strings, "major_thirds_sixths"),
-                (4, "C", 3, ("A", "B"), strings, "major_thirds_sixths"),
-                (5, "D", 5, ("A", "B"), strings, "major_thirds_sixths"),
-                (6, "E", 8, (), strings, "major_thirds_sixths"),
-                (7, "F#", 10, (), strings, "major_thirds_sixths"),
-                (1, "G", 10, ("A", "B"), strings, "major_thirds_sixths"),
-                (2, "A", 13, (), strings, "major_thirds_sixths"),
-                (3, "B", 15, (), strings, "major_thirds_sixths"),
+                (3, 3, (), strings, "major_thirds_sixths"),
+                (4, 3, ("A", "B"), strings, "major_thirds_sixths"),
+                (5, 5, ("A", "B"), strings, "major_thirds_sixths"),
+                (6, 8, (), strings, "major_thirds_sixths"),
+                (7, 10, (), strings, "major_thirds_sixths"),
+                (1, 10, ("A", "B"), strings, "major_thirds_sixths"),
+                (2, 13, (), strings, "major_thirds_sixths"),
+                (3, 15, (), strings, "major_thirds_sixths"),
             ]
         )
     rows.extend(
         [
-            (1, "G", 3, (), (4, 6), "e_raise_two_string"),
-            (2, "A", 4, ("E-raise",), (4, 6), "e_raise_two_string"),
-            (3, "B", 6, ("E-raise",), (4, 6), "e_raise_two_string"),
-            (4, "C", 8, (), (4, 6), "e_raise_two_string"),
-            (5, "D", 10, (), (4, 6), "e_raise_two_string"),
-            (6, "E", 11, ("E-raise",), (4, 6), "e_raise_two_string"),
-            (7, "F#", 13, ("E-raise",), (4, 6), "e_raise_two_string"),
-            (1, "G", 15, (), (4, 6), "e_raise_two_string"),
-            (1, "G", 3, (), (3, 4), "bc_two_string"),
-            (2, "A", 3, ("B", "C"), (3, 4), "bc_two_string"),
-            (3, "B", 5, ("B", "C"), (3, 4), "bc_two_string"),
-            (4, "C", 8, (), (3, 4), "bc_two_string"),
-            (5, "D", 10, (), (3, 4), "bc_two_string"),
-            (6, "E", 10, ("B", "C"), (3, 4), "bc_two_string"),
-            (7, "F#", 12, ("B", "C"), (3, 4), "bc_two_string"),
-            (1, "G", 15, (), (3, 4), "bc_two_string"),
+            (1, 3, (), (4, 6), "e_raise_two_string"),
+            (2, 4, ("E-raise",), (4, 6), "e_raise_two_string"),
+            (3, 6, ("E-raise",), (4, 6), "e_raise_two_string"),
+            (4, 8, (), (4, 6), "e_raise_two_string"),
+            (5, 10, (), (4, 6), "e_raise_two_string"),
+            (6, 11, ("E-raise",), (4, 6), "e_raise_two_string"),
+            (7, 13, ("E-raise",), (4, 6), "e_raise_two_string"),
+            (1, 15, (), (4, 6), "e_raise_two_string"),
+            (1, 3, (), (3, 4), "bc_two_string"),
+            (2, 3, ("B", "C"), (3, 4), "bc_two_string"),
+            (3, 5, ("B", "C"), (3, 4), "bc_two_string"),
+            (4, 8, (), (3, 4), "bc_two_string"),
+            (5, 10, (), (3, 4), "bc_two_string"),
+            (6, 10, ("B", "C"), (3, 4), "bc_two_string"),
+            (7, 12, ("B", "C"), (3, 4), "bc_two_string"),
+            (1, 15, (), (3, 4), "bc_two_string"),
         ]
     )
     return tuple(
         ExplorerCandidate(
-            key="G",
+            key=key,
             scale_type="major",
             harmony_type="two_string_harmonized",
             scale_degree=degree,
             chord_function=str(degree),
-            chord_name=root,
+            chord_name=chord_name_for_scale_degree(key, "major", degree),
             chord_quality="dyad",
-            fret=fret,
+            fret=transpose_fret_from_g(fret, key),
             strings=strings,
             controls=controls,
             position_family=family,
             difficulty_tier="common",
-            source_guidance_refs=("e9-harmony-guidance:g-major-two-string",),
+            source_guidance_refs=("e9-harmony-guidance:major-two-string",),
         )
-        for degree, root, fret, controls, strings, family in rows
+        for degree, fret, controls, strings, family in rows
     )
 
 
+def major_two_string_rows(key: str = "G") -> list[ExplorerRow]:
+    return validate_unique_candidates(_two_string_candidates(key))
+
+
 def g_major_two_string_rows() -> list[ExplorerRow]:
-    return [validate_explorer_candidate(candidate) for candidate in _two_string_candidates()]
+    return major_two_string_rows("G")
 
 
-def g_advanced_e_lower_pocket_rows() -> list[ExplorerRow]:
+def advanced_e_lower_pocket_rows(key: str = "G") -> list[ExplorerRow]:
+    key = normalize_explorer_key(key)
     candidates = [
         ExplorerCandidate(
-            key="G",
+            key=key,
             scale_type="major",
             harmony_type="advanced_pocket",
             scale_degree=1,
             chord_function="I",
-            chord_name="G",
+            chord_name=key,
             chord_quality="major",
-            fret=fret,
+            fret=transpose_fret_from_g(fret, key),
             strings=(5, 7, 8),
             controls=("E-lower",),
             position_family="e_lower_pocket",
             difficulty_tier="advanced",
             source_guidance_refs=("e9-harmony-guidance:5-7-8-e-lower-pocket",),
             explanation_summary=(
-                f"Advanced 5-7-8 E-lower G major pocket at fret {fret}; validated by pitch math."
+                f"Advanced 5-7-8 E-lower {key} major pocket; validated by pitch math."
             ),
         )
         for fret in (8, 20)
     ]
-    return [validate_explorer_candidate(candidate) for candidate in candidates]
+    return validate_unique_candidates(candidates)
+
+
+def g_advanced_e_lower_pocket_rows() -> list[ExplorerRow]:
+    return advanced_e_lower_pocket_rows("G")
 
 
 def g_explorer_rows() -> list[ExplorerRow]:
+    return explorer_rows("G")
+
+
+def explorer_rows(key: str = "G") -> list[ExplorerRow]:
     return [
-        *g_major_two_string_rows(),
-        *g_major_three_string_rows(),
-        *g_natural_minor_three_string_rows(),
-        *g_advanced_e_lower_pocket_rows(),
+        *major_two_string_rows(key),
+        *major_three_string_rows(key),
+        *natural_minor_three_string_rows(key),
+        *advanced_e_lower_pocket_rows(key),
     ]
 
 
 def build_g_explorer_payload() -> dict[str, object]:
-    rows = [row.to_dict() for row in g_explorer_rows()]
+    return build_explorer_payload("G")
+
+
+def build_explorer_payload(key: str = "G") -> dict[str, object]:
+    key = normalize_explorer_key(key)
+    rows = [row.to_dict() for row in explorer_rows(key)]
     return {
         "type": "e9-fretboard-explorer",
         "version": "1.0",
@@ -656,18 +766,18 @@ def build_g_explorer_payload() -> dict[str, object]:
             "label": MVP_COPEDENT_LABEL,
         },
         "query": {
-            "key": "G",
+            "key": key,
             "scale_types": ["major", "natural_minor"],
             "display_scale_notes": {
-                "major": list(G_MAJOR_SCALE_NOTES),
-                "natural_minor": list(G_NATURAL_MINOR_SCALE_NOTES),
+                "major": list(scale_notes_for_key(key, "major")),
+                "natural_minor": list(scale_notes_for_key(key, "natural_minor")),
             },
             "harmony_types": ["two_string_harmonized", "three_string_diatonic", "advanced_pocket"],
             "string_groups": list(SUPPORTED_GRIPS),
         },
         "positions": rows,
         "filters": {
-            "available_keys": ["G"],
+            "available_keys": list(SUPPORTED_EXPLORER_KEYS),
             "available_scale_types": ["major", "natural_minor"],
             "available_harmony_types": ["two_string_harmonized", "three_string_diatonic", "advanced_pocket"],
             "available_string_groups": list(SUPPORTED_GRIPS),
@@ -694,8 +804,7 @@ def validate_explorer_payload(payload: dict[str, object]) -> None:
         if position["id"] in ids:
             raise ValueError(f"Duplicate Explorer row id: {position['id']}")
         ids.add(str(position["id"]))
-        if position["key"] != "G":
-            raise ValueError("Explorer MVP supports G only")
+        normalize_explorer_key(str(position["key"]))
         if position["fret"] < 0 or position["fret"] > 24:
             raise ValueError("Explorer row fret out of range")
         strings = position["strings"]
