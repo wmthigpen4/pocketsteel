@@ -249,6 +249,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<optgroup label="Core grips">' in html
     assert '<optgroup label="Advanced swaps">' in html
     assert '<option value="5-7-8">5-7-8</option>' in html
+    assert '<option value="all" selected>All 3-string groups</option>' in html
 
     assert "display_notes" in script
     assert "display_top_voice" in script
@@ -265,6 +266,142 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert any(row["string_group"] == "5-7-8" and row["harmony_type"] == "advanced_pocket" for row in payload["positions"])
     assert any(row.get("warnings") for row in payload["positions"])
     assert all(row["pitch_validated"] is True for row in payload["positions"])
+
+
+def test_e9_fretboard_explorer_controls_are_mode_aware() -> None:
+    script = r"""
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const vm = require("node:vm");
+
+class FakeSelect {
+  constructor(id, value, options) {
+    this.id = id;
+    this.value = value;
+    this.options = options.map((item) => ({ ...item, disabled: false }));
+    this.selectedIndex = Math.max(0, this.options.findIndex((item) => item.value === value));
+    this.listeners = {};
+    this._innerHTML = "";
+  }
+  addEventListener(type, handler) {
+    this.listeners[type] = handler;
+  }
+  dispatchChange() {
+    this.selectedIndex = Math.max(0, this.options.findIndex((item) => item.value === this.value));
+    this.listeners.change();
+  }
+  set innerHTML(value) {
+    this._innerHTML = value;
+    const matches = Array.from(value.matchAll(/<option value="([^"]+)"([^>]*)>([^<]+)<\/option>/g));
+    this.options = matches.map((match) => ({
+      value: match[1],
+      selected: match[2].includes("selected"),
+      text: match[3],
+      disabled: false
+    }));
+    const selected = this.options.find((item) => item.selected);
+    if (selected) {
+      this.value = selected.value;
+    } else if (!this.options.some((item) => item.value === this.value)) {
+      this.value = this.options[0]?.value || "";
+    }
+    this.selectedIndex = Math.max(0, this.options.findIndex((item) => item.value === this.value));
+  }
+  get innerHTML() {
+    return this._innerHTML;
+  }
+}
+
+class FakeNode {
+  constructor(id) {
+    this.id = id;
+    this.hidden = false;
+    this.textContent = "";
+    this._innerHTML = "";
+  }
+  set innerHTML(value) {
+    this._innerHTML = value;
+    this.textContent = value.replace(/<[^>]*>/g, "");
+  }
+  get innerHTML() {
+    return this._innerHTML;
+  }
+}
+
+const elements = {
+  "explorer-key": new FakeSelect("explorer-key", "G", [{ value: "G", text: "G only" }]),
+  "explorer-scale": new FakeSelect("explorer-scale", "major", [
+    { value: "major", text: "G major" },
+    { value: "natural_minor", text: "G natural minor" }
+  ]),
+  "explorer-harmony": new FakeSelect("explorer-harmony", "three_string_diatonic", [
+    { value: "two_string_harmonized", text: "2-string harmonized scale" },
+    { value: "three_string_diatonic", text: "3-string diatonic harmony" }
+  ]),
+  "explorer-string-group": new FakeSelect("explorer-string-group", "all", [{ value: "all", text: "All 3-string groups" }]),
+  "explorer-scale-notes": new FakeNode("explorer-scale-notes"),
+  "explorer-result-count": new FakeNode("explorer-result-count"),
+  "explorer-fretboard": new FakeNode("explorer-fretboard"),
+  "explorer-row-list": new FakeNode("explorer-row-list"),
+  "explorer-empty": new FakeNode("explorer-empty"),
+};
+let lastMount;
+const sandbox = {
+  window: {
+    STEEL_RAG_FRETBOARD: {
+      mountPedalSteelFretboard: (container, options) => {
+        lastMount = { container, options };
+        container.textContent = JSON.stringify(options.positions.map((row) => row.id));
+      }
+    }
+  },
+  document: {
+    getElementById: (id) => elements[id]
+  },
+  console
+};
+vm.createContext(sandbox);
+vm.runInContext(fs.readFileSync("ui/e9-fretboard-explorer-data.js", "utf8"), sandbox);
+vm.runInContext(fs.readFileSync("ui/e9-fretboard-explorer.js", "utf8"), sandbox);
+
+assert.match(elements["explorer-string-group"].innerHTML, /All 3-string groups/);
+assert.match(elements["explorer-string-group"].innerHTML, /Core grips/);
+assert.match(elements["explorer-string-group"].innerHTML, /Advanced swaps/);
+assert.match(elements["explorer-string-group"].innerHTML, /5-7-8/);
+assert.doesNotMatch(elements["explorer-string-group"].innerHTML, />3-5</);
+assert.equal(lastMount.options.showHighlightLabels, false);
+assert.equal(lastMount.options.hideFilterControls, true);
+assert.equal(lastMount.options.positions.some((row) => row.grip === "5-7-8"), true);
+
+elements["explorer-string-group"].value = "4-5-6";
+elements["explorer-harmony"].value = "two_string_harmonized";
+elements["explorer-harmony"].dispatchChange();
+assert.equal(elements["explorer-string-group"].value, "all");
+assert.match(elements["explorer-string-group"].innerHTML, /All 2-string groups/);
+assert.match(elements["explorer-string-group"].innerHTML, />3-5</);
+assert.doesNotMatch(elements["explorer-string-group"].innerHTML, /Core grips/);
+assert.doesNotMatch(elements["explorer-string-group"].innerHTML, /5-7-8/);
+assert.equal(elements["explorer-empty"].hidden, true);
+
+elements["explorer-scale"].value = "natural_minor";
+elements["explorer-scale"].dispatchChange();
+assert.equal(elements["explorer-harmony"].value, "three_string_diatonic");
+assert.equal(elements["explorer-harmony"].options.find((item) => item.value === "two_string_harmonized").disabled, true);
+assert.equal(elements["explorer-string-group"].value, "all");
+assert.match(elements["explorer-scale-notes"].textContent, /G A Bb C D Eb F/);
+assert.doesNotMatch(elements["explorer-scale-notes"].textContent, /A#|D#/);
+assert.equal(elements["explorer-empty"].hidden, true);
+assert.doesNotMatch(elements["explorer-row-list"].textContent, /\[object Object\]/);
+"""
+    result = subprocess.run(
+        ["node", "-e", script],
+        cwd=Path(__file__).resolve().parents[1],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
 
 
 def test_frontend_answer_client_formats_sectioned_and_bullet_text() -> None:

@@ -1441,6 +1441,7 @@
       highlights,
       legend: normalizeLegend(options.legend),
       displayScaleNotes: normalizeDisplayScaleNotes(options.query),
+      showHighlightLabels: options.showHighlightLabels !== false,
     };
   }
 
@@ -1544,10 +1545,13 @@
         return `<rect data-highlight-dot ${dataAttrs} data-highlight-string="${stringNumber}" x="${(highlight.x - 15).toFixed(3)}" y="${(y - 9).toFixed(3)}" width="30" height="18" rx="9" fill="${color.dot}" fill-opacity="0.95" stroke="#fff6df" stroke-opacity="0.38" filter="url(#fretboard-glow)" />`;
       })
       .join("");
+    const label = highlight.showLabel === false
+      ? ""
+      : `<text data-highlight-label="${escapeHtml(highlight.id)}" x="${highlight.x.toFixed(3)}" y="${labelY.toFixed(3)}" text-anchor="middle" fill="${color.text}" font-size="18" font-weight="700">${escapeHtml(highlight.label)}</text>`;
     return `<g class="pedal-steel-fretboard__highlight${highlight.isSelected ? " is-selected" : ""}${highlight.isHiddenByFilter ? " is-filter-hidden" : ""}" ${dataAttrs} data-position-family="${escapeHtml(highlight.family)}" data-position-tier="${escapeHtml(highlight.tier)}" data-position-kind="${escapeHtml(highlight.positionKind)}" data-position-grip="${escapeHtml(highlight.grip)}" data-position-pedal-lever-key="${escapeHtml(pedalLeverOption.key)}" data-position-pedal-lever-label="${escapeHtml(pedalLeverOption.label)}" data-voicing-type="${escapeHtml(highlight.voicingType)}" data-voicing-category="${escapeHtml(voicingCategory)}" data-is-root-position="${highlight.isRootPosition ? "true" : "false"}" data-is-inversion="${highlight.isInversion ? "true" : "false"}" data-is-partial-voicing="${highlight.isPartialVoicing ? "true" : "false"}" data-is-rootless="${highlight.isRootless ? "true" : "false"}" data-visible-by-default="${highlight.visibleByDefault ? "true" : "false"}" data-has-levers="${highlight.levers.length ? "true" : "false"}" data-is-starter="${isStarterPosition(highlight) ? "true" : "false"}" data-is-full-chord="${isFullChordPosition(highlight) ? "true" : "false"}" data-is-dominant="${isDominantPosition(highlight) ? "true" : "false"}" data-is-advanced="${isAdvancedPosition(highlight) ? "true" : "false"}" data-is-more="${isMorePosition(highlight) ? "true" : "false"}" data-recommended-extra="${highlight.isRecommendedExtra ? "true" : "false"}" data-filter-visible="${highlight.isHiddenByFilter ? "false" : "true"}" style="${colorStyle}${hiddenStyle}"${highlight.isHiddenByFilter ? " hidden" : ""}>
       ${band}
       ${dots}
-      <text data-highlight-label="${escapeHtml(highlight.id)}" x="${highlight.x.toFixed(3)}" y="${labelY.toFixed(3)}" text-anchor="middle" fill="${color.text}" font-size="18" font-weight="700">${escapeHtml(highlight.label)}</text>
+      ${label}
     </g>`;
   }
 
@@ -1558,6 +1562,7 @@
       isSelected: model.highlights[0]?.id === highlight.id,
       isHiddenByFilter: !visibleIds.has(highlight.id),
       isRecommendedExtra: model.recommendedHiddenIds.has(highlight.id),
+      showLabel: model.showHighlightLabels,
     })).join("");
   }
 

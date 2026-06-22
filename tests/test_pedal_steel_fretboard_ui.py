@@ -1679,6 +1679,16 @@ assert.match(html, /data-has-voicing-filters="false"/);
 assert.match(html, /data-has-grip-filters="false"/);
 assert.doesNotMatch(html, /pedal-steel-fretboard__filters/);
 assert.doesNotMatch(html, /\\[object Object\\]/);
+
+const markerOnlyHtml = fretboard.renderPedalSteelFretboard({
+  positions,
+  hideFilterControls: true,
+  showHighlightLabels: false
+});
+assert.match(markerOnlyHtml, /data-highlight-dot/);
+assert.match(markerOnlyHtml, /data-highlight-id="explorer-g-345"/);
+assert.doesNotMatch(markerOnlyHtml, /data-highlight-label="explorer-g-345"/);
+assert.doesNotMatch(markerOnlyHtml, />G major<\\/text>/);
 """
     )
 

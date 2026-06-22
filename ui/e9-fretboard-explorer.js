@@ -7,6 +7,10 @@
   const CORE_GROUPS = new Set(["3-4-5", "4-5-6", "5-6-8", "6-8-10"]);
   const ADVANCED_GROUPS = new Set(["5-6-7", "6-7-10", "5-7-8"]);
   const TWO_STRING_GROUPS = new Set(["3-5", "5-6", "6-10", "4-6", "3-4"]);
+  const HARMONY_LABELS = {
+    two_string_harmonized: "2-string harmonized scale",
+    three_string_diatonic: "3-string diatonic harmony",
+  };
 
   const els = {
     key: document.getElementById("explorer-key"),
@@ -56,6 +60,78 @@
     return toArray(row.pedals).concat(toArray(row.levers));
   }
 
+  function rowsForScale(scale) {
+    return payload?.positions?.filter((row) => row.key === "G" && row.scale_type === scale) || [];
+  }
+
+  function rowMatchesHarmony(row, harmony) {
+    if (harmony === "two_string_harmonized") {
+      return row.harmony_type === "two_string_harmonized";
+    }
+    return row.harmony_type === "three_string_diatonic" || row.harmony_type === "advanced_pocket";
+  }
+
+  function rowsForScaleAndHarmony(scale, harmony) {
+    return rowsForScale(scale).filter((row) => rowMatchesHarmony(row, harmony));
+  }
+
+  function availableHarmonies(scale) {
+    return Object.keys(HARMONY_LABELS).filter((harmony) => rowsForScaleAndHarmony(scale, harmony).length > 0);
+  }
+
+  function uniqueGroups(rows, allowedGroups) {
+    const present = new Set(rows.map((row) => row.string_group));
+    return Array.from(allowedGroups).filter((group) => present.has(group));
+  }
+
+  function option(value, label, selectedValue) {
+    return `<option value="${escapeHtml(value)}"${value === selectedValue ? " selected" : ""}>${escapeHtml(label)}</option>`;
+  }
+
+  function optionGroup(label, groups, selectedValue) {
+    if (!groups.length) {
+      return "";
+    }
+    return `<optgroup label="${escapeHtml(label)}">${groups.map((group) => option(group, group, selectedValue)).join("")}</optgroup>`;
+  }
+
+  function updateHarmonyOptions() {
+    const scale = els.scale.value;
+    const validHarmonies = availableHarmonies(scale);
+    Array.from(els.harmony.options).forEach((item) => {
+      item.disabled = !validHarmonies.includes(item.value);
+    });
+    if (!validHarmonies.includes(els.harmony.value)) {
+      els.harmony.value = validHarmonies[0] || "";
+    }
+  }
+
+  function updateStringGroupOptions() {
+    const scale = els.scale.value;
+    const harmony = els.harmony.value;
+    const rows = rowsForScaleAndHarmony(scale, harmony);
+    const currentValue = els.stringGroup.value;
+    const allLabel = harmony === "two_string_harmonized" ? "All 2-string groups" : "All 3-string groups";
+    let html = option("all", allLabel, currentValue);
+
+    if (harmony === "two_string_harmonized") {
+      html += optionGroup("2-string groups", uniqueGroups(rows, TWO_STRING_GROUPS), currentValue);
+    } else {
+      html += optionGroup("Core grips", uniqueGroups(rows, CORE_GROUPS), currentValue);
+      html += optionGroup("Advanced swaps", uniqueGroups(rows, ADVANCED_GROUPS), currentValue);
+    }
+
+    els.stringGroup.innerHTML = html;
+    if (!Array.from(els.stringGroup.options).some((item) => item.value === currentValue)) {
+      els.stringGroup.value = "all";
+    }
+  }
+
+  function updateControls() {
+    updateHarmonyOptions();
+    updateStringGroupOptions();
+  }
+
   function getRows() {
     if (!payload || !Array.isArray(payload.positions)) {
       return [];
@@ -68,12 +144,7 @@
     return payload.positions
       .filter((row) => row.key === "G")
       .filter((row) => row.scale_type === scale)
-      .filter((row) => {
-        if (harmony === "two_string_harmonized") {
-          return row.harmony_type === "two_string_harmonized";
-        }
-        return row.harmony_type === "three_string_diatonic" || row.harmony_type === "advanced_pocket";
-      })
+      .filter((row) => rowMatchesHarmony(row, harmony))
       .filter((row) => {
         if (stringGroup === "all") {
           return true;
@@ -197,6 +268,7 @@
       legend: payload.legend || [],
       query: payload.query || {},
       hideFilterControls: true,
+      showHighlightLabels: false,
     });
   }
 
@@ -205,6 +277,9 @@
     els.scaleNotes.textContent = getScaleNotes();
     els.resultCount.textContent = `${rows.length} validated row${rows.length === 1 ? "" : "s"}`;
     els.empty.hidden = rows.length > 0;
+    els.empty.textContent = rows.length
+      ? ""
+      : `No validated ${HARMONY_LABELS[els.harmony.value] || "Explorer"} rows are available for ${els.scale.options[els.scale.selectedIndex]?.text || "this scale"} yet.`;
     renderCards(rows);
     renderFretboard(rows);
 
@@ -220,12 +295,26 @@
       return;
     }
 
-    [els.scale, els.harmony, els.stringGroup].forEach((control) => {
-      control.addEventListener("change", render);
+    els.scale.addEventListener("change", () => {
+      updateControls();
+      render();
+    });
+    els.harmony.addEventListener("change", () => {
+      updateStringGroupOptions();
+      render();
+    });
+    els.stringGroup.addEventListener("change", () => {
+      render();
     });
 
+    updateControls();
     render();
   }
 
   init();
+  window.STEEL_RAG_E9_EXPLORER = {
+    availableHarmonies,
+    rowsForScaleAndHarmony,
+    uniqueGroups,
+  };
 })();
