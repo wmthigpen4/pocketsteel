@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>E9 Fretboard Explorer - Steel Guitar RAG</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;600;700;800&family=Source+Serif+4:opsz,wght@8..60,700;8..60,800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #090705;
+      --panel: rgba(20, 18, 14, 0.86);
+      --panel-strong: rgba(30, 27, 21, 0.94);
+      --line: rgba(246, 190, 88, 0.28);
+      --text: #fff7e8;
+      --muted: rgba(255, 247, 232, 0.72);
+      --gold: #f7bd58;
+      --amber: #df8b2e;
+      --green: #8dc78d;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 52% 0%, rgba(221, 139, 45, 0.28), transparent 35%),
+        linear-gradient(180deg, rgba(13, 10, 7, 0.96), #050403 72%);
+      color: var(--text);
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .explorer-shell {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 24px 0 56px;
+    }
+
+    .explorer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 24px;
+      margin-bottom: 28px;
+    }
+
+    .explorer-back {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 10px 14px;
+      text-decoration: none;
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 700;
+      background: rgba(0, 0, 0, 0.28);
+    }
+
+    .explorer-kicker {
+      margin: 0 0 10px;
+      color: var(--gold);
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-family: "Source Serif 4", Georgia, serif;
+      font-size: clamp(2.2rem, 5vw, 4.9rem);
+      line-height: 0.94;
+      letter-spacing: 0;
+    }
+
+    .explorer-lede {
+      max-width: 760px;
+      margin: 16px 0 0;
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.65;
+    }
+
+    .explorer-controls {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel);
+      box-shadow: 0 22px 60px rgba(0, 0, 0, 0.34);
+    }
+
+    .explorer-control {
+      display: grid;
+      gap: 7px;
+    }
+
+    .explorer-control label {
+      color: var(--gold);
+      font-size: 0.75rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .explorer-control select {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid rgba(246, 190, 88, 0.3);
+      border-radius: 10px;
+      padding: 0 12px;
+      background: rgba(0, 0, 0, 0.36);
+      color: var(--text);
+      font: inherit;
+      font-weight: 700;
+    }
+
+    .explorer-summary {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin: 18px 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .explorer-pill {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid rgba(246, 190, 88, 0.24);
+      border-radius: 999px;
+      padding: 7px 10px;
+      background: rgba(0, 0, 0, 0.28);
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .explorer-panel {
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background: var(--panel-strong);
+      overflow: hidden;
+    }
+
+    .explorer-fretboard {
+      padding: 16px;
+      overflow-x: auto;
+    }
+
+    .explorer-empty {
+      margin: 0;
+      padding: 16px;
+      color: var(--muted);
+    }
+
+    .explorer-row-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .explorer-row-card {
+      border: 1px solid rgba(246, 190, 88, 0.22);
+      border-radius: 14px;
+      padding: 14px;
+      background: rgba(16, 14, 11, 0.82);
+    }
+
+    .explorer-row-card--advanced {
+      border-color: rgba(141, 199, 141, 0.42);
+      background: rgba(15, 22, 15, 0.78);
+    }
+
+    .explorer-row-card__header {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .explorer-row-card__kind {
+      color: var(--gold);
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .explorer-row-card--advanced .explorer-row-card__kind {
+      color: var(--green);
+    }
+
+    .explorer-detail-grid {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+    }
+
+    .explorer-detail-row {
+      display: grid;
+      grid-template-columns: minmax(96px, 0.45fr) minmax(0, 1fr);
+      gap: 10px;
+      align-items: baseline;
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.45;
+    }
+
+    .explorer-detail-row dt {
+      margin: 0;
+      color: rgba(255, 247, 232, 0.58);
+      font-weight: 800;
+    }
+
+    .explorer-detail-row dd {
+      margin: 0;
+    }
+
+    .explorer-note {
+      margin: 18px 0 0;
+      color: rgba(255, 247, 232, 0.62);
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 760px) {
+      .explorer-shell {
+        width: min(100% - 20px, 1180px);
+        padding-top: 14px;
+      }
+
+      .explorer-header {
+        display: grid;
+      }
+
+      .explorer-controls {
+        grid-template-columns: 1fr;
+      }
+
+      .explorer-detail-row {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="explorer-shell">
+    <header class="explorer-header">
+      <div>
+        <p class="explorer-kicker">Validated Explorer data</p>
+        <h1>E9 Fretboard Explorer</h1>
+        <p class="explorer-lede">Browse deterministic G major and G natural-minor E9 positions. This surface uses validated Explorer rows, not corpus retrieval or RAG-generated fretboard positions.</p>
+      </div>
+      <a class="explorer-back" href="steel-guitar-rag-mock.html">Back to app</a>
+    </header>
+
+    <section class="explorer-controls" aria-label="Explorer controls">
+      <div class="explorer-control">
+        <label for="explorer-key">Key</label>
+        <select id="explorer-key" disabled>
+          <option value="G">G only</option>
+        </select>
+      </div>
+      <div class="explorer-control">
+        <label for="explorer-scale">Scale</label>
+        <select id="explorer-scale">
+          <option value="major">G major</option>
+          <option value="natural_minor">G natural minor</option>
+        </select>
+      </div>
+      <div class="explorer-control">
+        <label for="explorer-harmony">Harmony / view</label>
+        <select id="explorer-harmony">
+          <option value="two_string_harmonized">2-string harmonized scale</option>
+          <option value="three_string_diatonic" selected>3-string diatonic harmony</option>
+        </select>
+      </div>
+      <div class="explorer-control">
+        <label for="explorer-string-group">String group</label>
+        <select id="explorer-string-group">
+          <option value="all">All string groups</option>
+          <optgroup label="Core grips">
+            <option value="3-4-5">3-4-5</option>
+            <option value="4-5-6" selected>4-5-6</option>
+            <option value="5-6-8">5-6-8</option>
+            <option value="6-8-10">6-8-10</option>
+          </optgroup>
+          <optgroup label="Advanced swaps">
+            <option value="5-6-7">5-6-7</option>
+            <option value="6-7-10">6-7-10</option>
+            <option value="5-7-8">5-7-8</option>
+          </optgroup>
+          <optgroup label="2-string pairs">
+            <option value="3-5">3-5</option>
+            <option value="5-6">5-6</option>
+            <option value="6-10">6-10</option>
+            <option value="4-6">4-6</option>
+            <option value="3-4">3-4</option>
+          </optgroup>
+        </select>
+      </div>
+    </section>
+
+    <div class="explorer-summary" aria-live="polite">
+      <span class="explorer-pill">Scale notes: <span id="explorer-scale-notes">G A B C D E F#</span></span>
+      <span class="explorer-pill" id="explorer-result-count">0 validated rows</span>
+    </div>
+
+    <section class="explorer-panel" aria-label="Explorer fretboard">
+      <p class="explorer-empty" id="explorer-empty" hidden>No validated rows match these controls.</p>
+      <div class="explorer-fretboard" id="explorer-fretboard"></div>
+    </section>
+
+    <section>
+      <div class="explorer-row-list" id="explorer-row-list" aria-label="Explorer row details"></div>
+      <p class="explorer-note">Core grips are separated from advanced swaps. The 5-7-8 grip is shown only as an advanced E-lower pocket, and warning text remains visible on partial diminished or partial m7b5 rows.</p>
+    </section>
+  </main>
+
+  <script src="pedal-steel-fretboard.js?v=e9-explorer-browser-surface-20260622"></script>
+  <script src="e9-fretboard-explorer-data.js?v=e9-explorer-browser-surface-20260622"></script>
+  <script src="e9-fretboard-explorer.js?v=e9-explorer-browser-surface-20260622"></script>
+</body>
+</html>

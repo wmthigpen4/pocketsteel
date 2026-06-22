@@ -1374,7 +1374,8 @@
         x: LAYOUT.nutX + normalizedFretPosition(highlight.fret, maxFret) * fretboardWidth,
         stringYs: highlight.strings.map((stringNumber) => strings[stringNumber - 1].y),
       }));
-    const hasFilterControls = hasPositionMetadata(allHighlights) && allHighlights.length > 1 && !isFocusedPayload(allHighlights);
+    const hideFilterControls = options.hideFilterControls === true;
+    const hasFilterControls = !hideFilterControls && hasPositionMetadata(allHighlights) && allHighlights.length > 1 && !isFocusedPayload(allHighlights);
     const voicingCategories = voicingCategoryOptions(allHighlights);
     const voicingOptions = hasFilterControls ? availableVoicingOptions(allHighlights) : [];
     const hasVoicingControls = hasFilterControls && hasUsefulVoicingControls(allHighlights, voicingOptions);

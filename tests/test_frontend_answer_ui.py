@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 from pathlib import Path
@@ -219,6 +220,51 @@ def test_answer_ui_includes_home_hero_hanging_sign_without_changing_answer_logo(
     assert Path("ui/brand/steel-guitar-rag-answer-badge-fallback-alpha.png").is_file()
     assert Path("public/brand/steel-guitar-rag-answer-badge-alpha.webm").is_file()
     assert Path("public/brand/steel-guitar-rag-answer-badge-fallback-alpha.png").is_file()
+
+
+def test_answer_ui_links_to_e9_fretboard_explorer_surface() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+
+    assert "Explore the E9 Fretboard" in html
+    assert 'href="e9-fretboard-explorer.html"' in html
+    assert "explorer-entry" in html
+
+
+def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() -> None:
+    html = Path("ui/e9-fretboard-explorer.html").read_text(encoding="utf-8")
+    script = Path("ui/e9-fretboard-explorer.js").read_text(encoding="utf-8")
+    data = Path("ui/e9-fretboard-explorer-data.js").read_text(encoding="utf-8")
+    payload = json.loads(data.split(" = ", 1)[1].rsplit(";", 1)[0])
+
+    assert "E9 Fretboard Explorer" in html
+    assert "Validated Explorer data" in html
+    assert "not corpus retrieval or RAG-generated fretboard positions" in html
+    assert '<script src="pedal-steel-fretboard.js?v=e9-explorer-browser-surface-20260622"></script>' in html
+    assert '<script src="e9-fretboard-explorer-data.js?v=e9-explorer-browser-surface-20260622"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=e9-explorer-browser-surface-20260622"></script>' in html
+    assert '<option value="major">G major</option>' in html
+    assert '<option value="natural_minor">G natural minor</option>' in html
+    assert '<option value="two_string_harmonized">2-string harmonized scale</option>' in html
+    assert '<option value="three_string_diatonic" selected>3-string diatonic harmony</option>' in html
+    assert '<optgroup label="Core grips">' in html
+    assert '<optgroup label="Advanced swaps">' in html
+    assert '<option value="5-7-8">5-7-8</option>' in html
+
+    assert "display_notes" in script
+    assert "display_top_voice" in script
+    assert "display_summary" in script
+    assert "display_scale_notes" in script
+    assert "per_string_changes" in script
+    assert "warnings" in script
+    assert "pitch_validated" in script
+    assert "hideFilterControls: true" in script
+    assert "[object Object]" not in data
+
+    assert payload["query"]["display_scale_notes"]["natural_minor"] == ["G", "A", "Bb", "C", "D", "Eb", "F"]
+    assert payload["query"]["display_scale_notes"]["natural_minor"] != ["G", "A", "A#", "C", "D", "D#", "F"]
+    assert any(row["string_group"] == "5-7-8" and row["harmony_type"] == "advanced_pocket" for row in payload["positions"])
+    assert any(row.get("warnings") for row in payload["positions"])
+    assert all(row["pitch_validated"] is True for row in payload["positions"])
 
 
 def test_frontend_answer_client_formats_sectioned_and_bullet_text() -> None:

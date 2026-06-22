@@ -1146,6 +1146,29 @@
       color: rgba(240, 191, 105, 0.9);
     }
 
+    .explorer-entry {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+      border: 1px solid rgba(240, 191, 105, 0.3);
+      border-radius: 999px;
+      padding: 0 14px;
+      background: rgba(0, 0, 0, 0.22);
+      color: rgba(244, 234, 214, 0.88);
+      font-size: 13px;
+      font-weight: 800;
+      text-decoration: none;
+    }
+
+    .explorer-entry:hover,
+    .explorer-entry:focus-visible {
+      border-color: rgba(240, 191, 105, 0.54);
+      background: rgba(240, 191, 105, 0.08);
+      color: var(--cream);
+      outline: none;
+    }
+
     .page.is-answering main {
       width: min(1060px, calc(100% - 32px));
       padding-top: 24px;
@@ -2215,6 +2238,7 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 20 6v6c0 5-3.4 8-8 9-4.6-1-8-4-8-9V6l8-3Z"/><path d="m8.5 12 2.2 2.2 4.9-5"/></svg>
           <span>Answers draw from forum discussions, manuals, setup notes, copedents, and steel-specific sources.</span>
         </p>
+        <a class="explorer-entry" href="e9-fretboard-explorer.html">Explore the E9 Fretboard</a>
       </div>
 
       <section class="answer-workspace" id="answer-workspace" aria-label="Steel Guitar RAG answer workspace" hidden>

@@ -1646,6 +1646,45 @@ assert.deepEqual(inversionModel.highlights.map((item) => item.id), ["g-option-6"
     run_node(script)
 
 
+def test_component_can_hide_internal_filters_for_explorer_surface() -> None:
+    script = component_eval_script(
+        """
+const positions = [
+  {
+    id: "explorer-g-345",
+    label: "G major",
+    fret: 3,
+    strings: [3, 4, 5],
+    grip: "3-4-5",
+    pedals: [],
+    voicingType: "root_position",
+    isRootPosition: true
+  },
+  {
+    id: "explorer-g-456",
+    label: "G major",
+    fret: 3,
+    strings: [4, 5, 6],
+    grip: "4-5-6",
+    pedals: [],
+    voicingType: "root_position",
+    isRootPosition: true
+  }
+];
+
+const html = fretboard.renderPedalSteelFretboard({ positions, hideFilterControls: true });
+assert.match(html, /data-highlight-id="explorer-g-345"/);
+assert.match(html, /data-highlight-id="explorer-g-456"/);
+assert.match(html, /data-has-voicing-filters="false"/);
+assert.match(html, /data-has-grip-filters="false"/);
+assert.doesNotMatch(html, /pedal-steel-fretboard__filters/);
+assert.doesNotMatch(html, /\\[object Object\\]/);
+"""
+    )
+
+    run_node(script)
+
+
 def test_component_escapes_user_supplied_highlight_text() -> None:
     script = component_eval_script(
         r"""
