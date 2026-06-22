@@ -148,7 +148,13 @@
       font-weight: 700;
     }
 
+    .explorer-pill--trust {
+      color: rgba(141, 199, 141, 0.92);
+      border-color: rgba(141, 199, 141, 0.28);
+    }
+
     .explorer-panel {
+      position: relative;
       border: 1px solid var(--line);
       border-radius: 18px;
       background: var(--panel-strong);
@@ -166,32 +172,101 @@
       color: var(--muted);
     }
 
-    .explorer-row-list {
+    .explorer-tooltip {
+      position: fixed;
+      z-index: 50;
+      max-width: min(320px, calc(100vw - 24px));
+      border: 1px solid rgba(246, 190, 88, 0.4);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: rgba(10, 9, 7, 0.96);
+      color: var(--text);
+      box-shadow: 0 18px 52px rgba(0, 0, 0, 0.48);
+      font-size: 0.84rem;
+      line-height: 1.4;
+      pointer-events: none;
+    }
+
+    .explorer-tooltip[hidden] {
+      display: none;
+    }
+
+    .explorer-tooltip strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--gold);
+    }
+
+    .explorer-tooltip span {
+      display: block;
+      color: var(--muted);
+    }
+
+    .explorer-details {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 12px;
+      grid-template-columns: minmax(220px, 0.36fr) minmax(0, 1fr);
+      gap: 14px;
       margin-top: 18px;
     }
 
-    .explorer-row-card {
+    .explorer-row-list {
+      display: grid;
+      align-content: start;
+      gap: 8px;
+    }
+
+    .explorer-row-button {
+      width: 100%;
+      border: 1px solid rgba(246, 190, 88, 0.2);
+      border-radius: 11px;
+      padding: 10px 12px;
+      background: rgba(16, 14, 11, 0.72);
+      color: var(--text);
+      cursor: pointer;
+      text-align: left;
+      font: inherit;
+      line-height: 1.25;
+    }
+
+    .explorer-row-button:hover,
+    .explorer-row-button:focus-visible,
+    .explorer-row-button.is-selected {
+      border-color: rgba(246, 190, 88, 0.55);
+      background: rgba(246, 190, 88, 0.08);
+      outline: none;
+    }
+
+    .explorer-row-button--advanced {
+      border-color: rgba(141, 199, 141, 0.34);
+    }
+
+    .explorer-row-button__meta {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .explorer-selected-detail {
       border: 1px solid rgba(246, 190, 88, 0.22);
       border-radius: 14px;
-      padding: 14px;
+      padding: 16px;
       background: rgba(16, 14, 11, 0.82);
     }
 
-    .explorer-row-card--advanced {
+    .explorer-selected-detail--advanced {
       border-color: rgba(141, 199, 141, 0.42);
       background: rgba(15, 22, 15, 0.78);
     }
 
-    .explorer-row-card__header {
+    .explorer-selected-detail__header {
       display: grid;
       gap: 6px;
       margin-bottom: 12px;
     }
 
-    .explorer-row-card__kind {
+    .explorer-selected-detail__kind {
       color: var(--gold);
       font-size: 0.72rem;
       font-weight: 800;
@@ -199,7 +274,7 @@
       text-transform: uppercase;
     }
 
-    .explorer-row-card--advanced .explorer-row-card__kind {
+    .explorer-selected-detail--advanced .explorer-selected-detail__kind {
       color: var(--green);
     }
 
@@ -230,6 +305,7 @@
     }
 
     .explorer-note {
+      grid-column: 1 / -1;
       margin: 18px 0 0;
       color: rgba(255, 247, 232, 0.62);
       font-size: 0.9rem;
@@ -247,6 +323,10 @@
       }
 
       .explorer-controls {
+        grid-template-columns: 1fr;
+      }
+
+      .explorer-details {
         grid-template-columns: 1fr;
       }
 
@@ -309,16 +389,18 @@
 
     <div class="explorer-summary" aria-live="polite">
       <span class="explorer-pill">Scale notes: <span id="explorer-scale-notes">G A B C D E F#</span></span>
-      <span class="explorer-pill" id="explorer-result-count">0 validated rows</span>
+      <span class="explorer-pill explorer-pill--trust" id="explorer-result-count">Showing validated positions</span>
     </div>
 
     <section class="explorer-panel" aria-label="Explorer fretboard">
       <p class="explorer-empty" id="explorer-empty" hidden>No validated rows match these controls.</p>
       <div class="explorer-fretboard" id="explorer-fretboard"></div>
+      <div class="explorer-tooltip" id="explorer-tooltip" role="tooltip" hidden></div>
     </section>
 
-    <section>
+    <section class="explorer-details" aria-label="Explorer position details">
       <div class="explorer-row-list" id="explorer-row-list" aria-label="Explorer row details"></div>
+      <div class="explorer-selected-detail" id="explorer-selected-detail" aria-live="polite"></div>
       <p class="explorer-note">Core grips are separated from advanced swaps. The 5-7-8 grip is shown only as an advanced E-lower pocket, and warning text remains visible on partial diminished or partial m7b5 rows.</p>
     </section>
   </main>

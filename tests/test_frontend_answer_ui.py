@@ -250,6 +250,11 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<optgroup label="Advanced swaps">' in html
     assert '<option value="5-7-8">5-7-8</option>' in html
     assert '<option value="all" selected>All 3-string groups</option>' in html
+    assert 'id="explorer-tooltip"' in html
+    assert 'id="explorer-selected-detail"' in html
+    assert "Showing validated positions" in html
+    assert "0 validated rows" not in html
+    assert "explorer-row-card" not in html
 
     assert "display_notes" in script
     assert "display_top_voice" in script
@@ -257,8 +262,13 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "display_scale_notes" in script
     assert "per_string_changes" in script
     assert "warnings" in script
-    assert "pitch_validated" in script
+    assert "pitch_validated" in data
     assert "hideFilterControls: true" in script
+    assert "showHighlightLabels: false" in script
+    assert "tooltipText" in script
+    assert "selectedRowId" in script
+    assert "Pitch validated" not in script
+    assert "validated row" not in script
     assert "[object Object]" not in data
 
     assert payload["query"]["display_scale_notes"]["natural_minor"] == ["G", "A", "Bb", "C", "D", "Eb", "F"]
@@ -318,13 +328,58 @@ class FakeNode {
     this.hidden = false;
     this.textContent = "";
     this._innerHTML = "";
+    this._markers = [];
+    this.attributes = {};
+    this.listeners = {};
+    this.style = {};
+    this.className = "";
+    this.classList = {
+      toggle: () => {}
+    };
   }
   set innerHTML(value) {
     this._innerHTML = value;
     this.textContent = value.replace(/<[^>]*>/g, "");
+    this._markers = Array.from(value.matchAll(/data-highlight-id="([^"]+)"/g)).map((match) => new FakeMarker(match[1]));
   }
   get innerHTML() {
     return this._innerHTML;
+  }
+  querySelectorAll(selector) {
+    if (selector === "[data-explorer-row]") {
+      return Array.from(this._innerHTML.matchAll(/data-explorer-row="([^"]+)"/g)).map((match) => new FakeButton(match[1]));
+    }
+    if (selector === ".pedal-steel-fretboard__highlight[data-highlight-id]") {
+      return this._markers;
+    }
+    return [];
+  }
+}
+
+class FakeButton {
+  constructor(rowId) {
+    this.rowId = rowId;
+    this.attributes = { "data-explorer-row": rowId };
+    this.classList = { toggle: () => {} };
+  }
+  getAttribute(name) {
+    return this.attributes[name] || null;
+  }
+  setAttribute(name, value) {
+    this.attributes[name] = value;
+  }
+  addEventListener(type, handler) {
+    this[`on${type}`] = handler;
+  }
+}
+
+class FakeMarker extends FakeButton {
+  constructor(rowId) {
+    super(rowId);
+    this.attributes["data-highlight-id"] = rowId;
+  }
+  getBoundingClientRect() {
+    return { left: 40, top: 50, width: 20, height: 20 };
   }
 }
 
@@ -343,23 +398,30 @@ const elements = {
   "explorer-result-count": new FakeNode("explorer-result-count"),
   "explorer-fretboard": new FakeNode("explorer-fretboard"),
   "explorer-row-list": new FakeNode("explorer-row-list"),
+  "explorer-selected-detail": new FakeNode("explorer-selected-detail"),
   "explorer-empty": new FakeNode("explorer-empty"),
+  "explorer-tooltip": new FakeNode("explorer-tooltip"),
 };
 let lastMount;
 const sandbox = {
   window: {
-    STEEL_RAG_FRETBOARD: {
-      mountPedalSteelFretboard: (container, options) => {
-        lastMount = { container, options };
-        container.textContent = JSON.stringify(options.positions.map((row) => row.id));
-      }
-    }
+    innerWidth: 1280,
+    innerHeight: 720,
   },
   document: {
     getElementById: (id) => elements[id]
   },
   console
 };
+sandbox.window.STEEL_RAG_FRETBOARD = {
+  mountPedalSteelFretboard: (container, options) => {
+    lastMount = { container, options };
+    container.innerHTML = options.positions.map((row) => `<g class="pedal-steel-fretboard__highlight" data-highlight-id="${row.id}"></g>`).join("");
+  }
+};
+sandbox.window.window = sandbox.window;
+sandbox.window.document = sandbox.document;
+sandbox.window.console = sandbox.console;
 vm.createContext(sandbox);
 vm.runInContext(fs.readFileSync("ui/e9-fretboard-explorer-data.js", "utf8"), sandbox);
 vm.runInContext(fs.readFileSync("ui/e9-fretboard-explorer.js", "utf8"), sandbox);
@@ -372,6 +434,10 @@ assert.doesNotMatch(elements["explorer-string-group"].innerHTML, />3-5</);
 assert.equal(lastMount.options.showHighlightLabels, false);
 assert.equal(lastMount.options.hideFilterControls, true);
 assert.equal(lastMount.options.positions.some((row) => row.grip === "5-7-8"), true);
+assert.match(elements["explorer-result-count"].textContent, /Showing validated positions/);
+assert.doesNotMatch(elements["explorer-result-count"].textContent, /validated rows/);
+assert.match(elements["explorer-selected-detail"].textContent, /Display notes/);
+assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /Pitch validated/);
 
 elements["explorer-string-group"].value = "4-5-6";
 elements["explorer-harmony"].value = "two_string_harmonized";
@@ -392,6 +458,22 @@ assert.match(elements["explorer-scale-notes"].textContent, /G A Bb C D Eb F/);
 assert.doesNotMatch(elements["explorer-scale-notes"].textContent, /A#|D#/);
 assert.equal(elements["explorer-empty"].hidden, true);
 assert.doesNotMatch(elements["explorer-row-list"].textContent, /\[object Object\]/);
+
+elements["explorer-scale"].value = "major";
+elements["explorer-scale"].dispatchChange();
+elements["explorer-harmony"].value = "three_string_diatonic";
+elements["explorer-harmony"].dispatchChange();
+elements["explorer-string-group"].value = "5-7-8";
+elements["explorer-string-group"].dispatchChange();
+assert.match(elements["explorer-selected-detail"].textContent, /Per-string changes/);
+assert.match(elements["explorer-selected-detail"].textContent, /E-lower/);
+assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /E-lower\+E-lower/);
+assert.doesNotMatch(elements["explorer-row-list"].textContent, /E-lower\+E-lower/);
+const tooltipMarker = elements["explorer-fretboard"].querySelectorAll(".pedal-steel-fretboard__highlight[data-highlight-id]")[0];
+assert.match(tooltipMarker.getAttribute("aria-label"), /Fret/);
+assert.match(tooltipMarker.getAttribute("aria-label"), /Notes:/);
+assert.match(tooltipMarker.getAttribute("aria-label"), /Pedals\/levers:/);
+assert.doesNotMatch(tooltipMarker.getAttribute("aria-label"), /E-lower\+E-lower/);
 """
     result = subprocess.run(
         ["node", "-e", script],

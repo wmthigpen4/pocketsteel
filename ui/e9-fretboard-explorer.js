@@ -21,8 +21,13 @@
     resultCount: document.getElementById("explorer-result-count"),
     fretboard: document.getElementById("explorer-fretboard"),
     rowList: document.getElementById("explorer-row-list"),
+    selectedDetail: document.getElementById("explorer-selected-detail"),
     empty: document.getElementById("explorer-empty"),
+    tooltip: document.getElementById("explorer-tooltip"),
   };
+
+  let selectedRowId = "";
+  let currentRows = [];
 
   function toArray(value) {
     return Array.isArray(value) ? value.filter(Boolean) : [];
@@ -47,6 +52,19 @@
     return String(value);
   }
 
+  function dedupeValues(values) {
+    const seen = new Set();
+    return toArray(values)
+      .map((value) => String(value).trim())
+      .filter((value) => {
+        if (!value || seen.has(value)) {
+          return false;
+        }
+        seen.add(value);
+        return true;
+      });
+  }
+
   function escapeHtml(value) {
     return String(value)
       .replace(/&/g, "&amp;")
@@ -57,7 +75,7 @@
   }
 
   function normalizePedals(row) {
-    return toArray(row.pedals).concat(toArray(row.levers));
+    return dedupeValues(toArray(row.pedals).concat(toArray(row.levers)));
   }
 
   function rowsForScale(scale) {
@@ -209,14 +227,20 @@
       fret: row.fret,
       strings: row.strings,
       grip: row.string_group,
-      pedals: normalizePedals(row),
-      levers: toArray(row.levers),
+      pedals: dedupeValues(row.pedals),
+      levers: dedupeValues(row.levers),
       notes: row.display_notes || row.notes,
       intervals: row.intervals,
       explanation: row.display_summary || row.explanation,
       colorRole: colorRoleForRow(row),
       visibleByDefault: true,
     };
+  }
+
+  function shortLabel(row) {
+    const degree = row.chord_function || row.scale_degree || row.chord_name || "Position";
+    const controls = normalizePedals(row);
+    return `${row.fret} ${degree}${controls.length ? ` · ${controls.join("+")}` : ""}`;
   }
 
   function detailRow(label, value) {
@@ -227,31 +251,130 @@
     return `<div class="explorer-detail-row"><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(rendered)}</dd></div>`;
   }
 
+  function renderSelectedDetail(row) {
+    if (!row) {
+      els.selectedDetail.className = "explorer-selected-detail";
+      els.selectedDetail.innerHTML = '<p class="explorer-empty">Choose a marker or row to inspect one validated position.</p>';
+      return;
+    }
+
+    const warnings = toArray(row.warnings);
+    const detailClass = isAdvanced(row) ? "explorer-selected-detail explorer-selected-detail--advanced" : "explorer-selected-detail";
+    els.selectedDetail.className = detailClass;
+    els.selectedDetail.innerHTML = `
+      <div class="explorer-selected-detail__header">
+        <span class="explorer-selected-detail__kind">${escapeHtml(groupLabel(row))}</span>
+        <strong>${escapeHtml(formatValue(row.display_summary || row.chord_name || row.id))}</strong>
+      </div>
+      <dl class="explorer-detail-grid">
+        ${detailRow("Display notes", row.display_notes)}
+        ${detailRow("Top voice", row.display_top_voice)}
+        ${detailRow("Fret", row.fret)}
+        ${detailRow("String group", row.string_group)}
+        ${detailRow("Pedals / levers", normalizePedals(row))}
+        ${detailRow("Per-string changes", row.per_string_changes)}
+        ${detailRow("Warnings", warnings)}
+      </dl>
+    `;
+  }
+
+  function selectRow(rowId) {
+    if (!currentRows.some((row) => row.id === rowId)) {
+      selectedRowId = currentRows[0]?.id || "";
+    } else {
+      selectedRowId = rowId;
+    }
+    const selected = currentRows.find((row) => row.id === selectedRowId);
+    renderSelectedDetail(selected);
+    Array.from(els.rowList.querySelectorAll("[data-explorer-row]")).forEach((button) => {
+      const isSelected = button.getAttribute("data-explorer-row") === selectedRowId;
+      button.classList.toggle("is-selected", isSelected);
+      button.setAttribute("aria-pressed", isSelected ? "true" : "false");
+    });
+  }
+
   function renderCards(rows) {
     els.rowList.innerHTML = rows
       .map((row) => {
-        const cardClass = isAdvanced(row) ? " explorer-row-card--advanced" : "";
-        const warnings = toArray(row.warnings);
+        const buttonClass = isAdvanced(row) ? " explorer-row-button--advanced" : "";
+        const isSelected = row.id === selectedRowId;
         return `
-          <article class="explorer-row-card${cardClass}" data-string-group="${escapeHtml(row.string_group)}" data-harmony-type="${escapeHtml(row.harmony_type)}">
-            <div class="explorer-row-card__header">
-              <span class="explorer-row-card__kind">${escapeHtml(groupLabel(row))}</span>
-              <strong>${escapeHtml(formatValue(row.display_summary || row.chord_name || row.id))}</strong>
-            </div>
-            <dl class="explorer-detail-grid">
-              ${detailRow("Display notes", row.display_notes)}
-              ${detailRow("Top voice", row.display_top_voice)}
-              ${detailRow("Fret", row.fret)}
-              ${detailRow("String group", row.string_group)}
-              ${detailRow("Pedals / levers", normalizePedals(row))}
-              ${detailRow("Per-string changes", row.per_string_changes)}
-              ${detailRow("Warnings", warnings)}
-              ${detailRow("Pitch validated", row.pitch_validated === true ? "yes" : "no")}
-            </dl>
-          </article>
+          <button class="explorer-row-button${buttonClass}${isSelected ? " is-selected" : ""}" type="button" data-explorer-row="${escapeHtml(row.id)}" data-string-group="${escapeHtml(row.string_group)}" data-harmony-type="${escapeHtml(row.harmony_type)}" aria-pressed="${isSelected ? "true" : "false"}">
+            <strong>${escapeHtml(shortLabel(row))}</strong>
+            <span class="explorer-row-button__meta">${escapeHtml(groupLabel(row))} · ${escapeHtml(formatValue(row.display_notes))}</span>
+          </button>
         `;
       })
       .join("");
+    Array.from(els.rowList.querySelectorAll("[data-explorer-row]")).forEach((button) => {
+      button.addEventListener("click", () => selectRow(button.getAttribute("data-explorer-row")));
+    });
+  }
+
+  function tooltipText(row) {
+    const warnings = toArray(row.warnings);
+    const controls = normalizePedals(row);
+    return [
+      row.display_summary || row.chord_name || row.chord_function || row.id,
+      `Fret ${row.fret} · strings ${row.string_group}`,
+      `Notes: ${formatValue(row.display_notes)}`,
+      `Pedals/levers: ${formatValue(controls)}`,
+      warnings.length ? `Warning: ${formatValue(warnings)}` : "",
+    ].filter(Boolean);
+  }
+
+  function tooltipHtml(row) {
+    const lines = tooltipText(row);
+    return `<strong>${escapeHtml(lines[0] || "Explorer position")}</strong>${lines.slice(1).map((line) => `<span>${escapeHtml(line)}</span>`).join("")}`;
+  }
+
+  function showTooltip(row, target) {
+    if (!row || !els.tooltip) {
+      return;
+    }
+    els.tooltip.innerHTML = tooltipHtml(row);
+    els.tooltip.hidden = false;
+    const rect = target.getBoundingClientRect();
+    const left = Math.min(window.innerWidth - 332, Math.max(12, rect.left + rect.width / 2 + 12));
+    const top = Math.min(window.innerHeight - 150, Math.max(12, rect.top + 10));
+    els.tooltip.style.left = `${left}px`;
+    els.tooltip.style.top = `${top}px`;
+  }
+
+  function hideTooltip() {
+    if (els.tooltip) {
+      els.tooltip.hidden = true;
+    }
+  }
+
+  function wireFretboardMarkers(rows) {
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    Array.from(els.fretboard.querySelectorAll(".pedal-steel-fretboard__highlight[data-highlight-id]")).forEach((marker) => {
+      const row = byId.get(marker.getAttribute("data-highlight-id"));
+      if (!row) {
+        return;
+      }
+      const text = tooltipText(row).join(". ");
+      marker.setAttribute("tabindex", "0");
+      marker.setAttribute("role", "button");
+      marker.setAttribute("aria-label", text);
+      marker.setAttribute("title", text);
+      marker.addEventListener("mouseenter", () => showTooltip(row, marker));
+      marker.addEventListener("focus", () => showTooltip(row, marker));
+      marker.addEventListener("mouseleave", hideTooltip);
+      marker.addEventListener("blur", hideTooltip);
+      marker.addEventListener("click", () => {
+        selectRow(row.id);
+        showTooltip(row, marker);
+      });
+      marker.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          selectRow(row.id);
+          showTooltip(row, marker);
+        }
+      });
+    });
   }
 
   function renderFretboard(rows) {
@@ -270,20 +393,32 @@
       hideFilterControls: true,
       showHighlightLabels: false,
     });
+    wireFretboardMarkers(rows);
   }
 
   function render() {
     const rows = getRows();
+    currentRows = rows;
+    if (!rows.some((row) => row.id === selectedRowId)) {
+      selectedRowId = rows[0]?.id || "";
+    }
     els.scaleNotes.textContent = getScaleNotes();
-    els.resultCount.textContent = `${rows.length} validated row${rows.length === 1 ? "" : "s"}`;
+    els.resultCount.textContent = "Showing validated positions";
     els.empty.hidden = rows.length > 0;
     els.empty.textContent = rows.length
       ? ""
       : `No validated ${HARMONY_LABELS[els.harmony.value] || "Explorer"} rows are available for ${els.scale.options[els.scale.selectedIndex]?.text || "this scale"} yet.`;
     renderCards(rows);
     renderFretboard(rows);
+    renderSelectedDetail(rows.find((row) => row.id === selectedRowId));
 
-    if (els.rowList.textContent.includes("[object Object]") || els.fretboard.textContent.includes("[object Object]")) {
+    const renderedText = [
+      els.rowList.textContent,
+      els.selectedDetail.textContent,
+      els.fretboard.textContent,
+      els.tooltip.textContent,
+    ].join(" ");
+    if (renderedText.includes("[object Object]")) {
       console.warn("Explorer rendered an unsafe object string.");
     }
   }
