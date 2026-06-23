@@ -13,11 +13,11 @@
   <string>__STEEL_RAG_RUN_AS_GROUP__</string>
 
   <key>WorkingDirectory</key>
-  <string>__STEEL_RAG_REPO_DIR__</string>
+  <string>__STEEL_RAG_WORKING_DIR__</string>
 
   <key>ProgramArguments</key>
   <array>
-    <string>__STEEL_RAG_REPO_DIR__/deploy/macos/run-private-preview-app.sh</string>
+    <string>__STEEL_RAG_WRAPPER_PATH__</string>
   </array>
 
   <key>EnvironmentVariables</key>

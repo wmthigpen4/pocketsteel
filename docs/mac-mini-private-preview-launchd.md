@@ -23,7 +23,9 @@ The app service is designed as a system LaunchDaemon:
 - Label: `com.steelguitarrag.private-preview`
 - Bind host: `127.0.0.1`
 - Default port: `8770`
-- Entrypoint: `.venv/bin/python scripts/serve_v2_rerank_smoke.py`
+- LaunchDaemon program: `/usr/local/libexec/steel-guitar-rag/run-private-preview-app.sh`
+- LaunchDaemon working directory: `/usr/local/libexec/steel-guitar-rag`
+- App entrypoint from the wrapper: `.venv/bin/python scripts/serve_v2_rerank_smoke.py`
 - Auth provider: `cloudflare_access`
 - Answer auth mode: `production`
 - Default Chroma path: `corpus-v2/vector-stores/chroma`
@@ -31,6 +33,8 @@ The app service is designed as a system LaunchDaemon:
 - Durable logs:
   - `~/Library/Logs/steel-guitar-rag/app.out.log`
   - `~/Library/Logs/steel-guitar-rag/app.err.log`
+
+The repo-managed wrapper is copied to `/usr/local/libexec/steel-guitar-rag/run-private-preview-app.sh` during `install`. The LaunchDaemon runs that installed copy instead of executing directly from `~/Documents/Pocket Steel`; this avoids macOS launchd/TCC failures seen when a system daemon tries to execute a program or use a working directory under `~/Documents`.
 
 The service wrapper reads `~/.steel-rag/env/private-preview.env` at runtime. That file must stay outside the repo and must not be pasted into handoffs, issues, prompts, shell history, or screenshots.
 
@@ -45,11 +49,19 @@ plutil -lint /tmp/com.steelguitarrag.private-preview.plist
 
 Review the rendered plist for paths only. Do not put secrets in the plist.
 
-Install the plist and create the durable log directory:
+Install the daemon-safe wrapper copy, plist, and durable log directory:
 
 ```bash
 deploy/macos/install-private-preview-launchdaemon.sh install
 ```
+
+The default installed wrapper path is:
+
+```text
+/usr/local/libexec/steel-guitar-rag/run-private-preview-app.sh
+```
+
+The installed wrapper is root-owned and executable, while runtime env values stay in `~/.steel-rag/env/private-preview.env`.
 
 Load it:
 
@@ -70,6 +82,17 @@ deploy/macos/install-private-preview-launchdaemon.sh unload
 ```
 
 The installer intentionally keeps privileged actions explicit. It uses `sudo` only for `/Library/LaunchDaemons`, launchctl system-domain operations, and log-directory ownership setup.
+
+It also uses `sudo` to install the non-secret wrapper copy under `/usr/local/libexec/steel-guitar-rag`.
+
+If launchd can execute the installed wrapper but the wrapper later fails to `cd` into `~/Documents/Pocket Steel`, the remaining issue is the runtime checkout location rather than the wrapper. In that case, move or create an operator-approved runtime checkout outside TCC-sensitive folders, then reinstall with:
+
+```bash
+STEEL_RAG_REPO_DIR=/Users/cory/steel-guitar-rag-runtime \
+deploy/macos/install-private-preview-launchdaemon.sh install
+```
+
+Do not copy private env files, Cloudflare tokens, Chroma/vector stores, private corpus, or generated artifacts into a new runtime path unless that exact data move is separately approved.
 
 ## Service Status And Logs
 

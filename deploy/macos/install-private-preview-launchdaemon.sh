@@ -23,8 +23,11 @@ STEEL_RAG_LOG_DIR="${STEEL_RAG_LOG_DIR:-$STEEL_RAG_USER_HOME/Library/Logs/steel-
 STEEL_RAG_HOST="${STEEL_RAG_HOST:-127.0.0.1}"
 STEEL_RAG_PORT="${STEEL_RAG_PORT:-8770}"
 STEEL_RAG_PLIST_PATH="${STEEL_RAG_PLIST_PATH:-/Library/LaunchDaemons/$STEEL_RAG_LABEL.plist}"
+STEEL_RAG_WRAPPER_INSTALL_DIR="${STEEL_RAG_WRAPPER_INSTALL_DIR:-/usr/local/libexec/steel-guitar-rag}"
+STEEL_RAG_WRAPPER_PATH="${STEEL_RAG_WRAPPER_PATH:-$STEEL_RAG_WRAPPER_INSTALL_DIR/run-private-preview-app.sh}"
+STEEL_RAG_WORKING_DIR="${STEEL_RAG_WORKING_DIR:-$STEEL_RAG_WRAPPER_INSTALL_DIR}"
 TEMPLATE_PATH="$SCRIPT_DIR/com.steelguitarrag.private-preview.plist.template"
-WRAPPER_PATH="$STEEL_RAG_REPO_DIR/deploy/macos/run-private-preview-app.sh"
+WRAPPER_SOURCE_PATH="$STEEL_RAG_REPO_DIR/deploy/macos/run-private-preview-app.sh"
 
 usage() {
   cat <<USAGE
@@ -48,6 +51,9 @@ Environment overrides:
   STEEL_RAG_HOST=$STEEL_RAG_HOST
   STEEL_RAG_PORT=$STEEL_RAG_PORT
   STEEL_RAG_PLIST_PATH=$STEEL_RAG_PLIST_PATH
+  STEEL_RAG_WRAPPER_INSTALL_DIR=$STEEL_RAG_WRAPPER_INSTALL_DIR
+  STEEL_RAG_WRAPPER_PATH=$STEEL_RAG_WRAPPER_PATH
+  STEEL_RAG_WORKING_DIR=$STEEL_RAG_WORKING_DIR
 USAGE
 }
 
@@ -60,8 +66,8 @@ require_host_config() {
     printf 'Missing plist template: %s\n' "$TEMPLATE_PATH" >&2
     exit 1
   }
-  [[ -x "$WRAPPER_PATH" ]] || {
-    printf 'Missing executable wrapper: %s\n' "$WRAPPER_PATH" >&2
+  [[ -x "$WRAPPER_SOURCE_PATH" ]] || {
+    printf 'Missing executable wrapper source: %s\n' "$WRAPPER_SOURCE_PATH" >&2
     exit 1
   }
   if [[ "$STEEL_RAG_HOST" != "127.0.0.1" ]]; then
@@ -80,6 +86,8 @@ render_plist() {
   STEEL_RAG_LOG_DIR="$STEEL_RAG_LOG_DIR" \
   STEEL_RAG_HOST="$STEEL_RAG_HOST" \
   STEEL_RAG_PORT="$STEEL_RAG_PORT" \
+  STEEL_RAG_WRAPPER_PATH="$STEEL_RAG_WRAPPER_PATH" \
+  STEEL_RAG_WORKING_DIR="$STEEL_RAG_WORKING_DIR" \
   python3 - "$TEMPLATE_PATH" <<'PY'
 import os
 import sys
@@ -95,6 +103,8 @@ replacements = {
     "__STEEL_RAG_LOG_DIR__": os.environ["STEEL_RAG_LOG_DIR"],
     "__STEEL_RAG_HOST__": os.environ["STEEL_RAG_HOST"],
     "__STEEL_RAG_PORT__": os.environ["STEEL_RAG_PORT"],
+    "__STEEL_RAG_WRAPPER_PATH__": os.environ["STEEL_RAG_WRAPPER_PATH"],
+    "__STEEL_RAG_WORKING_DIR__": os.environ["STEEL_RAG_WORKING_DIR"],
 }
 for old, new in replacements.items():
     template = template.replace(old, new)
@@ -111,9 +121,13 @@ install_plist() {
   if [[ ! -r "$STEEL_RAG_ENV_FILE" ]]; then
     printf 'Warning: env file is not readable yet: %s\n' "$STEEL_RAG_ENV_FILE" >&2
   fi
+  sudo install -d -o root -g wheel -m 0755 "$STEEL_RAG_WRAPPER_INSTALL_DIR"
+  sudo install -o root -g wheel -m 0755 "$WRAPPER_SOURCE_PATH" "$STEEL_RAG_WRAPPER_PATH"
+  sudo xattr -d com.apple.quarantine "$STEEL_RAG_WRAPPER_PATH" 2>/dev/null || true
   sudo install -d -o "$STEEL_RAG_RUN_AS_USER" -g "$STEEL_RAG_RUN_AS_GROUP" -m 0755 "$STEEL_RAG_LOG_DIR"
   sudo install -o root -g wheel -m 0644 "$tmp" "$STEEL_RAG_PLIST_PATH"
   rm -f "$tmp"
+  printf 'Installed %s\n' "$STEEL_RAG_WRAPPER_PATH"
   printf 'Installed %s\n' "$STEEL_RAG_PLIST_PATH"
   printf 'Next: %s load\n' "$0"
 }
