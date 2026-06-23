@@ -2,9 +2,15 @@
 
 ## Pass / warn / fail
 
-**Blocked / fail for browser smoke completion.**
+**Pass with warnings.**
 
-The runtime was successfully refreshed to the intended current HEAD `1c0bbd6`, but authenticated protected-preview browser smoke could not proceed because the in-app browser landed on the Cloudflare Access login page for the exact protected-preview URL.
+Authenticated Cloudflare Access protected-preview browser smoke completed after the app LaunchDaemon was refreshed to the intended implementation commit `1c0bbd6`.
+
+Warnings:
+
+- Root `https://app.steelguitarrag.com/?v=1c0bbd6` redirects to `/ui/steel-guitar-rag-mock.html` and drops the query string. The redirected root surface displayed older prompt-chip copy. Use the direct cache-busted `/ui/...?...` URL for smoke.
+- `Show me a G major grip.` is fretboard-first and does not show a rendered tab/code block, but the fretboard detail exposes technical `tab_example_event` / `Tab event` wording. Route this learner-facing metadata leak to Lane 06 or Lane 05 depending on ownership of the payload/detail contract.
+- Ab/A-flat prose normalizes correctly, but the fretboard card labels canonicalize the enharmonic chord as `G# major`. This is technically equivalent but may be a UX copy decision for Lane 06 / Lane 18.
 
 API fallback was not used as browser-smoke proof.
 
@@ -14,21 +20,23 @@ Requested:
 
 - Confirm Lane 15 QA approval for the smoke-feedback implementation state.
 - Refresh the protected-preview runtime to the intended committed HEAD.
-- Run authenticated Cloudflare Access browser smoke for the main app, Explorer, and prompt matrix.
+- Run authenticated Cloudflare Access browser smoke for the main app, Explorer, root behavior, and prompt matrix.
 
 Completed:
 
 - Confirmed Lane 15 QA passed with warning at `1c0bbd6`.
-- Confirmed starting HEAD was `1c0bbd6`.
-- Confirmed running runtime was stale at `ddd7953`.
+- Confirmed starting HEAD before runtime refresh was `1c0bbd6`.
+- Confirmed the running runtime was stale at `ddd7953`.
 - Restarted the launchd-supervised app process by terminating stale PID `72903`; launchd restarted it as PID `94266`.
-- Confirmed `/api/version` now reports `1c0bbd6`.
+- Confirmed `/api/version` reports `1c0bbd6` locally and through protected preview.
 - Confirmed listener is Python on `127.0.0.1:8770`.
 - Confirmed LaunchDaemon owns the app runtime.
 - Confirmed manual `screen` runtime is absent.
 - Confirmed Cloudflare Tunnel process is running.
-- Attempted protected-preview browser smoke at the exact current-HEAD main app URL.
-- Stopped before prompt smoke because Cloudflare Access login blocked the browser session.
+- Ran authenticated protected-preview browser smoke at the exact cache-busted main app URL.
+- Ran root behavior check.
+- Ran Explorer direct-route and main-page click-through checks.
+- Ran the full protected-preview answer prompt matrix.
 
 Intentionally not changed:
 
@@ -52,23 +60,19 @@ Lane 15 result:
 ## Branch and commits
 
 - Branch: `feature/answer-api`
-- Starting HEAD: `1c0bbd6`
+- Starting implementation HEAD: `1c0bbd6`
+- Current repo HEAD after blocked-smoke handoff commit: `cc884b2`
 - Runtime commit expected: `1c0bbd6`
 - Runtime commit reported after restart: `1c0bbd6`
 
 Recent commits inspected:
 
 ```text
+cc884b2 docs: record final smoke feedback protected preview
 1c0bbd6 fix: separate backstage and fretboard header actions
 2d3d662 fix: expose all explorer keys and backstage link
 5031f43 fix: normalize accidentals and route flat-key string groupings
 0c050ee fix: polish smoke feedback UI and explorer controls
-3811a8c docs: refresh harmonized scale integration status
-2728154 docs: record post-restart harmonized scale smoke
-ddd7953 docs: record displayed harmonized scale protected smoke
-0ad025f fix: prevent harmonized scale fallback display
-4d58cda docs: record browser harmonized scale protected smoke
-db6ae81 fix: route browser harmonized scale prompts deterministically
 ```
 
 ## Runtime refresh evidence
@@ -78,7 +82,7 @@ Before refresh:
 - `/api/version`: `git_sha=ddd7953`
 - Listener PID: `72903`
 - PID start time: `Tue Jun 23 13:18:17 2026`
-- Runtime was stale relative to current HEAD `1c0bbd6`.
+- Runtime was stale relative to implementation HEAD `1c0bbd6`.
 
 Restart path:
 
@@ -132,68 +136,107 @@ Cloudflare Tunnel:
 ## Smoke Target
 
 - Target type: protected-preview
-- Result type: browser smoke attempted, blocked by Cloudflare Access login
+- Result type: browser smoke
 - Exact browser URL tested: `https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=1c0bbd6`
 - Cache-busted URL tested: `https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=1c0bbd6`
-- Exact URL the user should use after login: `https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=1c0bbd6`
+- Exact URL the user should use: `https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=1c0bbd6`
 - Auth required: yes
 - Auth provider: Cloudflare Access
-- Cloudflare Access login result: blocked; in-app browser landed on Cloudflare Access login.
+- Cloudflare Access login result: succeeded after user completed login in the in-app browser.
 - Local backend URL: `http://127.0.0.1:8770`
 - Expected backend port: `8770`
 - Expected git HEAD: `1c0bbd6`
-- Version endpoint: `http://127.0.0.1:8770/api/version`
-- Version endpoint result: `git_sha=1c0bbd6`, `git_branch=feature/answer-api`, `auth_provider=cloudflare_access`, `retrieval_mode=hybrid_private_first`
+- Version endpoint: `/api/version`
+- Version endpoint result: protected preview and local loopback both report `git_sha=1c0bbd6`, `git_branch=feature/answer-api`, `auth_provider=cloudflare_access`, `retrieval_mode=hybrid_private_first`
 - If version endpoint missing, how version is inferred: not applicable
-- Whether app root `/` works: not browser-smoked after restart because Cloudflare Access login blocked the browser session
-- Whether app root `/` is expected to work: yes, but root should not be used as the only cache-busted smoke URL
-- Whether `/ui/steel-guitar-rag-mock.html` works: not verified through authenticated browser after restart because login blocked the browser session
-- Whether `/ui/steel-guitar-rag-mock.html` is expected to work: yes
-- Who should test this URL: the user after completing Cloudflare Access login, or Lane 12 once an authenticated browser session is available
-- Do not test these URLs: do not treat local `127.0.0.1` or unauthenticated API fallback as protected-preview browser smoke
-- Known caveats: runtime is current, but protected-preview UI behavior remains unverified due to Access login.
+- Whether app root `/` works: yes, but with cache-bust caveat.
+- Whether app root `/` is expected to work: yes as a convenience redirect, but not as the only cache-busted smoke target.
+- Whether `/ui/steel-guitar-rag-mock.html` works: yes.
+- Whether `/ui/steel-guitar-rag-mock.html` is expected to work: yes.
+- Who should test this URL: the user and Lane 12.
+- Do not test these URLs: do not treat local `127.0.0.1` or unauthenticated API fallback as protected-preview browser smoke.
+- Known caveats: root drops the query string; use direct `/ui/...?...` URLs for exact asset/version smoke.
 
-## Exact URLs prepared
+## Exact URLs tested
 
 - Main app: `https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=1c0bbd6`
 - Explorer: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=1c0bbd6`
 - Root: `https://app.steelguitarrag.com/?v=1c0bbd6`
+- Protected version: `https://app.steelguitarrag.com/api/version`
 
-## Issue-by-issue smoke status
+## Main UI smoke
 
-| Area | Status | Evidence |
+| Check | Status | Evidence |
 |---|---|---|
-| Runtime current at intended HEAD | Pass | `/api/version` reports `1c0bbd6`. |
-| launchd supervision | Pass | `launchctl print system/com.steelguitarrag.private-preview` reports running PID `94266`. |
-| Manual screen runtime absent | Pass | `screen -ls` reports no sockets. |
-| Cloudflare Tunnel running | Pass | `com.cloudflare.cloudflared` LaunchDaemon and `cloudflared` process are running; token redacted. |
-| Cloudflare Access login | Blocked | In-app browser landed on Cloudflare Access login for main app URL. |
-| Main app UI smoke | Not run | Blocked before app shell by Access login. |
-| Prompt matrix | Not run | Blocked before Q&A by Access login. |
-| Explorer smoke | Not run | Blocked at authentication stage for protected preview. |
-| Root behavior | Not run | Blocked at authentication stage for protected preview. |
+| Cloudflare Access login | Pass | App shell loaded after user completed login. |
+| Q&A/search visible and primary | Pass | Main app showed prompt textbox and Ask control. |
+| `Go Backstage` exists | Pass | Button text `Go Backstage`; `aria-controls="backstage"`. |
+| `Explore Fretboard` exists as separate upper-right control | Pass | Header link text `Explore Fretboard`. |
+| Explorer link points to Explorer route | Pass | Link href `/ui/e9-fretboard-explorer.html`. |
+| Explorer link opens Explorer route | Pass | Click-through loaded `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html`. |
+| Old large Explorer callout styling gone | Pass | `Open Fretboard Explorer` / large callout copy absent on direct cache-busted main URL. |
+| Removed prompt chip `Explain this lick like a steel player would` absent | Pass | Not present. |
+| Removed prompt chip `Show me a smoother turnaround` absent | Pass | Not present. |
+| Visible prompt chips are self-contained | Pass | Direct cache-busted main URL showed current self-contained prompt chips. |
+| Console/page errors | Pass | No relevant browser console errors captured. |
 
-## Prompt results
+Root behavior:
 
-Prompt matrix was not run through protected-preview browser because Cloudflare Access login blocked the in-app browser.
+- `https://app.steelguitarrag.com/?v=1c0bbd6` redirected to `https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html`.
+- Query string was dropped.
+- The redirected root surface displayed older prompt-chip copy.
+- Use `https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=1c0bbd6` for exact cache-busted user smoke.
 
-Prompts still requiring authenticated protected-preview smoke:
+## Prompt matrix results
 
-1. `Show me an A-flat major string grouping.`
-2. `Show me an A♭ major string grouping.`
-3. `Show me an Ab major string grouping.`
-4. `Show me C♯ major on E9.`
-5. `Show me C# major on E9.`
-6. `Show me a G harmonized scale.`
-7. `Show me a G natural minor harmonized scale.`
-8. `Show me the F# diminished position in G.`
-9. `Show me the A diminished position in G minor.`
-10. `Show me a G harmonized scale on strings 5 and 8.`
-11. `Show me a G major grip.`
-12. `Show me a G to C move.`
-13. `Give me a beginner lick in G.`
-14. `Give me the full tab for a modern copyrighted song.`
-15. `What are good Fender Steel King settings?`
+| # | Prompt | Status | Evidence |
+|---|---|---|---|
+| 1 | `Show me an A-flat major string grouping.` | Pass with caveat | No generic fallback. Direct Ab prose. Fretboard rendered. No warnings. No code/tab block. Caveat: fretboard labels canonicalize enharmonically as `G# major`. |
+| 2 | `Show me an A♭ major string grouping.` | Pass with caveat | Same as A-flat. No generic fallback. Fretboard rendered. No source cards. No warnings. Caveat: `G# major` fretboard labels. |
+| 3 | `Show me an Ab major string grouping.` | Pass with caveat | Same as A-flat. No generic fallback. Fretboard rendered. No source cards. No warnings. Caveat: `G# major` fretboard labels. |
+| 4 | `Show me C♯ major on E9.` | Pass | No generic fallback. C# major deterministic answer. Fretboard rendered. No source cards, warning, or tab block. |
+| 5 | `Show me C# major on E9.` | Pass | Same as C-sharp symbol prompt. No generic fallback. Fretboard rendered. |
+| 6 | `Show me a G harmonized scale.` | Pass | No generic fallback. Static fretboard-first answer. No source cards, warning, or tab block. Includes F# diminished m7b5 guard text. |
+| 7 | `Show me a G natural minor harmonized scale.` | Pass | No generic fallback. Static fretboard-first answer. No source cards, warning, or tab block. Includes A diminished m7b5 guard text. |
+| 8 | `Show me the F# diminished position in G.` | Pass | No generic fallback. Fretboard rendered. No source cards, warning, or tab block. Explicitly says diminished triad, not full F#m7b5. |
+| 9 | `Show me the A diminished position in G minor.` | Pass | No generic fallback. Fretboard rendered. No source cards, warning, or tab block. Explicitly says diminished triad, not full Am7b5. |
+| 10 | `Show me a G harmonized scale on strings 5 and 8.` | Pass | No generic fallback. Static 5&8 branch answer. No source cards, warning, or tab block. Includes corrected 13th-fret E-lower branch. |
+| 11 | `Show me a G major grip.` | Warn | Fretboard-first and no rendered tab/code block. However visible fretboard details expose `tab_example_event` / `Tab event` wording, which violates the no-internal-metadata expectation. |
+| 12 | `Show me a G to C move.` | Pass | Movement prompt rendered deterministic tab plus matching fretboard. No source cards or warning. |
+| 13 | `Give me a beginner lick in G.` | Pass | Beginner lick rendered direct prose, deterministic tab, and matching fretboard. A+B action uses strings 5 and 6, not string 8. |
+| 14 | `Give me the full tab for a modern copyrighted song.` | Pass | Refused/redirected safely. No source cards, warnings, or rendered tab block. No answer-body routing to a source answer. |
+| 15 | `What are good Fender Steel King settings?` | Pass | Gear answer rendered normally with source cards. No stale tab block and no stale fretboard answer payload. |
+
+Shared prompt checks:
+
+- No `[object Object]` appeared.
+- No generic fallback appeared.
+- No relevant console/page errors appeared.
+- Deterministic grip/exercise answers were source-free where expected.
+- Gear answer remained source-backed where expected.
+- Copyright/full-tab request refused safely.
+
+## Explorer smoke
+
+Exact URL:
+
+`https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=1c0bbd6`
+
+| Check | Status | Evidence |
+|---|---|---|
+| Explorer loads through Cloudflare Access | Pass | Page title `E9 Fretboard Explorer - Steel Guitar RAG`. |
+| Multiple string groups can be selected | Pass | Selected `3-4-5` and `4-5-6` together; rows filtered to those groups. |
+| 5&8 branch positions grouped with 2-string harmonized scale | Pass | Harmony option text `5&8 branch positions (2-string)`. |
+| 5&8 branch mode rows | Pass | Fret 6 A+E-raise, fret 8 E-lower, fret 11 A+E-raise, and fret 13 E-lower rows visible. |
+| Advanced swaps explanation | Pass | Learner-facing advanced swaps / E-lower pocket copy visible. |
+| Internal validation/RAG copy | Pass | No `RAG-generated`, `corpus retrieval`, or raw internal branch id leak. |
+| m7b5 / vii / partial / degree symbol help text | Pass | Glossary/help text visible for diminished and half-diminished concepts. |
+| Starter/common/advanced filters | Pass | No standalone confusing filter controls exposed; core and advanced groups are separated. |
+| All pitch classes in key selector | Pass | Key selector includes `C`, `C#`, `Db`, `D`, `D#`, `Eb`, `E`, `F`, `F#`, `Gb`, `G`, `G#`, `Ab`, `A`, `A#`, `Bb`, `B`. |
+| No raw `five_eight_branch` label leak | Pass | Not visible. |
+| No `E-lower+E-lower` | Pass | Not visible. |
+| No `[object Object]` | Pass | Not visible. |
+| Console/page errors | Pass | No relevant browser console errors captured. |
 
 ## Checks run
 
@@ -215,42 +258,50 @@ Prompts still requiring authenticated protected-preview smoke:
 - `pgrep -fl cloudflared || true`
 - `git diff --check`
 - Browser navigation to `https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=1c0bbd6`
+- Browser navigation to `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=1c0bbd6`
+- Browser navigation to `https://app.steelguitarrag.com/?v=1c0bbd6`
+- Browser navigation to `https://app.steelguitarrag.com/api/version`
 
 ## Files changed
 
-- Created `docs/handoffs/task-completions/2026-06-23-12-smoke-feedback-protected-preview-final.md`.
+- Updated `docs/handoffs/task-completions/2026-06-23-12-smoke-feedback-protected-preview-final.md`.
 
 No implementation files were changed.
 
 ## Risks
 
-Risk: medium.
+Risk: low to medium.
 
 Reasons:
 
-- Runtime was successfully refreshed and is current at `1c0bbd6`.
-- Protected-preview browser smoke remains incomplete because Cloudflare Access login blocked the browser session.
-- API/local checks do not prove protected-preview UI behavior.
+- Runtime is current at `1c0bbd6`.
+- Protected-preview browser smoke completed through Cloudflare Access.
+- Most functional checks passed.
+- Remaining warnings are smoke UX/copy concerns, not runtime blockers.
+
+Remaining risks:
+
+- Root redirect drops cache-bust and can show stale prompt-chip copy.
+- Static G major grip answer exposes `tab_example_event` / `Tab event` technical detail.
+- Ab/A-flat fretboard labels use enharmonic `G# major` labels while prose uses Ab.
 
 ## Blockers
 
-Primary blocker:
+No runtime/deployment blocker remains.
 
-- Authenticated Cloudflare Access browser session is required before Lane 12 can complete the requested full smoke-feedback matrix.
+Potential product/UX follow-ups:
 
-Not a blocker:
-
-- Runtime version is now current.
-- LaunchDaemon is running.
-- Cloudflare Tunnel is running.
+- Lane 06 / Lane 05: hide or avoid `tab_example_event` / `Tab event` technical wording for static grip fretboard details.
+- Lane 06 / Lane 18: decide whether Ab/A-flat fretboard cards should display requested flat spelling instead of enharmonic `G# major`.
+- Lane 12 / Lane 06: decide whether root redirect should preserve query strings to avoid stale root smoke.
 
 ## Human decision needed
 
-Yes.
+No for Lane 12 runtime readiness.
 
-Decision needed:
+Optional decisions:
 
-- Complete Cloudflare Access login in the in-app browser, then rerun Lane 12 protected-preview smoke at `https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=1c0bbd6`.
+- Whether the warning items above should block user smoke or be routed as follow-up UX bugs.
 
 ## Safe-to-stage files
 
@@ -267,14 +318,19 @@ Decision needed:
 
 ## Recommended next lane
 
-Lane 12 Self-Hosted Deployment.
+Lane 01 Repo Steward.
 
-Recommended next prompt after Cloudflare Access login is completed:
+Recommended next prompt:
 
 ```text
-Lane 12: Continue protected-preview smoke for the smoke-feedback matrix now that Cloudflare Access login is complete. Runtime is already refreshed to 1c0bbd6. Use https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=1c0bbd6 and write/update docs/handoffs/task-completions/2026-06-23-12-smoke-feedback-protected-preview-final.md.
+Lane 01: Refresh integration-status.md after Lane 12 completed protected-preview smoke at runtime 1c0bbd6. Record pass-with-warnings, preserve unrelated dirty work, and stage only the integration-status refresh.
 ```
+
+If the warning items should be fixed before user smoke, route them first:
+
+- Lane 06 for root/query-string UX, stale prompt-chip presentation, and visible internal `tab_example_event` wording.
+- Lane 18 if the Ab/G# enharmonic display needs a product policy decision.
 
 ## Commit readiness
 
-Safe to commit as a docs-only blocked-smoke handoff.
+Safe to commit as a docs-only protected-preview smoke handoff update.
