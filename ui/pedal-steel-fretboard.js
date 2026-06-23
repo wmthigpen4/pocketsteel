@@ -676,7 +676,12 @@
         .filter((item) => !item.endsWith(": "));
       return [...preferred, ...remaining].join(" / ");
     }
-    return String(detail || "").trim();
+    return learnerFacingMetadataText(String(detail || "").trim());
+  }
+
+  function learnerFacingMetadataText(text) {
+    return String(text || "")
+      .replace(/\bfive_eight_branch\b/g, "5&8 branch");
   }
 
   function compareEntryKeys([left], [right]) {

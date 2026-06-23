@@ -247,7 +247,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "E9 Fretboard Explorer" in html
     assert "Validated Explorer data" in html
     assert "not corpus retrieval or RAG-generated fretboard positions" in html
-    assert '<script src="pedal-steel-fretboard.js?v=fretboard-svg-cache-bust-20260623b"></script>' in html
+    assert '<script src="pedal-steel-fretboard.js?v=five-eight-label-leak-fix-20260623"></script>' in html
     assert "pedal-steel-fretboard.js?v=e9-explorer-explanation-ui-20260623" not in html
     assert '<script src="e9-fretboard-explorer-data.js?v=g-five-eight-ui-20260623"></script>' in html
     assert '<script src="e9-fretboard-explorer.js?v=g-five-eight-ui-20260623"></script>' in html

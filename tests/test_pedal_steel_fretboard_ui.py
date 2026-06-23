@@ -954,6 +954,36 @@ assert.doesNotMatch(html, /\\[object Object\\]/);
     run_node(script)
 
 
+def test_five_eight_branch_internal_label_is_hidden_from_fretboard_cards() -> None:
+    script = component_eval_script(
+        """
+const positions = [{
+  id: "g-five-eight-branch-6",
+  label: "G on strings 5-8",
+  fret: 6,
+  strings: [5, 8],
+  grip: "5-8",
+  pedals: ["A"],
+  levers: ["E-raise"],
+  notes: ["G", "B"],
+  intervals: ["1", "3"],
+  tier: "advanced",
+  tierReason: "five_eight_branch",
+  positionKind: "five_eight_branch",
+  visibleByDefault: true,
+  colorRole: "alternate"
+}];
+const html = fretboard.renderPedalSteelFretboard({ positions });
+assert.match(html, /5&amp;8 branch/);
+assert.match(html, /advanced: 5&amp;8 branch/);
+assert.doesNotMatch(html, /five_eight_branch/);
+assert.doesNotMatch(html, />[^<]*five_eight_branch[^<]*</);
+"""
+    )
+
+    run_node(script)
+
+
 def test_advanced_filter_and_safe_nested_values_render_without_object_text() -> None:
     script = component_eval_script(
         """
