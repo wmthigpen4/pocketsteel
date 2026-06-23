@@ -1,12 +1,14 @@
 (function () {
   "use strict";
 
-  const payload = window.STEEL_RAG_E9_EXPLORER_PAYLOAD;
+  const payloadsByKey = window.STEEL_RAG_E9_EXPLORER_PAYLOADS || {};
+  const fallbackPayload = window.STEEL_RAG_E9_EXPLORER_PAYLOAD;
   const fretboardApi = window.STEEL_RAG_FRETBOARD;
 
   const CORE_GROUPS = new Set(["3-4-5", "4-5-6", "5-6-8", "6-8-10"]);
   const ADVANCED_GROUPS = new Set(["5-6-7", "6-7-10", "5-7-8"]);
   const TWO_STRING_GROUPS = new Set(["3-5", "5-6", "6-10", "4-6", "3-4"]);
+  const KEY_ORDER = ["G", "C", "D", "F", "Bb", "Eb"];
   const HARMONY_LABELS = {
     two_string_harmonized: "2-string harmonized scale",
     three_string_diatonic: "3-string diatonic harmony",
@@ -28,6 +30,22 @@
 
   let selectedRowId = "";
   let currentRows = [];
+
+  function availableKeys() {
+    const keys = Object.keys(payloadsByKey);
+    if (keys.length) {
+      return KEY_ORDER.filter((key) => keys.includes(key)).concat(keys.filter((key) => !KEY_ORDER.includes(key)).sort());
+    }
+    return fallbackPayload?.query?.key ? [fallbackPayload.query.key] : [];
+  }
+
+  function activePayload() {
+    return payloadsByKey[els.key.value] || fallbackPayload || null;
+  }
+
+  function activeKey() {
+    return activePayload()?.query?.key || els.key.value || "G";
+  }
 
   function toArray(value) {
     return Array.isArray(value) ? value.filter(Boolean) : [];
@@ -79,7 +97,9 @@
   }
 
   function rowsForScale(scale) {
-    return payload?.positions?.filter((row) => row.key === "G" && row.scale_type === scale) || [];
+    const payload = activePayload();
+    const key = activeKey();
+    return payload?.positions?.filter((row) => row.key === key && row.scale_type === scale) || [];
   }
 
   function rowMatchesHarmony(row, harmony) {
@@ -124,6 +144,30 @@
     }
   }
 
+  function updateKeyOptions() {
+    const keys = availableKeys();
+    const currentValue = els.key.value || "G";
+    if (!keys.length) {
+      return;
+    }
+    els.key.innerHTML = keys.map((key) => option(key, key, currentValue)).join("");
+    if (!keys.includes(currentValue)) {
+      els.key.value = keys.includes("G") ? "G" : keys[0];
+    }
+  }
+
+  function updateScaleLabels() {
+    const key = activeKey();
+    Array.from(els.scale.options).forEach((item) => {
+      if (item.value === "major") {
+        item.text = `${key} major`;
+      }
+      if (item.value === "natural_minor") {
+        item.text = `${key} natural minor`;
+      }
+    });
+  }
+
   function updateStringGroupOptions() {
     const scale = els.scale.value;
     const harmony = els.harmony.value;
@@ -146,21 +190,24 @@
   }
 
   function updateControls() {
+    updateScaleLabels();
     updateHarmonyOptions();
     updateStringGroupOptions();
   }
 
   function getRows() {
+    const payload = activePayload();
     if (!payload || !Array.isArray(payload.positions)) {
       return [];
     }
 
+    const key = activeKey();
     const scale = els.scale.value;
     const harmony = els.harmony.value;
     const stringGroup = els.stringGroup.value;
 
     return payload.positions
-      .filter((row) => row.key === "G")
+      .filter((row) => row.key === key)
       .filter((row) => row.scale_type === scale)
       .filter((row) => rowMatchesHarmony(row, harmony))
       .filter((row) => {
@@ -179,6 +226,7 @@
   }
 
   function getScaleNotes() {
+    const payload = activePayload();
     const notes = payload?.query?.display_scale_notes?.[els.scale.value];
     return Array.isArray(notes) ? notes.join(" ") : "Unavailable";
   }
@@ -388,8 +436,8 @@
       description: "Deterministic E9 Explorer data. This is not corpus or RAG output.",
       positions: rows.map(asFretboardPosition),
       highlights: [],
-      legend: payload.legend || [],
-      query: payload.query || {},
+      legend: activePayload()?.legend || [],
+      query: activePayload()?.query || {},
       hideFilterControls: true,
       showHighlightLabels: false,
     });
@@ -424,12 +472,17 @@
   }
 
   function init() {
-    if (!payload) {
+    if (!activePayload()) {
       els.empty.hidden = false;
       els.empty.textContent = "Explorer data failed to load.";
       return;
     }
 
+    updateKeyOptions();
+    els.key.addEventListener("change", () => {
+      updateControls();
+      render();
+    });
     els.scale.addEventListener("change", () => {
       updateControls();
       render();

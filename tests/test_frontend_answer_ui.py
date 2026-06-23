@@ -234,14 +234,18 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     html = Path("ui/e9-fretboard-explorer.html").read_text(encoding="utf-8")
     script = Path("ui/e9-fretboard-explorer.js").read_text(encoding="utf-8")
     data = Path("ui/e9-fretboard-explorer-data.js").read_text(encoding="utf-8")
-    payload = json.loads(data.split(" = ", 1)[1].rsplit(";", 1)[0])
+    payloads = json.loads(data.split("window.STEEL_RAG_E9_EXPLORER_PAYLOADS = ", 1)[1].split(";\nwindow.", 1)[0])
+    payload = payloads["G"]
 
     assert "E9 Fretboard Explorer" in html
     assert "Validated Explorer data" in html
     assert "not corpus retrieval or RAG-generated fretboard positions" in html
-    assert '<script src="pedal-steel-fretboard.js?v=e9-explorer-tooltip-detail-ux-20260622"></script>' in html
-    assert '<script src="e9-fretboard-explorer-data.js?v=e9-explorer-tooltip-detail-ux-20260622"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=e9-explorer-tooltip-detail-ux-20260622"></script>' in html
+    assert '<script src="pedal-steel-fretboard.js?v=e9-explorer-expanded-key-ui-20260623"></script>' in html
+    assert '<script src="e9-fretboard-explorer-data.js?v=e9-explorer-expanded-key-ui-20260623"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=e9-explorer-expanded-key-ui-20260623"></script>' in html
+    for key in ["G", "C", "D", "F", "Bb", "Eb"]:
+        assert f'<option value="{key}"' in html
+        assert key in payloads
     assert '<option value="major">G major</option>' in html
     assert '<option value="natural_minor">G natural minor</option>' in html
     assert '<option value="two_string_harmonized">2-string harmonized scale</option>' in html
@@ -262,6 +266,9 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "display_scale_notes" in script
     assert "per_string_changes" in script
     assert "warnings" in script
+    assert "STEEL_RAG_E9_EXPLORER_PAYLOADS" in data
+    assert "availableKeys" in script
+    assert "activePayload" in script
     assert "pitch_validated" in data
     assert "hideFilterControls: true" in script
     assert "showHighlightLabels: false" in script
@@ -273,6 +280,9 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
 
     assert payload["query"]["display_scale_notes"]["natural_minor"] == ["G", "A", "Bb", "C", "D", "Eb", "F"]
     assert payload["query"]["display_scale_notes"]["natural_minor"] != ["G", "A", "A#", "C", "D", "D#", "F"]
+    assert payloads["C"]["query"]["display_scale_notes"]["natural_minor"] == ["C", "D", "Eb", "F", "G", "Ab", "Bb"]
+    assert payloads["Bb"]["query"]["display_scale_notes"]["major"] == ["Bb", "C", "D", "Eb", "F", "G", "A"]
+    assert payloads["Eb"]["query"]["display_scale_notes"]["major"] == ["Eb", "F", "G", "Ab", "Bb", "C", "D"]
     assert any(row["string_group"] == "5-7-8" and row["harmony_type"] == "advanced_pocket" for row in payload["positions"])
     assert any(row.get("warnings") for row in payload["positions"])
     assert all(row["pitch_validated"] is True for row in payload["positions"])
@@ -384,7 +394,14 @@ class FakeMarker extends FakeButton {
 }
 
 const elements = {
-  "explorer-key": new FakeSelect("explorer-key", "G", [{ value: "G", text: "G only" }]),
+  "explorer-key": new FakeSelect("explorer-key", "G", [
+    { value: "G", text: "G" },
+    { value: "C", text: "C" },
+    { value: "D", text: "D" },
+    { value: "F", text: "F" },
+    { value: "Bb", text: "Bb" },
+    { value: "Eb", text: "Eb" }
+  ]),
   "explorer-scale": new FakeSelect("explorer-scale", "major", [
     { value: "major", text: "G major" },
     { value: "natural_minor", text: "G natural minor" }
@@ -426,6 +443,12 @@ vm.createContext(sandbox);
 vm.runInContext(fs.readFileSync("ui/e9-fretboard-explorer-data.js", "utf8"), sandbox);
 vm.runInContext(fs.readFileSync("ui/e9-fretboard-explorer.js", "utf8"), sandbox);
 
+assert.match(elements["explorer-key"].innerHTML, /value="G" selected/);
+assert.match(elements["explorer-key"].innerHTML, /value="C"/);
+assert.match(elements["explorer-key"].innerHTML, /value="D"/);
+assert.match(elements["explorer-key"].innerHTML, /value="F"/);
+assert.match(elements["explorer-key"].innerHTML, /value="Bb"/);
+assert.match(elements["explorer-key"].innerHTML, /value="Eb"/);
 assert.match(elements["explorer-string-group"].innerHTML, /All 3-string groups/);
 assert.match(elements["explorer-string-group"].innerHTML, /Core grips/);
 assert.match(elements["explorer-string-group"].innerHTML, /Advanced swaps/);
@@ -438,6 +461,28 @@ assert.match(elements["explorer-result-count"].textContent, /Showing validated p
 assert.doesNotMatch(elements["explorer-result-count"].textContent, /validated rows/);
 assert.match(elements["explorer-selected-detail"].textContent, /Display notes/);
 assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /Pitch validated/);
+
+const expectedMajorScales = {
+  C: "C D E F G A B",
+  D: "D E F# G A B C#",
+  F: "F G A Bb C D E",
+  Bb: "Bb C D Eb F G A",
+  Eb: "Eb F G Ab Bb C D"
+};
+for (const [key, scaleNotes] of Object.entries(expectedMajorScales)) {
+  elements["explorer-key"].value = key;
+  elements["explorer-key"].dispatchChange();
+  assert.equal(elements["explorer-scale-notes"].textContent, scaleNotes);
+  assert.equal(lastMount.options.query.key, key);
+  assert.equal(lastMount.options.positions.length > 0, true);
+  assert.equal(lastMount.options.positions.every((row) => row.key === key), true);
+  assert.equal(elements["explorer-empty"].hidden, true);
+  assert.doesNotMatch(elements["explorer-row-list"].textContent, /\[object Object\]/);
+}
+
+elements["explorer-key"].value = "G";
+elements["explorer-key"].dispatchChange();
+assert.match(elements["explorer-scale-notes"].textContent, /G A B C D E F#/);
 
 elements["explorer-string-group"].value = "4-5-6";
 elements["explorer-harmony"].value = "two_string_harmonized";

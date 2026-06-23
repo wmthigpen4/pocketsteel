@@ -342,7 +342,7 @@
       <div>
         <p class="explorer-kicker">Validated Explorer data</p>
         <h1>E9 Fretboard Explorer</h1>
-        <p class="explorer-lede">Browse deterministic G major and G natural-minor E9 positions. This surface uses validated Explorer rows, not corpus retrieval or RAG-generated fretboard positions.</p>
+        <p class="explorer-lede">Browse deterministic E9 positions for validated major and natural-minor keys. This surface uses validated Explorer rows, not corpus retrieval or RAG-generated fretboard positions.</p>
       </div>
       <a class="explorer-back" href="steel-guitar-rag-mock.html">Back to app</a>
     </header>
@@ -350,8 +350,13 @@
     <section class="explorer-controls" aria-label="Explorer controls">
       <div class="explorer-control">
         <label for="explorer-key">Key</label>
-        <select id="explorer-key" disabled>
-          <option value="G">G only</option>
+        <select id="explorer-key">
+          <option value="G" selected>G</option>
+          <option value="C">C</option>
+          <option value="D">D</option>
+          <option value="F">F</option>
+          <option value="Bb">Bb</option>
+          <option value="Eb">Eb</option>
         </select>
       </div>
       <div class="explorer-control">
@@ -405,8 +410,8 @@
     </section>
   </main>
 
-  <script src="pedal-steel-fretboard.js?v=e9-explorer-tooltip-detail-ux-20260622"></script>
-  <script src="e9-fretboard-explorer-data.js?v=e9-explorer-tooltip-detail-ux-20260622"></script>
-  <script src="e9-fretboard-explorer.js?v=e9-explorer-tooltip-detail-ux-20260622"></script>
+  <script src="pedal-steel-fretboard.js?v=e9-explorer-expanded-key-ui-20260623"></script>
+  <script src="e9-fretboard-explorer-data.js?v=e9-explorer-expanded-key-ui-20260623"></script>
+  <script src="e9-fretboard-explorer.js?v=e9-explorer-expanded-key-ui-20260623"></script>
 </body>
 </html>
