@@ -2,6 +2,147 @@
 
 Generated for ChatGPT reset/guidance on branch `feature/answer-api`.
 
+## 2026-06-23 E9 Fretboard Explorer / Harmony Guidance Snapshot
+
+- Current branch: `feature/answer-api`.
+- Current HEAD at this refresh: `e90e157 feat: expand e9 fretboard explorer keys`.
+- Latest relevant committed chain:
+  - `e90e157 feat: expand e9 fretboard explorer keys`
+  - `45a9b3d docs: record e9 explorer tooltip smoke`
+  - `d9afa2b fix: refresh e9 explorer tooltip asset cache-bust`
+  - `3aaae9a fix: improve e9 explorer marker details`
+  - `7c56156 docs: record E9 explorer final protected smoke`
+  - `c1bea83 fix: refresh e9 explorer preview asset cache-bust`
+  - `5a3ed58 docs: record E9 explorer user-smoke protected QA`
+  - `7622a9b fix: improve e9 explorer smoke usability`
+  - `5fb23e2 docs: update E9 explorer protected-preview smoke`
+  - `7bb46b8 docs: record E9 explorer protected-preview smoke`
+  - `a9dfd70 docs: record E9 explorer browser smoke`
+  - `a5389f2 feat: add e9 fretboard explorer surface`
+  - `a3fc8a4 fix: render explorer display spellings in fretboard UI`
+  - `c42b236 fix: add key-aware explorer display spelling`
+
+### E9 Harmony Knowledge File Status
+
+- `docs/llm-guidance/e9_harmonized_scales_and_diatonic_harmony_knowledge.md` exists.
+- It was created from user-provided/local transcript-derived guidance, then VTT-enhanced in `2026-06-22-1158-18-e9-harmony-vtt-source-mining.md`.
+- It was conflict-audited in `2026-06-22-e9-harmony-conflict-audit.md`.
+- It was cleaned up in `2026-06-22-e9-harmony-guidance-conflict-fixes.md`.
+- Current status: guidance material only, not structured runtime truth.
+- Corpus/Chroma/embedding status: not ingested, not chunked, not embedded, not connected to Chroma/vector stores, and not wired into RAG/source-card behavior.
+- Ingestion caveat: exact fret/string/pedal tables still require table-wide pitch validation before any corpus or runtime use.
+
+### Deterministic Explorer Backend Status
+
+- `pocketsteel/fretboard_explorer.py` is implemented as deterministic E9 Explorer logic independent from RAG/corpus retrieval.
+- Initial MVP implemented G-focused rows and validation:
+  - G major 2-string harmonized rows;
+  - G major 3-string diatonic rows;
+  - G natural minor 3-string diatonic rows;
+  - advanced swaps including `5-6-7`, `6-7-10`, and `5-7-8`;
+  - `5-7-8` advanced/E-lower pocket rows.
+- Musical truth is owned by pitch validation and standard E9 mechanics in code. RAG/corpus material is not used as a source of fret/string/pedal truth.
+- Current HEAD `e90e157` expands backend row generation beyond G through `build_explorer_payload(key)` / `explorer_rows(key)` for supported learner-facing keys. The original G helper functions remain for compatibility.
+- Supported backend key spellings currently include `C`, `C#`, `Db`, `D`, `D#`, `Eb`, `E`, `F`, `F#`, `Gb`, `G`, `G#`, `Ab`, `A`, `A#`, `Bb`, and `B`.
+- Latest key-expansion status: implementation committed, but Lane 15 QA for key expansion is the next validation step.
+
+### Display Spelling Status
+
+- Learner-facing display fields are implemented:
+  - `display_notes`
+  - `display_top_voice`
+  - `display_summary`
+  - `query.display_scale_notes`
+- G natural minor learner-facing output shows `G A Bb C D Eb F`.
+- Internal canonical validation remains unchanged; canonical pitch names can remain sharp-oriented while display fields provide key-aware spellings.
+- UI rendering prefers display fields for learner-facing text where Explorer payloads provide them.
+
+### Explorer UI Status
+
+- Browser-accessible Explorer surface exists at `/ui/e9-fretboard-explorer.html`.
+- Current canonical protected-preview tooltip/detail URL:
+  - `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=e9-explorer-tooltip-detail-ux-20260622`
+- UI surface includes controls for key, scale, harmony/view, and string group.
+- Important current caveat: `ui/e9-fretboard-explorer-data.js` and `ui/e9-fretboard-explorer.js` still represent the browser fixture/controller as G-oriented. The backend key expansion is committed, but the current browser surface has not yet exposed expanded keys through refreshed data/controller UI.
+- Implemented UI behaviors:
+  - browser-accessible Explorer page;
+  - G-only key control for the current static browser surface;
+  - scale selector for G major and G natural minor;
+  - harmony/view selector for 2-string harmonized scale and 3-string diatonic harmony;
+  - mode-aware string-group filtering;
+  - core grips separated from advanced swaps;
+  - `5-7-8` advanced/E-lower pocket presentation;
+  - compact row buttons plus selected-detail panel;
+  - marker tooltip/detail UX with accessible marker buttons;
+  - dense SVG labels suppressed on the Explorer surface;
+  - validated Explorer wording that does not imply RAG generated deterministic rows.
+
+### Protected-Preview Status
+
+- Protected-preview Explorer route exists.
+- Several cache-bust/static refreshes were needed because the outer HTML URL cache-bust did not refresh internal script query strings.
+- User-smoke UI fixes initially failed protected-preview smoke due stale internal script URLs, then passed after cache-bust refresh.
+- Tooltip/detail UX protected-preview refresh passed in `2026-06-22-e9-fretboard-explorer-tooltip-detail-preview-refresh.md`.
+- Final Lane 15 protected-preview smoke for tooltip/detail UX passed in `2026-06-22-e9-fretboard-explorer-tooltip-detail-protected-smoke.md`.
+- Latest protected-preview tooltip/detail smoke target that passed:
+  - `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=e9-explorer-tooltip-detail-ux-20260622`
+- Current HEAD `e90e157` key expansion has not yet been protected-preview smoked or exposed in the browser fixture.
+
+### Tests / QA Status
+
+- Latest reported full pytest counts from relevant handoffs:
+  - backend Explorer slice: `784 passed`;
+  - display-field UI slice: `787 passed`;
+  - browser surface: `790 passed`;
+  - user-smoke UI fixes / protected refresh / tooltip-detail UX: `791 passed`;
+  - current key-expansion backend slice: `795 passed`.
+- Relevant test files:
+  - `tests/test_fretboard_explorer.py`
+  - `tests/test_frontend_answer_ui.py`
+  - `tests/test_pedal_steel_fretboard_ui.py`
+- Latest known pass/warn/fail state:
+  - Harmony guidance: warn as internal guidance only until validated/ingested deliberately.
+  - Explorer backend MVP/display/UI/protected-preview tooltip-detail UX: pass.
+  - Backend key expansion at `e90e157`: implemented and reported `795 passed`, but still needs Lane 15 QA and then UI exposure if product scope continues.
+
+### Known Risks / Open Issues
+
+- Backend key expansion is committed but not yet Lane 15 QA-reviewed in a dedicated key-expansion QA handoff.
+- Browser Explorer surface still appears G-oriented through the static data fixture/controller, so expanded keys are not yet exposed in the UI.
+- Explanation panel using deterministic rows is not started.
+- Corpus/chunking/embedding/Chroma ingestion of the harmony markdown is not started and should remain blocked until structured validation and ingestion design are approved.
+- Landing-page Explorer link/card beyond the existing app mock entry remains deferred.
+- Harmony markdown should remain guidance until a structured ingestion decision is made.
+- Broad unrelated dirty/untracked worktree remains parked; exact-path staging is required.
+
+### Recommended Next Steps
+
+1. Lane 15 QA / Answer Eval: QA the committed Explorer key expansion at `e90e157`.
+2. Lane 06 UX/UI Design: expose expanded keys in the Explorer UI only after key-expansion QA passes.
+3. Lane 15 QA / Answer Eval: browser-smoke expanded-key UI after Lane 06 exposes it.
+4. Lane 05 Backend / RAG Integration: add an explanation panel using deterministic Explorer rows, not corpus as musical truth.
+5. Lane 02 / Lane 05: decide whether and how to ingest the harmony guidance markdown after validation.
+
+Exact next recommended prompt:
+
+```text
+Lane 15: QA the E9 Fretboard Explorer key expansion at HEAD e90e157. Verify G behavior is unchanged, representative C/D/F/Bb major rows validate, C natural minor display spelling uses flats, advanced swaps remain gated, pitch validation owns musical truth, and no UI/corpus/deployment/private-source files changed. Run focused Explorer tests and full pytest if practical. Write a QA handoff with exact safe-to-stage guidance if any docs are created.
+```
+
+### Safe-To-Stage For This Refresh
+
+- `docs/handoffs/task-completions/integration-status.md`
+- `docs/handoffs/task-completions/2026-06-22-e9-explorer-integration-status-refresh.md`
+
+### Files Not To Stage For This Refresh
+
+- Any unrelated dirty/untracked files.
+- App code.
+- Tests.
+- `corpus-private/`, `corpus-v2/`, Chroma/vector stores, embeddings, generated corpus outputs, scraper output, source-inbox raw/provenance files.
+- Deployment/auth/DNS/secrets files.
+- `public/`, `ui/brand/`, `Neon Sign/`, raw design assets, generated visual assets, and unrelated UI/assets.
+
 ## 2026-06-19 Repo Steward Review / Next Slice Gate
 
 - Review start HEAD: `d10fb85 docs: refresh integration status after landing smoke`.
