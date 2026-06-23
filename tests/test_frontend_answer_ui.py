@@ -226,8 +226,15 @@ def test_answer_ui_links_to_e9_fretboard_explorer_surface() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
 
     assert "Explore the E9 Fretboard" in html
-    assert 'href="e9-fretboard-explorer.html"' in html
+    assert "Choose a key, scale, harmony type, and string group to see validated E9 positions visually." in html
+    assert "Open Fretboard Explorer" in html
+    assert 'href="/ui/e9-fretboard-explorer.html"' in html
     assert "explorer-entry" in html
+    assert "explorer-entry-card" in html
+    assert "not corpus retrieval or RAG-generated fretboard positions" not in html
+    assert "[object Object]" not in html
+    assert html.index('class="prompt-shell"') < html.index('class="explorer-entry-card"')
+    assert html.index('id="question"') < html.index("Open Fretboard Explorer")
 
 
 def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() -> None:
