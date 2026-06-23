@@ -5,34 +5,31 @@ Generated for ChatGPT reset/guidance on branch `feature/answer-api`.
 ## Current State
 
 - Current branch: `feature/answer-api`.
-- Current repo HEAD at this refresh: `7db94f7 docs: record restored header font protected smoke`.
-- Latest protected-preview smoke docs commit: `7db94f7`.
-- Runtime smoked: `706d8cd`.
-- Protected-preview status: **pass with product caveat**.
-- User-smoke status: **allowed; evaluate the restored header font behavior in user smoke**.
-- App control state: **can be parked if the restored inherited header font is acceptable**.
+- Current repo HEAD at this refresh: `94fc745 docs: record explorer rendering filter protected smoke`.
+- Latest protected-preview smoke docs commit: `94fc745`.
+- Runtime smoked: `283468b`.
+- Protected-preview status: **PASS**.
+- User-smoke status: **allowed**.
+- App control state: **can be parked with known caveats**.
 - Broad unrelated dirty/untracked work remains parked. Do not broad-stage.
 
 ## Runtime / Deployment
 
 - Cloudflare Access login: succeeded.
-- LaunchDaemon runtime refreshed from stale `b547178` to `706d8cd`.
-- `/api/version` reports `706d8cd`.
+- Runtime refreshed from stale `f2581f8` to committed runtime `283468b`.
+- `/api/version` reports `283468b`.
 - Main app loaded through protected preview.
 - Explorer loaded through protected preview.
-- Header buttons use the restored accepted inherited typography behavior.
-- Rejected explicit neutral stack from `b547178` is gone.
-- Explorer checks passed.
-- Prompt spot checks passed.
-- LaunchDaemon owns the app runtime.
-- Manual screen runtime is absent.
-- Cloudflare Tunnel is running.
+- Explorer rendering/filter state passed.
+- Main app spot check passed.
+- Prompt matrix spot checks passed.
+- Brand/app routing remains usable through direct protected-preview UI paths.
 - No backend, UI, deployment, auth, DNS, corpus, Chroma/vector store, embeddings, scraping, private-source, source-inbox, or paid transcript files were changed by this refresh.
 
 Latest runtime identity from Lane 12:
 
 ```text
-git_sha=706d8cd
+git_sha=283468b
 git_branch=feature/answer-api
 auth_provider=cloudflare_access
 retrieval_mode=hybrid_private_first
@@ -42,79 +39,65 @@ retrieval_mode=hybrid_private_first
 
 Latest Lane 12 handoff:
 
-- `docs/handoffs/task-completions/2026-06-23-12-restored-header-font-protected-smoke.md`
-- Handoff commit: `7db94f7 docs: record restored header font protected smoke`
-- Runtime smoked: `706d8cd`
-- Result: **pass with product caveat**
+- `docs/handoffs/task-completions/2026-06-23-12-explorer-rendering-filter-protected-smoke.md`
+- Handoff/docs commit: `94fc745 docs: record explorer rendering filter protected smoke`
+- Runtime smoked: `283468b`
+- Result: **PASS**
 - API fallback: not used as browser-smoke proof
 
 Smoke URLs:
 
 ```text
-Main app:
-https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=706d8cd
+Explorer:
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=283468b
 
-E9 Fretboard Explorer:
-https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=706d8cd
+Main app:
+https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=283468b
 
 Root:
-https://app.steelguitarrag.com/?v=706d8cd
+https://app.steelguitarrag.com/?v=283468b
 ```
 
 Root caveat:
 
-- `https://app.steelguitarrag.com/?v=706d8cd` redirects to `/ui/steel-guitar-rag-mock.html`.
+- `https://app.steelguitarrag.com/?v=283468b` redirects to `/ui/steel-guitar-rag-mock.html`.
 - The root redirect drops the query string.
 - Use direct cache-busted `/ui/...?...` URLs when exact cache-busting matters.
 
-## Restored Header Font Smoke Result
+## Explorer Rendering / Filter Result
 
-Passed:
+Lane 12 verified the protected-preview Explorer state at runtime `283468b`:
 
-- Cloudflare Access protected-preview login.
-- Main app shell and Q&A surface.
-- Root redirect behavior observed.
-- Header button restored font behavior:
-  - `Explore Fretboard` and `Go Backstage` use the restored inherited app-page typography behavior.
-  - Both controls inherit the app font stack beginning with `Gill Sans`.
-  - The rejected explicit neutral system stack from `b547178` is no longer present.
-  - `Explore Fretboard` remains visible in the upper-right header area and links to `/ui/e9-fretboard-explorer.html`.
-  - `Go Backstage` remains a separate header action and opens/toggles Backstage/settings.
-- Explorer checks:
-  - Explorer loaded through Cloudflare Access.
-  - 12 combined key choices present.
-  - No duplicate accidental key list.
-  - No standalone 5&8 branch option in Harmony/View.
-  - Bad internal deterministic/source-card copy absent.
-  - No relevant browser console errors.
-- Prompt spot checks:
-  - `Show me a G major grip.` passed.
-  - `Show me a G to C move.` passed.
-  - `Give me the full tab for a modern copyrighted song.` passed.
+- G major, `3-string diatonic harmony`, all groups: `34` cards / `34` SVG highlights.
+- G major, `2-string groups`, all groups: `44` cards / `44` SVG highlights.
+- G major, `2-string groups`, `5-8`: `4` cards / `4` SVG highlights.
+- Returning to `3-string diatonic harmony` reset group selection to all and rendered `34` cards / `34` SVG highlights.
+- `5-8` appears under `2-string groups`, not as a standalone `5&8` Harmony/View option.
+- No visible raw `five_eight_branch`.
+- No `[object Object]`.
+- No browser console errors.
 
-Product caveat:
+Main app spot checks also passed through the protected-preview UI:
 
-- Restored behavior inherits the app font stack beginning with `Gill Sans`.
-- This is intentional for this slice and matches the requested prior accepted mechanism from git history.
-- If user smoke rejects it, next step is a product decision on the exact explicit button font before another Lane 06 pass.
+- `Show me a G major grip.`
+- `Show me a G to C move.`
+- `Give me the full tab for a modern copyrighted song.`
 
-Known caveats preserved:
+Known observation:
 
-1. Root URL redirects to `/ui/steel-guitar-rag-mock.html` and drops the query string.
-2. Restored header font inherits the Gill Sans-backed app stack.
-3. Exact explicit button font remains a product decision only if user smoke rejects this restored behavior.
+- Source-free responses still show the empty `Source notes / No sources returned` section. Lane 12 did not classify this as a populated source-card leak.
 
 ## Caveat Routing
 
-- Root cache-bust behavior: Lane 12 Self-Hosted Deployment.
-- Header button exact explicit font decision, if restored behavior is rejected: Product decision first, then Lane 06 UX/UI Design.
+- Root cache-bust redirect behavior: Lane 12 Self-Hosted Deployment.
+- Empty source-note section for source-free answers, if product wants it hidden: Lane 06 UX/UI Design.
 
 ## Current Git / Worktree Notes
 
 Current checked state at this refresh:
 
 - Branch: `feature/answer-api`.
-- Repo HEAD: `7db94f7`.
+- Repo HEAD before this docs refresh: `94fc745`.
 - Cached index before this docs refresh: empty.
 - `git diff --check`: to be run for this docs refresh.
 
@@ -133,12 +116,12 @@ Do not stage parked work unless a later exact-scope handoff approves it.
 
 No hard protected-preview blocker is known from the latest Lane 12 smoke.
 
-This is not a clean pass because the restored inherited header font remains a product caveat for user smoke.
+This is a protected-preview **PASS** with the root cache-bust caveat preserved.
 
 ## Safe To Stage For This Refresh
 
 - `docs/handoffs/task-completions/integration-status.md`
-- `docs/handoffs/task-completions/2026-06-23-01-restored-header-font-integration-refresh.md`
+- `docs/handoffs/task-completions/2026-06-23-01-explorer-rendering-filter-integration-refresh.md`
 
 ## Files Not To Stage For This Refresh
 
@@ -150,19 +133,16 @@ This is not a clean pass because the restored inherited header font remains a pr
 
 ## Recommended Control State
 
-Park the app if the restored inherited header font is acceptable in user smoke.
+Park the app with known caveats.
 
 Use these exact URLs after Cloudflare Access login:
 
 ```text
-Main app:
-https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=706d8cd
+Explorer:
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=283468b
 
-E9 Fretboard Explorer:
-https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=706d8cd
+Main app:
+https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=283468b
 ```
 
-Route follow-up work by lane:
-
-- Lane 12 for root cache-bust/redirect behavior.
-- Product decision first, then Lane 06, if the exact explicit header button font needs to change.
+For cache-busted validation, prefer direct `/ui/...?...` URLs because root redirects to `/ui/steel-guitar-rag-mock.html` and drops query strings.
