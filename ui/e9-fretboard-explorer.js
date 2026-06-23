@@ -130,15 +130,24 @@
     return Array.from(allowedGroups).filter((group) => present.has(group));
   }
 
-  function option(value, label, selectedValue) {
-    return `<option value="${escapeHtml(value)}"${value === selectedValue ? " selected" : ""}>${escapeHtml(label)}</option>`;
+  function option(value, label, selectedValues) {
+    const values = Array.isArray(selectedValues) ? selectedValues : [selectedValues];
+    return `<option value="${escapeHtml(value)}"${values.includes(value) ? " selected" : ""}>${escapeHtml(label)}</option>`;
   }
 
-  function optionGroup(label, groups, selectedValue) {
+  function optionGroup(label, groups, selectedValues) {
     if (!groups.length) {
       return "";
     }
-    return `<optgroup label="${escapeHtml(label)}">${groups.map((group) => option(group, group, selectedValue)).join("")}</optgroup>`;
+    return `<optgroup label="${escapeHtml(label)}">${groups.map((group) => option(group, group, selectedValues)).join("")}</optgroup>`;
+  }
+
+  function selectedStringGroups() {
+    const options = Array.from(els.stringGroup.options || []);
+    const selected = options
+      .filter((item) => item.selected && item.value !== "all")
+      .map((item) => item.value);
+    return selected.length ? selected : [];
   }
 
   function updateHarmonyOptions() {
@@ -180,26 +189,32 @@
     const scale = els.scale.value;
     const harmony = els.harmony.value;
     const rows = rowsForScaleAndHarmony(scale, harmony);
-    const currentValue = els.stringGroup.value;
+    const currentValues = selectedStringGroups();
     const allLabel = harmony === "two_string_harmonized"
       ? "All 2-string groups"
       : harmony === "five_eight_branch"
         ? "All 5&8 branch positions"
         : "All 3-string groups";
-    let html = option("all", allLabel, currentValue);
+    const selectedValues = currentValues.length ? currentValues : ["all"];
+    let html = option("all", allLabel, selectedValues);
 
     if (harmony === "two_string_harmonized") {
-      html += optionGroup("2-string groups", uniqueGroups(rows, TWO_STRING_GROUPS), currentValue);
+      html += optionGroup("2-string groups", uniqueGroups(rows, TWO_STRING_GROUPS), selectedValues);
     } else if (harmony === "five_eight_branch") {
-      html += optionGroup("5&8 branch", uniqueGroups(rows, FIVE_EIGHT_GROUPS), currentValue);
+      html += optionGroup("5&8 branch", uniqueGroups(rows, FIVE_EIGHT_GROUPS), selectedValues);
     } else {
-      html += optionGroup("Core grips", uniqueGroups(rows, CORE_GROUPS), currentValue);
-      html += optionGroup("Advanced swaps", uniqueGroups(rows, ADVANCED_GROUPS), currentValue);
+      html += optionGroup("Core grips", uniqueGroups(rows, CORE_GROUPS), selectedValues);
+      html += optionGroup("Advanced swaps", uniqueGroups(rows, ADVANCED_GROUPS), selectedValues);
     }
 
     els.stringGroup.innerHTML = html;
-    if (!Array.from(els.stringGroup.options).some((item) => item.value === currentValue)) {
-      els.stringGroup.value = "all";
+    const validSelected = selectedStringGroups();
+    if (!validSelected.length) {
+      const allOption = Array.from(els.stringGroup.options || []).find((item) => item.value === "all");
+      if (allOption) {
+        allOption.selected = true;
+        els.stringGroup.value = "all";
+      }
     }
   }
 
@@ -218,17 +233,17 @@
     const key = activeKey();
     const scale = els.scale.value;
     const harmony = els.harmony.value;
-    const stringGroup = els.stringGroup.value;
+    const stringGroups = selectedStringGroups();
 
     return payload.positions
       .filter((row) => row.key === key)
       .filter((row) => row.scale_type === scale)
       .filter((row) => rowMatchesHarmony(row, harmony))
       .filter((row) => {
-        if (stringGroup === "all") {
+        if (!stringGroups.length) {
           return true;
         }
-        return row.string_group === stringGroup;
+        return stringGroups.includes(row.string_group);
       })
       .sort((a, b) => {
         const byFret = Number(a.fret || 0) - Number(b.fret || 0);

@@ -127,6 +127,18 @@
       font-weight: 700;
     }
 
+    .explorer-control select[multiple] {
+      min-height: 112px;
+      padding: 8px 10px;
+    }
+
+    .explorer-control-help {
+      margin: 0;
+      color: rgba(255, 247, 232, 0.6);
+      font-size: 0.78rem;
+      line-height: 1.45;
+    }
+
     .explorer-summary {
       display: flex;
       flex-wrap: wrap;
@@ -337,6 +349,33 @@
       line-height: 1.6;
     }
 
+    .explorer-help-grid {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .explorer-help-card {
+      border: 1px solid rgba(246, 190, 88, 0.18);
+      border-radius: 14px;
+      padding: 13px 14px;
+      background: rgba(0, 0, 0, 0.22);
+      color: rgba(255, 247, 232, 0.7);
+      font-size: 0.88rem;
+      line-height: 1.55;
+    }
+
+    .explorer-help-card strong {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--gold);
+      font-size: 0.78rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
     @media (max-width: 760px) {
       .explorer-shell {
         width: min(100% - 20px, 1180px);
@@ -355,6 +394,10 @@
         grid-template-columns: 1fr;
       }
 
+      .explorer-help-grid {
+        grid-template-columns: 1fr;
+      }
+
       .explorer-detail-row {
         grid-template-columns: 1fr;
       }
@@ -367,7 +410,7 @@
       <div>
         <p class="explorer-kicker">Validated Explorer data</p>
         <h1>E9 Fretboard Explorer</h1>
-        <p class="explorer-lede">Browse deterministic E9 positions for validated major and natural-minor keys. This surface uses validated Explorer rows, not corpus retrieval or RAG-generated fretboard positions.</p>
+        <p class="explorer-lede">Choose a key, scale, harmony type, and string group to see E9 positions that have been checked against tuning and pedal/lever changes. These Explorer rows are deterministic teaching data, separate from source-card answers.</p>
       </div>
       <a class="explorer-back" href="steel-guitar-rag-mock.html">Back to app</a>
     </header>
@@ -395,13 +438,13 @@
         <label for="explorer-harmony">Harmony / view</label>
         <select id="explorer-harmony">
           <option value="two_string_harmonized">2-string harmonized scale</option>
-          <option value="five_eight_branch">5&amp;8 branch positions</option>
+          <option value="five_eight_branch">5&amp;8 branch positions (2-string)</option>
           <option value="three_string_diatonic" selected>3-string diatonic harmony</option>
         </select>
       </div>
       <div class="explorer-control">
         <label for="explorer-string-group">String group</label>
-        <select id="explorer-string-group">
+        <select id="explorer-string-group" multiple size="6" aria-describedby="explorer-string-group-help">
           <option value="all" selected>All 3-string groups</option>
           <optgroup label="Core grips">
             <option value="3-4-5">3-4-5</option>
@@ -415,6 +458,7 @@
             <option value="5-7-8">5-7-8</option>
           </optgroup>
         </select>
+        <p class="explorer-control-help" id="explorer-string-group-help">Select one or more groups. Leave All selected to show every group in this view.</p>
       </div>
     </section>
 
@@ -432,7 +476,11 @@
     <section class="explorer-details" aria-label="Explorer position details">
       <div class="explorer-row-list" id="explorer-row-list" aria-label="Explorer row details"></div>
       <div class="explorer-selected-detail" id="explorer-selected-detail" aria-live="polite"></div>
-      <p class="explorer-note">Core grips are separated from advanced swaps. The 5-7-8 grip is shown only as an advanced E-lower pocket, and warning text remains visible on partial diminished or partial m7b5 rows.</p>
+      <p class="explorer-note">Core grips are common string sets. Advanced swaps use less direct string combinations or lever/pocket logic; 5-7-8 is shown only as an advanced E-lower pocket. The 5&amp;8 branch positions are a 2-string harmonized-scale branch shown separately because they use a distinct E9 route.</p>
+      <div class="explorer-help-grid" aria-label="Explorer shorthand help">
+        <p class="explorer-help-card"><strong>Shorthand</strong> m7b5 means minor seven flat five. The ø symbol means half-diminished, which is another common label for m7b5. The ° symbol means diminished; vii° means the diminished chord built on the seventh scale degree.</p>
+        <p class="explorer-help-card"><strong>Partial rows</strong> Partial means the row does not contain every chord tone by itself. Use the warning text to see whether a row is partial diminished, partial m7b5, rootless, or needs musical context.</p>
+      </div>
     </section>
   </main>
 

@@ -173,6 +173,14 @@
       filter: drop-shadow(0 0 12px rgba(240, 128, 24, 0.18)) drop-shadow(0 0 20px rgba(240, 191, 105, 0.1));
     }
 
+    .header-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      flex: 0 0 auto;
+    }
+
+    .explorer-header-link,
     .backstage-trigger {
       display: inline-flex;
       align-items: center;
@@ -187,8 +195,16 @@
       box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.26), 0 18px 48px rgba(0, 0, 0, 0.24);
     }
 
+    .explorer-header-link {
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
     .backstage-trigger:hover,
-    .backstage-trigger:focus-visible {
+    .backstage-trigger:focus-visible,
+    .explorer-header-link:hover,
+    .explorer-header-link:focus-visible {
       color: var(--cream);
       border-color: rgba(240, 191, 105, 0.62);
       background: rgba(240, 191, 105, 0.075);
@@ -1146,66 +1162,6 @@
       color: rgba(240, 191, 105, 0.9);
     }
 
-    .explorer-entry-card {
-      width: min(650px, 100%);
-      margin: 8px auto 0;
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      align-items: center;
-      gap: 16px;
-      border: 1px solid rgba(240, 191, 105, 0.24);
-      border-radius: 16px;
-      padding: 14px 16px;
-      background: rgba(10, 11, 11, 0.34);
-      text-align: left;
-      box-shadow: 0 18px 52px rgba(0, 0, 0, 0.22);
-    }
-
-    .explorer-entry-copy {
-      display: grid;
-      gap: 5px;
-      min-width: 0;
-    }
-
-    .explorer-entry-title {
-      margin: 0;
-      color: var(--cream);
-      font-size: 15px;
-      line-height: 1.25;
-      font-weight: 800;
-    }
-
-    .explorer-entry-description {
-      margin: 0;
-      color: rgba(244, 234, 214, 0.68);
-      font-size: 13px;
-      line-height: 1.42;
-    }
-
-    .explorer-entry {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 36px;
-      border: 1px solid rgba(240, 191, 105, 0.34);
-      border-radius: 999px;
-      padding: 0 13px;
-      background: rgba(240, 191, 105, 0.08);
-      color: rgba(244, 234, 214, 0.9);
-      font-size: 13px;
-      font-weight: 800;
-      white-space: nowrap;
-      text-decoration: none;
-    }
-
-    .explorer-entry:hover,
-    .explorer-entry:focus-visible {
-      border-color: rgba(240, 191, 105, 0.6);
-      background: rgba(240, 191, 105, 0.13);
-      color: var(--cream);
-      outline: none;
-    }
-
     .page.is-answering main {
       width: min(1060px, calc(100% - 32px));
       padding-top: 24px;
@@ -2010,6 +1966,16 @@
         padding: 0 12px;
       }
 
+      .header-actions {
+        gap: 8px;
+      }
+
+      .explorer-header-link {
+        min-height: 40px;
+        padding: 0 12px;
+        font-size: 13px;
+      }
+
       .backstage-overlay {
         padding: 12px;
         align-items: start;
@@ -2136,12 +2102,6 @@
         font-size: 14px;
       }
 
-      .explorer-entry-card {
-        grid-template-columns: 1fr;
-        justify-items: center;
-        text-align: center;
-      }
-
       .page.is-answering main {
         width: calc(100% - 28px);
         padding-top: 22px;
@@ -2236,10 +2196,13 @@
           </video>
         </button>
       </div>
-      <button class="backstage-trigger" type="button" aria-haspopup="dialog" aria-controls="backstage" aria-expanded="false">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5z"/><path d="M8 16h8"/><path d="M9 13l3-5 3 5"/><path d="M12 8v8"/></svg>
-        <span id="backstage-cta-label">Get a Backstage Pass</span>
-      </button>
+      <div class="header-actions">
+        <a class="explorer-header-link" href="/ui/e9-fretboard-explorer.html">Explore the E9 Fretboard</a>
+        <button class="backstage-trigger" type="button" aria-haspopup="dialog" aria-controls="backstage" aria-expanded="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5z"/><path d="M8 16h8"/><path d="M9 13l3-5 3 5"/><path d="M12 8v8"/></svg>
+          <span id="backstage-cta-label">Get a Backstage Pass</span>
+        </button>
+      </div>
     </header>
 
     <div class="hero-hanging-sign" aria-hidden="true">
@@ -2281,13 +2244,6 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 20 6v6c0 5-3.4 8-8 9-4.6-1-8-4-8-9V6l8-3Z"/><path d="m8.5 12 2.2 2.2 4.9-5"/></svg>
           <span>Answers draw from forum discussions, manuals, setup notes, copedents, and steel-specific sources.</span>
         </p>
-        <article class="explorer-entry-card" aria-labelledby="explorer-entry-title">
-          <div class="explorer-entry-copy">
-            <h2 class="explorer-entry-title" id="explorer-entry-title">Explore the E9 Fretboard</h2>
-            <p class="explorer-entry-description">Choose a key, scale, harmony type, and string group to see validated E9 positions visually.</p>
-          </div>
-          <a class="explorer-entry" href="/ui/e9-fretboard-explorer.html">Open Fretboard Explorer</a>
-        </article>
       </div>
 
       <section class="answer-workspace" id="answer-workspace" aria-label="Steel Guitar RAG answer workspace" hidden>
@@ -2917,9 +2873,9 @@
       { text: "Help me stop overplaying fills", topic: "Technique" },
       { text: "What are good uses for the 9th string?", topic: "Forum Wisdom" },
       { text: "Why does my tone sound thin?", topic: "Tone" },
-      { text: "Show me a smoother turnaround", topic: "Technique" },
+      { text: "Show me a G to C move on E9.", topic: "Technique" },
       { text: "How do players use the 6th string lower?", topic: "Forum Wisdom" },
-      { text: "Explain this lick like a steel player would", topic: "Technique" },
+      { text: "Explain a simple G turnaround on E9.", topic: "Technique" },
       { text: "Help me connect open position to pedals down", topic: "Technique" },
       { text: "What’s a good 20-minute practice routine?", topic: "Technique" },
       { text: "Why does my volume pedal feel awkward?", topic: "Tone" },

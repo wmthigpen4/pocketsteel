@@ -226,15 +226,14 @@ def test_answer_ui_links_to_e9_fretboard_explorer_surface() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
 
     assert "Explore the E9 Fretboard" in html
-    assert "Choose a key, scale, harmony type, and string group to see validated E9 positions visually." in html
-    assert "Open Fretboard Explorer" in html
     assert 'href="/ui/e9-fretboard-explorer.html"' in html
-    assert "explorer-entry" in html
-    assert "explorer-entry-card" in html
+    assert "explorer-header-link" in html
+    assert "Open Fretboard Explorer" not in html
+    assert "explorer-entry-card" not in html
     assert "not corpus retrieval or RAG-generated fretboard positions" not in html
     assert "[object Object]" not in html
-    assert html.index('class="prompt-shell"') < html.index('class="explorer-entry-card"')
-    assert html.index('id="question"') < html.index("Open Fretboard Explorer")
+    assert html.index("Explore the E9 Fretboard") < html.index('id="question"')
+    assert html.index("Explore the E9 Fretboard") < html.index("Get a Backstage Pass")
 
 
 def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() -> None:
@@ -246,7 +245,9 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
 
     assert "E9 Fretboard Explorer" in html
     assert "Validated Explorer data" in html
-    assert "not corpus retrieval or RAG-generated fretboard positions" in html
+    assert "checked against tuning and pedal/lever changes" in html
+    assert "separate from source-card answers" in html
+    assert "not corpus retrieval or RAG-generated fretboard positions" not in html
     assert '<script src="pedal-steel-fretboard.js?v=five-eight-label-leak-fix-20260623"></script>' in html
     assert "pedal-steel-fretboard.js?v=e9-explorer-explanation-ui-20260623" not in html
     assert '<script src="e9-fretboard-explorer-data.js?v=g-five-eight-ui-20260623"></script>' in html
@@ -257,12 +258,21 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<option value="major">G major</option>' in html
     assert '<option value="natural_minor">G natural minor</option>' in html
     assert '<option value="two_string_harmonized">2-string harmonized scale</option>' in html
-    assert '<option value="five_eight_branch">5&amp;8 branch positions</option>' in html
+    assert '<option value="five_eight_branch">5&amp;8 branch positions (2-string)</option>' in html
     assert '<option value="three_string_diatonic" selected>3-string diatonic harmony</option>' in html
+    assert '<select id="explorer-string-group" multiple size="6"' in html
+    assert "Select one or more groups" in html
     assert '<optgroup label="Core grips">' in html
     assert '<optgroup label="Advanced swaps">' in html
     assert '<option value="5-7-8">5-7-8</option>' in html
     assert '<option value="all" selected>All 3-string groups</option>' in html
+    assert "Advanced swaps use less direct string combinations" in html
+    assert "5&amp;8 branch positions are a 2-string harmonized-scale branch" in html
+    assert "m7b5 means minor seven flat five" in html
+    assert "The ø symbol means half-diminished" in html
+    assert "The ° symbol means diminished" in html
+    assert "vii° means the diminished chord built on the seventh scale degree" in html
+    assert "Partial means the row does not contain every chord tone" in html
     assert 'id="explorer-tooltip"' in html
     assert 'id="explorer-selected-detail"' in html
     assert "explorer-teaching-note" in html
@@ -287,6 +297,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "pitch_validated" in data
     assert "hideFilterControls: true" in script
     assert "showHighlightLabels: false" in script
+    assert "selectedStringGroups" in script
     assert "tooltipText" in script
     assert "selectedRowId" in script
     assert "Pitch validated" not in script
@@ -331,7 +342,22 @@ class FakeSelect {
   }
   dispatchChange() {
     this.selectedIndex = Math.max(0, this.options.findIndex((item) => item.value === this.value));
+    this.options.forEach((item) => {
+      item.selected = item.value === this.value;
+    });
     this.listeners.change();
+  }
+  selectValues(values) {
+    const selectedValues = new Set(values);
+    this.options.forEach((item) => {
+      item.selected = selectedValues.has(item.value);
+    });
+    this.value = values[0] || this.options[0]?.value || "";
+    this.selectedIndex = Math.max(0, this.options.findIndex((item) => item.value === this.value));
+    this.listeners.change();
+  }
+  get selectedOptions() {
+    return this.options.filter((item) => item.selected);
   }
   set innerHTML(value) {
     this._innerHTML = value;
@@ -431,7 +457,7 @@ const elements = {
   ]),
   "explorer-harmony": new FakeSelect("explorer-harmony", "three_string_diatonic", [
     { value: "two_string_harmonized", text: "2-string harmonized scale" },
-    { value: "five_eight_branch", text: "5&8 branch positions" },
+    { value: "five_eight_branch", text: "5&8 branch positions (2-string)" },
     { value: "three_string_diatonic", text: "3-string diatonic harmony" }
   ]),
   "explorer-string-group": new FakeSelect("explorer-string-group", "all", [{ value: "all", text: "All 3-string groups" }]),
@@ -513,7 +539,11 @@ elements["explorer-key"].value = "G";
 elements["explorer-key"].dispatchChange();
 assert.match(elements["explorer-scale-notes"].textContent, /G A B C D E F#/);
 
-elements["explorer-string-group"].value = "4-5-6";
+elements["explorer-string-group"].selectValues(["4-5-6", "5-6-8"]);
+assert.equal(lastMount.options.positions.every((row) => ["4-5-6", "5-6-8"].includes(row.grip)), true);
+assert.equal(lastMount.options.positions.some((row) => row.grip === "4-5-6"), true);
+assert.equal(lastMount.options.positions.some((row) => row.grip === "5-6-8"), true);
+
 elements["explorer-harmony"].value = "two_string_harmonized";
 elements["explorer-harmony"].dispatchChange();
 assert.equal(elements["explorer-string-group"].value, "all");
@@ -560,8 +590,7 @@ assert.equal(lastMount.options.positions.every((row) => row.grip === "5-8"), tru
 
 elements["explorer-harmony"].value = "three_string_diatonic";
 elements["explorer-harmony"].dispatchChange();
-elements["explorer-string-group"].value = "5-7-8";
-elements["explorer-string-group"].dispatchChange();
+elements["explorer-string-group"].selectValues(["5-7-8"]);
 assert.match(elements["explorer-selected-detail"].textContent, /Per-string changes/);
 assert.match(elements["explorer-selected-detail"].textContent, /Why this position works/);
 assert.match(elements["explorer-selected-detail"].textContent, /E-lower/);
@@ -1778,6 +1807,10 @@ def test_answer_ui_prompt_chips_submit_instead_of_only_filling_input() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
 
     assert "Show movement without sliding everywhere" in html
+    assert "Show me a G to C move on E9." in html
+    assert "Explain a simple G turnaround on E9." in html
+    assert "Show me a smoother turnaround" not in html
+    assert "Explain this lick like a steel player would" not in html
     assert 'button.type = "button";' in html
     assert "button.dataset.promptText = prompt.text;" in html
     assert "button.textContent = prompt.text;" in html
