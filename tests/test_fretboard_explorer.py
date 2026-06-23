@@ -15,6 +15,8 @@ from pocketsteel.fretboard_explorer import (
     g_major_three_string_rows,
     g_major_two_string_rows,
     g_natural_minor_three_string_rows,
+    normalize_explorer_key,
+    SUPPORTED_EXPLORER_KEYS,
     validate_explorer_candidate,
     validate_explorer_payload,
 )
@@ -25,6 +27,7 @@ REQUIRED_ROW_KEYS = {
     "key",
     "scale_type",
     "harmony_type",
+    "display_harmony_type",
     "scale_degree",
     "chord_function",
     "chord_name",
@@ -109,6 +112,25 @@ def test_transposed_major_payloads_validate_for_representative_keys() -> None:
         assert row["fret"] == expected_fret
         assert row["display_notes"] == expected_display_notes
         assert row["pitch_validated"] is True
+
+
+def test_explorer_backend_payloads_validate_for_all_supported_key_spellings() -> None:
+    unique_pitch_classes: set[int] = set()
+    for key in SUPPORTED_EXPLORER_KEYS:
+        payload = build_explorer_payload(key)
+        validate_explorer_payload(payload)
+
+        assert payload["query"]["key"] == key
+        assert key in payload["filters"]["available_keys"]
+        assert payload["positions"]
+        unique_pitch_classes.add(next(row["fret"] for row in payload["positions"] if row["chord_function"] == "I") % 12)
+
+    assert len(unique_pitch_classes) == 12
+
+
+def test_explorer_key_normalization_accepts_unicode_accidentals() -> None:
+    assert normalize_explorer_key("A♭") == "Ab"
+    assert normalize_explorer_key("C♯") == "C#"
 
 
 def test_transposed_natural_minor_payloads_use_key_aware_display_scale_notes() -> None:
@@ -513,6 +535,7 @@ def test_g_five_eight_branch_alternatives_keep_a_f_and_e_lower_routes() -> None:
     rows = [row.to_dict() for row in g_five_eight_branch_rows()]
 
     assert [row["harmony_type"] for row in rows] == ["five_eight_branch"] * 4
+    assert [row["display_harmony_type"] for row in rows] == ["two_string_harmonized"] * 4
     assert [row["string_group"] for row in rows] == ["5-8"] * 4
     assert [row["fret"] for row in rows] == [6, 8, 11, 13]
     assert [row["chord_function"] for row in rows] == [
@@ -564,6 +587,7 @@ def test_g_explorer_payload_includes_five_eight_branch_without_collapsing_routes
     assert "five_eight_branch" in payload["query"]["harmony_types"]
     assert "five_eight_branch" in payload["filters"]["available_harmony_types"]
     assert "5-8" in payload["query"]["string_groups"]
+    assert {row["display_harmony_type"] for row in branch_rows} == {"two_string_harmonized"}
 
     routes = {(tuple(row["pedals"]), tuple(row["levers"]), row["fret"]) for row in branch_rows}
     assert (("A",), ("E-raise",), 6) in routes

@@ -17,6 +17,7 @@ from pocketsteel.fretboard_examples import (
     note_at_fret,
     semitone_for_note,
 )
+from pocketsteel.music_text import normalize_spelled_accidentals
 
 
 ExplorerScaleType = Literal["major", "natural_minor"]
@@ -161,6 +162,7 @@ class ExplorerRow:
     source_guidance_refs: tuple[str, ...] = ()
     explanation_summary: str = ""
     warnings: tuple[str, ...] = ()
+    display_harmony_type: ExplorerHarmonyType = "two_string_harmonized"
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -168,6 +170,7 @@ class ExplorerRow:
             "key": self.key,
             "scale_type": self.scale_type,
             "harmony_type": self.harmony_type,
+            "display_harmony_type": self.display_harmony_type,
             "scale_degree": self.scale_degree,
             "chord_function": self.chord_function,
             "chord_name": self.chord_name,
@@ -221,7 +224,7 @@ def grip_label(strings: tuple[int, ...]) -> str:
 
 
 def normalize_explorer_key(key: str) -> str:
-    normalized = key.strip()
+    normalized = normalize_spelled_accidentals(key or "").strip()
     if not normalized:
         raise ValueError("Explorer key is required")
     normalized = normalized[0].upper() + normalized[1:]
@@ -233,7 +236,8 @@ def normalize_explorer_key(key: str) -> str:
 
 
 def key_slug(key: str) -> str:
-    return key.lower().replace("#", "sharp").replace("b", "flat")
+    normalized = normalize_explorer_key(key)
+    return f"{normalized[0].lower()}{normalized[1:].replace('#', 'sharp').replace('b', 'flat')}"
 
 
 def transpose_offset_from_g(key: str) -> int:
@@ -636,6 +640,9 @@ def validate_explorer_candidate(candidate: ExplorerCandidate) -> ExplorerRow:
         key=key,
         scale_type=candidate.scale_type,
         harmony_type=candidate.harmony_type,
+        display_harmony_type="two_string_harmonized"
+        if candidate.harmony_type == "five_eight_branch"
+        else candidate.harmony_type,
         scale_degree=candidate.scale_degree,
         chord_function=candidate.chord_function,
         chord_name=candidate.chord_name,

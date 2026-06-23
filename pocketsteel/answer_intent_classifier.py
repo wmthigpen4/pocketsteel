@@ -12,6 +12,8 @@ import re
 from dataclasses import asdict, dataclass
 from typing import Literal, TypedDict
 
+from pocketsteel.music_text import normalize_spelled_accidentals
+
 
 AnswerDomain = Literal["steel_guitar", "off_domain", "unsafe_or_impossible"]
 AnswerIntent = Literal[
@@ -233,8 +235,8 @@ POSITION_LANGUAGE_RE = re.compile(
     re.I,
 )
 CONCRETE_CHORD_RE = re.compile(
-    r"\b(?:[a-g](?:#|b|[-\s]+flat|[-\s]+sharp)?(?:\s*(?:major|minor|m|7|9|dim|diminished))?\s*(?:chord|positions?)|"
-    r"[a-g](?:#|b)?\s+on\s+e9|"
+    r"\b(?:[a-g](?:##|bb|#|b)?(?:\s*(?:major|minor|m|7|9|dim|diminished))?\s*(?:chord|positions?)|"
+    r"[a-g](?:##|bb|#|b)?\s+on\s+e9|"
     r"\d\s*m\s+chord|(?:vi|ii|iii|iv|v|i)\s+chord)\b",
     re.I,
 )
@@ -251,7 +253,7 @@ VISUAL_POSITION_RE = re.compile(
     re.I,
 )
 EXPLICIT_VISUAL_OBJECT_RE = re.compile(
-    r"\b(?:positions?|location|frets?|grips?|pockets?|chord\s+positions?|on\s+(?:the\s+)?e9|pedal\s+steel|1[-\s]?3[-\s]?5)\b",
+    r"\b(?:positions?|location|frets?|grips?|string\s+group(?:ing)?s?|pockets?|chord\s+positions?|on\s+(?:the\s+)?e9|pedal\s+steel|1[-\s]?3[-\s]?5)\b",
     re.I,
 )
 MISSING_CONTEXT_VISUAL_RE = re.compile(
@@ -260,7 +262,7 @@ MISSING_CONTEXT_VISUAL_RE = re.compile(
 )
 BUYING_RE = re.compile(r"\b(?:buy|where\s+can\s+i\s+buy|purchase|order|for\s+sale)\b", re.I)
 ROOTED_CHORD_QUALITY_RE = re.compile(
-    r"(?<![-\w])[a-g](?:#|b|[-\s]+flat|[-\s]+sharp)?\s*(?:"
+    r"(?<![-\w])[a-g](?:##|bb|#|b)?\s*(?:"
     r"dom\s*7|dom7|dominant\s*7|7th|7(?![-\w])|"
     r"maj\s*7|maj7|major\s*7|major\s*7th|major\s+seventh"
     r")(?![-\w])",
@@ -575,7 +577,7 @@ def _decision(
 
 
 def _normalize(question: str) -> str:
-    return re.sub(r"\s+", " ", question or "").strip().lower()
+    return re.sub(r"\s+", " ", normalize_spelled_accidentals(question or "")).strip().lower()
 
 
 def _mentions_steel(question: str) -> bool:
@@ -747,6 +749,8 @@ def _mentions_everyday_context_playing(question: str) -> bool:
 
 def _source_backed_steel_decision(question: str) -> AnswerIntentPayload | None:
     if re.search(r"\bhow\s+do\s+i\s+use\s+my\s+string\s+\d+\s+lower\b", question):
+        return None
+    if _mentions_visual_position(question):
         return None
 
     if PLAYER_CONTEXT_RE.search(question):

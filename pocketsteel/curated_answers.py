@@ -6,6 +6,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Literal
 
+from pocketsteel.music_text import normalize_spelled_accidentals
 from pocketsteel.basic_chord_answers import (
     basic_chord_theory_answer_for_question,
     chord_change_answer_for_question,
@@ -483,6 +484,7 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
         ab_position = next(position for position in positions if position["role"] == "A+B position")
         wants_across_fretboard = "across" in q and ("fretboard" in q or "guitar" in q or "neck" in q)
         wants_ab_specific = re.search(r"\b(?:a\s*\+\s*b|a\s+and\s+b)\b", q) is not None
+        wants_string_grouping = re.search(r"\bstring\s+group(?:ing)?s?\b|\bgrips?\b", q) is not None
         lower_ab_position = next(
             (
                 position
@@ -549,6 +551,13 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
                 "Terminology note: the A+F position is the A-pedal + F-lever position.",
             ]
         )
+        if wants_string_grouping:
+            lines.extend(
+                [
+                    "",
+                    f"For {display_key} major string groupings, start with 3-4-5, 4-5-6, 5-6-8, and 6-8-10. The fretboard view uses pitch validation before it shows each grip.",
+                ]
+            )
         if wants_across_fretboard and (lower_ab_position is not None or e_lower_position is not None):
             lines.extend(
                 [
@@ -2820,7 +2829,7 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
 
 
 def normalize(text: str) -> str:
-    return re.sub(r"\s+", " ", text or "").strip().lower()
+    return re.sub(r"\s+", " ", normalize_spelled_accidentals(text or "")).strip().lower()
 
 
 def player_bio_answer(question: str) -> CuratedAnswer | None:
@@ -3180,7 +3189,7 @@ def teacher_first_general_lick_answer(question: str) -> CuratedAnswer | None:
             ),
         )
 
-    if re.search(r"\bd\s*(?:#|[-\s]+sharp)\b|\beb\b", question):
+    if re.search(r"(?<!\w)d\s*(?:#|[-\s]+sharp)(?!\w)|\beb\b", question):
         return CuratedAnswer(
             intent="lick_request",
             confidence="curated_high",

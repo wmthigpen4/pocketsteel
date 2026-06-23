@@ -11,6 +11,7 @@ import re
 from dataclasses import dataclass, replace
 from typing import Literal
 
+from pocketsteel.music_text import normalize_accidental_symbols, normalize_spelled_accidentals
 from pocketsteel.user_copedent import USER_E9_COPEDENT, apply_changes, open_strings_dict, supports_standard_major_position_changes
 
 
@@ -171,24 +172,38 @@ class ChordSymbolGuardrailRequest:
 NOTE_TO_SEMITONE: dict[str, int] = {
     "C": 0,
     "B#": 0,
+    "DBB": 0,
     "C#": 1,
+    "B##": 1,
     "DB": 1,
     "D": 2,
+    "C##": 2,
+    "EBB": 2,
     "D#": 3,
+    "FBB": 3,
     "EB": 3,
     "E": 4,
+    "D##": 4,
     "FB": 4,
     "F": 5,
     "E#": 5,
+    "GBB": 5,
     "F#": 6,
+    "E##": 6,
     "GB": 6,
     "G": 7,
+    "F##": 7,
+    "ABB": 7,
     "G#": 8,
     "AB": 8,
     "A": 9,
+    "G##": 9,
+    "BBB": 9,
     "A#": 10,
+    "CBB": 10,
     "BB": 10,
     "B": 11,
+    "A##": 11,
     "CB": 11,
 }
 
@@ -206,6 +221,8 @@ CANONICAL_NOTES: dict[int, str] = {
     10: "A#",
     11: "B",
 }
+
+CHORD_ROOT_RE = r"[a-g](?:##|bb|#|b)?"
 
 OPEN_MAJOR_ROOT = NOTE_TO_SEMITONE["E"]
 AF_MAJOR_OFFSET = 3
@@ -1594,7 +1611,7 @@ def functional_pocket_request_for_question(question: str) -> FunctionalPocketReq
     if not q:
         return None
     match = re.search(
-        r"^(?:show me|where are|give me)\s+(?P<function>v|5|five)(?:\s+chord)?\s+pockets?\s+in\s+(?P<key>[a-g](?:#|b)?)$",
+        r"^(?:show me|where are|give me)\s+(?P<function>v|5|five)(?:\s+chord)?\s+pockets?\s+in\s+(?P<key>[a-g](?:##|bb|#|b)?)$",
         q,
     )
     if not match:
@@ -1689,7 +1706,7 @@ def functional_pocket_answer_for_question(question: str) -> str | None:
 
 def key_context_for_question(question: str) -> str | None:
     q = re.sub(r"\s+", " ", question or "").strip().lower().rstrip("?!.")
-    match = re.search(r"\b(?:in\s+the\s+key\s+of|key\s+of|in)\s+([a-g](?:#|b)?)\b", q)
+    match = re.search(r"\b(?:in\s+the\s+key\s+of|key\s+of|in)\s+([a-g](?:##|bb|#|b)?)\b", q)
     if not match:
         return None
     return normalize_key(match.group(1))
@@ -1765,17 +1782,17 @@ def minor_chord_location_request_for_question(question: str) -> MinorChordLocati
     e9_context = chord_context_pattern()
     optional_context = rf"(?:\s+{e9_context})?"
     patterns = (
-        rf"^where is (?:a|an)?\s*([a-g](?:#|b)?)(?:m|[- ]minor)(?: chords?)?{optional_context}$",
-        rf"^where are (?:some\s+)?(?:places\s+to\s+play\s+)?(?:a|an)?\s*([a-g](?:#|b)?)(?:m|[- ]minor)(?: chords?)?{optional_context}$",
-        rf"^where can i (?:play|find) (?:a|an)?\s*([a-g](?:#|b)?)(?:m|[- ]minor)(?: chords?)?{optional_context}$",
-        rf"^how do (?:i|you) play (?:a|an)?\s*([a-g](?:#|b)?)(?:m|[- ]minor)(?: chord)?{optional_context}$",
-        rf"^show me (?:a|an)?\s*([a-g](?:#|b)?)(?:m|[- ]minor)(?: chord| positions?)?{optional_context}$",
-        rf"^show me ([a-g](?:#|b)?)(?:m|[- ]minor) on (?:the )?fretboard$",
-        rf"^give me ([a-g](?:#|b)?)(?:m|[- ]minor)(?: chord)? positions{optional_context}$",
-        rf"^positions for ([a-g](?:#|b)?)(?:m|[- ]minor)(?: chords?)?{optional_context}$",
-        rf"^what frets give me (?:a|an)?\s*([a-g](?:#|b)?)(?:m|[- ]minor)(?: chord)?{optional_context}$",
-        rf"^what(?:'s| is) (?:a|an)?\s*([a-g](?:#|b)?)\s+(?:minor|min|m)\s+look like{optional_context}$",
-        rf"^what does (?:a|an)?\s*([a-g](?:#|b)?)\s+(?:minor|min|m)\s+look like{optional_context}$",
+        rf"^where is (?:a|an)?\s*([a-g](?:##|bb|#|b)?)(?:m|[- ]minor)(?: chords?)?{optional_context}$",
+        rf"^where are (?:some\s+)?(?:places\s+to\s+play\s+)?(?:a|an)?\s*([a-g](?:##|bb|#|b)?)(?:m|[- ]minor)(?: chords?)?{optional_context}$",
+        rf"^where can i (?:play|find) (?:a|an)?\s*([a-g](?:##|bb|#|b)?)(?:m|[- ]minor)(?: chords?)?{optional_context}$",
+        rf"^how do (?:i|you) play (?:a|an)?\s*([a-g](?:##|bb|#|b)?)(?:m|[- ]minor)(?: chord)?{optional_context}$",
+        rf"^show me (?:a|an)?\s*([a-g](?:##|bb|#|b)?)(?:m|[- ]minor)(?: chord| positions?)?{optional_context}$",
+        rf"^show me ([a-g](?:##|bb|#|b)?)(?:m|[- ]minor) on (?:the )?fretboard$",
+        rf"^give me ([a-g](?:##|bb|#|b)?)(?:m|[- ]minor)(?: chord)? positions{optional_context}$",
+        rf"^positions for ([a-g](?:##|bb|#|b)?)(?:m|[- ]minor)(?: chords?)?{optional_context}$",
+        rf"^what frets give me (?:a|an)?\s*([a-g](?:##|bb|#|b)?)(?:m|[- ]minor)(?: chord)?{optional_context}$",
+        rf"^what(?:'s| is) (?:a|an)?\s*([a-g](?:##|bb|#|b)?)\s+(?:minor|min|m)\s+look like{optional_context}$",
+        rf"^what does (?:a|an)?\s*([a-g](?:##|bb|#|b)?)\s+(?:minor|min|m)\s+look like{optional_context}$",
     )
     for pattern in patterns:
         match = re.search(pattern, q)
@@ -1793,8 +1810,8 @@ def multi_chord_location_request_for_question(question: str) -> MultiChordLocati
     if not q:
         return None
     patterns = (
-        r"^show me (?:a|an)?\s*([a-g](?:#|b)?)\s+major\s+and\s+(?:a|an)?\s*(?:\1\s+)?minor(?:\s+chords?)?(?:\s+on\s+(?:the\s+)?(?:e9|fretboard))?$",
-        r"^show me (?:a|an)?\s*([a-g](?:#|b)?)\s+minor\s+and\s+(?:a|an)?\s*(?:\1\s+)?major(?:\s+chords?)?(?:\s+on\s+(?:the\s+)?(?:e9|fretboard))?$",
+        r"^show me (?:a|an)?\s*([a-g](?:##|bb|#|b)?)\s+major\s+and\s+(?:a|an)?\s*(?:\1\s+)?minor(?:\s+chords?)?(?:\s+on\s+(?:the\s+)?(?:e9|fretboard))?$",
+        r"^show me (?:a|an)?\s*([a-g](?:##|bb|#|b)?)\s+minor\s+and\s+(?:a|an)?\s*(?:\1\s+)?major(?:\s+chords?)?(?:\s+on\s+(?:the\s+)?(?:e9|fretboard))?$",
     )
     for pattern in patterns:
         match = re.search(pattern, q)
@@ -2425,7 +2442,7 @@ def chord_concept_request_for_question(question: str) -> ChordConceptRequest | N
     q = re.sub(r"\s+", " ", question or "").strip().lower().rstrip("?!.")
     if not q:
         return None
-    root_pattern = r"(?P<root>[a-g](?:#|b)?)"
+    root_pattern = r"(?P<root>[a-g](?:##|bb|#|b)?)"
     patterns = (
         rf"^what(?:'s|’s| is)\s+(?:a|an)?\s*{root_pattern}\s+(?P<quality>major|minor)?\s*chord\s+(?:even\s+)?mean$",
         rf"^what\s+does\s+(?:a|an)?\s*{root_pattern}\s+(?P<quality>major|minor)?\s*chord\s+mean$",
@@ -2706,46 +2723,48 @@ def major_chord_location_request_for_question(question: str) -> MajorChordLocati
     e9_context = chord_context_pattern()
     optional_context = rf"(?:\s+{e9_context})?"
     patterns = (
-        rf"^where are (?:some )?places to play (?:a|an)?\s*([a-g](?:#|b)?)(?:\s+(?:major|major chords?|chords?))?{optional_context}$",
-        rf"^where are (?:some\s+)?([a-g](?:#|b)?)(?:\s+(?:major|major chords?|chords?))?{optional_context}$",
-        rf"^where(?: all)? can i play (?:a|an)?\s*([a-g](?:#|b)?)(?:\s+(?:major|major chords?|chords?))?{optional_context}$",
-        rf"^where(?: all)? can i play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?{optional_context}$",
-        rf"^where do i play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?{optional_context}$",
-        rf"^where can i find (?:a|an)?\s*([a-g](?:#|b)?)(?:\s+(?:major|major chords?|chords?))?{optional_context}$",
-        rf"^where can i find (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?{optional_context}$",
-        rf"^where do i find (?:a|an)?\s*([a-g](?:#|b)?)(?:\s+(?:major|major chords?|chords?|positions?))?{optional_context}$",
-        rf"^where do i find ([a-g](?:#|b)?)\s+major\s+positions{optional_context}$",
-        rf"^how do (?:i|you) play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?{optional_context}$",
-        rf"^how do (?:i|you) play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?\s+(?:at|on)\s+(?:the\s+)?\d+(?:st|nd|rd|th)?\s+fret{optional_context}$",
-        rf"^how do i plan (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord){optional_context}$",
-        rf"^how do i make (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?{optional_context}$",
-        rf"^where is ([a-g](?:#|b)?) major{optional_context}$",
-        rf"^where is ([a-g](?:#|b)?)(?: major)?{optional_context}$",
-        rf"^where is (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord){optional_context}$",
-        rf"^where are (?:my\s+)?([a-g](?:#|b)?) (?:major )?chord positions{optional_context}$",
-        rf"^show me ([a-g](?:#|b)?) (?:major )?positions{optional_context}$",
-        rf"^show me ([a-g](?:#|b)?) (?:major )?chord positions{optional_context}$",
-        rf"^show me ([a-g](?:#|b)?) major{optional_context}$",
-        rf"^show me (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord){optional_context}$",
-        rf"^give me ([a-g](?:#|b)?)(?: (?:major )?chord)? positions{optional_context}$",
-        rf"^positions for ([a-g](?:#|b)?)(?: (?:major )?chords?)?{optional_context}$",
-        rf"^([a-g](?:#|b)?)(?: (?:major )?chord)?{optional_context}$",
-        rf"^where is ([a-g](?:#|b)?) on (?:the )?fretboard$",
-        rf"^what frets give me (?:a|an)?\s*([a-g](?:#|b)?)(?:\s+(?:major|major chord|chord))?{optional_context}$",
-        rf"^which frets are (?:a|an)?\s*([a-g](?:#|b)?)(?:\s+(?:major|major chord|chord))?{optional_context}$",
-        rf"^what is the location for (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?(?: with [a-g]\s*\+\s*[a-g])?{optional_context}$",
-        rf"^what is the location of (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)?(?: with [a-g]\s*\+\s*[a-g])?{optional_context}$",
-        rf"^show me places to play (?:a|an)?\s*([a-g](?:#|b)?)(?: major)?(?: chord)?{optional_context}$",
-        rf"^where are ([a-g](?:#|b)?) major positions{optional_context}$",
-        r"^how do (?:i|you) play (?:a|an)?\s*([a-g](?:#|b)?)(?: (?:major )?chord)? across (?:the )?fretboard(?: of (?:the )?e9| on e9)?$",
-        r"^([a-g](?:#|b)?) major across (?:the )?e9 fretboard$",
-        r"^([a-g](?:#|b)?) (?:major )?chord across (?:the )?e9 fretboard$",
-        r"^show me ([a-g](?:#|b)?) major with a\+b$",
-        r"^show me ([a-g](?:#|b)?) major with a\+f$",
-        r"^show me (?:more|advanced) ([a-g](?:#|b)?) (?:major )?chord positions$",
-        r"^show me ([a-g](?:#|b)?) (?:major )?chord positions with levers$",
-        r"^what grips can i use for ([a-g](?:#|b)?) major$",
-        r"^where the the ([a-g](?:#|b)?) chords?$",
+        rf"^where are (?:some )?places to play (?:a|an)?\s*([a-g](?:##|bb|#|b)?)(?:\s+(?:major|major chords?|chords?))?{optional_context}$",
+        rf"^where are (?:some\s+)?([a-g](?:##|bb|#|b)?)(?:\s+(?:major|major chords?|chords?))?{optional_context}$",
+        rf"^where(?: all)? can i play (?:a|an)?\s*([a-g](?:##|bb|#|b)?)(?:\s+(?:major|major chords?|chords?))?{optional_context}$",
+        rf"^where(?: all)? can i play (?:a|an)?\s*([a-g](?:##|bb|#|b)?)(?: (?:major )?chord)?{optional_context}$",
+        rf"^where do i play (?:a|an)?\s*([a-g](?:##|bb|#|b)?)(?: (?:major )?chord)?{optional_context}$",
+        rf"^where can i find (?:a|an)?\s*([a-g](?:##|bb|#|b)?)(?:\s+(?:major|major chords?|chords?))?{optional_context}$",
+        rf"^where can i find (?:a|an)?\s*([a-g](?:##|bb|#|b)?)(?: (?:major )?chord)?{optional_context}$",
+        rf"^where do i find (?:a|an)?\s*([a-g](?:##|bb|#|b)?)(?:\s+(?:major|major chords?|chords?|positions?))?{optional_context}$",
+        rf"^where do i find ([a-g](?:##|bb|#|b)?)\s+major\s+positions{optional_context}$",
+        rf"^how do (?:i|you) play (?:a|an)?\s*([a-g](?:##|bb|#|b)?)(?: (?:major )?chord)?{optional_context}$",
+        rf"^how do (?:i|you) play (?:a|an)?\s*([a-g](?:##|bb|#|b)?)(?: (?:major )?chord)?\s+(?:at|on)\s+(?:the\s+)?\d+(?:st|nd|rd|th)?\s+fret{optional_context}$",
+        rf"^how do i plan (?:a|an)?\s*([a-g](?:##|bb|#|b)?)(?: (?:major )?chord){optional_context}$",
+        rf"^how do i make (?:a|an)?\s*([a-g](?:##|bb|#|b)?)(?: (?:major )?chord)?{optional_context}$",
+        rf"^where is ([a-g](?:##|bb|#|b)?) major{optional_context}$",
+        rf"^where is ([a-g](?:##|bb|#|b)?)(?: major)?{optional_context}$",
+        rf"^where is (?:a|an)?\s*([a-g](?:##|bb|#|b)?)(?: (?:major )?chord){optional_context}$",
+        rf"^where are (?:my\s+)?([a-g](?:##|bb|#|b)?) (?:major )?chord positions{optional_context}$",
+        rf"^show me ([a-g](?:##|bb|#|b)?) (?:major )?positions{optional_context}$",
+        rf"^show me ([a-g](?:##|bb|#|b)?) (?:major )?chord positions{optional_context}$",
+        rf"^show me ([a-g](?:##|bb|#|b)?) major{optional_context}$",
+        rf"^show me (?:a|an)?\s*([a-g](?:##|bb|#|b)?)(?:\s+major)?\s+string\s+group(?:ing)?s?{optional_context}$",
+        rf"^show me ([a-g](?:##|bb|#|b)?)\s+(?:major\s+)?(?:strings?|grips?)\s+group(?:ing)?s?{optional_context}$",
+        rf"^show me (?:a|an)?\s*([a-g](?:##|bb|#|b)?)(?: (?:major )?chord){optional_context}$",
+        rf"^give me ([a-g](?:##|bb|#|b)?)(?: (?:major )?chord)? positions{optional_context}$",
+        rf"^positions for ([a-g](?:##|bb|#|b)?)(?: (?:major )?chords?)?{optional_context}$",
+        rf"^([a-g](?:##|bb|#|b)?)(?: (?:major )?chord)?{optional_context}$",
+        rf"^where is ([a-g](?:##|bb|#|b)?) on (?:the )?fretboard$",
+        rf"^what frets give me (?:a|an)?\s*([a-g](?:##|bb|#|b)?)(?:\s+(?:major|major chord|chord))?{optional_context}$",
+        rf"^which frets are (?:a|an)?\s*([a-g](?:##|bb|#|b)?)(?:\s+(?:major|major chord|chord))?{optional_context}$",
+        rf"^what is the location for (?:a|an)?\s*([a-g](?:##|bb|#|b)?)(?: (?:major )?chord)?(?: with [a-g]\s*\+\s*[a-g])?{optional_context}$",
+        rf"^what is the location of (?:a|an)?\s*([a-g](?:##|bb|#|b)?)(?: (?:major )?chord)?(?: with [a-g]\s*\+\s*[a-g])?{optional_context}$",
+        rf"^show me places to play (?:a|an)?\s*([a-g](?:##|bb|#|b)?)(?: major)?(?: chord)?{optional_context}$",
+        rf"^where are ([a-g](?:##|bb|#|b)?) major positions{optional_context}$",
+        r"^how do (?:i|you) play (?:a|an)?\s*([a-g](?:##|bb|#|b)?)(?: (?:major )?chord)? across (?:the )?fretboard(?: of (?:the )?e9| on e9)?$",
+        r"^([a-g](?:##|bb|#|b)?) major across (?:the )?e9 fretboard$",
+        r"^([a-g](?:##|bb|#|b)?) (?:major )?chord across (?:the )?e9 fretboard$",
+        r"^show me ([a-g](?:##|bb|#|b)?) major with a\+b$",
+        r"^show me ([a-g](?:##|bb|#|b)?) major with a\+f$",
+        r"^show me (?:more|advanced) ([a-g](?:##|bb|#|b)?) (?:major )?chord positions$",
+        r"^show me ([a-g](?:##|bb|#|b)?) (?:major )?chord positions with levers$",
+        r"^what grips can i use for ([a-g](?:##|bb|#|b)?) major$",
+        r"^where the the ([a-g](?:##|bb|#|b)?) chords?$",
     )
     for pattern in patterns:
         match = re.search(pattern, q)
@@ -2760,10 +2779,7 @@ def major_chord_location_request_for_question(question: str) -> MajorChordLocati
 
 def normalize_chord_words_in_text(text: str) -> str:
     """Normalize spelled accidentals in user chord prompts before regex parsing."""
-    normalized = (text or "").replace("♯", "#").replace("♭", "b")
-    normalized = re.sub(r"\b([a-g])[\s-]+sharp\b", lambda match: f"{match.group(1)}#", normalized, flags=re.I)
-    normalized = re.sub(r"\b([a-g])[\s-]+flat\b", lambda match: f"{match.group(1)}b", normalized, flags=re.I)
-    return normalized
+    return normalize_spelled_accidentals(text or "")
 
 
 def normalize_chord_intent_text(text: str) -> str:
@@ -2816,7 +2832,7 @@ def unsupported_chord_location_request_for_question(question: str) -> Unsupporte
     body = re.sub(r"\bpositions?\b$", "", body).strip()
     body = re.sub(r"\bchord\b$", "", body).strip()
     quality_match = re.match(
-        r"^(?P<root>[a-g](?:#|b)?)(?P<compact>m(?!ajor|aj)|maj7|7|dim7?|aug|sus(?:2|4)?)?(?:\s+(?P<quality>minor|minor\s+7|m7|dominant(?:\s+7)?|dom(?:\s+7)?|seventh|7|diminished(?:\s+7)?|dim7?|augmented|aug|sus(?:2|4)?|suspended(?:\s+[24])?|major\s+7th|major\s+seventh|major\s+7|maj\s+7|maj7))?$",
+        r"^(?P<root>[a-g](?:##|bb|#|b)?)(?P<compact>m(?!ajor|aj)|maj7|7|dim7?|aug|sus(?:2|4)?)?(?:\s+(?P<quality>minor|minor\s+7|m7|dominant(?:\s+7)?|dom(?:\s+7)?|seventh|7|diminished(?:\s+7)?|dim7?|augmented|aug|sus(?:2|4)?|suspended(?:\s+[24])?|major\s+7th|major\s+seventh|major\s+7|maj\s+7|maj7))?$",
         body,
     )
     if not quality_match:
@@ -2865,12 +2881,12 @@ def normalize_chord_quality(quality: str) -> str:
 
 
 def normalize_requested_root(root: str) -> str:
-    normalized = (root or "").strip().replace("♯", "#").replace("♭", "b")
+    normalized = normalize_accidental_symbols(root or "").strip()
     if not normalized:
         raise ValueError(f"Unsupported key: {root}")
     letter = normalized[:1].upper()
     accidental = normalized[1:]
-    if accidental not in {"", "#", "b"}:
+    if accidental not in {"", "#", "b", "##", "bb"}:
         raise ValueError(f"Unsupported key: {root}")
     display = f"{letter}{accidental}"
     if note_lookup_key(display) not in NOTE_TO_SEMITONE:
@@ -2879,7 +2895,7 @@ def normalize_requested_root(root: str) -> str:
 
 
 def note_lookup_key(note: str) -> str:
-    return (note or "").strip().replace("♯", "#").replace("♭", "b").upper().replace("B", "B", 1)
+    return normalize_accidental_symbols(note or "").strip().upper()
 
 
 def semitone_for_note(note: str) -> int:

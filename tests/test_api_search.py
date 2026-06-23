@@ -3615,6 +3615,40 @@ def test_b_flat_chord_prompts_route_as_valid_roots_not_invalid_bb() -> None:
         assert_deterministic_fretboard_sources_are_clean(payload)
 
 
+def test_flat_key_string_grouping_prompts_route_to_deterministic_fretboard() -> None:
+    for question in (
+        "Show me an A-flat major string grouping.",
+        "Show me an Ab major string grouping.",
+        "Show me an A♭ major string grouping.",
+        "Show me A-flat major on E9.",
+        "Show me Ab major on E9.",
+    ):
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert_clean_answer_body(payload)
+        assert "I need a more specific steel-guitar question" not in payload["answer"]
+        assert "Ab major is Ab-C-Eb" in payload["answer"]
+        assert "3-4-5" in payload["answer"]
+        assert "4-5-6" in payload["answer"]
+        assert "5-6-8" in payload["answer"]
+        assert "6-8-10" in payload["answer"]
+        assert "fretboard" in payload
+        assert payload["fretboard"]["title"] == "Ab major positions on E9"
+        assert_valid_fretboard_payload(payload)
+        assert_deterministic_fretboard_sources_are_clean(payload)
+
+
+def test_unicode_sharp_chord_position_prompts_match_ascii_sharp_behavior() -> None:
+    payload = answer_for_question("How do I play a C♯ chord?", noisy_practical_sources())
+
+    assert_clean_answer_body(payload)
+    assert "C# major is C#-E#-G#" in payload["answer"]
+    assert "fretboard" in payload
+    assert payload["fretboard"]["title"] == "C# major positions on E9"
+    assert_valid_fretboard_payload(payload)
+    assert_deterministic_fretboard_sources_are_clean(payload)
+
+
 def test_b_flat_and_a_sharp_minor_prompts_are_valid_visual_roots() -> None:
     cases = {
         "What does Bb minor look like?": "Bb minor is Bb-Db-F",
