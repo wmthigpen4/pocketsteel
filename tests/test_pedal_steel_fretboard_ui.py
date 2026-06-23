@@ -251,7 +251,8 @@ def test_rendered_svg_uses_decorative_background_underlay() -> None:
     script = component_eval_script(
         """
 const html = fretboard.renderPedalSteelFretboard({ highlights: fretboard.DEMO_HIGHLIGHTS });
-const backgroundIndex = html.indexOf('href="/brand/pedal-steel-fretboard-background.svg"');
+const backgroundHref = '/brand/pedal-steel-fretboard-background.svg?v=keyhead-vshape-bce771f';
+const backgroundIndex = html.indexOf(`href="${backgroundHref}"`);
 const panelIndex = html.indexOf('width="1164" height="306"');
 const fretIndex = html.indexOf('data-fret-line="0"');
 const markerIndex = html.indexOf('data-fret-marker="3"');
@@ -271,7 +272,8 @@ assert.ok(panelIndex < fretIndex);
 assert.ok(fretIndex < markerIndex);
 assert.ok(markerIndex < stringIndex);
 assert.ok(stringIndex < highlightIndex);
-assert.equal((html.match(/href="\\/brand\\/pedal-steel-fretboard-background\\.svg"/g) || []).length, 1);
+assert.equal((html.match(/href="\\/brand\\/pedal-steel-fretboard-background\\.svg\\?v=keyhead-vshape-bce771f"/g) || []).length, 1);
+assert.equal((html.match(/href="\\/brand\\/pedal-steel-fretboard-background\\.svg"/g) || []).length, 0);
 """
     )
 
@@ -1734,7 +1736,7 @@ def test_demo_page_mounts_the_component_without_touching_landing_pages() -> None
 def test_component_source_contains_no_eyeballed_fret_spacing_formula() -> None:
     source = (REPO_ROOT / COMPONENT).read_text(encoding="utf-8")
 
-    assert 'const DECORATIVE_BACKGROUND_HREF = "/brand/pedal-steel-fretboard-background.svg";' in source
+    assert 'const DECORATIVE_BACKGROUND_HREF = "/brand/pedal-steel-fretboard-background.svg?v=keyhead-vshape-bce771f";' in source
     assert "Decorative underlay only." in source
     assert ".answer-fretboard-mount" in source
     assert "grid-template-columns: minmax(0, 1fr);" in source

@@ -3,7 +3,7 @@
 
   const DEFAULT_E9_TUNING = ["F#", "D#", "G#", "E", "B", "G#", "F#", "E", "D", "B"];
   const COMMON_FRET_MARKERS = [3, 5, 7, 9, 12, 15, 17, 19, 21, 24];
-  const DECORATIVE_BACKGROUND_HREF = "/brand/pedal-steel-fretboard-background.svg";
+  const DECORATIVE_BACKGROUND_HREF = "/brand/pedal-steel-fretboard-background.svg?v=keyhead-vshape-bce771f";
   const DECORATIVE_BACKGROUND_BOX = {
     x: -139,
     y: -65,
