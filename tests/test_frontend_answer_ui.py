@@ -233,7 +233,11 @@ def test_answer_ui_links_to_e9_fretboard_explorer_surface() -> None:
     assert 'class="header-action-button explorer-header-link"' in html
     assert 'class="header-action-button backstage-trigger"' in html
     assert ".header-action-button {" in html
-    assert "font-family: var(--font-ui);" in html
+    header_action_rule = html.split(".header-action-button {", 1)[1].split("}", 1)[0]
+    assert 'font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;' in header_action_rule
+    assert "var(--font-ui)" not in header_action_rule
+    assert "var(--font-lesson)" not in header_action_rule
+    assert "Gill Sans" not in header_action_rule
     assert "letter-spacing: 0;" in html
     assert 'aria-controls="backstage"' in html
     assert 'id="backstage-cta-label">Get a Backstage Pass</span>' in html
