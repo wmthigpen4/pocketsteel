@@ -9,6 +9,7 @@
   const ADVANCED_GROUPS = new Set(["5-6-7", "6-7-10", "5-7-8"]);
   const TWO_STRING_GROUPS = new Set(["3-5", "5-6", "6-10", "4-6", "3-4"]);
   const FIVE_EIGHT_GROUPS = new Set(["5-8"]);
+  const TWO_STRING_DISPLAY_GROUPS = new Set([...TWO_STRING_GROUPS, ...FIVE_EIGHT_GROUPS]);
   const KEY_OPTIONS = [
     { value: "C", label: "C" },
     { value: "Db", label: "C# (or D♭)" },
@@ -216,8 +217,7 @@
     let html = option("all", allLabel, selectedValues);
 
     if (harmony === "two_string_harmonized") {
-      html += optionGroup("2-string groups", uniqueGroups(rows, TWO_STRING_GROUPS), selectedValues);
-      html += optionGroup("5&8 branch", uniqueGroups(rows, FIVE_EIGHT_GROUPS), selectedValues);
+      html += optionGroup("2-string groups", uniqueGroups(rows, TWO_STRING_DISPLAY_GROUPS), selectedValues);
     } else {
       html += optionGroup("Core grips", uniqueGroups(rows, CORE_GROUPS), selectedValues);
       html += optionGroup("Advanced swaps", uniqueGroups(rows, ADVANCED_GROUPS), selectedValues);

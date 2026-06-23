@@ -306,14 +306,22 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<option value="two_string_harmonized">2-string harmonized scale</option>' in html
     assert '<option value="five_eight_branch">5&amp;8 branch positions (2-string)</option>' not in html
     assert '<option value="three_string_diatonic" selected>3-string diatonic harmony</option>' in html
+    assert "grid-template-columns: repeat(3, minmax(0, 1fr));" in html
+    assert ".explorer-control--string-group" in html
+    assert "grid-column: 1 / -1;" in html
+    assert '<div class="explorer-control explorer-control--string-group">' in html
     assert '<select id="explorer-string-group" multiple size="6"' in html
     assert "Select one or more groups" in html
     assert '<optgroup label="Core grips">' in html
     assert '<optgroup label="Advanced swaps">' in html
     assert '<option value="5-7-8">5-7-8</option>' in html
     assert '<option value="all" selected>All 3-string groups</option>' in html
-    assert "Advanced swaps use less direct string combinations" in html
-    assert "5&amp;8 branch positions appear inside the 2-string harmonized-scale view" in html
+    assert "Advanced swaps:</strong> less direct string combinations" in html
+    assert "5&amp;8 branch:</strong> 5-8 appears with the 2-string harmonized-scale groups" in html
+    assert "deterministic teaching data" not in html
+    assert "corpus retrieval" not in html
+    assert "source-card answers" not in html
+    assert "RAG-generated" not in html
     assert "m7b5 means minor seven flat five" in html
     assert "The ø symbol means half-diminished" in html
     assert "The ° symbol means diminished" in html
@@ -331,6 +339,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "display_summary" in script
     assert "display_scale_notes" in script
     assert "FIVE_EIGHT_GROUPS" in script
+    assert "TWO_STRING_DISPLAY_GROUPS" in script
     assert "5&8 branch" in script
     assert "per_string_changes" in script
     assert "warnings" in script
@@ -640,7 +649,7 @@ elements["explorer-harmony"].value = "two_string_harmonized";
 elements["explorer-harmony"].dispatchChange();
 assert.equal(elements["explorer-string-group"].value, "all");
 assert.match(elements["explorer-string-group"].innerHTML, /All 2-string groups/);
-assert.match(elements["explorer-string-group"].innerHTML, /5&amp;8 branch/);
+assert.doesNotMatch(elements["explorer-string-group"].innerHTML, /5&amp;8 branch/);
 assert.match(elements["explorer-string-group"].innerHTML, />5-8</);
 assert.doesNotMatch(elements["explorer-string-group"].innerHTML, /Core grips/);
 assert.doesNotMatch(elements["explorer-string-group"].innerHTML, /Advanced swaps/);

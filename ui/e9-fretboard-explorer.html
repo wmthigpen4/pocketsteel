@@ -93,7 +93,7 @@
 
     .explorer-controls {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 12px;
       padding: 16px;
       border: 1px solid var(--line);
@@ -132,11 +132,39 @@
       padding: 8px 10px;
     }
 
+    .explorer-control--string-group {
+      grid-column: 1 / -1;
+      border-top: 1px solid rgba(246, 190, 88, 0.16);
+      padding-top: 14px;
+    }
+
+    .explorer-string-group-layout {
+      display: grid;
+      grid-template-columns: minmax(220px, 0.48fr) minmax(0, 1fr);
+      gap: 12px;
+      align-items: stretch;
+    }
+
+    .explorer-string-group-copy {
+      display: grid;
+      align-content: start;
+      gap: 8px;
+      border: 1px solid rgba(246, 190, 88, 0.16);
+      border-radius: 12px;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.18);
+    }
+
     .explorer-control-help {
       margin: 0;
       color: rgba(255, 247, 232, 0.6);
       font-size: 0.78rem;
       line-height: 1.45;
+    }
+
+    .explorer-control-help strong {
+      color: rgba(255, 247, 232, 0.82);
+      font-weight: 800;
     }
 
     .explorer-summary {
@@ -390,6 +418,10 @@
         grid-template-columns: 1fr;
       }
 
+      .explorer-string-group-layout {
+        grid-template-columns: 1fr;
+      }
+
       .explorer-details {
         grid-template-columns: 1fr;
       }
@@ -448,23 +480,29 @@
           <option value="three_string_diatonic" selected>3-string diatonic harmony</option>
         </select>
       </div>
-      <div class="explorer-control">
+      <div class="explorer-control explorer-control--string-group">
         <label for="explorer-string-group">String group</label>
-        <select id="explorer-string-group" multiple size="6" aria-describedby="explorer-string-group-help">
-          <option value="all" selected>All 3-string groups</option>
-          <optgroup label="Core grips">
-            <option value="3-4-5">3-4-5</option>
-            <option value="4-5-6">4-5-6</option>
-            <option value="5-6-8">5-6-8</option>
-            <option value="6-8-10">6-8-10</option>
-          </optgroup>
-          <optgroup label="Advanced swaps">
-            <option value="5-6-7">5-6-7</option>
-            <option value="6-7-10">6-7-10</option>
-            <option value="5-7-8">5-7-8</option>
-          </optgroup>
-        </select>
-        <p class="explorer-control-help" id="explorer-string-group-help">Select one or more groups. Leave All selected to show every group in this view.</p>
+        <div class="explorer-string-group-layout">
+          <select id="explorer-string-group" multiple size="6" aria-describedby="explorer-string-group-help">
+            <option value="all" selected>All 3-string groups</option>
+            <optgroup label="Core grips">
+              <option value="3-4-5">3-4-5</option>
+              <option value="4-5-6">4-5-6</option>
+              <option value="5-6-8">5-6-8</option>
+              <option value="6-8-10">6-8-10</option>
+            </optgroup>
+            <optgroup label="Advanced swaps">
+              <option value="5-6-7">5-6-7</option>
+              <option value="6-7-10">6-7-10</option>
+              <option value="5-7-8">5-7-8</option>
+            </optgroup>
+          </select>
+          <div class="explorer-string-group-copy" id="explorer-string-group-help">
+            <p class="explorer-control-help">Select one or more groups. Leave All selected to show every group in this view.</p>
+            <p class="explorer-control-help"><strong>5&amp;8 branch:</strong> 5-8 appears with the 2-string harmonized-scale groups when those branch positions are available.</p>
+            <p class="explorer-control-help"><strong>Advanced swaps:</strong> less direct string combinations or lever-pocket routes that can add useful color after the main grips.</p>
+          </div>
+        </div>
       </div>
     </section>
 
