@@ -63,6 +63,14 @@ STANDARD_E9_CONTROL_CHANGES: dict[str, dict[int, str]] = {
     "E-lower": {4: "Eb/D#", 8: "Eb/D#"},
 }
 
+CONTROL_EXPLANATION_LABELS: dict[str, str] = {
+    "A": "A pedal",
+    "B": "B pedal",
+    "C": "C pedal",
+    "E-raise": "E-raise lever",
+    "E-lower": "E-lower lever",
+}
+
 QUALITY_INTERVALS: dict[str, tuple[str, ...]] = {
     "major": ("1", "3", "5"),
     "minor": ("1", "b3", "5"),
@@ -400,6 +408,111 @@ def display_summary_for(candidate: ExplorerCandidate, display_notes: dict[str, s
     )
 
 
+def controls_for_teaching(controls: tuple[str, ...]) -> str:
+    if not controls:
+        return "no pedals/no levers"
+    return " + ".join(CONTROL_EXPLANATION_LABELS.get(control, control) for control in controls)
+
+
+def scale_label(key: str, scale_type: ExplorerScaleType) -> str:
+    return f"{key} {'natural minor' if scale_type == 'natural_minor' else 'major'}"
+
+
+def notes_for_teaching(strings: tuple[int, ...], values: dict[str, str]) -> str:
+    return ", ".join(values[str(string)] for string in strings)
+
+
+def row_teaching_explanation(
+    *,
+    key: str,
+    scale_type: ExplorerScaleType,
+    harmony_type: ExplorerHarmonyType,
+    scale_degree: int,
+    chord_function: str,
+    chord_name: str,
+    chord_quality: str,
+    fret: int,
+    strings: tuple[int, ...],
+    controls: tuple[str, ...],
+    display_notes: dict[str, str],
+    intervals: dict[str, str],
+    position_family: str,
+    voicing_status: VoicingStatus,
+    omitted_intervals: tuple[str, ...],
+) -> str:
+    string_group = grip_label(strings)
+    scale = scale_label(key, scale_type)
+    notes_text = notes_for_teaching(strings, display_notes)
+    intervals_text = notes_for_teaching(strings, intervals)
+    controls_text = controls_for_teaching(controls)
+
+    if harmony_type == "two_string_harmonized":
+        opening = (
+            f"This two-string harmonized-scale row maps degree {scale_degree} in {scale}; "
+            "it is a partial interval pair, not a full triad."
+        )
+    elif harmony_type == "advanced_pocket":
+        opening = (
+            f"This advanced 5-7-8 E-lower pocket targets {chord_name} {chord_quality} "
+            f"as {chord_function} in {scale}."
+        )
+    else:
+        opening = (
+            f"This three-string diatonic-harmony row targets {chord_function}, "
+            f"the degree {scale_degree} chord in {scale}, and validates as "
+            f"{chord_name} {chord_quality}."
+        )
+
+    sentences = [
+        opening,
+        (
+            f"Use fret {fret} on strings {string_group} with {controls_text}; "
+            f"the selected strings spell {notes_text} ({intervals_text} against {chord_name})."
+        ),
+    ]
+
+    if not controls:
+        sentences.append("No pedals/no levers marks this as a straight-bar reference position.")
+    if "B" in controls and "C" in controls:
+        sentences.append(
+            "B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes."
+        )
+    if "E-lower" in controls or position_family == "e_lower_pocket":
+        sentences.append("Use the mechanical E-lower lever name here; shorthand varies by copedent.")
+    if "E-raise" in controls:
+        sentences.append("Use the mechanical E-raise lever name here; shorthand varies by copedent.")
+    if string_group in ADVANCED_GRIPS:
+        sentences.append("This is an advanced swap, so compare it with the nearby core grip before treating it as a default.")
+    if voicing_status == "partial" and "b7" in omitted_intervals:
+        sentences.append(
+            "Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5."
+        )
+
+    sentences.append("This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.")
+    return " ".join(sentences)
+
+
+def explanation_for_explorer_row(row: ExplorerRow) -> str:
+    controls = row.pedals + row.levers
+    return row_teaching_explanation(
+        key=row.key,
+        scale_type=row.scale_type,
+        harmony_type=row.harmony_type,
+        scale_degree=row.scale_degree,
+        chord_function=row.chord_function,
+        chord_name=row.chord_name,
+        chord_quality=row.chord_quality,
+        fret=row.fret,
+        strings=row.strings,
+        controls=controls,
+        display_notes=row.display_notes,
+        intervals=row.intervals,
+        position_family=row.position_family,
+        voicing_status=row.voicing_status,
+        omitted_intervals=row.omitted_intervals,
+    )
+
+
 def top_voice_for(strings: tuple[int, ...], fret: int, controls: tuple[str, ...], notes: dict[str, str], intervals: dict[str, str]) -> dict[str, str | int]:
     top_string = max(strings, key=lambda string: absolute_pitch_for_string(string, fret, controls))
     return {
@@ -476,6 +589,23 @@ def validate_explorer_candidate(candidate: ExplorerCandidate) -> ExplorerRow:
     display_top_voice = display_top_voice_for(top_voice, display_notes)
     display_summary = display_summary_for(candidate, display_notes)
     pedals, levers = controls_to_pedals_levers(candidate.controls)
+    explanation_summary = row_teaching_explanation(
+        key=key,
+        scale_type=candidate.scale_type,
+        harmony_type=candidate.harmony_type,
+        scale_degree=candidate.scale_degree,
+        chord_function=candidate.chord_function,
+        chord_name=candidate.chord_name,
+        chord_quality=candidate.chord_quality,
+        fret=candidate.fret,
+        strings=candidate.strings,
+        controls=candidate.controls,
+        display_notes=display_notes,
+        intervals=intervals,
+        position_family=candidate.position_family,
+        voicing_status=voicing_status,
+        omitted_intervals=omitted_intervals,
+    )
     row_id = "-".join(
         [
             key_slug(key),
@@ -514,8 +644,7 @@ def validate_explorer_candidate(candidate: ExplorerCandidate) -> ExplorerRow:
         position_family=candidate.position_family,
         difficulty_tier=candidate.difficulty_tier,
         source_guidance_refs=candidate.source_guidance_refs,
-        explanation_summary=candidate.explanation_summary
-        or f"{candidate.chord_name} on strings {grip_label(candidate.strings)} at fret {candidate.fret}.",
+        explanation_summary=explanation_summary,
         warnings=tuple(warnings),
     )
 

@@ -7,6 +7,7 @@ from pocketsteel.fretboard_explorer import (
     ExplorerCandidate,
     build_explorer_payload,
     build_g_explorer_payload,
+    explanation_for_explorer_row,
     explorer_rows,
     g_advanced_e_lower_pocket_rows,
     g_explorer_rows,
@@ -76,6 +77,9 @@ def test_g_explorer_payload_shape_and_row_model() -> None:
     assert row["string_group"] == "-".join(str(string) for string in row["strings"])
     assert set(row["display_notes"]) == {str(string) for string in row["strings"]}
     assert row["display_summary"]
+    assert row["explanation_summary"]
+    assert "validated E9 pitch logic" in row["explanation_summary"]
+    assert "Teaching text explains the row; it does not choose the row" in row["explanation_summary"]
 
 
 def test_transposed_major_payloads_validate_for_representative_keys() -> None:
@@ -196,6 +200,116 @@ def test_transposed_rows_keep_mode_and_advanced_grip_rules() -> None:
     assert {row["string_group"] for row in rows if row["harmony_type"] == "advanced_pocket"} == {"5-7-8"}
     assert all(row["harmony_type"] != "advanced_pocket" or row["difficulty_tier"] == "advanced" for row in rows)
     assert all(row["pitch_validated"] is True for row in rows)
+
+
+def test_explanation_text_for_major_rows_is_deterministic_and_learner_facing() -> None:
+    row = next(
+        row
+        for row in g_major_three_string_rows()
+        if row.string_group == "4-5-6" and row.chord_function == "I"
+    )
+    explanation = row.explanation_summary
+
+    assert "three-string diatonic-harmony row" in explanation
+    assert "I" in explanation
+    assert "degree 1 chord in G major" in explanation
+    assert "validates as G major" in explanation
+    assert "fret 3" in explanation
+    assert "strings 4-5-6" in explanation
+    assert "no pedals/no levers" in explanation
+    assert "straight-bar reference" in explanation
+    assert "G, D, B" in explanation
+    assert "validated E9 pitch logic" in explanation
+    assert "does not choose the row" in explanation
+
+
+def test_explanation_text_for_natural_minor_rows_uses_key_aware_spellings() -> None:
+    row = next(
+        row
+        for row in explorer_rows("C")
+        if row.scale_type == "natural_minor"
+        and row.string_group == "4-5-6"
+        and row.chord_function == "i"
+    )
+    explanation = row.explanation_summary
+
+    assert "degree 1 chord in C natural minor" in explanation
+    assert "validates as C minor" in explanation
+    assert "C, G, Eb" in explanation
+    assert "D#" not in explanation
+
+
+def test_explanation_text_for_two_string_rows_marks_partial_interval_pair() -> None:
+    row = next(
+        row
+        for row in g_major_two_string_rows()
+        if row.string_group == "4-6" and row.scale_degree == 1
+    )
+    explanation = row.explanation_summary
+
+    assert "two-string harmonized-scale row" in explanation
+    assert "degree 1 in G major" in explanation
+    assert "partial interval pair" in explanation
+    assert "not a full triad" in explanation
+    assert "validated E9 pitch logic" in explanation
+
+
+def test_explanation_text_for_advanced_e_lower_pocket_uses_mechanical_name() -> None:
+    row = g_advanced_e_lower_pocket_rows()[0]
+    explanation = row.explanation_summary
+
+    assert "advanced 5-7-8 E-lower pocket" in explanation
+    assert "G major" in explanation
+    assert "E-lower lever" in explanation
+    assert "mechanical E-lower lever name" in explanation
+    assert "advanced swap" in explanation
+    assert "validated E9 pitch logic" in explanation
+
+
+def test_explanation_text_for_b_plus_c_rows_includes_validation_caveat() -> None:
+    row = next(
+        row
+        for row in g_major_three_string_rows()
+        if row.string_group == "4-5-6" and row.chord_function == "ii"
+    )
+    explanation = row.explanation_summary
+
+    assert "B pedal + C pedal" in explanation
+    assert "B+C is validated for this exact row" in explanation
+    assert "do not generalize B+C" in explanation
+
+
+def test_explanation_text_for_partial_diminished_rows_avoids_full_m7b5_claim() -> None:
+    row = next(
+        row
+        for row in g_major_three_string_rows()
+        if row.string_group == "4-5-6" and row.chord_function == "vii° / partial viiø"
+    )
+    explanation = row.explanation_summary
+
+    assert "validates as F# diminished" in explanation
+    assert "omits b7" in explanation
+    assert "partial half-diminished color" in explanation
+    assert "not a full m7b5" in explanation
+    assert "full m7b5" not in row.chord_name.lower()
+    assert "full m7b5" not in row.display_summary.lower()
+
+
+def test_explanation_helper_does_not_mutate_row_data_or_rely_on_rag_corpus() -> None:
+    row = g_advanced_e_lower_pocket_rows()[0]
+    before = row.to_dict()
+    explanation = explanation_for_explorer_row(row)
+    after = row.to_dict()
+
+    assert before == after
+    assert explanation == row.explanation_summary
+    lower_explanation = explanation.lower()
+    assert "rag" not in lower_explanation
+    assert "corpus" not in lower_explanation
+    assert "forum" not in lower_explanation
+    assert "song" not in lower_explanation
+    assert "buddy" not in lower_explanation
+    assert "emmons" not in lower_explanation
 
 
 @pytest.mark.parametrize("key", ["C", "D", "F", "Bb", "Eb"])
