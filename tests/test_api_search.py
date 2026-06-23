@@ -7500,6 +7500,111 @@ def test_answer_uses_fretboard_first_for_static_g_harmonized_scale_five_eight_re
     assert_deterministic_fretboard_sources_are_clean(payload)
 
 
+def test_answer_routes_broad_g_major_harmonized_scale_prompts_to_deterministic_fretboard() -> None:
+    prompts = [
+        "Show me a G harmonized scale.",
+        "Show me G major harmonized scale on E9.",
+        "Show me a G major harmonized scale.",
+        "Show me a G harmonized scale on E9.",
+    ]
+
+    for prompt in prompts:
+        payload = answer_for_question(prompt, noisy_practical_sources())
+
+        assert "tab_example" not in payload
+        assert "fretboard" in payload
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+        assert payload["answer"].startswith("Here is a concise G major harmonized-scale map on E9.")
+        assert "5&8 branch has two valid options" in payload["answer"]
+        assert "A+F" in payload["answer"]
+        assert "E-lower" in payload["answer"]
+        assert "F#-A-C is F# diminished" in payload["answer"]
+        assert "full F#m7b5" in payload["answer"]
+        assert_valid_fretboard_payload(payload)
+
+        positions = payload["fretboard"]["positions"]
+        assert payload["fretboard"]["title"] == "G major harmonized scale on E9"
+        assert len(positions) == 12
+        by_label = {position["label"]: position for position in positions}
+        assert any(position["label"] == "G major" and position["fret"] == 3 for position in positions)
+        assert any(position["label"] == "G major" and position["fret"] == 15 for position in positions)
+        assert by_label["F# diminished"]["fret"] == 13
+        assert by_label["F# diminished"]["quality"] == "diminished"
+        assert by_label["F# diminished"]["omittedIntervals"] == []
+        assert "E" not in by_label["F# diminished"]["notes"].values()
+        assert any(position["grip"] == "5-8" and position["pedals"] == ["A"] and position["levers"] == ["F"] for position in positions)
+        assert any(position["grip"] == "5-8" and position["pedals"] == [] and position["levers"] == ["E"] for position in positions)
+        assert_deterministic_fretboard_sources_are_clean(payload)
+
+
+def test_answer_routes_g_natural_minor_harmonized_scale_to_deterministic_fretboard() -> None:
+    prompts = [
+        "Show me a G natural minor harmonized scale.",
+        "Show me G natural minor harmonized scale on E9.",
+    ]
+
+    for prompt in prompts:
+        payload = answer_for_question(prompt, noisy_practical_sources())
+
+        assert "tab_example" not in payload
+        assert "fretboard" in payload
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+        assert payload["answer"].startswith("Here is a concise G natural minor harmonized-scale map on E9.")
+        assert "A-C-Eb is A diminished" in payload["answer"]
+        assert "not full Am7b5" in payload["answer"]
+        assert_valid_fretboard_payload(payload)
+
+        positions = payload["fretboard"]["positions"]
+        assert payload["fretboard"]["title"] == "G natural minor harmonized scale on E9"
+        by_label = {position["label"]: position for position in positions}
+        assert by_label["G minor"]["fret"] == 13
+        assert by_label["A diminished"]["fret"] == 4
+        assert by_label["A diminished"]["quality"] == "diminished"
+        assert by_label["A diminished"]["omittedIntervals"] == []
+        assert "G" not in by_label["A diminished"]["notes"].values()
+        assert_deterministic_fretboard_sources_are_clean(payload)
+
+
+def test_answer_routes_named_diminished_positions_in_g_without_m7b5_overclaiming() -> None:
+    f_sharp = answer_for_question("Show me the F# diminished position in G.", noisy_practical_sources())
+
+    assert "tab_example" not in f_sharp
+    assert f_sharp["sources"] == []
+    assert f_sharp["warnings"] == []
+    assert f_sharp["answer"].startswith("F# diminished in G major is F#-A-C.")
+    assert "not full F#m7b5" in f_sharp["answer"]
+    assert_valid_fretboard_payload(f_sharp)
+    assert len(f_sharp["fretboard"]["positions"]) == 1
+    f_sharp_position = f_sharp["fretboard"]["positions"][0]
+    assert f_sharp_position["label"] == "F# diminished"
+    assert f_sharp_position["quality"] == "diminished"
+    assert f_sharp_position["fret"] == 13
+    assert f_sharp_position["grip"] == "4-5-6"
+    assert f_sharp_position["levers"] == ["F"]
+    assert f_sharp_position["omittedIntervals"] == []
+    assert_deterministic_fretboard_sources_are_clean(f_sharp)
+
+    a_dim = answer_for_question("Show me the A diminished position in G minor.", noisy_practical_sources())
+
+    assert "tab_example" not in a_dim
+    assert a_dim["sources"] == []
+    assert a_dim["warnings"] == []
+    assert a_dim["answer"].startswith("A diminished in G natural minor is A-C-Eb.")
+    assert "not full Am7b5" in a_dim["answer"]
+    assert_valid_fretboard_payload(a_dim)
+    assert len(a_dim["fretboard"]["positions"]) == 1
+    a_position = a_dim["fretboard"]["positions"][0]
+    assert a_position["label"] == "A diminished"
+    assert a_position["quality"] == "diminished"
+    assert a_position["fret"] == 4
+    assert a_position["grip"] == "4-5-6"
+    assert a_position["levers"] == ["F"]
+    assert a_position["omittedIntervals"] == []
+    assert_deterministic_fretboard_sources_are_clean(a_dim)
+
+
 def test_answer_uses_fretboard_without_tab_for_static_g_location_request() -> None:
     payload = answer_for_question("Where is G on E9?", noisy_practical_sources())
 

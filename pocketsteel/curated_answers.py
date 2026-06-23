@@ -198,6 +198,9 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
                 "This is static fretboard information, so it uses a fretboard diagram rather than tab."
             ),
         )
+    g_harmonized_answer = g_harmonized_scale_curated_answer(q)
+    if g_harmonized_answer is not None:
+        return g_harmonized_answer
     if mentions_harmonized_scale_workout(q):
         return CuratedAnswer(
             intent="practice_plan",
@@ -2893,6 +2896,72 @@ def mentions_g_five_eight_harmonized_scale(question: str) -> bool:
         and re.search(r"\bharmonized[-\s]+scales?\b", question)
         and re.search(r"\b(?:5\s*(?:&|and|-)\s*8|strings?\s+5\s+(?:and\s+)?8)\b", question)
     )
+
+
+def g_harmonized_scale_curated_answer(question: str) -> CuratedAnswer | None:
+    if mentions_harmonized_scale_workout(question):
+        return None
+    if re.search(r"\bf#\s+diminished\b", question) and re.search(r"\bin\s+g\b", question):
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=(
+                "F# diminished in G major is F#-A-C.\n\n"
+                "On the validated G major E9 map, use strings 4-5-6 at the 13th fret with the E-raise/F lever. "
+                "That spells F#-C-A, the same diminished-triad tones in a steel-friendly string order.\n\n"
+                "This is a diminished triad, not full F#m7b5. To call it F#m7b5 or half-diminished, the b7 E also has to be present."
+            ),
+        )
+    if re.search(r"\ba\s+diminished\b", question) and re.search(r"\bin\s+g\s+minor\b", question):
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=(
+                "A diminished in G natural minor is A-C-Eb.\n\n"
+                "On the validated G natural minor E9 map, use strings 4-5-6 at the 4th fret with the E-raise/F lever. "
+                "That spells A-Eb-C, the same diminished-triad tones in a steel-friendly string order.\n\n"
+                "This is a diminished triad, not full Am7b5. To call it Am7b5 or half-diminished, the b7 G also has to be present."
+            ),
+        )
+    if (
+        re.search(r"\bg\b", question)
+        and re.search(r"\bnatural\s+minor\b", question)
+        and re.search(r"\bharmonized[-\s]+scales?\b", question)
+        and re.search(r"\b(?:show|where|position|fretboard)\b", question)
+    ):
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=(
+                "Here is a concise G natural minor harmonized-scale map on E9.\n\n"
+                "The main pitch-validated 4-5-6 family is:\n"
+                "- G minor, A diminished, Bb major, C minor, D minor, Eb major, F major, then G minor again.\n"
+                "- Minor rows use B+C where the pitch math validates the grip.\n"
+                "- Major rows use straight-bar no-pedals/no-levers positions where they validate.\n\n"
+                "A-C-Eb is A diminished. It is not full Am7b5 unless G, the b7, is present. "
+                "This is static fretboard information, so it uses a fretboard diagram rather than tab."
+            ),
+        )
+    if (
+        re.search(r"\bg\b", question)
+        and re.search(r"\bharmonized[-\s]+scales?\b", question)
+        and re.search(r"\b(?:show|where|position|fretboard)\b", question)
+    ):
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=(
+                "Here is a concise G major harmonized-scale map on E9.\n\n"
+                "The main pitch-validated 4-5-6 family is:\n"
+                "- G major, A minor, B minor, C major, D major, E minor, F# diminished, then G major again.\n"
+                "- Major rows use straight-bar no-pedals/no-levers positions where they validate.\n"
+                "- Minor rows use B+C where the pitch math validates the grip.\n\n"
+                "The 5&8 branch has two valid options: A+F for the minor/blue-color branch and E-lower for the major-color branch. "
+                "F#-A-C is F# diminished; it is not full F#m7b5 unless E, the b7, is present. "
+                "This is static fretboard information, so it uses a fretboard diagram rather than tab."
+            ),
+        )
+    return None
 
 
 def mentions_e_lower_minor_sound_position(question: str) -> bool:

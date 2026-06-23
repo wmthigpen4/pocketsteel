@@ -229,6 +229,7 @@ INTERVAL_NAMES: dict[int, str] = {
 CHORD_INTERVALS: dict[str, tuple[str, ...]] = {
     "major": ("1", "3", "5"),
     "minor": ("1", "b3", "5"),
+    "diminished": ("1", "b3", "b5/#11"),
     "dominant7": ("1", "3", "5", "b7"),
     "dominant9": ("1", "3", "5", "b7", "2/9"),
     "minor7": ("1", "b3", "5", "b7"),
@@ -237,6 +238,7 @@ CHORD_INTERVALS: dict[str, tuple[str, ...]] = {
 CHORD_ADDED_INTERVALS: dict[str, tuple[str, ...]] = {
     "major": ("2/9", "6/13"),
     "minor": ("2/9", "4/11", "b7"),
+    "diminished": (),
     "dominant7": ("2/9", "6/13"),
     "dominant9": ("6/13",),
     "minor7": ("2/9", "4/11"),
@@ -258,6 +260,8 @@ CHORD_ALIASES: dict[str, str] = {
     "minor 7": "minor7",
     "minor7": "minor7",
     "m7": "minor7",
+    "dim": "diminished",
+    "diminished": "diminished",
 }
 
 ROOTLESS_CHORD_QUALITY_ALIASES: dict[str, RootlessChordQualityRequest] = {
@@ -1187,6 +1191,7 @@ def quality_label(quality: str) -> str:
     return {
         "major": "major",
         "minor": "minor",
+        "diminished": "diminished",
         "dominant7": "dominant 7",
         "dominant9": "dominant 9",
         "minor7": "minor 7",
@@ -2623,6 +2628,9 @@ def fretboard_payload_for_question(question: str) -> dict | None:
         return get_fretboard_examples("major_positions", "G")
     if re.search(r"\bg\b.*\bharmonized[-\s]+scale\b.*\b(?:5\s*(?:&|and|-)\s*8|strings?\s+5\s+(?:and\s+)?8)\b", q):
         return g_five_eight_harmonized_scale_branches().to_payload()
+    g_harmonized_payload = g_harmonized_scale_payload_for_question(q)
+    if g_harmonized_payload is not None:
+        return g_harmonized_payload
     mixed_a_minor_c_major_payload = mixed_a_minor_c_major_payload_for_question(q)
     if mixed_a_minor_c_major_payload is not None:
         return mixed_a_minor_c_major_payload
@@ -3326,6 +3334,335 @@ def g_five_eight_harmonized_scale_branches() -> FretboardVisualizationPayload:
         key="G",
         positions=tuple(positions),
     )
+
+
+def _validated_harmonized_scale_position(
+    *,
+    root: str,
+    quality: str,
+    suffix: str,
+    degree_label: str,
+    fret: int,
+    strings: tuple[int, ...],
+    pedals: tuple[str, ...] = (),
+    levers: tuple[str, ...] = (),
+    family: str,
+    color: str,
+    color_role: str,
+    sort_order: int,
+    key_context: str,
+    visible_by_default: bool = True,
+    display_label: str | None = None,
+    caveats: tuple[str, ...] = (),
+) -> FretboardPosition:
+    controls = " + ".join(pedals + levers) if pedals or levers else "no pedals/no levers"
+    role = f"{degree_label}: {display_label or f'{root} {quality_label(quality)}'}"
+    candidate = major_position_candidate(
+        key=root,
+        quality=quality,
+        suffix=suffix,
+        fret=fret,
+        strings=strings,
+        pedals=pedals,
+        levers=levers,
+        color=color,
+        role=role,
+        family=family,
+        tier="starter" if visible_by_default else "advanced",
+        color_role=color_role,
+        visible_by_default=visible_by_default,
+        sort_order=sort_order,
+        explanation=(
+            f"{role} validates on strings {grip_label(strings)} at fret {fret} with {controls}. "
+            "The row is accepted only after pitch validation."
+        ),
+        function=degree_label,
+        key_context=key_context,
+        why_use_it=(
+            f"Use this as a pitch-validated {degree_label} reference inside the {key_context} harmonized-scale map."
+        ),
+        caveats=caveats,
+        allow_added_intervals=False,
+    )
+    if candidate is None:
+        raise ValueError(f"Harmonized-scale candidate did not validate: {role}")
+    if display_label is not None and candidate.label != display_label:
+        candidate = replace(candidate, label=display_label)
+    return candidate
+
+
+def g_major_harmonized_scale_positions() -> FretboardVisualizationPayload:
+    """Return a source-free G major harmonized-scale position map for answer payloads."""
+    positions = [
+        _validated_harmonized_scale_position(
+            root="G",
+            quality="major",
+            suffix="harmonized-major-i-456-3",
+            degree_label="I",
+            fret=3,
+            strings=(4, 5, 6),
+            family="g_major_harmonized_scale_456",
+            color="primary",
+            color_role="primary",
+            sort_order=10,
+            key_context="G major",
+        ),
+        _validated_harmonized_scale_position(
+            root="A",
+            quality="minor",
+            suffix="harmonized-major-ii-456-3-bc",
+            degree_label="ii",
+            fret=3,
+            strings=(4, 5, 6),
+            pedals=("B", "C"),
+            family="g_major_harmonized_scale_456",
+            color="secondary",
+            color_role="secondary",
+            sort_order=20,
+            key_context="G major",
+        ),
+        _validated_harmonized_scale_position(
+            root="B",
+            quality="minor",
+            suffix="harmonized-major-iii-456-5-bc",
+            degree_label="iii",
+            fret=5,
+            strings=(4, 5, 6),
+            pedals=("B", "C"),
+            family="g_major_harmonized_scale_456",
+            color="secondary",
+            color_role="secondary",
+            sort_order=30,
+            key_context="G major",
+        ),
+        _validated_harmonized_scale_position(
+            root="C",
+            quality="major",
+            suffix="harmonized-major-iv-456-8",
+            degree_label="IV",
+            fret=8,
+            strings=(4, 5, 6),
+            family="g_major_harmonized_scale_456",
+            color="primary",
+            color_role="primary",
+            sort_order=40,
+            key_context="G major",
+        ),
+        _validated_harmonized_scale_position(
+            root="D",
+            quality="major",
+            suffix="harmonized-major-v-456-10",
+            degree_label="V",
+            fret=10,
+            strings=(4, 5, 6),
+            family="g_major_harmonized_scale_456",
+            color="primary",
+            color_role="primary",
+            sort_order=50,
+            key_context="G major",
+        ),
+        _validated_harmonized_scale_position(
+            root="E",
+            quality="minor",
+            suffix="harmonized-major-vi-456-10-bc",
+            degree_label="vi",
+            fret=10,
+            strings=(4, 5, 6),
+            pedals=("B", "C"),
+            family="g_major_harmonized_scale_456",
+            color="secondary",
+            color_role="secondary",
+            sort_order=60,
+            key_context="G major",
+        ),
+        _validated_harmonized_scale_position(
+            root="F#",
+            quality="diminished",
+            suffix="harmonized-major-vii-dim-456-13-f",
+            degree_label="vii diminished",
+            fret=13,
+            strings=(4, 5, 6),
+            levers=("F",),
+            family="g_major_harmonized_scale_diminished",
+            color="warning",
+            color_role="diminished",
+            sort_order=70,
+            key_context="G major",
+            caveats=("F#-A-C is a diminished triad. Do not call it full F#m7b5 unless E, the b7, is present.",),
+        ),
+        _validated_harmonized_scale_position(
+            root="G",
+            quality="major",
+            suffix="harmonized-major-i-octave-456-15",
+            degree_label="I octave",
+            fret=15,
+            strings=(4, 5, 6),
+            family="g_major_harmonized_scale_456",
+            color="primary",
+            color_role="primary",
+            sort_order=80,
+            key_context="G major",
+        ),
+    ]
+    branch_positions = [
+        replace(position, visible_by_default=False, sort_order=200 + position.sort_order)
+        for position in g_five_eight_harmonized_scale_branches().positions
+    ]
+    return FretboardVisualizationPayload(
+        title="G major harmonized scale on E9",
+        subtitle="Pitch-validated G major harmonized-scale rows with 5&8 branch options.",
+        key="G",
+        positions=tuple(positions + branch_positions),
+    )
+
+
+def g_natural_minor_harmonized_scale_positions() -> FretboardVisualizationPayload:
+    """Return a source-free G natural minor harmonized-scale position map for answer payloads."""
+    positions = [
+        _validated_harmonized_scale_position(
+            root="G",
+            quality="minor",
+            suffix="harmonized-natural-minor-i-456-1-bc",
+            degree_label="i",
+            fret=1,
+            strings=(4, 5, 6),
+            pedals=("B", "C"),
+            family="g_natural_minor_harmonized_scale_456",
+            color="secondary",
+            color_role="secondary",
+            sort_order=10,
+            key_context="G natural minor",
+        ),
+        _validated_harmonized_scale_position(
+            root="A",
+            quality="diminished",
+            suffix="harmonized-natural-minor-ii-dim-456-4-f",
+            degree_label="ii diminished",
+            fret=4,
+            strings=(4, 5, 6),
+            levers=("F",),
+            family="g_natural_minor_harmonized_scale_diminished",
+            color="warning",
+            color_role="diminished",
+            sort_order=20,
+            key_context="G natural minor",
+            caveats=("A-C-Eb is a diminished triad. Do not call it full Am7b5 unless G, the b7, is present.",),
+        ),
+        _validated_harmonized_scale_position(
+            root="A#",
+            quality="major",
+            suffix="harmonized-natural-minor-iii-456-6",
+            degree_label="III",
+            fret=6,
+            strings=(4, 5, 6),
+            family="g_natural_minor_harmonized_scale_456",
+            color="primary",
+            color_role="primary",
+            sort_order=30,
+            key_context="G natural minor",
+            display_label="Bb major",
+        ),
+        _validated_harmonized_scale_position(
+            root="C",
+            quality="minor",
+            suffix="harmonized-natural-minor-iv-456-6-bc",
+            degree_label="iv",
+            fret=6,
+            strings=(4, 5, 6),
+            pedals=("B", "C"),
+            family="g_natural_minor_harmonized_scale_456",
+            color="secondary",
+            color_role="secondary",
+            sort_order=40,
+            key_context="G natural minor",
+        ),
+        _validated_harmonized_scale_position(
+            root="D",
+            quality="minor",
+            suffix="harmonized-natural-minor-v-456-8-bc",
+            degree_label="v",
+            fret=8,
+            strings=(4, 5, 6),
+            pedals=("B", "C"),
+            family="g_natural_minor_harmonized_scale_456",
+            color="secondary",
+            color_role="secondary",
+            sort_order=50,
+            key_context="G natural minor",
+        ),
+        _validated_harmonized_scale_position(
+            root="D#",
+            quality="major",
+            suffix="harmonized-natural-minor-vi-456-11",
+            degree_label="VI",
+            fret=11,
+            strings=(4, 5, 6),
+            family="g_natural_minor_harmonized_scale_456",
+            color="primary",
+            color_role="primary",
+            sort_order=60,
+            key_context="G natural minor",
+            display_label="Eb major",
+        ),
+        _validated_harmonized_scale_position(
+            root="F",
+            quality="major",
+            suffix="harmonized-natural-minor-vii-456-13",
+            degree_label="VII",
+            fret=13,
+            strings=(4, 5, 6),
+            family="g_natural_minor_harmonized_scale_456",
+            color="primary",
+            color_role="primary",
+            sort_order=70,
+            key_context="G natural minor",
+        ),
+        _validated_harmonized_scale_position(
+            root="G",
+            quality="minor",
+            suffix="harmonized-natural-minor-i-octave-456-13-bc",
+            degree_label="i octave",
+            fret=13,
+            strings=(4, 5, 6),
+            pedals=("B", "C"),
+            family="g_natural_minor_harmonized_scale_456",
+            color="secondary",
+            color_role="secondary",
+            sort_order=80,
+            key_context="G natural minor",
+        ),
+    ]
+    return FretboardVisualizationPayload(
+        title="G natural minor harmonized scale on E9",
+        subtitle="Pitch-validated G natural minor diatonic harmony rows.",
+        key="G",
+        positions=tuple(positions),
+    )
+
+
+def g_harmonized_scale_payload_for_question(question: str) -> dict | None:
+    q = normalize_chord_intent_text(question)
+    if not re.search(r"\b(?:show|where|position|fretboard)\b", q):
+        return None
+    if re.search(r"\bf#\s+diminished\b", q) and re.search(r"\bin\s+g\b", q):
+        return FretboardVisualizationPayload(
+            title="F# diminished position in G",
+            subtitle="Pitch-validated vii diminished triad from G major.",
+            key="G",
+            positions=(g_major_harmonized_scale_positions().positions[6],),
+        ).to_payload()
+    if re.search(r"\ba\s+diminished\b", q) and re.search(r"\bin\s+g\s+minor\b", q):
+        return FretboardVisualizationPayload(
+            title="A diminished position in G natural minor",
+            subtitle="Pitch-validated ii diminished triad from G natural minor.",
+            key="G",
+            positions=(g_natural_minor_harmonized_scale_positions().positions[1],),
+        ).to_payload()
+    if re.search(r"\bg\b", q) and re.search(r"\bnatural\s+minor\b", q) and re.search(r"\bharmonized[-\s]+scales?\b", q):
+        return g_natural_minor_harmonized_scale_positions().to_payload()
+    if re.search(r"\bg\b", q) and re.search(r"\bharmonized[-\s]+scales?\b", q):
+        return g_major_harmonized_scale_positions().to_payload()
+    return None
 
 
 def minor_positions(key: str) -> FretboardVisualizationPayload:
