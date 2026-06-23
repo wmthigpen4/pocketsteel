@@ -5,21 +5,24 @@ Generated for ChatGPT reset/guidance on branch `feature/answer-api`.
 ## Current State
 
 - Current branch: `feature/answer-api`.
-- Current repo HEAD at this refresh: `78f6c14 docs: record fretboard button style protected smoke`.
-- Latest protected-preview smoke docs commit: `78f6c14`.
-- Runtime smoked: `fd342b9`.
-- Protected-preview status: **pass with warnings**.
-- User-smoke status: **allowed if the warnings below are acceptable; this is not a clean pass**.
-- App control state: **can be parked with known warnings after user smoke**.
+- Current repo HEAD at this refresh: `7db94f7 docs: record restored header font protected smoke`.
+- Latest protected-preview smoke docs commit: `7db94f7`.
+- Runtime smoked: `706d8cd`.
+- Protected-preview status: **pass with product caveat**.
+- User-smoke status: **allowed; evaluate the restored header font behavior in user smoke**.
+- App control state: **can be parked if the restored inherited header font is acceptable**.
 - Broad unrelated dirty/untracked work remains parked. Do not broad-stage.
 
 ## Runtime / Deployment
 
 - Cloudflare Access login: succeeded.
+- LaunchDaemon runtime refreshed from stale `b547178` to `706d8cd`.
+- `/api/version` reports `706d8cd`.
 - Main app loaded through protected preview.
 - Explorer loaded through protected preview.
-- Header button style fix passed.
-- Explorer cleanup passed.
+- Header buttons use the restored accepted inherited typography behavior.
+- Rejected explicit neutral stack from `b547178` is gone.
+- Explorer checks passed.
 - Prompt spot checks passed.
 - LaunchDaemon owns the app runtime.
 - Manual screen runtime is absent.
@@ -29,92 +32,89 @@ Generated for ChatGPT reset/guidance on branch `feature/answer-api`.
 Latest runtime identity from Lane 12:
 
 ```text
-git_sha=fd342b9
+git_sha=706d8cd
 git_branch=feature/answer-api
 auth_provider=cloudflare_access
 retrieval_mode=hybrid_private_first
 ```
 
-LaunchDaemon helper caveat:
-
-- `deploy/macos/install-private-preview-launchdaemon.sh status` and `version` required `sudo` in the Lane 12 shell and failed non-interactively.
-- Lane 12 still supplied runtime evidence with `launchctl`, listener checks, and local `/api/version`.
-- Route to Lane 12 only if this becomes operationally painful.
-
 ## Latest Protected-Preview Smoke
 
 Latest Lane 12 handoff:
 
-- `docs/handoffs/task-completions/2026-06-23-12-fretboard-button-style-protected-smoke.md`
-- Handoff commit: `78f6c14 docs: record fretboard button style protected smoke`
-- Runtime smoked: `fd342b9`
-- Result: **pass with warnings**
+- `docs/handoffs/task-completions/2026-06-23-12-restored-header-font-protected-smoke.md`
+- Handoff commit: `7db94f7 docs: record restored header font protected smoke`
+- Runtime smoked: `706d8cd`
+- Result: **pass with product caveat**
 - API fallback: not used as browser-smoke proof
 
 Smoke URLs:
 
 ```text
 Main app:
-https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=fd342b9
+https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=706d8cd
 
 E9 Fretboard Explorer:
-https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=fd342b9
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=706d8cd
 
 Root:
-https://app.steelguitarrag.com/?v=fd342b9
+https://app.steelguitarrag.com/?v=706d8cd
 ```
 
 Root caveat:
 
-- `https://app.steelguitarrag.com/?v=fd342b9` redirects to `/ui/steel-guitar-rag-mock.html`.
+- `https://app.steelguitarrag.com/?v=706d8cd` redirects to `/ui/steel-guitar-rag-mock.html`.
 - The root redirect drops the query string.
 - Use direct cache-busted `/ui/...?...` URLs when exact cache-busting matters.
 
-## Fretboard Button Style Smoke Result
+## Restored Header Font Smoke Result
 
 Passed:
 
 - Cloudflare Access protected-preview login.
 - Main app shell and Q&A surface.
-- Header button visual fix:
-  - `Explore Fretboard` visually matches `Go Backstage`.
-  - Both controls use the shared `header-action-button` style family.
-  - Both use the same UI font family, size, weight, padding, border, radius, height/top alignment, and SVG icon treatment.
-  - Decorative/display font is gone from `Explore Fretboard`.
-  - `Explore Fretboard` opens `/ui/e9-fretboard-explorer.html`.
-  - `Go Backstage` remains separate and targets backstage/settings.
-- Explorer cleanup:
+- Root redirect behavior observed.
+- Header button restored font behavior:
+  - `Explore Fretboard` and `Go Backstage` use the restored inherited app-page typography behavior.
+  - Both controls inherit the app font stack beginning with `Gill Sans`.
+  - The rejected explicit neutral system stack from `b547178` is no longer present.
+  - `Explore Fretboard` remains visible in the upper-right header area and links to `/ui/e9-fretboard-explorer.html`.
+  - `Go Backstage` remains a separate header action and opens/toggles Backstage/settings.
+- Explorer checks:
+  - Explorer loaded through Cloudflare Access.
   - 12 combined key choices present.
   - No duplicate accidental key list.
   - No standalone 5&8 branch option in Harmony/View.
   - Bad internal deterministic/source-card copy absent.
-  - No relevant console errors.
+  - No relevant browser console errors.
 - Prompt spot checks:
-  - Static grip/position answers remain fretboard-first with no default tab.
-  - Movement prompt can show deterministic tab.
-  - Copyright prompt refuses safely.
-  - Gear prompt has source cards and no stale tab/fretboard.
+  - `Show me a G major grip.` passed.
+  - `Show me a G to C move.` passed.
+  - `Give me the full tab for a modern copyrighted song.` passed.
 
-Warnings preserved:
+Product caveat:
 
-1. Root URL drops cache-bust on redirect.
-2. LaunchDaemon helper `status` and `version` commands require `sudo` in this shell, though `launchctl`, listener, and `/api/version` checks supplied runtime evidence.
-3. Prior warning still visible until closed: `tab_example_event` / `Tab event` wording on static grip.
-4. Prior warning still visible until closed: Ab/A-flat fretboard labels canonicalize as `G# major`.
+- Restored behavior inherits the app font stack beginning with `Gill Sans`.
+- This is intentional for this slice and matches the requested prior accepted mechanism from git history.
+- If user smoke rejects it, next step is a product decision on the exact explicit button font before another Lane 06 pass.
 
-## Warning Routing
+Known caveats preserved:
+
+1. Root URL redirects to `/ui/steel-guitar-rag-mock.html` and drops the query string.
+2. Restored header font inherits the Gill Sans-backed app stack.
+3. Exact explicit button font remains a product decision only if user smoke rejects this restored behavior.
+
+## Caveat Routing
 
 - Root cache-bust behavior: Lane 12 Self-Hosted Deployment.
-- LaunchDaemon helper sudo caveat: Lane 12 Self-Hosted Deployment only if it becomes operationally painful.
-- `tab_example_event` / `Tab event` wording: Lane 05 if the API payload/detail contract owns the wording; Lane 06 if this is only display-label handling.
-- Ab/A-flat canonicalization to `G# major` fretboard labels: Lane 05 Backend / RAG Integration.
+- Header button exact explicit font decision, if restored behavior is rejected: Product decision first, then Lane 06 UX/UI Design.
 
 ## Current Git / Worktree Notes
 
 Current checked state at this refresh:
 
 - Branch: `feature/answer-api`.
-- Repo HEAD: `78f6c14`.
+- Repo HEAD: `7db94f7`.
 - Cached index before this docs refresh: empty.
 - `git diff --check`: to be run for this docs refresh.
 
@@ -133,12 +133,12 @@ Do not stage parked work unless a later exact-scope handoff approves it.
 
 No hard protected-preview blocker is known from the latest Lane 12 smoke.
 
-This is not a clean pass because the warnings above remain.
+This is not a clean pass because the restored inherited header font remains a product caveat for user smoke.
 
 ## Safe To Stage For This Refresh
 
 - `docs/handoffs/task-completions/integration-status.md`
-- `docs/handoffs/task-completions/2026-06-23-01-fretboard-button-style-integration-refresh.md`
+- `docs/handoffs/task-completions/2026-06-23-01-restored-header-font-integration-refresh.md`
 
 ## Files Not To Stage For This Refresh
 
@@ -150,21 +150,19 @@ This is not a clean pass because the warnings above remain.
 
 ## Recommended Control State
 
-User smoke the header buttons, then park the app with known warnings.
+Park the app if the restored inherited header font is acceptable in user smoke.
 
 Use these exact URLs after Cloudflare Access login:
 
 ```text
 Main app:
-https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=fd342b9
+https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=706d8cd
 
 E9 Fretboard Explorer:
-https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=fd342b9
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=706d8cd
 ```
 
 Route follow-up work by lane:
 
-- Lane 12 for root cache-bust/redirect behavior or LaunchDaemon helper usability.
-- Lane 05 for API payload/detail contract wording and Ab/A-flat backend canonicalization.
-- Lane 06 for display-label-only cleanup if payloads are already correct.
-- Lane 15 for regression matrix or smoke QA.
+- Lane 12 for root cache-bust/redirect behavior.
+- Product decision first, then Lane 06, if the exact explicit header button font needs to change.
