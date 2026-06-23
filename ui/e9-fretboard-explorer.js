@@ -36,6 +36,7 @@
     stringGroup: document.getElementById("explorer-string-group"),
     scaleNotes: document.getElementById("explorer-scale-notes"),
     resultCount: document.getElementById("explorer-result-count"),
+    activeResults: document.getElementById("explorer-active-results"),
     fretboard: document.getElementById("explorer-fretboard"),
     rowList: document.getElementById("explorer-row-list"),
     selectedDetail: document.getElementById("explorer-selected-detail"),
@@ -175,6 +176,14 @@
       .filter((item) => item.selected && item.value !== "all")
       .map((item) => item.value);
     return selected.length ? selected : [];
+  }
+
+  function selectedGroupLabel() {
+    const groups = selectedStringGroups();
+    if (groups.length) {
+      return groups.join(", ");
+    }
+    return els.harmony.value === "two_string_harmonized" ? "all 2-string groups" : "all 3-string groups";
   }
 
   function updateHarmonyOptions() {
@@ -412,6 +421,52 @@
       button.classList.toggle("is-selected", isSelected);
       button.setAttribute("aria-pressed", isSelected ? "true" : "false");
     });
+    if (els.activeResults) {
+      Array.from(els.activeResults.querySelectorAll("[data-active-result-row]")).forEach((button) => {
+        const isSelected = button.getAttribute("data-active-result-row") === selectedRowId;
+        button.classList.toggle("is-selected", isSelected);
+        button.setAttribute("aria-pressed", isSelected ? "true" : "false");
+      });
+    }
+  }
+
+  function resultButtonHtml(row, dataAttributeName) {
+    const buttonClass = isAdvanced(row) ? " explorer-active-result--advanced" : "";
+    const isSelected = row.id === selectedRowId;
+    return `
+      <button class="explorer-active-result${buttonClass}${isSelected ? " is-selected" : ""}" type="button" ${dataAttributeName}="${escapeHtml(row.id)}" data-string-group="${escapeHtml(row.string_group)}" data-harmony-type="${escapeHtml(row.harmony_type)}" aria-pressed="${isSelected ? "true" : "false"}">
+        <strong>${escapeHtml(shortLabel(row))}</strong>
+        <span class="explorer-active-result__meta">${escapeHtml(row.string_group)} · ${escapeHtml(formatValue(row.display_notes))}</span>
+      </button>
+    `;
+  }
+
+  function renderActiveResults(rows) {
+    if (!els.activeResults) {
+      return;
+    }
+    const label = selectedGroupLabel();
+    if (!rows.length) {
+      els.activeResults.innerHTML = `
+        <div class="explorer-active-results__header">
+          <strong>No visible positions for ${escapeHtml(label)}</strong>
+          <span>Try all groups or a different view.</span>
+        </div>
+      `;
+      return;
+    }
+    els.activeResults.innerHTML = `
+      <div class="explorer-active-results__header">
+        <strong>${escapeHtml(label)}: ${rows.length} visible ${rows.length === 1 ? "position" : "positions"}</strong>
+        <span>Cards match the SVG markers below.</span>
+      </div>
+      <div class="explorer-active-results__track">
+        ${rows.map((row) => resultButtonHtml(row, "data-active-result-row")).join("")}
+      </div>
+    `;
+    Array.from(els.activeResults.querySelectorAll("[data-active-result-row]")).forEach((button) => {
+      button.addEventListener("click", () => selectRow(button.getAttribute("data-active-result-row")));
+    });
   }
 
   function renderCards(rows) {
@@ -422,7 +477,7 @@
         return `
           <button class="explorer-row-button${buttonClass}${isSelected ? " is-selected" : ""}" type="button" data-explorer-row="${escapeHtml(row.id)}" data-string-group="${escapeHtml(row.string_group)}" data-harmony-type="${escapeHtml(row.harmony_type)}" aria-pressed="${isSelected ? "true" : "false"}">
             <strong>${escapeHtml(shortLabel(row))}</strong>
-            <span class="explorer-row-button__meta">${escapeHtml(groupLabel(row))} · ${escapeHtml(formatValue(row.display_notes))}</span>
+            <span class="explorer-row-button__meta">${escapeHtml(row.string_group)} · ${escapeHtml(groupLabel(row))} · ${escapeHtml(formatValue(row.display_notes))}</span>
           </button>
         `;
       })
@@ -531,6 +586,7 @@
     els.empty.textContent = rows.length
       ? ""
       : `No validated ${HARMONY_LABELS[els.harmony.value] || "Explorer"} rows are available for ${els.scale.options[els.scale.selectedIndex]?.text || "this scale"} yet.`;
+    renderActiveResults(rows);
     renderCards(rows);
     renderFretboard(rows);
     renderSelectedDetail(rows.find((row) => row.id === selectedRowId));

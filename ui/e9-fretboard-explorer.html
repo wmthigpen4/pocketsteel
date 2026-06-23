@@ -206,6 +206,75 @@
       overflow: hidden;
     }
 
+    .explorer-active-results {
+      display: grid;
+      gap: 10px;
+      padding: 14px 16px 0;
+      border-bottom: 1px solid rgba(246, 190, 88, 0.14);
+      background: rgba(0, 0, 0, 0.16);
+    }
+
+    .explorer-active-results__header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px 14px;
+    }
+
+    .explorer-active-results__header strong {
+      color: var(--text);
+      font-size: 0.9rem;
+      line-height: 1.25;
+    }
+
+    .explorer-active-results__header span {
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .explorer-active-results__track {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 12px;
+      scrollbar-color: rgba(246, 190, 88, 0.44) rgba(0, 0, 0, 0.2);
+    }
+
+    .explorer-active-result {
+      flex: 0 0 clamp(180px, 22vw, 260px);
+      border: 1px solid rgba(246, 190, 88, 0.22);
+      border-radius: 11px;
+      padding: 9px 11px;
+      background: rgba(16, 14, 11, 0.78);
+      color: var(--text);
+      cursor: pointer;
+      text-align: left;
+      font: inherit;
+      line-height: 1.25;
+    }
+
+    .explorer-active-result:hover,
+    .explorer-active-result:focus-visible,
+    .explorer-active-result.is-selected {
+      border-color: rgba(246, 190, 88, 0.62);
+      background: rgba(246, 190, 88, 0.09);
+      outline: none;
+    }
+
+    .explorer-active-result--advanced {
+      border-color: rgba(141, 199, 141, 0.36);
+    }
+
+    .explorer-active-result__meta {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 0.76rem;
+      font-weight: 700;
+    }
+
     .explorer-fretboard {
       padding: 16px;
       overflow-x: auto;
@@ -518,6 +587,7 @@
 
     <section class="explorer-panel" aria-label="Explorer fretboard">
       <p class="explorer-empty" id="explorer-empty" hidden>No validated rows match these controls.</p>
+      <div class="explorer-active-results" id="explorer-active-results" aria-label="Visible selected positions"></div>
       <div class="explorer-fretboard" id="explorer-fretboard"></div>
       <div class="explorer-tooltip" id="explorer-tooltip" role="tooltip" hidden></div>
     </section>
@@ -533,8 +603,8 @@
     </section>
   </main>
 
-  <script src="pedal-steel-fretboard.js?v=explorer-render-fix-20260623"></script>
-  <script src="e9-fretboard-explorer-data.js?v=explorer-render-fix-20260623"></script>
-  <script src="e9-fretboard-explorer.js?v=explorer-render-fix-20260623"></script>
+  <script src="pedal-steel-fretboard.js?v=selected-group-results-20260623"></script>
+  <script src="e9-fretboard-explorer-data.js?v=selected-group-results-20260623"></script>
+  <script src="e9-fretboard-explorer.js?v=selected-group-results-20260623"></script>
 </body>
 </html>

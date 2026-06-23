@@ -269,11 +269,11 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "checked against tuning and pedal/lever changes" in html
     assert "These Explorer rows are deterministic teaching data, separate from source-card answers." not in html
     assert "not corpus retrieval or RAG-generated fretboard positions" not in html
-    assert '<script src="pedal-steel-fretboard.js?v=explorer-render-fix-20260623"></script>' in html
+    assert '<script src="pedal-steel-fretboard.js?v=selected-group-results-20260623"></script>' in html
     assert "pedal-steel-fretboard.js?v=e9-explorer-explanation-ui-20260623" not in html
     assert "pedal-steel-fretboard.js?v=explorer-ui-cleanup-20260623" not in html
-    assert '<script src="e9-fretboard-explorer-data.js?v=explorer-render-fix-20260623"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=explorer-render-fix-20260623"></script>' in html
+    assert '<script src="e9-fretboard-explorer-data.js?v=selected-group-results-20260623"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=selected-group-results-20260623"></script>' in html
     expected_key_options = {
         "C": "C",
         "Db": "C# (or D♭)",
@@ -332,6 +332,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "vii° means the diminished chord built on the seventh scale degree" in html
     assert "Partial means the row does not contain every chord tone" in html
     assert 'id="explorer-tooltip"' in html
+    assert 'id="explorer-active-results"' in html
     assert 'id="explorer-selected-detail"' in html
     assert "explorer-teaching-note" in html
     assert "Showing validated positions" in html
@@ -362,6 +363,8 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "selectedStringGroups" in script
     assert "tooltipText" in script
     assert "selectedRowId" in script
+    assert "renderActiveResults" in script
+    assert "data-active-result-row" in script
     assert "Pitch validated" not in script
     assert "validated row" not in script
     assert "Starter" not in html
@@ -471,7 +474,10 @@ class FakeNode {
   }
   querySelectorAll(selector) {
     if (selector === "[data-explorer-row]") {
-      return Array.from(this._innerHTML.matchAll(/data-explorer-row="([^"]+)"/g)).map((match) => new FakeButton(match[1]));
+      return Array.from(this._innerHTML.matchAll(/data-explorer-row="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-explorer-row"));
+    }
+    if (selector === "[data-active-result-row]") {
+      return Array.from(this._innerHTML.matchAll(/data-active-result-row="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-active-result-row"));
     }
     if (selector === ".pedal-steel-fretboard__highlight[data-highlight-id]") {
       return this._markers;
@@ -481,9 +487,10 @@ class FakeNode {
 }
 
 class FakeButton {
-  constructor(rowId) {
+  constructor(rowId, attributeName = "data-explorer-row") {
     this.rowId = rowId;
-    this.attributes = { "data-explorer-row": rowId };
+    this.attributeName = attributeName;
+    this.attributes = { [attributeName]: rowId };
     this.classList = { toggle: () => {} };
   }
   getAttribute(name) {
@@ -533,6 +540,7 @@ const elements = {
   "explorer-string-group": new FakeSelect("explorer-string-group", "all", [{ value: "all", text: "All 3-string groups" }]),
   "explorer-scale-notes": new FakeNode("explorer-scale-notes"),
   "explorer-result-count": new FakeNode("explorer-result-count"),
+  "explorer-active-results": new FakeNode("explorer-active-results"),
   "explorer-fretboard": new FakeNode("explorer-fretboard"),
   "explorer-row-list": new FakeNode("explorer-row-list"),
   "explorer-selected-detail": new FakeNode("explorer-selected-detail"),
@@ -585,6 +593,8 @@ assert.equal(lastMount.options.positions.length > 0, true);
 assert.equal(lastMount.options.positions.some((row) => row.grip === "5-7-8"), true);
 assert.match(elements["explorer-result-count"].textContent, /Showing validated positions/);
 assert.doesNotMatch(elements["explorer-result-count"].textContent, /validated rows/);
+assert.match(elements["explorer-active-results"].textContent, /all 3-string groups/);
+assert.equal(elements["explorer-active-results"].querySelectorAll("[data-active-result-row]").length, lastMount.options.positions.length);
 assert.match(elements["explorer-selected-detail"].textContent, /Display notes/);
 assert.match(elements["explorer-selected-detail"].textContent, /Why this position works/);
 assert.match(elements["explorer-selected-detail"].textContent, /validated E9 pitch logic/);
@@ -616,8 +626,30 @@ for (const [key, scaleNotes] of Object.entries(expectedMajorScales)) {
   assert.equal(lastMount.options.positions.every((row) => row.key === key), true);
   assert.equal(elements["explorer-empty"].hidden, true);
   assert.doesNotMatch(elements["explorer-row-list"].textContent, /\[object Object\]/);
+  assert.doesNotMatch(elements["explorer-active-results"].textContent, /\[object Object\]/);
   assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /\[object Object\]/);
 }
+
+elements["explorer-key"].value = "A";
+elements["explorer-key"].dispatchChange();
+elements["explorer-harmony"].value = "three_string_diatonic";
+elements["explorer-harmony"].dispatchChange();
+elements["explorer-string-group"].selectValues(["6-8-10"]);
+assert.equal(lastMount.options.positions.length > 0, true);
+assert.equal(lastMount.options.positions.every((row) => row.grip === "6-8-10"), true);
+assert.match(elements["explorer-active-results"].textContent, /6-8-10/);
+assert.match(elements["explorer-active-results"].textContent, /visible positions/);
+assert.equal(elements["explorer-active-results"].querySelectorAll("[data-active-result-row]").length, lastMount.options.positions.length);
+assert.equal(elements["explorer-fretboard"].querySelectorAll(".pedal-steel-fretboard__highlight[data-highlight-id]").length, lastMount.options.positions.length);
+assert.match(elements["explorer-row-list"].textContent, /6-8-10/);
+assert.match(elements["explorer-selected-detail"].textContent, /String group6-8-10/);
+elements["explorer-string-group"].selectValues(["5-6-8"]);
+assert.equal(lastMount.options.positions.length > 0, true);
+assert.equal(lastMount.options.positions.every((row) => row.grip === "5-6-8"), true);
+assert.match(elements["explorer-active-results"].textContent, /5-6-8/);
+elements["explorer-string-group"].selectValues(["6-8-10"]);
+assert.equal(lastMount.options.positions.length > 0, true);
+assert.equal(lastMount.options.positions.every((row) => row.grip === "6-8-10"), true);
 
 elements["explorer-key"].value = "G";
 elements["explorer-key"].dispatchChange();
