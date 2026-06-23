@@ -299,6 +299,19 @@
     return `<div class="explorer-detail-row"><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(rendered)}</dd></div>`;
   }
 
+  function teachingNoteHtml(row) {
+    const rendered = formatValue(row.explanation_summary, "");
+    if (!rendered) {
+      return "";
+    }
+    return `
+      <section class="explorer-teaching-note" aria-label="Why this position works">
+        <strong>Why this position works</strong>
+        <p>${escapeHtml(rendered)}</p>
+      </section>
+    `;
+  }
+
   function renderSelectedDetail(row) {
     if (!row) {
       els.selectedDetail.className = "explorer-selected-detail";
@@ -314,6 +327,7 @@
         <span class="explorer-selected-detail__kind">${escapeHtml(groupLabel(row))}</span>
         <strong>${escapeHtml(formatValue(row.display_summary || row.chord_name || row.id))}</strong>
       </div>
+      ${teachingNoteHtml(row)}
       <dl class="explorer-detail-grid">
         ${detailRow("Display notes", row.display_notes)}
         ${detailRow("Top voice", row.display_top_voice)}

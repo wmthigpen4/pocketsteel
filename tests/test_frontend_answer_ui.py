@@ -240,9 +240,9 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "E9 Fretboard Explorer" in html
     assert "Validated Explorer data" in html
     assert "not corpus retrieval or RAG-generated fretboard positions" in html
-    assert '<script src="pedal-steel-fretboard.js?v=e9-explorer-expanded-keys-20260622"></script>' in html
-    assert '<script src="e9-fretboard-explorer-data.js?v=e9-explorer-expanded-keys-20260622"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=e9-explorer-expanded-keys-20260622"></script>' in html
+    assert '<script src="pedal-steel-fretboard.js?v=e9-explorer-explanation-ui-20260623"></script>' in html
+    assert '<script src="e9-fretboard-explorer-data.js?v=e9-explorer-explanation-ui-20260623"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=e9-explorer-explanation-ui-20260623"></script>' in html
     for key in ["G", "C", "D", "F", "Bb", "Eb"]:
         assert f'<option value="{key}"' in html
         assert key in payloads
@@ -256,6 +256,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<option value="all" selected>All 3-string groups</option>' in html
     assert 'id="explorer-tooltip"' in html
     assert 'id="explorer-selected-detail"' in html
+    assert "explorer-teaching-note" in html
     assert "Showing validated positions" in html
     assert "0 validated rows" not in html
     assert "explorer-row-card" not in html
@@ -266,6 +267,9 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "display_scale_notes" in script
     assert "per_string_changes" in script
     assert "warnings" in script
+    assert "explanation_summary" in script
+    assert "Why this position works" in script
+    assert "teachingNoteHtml" in script
     assert "STEEL_RAG_E9_EXPLORER_PAYLOADS" in data
     assert "availableKeys" in script
     assert "activePayload" in script
@@ -277,9 +281,13 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "Pitch validated" not in script
     assert "validated row" not in script
     assert "[object Object]" not in data
+    assert "validated E9 pitch logic" in data
+    assert "Teaching text explains the row; it does not choose the row" in data
 
     assert payload["query"]["display_scale_notes"]["natural_minor"] == ["G", "A", "Bb", "C", "D", "Eb", "F"]
     assert payload["query"]["display_scale_notes"]["natural_minor"] != ["G", "A", "A#", "C", "D", "D#", "F"]
+    assert any("validated E9 pitch logic" in row["explanation_summary"] for row in payload["positions"])
+    assert any("Teaching text explains the row" in row["explanation_summary"] for row in payload["positions"])
     assert payloads["C"]["query"]["display_scale_notes"]["natural_minor"] == ["C", "D", "Eb", "F", "G", "Ab", "Bb"]
     assert payloads["Bb"]["query"]["display_scale_notes"]["major"] == ["Bb", "C", "D", "Eb", "F", "G", "A"]
     assert payloads["Eb"]["query"]["display_scale_notes"]["major"] == ["Eb", "F", "G", "Ab", "Bb", "C", "D"]
@@ -460,6 +468,10 @@ assert.equal(lastMount.options.positions.some((row) => row.grip === "5-7-8"), tr
 assert.match(elements["explorer-result-count"].textContent, /Showing validated positions/);
 assert.doesNotMatch(elements["explorer-result-count"].textContent, /validated rows/);
 assert.match(elements["explorer-selected-detail"].textContent, /Display notes/);
+assert.match(elements["explorer-selected-detail"].textContent, /Why this position works/);
+assert.match(elements["explorer-selected-detail"].textContent, /validated E9 pitch logic/);
+assert.match(elements["explorer-selected-detail"].innerHTML, /explorer-teaching-note/);
+assert.doesNotMatch(elements["explorer-fretboard"].textContent, /Why this position works/);
 assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /Pitch validated/);
 
 const expectedMajorScales = {
@@ -478,6 +490,7 @@ for (const [key, scaleNotes] of Object.entries(expectedMajorScales)) {
   assert.equal(lastMount.options.positions.every((row) => row.key === key), true);
   assert.equal(elements["explorer-empty"].hidden, true);
   assert.doesNotMatch(elements["explorer-row-list"].textContent, /\[object Object\]/);
+  assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /\[object Object\]/);
 }
 
 elements["explorer-key"].value = "G";
@@ -511,6 +524,7 @@ elements["explorer-harmony"].dispatchChange();
 elements["explorer-string-group"].value = "5-7-8";
 elements["explorer-string-group"].dispatchChange();
 assert.match(elements["explorer-selected-detail"].textContent, /Per-string changes/);
+assert.match(elements["explorer-selected-detail"].textContent, /Why this position works/);
 assert.match(elements["explorer-selected-detail"].textContent, /E-lower/);
 assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /E-lower\+E-lower/);
 assert.doesNotMatch(elements["explorer-row-list"].textContent, /E-lower\+E-lower/);

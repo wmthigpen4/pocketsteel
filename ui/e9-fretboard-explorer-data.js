@@ -79,7 +79,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 3
         },
-        "explanation_summary": "D on strings 3-5 at fret 6.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in Bb major; it is a partial interval pair, not a full triad. Use fret 6 on strings 3-5 with no pedals/no levers; the selected strings spell D, F (1, b3 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-3-5-3-major_thirds_sixths-6",
@@ -134,7 +134,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 3
         },
-        "explanation_summary": "Eb on strings 3-5 at fret 6.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in Bb major; it is a partial interval pair, not a full triad. Use fret 6 on strings 3-5 with A pedal + B pedal; the selected strings spell Eb, G (1, 3 against Eb). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-3-5-4-major_thirds_sixths-6",
@@ -203,7 +203,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 3
         },
-        "explanation_summary": "F on strings 3-5 at fret 8.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in Bb major; it is a partial interval pair, not a full triad. Use fret 8 on strings 3-5 with A pedal + B pedal; the selected strings spell F, A (1, 3 against F). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-3-5-5-major_thirds_sixths-8",
@@ -272,7 +272,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 3
         },
-        "explanation_summary": "G on strings 3-5 at fret 11.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in Bb major; it is a partial interval pair, not a full triad. Use fret 11 on strings 3-5 with no pedals/no levers; the selected strings spell G, Bb (1, b3 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-3-5-6-major_thirds_sixths-11",
@@ -327,7 +327,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 3
         },
-        "explanation_summary": "A on strings 3-5 at fret 13.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in Bb major; it is a partial interval pair, not a full triad. Use fret 13 on strings 3-5 with no pedals/no levers; the selected strings spell A, C (1, b3 against A). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-3-5-7-major_thirds_sixths-13",
@@ -382,7 +382,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 3
         },
-        "explanation_summary": "Bb on strings 3-5 at fret 13.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in Bb major; it is a partial interval pair, not a full triad. Use fret 13 on strings 3-5 with A pedal + B pedal; the selected strings spell Bb, D (1, 3 against Bb). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-3-5-1-major_thirds_sixths-13",
@@ -451,7 +451,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 3
         },
-        "explanation_summary": "C on strings 3-5 at fret 16.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in Bb major; it is a partial interval pair, not a full triad. Use fret 16 on strings 3-5 with no pedals/no levers; the selected strings spell C, Eb (1, b3 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 16,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-3-5-2-major_thirds_sixths-16",
@@ -506,7 +506,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 3
         },
-        "explanation_summary": "D on strings 3-5 at fret 18.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in Bb major; it is a partial interval pair, not a full triad. Use fret 18 on strings 3-5 with no pedals/no levers; the selected strings spell D, F (1, b3 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 18,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-3-5-3-major_thirds_sixths-18",
@@ -561,7 +561,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 5
         },
-        "explanation_summary": "D on strings 5-6 at fret 6.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in Bb major; it is a partial interval pair, not a full triad. Use fret 6 on strings 5-6 with no pedals/no levers; the selected strings spell F, D (b3, 1 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-5-6-3-major_thirds_sixths-6",
@@ -616,7 +616,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 5
         },
-        "explanation_summary": "Eb on strings 5-6 at fret 6.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in Bb major; it is a partial interval pair, not a full triad. Use fret 6 on strings 5-6 with A pedal + B pedal; the selected strings spell G, Eb (3, 1 against Eb). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-5-6-4-major_thirds_sixths-6",
@@ -685,7 +685,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 5
         },
-        "explanation_summary": "F on strings 5-6 at fret 8.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in Bb major; it is a partial interval pair, not a full triad. Use fret 8 on strings 5-6 with A pedal + B pedal; the selected strings spell A, F (3, 1 against F). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-5-6-5-major_thirds_sixths-8",
@@ -754,7 +754,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 5
         },
-        "explanation_summary": "G on strings 5-6 at fret 11.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in Bb major; it is a partial interval pair, not a full triad. Use fret 11 on strings 5-6 with no pedals/no levers; the selected strings spell Bb, G (b3, 1 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-5-6-6-major_thirds_sixths-11",
@@ -809,7 +809,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 5
         },
-        "explanation_summary": "A on strings 5-6 at fret 13.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in Bb major; it is a partial interval pair, not a full triad. Use fret 13 on strings 5-6 with no pedals/no levers; the selected strings spell C, A (b3, 1 against A). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-5-6-7-major_thirds_sixths-13",
@@ -864,7 +864,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 5
         },
-        "explanation_summary": "Bb on strings 5-6 at fret 13.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in Bb major; it is a partial interval pair, not a full triad. Use fret 13 on strings 5-6 with A pedal + B pedal; the selected strings spell D, Bb (3, 1 against Bb). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-5-6-1-major_thirds_sixths-13",
@@ -933,7 +933,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 5
         },
-        "explanation_summary": "C on strings 5-6 at fret 16.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in Bb major; it is a partial interval pair, not a full triad. Use fret 16 on strings 5-6 with no pedals/no levers; the selected strings spell Eb, C (b3, 1 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 16,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-5-6-2-major_thirds_sixths-16",
@@ -988,7 +988,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 5
         },
-        "explanation_summary": "D on strings 5-6 at fret 18.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in Bb major; it is a partial interval pair, not a full triad. Use fret 18 on strings 5-6 with no pedals/no levers; the selected strings spell F, D (b3, 1 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 18,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-5-6-3-major_thirds_sixths-18",
@@ -1043,7 +1043,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 6
         },
-        "explanation_summary": "D on strings 6-10 at fret 6.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in Bb major; it is a partial interval pair, not a full triad. Use fret 6 on strings 6-10 with no pedals/no levers; the selected strings spell D, F (1, b3 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-6-10-3-major_thirds_sixths-6",
@@ -1098,7 +1098,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 6
         },
-        "explanation_summary": "Eb on strings 6-10 at fret 6.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in Bb major; it is a partial interval pair, not a full triad. Use fret 6 on strings 6-10 with A pedal + B pedal; the selected strings spell Eb, G (1, 3 against Eb). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-6-10-4-major_thirds_sixths-6",
@@ -1167,7 +1167,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 6
         },
-        "explanation_summary": "F on strings 6-10 at fret 8.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in Bb major; it is a partial interval pair, not a full triad. Use fret 8 on strings 6-10 with A pedal + B pedal; the selected strings spell F, A (1, 3 against F). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-6-10-5-major_thirds_sixths-8",
@@ -1236,7 +1236,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 6
         },
-        "explanation_summary": "G on strings 6-10 at fret 11.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in Bb major; it is a partial interval pair, not a full triad. Use fret 11 on strings 6-10 with no pedals/no levers; the selected strings spell G, Bb (1, b3 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-6-10-6-major_thirds_sixths-11",
@@ -1291,7 +1291,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 6
         },
-        "explanation_summary": "A on strings 6-10 at fret 13.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in Bb major; it is a partial interval pair, not a full triad. Use fret 13 on strings 6-10 with no pedals/no levers; the selected strings spell A, C (1, b3 against A). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-6-10-7-major_thirds_sixths-13",
@@ -1346,7 +1346,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 6
         },
-        "explanation_summary": "Bb on strings 6-10 at fret 13.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in Bb major; it is a partial interval pair, not a full triad. Use fret 13 on strings 6-10 with A pedal + B pedal; the selected strings spell Bb, D (1, 3 against Bb). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-6-10-1-major_thirds_sixths-13",
@@ -1415,7 +1415,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 6
         },
-        "explanation_summary": "C on strings 6-10 at fret 16.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in Bb major; it is a partial interval pair, not a full triad. Use fret 16 on strings 6-10 with no pedals/no levers; the selected strings spell C, Eb (1, b3 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 16,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-6-10-2-major_thirds_sixths-16",
@@ -1470,7 +1470,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 6
         },
-        "explanation_summary": "D on strings 6-10 at fret 18.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in Bb major; it is a partial interval pair, not a full triad. Use fret 18 on strings 6-10 with no pedals/no levers; the selected strings spell D, F (1, b3 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 18,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-6-10-3-major_thirds_sixths-18",
@@ -1525,7 +1525,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 4
         },
-        "explanation_summary": "Bb on strings 4-6 at fret 6.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in Bb major; it is a partial interval pair, not a full triad. Use fret 6 on strings 4-6 with no pedals/no levers; the selected strings spell Bb, D (1, 3 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-4-6-1-e_raise_two_string-6",
@@ -1580,7 +1580,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 4
         },
-        "explanation_summary": "C on strings 4-6 at fret 7.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in Bb major; it is a partial interval pair, not a full triad. Use fret 7 on strings 4-6 with E-raise lever; the selected strings spell C, Eb (1, b3 against C). Use the mechanical E-raise lever name here; shorthand varies by copedent. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 7,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-4-6-2-e_raise_two_string-7",
@@ -1643,7 +1643,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 4
         },
-        "explanation_summary": "D on strings 4-6 at fret 9.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in Bb major; it is a partial interval pair, not a full triad. Use fret 9 on strings 4-6 with E-raise lever; the selected strings spell D, F (1, b3 against D). Use the mechanical E-raise lever name here; shorthand varies by copedent. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 9,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-4-6-3-e_raise_two_string-9",
@@ -1706,7 +1706,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 4
         },
-        "explanation_summary": "Eb on strings 4-6 at fret 11.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in Bb major; it is a partial interval pair, not a full triad. Use fret 11 on strings 4-6 with no pedals/no levers; the selected strings spell Eb, G (1, 3 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-4-6-4-e_raise_two_string-11",
@@ -1761,7 +1761,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 4
         },
-        "explanation_summary": "F on strings 4-6 at fret 13.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in Bb major; it is a partial interval pair, not a full triad. Use fret 13 on strings 4-6 with no pedals/no levers; the selected strings spell F, A (1, 3 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-4-6-5-e_raise_two_string-13",
@@ -1816,7 +1816,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 4
         },
-        "explanation_summary": "G on strings 4-6 at fret 14.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in Bb major; it is a partial interval pair, not a full triad. Use fret 14 on strings 4-6 with E-raise lever; the selected strings spell G, Bb (1, b3 against G). Use the mechanical E-raise lever name here; shorthand varies by copedent. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 14,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-4-6-6-e_raise_two_string-14",
@@ -1879,7 +1879,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 4
         },
-        "explanation_summary": "A on strings 4-6 at fret 16.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in Bb major; it is a partial interval pair, not a full triad. Use fret 16 on strings 4-6 with E-raise lever; the selected strings spell A, C (1, b3 against A). Use the mechanical E-raise lever name here; shorthand varies by copedent. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 16,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-4-6-7-e_raise_two_string-16",
@@ -1942,7 +1942,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 4
         },
-        "explanation_summary": "Bb on strings 4-6 at fret 18.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in Bb major; it is a partial interval pair, not a full triad. Use fret 18 on strings 4-6 with no pedals/no levers; the selected strings spell Bb, D (1, 3 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 18,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-4-6-1-e_raise_two_string-18",
@@ -1997,7 +1997,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 3
         },
-        "explanation_summary": "Bb on strings 3-4 at fret 6.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in Bb major; it is a partial interval pair, not a full triad. Use fret 6 on strings 3-4 with no pedals/no levers; the selected strings spell D, Bb (3, 1 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-3-4-1-bc_two_string-6",
@@ -2052,7 +2052,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 3
         },
-        "explanation_summary": "C on strings 3-4 at fret 6.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in Bb major; it is a partial interval pair, not a full triad. Use fret 6 on strings 3-4 with B pedal + C pedal; the selected strings spell Eb, C (b3, 1 against C). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-3-4-2-bc_two_string-6",
@@ -2121,7 +2121,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 3
         },
-        "explanation_summary": "D on strings 3-4 at fret 8.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in Bb major; it is a partial interval pair, not a full triad. Use fret 8 on strings 3-4 with B pedal + C pedal; the selected strings spell F, D (b3, 1 against D). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-3-4-3-bc_two_string-8",
@@ -2190,7 +2190,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 3
         },
-        "explanation_summary": "Eb on strings 3-4 at fret 11.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in Bb major; it is a partial interval pair, not a full triad. Use fret 11 on strings 3-4 with no pedals/no levers; the selected strings spell G, Eb (3, 1 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-3-4-4-bc_two_string-11",
@@ -2245,7 +2245,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 3
         },
-        "explanation_summary": "F on strings 3-4 at fret 13.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in Bb major; it is a partial interval pair, not a full triad. Use fret 13 on strings 3-4 with no pedals/no levers; the selected strings spell A, F (3, 1 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-3-4-5-bc_two_string-13",
@@ -2300,7 +2300,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 3
         },
-        "explanation_summary": "G on strings 3-4 at fret 13.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in Bb major; it is a partial interval pair, not a full triad. Use fret 13 on strings 3-4 with B pedal + C pedal; the selected strings spell Bb, G (b3, 1 against G). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-3-4-6-bc_two_string-13",
@@ -2369,7 +2369,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 3
         },
-        "explanation_summary": "A on strings 3-4 at fret 15.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in Bb major; it is a partial interval pair, not a full triad. Use fret 15 on strings 3-4 with B pedal + C pedal; the selected strings spell C, A (b3, 1 against A). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 15,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-3-4-7-bc_two_string-15",
@@ -2438,7 +2438,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 3
         },
-        "explanation_summary": "Bb on strings 3-4 at fret 18.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in Bb major; it is a partial interval pair, not a full triad. Use fret 18 on strings 3-4 with no pedals/no levers; the selected strings spell D, Bb (3, 1 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 18,
         "harmony_type": "two_string_harmonized",
         "id": "flatflat-major-two-string-harmonized-3-4-1-bc_two_string-18",
@@ -2494,7 +2494,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 3
         },
-        "explanation_summary": "Bb on strings 3-4-5 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in Bb major, and validates as Bb major. Use fret 6 on strings 3-4-5 with no pedals/no levers; the selected strings spell D, Bb, F (3, 1, 5 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-3-4-5-1-no_pedals_no_levers-6",
@@ -2553,7 +2553,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 3
         },
-        "explanation_summary": "C on strings 3-4-5 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii, the degree 2 chord in Bb major, and validates as C minor. Use fret 6 on strings 3-4-5 with B pedal + C pedal; the selected strings spell Eb, C, G (b3, 1, 5 against C). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-3-4-5-2-bc_minor-6",
@@ -2631,7 +2631,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 3
         },
-        "explanation_summary": "D on strings 3-4-5 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iii, the degree 3 chord in Bb major, and validates as D minor. Use fret 8 on strings 3-4-5 with B pedal + C pedal; the selected strings spell F, D, A (b3, 1, 5 against D). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-3-4-5-3-bc_minor-8",
@@ -2709,7 +2709,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 3
         },
-        "explanation_summary": "Eb on strings 3-4-5 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets IV, the degree 4 chord in Bb major, and validates as Eb major. Use fret 11 on strings 3-4-5 with no pedals/no levers; the selected strings spell G, Eb, Bb (3, 1, 5 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-3-4-5-4-no_pedals_no_levers-11",
@@ -2768,7 +2768,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 3
         },
-        "explanation_summary": "F on strings 3-4-5 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets V, the degree 5 chord in Bb major, and validates as F major. Use fret 13 on strings 3-4-5 with no pedals/no levers; the selected strings spell A, F, C (3, 1, 5 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-3-4-5-5-no_pedals_no_levers-13",
@@ -2827,7 +2827,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 3
         },
-        "explanation_summary": "G on strings 3-4-5 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vi, the degree 6 chord in Bb major, and validates as G minor. Use fret 13 on strings 3-4-5 with B pedal + C pedal; the selected strings spell Bb, G, D (b3, 1, 5 against G). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-3-4-5-6-bc_minor-13",
@@ -2905,7 +2905,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 3
         },
-        "explanation_summary": "A on strings 3-4-5 at fret 16.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vii\u00b0 / partial vii\u00f8, the degree 7 chord in Bb major, and validates as A diminished. Use fret 16 on strings 3-4-5 with E-raise lever; the selected strings spell C, A, Eb (b3, 1, b5/#11 against A). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 16,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-3-4-5-7-e_raise_diminished-16",
@@ -2976,7 +2976,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 3
         },
-        "explanation_summary": "Bb on strings 3-4-5 at fret 18.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in Bb major, and validates as Bb major. Use fret 18 on strings 3-4-5 with no pedals/no levers; the selected strings spell D, Bb, F (3, 1, 5 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 18,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-3-4-5-1-no_pedals_no_levers-18",
@@ -3035,7 +3035,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 4
         },
-        "explanation_summary": "Bb on strings 4-5-6 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in Bb major, and validates as Bb major. Use fret 6 on strings 4-5-6 with no pedals/no levers; the selected strings spell Bb, F, D (1, 5, 3 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-4-5-6-1-no_pedals_no_levers-6",
@@ -3094,7 +3094,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 4
         },
-        "explanation_summary": "C on strings 4-5-6 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii, the degree 2 chord in Bb major, and validates as C minor. Use fret 6 on strings 4-5-6 with B pedal + C pedal; the selected strings spell C, G, Eb (1, 5, b3 against C). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-4-5-6-2-bc_minor-6",
@@ -3172,7 +3172,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 4
         },
-        "explanation_summary": "D on strings 4-5-6 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iii, the degree 3 chord in Bb major, and validates as D minor. Use fret 8 on strings 4-5-6 with B pedal + C pedal; the selected strings spell D, A, F (1, 5, b3 against D). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-4-5-6-3-bc_minor-8",
@@ -3250,7 +3250,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 4
         },
-        "explanation_summary": "Eb on strings 4-5-6 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets IV, the degree 4 chord in Bb major, and validates as Eb major. Use fret 11 on strings 4-5-6 with no pedals/no levers; the selected strings spell Eb, Bb, G (1, 5, 3 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-4-5-6-4-no_pedals_no_levers-11",
@@ -3309,7 +3309,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 4
         },
-        "explanation_summary": "F on strings 4-5-6 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets V, the degree 5 chord in Bb major, and validates as F major. Use fret 13 on strings 4-5-6 with no pedals/no levers; the selected strings spell F, C, A (1, 5, 3 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-4-5-6-5-no_pedals_no_levers-13",
@@ -3368,7 +3368,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 4
         },
-        "explanation_summary": "G on strings 4-5-6 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vi, the degree 6 chord in Bb major, and validates as G minor. Use fret 13 on strings 4-5-6 with B pedal + C pedal; the selected strings spell G, D, Bb (1, 5, b3 against G). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-4-5-6-6-bc_minor-13",
@@ -3446,7 +3446,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 4
         },
-        "explanation_summary": "A on strings 4-5-6 at fret 16.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vii\u00b0 / partial vii\u00f8, the degree 7 chord in Bb major, and validates as A diminished. Use fret 16 on strings 4-5-6 with E-raise lever; the selected strings spell A, Eb, C (1, b5/#11, b3 against A). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 16,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-4-5-6-7-e_raise_diminished-16",
@@ -3517,7 +3517,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 4
         },
-        "explanation_summary": "Bb on strings 4-5-6 at fret 18.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in Bb major, and validates as Bb major. Use fret 18 on strings 4-5-6 with no pedals/no levers; the selected strings spell Bb, F, D (1, 5, 3 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 18,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-4-5-6-1-no_pedals_no_levers-18",
@@ -3576,7 +3576,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 5
         },
-        "explanation_summary": "Bb on strings 5-6-8 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in Bb major, and validates as Bb major. Use fret 6 on strings 5-6-8 with no pedals/no levers; the selected strings spell F, D, Bb (5, 3, 1 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-5-6-8-1-no_pedals_no_levers-6",
@@ -3635,7 +3635,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 5
         },
-        "explanation_summary": "C on strings 5-6-7 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii, the degree 2 chord in Bb major, and validates as C minor. Use fret 6 on strings 5-6-7 with A pedal + B pedal; the selected strings spell G, Eb, C (5, b3, 1 against C). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-5-6-7-2-ab_minor-6",
@@ -3708,7 +3708,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 5
         },
-        "explanation_summary": "D on strings 5-6-7 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iii, the degree 3 chord in Bb major, and validates as D minor. Use fret 8 on strings 5-6-7 with A pedal + B pedal; the selected strings spell A, F, D (5, b3, 1 against D). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-5-6-7-3-ab_minor-8",
@@ -3781,7 +3781,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 5
         },
-        "explanation_summary": "Eb on strings 5-6-8 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets IV, the degree 4 chord in Bb major, and validates as Eb major. Use fret 11 on strings 5-6-8 with no pedals/no levers; the selected strings spell Bb, G, Eb (5, 3, 1 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-5-6-8-4-no_pedals_no_levers-11",
@@ -3840,7 +3840,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 5
         },
-        "explanation_summary": "F on strings 5-6-8 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets V, the degree 5 chord in Bb major, and validates as F major. Use fret 13 on strings 5-6-8 with no pedals/no levers; the selected strings spell C, A, F (5, 3, 1 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-5-6-8-5-no_pedals_no_levers-13",
@@ -3899,7 +3899,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 5
         },
-        "explanation_summary": "G on strings 5-6-7 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vi, the degree 6 chord in Bb major, and validates as G minor. Use fret 13 on strings 5-6-7 with A pedal + B pedal; the selected strings spell D, Bb, G (5, b3, 1 against G). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-5-6-7-6-ab_minor-13",
@@ -3972,7 +3972,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 5
         },
-        "explanation_summary": "A on strings 5-6-8 at fret 16.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vii\u00b0 / partial vii\u00f8, the degree 7 chord in Bb major, and validates as A diminished. Use fret 16 on strings 5-6-8 with E-raise lever; the selected strings spell Eb, C, A (b5/#11, b3, 1 against A). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 16,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-5-6-8-7-e_raise_diminished-16",
@@ -4043,7 +4043,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 5
         },
-        "explanation_summary": "Bb on strings 5-6-8 at fret 18.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in Bb major, and validates as Bb major. Use fret 18 on strings 5-6-8 with no pedals/no levers; the selected strings spell F, D, Bb (5, 3, 1 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 18,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-5-6-8-1-no_pedals_no_levers-18",
@@ -4102,7 +4102,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 6
         },
-        "explanation_summary": "Bb on strings 6-8-10 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in Bb major, and validates as Bb major. Use fret 6 on strings 6-8-10 with no pedals/no levers; the selected strings spell D, Bb, F (3, 1, 5 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-6-8-10-1-no_pedals_no_levers-6",
@@ -4161,7 +4161,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 6
         },
-        "explanation_summary": "C on strings 6-7-10 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii, the degree 2 chord in Bb major, and validates as C minor. Use fret 6 on strings 6-7-10 with A pedal + B pedal; the selected strings spell Eb, C, G (b3, 1, 5 against C). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-6-7-10-2-ab_minor-6",
@@ -4234,7 +4234,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 6
         },
-        "explanation_summary": "D on strings 6-7-10 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iii, the degree 3 chord in Bb major, and validates as D minor. Use fret 8 on strings 6-7-10 with A pedal + B pedal; the selected strings spell F, D, A (b3, 1, 5 against D). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-6-7-10-3-ab_minor-8",
@@ -4307,7 +4307,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 6
         },
-        "explanation_summary": "Eb on strings 6-8-10 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets IV, the degree 4 chord in Bb major, and validates as Eb major. Use fret 11 on strings 6-8-10 with no pedals/no levers; the selected strings spell G, Eb, Bb (3, 1, 5 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-6-8-10-4-no_pedals_no_levers-11",
@@ -4366,7 +4366,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 6
         },
-        "explanation_summary": "F on strings 6-8-10 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets V, the degree 5 chord in Bb major, and validates as F major. Use fret 13 on strings 6-8-10 with no pedals/no levers; the selected strings spell A, F, C (3, 1, 5 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-6-8-10-5-no_pedals_no_levers-13",
@@ -4425,7 +4425,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 6
         },
-        "explanation_summary": "G on strings 6-7-10 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vi, the degree 6 chord in Bb major, and validates as G minor. Use fret 13 on strings 6-7-10 with A pedal + B pedal; the selected strings spell Bb, G, D (b3, 1, 5 against G). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-6-7-10-6-ab_minor-13",
@@ -4498,7 +4498,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 6
         },
-        "explanation_summary": "A on strings 6-8-10 at fret 16.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vii\u00b0 / partial vii\u00f8, the degree 7 chord in Bb major, and validates as A diminished. Use fret 16 on strings 6-8-10 with E-raise lever; the selected strings spell C, A, Eb (b3, 1, b5/#11 against A). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 16,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-6-8-10-7-e_raise_diminished-16",
@@ -4569,7 +4569,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 6
         },
-        "explanation_summary": "Bb on strings 6-8-10 at fret 18.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in Bb major, and validates as Bb major. Use fret 18 on strings 6-8-10 with no pedals/no levers; the selected strings spell D, Bb, F (3, 1, 5 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 18,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-major-three-string-diatonic-6-8-10-1-no_pedals_no_levers-18",
@@ -4628,7 +4628,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Db",
           "string": 3
         },
-        "explanation_summary": "Bb on strings 3-4-5 at fret 4.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in Bb natural minor, and validates as Bb minor. Use fret 4 on strings 3-4-5 with B pedal + C pedal; the selected strings spell Db, Bb, F (b3, 1, 5 against Bb). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-3-4-5-1-bc_minor-4",
@@ -4706,7 +4706,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 3
         },
-        "explanation_summary": "C on strings 3-4-5 at fret 7.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii\u00b0 / partial ii\u00f8, the degree 2 chord in Bb natural minor, and validates as C diminished. Use fret 7 on strings 3-4-5 with E-raise lever; the selected strings spell Eb, C, Gb (b3, 1, b5/#11 against C). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 7,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-3-4-5-2-e_raise_diminished-7",
@@ -4777,7 +4777,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 3
         },
-        "explanation_summary": "Db on strings 3-4-5 at fret 9.",
+        "explanation_summary": "This three-string diatonic-harmony row targets III, the degree 3 chord in Bb natural minor, and validates as Db major. Use fret 9 on strings 3-4-5 with no pedals/no levers; the selected strings spell F, Db, Ab (3, 1, 5 against Db). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 9,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-3-4-5-3-no_pedals_no_levers-9",
@@ -4836,7 +4836,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Gb",
           "string": 3
         },
-        "explanation_summary": "Eb on strings 3-4-5 at fret 9.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iv, the degree 4 chord in Bb natural minor, and validates as Eb minor. Use fret 9 on strings 3-4-5 with B pedal + C pedal; the selected strings spell Gb, Eb, Bb (b3, 1, 5 against Eb). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 9,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-3-4-5-4-bc_minor-9",
@@ -4914,7 +4914,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Ab",
           "string": 3
         },
-        "explanation_summary": "F on strings 3-4-5 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets v, the degree 5 chord in Bb natural minor, and validates as F minor. Use fret 11 on strings 3-4-5 with B pedal + C pedal; the selected strings spell Ab, F, C (b3, 1, 5 against F). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-3-4-5-5-bc_minor-11",
@@ -4992,7 +4992,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 3
         },
-        "explanation_summary": "Gb on strings 3-4-5 at fret 14.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VI, the degree 6 chord in Bb natural minor, and validates as Gb major. Use fret 14 on strings 3-4-5 with no pedals/no levers; the selected strings spell Bb, Gb, Db (3, 1, 5 against Gb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 14,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-3-4-5-6-no_pedals_no_levers-14",
@@ -5051,7 +5051,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 3
         },
-        "explanation_summary": "Ab on strings 3-4-5 at fret 16.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VII, the degree 7 chord in Bb natural minor, and validates as Ab major. Use fret 16 on strings 3-4-5 with no pedals/no levers; the selected strings spell C, Ab, Eb (3, 1, 5 against Ab). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 16,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-3-4-5-7-no_pedals_no_levers-16",
@@ -5110,7 +5110,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Db",
           "string": 3
         },
-        "explanation_summary": "Bb on strings 3-4-5 at fret 16.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in Bb natural minor, and validates as Bb minor. Use fret 16 on strings 3-4-5 with B pedal + C pedal; the selected strings spell Db, Bb, F (b3, 1, 5 against Bb). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 16,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-3-4-5-1-bc_minor-16",
@@ -5188,7 +5188,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 4
         },
-        "explanation_summary": "Bb on strings 4-5-6 at fret 4.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in Bb natural minor, and validates as Bb minor. Use fret 4 on strings 4-5-6 with B pedal + C pedal; the selected strings spell Bb, F, Db (1, 5, b3 against Bb). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-4-5-6-1-bc_minor-4",
@@ -5266,7 +5266,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 4
         },
-        "explanation_summary": "C on strings 4-5-6 at fret 7.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii\u00b0 / partial ii\u00f8, the degree 2 chord in Bb natural minor, and validates as C diminished. Use fret 7 on strings 4-5-6 with E-raise lever; the selected strings spell C, Gb, Eb (1, b5/#11, b3 against C). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 7,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-4-5-6-2-e_raise_diminished-7",
@@ -5337,7 +5337,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Db",
           "string": 4
         },
-        "explanation_summary": "Db on strings 4-5-6 at fret 9.",
+        "explanation_summary": "This three-string diatonic-harmony row targets III, the degree 3 chord in Bb natural minor, and validates as Db major. Use fret 9 on strings 4-5-6 with no pedals/no levers; the selected strings spell Db, Ab, F (1, 5, 3 against Db). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 9,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-4-5-6-3-no_pedals_no_levers-9",
@@ -5396,7 +5396,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 4
         },
-        "explanation_summary": "Eb on strings 4-5-6 at fret 9.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iv, the degree 4 chord in Bb natural minor, and validates as Eb minor. Use fret 9 on strings 4-5-6 with B pedal + C pedal; the selected strings spell Eb, Bb, Gb (1, 5, b3 against Eb). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 9,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-4-5-6-4-bc_minor-9",
@@ -5474,7 +5474,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 4
         },
-        "explanation_summary": "F on strings 4-5-6 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets v, the degree 5 chord in Bb natural minor, and validates as F minor. Use fret 11 on strings 4-5-6 with B pedal + C pedal; the selected strings spell F, C, Ab (1, 5, b3 against F). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-4-5-6-5-bc_minor-11",
@@ -5552,7 +5552,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Gb",
           "string": 4
         },
-        "explanation_summary": "Gb on strings 4-5-6 at fret 14.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VI, the degree 6 chord in Bb natural minor, and validates as Gb major. Use fret 14 on strings 4-5-6 with no pedals/no levers; the selected strings spell Gb, Db, Bb (1, 5, 3 against Gb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 14,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-4-5-6-6-no_pedals_no_levers-14",
@@ -5611,7 +5611,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Ab",
           "string": 4
         },
-        "explanation_summary": "Ab on strings 4-5-6 at fret 16.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VII, the degree 7 chord in Bb natural minor, and validates as Ab major. Use fret 16 on strings 4-5-6 with no pedals/no levers; the selected strings spell Ab, Eb, C (1, 5, 3 against Ab). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 16,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-4-5-6-7-no_pedals_no_levers-16",
@@ -5670,7 +5670,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 4
         },
-        "explanation_summary": "Bb on strings 4-5-6 at fret 16.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in Bb natural minor, and validates as Bb minor. Use fret 16 on strings 4-5-6 with B pedal + C pedal; the selected strings spell Bb, F, Db (1, 5, b3 against Bb). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 16,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-4-5-6-1-bc_minor-16",
@@ -5748,7 +5748,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 5
         },
-        "explanation_summary": "Bb on strings 5-6-7 at fret 4.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in Bb natural minor, and validates as Bb minor. Use fret 4 on strings 5-6-7 with A pedal + B pedal; the selected strings spell F, Db, Bb (5, b3, 1 against Bb). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-5-6-7-1-ab_minor-4",
@@ -5821,7 +5821,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Gb",
           "string": 5
         },
-        "explanation_summary": "C on strings 5-6-8 at fret 7.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii\u00b0 / partial ii\u00f8, the degree 2 chord in Bb natural minor, and validates as C diminished. Use fret 7 on strings 5-6-8 with E-raise lever; the selected strings spell Gb, Eb, C (b5/#11, b3, 1 against C). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 7,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-5-6-8-2-e_raise_diminished-7",
@@ -5892,7 +5892,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Ab",
           "string": 5
         },
-        "explanation_summary": "Db on strings 5-6-8 at fret 9.",
+        "explanation_summary": "This three-string diatonic-harmony row targets III, the degree 3 chord in Bb natural minor, and validates as Db major. Use fret 9 on strings 5-6-8 with no pedals/no levers; the selected strings spell Ab, F, Db (5, 3, 1 against Db). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 9,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-5-6-8-3-no_pedals_no_levers-9",
@@ -5951,7 +5951,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 5
         },
-        "explanation_summary": "Eb on strings 5-6-7 at fret 9.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iv, the degree 4 chord in Bb natural minor, and validates as Eb minor. Use fret 9 on strings 5-6-7 with A pedal + B pedal; the selected strings spell Bb, Gb, Eb (5, b3, 1 against Eb). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 9,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-5-6-7-4-ab_minor-9",
@@ -6024,7 +6024,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 5
         },
-        "explanation_summary": "F on strings 5-6-7 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets v, the degree 5 chord in Bb natural minor, and validates as F minor. Use fret 11 on strings 5-6-7 with A pedal + B pedal; the selected strings spell C, Ab, F (5, b3, 1 against F). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-5-6-7-5-ab_minor-11",
@@ -6097,7 +6097,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Db",
           "string": 5
         },
-        "explanation_summary": "Gb on strings 5-6-8 at fret 14.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VI, the degree 6 chord in Bb natural minor, and validates as Gb major. Use fret 14 on strings 5-6-8 with no pedals/no levers; the selected strings spell Db, Bb, Gb (5, 3, 1 against Gb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 14,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-5-6-8-6-no_pedals_no_levers-14",
@@ -6156,7 +6156,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 5
         },
-        "explanation_summary": "Ab on strings 5-6-8 at fret 16.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VII, the degree 7 chord in Bb natural minor, and validates as Ab major. Use fret 16 on strings 5-6-8 with no pedals/no levers; the selected strings spell Eb, C, Ab (5, 3, 1 against Ab). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 16,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-5-6-8-7-no_pedals_no_levers-16",
@@ -6215,7 +6215,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 5
         },
-        "explanation_summary": "Bb on strings 5-6-7 at fret 16.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in Bb natural minor, and validates as Bb minor. Use fret 16 on strings 5-6-7 with A pedal + B pedal; the selected strings spell F, Db, Bb (5, b3, 1 against Bb). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 16,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-5-6-7-1-ab_minor-16",
@@ -6288,7 +6288,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Db",
           "string": 6
         },
-        "explanation_summary": "Bb on strings 6-7-10 at fret 4.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in Bb natural minor, and validates as Bb minor. Use fret 4 on strings 6-7-10 with A pedal + B pedal; the selected strings spell Db, Bb, F (b3, 1, 5 against Bb). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-6-7-10-1-ab_minor-4",
@@ -6361,7 +6361,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 6
         },
-        "explanation_summary": "C on strings 6-8-10 at fret 7.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii\u00b0 / partial ii\u00f8, the degree 2 chord in Bb natural minor, and validates as C diminished. Use fret 7 on strings 6-8-10 with E-raise lever; the selected strings spell Eb, C, Gb (b3, 1, b5/#11 against C). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 7,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-6-8-10-2-e_raise_diminished-7",
@@ -6432,7 +6432,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 6
         },
-        "explanation_summary": "Db on strings 6-8-10 at fret 9.",
+        "explanation_summary": "This three-string diatonic-harmony row targets III, the degree 3 chord in Bb natural minor, and validates as Db major. Use fret 9 on strings 6-8-10 with no pedals/no levers; the selected strings spell F, Db, Ab (3, 1, 5 against Db). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 9,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-6-8-10-3-no_pedals_no_levers-9",
@@ -6491,7 +6491,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Gb",
           "string": 6
         },
-        "explanation_summary": "Eb on strings 6-7-10 at fret 9.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iv, the degree 4 chord in Bb natural minor, and validates as Eb minor. Use fret 9 on strings 6-7-10 with A pedal + B pedal; the selected strings spell Gb, Eb, Bb (b3, 1, 5 against Eb). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 9,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-6-7-10-4-ab_minor-9",
@@ -6564,7 +6564,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Ab",
           "string": 6
         },
-        "explanation_summary": "F on strings 6-7-10 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets v, the degree 5 chord in Bb natural minor, and validates as F minor. Use fret 11 on strings 6-7-10 with A pedal + B pedal; the selected strings spell Ab, F, C (b3, 1, 5 against F). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-6-7-10-5-ab_minor-11",
@@ -6637,7 +6637,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 6
         },
-        "explanation_summary": "Gb on strings 6-8-10 at fret 14.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VI, the degree 6 chord in Bb natural minor, and validates as Gb major. Use fret 14 on strings 6-8-10 with no pedals/no levers; the selected strings spell Bb, Gb, Db (3, 1, 5 against Gb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 14,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-6-8-10-6-no_pedals_no_levers-14",
@@ -6696,7 +6696,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 6
         },
-        "explanation_summary": "Ab on strings 6-8-10 at fret 16.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VII, the degree 7 chord in Bb natural minor, and validates as Ab major. Use fret 16 on strings 6-8-10 with no pedals/no levers; the selected strings spell C, Ab, Eb (3, 1, 5 against Ab). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 16,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-6-8-10-7-no_pedals_no_levers-16",
@@ -6755,7 +6755,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Db",
           "string": 6
         },
-        "explanation_summary": "Bb on strings 6-7-10 at fret 16.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in Bb natural minor, and validates as Bb minor. Use fret 16 on strings 6-7-10 with A pedal + B pedal; the selected strings spell Db, Bb, F (b3, 1, 5 against Bb). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 16,
         "harmony_type": "three_string_diatonic",
         "id": "flatflat-natural-minor-three-string-diatonic-6-7-10-1-ab_minor-16",
@@ -6828,7 +6828,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 5
         },
-        "explanation_summary": "Advanced 5-7-8 E-lower Bb major pocket; validated by pitch math.",
+        "explanation_summary": "This advanced 5-7-8 E-lower pocket targets Bb major as I in Bb major. Use fret 11 on strings 5-7-8 with E-lower lever; the selected strings spell Bb, F, D (1, 5, 3 against Bb). Use the mechanical E-lower lever name here; shorthand varies by copedent. This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "advanced_pocket",
         "id": "flatflat-major-advanced-pocket-5-7-8-1-e_lower_pocket-11",
@@ -6895,7 +6895,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 5
         },
-        "explanation_summary": "Advanced 5-7-8 E-lower Bb major pocket; validated by pitch math.",
+        "explanation_summary": "This advanced 5-7-8 E-lower pocket targets Bb major as I in Bb major. Use fret 23 on strings 5-7-8 with E-lower lever; the selected strings spell Bb, F, D (1, 5, 3 against Bb). Use the mechanical E-lower lever name here; shorthand varies by copedent. This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 23,
         "harmony_type": "advanced_pocket",
         "id": "flatflat-major-advanced-pocket-5-7-8-1-e_lower_pocket-23",
@@ -7068,7 +7068,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 3
         },
-        "explanation_summary": "E on strings 3-5 at fret 8.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in C major; it is a partial interval pair, not a full triad. Use fret 8 on strings 3-5 with no pedals/no levers; the selected strings spell E, G (1, b3 against E). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-3-5-3-major_thirds_sixths-8",
@@ -7123,7 +7123,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 3
         },
-        "explanation_summary": "F on strings 3-5 at fret 8.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in C major; it is a partial interval pair, not a full triad. Use fret 8 on strings 3-5 with A pedal + B pedal; the selected strings spell F, A (1, 3 against F). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-3-5-4-major_thirds_sixths-8",
@@ -7192,7 +7192,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 3
         },
-        "explanation_summary": "G on strings 3-5 at fret 10.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in C major; it is a partial interval pair, not a full triad. Use fret 10 on strings 3-5 with A pedal + B pedal; the selected strings spell G, B (1, 3 against G). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-3-5-5-major_thirds_sixths-10",
@@ -7261,7 +7261,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 3
         },
-        "explanation_summary": "A on strings 3-5 at fret 13.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in C major; it is a partial interval pair, not a full triad. Use fret 13 on strings 3-5 with no pedals/no levers; the selected strings spell A, C (1, b3 against A). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-3-5-6-major_thirds_sixths-13",
@@ -7316,7 +7316,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 3
         },
-        "explanation_summary": "B on strings 3-5 at fret 15.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in C major; it is a partial interval pair, not a full triad. Use fret 15 on strings 3-5 with no pedals/no levers; the selected strings spell B, D (1, b3 against B). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 15,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-3-5-7-major_thirds_sixths-15",
@@ -7371,7 +7371,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 3
         },
-        "explanation_summary": "C on strings 3-5 at fret 15.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in C major; it is a partial interval pair, not a full triad. Use fret 15 on strings 3-5 with A pedal + B pedal; the selected strings spell C, E (1, 3 against C). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 15,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-3-5-1-major_thirds_sixths-15",
@@ -7440,7 +7440,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 3
         },
-        "explanation_summary": "D on strings 3-5 at fret 18.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in C major; it is a partial interval pair, not a full triad. Use fret 18 on strings 3-5 with no pedals/no levers; the selected strings spell D, F (1, b3 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 18,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-3-5-2-major_thirds_sixths-18",
@@ -7495,7 +7495,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 3
         },
-        "explanation_summary": "E on strings 3-5 at fret 20.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in C major; it is a partial interval pair, not a full triad. Use fret 20 on strings 3-5 with no pedals/no levers; the selected strings spell E, G (1, b3 against E). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 20,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-3-5-3-major_thirds_sixths-20",
@@ -7550,7 +7550,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 5
         },
-        "explanation_summary": "E on strings 5-6 at fret 8.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in C major; it is a partial interval pair, not a full triad. Use fret 8 on strings 5-6 with no pedals/no levers; the selected strings spell G, E (b3, 1 against E). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-5-6-3-major_thirds_sixths-8",
@@ -7605,7 +7605,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 5
         },
-        "explanation_summary": "F on strings 5-6 at fret 8.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in C major; it is a partial interval pair, not a full triad. Use fret 8 on strings 5-6 with A pedal + B pedal; the selected strings spell A, F (3, 1 against F). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-5-6-4-major_thirds_sixths-8",
@@ -7674,7 +7674,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 5
         },
-        "explanation_summary": "G on strings 5-6 at fret 10.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in C major; it is a partial interval pair, not a full triad. Use fret 10 on strings 5-6 with A pedal + B pedal; the selected strings spell B, G (3, 1 against G). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-5-6-5-major_thirds_sixths-10",
@@ -7743,7 +7743,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 5
         },
-        "explanation_summary": "A on strings 5-6 at fret 13.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in C major; it is a partial interval pair, not a full triad. Use fret 13 on strings 5-6 with no pedals/no levers; the selected strings spell C, A (b3, 1 against A). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-5-6-6-major_thirds_sixths-13",
@@ -7798,7 +7798,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 5
         },
-        "explanation_summary": "B on strings 5-6 at fret 15.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in C major; it is a partial interval pair, not a full triad. Use fret 15 on strings 5-6 with no pedals/no levers; the selected strings spell D, B (b3, 1 against B). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 15,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-5-6-7-major_thirds_sixths-15",
@@ -7853,7 +7853,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 5
         },
-        "explanation_summary": "C on strings 5-6 at fret 15.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in C major; it is a partial interval pair, not a full triad. Use fret 15 on strings 5-6 with A pedal + B pedal; the selected strings spell E, C (3, 1 against C). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 15,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-5-6-1-major_thirds_sixths-15",
@@ -7922,7 +7922,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 5
         },
-        "explanation_summary": "D on strings 5-6 at fret 18.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in C major; it is a partial interval pair, not a full triad. Use fret 18 on strings 5-6 with no pedals/no levers; the selected strings spell F, D (b3, 1 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 18,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-5-6-2-major_thirds_sixths-18",
@@ -7977,7 +7977,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 5
         },
-        "explanation_summary": "E on strings 5-6 at fret 20.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in C major; it is a partial interval pair, not a full triad. Use fret 20 on strings 5-6 with no pedals/no levers; the selected strings spell G, E (b3, 1 against E). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 20,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-5-6-3-major_thirds_sixths-20",
@@ -8032,7 +8032,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 6
         },
-        "explanation_summary": "E on strings 6-10 at fret 8.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in C major; it is a partial interval pair, not a full triad. Use fret 8 on strings 6-10 with no pedals/no levers; the selected strings spell E, G (1, b3 against E). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-6-10-3-major_thirds_sixths-8",
@@ -8087,7 +8087,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 6
         },
-        "explanation_summary": "F on strings 6-10 at fret 8.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in C major; it is a partial interval pair, not a full triad. Use fret 8 on strings 6-10 with A pedal + B pedal; the selected strings spell F, A (1, 3 against F). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-6-10-4-major_thirds_sixths-8",
@@ -8156,7 +8156,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 6
         },
-        "explanation_summary": "G on strings 6-10 at fret 10.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in C major; it is a partial interval pair, not a full triad. Use fret 10 on strings 6-10 with A pedal + B pedal; the selected strings spell G, B (1, 3 against G). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-6-10-5-major_thirds_sixths-10",
@@ -8225,7 +8225,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 6
         },
-        "explanation_summary": "A on strings 6-10 at fret 13.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in C major; it is a partial interval pair, not a full triad. Use fret 13 on strings 6-10 with no pedals/no levers; the selected strings spell A, C (1, b3 against A). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-6-10-6-major_thirds_sixths-13",
@@ -8280,7 +8280,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 6
         },
-        "explanation_summary": "B on strings 6-10 at fret 15.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in C major; it is a partial interval pair, not a full triad. Use fret 15 on strings 6-10 with no pedals/no levers; the selected strings spell B, D (1, b3 against B). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 15,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-6-10-7-major_thirds_sixths-15",
@@ -8335,7 +8335,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 6
         },
-        "explanation_summary": "C on strings 6-10 at fret 15.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in C major; it is a partial interval pair, not a full triad. Use fret 15 on strings 6-10 with A pedal + B pedal; the selected strings spell C, E (1, 3 against C). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 15,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-6-10-1-major_thirds_sixths-15",
@@ -8404,7 +8404,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 6
         },
-        "explanation_summary": "D on strings 6-10 at fret 18.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in C major; it is a partial interval pair, not a full triad. Use fret 18 on strings 6-10 with no pedals/no levers; the selected strings spell D, F (1, b3 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 18,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-6-10-2-major_thirds_sixths-18",
@@ -8459,7 +8459,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 6
         },
-        "explanation_summary": "E on strings 6-10 at fret 20.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in C major; it is a partial interval pair, not a full triad. Use fret 20 on strings 6-10 with no pedals/no levers; the selected strings spell E, G (1, b3 against E). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 20,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-6-10-3-major_thirds_sixths-20",
@@ -8514,7 +8514,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 4
         },
-        "explanation_summary": "C on strings 4-6 at fret 8.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in C major; it is a partial interval pair, not a full triad. Use fret 8 on strings 4-6 with no pedals/no levers; the selected strings spell C, E (1, 3 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-4-6-1-e_raise_two_string-8",
@@ -8569,7 +8569,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 4
         },
-        "explanation_summary": "D on strings 4-6 at fret 9.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in C major; it is a partial interval pair, not a full triad. Use fret 9 on strings 4-6 with E-raise lever; the selected strings spell D, F (1, b3 against D). Use the mechanical E-raise lever name here; shorthand varies by copedent. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 9,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-4-6-2-e_raise_two_string-9",
@@ -8632,7 +8632,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 4
         },
-        "explanation_summary": "E on strings 4-6 at fret 11.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in C major; it is a partial interval pair, not a full triad. Use fret 11 on strings 4-6 with E-raise lever; the selected strings spell E, G (1, b3 against E). Use the mechanical E-raise lever name here; shorthand varies by copedent. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-4-6-3-e_raise_two_string-11",
@@ -8695,7 +8695,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 4
         },
-        "explanation_summary": "F on strings 4-6 at fret 13.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in C major; it is a partial interval pair, not a full triad. Use fret 13 on strings 4-6 with no pedals/no levers; the selected strings spell F, A (1, 3 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-4-6-4-e_raise_two_string-13",
@@ -8750,7 +8750,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 4
         },
-        "explanation_summary": "G on strings 4-6 at fret 15.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in C major; it is a partial interval pair, not a full triad. Use fret 15 on strings 4-6 with no pedals/no levers; the selected strings spell G, B (1, 3 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 15,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-4-6-5-e_raise_two_string-15",
@@ -8805,7 +8805,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 4
         },
-        "explanation_summary": "A on strings 4-6 at fret 16.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in C major; it is a partial interval pair, not a full triad. Use fret 16 on strings 4-6 with E-raise lever; the selected strings spell A, C (1, b3 against A). Use the mechanical E-raise lever name here; shorthand varies by copedent. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 16,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-4-6-6-e_raise_two_string-16",
@@ -8868,7 +8868,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 4
         },
-        "explanation_summary": "B on strings 4-6 at fret 18.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in C major; it is a partial interval pair, not a full triad. Use fret 18 on strings 4-6 with E-raise lever; the selected strings spell B, D (1, b3 against B). Use the mechanical E-raise lever name here; shorthand varies by copedent. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 18,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-4-6-7-e_raise_two_string-18",
@@ -8931,7 +8931,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 4
         },
-        "explanation_summary": "C on strings 4-6 at fret 20.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in C major; it is a partial interval pair, not a full triad. Use fret 20 on strings 4-6 with no pedals/no levers; the selected strings spell C, E (1, 3 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 20,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-4-6-1-e_raise_two_string-20",
@@ -8986,7 +8986,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 3
         },
-        "explanation_summary": "C on strings 3-4 at fret 8.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in C major; it is a partial interval pair, not a full triad. Use fret 8 on strings 3-4 with no pedals/no levers; the selected strings spell E, C (3, 1 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-3-4-1-bc_two_string-8",
@@ -9041,7 +9041,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 3
         },
-        "explanation_summary": "D on strings 3-4 at fret 8.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in C major; it is a partial interval pair, not a full triad. Use fret 8 on strings 3-4 with B pedal + C pedal; the selected strings spell F, D (b3, 1 against D). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-3-4-2-bc_two_string-8",
@@ -9110,7 +9110,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 3
         },
-        "explanation_summary": "E on strings 3-4 at fret 10.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in C major; it is a partial interval pair, not a full triad. Use fret 10 on strings 3-4 with B pedal + C pedal; the selected strings spell G, E (b3, 1 against E). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-3-4-3-bc_two_string-10",
@@ -9179,7 +9179,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 3
         },
-        "explanation_summary": "F on strings 3-4 at fret 13.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in C major; it is a partial interval pair, not a full triad. Use fret 13 on strings 3-4 with no pedals/no levers; the selected strings spell A, F (3, 1 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-3-4-4-bc_two_string-13",
@@ -9234,7 +9234,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 3
         },
-        "explanation_summary": "G on strings 3-4 at fret 15.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in C major; it is a partial interval pair, not a full triad. Use fret 15 on strings 3-4 with no pedals/no levers; the selected strings spell B, G (3, 1 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 15,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-3-4-5-bc_two_string-15",
@@ -9289,7 +9289,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 3
         },
-        "explanation_summary": "A on strings 3-4 at fret 15.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in C major; it is a partial interval pair, not a full triad. Use fret 15 on strings 3-4 with B pedal + C pedal; the selected strings spell C, A (b3, 1 against A). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 15,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-3-4-6-bc_two_string-15",
@@ -9358,7 +9358,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 3
         },
-        "explanation_summary": "B on strings 3-4 at fret 17.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in C major; it is a partial interval pair, not a full triad. Use fret 17 on strings 3-4 with B pedal + C pedal; the selected strings spell D, B (b3, 1 against B). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 17,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-3-4-7-bc_two_string-17",
@@ -9427,7 +9427,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 3
         },
-        "explanation_summary": "C on strings 3-4 at fret 20.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in C major; it is a partial interval pair, not a full triad. Use fret 20 on strings 3-4 with no pedals/no levers; the selected strings spell E, C (3, 1 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 20,
         "harmony_type": "two_string_harmonized",
         "id": "c-major-two-string-harmonized-3-4-1-bc_two_string-20",
@@ -9483,7 +9483,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 3
         },
-        "explanation_summary": "C on strings 3-4-5 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in C major, and validates as C major. Use fret 8 on strings 3-4-5 with no pedals/no levers; the selected strings spell E, C, G (3, 1, 5 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-3-4-5-1-no_pedals_no_levers-8",
@@ -9542,7 +9542,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 3
         },
-        "explanation_summary": "D on strings 3-4-5 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii, the degree 2 chord in C major, and validates as D minor. Use fret 8 on strings 3-4-5 with B pedal + C pedal; the selected strings spell F, D, A (b3, 1, 5 against D). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-3-4-5-2-bc_minor-8",
@@ -9620,7 +9620,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 3
         },
-        "explanation_summary": "E on strings 3-4-5 at fret 10.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iii, the degree 3 chord in C major, and validates as E minor. Use fret 10 on strings 3-4-5 with B pedal + C pedal; the selected strings spell G, E, B (b3, 1, 5 against E). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-3-4-5-3-bc_minor-10",
@@ -9698,7 +9698,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 3
         },
-        "explanation_summary": "F on strings 3-4-5 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets IV, the degree 4 chord in C major, and validates as F major. Use fret 13 on strings 3-4-5 with no pedals/no levers; the selected strings spell A, F, C (3, 1, 5 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-3-4-5-4-no_pedals_no_levers-13",
@@ -9757,7 +9757,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 3
         },
-        "explanation_summary": "G on strings 3-4-5 at fret 15.",
+        "explanation_summary": "This three-string diatonic-harmony row targets V, the degree 5 chord in C major, and validates as G major. Use fret 15 on strings 3-4-5 with no pedals/no levers; the selected strings spell B, G, D (3, 1, 5 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 15,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-3-4-5-5-no_pedals_no_levers-15",
@@ -9816,7 +9816,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 3
         },
-        "explanation_summary": "A on strings 3-4-5 at fret 15.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vi, the degree 6 chord in C major, and validates as A minor. Use fret 15 on strings 3-4-5 with B pedal + C pedal; the selected strings spell C, A, E (b3, 1, 5 against A). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 15,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-3-4-5-6-bc_minor-15",
@@ -9894,7 +9894,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 3
         },
-        "explanation_summary": "B on strings 3-4-5 at fret 18.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vii\u00b0 / partial vii\u00f8, the degree 7 chord in C major, and validates as B diminished. Use fret 18 on strings 3-4-5 with E-raise lever; the selected strings spell D, B, F (b3, 1, b5/#11 against B). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 18,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-3-4-5-7-e_raise_diminished-18",
@@ -9965,7 +9965,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 3
         },
-        "explanation_summary": "C on strings 3-4-5 at fret 20.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in C major, and validates as C major. Use fret 20 on strings 3-4-5 with no pedals/no levers; the selected strings spell E, C, G (3, 1, 5 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 20,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-3-4-5-1-no_pedals_no_levers-20",
@@ -10024,7 +10024,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 4
         },
-        "explanation_summary": "C on strings 4-5-6 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in C major, and validates as C major. Use fret 8 on strings 4-5-6 with no pedals/no levers; the selected strings spell C, G, E (1, 5, 3 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-4-5-6-1-no_pedals_no_levers-8",
@@ -10083,7 +10083,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 4
         },
-        "explanation_summary": "D on strings 4-5-6 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii, the degree 2 chord in C major, and validates as D minor. Use fret 8 on strings 4-5-6 with B pedal + C pedal; the selected strings spell D, A, F (1, 5, b3 against D). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-4-5-6-2-bc_minor-8",
@@ -10161,7 +10161,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 4
         },
-        "explanation_summary": "E on strings 4-5-6 at fret 10.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iii, the degree 3 chord in C major, and validates as E minor. Use fret 10 on strings 4-5-6 with B pedal + C pedal; the selected strings spell E, B, G (1, 5, b3 against E). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-4-5-6-3-bc_minor-10",
@@ -10239,7 +10239,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 4
         },
-        "explanation_summary": "F on strings 4-5-6 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets IV, the degree 4 chord in C major, and validates as F major. Use fret 13 on strings 4-5-6 with no pedals/no levers; the selected strings spell F, C, A (1, 5, 3 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-4-5-6-4-no_pedals_no_levers-13",
@@ -10298,7 +10298,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 4
         },
-        "explanation_summary": "G on strings 4-5-6 at fret 15.",
+        "explanation_summary": "This three-string diatonic-harmony row targets V, the degree 5 chord in C major, and validates as G major. Use fret 15 on strings 4-5-6 with no pedals/no levers; the selected strings spell G, D, B (1, 5, 3 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 15,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-4-5-6-5-no_pedals_no_levers-15",
@@ -10357,7 +10357,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 4
         },
-        "explanation_summary": "A on strings 4-5-6 at fret 15.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vi, the degree 6 chord in C major, and validates as A minor. Use fret 15 on strings 4-5-6 with B pedal + C pedal; the selected strings spell A, E, C (1, 5, b3 against A). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 15,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-4-5-6-6-bc_minor-15",
@@ -10435,7 +10435,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 4
         },
-        "explanation_summary": "B on strings 4-5-6 at fret 18.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vii\u00b0 / partial vii\u00f8, the degree 7 chord in C major, and validates as B diminished. Use fret 18 on strings 4-5-6 with E-raise lever; the selected strings spell B, F, D (1, b5/#11, b3 against B). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 18,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-4-5-6-7-e_raise_diminished-18",
@@ -10506,7 +10506,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 4
         },
-        "explanation_summary": "C on strings 4-5-6 at fret 20.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in C major, and validates as C major. Use fret 20 on strings 4-5-6 with no pedals/no levers; the selected strings spell C, G, E (1, 5, 3 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 20,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-4-5-6-1-no_pedals_no_levers-20",
@@ -10565,7 +10565,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 5
         },
-        "explanation_summary": "C on strings 5-6-8 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in C major, and validates as C major. Use fret 8 on strings 5-6-8 with no pedals/no levers; the selected strings spell G, E, C (5, 3, 1 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-5-6-8-1-no_pedals_no_levers-8",
@@ -10624,7 +10624,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 5
         },
-        "explanation_summary": "D on strings 5-6-7 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii, the degree 2 chord in C major, and validates as D minor. Use fret 8 on strings 5-6-7 with A pedal + B pedal; the selected strings spell A, F, D (5, b3, 1 against D). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-5-6-7-2-ab_minor-8",
@@ -10697,7 +10697,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 5
         },
-        "explanation_summary": "E on strings 5-6-7 at fret 10.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iii, the degree 3 chord in C major, and validates as E minor. Use fret 10 on strings 5-6-7 with A pedal + B pedal; the selected strings spell B, G, E (5, b3, 1 against E). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-5-6-7-3-ab_minor-10",
@@ -10770,7 +10770,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 5
         },
-        "explanation_summary": "F on strings 5-6-8 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets IV, the degree 4 chord in C major, and validates as F major. Use fret 13 on strings 5-6-8 with no pedals/no levers; the selected strings spell C, A, F (5, 3, 1 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-5-6-8-4-no_pedals_no_levers-13",
@@ -10829,7 +10829,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 5
         },
-        "explanation_summary": "G on strings 5-6-8 at fret 15.",
+        "explanation_summary": "This three-string diatonic-harmony row targets V, the degree 5 chord in C major, and validates as G major. Use fret 15 on strings 5-6-8 with no pedals/no levers; the selected strings spell D, B, G (5, 3, 1 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 15,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-5-6-8-5-no_pedals_no_levers-15",
@@ -10888,7 +10888,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 5
         },
-        "explanation_summary": "A on strings 5-6-7 at fret 15.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vi, the degree 6 chord in C major, and validates as A minor. Use fret 15 on strings 5-6-7 with A pedal + B pedal; the selected strings spell E, C, A (5, b3, 1 against A). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 15,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-5-6-7-6-ab_minor-15",
@@ -10961,7 +10961,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 5
         },
-        "explanation_summary": "B on strings 5-6-8 at fret 18.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vii\u00b0 / partial vii\u00f8, the degree 7 chord in C major, and validates as B diminished. Use fret 18 on strings 5-6-8 with E-raise lever; the selected strings spell F, D, B (b5/#11, b3, 1 against B). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 18,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-5-6-8-7-e_raise_diminished-18",
@@ -11032,7 +11032,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 5
         },
-        "explanation_summary": "C on strings 5-6-8 at fret 20.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in C major, and validates as C major. Use fret 20 on strings 5-6-8 with no pedals/no levers; the selected strings spell G, E, C (5, 3, 1 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 20,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-5-6-8-1-no_pedals_no_levers-20",
@@ -11091,7 +11091,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 6
         },
-        "explanation_summary": "C on strings 6-8-10 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in C major, and validates as C major. Use fret 8 on strings 6-8-10 with no pedals/no levers; the selected strings spell E, C, G (3, 1, 5 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-6-8-10-1-no_pedals_no_levers-8",
@@ -11150,7 +11150,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 6
         },
-        "explanation_summary": "D on strings 6-7-10 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii, the degree 2 chord in C major, and validates as D minor. Use fret 8 on strings 6-7-10 with A pedal + B pedal; the selected strings spell F, D, A (b3, 1, 5 against D). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-6-7-10-2-ab_minor-8",
@@ -11223,7 +11223,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 6
         },
-        "explanation_summary": "E on strings 6-7-10 at fret 10.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iii, the degree 3 chord in C major, and validates as E minor. Use fret 10 on strings 6-7-10 with A pedal + B pedal; the selected strings spell G, E, B (b3, 1, 5 against E). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-6-7-10-3-ab_minor-10",
@@ -11296,7 +11296,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 6
         },
-        "explanation_summary": "F on strings 6-8-10 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets IV, the degree 4 chord in C major, and validates as F major. Use fret 13 on strings 6-8-10 with no pedals/no levers; the selected strings spell A, F, C (3, 1, 5 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-6-8-10-4-no_pedals_no_levers-13",
@@ -11355,7 +11355,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 6
         },
-        "explanation_summary": "G on strings 6-8-10 at fret 15.",
+        "explanation_summary": "This three-string diatonic-harmony row targets V, the degree 5 chord in C major, and validates as G major. Use fret 15 on strings 6-8-10 with no pedals/no levers; the selected strings spell B, G, D (3, 1, 5 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 15,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-6-8-10-5-no_pedals_no_levers-15",
@@ -11414,7 +11414,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 6
         },
-        "explanation_summary": "A on strings 6-7-10 at fret 15.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vi, the degree 6 chord in C major, and validates as A minor. Use fret 15 on strings 6-7-10 with A pedal + B pedal; the selected strings spell C, A, E (b3, 1, 5 against A). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 15,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-6-7-10-6-ab_minor-15",
@@ -11487,7 +11487,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 6
         },
-        "explanation_summary": "B on strings 6-8-10 at fret 18.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vii\u00b0 / partial vii\u00f8, the degree 7 chord in C major, and validates as B diminished. Use fret 18 on strings 6-8-10 with E-raise lever; the selected strings spell D, B, F (b3, 1, b5/#11 against B). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 18,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-6-8-10-7-e_raise_diminished-18",
@@ -11558,7 +11558,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 6
         },
-        "explanation_summary": "C on strings 6-8-10 at fret 20.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in C major, and validates as C major. Use fret 20 on strings 6-8-10 with no pedals/no levers; the selected strings spell E, C, G (3, 1, 5 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 20,
         "harmony_type": "three_string_diatonic",
         "id": "c-major-three-string-diatonic-6-8-10-1-no_pedals_no_levers-20",
@@ -11617,7 +11617,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 3
         },
-        "explanation_summary": "C on strings 3-4-5 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in C natural minor, and validates as C minor. Use fret 6 on strings 3-4-5 with B pedal + C pedal; the selected strings spell Eb, C, G (b3, 1, 5 against C). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-3-4-5-1-bc_minor-6",
@@ -11695,7 +11695,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 3
         },
-        "explanation_summary": "D on strings 3-4-5 at fret 9.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii\u00b0 / partial ii\u00f8, the degree 2 chord in C natural minor, and validates as D diminished. Use fret 9 on strings 3-4-5 with E-raise lever; the selected strings spell F, D, Ab (b3, 1, b5/#11 against D). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 9,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-3-4-5-2-e_raise_diminished-9",
@@ -11766,7 +11766,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 3
         },
-        "explanation_summary": "Eb on strings 3-4-5 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets III, the degree 3 chord in C natural minor, and validates as Eb major. Use fret 11 on strings 3-4-5 with no pedals/no levers; the selected strings spell G, Eb, Bb (3, 1, 5 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-3-4-5-3-no_pedals_no_levers-11",
@@ -11825,7 +11825,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Ab",
           "string": 3
         },
-        "explanation_summary": "F on strings 3-4-5 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iv, the degree 4 chord in C natural minor, and validates as F minor. Use fret 11 on strings 3-4-5 with B pedal + C pedal; the selected strings spell Ab, F, C (b3, 1, 5 against F). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-3-4-5-4-bc_minor-11",
@@ -11903,7 +11903,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 3
         },
-        "explanation_summary": "G on strings 3-4-5 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets v, the degree 5 chord in C natural minor, and validates as G minor. Use fret 13 on strings 3-4-5 with B pedal + C pedal; the selected strings spell Bb, G, D (b3, 1, 5 against G). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-3-4-5-5-bc_minor-13",
@@ -11981,7 +11981,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 3
         },
-        "explanation_summary": "Ab on strings 3-4-5 at fret 16.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VI, the degree 6 chord in C natural minor, and validates as Ab major. Use fret 16 on strings 3-4-5 with no pedals/no levers; the selected strings spell C, Ab, Eb (3, 1, 5 against Ab). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 16,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-3-4-5-6-no_pedals_no_levers-16",
@@ -12040,7 +12040,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 3
         },
-        "explanation_summary": "Bb on strings 3-4-5 at fret 18.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VII, the degree 7 chord in C natural minor, and validates as Bb major. Use fret 18 on strings 3-4-5 with no pedals/no levers; the selected strings spell D, Bb, F (3, 1, 5 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 18,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-3-4-5-7-no_pedals_no_levers-18",
@@ -12099,7 +12099,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 3
         },
-        "explanation_summary": "C on strings 3-4-5 at fret 18.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in C natural minor, and validates as C minor. Use fret 18 on strings 3-4-5 with B pedal + C pedal; the selected strings spell Eb, C, G (b3, 1, 5 against C). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 18,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-3-4-5-1-bc_minor-18",
@@ -12177,7 +12177,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 4
         },
-        "explanation_summary": "C on strings 4-5-6 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in C natural minor, and validates as C minor. Use fret 6 on strings 4-5-6 with B pedal + C pedal; the selected strings spell C, G, Eb (1, 5, b3 against C). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-4-5-6-1-bc_minor-6",
@@ -12255,7 +12255,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 4
         },
-        "explanation_summary": "D on strings 4-5-6 at fret 9.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii\u00b0 / partial ii\u00f8, the degree 2 chord in C natural minor, and validates as D diminished. Use fret 9 on strings 4-5-6 with E-raise lever; the selected strings spell D, Ab, F (1, b5/#11, b3 against D). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 9,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-4-5-6-2-e_raise_diminished-9",
@@ -12326,7 +12326,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 4
         },
-        "explanation_summary": "Eb on strings 4-5-6 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets III, the degree 3 chord in C natural minor, and validates as Eb major. Use fret 11 on strings 4-5-6 with no pedals/no levers; the selected strings spell Eb, Bb, G (1, 5, 3 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-4-5-6-3-no_pedals_no_levers-11",
@@ -12385,7 +12385,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 4
         },
-        "explanation_summary": "F on strings 4-5-6 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iv, the degree 4 chord in C natural minor, and validates as F minor. Use fret 11 on strings 4-5-6 with B pedal + C pedal; the selected strings spell F, C, Ab (1, 5, b3 against F). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-4-5-6-4-bc_minor-11",
@@ -12463,7 +12463,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 4
         },
-        "explanation_summary": "G on strings 4-5-6 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets v, the degree 5 chord in C natural minor, and validates as G minor. Use fret 13 on strings 4-5-6 with B pedal + C pedal; the selected strings spell G, D, Bb (1, 5, b3 against G). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-4-5-6-5-bc_minor-13",
@@ -12541,7 +12541,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Ab",
           "string": 4
         },
-        "explanation_summary": "Ab on strings 4-5-6 at fret 16.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VI, the degree 6 chord in C natural minor, and validates as Ab major. Use fret 16 on strings 4-5-6 with no pedals/no levers; the selected strings spell Ab, Eb, C (1, 5, 3 against Ab). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 16,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-4-5-6-6-no_pedals_no_levers-16",
@@ -12600,7 +12600,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 4
         },
-        "explanation_summary": "Bb on strings 4-5-6 at fret 18.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VII, the degree 7 chord in C natural minor, and validates as Bb major. Use fret 18 on strings 4-5-6 with no pedals/no levers; the selected strings spell Bb, F, D (1, 5, 3 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 18,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-4-5-6-7-no_pedals_no_levers-18",
@@ -12659,7 +12659,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 4
         },
-        "explanation_summary": "C on strings 4-5-6 at fret 18.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in C natural minor, and validates as C minor. Use fret 18 on strings 4-5-6 with B pedal + C pedal; the selected strings spell C, G, Eb (1, 5, b3 against C). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 18,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-4-5-6-1-bc_minor-18",
@@ -12737,7 +12737,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 5
         },
-        "explanation_summary": "C on strings 5-6-7 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in C natural minor, and validates as C minor. Use fret 6 on strings 5-6-7 with A pedal + B pedal; the selected strings spell G, Eb, C (5, b3, 1 against C). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-5-6-7-1-ab_minor-6",
@@ -12810,7 +12810,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Ab",
           "string": 5
         },
-        "explanation_summary": "D on strings 5-6-8 at fret 9.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii\u00b0 / partial ii\u00f8, the degree 2 chord in C natural minor, and validates as D diminished. Use fret 9 on strings 5-6-8 with E-raise lever; the selected strings spell Ab, F, D (b5/#11, b3, 1 against D). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 9,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-5-6-8-2-e_raise_diminished-9",
@@ -12881,7 +12881,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 5
         },
-        "explanation_summary": "Eb on strings 5-6-8 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets III, the degree 3 chord in C natural minor, and validates as Eb major. Use fret 11 on strings 5-6-8 with no pedals/no levers; the selected strings spell Bb, G, Eb (5, 3, 1 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-5-6-8-3-no_pedals_no_levers-11",
@@ -12940,7 +12940,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 5
         },
-        "explanation_summary": "F on strings 5-6-7 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iv, the degree 4 chord in C natural minor, and validates as F minor. Use fret 11 on strings 5-6-7 with A pedal + B pedal; the selected strings spell C, Ab, F (5, b3, 1 against F). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-5-6-7-4-ab_minor-11",
@@ -13013,7 +13013,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 5
         },
-        "explanation_summary": "G on strings 5-6-7 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets v, the degree 5 chord in C natural minor, and validates as G minor. Use fret 13 on strings 5-6-7 with A pedal + B pedal; the selected strings spell D, Bb, G (5, b3, 1 against G). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-5-6-7-5-ab_minor-13",
@@ -13086,7 +13086,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 5
         },
-        "explanation_summary": "Ab on strings 5-6-8 at fret 16.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VI, the degree 6 chord in C natural minor, and validates as Ab major. Use fret 16 on strings 5-6-8 with no pedals/no levers; the selected strings spell Eb, C, Ab (5, 3, 1 against Ab). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 16,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-5-6-8-6-no_pedals_no_levers-16",
@@ -13145,7 +13145,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 5
         },
-        "explanation_summary": "Bb on strings 5-6-8 at fret 18.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VII, the degree 7 chord in C natural minor, and validates as Bb major. Use fret 18 on strings 5-6-8 with no pedals/no levers; the selected strings spell F, D, Bb (5, 3, 1 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 18,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-5-6-8-7-no_pedals_no_levers-18",
@@ -13204,7 +13204,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 5
         },
-        "explanation_summary": "C on strings 5-6-7 at fret 18.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in C natural minor, and validates as C minor. Use fret 18 on strings 5-6-7 with A pedal + B pedal; the selected strings spell G, Eb, C (5, b3, 1 against C). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 18,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-5-6-7-1-ab_minor-18",
@@ -13277,7 +13277,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 6
         },
-        "explanation_summary": "C on strings 6-7-10 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in C natural minor, and validates as C minor. Use fret 6 on strings 6-7-10 with A pedal + B pedal; the selected strings spell Eb, C, G (b3, 1, 5 against C). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-6-7-10-1-ab_minor-6",
@@ -13350,7 +13350,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 6
         },
-        "explanation_summary": "D on strings 6-8-10 at fret 9.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii\u00b0 / partial ii\u00f8, the degree 2 chord in C natural minor, and validates as D diminished. Use fret 9 on strings 6-8-10 with E-raise lever; the selected strings spell F, D, Ab (b3, 1, b5/#11 against D). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 9,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-6-8-10-2-e_raise_diminished-9",
@@ -13421,7 +13421,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 6
         },
-        "explanation_summary": "Eb on strings 6-8-10 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets III, the degree 3 chord in C natural minor, and validates as Eb major. Use fret 11 on strings 6-8-10 with no pedals/no levers; the selected strings spell G, Eb, Bb (3, 1, 5 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-6-8-10-3-no_pedals_no_levers-11",
@@ -13480,7 +13480,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Ab",
           "string": 6
         },
-        "explanation_summary": "F on strings 6-7-10 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iv, the degree 4 chord in C natural minor, and validates as F minor. Use fret 11 on strings 6-7-10 with A pedal + B pedal; the selected strings spell Ab, F, C (b3, 1, 5 against F). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-6-7-10-4-ab_minor-11",
@@ -13553,7 +13553,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 6
         },
-        "explanation_summary": "G on strings 6-7-10 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets v, the degree 5 chord in C natural minor, and validates as G minor. Use fret 13 on strings 6-7-10 with A pedal + B pedal; the selected strings spell Bb, G, D (b3, 1, 5 against G). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-6-7-10-5-ab_minor-13",
@@ -13626,7 +13626,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 6
         },
-        "explanation_summary": "Ab on strings 6-8-10 at fret 16.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VI, the degree 6 chord in C natural minor, and validates as Ab major. Use fret 16 on strings 6-8-10 with no pedals/no levers; the selected strings spell C, Ab, Eb (3, 1, 5 against Ab). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 16,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-6-8-10-6-no_pedals_no_levers-16",
@@ -13685,7 +13685,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 6
         },
-        "explanation_summary": "Bb on strings 6-8-10 at fret 18.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VII, the degree 7 chord in C natural minor, and validates as Bb major. Use fret 18 on strings 6-8-10 with no pedals/no levers; the selected strings spell D, Bb, F (3, 1, 5 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 18,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-6-8-10-7-no_pedals_no_levers-18",
@@ -13744,7 +13744,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 6
         },
-        "explanation_summary": "C on strings 6-7-10 at fret 18.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in C natural minor, and validates as C minor. Use fret 18 on strings 6-7-10 with A pedal + B pedal; the selected strings spell Eb, C, G (b3, 1, 5 against C). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 18,
         "harmony_type": "three_string_diatonic",
         "id": "c-natural-minor-three-string-diatonic-6-7-10-1-ab_minor-18",
@@ -13817,7 +13817,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 5
         },
-        "explanation_summary": "Advanced 5-7-8 E-lower C major pocket; validated by pitch math.",
+        "explanation_summary": "This advanced 5-7-8 E-lower pocket targets C major as I in C major. Use fret 13 on strings 5-7-8 with E-lower lever; the selected strings spell C, G, E (1, 5, 3 against C). Use the mechanical E-lower lever name here; shorthand varies by copedent. This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "advanced_pocket",
         "id": "c-major-advanced-pocket-5-7-8-1-e_lower_pocket-13",
@@ -13990,7 +13990,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F#",
           "string": 3
         },
-        "explanation_summary": "F# on strings 3-5 at fret 10.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in D major; it is a partial interval pair, not a full triad. Use fret 10 on strings 3-5 with no pedals/no levers; the selected strings spell F#, A (1, b3 against F#). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-3-5-3-major_thirds_sixths-10",
@@ -14045,7 +14045,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 3
         },
-        "explanation_summary": "G on strings 3-5 at fret 10.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in D major; it is a partial interval pair, not a full triad. Use fret 10 on strings 3-5 with A pedal + B pedal; the selected strings spell G, B (1, 3 against G). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-3-5-4-major_thirds_sixths-10",
@@ -14114,7 +14114,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 3
         },
-        "explanation_summary": "A on strings 3-5 at fret 0.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in D major; it is a partial interval pair, not a full triad. Use fret 0 on strings 3-5 with A pedal + B pedal; the selected strings spell A, C# (1, 3 against A). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 0,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-3-5-5-major_thirds_sixths-0",
@@ -14183,7 +14183,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 3
         },
-        "explanation_summary": "B on strings 3-5 at fret 3.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in D major; it is a partial interval pair, not a full triad. Use fret 3 on strings 3-5 with no pedals/no levers; the selected strings spell B, D (1, b3 against B). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-3-5-6-major_thirds_sixths-3",
@@ -14238,7 +14238,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C#",
           "string": 3
         },
-        "explanation_summary": "C# on strings 3-5 at fret 5.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in D major; it is a partial interval pair, not a full triad. Use fret 5 on strings 3-5 with no pedals/no levers; the selected strings spell C#, E (1, b3 against C#). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 5,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-3-5-7-major_thirds_sixths-5",
@@ -14293,7 +14293,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 3
         },
-        "explanation_summary": "D on strings 3-5 at fret 5.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in D major; it is a partial interval pair, not a full triad. Use fret 5 on strings 3-5 with A pedal + B pedal; the selected strings spell D, F# (1, 3 against D). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 5,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-3-5-1-major_thirds_sixths-5",
@@ -14362,7 +14362,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 3
         },
-        "explanation_summary": "E on strings 3-5 at fret 20.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in D major; it is a partial interval pair, not a full triad. Use fret 20 on strings 3-5 with no pedals/no levers; the selected strings spell E, G (1, b3 against E). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 20,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-3-5-2-major_thirds_sixths-20",
@@ -14417,7 +14417,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F#",
           "string": 3
         },
-        "explanation_summary": "F# on strings 3-5 at fret 22.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in D major; it is a partial interval pair, not a full triad. Use fret 22 on strings 3-5 with no pedals/no levers; the selected strings spell F#, A (1, b3 against F#). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 22,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-3-5-3-major_thirds_sixths-22",
@@ -14472,7 +14472,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 5
         },
-        "explanation_summary": "F# on strings 5-6 at fret 10.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in D major; it is a partial interval pair, not a full triad. Use fret 10 on strings 5-6 with no pedals/no levers; the selected strings spell A, F# (b3, 1 against F#). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-5-6-3-major_thirds_sixths-10",
@@ -14527,7 +14527,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 5
         },
-        "explanation_summary": "G on strings 5-6 at fret 10.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in D major; it is a partial interval pair, not a full triad. Use fret 10 on strings 5-6 with A pedal + B pedal; the selected strings spell B, G (3, 1 against G). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-5-6-4-major_thirds_sixths-10",
@@ -14596,7 +14596,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C#",
           "string": 5
         },
-        "explanation_summary": "A on strings 5-6 at fret 0.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in D major; it is a partial interval pair, not a full triad. Use fret 0 on strings 5-6 with A pedal + B pedal; the selected strings spell C#, A (3, 1 against A). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 0,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-5-6-5-major_thirds_sixths-0",
@@ -14665,7 +14665,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 5
         },
-        "explanation_summary": "B on strings 5-6 at fret 3.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in D major; it is a partial interval pair, not a full triad. Use fret 3 on strings 5-6 with no pedals/no levers; the selected strings spell D, B (b3, 1 against B). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-5-6-6-major_thirds_sixths-3",
@@ -14720,7 +14720,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 5
         },
-        "explanation_summary": "C# on strings 5-6 at fret 5.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in D major; it is a partial interval pair, not a full triad. Use fret 5 on strings 5-6 with no pedals/no levers; the selected strings spell E, C# (b3, 1 against C#). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 5,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-5-6-7-major_thirds_sixths-5",
@@ -14775,7 +14775,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F#",
           "string": 5
         },
-        "explanation_summary": "D on strings 5-6 at fret 5.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in D major; it is a partial interval pair, not a full triad. Use fret 5 on strings 5-6 with A pedal + B pedal; the selected strings spell F#, D (3, 1 against D). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 5,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-5-6-1-major_thirds_sixths-5",
@@ -14844,7 +14844,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 5
         },
-        "explanation_summary": "E on strings 5-6 at fret 20.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in D major; it is a partial interval pair, not a full triad. Use fret 20 on strings 5-6 with no pedals/no levers; the selected strings spell G, E (b3, 1 against E). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 20,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-5-6-2-major_thirds_sixths-20",
@@ -14899,7 +14899,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 5
         },
-        "explanation_summary": "F# on strings 5-6 at fret 22.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in D major; it is a partial interval pair, not a full triad. Use fret 22 on strings 5-6 with no pedals/no levers; the selected strings spell A, F# (b3, 1 against F#). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 22,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-5-6-3-major_thirds_sixths-22",
@@ -14954,7 +14954,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F#",
           "string": 6
         },
-        "explanation_summary": "F# on strings 6-10 at fret 10.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in D major; it is a partial interval pair, not a full triad. Use fret 10 on strings 6-10 with no pedals/no levers; the selected strings spell F#, A (1, b3 against F#). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-6-10-3-major_thirds_sixths-10",
@@ -15009,7 +15009,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 6
         },
-        "explanation_summary": "G on strings 6-10 at fret 10.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in D major; it is a partial interval pair, not a full triad. Use fret 10 on strings 6-10 with A pedal + B pedal; the selected strings spell G, B (1, 3 against G). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-6-10-4-major_thirds_sixths-10",
@@ -15078,7 +15078,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 6
         },
-        "explanation_summary": "A on strings 6-10 at fret 0.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in D major; it is a partial interval pair, not a full triad. Use fret 0 on strings 6-10 with A pedal + B pedal; the selected strings spell A, C# (1, 3 against A). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 0,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-6-10-5-major_thirds_sixths-0",
@@ -15147,7 +15147,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 6
         },
-        "explanation_summary": "B on strings 6-10 at fret 3.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in D major; it is a partial interval pair, not a full triad. Use fret 3 on strings 6-10 with no pedals/no levers; the selected strings spell B, D (1, b3 against B). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-6-10-6-major_thirds_sixths-3",
@@ -15202,7 +15202,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C#",
           "string": 6
         },
-        "explanation_summary": "C# on strings 6-10 at fret 5.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in D major; it is a partial interval pair, not a full triad. Use fret 5 on strings 6-10 with no pedals/no levers; the selected strings spell C#, E (1, b3 against C#). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 5,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-6-10-7-major_thirds_sixths-5",
@@ -15257,7 +15257,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 6
         },
-        "explanation_summary": "D on strings 6-10 at fret 5.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in D major; it is a partial interval pair, not a full triad. Use fret 5 on strings 6-10 with A pedal + B pedal; the selected strings spell D, F# (1, 3 against D). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 5,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-6-10-1-major_thirds_sixths-5",
@@ -15326,7 +15326,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 6
         },
-        "explanation_summary": "E on strings 6-10 at fret 20.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in D major; it is a partial interval pair, not a full triad. Use fret 20 on strings 6-10 with no pedals/no levers; the selected strings spell E, G (1, b3 against E). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 20,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-6-10-2-major_thirds_sixths-20",
@@ -15381,7 +15381,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F#",
           "string": 6
         },
-        "explanation_summary": "F# on strings 6-10 at fret 22.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in D major; it is a partial interval pair, not a full triad. Use fret 22 on strings 6-10 with no pedals/no levers; the selected strings spell F#, A (1, b3 against F#). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 22,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-6-10-3-major_thirds_sixths-22",
@@ -15436,7 +15436,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 4
         },
-        "explanation_summary": "D on strings 4-6 at fret 10.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in D major; it is a partial interval pair, not a full triad. Use fret 10 on strings 4-6 with no pedals/no levers; the selected strings spell D, F# (1, 3 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-4-6-1-e_raise_two_string-10",
@@ -15491,7 +15491,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 4
         },
-        "explanation_summary": "E on strings 4-6 at fret 11.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in D major; it is a partial interval pair, not a full triad. Use fret 11 on strings 4-6 with E-raise lever; the selected strings spell E, G (1, b3 against E). Use the mechanical E-raise lever name here; shorthand varies by copedent. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-4-6-2-e_raise_two_string-11",
@@ -15554,7 +15554,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F#",
           "string": 4
         },
-        "explanation_summary": "F# on strings 4-6 at fret 1.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in D major; it is a partial interval pair, not a full triad. Use fret 1 on strings 4-6 with E-raise lever; the selected strings spell F#, A (1, b3 against F#). Use the mechanical E-raise lever name here; shorthand varies by copedent. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-4-6-3-e_raise_two_string-1",
@@ -15617,7 +15617,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 4
         },
-        "explanation_summary": "G on strings 4-6 at fret 3.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in D major; it is a partial interval pair, not a full triad. Use fret 3 on strings 4-6 with no pedals/no levers; the selected strings spell G, B (1, 3 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-4-6-4-e_raise_two_string-3",
@@ -15672,7 +15672,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 4
         },
-        "explanation_summary": "A on strings 4-6 at fret 5.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in D major; it is a partial interval pair, not a full triad. Use fret 5 on strings 4-6 with no pedals/no levers; the selected strings spell A, C# (1, 3 against A). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 5,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-4-6-5-e_raise_two_string-5",
@@ -15727,7 +15727,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 4
         },
-        "explanation_summary": "B on strings 4-6 at fret 6.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in D major; it is a partial interval pair, not a full triad. Use fret 6 on strings 4-6 with E-raise lever; the selected strings spell B, D (1, b3 against B). Use the mechanical E-raise lever name here; shorthand varies by copedent. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-4-6-6-e_raise_two_string-6",
@@ -15790,7 +15790,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C#",
           "string": 4
         },
-        "explanation_summary": "C# on strings 4-6 at fret 20.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in D major; it is a partial interval pair, not a full triad. Use fret 20 on strings 4-6 with E-raise lever; the selected strings spell C#, E (1, b3 against C#). Use the mechanical E-raise lever name here; shorthand varies by copedent. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 20,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-4-6-7-e_raise_two_string-20",
@@ -15853,7 +15853,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 4
         },
-        "explanation_summary": "D on strings 4-6 at fret 22.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in D major; it is a partial interval pair, not a full triad. Use fret 22 on strings 4-6 with no pedals/no levers; the selected strings spell D, F# (1, 3 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 22,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-4-6-1-e_raise_two_string-22",
@@ -15908,7 +15908,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F#",
           "string": 3
         },
-        "explanation_summary": "D on strings 3-4 at fret 10.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in D major; it is a partial interval pair, not a full triad. Use fret 10 on strings 3-4 with no pedals/no levers; the selected strings spell F#, D (3, 1 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-3-4-1-bc_two_string-10",
@@ -15963,7 +15963,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 3
         },
-        "explanation_summary": "E on strings 3-4 at fret 10.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in D major; it is a partial interval pair, not a full triad. Use fret 10 on strings 3-4 with B pedal + C pedal; the selected strings spell G, E (b3, 1 against E). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-3-4-2-bc_two_string-10",
@@ -16032,7 +16032,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 3
         },
-        "explanation_summary": "F# on strings 3-4 at fret 0.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in D major; it is a partial interval pair, not a full triad. Use fret 0 on strings 3-4 with B pedal + C pedal; the selected strings spell A, F# (b3, 1 against F#). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 0,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-3-4-3-bc_two_string-0",
@@ -16101,7 +16101,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 3
         },
-        "explanation_summary": "G on strings 3-4 at fret 3.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in D major; it is a partial interval pair, not a full triad. Use fret 3 on strings 3-4 with no pedals/no levers; the selected strings spell B, G (3, 1 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-3-4-4-bc_two_string-3",
@@ -16156,7 +16156,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C#",
           "string": 3
         },
-        "explanation_summary": "A on strings 3-4 at fret 5.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in D major; it is a partial interval pair, not a full triad. Use fret 5 on strings 3-4 with no pedals/no levers; the selected strings spell C#, A (3, 1 against A). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 5,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-3-4-5-bc_two_string-5",
@@ -16211,7 +16211,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 3
         },
-        "explanation_summary": "B on strings 3-4 at fret 5.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in D major; it is a partial interval pair, not a full triad. Use fret 5 on strings 3-4 with B pedal + C pedal; the selected strings spell D, B (b3, 1 against B). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 5,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-3-4-6-bc_two_string-5",
@@ -16280,7 +16280,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 3
         },
-        "explanation_summary": "C# on strings 3-4 at fret 19.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in D major; it is a partial interval pair, not a full triad. Use fret 19 on strings 3-4 with B pedal + C pedal; the selected strings spell E, C# (b3, 1 against C#). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 19,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-3-4-7-bc_two_string-19",
@@ -16349,7 +16349,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F#",
           "string": 3
         },
-        "explanation_summary": "D on strings 3-4 at fret 22.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in D major; it is a partial interval pair, not a full triad. Use fret 22 on strings 3-4 with no pedals/no levers; the selected strings spell F#, D (3, 1 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 22,
         "harmony_type": "two_string_harmonized",
         "id": "d-major-two-string-harmonized-3-4-1-bc_two_string-22",
@@ -16405,7 +16405,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F#",
           "string": 3
         },
-        "explanation_summary": "D on strings 3-4-5 at fret 10.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in D major, and validates as D major. Use fret 10 on strings 3-4-5 with no pedals/no levers; the selected strings spell F#, D, A (3, 1, 5 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-3-4-5-1-no_pedals_no_levers-10",
@@ -16464,7 +16464,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 3
         },
-        "explanation_summary": "E on strings 3-4-5 at fret 10.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii, the degree 2 chord in D major, and validates as E minor. Use fret 10 on strings 3-4-5 with B pedal + C pedal; the selected strings spell G, E, B (b3, 1, 5 against E). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-3-4-5-2-bc_minor-10",
@@ -16542,7 +16542,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 3
         },
-        "explanation_summary": "F# on strings 3-4-5 at fret 0.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iii, the degree 3 chord in D major, and validates as F# minor. Use fret 0 on strings 3-4-5 with B pedal + C pedal; the selected strings spell A, F#, C# (b3, 1, 5 against F#). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 0,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-3-4-5-3-bc_minor-0",
@@ -16620,7 +16620,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 3
         },
-        "explanation_summary": "G on strings 3-4-5 at fret 3.",
+        "explanation_summary": "This three-string diatonic-harmony row targets IV, the degree 4 chord in D major, and validates as G major. Use fret 3 on strings 3-4-5 with no pedals/no levers; the selected strings spell B, G, D (3, 1, 5 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-3-4-5-4-no_pedals_no_levers-3",
@@ -16679,7 +16679,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C#",
           "string": 3
         },
-        "explanation_summary": "A on strings 3-4-5 at fret 5.",
+        "explanation_summary": "This three-string diatonic-harmony row targets V, the degree 5 chord in D major, and validates as A major. Use fret 5 on strings 3-4-5 with no pedals/no levers; the selected strings spell C#, A, E (3, 1, 5 against A). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 5,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-3-4-5-5-no_pedals_no_levers-5",
@@ -16738,7 +16738,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 3
         },
-        "explanation_summary": "B on strings 3-4-5 at fret 5.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vi, the degree 6 chord in D major, and validates as B minor. Use fret 5 on strings 3-4-5 with B pedal + C pedal; the selected strings spell D, B, F# (b3, 1, 5 against B). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 5,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-3-4-5-6-bc_minor-5",
@@ -16816,7 +16816,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 3
         },
-        "explanation_summary": "C# on strings 3-4-5 at fret 20.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vii\u00b0 / partial vii\u00f8, the degree 7 chord in D major, and validates as C# diminished. Use fret 20 on strings 3-4-5 with E-raise lever; the selected strings spell E, C#, G (b3, 1, b5/#11 against C#). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 20,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-3-4-5-7-e_raise_diminished-20",
@@ -16887,7 +16887,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F#",
           "string": 3
         },
-        "explanation_summary": "D on strings 3-4-5 at fret 22.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in D major, and validates as D major. Use fret 22 on strings 3-4-5 with no pedals/no levers; the selected strings spell F#, D, A (3, 1, 5 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 22,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-3-4-5-1-no_pedals_no_levers-22",
@@ -16946,7 +16946,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 4
         },
-        "explanation_summary": "D on strings 4-5-6 at fret 10.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in D major, and validates as D major. Use fret 10 on strings 4-5-6 with no pedals/no levers; the selected strings spell D, A, F# (1, 5, 3 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-4-5-6-1-no_pedals_no_levers-10",
@@ -17005,7 +17005,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 4
         },
-        "explanation_summary": "E on strings 4-5-6 at fret 10.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii, the degree 2 chord in D major, and validates as E minor. Use fret 10 on strings 4-5-6 with B pedal + C pedal; the selected strings spell E, B, G (1, 5, b3 against E). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-4-5-6-2-bc_minor-10",
@@ -17083,7 +17083,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F#",
           "string": 4
         },
-        "explanation_summary": "F# on strings 4-5-6 at fret 0.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iii, the degree 3 chord in D major, and validates as F# minor. Use fret 0 on strings 4-5-6 with B pedal + C pedal; the selected strings spell F#, C#, A (1, 5, b3 against F#). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 0,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-4-5-6-3-bc_minor-0",
@@ -17161,7 +17161,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 4
         },
-        "explanation_summary": "G on strings 4-5-6 at fret 3.",
+        "explanation_summary": "This three-string diatonic-harmony row targets IV, the degree 4 chord in D major, and validates as G major. Use fret 3 on strings 4-5-6 with no pedals/no levers; the selected strings spell G, D, B (1, 5, 3 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-4-5-6-4-no_pedals_no_levers-3",
@@ -17220,7 +17220,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 4
         },
-        "explanation_summary": "A on strings 4-5-6 at fret 5.",
+        "explanation_summary": "This three-string diatonic-harmony row targets V, the degree 5 chord in D major, and validates as A major. Use fret 5 on strings 4-5-6 with no pedals/no levers; the selected strings spell A, E, C# (1, 5, 3 against A). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 5,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-4-5-6-5-no_pedals_no_levers-5",
@@ -17279,7 +17279,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 4
         },
-        "explanation_summary": "B on strings 4-5-6 at fret 5.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vi, the degree 6 chord in D major, and validates as B minor. Use fret 5 on strings 4-5-6 with B pedal + C pedal; the selected strings spell B, F#, D (1, 5, b3 against B). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 5,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-4-5-6-6-bc_minor-5",
@@ -17357,7 +17357,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C#",
           "string": 4
         },
-        "explanation_summary": "C# on strings 4-5-6 at fret 20.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vii\u00b0 / partial vii\u00f8, the degree 7 chord in D major, and validates as C# diminished. Use fret 20 on strings 4-5-6 with E-raise lever; the selected strings spell C#, G, E (1, b5/#11, b3 against C#). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 20,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-4-5-6-7-e_raise_diminished-20",
@@ -17428,7 +17428,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 4
         },
-        "explanation_summary": "D on strings 4-5-6 at fret 22.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in D major, and validates as D major. Use fret 22 on strings 4-5-6 with no pedals/no levers; the selected strings spell D, A, F# (1, 5, 3 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 22,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-4-5-6-1-no_pedals_no_levers-22",
@@ -17487,7 +17487,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 5
         },
-        "explanation_summary": "D on strings 5-6-8 at fret 10.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in D major, and validates as D major. Use fret 10 on strings 5-6-8 with no pedals/no levers; the selected strings spell A, F#, D (5, 3, 1 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-5-6-8-1-no_pedals_no_levers-10",
@@ -17546,7 +17546,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 5
         },
-        "explanation_summary": "E on strings 5-6-7 at fret 10.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii, the degree 2 chord in D major, and validates as E minor. Use fret 10 on strings 5-6-7 with A pedal + B pedal; the selected strings spell B, G, E (5, b3, 1 against E). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-5-6-7-2-ab_minor-10",
@@ -17619,7 +17619,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C#",
           "string": 5
         },
-        "explanation_summary": "F# on strings 5-6-7 at fret 0.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iii, the degree 3 chord in D major, and validates as F# minor. Use fret 0 on strings 5-6-7 with A pedal + B pedal; the selected strings spell C#, A, F# (5, b3, 1 against F#). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 0,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-5-6-7-3-ab_minor-0",
@@ -17692,7 +17692,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 5
         },
-        "explanation_summary": "G on strings 5-6-8 at fret 3.",
+        "explanation_summary": "This three-string diatonic-harmony row targets IV, the degree 4 chord in D major, and validates as G major. Use fret 3 on strings 5-6-8 with no pedals/no levers; the selected strings spell D, B, G (5, 3, 1 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-5-6-8-4-no_pedals_no_levers-3",
@@ -17751,7 +17751,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 5
         },
-        "explanation_summary": "A on strings 5-6-8 at fret 5.",
+        "explanation_summary": "This three-string diatonic-harmony row targets V, the degree 5 chord in D major, and validates as A major. Use fret 5 on strings 5-6-8 with no pedals/no levers; the selected strings spell E, C#, A (5, 3, 1 against A). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 5,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-5-6-8-5-no_pedals_no_levers-5",
@@ -17810,7 +17810,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F#",
           "string": 5
         },
-        "explanation_summary": "B on strings 5-6-7 at fret 5.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vi, the degree 6 chord in D major, and validates as B minor. Use fret 5 on strings 5-6-7 with A pedal + B pedal; the selected strings spell F#, D, B (5, b3, 1 against B). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 5,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-5-6-7-6-ab_minor-5",
@@ -17883,7 +17883,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 5
         },
-        "explanation_summary": "C# on strings 5-6-8 at fret 20.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vii\u00b0 / partial vii\u00f8, the degree 7 chord in D major, and validates as C# diminished. Use fret 20 on strings 5-6-8 with E-raise lever; the selected strings spell G, E, C# (b5/#11, b3, 1 against C#). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 20,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-5-6-8-7-e_raise_diminished-20",
@@ -17954,7 +17954,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 5
         },
-        "explanation_summary": "D on strings 5-6-8 at fret 22.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in D major, and validates as D major. Use fret 22 on strings 5-6-8 with no pedals/no levers; the selected strings spell A, F#, D (5, 3, 1 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 22,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-5-6-8-1-no_pedals_no_levers-22",
@@ -18013,7 +18013,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F#",
           "string": 6
         },
-        "explanation_summary": "D on strings 6-8-10 at fret 10.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in D major, and validates as D major. Use fret 10 on strings 6-8-10 with no pedals/no levers; the selected strings spell F#, D, A (3, 1, 5 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-6-8-10-1-no_pedals_no_levers-10",
@@ -18072,7 +18072,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 6
         },
-        "explanation_summary": "E on strings 6-7-10 at fret 10.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii, the degree 2 chord in D major, and validates as E minor. Use fret 10 on strings 6-7-10 with A pedal + B pedal; the selected strings spell G, E, B (b3, 1, 5 against E). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-6-7-10-2-ab_minor-10",
@@ -18145,7 +18145,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 6
         },
-        "explanation_summary": "F# on strings 6-7-10 at fret 0.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iii, the degree 3 chord in D major, and validates as F# minor. Use fret 0 on strings 6-7-10 with A pedal + B pedal; the selected strings spell A, F#, C# (b3, 1, 5 against F#). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 0,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-6-7-10-3-ab_minor-0",
@@ -18218,7 +18218,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 6
         },
-        "explanation_summary": "G on strings 6-8-10 at fret 3.",
+        "explanation_summary": "This three-string diatonic-harmony row targets IV, the degree 4 chord in D major, and validates as G major. Use fret 3 on strings 6-8-10 with no pedals/no levers; the selected strings spell B, G, D (3, 1, 5 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-6-8-10-4-no_pedals_no_levers-3",
@@ -18277,7 +18277,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C#",
           "string": 6
         },
-        "explanation_summary": "A on strings 6-8-10 at fret 5.",
+        "explanation_summary": "This three-string diatonic-harmony row targets V, the degree 5 chord in D major, and validates as A major. Use fret 5 on strings 6-8-10 with no pedals/no levers; the selected strings spell C#, A, E (3, 1, 5 against A). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 5,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-6-8-10-5-no_pedals_no_levers-5",
@@ -18336,7 +18336,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 6
         },
-        "explanation_summary": "B on strings 6-7-10 at fret 5.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vi, the degree 6 chord in D major, and validates as B minor. Use fret 5 on strings 6-7-10 with A pedal + B pedal; the selected strings spell D, B, F# (b3, 1, 5 against B). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 5,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-6-7-10-6-ab_minor-5",
@@ -18409,7 +18409,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 6
         },
-        "explanation_summary": "C# on strings 6-8-10 at fret 20.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vii\u00b0 / partial vii\u00f8, the degree 7 chord in D major, and validates as C# diminished. Use fret 20 on strings 6-8-10 with E-raise lever; the selected strings spell E, C#, G (b3, 1, b5/#11 against C#). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 20,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-6-8-10-7-e_raise_diminished-20",
@@ -18480,7 +18480,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F#",
           "string": 6
         },
-        "explanation_summary": "D on strings 6-8-10 at fret 22.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in D major, and validates as D major. Use fret 22 on strings 6-8-10 with no pedals/no levers; the selected strings spell F#, D, A (3, 1, 5 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 22,
         "harmony_type": "three_string_diatonic",
         "id": "d-major-three-string-diatonic-6-8-10-1-no_pedals_no_levers-22",
@@ -18539,7 +18539,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 3
         },
-        "explanation_summary": "D on strings 3-4-5 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in D natural minor, and validates as D minor. Use fret 8 on strings 3-4-5 with B pedal + C pedal; the selected strings spell F, D, A (b3, 1, 5 against D). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-3-4-5-1-bc_minor-8",
@@ -18617,7 +18617,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 3
         },
-        "explanation_summary": "E on strings 3-4-5 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii\u00b0 / partial ii\u00f8, the degree 2 chord in D natural minor, and validates as E diminished. Use fret 11 on strings 3-4-5 with E-raise lever; the selected strings spell G, E, Bb (b3, 1, b5/#11 against E). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-3-4-5-2-e_raise_diminished-11",
@@ -18688,7 +18688,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 3
         },
-        "explanation_summary": "F on strings 3-4-5 at fret 1.",
+        "explanation_summary": "This three-string diatonic-harmony row targets III, the degree 3 chord in D natural minor, and validates as F major. Use fret 1 on strings 3-4-5 with no pedals/no levers; the selected strings spell A, F, C (3, 1, 5 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-3-4-5-3-no_pedals_no_levers-1",
@@ -18747,7 +18747,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 3
         },
-        "explanation_summary": "G on strings 3-4-5 at fret 1.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iv, the degree 4 chord in D natural minor, and validates as G minor. Use fret 1 on strings 3-4-5 with B pedal + C pedal; the selected strings spell Bb, G, D (b3, 1, 5 against G). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-3-4-5-4-bc_minor-1",
@@ -18825,7 +18825,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 3
         },
-        "explanation_summary": "A on strings 3-4-5 at fret 3.",
+        "explanation_summary": "This three-string diatonic-harmony row targets v, the degree 5 chord in D natural minor, and validates as A minor. Use fret 3 on strings 3-4-5 with B pedal + C pedal; the selected strings spell C, A, E (b3, 1, 5 against A). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-3-4-5-5-bc_minor-3",
@@ -18903,7 +18903,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 3
         },
-        "explanation_summary": "Bb on strings 3-4-5 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VI, the degree 6 chord in D natural minor, and validates as Bb major. Use fret 6 on strings 3-4-5 with no pedals/no levers; the selected strings spell D, Bb, F (3, 1, 5 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-3-4-5-6-no_pedals_no_levers-6",
@@ -18962,7 +18962,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 3
         },
-        "explanation_summary": "C on strings 3-4-5 at fret 20.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VII, the degree 7 chord in D natural minor, and validates as C major. Use fret 20 on strings 3-4-5 with no pedals/no levers; the selected strings spell E, C, G (3, 1, 5 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 20,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-3-4-5-7-no_pedals_no_levers-20",
@@ -19021,7 +19021,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 3
         },
-        "explanation_summary": "D on strings 3-4-5 at fret 20.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in D natural minor, and validates as D minor. Use fret 20 on strings 3-4-5 with B pedal + C pedal; the selected strings spell F, D, A (b3, 1, 5 against D). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 20,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-3-4-5-1-bc_minor-20",
@@ -19099,7 +19099,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 4
         },
-        "explanation_summary": "D on strings 4-5-6 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in D natural minor, and validates as D minor. Use fret 8 on strings 4-5-6 with B pedal + C pedal; the selected strings spell D, A, F (1, 5, b3 against D). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-4-5-6-1-bc_minor-8",
@@ -19177,7 +19177,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 4
         },
-        "explanation_summary": "E on strings 4-5-6 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii\u00b0 / partial ii\u00f8, the degree 2 chord in D natural minor, and validates as E diminished. Use fret 11 on strings 4-5-6 with E-raise lever; the selected strings spell E, Bb, G (1, b5/#11, b3 against E). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-4-5-6-2-e_raise_diminished-11",
@@ -19248,7 +19248,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 4
         },
-        "explanation_summary": "F on strings 4-5-6 at fret 1.",
+        "explanation_summary": "This three-string diatonic-harmony row targets III, the degree 3 chord in D natural minor, and validates as F major. Use fret 1 on strings 4-5-6 with no pedals/no levers; the selected strings spell F, C, A (1, 5, 3 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-4-5-6-3-no_pedals_no_levers-1",
@@ -19307,7 +19307,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 4
         },
-        "explanation_summary": "G on strings 4-5-6 at fret 1.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iv, the degree 4 chord in D natural minor, and validates as G minor. Use fret 1 on strings 4-5-6 with B pedal + C pedal; the selected strings spell G, D, Bb (1, 5, b3 against G). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-4-5-6-4-bc_minor-1",
@@ -19385,7 +19385,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 4
         },
-        "explanation_summary": "A on strings 4-5-6 at fret 3.",
+        "explanation_summary": "This three-string diatonic-harmony row targets v, the degree 5 chord in D natural minor, and validates as A minor. Use fret 3 on strings 4-5-6 with B pedal + C pedal; the selected strings spell A, E, C (1, 5, b3 against A). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-4-5-6-5-bc_minor-3",
@@ -19463,7 +19463,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 4
         },
-        "explanation_summary": "Bb on strings 4-5-6 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VI, the degree 6 chord in D natural minor, and validates as Bb major. Use fret 6 on strings 4-5-6 with no pedals/no levers; the selected strings spell Bb, F, D (1, 5, 3 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-4-5-6-6-no_pedals_no_levers-6",
@@ -19522,7 +19522,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 4
         },
-        "explanation_summary": "C on strings 4-5-6 at fret 20.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VII, the degree 7 chord in D natural minor, and validates as C major. Use fret 20 on strings 4-5-6 with no pedals/no levers; the selected strings spell C, G, E (1, 5, 3 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 20,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-4-5-6-7-no_pedals_no_levers-20",
@@ -19581,7 +19581,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 4
         },
-        "explanation_summary": "D on strings 4-5-6 at fret 20.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in D natural minor, and validates as D minor. Use fret 20 on strings 4-5-6 with B pedal + C pedal; the selected strings spell D, A, F (1, 5, b3 against D). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 20,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-4-5-6-1-bc_minor-20",
@@ -19659,7 +19659,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 5
         },
-        "explanation_summary": "D on strings 5-6-7 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in D natural minor, and validates as D minor. Use fret 8 on strings 5-6-7 with A pedal + B pedal; the selected strings spell A, F, D (5, b3, 1 against D). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-5-6-7-1-ab_minor-8",
@@ -19732,7 +19732,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 5
         },
-        "explanation_summary": "E on strings 5-6-8 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii\u00b0 / partial ii\u00f8, the degree 2 chord in D natural minor, and validates as E diminished. Use fret 11 on strings 5-6-8 with E-raise lever; the selected strings spell Bb, G, E (b5/#11, b3, 1 against E). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-5-6-8-2-e_raise_diminished-11",
@@ -19803,7 +19803,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 5
         },
-        "explanation_summary": "F on strings 5-6-8 at fret 1.",
+        "explanation_summary": "This three-string diatonic-harmony row targets III, the degree 3 chord in D natural minor, and validates as F major. Use fret 1 on strings 5-6-8 with no pedals/no levers; the selected strings spell C, A, F (5, 3, 1 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-5-6-8-3-no_pedals_no_levers-1",
@@ -19862,7 +19862,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 5
         },
-        "explanation_summary": "G on strings 5-6-7 at fret 1.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iv, the degree 4 chord in D natural minor, and validates as G minor. Use fret 1 on strings 5-6-7 with A pedal + B pedal; the selected strings spell D, Bb, G (5, b3, 1 against G). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-5-6-7-4-ab_minor-1",
@@ -19935,7 +19935,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 5
         },
-        "explanation_summary": "A on strings 5-6-7 at fret 3.",
+        "explanation_summary": "This three-string diatonic-harmony row targets v, the degree 5 chord in D natural minor, and validates as A minor. Use fret 3 on strings 5-6-7 with A pedal + B pedal; the selected strings spell E, C, A (5, b3, 1 against A). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-5-6-7-5-ab_minor-3",
@@ -20008,7 +20008,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 5
         },
-        "explanation_summary": "Bb on strings 5-6-8 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VI, the degree 6 chord in D natural minor, and validates as Bb major. Use fret 6 on strings 5-6-8 with no pedals/no levers; the selected strings spell F, D, Bb (5, 3, 1 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-5-6-8-6-no_pedals_no_levers-6",
@@ -20067,7 +20067,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 5
         },
-        "explanation_summary": "C on strings 5-6-8 at fret 20.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VII, the degree 7 chord in D natural minor, and validates as C major. Use fret 20 on strings 5-6-8 with no pedals/no levers; the selected strings spell G, E, C (5, 3, 1 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 20,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-5-6-8-7-no_pedals_no_levers-20",
@@ -20126,7 +20126,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 5
         },
-        "explanation_summary": "D on strings 5-6-7 at fret 20.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in D natural minor, and validates as D minor. Use fret 20 on strings 5-6-7 with A pedal + B pedal; the selected strings spell A, F, D (5, b3, 1 against D). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 20,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-5-6-7-1-ab_minor-20",
@@ -20199,7 +20199,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 6
         },
-        "explanation_summary": "D on strings 6-7-10 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in D natural minor, and validates as D minor. Use fret 8 on strings 6-7-10 with A pedal + B pedal; the selected strings spell F, D, A (b3, 1, 5 against D). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-6-7-10-1-ab_minor-8",
@@ -20272,7 +20272,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 6
         },
-        "explanation_summary": "E on strings 6-8-10 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii\u00b0 / partial ii\u00f8, the degree 2 chord in D natural minor, and validates as E diminished. Use fret 11 on strings 6-8-10 with E-raise lever; the selected strings spell G, E, Bb (b3, 1, b5/#11 against E). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-6-8-10-2-e_raise_diminished-11",
@@ -20343,7 +20343,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 6
         },
-        "explanation_summary": "F on strings 6-8-10 at fret 1.",
+        "explanation_summary": "This three-string diatonic-harmony row targets III, the degree 3 chord in D natural minor, and validates as F major. Use fret 1 on strings 6-8-10 with no pedals/no levers; the selected strings spell A, F, C (3, 1, 5 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-6-8-10-3-no_pedals_no_levers-1",
@@ -20402,7 +20402,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 6
         },
-        "explanation_summary": "G on strings 6-7-10 at fret 1.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iv, the degree 4 chord in D natural minor, and validates as G minor. Use fret 1 on strings 6-7-10 with A pedal + B pedal; the selected strings spell Bb, G, D (b3, 1, 5 against G). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-6-7-10-4-ab_minor-1",
@@ -20475,7 +20475,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 6
         },
-        "explanation_summary": "A on strings 6-7-10 at fret 3.",
+        "explanation_summary": "This three-string diatonic-harmony row targets v, the degree 5 chord in D natural minor, and validates as A minor. Use fret 3 on strings 6-7-10 with A pedal + B pedal; the selected strings spell C, A, E (b3, 1, 5 against A). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-6-7-10-5-ab_minor-3",
@@ -20548,7 +20548,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 6
         },
-        "explanation_summary": "Bb on strings 6-8-10 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VI, the degree 6 chord in D natural minor, and validates as Bb major. Use fret 6 on strings 6-8-10 with no pedals/no levers; the selected strings spell D, Bb, F (3, 1, 5 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-6-8-10-6-no_pedals_no_levers-6",
@@ -20607,7 +20607,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 6
         },
-        "explanation_summary": "C on strings 6-8-10 at fret 20.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VII, the degree 7 chord in D natural minor, and validates as C major. Use fret 20 on strings 6-8-10 with no pedals/no levers; the selected strings spell E, C, G (3, 1, 5 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 20,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-6-8-10-7-no_pedals_no_levers-20",
@@ -20666,7 +20666,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 6
         },
-        "explanation_summary": "D on strings 6-7-10 at fret 20.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in D natural minor, and validates as D minor. Use fret 20 on strings 6-7-10 with A pedal + B pedal; the selected strings spell F, D, A (b3, 1, 5 against D). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 20,
         "harmony_type": "three_string_diatonic",
         "id": "d-natural-minor-three-string-diatonic-6-7-10-1-ab_minor-20",
@@ -20739,7 +20739,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 5
         },
-        "explanation_summary": "Advanced 5-7-8 E-lower D major pocket; validated by pitch math.",
+        "explanation_summary": "This advanced 5-7-8 E-lower pocket targets D major as I in D major. Use fret 3 on strings 5-7-8 with E-lower lever; the selected strings spell D, A, F# (1, 5, 3 against D). Use the mechanical E-lower lever name here; shorthand varies by copedent. This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "advanced_pocket",
         "id": "d-major-advanced-pocket-5-7-8-1-e_lower_pocket-3",
@@ -20806,7 +20806,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 5
         },
-        "explanation_summary": "Advanced 5-7-8 E-lower D major pocket; validated by pitch math.",
+        "explanation_summary": "This advanced 5-7-8 E-lower pocket targets D major as I in D major. Use fret 15 on strings 5-7-8 with E-lower lever; the selected strings spell D, A, F# (1, 5, 3 against D). Use the mechanical E-lower lever name here; shorthand varies by copedent. This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 15,
         "harmony_type": "advanced_pocket",
         "id": "d-major-advanced-pocket-5-7-8-1-e_lower_pocket-15",
@@ -20979,7 +20979,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 3
         },
-        "explanation_summary": "G on strings 3-5 at fret 11.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in Eb major; it is a partial interval pair, not a full triad. Use fret 11 on strings 3-5 with no pedals/no levers; the selected strings spell G, Bb (1, b3 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-3-5-3-major_thirds_sixths-11",
@@ -21034,7 +21034,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Ab",
           "string": 3
         },
-        "explanation_summary": "Ab on strings 3-5 at fret 11.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in Eb major; it is a partial interval pair, not a full triad. Use fret 11 on strings 3-5 with A pedal + B pedal; the selected strings spell Ab, C (1, 3 against Ab). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-3-5-4-major_thirds_sixths-11",
@@ -21103,7 +21103,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 3
         },
-        "explanation_summary": "Bb on strings 3-5 at fret 1.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in Eb major; it is a partial interval pair, not a full triad. Use fret 1 on strings 3-5 with A pedal + B pedal; the selected strings spell Bb, D (1, 3 against Bb). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-3-5-5-major_thirds_sixths-1",
@@ -21172,7 +21172,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 3
         },
-        "explanation_summary": "C on strings 3-5 at fret 4.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in Eb major; it is a partial interval pair, not a full triad. Use fret 4 on strings 3-5 with no pedals/no levers; the selected strings spell C, Eb (1, b3 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-3-5-6-major_thirds_sixths-4",
@@ -21227,7 +21227,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 3
         },
-        "explanation_summary": "D on strings 3-5 at fret 6.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in Eb major; it is a partial interval pair, not a full triad. Use fret 6 on strings 3-5 with no pedals/no levers; the selected strings spell D, F (1, b3 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-3-5-7-major_thirds_sixths-6",
@@ -21282,7 +21282,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 3
         },
-        "explanation_summary": "Eb on strings 3-5 at fret 6.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in Eb major; it is a partial interval pair, not a full triad. Use fret 6 on strings 3-5 with A pedal + B pedal; the selected strings spell Eb, G (1, 3 against Eb). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-3-5-1-major_thirds_sixths-6",
@@ -21351,7 +21351,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 3
         },
-        "explanation_summary": "F on strings 3-5 at fret 21.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in Eb major; it is a partial interval pair, not a full triad. Use fret 21 on strings 3-5 with no pedals/no levers; the selected strings spell F, Ab (1, b3 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 21,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-3-5-2-major_thirds_sixths-21",
@@ -21406,7 +21406,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 3
         },
-        "explanation_summary": "G on strings 3-5 at fret 23.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in Eb major; it is a partial interval pair, not a full triad. Use fret 23 on strings 3-5 with no pedals/no levers; the selected strings spell G, Bb (1, b3 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 23,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-3-5-3-major_thirds_sixths-23",
@@ -21461,7 +21461,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 5
         },
-        "explanation_summary": "G on strings 5-6 at fret 11.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in Eb major; it is a partial interval pair, not a full triad. Use fret 11 on strings 5-6 with no pedals/no levers; the selected strings spell Bb, G (b3, 1 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-5-6-3-major_thirds_sixths-11",
@@ -21516,7 +21516,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 5
         },
-        "explanation_summary": "Ab on strings 5-6 at fret 11.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in Eb major; it is a partial interval pair, not a full triad. Use fret 11 on strings 5-6 with A pedal + B pedal; the selected strings spell C, Ab (3, 1 against Ab). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-5-6-4-major_thirds_sixths-11",
@@ -21585,7 +21585,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 5
         },
-        "explanation_summary": "Bb on strings 5-6 at fret 1.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in Eb major; it is a partial interval pair, not a full triad. Use fret 1 on strings 5-6 with A pedal + B pedal; the selected strings spell D, Bb (3, 1 against Bb). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-5-6-5-major_thirds_sixths-1",
@@ -21654,7 +21654,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 5
         },
-        "explanation_summary": "C on strings 5-6 at fret 4.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in Eb major; it is a partial interval pair, not a full triad. Use fret 4 on strings 5-6 with no pedals/no levers; the selected strings spell Eb, C (b3, 1 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-5-6-6-major_thirds_sixths-4",
@@ -21709,7 +21709,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 5
         },
-        "explanation_summary": "D on strings 5-6 at fret 6.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in Eb major; it is a partial interval pair, not a full triad. Use fret 6 on strings 5-6 with no pedals/no levers; the selected strings spell F, D (b3, 1 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-5-6-7-major_thirds_sixths-6",
@@ -21764,7 +21764,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 5
         },
-        "explanation_summary": "Eb on strings 5-6 at fret 6.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in Eb major; it is a partial interval pair, not a full triad. Use fret 6 on strings 5-6 with A pedal + B pedal; the selected strings spell G, Eb (3, 1 against Eb). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-5-6-1-major_thirds_sixths-6",
@@ -21833,7 +21833,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Ab",
           "string": 5
         },
-        "explanation_summary": "F on strings 5-6 at fret 21.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in Eb major; it is a partial interval pair, not a full triad. Use fret 21 on strings 5-6 with no pedals/no levers; the selected strings spell Ab, F (b3, 1 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 21,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-5-6-2-major_thirds_sixths-21",
@@ -21888,7 +21888,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 5
         },
-        "explanation_summary": "G on strings 5-6 at fret 23.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in Eb major; it is a partial interval pair, not a full triad. Use fret 23 on strings 5-6 with no pedals/no levers; the selected strings spell Bb, G (b3, 1 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 23,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-5-6-3-major_thirds_sixths-23",
@@ -21943,7 +21943,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 6
         },
-        "explanation_summary": "G on strings 6-10 at fret 11.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in Eb major; it is a partial interval pair, not a full triad. Use fret 11 on strings 6-10 with no pedals/no levers; the selected strings spell G, Bb (1, b3 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-6-10-3-major_thirds_sixths-11",
@@ -21998,7 +21998,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Ab",
           "string": 6
         },
-        "explanation_summary": "Ab on strings 6-10 at fret 11.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in Eb major; it is a partial interval pair, not a full triad. Use fret 11 on strings 6-10 with A pedal + B pedal; the selected strings spell Ab, C (1, 3 against Ab). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-6-10-4-major_thirds_sixths-11",
@@ -22067,7 +22067,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 6
         },
-        "explanation_summary": "Bb on strings 6-10 at fret 1.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in Eb major; it is a partial interval pair, not a full triad. Use fret 1 on strings 6-10 with A pedal + B pedal; the selected strings spell Bb, D (1, 3 against Bb). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-6-10-5-major_thirds_sixths-1",
@@ -22136,7 +22136,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 6
         },
-        "explanation_summary": "C on strings 6-10 at fret 4.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in Eb major; it is a partial interval pair, not a full triad. Use fret 4 on strings 6-10 with no pedals/no levers; the selected strings spell C, Eb (1, b3 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-6-10-6-major_thirds_sixths-4",
@@ -22191,7 +22191,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 6
         },
-        "explanation_summary": "D on strings 6-10 at fret 6.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in Eb major; it is a partial interval pair, not a full triad. Use fret 6 on strings 6-10 with no pedals/no levers; the selected strings spell D, F (1, b3 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-6-10-7-major_thirds_sixths-6",
@@ -22246,7 +22246,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 6
         },
-        "explanation_summary": "Eb on strings 6-10 at fret 6.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in Eb major; it is a partial interval pair, not a full triad. Use fret 6 on strings 6-10 with A pedal + B pedal; the selected strings spell Eb, G (1, 3 against Eb). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-6-10-1-major_thirds_sixths-6",
@@ -22315,7 +22315,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 6
         },
-        "explanation_summary": "F on strings 6-10 at fret 21.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in Eb major; it is a partial interval pair, not a full triad. Use fret 21 on strings 6-10 with no pedals/no levers; the selected strings spell F, Ab (1, b3 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 21,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-6-10-2-major_thirds_sixths-21",
@@ -22370,7 +22370,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 6
         },
-        "explanation_summary": "G on strings 6-10 at fret 23.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in Eb major; it is a partial interval pair, not a full triad. Use fret 23 on strings 6-10 with no pedals/no levers; the selected strings spell G, Bb (1, b3 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 23,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-6-10-3-major_thirds_sixths-23",
@@ -22425,7 +22425,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 4
         },
-        "explanation_summary": "Eb on strings 4-6 at fret 11.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in Eb major; it is a partial interval pair, not a full triad. Use fret 11 on strings 4-6 with no pedals/no levers; the selected strings spell Eb, G (1, 3 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-4-6-1-e_raise_two_string-11",
@@ -22480,7 +22480,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 4
         },
-        "explanation_summary": "F on strings 4-6 at fret 0.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in Eb major; it is a partial interval pair, not a full triad. Use fret 0 on strings 4-6 with E-raise lever; the selected strings spell F, Ab (1, b3 against F). Use the mechanical E-raise lever name here; shorthand varies by copedent. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 0,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-4-6-2-e_raise_two_string-0",
@@ -22543,7 +22543,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 4
         },
-        "explanation_summary": "G on strings 4-6 at fret 2.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in Eb major; it is a partial interval pair, not a full triad. Use fret 2 on strings 4-6 with E-raise lever; the selected strings spell G, Bb (1, b3 against G). Use the mechanical E-raise lever name here; shorthand varies by copedent. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 2,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-4-6-3-e_raise_two_string-2",
@@ -22606,7 +22606,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Ab",
           "string": 4
         },
-        "explanation_summary": "Ab on strings 4-6 at fret 4.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in Eb major; it is a partial interval pair, not a full triad. Use fret 4 on strings 4-6 with no pedals/no levers; the selected strings spell Ab, C (1, 3 against Ab). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-4-6-4-e_raise_two_string-4",
@@ -22661,7 +22661,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 4
         },
-        "explanation_summary": "Bb on strings 4-6 at fret 6.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in Eb major; it is a partial interval pair, not a full triad. Use fret 6 on strings 4-6 with no pedals/no levers; the selected strings spell Bb, D (1, 3 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-4-6-5-e_raise_two_string-6",
@@ -22716,7 +22716,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 4
         },
-        "explanation_summary": "C on strings 4-6 at fret 7.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in Eb major; it is a partial interval pair, not a full triad. Use fret 7 on strings 4-6 with E-raise lever; the selected strings spell C, Eb (1, b3 against C). Use the mechanical E-raise lever name here; shorthand varies by copedent. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 7,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-4-6-6-e_raise_two_string-7",
@@ -22779,7 +22779,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 4
         },
-        "explanation_summary": "D on strings 4-6 at fret 21.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in Eb major; it is a partial interval pair, not a full triad. Use fret 21 on strings 4-6 with E-raise lever; the selected strings spell D, F (1, b3 against D). Use the mechanical E-raise lever name here; shorthand varies by copedent. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 21,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-4-6-7-e_raise_two_string-21",
@@ -22842,7 +22842,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 4
         },
-        "explanation_summary": "Eb on strings 4-6 at fret 23.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in Eb major; it is a partial interval pair, not a full triad. Use fret 23 on strings 4-6 with no pedals/no levers; the selected strings spell Eb, G (1, 3 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 23,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-4-6-1-e_raise_two_string-23",
@@ -22897,7 +22897,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 3
         },
-        "explanation_summary": "Eb on strings 3-4 at fret 11.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in Eb major; it is a partial interval pair, not a full triad. Use fret 11 on strings 3-4 with no pedals/no levers; the selected strings spell G, Eb (3, 1 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-3-4-1-bc_two_string-11",
@@ -22952,7 +22952,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Ab",
           "string": 3
         },
-        "explanation_summary": "F on strings 3-4 at fret 11.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in Eb major; it is a partial interval pair, not a full triad. Use fret 11 on strings 3-4 with B pedal + C pedal; the selected strings spell Ab, F (b3, 1 against F). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-3-4-2-bc_two_string-11",
@@ -23021,7 +23021,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 3
         },
-        "explanation_summary": "G on strings 3-4 at fret 1.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in Eb major; it is a partial interval pair, not a full triad. Use fret 1 on strings 3-4 with B pedal + C pedal; the selected strings spell Bb, G (b3, 1 against G). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-3-4-3-bc_two_string-1",
@@ -23090,7 +23090,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 3
         },
-        "explanation_summary": "Ab on strings 3-4 at fret 4.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in Eb major; it is a partial interval pair, not a full triad. Use fret 4 on strings 3-4 with no pedals/no levers; the selected strings spell C, Ab (3, 1 against Ab). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-3-4-4-bc_two_string-4",
@@ -23145,7 +23145,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 3
         },
-        "explanation_summary": "Bb on strings 3-4 at fret 6.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in Eb major; it is a partial interval pair, not a full triad. Use fret 6 on strings 3-4 with no pedals/no levers; the selected strings spell D, Bb (3, 1 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-3-4-5-bc_two_string-6",
@@ -23200,7 +23200,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 3
         },
-        "explanation_summary": "C on strings 3-4 at fret 6.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in Eb major; it is a partial interval pair, not a full triad. Use fret 6 on strings 3-4 with B pedal + C pedal; the selected strings spell Eb, C (b3, 1 against C). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-3-4-6-bc_two_string-6",
@@ -23269,7 +23269,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 3
         },
-        "explanation_summary": "D on strings 3-4 at fret 20.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in Eb major; it is a partial interval pair, not a full triad. Use fret 20 on strings 3-4 with B pedal + C pedal; the selected strings spell F, D (b3, 1 against D). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 20,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-3-4-7-bc_two_string-20",
@@ -23338,7 +23338,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 3
         },
-        "explanation_summary": "Eb on strings 3-4 at fret 23.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in Eb major; it is a partial interval pair, not a full triad. Use fret 23 on strings 3-4 with no pedals/no levers; the selected strings spell G, Eb (3, 1 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 23,
         "harmony_type": "two_string_harmonized",
         "id": "eflat-major-two-string-harmonized-3-4-1-bc_two_string-23",
@@ -23394,7 +23394,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 3
         },
-        "explanation_summary": "Eb on strings 3-4-5 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in Eb major, and validates as Eb major. Use fret 11 on strings 3-4-5 with no pedals/no levers; the selected strings spell G, Eb, Bb (3, 1, 5 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-3-4-5-1-no_pedals_no_levers-11",
@@ -23453,7 +23453,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Ab",
           "string": 3
         },
-        "explanation_summary": "F on strings 3-4-5 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii, the degree 2 chord in Eb major, and validates as F minor. Use fret 11 on strings 3-4-5 with B pedal + C pedal; the selected strings spell Ab, F, C (b3, 1, 5 against F). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-3-4-5-2-bc_minor-11",
@@ -23531,7 +23531,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 3
         },
-        "explanation_summary": "G on strings 3-4-5 at fret 1.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iii, the degree 3 chord in Eb major, and validates as G minor. Use fret 1 on strings 3-4-5 with B pedal + C pedal; the selected strings spell Bb, G, D (b3, 1, 5 against G). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-3-4-5-3-bc_minor-1",
@@ -23609,7 +23609,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 3
         },
-        "explanation_summary": "Ab on strings 3-4-5 at fret 4.",
+        "explanation_summary": "This three-string diatonic-harmony row targets IV, the degree 4 chord in Eb major, and validates as Ab major. Use fret 4 on strings 3-4-5 with no pedals/no levers; the selected strings spell C, Ab, Eb (3, 1, 5 against Ab). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-3-4-5-4-no_pedals_no_levers-4",
@@ -23668,7 +23668,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 3
         },
-        "explanation_summary": "Bb on strings 3-4-5 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets V, the degree 5 chord in Eb major, and validates as Bb major. Use fret 6 on strings 3-4-5 with no pedals/no levers; the selected strings spell D, Bb, F (3, 1, 5 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-3-4-5-5-no_pedals_no_levers-6",
@@ -23727,7 +23727,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 3
         },
-        "explanation_summary": "C on strings 3-4-5 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vi, the degree 6 chord in Eb major, and validates as C minor. Use fret 6 on strings 3-4-5 with B pedal + C pedal; the selected strings spell Eb, C, G (b3, 1, 5 against C). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-3-4-5-6-bc_minor-6",
@@ -23805,7 +23805,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 3
         },
-        "explanation_summary": "D on strings 3-4-5 at fret 21.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vii\u00b0 / partial vii\u00f8, the degree 7 chord in Eb major, and validates as D diminished. Use fret 21 on strings 3-4-5 with E-raise lever; the selected strings spell F, D, Ab (b3, 1, b5/#11 against D). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 21,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-3-4-5-7-e_raise_diminished-21",
@@ -23876,7 +23876,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 3
         },
-        "explanation_summary": "Eb on strings 3-4-5 at fret 23.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in Eb major, and validates as Eb major. Use fret 23 on strings 3-4-5 with no pedals/no levers; the selected strings spell G, Eb, Bb (3, 1, 5 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 23,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-3-4-5-1-no_pedals_no_levers-23",
@@ -23935,7 +23935,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 4
         },
-        "explanation_summary": "Eb on strings 4-5-6 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in Eb major, and validates as Eb major. Use fret 11 on strings 4-5-6 with no pedals/no levers; the selected strings spell Eb, Bb, G (1, 5, 3 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-4-5-6-1-no_pedals_no_levers-11",
@@ -23994,7 +23994,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 4
         },
-        "explanation_summary": "F on strings 4-5-6 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii, the degree 2 chord in Eb major, and validates as F minor. Use fret 11 on strings 4-5-6 with B pedal + C pedal; the selected strings spell F, C, Ab (1, 5, b3 against F). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-4-5-6-2-bc_minor-11",
@@ -24072,7 +24072,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 4
         },
-        "explanation_summary": "G on strings 4-5-6 at fret 1.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iii, the degree 3 chord in Eb major, and validates as G minor. Use fret 1 on strings 4-5-6 with B pedal + C pedal; the selected strings spell G, D, Bb (1, 5, b3 against G). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-4-5-6-3-bc_minor-1",
@@ -24150,7 +24150,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Ab",
           "string": 4
         },
-        "explanation_summary": "Ab on strings 4-5-6 at fret 4.",
+        "explanation_summary": "This three-string diatonic-harmony row targets IV, the degree 4 chord in Eb major, and validates as Ab major. Use fret 4 on strings 4-5-6 with no pedals/no levers; the selected strings spell Ab, Eb, C (1, 5, 3 against Ab). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-4-5-6-4-no_pedals_no_levers-4",
@@ -24209,7 +24209,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 4
         },
-        "explanation_summary": "Bb on strings 4-5-6 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets V, the degree 5 chord in Eb major, and validates as Bb major. Use fret 6 on strings 4-5-6 with no pedals/no levers; the selected strings spell Bb, F, D (1, 5, 3 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-4-5-6-5-no_pedals_no_levers-6",
@@ -24268,7 +24268,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 4
         },
-        "explanation_summary": "C on strings 4-5-6 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vi, the degree 6 chord in Eb major, and validates as C minor. Use fret 6 on strings 4-5-6 with B pedal + C pedal; the selected strings spell C, G, Eb (1, 5, b3 against C). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-4-5-6-6-bc_minor-6",
@@ -24346,7 +24346,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 4
         },
-        "explanation_summary": "D on strings 4-5-6 at fret 21.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vii\u00b0 / partial vii\u00f8, the degree 7 chord in Eb major, and validates as D diminished. Use fret 21 on strings 4-5-6 with E-raise lever; the selected strings spell D, Ab, F (1, b5/#11, b3 against D). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 21,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-4-5-6-7-e_raise_diminished-21",
@@ -24417,7 +24417,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 4
         },
-        "explanation_summary": "Eb on strings 4-5-6 at fret 23.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in Eb major, and validates as Eb major. Use fret 23 on strings 4-5-6 with no pedals/no levers; the selected strings spell Eb, Bb, G (1, 5, 3 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 23,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-4-5-6-1-no_pedals_no_levers-23",
@@ -24476,7 +24476,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 5
         },
-        "explanation_summary": "Eb on strings 5-6-8 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in Eb major, and validates as Eb major. Use fret 11 on strings 5-6-8 with no pedals/no levers; the selected strings spell Bb, G, Eb (5, 3, 1 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-5-6-8-1-no_pedals_no_levers-11",
@@ -24535,7 +24535,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 5
         },
-        "explanation_summary": "F on strings 5-6-7 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii, the degree 2 chord in Eb major, and validates as F minor. Use fret 11 on strings 5-6-7 with A pedal + B pedal; the selected strings spell C, Ab, F (5, b3, 1 against F). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-5-6-7-2-ab_minor-11",
@@ -24608,7 +24608,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 5
         },
-        "explanation_summary": "G on strings 5-6-7 at fret 1.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iii, the degree 3 chord in Eb major, and validates as G minor. Use fret 1 on strings 5-6-7 with A pedal + B pedal; the selected strings spell D, Bb, G (5, b3, 1 against G). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-5-6-7-3-ab_minor-1",
@@ -24681,7 +24681,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 5
         },
-        "explanation_summary": "Ab on strings 5-6-8 at fret 4.",
+        "explanation_summary": "This three-string diatonic-harmony row targets IV, the degree 4 chord in Eb major, and validates as Ab major. Use fret 4 on strings 5-6-8 with no pedals/no levers; the selected strings spell Eb, C, Ab (5, 3, 1 against Ab). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-5-6-8-4-no_pedals_no_levers-4",
@@ -24740,7 +24740,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 5
         },
-        "explanation_summary": "Bb on strings 5-6-8 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets V, the degree 5 chord in Eb major, and validates as Bb major. Use fret 6 on strings 5-6-8 with no pedals/no levers; the selected strings spell F, D, Bb (5, 3, 1 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-5-6-8-5-no_pedals_no_levers-6",
@@ -24799,7 +24799,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 5
         },
-        "explanation_summary": "C on strings 5-6-7 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vi, the degree 6 chord in Eb major, and validates as C minor. Use fret 6 on strings 5-6-7 with A pedal + B pedal; the selected strings spell G, Eb, C (5, b3, 1 against C). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-5-6-7-6-ab_minor-6",
@@ -24872,7 +24872,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Ab",
           "string": 5
         },
-        "explanation_summary": "D on strings 5-6-8 at fret 21.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vii\u00b0 / partial vii\u00f8, the degree 7 chord in Eb major, and validates as D diminished. Use fret 21 on strings 5-6-8 with E-raise lever; the selected strings spell Ab, F, D (b5/#11, b3, 1 against D). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 21,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-5-6-8-7-e_raise_diminished-21",
@@ -24943,7 +24943,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 5
         },
-        "explanation_summary": "Eb on strings 5-6-8 at fret 23.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in Eb major, and validates as Eb major. Use fret 23 on strings 5-6-8 with no pedals/no levers; the selected strings spell Bb, G, Eb (5, 3, 1 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 23,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-5-6-8-1-no_pedals_no_levers-23",
@@ -25002,7 +25002,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 6
         },
-        "explanation_summary": "Eb on strings 6-8-10 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in Eb major, and validates as Eb major. Use fret 11 on strings 6-8-10 with no pedals/no levers; the selected strings spell G, Eb, Bb (3, 1, 5 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-6-8-10-1-no_pedals_no_levers-11",
@@ -25061,7 +25061,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Ab",
           "string": 6
         },
-        "explanation_summary": "F on strings 6-7-10 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii, the degree 2 chord in Eb major, and validates as F minor. Use fret 11 on strings 6-7-10 with A pedal + B pedal; the selected strings spell Ab, F, C (b3, 1, 5 against F). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-6-7-10-2-ab_minor-11",
@@ -25134,7 +25134,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 6
         },
-        "explanation_summary": "G on strings 6-7-10 at fret 1.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iii, the degree 3 chord in Eb major, and validates as G minor. Use fret 1 on strings 6-7-10 with A pedal + B pedal; the selected strings spell Bb, G, D (b3, 1, 5 against G). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-6-7-10-3-ab_minor-1",
@@ -25207,7 +25207,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 6
         },
-        "explanation_summary": "Ab on strings 6-8-10 at fret 4.",
+        "explanation_summary": "This three-string diatonic-harmony row targets IV, the degree 4 chord in Eb major, and validates as Ab major. Use fret 4 on strings 6-8-10 with no pedals/no levers; the selected strings spell C, Ab, Eb (3, 1, 5 against Ab). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-6-8-10-4-no_pedals_no_levers-4",
@@ -25266,7 +25266,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 6
         },
-        "explanation_summary": "Bb on strings 6-8-10 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets V, the degree 5 chord in Eb major, and validates as Bb major. Use fret 6 on strings 6-8-10 with no pedals/no levers; the selected strings spell D, Bb, F (3, 1, 5 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-6-8-10-5-no_pedals_no_levers-6",
@@ -25325,7 +25325,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 6
         },
-        "explanation_summary": "C on strings 6-7-10 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vi, the degree 6 chord in Eb major, and validates as C minor. Use fret 6 on strings 6-7-10 with A pedal + B pedal; the selected strings spell Eb, C, G (b3, 1, 5 against C). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-6-7-10-6-ab_minor-6",
@@ -25398,7 +25398,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 6
         },
-        "explanation_summary": "D on strings 6-8-10 at fret 21.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vii\u00b0 / partial vii\u00f8, the degree 7 chord in Eb major, and validates as D diminished. Use fret 21 on strings 6-8-10 with E-raise lever; the selected strings spell F, D, Ab (b3, 1, b5/#11 against D). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 21,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-6-8-10-7-e_raise_diminished-21",
@@ -25469,7 +25469,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 6
         },
-        "explanation_summary": "Eb on strings 6-8-10 at fret 23.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in Eb major, and validates as Eb major. Use fret 23 on strings 6-8-10 with no pedals/no levers; the selected strings spell G, Eb, Bb (3, 1, 5 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 23,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-major-three-string-diatonic-6-8-10-1-no_pedals_no_levers-23",
@@ -25528,7 +25528,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Gb",
           "string": 3
         },
-        "explanation_summary": "Eb on strings 3-4-5 at fret 9.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in Eb natural minor, and validates as Eb minor. Use fret 9 on strings 3-4-5 with B pedal + C pedal; the selected strings spell Gb, Eb, Bb (b3, 1, 5 against Eb). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 9,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-3-4-5-1-bc_minor-9",
@@ -25606,7 +25606,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Ab",
           "string": 3
         },
-        "explanation_summary": "F on strings 3-4-5 at fret 0.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii\u00b0 / partial ii\u00f8, the degree 2 chord in Eb natural minor, and validates as F diminished. Use fret 0 on strings 3-4-5 with E-raise lever; the selected strings spell Ab, F, Cb (b3, 1, b5/#11 against F). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 0,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-3-4-5-2-e_raise_diminished-0",
@@ -25677,7 +25677,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 3
         },
-        "explanation_summary": "Gb on strings 3-4-5 at fret 2.",
+        "explanation_summary": "This three-string diatonic-harmony row targets III, the degree 3 chord in Eb natural minor, and validates as Gb major. Use fret 2 on strings 3-4-5 with no pedals/no levers; the selected strings spell Bb, Gb, Db (3, 1, 5 against Gb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 2,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-3-4-5-3-no_pedals_no_levers-2",
@@ -25736,7 +25736,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Cb",
           "string": 3
         },
-        "explanation_summary": "Ab on strings 3-4-5 at fret 2.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iv, the degree 4 chord in Eb natural minor, and validates as Ab minor. Use fret 2 on strings 3-4-5 with B pedal + C pedal; the selected strings spell Cb, Ab, Eb (b3, 1, 5 against Ab). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 2,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-3-4-5-4-bc_minor-2",
@@ -25814,7 +25814,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Db",
           "string": 3
         },
-        "explanation_summary": "Bb on strings 3-4-5 at fret 4.",
+        "explanation_summary": "This three-string diatonic-harmony row targets v, the degree 5 chord in Eb natural minor, and validates as Bb minor. Use fret 4 on strings 3-4-5 with B pedal + C pedal; the selected strings spell Db, Bb, F (b3, 1, 5 against Bb). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-3-4-5-5-bc_minor-4",
@@ -25892,7 +25892,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 3
         },
-        "explanation_summary": "Cb on strings 3-4-5 at fret 7.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VI, the degree 6 chord in Eb natural minor, and validates as Cb major. Use fret 7 on strings 3-4-5 with no pedals/no levers; the selected strings spell Eb, Cb, Gb (3, 1, 5 against Cb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 7,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-3-4-5-6-no_pedals_no_levers-7",
@@ -25951,7 +25951,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 3
         },
-        "explanation_summary": "Db on strings 3-4-5 at fret 21.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VII, the degree 7 chord in Eb natural minor, and validates as Db major. Use fret 21 on strings 3-4-5 with no pedals/no levers; the selected strings spell F, Db, Ab (3, 1, 5 against Db). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 21,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-3-4-5-7-no_pedals_no_levers-21",
@@ -26010,7 +26010,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Gb",
           "string": 3
         },
-        "explanation_summary": "Eb on strings 3-4-5 at fret 21.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in Eb natural minor, and validates as Eb minor. Use fret 21 on strings 3-4-5 with B pedal + C pedal; the selected strings spell Gb, Eb, Bb (b3, 1, 5 against Eb). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 21,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-3-4-5-1-bc_minor-21",
@@ -26088,7 +26088,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 4
         },
-        "explanation_summary": "Eb on strings 4-5-6 at fret 9.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in Eb natural minor, and validates as Eb minor. Use fret 9 on strings 4-5-6 with B pedal + C pedal; the selected strings spell Eb, Bb, Gb (1, 5, b3 against Eb). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 9,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-4-5-6-1-bc_minor-9",
@@ -26166,7 +26166,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 4
         },
-        "explanation_summary": "F on strings 4-5-6 at fret 0.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii\u00b0 / partial ii\u00f8, the degree 2 chord in Eb natural minor, and validates as F diminished. Use fret 0 on strings 4-5-6 with E-raise lever; the selected strings spell F, Cb, Ab (1, b5/#11, b3 against F). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 0,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-4-5-6-2-e_raise_diminished-0",
@@ -26237,7 +26237,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Gb",
           "string": 4
         },
-        "explanation_summary": "Gb on strings 4-5-6 at fret 2.",
+        "explanation_summary": "This three-string diatonic-harmony row targets III, the degree 3 chord in Eb natural minor, and validates as Gb major. Use fret 2 on strings 4-5-6 with no pedals/no levers; the selected strings spell Gb, Db, Bb (1, 5, 3 against Gb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 2,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-4-5-6-3-no_pedals_no_levers-2",
@@ -26296,7 +26296,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Ab",
           "string": 4
         },
-        "explanation_summary": "Ab on strings 4-5-6 at fret 2.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iv, the degree 4 chord in Eb natural minor, and validates as Ab minor. Use fret 2 on strings 4-5-6 with B pedal + C pedal; the selected strings spell Ab, Eb, Cb (1, 5, b3 against Ab). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 2,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-4-5-6-4-bc_minor-2",
@@ -26374,7 +26374,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 4
         },
-        "explanation_summary": "Bb on strings 4-5-6 at fret 4.",
+        "explanation_summary": "This three-string diatonic-harmony row targets v, the degree 5 chord in Eb natural minor, and validates as Bb minor. Use fret 4 on strings 4-5-6 with B pedal + C pedal; the selected strings spell Bb, F, Db (1, 5, b3 against Bb). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-4-5-6-5-bc_minor-4",
@@ -26452,7 +26452,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Cb",
           "string": 4
         },
-        "explanation_summary": "Cb on strings 4-5-6 at fret 7.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VI, the degree 6 chord in Eb natural minor, and validates as Cb major. Use fret 7 on strings 4-5-6 with no pedals/no levers; the selected strings spell Cb, Gb, Eb (1, 5, 3 against Cb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 7,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-4-5-6-6-no_pedals_no_levers-7",
@@ -26511,7 +26511,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Db",
           "string": 4
         },
-        "explanation_summary": "Db on strings 4-5-6 at fret 21.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VII, the degree 7 chord in Eb natural minor, and validates as Db major. Use fret 21 on strings 4-5-6 with no pedals/no levers; the selected strings spell Db, Ab, F (1, 5, 3 against Db). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 21,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-4-5-6-7-no_pedals_no_levers-21",
@@ -26570,7 +26570,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 4
         },
-        "explanation_summary": "Eb on strings 4-5-6 at fret 21.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in Eb natural minor, and validates as Eb minor. Use fret 21 on strings 4-5-6 with B pedal + C pedal; the selected strings spell Eb, Bb, Gb (1, 5, b3 against Eb). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 21,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-4-5-6-1-bc_minor-21",
@@ -26648,7 +26648,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 5
         },
-        "explanation_summary": "Eb on strings 5-6-7 at fret 9.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in Eb natural minor, and validates as Eb minor. Use fret 9 on strings 5-6-7 with A pedal + B pedal; the selected strings spell Bb, Gb, Eb (5, b3, 1 against Eb). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 9,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-5-6-7-1-ab_minor-9",
@@ -26721,7 +26721,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Cb",
           "string": 5
         },
-        "explanation_summary": "F on strings 5-6-8 at fret 0.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii\u00b0 / partial ii\u00f8, the degree 2 chord in Eb natural minor, and validates as F diminished. Use fret 0 on strings 5-6-8 with E-raise lever; the selected strings spell Cb, Ab, F (b5/#11, b3, 1 against F). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 0,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-5-6-8-2-e_raise_diminished-0",
@@ -26792,7 +26792,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Db",
           "string": 5
         },
-        "explanation_summary": "Gb on strings 5-6-8 at fret 2.",
+        "explanation_summary": "This three-string diatonic-harmony row targets III, the degree 3 chord in Eb natural minor, and validates as Gb major. Use fret 2 on strings 5-6-8 with no pedals/no levers; the selected strings spell Db, Bb, Gb (5, 3, 1 against Gb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 2,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-5-6-8-3-no_pedals_no_levers-2",
@@ -26851,7 +26851,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 5
         },
-        "explanation_summary": "Ab on strings 5-6-7 at fret 2.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iv, the degree 4 chord in Eb natural minor, and validates as Ab minor. Use fret 2 on strings 5-6-7 with A pedal + B pedal; the selected strings spell Eb, Cb, Ab (5, b3, 1 against Ab). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 2,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-5-6-7-4-ab_minor-2",
@@ -26924,7 +26924,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 5
         },
-        "explanation_summary": "Bb on strings 5-6-7 at fret 4.",
+        "explanation_summary": "This three-string diatonic-harmony row targets v, the degree 5 chord in Eb natural minor, and validates as Bb minor. Use fret 4 on strings 5-6-7 with A pedal + B pedal; the selected strings spell F, Db, Bb (5, b3, 1 against Bb). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-5-6-7-5-ab_minor-4",
@@ -26997,7 +26997,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Gb",
           "string": 5
         },
-        "explanation_summary": "Cb on strings 5-6-8 at fret 7.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VI, the degree 6 chord in Eb natural minor, and validates as Cb major. Use fret 7 on strings 5-6-8 with no pedals/no levers; the selected strings spell Gb, Eb, Cb (5, 3, 1 against Cb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 7,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-5-6-8-6-no_pedals_no_levers-7",
@@ -27056,7 +27056,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Ab",
           "string": 5
         },
-        "explanation_summary": "Db on strings 5-6-8 at fret 21.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VII, the degree 7 chord in Eb natural minor, and validates as Db major. Use fret 21 on strings 5-6-8 with no pedals/no levers; the selected strings spell Ab, F, Db (5, 3, 1 against Db). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 21,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-5-6-8-7-no_pedals_no_levers-21",
@@ -27115,7 +27115,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 5
         },
-        "explanation_summary": "Eb on strings 5-6-7 at fret 21.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in Eb natural minor, and validates as Eb minor. Use fret 21 on strings 5-6-7 with A pedal + B pedal; the selected strings spell Bb, Gb, Eb (5, b3, 1 against Eb). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 21,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-5-6-7-1-ab_minor-21",
@@ -27188,7 +27188,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Gb",
           "string": 6
         },
-        "explanation_summary": "Eb on strings 6-7-10 at fret 9.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in Eb natural minor, and validates as Eb minor. Use fret 9 on strings 6-7-10 with A pedal + B pedal; the selected strings spell Gb, Eb, Bb (b3, 1, 5 against Eb). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 9,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-6-7-10-1-ab_minor-9",
@@ -27261,7 +27261,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Ab",
           "string": 6
         },
-        "explanation_summary": "F on strings 6-8-10 at fret 0.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii\u00b0 / partial ii\u00f8, the degree 2 chord in Eb natural minor, and validates as F diminished. Use fret 0 on strings 6-8-10 with E-raise lever; the selected strings spell Ab, F, Cb (b3, 1, b5/#11 against F). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 0,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-6-8-10-2-e_raise_diminished-0",
@@ -27332,7 +27332,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 6
         },
-        "explanation_summary": "Gb on strings 6-8-10 at fret 2.",
+        "explanation_summary": "This three-string diatonic-harmony row targets III, the degree 3 chord in Eb natural minor, and validates as Gb major. Use fret 2 on strings 6-8-10 with no pedals/no levers; the selected strings spell Bb, Gb, Db (3, 1, 5 against Gb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 2,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-6-8-10-3-no_pedals_no_levers-2",
@@ -27391,7 +27391,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Cb",
           "string": 6
         },
-        "explanation_summary": "Ab on strings 6-7-10 at fret 2.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iv, the degree 4 chord in Eb natural minor, and validates as Ab minor. Use fret 2 on strings 6-7-10 with A pedal + B pedal; the selected strings spell Cb, Ab, Eb (b3, 1, 5 against Ab). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 2,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-6-7-10-4-ab_minor-2",
@@ -27464,7 +27464,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Db",
           "string": 6
         },
-        "explanation_summary": "Bb on strings 6-7-10 at fret 4.",
+        "explanation_summary": "This three-string diatonic-harmony row targets v, the degree 5 chord in Eb natural minor, and validates as Bb minor. Use fret 4 on strings 6-7-10 with A pedal + B pedal; the selected strings spell Db, Bb, F (b3, 1, 5 against Bb). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-6-7-10-5-ab_minor-4",
@@ -27537,7 +27537,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 6
         },
-        "explanation_summary": "Cb on strings 6-8-10 at fret 7.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VI, the degree 6 chord in Eb natural minor, and validates as Cb major. Use fret 7 on strings 6-8-10 with no pedals/no levers; the selected strings spell Eb, Cb, Gb (3, 1, 5 against Cb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 7,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-6-8-10-6-no_pedals_no_levers-7",
@@ -27596,7 +27596,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 6
         },
-        "explanation_summary": "Db on strings 6-8-10 at fret 21.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VII, the degree 7 chord in Eb natural minor, and validates as Db major. Use fret 21 on strings 6-8-10 with no pedals/no levers; the selected strings spell F, Db, Ab (3, 1, 5 against Db). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 21,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-6-8-10-7-no_pedals_no_levers-21",
@@ -27655,7 +27655,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Gb",
           "string": 6
         },
-        "explanation_summary": "Eb on strings 6-7-10 at fret 21.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in Eb natural minor, and validates as Eb minor. Use fret 21 on strings 6-7-10 with A pedal + B pedal; the selected strings spell Gb, Eb, Bb (b3, 1, 5 against Eb). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 21,
         "harmony_type": "three_string_diatonic",
         "id": "eflat-natural-minor-three-string-diatonic-6-7-10-1-ab_minor-21",
@@ -27728,7 +27728,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 5
         },
-        "explanation_summary": "Advanced 5-7-8 E-lower Eb major pocket; validated by pitch math.",
+        "explanation_summary": "This advanced 5-7-8 E-lower pocket targets Eb major as I in Eb major. Use fret 4 on strings 5-7-8 with E-lower lever; the selected strings spell Eb, Bb, G (1, 5, 3 against Eb). Use the mechanical E-lower lever name here; shorthand varies by copedent. This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "advanced_pocket",
         "id": "eflat-major-advanced-pocket-5-7-8-1-e_lower_pocket-4",
@@ -27795,7 +27795,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 5
         },
-        "explanation_summary": "Advanced 5-7-8 E-lower Eb major pocket; validated by pitch math.",
+        "explanation_summary": "This advanced 5-7-8 E-lower pocket targets Eb major as I in Eb major. Use fret 16 on strings 5-7-8 with E-lower lever; the selected strings spell Eb, Bb, G (1, 5, 3 against Eb). Use the mechanical E-lower lever name here; shorthand varies by copedent. This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 16,
         "harmony_type": "advanced_pocket",
         "id": "eflat-major-advanced-pocket-5-7-8-1-e_lower_pocket-16",
@@ -27968,7 +27968,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 3
         },
-        "explanation_summary": "A on strings 3-5 at fret 1.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in F major; it is a partial interval pair, not a full triad. Use fret 1 on strings 3-5 with no pedals/no levers; the selected strings spell A, C (1, b3 against A). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-3-5-3-major_thirds_sixths-1",
@@ -28023,7 +28023,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 3
         },
-        "explanation_summary": "Bb on strings 3-5 at fret 1.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in F major; it is a partial interval pair, not a full triad. Use fret 1 on strings 3-5 with A pedal + B pedal; the selected strings spell Bb, D (1, 3 against Bb). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-3-5-4-major_thirds_sixths-1",
@@ -28092,7 +28092,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 3
         },
-        "explanation_summary": "C on strings 3-5 at fret 3.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in F major; it is a partial interval pair, not a full triad. Use fret 3 on strings 3-5 with A pedal + B pedal; the selected strings spell C, E (1, 3 against C). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-3-5-5-major_thirds_sixths-3",
@@ -28161,7 +28161,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 3
         },
-        "explanation_summary": "D on strings 3-5 at fret 6.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in F major; it is a partial interval pair, not a full triad. Use fret 6 on strings 3-5 with no pedals/no levers; the selected strings spell D, F (1, b3 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-3-5-6-major_thirds_sixths-6",
@@ -28216,7 +28216,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 3
         },
-        "explanation_summary": "E on strings 3-5 at fret 8.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in F major; it is a partial interval pair, not a full triad. Use fret 8 on strings 3-5 with no pedals/no levers; the selected strings spell E, G (1, b3 against E). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-3-5-7-major_thirds_sixths-8",
@@ -28271,7 +28271,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 3
         },
-        "explanation_summary": "F on strings 3-5 at fret 8.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in F major; it is a partial interval pair, not a full triad. Use fret 8 on strings 3-5 with A pedal + B pedal; the selected strings spell F, A (1, 3 against F). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-3-5-1-major_thirds_sixths-8",
@@ -28340,7 +28340,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 3
         },
-        "explanation_summary": "G on strings 3-5 at fret 23.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in F major; it is a partial interval pair, not a full triad. Use fret 23 on strings 3-5 with no pedals/no levers; the selected strings spell G, Bb (1, b3 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 23,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-3-5-2-major_thirds_sixths-23",
@@ -28395,7 +28395,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 3
         },
-        "explanation_summary": "A on strings 3-5 at fret 13.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in F major; it is a partial interval pair, not a full triad. Use fret 13 on strings 3-5 with no pedals/no levers; the selected strings spell A, C (1, b3 against A). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-3-5-3-major_thirds_sixths-13",
@@ -28450,7 +28450,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 5
         },
-        "explanation_summary": "A on strings 5-6 at fret 1.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in F major; it is a partial interval pair, not a full triad. Use fret 1 on strings 5-6 with no pedals/no levers; the selected strings spell C, A (b3, 1 against A). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-5-6-3-major_thirds_sixths-1",
@@ -28505,7 +28505,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 5
         },
-        "explanation_summary": "Bb on strings 5-6 at fret 1.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in F major; it is a partial interval pair, not a full triad. Use fret 1 on strings 5-6 with A pedal + B pedal; the selected strings spell D, Bb (3, 1 against Bb). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-5-6-4-major_thirds_sixths-1",
@@ -28574,7 +28574,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 5
         },
-        "explanation_summary": "C on strings 5-6 at fret 3.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in F major; it is a partial interval pair, not a full triad. Use fret 3 on strings 5-6 with A pedal + B pedal; the selected strings spell E, C (3, 1 against C). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-5-6-5-major_thirds_sixths-3",
@@ -28643,7 +28643,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 5
         },
-        "explanation_summary": "D on strings 5-6 at fret 6.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in F major; it is a partial interval pair, not a full triad. Use fret 6 on strings 5-6 with no pedals/no levers; the selected strings spell F, D (b3, 1 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-5-6-6-major_thirds_sixths-6",
@@ -28698,7 +28698,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 5
         },
-        "explanation_summary": "E on strings 5-6 at fret 8.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in F major; it is a partial interval pair, not a full triad. Use fret 8 on strings 5-6 with no pedals/no levers; the selected strings spell G, E (b3, 1 against E). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-5-6-7-major_thirds_sixths-8",
@@ -28753,7 +28753,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 5
         },
-        "explanation_summary": "F on strings 5-6 at fret 8.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in F major; it is a partial interval pair, not a full triad. Use fret 8 on strings 5-6 with A pedal + B pedal; the selected strings spell A, F (3, 1 against F). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-5-6-1-major_thirds_sixths-8",
@@ -28822,7 +28822,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 5
         },
-        "explanation_summary": "G on strings 5-6 at fret 23.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in F major; it is a partial interval pair, not a full triad. Use fret 23 on strings 5-6 with no pedals/no levers; the selected strings spell Bb, G (b3, 1 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 23,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-5-6-2-major_thirds_sixths-23",
@@ -28877,7 +28877,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 5
         },
-        "explanation_summary": "A on strings 5-6 at fret 13.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in F major; it is a partial interval pair, not a full triad. Use fret 13 on strings 5-6 with no pedals/no levers; the selected strings spell C, A (b3, 1 against A). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-5-6-3-major_thirds_sixths-13",
@@ -28932,7 +28932,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 6
         },
-        "explanation_summary": "A on strings 6-10 at fret 1.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in F major; it is a partial interval pair, not a full triad. Use fret 1 on strings 6-10 with no pedals/no levers; the selected strings spell A, C (1, b3 against A). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-6-10-3-major_thirds_sixths-1",
@@ -28987,7 +28987,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 6
         },
-        "explanation_summary": "Bb on strings 6-10 at fret 1.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in F major; it is a partial interval pair, not a full triad. Use fret 1 on strings 6-10 with A pedal + B pedal; the selected strings spell Bb, D (1, 3 against Bb). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-6-10-4-major_thirds_sixths-1",
@@ -29056,7 +29056,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 6
         },
-        "explanation_summary": "C on strings 6-10 at fret 3.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in F major; it is a partial interval pair, not a full triad. Use fret 3 on strings 6-10 with A pedal + B pedal; the selected strings spell C, E (1, 3 against C). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-6-10-5-major_thirds_sixths-3",
@@ -29125,7 +29125,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 6
         },
-        "explanation_summary": "D on strings 6-10 at fret 6.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in F major; it is a partial interval pair, not a full triad. Use fret 6 on strings 6-10 with no pedals/no levers; the selected strings spell D, F (1, b3 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-6-10-6-major_thirds_sixths-6",
@@ -29180,7 +29180,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 6
         },
-        "explanation_summary": "E on strings 6-10 at fret 8.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in F major; it is a partial interval pair, not a full triad. Use fret 8 on strings 6-10 with no pedals/no levers; the selected strings spell E, G (1, b3 against E). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-6-10-7-major_thirds_sixths-8",
@@ -29235,7 +29235,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 6
         },
-        "explanation_summary": "F on strings 6-10 at fret 8.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in F major; it is a partial interval pair, not a full triad. Use fret 8 on strings 6-10 with A pedal + B pedal; the selected strings spell F, A (1, 3 against F). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-6-10-1-major_thirds_sixths-8",
@@ -29304,7 +29304,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 6
         },
-        "explanation_summary": "G on strings 6-10 at fret 23.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in F major; it is a partial interval pair, not a full triad. Use fret 23 on strings 6-10 with no pedals/no levers; the selected strings spell G, Bb (1, b3 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 23,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-6-10-2-major_thirds_sixths-23",
@@ -29359,7 +29359,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 6
         },
-        "explanation_summary": "A on strings 6-10 at fret 13.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in F major; it is a partial interval pair, not a full triad. Use fret 13 on strings 6-10 with no pedals/no levers; the selected strings spell A, C (1, b3 against A). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-6-10-3-major_thirds_sixths-13",
@@ -29414,7 +29414,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 4
         },
-        "explanation_summary": "F on strings 4-6 at fret 1.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in F major; it is a partial interval pair, not a full triad. Use fret 1 on strings 4-6 with no pedals/no levers; the selected strings spell F, A (1, 3 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-4-6-1-e_raise_two_string-1",
@@ -29469,7 +29469,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 4
         },
-        "explanation_summary": "G on strings 4-6 at fret 2.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in F major; it is a partial interval pair, not a full triad. Use fret 2 on strings 4-6 with E-raise lever; the selected strings spell G, Bb (1, b3 against G). Use the mechanical E-raise lever name here; shorthand varies by copedent. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 2,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-4-6-2-e_raise_two_string-2",
@@ -29532,7 +29532,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 4
         },
-        "explanation_summary": "A on strings 4-6 at fret 4.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in F major; it is a partial interval pair, not a full triad. Use fret 4 on strings 4-6 with E-raise lever; the selected strings spell A, C (1, b3 against A). Use the mechanical E-raise lever name here; shorthand varies by copedent. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-4-6-3-e_raise_two_string-4",
@@ -29595,7 +29595,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 4
         },
-        "explanation_summary": "Bb on strings 4-6 at fret 6.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in F major; it is a partial interval pair, not a full triad. Use fret 6 on strings 4-6 with no pedals/no levers; the selected strings spell Bb, D (1, 3 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-4-6-4-e_raise_two_string-6",
@@ -29650,7 +29650,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 4
         },
-        "explanation_summary": "C on strings 4-6 at fret 8.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in F major; it is a partial interval pair, not a full triad. Use fret 8 on strings 4-6 with no pedals/no levers; the selected strings spell C, E (1, 3 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-4-6-5-e_raise_two_string-8",
@@ -29705,7 +29705,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 4
         },
-        "explanation_summary": "D on strings 4-6 at fret 9.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in F major; it is a partial interval pair, not a full triad. Use fret 9 on strings 4-6 with E-raise lever; the selected strings spell D, F (1, b3 against D). Use the mechanical E-raise lever name here; shorthand varies by copedent. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 9,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-4-6-6-e_raise_two_string-9",
@@ -29768,7 +29768,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 4
         },
-        "explanation_summary": "E on strings 4-6 at fret 23.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in F major; it is a partial interval pair, not a full triad. Use fret 23 on strings 4-6 with E-raise lever; the selected strings spell E, G (1, b3 against E). Use the mechanical E-raise lever name here; shorthand varies by copedent. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 23,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-4-6-7-e_raise_two_string-23",
@@ -29831,7 +29831,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 4
         },
-        "explanation_summary": "F on strings 4-6 at fret 13.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in F major; it is a partial interval pair, not a full triad. Use fret 13 on strings 4-6 with no pedals/no levers; the selected strings spell F, A (1, 3 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-4-6-1-e_raise_two_string-13",
@@ -29886,7 +29886,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 3
         },
-        "explanation_summary": "F on strings 3-4 at fret 1.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in F major; it is a partial interval pair, not a full triad. Use fret 1 on strings 3-4 with no pedals/no levers; the selected strings spell A, F (3, 1 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-3-4-1-bc_two_string-1",
@@ -29941,7 +29941,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 3
         },
-        "explanation_summary": "G on strings 3-4 at fret 1.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in F major; it is a partial interval pair, not a full triad. Use fret 1 on strings 3-4 with B pedal + C pedal; the selected strings spell Bb, G (b3, 1 against G). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-3-4-2-bc_two_string-1",
@@ -30010,7 +30010,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 3
         },
-        "explanation_summary": "A on strings 3-4 at fret 3.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in F major; it is a partial interval pair, not a full triad. Use fret 3 on strings 3-4 with B pedal + C pedal; the selected strings spell C, A (b3, 1 against A). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-3-4-3-bc_two_string-3",
@@ -30079,7 +30079,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 3
         },
-        "explanation_summary": "Bb on strings 3-4 at fret 6.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in F major; it is a partial interval pair, not a full triad. Use fret 6 on strings 3-4 with no pedals/no levers; the selected strings spell D, Bb (3, 1 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-3-4-4-bc_two_string-6",
@@ -30134,7 +30134,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 3
         },
-        "explanation_summary": "C on strings 3-4 at fret 8.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in F major; it is a partial interval pair, not a full triad. Use fret 8 on strings 3-4 with no pedals/no levers; the selected strings spell E, C (3, 1 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-3-4-5-bc_two_string-8",
@@ -30189,7 +30189,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 3
         },
-        "explanation_summary": "D on strings 3-4 at fret 8.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in F major; it is a partial interval pair, not a full triad. Use fret 8 on strings 3-4 with B pedal + C pedal; the selected strings spell F, D (b3, 1 against D). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-3-4-6-bc_two_string-8",
@@ -30258,7 +30258,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 3
         },
-        "explanation_summary": "E on strings 3-4 at fret 22.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in F major; it is a partial interval pair, not a full triad. Use fret 22 on strings 3-4 with B pedal + C pedal; the selected strings spell G, E (b3, 1 against E). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 22,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-3-4-7-bc_two_string-22",
@@ -30327,7 +30327,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 3
         },
-        "explanation_summary": "F on strings 3-4 at fret 13.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in F major; it is a partial interval pair, not a full triad. Use fret 13 on strings 3-4 with no pedals/no levers; the selected strings spell A, F (3, 1 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "two_string_harmonized",
         "id": "f-major-two-string-harmonized-3-4-1-bc_two_string-13",
@@ -30383,7 +30383,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 3
         },
-        "explanation_summary": "F on strings 3-4-5 at fret 1.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in F major, and validates as F major. Use fret 1 on strings 3-4-5 with no pedals/no levers; the selected strings spell A, F, C (3, 1, 5 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-3-4-5-1-no_pedals_no_levers-1",
@@ -30442,7 +30442,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 3
         },
-        "explanation_summary": "G on strings 3-4-5 at fret 1.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii, the degree 2 chord in F major, and validates as G minor. Use fret 1 on strings 3-4-5 with B pedal + C pedal; the selected strings spell Bb, G, D (b3, 1, 5 against G). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-3-4-5-2-bc_minor-1",
@@ -30520,7 +30520,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 3
         },
-        "explanation_summary": "A on strings 3-4-5 at fret 3.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iii, the degree 3 chord in F major, and validates as A minor. Use fret 3 on strings 3-4-5 with B pedal + C pedal; the selected strings spell C, A, E (b3, 1, 5 against A). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-3-4-5-3-bc_minor-3",
@@ -30598,7 +30598,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 3
         },
-        "explanation_summary": "Bb on strings 3-4-5 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets IV, the degree 4 chord in F major, and validates as Bb major. Use fret 6 on strings 3-4-5 with no pedals/no levers; the selected strings spell D, Bb, F (3, 1, 5 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-3-4-5-4-no_pedals_no_levers-6",
@@ -30657,7 +30657,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 3
         },
-        "explanation_summary": "C on strings 3-4-5 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets V, the degree 5 chord in F major, and validates as C major. Use fret 8 on strings 3-4-5 with no pedals/no levers; the selected strings spell E, C, G (3, 1, 5 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-3-4-5-5-no_pedals_no_levers-8",
@@ -30716,7 +30716,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 3
         },
-        "explanation_summary": "D on strings 3-4-5 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vi, the degree 6 chord in F major, and validates as D minor. Use fret 8 on strings 3-4-5 with B pedal + C pedal; the selected strings spell F, D, A (b3, 1, 5 against D). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-3-4-5-6-bc_minor-8",
@@ -30794,7 +30794,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 3
         },
-        "explanation_summary": "E on strings 3-4-5 at fret 23.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vii\u00b0 / partial vii\u00f8, the degree 7 chord in F major, and validates as E diminished. Use fret 23 on strings 3-4-5 with E-raise lever; the selected strings spell G, E, Bb (b3, 1, b5/#11 against E). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 23,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-3-4-5-7-e_raise_diminished-23",
@@ -30865,7 +30865,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 3
         },
-        "explanation_summary": "F on strings 3-4-5 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in F major, and validates as F major. Use fret 13 on strings 3-4-5 with no pedals/no levers; the selected strings spell A, F, C (3, 1, 5 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-3-4-5-1-no_pedals_no_levers-13",
@@ -30924,7 +30924,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 4
         },
-        "explanation_summary": "F on strings 4-5-6 at fret 1.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in F major, and validates as F major. Use fret 1 on strings 4-5-6 with no pedals/no levers; the selected strings spell F, C, A (1, 5, 3 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-4-5-6-1-no_pedals_no_levers-1",
@@ -30983,7 +30983,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 4
         },
-        "explanation_summary": "G on strings 4-5-6 at fret 1.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii, the degree 2 chord in F major, and validates as G minor. Use fret 1 on strings 4-5-6 with B pedal + C pedal; the selected strings spell G, D, Bb (1, 5, b3 against G). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-4-5-6-2-bc_minor-1",
@@ -31061,7 +31061,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 4
         },
-        "explanation_summary": "A on strings 4-5-6 at fret 3.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iii, the degree 3 chord in F major, and validates as A minor. Use fret 3 on strings 4-5-6 with B pedal + C pedal; the selected strings spell A, E, C (1, 5, b3 against A). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-4-5-6-3-bc_minor-3",
@@ -31139,7 +31139,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 4
         },
-        "explanation_summary": "Bb on strings 4-5-6 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets IV, the degree 4 chord in F major, and validates as Bb major. Use fret 6 on strings 4-5-6 with no pedals/no levers; the selected strings spell Bb, F, D (1, 5, 3 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-4-5-6-4-no_pedals_no_levers-6",
@@ -31198,7 +31198,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 4
         },
-        "explanation_summary": "C on strings 4-5-6 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets V, the degree 5 chord in F major, and validates as C major. Use fret 8 on strings 4-5-6 with no pedals/no levers; the selected strings spell C, G, E (1, 5, 3 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-4-5-6-5-no_pedals_no_levers-8",
@@ -31257,7 +31257,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 4
         },
-        "explanation_summary": "D on strings 4-5-6 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vi, the degree 6 chord in F major, and validates as D minor. Use fret 8 on strings 4-5-6 with B pedal + C pedal; the selected strings spell D, A, F (1, 5, b3 against D). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-4-5-6-6-bc_minor-8",
@@ -31335,7 +31335,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 4
         },
-        "explanation_summary": "E on strings 4-5-6 at fret 23.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vii\u00b0 / partial vii\u00f8, the degree 7 chord in F major, and validates as E diminished. Use fret 23 on strings 4-5-6 with E-raise lever; the selected strings spell E, Bb, G (1, b5/#11, b3 against E). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 23,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-4-5-6-7-e_raise_diminished-23",
@@ -31406,7 +31406,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 4
         },
-        "explanation_summary": "F on strings 4-5-6 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in F major, and validates as F major. Use fret 13 on strings 4-5-6 with no pedals/no levers; the selected strings spell F, C, A (1, 5, 3 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-4-5-6-1-no_pedals_no_levers-13",
@@ -31465,7 +31465,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 5
         },
-        "explanation_summary": "F on strings 5-6-8 at fret 1.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in F major, and validates as F major. Use fret 1 on strings 5-6-8 with no pedals/no levers; the selected strings spell C, A, F (5, 3, 1 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-5-6-8-1-no_pedals_no_levers-1",
@@ -31524,7 +31524,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 5
         },
-        "explanation_summary": "G on strings 5-6-7 at fret 1.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii, the degree 2 chord in F major, and validates as G minor. Use fret 1 on strings 5-6-7 with A pedal + B pedal; the selected strings spell D, Bb, G (5, b3, 1 against G). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-5-6-7-2-ab_minor-1",
@@ -31597,7 +31597,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 5
         },
-        "explanation_summary": "A on strings 5-6-7 at fret 3.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iii, the degree 3 chord in F major, and validates as A minor. Use fret 3 on strings 5-6-7 with A pedal + B pedal; the selected strings spell E, C, A (5, b3, 1 against A). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-5-6-7-3-ab_minor-3",
@@ -31670,7 +31670,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 5
         },
-        "explanation_summary": "Bb on strings 5-6-8 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets IV, the degree 4 chord in F major, and validates as Bb major. Use fret 6 on strings 5-6-8 with no pedals/no levers; the selected strings spell F, D, Bb (5, 3, 1 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-5-6-8-4-no_pedals_no_levers-6",
@@ -31729,7 +31729,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 5
         },
-        "explanation_summary": "C on strings 5-6-8 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets V, the degree 5 chord in F major, and validates as C major. Use fret 8 on strings 5-6-8 with no pedals/no levers; the selected strings spell G, E, C (5, 3, 1 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-5-6-8-5-no_pedals_no_levers-8",
@@ -31788,7 +31788,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 5
         },
-        "explanation_summary": "D on strings 5-6-7 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vi, the degree 6 chord in F major, and validates as D minor. Use fret 8 on strings 5-6-7 with A pedal + B pedal; the selected strings spell A, F, D (5, b3, 1 against D). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-5-6-7-6-ab_minor-8",
@@ -31861,7 +31861,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 5
         },
-        "explanation_summary": "E on strings 5-6-8 at fret 23.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vii\u00b0 / partial vii\u00f8, the degree 7 chord in F major, and validates as E diminished. Use fret 23 on strings 5-6-8 with E-raise lever; the selected strings spell Bb, G, E (b5/#11, b3, 1 against E). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 23,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-5-6-8-7-e_raise_diminished-23",
@@ -31932,7 +31932,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 5
         },
-        "explanation_summary": "F on strings 5-6-8 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in F major, and validates as F major. Use fret 13 on strings 5-6-8 with no pedals/no levers; the selected strings spell C, A, F (5, 3, 1 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-5-6-8-1-no_pedals_no_levers-13",
@@ -31991,7 +31991,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 6
         },
-        "explanation_summary": "F on strings 6-8-10 at fret 1.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in F major, and validates as F major. Use fret 1 on strings 6-8-10 with no pedals/no levers; the selected strings spell A, F, C (3, 1, 5 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-6-8-10-1-no_pedals_no_levers-1",
@@ -32050,7 +32050,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 6
         },
-        "explanation_summary": "G on strings 6-7-10 at fret 1.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii, the degree 2 chord in F major, and validates as G minor. Use fret 1 on strings 6-7-10 with A pedal + B pedal; the selected strings spell Bb, G, D (b3, 1, 5 against G). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-6-7-10-2-ab_minor-1",
@@ -32123,7 +32123,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 6
         },
-        "explanation_summary": "A on strings 6-7-10 at fret 3.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iii, the degree 3 chord in F major, and validates as A minor. Use fret 3 on strings 6-7-10 with A pedal + B pedal; the selected strings spell C, A, E (b3, 1, 5 against A). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-6-7-10-3-ab_minor-3",
@@ -32196,7 +32196,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 6
         },
-        "explanation_summary": "Bb on strings 6-8-10 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets IV, the degree 4 chord in F major, and validates as Bb major. Use fret 6 on strings 6-8-10 with no pedals/no levers; the selected strings spell D, Bb, F (3, 1, 5 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-6-8-10-4-no_pedals_no_levers-6",
@@ -32255,7 +32255,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 6
         },
-        "explanation_summary": "C on strings 6-8-10 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets V, the degree 5 chord in F major, and validates as C major. Use fret 8 on strings 6-8-10 with no pedals/no levers; the selected strings spell E, C, G (3, 1, 5 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-6-8-10-5-no_pedals_no_levers-8",
@@ -32314,7 +32314,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 6
         },
-        "explanation_summary": "D on strings 6-7-10 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vi, the degree 6 chord in F major, and validates as D minor. Use fret 8 on strings 6-7-10 with A pedal + B pedal; the selected strings spell F, D, A (b3, 1, 5 against D). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-6-7-10-6-ab_minor-8",
@@ -32387,7 +32387,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 6
         },
-        "explanation_summary": "E on strings 6-8-10 at fret 23.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vii\u00b0 / partial vii\u00f8, the degree 7 chord in F major, and validates as E diminished. Use fret 23 on strings 6-8-10 with E-raise lever; the selected strings spell G, E, Bb (b3, 1, b5/#11 against E). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 23,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-6-8-10-7-e_raise_diminished-23",
@@ -32458,7 +32458,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 6
         },
-        "explanation_summary": "F on strings 6-8-10 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in F major, and validates as F major. Use fret 13 on strings 6-8-10 with no pedals/no levers; the selected strings spell A, F, C (3, 1, 5 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "f-major-three-string-diatonic-6-8-10-1-no_pedals_no_levers-13",
@@ -32517,7 +32517,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Ab",
           "string": 3
         },
-        "explanation_summary": "F on strings 3-4-5 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in F natural minor, and validates as F minor. Use fret 11 on strings 3-4-5 with B pedal + C pedal; the selected strings spell Ab, F, C (b3, 1, 5 against F). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-3-4-5-1-bc_minor-11",
@@ -32595,7 +32595,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 3
         },
-        "explanation_summary": "G on strings 3-4-5 at fret 2.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii\u00b0 / partial ii\u00f8, the degree 2 chord in F natural minor, and validates as G diminished. Use fret 2 on strings 3-4-5 with E-raise lever; the selected strings spell Bb, G, Db (b3, 1, b5/#11 against G). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 2,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-3-4-5-2-e_raise_diminished-2",
@@ -32666,7 +32666,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 3
         },
-        "explanation_summary": "Ab on strings 3-4-5 at fret 4.",
+        "explanation_summary": "This three-string diatonic-harmony row targets III, the degree 3 chord in F natural minor, and validates as Ab major. Use fret 4 on strings 3-4-5 with no pedals/no levers; the selected strings spell C, Ab, Eb (3, 1, 5 against Ab). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-3-4-5-3-no_pedals_no_levers-4",
@@ -32725,7 +32725,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Db",
           "string": 3
         },
-        "explanation_summary": "Bb on strings 3-4-5 at fret 4.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iv, the degree 4 chord in F natural minor, and validates as Bb minor. Use fret 4 on strings 3-4-5 with B pedal + C pedal; the selected strings spell Db, Bb, F (b3, 1, 5 against Bb). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-3-4-5-4-bc_minor-4",
@@ -32803,7 +32803,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 3
         },
-        "explanation_summary": "C on strings 3-4-5 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets v, the degree 5 chord in F natural minor, and validates as C minor. Use fret 6 on strings 3-4-5 with B pedal + C pedal; the selected strings spell Eb, C, G (b3, 1, 5 against C). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-3-4-5-5-bc_minor-6",
@@ -32881,7 +32881,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 3
         },
-        "explanation_summary": "Db on strings 3-4-5 at fret 9.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VI, the degree 6 chord in F natural minor, and validates as Db major. Use fret 9 on strings 3-4-5 with no pedals/no levers; the selected strings spell F, Db, Ab (3, 1, 5 against Db). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 9,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-3-4-5-6-no_pedals_no_levers-9",
@@ -32940,7 +32940,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 3
         },
-        "explanation_summary": "Eb on strings 3-4-5 at fret 23.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VII, the degree 7 chord in F natural minor, and validates as Eb major. Use fret 23 on strings 3-4-5 with no pedals/no levers; the selected strings spell G, Eb, Bb (3, 1, 5 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 23,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-3-4-5-7-no_pedals_no_levers-23",
@@ -32999,7 +32999,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Ab",
           "string": 3
         },
-        "explanation_summary": "F on strings 3-4-5 at fret 23.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in F natural minor, and validates as F minor. Use fret 23 on strings 3-4-5 with B pedal + C pedal; the selected strings spell Ab, F, C (b3, 1, 5 against F). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 23,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-3-4-5-1-bc_minor-23",
@@ -33077,7 +33077,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 4
         },
-        "explanation_summary": "F on strings 4-5-6 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in F natural minor, and validates as F minor. Use fret 11 on strings 4-5-6 with B pedal + C pedal; the selected strings spell F, C, Ab (1, 5, b3 against F). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-4-5-6-1-bc_minor-11",
@@ -33155,7 +33155,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 4
         },
-        "explanation_summary": "G on strings 4-5-6 at fret 2.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii\u00b0 / partial ii\u00f8, the degree 2 chord in F natural minor, and validates as G diminished. Use fret 2 on strings 4-5-6 with E-raise lever; the selected strings spell G, Db, Bb (1, b5/#11, b3 against G). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 2,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-4-5-6-2-e_raise_diminished-2",
@@ -33226,7 +33226,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Ab",
           "string": 4
         },
-        "explanation_summary": "Ab on strings 4-5-6 at fret 4.",
+        "explanation_summary": "This three-string diatonic-harmony row targets III, the degree 3 chord in F natural minor, and validates as Ab major. Use fret 4 on strings 4-5-6 with no pedals/no levers; the selected strings spell Ab, Eb, C (1, 5, 3 against Ab). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-4-5-6-3-no_pedals_no_levers-4",
@@ -33285,7 +33285,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 4
         },
-        "explanation_summary": "Bb on strings 4-5-6 at fret 4.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iv, the degree 4 chord in F natural minor, and validates as Bb minor. Use fret 4 on strings 4-5-6 with B pedal + C pedal; the selected strings spell Bb, F, Db (1, 5, b3 against Bb). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-4-5-6-4-bc_minor-4",
@@ -33363,7 +33363,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 4
         },
-        "explanation_summary": "C on strings 4-5-6 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets v, the degree 5 chord in F natural minor, and validates as C minor. Use fret 6 on strings 4-5-6 with B pedal + C pedal; the selected strings spell C, G, Eb (1, 5, b3 against C). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-4-5-6-5-bc_minor-6",
@@ -33441,7 +33441,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Db",
           "string": 4
         },
-        "explanation_summary": "Db on strings 4-5-6 at fret 9.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VI, the degree 6 chord in F natural minor, and validates as Db major. Use fret 9 on strings 4-5-6 with no pedals/no levers; the selected strings spell Db, Ab, F (1, 5, 3 against Db). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 9,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-4-5-6-6-no_pedals_no_levers-9",
@@ -33500,7 +33500,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 4
         },
-        "explanation_summary": "Eb on strings 4-5-6 at fret 23.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VII, the degree 7 chord in F natural minor, and validates as Eb major. Use fret 23 on strings 4-5-6 with no pedals/no levers; the selected strings spell Eb, Bb, G (1, 5, 3 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 23,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-4-5-6-7-no_pedals_no_levers-23",
@@ -33559,7 +33559,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 4
         },
-        "explanation_summary": "F on strings 4-5-6 at fret 23.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in F natural minor, and validates as F minor. Use fret 23 on strings 4-5-6 with B pedal + C pedal; the selected strings spell F, C, Ab (1, 5, b3 against F). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 23,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-4-5-6-1-bc_minor-23",
@@ -33637,7 +33637,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 5
         },
-        "explanation_summary": "F on strings 5-6-7 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in F natural minor, and validates as F minor. Use fret 11 on strings 5-6-7 with A pedal + B pedal; the selected strings spell C, Ab, F (5, b3, 1 against F). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-5-6-7-1-ab_minor-11",
@@ -33710,7 +33710,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Db",
           "string": 5
         },
-        "explanation_summary": "G on strings 5-6-8 at fret 2.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii\u00b0 / partial ii\u00f8, the degree 2 chord in F natural minor, and validates as G diminished. Use fret 2 on strings 5-6-8 with E-raise lever; the selected strings spell Db, Bb, G (b5/#11, b3, 1 against G). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 2,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-5-6-8-2-e_raise_diminished-2",
@@ -33781,7 +33781,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 5
         },
-        "explanation_summary": "Ab on strings 5-6-8 at fret 4.",
+        "explanation_summary": "This three-string diatonic-harmony row targets III, the degree 3 chord in F natural minor, and validates as Ab major. Use fret 4 on strings 5-6-8 with no pedals/no levers; the selected strings spell Eb, C, Ab (5, 3, 1 against Ab). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-5-6-8-3-no_pedals_no_levers-4",
@@ -33840,7 +33840,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 5
         },
-        "explanation_summary": "Bb on strings 5-6-7 at fret 4.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iv, the degree 4 chord in F natural minor, and validates as Bb minor. Use fret 4 on strings 5-6-7 with A pedal + B pedal; the selected strings spell F, Db, Bb (5, b3, 1 against Bb). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-5-6-7-4-ab_minor-4",
@@ -33913,7 +33913,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 5
         },
-        "explanation_summary": "C on strings 5-6-7 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets v, the degree 5 chord in F natural minor, and validates as C minor. Use fret 6 on strings 5-6-7 with A pedal + B pedal; the selected strings spell G, Eb, C (5, b3, 1 against C). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-5-6-7-5-ab_minor-6",
@@ -33986,7 +33986,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Ab",
           "string": 5
         },
-        "explanation_summary": "Db on strings 5-6-8 at fret 9.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VI, the degree 6 chord in F natural minor, and validates as Db major. Use fret 9 on strings 5-6-8 with no pedals/no levers; the selected strings spell Ab, F, Db (5, 3, 1 against Db). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 9,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-5-6-8-6-no_pedals_no_levers-9",
@@ -34045,7 +34045,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 5
         },
-        "explanation_summary": "Eb on strings 5-6-8 at fret 23.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VII, the degree 7 chord in F natural minor, and validates as Eb major. Use fret 23 on strings 5-6-8 with no pedals/no levers; the selected strings spell Bb, G, Eb (5, 3, 1 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 23,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-5-6-8-7-no_pedals_no_levers-23",
@@ -34104,7 +34104,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 5
         },
-        "explanation_summary": "F on strings 5-6-7 at fret 23.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in F natural minor, and validates as F minor. Use fret 23 on strings 5-6-7 with A pedal + B pedal; the selected strings spell C, Ab, F (5, b3, 1 against F). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 23,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-5-6-7-1-ab_minor-23",
@@ -34177,7 +34177,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Ab",
           "string": 6
         },
-        "explanation_summary": "F on strings 6-7-10 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in F natural minor, and validates as F minor. Use fret 11 on strings 6-7-10 with A pedal + B pedal; the selected strings spell Ab, F, C (b3, 1, 5 against F). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-6-7-10-1-ab_minor-11",
@@ -34250,7 +34250,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 6
         },
-        "explanation_summary": "G on strings 6-8-10 at fret 2.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii\u00b0 / partial ii\u00f8, the degree 2 chord in F natural minor, and validates as G diminished. Use fret 2 on strings 6-8-10 with E-raise lever; the selected strings spell Bb, G, Db (b3, 1, b5/#11 against G). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 2,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-6-8-10-2-e_raise_diminished-2",
@@ -34321,7 +34321,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 6
         },
-        "explanation_summary": "Ab on strings 6-8-10 at fret 4.",
+        "explanation_summary": "This three-string diatonic-harmony row targets III, the degree 3 chord in F natural minor, and validates as Ab major. Use fret 4 on strings 6-8-10 with no pedals/no levers; the selected strings spell C, Ab, Eb (3, 1, 5 against Ab). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-6-8-10-3-no_pedals_no_levers-4",
@@ -34380,7 +34380,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Db",
           "string": 6
         },
-        "explanation_summary": "Bb on strings 6-7-10 at fret 4.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iv, the degree 4 chord in F natural minor, and validates as Bb minor. Use fret 4 on strings 6-7-10 with A pedal + B pedal; the selected strings spell Db, Bb, F (b3, 1, 5 against Bb). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-6-7-10-4-ab_minor-4",
@@ -34453,7 +34453,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 6
         },
-        "explanation_summary": "C on strings 6-7-10 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets v, the degree 5 chord in F natural minor, and validates as C minor. Use fret 6 on strings 6-7-10 with A pedal + B pedal; the selected strings spell Eb, C, G (b3, 1, 5 against C). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-6-7-10-5-ab_minor-6",
@@ -34526,7 +34526,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 6
         },
-        "explanation_summary": "Db on strings 6-8-10 at fret 9.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VI, the degree 6 chord in F natural minor, and validates as Db major. Use fret 9 on strings 6-8-10 with no pedals/no levers; the selected strings spell F, Db, Ab (3, 1, 5 against Db). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 9,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-6-8-10-6-no_pedals_no_levers-9",
@@ -34585,7 +34585,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 6
         },
-        "explanation_summary": "Eb on strings 6-8-10 at fret 23.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VII, the degree 7 chord in F natural minor, and validates as Eb major. Use fret 23 on strings 6-8-10 with no pedals/no levers; the selected strings spell G, Eb, Bb (3, 1, 5 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 23,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-6-8-10-7-no_pedals_no_levers-23",
@@ -34644,7 +34644,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Ab",
           "string": 6
         },
-        "explanation_summary": "F on strings 6-7-10 at fret 23.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in F natural minor, and validates as F minor. Use fret 23 on strings 6-7-10 with A pedal + B pedal; the selected strings spell Ab, F, C (b3, 1, 5 against F). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 23,
         "harmony_type": "three_string_diatonic",
         "id": "f-natural-minor-three-string-diatonic-6-7-10-1-ab_minor-23",
@@ -34717,7 +34717,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 5
         },
-        "explanation_summary": "Advanced 5-7-8 E-lower F major pocket; validated by pitch math.",
+        "explanation_summary": "This advanced 5-7-8 E-lower pocket targets F major as I in F major. Use fret 6 on strings 5-7-8 with E-lower lever; the selected strings spell F, C, A (1, 5, 3 against F). Use the mechanical E-lower lever name here; shorthand varies by copedent. This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "advanced_pocket",
         "id": "f-major-advanced-pocket-5-7-8-1-e_lower_pocket-6",
@@ -34784,7 +34784,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 5
         },
-        "explanation_summary": "Advanced 5-7-8 E-lower F major pocket; validated by pitch math.",
+        "explanation_summary": "This advanced 5-7-8 E-lower pocket targets F major as I in F major. Use fret 18 on strings 5-7-8 with E-lower lever; the selected strings spell F, C, A (1, 5, 3 against F). Use the mechanical E-lower lever name here; shorthand varies by copedent. This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 18,
         "harmony_type": "advanced_pocket",
         "id": "f-major-advanced-pocket-5-7-8-1-e_lower_pocket-18",
@@ -34957,7 +34957,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 3
         },
-        "explanation_summary": "B on strings 3-5 at fret 3.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in G major; it is a partial interval pair, not a full triad. Use fret 3 on strings 3-5 with no pedals/no levers; the selected strings spell B, D (1, b3 against B). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-3-5-3-major_thirds_sixths-3",
@@ -35012,7 +35012,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 3
         },
-        "explanation_summary": "C on strings 3-5 at fret 3.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in G major; it is a partial interval pair, not a full triad. Use fret 3 on strings 3-5 with A pedal + B pedal; the selected strings spell C, E (1, 3 against C). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-3-5-4-major_thirds_sixths-3",
@@ -35081,7 +35081,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 3
         },
-        "explanation_summary": "D on strings 3-5 at fret 5.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in G major; it is a partial interval pair, not a full triad. Use fret 5 on strings 3-5 with A pedal + B pedal; the selected strings spell D, F# (1, 3 against D). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 5,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-3-5-5-major_thirds_sixths-5",
@@ -35150,7 +35150,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 3
         },
-        "explanation_summary": "E on strings 3-5 at fret 8.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in G major; it is a partial interval pair, not a full triad. Use fret 8 on strings 3-5 with no pedals/no levers; the selected strings spell E, G (1, b3 against E). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-3-5-6-major_thirds_sixths-8",
@@ -35205,7 +35205,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F#",
           "string": 3
         },
-        "explanation_summary": "F# on strings 3-5 at fret 10.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in G major; it is a partial interval pair, not a full triad. Use fret 10 on strings 3-5 with no pedals/no levers; the selected strings spell F#, A (1, b3 against F#). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-3-5-7-major_thirds_sixths-10",
@@ -35260,7 +35260,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 3
         },
-        "explanation_summary": "G on strings 3-5 at fret 10.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in G major; it is a partial interval pair, not a full triad. Use fret 10 on strings 3-5 with A pedal + B pedal; the selected strings spell G, B (1, 3 against G). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-3-5-1-major_thirds_sixths-10",
@@ -35329,7 +35329,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 3
         },
-        "explanation_summary": "A on strings 3-5 at fret 13.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in G major; it is a partial interval pair, not a full triad. Use fret 13 on strings 3-5 with no pedals/no levers; the selected strings spell A, C (1, b3 against A). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-3-5-2-major_thirds_sixths-13",
@@ -35384,7 +35384,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 3
         },
-        "explanation_summary": "B on strings 3-5 at fret 15.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in G major; it is a partial interval pair, not a full triad. Use fret 15 on strings 3-5 with no pedals/no levers; the selected strings spell B, D (1, b3 against B). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 15,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-3-5-3-major_thirds_sixths-15",
@@ -35439,7 +35439,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 5
         },
-        "explanation_summary": "B on strings 5-6 at fret 3.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in G major; it is a partial interval pair, not a full triad. Use fret 3 on strings 5-6 with no pedals/no levers; the selected strings spell D, B (b3, 1 against B). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-5-6-3-major_thirds_sixths-3",
@@ -35494,7 +35494,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 5
         },
-        "explanation_summary": "C on strings 5-6 at fret 3.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in G major; it is a partial interval pair, not a full triad. Use fret 3 on strings 5-6 with A pedal + B pedal; the selected strings spell E, C (3, 1 against C). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-5-6-4-major_thirds_sixths-3",
@@ -35563,7 +35563,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F#",
           "string": 5
         },
-        "explanation_summary": "D on strings 5-6 at fret 5.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in G major; it is a partial interval pair, not a full triad. Use fret 5 on strings 5-6 with A pedal + B pedal; the selected strings spell F#, D (3, 1 against D). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 5,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-5-6-5-major_thirds_sixths-5",
@@ -35632,7 +35632,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 5
         },
-        "explanation_summary": "E on strings 5-6 at fret 8.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in G major; it is a partial interval pair, not a full triad. Use fret 8 on strings 5-6 with no pedals/no levers; the selected strings spell G, E (b3, 1 against E). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-5-6-6-major_thirds_sixths-8",
@@ -35687,7 +35687,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 5
         },
-        "explanation_summary": "F# on strings 5-6 at fret 10.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in G major; it is a partial interval pair, not a full triad. Use fret 10 on strings 5-6 with no pedals/no levers; the selected strings spell A, F# (b3, 1 against F#). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-5-6-7-major_thirds_sixths-10",
@@ -35742,7 +35742,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 5
         },
-        "explanation_summary": "G on strings 5-6 at fret 10.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in G major; it is a partial interval pair, not a full triad. Use fret 10 on strings 5-6 with A pedal + B pedal; the selected strings spell B, G (3, 1 against G). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-5-6-1-major_thirds_sixths-10",
@@ -35811,7 +35811,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 5
         },
-        "explanation_summary": "A on strings 5-6 at fret 13.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in G major; it is a partial interval pair, not a full triad. Use fret 13 on strings 5-6 with no pedals/no levers; the selected strings spell C, A (b3, 1 against A). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-5-6-2-major_thirds_sixths-13",
@@ -35866,7 +35866,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 5
         },
-        "explanation_summary": "B on strings 5-6 at fret 15.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in G major; it is a partial interval pair, not a full triad. Use fret 15 on strings 5-6 with no pedals/no levers; the selected strings spell D, B (b3, 1 against B). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 15,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-5-6-3-major_thirds_sixths-15",
@@ -35921,7 +35921,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 6
         },
-        "explanation_summary": "B on strings 6-10 at fret 3.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in G major; it is a partial interval pair, not a full triad. Use fret 3 on strings 6-10 with no pedals/no levers; the selected strings spell B, D (1, b3 against B). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-6-10-3-major_thirds_sixths-3",
@@ -35976,7 +35976,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 6
         },
-        "explanation_summary": "C on strings 6-10 at fret 3.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in G major; it is a partial interval pair, not a full triad. Use fret 3 on strings 6-10 with A pedal + B pedal; the selected strings spell C, E (1, 3 against C). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-6-10-4-major_thirds_sixths-3",
@@ -36045,7 +36045,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 6
         },
-        "explanation_summary": "D on strings 6-10 at fret 5.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in G major; it is a partial interval pair, not a full triad. Use fret 5 on strings 6-10 with A pedal + B pedal; the selected strings spell D, F# (1, 3 against D). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 5,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-6-10-5-major_thirds_sixths-5",
@@ -36114,7 +36114,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 6
         },
-        "explanation_summary": "E on strings 6-10 at fret 8.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in G major; it is a partial interval pair, not a full triad. Use fret 8 on strings 6-10 with no pedals/no levers; the selected strings spell E, G (1, b3 against E). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-6-10-6-major_thirds_sixths-8",
@@ -36169,7 +36169,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F#",
           "string": 6
         },
-        "explanation_summary": "F# on strings 6-10 at fret 10.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in G major; it is a partial interval pair, not a full triad. Use fret 10 on strings 6-10 with no pedals/no levers; the selected strings spell F#, A (1, b3 against F#). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-6-10-7-major_thirds_sixths-10",
@@ -36224,7 +36224,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 6
         },
-        "explanation_summary": "G on strings 6-10 at fret 10.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in G major; it is a partial interval pair, not a full triad. Use fret 10 on strings 6-10 with A pedal + B pedal; the selected strings spell G, B (1, 3 against G). This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-6-10-1-major_thirds_sixths-10",
@@ -36293,7 +36293,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 6
         },
-        "explanation_summary": "A on strings 6-10 at fret 13.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in G major; it is a partial interval pair, not a full triad. Use fret 13 on strings 6-10 with no pedals/no levers; the selected strings spell A, C (1, b3 against A). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-6-10-2-major_thirds_sixths-13",
@@ -36348,7 +36348,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 6
         },
-        "explanation_summary": "B on strings 6-10 at fret 15.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in G major; it is a partial interval pair, not a full triad. Use fret 15 on strings 6-10 with no pedals/no levers; the selected strings spell B, D (1, b3 against B). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 15,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-6-10-3-major_thirds_sixths-15",
@@ -36403,7 +36403,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 4
         },
-        "explanation_summary": "G on strings 4-6 at fret 3.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in G major; it is a partial interval pair, not a full triad. Use fret 3 on strings 4-6 with no pedals/no levers; the selected strings spell G, B (1, 3 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-4-6-1-e_raise_two_string-3",
@@ -36458,7 +36458,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 4
         },
-        "explanation_summary": "A on strings 4-6 at fret 4.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in G major; it is a partial interval pair, not a full triad. Use fret 4 on strings 4-6 with E-raise lever; the selected strings spell A, C (1, b3 against A). Use the mechanical E-raise lever name here; shorthand varies by copedent. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-4-6-2-e_raise_two_string-4",
@@ -36521,7 +36521,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 4
         },
-        "explanation_summary": "B on strings 4-6 at fret 6.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in G major; it is a partial interval pair, not a full triad. Use fret 6 on strings 4-6 with E-raise lever; the selected strings spell B, D (1, b3 against B). Use the mechanical E-raise lever name here; shorthand varies by copedent. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-4-6-3-e_raise_two_string-6",
@@ -36584,7 +36584,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 4
         },
-        "explanation_summary": "C on strings 4-6 at fret 8.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in G major; it is a partial interval pair, not a full triad. Use fret 8 on strings 4-6 with no pedals/no levers; the selected strings spell C, E (1, 3 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-4-6-4-e_raise_two_string-8",
@@ -36639,7 +36639,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 4
         },
-        "explanation_summary": "D on strings 4-6 at fret 10.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in G major; it is a partial interval pair, not a full triad. Use fret 10 on strings 4-6 with no pedals/no levers; the selected strings spell D, F# (1, 3 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-4-6-5-e_raise_two_string-10",
@@ -36694,7 +36694,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 4
         },
-        "explanation_summary": "E on strings 4-6 at fret 11.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in G major; it is a partial interval pair, not a full triad. Use fret 11 on strings 4-6 with E-raise lever; the selected strings spell E, G (1, b3 against E). Use the mechanical E-raise lever name here; shorthand varies by copedent. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-4-6-6-e_raise_two_string-11",
@@ -36757,7 +36757,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F#",
           "string": 4
         },
-        "explanation_summary": "F# on strings 4-6 at fret 13.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in G major; it is a partial interval pair, not a full triad. Use fret 13 on strings 4-6 with E-raise lever; the selected strings spell F#, A (1, b3 against F#). Use the mechanical E-raise lever name here; shorthand varies by copedent. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-4-6-7-e_raise_two_string-13",
@@ -36820,7 +36820,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 4
         },
-        "explanation_summary": "G on strings 4-6 at fret 15.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in G major; it is a partial interval pair, not a full triad. Use fret 15 on strings 4-6 with no pedals/no levers; the selected strings spell G, B (1, 3 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 15,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-4-6-1-e_raise_two_string-15",
@@ -36875,7 +36875,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 3
         },
-        "explanation_summary": "G on strings 3-4 at fret 3.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in G major; it is a partial interval pair, not a full triad. Use fret 3 on strings 3-4 with no pedals/no levers; the selected strings spell B, G (3, 1 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-3-4-1-bc_two_string-3",
@@ -36930,7 +36930,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 3
         },
-        "explanation_summary": "A on strings 3-4 at fret 3.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 2 in G major; it is a partial interval pair, not a full triad. Use fret 3 on strings 3-4 with B pedal + C pedal; the selected strings spell C, A (b3, 1 against A). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-3-4-2-bc_two_string-3",
@@ -36999,7 +36999,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 3
         },
-        "explanation_summary": "B on strings 3-4 at fret 5.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 3 in G major; it is a partial interval pair, not a full triad. Use fret 5 on strings 3-4 with B pedal + C pedal; the selected strings spell D, B (b3, 1 against B). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 5,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-3-4-3-bc_two_string-5",
@@ -37068,7 +37068,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 3
         },
-        "explanation_summary": "C on strings 3-4 at fret 8.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 4 in G major; it is a partial interval pair, not a full triad. Use fret 8 on strings 3-4 with no pedals/no levers; the selected strings spell E, C (3, 1 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-3-4-4-bc_two_string-8",
@@ -37123,7 +37123,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F#",
           "string": 3
         },
-        "explanation_summary": "D on strings 3-4 at fret 10.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 5 in G major; it is a partial interval pair, not a full triad. Use fret 10 on strings 3-4 with no pedals/no levers; the selected strings spell F#, D (3, 1 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-3-4-5-bc_two_string-10",
@@ -37178,7 +37178,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 3
         },
-        "explanation_summary": "E on strings 3-4 at fret 10.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 6 in G major; it is a partial interval pair, not a full triad. Use fret 10 on strings 3-4 with B pedal + C pedal; the selected strings spell G, E (b3, 1 against E). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-3-4-6-bc_two_string-10",
@@ -37247,7 +37247,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 3
         },
-        "explanation_summary": "F# on strings 3-4 at fret 24.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 7 in G major; it is a partial interval pair, not a full triad. Use fret 24 on strings 3-4 with B pedal + C pedal; the selected strings spell A, F# (b3, 1 against F#). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 24,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-3-4-7-bc_two_string-24",
@@ -37316,7 +37316,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 3
         },
-        "explanation_summary": "G on strings 3-4 at fret 15.",
+        "explanation_summary": "This two-string harmonized-scale row maps degree 1 in G major; it is a partial interval pair, not a full triad. Use fret 15 on strings 3-4 with no pedals/no levers; the selected strings spell B, G (3, 1 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 15,
         "harmony_type": "two_string_harmonized",
         "id": "g-major-two-string-harmonized-3-4-1-bc_two_string-15",
@@ -37372,7 +37372,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 3
         },
-        "explanation_summary": "G on strings 3-4-5 at fret 3.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in G major, and validates as G major. Use fret 3 on strings 3-4-5 with no pedals/no levers; the selected strings spell B, G, D (3, 1, 5 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-3-4-5-1-no_pedals_no_levers-3",
@@ -37431,7 +37431,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 3
         },
-        "explanation_summary": "A on strings 3-4-5 at fret 3.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii, the degree 2 chord in G major, and validates as A minor. Use fret 3 on strings 3-4-5 with B pedal + C pedal; the selected strings spell C, A, E (b3, 1, 5 against A). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-3-4-5-2-bc_minor-3",
@@ -37509,7 +37509,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 3
         },
-        "explanation_summary": "B on strings 3-4-5 at fret 5.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iii, the degree 3 chord in G major, and validates as B minor. Use fret 5 on strings 3-4-5 with B pedal + C pedal; the selected strings spell D, B, F# (b3, 1, 5 against B). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 5,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-3-4-5-3-bc_minor-5",
@@ -37587,7 +37587,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 3
         },
-        "explanation_summary": "C on strings 3-4-5 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets IV, the degree 4 chord in G major, and validates as C major. Use fret 8 on strings 3-4-5 with no pedals/no levers; the selected strings spell E, C, G (3, 1, 5 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-3-4-5-4-no_pedals_no_levers-8",
@@ -37646,7 +37646,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F#",
           "string": 3
         },
-        "explanation_summary": "D on strings 3-4-5 at fret 10.",
+        "explanation_summary": "This three-string diatonic-harmony row targets V, the degree 5 chord in G major, and validates as D major. Use fret 10 on strings 3-4-5 with no pedals/no levers; the selected strings spell F#, D, A (3, 1, 5 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-3-4-5-5-no_pedals_no_levers-10",
@@ -37705,7 +37705,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 3
         },
-        "explanation_summary": "E on strings 3-4-5 at fret 10.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vi, the degree 6 chord in G major, and validates as E minor. Use fret 10 on strings 3-4-5 with B pedal + C pedal; the selected strings spell G, E, B (b3, 1, 5 against E). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-3-4-5-6-bc_minor-10",
@@ -37783,7 +37783,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 3
         },
-        "explanation_summary": "F# on strings 3-4-5 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vii\u00b0 / partial vii\u00f8, the degree 7 chord in G major, and validates as F# diminished. Use fret 13 on strings 3-4-5 with E-raise lever; the selected strings spell A, F#, C (b3, 1, b5/#11 against F#). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-3-4-5-7-e_raise_diminished-13",
@@ -37854,7 +37854,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 3
         },
-        "explanation_summary": "G on strings 3-4-5 at fret 15.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in G major, and validates as G major. Use fret 15 on strings 3-4-5 with no pedals/no levers; the selected strings spell B, G, D (3, 1, 5 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 15,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-3-4-5-1-no_pedals_no_levers-15",
@@ -37913,7 +37913,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 4
         },
-        "explanation_summary": "G on strings 4-5-6 at fret 3.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in G major, and validates as G major. Use fret 3 on strings 4-5-6 with no pedals/no levers; the selected strings spell G, D, B (1, 5, 3 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-4-5-6-1-no_pedals_no_levers-3",
@@ -37972,7 +37972,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 4
         },
-        "explanation_summary": "A on strings 4-5-6 at fret 3.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii, the degree 2 chord in G major, and validates as A minor. Use fret 3 on strings 4-5-6 with B pedal + C pedal; the selected strings spell A, E, C (1, 5, b3 against A). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-4-5-6-2-bc_minor-3",
@@ -38050,7 +38050,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 4
         },
-        "explanation_summary": "B on strings 4-5-6 at fret 5.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iii, the degree 3 chord in G major, and validates as B minor. Use fret 5 on strings 4-5-6 with B pedal + C pedal; the selected strings spell B, F#, D (1, 5, b3 against B). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 5,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-4-5-6-3-bc_minor-5",
@@ -38128,7 +38128,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 4
         },
-        "explanation_summary": "C on strings 4-5-6 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets IV, the degree 4 chord in G major, and validates as C major. Use fret 8 on strings 4-5-6 with no pedals/no levers; the selected strings spell C, G, E (1, 5, 3 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-4-5-6-4-no_pedals_no_levers-8",
@@ -38187,7 +38187,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 4
         },
-        "explanation_summary": "D on strings 4-5-6 at fret 10.",
+        "explanation_summary": "This three-string diatonic-harmony row targets V, the degree 5 chord in G major, and validates as D major. Use fret 10 on strings 4-5-6 with no pedals/no levers; the selected strings spell D, A, F# (1, 5, 3 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-4-5-6-5-no_pedals_no_levers-10",
@@ -38246,7 +38246,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 4
         },
-        "explanation_summary": "E on strings 4-5-6 at fret 10.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vi, the degree 6 chord in G major, and validates as E minor. Use fret 10 on strings 4-5-6 with B pedal + C pedal; the selected strings spell E, B, G (1, 5, b3 against E). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-4-5-6-6-bc_minor-10",
@@ -38324,7 +38324,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F#",
           "string": 4
         },
-        "explanation_summary": "F# on strings 4-5-6 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vii\u00b0 / partial vii\u00f8, the degree 7 chord in G major, and validates as F# diminished. Use fret 13 on strings 4-5-6 with E-raise lever; the selected strings spell F#, C, A (1, b5/#11, b3 against F#). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-4-5-6-7-e_raise_diminished-13",
@@ -38395,7 +38395,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 4
         },
-        "explanation_summary": "G on strings 4-5-6 at fret 15.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in G major, and validates as G major. Use fret 15 on strings 4-5-6 with no pedals/no levers; the selected strings spell G, D, B (1, 5, 3 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 15,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-4-5-6-1-no_pedals_no_levers-15",
@@ -38454,7 +38454,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 5
         },
-        "explanation_summary": "G on strings 5-6-8 at fret 3.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in G major, and validates as G major. Use fret 3 on strings 5-6-8 with no pedals/no levers; the selected strings spell D, B, G (5, 3, 1 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-5-6-8-1-no_pedals_no_levers-3",
@@ -38513,7 +38513,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 5
         },
-        "explanation_summary": "A on strings 5-6-7 at fret 3.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii, the degree 2 chord in G major, and validates as A minor. Use fret 3 on strings 5-6-7 with A pedal + B pedal; the selected strings spell E, C, A (5, b3, 1 against A). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-5-6-7-2-ab_minor-3",
@@ -38586,7 +38586,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F#",
           "string": 5
         },
-        "explanation_summary": "B on strings 5-6-7 at fret 5.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iii, the degree 3 chord in G major, and validates as B minor. Use fret 5 on strings 5-6-7 with A pedal + B pedal; the selected strings spell F#, D, B (5, b3, 1 against B). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 5,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-5-6-7-3-ab_minor-5",
@@ -38659,7 +38659,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 5
         },
-        "explanation_summary": "C on strings 5-6-8 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets IV, the degree 4 chord in G major, and validates as C major. Use fret 8 on strings 5-6-8 with no pedals/no levers; the selected strings spell G, E, C (5, 3, 1 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-5-6-8-4-no_pedals_no_levers-8",
@@ -38718,7 +38718,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 5
         },
-        "explanation_summary": "D on strings 5-6-8 at fret 10.",
+        "explanation_summary": "This three-string diatonic-harmony row targets V, the degree 5 chord in G major, and validates as D major. Use fret 10 on strings 5-6-8 with no pedals/no levers; the selected strings spell A, F#, D (5, 3, 1 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-5-6-8-5-no_pedals_no_levers-10",
@@ -38777,7 +38777,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 5
         },
-        "explanation_summary": "E on strings 5-6-7 at fret 10.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vi, the degree 6 chord in G major, and validates as E minor. Use fret 10 on strings 5-6-7 with A pedal + B pedal; the selected strings spell B, G, E (5, b3, 1 against E). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-5-6-7-6-ab_minor-10",
@@ -38850,7 +38850,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 5
         },
-        "explanation_summary": "F# on strings 5-6-8 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vii\u00b0 / partial vii\u00f8, the degree 7 chord in G major, and validates as F# diminished. Use fret 13 on strings 5-6-8 with E-raise lever; the selected strings spell C, A, F# (b5/#11, b3, 1 against F#). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-5-6-8-7-e_raise_diminished-13",
@@ -38921,7 +38921,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 5
         },
-        "explanation_summary": "G on strings 5-6-8 at fret 15.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in G major, and validates as G major. Use fret 15 on strings 5-6-8 with no pedals/no levers; the selected strings spell D, B, G (5, 3, 1 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 15,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-5-6-8-1-no_pedals_no_levers-15",
@@ -38980,7 +38980,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 6
         },
-        "explanation_summary": "G on strings 6-8-10 at fret 3.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in G major, and validates as G major. Use fret 3 on strings 6-8-10 with no pedals/no levers; the selected strings spell B, G, D (3, 1, 5 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-6-8-10-1-no_pedals_no_levers-3",
@@ -39039,7 +39039,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 6
         },
-        "explanation_summary": "A on strings 6-7-10 at fret 3.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii, the degree 2 chord in G major, and validates as A minor. Use fret 3 on strings 6-7-10 with A pedal + B pedal; the selected strings spell C, A, E (b3, 1, 5 against A). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 3,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-6-7-10-2-ab_minor-3",
@@ -39112,7 +39112,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 6
         },
-        "explanation_summary": "B on strings 6-7-10 at fret 5.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iii, the degree 3 chord in G major, and validates as B minor. Use fret 5 on strings 6-7-10 with A pedal + B pedal; the selected strings spell D, B, F# (b3, 1, 5 against B). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 5,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-6-7-10-3-ab_minor-5",
@@ -39185,7 +39185,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "E",
           "string": 6
         },
-        "explanation_summary": "C on strings 6-8-10 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets IV, the degree 4 chord in G major, and validates as C major. Use fret 8 on strings 6-8-10 with no pedals/no levers; the selected strings spell E, C, G (3, 1, 5 against C). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-6-8-10-4-no_pedals_no_levers-8",
@@ -39244,7 +39244,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F#",
           "string": 6
         },
-        "explanation_summary": "D on strings 6-8-10 at fret 10.",
+        "explanation_summary": "This three-string diatonic-harmony row targets V, the degree 5 chord in G major, and validates as D major. Use fret 10 on strings 6-8-10 with no pedals/no levers; the selected strings spell F#, D, A (3, 1, 5 against D). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-6-8-10-5-no_pedals_no_levers-10",
@@ -39303,7 +39303,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 6
         },
-        "explanation_summary": "E on strings 6-7-10 at fret 10.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vi, the degree 6 chord in G major, and validates as E minor. Use fret 10 on strings 6-7-10 with A pedal + B pedal; the selected strings spell G, E, B (b3, 1, 5 against E). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 10,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-6-7-10-6-ab_minor-10",
@@ -39376,7 +39376,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 6
         },
-        "explanation_summary": "F# on strings 6-8-10 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets vii\u00b0 / partial vii\u00f8, the degree 7 chord in G major, and validates as F# diminished. Use fret 13 on strings 6-8-10 with E-raise lever; the selected strings spell A, F#, C (b3, 1, b5/#11 against F#). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-6-8-10-7-e_raise_diminished-13",
@@ -39447,7 +39447,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "B",
           "string": 6
         },
-        "explanation_summary": "G on strings 6-8-10 at fret 15.",
+        "explanation_summary": "This three-string diatonic-harmony row targets I, the degree 1 chord in G major, and validates as G major. Use fret 15 on strings 6-8-10 with no pedals/no levers; the selected strings spell B, G, D (3, 1, 5 against G). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 15,
         "harmony_type": "three_string_diatonic",
         "id": "g-major-three-string-diatonic-6-8-10-1-no_pedals_no_levers-15",
@@ -39506,7 +39506,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 3
         },
-        "explanation_summary": "G on strings 3-4-5 at fret 1.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in G natural minor, and validates as G minor. Use fret 1 on strings 3-4-5 with B pedal + C pedal; the selected strings spell Bb, G, D (b3, 1, 5 against G). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-3-4-5-1-bc_minor-1",
@@ -39584,7 +39584,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 3
         },
-        "explanation_summary": "A on strings 3-4-5 at fret 4.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii\u00b0 / partial ii\u00f8, the degree 2 chord in G natural minor, and validates as A diminished. Use fret 4 on strings 3-4-5 with E-raise lever; the selected strings spell C, A, Eb (b3, 1, b5/#11 against A). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-3-4-5-2-e_raise_diminished-4",
@@ -39655,7 +39655,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 3
         },
-        "explanation_summary": "Bb on strings 3-4-5 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets III, the degree 3 chord in G natural minor, and validates as Bb major. Use fret 6 on strings 3-4-5 with no pedals/no levers; the selected strings spell D, Bb, F (3, 1, 5 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-3-4-5-3-no_pedals_no_levers-6",
@@ -39714,7 +39714,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 3
         },
-        "explanation_summary": "C on strings 3-4-5 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iv, the degree 4 chord in G natural minor, and validates as C minor. Use fret 6 on strings 3-4-5 with B pedal + C pedal; the selected strings spell Eb, C, G (b3, 1, 5 against C). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-3-4-5-4-bc_minor-6",
@@ -39792,7 +39792,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 3
         },
-        "explanation_summary": "D on strings 3-4-5 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets v, the degree 5 chord in G natural minor, and validates as D minor. Use fret 8 on strings 3-4-5 with B pedal + C pedal; the selected strings spell F, D, A (b3, 1, 5 against D). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-3-4-5-5-bc_minor-8",
@@ -39870,7 +39870,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 3
         },
-        "explanation_summary": "Eb on strings 3-4-5 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VI, the degree 6 chord in G natural minor, and validates as Eb major. Use fret 11 on strings 3-4-5 with no pedals/no levers; the selected strings spell G, Eb, Bb (3, 1, 5 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-3-4-5-6-no_pedals_no_levers-11",
@@ -39929,7 +39929,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 3
         },
-        "explanation_summary": "F on strings 3-4-5 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VII, the degree 7 chord in G natural minor, and validates as F major. Use fret 13 on strings 3-4-5 with no pedals/no levers; the selected strings spell A, F, C (3, 1, 5 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-3-4-5-7-no_pedals_no_levers-13",
@@ -39988,7 +39988,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 3
         },
-        "explanation_summary": "G on strings 3-4-5 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in G natural minor, and validates as G minor. Use fret 13 on strings 3-4-5 with B pedal + C pedal; the selected strings spell Bb, G, D (b3, 1, 5 against G). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-3-4-5-1-bc_minor-13",
@@ -40066,7 +40066,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 4
         },
-        "explanation_summary": "G on strings 4-5-6 at fret 1.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in G natural minor, and validates as G minor. Use fret 1 on strings 4-5-6 with B pedal + C pedal; the selected strings spell G, D, Bb (1, 5, b3 against G). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-4-5-6-1-bc_minor-1",
@@ -40144,7 +40144,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 4
         },
-        "explanation_summary": "A on strings 4-5-6 at fret 4.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii\u00b0 / partial ii\u00f8, the degree 2 chord in G natural minor, and validates as A diminished. Use fret 4 on strings 4-5-6 with E-raise lever; the selected strings spell A, Eb, C (1, b5/#11, b3 against A). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-4-5-6-2-e_raise_diminished-4",
@@ -40215,7 +40215,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 4
         },
-        "explanation_summary": "Bb on strings 4-5-6 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets III, the degree 3 chord in G natural minor, and validates as Bb major. Use fret 6 on strings 4-5-6 with no pedals/no levers; the selected strings spell Bb, F, D (1, 5, 3 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-4-5-6-3-no_pedals_no_levers-6",
@@ -40274,7 +40274,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 4
         },
-        "explanation_summary": "C on strings 4-5-6 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iv, the degree 4 chord in G natural minor, and validates as C minor. Use fret 6 on strings 4-5-6 with B pedal + C pedal; the selected strings spell C, G, Eb (1, 5, b3 against C). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-4-5-6-4-bc_minor-6",
@@ -40352,7 +40352,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 4
         },
-        "explanation_summary": "D on strings 4-5-6 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets v, the degree 5 chord in G natural minor, and validates as D minor. Use fret 8 on strings 4-5-6 with B pedal + C pedal; the selected strings spell D, A, F (1, 5, b3 against D). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-4-5-6-5-bc_minor-8",
@@ -40430,7 +40430,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 4
         },
-        "explanation_summary": "Eb on strings 4-5-6 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VI, the degree 6 chord in G natural minor, and validates as Eb major. Use fret 11 on strings 4-5-6 with no pedals/no levers; the selected strings spell Eb, Bb, G (1, 5, 3 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-4-5-6-6-no_pedals_no_levers-11",
@@ -40489,7 +40489,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 4
         },
-        "explanation_summary": "F on strings 4-5-6 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VII, the degree 7 chord in G natural minor, and validates as F major. Use fret 13 on strings 4-5-6 with no pedals/no levers; the selected strings spell F, C, A (1, 5, 3 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-4-5-6-7-no_pedals_no_levers-13",
@@ -40548,7 +40548,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 4
         },
-        "explanation_summary": "G on strings 4-5-6 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in G natural minor, and validates as G minor. Use fret 13 on strings 4-5-6 with B pedal + C pedal; the selected strings spell G, D, Bb (1, 5, b3 against G). B+C is validated for this exact row; do not generalize B+C to other grips without checking the resulting notes. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-4-5-6-1-bc_minor-13",
@@ -40626,7 +40626,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 5
         },
-        "explanation_summary": "G on strings 5-6-7 at fret 1.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in G natural minor, and validates as G minor. Use fret 1 on strings 5-6-7 with A pedal + B pedal; the selected strings spell D, Bb, G (5, b3, 1 against G). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-5-6-7-1-ab_minor-1",
@@ -40699,7 +40699,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 5
         },
-        "explanation_summary": "A on strings 5-6-8 at fret 4.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii\u00b0 / partial ii\u00f8, the degree 2 chord in G natural minor, and validates as A diminished. Use fret 4 on strings 5-6-8 with E-raise lever; the selected strings spell Eb, C, A (b5/#11, b3, 1 against A). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-5-6-8-2-e_raise_diminished-4",
@@ -40770,7 +40770,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 5
         },
-        "explanation_summary": "Bb on strings 5-6-8 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets III, the degree 3 chord in G natural minor, and validates as Bb major. Use fret 6 on strings 5-6-8 with no pedals/no levers; the selected strings spell F, D, Bb (5, 3, 1 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-5-6-8-3-no_pedals_no_levers-6",
@@ -40829,7 +40829,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 5
         },
-        "explanation_summary": "C on strings 5-6-7 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iv, the degree 4 chord in G natural minor, and validates as C minor. Use fret 6 on strings 5-6-7 with A pedal + B pedal; the selected strings spell G, Eb, C (5, b3, 1 against C). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-5-6-7-4-ab_minor-6",
@@ -40902,7 +40902,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 5
         },
-        "explanation_summary": "D on strings 5-6-7 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets v, the degree 5 chord in G natural minor, and validates as D minor. Use fret 8 on strings 5-6-7 with A pedal + B pedal; the selected strings spell A, F, D (5, b3, 1 against D). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-5-6-7-5-ab_minor-8",
@@ -40975,7 +40975,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 5
         },
-        "explanation_summary": "Eb on strings 5-6-8 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VI, the degree 6 chord in G natural minor, and validates as Eb major. Use fret 11 on strings 5-6-8 with no pedals/no levers; the selected strings spell Bb, G, Eb (5, 3, 1 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-5-6-8-6-no_pedals_no_levers-11",
@@ -41034,7 +41034,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 5
         },
-        "explanation_summary": "F on strings 5-6-8 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VII, the degree 7 chord in G natural minor, and validates as F major. Use fret 13 on strings 5-6-8 with no pedals/no levers; the selected strings spell C, A, F (5, 3, 1 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-5-6-8-7-no_pedals_no_levers-13",
@@ -41093,7 +41093,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 5
         },
-        "explanation_summary": "G on strings 5-6-7 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in G natural minor, and validates as G minor. Use fret 13 on strings 5-6-7 with A pedal + B pedal; the selected strings spell D, Bb, G (5, b3, 1 against G). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-5-6-7-1-ab_minor-13",
@@ -41166,7 +41166,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 6
         },
-        "explanation_summary": "G on strings 6-7-10 at fret 1.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in G natural minor, and validates as G minor. Use fret 1 on strings 6-7-10 with A pedal + B pedal; the selected strings spell Bb, G, D (b3, 1, 5 against G). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 1,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-6-7-10-1-ab_minor-1",
@@ -41239,7 +41239,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "C",
           "string": 6
         },
-        "explanation_summary": "A on strings 6-8-10 at fret 4.",
+        "explanation_summary": "This three-string diatonic-harmony row targets ii\u00b0 / partial ii\u00f8, the degree 2 chord in G natural minor, and validates as A diminished. Use fret 4 on strings 6-8-10 with E-raise lever; the selected strings spell C, A, Eb (b3, 1, b5/#11 against A). Use the mechanical E-raise lever name here; shorthand varies by copedent. Because this grip contains 1-b3-b5 and omits b7, label it as a diminished triad or partial half-diminished color, not a full m7b5. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 4,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-6-8-10-2-e_raise_diminished-4",
@@ -41310,7 +41310,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "D",
           "string": 6
         },
-        "explanation_summary": "Bb on strings 6-8-10 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets III, the degree 3 chord in G natural minor, and validates as Bb major. Use fret 6 on strings 6-8-10 with no pedals/no levers; the selected strings spell D, Bb, F (3, 1, 5 against Bb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-6-8-10-3-no_pedals_no_levers-6",
@@ -41369,7 +41369,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Eb",
           "string": 6
         },
-        "explanation_summary": "C on strings 6-7-10 at fret 6.",
+        "explanation_summary": "This three-string diatonic-harmony row targets iv, the degree 4 chord in G natural minor, and validates as C minor. Use fret 6 on strings 6-7-10 with A pedal + B pedal; the selected strings spell Eb, C, G (b3, 1, 5 against C). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 6,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-6-7-10-4-ab_minor-6",
@@ -41442,7 +41442,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "F",
           "string": 6
         },
-        "explanation_summary": "D on strings 6-7-10 at fret 8.",
+        "explanation_summary": "This three-string diatonic-harmony row targets v, the degree 5 chord in G natural minor, and validates as D minor. Use fret 8 on strings 6-7-10 with A pedal + B pedal; the selected strings spell F, D, A (b3, 1, 5 against D). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-6-7-10-5-ab_minor-8",
@@ -41515,7 +41515,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 6
         },
-        "explanation_summary": "Eb on strings 6-8-10 at fret 11.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VI, the degree 6 chord in G natural minor, and validates as Eb major. Use fret 11 on strings 6-8-10 with no pedals/no levers; the selected strings spell G, Eb, Bb (3, 1, 5 against Eb). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 11,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-6-8-10-6-no_pedals_no_levers-11",
@@ -41574,7 +41574,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "A",
           "string": 6
         },
-        "explanation_summary": "F on strings 6-8-10 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets VII, the degree 7 chord in G natural minor, and validates as F major. Use fret 13 on strings 6-8-10 with no pedals/no levers; the selected strings spell A, F, C (3, 1, 5 against F). No pedals/no levers marks this as a straight-bar reference position. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-6-8-10-7-no_pedals_no_levers-13",
@@ -41633,7 +41633,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "Bb",
           "string": 6
         },
-        "explanation_summary": "G on strings 6-7-10 at fret 13.",
+        "explanation_summary": "This three-string diatonic-harmony row targets i, the degree 1 chord in G natural minor, and validates as G minor. Use fret 13 on strings 6-7-10 with A pedal + B pedal; the selected strings spell Bb, G, D (b3, 1, 5 against G). This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 13,
         "harmony_type": "three_string_diatonic",
         "id": "g-natural-minor-three-string-diatonic-6-7-10-1-ab_minor-13",
@@ -41706,7 +41706,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 5
         },
-        "explanation_summary": "Advanced 5-7-8 E-lower G major pocket; validated by pitch math.",
+        "explanation_summary": "This advanced 5-7-8 E-lower pocket targets G major as I in G major. Use fret 8 on strings 5-7-8 with E-lower lever; the selected strings spell G, D, B (1, 5, 3 against G). Use the mechanical E-lower lever name here; shorthand varies by copedent. This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 8,
         "harmony_type": "advanced_pocket",
         "id": "g-major-advanced-pocket-5-7-8-1-e_lower_pocket-8",
@@ -41773,7 +41773,7 @@ window.STEEL_RAG_E9_EXPLORER_PAYLOADS = {
           "note": "G",
           "string": 5
         },
-        "explanation_summary": "Advanced 5-7-8 E-lower G major pocket; validated by pitch math.",
+        "explanation_summary": "This advanced 5-7-8 E-lower pocket targets G major as I in G major. Use fret 20 on strings 5-7-8 with E-lower lever; the selected strings spell G, D, B (1, 5, 3 against G). Use the mechanical E-lower lever name here; shorthand varies by copedent. This is an advanced swap, so compare it with the nearby core grip before treating it as a default. This position is generated from validated E9 pitch logic. Teaching text explains the row; it does not choose the row.",
         "fret": 20,
         "harmony_type": "advanced_pocket",
         "id": "g-major-advanced-pocket-5-7-8-1-e_lower_pocket-20",
