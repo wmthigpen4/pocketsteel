@@ -247,6 +247,73 @@ assert.equal(markers.filter((match) => Number(match[1]) === 24).length, 3);
     run_node(script)
 
 
+def test_selected_explorer_string_group_renders_string_lanes_and_emphasized_markers() -> None:
+    script = component_eval_script(
+        """
+const positions = [
+  {
+    id: "g-568-fret-3",
+    label: "G at fret 3",
+    fret: 3,
+    strings: [5, 6, 8],
+    grip: "5-6-8",
+    visibleByDefault: true,
+    colorRole: "open"
+  },
+  {
+    id: "g-568-fret-8",
+    label: "C at fret 8",
+    fret: 8,
+    strings: [5, 6, 8],
+    grip: "5-6-8",
+    visibleByDefault: true,
+    colorRole: "open"
+  }
+];
+const model = fretboard.buildFretboardModel({
+  positions,
+  hideFilterControls: true,
+  hidePositionTools: true,
+  hideLegend: true,
+  showHighlightLabels: false,
+  emphasizeStringGroups: true,
+  emphasizeVisibleHighlights: true,
+  selectedStringGroups: ["5-6-8"]
+});
+assert.equal(model.highlights.length, 2);
+assert.equal(JSON.stringify(model.emphasizedStrings), JSON.stringify([5, 6, 8]));
+assert.equal(JSON.stringify(model.emphasizedStringGroups), JSON.stringify(["5-6-8"]));
+const html = fretboard.renderPedalSteelFretboard({
+  positions,
+  hideFilterControls: true,
+  hidePositionTools: true,
+  hideLegend: true,
+  showHighlightLabels: false,
+  emphasizeStringGroups: true,
+  emphasizeVisibleHighlights: true,
+  selectedStringGroups: ["5-6-8"]
+});
+assert.match(html, /data-selected-string-group-lanes/);
+assert.match(html, /data-selected-strings="5,6,8"/);
+assert.match(html, /data-selected-string-groups="5-6-8"/);
+assert.equal((html.match(/data-selected-string-row="/g) || []).length, 3);
+assert.match(html, /data-selected-string-row="5"/);
+assert.match(html, /data-selected-string-row="6"/);
+assert.match(html, /data-selected-string-row="8"/);
+assert.equal((html.match(/data-highlight-dot/g) || []).length, 6);
+assert.equal((html.match(/data-highlight-strings="5,6,8"/g) || []).length >= 2, true);
+assert.equal((html.match(/data-emphasized-visible="true"/g) || []).length, 2);
+assert.equal((html.match(/is-emphasized-visible/g) || []).length >= 2, true);
+assert.equal(html.indexOf("data-selected-string-group-lanes") < html.indexOf("data-fretboard-string=\\"1\\""), true);
+assert.equal(html.indexOf("data-fretboard-string=\\"1\\"") < html.indexOf("data-highlight-id=\\"g-568-fret-3\\""), true);
+assert.doesNotMatch(html, /\\[object Object\\]/);
+assert.doesNotMatch(html, /five_eight_branch/);
+"""
+    )
+
+    run_node(script)
+
+
 def test_rendered_svg_uses_decorative_background_underlay() -> None:
     script = component_eval_script(
         """
