@@ -149,6 +149,43 @@ def test_flat_major_keys_prefer_flat_learner_display_spellings() -> None:
     assert iv_row["display_notes"] == {"4": "Eb", "5": "Bb", "6": "G"}
 
 
+def test_sharp_major_keys_prefer_sharp_learner_display_spellings() -> None:
+    payload = build_explorer_payload("C#")
+    validate_explorer_payload(payload)
+
+    assert payload["query"]["display_scale_notes"]["major"] == [
+        "C#",
+        "D#",
+        "E#",
+        "F#",
+        "G#",
+        "A#",
+        "B#",
+    ]
+    i_row = next(
+        position
+        for position in payload["positions"]
+        if position["scale_type"] == "major"
+        and position["string_group"] == "4-5-6"
+        and position["chord_function"] == "I"
+    )
+    assert i_row["chord_name"] == "C#"
+    assert i_row["notes"] == {"4": "C#", "5": "G#", "6": "F"}
+    assert i_row["display_notes"] == {"4": "C#", "5": "G#", "6": "E#"}
+
+    f_sharp_payload = build_explorer_payload("F#")
+    validate_explorer_payload(f_sharp_payload)
+    assert f_sharp_payload["query"]["display_scale_notes"]["major"] == [
+        "F#",
+        "G#",
+        "A#",
+        "B",
+        "C#",
+        "D#",
+        "E#",
+    ]
+
+
 def test_transposed_rows_keep_mode_and_advanced_grip_rules() -> None:
     rows = [row.to_dict() for row in explorer_rows("F")]
     validate_explorer_payload(build_explorer_payload("F"))
@@ -159,6 +196,57 @@ def test_transposed_rows_keep_mode_and_advanced_grip_rules() -> None:
     assert {row["string_group"] for row in rows if row["harmony_type"] == "advanced_pocket"} == {"5-7-8"}
     assert all(row["harmony_type"] != "advanced_pocket" or row["difficulty_tier"] == "advanced" for row in rows)
     assert all(row["pitch_validated"] is True for row in rows)
+
+
+@pytest.mark.parametrize("key", ["C", "D", "F", "Bb", "Eb"])
+def test_expanded_key_payloads_keep_core_invariants(key: str) -> None:
+    payload = build_explorer_payload(key)
+    validate_explorer_payload(payload)
+    rows = payload["positions"]
+
+    assert payload["query"]["key"] == key
+    assert all(row["pitch_validated"] is True for row in rows)
+    assert all(0 <= row["fret"] <= 24 for row in rows)
+    assert all(all(1 <= string <= 10 for string in row["strings"]) for row in rows)
+    assert all(
+        "rag" not in ref.lower() and "corpus" not in ref.lower() and "sgf" not in ref.lower()
+        for row in rows
+        for ref in row["source_guidance_refs"]
+    )
+
+    group_456_major = [
+        row
+        for row in rows
+        if row["scale_type"] == "major"
+        and row["harmony_type"] == "three_string_diatonic"
+        and row["string_group"] == "4-5-6"
+    ]
+    group_456_minor = [
+        row
+        for row in rows
+        if row["scale_type"] == "natural_minor"
+        and row["harmony_type"] == "three_string_diatonic"
+        and row["string_group"] == "4-5-6"
+    ]
+    assert [row["scale_degree"] for row in group_456_major] == [1, 2, 3, 4, 5, 6, 7, 1]
+    assert [row["scale_degree"] for row in group_456_minor] == [1, 2, 3, 4, 5, 6, 7, 1]
+
+    advanced_578 = [row for row in rows if row["string_group"] == "5-7-8"]
+    assert advanced_578
+    assert all(row["harmony_type"] == "advanced_pocket" for row in advanced_578)
+    assert all(row["difficulty_tier"] == "advanced" for row in advanced_578)
+    assert all(row["position_family"] == "e_lower_pocket" for row in advanced_578)
+
+    partial_diminished_rows = [
+        row
+        for row in rows
+        if row["chord_quality"] == "diminished"
+        and set(row["intervals"].values()) == {"1", "b3", "b5/#11"}
+    ]
+    assert partial_diminished_rows
+    assert all(row["voicing_status"] == "partial" for row in partial_diminished_rows)
+    assert all(row["omitted_intervals"] == ["b7"] for row in partial_diminished_rows)
+    assert all("does not include the b7" in row["warnings"][0] for row in partial_diminished_rows)
 
 
 def test_g_major_three_string_diatonic_harmony_core_grips() -> None:
