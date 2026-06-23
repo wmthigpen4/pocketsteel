@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>__STEEL_RAG_LABEL__</string>
+
+  <key>UserName</key>
+  <string>__STEEL_RAG_RUN_AS_USER__</string>
+
+  <key>GroupName</key>
+  <string>__STEEL_RAG_RUN_AS_GROUP__</string>
+
+  <key>WorkingDirectory</key>
+  <string>__STEEL_RAG_REPO_DIR__</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>__STEEL_RAG_REPO_DIR__/deploy/macos/run-private-preview-app.sh</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    <key>PYTHONUNBUFFERED</key>
+    <string>1</string>
+    <key>STEEL_RAG_REPO_DIR</key>
+    <string>__STEEL_RAG_REPO_DIR__</string>
+    <key>STEEL_RAG_ENV_FILE</key>
+    <string>__STEEL_RAG_ENV_FILE__</string>
+    <key>STEEL_RAG_LOG_DIR</key>
+    <string>__STEEL_RAG_LOG_DIR__</string>
+    <key>STEEL_RAG_HOST</key>
+    <string>__STEEL_RAG_HOST__</string>
+    <key>STEEL_RAG_PORT</key>
+    <string>__STEEL_RAG_PORT__</string>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>__STEEL_RAG_LOG_DIR__/app.out.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>__STEEL_RAG_LOG_DIR__/app.err.log</string>
+
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+</dict>
+</plist>
