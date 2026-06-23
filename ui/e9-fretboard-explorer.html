@@ -418,14 +418,26 @@
     <section class="explorer-controls" aria-label="Explorer controls">
       <div class="explorer-control">
         <label for="explorer-key">Key</label>
-        <select id="explorer-key">
-          <option value="G" selected>G</option>
+        <select id="explorer-key" aria-describedby="explorer-key-help">
           <option value="C">C</option>
+          <option value="C#">C#</option>
+          <option value="Db">Db</option>
           <option value="D">D</option>
-          <option value="F">F</option>
-          <option value="Bb">Bb</option>
+          <option value="D#">D#</option>
           <option value="Eb">Eb</option>
+          <option value="E">E</option>
+          <option value="F">F</option>
+          <option value="F#">F#</option>
+          <option value="Gb">Gb</option>
+          <option value="G" selected>G</option>
+          <option value="G#">G#</option>
+          <option value="Ab">Ab</option>
+          <option value="A">A</option>
+          <option value="A#">A#</option>
+          <option value="Bb">Bb</option>
+          <option value="B">B</option>
         </select>
+        <p class="explorer-control-help" id="explorer-key-help">Enharmonic spellings are listed separately when the backend validates both names, such as C# and Db.</p>
       </div>
       <div class="explorer-control">
         <label for="explorer-scale">Scale</label>
@@ -485,7 +497,7 @@
   </main>
 
   <script src="pedal-steel-fretboard.js?v=five-eight-label-leak-fix-20260623"></script>
-  <script src="e9-fretboard-explorer-data.js?v=g-five-eight-ui-20260623"></script>
-  <script src="e9-fretboard-explorer.js?v=g-five-eight-ui-20260623"></script>
+  <script src="e9-fretboard-explorer-data.js?v=final-smoke-feedback-ui-20260623"></script>
+  <script src="e9-fretboard-explorer.js?v=final-smoke-feedback-ui-20260623"></script>
 </body>
 </html>

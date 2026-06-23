@@ -225,15 +225,16 @@ def test_answer_ui_includes_home_hero_hanging_sign_without_changing_answer_logo(
 def test_answer_ui_links_to_e9_fretboard_explorer_surface() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
 
-    assert "Explore the E9 Fretboard" in html
+    assert ">Explore Fretboard</a>" in html
     assert 'href="/ui/e9-fretboard-explorer.html"' in html
+    assert 'aria-label="Explore the E9 virtual fretboard"' in html
+    assert 'title="Explore the E9 virtual fretboard"' in html
     assert "explorer-header-link" in html
-    assert "Open Fretboard Explorer" not in html
     assert "explorer-entry-card" not in html
     assert "not corpus retrieval or RAG-generated fretboard positions" not in html
     assert "[object Object]" not in html
-    assert html.index("Explore the E9 Fretboard") < html.index('id="question"')
-    assert html.index("Explore the E9 Fretboard") < html.index("Get a Backstage Pass")
+    assert html.index(">Explore Fretboard</a>") < html.index('id="question"')
+    assert html.index(">Explore Fretboard</a>") < html.index("Get a Backstage Pass")
 
 
 def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() -> None:
@@ -250,11 +251,21 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "not corpus retrieval or RAG-generated fretboard positions" not in html
     assert '<script src="pedal-steel-fretboard.js?v=five-eight-label-leak-fix-20260623"></script>' in html
     assert "pedal-steel-fretboard.js?v=e9-explorer-explanation-ui-20260623" not in html
-    assert '<script src="e9-fretboard-explorer-data.js?v=g-five-eight-ui-20260623"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=g-five-eight-ui-20260623"></script>' in html
-    for key in ["G", "C", "D", "F", "Bb", "Eb"]:
+    assert '<script src="e9-fretboard-explorer-data.js?v=final-smoke-feedback-ui-20260623"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=final-smoke-feedback-ui-20260623"></script>' in html
+    expected_keys = ["C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B"]
+    for key in expected_keys:
         assert f'<option value="{key}"' in html
         assert key in payloads
+    assert "Enharmonic spellings are listed separately" in html
+    assert "such as C# and Db" in html
+    assert len(payloads) == len(expected_keys)
+    root_fret_classes = {
+        next(row["fret"] for row in key_payload["positions"] if row["scale_type"] == "major" and row["chord_function"] == "I")
+        % 12
+        for key_payload in payloads.values()
+    }
+    assert len(root_fret_classes) == 12
     assert '<option value="major">G major</option>' in html
     assert '<option value="natural_minor">G natural minor</option>' in html
     assert '<option value="two_string_harmonized">2-string harmonized scale</option>' in html
@@ -315,6 +326,8 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert any("validated E9 pitch logic" in row["explanation_summary"] for row in payload["positions"])
     assert any("Teaching text explains the row" in row["explanation_summary"] for row in payload["positions"])
     assert payloads["C"]["query"]["display_scale_notes"]["natural_minor"] == ["C", "D", "Eb", "F", "G", "Ab", "Bb"]
+    assert payloads["C#"]["query"]["display_scale_notes"]["major"] == ["C#", "D#", "E#", "F#", "G#", "A#", "B#"]
+    assert payloads["Db"]["query"]["display_scale_notes"]["major"] == ["Db", "Eb", "F", "Gb", "Ab", "Bb", "C"]
     assert payloads["Bb"]["query"]["display_scale_notes"]["major"] == ["Bb", "C", "D", "Eb", "F", "G", "A"]
     assert payloads["Eb"]["query"]["display_scale_notes"]["major"] == ["Eb", "F", "G", "Ab", "Bb", "C", "D"]
     assert any(row["string_group"] == "5-7-8" and row["harmony_type"] == "advanced_pocket" for row in payload["positions"])
@@ -444,12 +457,23 @@ class FakeMarker extends FakeButton {
 
 const elements = {
   "explorer-key": new FakeSelect("explorer-key", "G", [
-    { value: "G", text: "G" },
     { value: "C", text: "C" },
+    { value: "C#", text: "C#" },
+    { value: "Db", text: "Db" },
     { value: "D", text: "D" },
+    { value: "D#", text: "D#" },
+    { value: "Eb", text: "Eb" },
+    { value: "E", text: "E" },
     { value: "F", text: "F" },
+    { value: "F#", text: "F#" },
+    { value: "Gb", text: "Gb" },
+    { value: "G", text: "G" },
+    { value: "G#", text: "G#" },
+    { value: "Ab", text: "Ab" },
+    { value: "A", text: "A" },
+    { value: "A#", text: "A#" },
     { value: "Bb", text: "Bb" },
-    { value: "Eb", text: "Eb" }
+    { value: "B", text: "B" }
   ]),
   "explorer-scale": new FakeSelect("explorer-scale", "major", [
     { value: "major", text: "G major" },
@@ -494,11 +518,9 @@ vm.runInContext(fs.readFileSync("ui/e9-fretboard-explorer-data.js", "utf8"), san
 vm.runInContext(fs.readFileSync("ui/e9-fretboard-explorer.js", "utf8"), sandbox);
 
 assert.match(elements["explorer-key"].innerHTML, /value="G" selected/);
-assert.match(elements["explorer-key"].innerHTML, /value="C"/);
-assert.match(elements["explorer-key"].innerHTML, /value="D"/);
-assert.match(elements["explorer-key"].innerHTML, /value="F"/);
-assert.match(elements["explorer-key"].innerHTML, /value="Bb"/);
-assert.match(elements["explorer-key"].innerHTML, /value="Eb"/);
+for (const key of ["C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B"]) {
+  assert.match(elements["explorer-key"].innerHTML, new RegExp(`value="${key}"`));
+}
 assert.match(elements["explorer-string-group"].innerHTML, /All 3-string groups/);
 assert.match(elements["explorer-string-group"].innerHTML, /Core grips/);
 assert.match(elements["explorer-string-group"].innerHTML, /Advanced swaps/);
@@ -518,10 +540,22 @@ assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /Pitch val
 
 const expectedMajorScales = {
   C: "C D E F G A B",
+  "C#": "C# D# E# F# G# A# B#",
+  Db: "Db Eb F Gb Ab Bb C",
   D: "D E F# G A B C#",
+  "D#": "D# E# F## G# A# B# C##",
+  Eb: "Eb F G Ab Bb C D",
+  E: "E F# G# A B C# D#",
   F: "F G A Bb C D E",
+  "F#": "F# G# A# B C# D# E#",
+  Gb: "Gb Ab Bb Cb Db Eb F",
+  G: "G A B C D E F#",
+  "G#": "G# A# B# C# D# E# F##",
+  Ab: "Ab Bb C Db Eb F G",
+  A: "A B C# D E F# G#",
+  "A#": "A# B# C## D# E# F## G##",
   Bb: "Bb C D Eb F G A",
-  Eb: "Eb F G Ab Bb C D"
+  B: "B C# D# E F# G# A#"
 };
 for (const [key, scaleNotes] of Object.entries(expectedMajorScales)) {
   elements["explorer-key"].value = key;

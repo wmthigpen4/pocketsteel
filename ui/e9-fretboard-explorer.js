@@ -9,7 +9,7 @@
   const ADVANCED_GROUPS = new Set(["5-6-7", "6-7-10", "5-7-8"]);
   const TWO_STRING_GROUPS = new Set(["3-5", "5-6", "6-10", "4-6", "3-4"]);
   const FIVE_EIGHT_GROUPS = new Set(["5-8"]);
-  const KEY_ORDER = ["G", "C", "D", "F", "Bb", "Eb"];
+  const KEY_ORDER = ["C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B"];
   const HARMONY_LABELS = {
     two_string_harmonized: "2-string harmonized scale",
     five_eight_branch: "5&8 branch",
