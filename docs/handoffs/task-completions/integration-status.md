@@ -5,11 +5,12 @@ Generated for ChatGPT reset/guidance on branch `feature/answer-api`.
 ## Current State
 
 - Current branch: `feature/answer-api`.
-- Current repo HEAD at this refresh: `760dc73 docs: record explorer UI cleanup protected smoke`.
-- Latest protected-preview smoke docs commit: `760dc73`.
-- Runtime smoked: `e1103be`.
+- Current repo HEAD at this refresh: `78f6c14 docs: record fretboard button style protected smoke`.
+- Latest protected-preview smoke docs commit: `78f6c14`.
+- Runtime smoked: `fd342b9`.
 - Protected-preview status: **pass with warnings**.
 - User-smoke status: **allowed if the warnings below are acceptable; this is not a clean pass**.
+- App control state: **can be parked with known warnings after user smoke**.
 - Broad unrelated dirty/untracked work remains parked. Do not broad-stage.
 
 ## Runtime / Deployment
@@ -17,7 +18,9 @@ Generated for ChatGPT reset/guidance on branch `feature/answer-api`.
 - Cloudflare Access login: succeeded.
 - Main app loaded through protected preview.
 - Explorer loaded through protected preview.
-- Main UI, Explorer cleanup, prompt matrix, and brand asset routing passed.
+- Header button style fix passed.
+- Explorer cleanup passed.
+- Prompt spot checks passed.
 - LaunchDaemon owns the app runtime.
 - Manual screen runtime is absent.
 - Cloudflare Tunnel is running.
@@ -26,25 +29,25 @@ Generated for ChatGPT reset/guidance on branch `feature/answer-api`.
 Latest runtime identity from Lane 12:
 
 ```text
-git_sha=e1103be
+git_sha=fd342b9
 git_branch=feature/answer-api
 auth_provider=cloudflare_access
 retrieval_mode=hybrid_private_first
 ```
 
-Browser direct `/api/version` caveat:
+LaunchDaemon helper caveat:
 
-- Browser direct navigation to `https://app.steelguitarrag.com/api/version` was blocked by the browser client with `net::ERR_BLOCKED_BY_CLIENT`.
-- Local `/api/version` confirmed runtime `e1103be`.
-- Route to Lane 12 only if browser-visible version diagnostics are required.
+- `deploy/macos/install-private-preview-launchdaemon.sh status` and `version` required `sudo` in the Lane 12 shell and failed non-interactively.
+- Lane 12 still supplied runtime evidence with `launchctl`, listener checks, and local `/api/version`.
+- Route to Lane 12 only if this becomes operationally painful.
 
 ## Latest Protected-Preview Smoke
 
 Latest Lane 12 handoff:
 
-- `docs/handoffs/task-completions/2026-06-23-12-explorer-ui-cleanup-protected-smoke.md`
-- Handoff commit: `760dc73 docs: record explorer UI cleanup protected smoke`
-- Runtime smoked: `e1103be`
+- `docs/handoffs/task-completions/2026-06-23-12-fretboard-button-style-protected-smoke.md`
+- Handoff commit: `78f6c14 docs: record fretboard button style protected smoke`
+- Runtime smoked: `fd342b9`
 - Result: **pass with warnings**
 - API fallback: not used as browser-smoke proof
 
@@ -52,51 +55,57 @@ Smoke URLs:
 
 ```text
 Main app:
-https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=e1103be
+https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=fd342b9
 
 E9 Fretboard Explorer:
-https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=e1103be
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=fd342b9
 
 Root:
-https://app.steelguitarrag.com/?v=e1103be
-
-Brand SVG asset:
-https://app.steelguitarrag.com/brand/pedal-steel-fretboard-background.svg?v=e1103be
+https://app.steelguitarrag.com/?v=fd342b9
 ```
 
 Root caveat:
 
-- `https://app.steelguitarrag.com/?v=e1103be` redirects to `/ui/steel-guitar-rag-mock.html`.
+- `https://app.steelguitarrag.com/?v=fd342b9` redirects to `/ui/steel-guitar-rag-mock.html`.
 - The root redirect drops the query string.
 - Use direct cache-busted `/ui/...?...` URLs when exact cache-busting matters.
 
-## Explorer Cleanup Smoke Result
+## Fretboard Button Style Smoke Result
 
 Passed:
 
 - Cloudflare Access protected-preview login.
 - Main app shell and Q&A surface.
-- Explorer route and Explorer click-through.
-- Explorer cleanup: 12 combined key choices, no duplicate enharmonic key entries, no standalone `five_eight_branch` view option, 5-8 remains available in the correct context, and no raw `five_eight_branch` label.
-- Prompt matrix.
-- Brand asset routing, including the protected SVG asset route.
-- No API fallback was used as browser-smoke proof.
+- Header button visual fix:
+  - `Explore Fretboard` visually matches `Go Backstage`.
+  - Both controls use the shared `header-action-button` style family.
+  - Both use the same UI font family, size, weight, padding, border, radius, height/top alignment, and SVG icon treatment.
+  - Decorative/display font is gone from `Explore Fretboard`.
+  - `Explore Fretboard` opens `/ui/e9-fretboard-explorer.html`.
+  - `Go Backstage` remains separate and targets backstage/settings.
+- Explorer cleanup:
+  - 12 combined key choices present.
+  - No duplicate accidental key list.
+  - No standalone 5&8 branch option in Harmony/View.
+  - Bad internal deterministic/source-card copy absent.
+  - No relevant console errors.
+- Prompt spot checks:
+  - Static grip/position answers remain fretboard-first with no default tab.
+  - Movement prompt can show deterministic tab.
+  - Copyright prompt refuses safely.
+  - Gear prompt has source cards and no stale tab/fretboard.
 
 Warnings preserved:
 
 1. Root URL drops cache-bust on redirect.
-2. Backstage button is functional but visible text is `Get a Backstage Pass`, not `Go Backstage`.
-3. Browser direct `/api/version` navigation was blocked by browser client; local `/api/version` confirmed runtime.
-4. Explorer console warning after select/asset smoke: `Cannot use 'in' operator to search for 'animation' in undefined`.
-5. Prior warning still visible until closed: `tab_example_event` / `Tab event` wording on static grip.
-6. Prior warning still visible until closed: Ab/A-flat fretboard labels canonicalize as `G# major`.
+2. LaunchDaemon helper `status` and `version` commands require `sudo` in this shell, though `launchctl`, listener, and `/api/version` checks supplied runtime evidence.
+3. Prior warning still visible until closed: `tab_example_event` / `Tab event` wording on static grip.
+4. Prior warning still visible until closed: Ab/A-flat fretboard labels canonicalize as `G# major`.
 
 ## Warning Routing
 
 - Root cache-bust behavior: Lane 12 Self-Hosted Deployment.
-- Backstage visible label change, if desired: Lane 06 UX/UI Design.
-- Browser-visible `/api/version` diagnostics, if required: Lane 12 Self-Hosted Deployment.
-- Explorer console warning: Lane 06 UX/UI Design.
+- LaunchDaemon helper sudo caveat: Lane 12 Self-Hosted Deployment only if it becomes operationally painful.
 - `tab_example_event` / `Tab event` wording: Lane 05 if the API payload/detail contract owns the wording; Lane 06 if this is only display-label handling.
 - Ab/A-flat canonicalization to `G# major` fretboard labels: Lane 05 Backend / RAG Integration.
 
@@ -105,7 +114,7 @@ Warnings preserved:
 Current checked state at this refresh:
 
 - Branch: `feature/answer-api`.
-- Repo HEAD: `760dc73`.
+- Repo HEAD: `78f6c14`.
 - Cached index before this docs refresh: empty.
 - `git diff --check`: to be run for this docs refresh.
 
@@ -129,7 +138,7 @@ This is not a clean pass because the warnings above remain.
 ## Safe To Stage For This Refresh
 
 - `docs/handoffs/task-completions/integration-status.md`
-- `docs/handoffs/task-completions/2026-06-23-01-explorer-cleanup-integration-refresh.md`
+- `docs/handoffs/task-completions/2026-06-23-01-fretboard-button-style-integration-refresh.md`
 
 ## Files Not To Stage For This Refresh
 
@@ -141,21 +150,21 @@ This is not a clean pass because the warnings above remain.
 
 ## Recommended Control State
 
-Park the app with known warnings, or choose a follow-up warning slice.
+User smoke the header buttons, then park the app with known warnings.
 
-Use these exact URLs after Cloudflare Access login if user smoke continues:
+Use these exact URLs after Cloudflare Access login:
 
 ```text
 Main app:
-https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=e1103be
+https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=fd342b9
 
 E9 Fretboard Explorer:
-https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=e1103be
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=fd342b9
 ```
 
 Route follow-up work by lane:
 
-- Lane 12 for root cache-bust/redirect behavior or browser-visible version diagnostics.
+- Lane 12 for root cache-bust/redirect behavior or LaunchDaemon helper usability.
 - Lane 05 for API payload/detail contract wording and Ab/A-flat backend canonicalization.
-- Lane 06 for Backstage label preference, Explorer console warning, or display-label-only cleanup if payloads are already correct.
+- Lane 06 for display-label-only cleanup if payloads are already correct.
 - Lane 15 for regression matrix or smoke QA.
