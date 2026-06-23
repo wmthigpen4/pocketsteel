@@ -20,7 +20,12 @@ from pocketsteel.fretboard_examples import (
 
 
 ExplorerScaleType = Literal["major", "natural_minor"]
-ExplorerHarmonyType = Literal["two_string_harmonized", "three_string_diatonic", "advanced_pocket"]
+ExplorerHarmonyType = Literal[
+    "two_string_harmonized",
+    "three_string_diatonic",
+    "five_eight_branch",
+    "advanced_pocket",
+]
 VoicingStatus = Literal["full", "partial", "implied", "unavailable"]
 
 MVP_COPEDENT_ID = "mvp-e9-standard"
@@ -28,7 +33,8 @@ MVP_COPEDENT_LABEL = "Standard 10-string E9"
 
 CORE_GRIPS: tuple[str, ...] = ("3-4-5", "4-5-6", "5-6-8", "6-8-10")
 ADVANCED_GRIPS: tuple[str, ...] = ("5-6-7", "6-7-10", "5-7-8")
-SUPPORTED_GRIPS: tuple[str, ...] = CORE_GRIPS + ADVANCED_GRIPS
+FIVE_EIGHT_BRANCH_GRIPS: tuple[str, ...] = ("5-8",)
+SUPPORTED_GRIPS: tuple[str, ...] = CORE_GRIPS + ADVANCED_GRIPS + FIVE_EIGHT_BRANCH_GRIPS
 
 G_MAJOR_SCALE_NOTES: tuple[str, ...] = ("G", "A", "B", "C", "D", "E", "F#")
 G_NATURAL_MINOR_SCALE_NOTES: tuple[str, ...] = ("G", "A", "Bb", "C", "D", "Eb", "F")
@@ -383,7 +389,7 @@ def display_notes_for_row(
     notes: dict[str, str],
     intervals: dict[str, str],
 ) -> dict[str, str]:
-    if harmony_type == "two_string_harmonized":
+    if harmony_type in {"two_string_harmonized", "five_eight_branch"}:
         scale_notes = scale_notes_for_key(key, scale_type)
         return {string: display_note_for_scale(note, scale_notes) for string, note in notes.items()}
     return {
@@ -451,6 +457,12 @@ def row_teaching_explanation(
             f"This two-string harmonized-scale row maps degree {scale_degree} in {scale}; "
             "it is a partial interval pair, not a full triad."
         )
+    elif harmony_type == "five_eight_branch":
+        branch_color = "major-color" if "e_lower" in position_family else "minor/blue-color"
+        opening = (
+            f"This 5&8 harmonized-scale branch maps branch {scale_degree} in {scale}; "
+            f"it is the {branch_color} route, not a full triad."
+        )
     elif harmony_type == "advanced_pocket":
         opening = (
             f"This advanced 5-7-8 E-lower pocket targets {chord_name} {chord_quality} "
@@ -481,6 +493,8 @@ def row_teaching_explanation(
         sentences.append("Use the mechanical E-lower lever name here; shorthand varies by copedent.")
     if "E-raise" in controls:
         sentences.append("Use the mechanical E-raise lever name here; shorthand varies by copedent.")
+    if harmony_type == "five_eight_branch":
+        sentences.append("Keep the A+F and E-lower routes separate; they are both valid mechanical paths for this branch.")
     if string_group in ADVANCED_GRIPS:
         sentences.append("This is an advanced swap, so compare it with the nearby core grip before treating it as a default.")
     if voicing_status == "partial" and "b7" in omitted_intervals:
@@ -554,7 +568,7 @@ def validate_explorer_candidate(candidate: ExplorerCandidate) -> ExplorerRow:
     voicing_status: VoicingStatus = "full"
     omitted_intervals: tuple[str, ...] = ()
 
-    if candidate.harmony_type == "two_string_harmonized":
+    if candidate.harmony_type in {"two_string_harmonized", "five_eight_branch"}:
         scale_notes = scale_notes_for_key(key, candidate.scale_type)
         if not all(note_in_scale(note, scale_notes) for note in notes.values()):
             raise ValueError("Two-string row contains notes outside the target scale")
@@ -835,6 +849,85 @@ def g_major_two_string_rows() -> list[ExplorerRow]:
     return major_two_string_rows("G")
 
 
+def five_eight_branch_rows(key: str = "G") -> list[ExplorerRow]:
+    """Return the G-only 5&8 A+F and E-lower branch alternatives.
+
+    These rows are deliberately separate from the generic 2-string harmonized
+    rows because the product decision treats A+F and E-lower as two valid
+    branch routes that should not be collapsed into one canonical path.
+    """
+    key = normalize_explorer_key(key)
+    if key != "G":
+        return []
+    candidates = [
+        ExplorerCandidate(
+            key=key,
+            scale_type="major",
+            harmony_type="five_eight_branch",
+            scale_degree=4,
+            chord_function="branch 4 minor/blue color",
+            chord_name="G",
+            chord_quality="dyad",
+            fret=6,
+            strings=(5, 8),
+            controls=("A", "E-raise"),
+            position_family="five_eight_a_f_minor_blue",
+            difficulty_tier="advanced",
+            source_guidance_refs=("e9-harmony-guidance:5-8-branch-a-f",),
+        ),
+        ExplorerCandidate(
+            key=key,
+            scale_type="major",
+            harmony_type="five_eight_branch",
+            scale_degree=4,
+            chord_function="branch 4 major color",
+            chord_name="G",
+            chord_quality="dyad",
+            fret=8,
+            strings=(5, 8),
+            controls=("E-lower",),
+            position_family="five_eight_e_lower_major_color",
+            difficulty_tier="advanced",
+            source_guidance_refs=("e9-harmony-guidance:5-8-branch-e-lower",),
+        ),
+        ExplorerCandidate(
+            key=key,
+            scale_type="major",
+            harmony_type="five_eight_branch",
+            scale_degree=7,
+            chord_function="branch 7 minor/blue color",
+            chord_name="C",
+            chord_quality="dyad",
+            fret=11,
+            strings=(5, 8),
+            controls=("A", "E-raise"),
+            position_family="five_eight_a_f_minor_blue",
+            difficulty_tier="advanced",
+            source_guidance_refs=("e9-harmony-guidance:5-8-branch-a-f",),
+        ),
+        ExplorerCandidate(
+            key=key,
+            scale_type="major",
+            harmony_type="five_eight_branch",
+            scale_degree=7,
+            chord_function="branch 7 major color",
+            chord_name="C",
+            chord_quality="dyad",
+            fret=13,
+            strings=(5, 8),
+            controls=("E-lower",),
+            position_family="five_eight_e_lower_major_color",
+            difficulty_tier="advanced",
+            source_guidance_refs=("e9-harmony-guidance:5-8-branch-e-lower",),
+        ),
+    ]
+    return validate_unique_candidates(candidates)
+
+
+def g_five_eight_branch_rows() -> list[ExplorerRow]:
+    return five_eight_branch_rows("G")
+
+
 def advanced_e_lower_pocket_rows(key: str = "G") -> list[ExplorerRow]:
     key = normalize_explorer_key(key)
     candidates = [
@@ -874,6 +967,7 @@ def explorer_rows(key: str = "G") -> list[ExplorerRow]:
         *major_two_string_rows(key),
         *major_three_string_rows(key),
         *natural_minor_three_string_rows(key),
+        *five_eight_branch_rows(key),
         *advanced_e_lower_pocket_rows(key),
     ]
 
@@ -901,14 +995,14 @@ def build_explorer_payload(key: str = "G") -> dict[str, object]:
                 "major": list(scale_notes_for_key(key, "major")),
                 "natural_minor": list(scale_notes_for_key(key, "natural_minor")),
             },
-            "harmony_types": ["two_string_harmonized", "three_string_diatonic", "advanced_pocket"],
+            "harmony_types": ["two_string_harmonized", "three_string_diatonic", "five_eight_branch", "advanced_pocket"],
             "string_groups": list(SUPPORTED_GRIPS),
         },
         "positions": rows,
         "filters": {
             "available_keys": list(SUPPORTED_EXPLORER_KEYS),
             "available_scale_types": ["major", "natural_minor"],
-            "available_harmony_types": ["two_string_harmonized", "three_string_diatonic", "advanced_pocket"],
+            "available_harmony_types": ["two_string_harmonized", "three_string_diatonic", "five_eight_branch", "advanced_pocket"],
             "available_string_groups": list(SUPPORTED_GRIPS),
         },
         "legend": [

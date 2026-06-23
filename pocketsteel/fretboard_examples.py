@@ -2621,6 +2621,8 @@ def fretboard_payload_for_question(question: str) -> dict | None:
         return get_fretboard_examples("major_positions", "D")
     if re.search(r"\bg\s+a\s*\+\s*f\s+position\b|\bg\s+major\b.*\ba\s*\+\s*f\b|\ba\s*\+\s*f\b.*\bg\s+major\b", q):
         return get_fretboard_examples("major_positions", "G")
+    if re.search(r"\bg\b.*\bharmonized[-\s]+scale\b.*\b(?:5\s*(?:&|and|-)\s*8|strings?\s+5\s+(?:and\s+)?8)\b", q):
+        return g_five_eight_harmonized_scale_branches().to_payload()
     mixed_a_minor_c_major_payload = mixed_a_minor_c_major_payload_for_question(q)
     if mixed_a_minor_c_major_payload is not None:
         return mixed_a_minor_c_major_payload
@@ -3218,6 +3220,111 @@ def major_positions(key: str) -> FretboardVisualizationPayload:
         subtitle=f"Common places to find {key} major.",
         key=key,
         positions=positions,
+    )
+
+
+def g_five_eight_harmonized_scale_branches() -> FretboardVisualizationPayload:
+    """Return the validated G 5&8 A+F/E-lower branch alternatives."""
+    specs: tuple[dict[str, object], ...] = (
+        {
+            "suffix": "five-eight-af-branch-4-6",
+            "root": "G",
+            "fret": 6,
+            "pedals": ("A",),
+            "levers": ("F",),
+            "role": "5&8 A+F branch 4 minor/blue color",
+            "family": "five_eight_a_f_minor_blue",
+            "color": "secondary",
+            "color_role": "secondary",
+            "sort_order": 10,
+            "explanation": (
+                "Strings 5 and 8 at fret 6 with A pedal plus E-raise/F lever spell G and B. "
+                "This is the branch-4 minor/blue-color route."
+            ),
+            "why_use_it": "Use this when you want the A+F branch color instead of collapsing the branch into E-lower.",
+        },
+        {
+            "suffix": "five-eight-e-lower-branch-4-8",
+            "root": "G",
+            "fret": 8,
+            "pedals": (),
+            "levers": ("E",),
+            "role": "5&8 E-lower branch 4 major color",
+            "family": "five_eight_e_lower_major_color",
+            "color": "reference",
+            "color_role": "e-lower",
+            "sort_order": 20,
+            "explanation": (
+                "Strings 5 and 8 at fret 8 with E-lower spell G and B. "
+                "This is the branch-4 major-color route."
+            ),
+            "why_use_it": "Use this when you want the E-lower branch color and a connected lever path.",
+        },
+        {
+            "suffix": "five-eight-af-branch-7-11",
+            "root": "C",
+            "fret": 11,
+            "pedals": ("A",),
+            "levers": ("F",),
+            "role": "5&8 A+F branch 7 minor/blue color",
+            "family": "five_eight_a_f_minor_blue",
+            "color": "secondary",
+            "color_role": "secondary",
+            "sort_order": 30,
+            "explanation": (
+                "Strings 5 and 8 at fret 11 with A pedal plus E-raise/F lever spell C and E. "
+                "This is the branch-7 minor/blue-color route."
+            ),
+            "why_use_it": "Use this as the A+F route to the C/E branch.",
+        },
+        {
+            "suffix": "five-eight-e-lower-branch-7-13",
+            "root": "C",
+            "fret": 13,
+            "pedals": (),
+            "levers": ("E",),
+            "role": "5&8 E-lower branch 7 major color",
+            "family": "five_eight_e_lower_major_color",
+            "color": "reference",
+            "color_role": "e-lower",
+            "sort_order": 40,
+            "explanation": (
+                "Strings 5 and 8 at fret 13 with E-lower spell C and E. "
+                "This is the corrected branch-7 major-color route; the old 11th-fret E-lower wording was a typo."
+            ),
+            "why_use_it": "Use this as the corrected E-lower route to the C/E branch.",
+        },
+    )
+    positions: list[FretboardPosition] = []
+    for spec in specs:
+        candidate = major_position_candidate(
+            key=str(spec["root"]),
+            suffix=str(spec["suffix"]),
+            fret=int(spec["fret"]),
+            strings=(5, 8),
+            pedals=spec["pedals"],  # type: ignore[arg-type]
+            levers=spec["levers"],  # type: ignore[arg-type]
+            color=str(spec["color"]),
+            role=str(spec["role"]),
+            family=str(spec["family"]),
+            tier="advanced",
+            color_role=str(spec["color_role"]),
+            visible_by_default=True,
+            sort_order=int(spec["sort_order"]),
+            explanation=str(spec["explanation"]),
+            function="G harmonized 5&8 branch",
+            key_context="G",
+            why_use_it=str(spec["why_use_it"]),
+            caveats=("This is a two-note branch color, not a complete triad by itself.",),
+        )
+        if candidate is None:
+            raise ValueError(f"5&8 branch did not validate: {spec['role']}")
+        positions.append(candidate)
+    return FretboardVisualizationPayload(
+        title="G harmonized scale 5&8 branches",
+        subtitle="Pitch-validated A+F and E-lower branch alternatives on strings 5 and 8.",
+        key="G",
+        positions=tuple(positions),
     )
 
 

@@ -11,6 +11,7 @@ from pocketsteel.fretboard_explorer import (
     explorer_rows,
     g_advanced_e_lower_pocket_rows,
     g_explorer_rows,
+    g_five_eight_branch_rows,
     g_major_three_string_rows,
     g_major_two_string_rows,
     g_natural_minor_three_string_rows,
@@ -506,6 +507,70 @@ def test_g_major_two_string_harmonized_rows_are_pitch_validated() -> None:
     assert all(row["voicing_status"] == "partial" for row in group_46)
     assert group_46[1]["levers"] == ["E-raise"]
     assert group_46[1]["notes"] == {"4": "A", "6": "C"}
+
+
+def test_g_five_eight_branch_alternatives_keep_a_f_and_e_lower_routes() -> None:
+    rows = [row.to_dict() for row in g_five_eight_branch_rows()]
+
+    assert [row["harmony_type"] for row in rows] == ["five_eight_branch"] * 4
+    assert [row["string_group"] for row in rows] == ["5-8"] * 4
+    assert [row["fret"] for row in rows] == [6, 8, 11, 13]
+    assert [row["chord_function"] for row in rows] == [
+        "branch 4 minor/blue color",
+        "branch 4 major color",
+        "branch 7 minor/blue color",
+        "branch 7 major color",
+    ]
+
+    branch_by_fret = {row["fret"]: row for row in rows}
+    assert branch_by_fret[6]["pedals"] == ["A"]
+    assert branch_by_fret[6]["levers"] == ["E-raise"]
+    assert branch_by_fret[6]["notes"] == {"5": "G", "8": "B"}
+    assert branch_by_fret[6]["intervals"] == {"5": "1", "8": "3"}
+    assert branch_by_fret[6]["position_family"] == "five_eight_a_f_minor_blue"
+
+    assert branch_by_fret[8]["pedals"] == []
+    assert branch_by_fret[8]["levers"] == ["E-lower"]
+    assert branch_by_fret[8]["notes"] == {"5": "G", "8": "B"}
+    assert branch_by_fret[8]["intervals"] == {"5": "1", "8": "3"}
+    assert branch_by_fret[8]["position_family"] == "five_eight_e_lower_major_color"
+
+    assert branch_by_fret[11]["pedals"] == ["A"]
+    assert branch_by_fret[11]["levers"] == ["E-raise"]
+    assert branch_by_fret[11]["notes"] == {"5": "C", "8": "E"}
+    assert branch_by_fret[11]["intervals"] == {"5": "1", "8": "3"}
+
+    assert branch_by_fret[13]["pedals"] == []
+    assert branch_by_fret[13]["levers"] == ["E-lower"]
+    assert branch_by_fret[13]["notes"] == {"5": "C", "8": "E"}
+    assert branch_by_fret[13]["intervals"] == {"5": "1", "8": "3"}
+    assert "corrected" not in branch_by_fret[13]["display_summary"].lower()
+
+    assert not any(row["fret"] == 11 and row["levers"] == ["E-lower"] for row in rows)
+    assert all(row["voicing_status"] == "partial" for row in rows)
+    assert all("both valid mechanical paths" in row["explanation_summary"] for row in rows)
+
+
+def test_g_explorer_payload_includes_five_eight_branch_without_collapsing_routes() -> None:
+    payload = build_g_explorer_payload()
+    validate_explorer_payload(payload)
+
+    branch_rows = [
+        row
+        for row in payload["positions"]
+        if row["harmony_type"] == "five_eight_branch"
+    ]
+    assert len(branch_rows) == 4
+    assert "five_eight_branch" in payload["query"]["harmony_types"]
+    assert "five_eight_branch" in payload["filters"]["available_harmony_types"]
+    assert "5-8" in payload["query"]["string_groups"]
+
+    routes = {(tuple(row["pedals"]), tuple(row["levers"]), row["fret"]) for row in branch_rows}
+    assert (("A",), ("E-raise",), 6) in routes
+    assert ((), ("E-lower",), 8) in routes
+    assert (("A",), ("E-raise",), 11) in routes
+    assert ((), ("E-lower",), 13) in routes
+    assert ((), ("E-lower",), 11) not in routes
 
 
 def test_advanced_swaps_and_e_lower_pocket_are_explicit() -> None:

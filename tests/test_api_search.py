@@ -7467,6 +7467,39 @@ def test_answer_uses_fretboard_first_for_static_g_chord_string_request() -> None
     assert_no_tab_specificity_fallback(payload)
 
 
+def test_answer_uses_fretboard_first_for_static_g_harmonized_scale_five_eight_request() -> None:
+    payload = answer_for_question("Show me a G harmonized scale on strings 5 and 8.", noisy_practical_sources())
+
+    assert "tab_example" not in payload
+    assert "fretboard" in payload
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert payload["answer"].startswith("Here are the validated G harmonized-scale 5&8 branch options on E9.")
+    assert "fret 13 with E-lower" in payload["answer"]
+    assert "11th-fret E-lower wording was a typo" in payload["answer"]
+    assert_valid_fretboard_payload(payload)
+
+    positions = payload["fretboard"]["positions"]
+    assert payload["fretboard"]["title"] == "G harmonized scale 5&8 branches"
+    assert [position["fret"] for position in positions] == [6, 8, 11, 13]
+    assert [position["grip"] for position in positions] == ["5-8"] * 4
+    assert positions[0]["pedals"] == ["A"]
+    assert positions[0]["levers"] == ["F"]
+    assert positions[0]["notes"] == {"5": "G", "8": "B"}
+    assert positions[1]["pedals"] == []
+    assert positions[1]["levers"] == ["E"]
+    assert positions[1]["notes"] == {"5": "G", "8": "B"}
+    assert positions[2]["pedals"] == ["A"]
+    assert positions[2]["levers"] == ["F"]
+    assert positions[2]["notes"] == {"5": "C", "8": "E"}
+    assert positions[3]["pedals"] == []
+    assert positions[3]["levers"] == ["E"]
+    assert positions[3]["notes"] == {"5": "C", "8": "E"}
+    assert not any(position["fret"] == 11 and position["levers"] == ["E"] for position in positions)
+    assert all(position["isPartial"] for position in positions)
+    assert_deterministic_fretboard_sources_are_clean(payload)
+
+
 def test_answer_uses_fretboard_without_tab_for_static_g_location_request() -> None:
     payload = answer_for_question("Where is G on E9?", noisy_practical_sources())
 

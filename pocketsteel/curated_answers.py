@@ -184,6 +184,20 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
     lyrics_answer = full_lyrics_guardrail_answer(q)
     if lyrics_answer is not None:
         return lyrics_answer
+    if mentions_g_five_eight_harmonized_scale(q):
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=(
+                "Here are the validated G harmonized-scale 5&8 branch options on E9.\n\n"
+                "- Branch 4 minor/blue-color route: fret 6 with A pedal + E-raise/F lever on strings 5 and 8; the notes are G and B.\n"
+                "- Branch 4 major-color route: fret 8 with E-lower on strings 5 and 8; the notes are G and B.\n"
+                "- Branch 7 minor/blue-color route: fret 11 with A pedal + E-raise/F lever on strings 5 and 8; the notes are C and E.\n"
+                "- Branch 7 major-color route: fret 13 with E-lower on strings 5 and 8; the notes are C and E.\n\n"
+                "The 13th-fret E-lower branch is the corrected C/E route; the older 11th-fret E-lower wording was a typo. "
+                "This is static fretboard information, so it uses a fretboard diagram rather than tab."
+            ),
+        )
     if mentions_harmonized_scale_workout(q):
         return CuratedAnswer(
             intent="practice_plan",
@@ -2871,6 +2885,14 @@ def mentions_vague_next_step_question(question: str) -> bool:
 
 def mentions_harmonized_scale_workout(question: str) -> bool:
     return bool(re.search(r"\bharmonized[-\s]+scales?\b", question) and re.search(r"\b(?:workout|practice|drill|plan)\b", question))
+
+
+def mentions_g_five_eight_harmonized_scale(question: str) -> bool:
+    return bool(
+        re.search(r"\bg\b", question)
+        and re.search(r"\bharmonized[-\s]+scales?\b", question)
+        and re.search(r"\b(?:5\s*(?:&|and|-)\s*8|strings?\s+5\s+(?:and\s+)?8)\b", question)
+    )
 
 
 def mentions_e_lower_minor_sound_position(question: str) -> bool:
