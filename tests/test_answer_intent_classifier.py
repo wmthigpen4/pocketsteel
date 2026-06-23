@@ -621,6 +621,35 @@ def test_explicit_position_questions_request_fretboard() -> None:
 @pytest.mark.parametrize(
     "question",
     [
+        "Show me a G harmonized scale.",
+        "Show me G major harmonized scale on E9.",
+        "Show me a G major harmonized scale.",
+        "Show me a G harmonized scale on E9.",
+        "Show me a G natural minor harmonized scale.",
+        "Show me G natural minor harmonized scale on E9.",
+        "Show me the F# diminished position in G.",
+        "Show me the A diminished position in G minor.",
+        "Show me a G harmonized scale on strings 5 and 8.",
+    ],
+)
+def test_g_harmonized_scale_visual_prompts_request_fretboard_without_retrieval(question: str) -> None:
+    decision = classify_answer_intent(question)
+
+    assert_contract_shape(decision)
+    assert decision == {
+        "domain": "steel_guitar",
+        "intent": "copedent_position",
+        "needs_sources": False,
+        "needs_fretboard": True,
+        "needs_copedent": True,
+        "retrieval_allowed": False,
+        "allowed_answer_shape": "copedent_position",
+    }
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
         "How do I play a G dom 7?",
         "How do I play a G7?",
         "What is a G dominant 7?",

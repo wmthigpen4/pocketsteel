@@ -266,6 +266,15 @@ ROOTED_CHORD_QUALITY_RE = re.compile(
     r")(?![-\w])",
     re.I,
 )
+G_HARMONIZED_SCALE_VISUAL_RE = re.compile(
+    r"\b(?:show|where|find|display)\b.*\b(?:"
+    r"g\s+(?:major\s+|natural\s+minor\s+)?harmonized\s+scale|"
+    r"g\s+harmonized\s+scale|"
+    r"(?:f#|f\s+sharp)\s+diminished\s+position\s+in\s+g|"
+    r"a\s+diminished\s+position\s+in\s+g\s+minor"
+    r")\b",
+    re.I,
+)
 
 
 def classify_answer_request(question: str, mode: str = "ask") -> AnswerIntentPayload:
@@ -334,6 +343,17 @@ def classify_answer_request(question: str, mode: str = "ask") -> AnswerIntentPay
             needs_copedent=False,
             retrieval_allowed=False,
             allowed_answer_shape="practice_plan",
+        )
+
+    if _mentions_g_harmonized_scale_visual(q):
+        return _decision(
+            domain="steel_guitar",
+            intent="copedent_position",
+            needs_sources=False,
+            needs_fretboard=True,
+            needs_copedent=True,
+            retrieval_allowed=False,
+            allowed_answer_shape="copedent_position",
         )
 
     mode_decision = _decision_from_mode(q, normalized_mode)
@@ -560,6 +580,10 @@ def _normalize(question: str) -> str:
 
 def _mentions_steel(question: str) -> bool:
     return bool(STEEL_TERMS_RE.search(question))
+
+
+def _mentions_g_harmonized_scale_visual(question: str) -> bool:
+    return bool(G_HARMONIZED_SCALE_VISUAL_RE.search(question))
 
 
 def _mentions_gear_diagnosis(question: str) -> bool:

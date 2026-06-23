@@ -350,6 +350,8 @@ def test_contract_intent_inference_for_common_questions() -> None:
 
 def test_intent_mode_classifier_for_practical_advice_questions() -> None:
     assert intent_mode_for_question("Where is a G chord?") == "instrument_visual"
+    assert intent_mode_for_question("Show me a G harmonized scale.") == "instrument_visual"
+    assert intent_mode_for_question("Show me the F# diminished position in G.") == "instrument_visual"
     assert intent_mode_for_question("How do people power their StroboPlus tuner when playing a gig? My batteries run out very fast.") == "gear_advice"
     assert intent_mode_for_question("Should delay go before my volume pedal or after it?") == "gear_advice"
     assert intent_mode_for_question("I broke a string during a show. Has that happened to anyone else? What do people do?") == "gig_advice"
@@ -7676,8 +7678,9 @@ def test_same_origin_browser_answer_path_routes_broader_g_harmonized_scale_promp
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
     monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
+    search_index = FakeSearchIndex({"results": noisy_practical_sources(), "warnings": ["should not appear"]})
     api_app = create_v2_api_app(
-        FakeSearchIndex({"results": noisy_practical_sources(), "warnings": ["should not appear"]}),
+        search_index,
         answer_auth_mode="production",
         auth_provider="cloudflare_access",
         cloudflare_verifier=FakeCloudflareVerifier(),
@@ -7713,6 +7716,7 @@ def test_same_origin_browser_answer_path_routes_broader_g_harmonized_scale_promp
         assert payload["sources"] == []
         assert payload["warnings"] == []
         assert_valid_fretboard_payload(payload)
+    assert search_index.calls == []
 
 
 def test_answer_uses_fretboard_without_tab_for_static_g_location_request() -> None:

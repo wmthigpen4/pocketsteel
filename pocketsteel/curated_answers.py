@@ -3407,9 +3407,24 @@ def _mentions_stage_string_forum_wisdom(question: str) -> bool:
 
 
 def _mentions_instrument_visual_intent(question: str) -> bool:
+    if _mentions_g_harmonized_scale_visual_intent(question):
+        return True
     return bool(
         re.search(r"\b(?:where|show|what frets|how do i play|how do i make|what does|what notes|what makes)\b", question)
         and re.search(r"\b(?:chords?|major|minor|fret|frets|positions?|e9|strings?|grips?|pedals?|levers?|vi|6m|b9|e lowered|e-lower)\b", question)
+    )
+
+
+def _mentions_g_harmonized_scale_visual_intent(question: str) -> bool:
+    return bool(
+        re.search(r"\b(?:show|where|find|display)\b", question)
+        and re.search(
+            r"\b(?:g\s+(?:major\s+|natural\s+minor\s+)?harmonized\s+scale|"
+            r"g\s+harmonized\s+scale|"
+            r"(?:f#|f\s+sharp)\s+diminished\s+position\s+in\s+g|"
+            r"a\s+diminished\s+position\s+in\s+g\s+minor)\b",
+            question,
+        )
     )
 
 
