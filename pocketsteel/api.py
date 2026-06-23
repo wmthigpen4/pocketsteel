@@ -255,6 +255,9 @@ class RetrievalApi:
         self.answer_rate_limiter = answer_rate_limiter or InMemoryAnswerRateLimiter.from_env()
         self.answer_request_log: list[dict[str, Any]] = []
         self.retrieval_config = retrieval_config or configured_retrieval_mode_config()
+        self.git_sha = self._git_value("rev-parse", "--short", "HEAD")
+        self.git_branch = self._git_value("branch", "--show-current")
+        self.server_started_at = datetime.now(timezone.utc).isoformat()
 
     def __call__(self, environ: dict[str, Any], start_response: Any) -> Iterable[bytes]:
         method = environ.get("REQUEST_METHOD", "GET")
@@ -861,9 +864,9 @@ class RetrievalApi:
 
     def _version_payload(self) -> dict[str, Any]:
         return {
-            "git_sha": self._git_value("rev-parse", "--short", "HEAD"),
-            "git_branch": self._git_value("branch", "--show-current"),
-            "server_started_at": datetime.now(timezone.utc).isoformat(),
+            "git_sha": self.git_sha,
+            "git_branch": self.git_branch,
+            "server_started_at": self.server_started_at,
             "python_module": "pocketsteel.api",
             "retrieval_mode": self.retrieval_config.requested_mode.value,
             "auth_provider": self.auth_provider,

@@ -568,6 +568,35 @@ def test_api_version_reports_runtime_identity_without_auth_or_secrets() -> None:
     assert "/Users/" not in json.dumps(payload)
 
 
+def test_api_version_reports_app_start_identity_consistently() -> None:
+    app = create_app(
+        fake_search_index(),
+        answer_provider=FakeAnswerProvider(),
+        retrieval_config=retrieval_config("hybrid_private_first", private_enabled=True),
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+    )
+
+    first_status, _, first_payload = call_existing_app(
+        app,
+        "/api/version",
+        method="GET",
+        access_role=None,
+    )
+    second_status, _, second_payload = call_existing_app(
+        app,
+        "/api/version",
+        method="GET",
+        access_role=None,
+    )
+
+    assert first_status == "200 OK"
+    assert second_status == "200 OK"
+    assert first_payload["git_sha"] == second_payload["git_sha"]
+    assert first_payload["git_branch"] == second_payload["git_branch"]
+    assert first_payload["server_started_at"] == second_payload["server_started_at"]
+
+
 def test_api_version_rejects_non_get_method() -> None:
     status, _, payload = call_app(
         "/api/version",
@@ -7603,6 +7632,42 @@ def test_answer_routes_named_diminished_positions_in_g_without_m7b5_overclaiming
     assert a_position["levers"] == ["F"]
     assert a_position["omittedIntervals"] == []
     assert_deterministic_fretboard_sources_are_clean(a_dim)
+
+
+def test_production_cloudflare_answer_api_routes_broader_g_harmonized_scale_prompts(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
+    prompts = [
+        "Show me a G harmonized scale.",
+        "Show me G major harmonized scale on E9.",
+        "Show me a G natural minor harmonized scale.",
+        "Show me the F# diminished position in G.",
+        "Show me the A diminished position in G minor.",
+        "Show me a G harmonized scale on strings 5 and 8.",
+    ]
+
+    for prompt in prompts:
+        status, _, payload = call_app(
+            "/api/answer",
+            method="POST",
+            json_body={"question": prompt, "mode": "ask", "topK": 6},
+            search_index=FakeSearchIndex({"results": noisy_practical_sources(), "warnings": ["should not appear"]}),
+            answer_provider=DeterministicAnswerProvider(),
+            answer_auth_mode="production",
+            auth_provider="cloudflare_access",
+            cloudflare_token="valid-beta",
+            cloudflare_verifier=FakeCloudflareVerifier(),
+            access_role=None,
+        )
+
+        assert status == "200 OK"
+        assert "I need a more specific steel-guitar question" not in payload["answer"]
+        assert "fretboard" in payload
+        assert "tab_example" not in payload
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+        assert_valid_fretboard_payload(payload)
 
 
 def test_answer_uses_fretboard_without_tab_for_static_g_location_request() -> None:
