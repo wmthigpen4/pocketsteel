@@ -269,10 +269,11 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "checked against tuning and pedal/lever changes" in html
     assert "These Explorer rows are deterministic teaching data, separate from source-card answers." not in html
     assert "not corpus retrieval or RAG-generated fretboard positions" not in html
-    assert '<script src="pedal-steel-fretboard.js?v=explorer-ui-cleanup-20260623"></script>' in html
+    assert '<script src="pedal-steel-fretboard.js?v=explorer-render-fix-20260623"></script>' in html
     assert "pedal-steel-fretboard.js?v=e9-explorer-explanation-ui-20260623" not in html
-    assert '<script src="e9-fretboard-explorer-data.js?v=explorer-ui-cleanup-20260623"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=explorer-ui-cleanup-20260623"></script>' in html
+    assert "pedal-steel-fretboard.js?v=explorer-ui-cleanup-20260623" not in html
+    assert '<script src="e9-fretboard-explorer-data.js?v=explorer-render-fix-20260623"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=explorer-render-fix-20260623"></script>' in html
     expected_key_options = {
         "C": "C",
         "Db": "C# (or D♭)",
@@ -307,6 +308,9 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<option value="five_eight_branch">5&amp;8 branch positions (2-string)</option>' not in html
     assert '<option value="three_string_diatonic" selected>3-string diatonic harmony</option>' in html
     assert "grid-template-columns: repeat(3, minmax(0, 1fr));" in html
+    assert "align-content: start;" in html
+    assert ".explorer-control:not(.explorer-control--string-group) select" in html
+    assert "height: 42px;" in html
     assert ".explorer-control--string-group" in html
     assert "grid-column: 1 / -1;" in html
     assert '<div class="explorer-control explorer-control--string-group">' in html
@@ -340,6 +344,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "display_scale_notes" in script
     assert "FIVE_EIGHT_GROUPS" in script
     assert "TWO_STRING_DISPLAY_GROUPS" in script
+    assert "availableStringGroups" in script
     assert "5&8 branch" in script
     assert "per_string_changes" in script
     assert "warnings" in script
@@ -576,6 +581,7 @@ assert.equal(lastMount.options.showHighlightLabels, false);
 assert.equal(lastMount.options.hideFilterControls, true);
 assert.equal(lastMount.options.hidePositionTools, true);
 assert.equal(lastMount.options.hideLegend, true);
+assert.equal(lastMount.options.positions.length > 0, true);
 assert.equal(lastMount.options.positions.some((row) => row.grip === "5-7-8"), true);
 assert.match(elements["explorer-result-count"].textContent, /Showing validated positions/);
 assert.doesNotMatch(elements["explorer-result-count"].textContent, /validated rows/);
@@ -667,6 +673,10 @@ assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /five_eigh
 
 elements["explorer-harmony"].value = "three_string_diatonic";
 elements["explorer-harmony"].dispatchChange();
+assert.equal(elements["explorer-string-group"].value, "all");
+assert.equal(lastMount.options.positions.length > 0, true);
+assert.equal(lastMount.options.positions.some((row) => row.grip === "5-8"), false);
+assert.equal(elements["explorer-empty"].hidden, true);
 elements["explorer-string-group"].selectValues(["5-7-8"]);
 assert.match(elements["explorer-selected-detail"].textContent, /Per-string changes/);
 assert.match(elements["explorer-selected-detail"].textContent, /Why this position works/);

@@ -104,6 +104,7 @@
 
     .explorer-control {
       display: grid;
+      align-content: start;
       gap: 7px;
     }
 
@@ -125,6 +126,10 @@
       color: var(--text);
       font: inherit;
       font-weight: 700;
+    }
+
+    .explorer-control:not(.explorer-control--string-group) select {
+      height: 42px;
     }
 
     .explorer-control select[multiple] {
@@ -528,8 +533,8 @@
     </section>
   </main>
 
-  <script src="pedal-steel-fretboard.js?v=explorer-ui-cleanup-20260623"></script>
-  <script src="e9-fretboard-explorer-data.js?v=explorer-ui-cleanup-20260623"></script>
-  <script src="e9-fretboard-explorer.js?v=explorer-ui-cleanup-20260623"></script>
+  <script src="pedal-steel-fretboard.js?v=explorer-render-fix-20260623"></script>
+  <script src="e9-fretboard-explorer-data.js?v=explorer-render-fix-20260623"></script>
+  <script src="e9-fretboard-explorer.js?v=explorer-render-fix-20260623"></script>
 </body>
 </html>

@@ -145,6 +145,13 @@
     return Array.from(allowedGroups).filter((group) => present.has(group));
   }
 
+  function availableStringGroups(rows, harmony) {
+    if (harmony === "two_string_harmonized") {
+      return uniqueGroups(rows, TWO_STRING_DISPLAY_GROUPS);
+    }
+    return uniqueGroups(rows, new Set([...CORE_GROUPS, ...ADVANCED_GROUPS]));
+  }
+
   function option(value, label, selectedValues) {
     const values = Array.isArray(selectedValues) ? selectedValues : [selectedValues];
     return `<option value="${escapeHtml(value)}"${values.includes(value) ? " selected" : ""}>${escapeHtml(label)}</option>`;
@@ -209,7 +216,8 @@
     const scale = els.scale.value;
     const harmony = els.harmony.value;
     const rows = rowsForScaleAndHarmony(scale, harmony);
-    const currentValues = selectedStringGroups();
+    const validGroups = availableStringGroups(rows, harmony);
+    const currentValues = selectedStringGroups().filter((group) => validGroups.includes(group));
     const allLabel = harmony === "two_string_harmonized"
       ? "All 2-string groups"
       : "All 3-string groups";
@@ -217,7 +225,7 @@
     let html = option("all", allLabel, selectedValues);
 
     if (harmony === "two_string_harmonized") {
-      html += optionGroup("2-string groups", uniqueGroups(rows, TWO_STRING_DISPLAY_GROUPS), selectedValues);
+      html += optionGroup("2-string groups", validGroups, selectedValues);
     } else {
       html += optionGroup("Core grips", uniqueGroups(rows, CORE_GROUPS), selectedValues);
       html += optionGroup("Advanced swaps", uniqueGroups(rows, ADVANCED_GROUPS), selectedValues);
