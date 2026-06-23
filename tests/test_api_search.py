@@ -46,6 +46,8 @@ from pocketsteel.cloudflare_access import (
 )
 from pocketsteel.rag_guardrails import INJECTION_WARNING
 from pocketsteel.retrieval_modes import RetrievalMode, RetrievalModeConfig
+from scripts.serve_answer_smoke import build_app
+from scripts.serve_v2_rerank_smoke import create_v2_api_app
 
 
 def call_app(
@@ -7659,6 +7661,49 @@ def test_production_cloudflare_answer_api_routes_broader_g_harmonized_scale_prom
             cloudflare_token="valid-beta",
             cloudflare_verifier=FakeCloudflareVerifier(),
             access_role=None,
+        )
+
+        assert status == "200 OK"
+        assert "I need a more specific steel-guitar question" not in payload["answer"]
+        assert "fretboard" in payload
+        assert "tab_example" not in payload
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+        assert_valid_fretboard_payload(payload)
+
+
+def test_same_origin_browser_answer_path_routes_broader_g_harmonized_scale_prompts(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
+    api_app = create_v2_api_app(
+        FakeSearchIndex({"results": noisy_practical_sources(), "warnings": ["should not appear"]}),
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+    )
+    same_origin_app = build_app(api_app=api_app, ui_root=Path("ui"))
+    prompts = [
+        "Show me a G harmonized scale.",
+        "Show me G major harmonized scale on E9.",
+        "Show me a G major harmonized scale.",
+        "Show me a G harmonized scale on E9.",
+        "Show me a G natural minor harmonized scale.",
+        "Show me G natural minor harmonized scale on E9.",
+        "Show me the F# diminished position in G.",
+        "Show me the A diminished position in G minor.",
+        "Show me a G harmonized scale on strings 5 and 8.",
+    ]
+
+    for prompt in prompts:
+        status, _, payload = call_existing_app(
+            same_origin_app,
+            "/api/answer",
+            method="POST",
+            json_body={"question": prompt},
+            access_role="beta_user",
+            access_header="dev",
+            cloudflare_cookie_token="valid-beta",
         )
 
         assert status == "200 OK"

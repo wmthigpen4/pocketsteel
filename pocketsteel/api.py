@@ -190,6 +190,10 @@ def _attach_tab_example_if_available(
 
 
 def _answer_is_generic_tab_fallback(answer: str) -> bool:
+    return _answer_is_generic_specificity_fallback(answer)
+
+
+def _answer_is_generic_specificity_fallback(answer: str) -> bool:
     lowered = str(answer or "").lower()
     return any(
         marker in lowered
@@ -587,7 +591,13 @@ class RetrievalApi:
             final_answer = normalize_answer_list_markers(final_answer)
             fretboard_payload = fretboard_payload_for_question(answer_request.question)
             if fretboard_payload is not None:
+                visual_answer = visual_fretboard_curated_answer(answer_request.question)
+                if visual_answer is not None and _answer_is_generic_specificity_fallback(final_answer):
+                    final_answer = final_answer_quality_gate(visual_answer.answer, answer_request.question)
+                    contract_validation = enforce_answer_contract(final_answer, visual_answer.intent)
+                    final_answer = normalize_answer_list_markers(contract_validation.answer)
                 sources = []
+                warnings = []
             payload: AnswerResponse = {
                 "answer": final_answer,
                 "mode": answer_request.mode,
