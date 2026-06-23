@@ -27,6 +27,43 @@ PASS with one follow-up warning:
 
 No backend blockers found.
 
+## Additional User-Facing QA Run At HEAD `fe40292`
+
+Run context:
+- Branch: `feature/answer-api`
+- Starting HEAD for this additional QA pass: `fe40292`
+- Runtime `/api/version`: `fe40292`, branch `feature/answer-api`, retrieval mode `hybrid_private_first`, auth provider `cloudflare_access`
+- Commit under QA remains included in ancestry: `c08cc95 feat: add deterministic G harmonized scale rules`
+- API fallback status: live local `/api/answer` was reachable but auth-blocked under Cloudflare Access mode; in-process answer-contract helpers were used for the 12-prompt behavioral matrix.
+- Browser smoke status: local browser app shell loaded at `http://127.0.0.1:8770/ui/steel-guitar-rag-mock.html?access=beta_user&v=c08cc95`, but the Q&A input remained locked with `Private beta answers need a Backstage Pass.` Answer submission was therefore not possible in local browser without a valid Cloudflare Access identity.
+
+Additional pass/warn/fail:
+- PASS for the exact scoped 5&8 harmonized-scale rule and regression suite.
+- WARN for adjacent user-facing prompts that still fall back generically instead of using deterministic Explorer-scale/diminished-position logic.
+- WARN for local browser smoke: app shell loads and has no raw object strings, but current local runtime auth mode prevents Q&A answer submission.
+
+Prompt matrix:
+
+| # | Prompt | Result |
+| --- | --- | --- |
+| 1 | `Show me a G harmonized scale on strings 5 and 8.` | PASS. Fretboard payload present; frets 6, 8, 11, 13; 13th-fret E-lower C/E present; no 11th-fret E-lower C/E; `sources=[]`; `warnings=[]`; no `tab_example`. |
+| 2 | `Show me a G harmonized scale.` | WARN. Generic low-confidence fallback with one source card; no fretboard. Route to Lane 05 if this should use deterministic Explorer rows. |
+| 3 | `Show me G major harmonized scale on E9.` | WARN. Generic low-confidence fallback with one source card; no fretboard. Route to Lane 05 if this should use deterministic Explorer rows. |
+| 4 | `Show me a G natural minor harmonized scale.` | WARN. Generic low-confidence fallback with one source card; no fretboard. Route to Lane 05 if this should use deterministic Explorer rows. |
+| 5 | `Show me the F# diminished position in G.` | WARN. Generic low-confidence fallback with one source card; no fretboard. No false full-m7b5 claim, but no deterministic diminished-position answer. Route to Lane 05 if this should be supported. |
+| 6 | `Show me the A diminished position in G minor.` | WARN. Generic low-confidence fallback with one source card; no fretboard. No false full-m7b5 claim, but no deterministic diminished-position answer. Route to Lane 05 if this should be supported. |
+| 7 | `Show me a G major grip.` | PASS. Fretboard-first static grip answer; no tab; no warning. One supporting source card remains. |
+| 8 | `Show me a 4-5-6 grip.` | PASS. Fretboard-first static grip answer; no tab; no warning. One supporting source card remains. |
+| 9 | `Show me a G to C move.` | PASS. Deterministic movement answer with fretboard and `tab_example`; no sources; no warnings. |
+| 10 | `Give me a beginner lick in G.` | PASS. Deterministic lick answer with fretboard and `tab_example`; no sources; no warnings. |
+| 11 | `Give me the full tab for a modern copyrighted song.` | PASS. Refuses/redirects safely; no fretboard; no tab; no sources; no warnings. |
+| 12 | `What are good Fender Steel King settings?` | PASS. Gear answer has no stale fretboard or tab payload; no warnings; one source card. |
+
+User-facing defect routing from this additional run:
+- Lane 05: decide whether broader harmonized-scale and diminished-position prompts should route to deterministic Explorer/fretboard answers instead of generic fallback.
+- Lane 06: expose `five_eight_branch` / `5-8` in the browser Explorer UI if the new branch should be directly selectable.
+- Lane 12: if live local/protected browser answer submission is required, verify the runtime/auth mode and Cloudflare Access identity path; current local browser smoke could load the shell but not unlock Q&A.
+
 ## Branch And HEAD
 
 - Branch: `feature/answer-api`
@@ -171,6 +208,19 @@ git rev-parse --short HEAD
 git log -1 --oneline
 ```
 
+Additional current-state checks for the later QA pass:
+
+```bash
+git status --short
+git branch --show-current
+git rev-parse --short HEAD
+git log -1 --oneline
+git diff --name-only
+git diff --cached --name-only
+git diff --check
+# branch feature/answer-api; HEAD fe40292; no cached files at start
+```
+
 Validation checks:
 
 ```bash
@@ -191,6 +241,46 @@ Validation checks:
 
 .venv/bin/python -m pytest tests/test_api_search.py -q
 # 270 passed in 1.80s
+```
+
+Additional validation checks at HEAD `fe40292`:
+
+```bash
+.venv/bin/python -m pytest tests/test_fretboard_explorer.py -q
+# 30 passed in 0.11s
+
+.venv/bin/python -m pytest tests/test_api_search.py -q
+# 270 passed in 1.69s
+
+.venv/bin/python -m pytest tests/test_tab_engine.py -q
+# 25 passed in 0.06s
+
+.venv/bin/python -m pytest tests/test_api_contract.py -q
+# 5 passed in 0.05s
+
+curl -sS -i http://127.0.0.1:8770/api/version | head -20 || true
+# 200 OK; git_sha fe40292
+```
+
+Local live API auth checks:
+
+```bash
+# POST /api/answer with X-Steel-Rag-Dev-Access-Role: beta_user
+# 401; /api/answer requires Cloudflare Access identity
+
+# POST /api/answer with X-Steel-Rag-Access-Role: beta_user
+# 401; /api/answer requires Cloudflare Access identity
+
+# POST /api/answer with Cf-Access-Jwt-Assertion: valid-beta
+# 401; /api/answer requires valid Cloudflare Access identity
+```
+
+Local browser smoke:
+
+```text
+URL tested: http://127.0.0.1:8770/ui/steel-guitar-rag-mock.html?access=beta_user&v=c08cc95
+Result: app shell loads; Q&A textarea exists but is disabled; placeholder says "Private beta answers need a Backstage Pass."; no [object Object] in visible page text.
+Status: local browser answer smoke blocked by runtime auth mode, not counted as protected-preview smoke.
 ```
 
 Direct payload check:
