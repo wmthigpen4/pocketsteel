@@ -2,6 +2,138 @@
 
 Generated for ChatGPT reset/guidance on branch `feature/answer-api`.
 
+## 2026-06-23 Deployment / Mac Mini Runtime Status
+
+- Current branch: `feature/answer-api`.
+- Current HEAD at this refresh: `564d29c fix: supervise mac mini app runtime`.
+- Latest deployment/runtime commit chain:
+  - `564d29c fix: supervise mac mini app runtime`
+  - `5f8af79 docs: record fretboard svg cache-bust smoke`
+  - `7ec5e3a fix: refresh explorer fretboard script cache-bust`
+  - `c73abb8 docs: record fretboard svg in-page cache-bust smoke`
+  - `64db66b fix: cache bust in-page fretboard background`
+  - `7c36c49 docs: record current-head e9 explorer protected smoke`
+  - `9562e90 fix: cache-bust fretboard background svg`
+  - `00442ec docs: refresh e9 explorer integration status`
+- Current priority: deployment wrap-up and protected-preview user-smoke readiness, not new product work.
+- Dirty worktree: broad unrelated dirty/untracked work remains parked. Do not broad-stage.
+
+### Mac Mini Reliability Status
+
+- Origin model remains:
+  - Internet -> Cloudflare Access -> Cloudflare Tunnel -> Mac mini app on `127.0.0.1:8770` -> local Chroma/Ollama.
+- `2026-06-23-12-mac-mini-reliability-audit.md` found:
+  - app process was manually started in a detached `screen` session named `steel-rag-private-preview`;
+  - app listener was `127.0.0.1:8770`;
+  - app logs were under `/tmp/steel-rag-private-preview-8770.log`;
+  - no repo app LaunchAgent/LaunchDaemon was installed or loaded;
+  - Cloudflare Tunnel was already boot-started by `/Library/LaunchDaemons/com.cloudflare.cloudflared.plist`;
+  - Cloudflare Tunnel had durable `/Library/Logs/com.cloudflare.cloudflared.*.log` paths;
+  - Cloudflare Tunnel uses inline token arguments in the host plist/process; token value was not printed and must stay out of docs/prompts;
+  - FileVault was off;
+  - AC sleep was enabled (`sleep 1`);
+  - restart after power failure appeared disabled (`autorestart 0`, `autorestartatconnect 0`);
+  - Ollama was running but boot supervision was not proven.
+- `564d29c` added repo-managed, non-secret launchd assets:
+  - `deploy/macos/com.steelguitarrag.private-preview.plist.template`;
+  - `deploy/macos/run-private-preview-app.sh`;
+  - `deploy/macos/install-private-preview-launchdaemon.sh`;
+  - `docs/mac-mini-private-preview-launchd.md`;
+  - `docs/handoffs/task-completions/2026-06-23-12-mac-mini-launchd-runtime-hardening.md`.
+- Deployment hardening status: **partial**.
+  - Repo-managed service assets and durable app log paths are implemented and committed.
+  - The app is not proven installed/loaded as a LaunchDaemon.
+  - Protected-preview smoke has not been run from a supervised launchd process.
+  - Mac sleep/restart-after-power-loss and Ollama boot supervision remain unresolved operational caveats.
+
+### Cloudflare Tunnel Status
+
+- Cloudflare Tunnel remains the documented protected-preview ingress.
+- Audit evidence indicates `/Library/LaunchDaemons/com.cloudflare.cloudflared.plist` exists with `RunAtLoad=True` and `KeepAlive={'SuccessfulExit': False}`.
+- Tunnel boot-start status: likely yes, based on launchd metadata and root-owned running process observed in the audit.
+- Tunnel hardening still pending:
+  - inline tunnel token should eventually be migrated/rotated through a separate Lane 11/Lane 12 security task;
+  - no tunnel token, credential, DNS, or Cloudflare Access policy was changed by the launchd-runtime commit.
+
+### Protected Preview Smoke Status
+
+- Latest protected-preview browser smoke before launchd hardening:
+  - `2026-06-23-1007-12-fretboard-svg-cache-bust-protected-smoke.md`;
+  - exact URL tested: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=fretboard-svg-cache-bust-20260623b`;
+  - local `/api/version` reported `7ec5e3a`;
+  - result: protected Explorer route loaded, refreshed `pedal-steel-fretboard.js` was served, in-page background SVG used `?v=keyhead-vshape-bce771f`, and no Explorer console errors were reported.
+- Current HEAD `564d29c` has **not** been protected-preview browser-smoked.
+- The launchd-supervised runtime has **not** been installed/loaded/smoked.
+- Do not report local API fallback as protected-preview browser smoke.
+- User smoke on `app.steelguitarrag.com` is not ready until Lane 12 verifies the current committed runtime.
+
+### User Smoke Target
+
+- Current user-smoke status: **needs Lane 12 verification before user smoke resumes**.
+- Next Lane 12 protected-preview smoke URL:
+  - `https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=564d29c`
+- Exact URL for the user after Lane 12 passes:
+  - `https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=564d29c`
+- Root `/` behavior should be recorded by Lane 12, but the exact `/ui/steel-guitar-rag-mock.html` URL remains the safer cache-busted smoke target.
+
+Smoke prompts for Lane 12/user smoke:
+
+- `Show me a G major grip.`
+- `Show me a 4-5-6 grip.`
+- `Where is G on E9?`
+- `Show me a G to C move.`
+- `How do I use A+B pedals?`
+- `Show me an E-lower move.`
+- `Give me a beginner lick in G.`
+- `Give me the full tab for a modern copyrighted song.`
+- `Tab the whole solo from Together Again.`
+- `Transcribe this YouTube recording into tab.`
+- `What are good Fender Steel King settings?`
+- `Why does my amp buzz at idle?`
+
+Expected guardrails:
+
+- Static grip answers should be fretboard-first.
+- Movement examples may include deterministic tab.
+- Do not provide full copyrighted song tab.
+- Do not transcribe full solos.
+- Do not transcribe YouTube/recording audio into tab.
+- Gear answers must not carry stale tab/fretboard payloads.
+- No raw `[object Object]`.
+- No stale tab/fretboard payload on gear answers.
+
+### Remaining Blockers
+
+- App LaunchDaemon not proven installed/loaded.
+- Protected-preview browser smoke not complete for current HEAD `564d29c`.
+- Protected-preview browser smoke not complete for a launchd-supervised app runtime.
+- AC sleep remains enabled unless changed outside repo.
+- Restart after power failure remains disabled/unverified unless changed outside repo.
+- Ollama boot availability remains unverified.
+- Cloudflare Tunnel inline-token hardening remains a separate security/ops task.
+- Broad unrelated dirty/untracked work remains parked.
+
+### Next Control Step
+
+Run Lane 12. Do not start new product work before this smoke gate.
+
+```text
+Lane 12: Install/load or verify the Mac mini private-preview LaunchDaemon from committed HEAD 564d29c, or explicitly document why the runtime remains manual. Verify local /api/version reports 564d29c or later, verify Cloudflare Access browser auth, record root `/` behavior, and run protected-preview browser smoke at https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=564d29c. Use the 12 smoke prompts listed in integration-status.md. Confirm static grip answers are fretboard-first, movement examples may include deterministic tab, copyrighted song/solo/YouTube transcription requests are refused, gear answers have no stale tab/fretboard payload, and no [object Object] appears. Write a Lane 12 handoff with exact URL tested, cache-busted URL, auth result, expected/current git HEAD, /api/version result, root URL behavior, direct /ui behavior, and API fallback status.
+```
+
+### Safe-To-Stage For This Refresh
+
+- `docs/handoffs/task-completions/integration-status.md`
+- `docs/handoffs/task-completions/2026-06-23-01-integration-status-deployment-wrap.md`
+
+### Files Not To Stage For This Refresh
+
+- Any unrelated dirty/untracked files.
+- App code, tests, UI, SVG assets, launchd/deploy scripts, auth/DNS/Cloudflare config, or source files.
+- `corpus-private/`, `corpus-v2/`, Chroma/vector stores, embeddings, generated corpus outputs, scraper output, source-inbox raw/provenance files.
+- Deployment secrets, private env files, rendered plists, tunnel tokens, tunnel credentials, `.wrangler/`, and any secrets.
+- `public/`, `ui/brand/`, `Neon Sign/`, raw design assets, generated visual assets, and unrelated UI/assets.
+
 ## 2026-06-23 E9 Fretboard Explorer / Harmony Guidance Snapshot
 
 - Current branch: `feature/answer-api`.
