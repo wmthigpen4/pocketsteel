@@ -230,6 +230,13 @@ def test_answer_ui_links_to_e9_fretboard_explorer_surface() -> None:
     assert 'aria-label="Explore the E9 virtual fretboard"' in html
     assert 'title="Explore the E9 virtual fretboard"' in html
     assert "explorer-header-link" in html
+    assert 'class="backstage-trigger"' in html
+    assert 'aria-controls="backstage"' in html
+    assert 'id="backstage-cta-label">Get a Backstage Pass</span>' in html
+    assert html.index('class="explorer-header-link"') < html.index('class="backstage-trigger"')
+    assert 'class="explorer-header-link" href="/ui/e9-fretboard-explorer.html"' in html
+    assert 'class="backstage-trigger" href="/ui/e9-fretboard-explorer.html"' not in html
+    assert ">Go Backstage</a>" not in html
     assert "explorer-entry-card" not in html
     assert "not corpus retrieval or RAG-generated fretboard positions" not in html
     assert "[object Object]" not in html
