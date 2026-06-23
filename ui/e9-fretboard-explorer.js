@@ -8,9 +8,11 @@
   const CORE_GROUPS = new Set(["3-4-5", "4-5-6", "5-6-8", "6-8-10"]);
   const ADVANCED_GROUPS = new Set(["5-6-7", "6-7-10", "5-7-8"]);
   const TWO_STRING_GROUPS = new Set(["3-5", "5-6", "6-10", "4-6", "3-4"]);
+  const FIVE_EIGHT_GROUPS = new Set(["5-8"]);
   const KEY_ORDER = ["G", "C", "D", "F", "Bb", "Eb"];
   const HARMONY_LABELS = {
     two_string_harmonized: "2-string harmonized scale",
+    five_eight_branch: "5&8 branch",
     three_string_diatonic: "3-string diatonic harmony",
   };
 
@@ -106,6 +108,12 @@
     if (harmony === "two_string_harmonized") {
       return row.harmony_type === "two_string_harmonized";
     }
+    if (harmony === "five_eight_branch") {
+      return row.harmony_type === "five_eight_branch";
+    }
+    if (harmony === "three_string_diatonic") {
+      return row.harmony_type === "three_string_diatonic" || row.harmony_type === "advanced_pocket";
+    }
     return row.harmony_type === "three_string_diatonic" || row.harmony_type === "advanced_pocket";
   }
 
@@ -173,11 +181,17 @@
     const harmony = els.harmony.value;
     const rows = rowsForScaleAndHarmony(scale, harmony);
     const currentValue = els.stringGroup.value;
-    const allLabel = harmony === "two_string_harmonized" ? "All 2-string groups" : "All 3-string groups";
+    const allLabel = harmony === "two_string_harmonized"
+      ? "All 2-string groups"
+      : harmony === "five_eight_branch"
+        ? "All 5&8 branch positions"
+        : "All 3-string groups";
     let html = option("all", allLabel, currentValue);
 
     if (harmony === "two_string_harmonized") {
       html += optionGroup("2-string groups", uniqueGroups(rows, TWO_STRING_GROUPS), currentValue);
+    } else if (harmony === "five_eight_branch") {
+      html += optionGroup("5&8 branch", uniqueGroups(rows, FIVE_EIGHT_GROUPS), currentValue);
     } else {
       html += optionGroup("Core grips", uniqueGroups(rows, CORE_GROUPS), currentValue);
       html += optionGroup("Advanced swaps", uniqueGroups(rows, ADVANCED_GROUPS), currentValue);
@@ -236,6 +250,9 @@
   }
 
   function groupLabel(row) {
+    if (row.harmony_type === "five_eight_branch" || row.string_group === "5-8") {
+      return "5&8 branch";
+    }
     if (isAdvanced(row)) {
       return row.string_group === "5-7-8" ? "Advanced swap - E-lower pocket" : "Advanced swap";
     }
@@ -254,6 +271,9 @@
     }
     if (isAdvanced(row)) {
       return "advanced";
+    }
+    if (row.harmony_type === "five_eight_branch") {
+      return "alternate";
     }
     if (row.harmony_type === "two_string_harmonized") {
       return "alternate";

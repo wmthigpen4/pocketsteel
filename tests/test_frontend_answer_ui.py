@@ -249,14 +249,15 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "not corpus retrieval or RAG-generated fretboard positions" in html
     assert '<script src="pedal-steel-fretboard.js?v=fretboard-svg-cache-bust-20260623b"></script>' in html
     assert "pedal-steel-fretboard.js?v=e9-explorer-explanation-ui-20260623" not in html
-    assert '<script src="e9-fretboard-explorer-data.js?v=e9-explorer-explanation-ui-20260623"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=e9-explorer-explanation-ui-20260623"></script>' in html
+    assert '<script src="e9-fretboard-explorer-data.js?v=g-five-eight-ui-20260623"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=g-five-eight-ui-20260623"></script>' in html
     for key in ["G", "C", "D", "F", "Bb", "Eb"]:
         assert f'<option value="{key}"' in html
         assert key in payloads
     assert '<option value="major">G major</option>' in html
     assert '<option value="natural_minor">G natural minor</option>' in html
     assert '<option value="two_string_harmonized">2-string harmonized scale</option>' in html
+    assert '<option value="five_eight_branch">5&amp;8 branch positions</option>' in html
     assert '<option value="three_string_diatonic" selected>3-string diatonic harmony</option>' in html
     assert '<optgroup label="Core grips">' in html
     assert '<optgroup label="Advanced swaps">' in html
@@ -273,6 +274,8 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "display_top_voice" in script
     assert "display_summary" in script
     assert "display_scale_notes" in script
+    assert "FIVE_EIGHT_GROUPS" in script
+    assert "5&8 branch" in script
     assert "per_string_changes" in script
     assert "warnings" in script
     assert "explanation_summary" in script
@@ -294,6 +297,10 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
 
     assert payload["query"]["display_scale_notes"]["natural_minor"] == ["G", "A", "Bb", "C", "D", "Eb", "F"]
     assert payload["query"]["display_scale_notes"]["natural_minor"] != ["G", "A", "A#", "C", "D", "D#", "F"]
+    assert "five_eight_branch" in payload["query"]["harmony_types"]
+    assert "five_eight_branch" in payload["filters"]["available_harmony_types"]
+    assert "5-8" in payload["query"]["string_groups"]
+    assert any(row["harmony_type"] == "five_eight_branch" and row["string_group"] == "5-8" for row in payload["positions"])
     assert any("validated E9 pitch logic" in row["explanation_summary"] for row in payload["positions"])
     assert any("Teaching text explains the row" in row["explanation_summary"] for row in payload["positions"])
     assert payloads["C"]["query"]["display_scale_notes"]["natural_minor"] == ["C", "D", "Eb", "F", "G", "Ab", "Bb"]
@@ -424,6 +431,7 @@ const elements = {
   ]),
   "explorer-harmony": new FakeSelect("explorer-harmony", "three_string_diatonic", [
     { value: "two_string_harmonized", text: "2-string harmonized scale" },
+    { value: "five_eight_branch", text: "5&8 branch positions" },
     { value: "three_string_diatonic", text: "3-string diatonic harmony" }
   ]),
   "explorer-string-group": new FakeSelect("explorer-string-group", "all", [{ value: "all", text: "All 3-string groups" }]),
@@ -519,6 +527,7 @@ elements["explorer-scale"].value = "natural_minor";
 elements["explorer-scale"].dispatchChange();
 assert.equal(elements["explorer-harmony"].value, "three_string_diatonic");
 assert.equal(elements["explorer-harmony"].options.find((item) => item.value === "two_string_harmonized").disabled, true);
+assert.equal(elements["explorer-harmony"].options.find((item) => item.value === "five_eight_branch").disabled, true);
 assert.equal(elements["explorer-string-group"].value, "all");
 assert.match(elements["explorer-scale-notes"].textContent, /G A Bb C D Eb F/);
 assert.doesNotMatch(elements["explorer-scale-notes"].textContent, /A#|D#/);
@@ -527,6 +536,28 @@ assert.doesNotMatch(elements["explorer-row-list"].textContent, /\[object Object\
 
 elements["explorer-scale"].value = "major";
 elements["explorer-scale"].dispatchChange();
+assert.equal(elements["explorer-harmony"].options.find((item) => item.value === "five_eight_branch").disabled, false);
+elements["explorer-harmony"].value = "five_eight_branch";
+elements["explorer-harmony"].dispatchChange();
+assert.equal(elements["explorer-string-group"].value, "all");
+assert.match(elements["explorer-string-group"].innerHTML, /All 5&amp;8 branch positions/);
+assert.match(elements["explorer-string-group"].innerHTML, /5&amp;8 branch/);
+assert.match(elements["explorer-string-group"].innerHTML, />5-8</);
+assert.doesNotMatch(elements["explorer-string-group"].innerHTML, /Core grips/);
+assert.doesNotMatch(elements["explorer-string-group"].innerHTML, /Advanced swaps/);
+assert.doesNotMatch(elements["explorer-string-group"].innerHTML, />3-5</);
+assert.equal(lastMount.options.positions.length, 4);
+assert.equal(lastMount.options.positions.every((row) => row.harmony_type === "five_eight_branch"), true);
+assert.equal(lastMount.options.positions.every((row) => row.grip === "5-8"), true);
+assert.match(elements["explorer-row-list"].textContent, /5&amp;8 branch/);
+assert.match(elements["explorer-selected-detail"].textContent, /5&amp;8 branch/);
+assert.doesNotMatch(elements["explorer-row-list"].textContent, /five_eight_branch/);
+assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /five_eight_branch/);
+elements["explorer-string-group"].value = "5-8";
+elements["explorer-string-group"].dispatchChange();
+assert.equal(lastMount.options.positions.length, 4);
+assert.equal(lastMount.options.positions.every((row) => row.grip === "5-8"), true);
+
 elements["explorer-harmony"].value = "three_string_diatonic";
 elements["explorer-harmony"].dispatchChange();
 elements["explorer-string-group"].value = "5-7-8";
