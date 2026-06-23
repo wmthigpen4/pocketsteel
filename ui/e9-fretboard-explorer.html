@@ -410,7 +410,7 @@
       <div>
         <p class="explorer-kicker">Validated Explorer data</p>
         <h1>E9 Fretboard Explorer</h1>
-        <p class="explorer-lede">Choose a key, scale, harmony type, and string group to see E9 positions that have been checked against tuning and pedal/lever changes. These Explorer rows are deterministic teaching data, separate from source-card answers.</p>
+        <p class="explorer-lede">Choose a key, scale, harmony type, and string group to see E9 positions that have been checked against tuning and pedal/lever changes.</p>
       </div>
       <a class="explorer-back" href="steel-guitar-rag-mock.html">Back to app</a>
     </header>
@@ -420,24 +420,19 @@
         <label for="explorer-key">Key</label>
         <select id="explorer-key" aria-describedby="explorer-key-help">
           <option value="C">C</option>
-          <option value="C#">C#</option>
-          <option value="Db">Db</option>
+          <option value="Db">C# (or D♭)</option>
           <option value="D">D</option>
-          <option value="D#">D#</option>
-          <option value="Eb">Eb</option>
+          <option value="Eb">D# (or E♭)</option>
           <option value="E">E</option>
           <option value="F">F</option>
-          <option value="F#">F#</option>
-          <option value="Gb">Gb</option>
+          <option value="Gb">F# (or G♭)</option>
           <option value="G" selected>G</option>
-          <option value="G#">G#</option>
-          <option value="Ab">Ab</option>
+          <option value="Ab">G# (or A♭)</option>
           <option value="A">A</option>
-          <option value="A#">A#</option>
-          <option value="Bb">Bb</option>
+          <option value="Bb">A# (or B♭)</option>
           <option value="B">B</option>
         </select>
-        <p class="explorer-control-help" id="explorer-key-help">Enharmonic spellings are listed separately when the backend validates both names, such as C# and Db.</p>
+        <p class="explorer-control-help" id="explorer-key-help">Enharmonic keys share one selector entry so learner-facing notes stay readable.</p>
       </div>
       <div class="explorer-control">
         <label for="explorer-scale">Scale</label>
@@ -450,7 +445,6 @@
         <label for="explorer-harmony">Harmony / view</label>
         <select id="explorer-harmony">
           <option value="two_string_harmonized">2-string harmonized scale</option>
-          <option value="five_eight_branch">5&amp;8 branch positions (2-string)</option>
           <option value="three_string_diatonic" selected>3-string diatonic harmony</option>
         </select>
       </div>
@@ -488,7 +482,7 @@
     <section class="explorer-details" aria-label="Explorer position details">
       <div class="explorer-row-list" id="explorer-row-list" aria-label="Explorer row details"></div>
       <div class="explorer-selected-detail" id="explorer-selected-detail" aria-live="polite"></div>
-      <p class="explorer-note">Core grips are common string sets. Advanced swaps use less direct string combinations or lever/pocket logic; 5-7-8 is shown only as an advanced E-lower pocket. The 5&amp;8 branch positions are a 2-string harmonized-scale branch shown separately because they use a distinct E9 route.</p>
+      <p class="explorer-note">Core grips are common string sets. Advanced swaps use less direct string combinations or lever/pocket logic; 5-7-8 is shown only as an advanced E-lower pocket. The 5&amp;8 branch positions appear inside the 2-string harmonized-scale view because they use a distinct E9 route.</p>
       <div class="explorer-help-grid" aria-label="Explorer shorthand help">
         <p class="explorer-help-card"><strong>Shorthand</strong> m7b5 means minor seven flat five. The ø symbol means half-diminished, which is another common label for m7b5. The ° symbol means diminished; vii° means the diminished chord built on the seventh scale degree.</p>
         <p class="explorer-help-card"><strong>Partial rows</strong> Partial means the row does not contain every chord tone by itself. Use the warning text to see whether a row is partial diminished, partial m7b5, rootless, or needs musical context.</p>
@@ -496,8 +490,8 @@
     </section>
   </main>
 
-  <script src="pedal-steel-fretboard.js?v=five-eight-label-leak-fix-20260623"></script>
-  <script src="e9-fretboard-explorer-data.js?v=final-smoke-feedback-ui-20260623"></script>
-  <script src="e9-fretboard-explorer.js?v=final-smoke-feedback-ui-20260623"></script>
+  <script src="pedal-steel-fretboard.js?v=explorer-ui-cleanup-20260623"></script>
+  <script src="e9-fretboard-explorer-data.js?v=explorer-ui-cleanup-20260623"></script>
+  <script src="e9-fretboard-explorer.js?v=explorer-ui-cleanup-20260623"></script>
 </body>
 </html>

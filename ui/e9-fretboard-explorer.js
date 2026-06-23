@@ -9,10 +9,22 @@
   const ADVANCED_GROUPS = new Set(["5-6-7", "6-7-10", "5-7-8"]);
   const TWO_STRING_GROUPS = new Set(["3-5", "5-6", "6-10", "4-6", "3-4"]);
   const FIVE_EIGHT_GROUPS = new Set(["5-8"]);
-  const KEY_ORDER = ["C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B"];
+  const KEY_OPTIONS = [
+    { value: "C", label: "C" },
+    { value: "Db", label: "C# (or D♭)" },
+    { value: "D", label: "D" },
+    { value: "Eb", label: "D# (or E♭)" },
+    { value: "E", label: "E" },
+    { value: "F", label: "F" },
+    { value: "Gb", label: "F# (or G♭)" },
+    { value: "G", label: "G" },
+    { value: "Ab", label: "G# (or A♭)" },
+    { value: "A", label: "A" },
+    { value: "Bb", label: "A# (or B♭)" },
+    { value: "B", label: "B" },
+  ];
   const HARMONY_LABELS = {
     two_string_harmonized: "2-string harmonized scale",
-    five_eight_branch: "5&8 branch",
     three_string_diatonic: "3-string diatonic harmony",
   };
 
@@ -36,9 +48,14 @@
   function availableKeys() {
     const keys = Object.keys(payloadsByKey);
     if (keys.length) {
-      return KEY_ORDER.filter((key) => keys.includes(key)).concat(keys.filter((key) => !KEY_ORDER.includes(key)).sort());
+      const visible = KEY_OPTIONS.filter((option) => keys.includes(option.value));
+      const visibleValues = new Set(visible.map((option) => option.value));
+      return visible.concat(keys
+        .filter((key) => !visibleValues.has(key) && !["C#", "D#", "F#", "G#", "A#"].includes(key))
+        .sort()
+        .map((key) => ({ value: key, label: key })));
     }
-    return fallbackPayload?.query?.key ? [fallbackPayload.query.key] : [];
+    return fallbackPayload?.query?.key ? [{ value: fallbackPayload.query.key, label: fallbackPayload.query.key }] : [];
   }
 
   function activePayload() {
@@ -106,10 +123,7 @@
 
   function rowMatchesHarmony(row, harmony) {
     if (harmony === "two_string_harmonized") {
-      return row.harmony_type === "two_string_harmonized";
-    }
-    if (harmony === "five_eight_branch") {
-      return row.harmony_type === "five_eight_branch";
+      return row.harmony_type === "two_string_harmonized" || row.harmony_type === "five_eight_branch";
     }
     if (harmony === "three_string_diatonic") {
       return row.harmony_type === "three_string_diatonic" || row.harmony_type === "advanced_pocket";
@@ -133,6 +147,11 @@
   function option(value, label, selectedValues) {
     const values = Array.isArray(selectedValues) ? selectedValues : [selectedValues];
     return `<option value="${escapeHtml(value)}"${values.includes(value) ? " selected" : ""}>${escapeHtml(label)}</option>`;
+  }
+
+  function selectedOptionLabel(selectEl) {
+    const optionEl = selectEl.options?.[selectEl.selectedIndex];
+    return optionEl?.text || selectEl.value || "";
   }
 
   function optionGroup(label, groups, selectedValues) {
@@ -162,19 +181,19 @@
   }
 
   function updateKeyOptions() {
-    const keys = availableKeys();
+    const keyOptions = availableKeys();
     const currentValue = els.key.value || "G";
-    if (!keys.length) {
+    if (!keyOptions.length) {
       return;
     }
-    els.key.innerHTML = keys.map((key) => option(key, key, currentValue)).join("");
-    if (!keys.includes(currentValue)) {
-      els.key.value = keys.includes("G") ? "G" : keys[0];
+    els.key.innerHTML = keyOptions.map((keyOption) => option(keyOption.value, keyOption.label, currentValue)).join("");
+    if (!keyOptions.some((keyOption) => keyOption.value === currentValue)) {
+      els.key.value = keyOptions.some((keyOption) => keyOption.value === "G") ? "G" : keyOptions[0].value;
     }
   }
 
   function updateScaleLabels() {
-    const key = activeKey();
+    const key = selectedOptionLabel(els.key) || activeKey();
     Array.from(els.scale.options).forEach((item) => {
       if (item.value === "major") {
         item.text = `${key} major`;
@@ -192,15 +211,12 @@
     const currentValues = selectedStringGroups();
     const allLabel = harmony === "two_string_harmonized"
       ? "All 2-string groups"
-      : harmony === "five_eight_branch"
-        ? "All 5&8 branch positions"
-        : "All 3-string groups";
+      : "All 3-string groups";
     const selectedValues = currentValues.length ? currentValues : ["all"];
     let html = option("all", allLabel, selectedValues);
 
     if (harmony === "two_string_harmonized") {
       html += optionGroup("2-string groups", uniqueGroups(rows, TWO_STRING_GROUPS), selectedValues);
-    } else if (harmony === "five_eight_branch") {
       html += optionGroup("5&8 branch", uniqueGroups(rows, FIVE_EIGHT_GROUPS), selectedValues);
     } else {
       html += optionGroup("Core grips", uniqueGroups(rows, CORE_GROUPS), selectedValues);
@@ -482,12 +498,14 @@
 
     fretboardApi.mountPedalSteelFretboard(els.fretboard, {
       title: "Validated Explorer positions",
-      description: "Deterministic E9 Explorer data. This is not corpus or RAG output.",
+      description: "Validated E9 positions for the selected filters.",
       positions: rows.map(asFretboardPosition),
       highlights: [],
       legend: activePayload()?.legend || [],
       query: activePayload()?.query || {},
       hideFilterControls: true,
+      hidePositionTools: true,
+      hideLegend: true,
       showHighlightLabels: false,
     });
     wireFretboardMarkers(rows);

@@ -1447,6 +1447,8 @@
       legend: normalizeLegend(options.legend),
       displayScaleNotes: normalizeDisplayScaleNotes(options.query),
       showHighlightLabels: options.showHighlightLabels !== false,
+      hidePositionTools: options.hidePositionTools === true,
+      hideLegend: options.hideLegend === true,
     };
   }
 
@@ -1837,8 +1839,8 @@
         </svg>
       </div>
       ${renderScaleDisplay(model)}
-      ${renderPositionTools(model)}
-      ${renderLegend(model)}
+      ${model.hidePositionTools ? "" : renderPositionTools(model)}
+      ${model.hideLegend ? "" : renderLegend(model)}
     </figure>`;
     return guardRenderableHtml(html);
   }
