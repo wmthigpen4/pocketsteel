@@ -225,24 +225,28 @@ def test_answer_ui_includes_home_hero_hanging_sign_without_changing_answer_logo(
 def test_answer_ui_links_to_e9_fretboard_explorer_surface() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
 
-    assert ">Explore Fretboard</a>" in html
+    assert "<span>Explore Fretboard</span>" in html
     assert 'href="/ui/e9-fretboard-explorer.html"' in html
     assert 'aria-label="Explore the E9 virtual fretboard"' in html
     assert 'title="Explore the E9 virtual fretboard"' in html
     assert "explorer-header-link" in html
-    assert 'class="backstage-trigger"' in html
+    assert 'class="header-action-button explorer-header-link"' in html
+    assert 'class="header-action-button backstage-trigger"' in html
+    assert ".header-action-button {" in html
+    assert "font-family: var(--font-ui);" in html
+    assert "letter-spacing: 0;" in html
     assert 'aria-controls="backstage"' in html
     assert 'id="backstage-cta-label">Get a Backstage Pass</span>' in html
-    assert html.index('class="explorer-header-link"') < html.index('class="backstage-trigger"')
-    assert 'class="explorer-header-link" href="/ui/e9-fretboard-explorer.html"' in html
+    assert html.index('class="header-action-button explorer-header-link"') < html.index('class="header-action-button backstage-trigger"')
+    assert 'class="header-action-button explorer-header-link" href="/ui/e9-fretboard-explorer.html"' in html
     assert 'class="backstage-trigger" href="/ui/e9-fretboard-explorer.html"' not in html
     assert ">Go Backstage</a>" not in html
     assert "explorer-entry-card" not in html
     assert "not corpus retrieval or RAG-generated fretboard positions" not in html
     assert "[object Object]" not in html
-    assert html.index(">Explore Fretboard</a>") < html.index('id="question"')
-    assert html.index(">Explore Fretboard</a>") < html.index("Get a Backstage Pass")
-    assert ".explorer-header-link,\n    .backstage-trigger" in html
+    assert html.index("<span>Explore Fretboard</span>") < html.index('id="question"')
+    assert html.index("<span>Explore Fretboard</span>") < html.index("Get a Backstage Pass")
+    assert ".explorer-header-link,\n    .backstage-trigger" not in html
 
 
 def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() -> None:
