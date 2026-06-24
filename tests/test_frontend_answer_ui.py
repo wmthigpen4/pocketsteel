@@ -269,11 +269,12 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "checked against tuning and pedal/lever changes" in html
     assert "These Explorer rows are deterministic teaching data, separate from source-card answers." not in html
     assert "not corpus retrieval or RAG-generated fretboard positions" not in html
-    assert '<script src="pedal-steel-fretboard.js?v=selected-svg-render-20260623"></script>' in html
+    assert '<script src="pedal-steel-fretboard.js?v=localized-markers-20260623"></script>' in html
     assert "pedal-steel-fretboard.js?v=e9-explorer-explanation-ui-20260623" not in html
     assert "pedal-steel-fretboard.js?v=explorer-ui-cleanup-20260623" not in html
-    assert '<script src="e9-fretboard-explorer-data.js?v=selected-svg-render-20260623"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=selected-svg-render-20260623"></script>' in html
+    assert "pedal-steel-fretboard.js?v=selected-svg-render-20260623" not in html
+    assert '<script src="e9-fretboard-explorer-data.js?v=localized-markers-20260623"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=localized-markers-20260623"></script>' in html
     expected_key_options = {
         "C": "C",
         "Db": "C# (or D♭)",
@@ -360,9 +361,12 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "hidePositionTools: true" in script
     assert "hideLegend: true" in script
     assert "showHighlightLabels: false" in script
-    assert "emphasizeStringGroups" in script
     assert "emphasizeVisibleHighlights" in script
     assert "selectedStringGroups" in script
+    component = Path("ui/pedal-steel-fretboard.js").read_text(encoding="utf-8")
+    assert "data-selected-string-group-lanes" not in component
+    assert "data-selected-string-row" not in component
+    assert "emphasizeStringGroups" not in component
     assert "tooltipText" in script
     assert "selectedRowId" in script
     assert "renderActiveResults" in script
@@ -591,9 +595,9 @@ assert.equal(lastMount.options.showHighlightLabels, false);
 assert.equal(lastMount.options.hideFilterControls, true);
 assert.equal(lastMount.options.hidePositionTools, true);
 assert.equal(lastMount.options.hideLegend, true);
-assert.equal(lastMount.options.emphasizeStringGroups, false);
 assert.equal(lastMount.options.emphasizeVisibleHighlights, true);
-assert.equal(JSON.stringify(lastMount.options.selectedStringGroups), JSON.stringify([]));
+assert.equal(Object.prototype.hasOwnProperty.call(lastMount.options, "emphasizeStringGroups"), false);
+assert.equal(Object.prototype.hasOwnProperty.call(lastMount.options, "selectedStringGroups"), false);
 assert.equal(lastMount.options.positions.length > 0, true);
 assert.equal(lastMount.options.positions.some((row) => row.grip === "5-7-8"), true);
 assert.match(elements["explorer-result-count"].textContent, /Showing validated positions/);
@@ -642,8 +646,9 @@ elements["explorer-harmony"].dispatchChange();
 elements["explorer-string-group"].selectValues(["6-8-10"]);
 assert.equal(lastMount.options.positions.length > 0, true);
 assert.equal(lastMount.options.positions.every((row) => row.grip === "6-8-10"), true);
-assert.equal(lastMount.options.emphasizeStringGroups, true);
-assert.equal(JSON.stringify(lastMount.options.selectedStringGroups), JSON.stringify(["6-8-10"]));
+assert.equal(lastMount.options.emphasizeVisibleHighlights, true);
+assert.equal(Object.prototype.hasOwnProperty.call(lastMount.options, "emphasizeStringGroups"), false);
+assert.equal(Object.prototype.hasOwnProperty.call(lastMount.options, "selectedStringGroups"), false);
 assert.match(elements["explorer-active-results"].textContent, /6-8-10/);
 assert.match(elements["explorer-active-results"].textContent, /visible positions/);
 assert.equal(elements["explorer-active-results"].querySelectorAll("[data-active-result-row]").length, lastMount.options.positions.length);
@@ -653,13 +658,14 @@ assert.match(elements["explorer-selected-detail"].textContent, /String group6-8-
 elements["explorer-string-group"].selectValues(["5-6-8"]);
 assert.equal(lastMount.options.positions.length > 0, true);
 assert.equal(lastMount.options.positions.every((row) => row.grip === "5-6-8"), true);
-assert.equal(lastMount.options.emphasizeStringGroups, true);
-assert.equal(JSON.stringify(lastMount.options.selectedStringGroups), JSON.stringify(["5-6-8"]));
+assert.equal(lastMount.options.emphasizeVisibleHighlights, true);
+assert.equal(Object.prototype.hasOwnProperty.call(lastMount.options, "emphasizeStringGroups"), false);
+assert.equal(Object.prototype.hasOwnProperty.call(lastMount.options, "selectedStringGroups"), false);
 assert.match(elements["explorer-active-results"].textContent, /5-6-8/);
 elements["explorer-string-group"].selectValues(["6-8-10"]);
 assert.equal(lastMount.options.positions.length > 0, true);
 assert.equal(lastMount.options.positions.every((row) => row.grip === "6-8-10"), true);
-assert.equal(JSON.stringify(lastMount.options.selectedStringGroups), JSON.stringify(["6-8-10"]));
+assert.equal(Object.prototype.hasOwnProperty.call(lastMount.options, "selectedStringGroups"), false);
 
 elements["explorer-key"].value = "G";
 elements["explorer-key"].dispatchChange();
@@ -710,8 +716,9 @@ elements["explorer-string-group"].selectValues(["5-8"]);
 assert.equal(lastMount.options.positions.length, 4);
 assert.equal(lastMount.options.positions.every((row) => row.harmony_type === "five_eight_branch"), true);
 assert.equal(lastMount.options.positions.every((row) => row.grip === "5-8"), true);
-assert.equal(lastMount.options.emphasizeStringGroups, true);
-assert.equal(JSON.stringify(lastMount.options.selectedStringGroups), JSON.stringify(["5-8"]));
+assert.equal(lastMount.options.emphasizeVisibleHighlights, true);
+assert.equal(Object.prototype.hasOwnProperty.call(lastMount.options, "emphasizeStringGroups"), false);
+assert.equal(Object.prototype.hasOwnProperty.call(lastMount.options, "selectedStringGroups"), false);
 assert.match(elements["explorer-selected-detail"].textContent, /5&amp;8 branch/);
 assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /five_eight_branch/);
 

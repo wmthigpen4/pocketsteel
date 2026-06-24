@@ -558,8 +558,6 @@
       els.fretboard.innerHTML = '<p class="explorer-empty">Fretboard renderer unavailable.</p>';
       return;
     }
-    const activeStringGroups = selectedStringGroups();
-
     fretboardApi.mountPedalSteelFretboard(els.fretboard, {
       title: "Validated Explorer positions",
       description: "Validated E9 positions for the selected filters.",
@@ -571,9 +569,7 @@
       hidePositionTools: true,
       hideLegend: true,
       showHighlightLabels: false,
-      emphasizeStringGroups: activeStringGroups.length > 0,
       emphasizeVisibleHighlights: true,
-      selectedStringGroups: activeStringGroups,
     });
     wireFretboardMarkers(rows);
   }

@@ -1417,18 +1417,6 @@
       : filteredHighlights;
     const recommendedHiddenIds = new Set(filteredHighlights.slice(MAX_RECOMMENDED_VISIBLE_POSITIONS).map((highlight) => highlight.id));
     const selectedPositionId = highlights[0]?.id || "";
-    const emphasizeStringGroups = options.emphasizeStringGroups === true && highlights.length > 0;
-    const emphasizedStrings = emphasizeStringGroups
-      ? Array.from(new Set(highlights.flatMap((highlight) => highlight.strings))).sort((left, right) => left - right)
-      : [];
-    const selectedStringGroups = Array.isArray(options.selectedStringGroups)
-      ? options.selectedStringGroups.map(normalizeMetadataText).filter(Boolean)
-      : [];
-    const emphasizedStringGroups = emphasizeStringGroups
-      ? selectedStringGroups.length
-        ? selectedStringGroups
-        : Array.from(new Set(highlights.map((highlight) => highlight.grip).filter(Boolean))).sort()
-      : [];
 
     return {
       width: SVG_WIDTH,
@@ -1461,10 +1449,7 @@
       selectedPositionId,
       allHighlights,
       highlights,
-      emphasizeStringGroups,
       emphasizeVisibleHighlights: options.emphasizeVisibleHighlights === true,
-      emphasizedStrings,
-      emphasizedStringGroups,
       legend: normalizeLegend(options.legend),
       displayScaleNotes: normalizeDisplayScaleNotes(options.query),
       showHighlightLabels: options.showHighlightLabels !== false,
@@ -1550,27 +1535,6 @@
         ].join("");
       })
       .join("");
-  }
-
-  function renderSelectedStringRows(model) {
-    if (!model.emphasizeStringGroups || model.emphasizedStrings.length === 0) {
-      return "";
-    }
-    const selectedStringSet = new Set(model.emphasizedStrings);
-    const groupLabel = model.emphasizedStringGroups.length ? model.emphasizedStringGroups.join(",") : "";
-    const rows = model.strings
-      .filter((stringInfo) => selectedStringSet.has(stringInfo.number))
-      .map((stringInfo) => {
-        const y = stringInfo.y;
-        return `<g data-selected-string-row="${stringInfo.number}" data-selected-string-groups="${escapeHtml(groupLabel)}">
-          <line x1="${model.layout.nutX.toFixed(3)}" y1="${y.toFixed(3)}" x2="${(model.layout.pickupStartX - 18).toFixed(3)}" y2="${y.toFixed(3)}" stroke="rgba(240, 191, 105, 0.28)" stroke-width="12" stroke-linecap="round" />
-          <line x1="${model.layout.nutX.toFixed(3)}" y1="${y.toFixed(3)}" x2="${(model.layout.pickupStartX - 18).toFixed(3)}" y2="${y.toFixed(3)}" stroke="rgba(255, 246, 223, 0.26)" stroke-width="3" stroke-linecap="round" stroke-dasharray="7 12" />
-        </g>`;
-      })
-      .join("");
-    return `<g data-selected-string-group-lanes data-selected-strings="${escapeHtml(model.emphasizedStrings.join(","))}" data-selected-string-groups="${escapeHtml(groupLabel)}" pointer-events="none" aria-hidden="true">
-      ${rows}
-    </g>`;
   }
 
   function renderHighlight(highlight) {
@@ -1876,7 +1840,6 @@
           <rect x="18" y="18" width="${SVG_WIDTH - 36}" height="${SVG_HEIGHT - 54}" rx="26" fill="rgba(9, 10, 10, 0.22)" stroke="rgba(240, 191, 105, 0.28)" />
           ${renderFrets(model)}
           ${renderMarkers(model)}
-          ${renderSelectedStringRows(model)}
           ${renderStrings(model)}
           ${renderHighlights(model)}
           ${renderFretNumbers(model)}

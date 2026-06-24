@@ -247,7 +247,7 @@ assert.equal(markers.filter((match) => Number(match[1]) === 24).length, 3);
     run_node(script)
 
 
-def test_selected_explorer_string_group_renders_string_lanes_and_emphasized_markers() -> None:
+def test_explorer_selected_group_renders_localized_markers_without_string_lanes() -> None:
     script = component_eval_script(
         """
 const positions = [
@@ -276,35 +276,32 @@ const model = fretboard.buildFretboardModel({
   hidePositionTools: true,
   hideLegend: true,
   showHighlightLabels: false,
-  emphasizeStringGroups: true,
-  emphasizeVisibleHighlights: true,
-  selectedStringGroups: ["5-6-8"]
+  emphasizeVisibleHighlights: true
 });
 assert.equal(model.highlights.length, 2);
-assert.equal(JSON.stringify(model.emphasizedStrings), JSON.stringify([5, 6, 8]));
-assert.equal(JSON.stringify(model.emphasizedStringGroups), JSON.stringify(["5-6-8"]));
+assert.equal(Object.prototype.hasOwnProperty.call(model, "emphasizeStringGroups"), false);
+assert.equal(Object.prototype.hasOwnProperty.call(model, "emphasizedStrings"), false);
+assert.equal(Object.prototype.hasOwnProperty.call(model, "emphasizedStringGroups"), false);
 const html = fretboard.renderPedalSteelFretboard({
   positions,
   hideFilterControls: true,
   hidePositionTools: true,
   hideLegend: true,
   showHighlightLabels: false,
-  emphasizeStringGroups: true,
-  emphasizeVisibleHighlights: true,
-  selectedStringGroups: ["5-6-8"]
+  emphasizeVisibleHighlights: true
 });
-assert.match(html, /data-selected-string-group-lanes/);
-assert.match(html, /data-selected-strings="5,6,8"/);
-assert.match(html, /data-selected-string-groups="5-6-8"/);
-assert.equal((html.match(/data-selected-string-row="/g) || []).length, 3);
-assert.match(html, /data-selected-string-row="5"/);
-assert.match(html, /data-selected-string-row="6"/);
-assert.match(html, /data-selected-string-row="8"/);
+assert.doesNotMatch(html, /data-selected-string-group-lanes/);
+assert.doesNotMatch(html, /data-selected-strings=/);
+assert.doesNotMatch(html, /data-selected-string-groups=/);
+assert.equal((html.match(/data-selected-string-row="/g) || []).length, 0);
 assert.equal((html.match(/data-highlight-dot/g) || []).length, 6);
+assert.equal((html.match(/data-highlight-band/g) || []).length, 2);
 assert.equal((html.match(/data-highlight-strings="5,6,8"/g) || []).length >= 2, true);
+assert.equal((html.match(/data-highlight-string="5"/g) || []).length, 2);
+assert.equal((html.match(/data-highlight-string="6"/g) || []).length, 2);
+assert.equal((html.match(/data-highlight-string="8"/g) || []).length, 2);
 assert.equal((html.match(/data-emphasized-visible="true"/g) || []).length, 2);
 assert.equal((html.match(/is-emphasized-visible/g) || []).length >= 2, true);
-assert.equal(html.indexOf("data-selected-string-group-lanes") < html.indexOf("data-fretboard-string=\\"1\\""), true);
 assert.equal(html.indexOf("data-fretboard-string=\\"1\\"") < html.indexOf("data-highlight-id=\\"g-568-fret-3\\""), true);
 assert.doesNotMatch(html, /\\[object Object\\]/);
 assert.doesNotMatch(html, /five_eight_branch/);
