@@ -70,6 +70,16 @@ STANDARD_E9_CONTROL_CHANGES: dict[str, dict[int, str]] = {
     "E-lower": {4: "Eb/D#", 8: "Eb/D#"},
 }
 
+STANDARD_E9_CONTROL_ORDER: tuple[str, ...] = ("A", "B", "C", "E-raise", "E-lower")
+
+CONTROL_TYPE_LABELS: dict[str, str] = {
+    "A": "pedal",
+    "B": "pedal",
+    "C": "pedal",
+    "E-raise": "lever",
+    "E-lower": "lever",
+}
+
 CONTROL_EXPLANATION_LABELS: dict[str, str] = {
     "A": "A pedal",
     "B": "B pedal",
@@ -151,6 +161,7 @@ class ExplorerRow:
     levers: tuple[str, ...] = ()
     per_string_changes: dict[str, dict[str, str]] = field(default_factory=dict)
     top_voice: dict[str, str | int] = field(default_factory=dict)
+    control_impacts: tuple[dict[str, object], ...] = ()
     inversion: str = "not_classified"
     voicing_status: VoicingStatus = "full"
     omitted_intervals: tuple[str, ...] = ()
@@ -187,6 +198,7 @@ class ExplorerRow:
             "levers": list(self.levers),
             "per_string_changes": dict(self.per_string_changes),
             "top_voice": dict(self.top_voice),
+            "control_impacts": [dict(impact) for impact in self.control_impacts],
             "inversion": self.inversion,
             "voicing_status": self.voicing_status,
             "omitted_intervals": list(self.omitted_intervals),
@@ -273,6 +285,28 @@ def controls_to_pedals_levers(controls: tuple[str, ...]) -> tuple[tuple[str, ...
     pedals = tuple(control for control in controls if control in {"A", "B", "C"})
     levers = tuple(control for control in controls if control in {"E-raise", "E-lower"})
     return pedals, levers
+
+
+def semitone_for_control_note(note: str) -> int:
+    return semitone_for_note((note or "").split("/", 1)[0].strip())
+
+
+def semitone_delta_for_change(before_note: str, after_note: str) -> int:
+    delta = (semitone_for_control_note(after_note) - semitone_for_control_note(before_note)) % 12
+    if delta > 6:
+        delta -= 12
+    return delta
+
+
+def interval_effect_label(delta: int) -> str:
+    if delta > 0:
+        unit = "semitone" if delta == 1 else "semitones"
+        return f"raises {delta} {unit}"
+    if delta < 0:
+        amount = abs(delta)
+        unit = "semitone" if amount == 1 else "semitones"
+        return f"lowers {amount} {unit}"
+    return "no pitch change"
 
 
 def standard_notes_for_controls(controls: tuple[str, ...]) -> dict[int, str]:
@@ -384,6 +418,37 @@ def display_note_for_scale(note: str, scale_notes: tuple[str, ...]) -> str:
     return note_name_for_display_pitch(note_pitch)
 
 
+def scale_degree_context_for_note(key: str, scale_type: ExplorerScaleType, note: str) -> dict[str, object]:
+    scale_notes = scale_notes_for_key(key, scale_type)
+    interval_note = (note or "").split("/", 1)[0].strip()
+    note_pitch = semitone_for_control_note(note)
+    for index, scale_note in enumerate(scale_notes, start=1):
+        if semitone_for_note(scale_note) == note_pitch:
+            return {
+                "scale_type": scale_type,
+                "scale_degree": index,
+                "scale_degree_label": str(index),
+                "display_note": scale_note,
+                "interval_to_key_root": interval_for_note(key, interval_note),
+                "in_scale": True,
+            }
+    return {
+        "scale_type": scale_type,
+        "scale_degree": None,
+        "scale_degree_label": "outside",
+        "display_note": note_name_for_display_pitch(note_pitch),
+        "interval_to_key_root": interval_for_note(key, interval_note),
+        "in_scale": False,
+    }
+
+
+def key_context_for_note(key: str, note: str) -> dict[str, dict[str, object]]:
+    return {
+        "major": scale_degree_context_for_note(key, "major", note),
+        "natural_minor": scale_degree_context_for_note(key, "natural_minor", note),
+    }
+
+
 def display_notes_for_row(
     *,
     key: str,
@@ -408,6 +473,13 @@ def display_top_voice_for(top_voice: dict[str, str | int], display_notes: dict[s
         **top_voice,
         "note": display_notes[string],
     }
+
+
+def display_note_for_chord_interval(root: str, interval: str, raw_note: str) -> str:
+    try:
+        return spell_note_for_interval(root, interval)
+    except Exception:
+        return note_name_for_display_pitch(semitone_for_control_note(raw_note))
 
 
 def display_summary_for(candidate: ExplorerCandidate, display_notes: dict[str, str]) -> str:
@@ -540,6 +612,67 @@ def top_voice_for(strings: tuple[int, ...], fret: int, controls: tuple[str, ...]
     }
 
 
+def row_control_impacts(candidate: ExplorerCandidate) -> tuple[dict[str, object], ...]:
+    impacts: list[dict[str, object]] = []
+    chord_root = candidate.chord_name.rstrip("*")
+    final_notes = resolve_notes(candidate.fret, candidate.strings, candidate.controls)
+    final_intervals = {string: interval_label(chord_root, note) for string, note in final_notes.items()}
+    for control in candidate.controls:
+        affected_strings = tuple(
+            string for string in candidate.strings if string in STANDARD_E9_CONTROL_CHANGES[control]
+        )
+        if not affected_strings:
+            continue
+        before_controls = tuple(active for active in candidate.controls if active != control)
+        before_notes = resolve_notes(candidate.fret, affected_strings, before_controls)
+        string_impacts: list[dict[str, object]] = []
+        for string in affected_strings:
+            string_key = str(string)
+            before_note = before_notes[string_key]
+            after_note = final_notes[string_key]
+            before_interval = interval_label(chord_root, before_note)
+            after_interval = final_intervals[string_key]
+            before_open_note = standard_notes_for_controls(before_controls)[string]
+            after_open_note = standard_notes_for_controls(candidate.controls)[string]
+            delta = semitone_delta_for_change(before_open_note, after_open_note)
+            string_impacts.append(
+                {
+                    "string": string,
+                    "before_open_note": before_open_note,
+                    "after_open_note": after_open_note,
+                    "before_note": before_note,
+                    "after_note": after_note,
+                    "display_before_note": display_note_for_chord_interval(chord_root, before_interval, before_note),
+                    "display_after_note": display_note_for_chord_interval(chord_root, after_interval, after_note),
+                    "before_interval": before_interval,
+                    "after_interval": after_interval,
+                    "semitone_delta": delta,
+                    "interval_effect": interval_effect_label(delta),
+                }
+            )
+        before_intervals = [impact["before_interval"] for impact in string_impacts]
+        after_intervals = [impact["after_interval"] for impact in string_impacts]
+        impacts.append(
+            {
+                "id": control,
+                "label": CONTROL_EXPLANATION_LABELS[control],
+                "control_type": CONTROL_TYPE_LABELS[control],
+                "affected_strings": list(affected_strings),
+                "string_impacts": string_impacts,
+                "resulting_context": {
+                    "root": chord_root,
+                    "quality": candidate.chord_quality,
+                    "chord_function": candidate.chord_function,
+                    "before_intervals": before_intervals,
+                    "after_intervals": after_intervals,
+                    "row_validates_as": f"{chord_root} {candidate.chord_quality}",
+                },
+                "validation_status": "deterministic_standard_e9",
+            }
+        )
+    return tuple(impacts)
+
+
 def classify_inversion(intervals: dict[str, str], strings: tuple[int, ...], *, voicing_status: VoicingStatus) -> str:
     if voicing_status != "full":
         return "partial_or_implied"
@@ -659,6 +792,7 @@ def validate_explorer_candidate(candidate: ExplorerCandidate) -> ExplorerRow:
         levers=levers,
         per_string_changes=per_string_changes(candidate.strings, candidate.controls),
         top_voice=top_voice,
+        control_impacts=row_control_impacts(candidate),
         inversion=classify_inversion(intervals, candidate.strings, voicing_status=voicing_status),
         voicing_status=voicing_status,
         omitted_intervals=omitted_intervals,
@@ -1005,6 +1139,7 @@ def build_explorer_payload(key: str = "G") -> dict[str, object]:
             "harmony_types": ["two_string_harmonized", "three_string_diatonic", "five_eight_branch", "advanced_pocket"],
             "string_groups": list(SUPPORTED_GRIPS),
         },
+        "control_impact_preview": build_control_impact_preview(key),
         "positions": rows,
         "filters": {
             "available_keys": list(SUPPORTED_EXPLORER_KEYS),
@@ -1021,12 +1156,86 @@ def build_explorer_payload(key: str = "G") -> dict[str, object]:
     }
 
 
+def build_control_impact_preview(key: str = "G") -> dict[str, object]:
+    key = normalize_explorer_key(key)
+    controls: list[dict[str, object]] = []
+    for control in STANDARD_E9_CONTROL_ORDER:
+        changes = STANDARD_E9_CONTROL_CHANGES[control]
+        string_impacts: list[dict[str, object]] = []
+        for string in sorted(changes):
+            before_note = E9_OPEN_STRINGS[string]
+            after_note = changes[string]
+            delta = semitone_delta_for_change(before_note, after_note)
+            string_impacts.append(
+                {
+                    "string": string,
+                    "before_note": before_note,
+                    "after_note": after_note,
+                    "semitone_delta": delta,
+                    "interval_effect": interval_effect_label(delta),
+                    "before_key_context": key_context_for_note(key, before_note),
+                    "after_key_context": key_context_for_note(key, after_note),
+                }
+            )
+        controls.append(
+            {
+                "id": control,
+                "label": CONTROL_EXPLANATION_LABELS[control],
+                "control_type": CONTROL_TYPE_LABELS[control],
+                "affected_strings": sorted(changes),
+                "string_impacts": string_impacts,
+                "summary": control_impact_summary(key, control, string_impacts),
+                "validation_status": "deterministic_standard_e9",
+            }
+        )
+    return {
+        "type": "e9-pedal-lever-impact-preview",
+        "version": "1.0",
+        "instrument": "E9",
+        "copedent_profile": {
+            "id": MVP_COPEDENT_ID,
+            "status": "assumed",
+            "label": MVP_COPEDENT_LABEL,
+        },
+        "key_context": {
+            "key": key,
+            "major_scale": list(scale_notes_for_key(key, "major")),
+            "natural_minor_scale": list(scale_notes_for_key(key, "natural_minor")),
+        },
+        "controls": controls,
+        "notes": [
+            "This preview is generated from deterministic standard 10-string E9 pitch logic.",
+            "Scale-degree context is relative to the selected Explorer key; row-level impacts show the selected row's chord context.",
+        ],
+        "warnings": [],
+    }
+
+
+def control_impact_summary(key: str, control: str, string_impacts: list[dict[str, object]]) -> str:
+    strings = ", ".join(str(impact["string"]) for impact in string_impacts)
+    first = string_impacts[0]
+    before_major = first["before_key_context"]["major"]
+    after_major = first["after_key_context"]["major"]
+    return (
+        f"{CONTROL_EXPLANATION_LABELS[control]} affects strings {strings}; "
+        f"against {key} major, the first affected string moves from "
+        f"{first['before_note']} ({before_major['scale_degree_label']}) to "
+        f"{first['after_note']} ({after_major['scale_degree_label']})."
+    )
+
+
 def validate_explorer_payload(payload: dict[str, object]) -> None:
     if payload.get("type") != "e9-fretboard-explorer":
         raise ValueError("Unsupported Explorer payload type")
     positions = payload.get("positions")
     if not isinstance(positions, list) or not positions:
         raise ValueError("Explorer payload requires positions")
+    impact_preview = payload.get("control_impact_preview")
+    if not isinstance(impact_preview, dict) or impact_preview.get("type") != "e9-pedal-lever-impact-preview":
+        raise ValueError("Explorer payload requires control_impact_preview")
+    controls = impact_preview.get("controls")
+    if not isinstance(controls, list) or not controls:
+        raise ValueError("Explorer control_impact_preview requires controls")
     ids: set[str] = set()
     for position in positions:
         if not isinstance(position, dict):
@@ -1049,3 +1258,6 @@ def validate_explorer_payload(payload: dict[str, object]) -> None:
         display_notes = position.get("display_notes")
         if not isinstance(display_notes, dict) or set(display_notes) != {str(string) for string in strings}:
             raise ValueError("Explorer row display_notes must match played strings")
+        control_impacts = position.get("control_impacts")
+        if not isinstance(control_impacts, list):
+            raise ValueError("Explorer row control_impacts must be a list")

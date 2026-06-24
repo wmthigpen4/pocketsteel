@@ -5,6 +5,7 @@ import pytest
 from pocketsteel.fretboard_explorer import (
     E9_OPEN_STRINGS,
     ExplorerCandidate,
+    build_control_impact_preview,
     build_explorer_payload,
     build_g_explorer_payload,
     explanation_for_explorer_row,
@@ -44,6 +45,7 @@ REQUIRED_ROW_KEYS = {
     "levers",
     "per_string_changes",
     "top_voice",
+    "control_impacts",
     "inversion",
     "voicing_status",
     "omitted_intervals",
@@ -70,6 +72,8 @@ def test_g_explorer_payload_shape_and_row_model() -> None:
     assert payload["copedent_profile"]["id"] == "mvp-e9-standard"
     assert payload["query"]["key"] == "G"
     assert payload["positions"]
+    assert payload["control_impact_preview"]["type"] == "e9-pedal-lever-impact-preview"
+    assert payload["control_impact_preview"]["key_context"]["key"] == "G"
 
     row = payload["positions"][0]
     assert REQUIRED_ROW_KEYS.issubset(row)
@@ -84,6 +88,96 @@ def test_g_explorer_payload_shape_and_row_model() -> None:
     assert row["explanation_summary"]
     assert "validated E9 pitch logic" in row["explanation_summary"]
     assert "Teaching text explains the row; it does not choose the row" in row["explanation_summary"]
+    assert isinstance(row["control_impacts"], list)
+
+
+def test_control_impact_preview_contract_describes_standard_e9_changes_in_key_context() -> None:
+    preview = build_control_impact_preview("G")
+
+    assert preview["type"] == "e9-pedal-lever-impact-preview"
+    assert preview["version"] == "1.0"
+    assert preview["instrument"] == "E9"
+    assert preview["copedent_profile"]["id"] == "mvp-e9-standard"
+    assert preview["key_context"]["key"] == "G"
+    assert preview["key_context"]["major_scale"] == ["G", "A", "B", "C", "D", "E", "F#"]
+    assert preview["key_context"]["natural_minor_scale"] == ["G", "A", "Bb", "C", "D", "Eb", "F"]
+
+    controls = {control["id"]: control for control in preview["controls"]}
+    assert set(controls) == {"A", "B", "C", "E-raise", "E-lower"}
+
+    a_pedal = controls["A"]
+    assert a_pedal["label"] == "A pedal"
+    assert a_pedal["control_type"] == "pedal"
+    assert a_pedal["affected_strings"] == [5, 10]
+    a_string_5 = next(impact for impact in a_pedal["string_impacts"] if impact["string"] == 5)
+    assert a_string_5["before_note"] == "B"
+    assert a_string_5["after_note"] == "C#"
+    assert a_string_5["semitone_delta"] == 2
+    assert a_string_5["interval_effect"] == "raises 2 semitones"
+    assert a_string_5["before_key_context"]["major"]["scale_degree_label"] == "3"
+    assert a_string_5["after_key_context"]["major"]["scale_degree_label"] == "outside"
+    assert a_string_5["after_key_context"]["major"]["interval_to_key_root"] == "b5/#11"
+
+    e_lower = controls["E-lower"]
+    assert e_lower["label"] == "E-lower lever"
+    assert e_lower["control_type"] == "lever"
+    assert e_lower["affected_strings"] == [4, 8]
+    e_lower_string_4 = next(impact for impact in e_lower["string_impacts"] if impact["string"] == 4)
+    assert e_lower_string_4["before_note"] == "E"
+    assert e_lower_string_4["after_note"] == "Eb/D#"
+    assert e_lower_string_4["semitone_delta"] == -1
+    assert e_lower_string_4["interval_effect"] == "lowers 1 semitone"
+    assert e_lower_string_4["after_key_context"]["natural_minor"]["scale_degree_label"] == "6"
+    assert e_lower_string_4["after_key_context"]["natural_minor"]["display_note"] == "Eb"
+    assert "deterministic standard 10-string E9 pitch logic" in preview["notes"][0]
+
+
+def test_row_level_control_impacts_describe_selected_chord_context() -> None:
+    row = next(
+        row.to_dict()
+        for row in g_major_three_string_rows()
+        if row.string_group == "4-5-6" and row.chord_function == "ii"
+    )
+
+    assert row["chord_name"] == "A"
+    assert row["pedals"] == ["B", "C"]
+    assert row["levers"] == []
+    impacts = {impact["id"]: impact for impact in row["control_impacts"]}
+    assert set(impacts) == {"B", "C"}
+
+    b_impact = impacts["B"]
+    assert b_impact["label"] == "B pedal"
+    assert b_impact["affected_strings"] == [6]
+    b_string = b_impact["string_impacts"][0]
+    assert b_string["string"] == 6
+    assert b_string["before_open_note"] == "G#"
+    assert b_string["after_open_note"] == "A"
+    assert b_string["before_note"] == "B"
+    assert b_string["after_note"] == "C"
+    assert b_string["before_interval"] == "2/9"
+    assert b_string["after_interval"] == "b3"
+    assert b_string["interval_effect"] == "raises 1 semitone"
+    assert b_impact["resulting_context"]["row_validates_as"] == "A minor"
+
+    c_impact = impacts["C"]
+    assert c_impact["label"] == "C pedal"
+    assert c_impact["affected_strings"] == [4, 5]
+    c_by_string = {impact["string"]: impact for impact in c_impact["string_impacts"]}
+    assert c_by_string[4]["before_note"] == "G"
+    assert c_by_string[4]["after_note"] == "A"
+    assert c_by_string[4]["before_interval"] == "b7"
+    assert c_by_string[4]["after_interval"] == "1"
+    assert c_by_string[5]["before_note"] == "D"
+    assert c_by_string[5]["after_note"] == "E"
+    assert c_by_string[5]["before_interval"] == "4/11"
+    assert c_by_string[5]["after_interval"] == "5"
+
+    no_pedals_row = next(
+        row.to_dict()
+        for row in g_major_three_string_rows()
+        if row.string_group == "4-5-6" and row.chord_function == "I"
+    )
+    assert no_pedals_row["control_impacts"] == []
 
 
 def test_transposed_major_payloads_validate_for_representative_keys() -> None:
