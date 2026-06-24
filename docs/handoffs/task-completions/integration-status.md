@@ -5,31 +5,29 @@ Generated for ChatGPT reset/guidance on branch `feature/answer-api`.
 ## Current State
 
 - Current branch: `feature/answer-api`.
-- Current repo HEAD at this refresh: `94fc745 docs: record explorer rendering filter protected smoke`.
-- Latest protected-preview smoke docs commit: `94fc745`.
-- Runtime smoked: `283468b`.
+- Current repo HEAD at this refresh: `efc3660 docs: record explorer visual grip protected smoke`.
+- Latest protected-preview smoke docs commit: `efc3660`.
+- Runtime smoked: `1d3728a`.
 - Protected-preview status: **PASS**.
 - User-smoke status: **allowed**.
-- App control state: **can be parked with known caveats**.
+- App control state: **can be parked after user smoke with known caveats**.
 - Broad unrelated dirty/untracked work remains parked. Do not broad-stage.
 
 ## Runtime / Deployment
 
 - Cloudflare Access login: succeeded.
-- Runtime refreshed from stale `f2581f8` to committed runtime `283468b`.
-- `/api/version` reports `283468b`.
+- Runtime refreshed from stale `17f2b55` to committed runtime `1d3728a`.
+- `/api/version` reports `1d3728a`.
 - Main app loaded through protected preview.
 - Explorer loaded through protected preview.
-- Explorer rendering/filter state passed.
-- Main app spot check passed.
-- Prompt matrix spot checks passed.
-- Brand/app routing remains usable through direct protected-preview UI paths.
+- Explorer visual grip rendering passed.
+- Answer-page G chord fretboard kept standard styling and did not inherit Explorer prominent mode.
 - No backend, UI, deployment, auth, DNS, corpus, Chroma/vector store, embeddings, scraping, private-source, source-inbox, or paid transcript files were changed by this refresh.
 
 Latest runtime identity from Lane 12:
 
 ```text
-git_sha=283468b
+git_sha=1d3728a
 git_branch=feature/answer-api
 auth_provider=cloudflare_access
 retrieval_mode=hybrid_private_first
@@ -39,9 +37,9 @@ retrieval_mode=hybrid_private_first
 
 Latest Lane 12 handoff:
 
-- `docs/handoffs/task-completions/2026-06-23-12-explorer-rendering-filter-protected-smoke.md`
-- Handoff/docs commit: `94fc745 docs: record explorer rendering filter protected smoke`
-- Runtime smoked: `283468b`
+- `docs/handoffs/task-completions/2026-06-23-12-explorer-visual-grip-rendering-protected-smoke.md`
+- Handoff/docs commit: `efc3660 docs: record explorer visual grip protected smoke`
+- Runtime smoked: `1d3728a`
 - Result: **PASS**
 - API fallback: not used as browser-smoke proof
 
@@ -49,55 +47,63 @@ Smoke URLs:
 
 ```text
 Explorer:
-https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=283468b
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=1d3728a
 
 Main app:
-https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=283468b
+https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=1d3728a
 
 Root:
-https://app.steelguitarrag.com/?v=283468b
+https://app.steelguitarrag.com/?v=1d3728a
 ```
 
 Root caveat:
 
-- `https://app.steelguitarrag.com/?v=283468b` redirects to `/ui/steel-guitar-rag-mock.html`.
+- `https://app.steelguitarrag.com/?v=1d3728a` redirects to `/ui/steel-guitar-rag-mock.html`.
 - The root redirect drops the query string.
 - Use direct cache-busted `/ui/...?...` URLs when exact cache-busting matters.
 
-## Explorer Rendering / Filter Result
+## Explorer Visual Grip Rendering Result
 
-Lane 12 verified the protected-preview Explorer state at runtime `283468b`:
+Lane 12 verified the protected-preview Explorer state at runtime `1d3728a`:
 
-- G major, `3-string diatonic harmony`, all groups: `34` cards / `34` SVG highlights.
-- G major, `2-string groups`, all groups: `44` cards / `44` SVG highlights.
-- G major, `2-string groups`, `5-8`: `4` cards / `4` SVG highlights.
-- Returning to `3-string diatonic harmony` reset group selection to all and rendered `34` cards / `34` SVG highlights.
-- `5-8` appears under `2-string groups`, not as a standalone `5&8` Harmony/View option.
+- Explorer loaded refreshed `visual-grip-render-20260623` script cache-busts.
+- Selected Explorer groups visibly render localized fret/string clusters.
+- Full-string horizontal lanes are absent.
+- SVG clusters match selected cards/rows.
 - No visible raw `five_eight_branch`.
 - No `[object Object]`.
-- No browser console errors.
+- No relevant browser console errors.
 
-Main app spot checks also passed through the protected-preview UI:
+Selected states verified:
 
-- `Show me a G major grip.`
-- `Show me a G to C move.`
-- `Give me the full tab for a modern copyrighted song.`
+| State | Cards | Highlights | Dots | Dot strings | Full-string lane suspect | Result |
+| --- | ---: | ---: | ---: | --- | --- | --- |
+| G major / 3-string / `3-4-5` | 8 | 8 | 24 | `3,4,5` | false | Pass |
+| G major / 3-string / `5-6-8` | 5 | 5 | 15 | `5,6,8` | false | Pass |
+| G major / 3-string / `6-8-10` | 5 | 5 | 15 | `6,8,10` | false | Pass |
+| A major / 3-string / `6-8-10` | 5 | 5 | 15 | `6,8,10` | false | Pass |
+| G major / 2-string / `5-8` | 4 | 4 | 8 | `5,8` | false | Pass |
 
-Known observation:
+Main app comparison:
 
-- Source-free responses still show the empty `Source notes / No sources returned` section. Lane 12 did not classify this as a populated source-card leak.
+- Prompt: `How do I play a G chord?`
+- Answer rendered.
+- Fretboard visible.
+- Answer-page G chord fretboard stayed standard localized styling.
+- Explorer-only prominent cluster styling did not leak into the answer-page fretboard.
+- No tab card, no fallback text, and no `[object Object]`.
 
 ## Caveat Routing
 
 - Root cache-bust redirect behavior: Lane 12 Self-Hosted Deployment.
-- Empty source-note section for source-free answers, if product wants it hidden: Lane 06 UX/UI Design.
+- `deploy/macos/install-private-preview-launchdaemon.sh status` still needs interactive sudo in this environment. Runtime health was verified through `launchctl print`, `lsof`, `ps`, and `/api/version`.
 
 ## Current Git / Worktree Notes
 
 Current checked state at this refresh:
 
 - Branch: `feature/answer-api`.
-- Repo HEAD before this docs refresh: `94fc745`.
+- Repo HEAD before this docs refresh: `efc3660`.
 - Cached index before this docs refresh: empty.
 - `git diff --check`: to be run for this docs refresh.
 
@@ -121,7 +127,7 @@ This is a protected-preview **PASS** with the root cache-bust caveat preserved.
 ## Safe To Stage For This Refresh
 
 - `docs/handoffs/task-completions/integration-status.md`
-- `docs/handoffs/task-completions/2026-06-23-01-explorer-rendering-filter-integration-refresh.md`
+- `docs/handoffs/task-completions/2026-06-23-01-explorer-visual-grip-integration-refresh.md`
 
 ## Files Not To Stage For This Refresh
 
@@ -133,16 +139,16 @@ This is a protected-preview **PASS** with the root cache-bust caveat preserved.
 
 ## Recommended Control State
 
-Park the app with known caveats.
+Park the app after user smoke with known caveats.
 
 Use these exact URLs after Cloudflare Access login:
 
 ```text
 Explorer:
-https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=283468b
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=1d3728a
 
 Main app:
-https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=283468b
+https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=1d3728a
 ```
 
 For cache-busted validation, prefer direct `/ui/...?...` URLs because root redirects to `/ui/steel-guitar-rag-mock.html` and drops query strings.
