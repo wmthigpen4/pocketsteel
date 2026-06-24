@@ -84,6 +84,38 @@ Rules:
 - Local `127.0.0.1` results do not prove protected-preview or production behavior.
 - QA handoffs must include `URL tested` and `URL user should test`.
 
+### Visual Smoke Evidence
+
+For any UI-facing change, browser smoke must verify visible states, not only DOM counts, marker counts, API payloads, or console output. A handoff may say `visual pass` only when screenshot evidence exists.
+
+Required visual evidence:
+
+- full-page or viewport screenshot for the target state
+- cropped screenshot for the changed UI region when the defect is local
+- mobile/narrow screenshot when the change affects responsive layout or when mobile smoke is requested
+- screenshot paths in the handoff, or an explicit statement that screenshot capture failed
+
+If screenshots cannot be captured, report `technical pass; visual not verified` rather than `visual pass`.
+
+Required visible-state checks for main app UI smoke:
+
+- Q&A/search remains visible and primary
+- header buttons are visible, separated, readable, and not overlapping
+- source cards, fretboard cards, tab cards, or prompt chips do not dominate the primary answer unless the task explicitly intends that
+- no raw internal labels, `[object Object]`, or stale cache/version hints appear
+
+Required visible-state checks for E9 Fretboard Explorer UI smoke:
+
+- key, scale, harmony/view, and string-group controls are visible, readable, and show the selected state
+- selected string groups visibly change both the row/card/detail area and the fretboard/SVG state
+- fretboard markers/clusters are visible in the expected places
+- full-string lanes are absent unless the prompt or feature explicitly requests full-lane rendering
+- core and advanced groups remain visually distinguishable when that feature is in scope
+- raw internal labels such as implementation branch names do not appear
+- console status is recorded
+
+When the user provides a screenshot or says "make it look like X," the smoke report must compare the current screenshot against that reference. If the implementation matches technical selectors but differs visibly from the reference, report a visual failure or warning instead of a pass.
+
 ## Integration notes
 - What another lane needs to know
 - Schema/API/component/data contract changes

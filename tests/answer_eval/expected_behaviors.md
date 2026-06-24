@@ -160,3 +160,24 @@ For UI smoke, also verify:
 - markdown tables render as tables
 - no stale protected-preview asset behavior is visible
 - no text overlaps on mobile/narrow layouts
+
+For UI-facing changes, visual smoke must include screenshot-backed evidence. A report may say `visual pass` only when it records screenshot paths or attached cropped images for the relevant visible state. If browser tooling can only prove DOM presence or console status, report `technical pass; visual not verified`.
+
+Required visual checks for main app changes:
+
+- Q&A/search remains visually primary
+- header buttons are visible, separated, readable, and not overlapping
+- answer, source-card, fretboard, tab, and prompt-chip areas do not visually crowd each other
+- no raw internal labels or `[object Object]` text appears
+
+Required visual checks for E9 Fretboard Explorer changes:
+
+- key, scale, harmony/view, and string-group controls are visible and show selected state
+- selected string groups visibly update the row/card/detail list
+- selected string groups visibly update fretboard markers/clusters
+- full-string lanes are absent unless the feature explicitly asks for them
+- core and advanced groups remain distinguishable when relevant
+- raw internal branch labels do not appear
+- console status is recorded
+
+When a user provides a screenshot or asks to match a visual reference, compare the smoke screenshot against that reference and record the visible match or mismatch. DOM counts do not override a visible mismatch.

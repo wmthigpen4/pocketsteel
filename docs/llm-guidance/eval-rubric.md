@@ -109,6 +109,29 @@ Fail when:
 - Duplicate `Practical answer` or orphan headings appear.
 - Stale cache-bust strings hide newer UI behavior.
 
+## Visual UI Smoke Evidence
+
+Pass when:
+
+- UI-facing QA includes screenshot evidence for the actual state tested.
+- Protected-preview, local, or production browser smoke records exact URLs and cache-busted URLs before screenshots are interpreted.
+- The report verifies visible behavior, not just DOM counts, marker counts, API responses, or console checks.
+- Main app smoke shows Q&A/search still visually primary and header buttons visible, separated, readable, and not overlapping.
+- Explorer smoke shows key, scale, harmony/view, and string-group controls visible with selected states.
+- Explorer smoke shows selected string groups affecting the visible fretboard markers/clusters and the row/card/detail list.
+- Fretboard visuals avoid full-string lanes unless full-lane rendering was explicitly requested.
+- The report compares against the user-provided screenshot or visual reference when one exists.
+- Console status is recorded.
+
+Fail when:
+
+- A handoff says `visual pass` without screenshot paths or attached cropped images.
+- The evidence proves only that elements exist in the DOM.
+- The report omits exact protected-preview/cache-busted URLs for a cache-sensitive UI check.
+- Header buttons, Explorer controls, selected string groups, visible fretboard markers/clusters, or detail panels are not visually checked.
+- Raw internal labels, `[object Object]`, stale cache hints, or overlapping full-string lanes are visible.
+- A user-provided visual reference is not compared.
+
 ## Browser Smoke Target Clarity
 
 Pass when browser-smoke reports identify the real target before the test begins:
