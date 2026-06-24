@@ -21,6 +21,13 @@ from pocketsteel.fretboard_explorer import (
     validate_explorer_candidate,
     validate_explorer_payload,
 )
+from pocketsteel.e9_copedents import (
+    DAY_COPEDENT_ID,
+    DEFAULT_COPEDENT_ID,
+    MY_COPEDENT_ID,
+    available_e9_copedents,
+    selected_copedent_payload,
+)
 
 
 REQUIRED_ROW_KEYS = {
@@ -69,7 +76,9 @@ def test_g_explorer_payload_shape_and_row_model() -> None:
     validate_explorer_payload(payload)
 
     assert payload["type"] == "e9-fretboard-explorer"
-    assert payload["copedent_profile"]["id"] == "mvp-e9-standard"
+    assert payload["copedent_profile"]["id"] == DEFAULT_COPEDENT_ID
+    assert payload["selected_copedent"]["id"] == DEFAULT_COPEDENT_ID
+    assert payload["selected_copedent"]["label"] == "Emmons E9"
     assert payload["query"]["key"] == "G"
     assert payload["positions"]
     assert payload["control_impact_preview"]["type"] == "e9-pedal-lever-impact-preview"
@@ -97,13 +106,14 @@ def test_control_impact_preview_contract_describes_standard_e9_changes_in_key_co
     assert preview["type"] == "e9-pedal-lever-impact-preview"
     assert preview["version"] == "1.0"
     assert preview["instrument"] == "E9"
-    assert preview["copedent_profile"]["id"] == "mvp-e9-standard"
+    assert preview["copedent_profile"]["id"] == DEFAULT_COPEDENT_ID
+    assert preview["selected_copedent_id"] == DEFAULT_COPEDENT_ID
     assert preview["key_context"]["key"] == "G"
     assert preview["key_context"]["major_scale"] == ["G", "A", "B", "C", "D", "E", "F#"]
     assert preview["key_context"]["natural_minor_scale"] == ["G", "A", "Bb", "C", "D", "Eb", "F"]
 
     controls = {control["id"]: control for control in preview["controls"]}
-    assert set(controls) == {"A", "B", "C", "E-raise", "E-lower"}
+    assert set(controls) == {"A", "B", "C", "E-raise", "E-lower", "B-to-Bb", "D-lower", "G-lower"}
 
     a_pedal = controls["A"]
     assert a_pedal["label"] == "A pedal"
@@ -129,7 +139,71 @@ def test_control_impact_preview_contract_describes_standard_e9_changes_in_key_co
     assert e_lower_string_4["interval_effect"] == "lowers 1 semitone"
     assert e_lower_string_4["after_key_context"]["natural_minor"]["scale_degree_label"] == "6"
     assert e_lower_string_4["after_key_context"]["natural_minor"]["display_note"] == "Eb"
-    assert "deterministic standard 10-string E9 pitch logic" in preview["notes"][0]
+    assert "deterministic Emmons E9 10-string E9 pitch logic" in preview["notes"][0]
+
+    d_lower = controls["D-lower"]
+    assert d_lower["label"] == "D-lower lever"
+    assert d_lower["control_type"] == "lever"
+    assert d_lower["affected_strings"] == [2, 9]
+    d_lower_string_9 = next(impact for impact in d_lower["string_impacts"] if impact["string"] == 9)
+    assert d_lower_string_9["before_note"] == "D"
+    assert d_lower_string_9["after_note"] == "C#"
+    assert d_lower_string_9["interval_effect"] == "lowers 1 semitone"
+
+
+def test_e9_copedent_selector_data_exposes_emmons_day_and_disabled_my_copedent() -> None:
+    options = [profile.selector_option() for profile in available_e9_copedents()]
+
+    assert [option["id"] for option in options] == [DEFAULT_COPEDENT_ID, DAY_COPEDENT_ID, MY_COPEDENT_ID]
+    assert options[0] == {"id": DEFAULT_COPEDENT_ID, "label": "Emmons E9", "status": "enabled"}
+    assert options[1] == {"id": DAY_COPEDENT_ID, "label": "Day E9", "status": "enabled"}
+    assert options[2]["label"] == "My Copedent (E9)"
+    assert options[2]["status"] == "disabled"
+    assert options[2]["disabled_reason"] == "Coming soon in Backstage"
+    assert not any("C6" in option["label"] for option in options)
+
+
+def test_selected_copedent_chart_payload_is_visual_table_ready() -> None:
+    payload = selected_copedent_payload()
+
+    assert payload["id"] == DEFAULT_COPEDENT_ID
+    assert payload["pedal_order"] == ["A", "B", "C"]
+    assert [row["string"] for row in payload["strings"]] == list(range(1, 11))
+    assert payload["strings"][0] == {"string": 1, "open_note": "F#"}
+    assert payload["strings"][8] == {"string": 9, "open_note": "D"}
+
+    chart = payload["chart"]
+    assert len(chart["rows"]) == 10
+    assert [column["id"] for column in chart["columns"]][:3] == ["A", "B", "C"]
+    row_5 = next(row for row in chart["rows"] if row["string"] == 5)
+    assert row_5["open_note"] == "B"
+    assert row_5["cells"]["A"]["label"] == "B -> C#"
+    assert row_5["cells"]["A"]["direction"] == "raise"
+    assert row_5["cells"]["B"] is None
+    assert row_5["cells"]["B-to-Bb"]["label"] == "B -> Bb/A#"
+    assert row_5["cells"]["B-to-Bb"]["direction"] == "lower"
+
+
+def test_day_e9_changes_physical_pedal_order_but_not_named_pedal_changes() -> None:
+    payload = build_explorer_payload("G", copedent_id=DAY_COPEDENT_ID)
+    validate_explorer_payload(payload)
+
+    selected = payload["selected_copedent"]
+    assert selected["id"] == DAY_COPEDENT_ID
+    assert selected["label"] == "Day E9"
+    assert selected["pedal_order"] == ["C", "B", "A"]
+    assert [column["id"] for column in selected["chart"]["columns"]][:3] == ["C", "B", "A"]
+
+    controls = {control["id"]: control for control in selected["controls"]}
+    assert controls["A"]["physical_position"] == "P3"
+    assert controls["A"]["changes"] == [
+        {"string": 5, "from": "B", "to": "C#", "semitones": 2, "direction": "raise", "arrow": "up"},
+        {"string": 10, "from": "B", "to": "C#", "semitones": 2, "direction": "raise", "arrow": "up"},
+    ]
+    assert controls["C"]["physical_position"] == "P1"
+
+    preview_control_order = [control["id"] for control in payload["control_impact_preview"]["controls"]]
+    assert preview_control_order[:3] == ["C", "B", "A"]
 
 
 def test_row_level_control_impacts_describe_selected_chord_context() -> None:

@@ -17,6 +17,15 @@ from pocketsteel.fretboard_examples import (
     note_at_fret,
     semitone_for_note,
 )
+from pocketsteel.e9_copedents import (
+    DEFAULT_COPEDENT_ID,
+    control_changes_for_profile,
+    control_labels_for_profile,
+    control_order_for_profile,
+    control_types_for_profile,
+    get_e9_copedent_profile,
+    selected_copedent_payload,
+)
 from pocketsteel.music_text import normalize_spelled_accidentals
 
 
@@ -29,8 +38,8 @@ ExplorerHarmonyType = Literal[
 ]
 VoicingStatus = Literal["full", "partial", "implied", "unavailable"]
 
-MVP_COPEDENT_ID = "mvp-e9-standard"
-MVP_COPEDENT_LABEL = "Standard 10-string E9"
+MVP_COPEDENT_ID = DEFAULT_COPEDENT_ID
+MVP_COPEDENT_LABEL = "Emmons E9"
 
 CORE_GRIPS: tuple[str, ...] = ("3-4-5", "4-5-6", "5-6-8", "6-8-10")
 ADVANCED_GRIPS: tuple[str, ...] = ("5-6-7", "6-7-10", "5-7-8")
@@ -62,31 +71,10 @@ SUPPORTED_EXPLORER_KEYS: tuple[str, ...] = (
 MAJOR_SCALE_INTERVALS: tuple[str, ...] = ("1", "2/9", "3", "4/11", "5", "6/13", "7")
 NATURAL_MINOR_SCALE_INTERVALS: tuple[str, ...] = ("1", "2/9", "b3", "4/11", "5", "b6", "b7")
 
-STANDARD_E9_CONTROL_CHANGES: dict[str, dict[int, str]] = {
-    "A": {5: "C#", 10: "C#"},
-    "B": {3: "A", 6: "A"},
-    "C": {4: "F#", 5: "C#"},
-    "E-raise": {4: "F", 8: "F"},
-    "E-lower": {4: "Eb/D#", 8: "Eb/D#"},
-}
-
-STANDARD_E9_CONTROL_ORDER: tuple[str, ...] = ("A", "B", "C", "E-raise", "E-lower")
-
-CONTROL_TYPE_LABELS: dict[str, str] = {
-    "A": "pedal",
-    "B": "pedal",
-    "C": "pedal",
-    "E-raise": "lever",
-    "E-lower": "lever",
-}
-
-CONTROL_EXPLANATION_LABELS: dict[str, str] = {
-    "A": "A pedal",
-    "B": "B pedal",
-    "C": "C pedal",
-    "E-raise": "E-raise lever",
-    "E-lower": "E-lower lever",
-}
+STANDARD_E9_CONTROL_CHANGES: dict[str, dict[int, str]] = control_changes_for_profile(MVP_COPEDENT_ID)
+STANDARD_E9_CONTROL_ORDER: tuple[str, ...] = control_order_for_profile(MVP_COPEDENT_ID)
+CONTROL_TYPE_LABELS: dict[str, str] = control_types_for_profile(MVP_COPEDENT_ID)
+CONTROL_EXPLANATION_LABELS: dict[str, str] = control_labels_for_profile(MVP_COPEDENT_ID)
 
 QUALITY_INTERVALS: dict[str, tuple[str, ...]] = {
     "major": ("1", "3", "5"),
@@ -283,7 +271,7 @@ def chord_name_for_scale_degree(key: str, scale_type: ExplorerScaleType, degree:
 
 def controls_to_pedals_levers(controls: tuple[str, ...]) -> tuple[tuple[str, ...], tuple[str, ...]]:
     pedals = tuple(control for control in controls if control in {"A", "B", "C"})
-    levers = tuple(control for control in controls if control in {"E-raise", "E-lower"})
+    levers = tuple(control for control in controls if control not in {"A", "B", "C"})
     return pedals, levers
 
 
@@ -1117,18 +1105,20 @@ def build_g_explorer_payload() -> dict[str, object]:
     return build_explorer_payload("G")
 
 
-def build_explorer_payload(key: str = "G") -> dict[str, object]:
+def build_explorer_payload(key: str = "G", copedent_id: str | None = None) -> dict[str, object]:
     key = normalize_explorer_key(key)
+    profile = get_e9_copedent_profile(copedent_id)
     rows = [row.to_dict() for row in explorer_rows(key)]
     return {
         "type": "e9-fretboard-explorer",
         "version": "1.0",
         "instrument": "E9",
         "copedent_profile": {
-            "id": MVP_COPEDENT_ID,
-            "status": "assumed",
-            "label": MVP_COPEDENT_LABEL,
+            "id": profile.id,
+            "status": profile.status,
+            "label": profile.label,
         },
+        "selected_copedent": selected_copedent_payload(profile.id),
         "query": {
             "key": key,
             "scale_types": ["major", "natural_minor"],
@@ -1139,28 +1129,33 @@ def build_explorer_payload(key: str = "G") -> dict[str, object]:
             "harmony_types": ["two_string_harmonized", "three_string_diatonic", "five_eight_branch", "advanced_pocket"],
             "string_groups": list(SUPPORTED_GRIPS),
         },
-        "control_impact_preview": build_control_impact_preview(key),
+        "control_impact_preview": build_control_impact_preview(key, profile.id),
         "positions": rows,
         "filters": {
             "available_keys": list(SUPPORTED_EXPLORER_KEYS),
             "available_scale_types": ["major", "natural_minor"],
             "available_harmony_types": ["two_string_harmonized", "three_string_diatonic", "five_eight_branch", "advanced_pocket"],
             "available_string_groups": list(SUPPORTED_GRIPS),
+            "available_copedents": selected_copedent_payload(profile.id)["available_options"],
         },
         "legend": [
             {"id": "starter", "label": "Starter"},
             {"id": "common", "label": "Common"},
             {"id": "advanced", "label": "Advanced"},
         ],
-        "warnings": [],
+        "warnings": list(selected_copedent_payload(profile.id)["warnings"]),
     }
 
 
-def build_control_impact_preview(key: str = "G") -> dict[str, object]:
+def build_control_impact_preview(key: str = "G", copedent_id: str | None = None) -> dict[str, object]:
     key = normalize_explorer_key(key)
+    profile = get_e9_copedent_profile(copedent_id)
+    control_changes = control_changes_for_profile(profile.id)
+    control_labels = control_labels_for_profile(profile.id)
+    control_types = control_types_for_profile(profile.id)
     controls: list[dict[str, object]] = []
-    for control in STANDARD_E9_CONTROL_ORDER:
-        changes = STANDARD_E9_CONTROL_CHANGES[control]
+    for control in control_order_for_profile(profile.id):
+        changes = control_changes[control]
         string_impacts: list[dict[str, object]] = []
         for string in sorted(changes):
             before_note = E9_OPEN_STRINGS[string]
@@ -1180,11 +1175,11 @@ def build_control_impact_preview(key: str = "G") -> dict[str, object]:
         controls.append(
             {
                 "id": control,
-                "label": CONTROL_EXPLANATION_LABELS[control],
-                "control_type": CONTROL_TYPE_LABELS[control],
+                "label": control_labels[control],
+                "control_type": control_types[control],
                 "affected_strings": sorted(changes),
                 "string_impacts": string_impacts,
-                "summary": control_impact_summary(key, control, string_impacts),
+                "summary": control_impact_summary(key, control, string_impacts, profile.id),
                 "validation_status": "deterministic_standard_e9",
             }
         )
@@ -1193,10 +1188,11 @@ def build_control_impact_preview(key: str = "G") -> dict[str, object]:
         "version": "1.0",
         "instrument": "E9",
         "copedent_profile": {
-            "id": MVP_COPEDENT_ID,
-            "status": "assumed",
-            "label": MVP_COPEDENT_LABEL,
+            "id": profile.id,
+            "status": profile.status,
+            "label": profile.label,
         },
+        "selected_copedent_id": profile.id,
         "key_context": {
             "key": key,
             "major_scale": list(scale_notes_for_key(key, "major")),
@@ -1204,20 +1200,26 @@ def build_control_impact_preview(key: str = "G") -> dict[str, object]:
         },
         "controls": controls,
         "notes": [
-            "This preview is generated from deterministic standard 10-string E9 pitch logic.",
+            f"This preview is generated from deterministic {profile.label} 10-string E9 pitch logic.",
             "Scale-degree context is relative to the selected Explorer key; row-level impacts show the selected row's chord context.",
         ],
         "warnings": [],
     }
 
 
-def control_impact_summary(key: str, control: str, string_impacts: list[dict[str, object]]) -> str:
+def control_impact_summary(
+    key: str,
+    control: str,
+    string_impacts: list[dict[str, object]],
+    copedent_id: str | None = None,
+) -> str:
     strings = ", ".join(str(impact["string"]) for impact in string_impacts)
     first = string_impacts[0]
     before_major = first["before_key_context"]["major"]
     after_major = first["after_key_context"]["major"]
+    control_labels = control_labels_for_profile(copedent_id)
     return (
-        f"{CONTROL_EXPLANATION_LABELS[control]} affects strings {strings}; "
+        f"{control_labels[control]} affects strings {strings}; "
         f"against {key} major, the first affected string moves from "
         f"{first['before_note']} ({before_major['scale_degree_label']}) to "
         f"{first['after_note']} ({after_major['scale_degree_label']})."
@@ -1227,6 +1229,22 @@ def control_impact_summary(key: str, control: str, string_impacts: list[dict[str
 def validate_explorer_payload(payload: dict[str, object]) -> None:
     if payload.get("type") != "e9-fretboard-explorer":
         raise ValueError("Unsupported Explorer payload type")
+    selected_copedent = payload.get("selected_copedent")
+    if not isinstance(selected_copedent, dict):
+        raise ValueError("Explorer payload requires selected_copedent")
+    if selected_copedent.get("instrument") != "E9":
+        raise ValueError("Explorer selected_copedent must be E9")
+    strings = selected_copedent.get("strings")
+    if not isinstance(strings, list) or [item.get("string") for item in strings if isinstance(item, dict)] != list(range(1, 11)):
+        raise ValueError("Explorer selected_copedent requires string rows 1-10")
+    chart = selected_copedent.get("chart")
+    if not isinstance(chart, dict) or not isinstance(chart.get("rows"), list) or not isinstance(chart.get("columns"), list):
+        raise ValueError("Explorer selected_copedent requires chart rows and columns")
+    options = selected_copedent.get("available_options")
+    if not isinstance(options, list) or not options:
+        raise ValueError("Explorer selected_copedent requires available_options")
+    if any(option.get("id") == "my-copedent-e9" and option.get("status") != "disabled" for option in options if isinstance(option, dict)):
+        raise ValueError("My Copedent option must be disabled in this slice")
     positions = payload.get("positions")
     if not isinstance(positions, list) or not positions:
         raise ValueError("Explorer payload requires positions")
