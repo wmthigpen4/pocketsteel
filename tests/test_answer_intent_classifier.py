@@ -318,6 +318,40 @@ def test_answer_intent_classifier_focus_prompts(question: str, expected: dict[st
     assert decision == expected
 
 
+@pytest.mark.parametrize(
+    "question",
+    [
+        "What does a Franklin pedal do?",
+        "What is a Franklin change?",
+        "What is a zero pedal?",
+        "What is a half stop?",
+        "What is split tuning?",
+        "What is a compensator?",
+        "What does the vertical lever do?",
+        "What does the F lever do?",
+        "What does the E lever do?",
+        "What is the X lever?",
+        "What is the Emmons setup?",
+        "What is the Day setup?",
+        "What is a Crawford cluster?",
+        "What is a copedent?",
+    ],
+)
+def test_named_steel_vocabulary_routes_as_copedent_mechanics_without_fretboard(question: str) -> None:
+    decision = classify_answer_intent(question)
+
+    assert_contract_shape(decision)
+    assert decision == {
+        "domain": "steel_guitar",
+        "intent": "copedent_position",
+        "needs_sources": False,
+        "needs_fretboard": False,
+        "needs_copedent": True,
+        "retrieval_allowed": False,
+        "allowed_answer_shape": "copedent_position",
+    }
+
+
 def test_classify_answer_request_accepts_mode_without_changing_contract_shape() -> None:
     decision = classify_answer_request("Help me clean up my blocking.", mode="practice")
 

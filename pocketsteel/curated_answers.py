@@ -862,6 +862,152 @@ FOUNDATION_ALIASES: dict[str, str] = {
 }
 
 
+NAMED_STEEL_VOCABULARY_ANSWERS: dict[str, str] = {
+    "franklin pedal": (
+        "A Franklin pedal is an extra E9 pedal commonly associated with Paul Franklin. "
+        "The common Franklin change lowers strings 5 and 10 from B to A, and lowers string 6 from G# to F#.\n\n"
+        "What it does musically: it gives you strong downward chord motion and low-string movement without moving the bar. "
+        "Players use it for darker passing sounds, bigger bass movement, and chord colors that are hard to get from the standard A, B, and C pedals alone.\n\n"
+        "Copedents vary, so check the actual guitar before assuming those exact strings and pitches."
+    ),
+    "franklin change": (
+        "The Franklin change usually means the E9 change that lowers strings 5 and 10 from B to A, and string 6 from G# to F#. "
+        "It is commonly put on an extra pedal, often called the Franklin pedal.\n\n"
+        "The musical point is downward motion: it lets a chord or bass voice fall while the bar stays put. "
+        "That makes it useful for passing chords, minor or dominant color, and connected low-register movement.\n\n"
+        "Copedents vary, so treat this as the common version, not a guarantee for every guitar."
+    ),
+    "zero pedal": (
+        "A zero pedal is an extra pedal placed to the left of the normal A pedal, often called P0. "
+        "It is not one universal pitch change. Some players use it for a Franklin-style change, some use it for other low-string or setup-specific changes.\n\n"
+        "The practical meaning is location: it gives the player one more foot pedal before the standard A-B-C pedal group. "
+        "To know what it does musically, read that guitar's copedent."
+    ),
+    "half stop": (
+        "A half stop is a tactile stop partway through a pedal or knee-lever travel. "
+        "It lets one control produce an intermediate note before continuing to a second note.\n\n"
+        "A common E9 example is the 2nd string lower: D# can stop at D, then continue to C#. "
+        "The exact string, pitch, and feel depend on the guitar's copedent and setup."
+    ),
+    "split tuning": (
+        "Split tuning is the setup work that makes a combined raise-and-lower note tune accurately. "
+        "For example, one control may raise a string and another may lower it; when both are engaged, the split note needs its own tuning point.\n\n"
+        "Musically, splits give you usable in-between notes instead of rough compromises. "
+        "The exact split depends on the string, raise, lower, and guitar mechanics."
+    ),
+    "compensator": (
+        "A compensator is an extra pull or adjustment that corrects a pitch problem in a specific pedal or lever combination. "
+        "It is not usually a musical pedal by itself; it helps keep a note in tune when the rest of the guitar mechanics affect it.\n\n"
+        "Players use compensators for problems like cabinet drop, combination tuning, or a string that needs a small correction only in one pedal/lever state."
+    ),
+    "vertical lever": (
+        "A vertical lever is a knee lever you move upward with your knee. "
+        "On many E9 copedents it lowers the B strings, usually strings 5 and 10, to Bb/A#, but that is not universal.\n\n"
+        "Musically, a B-to-Bb vertical can give useful dominant, minor, and passing colors. "
+        "Check the active copedent before assuming what any vertical lever changes."
+    ),
+    "f lever": (
+        "The F lever is common shorthand for the E-raise lever on E9. "
+        "It raises the E strings, usually strings 4 and 8, to F.\n\n"
+        "The main use is the A+F major position: with the A pedal engaged, the E-raise lever gives a major-chord position three frets above the no-pedals position. "
+        "Lever names vary, so the mechanical name is E-raise."
+    ),
+    "e lever": (
+        "The E lever shorthand varies by player, so resolve it through the active copedent. "
+        "In the current user shorthand, the E lever means the E-lower lever: it lowers the E strings, usually strings 4 and 8, to Eb/D#.\n\n"
+        "Do not confuse it with the F lever. F lever means E-raise; E-lower means E strings down to Eb/D#."
+    ),
+    "x lever": (
+        "X lever is setup shorthand, not a universal mechanical standard. "
+        "Many E9 players use X lever to mean a B-to-Bb lower, often on strings 5 and 10, but some copedents use different labels.\n\n"
+        "The safe way to teach it is by the mechanical change: identify which strings move, then name the notes before using it in a chord grip."
+    ),
+    "emmons setup": (
+        "Emmons setup usually means the standard E9 pedal order A-B-C from left to right. "
+        "That contrasts with Day setup, where the same basic pedal functions are ordered C-B-A.\n\n"
+        "The pedal order affects foot movement and habits, but it does not by itself define every knee lever. "
+        "Always check the full copedent for lever names and changes."
+    ),
+    "day setup": (
+        "Day setup usually means the E9 pedal order C-B-A from left to right, the reverse of the common Emmons A-B-C pedal order.\n\n"
+        "The musical functions can be the same, but the foot movement feels different. "
+        "Like any setup label, it does not fully define the knee levers; the full copedent still matters."
+    ),
+    "crawford cluster": (
+        "A Crawford cluster is a close grouping of knee levers that gives a player more knee-lever changes within reach. "
+        "It is a layout idea, not one fixed pitch change.\n\n"
+        "Musically, the value is access: more lever combinations can be available without moving far from the playing position. "
+        "The actual changes depend on the guitar's copedent."
+    ),
+}
+
+NAMED_STEEL_VOCABULARY_ALIASES: dict[str, str] = {
+    "franklin pedal": "franklin pedal",
+    "the franklin pedal": "franklin pedal",
+    "franklin change": "franklin change",
+    "the franklin change": "franklin change",
+    "zero pedal": "zero pedal",
+    "the zero pedal": "zero pedal",
+    "p0": "zero pedal",
+    "p0 pedal": "zero pedal",
+    "half stop": "half stop",
+    "half-stop": "half stop",
+    "half stops": "half stop",
+    "half-stops": "half stop",
+    "split tuning": "split tuning",
+    "splits tuning": "split tuning",
+    "compensator": "compensator",
+    "compensators": "compensator",
+    "vertical lever": "vertical lever",
+    "the vertical lever": "vertical lever",
+    "lkv": "vertical lever",
+    "f lever": "f lever",
+    "the f lever": "f lever",
+    "e lever": "e lever",
+    "the e lever": "e lever",
+    "x lever": "x lever",
+    "the x lever": "x lever",
+    "emmons setup": "emmons setup",
+    "emmons pedal setup": "emmons setup",
+    "day setup": "day setup",
+    "day pedal setup": "day setup",
+    "crawford cluster": "crawford cluster",
+    "copedent": "copedent",
+}
+
+
+def normalize_named_steel_vocabulary(text: str) -> str | None:
+    phrase = normalize(text).replace("’", "'")
+    phrase = re.sub(r"[?!.,;:]+$", "", phrase).strip()
+    phrase = re.sub(r"\b(?:the|a|an)\s+", "", phrase)
+    phrase = phrase.replace("b and c", "b+c")
+    phrase = re.sub(r"\s+", " ", phrase).strip()
+    return NAMED_STEEL_VOCABULARY_ALIASES.get(phrase)
+
+
+def named_steel_vocabulary_answer_for_question(question: str) -> str | None:
+    q = normalize(question).replace("’", "'")
+    q = re.sub(r"\s+", " ", q).strip()
+    patterns = (
+        r"^what(?:'s| is)\s+(?P<term>.+?)\??$",
+        r"^what\s+does\s+(?P<term>.+?)\s+do\??$",
+        r"^what(?:'s| is)\s+(?P<term>.+?)\s+for\??$",
+        r"^explain\s+(?P<term>.+?)\??$",
+        r"^tell\s+me\s+about\s+(?P<term>.+?)\??$",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, q)
+        if not match:
+            continue
+        term = normalize_named_steel_vocabulary(match.group("term"))
+        if term is None:
+            continue
+        if term == "copedent":
+            return FOUNDATION_CONCEPT_ANSWERS["copedent"]
+        return NAMED_STEEL_VOCABULARY_ANSWERS.get(term)
+    return None
+
+
 def normalize_foundation_concept(text: str) -> str | None:
     raw_phrase = normalize(text)
     if raw_phrase == "the a pedal":
@@ -957,6 +1103,13 @@ def sgf_quarantine_teacher_answer(question: str) -> CuratedAnswer | None:
             intent="copedent_fretboard",
             confidence="curated_high",
             answer=casual_multi_chord_answer,
+        )
+    named_vocabulary_answer = named_steel_vocabulary_answer_for_question(q)
+    if named_vocabulary_answer is not None:
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=named_vocabulary_answer,
         )
     foundation_answer = foundation_concept_answer_for_question(q)
     if foundation_answer is not None:
@@ -1356,6 +1509,13 @@ def intent_mode_curated_answer(question: str) -> CuratedAnswer | None:
     lyrics_answer = full_lyrics_guardrail_answer(q)
     if lyrics_answer is not None:
         return lyrics_answer
+    named_vocabulary_answer = named_steel_vocabulary_answer_for_question(q)
+    if named_vocabulary_answer is not None:
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=named_vocabulary_answer,
+        )
     mode = intent_mode_for_question(q)
     if mode == "scope_guardrail":
         size_phrase = ", and it would be too large to display usefully" if _mentions_large_output_request(q) else ""

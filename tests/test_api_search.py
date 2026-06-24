@@ -4199,6 +4199,39 @@ def test_steel_guitar_101_foundation_concepts_are_teacher_first_and_source_free(
         assert_foundation_answer(payload, required_phrases)
 
 
+def test_named_steel_vocabulary_answers_are_teacher_first_and_source_free() -> None:
+    cases: dict[str, tuple[str, ...]] = {
+        "What does a Franklin pedal do?": (
+            "commonly associated with Paul Franklin",
+            "lowers strings 5 and 10 from B to A",
+            "string 6 from G# to F#",
+            "Copedents vary",
+        ),
+        "What is a Franklin change?": (
+            "lowers strings 5 and 10 from B to A",
+            "string 6 from G# to F#",
+            "common version",
+        ),
+        "What is a zero pedal?": ("left of the normal A pedal", "not one universal pitch change", "copedent"),
+        "What is a half stop?": ("partway through a pedal or knee-lever travel", "D# can stop at D", "continue to C#"),
+        "What is split tuning?": ("combined raise-and-lower note", "tune accurately", "split note"),
+        "What is a compensator?": ("extra pull or adjustment", "corrects a pitch problem", "not usually a musical pedal"),
+        "What does the vertical lever do?": ("move upward", "lowers the B strings", "copedent"),
+        "What does the F lever do?": ("E-raise lever", "raises the E strings", "A+F major position"),
+        "What does the E lever do?": ("shorthand varies", "E-lower lever", "Do not confuse it with the F lever"),
+        "What is the X lever?": ("setup shorthand", "B-to-Bb lower", "mechanical change"),
+        "What is the Emmons setup?": ("A-B-C", "Day setup", "full copedent"),
+        "What is the Day setup?": ("C-B-A", "Emmons A-B-C", "full copedent"),
+        "What is a Crawford cluster?": ("close grouping of knee levers", "not one fixed pitch change", "copedent"),
+        "What is a copedent?": ("chart of a pedal steel’s tuning", "open string note", "pedal and knee lever"),
+    }
+    for question, required_phrases in cases.items():
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert_foundation_answer(payload, required_phrases)
+        assert "tab_example" not in payload
+
+
 def test_steel_guitar_101_foundation_comparisons_are_teacher_first_and_source_free() -> None:
     cases: dict[str, tuple[str, ...]] = {
         "What is the difference between lap steel and pedal steel?": (

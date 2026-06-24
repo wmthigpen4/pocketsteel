@@ -91,6 +91,8 @@ STEEL_TERMS_RE = re.compile(
     r"pedal\s+steel|steel\s+guitar|e9|c6|copedent|fretboard|fret|frets|strings?|"
     r"pedals?|levers?|knee\s+lever|lkl|lkr|lkv|rkl|rkr|a\s*\+\s*b|a\s*\+\s*f|b\s*\+\s*c|"
     r"e[-\s]?lower|f\s+lever|vertical\s+lever|changer|volume\s+pedal|bar|tone\s+bar|"
+    r"franklin\s+(?:pedal|change)|zero\s+pedal|half[-\s]?stop|split\s+tuning|"
+    r"compensator|x\s+lever|emmons\s+setup|day\s+setup|crawford\s+cluster|"
     r"blocking|pick\s+blocking|palm\s+blocking|finger\s+picks?|4th\s+finger\s+picks?|"
     r"grips?|licks?|fills?|stroboplus|"
     r"fender\s+steel\s+king|peavey\s+nashville|nashville\s+amps?|bjs(?:\s+bars?)?|"
@@ -277,6 +279,14 @@ G_HARMONIZED_SCALE_VISUAL_RE = re.compile(
     r")\b",
     re.I,
 )
+NAMED_STEEL_VOCAB_RE = re.compile(
+    r"\b(?:"
+    r"franklin\s+(?:pedal|change)|zero\s+pedal|half[-\s]?stop|split\s+tuning|"
+    r"compensator|vertical\s+lever|f\s+lever|e\s+lever|x\s+lever|"
+    r"emmons\s+setup|day\s+setup|crawford\s+cluster|copedent"
+    r")\b",
+    re.I,
+)
 
 
 def classify_answer_request(question: str, mode: str = "ask") -> AnswerIntentPayload:
@@ -362,14 +372,6 @@ def classify_answer_request(question: str, mode: str = "ask") -> AnswerIntentPay
     if mode_decision is not None:
         return mode_decision
 
-    source_backed_decision = _source_backed_steel_decision(q)
-    if source_backed_decision is not None:
-        return source_backed_decision
-
-    rooted_quality_decision = _rooted_chord_quality_decision(q)
-    if rooted_quality_decision is not None:
-        return rooted_quality_decision
-
     if SOURCE_SEEKING_RE.search(q) and _mentions_steel(q):
         return _decision(
             domain="steel_guitar",
@@ -380,6 +382,25 @@ def classify_answer_request(question: str, mode: str = "ask") -> AnswerIntentPay
             retrieval_allowed=True,
             allowed_answer_shape="source_backed",
         )
+
+    if _mentions_named_steel_vocabulary(q):
+        return _decision(
+            domain="steel_guitar",
+            intent="copedent_position",
+            needs_sources=False,
+            needs_fretboard=False,
+            needs_copedent=True,
+            retrieval_allowed=False,
+            allowed_answer_shape="copedent_position",
+        )
+
+    source_backed_decision = _source_backed_steel_decision(q)
+    if source_backed_decision is not None:
+        return source_backed_decision
+
+    rooted_quality_decision = _rooted_chord_quality_decision(q)
+    if rooted_quality_decision is not None:
+        return rooted_quality_decision
 
     if _mentions_gear_diagnosis(q):
         return _decision(
@@ -586,6 +607,10 @@ def _mentions_steel(question: str) -> bool:
 
 def _mentions_g_harmonized_scale_visual(question: str) -> bool:
     return bool(G_HARMONIZED_SCALE_VISUAL_RE.search(question))
+
+
+def _mentions_named_steel_vocabulary(question: str) -> bool:
+    return bool(NAMED_STEEL_VOCAB_RE.search(question))
 
 
 def _mentions_gear_diagnosis(question: str) -> bool:
