@@ -273,8 +273,8 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "pedal-steel-fretboard.js?v=e9-explorer-explanation-ui-20260623" not in html
     assert "pedal-steel-fretboard.js?v=explorer-ui-cleanup-20260623" not in html
     assert "pedal-steel-fretboard.js?v=selected-svg-render-20260623" not in html
-    assert '<script src="e9-fretboard-explorer-data.js?v=visual-grip-render-20260623"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=visual-grip-render-20260623"></script>' in html
+    assert '<script src="e9-fretboard-explorer-data.js?v=e9-copedent-selector-20260624"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=e9-copedent-selector-20260624"></script>' in html
     expected_key_options = {
         "C": "C",
         "Db": "C# (or D♭)",
@@ -297,6 +297,14 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
         assert f'<option value="{hidden_value}"' not in html
     assert "Enharmonic spellings are listed separately" not in html
     assert "Enharmonic keys share one selector entry" in html
+    assert '<label for="explorer-copedent">E9 setup</label>' in html
+    assert '<select id="explorer-copedent"' in html
+    assert '<option value="emmons-e9-basic" selected>Emmons E9</option>' in html
+    assert '<option value="day-e9-basic">Day E9</option>' in html
+    assert '<option value="my-copedent-e9" disabled>My Copedent (E9) - Coming soon in Backstage</option>' in html
+    assert "Choose the E9 setup that matches your guitar" in html
+    assert "My Copedent (E9) is coming soon in Backstage" in html
+    assert "C6" not in html
     root_fret_classes = {
         next(row["fret"] for row in key_payload["positions"] if row["scale_type"] == "major" and row["chord_function"] == "I")
         % 12
@@ -308,7 +316,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<option value="two_string_harmonized">2-string harmonized scale</option>' in html
     assert '<option value="five_eight_branch">5&amp;8 branch positions (2-string)</option>' not in html
     assert '<option value="three_string_diatonic" selected>3-string diatonic harmony</option>' in html
-    assert "grid-template-columns: repeat(3, minmax(0, 1fr));" in html
+    assert "grid-template-columns: repeat(4, minmax(0, 1fr));" in html
     assert "align-content: start;" in html
     assert ".explorer-control:not(.explorer-control--string-group) select" in html
     assert "height: 42px;" in html
@@ -334,8 +342,19 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "Partial means the row does not contain every chord tone" in html
     assert 'id="explorer-tooltip"' in html
     assert 'id="explorer-active-results"' in html
+    assert 'id="explorer-copedent-chart"' in html
+    assert 'id="explorer-control-impact-preview"' in html
     assert 'id="explorer-selected-detail"' in html
     assert "explorer-teaching-note" in html
+    assert "explorer-copedent-chart__table" in html
+    assert "Pedal and lever impact preview" in script
+    assert "payloadsByCopedent" in script
+    assert "renderCopedentChart" in script
+    assert "control_impact_preview" in script
+    assert "control_impacts" in script
+    assert "rowControlImpactsHtml" in script
+    assert "explorer-control-impact-card" in html
+    assert "explorer-row-control-impacts" in html
     assert "Showing validated positions" in html
     assert "0 validated rows" not in html
     assert "explorer-row-card" not in html
@@ -364,6 +383,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "emphasizeVisibleHighlights" in script
     assert 'highlightStyle: "prominent"' in script
     assert "selectedStringGroups" in script
+    assert "selectedCopedentId" in script
     component = Path("ui/pedal-steel-fretboard.js").read_text(encoding="utf-8")
     assert "data-selected-string-group-lanes" not in component
     assert "data-selected-string-row" not in component
@@ -378,6 +398,20 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "Common" not in html
     assert "[object Object]" not in data
     assert "validated E9 pitch logic" in data
+    assert "STEEL_RAG_E9_EXPLORER_PAYLOADS_BY_COPEDENT" in data
+    assert '"selected_copedent"' in data
+    assert '"emmons-e9-basic"' in data
+    assert '"day-e9-basic"' in data
+    assert '"my-copedent-e9"' in data
+    assert '"disabled_reason": "Coming soon in Backstage"' in data
+    assert '"physical_position": "RKR"' in data
+    assert '"physical_position": "RKL"' in data
+    assert '"selected_copedent_id": "day-e9-basic"' in data
+    assert payload["control_impact_preview"]["type"] == "e9-pedal-lever-impact-preview"
+    assert payload["selected_copedent"]["id"] == "emmons-e9-basic"
+    assert len(payload["selected_copedent"]["chart"]["rows"]) == 10
+    assert payload["control_impact_preview"]["controls"][0]["string_impacts"][0]["before_note"]
+    assert any(row["control_impacts"] for row in payload["positions"])
     assert "Teaching text explains the row; it does not choose the row" in data
 
     assert payload["query"]["display_scale_notes"]["natural_minor"] == ["G", "A", "Bb", "C", "D", "Eb", "F"]
@@ -536,6 +570,11 @@ const elements = {
     { value: "Bb", text: "A# (or B♭)" },
     { value: "B", text: "B" }
   ]),
+  "explorer-copedent": new FakeSelect("explorer-copedent", "emmons-e9-basic", [
+    { value: "emmons-e9-basic", text: "Emmons E9" },
+    { value: "day-e9-basic", text: "Day E9" },
+    { value: "my-copedent-e9", text: "My Copedent (E9) - Coming soon in Backstage" }
+  ]),
   "explorer-scale": new FakeSelect("explorer-scale", "major", [
     { value: "major", text: "G major" },
     { value: "natural_minor", text: "G natural minor" }
@@ -547,6 +586,8 @@ const elements = {
   "explorer-string-group": new FakeSelect("explorer-string-group", "all", [{ value: "all", text: "All 3-string groups" }]),
   "explorer-scale-notes": new FakeNode("explorer-scale-notes"),
   "explorer-result-count": new FakeNode("explorer-result-count"),
+  "explorer-copedent-chart": new FakeNode("explorer-copedent-chart"),
+  "explorer-control-impact-preview": new FakeNode("explorer-control-impact-preview"),
   "explorer-active-results": new FakeNode("explorer-active-results"),
   "explorer-fretboard": new FakeNode("explorer-fretboard"),
   "explorer-row-list": new FakeNode("explorer-row-list"),
@@ -587,6 +628,11 @@ for (const key of ["C#", "D#", "F#", "G#", "A#"]) {
 }
 assert.match(elements["explorer-key"].innerHTML, /C# \(or D♭\)/);
 assert.match(elements["explorer-key"].innerHTML, /A# \(or B♭\)/);
+assert.match(elements["explorer-copedent"].innerHTML, /Emmons E9/);
+assert.match(elements["explorer-copedent"].innerHTML, /Day E9/);
+assert.match(elements["explorer-copedent"].innerHTML, /My Copedent \(E9\) - Coming soon in Backstage/);
+assert.match(elements["explorer-copedent"].innerHTML, /value="my-copedent-e9"[^>]*disabled/);
+assert.equal(elements["explorer-copedent"].value, "emmons-e9-basic");
 assert.match(elements["explorer-string-group"].innerHTML, /All 3-string groups/);
 assert.match(elements["explorer-string-group"].innerHTML, /Core grips/);
 assert.match(elements["explorer-string-group"].innerHTML, /Advanced swaps/);
@@ -604,6 +650,24 @@ assert.equal(lastMount.options.positions.length > 0, true);
 assert.equal(lastMount.options.positions.some((row) => row.grip === "5-7-8"), true);
 assert.match(elements["explorer-result-count"].textContent, /Showing validated positions/);
 assert.doesNotMatch(elements["explorer-result-count"].textContent, /validated rows/);
+assert.equal(elements["explorer-copedent-chart"].hidden, false);
+assert.match(elements["explorer-copedent-chart"].textContent, /Emmons E9/);
+assert.match(elements["explorer-copedent-chart"].textContent, /app-default/);
+assert.match(elements["explorer-copedent-chart"].textContent, /String\s+Open[\s\S]*A pedal\s+P1[\s\S]*B pedal\s+P2[\s\S]*C pedal\s+P3/);
+assert.match(elements["explorer-copedent-chart"].textContent, /D-lower lever\s+RKR/);
+assert.match(elements["explorer-copedent-chart"].textContent, /G-lower lever\s+RKL/);
+assert.match(elements["explorer-copedent-chart"].textContent, /B -&gt; C#/);
+assert.match(elements["explorer-copedent-chart"].textContent, /raise \+2/);
+assert.doesNotMatch(elements["explorer-copedent-chart"].textContent, /\[object Object\]/);
+assert.equal(elements["explorer-control-impact-preview"].hidden, false);
+assert.match(elements["explorer-control-impact-preview"].textContent, /Pedal and lever impact preview/);
+assert.match(elements["explorer-control-impact-preview"].textContent, /Emmons E9/);
+assert.match(elements["explorer-control-impact-preview"].textContent, /A pedal/);
+assert.match(elements["explorer-control-impact-preview"].textContent, /String 5/);
+assert.match(elements["explorer-control-impact-preview"].textContent, /B -&gt; C#/);
+assert.match(elements["explorer-control-impact-preview"].textContent, /raises 2 semitones/);
+assert.doesNotMatch(elements["explorer-control-impact-preview"].textContent, /\[object Object\]/);
+assert.match(elements["explorer-control-impact-preview"].textContent, /A pedal/);
 assert.match(elements["explorer-active-results"].textContent, /all 3-string groups/);
 assert.equal(elements["explorer-active-results"].querySelectorAll("[data-active-result-row]").length, lastMount.options.positions.length);
 assert.match(elements["explorer-selected-detail"].textContent, /Display notes/);
@@ -639,7 +703,24 @@ for (const [key, scaleNotes] of Object.entries(expectedMajorScales)) {
   assert.doesNotMatch(elements["explorer-row-list"].textContent, /\[object Object\]/);
   assert.doesNotMatch(elements["explorer-active-results"].textContent, /\[object Object\]/);
   assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /\[object Object\]/);
+  assert.doesNotMatch(elements["explorer-copedent-chart"].textContent, /\[object Object\]/);
+  assert.doesNotMatch(elements["explorer-control-impact-preview"].textContent, /\[object Object\]/);
 }
+
+elements["explorer-copedent"].value = "day-e9-basic";
+elements["explorer-copedent"].dispatchChange();
+assert.equal(lastMount.options.query.key, "B");
+assert.match(elements["explorer-copedent-chart"].textContent, /Day E9/);
+assert.match(elements["explorer-copedent-chart"].textContent, /enabled/);
+assert.match(elements["explorer-copedent-chart"].textContent, /String\s+Open[\s\S]*C pedal\s+P1[\s\S]*B pedal\s+P2[\s\S]*A pedal\s+P3/);
+assert.match(elements["explorer-control-impact-preview"].textContent, /Day E9/);
+assert.match(elements["explorer-control-impact-preview"].textContent, /C pedal/);
+assert.match(elements["explorer-control-impact-preview"].textContent, /A pedal/);
+assert.doesNotMatch(elements["explorer-copedent-chart"].textContent, /\[object Object\]/);
+assert.doesNotMatch(elements["explorer-control-impact-preview"].textContent, /\[object Object\]/);
+elements["explorer-copedent"].value = "emmons-e9-basic";
+elements["explorer-copedent"].dispatchChange();
+assert.match(elements["explorer-copedent-chart"].textContent, /Emmons E9/);
 
 elements["explorer-key"].value = "A";
 elements["explorer-key"].dispatchChange();
@@ -735,8 +816,10 @@ assert.equal(lastMount.options.positions.some((row) => row.grip === "5-8"), fals
 assert.equal(elements["explorer-empty"].hidden, true);
 elements["explorer-string-group"].selectValues(["5-7-8"]);
 assert.match(elements["explorer-selected-detail"].textContent, /Per-string changes/);
+assert.match(elements["explorer-selected-detail"].textContent, /Changes used here/);
 assert.match(elements["explorer-selected-detail"].textContent, /Why this position works/);
 assert.match(elements["explorer-selected-detail"].textContent, /E-lower/);
+assert.match(elements["explorer-selected-detail"].textContent, /lowers 1 semitone/);
 assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /E-lower\+E-lower/);
 assert.doesNotMatch(elements["explorer-row-list"].textContent, /E-lower\+E-lower/);
 const tooltipMarker = elements["explorer-fretboard"].querySelectorAll(".pedal-steel-fretboard__highlight[data-highlight-id]")[0];

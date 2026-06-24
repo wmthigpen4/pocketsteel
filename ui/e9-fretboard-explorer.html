@@ -93,7 +93,7 @@
 
     .explorer-controls {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 12px;
       padding: 16px;
       border: 1px solid var(--line);
@@ -196,6 +196,251 @@
     .explorer-pill--trust {
       color: rgba(141, 199, 141, 0.92);
       border-color: rgba(141, 199, 141, 0.28);
+    }
+
+    .explorer-copedent-chart {
+      display: grid;
+      gap: 12px;
+      margin: 0 0 18px;
+      border: 1px solid rgba(246, 190, 88, 0.22);
+      border-radius: 16px;
+      padding: 14px;
+      background: rgba(15, 13, 10, 0.82);
+    }
+
+    .explorer-copedent-chart[hidden] {
+      display: none;
+    }
+
+    .explorer-copedent-chart__header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 10px 16px;
+      align-items: baseline;
+    }
+
+    .explorer-copedent-chart__header strong {
+      display: block;
+      color: var(--gold);
+      font-size: 0.85rem;
+      font-weight: 800;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .explorer-copedent-chart__header p {
+      max-width: 780px;
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.45;
+    }
+
+    .explorer-copedent-chart__header span {
+      color: rgba(141, 199, 141, 0.92);
+      font-size: 0.78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .explorer-copedent-chart__table-wrap {
+      overflow-x: auto;
+      border: 1px solid rgba(246, 190, 88, 0.14);
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.18);
+    }
+
+    .explorer-copedent-chart__table {
+      width: 100%;
+      min-width: 920px;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+      line-height: 1.35;
+    }
+
+    .explorer-copedent-chart__table th,
+    .explorer-copedent-chart__table td {
+      border-bottom: 1px solid rgba(246, 190, 88, 0.1);
+      border-right: 1px solid rgba(246, 190, 88, 0.08);
+      padding: 8px 9px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .explorer-copedent-chart__table th {
+      color: rgba(255, 247, 232, 0.74);
+      font-weight: 800;
+      background: rgba(0, 0, 0, 0.18);
+    }
+
+    .explorer-copedent-chart__table th span,
+    .explorer-copedent-chart__table th small {
+      display: block;
+    }
+
+    .explorer-copedent-chart__table th small {
+      margin-top: 2px;
+      color: rgba(255, 247, 232, 0.48);
+      font-size: 0.68rem;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .explorer-copedent-chart__open {
+      color: var(--text);
+      font-weight: 800;
+    }
+
+    .explorer-copedent-chart__empty {
+      color: rgba(255, 247, 232, 0.24);
+    }
+
+    .explorer-copedent-chart__cell {
+      background: rgba(246, 190, 88, 0.05);
+    }
+
+    .explorer-copedent-chart__cell--raise {
+      background: rgba(247, 189, 88, 0.08);
+    }
+
+    .explorer-copedent-chart__cell--lower {
+      background: rgba(141, 199, 141, 0.08);
+    }
+
+    .explorer-copedent-chart__cell strong,
+    .explorer-copedent-chart__cell span {
+      display: block;
+    }
+
+    .explorer-copedent-chart__cell strong {
+      color: var(--text);
+      font-size: 0.8rem;
+    }
+
+    .explorer-copedent-chart__cell span {
+      margin-top: 2px;
+      color: rgba(255, 247, 232, 0.58);
+      font-size: 0.7rem;
+      font-weight: 800;
+    }
+
+    .explorer-control-impact-preview {
+      display: grid;
+      gap: 12px;
+      margin: 0 0 18px;
+      border: 1px solid rgba(246, 190, 88, 0.2);
+      border-radius: 16px;
+      padding: 14px;
+      background: rgba(14, 12, 9, 0.78);
+    }
+
+    .explorer-control-impact-preview[hidden] {
+      display: none;
+    }
+
+    .explorer-control-impact-preview__header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 10px 16px;
+      align-items: baseline;
+    }
+
+    .explorer-control-impact-preview__header strong {
+      display: block;
+      color: var(--gold);
+      font-size: 0.85rem;
+      font-weight: 800;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .explorer-control-impact-preview__header p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.45;
+    }
+
+    .explorer-control-impact-preview__header span {
+      color: rgba(255, 247, 232, 0.62);
+      font-size: 0.78rem;
+      font-weight: 800;
+    }
+
+    .explorer-control-impact-preview__grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .explorer-control-impact-card {
+      display: grid;
+      gap: 8px;
+      border: 1px solid rgba(246, 190, 88, 0.16);
+      border-radius: 12px;
+      padding: 11px;
+      background: rgba(0, 0, 0, 0.2);
+      min-width: 0;
+    }
+
+    .explorer-control-impact-card__header {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: baseline;
+    }
+
+    .explorer-control-impact-card__header strong {
+      color: var(--text);
+      font-size: 0.9rem;
+      font-weight: 800;
+    }
+
+    .explorer-control-impact-card__header span {
+      color: var(--gold);
+      font-size: 0.7rem;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .explorer-control-impact-card p {
+      margin: 0;
+      color: rgba(255, 247, 232, 0.66);
+      font-size: 0.78rem;
+      line-height: 1.4;
+    }
+
+    .explorer-control-impact-list {
+      display: grid;
+      gap: 6px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .explorer-control-impact-list li {
+      display: grid;
+      gap: 2px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.32;
+    }
+
+    .explorer-control-impact-list span {
+      color: rgba(255, 247, 232, 0.56);
+      font-weight: 800;
+    }
+
+    .explorer-control-impact-list strong {
+      color: var(--text);
+      font-size: 0.86rem;
+    }
+
+    .explorer-control-impact-list em {
+      color: rgba(255, 247, 232, 0.64);
+      font-style: normal;
     }
 
     .explorer-panel {
@@ -443,6 +688,43 @@
       margin: 0;
     }
 
+    .explorer-row-control-impacts {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+      border-top: 1px solid rgba(246, 190, 88, 0.16);
+      padding-top: 12px;
+    }
+
+    .explorer-row-control-impacts > strong {
+      color: var(--gold);
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .explorer-row-control-impacts__grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .explorer-row-control-impacts article {
+      border: 1px solid rgba(246, 190, 88, 0.14);
+      border-radius: 10px;
+      padding: 9px;
+      background: rgba(0, 0, 0, 0.18);
+    }
+
+    .explorer-row-control-impacts article > span {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--text);
+      font-size: 0.82rem;
+      font-weight: 800;
+    }
+
     .explorer-note {
       grid-column: 1 / -1;
       margin: 18px 0 0;
@@ -500,6 +782,11 @@
         grid-template-columns: 1fr;
       }
 
+      .explorer-control-impact-preview__grid,
+      .explorer-row-control-impacts__grid {
+        grid-template-columns: 1fr;
+      }
+
       .explorer-help-grid {
         grid-template-columns: 1fr;
       }
@@ -539,6 +826,15 @@
           <option value="B">B</option>
         </select>
         <p class="explorer-control-help" id="explorer-key-help">Enharmonic keys share one selector entry so learner-facing notes stay readable.</p>
+      </div>
+      <div class="explorer-control">
+        <label for="explorer-copedent">E9 setup</label>
+        <select id="explorer-copedent" aria-describedby="explorer-copedent-help">
+          <option value="emmons-e9-basic" selected>Emmons E9</option>
+          <option value="day-e9-basic">Day E9</option>
+          <option value="my-copedent-e9" disabled>My Copedent (E9) - Coming soon in Backstage</option>
+        </select>
+        <p class="explorer-control-help" id="explorer-copedent-help">Choose the E9 setup that matches your guitar. My Copedent (E9) is coming soon in Backstage.</p>
       </div>
       <div class="explorer-control">
         <label for="explorer-scale">Scale</label>
@@ -585,6 +881,10 @@
       <span class="explorer-pill explorer-pill--trust" id="explorer-result-count">Showing validated positions</span>
     </div>
 
+    <section class="explorer-copedent-chart" id="explorer-copedent-chart" aria-label="Selected E9 copedent chart" hidden></section>
+
+    <section class="explorer-control-impact-preview" id="explorer-control-impact-preview" aria-label="Pedal and lever impact preview" hidden></section>
+
     <section class="explorer-panel" aria-label="Explorer fretboard">
       <p class="explorer-empty" id="explorer-empty" hidden>No validated rows match these controls.</p>
       <div class="explorer-active-results" id="explorer-active-results" aria-label="Visible selected positions"></div>
@@ -604,7 +904,7 @@
   </main>
 
   <script src="pedal-steel-fretboard.js?v=visual-grip-render-20260623"></script>
-  <script src="e9-fretboard-explorer-data.js?v=visual-grip-render-20260623"></script>
-  <script src="e9-fretboard-explorer.js?v=visual-grip-render-20260623"></script>
+  <script src="e9-fretboard-explorer-data.js?v=e9-copedent-selector-20260624"></script>
+  <script src="e9-fretboard-explorer.js?v=e9-copedent-selector-20260624"></script>
 </body>
 </html>

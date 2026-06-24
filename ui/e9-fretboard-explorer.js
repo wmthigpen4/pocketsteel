@@ -2,9 +2,11 @@
   "use strict";
 
   const payloadsByKey = window.STEEL_RAG_E9_EXPLORER_PAYLOADS || {};
+  const payloadsByCopedent = window.STEEL_RAG_E9_EXPLORER_PAYLOADS_BY_COPEDENT || {};
   const fallbackPayload = window.STEEL_RAG_E9_EXPLORER_PAYLOAD;
   const fretboardApi = window.STEEL_RAG_FRETBOARD;
 
+  const DEFAULT_COPEDENT_ID = "emmons-e9-basic";
   const CORE_GROUPS = new Set(["3-4-5", "4-5-6", "5-6-8", "6-8-10"]);
   const ADVANCED_GROUPS = new Set(["5-6-7", "6-7-10", "5-7-8"]);
   const TWO_STRING_GROUPS = new Set(["3-5", "5-6", "6-10", "4-6", "3-4"]);
@@ -31,11 +33,14 @@
 
   const els = {
     key: document.getElementById("explorer-key"),
+    copedent: document.getElementById("explorer-copedent"),
     scale: document.getElementById("explorer-scale"),
     harmony: document.getElementById("explorer-harmony"),
     stringGroup: document.getElementById("explorer-string-group"),
     scaleNotes: document.getElementById("explorer-scale-notes"),
     resultCount: document.getElementById("explorer-result-count"),
+    copedentChart: document.getElementById("explorer-copedent-chart"),
+    controlPreview: document.getElementById("explorer-control-impact-preview"),
     activeResults: document.getElementById("explorer-active-results"),
     fretboard: document.getElementById("explorer-fretboard"),
     rowList: document.getElementById("explorer-row-list"),
@@ -48,7 +53,8 @@
   let currentRows = [];
 
   function availableKeys() {
-    const keys = Object.keys(payloadsByKey);
+    const sourcePayloads = Object.keys(payloadsByKey).length ? payloadsByKey : payloadsForSelectedCopedent();
+    const keys = Object.keys(sourcePayloads);
     if (keys.length) {
       const visible = KEY_OPTIONS.filter((option) => keys.includes(option.value));
       const visibleValues = new Set(visible.map((option) => option.value));
@@ -60,8 +66,17 @@
     return fallbackPayload?.query?.key ? [{ value: fallbackPayload.query.key, label: fallbackPayload.query.key }] : [];
   }
 
+  function selectedCopedentId() {
+    return els.copedent?.value || fallbackPayload?.selected_copedent?.id || DEFAULT_COPEDENT_ID;
+  }
+
+  function payloadsForSelectedCopedent() {
+    return payloadsByCopedent[selectedCopedentId()] || payloadsByKey;
+  }
+
   function activePayload() {
-    return payloadsByKey[els.key.value] || fallbackPayload || null;
+    const payloads = payloadsForSelectedCopedent();
+    return payloads[els.key.value] || payloadsByKey[els.key.value] || fallbackPayload || null;
   }
 
   function activeKey() {
@@ -158,6 +173,15 @@
     return `<option value="${escapeHtml(value)}"${values.includes(value) ? " selected" : ""}>${escapeHtml(label)}</option>`;
   }
 
+  function copedentOption(copedent, selectedValue) {
+    const disabled = copedent.status === "disabled";
+    const disabledReason = formatValue(copedent.disabled_reason, "");
+    const label = disabled && disabledReason
+      ? `${copedent.label} - ${disabledReason}`
+      : copedent.label;
+    return `<option value="${escapeHtml(copedent.id)}"${copedent.id === selectedValue ? " selected" : ""}${disabled ? " disabled" : ""}>${escapeHtml(label)}</option>`;
+  }
+
   function selectedOptionLabel(selectEl) {
     const optionEl = selectEl.options?.[selectEl.selectedIndex];
     return optionEl?.text || selectEl.value || "";
@@ -207,6 +231,27 @@
     if (!keyOptions.some((keyOption) => keyOption.value === currentValue)) {
       els.key.value = keyOptions.some((keyOption) => keyOption.value === "G") ? "G" : keyOptions[0].value;
     }
+  }
+
+  function availableCopedents() {
+    const payload = activePayload() || fallbackPayload;
+    const options = payload?.selected_copedent?.available_options || payload?.filters?.available_copedents;
+    return Array.isArray(options) ? options : [];
+  }
+
+  function updateCopedentOptions() {
+    if (!els.copedent) {
+      return;
+    }
+    const options = availableCopedents();
+    if (!options.length) {
+      return;
+    }
+    const currentValue = els.copedent.value || DEFAULT_COPEDENT_ID;
+    const enabledValues = new Set(options.filter((item) => item.status !== "disabled").map((item) => item.id));
+    const selectedValue = enabledValues.has(currentValue) ? currentValue : DEFAULT_COPEDENT_ID;
+    els.copedent.innerHTML = options.map((item) => copedentOption(item, selectedValue)).join("");
+    els.copedent.value = selectedValue;
   }
 
   function updateScaleLabels() {
@@ -380,6 +425,188 @@
     `;
   }
 
+  function semitoneLabel(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number) || number === 0) {
+      return "";
+    }
+    return `${number > 0 ? "+" : ""}${number}`;
+  }
+
+  function directionLabel(value) {
+    if (value === "raise") {
+      return "raise";
+    }
+    if (value === "lower") {
+      return "lower";
+    }
+    return "";
+  }
+
+  function copedentCellHtml(cell) {
+    if (!cell) {
+      return '<td class="explorer-copedent-chart__empty" aria-label="No change"></td>';
+    }
+    const direction = directionLabel(cell.direction);
+    const delta = semitoneLabel(cell.semitones);
+    const detail = [direction, delta].filter(Boolean).join(" ");
+    return `
+      <td class="explorer-copedent-chart__cell explorer-copedent-chart__cell--${escapeHtml(cell.direction || "change")}" data-copedent-direction="${escapeHtml(cell.direction || "change")}">
+        <strong>${escapeHtml(formatValue(cell.label || `${cell.from} -> ${cell.to}`))}</strong>
+        ${detail ? `<span>${escapeHtml(detail)}</span>` : ""}
+      </td>
+    `;
+  }
+
+  function renderCopedentChart() {
+    if (!els.copedentChart) {
+      return;
+    }
+    const selected = activePayload()?.selected_copedent;
+    const rows = toArray(selected?.chart?.rows);
+    const columns = toArray(selected?.chart?.columns);
+    if (!selected || !rows.length || !columns.length) {
+      els.copedentChart.hidden = true;
+      els.copedentChart.innerHTML = "";
+      return;
+    }
+    els.copedentChart.hidden = false;
+    els.copedentChart.innerHTML = `
+      <div class="explorer-copedent-chart__header">
+        <div>
+          <strong>${escapeHtml(formatValue(selected.label || "E9 setup"))}</strong>
+          <p>Choose the E9 setup that matches your guitar. Emmons and Day mainly differ in pedal arrangement.</p>
+          <p>Copedents vary; this chart shows the setup currently used for guidance.</p>
+        </div>
+        <span>${escapeHtml(formatValue(selected.status || "selected"))}</span>
+      </div>
+      <div class="explorer-copedent-chart__table-wrap">
+        <table class="explorer-copedent-chart__table" aria-label="${escapeHtml(formatValue(selected.label || "E9"))} copedent chart">
+          <thead>
+            <tr>
+              <th scope="col">String</th>
+              <th scope="col">Open</th>
+              ${columns.map((column) => `
+                <th scope="col">
+                  <span>${escapeHtml(formatValue(column.label || column.id))}</span>
+                  <small>${escapeHtml(formatValue(column.physical_position || column.control_type, ""))}</small>
+                </th>
+              `).join("")}
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map((row) => `
+              <tr>
+                <th scope="row">${escapeHtml(formatValue(row.string))}</th>
+                <td class="explorer-copedent-chart__open">${escapeHtml(formatValue(row.open_note))}</td>
+                ${columns.map((column) => copedentCellHtml(row.cells?.[column.id])).join("")}
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function noteChangeLabel(impact) {
+    const before = formatValue(impact.display_before_note || impact.before_note, "");
+    const after = formatValue(impact.display_after_note || impact.after_note, "");
+    if (!before || !after) {
+      return "";
+    }
+    return `${before} -> ${after}`;
+  }
+
+  function impactLineHtml(impact, includeChordIntervals = false) {
+    const change = noteChangeLabel(impact);
+    if (!change) {
+      return "";
+    }
+    const stringNumber = formatValue(impact.string, "");
+    const intervalEffect = formatValue(impact.interval_effect, "");
+    const beforeInterval = formatValue(impact.before_interval, "");
+    const afterInterval = formatValue(impact.after_interval, "");
+    const intervalContext = includeChordIntervals && beforeInterval && afterInterval
+      ? `; chord role ${beforeInterval} -> ${afterInterval}`
+      : "";
+    return `
+      <li>
+        <span>String ${escapeHtml(stringNumber)}</span>
+        <strong>${escapeHtml(change)}</strong>
+        ${intervalEffect ? `<em>${escapeHtml(intervalEffect + intervalContext)}</em>` : ""}
+      </li>
+    `;
+  }
+
+  function controlImpactCardHtml(control) {
+    const impacts = toArray(control.string_impacts);
+    if (!impacts.length) {
+      return "";
+    }
+    const affectedStrings = formatValue(control.affected_strings);
+    return `
+      <article class="explorer-control-impact-card" data-control-impact="${escapeHtml(control.id || control.label || "")}">
+        <div class="explorer-control-impact-card__header">
+          <strong>${escapeHtml(formatValue(control.label || control.id || "Control"))}</strong>
+          <span>${escapeHtml(formatValue(control.control_type || "control"))}</span>
+        </div>
+        <p>Affects strings ${escapeHtml(affectedStrings)}.</p>
+        <ul class="explorer-control-impact-list">
+          ${impacts.map((impact) => impactLineHtml(impact)).join("")}
+        </ul>
+      </article>
+    `;
+  }
+
+  function renderControlImpactPreview() {
+    if (!els.controlPreview) {
+      return;
+    }
+    const preview = activePayload()?.control_impact_preview;
+    const controls = toArray(preview?.controls);
+    if (!controls.length) {
+      els.controlPreview.hidden = true;
+      els.controlPreview.innerHTML = "";
+      return;
+    }
+    const key = preview?.key_context?.key || activeKey();
+    els.controlPreview.hidden = false;
+    els.controlPreview.innerHTML = `
+      <div class="explorer-control-impact-preview__header">
+        <div>
+          <strong>Pedal and lever impact preview</strong>
+          <p>See what the standard E9 controls change in the key of ${escapeHtml(key)} before choosing a position.</p>
+        </div>
+        <span>${escapeHtml(formatValue(preview?.copedent_profile?.label || "Standard E9"))}</span>
+      </div>
+      <div class="explorer-control-impact-preview__grid">
+        ${controls.map((control) => controlImpactCardHtml(control)).join("")}
+      </div>
+    `;
+  }
+
+  function rowControlImpactsHtml(row) {
+    const impacts = toArray(row.control_impacts);
+    if (!impacts.length) {
+      return "";
+    }
+    return `
+      <section class="explorer-row-control-impacts" aria-label="Pedal and lever changes used here">
+        <strong>Changes used here</strong>
+        <div class="explorer-row-control-impacts__grid">
+          ${impacts.map((impact) => `
+            <article>
+              <span>${escapeHtml(formatValue(impact.label || impact.id || "Control"))}</span>
+              <ul class="explorer-control-impact-list explorer-control-impact-list--compact">
+                ${toArray(impact.string_impacts).map((stringImpact) => impactLineHtml(stringImpact, true)).join("")}
+              </ul>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+    `;
+  }
+
   function renderSelectedDetail(row) {
     if (!row) {
       els.selectedDetail.className = "explorer-selected-detail";
@@ -405,6 +632,7 @@
         ${detailRow("Per-string changes", row.per_string_changes)}
         ${detailRow("Warnings", warnings)}
       </dl>
+      ${rowControlImpactsHtml(row)}
     `;
   }
 
@@ -587,6 +815,8 @@
     els.empty.textContent = rows.length
       ? ""
       : `No validated ${HARMONY_LABELS[els.harmony.value] || "Explorer"} rows are available for ${els.scale.options[els.scale.selectedIndex]?.text || "this scale"} yet.`;
+    renderCopedentChart();
+    renderControlImpactPreview();
     renderActiveResults(rows);
     renderCards(rows);
     renderFretboard(rows);
@@ -595,6 +825,8 @@
     const renderedText = [
       els.rowList.textContent,
       els.selectedDetail.textContent,
+      els.copedentChart?.textContent || "",
+      els.controlPreview?.textContent || "",
       els.fretboard.textContent,
       els.tooltip.textContent,
     ].join(" ");
@@ -610,7 +842,14 @@
       return;
     }
 
+    updateCopedentOptions();
     updateKeyOptions();
+    if (els.copedent) {
+      els.copedent.addEventListener("change", () => {
+        updateControls();
+        render();
+      });
+    }
     els.key.addEventListener("change", () => {
       updateControls();
       render();
