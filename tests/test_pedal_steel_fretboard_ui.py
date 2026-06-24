@@ -279,6 +279,7 @@ const model = fretboard.buildFretboardModel({
   emphasizeVisibleHighlights: true
 });
 assert.equal(model.highlights.length, 2);
+assert.equal(model.highlightStyle, "standard");
 assert.equal(Object.prototype.hasOwnProperty.call(model, "emphasizeStringGroups"), false);
 assert.equal(Object.prototype.hasOwnProperty.call(model, "emphasizedStrings"), false);
 assert.equal(Object.prototype.hasOwnProperty.call(model, "emphasizedStringGroups"), false);
@@ -296,6 +297,8 @@ assert.doesNotMatch(html, /data-selected-string-groups=/);
 assert.equal((html.match(/data-selected-string-row="/g) || []).length, 0);
 assert.equal((html.match(/data-highlight-dot/g) || []).length, 6);
 assert.equal((html.match(/data-highlight-band/g) || []).length, 2);
+assert.equal((html.match(/data-highlight-cluster-style="standard"/g) || []).length, 10);
+assert.equal((html.match(/data-highlight-halo/g) || []).length, 0);
 assert.equal((html.match(/data-highlight-strings="5,6,8"/g) || []).length >= 2, true);
 assert.equal((html.match(/data-highlight-string="5"/g) || []).length, 2);
 assert.equal((html.match(/data-highlight-string="6"/g) || []).length, 2);
@@ -305,7 +308,43 @@ assert.equal((html.match(/is-emphasized-visible/g) || []).length >= 2, true);
 assert.equal(html.indexOf("data-fretboard-string=\\"1\\"") < html.indexOf("data-highlight-id=\\"g-568-fret-3\\""), true);
 assert.doesNotMatch(html, /\\[object Object\\]/);
 assert.doesNotMatch(html, /five_eight_branch/);
-"""
+
+const prominentModel = fretboard.buildFretboardModel({
+  positions,
+  hideFilterControls: true,
+  hidePositionTools: true,
+  hideLegend: true,
+  showHighlightLabels: false,
+  emphasizeVisibleHighlights: true,
+  highlightStyle: "prominent"
+});
+assert.equal(prominentModel.highlightStyle, "prominent");
+const prominentHtml = fretboard.renderPedalSteelFretboard({
+  positions,
+  hideFilterControls: true,
+  hidePositionTools: true,
+  hideLegend: true,
+  showHighlightLabels: false,
+  emphasizeVisibleHighlights: true,
+  highlightStyle: "prominent"
+});
+assert.doesNotMatch(prominentHtml, /data-selected-string-group-lanes/);
+assert.doesNotMatch(prominentHtml, /data-selected-string-row="/);
+assert.equal((prominentHtml.match(/data-highlight-dot/g) || []).length, 6);
+assert.equal((prominentHtml.match(/data-highlight-halo/g) || []).length, 6);
+assert.equal((prominentHtml.match(/data-highlight-band/g) || []).length, 2);
+assert.equal((prominentHtml.match(/data-highlight-cluster-style="prominent"/g) || []).length, 16);
+assert.equal((prominentHtml.match(/is-prominent-cluster/g) || []).length, 2);
+assert.match(prominentHtml, /data-highlight-dot[^>]*width="42" height="24"/);
+assert.match(prominentHtml, /data-highlight-band[^>]*width="52"/);
+assert.equal((prominentHtml.match(/data-filter-visible="true"/g) || []).length, 2);
+assert.equal((prominentHtml.match(/data-filter-visible="false"/g) || []).length, 0);
+assert.doesNotMatch(prominentHtml, /is-filter-hidden/);
+assert.equal((prominentHtml.match(/data-highlight-strings="5,6,8"/g) || []).length >= 2, true);
+assert.doesNotMatch(prominentHtml, /data-highlight-label="g-568-fret-3"/);
+assert.doesNotMatch(prominentHtml, /\\[object Object\\]/);
+assert.doesNotMatch(prominentHtml, /five_eight_branch/);
+	"""
     )
 
     run_node(script)
@@ -342,6 +381,15 @@ assert.equal((html.match(/href="\\/brand\\/pedal-steel-fretboard-background\\.sv
     )
 
     run_node(script)
+
+
+def test_selectorless_mount_keeps_explorer_highlights_visible() -> None:
+    component = (REPO_ROOT / COMPONENT).read_text(encoding="utf-8")
+
+    assert 'const hasPositionSelectors = Boolean(figure.querySelector("[data-position-selector]"));' in component
+    assert "if (hasPositionSelectors) {" in component
+    assert "updatePositionFilter(figure);" in component
+    assert "selectPosition(figure, figure.dataset.selectedPositionId);" in component
 
 
 def test_position_dots_use_distinct_explained_color_roles() -> None:

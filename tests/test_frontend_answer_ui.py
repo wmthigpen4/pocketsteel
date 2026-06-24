@@ -269,12 +269,12 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "checked against tuning and pedal/lever changes" in html
     assert "These Explorer rows are deterministic teaching data, separate from source-card answers." not in html
     assert "not corpus retrieval or RAG-generated fretboard positions" not in html
-    assert '<script src="pedal-steel-fretboard.js?v=localized-markers-20260623"></script>' in html
+    assert '<script src="pedal-steel-fretboard.js?v=visual-grip-render-20260623"></script>' in html
     assert "pedal-steel-fretboard.js?v=e9-explorer-explanation-ui-20260623" not in html
     assert "pedal-steel-fretboard.js?v=explorer-ui-cleanup-20260623" not in html
     assert "pedal-steel-fretboard.js?v=selected-svg-render-20260623" not in html
-    assert '<script src="e9-fretboard-explorer-data.js?v=localized-markers-20260623"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=localized-markers-20260623"></script>' in html
+    assert '<script src="e9-fretboard-explorer-data.js?v=visual-grip-render-20260623"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=visual-grip-render-20260623"></script>' in html
     expected_key_options = {
         "C": "C",
         "Db": "C# (or D♭)",
@@ -362,6 +362,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "hideLegend: true" in script
     assert "showHighlightLabels: false" in script
     assert "emphasizeVisibleHighlights" in script
+    assert 'highlightStyle: "prominent"' in script
     assert "selectedStringGroups" in script
     component = Path("ui/pedal-steel-fretboard.js").read_text(encoding="utf-8")
     assert "data-selected-string-group-lanes" not in component
@@ -596,6 +597,7 @@ assert.equal(lastMount.options.hideFilterControls, true);
 assert.equal(lastMount.options.hidePositionTools, true);
 assert.equal(lastMount.options.hideLegend, true);
 assert.equal(lastMount.options.emphasizeVisibleHighlights, true);
+assert.equal(lastMount.options.highlightStyle, "prominent");
 assert.equal(Object.prototype.hasOwnProperty.call(lastMount.options, "emphasizeStringGroups"), false);
 assert.equal(Object.prototype.hasOwnProperty.call(lastMount.options, "selectedStringGroups"), false);
 assert.equal(lastMount.options.positions.length > 0, true);
@@ -647,6 +649,7 @@ elements["explorer-string-group"].selectValues(["6-8-10"]);
 assert.equal(lastMount.options.positions.length > 0, true);
 assert.equal(lastMount.options.positions.every((row) => row.grip === "6-8-10"), true);
 assert.equal(lastMount.options.emphasizeVisibleHighlights, true);
+assert.equal(lastMount.options.highlightStyle, "prominent");
 assert.equal(Object.prototype.hasOwnProperty.call(lastMount.options, "emphasizeStringGroups"), false);
 assert.equal(Object.prototype.hasOwnProperty.call(lastMount.options, "selectedStringGroups"), false);
 assert.match(elements["explorer-active-results"].textContent, /6-8-10/);
@@ -659,6 +662,7 @@ elements["explorer-string-group"].selectValues(["5-6-8"]);
 assert.equal(lastMount.options.positions.length > 0, true);
 assert.equal(lastMount.options.positions.every((row) => row.grip === "5-6-8"), true);
 assert.equal(lastMount.options.emphasizeVisibleHighlights, true);
+assert.equal(lastMount.options.highlightStyle, "prominent");
 assert.equal(Object.prototype.hasOwnProperty.call(lastMount.options, "emphasizeStringGroups"), false);
 assert.equal(Object.prototype.hasOwnProperty.call(lastMount.options, "selectedStringGroups"), false);
 assert.match(elements["explorer-active-results"].textContent, /5-6-8/);
@@ -717,6 +721,7 @@ assert.equal(lastMount.options.positions.length, 4);
 assert.equal(lastMount.options.positions.every((row) => row.harmony_type === "five_eight_branch"), true);
 assert.equal(lastMount.options.positions.every((row) => row.grip === "5-8"), true);
 assert.equal(lastMount.options.emphasizeVisibleHighlights, true);
+assert.equal(lastMount.options.highlightStyle, "prominent");
 assert.equal(Object.prototype.hasOwnProperty.call(lastMount.options, "emphasizeStringGroups"), false);
 assert.equal(Object.prototype.hasOwnProperty.call(lastMount.options, "selectedStringGroups"), false);
 assert.match(elements["explorer-selected-detail"].textContent, /5&amp;8 branch/);

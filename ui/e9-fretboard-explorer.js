@@ -570,6 +570,7 @@
       hideLegend: true,
       showHighlightLabels: false,
       emphasizeVisibleHighlights: true,
+      highlightStyle: "prominent",
     });
     wireFretboardMarkers(rows);
   }

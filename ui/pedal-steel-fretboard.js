@@ -450,6 +450,13 @@
   filter: drop-shadow(0 0 10px var(--fretboard-glow, rgba(240, 191, 105, 0.34)));
 }
 
+.pedal-steel-fretboard__highlight.is-prominent-cluster {
+  opacity: 1;
+  filter:
+    drop-shadow(0 0 14px var(--fretboard-glow, rgba(240, 191, 105, 0.46)))
+    drop-shadow(0 0 3px rgba(255, 246, 223, 0.18));
+}
+
 .pedal-steel-fretboard__empty[hidden] {
   display: none;
 }
@@ -1347,6 +1354,10 @@
     return Array.from(new Set(normalizedValues.filter((item) => gripOptions.includes(item))));
   }
 
+  function normalizeHighlightStyle(value) {
+    return normalizeToken(value) === "prominent" ? "prominent" : "standard";
+  }
+
   function buildFretboardModel(options = {}) {
     const maxFret = Math.max(1, Math.floor(Number(options.maxFret) || 24));
     const stringCount = Math.max(1, Math.floor(Number(options.stringCount) || 10));
@@ -1450,6 +1461,7 @@
       allHighlights,
       highlights,
       emphasizeVisibleHighlights: options.emphasizeVisibleHighlights === true,
+      highlightStyle: normalizeHighlightStyle(options.highlightStyle),
       legend: normalizeLegend(options.legend),
       displayScaleNotes: normalizeDisplayScaleNotes(options.query),
       showHighlightLabels: options.showHighlightLabels !== false,
@@ -1545,24 +1557,38 @@
     const pedalLeverOption = pedalLeverOptionForPosition(highlight);
     const minY = Math.min(...highlight.stringYs);
     const maxY = Math.max(...highlight.stringYs);
-    const bandHeight = Math.max(34, maxY - minY + 26);
-    const bandY = minY - 13;
+    const isProminent = highlight.highlightStyle === "prominent";
+    const bandWidth = isProminent ? 52 : 36;
+    const dotWidth = isProminent ? 42 : 30;
+    const dotHeight = isProminent ? 24 : 18;
+    const dotRx = dotHeight / 2;
+    const bandHeight = Math.max(isProminent ? 46 : 34, maxY - minY + (isProminent ? 36 : 26));
+    const bandY = minY - (isProminent ? 18 : 13);
     const labelY = Math.max(26, bandY - 12);
-    const dataAttrs = `data-highlight-id="${escapeHtml(highlight.id)}" data-highlight-fret="${highlight.fret}" data-highlight-strings="${escapeHtml(highlight.strings.join(","))}" data-color-role="${escapeHtml(highlight.colorRole)}"`;
+    const dataAttrs = `data-highlight-id="${escapeHtml(highlight.id)}" data-highlight-fret="${highlight.fret}" data-highlight-strings="${escapeHtml(highlight.strings.join(","))}" data-color-role="${escapeHtml(highlight.colorRole)}" data-highlight-cluster-style="${escapeHtml(highlight.highlightStyle)}"`;
     const band = highlight.strings.length > 1
-      ? `<rect data-highlight-band ${dataAttrs} x="${(highlight.x - 18).toFixed(3)}" y="${bandY.toFixed(3)}" width="36" height="${bandHeight.toFixed(3)}" rx="18" fill="${color.band}" stroke="${color.dot}" stroke-opacity="0.34" />`
+      ? `<rect data-highlight-band ${dataAttrs} x="${(highlight.x - bandWidth / 2).toFixed(3)}" y="${bandY.toFixed(3)}" width="${bandWidth}" height="${bandHeight.toFixed(3)}" rx="${bandWidth / 2}" fill="${color.band}" stroke="${color.dot}" stroke-opacity="${isProminent ? "0.7" : "0.34"}" stroke-width="${isProminent ? "1.8" : "1"}" />`
+      : "";
+    const halos = isProminent
+      ? highlight.stringYs
+        .map((y, index) => {
+          const stringNumber = highlight.strings[index];
+          return `<rect data-highlight-halo ${dataAttrs} data-highlight-string="${stringNumber}" x="${(highlight.x - (dotWidth + 12) / 2).toFixed(3)}" y="${(y - (dotHeight + 10) / 2).toFixed(3)}" width="${dotWidth + 12}" height="${dotHeight + 10}" rx="${(dotHeight + 10) / 2}" fill="${color.glow}" opacity="0.42" filter="url(#fretboard-glow)" />`;
+        })
+        .join("")
       : "";
     const dots = highlight.stringYs
       .map((y, index) => {
         const stringNumber = highlight.strings[index];
-        return `<rect data-highlight-dot ${dataAttrs} data-highlight-string="${stringNumber}" x="${(highlight.x - 15).toFixed(3)}" y="${(y - 9).toFixed(3)}" width="30" height="18" rx="9" fill="${color.dot}" fill-opacity="0.95" stroke="#fff6df" stroke-opacity="0.38" filter="url(#fretboard-glow)" />`;
+        return `<rect data-highlight-dot ${dataAttrs} data-highlight-string="${stringNumber}" x="${(highlight.x - dotWidth / 2).toFixed(3)}" y="${(y - dotHeight / 2).toFixed(3)}" width="${dotWidth}" height="${dotHeight}" rx="${dotRx}" fill="${color.dot}" fill-opacity="${isProminent ? "1" : "0.95"}" stroke="#fff6df" stroke-opacity="${isProminent ? "0.72" : "0.38"}" stroke-width="${isProminent ? "1.8" : "1"}" filter="url(#fretboard-glow)" />`;
       })
       .join("");
     const label = highlight.showLabel === false
       ? ""
       : `<text data-highlight-label="${escapeHtml(highlight.id)}" x="${highlight.x.toFixed(3)}" y="${labelY.toFixed(3)}" text-anchor="middle" fill="${color.text}" font-size="18" font-weight="700">${escapeHtml(highlight.label)}</text>`;
-    return `<g class="pedal-steel-fretboard__highlight${highlight.isSelected ? " is-selected" : ""}${highlight.isEmphasizedVisible ? " is-emphasized-visible" : ""}${highlight.isHiddenByFilter ? " is-filter-hidden" : ""}" ${dataAttrs} data-position-family="${escapeHtml(highlight.family)}" data-position-tier="${escapeHtml(highlight.tier)}" data-position-kind="${escapeHtml(highlight.positionKind)}" data-position-grip="${escapeHtml(highlight.grip)}" data-position-pedal-lever-key="${escapeHtml(pedalLeverOption.key)}" data-position-pedal-lever-label="${escapeHtml(pedalLeverOption.label)}" data-voicing-type="${escapeHtml(highlight.voicingType)}" data-voicing-category="${escapeHtml(voicingCategory)}" data-is-root-position="${highlight.isRootPosition ? "true" : "false"}" data-is-inversion="${highlight.isInversion ? "true" : "false"}" data-is-partial-voicing="${highlight.isPartialVoicing ? "true" : "false"}" data-is-rootless="${highlight.isRootless ? "true" : "false"}" data-visible-by-default="${highlight.visibleByDefault ? "true" : "false"}" data-has-levers="${highlight.levers.length ? "true" : "false"}" data-is-starter="${isStarterPosition(highlight) ? "true" : "false"}" data-is-full-chord="${isFullChordPosition(highlight) ? "true" : "false"}" data-is-dominant="${isDominantPosition(highlight) ? "true" : "false"}" data-is-advanced="${isAdvancedPosition(highlight) ? "true" : "false"}" data-is-more="${isMorePosition(highlight) ? "true" : "false"}" data-recommended-extra="${highlight.isRecommendedExtra ? "true" : "false"}" data-emphasized-visible="${highlight.isEmphasizedVisible ? "true" : "false"}" data-filter-visible="${highlight.isHiddenByFilter ? "false" : "true"}" style="${colorStyle}${hiddenStyle}"${highlight.isHiddenByFilter ? " hidden" : ""}>
+    return `<g class="pedal-steel-fretboard__highlight${highlight.isSelected ? " is-selected" : ""}${highlight.isEmphasizedVisible ? " is-emphasized-visible" : ""}${isProminent ? " is-prominent-cluster" : ""}${highlight.isHiddenByFilter ? " is-filter-hidden" : ""}" ${dataAttrs} data-position-family="${escapeHtml(highlight.family)}" data-position-tier="${escapeHtml(highlight.tier)}" data-position-kind="${escapeHtml(highlight.positionKind)}" data-position-grip="${escapeHtml(highlight.grip)}" data-position-pedal-lever-key="${escapeHtml(pedalLeverOption.key)}" data-position-pedal-lever-label="${escapeHtml(pedalLeverOption.label)}" data-voicing-type="${escapeHtml(highlight.voicingType)}" data-voicing-category="${escapeHtml(voicingCategory)}" data-is-root-position="${highlight.isRootPosition ? "true" : "false"}" data-is-inversion="${highlight.isInversion ? "true" : "false"}" data-is-partial-voicing="${highlight.isPartialVoicing ? "true" : "false"}" data-is-rootless="${highlight.isRootless ? "true" : "false"}" data-visible-by-default="${highlight.visibleByDefault ? "true" : "false"}" data-has-levers="${highlight.levers.length ? "true" : "false"}" data-is-starter="${isStarterPosition(highlight) ? "true" : "false"}" data-is-full-chord="${isFullChordPosition(highlight) ? "true" : "false"}" data-is-dominant="${isDominantPosition(highlight) ? "true" : "false"}" data-is-advanced="${isAdvancedPosition(highlight) ? "true" : "false"}" data-is-more="${isMorePosition(highlight) ? "true" : "false"}" data-recommended-extra="${highlight.isRecommendedExtra ? "true" : "false"}" data-emphasized-visible="${highlight.isEmphasizedVisible ? "true" : "false"}" data-filter-visible="${highlight.isHiddenByFilter ? "false" : "true"}" style="${colorStyle}${hiddenStyle}"${highlight.isHiddenByFilter ? " hidden" : ""}>
       ${band}
+      ${halos}
       ${dots}
       ${label}
     </g>`;
@@ -1577,6 +1603,7 @@
       isEmphasizedVisible: model.emphasizeVisibleHighlights && visibleIds.has(highlight.id),
       isRecommendedExtra: model.recommendedHiddenIds.has(highlight.id),
       showLabel: model.showHighlightLabels,
+      highlightStyle: model.highlightStyle,
     })).join("");
   }
 
@@ -2121,6 +2148,7 @@
 
   function bindFretboardInteractions(figure) {
     if (!figure) return;
+    const hasPositionSelectors = Boolean(figure.querySelector("[data-position-selector]"));
     figure.querySelector("[data-show-all-positions]")?.addEventListener("click", () => {
       showAllRecommendedPositions(figure);
     });
@@ -2144,8 +2172,10 @@
         selectPosition(figure, button.getAttribute("data-position-selector"));
       });
     });
-    updatePositionFilter(figure);
-    selectPosition(figure, figure.dataset.selectedPositionId);
+    if (hasPositionSelectors) {
+      updatePositionFilter(figure);
+      selectPosition(figure, figure.dataset.selectedPositionId);
+    }
   }
 
   function injectPedalSteelFretboardStyles(doc) {
