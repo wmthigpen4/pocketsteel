@@ -5,105 +5,103 @@ Generated for ChatGPT reset/guidance on branch `feature/answer-api`.
 ## Current State
 
 - Current branch: `feature/answer-api`.
-- Current repo HEAD at this refresh: `efc3660 docs: record explorer visual grip protected smoke`.
-- Latest protected-preview smoke docs commit: `efc3660`.
-- Runtime smoked: `1d3728a`.
-- Protected-preview status: **PASS**.
-- User-smoke status: **allowed**.
-- App control state: **can be parked after user smoke with known caveats**.
+- Current repo HEAD at this refresh: `8093a3c docs: record E9 copedent selector protected smoke`.
+- Runtime commit smoked for E9 copedent selector/chart: `ecec173 feat: add E9 copedent selector and chart`.
+- Related impact-preview runtime smoke: `670d635 feat: add e9 pedal lever impact preview contract`.
+- Protected-preview status: **PASS for E9 copedent selector/chart**.
+- User-smoke status: **allowed for the E9 copedent selector/chart and Explorer flow**.
+- App control state: **park or choose the next small slice**.
 - Broad unrelated dirty/untracked work remains parked. Do not broad-stage.
 
-## Runtime / Deployment
+## Protected URLs
 
-- Cloudflare Access login: succeeded.
-- Runtime refreshed from stale `17f2b55` to committed runtime `1d3728a`.
-- `/api/version` reports `1d3728a`.
-- Main app loaded through protected preview.
-- Explorer loaded through protected preview.
-- Explorer visual grip rendering passed.
-- Answer-page G chord fretboard kept standard styling and did not inherit Explorer prominent mode.
-- No backend, UI, deployment, auth, DNS, corpus, Chroma/vector store, embeddings, scraping, private-source, source-inbox, or paid transcript files were changed by this refresh.
-
-Latest runtime identity from Lane 12:
+Use direct `/ui/...?...` URLs for cache-busted validation after Cloudflare Access login:
 
 ```text
-git_sha=1d3728a
-git_branch=feature/answer-api
-auth_provider=cloudflare_access
-retrieval_mode=hybrid_private_first
-```
-
-## Latest Protected-Preview Smoke
-
-Latest Lane 12 handoff:
-
-- `docs/handoffs/task-completions/2026-06-23-12-explorer-visual-grip-rendering-protected-smoke.md`
-- Handoff/docs commit: `efc3660 docs: record explorer visual grip protected smoke`
-- Runtime smoked: `1d3728a`
-- Result: **PASS**
-- API fallback: not used as browser-smoke proof
-
-Smoke URLs:
-
-```text
-Explorer:
-https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=1d3728a
+Explorer copedent selector/chart:
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=ecec173
 
 Main app:
-https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=1d3728a
+https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=ecec173
 
 Root:
-https://app.steelguitarrag.com/?v=1d3728a
+https://app.steelguitarrag.com/?v=ecec173
 ```
 
 Root caveat:
 
-- `https://app.steelguitarrag.com/?v=1d3728a` redirects to `/ui/steel-guitar-rag-mock.html`.
-- The root redirect drops the query string.
-- Use direct cache-busted `/ui/...?...` URLs when exact cache-busting matters.
+- Root redirects to `/ui/steel-guitar-rag-mock.html`.
+- Root drops query strings during redirect.
+- Direct `/ui/...?...` URLs remain required when exact cache-busting matters.
 
-## Explorer Visual Grip Rendering Result
+## E9 Copedent Selector Status
 
-Lane 12 verified the protected-preview Explorer state at runtime `1d3728a`:
+Selector status: **PASS**.
 
-- Explorer loaded refreshed `visual-grip-render-20260623` script cache-busts.
-- Selected Explorer groups visibly render localized fret/string clusters.
-- Full-string horizontal lanes are absent.
-- SVG clusters match selected cards/rows.
-- No visible raw `five_eight_branch`.
-- No `[object Object]`.
-- No relevant browser console errors.
+Recorded behavior:
 
-Selected states verified:
+- `Emmons E9` is visible and selected by default.
+- `Day E9` is visible and selectable.
+- `My Copedent (E9)` is visible but disabled.
+- Backstage/coming-soon copy is visible for the disabled personal copedent option.
+- C6 is not exposed as an active Explorer copedent option.
+- Existing Explorer key/scale/harmony/string-group controls remain available.
+- No `[object Object]` was reported in the accepted selector/chart smoke.
 
-| State | Cards | Highlights | Dots | Dot strings | Full-string lane suspect | Result |
-| --- | ---: | ---: | ---: | --- | --- | --- |
-| G major / 3-string / `3-4-5` | 8 | 8 | 24 | `3,4,5` | false | Pass |
-| G major / 3-string / `5-6-8` | 5 | 5 | 15 | `5,6,8` | false | Pass |
-| G major / 3-string / `6-8-10` | 5 | 5 | 15 | `6,8,10` | false | Pass |
-| A major / 3-string / `6-8-10` | 5 | 5 | 15 | `6,8,10` | false | Pass |
-| G major / 2-string / `5-8` | 4 | 4 | 8 | `5,8` | false | Pass |
+## E9 Copedent Chart Status
 
-Main app comparison:
+Chart status: **PASS**.
 
-- Prompt: `How do I play a G chord?`
-- Answer rendered.
-- Fretboard visible.
-- Answer-page G chord fretboard stayed standard localized styling.
-- Explorer-only prominent cluster styling did not leak into the answer-page fretboard.
-- No tab card, no fallback text, and no `[object Object]`.
+Recorded behavior:
 
-## Caveat Routing
+- Visual copedent chart renders in the Explorer.
+- Chart shows strings 1-10.
+- Chart shows open notes.
+- Chart shows control columns for pedals and knee levers.
+- Chart shows physical positions such as `P1`, `P2`, `P3`, `LKL`, `LKR`, `LKV`, `RKR`, and `RKL`.
+- Chart shows note movement cells such as `B -> C#`, `E -> F`, `E -> Eb/D#`, `D -> C#`, and raise/lower labels.
+- Day E9 switches physical pedal order to C-B-A while preserving named A/B/C semantics.
+- Right-knee lever controls appear where present in the contract.
 
-- Root cache-bust redirect behavior: Lane 12 Self-Hosted Deployment.
-- `deploy/macos/install-private-preview-launchdaemon.sh status` still needs interactive sudo in this environment. Runtime health was verified through `launchctl print`, `lsof`, `ps`, and `/api/version`.
+## Pedal / Lever Impact Preview Status
+
+Impact preview status: **PASS with provenance caveat from earlier Lane 12 evidence**.
+
+Recorded behavior:
+
+- `Pedal and lever impact preview` section renders.
+- Preview cards render A pedal, B pedal, C pedal, E-raise lever, and E-lower lever.
+- Preview shows affected strings and before/after changes such as `B -> C#`, `G# -> A`, `E -> F#`, `E -> F`, and `E -> Eb/D#`.
+- Selected-row detail renders `Changes used here`.
+- Row-level active controls show string-level pedal effects.
+- Explorer filtering remained functional during impact-preview smoke, including `5-7-8` reducing visible cards to that group.
+- No `[object Object]` and no relevant console/page errors were reported.
+
+Known impact-preview caveat:
+
+- Earlier protected-preview impact-preview evidence was gathered while serving scoped Lane 06 Explorer UI worktree assets. The later copedent selector/chart commit now contains the selector/chart UI baseline, but future user-smoke defects should still be routed by exact slice rather than broad feature work.
+
+## Latest Relevant Handoffs
+
+- `docs/handoffs/task-completions/2026-06-23-12-e9-copedent-selector-protected-smoke.md`
+- `docs/handoffs/task-completions/2026-06-23-15-e9-copedent-selector-qa.md`
+- `docs/handoffs/task-completions/2026-06-23-06-e9-copedent-selector-chart.md`
+- `docs/handoffs/task-completions/2026-06-24-12-e9-pedal-lever-impact-preview-protected-smoke.md`
+- `docs/handoffs/task-completions/2026-06-24-1045-06-e9-pedal-lever-impact-preview-ui.md`
+
+## Remaining Caveats
+
+- Root URL redirects to `/ui/steel-guitar-rag-mock.html` and drops query strings.
+- Direct `/ui/...?...` URLs remain required for cache-busted smoke.
+- `deploy/macos/install-private-preview-launchdaemon.sh status` still needs interactive sudo in this environment; prior Lane 12 checks verified runtime health with `launchctl`, `lsof`, `ps`, and `/api/version`.
+- Broad unrelated dirty/untracked files remain parked.
 
 ## Current Git / Worktree Notes
 
 Current checked state at this refresh:
 
 - Branch: `feature/answer-api`.
-- Repo HEAD before this docs refresh: `efc3660`.
+- Repo HEAD before this docs refresh: `8093a3c`.
 - Cached index before this docs refresh: empty.
 - `git diff --check`: to be run for this docs refresh.
 
@@ -118,16 +116,10 @@ Broad parked dirty/untracked work remains outside this refresh, including:
 
 Do not stage parked work unless a later exact-scope handoff approves it.
 
-## Blockers
-
-No hard protected-preview blocker is known from the latest Lane 12 smoke.
-
-This is a protected-preview **PASS** with the root cache-bust caveat preserved.
-
 ## Safe To Stage For This Refresh
 
 - `docs/handoffs/task-completions/integration-status.md`
-- `docs/handoffs/task-completions/2026-06-23-01-explorer-visual-grip-integration-refresh.md`
+- `docs/handoffs/task-completions/2026-06-24-01-e9-copedent-selector-integration-refresh.md`
 
 ## Files Not To Stage For This Refresh
 
@@ -137,18 +129,16 @@ This is a protected-preview **PASS** with the root cache-bust caveat preserved.
 - `public/`, `ui/brand/`, `Neon Sign/`, raw design assets, generated visual assets, and unrelated UI/assets.
 - Unrelated handoffs or generated reports.
 
-## Recommended Control State
+## Recommended Next Slice
 
-Park the app after user smoke with known caveats.
+Park the app, or choose one small follow-up slice.
 
-Use these exact URLs after Cloudflare Access login:
+Recommended next slice if continuing:
+
+- Lane 06 UX/UI Design: root cache-bust/query-string behavior is Lane 12 if it must be fixed at routing/runtime level; otherwise prioritize the next user-visible Explorer polish issue found in smoke.
+
+Recommended exact control step:
 
 ```text
-Explorer:
-https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=1d3728a
-
-Main app:
-https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=1d3728a
+Park the app with known caveats, or open a single scoped follow-up for the next user-visible Explorer issue. Use direct /ui/...?... protected-preview URLs for any cache-busted smoke.
 ```
-
-For cache-busted validation, prefer direct `/ui/...?...` URLs because root redirects to `/ui/steel-guitar-rag-mock.html` and drops query strings.
