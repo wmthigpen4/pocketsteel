@@ -125,6 +125,54 @@ Codex must ask before taking action on:
 - Stage exact paths only. Use hunk-level staging when overlapping lane changes share files.
 - Treat `docs/handoffs/task-completions/integration-status.md` as a coordination artifact unless the user explicitly asks to commit it.
 
+## Steel Guitar RAG Autopilot Mode
+
+When the user asks for a feature or bug fix, default to an end-to-end Autopilot Feature Run unless the request explicitly says to plan only, inspect only, or stop before implementation. Do not make the user approve each internal lane transition. Use lanes as internal phases, keep the scope tight, and stop only for the stop conditions below.
+
+Lane ownership during autopilot:
+
+- Lane 05 owns backend, RAG, API, answer routing, and answer contract work.
+- Lane 06 owns UI, fretboard, tab rendering, browser behavior, and frontend smoke.
+- Lane 15 owns QA, regression, eval, and smoke verification.
+- Lane 01 owns exact-path staging, commit hygiene, dirty-worktree protection, and integration refresh.
+- Lane 12 owns protected-preview restart and smoke after committed runtime changes.
+- Lane 18 owns product, API, source, and copyright architecture when product judgment or contract design is needed.
+
+Autopilot lifecycle:
+
+1. Inspect repo guidance and git state.
+2. Plan the smallest safe slice.
+3. Implement the feature or fix.
+4. Run focused tests and checks.
+5. Run local API or browser smoke when relevant.
+6. Stage exact intended files or hunks only.
+7. Commit the completed scope.
+8. Restart or update protected preview only when explicitly authorized and safe.
+9. Run protected-preview smoke for runtime or user-facing changes.
+10. Refresh `docs/handoffs/task-completions/integration-status.md`.
+11. Return one pass/warn/fail report.
+
+User-facing runtime changes are not done until protected-preview smoke is recorded. After automated protected-preview smoke passes, mark the build ready for user smoke. User smoke comes after Codex implementation, tests, commit, protected-preview update, and protected-preview smoke. A failed user-smoke report becomes the next autopilot bug-fix run.
+
+Autopilot stop conditions:
+
+- RED actions are needed and were not explicitly authorized.
+- Product judgment is required before implementation can be correct.
+- Dirty runtime state is unsafe or cannot be isolated from the requested slice.
+- Tests fail for unrelated reasons that cannot be classified.
+- The work would touch auth, DNS, secrets, scraping, embeddings, vector rebuilds, raw corpus, private transcripts, source-inbox raw/provenance data, paid transcript/licensing material, or Cloudflare policy without explicit authorization.
+
+Protected-preview smoke requirements:
+
+- Record the exact cache-busted URL.
+- Record the auth result.
+- Record the expected `HEAD`.
+- Record `/api/version` result when available.
+- Record root `/` behavior.
+- Record `/ui/steel-guitar-rag-mock.html` behavior.
+- Record API fallback status.
+- State explicitly that API fallback is not browser smoke.
+
 ### Universal Task Start
 
 At the start of every lane task:
