@@ -25,6 +25,44 @@ Passed:
 - `.venv/bin/python -m pytest tests/test_fretboard_explorer.py -q` -> 38 passed
 - `.venv/bin/python -m pytest tests/test_pedal_steel_fretboard_ui.py -q` -> 34 passed
 
+## Protected-Preview Smoke Target
+- Target type: protected-preview
+- Result type: browser smoke
+- Exact browser URL tested: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=glossary-close-compact-3b0c1e1`
+- Cache-busted URL tested: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=glossary-close-compact-3b0c1e1`
+- Exact URL the user should use: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=glossary-close-compact-3b0c1e1`
+- Auth required: yes
+- Auth provider: Cloudflare Access
+- Cloudflare Access login result: succeeded; page loaded in the authenticated in-app browser without a login challenge.
+- Local backend URL: `http://127.0.0.1:8770`
+- Expected backend port: 8770
+- Expected git HEAD: `3b0c1e1`
+- Version endpoint: `http://127.0.0.1:8770/api/version`
+- Version endpoint result: `git_sha=4040a47`, `git_branch=feature/answer-api`, `server_started_at=2026-06-26T01:51:23.747502+00:00`
+- If version endpoint missing, how version is inferred: not applicable; version endpoint exists but reports runtime Python SHA, while this task validates static UI behavior from the cache-busted page URL.
+- Whether app root `/` works: not tested for this scoped smoke.
+- Whether app root `/` is expected to work: yes, protected root redirects to the app UI in current setup.
+- Whether `/ui/steel-guitar-rag-mock.html` works: not tested for this scoped smoke.
+- Whether `/ui/steel-guitar-rag-mock.html` is expected to work: yes.
+- Who should test this URL: the user.
+- Do not test these URLs: uncache-busted Explorer URLs for this slice.
+- Known caveats: `/api/version` reports runtime SHA `4040a47`, so this smoke verifies the static cache-busted Explorer UI rather than a Python runtime restart.
+
+## Protected-Preview Smoke Result
+Passed.
+
+Verified:
+- Protected Explorer page loaded at the cache-busted URL.
+- Glossary opens.
+- Glossary Close button width is compact: measured `88px` in a `778px` dialog header, about 11.3% of the header width.
+- Close button computed styles include `min-width: 88px`, `flex: 0 0 auto`, and `padding-left/right: 14px`.
+- Glossary closes successfully.
+- No `[object Object]` in visible page text.
+- No relevant browser console errors.
+
+Protected screenshot:
+- `docs/handoffs/task-completions/assets/2026-06-26-06-glossary-close-compact/glossary-close-compact-protected.png`
+
 ## Smoke Target
 - Target type: local
 - Result type: browser smoke
@@ -89,5 +127,5 @@ Lane 01 exact-path commit for this scoped UI change, then Lane 12 protected-prev
 Safe to commit.
 
 ## Suggested Next Step
-Commit the scoped files with exact-path staging, then run protected-preview smoke at:
-`https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=<commit-or-slice-cachebuster>`
+Manual user smoke at:
+`https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=glossary-close-compact-3b0c1e1`

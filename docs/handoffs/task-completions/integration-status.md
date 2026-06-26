@@ -5,11 +5,11 @@ Generated for ChatGPT reset/guidance on branch `feature/answer-api`.
 ## Current State
 
 - Current branch: `feature/answer-api`.
-- Current repo HEAD at this refresh: `cbb6313 fix: match explorer header button style`.
+- Current repo HEAD at this refresh: `3b0c1e1 fix: compact explorer glossary close button`.
 - Runtime commit smoked for E9 copedent selector/chart: `ecec173 feat: add E9 copedent selector and chart`.
 - Related impact-preview runtime smoke: `670d635 feat: add e9 pedal lever impact preview contract`.
 - Latest local UI smoke status: **PASS for Explorer harmonized scale path mode at commit `726cb80`**. Local browser smoke verified `Single grip` preserves exact string-group filtering and `Harmonized scale path -> Low path` renders the requested mixed string-group G major path: `6-8-10, 6-7-10, 6-7-10, 6-8-10, 6-8-10, 6-7-10, 6-8-10, 6-8-10` at frets `3, 3, 5, 8, 10, 10, 13, 15`.
-- Protected-preview status: **PASS for Explorer header button style at commit `cbb6313`, with version caveat**. The protected page loaded the cache-busted Explorer URL and verified `Glossary` and `Back to app` match the home-page navigation button treatment; `Glossary` opened/closed; `Back to app` remained linked to `/ui/steel-guitar-rag-mock.html`; no `[object Object]` appeared and no relevant console errors were captured. `/api/version` still reports runtime SHA `4040a47`, so this pass verifies static UI behavior at the cache-busted page URL, not a runtime restart.
+- Protected-preview status: **PASS for compact Explorer glossary Close button at commit `3b0c1e1`, with version caveat**. The protected page loaded the cache-busted Explorer URL and verified the glossary Close button opens/closes normally and measures `88px` wide in a `778px` dialog header, rather than stretching full-width. No `[object Object]` appeared and no relevant console errors were captured. `/api/version` still reports runtime SHA `4040a47`, so this pass verifies static UI behavior at the cache-busted page URL, not a runtime restart.
 - User-smoke status: **ready for focused user smoke at the direct cache-busted Explorer URL below**.
 - App control state: **park or choose the next small slice**.
 - Broad unrelated dirty/untracked work remains parked. Do not broad-stage.
@@ -42,6 +42,9 @@ https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-harmoniz
 
 Explorer header button style after commit `cbb6313`:
 https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-header-button-style-cbb6313
+
+Explorer compact glossary Close button after commit `3b0c1e1`:
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=glossary-close-compact-3b0c1e1
 
 Explorer marker/impact/glossary UI baseline commit `4a3f422`:
 https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-marker-impact-glossary-4a3f422
