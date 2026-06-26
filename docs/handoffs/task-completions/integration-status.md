@@ -5,12 +5,12 @@ Generated for ChatGPT reset/guidance on branch `feature/answer-api`.
 ## Current State
 
 - Current branch: `feature/answer-api`.
-- Current repo HEAD at this refresh: `5a59739 docs: refresh integration status after compact explorer UI`.
+- Current repo HEAD at this refresh: `662679f docs: record compact explorer protected smoke rerun blocker`.
 - Runtime commit smoked for E9 copedent selector/chart: `ecec173 feat: add E9 copedent selector and chart`.
 - Related impact-preview runtime smoke: `670d635 feat: add e9 pedal lever impact preview contract`.
 - Latest local UI smoke status: **PASS for compact Explorer/copedent controls at commit `9a3513b`**.
-- Protected-preview status: **blocked at Cloudflare Access after runtime refresh**. Lane 12 rerun verified `/api/version` now reports `4040a47`, which contains expected UI commit `5a59739`, but the in-app browser landed on Cloudflare Access login / verification-code flow before reaching the Explorer page.
-- User-smoke status: **hold for compact Explorer/copedent UI until Cloudflare Access is completed in the in-app browser and protected-preview Explorer smoke passes**.
+- Protected-preview status: **PASS with tooling caveat for compact Explorer/copedent UI**. Lane 12 authenticated browser smoke reached the exact Explorer URL, verified compact copedent behavior, and confirmed runtime `/api/version` reports `4040a47`, which contains expected UI commit `5a59739`.
+- User-smoke status: **ready for compact Explorer/copedent UI at the direct cache-busted Explorer URL**.
 - App control state: **park or choose the next small slice**.
 - Broad unrelated dirty/untracked work remains parked. Do not broad-stage.
 
@@ -86,11 +86,11 @@ Known impact-preview caveat:
 
 Local smoke status at commit `9a3513b`: **PASS**.
 
-Protected-preview status at commit `5a59739`: **BLOCKED AT CLOUDFLARE ACCESS AFTER RUNTIME REFRESH**.
+Protected-preview status at commit `5a59739`: **PASS WITH TOOLING CAVEAT AFTER CLOUDFLARE ACCESS AUTHENTICATION**.
 
-Lane 12 current rerun summary:
+Lane 12 authenticated rerun summary:
 
-- Repo HEAD: `4040a47`.
+- Repo HEAD: `662679f`.
 - Expected UI code commit: `5a59739`.
 - Runtime commit: `4040a47`.
 - Runtime contains `5a59739`: yes.
@@ -98,15 +98,16 @@ Lane 12 current rerun summary:
 - LaunchDaemon: running as `system/com.steelguitarrag.private-preview`.
 - Listener: Python on `127.0.0.1:8770`.
 - Previous stale runtime `ffac52a` is resolved.
-- Protected browser URL attempted:
+- Protected browser URL tested:
 
 ```text
 https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-compact-copedent-20260625
 ```
 
-- Result: blocked at Cloudflare Access login / verification-code flow before reaching the Explorer page.
-
-No API fallback was used as browser smoke. The next required action is to complete Cloudflare Access in the in-app browser, then rerun the exact protected Explorer smoke URL.
+- Result: authenticated protected-preview browser smoke passed for the compact Explorer/copedent UI.
+- Cloudflare Access result: succeeded; the Explorer page loaded without Access login, verification-code, or sign-in text.
+- Root behavior: unauthenticated root returns HTTP `302` to Cloudflare Access; authenticated root browser recheck was limited by browser automation attach loss after the Explorer smoke.
+- API fallback status: not used as browser smoke.
 
 Recorded behavior:
 
@@ -116,33 +117,38 @@ Recorded behavior:
 - External E9 reference context is not exposed in Explorer learner-facing UI or payload source context.
 - Pedal/lever impact preview is compact by default and opens details from control tabs.
 - Fretboard labels use either interval labels or note labels; they do not combine fret numbers with note/interval text.
+- Authenticated protected-preview smoke showed the fretboard SVG present and partially visible at the fold in the current in-app browser viewport, with no horizontal overflow.
+- Compact string-group filtering changed the visible card list to `4-5-6`; resetting to `All 3-string groups` restored the larger result set.
+- Pedal/lever impact preview was compact and interactive; selecting `A pedal` changed the selected control detail.
+- Notes / Intervals toggle worked.
+- No relevant console errors were captured.
 - Desktop local smoke at 1280x720 showed the fretboard visible without scrolling after the compact control pass.
 - Mobile local smoke at 390x844 had no page-level horizontal overflow; the fretboard remains below the first viewport because of normal mobile stacking.
 
 Smoke Target:
 
 ```text
-- Target type: local
+- Target type: protected-preview
 - Result type: browser smoke
-- Exact browser URL tested: http://127.0.0.1:8770/ui/e9-fretboard-explorer.html?v=explorer-compact-copedent-20260625
-- Cache-busted URL tested: http://127.0.0.1:8770/ui/e9-fretboard-explorer.html?v=explorer-compact-copedent-20260625
-- Exact URL the user should use: blocked pending Cloudflare Access completion in the in-app browser; intended URL remains https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-compact-copedent-20260625
-- Auth required: no for local smoke / yes for protected preview
-- Auth provider: none for local smoke / Cloudflare Access for protected preview
-- Cloudflare Access login result: not required for local smoke / not attempted for protected preview
+- Exact browser URL tested: https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-compact-copedent-20260625
+- Cache-busted URL tested: https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-compact-copedent-20260625
+- Exact URL the user should use: https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-compact-copedent-20260625
+- Auth required: yes
+- Auth provider: Cloudflare Access
+- Cloudflare Access login result: succeeded
 - Local backend URL: http://127.0.0.1:8770
 - Expected backend port: 8770
-- Expected git HEAD: 9a3513b
+- Expected git HEAD: 662679f; expected UI code commit: 5a59739
 - Version endpoint: http://127.0.0.1:8770/api/version
-- Version endpoint result: git_sha=4040a47 in the Lane 12 rerun; runtime contains UI commit 5a59739
+- Version endpoint result: git_sha=4040a47; runtime contains UI commit 5a59739
 - If version endpoint missing, how version is inferred: not applicable
-- Whether app root `/` works: not tested in this local smoke
+- Whether app root `/` works: unauthenticated root returns Cloudflare Access 302; authenticated root browser recheck was limited by browser automation attach loss after Explorer smoke
 - Whether app root `/` is expected to work: yes, protected root redirects to app UI
-- Whether `/ui/steel-guitar-rag-mock.html` works: yes, local entry smoke passed at http://127.0.0.1:8770/ui/steel-guitar-rag-mock.html?access=beta_user&v=explorer-compact-copedent-20260625
+- Whether `/ui/steel-guitar-rag-mock.html` works: expected yes; not the primary URL for this Explorer-only smoke
 - Whether `/ui/steel-guitar-rag-mock.html` is expected to work: yes
-- Who should test this URL: Lane 12 first, then the user
+- Who should test this URL: the user
 - Do not test these URLs: uncache-busted Explorer URLs for this slice
-- Known caveats: local smoke is not protected-preview smoke; protected-preview smoke is currently blocked at Cloudflare Access verification in the in-app browser; user smoke remains on hold
+- Known caveats: direct `/ui/...?...` URL remains required for exact cache-busted Explorer smoke; browser automation detached during temporary-tab root/version checks after the Explorer smoke
 ```
 
 ## Latest Relevant Handoffs
@@ -155,6 +161,7 @@ Smoke Target:
 - `docs/handoffs/task-completions/2026-06-25-1920-06-explorer-compact-copedent-ui.md`
 - `docs/handoffs/task-completions/2026-06-25-2045-12-explorer-compact-copedent-protected-smoke.md`
 - `docs/handoffs/task-completions/2026-06-25-2052-12-explorer-compact-copedent-protected-smoke-rerun.md`
+- `docs/handoffs/task-completions/2026-06-26-0906-12-explorer-compact-copedent-protected-smoke-authenticated.md`
 
 ## Remaining Caveats
 
@@ -162,7 +169,7 @@ Smoke Target:
 - Direct `/ui/...?...` URLs remain required for cache-busted smoke.
 - `deploy/macos/install-private-preview-launchdaemon.sh status` and `restart` need interactive sudo in this environment.
 - Current protected-preview runtime is refreshed to `4040a47`, which contains `5a59739`.
-- Protected-preview browser smoke is blocked until Cloudflare Access is completed in the in-app browser.
+- Protected-preview browser smoke for compact Explorer/copedent UI passed after Cloudflare Access was completed in the in-app browser.
 - Broad unrelated dirty/untracked files remain parked.
 
 ## Current Git / Worktree Notes
@@ -170,9 +177,9 @@ Smoke Target:
 Current checked state at this refresh:
 
 - Branch: `feature/answer-api`.
-- Repo HEAD before this docs refresh: `5a59739`.
+- Repo HEAD before this docs refresh: `662679f`.
 - Cached index before this docs refresh: empty.
-- `git diff --check`: to be run for this docs refresh.
+- `git diff --check`: passed before this docs refresh; rerun before commit.
 
 Broad parked dirty/untracked work remains outside this refresh, including:
 
@@ -188,7 +195,7 @@ Do not stage parked work unless a later exact-scope handoff approves it.
 ## Safe To Stage For This Refresh
 
 - `docs/handoffs/task-completions/integration-status.md`
-- no new handoff required; this is the integration-status refresh after `9a3513b`
+- `docs/handoffs/task-completions/2026-06-26-0906-12-explorer-compact-copedent-protected-smoke-authenticated.md`
 
 ## Files Not To Stage For This Refresh
 
@@ -200,14 +207,14 @@ Do not stage parked work unless a later exact-scope handoff approves it.
 
 ## Recommended Next Slice
 
-Complete Cloudflare Access in the in-app browser, then rerun Lane 12 protected-preview smoke. Resume user smoke only if protected-preview evidence passes.
+User smoke the compact Explorer/copedent UI at the direct cache-busted Explorer URL.
 
 Recommended next slice if continuing:
 
-- Lane 12 Self-Hosted Deployment: rerun protected-preview browser smoke against runtime `4040a47` containing `5a59739` after Cloudflare Access is completed.
+- User smoke: verify compact Explorer/copedent UI from the protected-preview URL.
 
 Recommended exact control step:
 
 ```text
-Lane 12: after Cloudflare Access is completed in the in-app browser, smoke https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-compact-copedent-20260625 and the main app entry URL. Runtime /api/version already reports 4040a47, which contains 5a59739.
+User smoke https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-compact-copedent-20260625. Runtime /api/version reports 4040a47, which contains 5a59739.
 ```
