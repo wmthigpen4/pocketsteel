@@ -5,13 +5,14 @@ Generated for ChatGPT reset/guidance on branch `feature/answer-api`.
 ## Current State
 
 - Current branch: `feature/answer-api`.
-- Current repo HEAD at this refresh: `672ec51 fix: compact explorer control layout`.
+- Current repo HEAD at this refresh: this audit commit, `docs: record explorer integration audit`.
 - Runtime commit smoked for E9 copedent selector/chart: `ecec173 feat: add E9 copedent selector and chart`.
 - Related impact-preview runtime smoke: `670d635 feat: add e9 pedal lever impact preview contract`.
 - Latest local UI smoke status: **PASS for Explorer compact control layout at commit `672ec51`**. Local browser smoke verified `String group` is a compact normal dropdown, `Notation` has a visible label inside the top controls, `Showing validated positions` is removed, exact `6-8-10` filtering works, and `Harmonized scale path -> Low path` still hides/disables `String group`, shows/enables `Path family`, and renders mixed groups `6-8-10` and `6-7-10`.
 - Protected-preview status: **PASS for Explorer compact control layout at commit `672ec51`, with version caveat**. The protected page loaded `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=compact-controls-672ec51` after Cloudflare Access and verified `e9-fretboard-explorer.js?v=compact-controls-20260626` is active. `String group` rendered as a compact dropdown, `Notation` was labeled, no `Showing validated positions` status or `#explorer-result-count` remained, selecting `6-8-10` filtered visible rows to `6-8-10`, and path mode still hid `String group` while low path rendered `6-8-10` plus `6-7-10`. No `[object Object]`, no horizontal overflow, and no relevant console errors appeared. `/api/version` still reports runtime SHA `4040a47`, so this pass verifies static UI behavior at the cache-busted page URL, not a runtime restart.
 - User-smoke status: **ready for focused user smoke at the direct cache-busted Explorer URL below**.
 - App control state: **park or choose the next small slice**.
+- Repo audit status: **WARN / clean Explorer scope, dirty parked work remains**. Audit after the smoke-driven Explorer changes found no staged files and no dirty Explorer runtime/test files. The remaining dirty/untracked work is unrelated parked corpus/provenance/RAG/brand/design/documentation work and must not be broad-staged.
 - Broad unrelated dirty/untracked work remains parked. Do not broad-stage.
 
 ## Protected URLs
