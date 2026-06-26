@@ -269,13 +269,15 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "checked against tuning and pedal/lever changes" in html
     assert "These Explorer rows are deterministic teaching data, separate from source-card answers." not in html
     assert "not corpus retrieval or RAG-generated fretboard positions" not in html
-    assert '<script src="pedal-steel-fretboard.js?v=explorer-compact-copedent-20260625"></script>' in html
+    assert '<script src="pedal-steel-fretboard.js?v=explorer-notation-marker-labels-20260626"></script>' in html
     assert "pedal-steel-fretboard.js?v=e9-explorer-explanation-ui-20260623" not in html
     assert "pedal-steel-fretboard.js?v=explorer-ui-cleanup-20260623" not in html
     assert "pedal-steel-fretboard.js?v=selected-svg-render-20260623" not in html
-    assert '<script src="e9-fretboard-explorer-data.js?v=explorer-compact-copedent-20260625"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=explorer-harmonized-scale-clarity-20260626"></script>' in html
+    assert "pedal-steel-fretboard.js?v=explorer-compact-copedent-20260625" not in html
+    assert '<script src="e9-fretboard-explorer-data.js?v=explorer-notation-marker-labels-20260626"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=explorer-notation-marker-labels-20260626"></script>' in html
     assert "e9-fretboard-explorer.js?v=explorer-compact-copedent-20260625" not in html
+    assert "e9-fretboard-explorer.js?v=explorer-harmonized-scale-clarity-20260626" not in html
     expected_key_options = {
         "C": "C",
         "Db": "C# (or D♭)",
