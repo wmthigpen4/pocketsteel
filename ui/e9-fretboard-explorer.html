@@ -278,6 +278,69 @@
       outline-offset: 2px;
     }
 
+    .explorer-top-interval-filter {
+      display: grid;
+      grid-template-columns: minmax(180px, 0.48fr) minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
+      margin: -2px 0 12px;
+      padding: 10px 12px;
+      border: 1px solid rgba(246, 190, 88, 0.18);
+      border-radius: 14px;
+      background: rgba(0, 0, 0, 0.22);
+    }
+
+    .explorer-top-interval-filter[hidden] {
+      display: none;
+    }
+
+    .explorer-top-interval-filter__label {
+      display: grid;
+      gap: 3px;
+    }
+
+    .explorer-top-interval-filter__label strong {
+      color: var(--gold);
+      font-size: 0.78rem;
+      font-weight: 900;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .explorer-top-interval-filter__label span {
+      color: var(--muted);
+      font-size: 0.76rem;
+      line-height: 1.35;
+    }
+
+    .explorer-top-interval-filter__chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+
+    .explorer-top-interval-filter__chip {
+      min-height: 30px;
+      border: 1px solid rgba(246, 190, 88, 0.28);
+      border-radius: 999px;
+      padding: 5px 10px;
+      background: rgba(0, 0, 0, 0.22);
+      color: var(--muted);
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 900;
+    }
+
+    .explorer-top-interval-filter__chip.is-selected,
+    .explorer-top-interval-filter__chip:focus-visible {
+      border-color: rgba(246, 190, 88, 0.68);
+      background: rgba(246, 190, 88, 0.14);
+      color: var(--text);
+      outline: none;
+    }
+
     .explorer-copedent-dialog {
       width: min(1040px, calc(100vw - 32px));
       max-height: min(82vh, 760px);
@@ -659,6 +722,7 @@
     }
 
     .explorer-active-result {
+      --explorer-marker-color: #f7bd58;
       border: 1px solid rgba(246, 190, 88, 0.22);
       border-radius: 11px;
       padding: 8px 10px;
@@ -674,16 +738,67 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-width: 58px;
       margin: 0 0 5px;
-      border: 1px solid rgba(247, 189, 88, 0.42);
+      border: 1px solid color-mix(in srgb, var(--explorer-marker-color) 62%, transparent);
       border-radius: 999px;
       padding: 2px 7px;
-      color: #ffe5a8;
-      background: rgba(247, 189, 88, 0.12);
+      color: #fff3cf;
+      background: color-mix(in srgb, var(--explorer-marker-color) 18%, transparent);
       font-size: 0.68rem;
       font-weight: 900;
       letter-spacing: 0.02em;
+    }
+
+    .explorer-marker-token {
+      width: 8px;
+      height: 8px;
+      margin-right: 5px;
+      border-radius: 2px;
+      background:
+        linear-gradient(135deg, rgba(255, 255, 255, 0.58) 0 38%, transparent 39% 62%, rgba(0, 0, 0, 0.3) 63%),
+        var(--explorer-marker-color);
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.32), 0 0 8px color-mix(in srgb, var(--explorer-marker-color) 60%, transparent);
+      transform: rotate(45deg);
+    }
+
+    .explorer-active-result[data-marker-tone="1"],
+    .explorer-fretboard .pedal-steel-fretboard__highlight[data-explorer-marker-tone="1"] {
+      --explorer-marker-color: #f7bd58;
+    }
+
+    .explorer-active-result[data-marker-tone="2"],
+    .explorer-fretboard .pedal-steel-fretboard__highlight[data-explorer-marker-tone="2"] {
+      --explorer-marker-color: #8dc78d;
+    }
+
+    .explorer-active-result[data-marker-tone="3"],
+    .explorer-fretboard .pedal-steel-fretboard__highlight[data-explorer-marker-tone="3"] {
+      --explorer-marker-color: #70b7ff;
+    }
+
+    .explorer-active-result[data-marker-tone="4"],
+    .explorer-fretboard .pedal-steel-fretboard__highlight[data-explorer-marker-tone="4"] {
+      --explorer-marker-color: #ff9f7a;
+    }
+
+    .explorer-active-result[data-marker-tone="5"],
+    .explorer-fretboard .pedal-steel-fretboard__highlight[data-explorer-marker-tone="5"] {
+      --explorer-marker-color: #d6a7ff;
+    }
+
+    .explorer-active-result[data-marker-tone="6"],
+    .explorer-fretboard .pedal-steel-fretboard__highlight[data-explorer-marker-tone="6"] {
+      --explorer-marker-color: #64d7c2;
+    }
+
+    .explorer-active-result[data-marker-tone="7"],
+    .explorer-fretboard .pedal-steel-fretboard__highlight[data-explorer-marker-tone="7"] {
+      --explorer-marker-color: #f48fb1;
+    }
+
+    .explorer-active-result[data-marker-tone="8"],
+    .explorer-fretboard .pedal-steel-fretboard__highlight[data-explorer-marker-tone="8"] {
+      --explorer-marker-color: #cddc39;
     }
 
     .explorer-active-result:hover,
@@ -706,9 +821,73 @@
       font-weight: 700;
     }
 
+    .explorer-top-voice-note,
+    .explorer-note-bubbles {
+      display: grid;
+      gap: 6px;
+      margin: 12px 0;
+      border: 1px solid rgba(246, 190, 88, 0.18);
+      border-radius: 12px;
+      padding: 10px;
+      background: rgba(0, 0, 0, 0.18);
+    }
+
+    .explorer-top-voice-note strong,
+    .explorer-note-bubbles strong {
+      color: var(--gold);
+      font-size: 0.78rem;
+      font-weight: 900;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .explorer-top-voice-note p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.84rem;
+      line-height: 1.45;
+    }
+
+    .explorer-note-bubbles__grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .explorer-note-bubble {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid rgba(246, 190, 88, 0.2);
+      border-radius: 999px;
+      padding: 4px 8px;
+      background: rgba(246, 190, 88, 0.08);
+      color: var(--muted);
+      font-size: 0.76rem;
+      font-weight: 800;
+    }
+
+    .explorer-note-bubble b {
+      color: var(--text);
+      font-weight: 900;
+    }
+
     .explorer-fretboard {
       padding: 16px;
       overflow-x: auto;
+    }
+
+    .explorer-fretboard .pedal-steel-fretboard__highlight[data-explorer-marker-tone] [data-highlight-dot] {
+      fill: var(--explorer-marker-color);
+      stroke: #120d07;
+      filter: drop-shadow(0 0 8px color-mix(in srgb, var(--explorer-marker-color) 62%, transparent));
+    }
+
+    .explorer-fretboard .pedal-steel-fretboard__highlight[data-explorer-marker-tone] [data-highlight-label] {
+      fill: #fff8df;
+      paint-order: stroke;
+      stroke: rgba(0, 0, 0, 0.62);
+      stroke-width: 3px;
     }
 
     .explorer-fretboard .pedal-steel-fretboard__highlight[data-explorer-selected-marker="true"] [data-highlight-dot],
@@ -1005,8 +1184,13 @@
 
       .explorer-control-impact-preview,
       .explorer-row-control-impacts__grid,
+      .explorer-top-interval-filter,
       .explorer-glossary {
         grid-template-columns: 1fr;
+      }
+
+      .explorer-top-interval-filter__chips {
+        justify-content: flex-start;
       }
 
       .explorer-help-grid {
@@ -1114,6 +1298,8 @@
       </div>
     </div>
 
+    <div class="explorer-top-interval-filter" id="explorer-top-interval-filter" aria-label="Top interval filter" hidden></div>
+
     <dialog class="explorer-copedent-dialog" id="explorer-copedent-dialog" aria-labelledby="explorer-copedent-dialog-title">
       <div class="explorer-copedent-dialog__bar">
         <h2 id="explorer-copedent-dialog-title">Selected E9 setup chart</h2>
@@ -1135,6 +1321,9 @@
         <div><dt>Half-diminished</dt><dd>A minor seven flat five sound; often shown as m7b5 or ø.</dd></div>
         <div><dt>NNS / Nashville Number System</dt><dd>Number names for scale degrees and chords, so a pattern moves between keys.</dd></div>
         <div><dt>Intervals</dt><dd>Numbers that describe each note’s job against the root, such as 1, 3, or 5.</dd></div>
+        <div><dt>Top interval</dt><dd>The interval carried by the highest selected string in a grip. In Intervals mode, fretboard markers use this value.</dd></div>
+        <div><dt>Top note</dt><dd>The letter note on the highest selected string in a grip. In Notes mode, fretboard markers use this value.</dd></div>
+        <div><dt>Flat symbol</dt><dd>♭ means the note or interval is lowered, so ♭3 means flat third and ♭7 means flat seventh.</dd></div>
         <div><dt>Notes</dt><dd>The letter names being played, such as G, B, or D.</dd></div>
         <div><dt>Grips</dt><dd>Common sets of strings picked together.</dd></div>
         <div><dt>Pedals</dt><dd>Foot controls that raise or lower selected strings.</dd></div>
@@ -1167,6 +1356,6 @@
 
   <script src="pedal-steel-fretboard.js?v=explorer-compact-copedent-20260625"></script>
   <script src="e9-fretboard-explorer-data.js?v=explorer-compact-copedent-20260625"></script>
-  <script src="e9-fretboard-explorer.js?v=explorer-marker-readability-20260626"></script>
+  <script src="e9-fretboard-explorer.js?v=explorer-top-interval-marker-clarity-20260626"></script>
 </body>
 </html>

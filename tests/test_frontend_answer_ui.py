@@ -274,7 +274,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "pedal-steel-fretboard.js?v=explorer-ui-cleanup-20260623" not in html
     assert "pedal-steel-fretboard.js?v=selected-svg-render-20260623" not in html
     assert '<script src="e9-fretboard-explorer-data.js?v=explorer-compact-copedent-20260625"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=explorer-marker-readability-20260626"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=explorer-top-interval-marker-clarity-20260626"></script>' in html
     assert "e9-fretboard-explorer.js?v=explorer-compact-copedent-20260625" not in html
     expected_key_options = {
         "C": "C",
@@ -407,11 +407,22 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "tooltipHtmlForRows" in script
     assert "groupRowsForMarkers" in script
     assert "markerLabelForGroup" in script
+    assert "renderTopIntervalFilter" in script
+    assert "data-top-interval-filter" in script
+    assert 'id="explorer-top-interval-filter"' in html
+    assert "Top interval" in html
+    assert "Top note" in html
+    assert "Flat symbol" in html
     assert "data-marker-id" in script
+    assert "data-marker-tone" in script
+    assert "explorer-marker-token" in html
     assert "data-explorer-marker-label" in script
     assert "is-explorer-selected-marker" in script
     assert "is-explorer-hover-marker" in script
-    assert "Marker ${escapeHtml(markerLabel)}" in script
+    assert "Marker ${escapeHtml(markerLabel)}" not in script
+    assert "activeTopLabelName()" in script
+    assert "topVoiceExplanationHtml" in script
+    assert "noteBubbleHtml" in script
     assert "pos." not in script
     assert "setups" in script
     assert "selectedImpactControlIds" in script
@@ -591,6 +602,7 @@ class FakeNode {
       "[data-explorer-row]": Array.from(value.matchAll(/data-explorer-row="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-explorer-row")),
       "[data-active-result-row]": Array.from(value.matchAll(/data-active-result-row="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-active-result-row")),
       "[data-control-impact-tab]": Array.from(value.matchAll(/data-control-impact-tab="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-control-impact-tab")),
+      "[data-top-interval-filter]": Array.from(value.matchAll(/data-top-interval-filter="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-top-interval-filter")),
       "[data-control-impact-clear]": value.includes("data-control-impact-clear") ? [new FakeButton("clear", "data-control-impact-clear")] : []
     };
   }
@@ -605,6 +617,9 @@ class FakeNode {
       return this._buttons[selector] || [];
     }
     if (selector === "[data-control-impact-tab]") {
+      return this._buttons[selector] || [];
+    }
+    if (selector === "[data-top-interval-filter]") {
       return this._buttons[selector] || [];
     }
     if (selector === "[data-control-impact-clear]") {
@@ -708,6 +723,7 @@ const elements = {
   "explorer-string-group": new FakeSelect("explorer-string-group", "all", [{ value: "all", text: "All 3-string groups" }]),
   "explorer-scale-notes": new FakeNode("explorer-scale-notes"),
   "explorer-result-count": new FakeNode("explorer-result-count"),
+  "explorer-top-interval-filter": new FakeNode("explorer-top-interval-filter"),
   "explorer-copedent-dialog": new FakeDialog("explorer-copedent-dialog"),
   "explorer-copedent-open": new FakeButton("open", "id"),
   "explorer-copedent-close": new FakeButton("close", "id"),
@@ -784,9 +800,12 @@ assert.equal(lastMount.options.highlightStyle, "prominent");
 assert.equal(Object.prototype.hasOwnProperty.call(lastMount.options, "emphasizeStringGroups"), false);
 assert.equal(Object.prototype.hasOwnProperty.call(lastMount.options, "selectedStringGroups"), false);
 assert.equal(lastMount.options.positions.length > 0, true);
-assert.equal(lastMount.options.positions.every((row) => /^\d+\+?$/.test(row.label)), true);
-assert.equal(lastMount.options.positions.some((row) => /[A-G]|#|b|pos\.|I|V/.test(row.label)), false);
+assert.equal(lastMount.options.positions.every((row) => !/^\d+\+?$/.test(row.label) || /^(1|2|3|4|5|6|7)\+?$/.test(row.label)), true);
+assert.equal(lastMount.options.positions.every((row) => !/\bb\d/.test(row.label)), true);
 assert.equal(lastMount.options.positions.some((row) => row.grip === "5-7-8"), true);
+assert.equal(elements["explorer-top-interval-filter"].hidden, false);
+assert.match(elements["explorer-top-interval-filter"].textContent, /Find top interval/);
+assert.match(elements["explorer-top-interval-filter"].innerHTML, /data-top-interval-filter="1"/);
 assert.match(elements["explorer-result-count"].textContent, /Showing validated positions/);
 assert.doesNotMatch(elements["explorer-result-count"].textContent, /validated rows/);
 assert.equal(elements["explorer-copedent-chart"].hidden, false);
@@ -821,8 +840,10 @@ assert.match(elements["explorer-control-impact-preview"].innerHTML, /aria-presse
 elements["explorer-control-impact-preview"].querySelector("[data-control-impact-clear]").onclick();
 assert.doesNotMatch(elements["explorer-control-impact-preview"].textContent, /String 5/);
 assert.match(elements["explorer-active-results"].textContent, /all 3-string groups/);
-assert.match(elements["explorer-active-results"].textContent, /Marker \d/);
+assert.match(elements["explorer-active-results"].textContent, /Top interval:/);
+assert.doesNotMatch(elements["explorer-active-results"].textContent, /Marker \d|Marker \+\d/);
 assert.match(elements["explorer-active-results"].innerHTML, /data-marker-id=/);
+assert.match(elements["explorer-active-results"].innerHTML, /data-marker-tone=/);
 assert.equal(elements["explorer-active-results"].querySelectorAll("[data-active-result-row]").length > lastMount.options.positions.length, true);
 assert.equal(elements["explorer-fretboard"].querySelectorAll(".pedal-steel-fretboard__highlight[data-highlight-id]").length, lastMount.options.positions.length);
 assert.equal(elements["explorer-fretboard"].querySelectorAll(".pedal-steel-fretboard__highlight[data-highlight-id]").filter((marker) => marker.getAttribute("data-explorer-selected-marker") === "true").length, 1);
@@ -836,6 +857,9 @@ activeResultButtons[1].onclick();
 assert.equal(elements["explorer-fretboard"].querySelectorAll(".pedal-steel-fretboard__highlight[data-highlight-id]").filter((marker) => marker.getAttribute("data-explorer-selected-marker") === "true").length, 1);
 assert.match(elements["explorer-selected-detail"].textContent, /Notes/);
 assert.match(elements["explorer-selected-detail"].textContent, /Intervals/);
+assert.match(elements["explorer-selected-detail"].textContent, /Top-note focus/);
+assert.match(elements["explorer-selected-detail"].textContent, /Top interval/);
+assert.match(elements["explorer-selected-detail"].textContent, /String map/);
 assert.match(elements["explorer-selected-detail"].textContent, /Why this position works/);
 assert.match(elements["explorer-selected-detail"].textContent, /validated E9 pitch logic/);
 assert.match(elements["explorer-selected-detail"].innerHTML, /explorer-teaching-note/);
@@ -843,15 +867,20 @@ assert.doesNotMatch(elements["explorer-fretboard"].textContent, /Why this positi
 assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /Pitch validated/);
 assert.doesNotMatch(elements["explorer-row-list"].textContent, /\b\d+\s+(?:I|ii|iii|iv|v|vi|vii)\b/);
 assert.doesNotMatch(elements["explorer-active-results"].textContent, /\b\d+\s+(?:I|ii|iii|iv|v|vi|vii)\b/);
-assert.match(elements["explorer-active-results"].innerHTML, /Intervals:/);
+assert.match(elements["explorer-active-results"].innerHTML, /Top interval:/);
 assert.doesNotMatch(elements["explorer-active-results"].innerHTML, /<strong>G<\/strong>/);
+const intervalFilterButtons = elements["explorer-top-interval-filter"].querySelectorAll("[data-top-interval-filter]");
+intervalFilterButtons.find((button) => button.getAttribute("data-top-interval-filter") === "1").onclick();
+assert.match(elements["explorer-active-results"].textContent, /Top interval: 1/);
+assert.equal(lastMount.options.positions.every((row) => row.label === "1" || row.label === "1+"), true);
+elements["explorer-top-interval-filter"].querySelectorAll("[data-top-interval-filter]").find((button) => button.getAttribute("data-top-interval-filter") === "all").onclick();
 labelModeButtons[1].onclick();
-assert.equal(lastMount.options.positions.every((row) => /^\d+\+?$/.test(row.label)), true);
-assert.match(elements["explorer-active-results"].innerHTML, /Notes:/);
-assert.match(elements["explorer-active-results"].innerHTML, /<strong>G<\/strong>|<strong>B<\/strong>|<strong>D<\/strong>/);
+assert.equal(lastMount.options.positions.some((row) => /^[A-G][b#]?\+?$/.test(row.label)), true);
+assert.match(elements["explorer-active-results"].innerHTML, /Top note:/);
+assert.match(elements["explorer-active-results"].innerHTML, /<strong>Top note: (G|B|D)/);
 labelModeButtons[0].onclick();
-assert.equal(lastMount.options.positions.every((row) => /^\d+\+?$/.test(row.label)), true);
-assert.match(elements["explorer-active-results"].innerHTML, /Intervals:/);
+assert.equal(lastMount.options.positions.some((row) => /^(1|2|3|4|5|6|7)\+?$/.test(row.label)), true);
+assert.match(elements["explorer-active-results"].innerHTML, /Top interval:/);
 
 const expectedMajorScales = {
   C: "C D E F G A B",

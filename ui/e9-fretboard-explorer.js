@@ -40,6 +40,7 @@
     scaleNotes: document.getElementById("explorer-scale-notes"),
     resultCount: document.getElementById("explorer-result-count"),
     labelModeButtons: document.querySelectorAll("[data-explorer-label-mode]"),
+    topIntervalFilter: document.getElementById("explorer-top-interval-filter"),
     copedentDialog: document.getElementById("explorer-copedent-dialog"),
     copedentOpen: document.getElementById("explorer-copedent-open"),
     copedentClose: document.getElementById("explorer-copedent-close"),
@@ -58,6 +59,7 @@
 
   let selectedRowId = "";
   let selectedImpactControlIds = new Set();
+  let selectedTopInterval = "all";
   let labelMode = "intervals";
   let lastCopedentDialogOpener = null;
   let lastGlossaryDialogOpener = null;
@@ -118,6 +120,20 @@
     return String(value);
   }
 
+  function formatInterval(value) {
+    return formatValue(value, "")
+      .replace(/bb(?=\d)/g, "𝄫")
+      .replace(/b(?=\d)/g, "♭")
+      .replace(/#(?=\d)/g, "♯");
+  }
+
+  function formatTheoryText(value) {
+    return formatValue(value, "")
+      .replace(/bb(?=\d)/g, "𝄫")
+      .replace(/b(?=\d)/g, "♭")
+      .replace(/#(?=\d)/g, "♯");
+  }
+
   function dedupeValues(values) {
     const seen = new Set();
     return toArray(values)
@@ -172,22 +188,68 @@
   function rowIntervalLabels(row) {
     const intervals = displayNoteEntries(row).map((entry) => entry.interval).filter(Boolean);
     if (intervals.length) {
-      return dedupeValues(intervals);
+      return dedupeValues(intervals.map(formatInterval));
     }
     if (row?.intervals && typeof row.intervals === "object" && !Array.isArray(row.intervals)) {
-      return dedupeValues(Object.values(row.intervals));
+      return dedupeValues(Object.values(row.intervals).map(formatInterval));
     }
-    return dedupeValues(toArray(row.intervals));
+    return dedupeValues(toArray(row.intervals).map(formatInterval));
+  }
+
+  function topVoice(row) {
+    const topVoice = row?.display_top_voice;
+    if (topVoice && typeof topVoice === "object" && !Array.isArray(topVoice)) {
+      return {
+        note: formatValue(topVoice.note, ""),
+        interval: formatInterval(topVoice.interval),
+        string: formatValue(topVoice.string, ""),
+      };
+    }
+    const entries = displayNoteEntries(row);
+    const topString = toArray(row?.strings).map(Number).filter(Number.isFinite).sort((a, b) => a - b)[0];
+    const entry = entries.find((item) => Number(item.string) === topString) || entries[0];
+    if (entry) {
+      return {
+        note: formatValue(entry.note, ""),
+        interval: entry.interval ? formatInterval(entry.interval) : "",
+        string: formatValue(entry.string, ""),
+      };
+    }
+    return {
+      note: rowNoteLabels(row)[0] || "",
+      interval: rowIntervalLabels(row)[0] || "",
+      string: topString ? String(topString) : "",
+    };
   }
 
   function topVoiceLabel(row) {
-    const topVoice = row?.display_top_voice;
-    if (topVoice && typeof topVoice === "object" && !Array.isArray(topVoice)) {
-      return [topVoice.note, topVoice.interval ? `interval ${topVoice.interval}` : "", topVoice.string ? `string ${topVoice.string}` : ""]
+    const voice = topVoice(row);
+    if (voice.note || voice.interval || voice.string) {
+      return [voice.note, voice.interval ? `interval ${voice.interval}` : "", voice.string ? `string ${voice.string}` : ""]
         .filter(Boolean)
         .join(" · ");
     }
-    return topVoice;
+    return row?.display_top_voice;
+  }
+
+  function topNoteLabel(row) {
+    return topVoice(row).note || rowNoteLabels(row)[0] || "Position";
+  }
+
+  function topIntervalLabel(row) {
+    return topVoice(row).interval || rowIntervalLabels(row)[0] || "Position";
+  }
+
+  function activeTopLabel(row) {
+    return labelMode === "notes" ? topNoteLabel(row) : topIntervalLabel(row);
+  }
+
+  function activeTopLabelName() {
+    return labelMode === "notes" ? "Top note" : "Top interval";
+  }
+
+  function harmonyIntervalText(row) {
+    return formatValue(rowIntervalLabels(row), "");
   }
 
   function activeLabelValues(row) {
@@ -199,11 +261,7 @@
   }
 
   function primaryLabelForRow(row) {
-    const values = activeLabelValues(row);
-    if (values.length) {
-      return values[0];
-    }
-    return row.chord_function || row.scale_degree || row.chord_name || "Position";
+    return `${activeTopLabelName()}: ${activeTopLabel(row) || row.chord_function || row.scale_degree || row.chord_name || "Position"}`;
   }
 
   function labelModeNoun() {
@@ -380,7 +438,7 @@
     updateStringGroupOptions();
   }
 
-  function getRows() {
+  function getBaseRows() {
     const payload = activePayload();
     if (!payload || !Array.isArray(payload.positions)) {
       return [];
@@ -408,6 +466,35 @@
         }
         return String(a.id || "").localeCompare(String(b.id || ""));
       });
+  }
+
+  function intervalSortIndex(interval) {
+    const order = ["1", "♭2", "2", "♭3", "3", "4", "♯4", "♭5", "5", "♭6", "6", "♭7", "7"];
+    const found = order.indexOf(interval);
+    return found === -1 ? 100 + interval.localeCompare("") : found;
+  }
+
+  function availableTopIntervals(rows) {
+    return dedupeValues(rows.map(topIntervalLabel))
+      .sort((a, b) => {
+        const byOrder = intervalSortIndex(a) - intervalSortIndex(b);
+        return byOrder || a.localeCompare(b);
+      });
+  }
+
+  function syncSelectedTopInterval(baseRows) {
+    const available = new Set(availableTopIntervals(baseRows));
+    if (selectedTopInterval !== "all" && !available.has(selectedTopInterval)) {
+      selectedTopInterval = "all";
+    }
+  }
+
+  function getRows() {
+    const baseRows = getBaseRows();
+    if (selectedTopInterval === "all") {
+      return baseRows;
+    }
+    return baseRows.filter((row) => topIntervalLabel(row) === selectedTopInterval);
   }
 
   function getScaleNotes() {
@@ -499,8 +586,25 @@
     return Array.from(groups.entries()).map(([id, groupRows], index) => ({ id, rows: groupRows, index: index + 1 }));
   }
 
+  function markerToneForIndex(index) {
+    return String(((Number(index) || 1) - 1) % 8 + 1);
+  }
+
+  function markerToneForGroup(group) {
+    return markerToneForIndex(group?.index || 1);
+  }
+
+  function markerToneForRow(row) {
+    const group = currentMarkerGroups.find((item) => item.id === markerGroupKey(row));
+    return group ? markerToneForGroup(group) : "1";
+  }
+
   function markerLabelForGroup(group) {
-    return `${group.index}${group.rows.length > 1 ? "+" : ""}`;
+    const labels = dedupeValues(group.rows.map(activeTopLabel));
+    if (!labels.length) {
+      return "";
+    }
+    return labels.length === 1 ? labels[0] : `${labels[0]}+`;
   }
 
   function markerLabelForRow(row) {
@@ -521,9 +625,8 @@
   }
 
   function shortLabel(row) {
-    const chord = primaryLabelForRow(row);
     const controls = normalizePedals(row);
-    return `${chord}${controls.length ? ` · ${controls.join("+")}` : ""}`;
+    return `${primaryLabelForRow(row)}${controls.length ? ` · With ${controls.join("+")}` : " · Open"}`;
   }
 
   function detailRow(label, value) {
@@ -542,7 +645,7 @@
     return `
       <section class="explorer-teaching-note" aria-label="Why this position works">
         <strong>Why this position works</strong>
-        <p>${escapeHtml(rendered)}</p>
+        <p>${escapeHtml(formatTheoryText(rendered))}</p>
       </section>
     `;
   }
@@ -805,6 +908,42 @@
     }
   }
 
+  function renderTopIntervalFilter(baseRows) {
+    if (!els.topIntervalFilter) {
+      return;
+    }
+    const intervals = availableTopIntervals(baseRows);
+    if (intervals.length <= 1) {
+      els.topIntervalFilter.hidden = true;
+      els.topIntervalFilter.innerHTML = "";
+      return;
+    }
+    els.topIntervalFilter.hidden = false;
+    const allSelected = selectedTopInterval === "all";
+    const chips = [
+      `<button class="explorer-top-interval-filter__chip${allSelected ? " is-selected" : ""}" type="button" data-top-interval-filter="all" aria-pressed="${allSelected ? "true" : "false"}">All</button>`,
+      ...intervals.map((interval) => {
+        const selected = selectedTopInterval === interval;
+        return `<button class="explorer-top-interval-filter__chip${selected ? " is-selected" : ""}" type="button" data-top-interval-filter="${escapeHtml(interval)}" aria-pressed="${selected ? "true" : "false"}">${escapeHtml(interval)}</button>`;
+      }),
+    ];
+    els.topIntervalFilter.innerHTML = `
+      <div class="explorer-top-interval-filter__label">
+        <strong>Find top interval</strong>
+        <span>The marker label follows the top string of each selected grip.</span>
+      </div>
+      <div class="explorer-top-interval-filter__chips" role="group" aria-label="Filter by top interval">
+        ${chips.join("")}
+      </div>
+    `;
+    Array.from(els.topIntervalFilter.querySelectorAll("[data-top-interval-filter]")).forEach((button) => {
+      button.addEventListener("click", () => {
+        selectedTopInterval = button.getAttribute("data-top-interval-filter") || "all";
+        render();
+      });
+    });
+  }
+
   function rowControlImpactsHtml(row) {
     const impacts = toArray(row.control_impacts);
     if (!impacts.length) {
@@ -827,6 +966,63 @@
     `;
   }
 
+  function controlsForString(row, stringNumber) {
+    const target = Number(stringNumber);
+    const controls = [];
+    toArray(row.control_impacts).forEach((impact) => {
+      const hasString = toArray(impact.string_impacts).some((stringImpact) => Number(stringImpact.string) === target);
+      if (hasString) {
+        controls.push(formatValue(impact.id || impact.label, ""));
+      }
+    });
+    const perString = row.per_string_changes?.[String(stringNumber)]?.controls;
+    if (perString) {
+      controls.push(perString);
+    }
+    return dedupeValues(controls);
+  }
+
+  function stringStateLabel(row, stringNumber) {
+    const controls = controlsForString(row, stringNumber);
+    return controls.length ? `S${stringNumber} ${controls.join("+")}` : `S${stringNumber}`;
+  }
+
+  function noteBubbleHtml(row) {
+    const entries = displayNoteEntries(row);
+    if (!entries.length) {
+      return "";
+    }
+    return `
+      <section class="explorer-note-bubbles" aria-label="String and control map for selected position">
+        <strong>String map</strong>
+        <div class="explorer-note-bubbles__grid">
+          ${entries.map((entry) => `
+            <span class="explorer-note-bubble">
+              <b>${escapeHtml(stringStateLabel(row, entry.string))}</b>
+              <span>${escapeHtml(formatValue(entry.note, ""))}${entry.interval ? ` · ${escapeHtml(formatInterval(entry.interval))}` : ""}</span>
+            </span>
+          `).join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function topVoiceExplanationHtml(row) {
+    const voice = topVoice(row);
+    if (!voice.note && !voice.interval) {
+      return "";
+    }
+    const stringText = voice.string ? `string ${voice.string}` : "the top string";
+    const intervalText = voice.interval ? `top interval ${voice.interval}` : "the top interval";
+    const noteText = voice.note ? `top note ${voice.note}` : "the top note";
+    return `
+      <section class="explorer-top-voice-note" aria-label="Top-note interval explanation">
+        <strong>Top-note focus</strong>
+        <p>${escapeHtml(`This view indexes the grip by ${stringText}: ${noteText} is ${intervalText} in ${activeKey()}. The other notes below it support the harmony (${harmonyIntervalText(row)}).`)}</p>
+      </section>
+    `;
+  }
+
   function renderSelectedDetail(row) {
     if (!row) {
       els.selectedDetail.className = "explorer-selected-detail";
@@ -840,10 +1036,14 @@
     els.selectedDetail.innerHTML = `
       <div class="explorer-selected-detail__header">
         <span class="explorer-selected-detail__kind">${escapeHtml(groupLabel(row))}</span>
-        <strong>${escapeHtml(formatValue(row.display_summary || row.chord_name || row.id))}</strong>
+        <strong>${escapeHtml(formatTheoryText(row.display_summary || row.chord_name || row.id))}</strong>
       </div>
+      ${topVoiceExplanationHtml(row)}
       ${teachingNoteHtml(row)}
       <dl class="explorer-detail-grid">
+        ${detailRow("Top note", topNoteLabel(row))}
+        ${detailRow("Top interval", topIntervalLabel(row))}
+        ${detailRow("Supporting harmony", harmonyIntervalText(row))}
         ${detailRow("Notes", rowNoteLabels(row))}
         ${detailRow("Intervals", rowIntervalLabels(row))}
         ${detailRow("Top voice", topVoiceLabel(row))}
@@ -853,6 +1053,7 @@
         ${detailRow("Per-string changes", row.per_string_changes)}
         ${detailRow("Warnings", warnings)}
       </dl>
+      ${noteBubbleHtml(row)}
       ${rowControlImpactsHtml(row)}
     `;
   }
@@ -893,11 +1094,15 @@
     const buttonClass = isAdvanced(row) ? " explorer-active-result--advanced" : "";
     const isSelected = row.id === selectedRowId;
     const markerLabel = markerLabelForRow(row);
+    const markerTone = markerToneForRow(row);
+    const controls = normalizePedals(row);
+    const controlText = controls.length ? `With ${controls.join("+")}` : "Open";
     return `
-      <button class="explorer-active-result${buttonClass}${isSelected ? " is-selected" : ""}" type="button" ${dataAttributeName}="${escapeHtml(row.id)}" data-marker-id="${escapeHtml(markerGroupKey(row))}" data-string-group="${escapeHtml(row.string_group)}" data-harmony-type="${escapeHtml(row.harmony_type)}" aria-pressed="${isSelected ? "true" : "false"}">
-        ${markerLabel ? `<span class="explorer-active-result__marker">Marker ${escapeHtml(markerLabel)}</span>` : ""}
+      <button class="explorer-active-result${buttonClass}${isSelected ? " is-selected" : ""}" type="button" ${dataAttributeName}="${escapeHtml(row.id)}" data-marker-id="${escapeHtml(markerGroupKey(row))}" data-marker-tone="${escapeHtml(markerTone)}" data-string-group="${escapeHtml(row.string_group)}" data-harmony-type="${escapeHtml(row.harmony_type)}" aria-pressed="${isSelected ? "true" : "false"}">
+        ${markerLabel ? `<span class="explorer-active-result__marker"><span class="explorer-marker-token" aria-hidden="true"></span>Fretboard ${escapeHtml(markerLabel)}</span>` : ""}
         <strong>${escapeHtml(shortLabel(row))}</strong>
-        <span class="explorer-active-result__meta">Fret ${escapeHtml(formatValue(row.fret))} · ${escapeHtml(row.string_group)} · ${escapeHtml(labelModeNoun())}: ${escapeHtml(activeLabelText(row))}</span>
+        <span class="explorer-active-result__meta">Fret ${escapeHtml(formatValue(row.fret))} · ${escapeHtml(row.string_group)} · ${escapeHtml(controlText)}</span>
+        <span class="explorer-active-result__meta">Harmony: ${escapeHtml(harmonyIntervalText(row))}</span>
       </button>
     `;
   }
@@ -943,7 +1148,7 @@
         return `
           <button class="explorer-row-button${buttonClass}${isSelected ? " is-selected" : ""}" type="button" data-explorer-row="${escapeHtml(row.id)}" data-string-group="${escapeHtml(row.string_group)}" data-harmony-type="${escapeHtml(row.harmony_type)}" aria-pressed="${isSelected ? "true" : "false"}">
             <strong>${escapeHtml(shortLabel(row))}</strong>
-            <span class="explorer-row-button__meta">Fret ${escapeHtml(formatValue(row.fret))} · ${escapeHtml(row.string_group)} · ${escapeHtml(groupLabel(row))} · ${escapeHtml(labelModeNoun())}: ${escapeHtml(activeLabelText(row))}</span>
+            <span class="explorer-row-button__meta">Fret ${escapeHtml(formatValue(row.fret))} · ${escapeHtml(row.string_group)} · ${escapeHtml(groupLabel(row))} · Harmony: ${escapeHtml(harmonyIntervalText(row))}</span>
           </button>
         `;
       })
@@ -956,14 +1161,20 @@
   function tooltipText(row) {
     const warnings = toArray(row.warnings);
     const controls = normalizePedals(row);
+    const stringMap = displayNoteEntries(row)
+      .map((entry) => `${stringStateLabel(row, entry.string)} ${formatValue(entry.note, "")}${entry.interval ? `/${formatInterval(entry.interval)}` : ""}`)
+      .join("; ");
     return [
       row.display_summary || row.chord_name || row.chord_function || row.id,
       `Fret ${row.fret} · strings ${row.string_group}`,
+      `${activeTopLabelName()}: ${activeTopLabel(row)}`,
+      `Top-note focus: string ${topVoice(row).string || "top"} carries ${topIntervalLabel(row)} in ${activeKey()}`,
       `Notes: ${formatValue(rowNoteLabels(row))}`,
       `Intervals: ${formatValue(rowIntervalLabels(row))}`,
       `Pedals/levers: ${formatValue(controls)}`,
+      stringMap ? `String map: ${stringMap}` : "",
       warnings.length ? `Warning: ${formatValue(warnings)}` : "",
-    ].filter(Boolean);
+    ].filter(Boolean).map(formatTheoryText);
   }
 
   function tooltipHtml(row) {
@@ -1021,11 +1232,13 @@
   function wireFretboardMarkers(rows, markerGroups) {
     const byMarkerId = new Map(markerGroups.map((group) => [group.id, group.rows]));
     Array.from(els.fretboard.querySelectorAll(".pedal-steel-fretboard__highlight[data-highlight-id]")).forEach((marker) => {
+      const group = markerGroups.find((item) => item.id === marker.getAttribute("data-highlight-id"));
       const markerRows = byMarkerId.get(marker.getAttribute("data-highlight-id")) || [];
       if (!markerRows.length) {
         return;
       }
-      marker.setAttribute("data-explorer-marker-label", markerLabelForGroup(markerGroups.find((group) => group.id === marker.getAttribute("data-highlight-id")) || { index: "", rows: markerRows }));
+      marker.setAttribute("data-explorer-marker-label", markerLabelForGroup(group || { index: "", rows: markerRows }));
+      marker.setAttribute("data-explorer-marker-tone", markerToneForGroup(group));
       const text = tooltipTextForRows(markerRows);
       marker.setAttribute("tabindex", "0");
       marker.setAttribute("role", "button");
@@ -1105,6 +1318,9 @@
   }
 
   function render() {
+    const baseRows = getBaseRows();
+    syncSelectedTopInterval(baseRows);
+    renderTopIntervalFilter(baseRows);
     const rows = getRows();
     currentRows = rows;
     if (!rows.some((row) => row.id === selectedRowId)) {
@@ -1130,6 +1346,7 @@
       els.selectedDetail.textContent,
       els.copedentChart?.textContent || "",
       els.controlPreview?.textContent || "",
+      els.topIntervalFilter?.textContent || "",
       els.fretboard.textContent,
       els.tooltip.textContent,
     ].join(" ");
