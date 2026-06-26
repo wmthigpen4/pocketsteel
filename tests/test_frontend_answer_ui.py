@@ -381,6 +381,15 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "background: rgba(240, 191, 105, 0.075);" in explorer_hover_rule
     assert "outline: none;" in explorer_hover_rule
     assert ".explorer-back {\n        min-height: 40px;\n        padding: 0 12px;" in html
+    assert ".explorer-copedent-dialog__bar .explorer-inline-button {" in html
+    dialog_close_rule = html.split(".explorer-copedent-dialog__bar .explorer-inline-button {", 1)[1].split("}", 1)[0]
+    for expected_style in [
+        "width: auto;",
+        "min-width: 88px;",
+        "flex: 0 0 auto;",
+        "padding: 0 14px;",
+    ]:
+        assert expected_style in dialog_close_rule
     assert "grid-template-columns: repeat(5, minmax(0, 1fr));" in html
     assert "align-content: start;" in html
     assert ".explorer-control:not(.explorer-control--string-group) select" in html
