@@ -28,6 +28,7 @@ Intentionally not changed:
 - `tests/test_frontend_answer_ui.py`
 - `docs/handoffs/task-completions/2026-06-26-1402-06-explorer-path-string-group-visibility.md`
 - `docs/handoffs/task-completions/assets/2026-06-26-path-string-group-visibility/local-path-mode-controls.png`
+- `docs/handoffs/task-completions/assets/2026-06-26-path-string-group-visibility/protected-path-mode-controls.png`
 
 ## Root Cause
 
@@ -119,11 +120,54 @@ Screenshot:
 
 - `docs/handoffs/task-completions/assets/2026-06-26-path-string-group-visibility/local-path-mode-controls.png`
 
+Protected-preview smoke result:
+
+- Commit tested: `7b934e6`.
+- Exact browser URL tested: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=path-string-group-visibility-7b934e6`.
+- Cloudflare Access result: succeeded from the existing authenticated in-app browser session; the Explorer page loaded directly.
+- Explorer HTML loaded `e9-fretboard-explorer.js?v=path-string-group-visibility-20260626`.
+- Single grip mode with `6-8-10` selected showed the `String group` selector and filtered rows to `6-8-10`.
+- Harmonized scale path mode hid the `String group` selector visually, disabled it, and showed the `Path family` selector.
+- Low path rows included mixed groups `6-8-10` and `6-7-10`, proving the prior exact string-group value did not silently filter the path.
+- Switching back to Single grip restored the `String group` selector.
+- No `[object Object]` appeared.
+- No relevant console errors were observed during the local browser smoke; the protected smoke used DOM-state checks.
+
+Protected Smoke Target:
+
+```text
+- Target type: protected-preview
+- Result type: browser smoke
+- Exact browser URL tested: https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=path-string-group-visibility-7b934e6
+- Cache-busted URL tested: https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=path-string-group-visibility-7b934e6
+- Exact URL the user should use: https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=path-string-group-visibility-7b934e6
+- Auth required: yes
+- Auth provider: Cloudflare Access
+- Cloudflare Access login result: succeeded from existing browser session
+- Local backend URL: http://127.0.0.1:8770
+- Expected backend port: 8770
+- Expected git HEAD: 7b934e6
+- Version endpoint: http://127.0.0.1:8770/api/version
+- Version endpoint result: git_sha=4040a47; server process was not restarted for this static UI fix
+- If version endpoint missing, how version is inferred: protected HTML script query and cache-busted URL verified the current static UI path
+- Whether app root `/` works: local root returns 302 to /ui/steel-guitar-rag-mock.html
+- Whether app root `/` is expected to work: yes, with redirect
+- Whether `/ui/steel-guitar-rag-mock.html` works: local static route available; not the target for this Explorer-only smoke
+- Whether `/ui/steel-guitar-rag-mock.html` is expected to work: yes
+- Who should test this URL: the user
+- Do not test these URLs: uncache-busted Explorer URLs for this slice
+- Known caveats: /api/version remains on older server-start SHA 4040a47 because no protected-preview restart was performed; this smoke verifies browser-loaded static UI behavior.
+```
+
+Protected screenshot:
+
+- `docs/handoffs/task-completions/assets/2026-06-26-path-string-group-visibility/protected-path-mode-controls.png`
+
 ## Integration Notes
 
 - The data/model path behavior was already correct; the user-facing bug was CSS visibility plus semantic enabled state.
 - `ui/e9-fretboard-explorer.html` now references `e9-fretboard-explorer.js?v=path-string-group-visibility-20260626`.
-- Protected-preview smoke should use a fresh direct Explorer cache-busted URL after commit.
+- Protected-preview smoke passed at `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=path-string-group-visibility-7b934e6`.
 
 ## Risk Assessment
 
@@ -148,11 +192,10 @@ No.
 ## Files That Must Not Be Staged
 
 - Existing unrelated dirty files listed by `git status --short`, especially corpus/source/private/design/deployment-adjacent files.
-- `docs/handoffs/task-completions/integration-status.md` until protected-preview smoke is recorded.
 
 ## Recommended Next Lane
 
-Lane 01 exact-path commit, then Lane 12 protected-preview smoke for the direct Explorer page.
+Lane 15/user smoke for the direct Explorer page.
 
 ## Commit Readiness
 
@@ -160,9 +203,10 @@ Safe to commit.
 
 ## Suggested Next Step
 
-Commit scoped files with:
+Implementation commit created:
 
 ```bash
-git add ui/e9-fretboard-explorer.html ui/e9-fretboard-explorer.js tests/test_frontend_answer_ui.py docs/handoffs/task-completions/2026-06-26-1402-06-explorer-path-string-group-visibility.md docs/handoffs/task-completions/assets/2026-06-26-path-string-group-visibility/local-path-mode-controls.png
-git commit -m "fix: hide string group selector in path mode"
+7b934e6 fix: hide string group selector in path mode
 ```
+
+Next recommended check: user smoke the protected URL above and verify `String group` is visible in Single grip but absent in Harmonized scale path.

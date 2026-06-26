@@ -5,11 +5,11 @@ Generated for ChatGPT reset/guidance on branch `feature/answer-api`.
 ## Current State
 
 - Current branch: `feature/answer-api`.
-- Current repo HEAD at this refresh: `64f9fff fix: order explorer top label chips by scale degree`.
+- Current repo HEAD at this refresh: `7b934e6 fix: hide string group selector in path mode`.
 - Runtime commit smoked for E9 copedent selector/chart: `ecec173 feat: add E9 copedent selector and chart`.
 - Related impact-preview runtime smoke: `670d635 feat: add e9 pedal lever impact preview contract`.
-- Latest local UI smoke status: **PASS for Explorer harmonized scale path mode at commit `726cb80`**. Local browser smoke verified `Single grip` preserves exact string-group filtering and `Harmonized scale path -> Low path` renders the requested mixed string-group G major path: `6-8-10, 6-7-10, 6-7-10, 6-8-10, 6-8-10, 6-7-10, 6-8-10, 6-8-10` at frets `3, 3, 5, 8, 10, 10, 13, 15`.
-- Protected-preview status: **PASS for Explorer top-label chip order at commit `64f9fff`, with version caveat**. The protected page loaded the cache-busted Explorer URL and verified `e9-fretboard-explorer.js?v=top-label-chip-order-20260626` is active. G major top-label chips rendered in degree order for Notes (`G, A, B, C, D, E, F#`), NNS (`1, 2-, 3-, 4, 5, 6-, 7°`), Roman (`I, ii, iii, IV, V, vi, vii°`), and Numbers (`1, 2m, 3m, 4, 5, 6m, 7dim`). No `[object Object]` appeared and no relevant console errors were captured. `/api/version` still reports runtime SHA `4040a47`, so this pass verifies static UI behavior at the cache-busted page URL, not a runtime restart.
+- Latest local UI smoke status: **PASS for Explorer path-mode string-group visibility at commit `7b934e6`**. Local browser smoke verified `Single grip` preserves exact string-group filtering, while `Harmonized scale path -> Low path` hides/disables the exact `String group` selector, shows/enables `Path family`, and still renders mixed path groups `6-8-10` and `6-7-10`.
+- Protected-preview status: **PASS for Explorer path-mode string-group visibility at commit `7b934e6`, with version caveat**. The protected page loaded the cache-busted Explorer URL and verified `e9-fretboard-explorer.js?v=path-string-group-visibility-20260626` is active. Single grip mode with `6-8-10` selected showed the `String group` selector and filtered rows to `6-8-10`. Harmonized scale path mode hid and disabled the exact `String group` selector, showed the `Path family` selector, and `Low path` still included mixed groups `6-8-10` and `6-7-10`. No `[object Object]` appeared. `/api/version` still reports runtime SHA `4040a47`, so this pass verifies static UI behavior at the cache-busted page URL, not a runtime restart.
 - User-smoke status: **ready for focused user smoke at the direct cache-busted Explorer URL below**.
 - App control state: **park or choose the next small slice**.
 - Broad unrelated dirty/untracked work remains parked. Do not broad-stage.
@@ -48,6 +48,9 @@ https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=glossary-close-co
 
 Explorer top-label chip order after commit `64f9fff`:
 https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=top-label-chip-order-64f9fff
+
+Explorer path-mode string-group visibility after commit `7b934e6`:
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=path-string-group-visibility-7b934e6
 
 Explorer marker/impact/glossary UI baseline commit `4a3f422`:
 https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-marker-impact-glossary-4a3f422
