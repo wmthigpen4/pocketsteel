@@ -5,12 +5,12 @@ Generated for ChatGPT reset/guidance on branch `feature/answer-api`.
 ## Current State
 
 - Current branch: `feature/answer-api`.
-- Current repo HEAD at this refresh: `662679f docs: record compact explorer protected smoke rerun blocker`.
+- Current repo HEAD at this refresh: `4a3f422 fix: clarify explorer markers and impact controls`.
 - Runtime commit smoked for E9 copedent selector/chart: `ecec173 feat: add E9 copedent selector and chart`.
 - Related impact-preview runtime smoke: `670d635 feat: add e9 pedal lever impact preview contract`.
-- Latest local UI smoke status: **PASS for compact Explorer/copedent controls at commit `9a3513b`**.
+- Latest local UI smoke status: **PASS for Explorer marker grouping, compact cards, glossary, and contextual pedal/lever impact at commit `4a3f422`**.
 - Protected-preview status: **PASS with tooling caveat for compact Explorer/copedent UI**. Lane 12 authenticated browser smoke reached the exact Explorer URL, verified compact copedent behavior, and confirmed runtime `/api/version` reports `4040a47`, which contains expected UI commit `5a59739`.
-- User-smoke status: **ready for compact Explorer/copedent UI at the direct cache-busted Explorer URL**.
+- User-smoke status: **needs Lane 12 protected-preview restart/smoke for `4a3f422`, then user smoke at the direct cache-busted Explorer URL**.
 - App control state: **park or choose the next small slice**.
 - Broad unrelated dirty/untracked work remains parked. Do not broad-stage.
 
@@ -21,6 +21,9 @@ Use direct `/ui/...?...` URLs for cache-busted validation after Cloudflare Acces
 ```text
 Explorer copedent selector/chart:
 https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-compact-copedent-20260625
+
+Explorer marker/impact/glossary UI after commit `4a3f422`:
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-marker-impact-glossary-4a3f422
 
 Main app:
 https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=explorer-compact-copedent-20260625
@@ -151,6 +154,39 @@ Smoke Target:
 - Known caveats: direct `/ui/...?...` URL remains required for exact cache-busted Explorer smoke; browser automation detached during temporary-tab root/version checks after the Explorer smoke
 ```
 
+## Explorer Marker / Impact / Glossary Status
+
+Local smoke status at commit `4a3f422`: **PASS**.
+
+Lane 06 local browser smoke summary:
+
+- Exact local URL tested:
+
+```text
+http://127.0.0.1:8770/ui/e9-fretboard-explorer.html?v=explorer-marker-impact-glossary-20260626e
+```
+
+- Fretboard rendered.
+- SVG marker labels were compact (`2 pos.`, short note/interval cues) rather than long multi-value labels.
+- Same-fret/string-group marker tooltip exposed both positions for the grouped `fret 3 / 4-5-6` case.
+- Position cards above the fretboard rendered as a wrapping grid.
+- Notes / Intervals mode updated active cards and marker labels.
+- Glossary opened and closed and used learner-facing terms only.
+- Pedal/lever impact preview supported multi-select and clear/reset.
+- E-lower on `3-5` reported no direct impact and named affected strings `4, 8`.
+- B pedal on `3-5` reported `String 3 G# -> A` and included a B-alone caution.
+- A+B together reported string 5 and string 6 changes.
+- No `[object Object]`.
+- No relevant browser console warnings/errors.
+
+Protected-preview status: **pending Lane 12 restart/smoke for commit `4a3f422`**.
+
+Recommended protected-preview URL:
+
+```text
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-marker-impact-glossary-4a3f422
+```
+
 ## Latest Relevant Handoffs
 
 - `docs/handoffs/task-completions/2026-06-23-12-e9-copedent-selector-protected-smoke.md`
@@ -162,13 +198,14 @@ Smoke Target:
 - `docs/handoffs/task-completions/2026-06-25-2045-12-explorer-compact-copedent-protected-smoke.md`
 - `docs/handoffs/task-completions/2026-06-25-2052-12-explorer-compact-copedent-protected-smoke-rerun.md`
 - `docs/handoffs/task-completions/2026-06-26-0906-12-explorer-compact-copedent-protected-smoke-authenticated.md`
+- `docs/handoffs/task-completions/2026-06-26-0959-06-explorer-marker-impact-glossary.md`
 
 ## Remaining Caveats
 
 - Root URL redirects to `/ui/steel-guitar-rag-mock.html` and drops query strings.
 - Direct `/ui/...?...` URLs remain required for cache-busted smoke.
 - `deploy/macos/install-private-preview-launchdaemon.sh status` and `restart` need interactive sudo in this environment.
-- Current protected-preview runtime is refreshed to `4040a47`, which contains `5a59739`.
+- Current protected-preview runtime is refreshed to `4040a47`, which contains `5a59739`; protected-preview smoke for new commit `4a3f422` is pending.
 - Protected-preview browser smoke for compact Explorer/copedent UI passed after Cloudflare Access was completed in the in-app browser.
 - Broad unrelated dirty/untracked files remain parked.
 
@@ -177,7 +214,7 @@ Smoke Target:
 Current checked state at this refresh:
 
 - Branch: `feature/answer-api`.
-- Repo HEAD before this docs refresh: `662679f`.
+- Repo HEAD before this docs refresh: `4a3f422`.
 - Cached index before this docs refresh: empty.
 - `git diff --check`: passed before this docs refresh; rerun before commit.
 
@@ -195,7 +232,6 @@ Do not stage parked work unless a later exact-scope handoff approves it.
 ## Safe To Stage For This Refresh
 
 - `docs/handoffs/task-completions/integration-status.md`
-- `docs/handoffs/task-completions/2026-06-26-0906-12-explorer-compact-copedent-protected-smoke-authenticated.md`
 
 ## Files Not To Stage For This Refresh
 
@@ -207,14 +243,14 @@ Do not stage parked work unless a later exact-scope handoff approves it.
 
 ## Recommended Next Slice
 
-User smoke the compact Explorer/copedent UI at the direct cache-busted Explorer URL.
+Lane 12 protected-preview restart/smoke for commit `4a3f422`, then user smoke the Explorer marker/impact/glossary UI at the direct cache-busted Explorer URL.
 
 Recommended next slice if continuing:
 
-- User smoke: verify compact Explorer/copedent UI from the protected-preview URL.
+- Lane 12: verify protected preview serves commit `4a3f422` and smoke the Explorer marker/impact/glossary UI.
 
 Recommended exact control step:
 
 ```text
-User smoke https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-compact-copedent-20260625. Runtime /api/version reports 4040a47, which contains 5a59739.
+Lane 12: Restart/verify protected preview for commit 4a3f422, then smoke https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-marker-impact-glossary-4a3f422. Verify compact marker labels, grouped marker tooltip, Notes/Intervals, Glossary, contextual impact, A+B multi-select, no [object Object], no console errors, and /api/version HEAD.
 ```
