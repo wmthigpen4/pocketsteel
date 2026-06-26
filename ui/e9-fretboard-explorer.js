@@ -748,11 +748,19 @@
   }
 
   function markerLabelForGroup(group) {
-    const labels = dedupeValues(group.rows.map(activeTopLabel));
+    const labels = markerLabelValuesForGroup(group);
     if (!labels.length) {
       return "";
     }
-    return labels.length === 1 ? labels[0] : `${labels[0]}+`;
+    return labels.slice(0, 2).join(", ");
+  }
+
+  function markerLabelValuesForGroup(group) {
+    return dedupeValues(group.rows.map(activeTopLabel));
+  }
+
+  function markerOverflowCountForGroup(group) {
+    return Math.max(0, markerLabelValuesForGroup(group).length - 2);
   }
 
   function markerLabelForRow(row) {
@@ -762,10 +770,13 @@
 
   function asMarkerPosition(group) {
     const row = group.rows[0];
+    const labelValues = markerLabelValuesForGroup(group);
     return {
       ...asFretboardPosition(row),
       id: group.id,
       label: markerLabelForGroup(group),
+      labelValues,
+      labelOverflowCount: markerOverflowCountForGroup(group),
       explanation: group.rows.length > 1
         ? `${group.rows.length} validated setups share this fret and string group.`
         : row.display_summary || row.explanation,
@@ -1301,13 +1312,14 @@
     const buttonClass = isAdvanced(row) ? " explorer-active-result--advanced" : "";
     const isSelected = row.id === selectedRowId;
     const markerLabel = markerLabelForRow(row);
+    const markerOverflowCount = markerOverflowCountForGroup(currentMarkerGroups.find((item) => item.id === markerGroupKey(row)) || { rows: [row] });
     const markerTone = markerToneForRow(row);
     const controls = normalizePedals(row);
     const controlText = controls.length ? `With ${controls.join("+")}` : "Open";
     return `
       <button class="explorer-active-result${buttonClass}${isSelected ? " is-selected" : ""}" type="button" ${dataAttributeName}="${escapeHtml(row.id)}" data-marker-id="${escapeHtml(markerGroupKey(row))}" data-marker-tone="${escapeHtml(markerTone)}" data-string-group="${escapeHtml(row.string_group)}" data-harmony-type="${escapeHtml(row.harmony_type)}" aria-pressed="${isSelected ? "true" : "false"}">
         <span class="explorer-active-result__top">
-          ${markerLabel ? `<span class="explorer-active-result__marker" aria-label="Matching fretboard marker ${escapeHtml(markerLabel)}"><span class="explorer-marker-token" aria-hidden="true"></span>${escapeHtml(markerLabel)}</span>` : ""}
+          ${markerLabel ? `<span class="explorer-active-result__marker" aria-label="Matching fretboard marker ${escapeHtml(markerLabel)}${markerOverflowCount ? ` plus ${markerOverflowCount} more` : ""}"><span class="explorer-marker-token" aria-hidden="true"></span><span>${escapeHtml(markerLabel)}</span>${markerOverflowCount ? `<small aria-hidden="true">+${markerOverflowCount}</small>` : ""}</span>` : ""}
           <strong>${escapeHtml(primaryLabelForRow(row))}</strong>
         </span>
         <span class="explorer-active-result__fields">

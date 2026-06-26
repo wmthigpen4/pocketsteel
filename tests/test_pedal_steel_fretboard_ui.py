@@ -1833,6 +1833,25 @@ assert.match(markerOnlyHtml, /data-highlight-dot/);
 assert.match(markerOnlyHtml, /data-highlight-id="explorer-g-345"/);
 assert.doesNotMatch(markerOnlyHtml, /data-highlight-label="explorer-g-345"/);
 assert.doesNotMatch(markerOnlyHtml, />G major<\\/text>/);
+
+const multiValueLabelHtml = fretboard.renderPedalSteelFretboard({
+  positions: [{
+    id: "explorer-multi-label",
+    label: "3-, 4",
+    labelValues: ["3-", "4", "5"],
+    labelOverflowCount: 1,
+    fret: 3,
+    strings: [4, 5, 6],
+    grip: "4-5-6",
+    pedals: []
+  }],
+  hideFilterControls: true
+});
+assert.match(multiValueLabelHtml, /data-highlight-label-values="3-,4,5"/);
+assert.match(multiValueLabelHtml, /data-highlight-label-overflow-count="1"/);
+assert.match(multiValueLabelHtml, /<tspan data-highlight-label-main>3-, 4<\\/tspan>/);
+assert.match(multiValueLabelHtml, /<tspan data-highlight-label-overflow[^>]*>\\+1<\\/tspan>/);
+assert.doesNotMatch(multiValueLabelHtml, />3\\+<\\/text>/);
 """
     )
 
