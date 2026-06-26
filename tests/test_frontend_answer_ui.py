@@ -406,7 +406,12 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "tooltipHtmlForRows" in script
     assert "groupRowsForMarkers" in script
     assert "markerLabelForGroup" in script
-    assert "pos." in script
+    assert "data-marker-id" in script
+    assert "data-explorer-marker-label" in script
+    assert "is-explorer-selected-marker" in script
+    assert "is-explorer-hover-marker" in script
+    assert "Marker ${escapeHtml(markerLabel)}" in script
+    assert "pos." not in script
     assert "setups" in script
     assert "selectedImpactControlIds" in script
     assert "data-control-impact-clear" in script
@@ -484,6 +489,32 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
 
+function makeClassList() {
+  const names = new Set();
+  return {
+    add: (...items) => items.forEach((item) => names.add(item)),
+    remove: (...items) => items.forEach((item) => names.delete(item)),
+    toggle: (item, force) => {
+      if (force === true) {
+        names.add(item);
+        return true;
+      }
+      if (force === false) {
+        names.delete(item);
+        return false;
+      }
+      if (names.has(item)) {
+        names.delete(item);
+        return false;
+      }
+      names.add(item);
+      return true;
+    },
+    contains: (item) => names.has(item),
+    toString: () => Array.from(names).join(" ")
+  };
+}
+
 class FakeSelect {
   constructor(id, value, options) {
     this.id = id;
@@ -548,9 +579,7 @@ class FakeNode {
     this.listeners = {};
     this.style = {};
     this.className = "";
-    this.classList = {
-      toggle: () => {}
-    };
+    this.classList = makeClassList();
     this._buttons = {};
   }
   set innerHTML(value) {
@@ -583,9 +612,16 @@ class FakeNode {
     if (selector === ".pedal-steel-fretboard__highlight[data-highlight-id]") {
       return this._markers;
     }
+    if (selector === ".pedal-steel-fretboard__highlight.is-explorer-hover-marker") {
+      return this._markers.filter((marker) => marker.classList.contains("is-explorer-hover-marker"));
+    }
     return [];
   }
   querySelector(selector) {
+    const markerMatch = selector.match(/^\.pedal-steel-fretboard__highlight\[data-highlight-id="([^"]+)"\]$/);
+    if (markerMatch) {
+      return this._markers.find((marker) => marker.getAttribute("data-highlight-id") === markerMatch[1]) || null;
+    }
     return this.querySelectorAll(selector)[0] || null;
   }
   addEventListener(type, handler) {
@@ -615,7 +651,7 @@ class FakeButton {
     this.rowId = rowId;
     this.attributeName = attributeName;
     this.attributes = { [attributeName]: rowId };
-    this.classList = { toggle: () => {} };
+    this.classList = makeClassList();
   }
   getAttribute(name) {
     return this.attributes[name] || null;
@@ -747,6 +783,8 @@ assert.equal(lastMount.options.highlightStyle, "prominent");
 assert.equal(Object.prototype.hasOwnProperty.call(lastMount.options, "emphasizeStringGroups"), false);
 assert.equal(Object.prototype.hasOwnProperty.call(lastMount.options, "selectedStringGroups"), false);
 assert.equal(lastMount.options.positions.length > 0, true);
+assert.equal(lastMount.options.positions.every((row) => /^\d+\+?$/.test(row.label)), true);
+assert.equal(lastMount.options.positions.some((row) => /[A-G]|#|b|pos\.|I|V/.test(row.label)), false);
 assert.equal(lastMount.options.positions.some((row) => row.grip === "5-7-8"), true);
 assert.match(elements["explorer-result-count"].textContent, /Showing validated positions/);
 assert.doesNotMatch(elements["explorer-result-count"].textContent, /validated rows/);
@@ -782,8 +820,19 @@ assert.match(elements["explorer-control-impact-preview"].innerHTML, /aria-presse
 elements["explorer-control-impact-preview"].querySelector("[data-control-impact-clear]").onclick();
 assert.doesNotMatch(elements["explorer-control-impact-preview"].textContent, /String 5/);
 assert.match(elements["explorer-active-results"].textContent, /all 3-string groups/);
+assert.match(elements["explorer-active-results"].textContent, /Marker \d/);
+assert.match(elements["explorer-active-results"].innerHTML, /data-marker-id=/);
 assert.equal(elements["explorer-active-results"].querySelectorAll("[data-active-result-row]").length > lastMount.options.positions.length, true);
 assert.equal(elements["explorer-fretboard"].querySelectorAll(".pedal-steel-fretboard__highlight[data-highlight-id]").length, lastMount.options.positions.length);
+assert.equal(elements["explorer-fretboard"].querySelectorAll(".pedal-steel-fretboard__highlight[data-highlight-id]").filter((marker) => marker.getAttribute("data-explorer-selected-marker") === "true").length, 1);
+const activeResultButtons = elements["explorer-active-results"].querySelectorAll("[data-active-result-row]");
+activeResultButtons[1].onmouseenter();
+assert.equal(elements["explorer-fretboard"].querySelectorAll(".pedal-steel-fretboard__highlight.is-explorer-hover-marker").length, 1);
+assert.match(elements["explorer-tooltip"].textContent, /Fret/);
+activeResultButtons[1].onmouseleave();
+assert.equal(elements["explorer-fretboard"].querySelectorAll(".pedal-steel-fretboard__highlight.is-explorer-hover-marker").length, 0);
+activeResultButtons[1].onclick();
+assert.equal(elements["explorer-fretboard"].querySelectorAll(".pedal-steel-fretboard__highlight[data-highlight-id]").filter((marker) => marker.getAttribute("data-explorer-selected-marker") === "true").length, 1);
 assert.match(elements["explorer-selected-detail"].textContent, /Notes/);
 assert.match(elements["explorer-selected-detail"].textContent, /Intervals/);
 assert.match(elements["explorer-selected-detail"].textContent, /Why this position works/);
@@ -796,9 +845,11 @@ assert.doesNotMatch(elements["explorer-active-results"].textContent, /\b\d+\s+(?
 assert.match(elements["explorer-active-results"].innerHTML, /Intervals:/);
 assert.doesNotMatch(elements["explorer-active-results"].innerHTML, /<strong>G<\/strong>/);
 labelModeButtons[1].onclick();
+assert.equal(lastMount.options.positions.every((row) => /^\d+\+?$/.test(row.label)), true);
 assert.match(elements["explorer-active-results"].innerHTML, /Notes:/);
 assert.match(elements["explorer-active-results"].innerHTML, /<strong>G<\/strong>|<strong>B<\/strong>|<strong>D<\/strong>/);
 labelModeButtons[0].onclick();
+assert.equal(lastMount.options.positions.every((row) => /^\d+\+?$/.test(row.label)), true);
 assert.match(elements["explorer-active-results"].innerHTML, /Intervals:/);
 
 const expectedMajorScales = {

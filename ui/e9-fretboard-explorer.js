@@ -62,6 +62,7 @@
   let lastCopedentDialogOpener = null;
   let lastGlossaryDialogOpener = null;
   let currentRows = [];
+  let currentMarkerGroups = [];
 
   function availableKeys() {
     const sourcePayloads = Object.keys(payloadsByKey).length ? payloadsByKey : payloadsForSelectedCopedent();
@@ -495,15 +496,16 @@
       }
       groups.get(key).push(row);
     });
-    return Array.from(groups.entries()).map(([id, groupRows]) => ({ id, rows: groupRows }));
+    return Array.from(groups.entries()).map(([id, groupRows], index) => ({ id, rows: groupRows, index: index + 1 }));
   }
 
-  function markerLabelForGroup(groupRows) {
-    if (groupRows.length > 1) {
-      return `${groupRows.length} pos.`;
-    }
-    const row = groupRows[0];
-    return primaryLabelForRow(row);
+  function markerLabelForGroup(group) {
+    return `${group.index}${group.rows.length > 1 ? "+" : ""}`;
+  }
+
+  function markerLabelForRow(row) {
+    const group = currentMarkerGroups.find((item) => item.id === markerGroupKey(row));
+    return group ? markerLabelForGroup(group) : "";
   }
 
   function asMarkerPosition(group) {
@@ -511,7 +513,7 @@
     return {
       ...asFretboardPosition(row),
       id: group.id,
-      label: markerLabelForGroup(group.rows),
+      label: markerLabelForGroup(group),
       explanation: group.rows.length > 1
         ? `${group.rows.length} validated setups share this fret and string group.`
         : row.display_summary || row.explanation,
@@ -863,6 +865,10 @@
     }
     const selected = currentRows.find((row) => row.id === selectedRowId);
     renderSelectedDetail(selected);
+    syncSelectedState();
+  }
+
+  function syncSelectedState() {
     Array.from(els.rowList.querySelectorAll("[data-explorer-row]")).forEach((button) => {
       const isSelected = button.getAttribute("data-explorer-row") === selectedRowId;
       button.classList.toggle("is-selected", isSelected);
@@ -875,13 +881,21 @@
         button.setAttribute("aria-pressed", isSelected ? "true" : "false");
       });
     }
+    const selectedMarkerId = markerGroupKey(currentRows.find((row) => row.id === selectedRowId) || {});
+    Array.from(els.fretboard.querySelectorAll(".pedal-steel-fretboard__highlight[data-highlight-id]")).forEach((marker) => {
+      const isSelected = marker.getAttribute("data-highlight-id") === selectedMarkerId;
+      marker.classList.toggle("is-explorer-selected-marker", isSelected);
+      marker.setAttribute("data-explorer-selected-marker", isSelected ? "true" : "false");
+    });
   }
 
   function resultButtonHtml(row, dataAttributeName) {
     const buttonClass = isAdvanced(row) ? " explorer-active-result--advanced" : "";
     const isSelected = row.id === selectedRowId;
+    const markerLabel = markerLabelForRow(row);
     return `
-      <button class="explorer-active-result${buttonClass}${isSelected ? " is-selected" : ""}" type="button" ${dataAttributeName}="${escapeHtml(row.id)}" data-string-group="${escapeHtml(row.string_group)}" data-harmony-type="${escapeHtml(row.harmony_type)}" aria-pressed="${isSelected ? "true" : "false"}">
+      <button class="explorer-active-result${buttonClass}${isSelected ? " is-selected" : ""}" type="button" ${dataAttributeName}="${escapeHtml(row.id)}" data-marker-id="${escapeHtml(markerGroupKey(row))}" data-string-group="${escapeHtml(row.string_group)}" data-harmony-type="${escapeHtml(row.harmony_type)}" aria-pressed="${isSelected ? "true" : "false"}">
+        ${markerLabel ? `<span class="explorer-active-result__marker">Marker ${escapeHtml(markerLabel)}</span>` : ""}
         <strong>${escapeHtml(shortLabel(row))}</strong>
         <span class="explorer-active-result__meta">Fret ${escapeHtml(formatValue(row.fret))} · ${escapeHtml(row.string_group)} · ${escapeHtml(labelModeNoun())}: ${escapeHtml(activeLabelText(row))}</span>
       </button>
@@ -912,7 +926,12 @@
       </div>
     `;
     Array.from(els.activeResults.querySelectorAll("[data-active-result-row]")).forEach((button) => {
-      button.addEventListener("click", () => selectRow(button.getAttribute("data-active-result-row")));
+      const rowId = button.getAttribute("data-active-result-row");
+      button.addEventListener("click", () => selectRow(rowId));
+      button.addEventListener("mouseenter", () => showMarkerForRow(rowId));
+      button.addEventListener("focus", () => showMarkerForRow(rowId));
+      button.addEventListener("mouseleave", clearMarkerHover);
+      button.addEventListener("blur", clearMarkerHover);
     });
   }
 
@@ -1006,6 +1025,7 @@
       if (!markerRows.length) {
         return;
       }
+      marker.setAttribute("data-explorer-marker-label", markerLabelForGroup(markerGroups.find((group) => group.id === marker.getAttribute("data-highlight-id")) || { index: "", rows: markerRows }));
       const text = tooltipTextForRows(markerRows);
       marker.setAttribute("tabindex", "0");
       marker.setAttribute("role", "button");
@@ -1027,6 +1047,32 @@
         }
       });
     });
+    syncSelectedState();
+  }
+
+  function showMarkerForRow(rowId) {
+    const row = currentRows.find((item) => item.id === rowId);
+    if (!row) {
+      return;
+    }
+    const markerId = markerGroupKey(row);
+    const group = currentMarkerGroups.find((item) => item.id === markerId);
+    const marker = els.fretboard.querySelector(`.pedal-steel-fretboard__highlight[data-highlight-id="${markerId}"]`);
+    if (!group || !marker) {
+      return;
+    }
+    Array.from(els.fretboard.querySelectorAll(".pedal-steel-fretboard__highlight.is-explorer-hover-marker")).forEach((item) => {
+      item.classList.remove("is-explorer-hover-marker");
+    });
+    marker.classList.add("is-explorer-hover-marker");
+    showTooltipForRows(group.rows, marker);
+  }
+
+  function clearMarkerHover() {
+    Array.from(els.fretboard.querySelectorAll(".pedal-steel-fretboard__highlight.is-explorer-hover-marker")).forEach((item) => {
+      item.classList.remove("is-explorer-hover-marker");
+    });
+    hideTooltip();
   }
 
   function renderFretboard(rows) {
@@ -1035,10 +1081,16 @@
       return;
     }
     const markerGroups = groupRowsForMarkers(rows);
+    const selectedMarkerId = markerGroupKey(rows.find((row) => row.id === selectedRowId) || {});
+    const sortedMarkerGroups = [
+      ...markerGroups.filter((group) => group.id === selectedMarkerId),
+      ...markerGroups.filter((group) => group.id !== selectedMarkerId),
+    ];
+    currentMarkerGroups = markerGroups;
     fretboardApi.mountPedalSteelFretboard(els.fretboard, {
       title: "Validated Explorer positions",
       description: "Validated E9 positions for the selected filters.",
-      positions: markerGroups.map(asMarkerPosition),
+      positions: sortedMarkerGroups.map(asMarkerPosition),
       highlights: [],
       legend: activePayload()?.legend || [],
       query: activePayload()?.query || {},
@@ -1066,10 +1118,12 @@
       : `No validated ${HARMONY_LABELS[els.harmony.value] || "Explorer"} rows are available for ${els.scale.options[els.scale.selectedIndex]?.text || "this scale"} yet.`;
     renderCopedentChart();
     renderControlImpactPreview();
+    currentMarkerGroups = groupRowsForMarkers(rows);
     renderActiveResults(rows);
     renderCards(rows);
     renderFretboard(rows);
     renderSelectedDetail(rows.find((row) => row.id === selectedRowId));
+    syncSelectedState();
 
     const renderedText = [
       els.rowList.textContent,

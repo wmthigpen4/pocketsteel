@@ -670,6 +670,22 @@
       line-height: 1.25;
     }
 
+    .explorer-active-result__marker {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 58px;
+      margin: 0 0 5px;
+      border: 1px solid rgba(247, 189, 88, 0.42);
+      border-radius: 999px;
+      padding: 2px 7px;
+      color: #ffe5a8;
+      background: rgba(247, 189, 88, 0.12);
+      font-size: 0.68rem;
+      font-weight: 900;
+      letter-spacing: 0.02em;
+    }
+
     .explorer-active-result:hover,
     .explorer-active-result:focus-visible,
     .explorer-active-result.is-selected {
@@ -693,6 +709,19 @@
     .explorer-fretboard {
       padding: 16px;
       overflow-x: auto;
+    }
+
+    .explorer-fretboard .pedal-steel-fretboard__highlight[data-explorer-selected-marker="true"] [data-highlight-dot],
+    .explorer-fretboard .pedal-steel-fretboard__highlight.is-explorer-hover-marker [data-highlight-dot] {
+      stroke: #fff7d4;
+      stroke-width: 3px;
+      filter: drop-shadow(0 0 10px rgba(255, 220, 146, 0.7));
+    }
+
+    .explorer-fretboard .pedal-steel-fretboard__highlight[data-explorer-selected-marker="true"] [data-highlight-label],
+    .explorer-fretboard .pedal-steel-fretboard__highlight.is-explorer-hover-marker [data-highlight-label] {
+      fill: #fff8db;
+      font-weight: 900;
     }
 
     .explorer-empty {
