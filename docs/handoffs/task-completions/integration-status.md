@@ -5,12 +5,12 @@ Generated for ChatGPT reset/guidance on branch `feature/answer-api`.
 ## Current State
 
 - Current branch: `feature/answer-api`.
-- Current repo HEAD at this refresh: `4a3f422 fix: clarify explorer markers and impact controls`.
+- Current repo HEAD at this refresh: `bc69d97 fix: refresh explorer marker script cache bust`.
 - Runtime commit smoked for E9 copedent selector/chart: `ecec173 feat: add E9 copedent selector and chart`.
 - Related impact-preview runtime smoke: `670d635 feat: add e9 pedal lever impact preview contract`.
-- Latest local UI smoke status: **PASS for Explorer marker grouping, compact cards, glossary, and contextual pedal/lever impact at commit `4a3f422`**.
-- Protected-preview status: **PASS with tooling caveat for compact Explorer/copedent UI**. Lane 12 authenticated browser smoke reached the exact Explorer URL, verified compact copedent behavior, and confirmed runtime `/api/version` reports `4040a47`, which contains expected UI commit `5a59739`.
-- User-smoke status: **needs Lane 12 protected-preview restart/smoke for `4a3f422`, then user smoke at the direct cache-busted Explorer URL**.
+- Latest local UI smoke status: **PASS for Explorer numeric marker labels, compact cards, glossary, and contextual pedal/lever impact at commit `0ec8932` plus cache-bust follow-up `bc69d97`**.
+- Protected-preview status: **PASS for Explorer marker readability at `bc69d97`**. Authenticated protected-preview browser smoke loaded the refreshed Explorer script and verified numeric marker labels, marker-linked cards, selected marker mapping, no `[object Object]`, and no console errors.
+- User-smoke status: **ready for focused user smoke at the direct cache-busted Explorer URL below**.
 - App control state: **park or choose the next small slice**.
 - Broad unrelated dirty/untracked work remains parked. Do not broad-stage.
 
@@ -22,7 +22,10 @@ Use direct `/ui/...?...` URLs for cache-busted validation after Cloudflare Acces
 Explorer copedent selector/chart:
 https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-compact-copedent-20260625
 
-Explorer marker/impact/glossary UI after commit `4a3f422`:
+Explorer numeric marker readability after commit `bc69d97`:
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-marker-readability-20260626b
+
+Explorer marker/impact/glossary UI baseline commit `4a3f422`:
 https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-marker-impact-glossary-4a3f422
 
 Main app:
@@ -156,7 +159,9 @@ Smoke Target:
 
 ## Explorer Marker / Impact / Glossary Status
 
-Local smoke status at commit `4a3f422`: **PASS**.
+Local smoke status for marker/impact/glossary baseline at commit `4a3f422`: **PASS**.
+
+Marker readability status at commits `0ec8932` and `bc69d97`: **PASS locally and on protected preview**.
 
 Lane 06 local browser smoke summary:
 
@@ -179,13 +184,32 @@ http://127.0.0.1:8770/ui/e9-fretboard-explorer.html?v=explorer-marker-impact-glo
 - No `[object Object]`.
 - No relevant browser console warnings/errors.
 
-Protected-preview status: **pending Lane 12 restart/smoke for commit `4a3f422`**.
+Unreadable marker bug fix summary:
 
-Recommended protected-preview URL:
+- Commit `0ec8932` changed default SVG marker labels from musical note/interval blobs to compact marker IDs such as `1`, `1+`, `2`, etc.
+- Cards now show matching `Marker N` badges and carry `data-marker-id`.
+- Card click/selection maps back to a selected SVG marker.
+- Full notes/intervals/pedals/levers remain available through marker tooltip/aria labels and selected-card detail.
+- Commit `bc69d97` refreshed `e9-fretboard-explorer.js` to `?v=explorer-marker-readability-20260626`; this was required because protected preview initially still loaded the old script query and reproduced long labels.
+
+Protected-preview marker readability smoke: **PASS**.
+
+Protected-preview URL tested and recommended for focused smoke:
 
 ```text
-https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-marker-impact-glossary-4a3f422
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-marker-readability-20260626b
 ```
+
+Protected smoke result:
+
+- Page loaded without Cloudflare Access challenge in the authenticated in-app browser.
+- Script list included `e9-fretboard-explorer.js?v=explorer-marker-readability-20260626`.
+- Rendered marker labels were numeric/short (`1+`, `2+`, `3`...`30`).
+- `longLabels` was empty.
+- 34 visible cards had marker IDs and marker text.
+- Clicking a card resulted in exactly one selected card and one selected SVG marker.
+- No `[object Object]`.
+- No console errors.
 
 ## Latest Relevant Handoffs
 
@@ -199,13 +223,15 @@ https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-marker-i
 - `docs/handoffs/task-completions/2026-06-25-2052-12-explorer-compact-copedent-protected-smoke-rerun.md`
 - `docs/handoffs/task-completions/2026-06-26-0906-12-explorer-compact-copedent-protected-smoke-authenticated.md`
 - `docs/handoffs/task-completions/2026-06-26-0959-06-explorer-marker-impact-glossary.md`
+- `docs/handoffs/task-completions/2026-06-26-1022-06-explorer-marker-readability.md`
+- `docs/handoffs/task-completions/2026-06-26-1030-06-explorer-marker-script-cache-bust.md`
 
 ## Remaining Caveats
 
 - Root URL redirects to `/ui/steel-guitar-rag-mock.html` and drops query strings.
 - Direct `/ui/...?...` URLs remain required for cache-busted smoke.
 - `deploy/macos/install-private-preview-launchdaemon.sh status` and `restart` need interactive sudo in this environment.
-- Current protected-preview runtime is refreshed to `4040a47`, which contains `5a59739`; protected-preview smoke for new commit `4a3f422` is pending.
+- Protected-preview marker readability smoke passed at direct cache-busted URL `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-marker-readability-20260626b`.
 - Protected-preview browser smoke for compact Explorer/copedent UI passed after Cloudflare Access was completed in the in-app browser.
 - Broad unrelated dirty/untracked files remain parked.
 
@@ -214,7 +240,7 @@ https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-marker-i
 Current checked state at this refresh:
 
 - Branch: `feature/answer-api`.
-- Repo HEAD before this docs refresh: `4a3f422`.
+- Repo HEAD before this docs refresh: `bc69d97`.
 - Cached index before this docs refresh: empty.
 - `git diff --check`: passed before this docs refresh; rerun before commit.
 
