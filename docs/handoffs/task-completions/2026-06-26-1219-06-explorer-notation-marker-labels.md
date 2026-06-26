@@ -28,6 +28,7 @@ Intentionally not changed:
   - Active result marker chips mirror the marker label and render overflow count separately.
 - `ui/e9-fretboard-explorer.html`
   - Added compact styling for separate card-side overflow count badges.
+  - Refreshed Explorer script cache-busts to `explorer-notation-marker-labels-20260626` after protected preview initially served stale Explorer scripts.
 - `ui/pedal-steel-fretboard.js`
   - Normalizes optional `labelValues` / `labelOverflowCount`.
   - Renders marker labels with a main notation `<tspan>` and separate overflow-count `<tspan>`.
@@ -37,6 +38,8 @@ Intentionally not changed:
   - Added component-level coverage for `labelValues`, `labelOverflowCount`, and separate SVG overflow markup.
 - `docs/handoffs/task-completions/assets/2026-06-26-06-explorer-notation-marker-labels/explorer-notation-marker-labels-local.png`
   - Local browser-smoke screenshot.
+- `docs/handoffs/task-completions/assets/2026-06-26-06-explorer-notation-marker-labels/explorer-notation-marker-labels-protected.png`
+  - Protected-preview browser-smoke screenshot.
 - `docs/handoffs/task-completions/2026-06-26-1219-06-explorer-notation-marker-labels.md`
   - This handoff.
 
@@ -106,13 +109,62 @@ Screenshot:
 
 ## Protected-Preview Smoke
 
-Not run in this Lane 06 implementation pass.
+First protected-preview check after implementation commit `ced9955` failed freshness verification because the page still loaded stale script cache-busts:
 
-Protected-preview should be run by Lane 12 after commit with a fresh cache-busted URL:
+- `pedal-steel-fretboard.js?v=explorer-compact-copedent-20260625`
+- `e9-fretboard-explorer-data.js?v=explorer-compact-copedent-20260625`
+- `e9-fretboard-explorer.js?v=explorer-harmonized-scale-clarity-20260626`
+
+Follow-up commit `0b113af` refreshed those Explorer script query strings to `explorer-notation-marker-labels-20260626`.
+
+Protected-preview smoke after `0b113af`: **PASS**.
 
 ```text
-https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-notation-marker-labels-<commit>
+Smoke Target:
+- Target type: protected-preview
+- Result type: browser smoke
+- Exact browser URL tested: https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-notation-marker-labels-0b113af
+- Cache-busted URL tested: https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-notation-marker-labels-0b113af
+- Exact URL the user should use: https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-notation-marker-labels-0b113af
+- Auth required: yes
+- Auth provider: Cloudflare Access
+- Cloudflare Access login result: succeeded in the authenticated in-app browser; the Explorer page loaded with no Access/challenge text.
+- Local backend URL: http://127.0.0.1:8770
+- Expected backend port: 8770
+- Expected git HEAD: 0b113af for this static UI slice
+- Version endpoint: http://127.0.0.1:8770/api/version
+- Version endpoint result: git_sha=4040a47, git_branch=feature/answer-api, auth_provider=cloudflare_access
+- If version endpoint missing, how version is inferred: not applicable; note that `/api/version` reports the backend runtime commit while the browser smoke verifies static UI asset freshness through script URLs.
+- Whether app root `/` works: unauthenticated shell check returns Cloudflare Access 302 to login.
+- Whether app root `/` is expected to work: yes after Cloudflare Access authentication, but root was not the primary URL for this Explorer-only smoke.
+- Whether `/ui/steel-guitar-rag-mock.html` works: not checked in this Explorer-only smoke.
+- Whether `/ui/steel-guitar-rag-mock.html` is expected to work: yes.
+- Who should test this URL: the user
+- Do not test these URLs: stale uncache-busted Explorer URLs or the earlier `ced9955` URL for this fix.
+- Known caveats: `/api/version` still reports backend runtime `4040a47`; this does not mean the protected static Explorer page is stale. Browser asset URLs confirmed the refreshed static scripts.
 ```
+
+Protected script URLs observed:
+
+```text
+https://app.steelguitarrag.com/ui/pedal-steel-fretboard.js?v=explorer-notation-marker-labels-20260626
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer-data.js?v=explorer-notation-marker-labels-20260626
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer.js?v=explorer-notation-marker-labels-20260626
+```
+
+Verified in protected browser:
+
+- Notes mode marker labels include actual note labels such as `B, C`, `G, A`, `F#`, and `D`; no `B+`/`G+` shorthand.
+- NNS mode marker labels include `3, 3-`, `1`, and `5`; no `3+`.
+- Roman mode marker labels include `III, iii`, `I`, and `V`; no `III+`.
+- Numbers mode marker labels include `3, 3m`, `1`, and `5`; no plus-suffixed internal shorthand.
+- Cards and SVG markers use matching visible marker text, for example `B, C` in Notes mode.
+- No `[object Object]`.
+- No captured browser console errors.
+
+Screenshot:
+
+- `docs/handoffs/task-completions/assets/2026-06-26-06-explorer-notation-marker-labels/explorer-notation-marker-labels-protected.png`
 
 ## Integration Notes
 
@@ -142,6 +194,7 @@ No.
 - `tests/test_pedal_steel_fretboard_ui.py`
 - `docs/handoffs/task-completions/2026-06-26-1219-06-explorer-notation-marker-labels.md`
 - `docs/handoffs/task-completions/assets/2026-06-26-06-explorer-notation-marker-labels/explorer-notation-marker-labels-local.png`
+- `docs/handoffs/task-completions/assets/2026-06-26-06-explorer-notation-marker-labels/explorer-notation-marker-labels-protected.png`
 
 ## Files That Must Not Be Staged
 
@@ -159,7 +212,7 @@ Do not stage unrelated parked changes or untracked files, including but not limi
 
 ## Recommended Next Lane
 
-Lane 12 protected-preview smoke.
+Lane 15 focused QA or user smoke on the protected-preview Explorer URL.
 
 Suggested prompt:
 
@@ -173,4 +226,4 @@ Safe to commit.
 
 ## Suggested Next Step
 
-Commit the scoped Lane 06 UI/test/handoff files, then run Lane 12 protected-preview smoke.
+Run focused QA/user smoke on `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-notation-marker-labels-0b113af`.

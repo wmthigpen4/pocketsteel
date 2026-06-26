@@ -5,12 +5,12 @@ Generated for ChatGPT reset/guidance on branch `feature/answer-api`.
 ## Current State
 
 - Current branch: `feature/answer-api`.
-- Current repo HEAD at this refresh: `5ff8fcb fix: add explorer notation mode selector`.
+- Current repo HEAD at this refresh: `0b113af fix: refresh explorer notation script cache-bust`.
 - Runtime commit smoked for E9 copedent selector/chart: `ecec173 feat: add E9 copedent selector and chart`.
 - Related impact-preview runtime smoke: `670d635 feat: add e9 pedal lever impact preview contract`.
-- Latest local UI smoke status: **PASS for Explorer notation selector at commit `5ff8fcb`**. Local browser smoke verified Notes, NNS, Roman, and Numbers notation modes update scale display, row cards, SVG marker labels, selected detail copy, top-label filters, and pedal/lever impact context with no `[object Object]`.
-- Protected-preview status: **needs Lane 12 refresh/smoke for `5ff8fcb`**. Last recorded protected-preview pass remains Explorer marker readability at `bc69d97`; local smoke does not prove protected-preview cache freshness.
-- User-smoke status: **wait for Lane 12 protected-preview refresh/smoke at the direct cache-busted Explorer URL below**.
+- Latest local UI smoke status: **PASS for Explorer notation marker labels at commit `ced9955`**, followed by script cache-bust commit `0b113af`. Local browser smoke verified Notes, NNS, Roman, and Numbers marker labels use selected notation values such as `B, C`, `3, 3-`, `III, iii`, and `3, 3m` instead of internal plus shorthand.
+- Protected-preview status: **PASS for Explorer notation marker labels at commit `0b113af`**. The protected page loaded refreshed script URLs with `explorer-notation-marker-labels-20260626`; Notes/NNS/Roman/Numbers marker labels updated correctly with no `3+`/`B+` shorthand and no `[object Object]`.
+- User-smoke status: **ready for focused user smoke at the direct cache-busted Explorer URL below**.
 - App control state: **park or choose the next small slice**.
 - Broad unrelated dirty/untracked work remains parked. Do not broad-stage.
 
@@ -30,6 +30,9 @@ https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-harmoniz
 
 Explorer notation selector after commit `5ff8fcb`:
 https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-notation-mode-5ff8fcb
+
+Explorer notation marker labels after commit `0b113af`:
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-notation-marker-labels-0b113af
 
 Explorer marker/impact/glossary UI baseline commit `4a3f422`:
 https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-marker-impact-glossary-4a3f422
