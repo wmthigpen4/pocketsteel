@@ -5,12 +5,12 @@ Generated for ChatGPT reset/guidance on branch `feature/answer-api`.
 ## Current State
 
 - Current branch: `feature/answer-api`.
-- Current repo HEAD at this refresh: `bc69d97 fix: refresh explorer marker script cache bust`.
+- Current repo HEAD at this refresh: `f2b28ef fix: clarify explorer harmonized scale cards`.
 - Runtime commit smoked for E9 copedent selector/chart: `ecec173 feat: add E9 copedent selector and chart`.
 - Related impact-preview runtime smoke: `670d635 feat: add e9 pedal lever impact preview contract`.
-- Latest local UI smoke status: **PASS for Explorer numeric marker labels, compact cards, glossary, and contextual pedal/lever impact at commit `0ec8932` plus cache-bust follow-up `bc69d97`**.
-- Protected-preview status: **PASS for Explorer marker readability at `bc69d97`**. Authenticated protected-preview browser smoke loaded the refreshed Explorer script and verified numeric marker labels, marker-linked cards, selected marker mapping, no `[object Object]`, and no console errors.
-- User-smoke status: **ready for focused user smoke at the direct cache-busted Explorer URL below**.
+- Latest local UI smoke status: **PASS for Explorer harmonized-scale clarity at commit `f2b28ef`**. Local browser smoke verified the new visible fret-range filter, revised active result cards, string-action detail language, G natural minor `Bb`/`Eb` spelling, no `[object Object]`, and no console errors.
+- Protected-preview status: **needs Lane 12 refresh/smoke for `f2b28ef`**. Last recorded protected-preview pass remains Explorer marker readability at `bc69d97`; local smoke does not prove protected-preview cache freshness.
+- User-smoke status: **wait for Lane 12 protected-preview refresh/smoke at the direct cache-busted Explorer URL below**.
 - App control state: **park or choose the next small slice**.
 - Broad unrelated dirty/untracked work remains parked. Do not broad-stage.
 
@@ -24,6 +24,9 @@ https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-compact-
 
 Explorer numeric marker readability after commit `bc69d97`:
 https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-marker-readability-20260626b
+
+Explorer harmonized-scale clarity after commit `f2b28ef`:
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-harmonized-scale-clarity-f2b28ef
 
 Explorer marker/impact/glossary UI baseline commit `4a3f422`:
 https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-marker-impact-glossary-4a3f422
