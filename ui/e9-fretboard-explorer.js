@@ -12,6 +12,33 @@
   const TWO_STRING_GROUPS = new Set(["3-5", "5-6", "6-10", "4-6", "3-4"]);
   const FIVE_EIGHT_GROUPS = new Set(["5-8"]);
   const TWO_STRING_DISPLAY_GROUPS = new Set([...TWO_STRING_GROUPS, ...FIVE_EIGHT_GROUPS]);
+  const EXPLORE_MODES = {
+    single: "single",
+    path: "path",
+  };
+  const PATH_FAMILIES = [
+    {
+      id: "high",
+      label: "High path",
+      description: "Uses 3-4-5 and 4-5-6 where the harmony needs it.",
+      groups: ["3-4-5", "4-5-6"],
+      pattern: ["3-4-5", "4-5-6", "4-5-6", "3-4-5", "3-4-5", "4-5-6", "3-4-5", "3-4-5"],
+    },
+    {
+      id: "middle",
+      label: "Middle path",
+      description: "Uses 5-6-8 for straight-bar shapes and 5-6-7 for A+B minor shapes.",
+      groups: ["5-6-8", "5-6-7"],
+      pattern: ["5-6-8", "5-6-7", "5-6-7", "5-6-8", "5-6-8", "5-6-7", "5-6-8", "5-6-8"],
+    },
+    {
+      id: "low",
+      label: "Low path",
+      description: "Uses 6-8-10 for straight-bar shapes and 6-7-10 for A+B minor shapes.",
+      groups: ["6-8-10", "6-7-10"],
+      pattern: ["6-8-10", "6-7-10", "6-7-10", "6-8-10", "6-8-10", "6-7-10", "6-8-10", "6-8-10"],
+    },
+  ];
   const KEY_OPTIONS = [
     { value: "C", label: "C" },
     { value: "Db", label: "C# (or D♭)" },
@@ -56,9 +83,13 @@
   const els = {
     key: document.getElementById("explorer-key"),
     copedent: document.getElementById("explorer-copedent"),
+    exploreMode: document.getElementById("explorer-explore-mode"),
     scale: document.getElementById("explorer-scale"),
     harmony: document.getElementById("explorer-harmony"),
     stringGroup: document.getElementById("explorer-string-group"),
+    stringGroupControl: document.getElementById("explorer-string-group-control"),
+    pathFamily: document.getElementById("explorer-path-family"),
+    pathFamilyControl: document.getElementById("explorer-path-family-control"),
     scaleNotes: document.getElementById("explorer-scale-notes"),
     resultCount: document.getElementById("explorer-result-count"),
     notationModeButtons: document.querySelectorAll("[data-explorer-notation-mode]"),
@@ -457,12 +488,61 @@
   }
 
   function primaryLabelForRow(row) {
+    if (isPathMode()) {
+      return `${degreeStepLabel(row)} — ${chordDisplayName(row)}`;
+    }
     const label = notationMode === "notes" ? "Top note" : "Top note interval";
     return `${label}: ${activeTopLabel(row) || row.chord_function || row.scale_degree || row.chord_name || "Position"}`;
   }
 
   function activeRangeOption() {
     return FRET_RANGE_OPTIONS.find((option) => option.id === selectedFretRange) || FRET_RANGE_OPTIONS[0];
+  }
+
+  function isPathMode() {
+    return els.exploreMode?.value === EXPLORE_MODES.path;
+  }
+
+  function activeHarmonyValue() {
+    return isPathMode() ? "three_string_diatonic" : els.harmony.value;
+  }
+
+  function activePathFamily() {
+    return PATH_FAMILIES.find((family) => family.id === els.pathFamily?.value)
+      || PATH_FAMILIES.find((family) => family.id === "low")
+      || PATH_FAMILIES[0];
+  }
+
+  function degreeSequenceForPath() {
+    return [1, 2, 3, 4, 5, 6, 7, 1];
+  }
+
+  function degreeStepLabel(row) {
+    const sequence = activeScaleSequence();
+    const index = Number(row?.scale_degree || 0) - 1;
+    if (notationMode === "notes") {
+      return formatValue(row?.chord_name, "");
+    }
+    return sequence[index] || formatValue(row?.chord_function || row?.scale_degree, "");
+  }
+
+  function chordDisplayName(row) {
+    const name = formatValue(row?.chord_name, "");
+    const quality = formatValue(row?.chord_quality, "").toLowerCase();
+    const functionText = formatValue(row?.chord_function, "");
+    if (!name) {
+      return formatValue(row?.chord_function || "Chord", "Chord");
+    }
+    if (functionText.includes("ø") || quality.includes("half")) {
+      return `${name} half-diminished`;
+    }
+    if (quality.includes("diminished")) {
+      return `${name} diminished`;
+    }
+    if (quality === "minor") {
+      return `${name}m`;
+    }
+    return name;
   }
 
   function rowInRange(row, range = activeRangeOption()) {
@@ -545,11 +625,31 @@
   }
 
   function selectedGroupLabel() {
+    if (isPathMode()) {
+      const family = activePathFamily();
+      return `${family.label} (${family.groups.join(" / ")})`;
+    }
     const groups = selectedStringGroups();
     if (groups.length) {
       return groups.join(", ");
     }
-    return els.harmony.value === "two_string_harmonized" ? "all 2-string groups" : "all 3-string groups";
+    return activeHarmonyValue() === "two_string_harmonized" ? "all 2-string groups" : "all 3-string groups";
+  }
+
+  function syncExploreModeControls() {
+    const pathMode = isPathMode();
+    if (els.stringGroupControl) {
+      els.stringGroupControl.hidden = pathMode;
+    }
+    if (els.pathFamilyControl) {
+      els.pathFamilyControl.hidden = !pathMode;
+    }
+    if (els.harmony) {
+      els.harmony.disabled = pathMode;
+      if (pathMode) {
+        els.harmony.value = "three_string_diatonic";
+      }
+    }
   }
 
   function updateHarmonyOptions() {
@@ -610,7 +710,7 @@
 
   function updateStringGroupOptions() {
     const scale = els.scale.value;
-    const harmony = els.harmony.value;
+    const harmony = activeHarmonyValue();
     const rows = rowsForScaleAndHarmony(scale, harmony);
     const validGroups = availableStringGroups(rows, harmony);
     const currentValues = selectedStringGroups().filter((group) => validGroups.includes(group));
@@ -640,6 +740,7 @@
 
   function updateControls() {
     updateScaleLabels();
+    syncExploreModeControls();
     updateHarmonyOptions();
     updateStringGroupOptions();
   }
@@ -652,13 +753,18 @@
 
     const key = activeKey();
     const scale = els.scale.value;
-    const harmony = els.harmony.value;
+    const harmony = activeHarmonyValue();
     const stringGroups = selectedStringGroups();
-
-    return payload.positions
+    const matchingRows = payload.positions
       .filter((row) => row.key === key)
       .filter((row) => row.scale_type === scale)
-      .filter((row) => rowMatchesHarmony(row, harmony))
+      .filter((row) => rowMatchesHarmony(row, harmony));
+
+    if (isPathMode()) {
+      return pathRows(matchingRows);
+    }
+
+    return matchingRows
       .filter((row) => {
         if (!stringGroups.length) {
           return true;
@@ -672,6 +778,44 @@
         }
         return String(a.id || "").localeCompare(String(b.id || ""));
       });
+  }
+
+  function pathRows(rows) {
+    const family = activePathFamily();
+    const pathGroups = new Set(family.groups);
+    const pathCandidates = rows
+      .filter((row) => pathGroups.has(row.string_group))
+      .filter((row) => row.harmony_type === "three_string_diatonic")
+      .sort((a, b) => {
+        const byDegree = Number(a.scale_degree || 0) - Number(b.scale_degree || 0);
+        if (byDegree) {
+          return byDegree;
+        }
+        const byFret = Number(a.fret || 0) - Number(b.fret || 0);
+        return byFret || String(a.id || "").localeCompare(String(b.id || ""));
+      });
+    const steps = degreeSequenceForPath();
+    const selected = [];
+    steps.forEach((degree, index) => {
+      const preferredGroup = family.pattern[index] || family.groups[0];
+      const candidates = pathCandidates
+        .filter((row) => Number(row.scale_degree) === degree)
+        .filter((row) => row.string_group === preferredGroup);
+      const fallbackCandidates = pathCandidates.filter((row) => Number(row.scale_degree) === degree);
+      const source = candidates.length ? candidates : fallbackCandidates;
+      if (!source.length) {
+        return;
+      }
+      const sorted = [...source].sort((a, b) => Number(a.fret || 0) - Number(b.fret || 0));
+      const row = index === steps.length - 1 ? sorted[sorted.length - 1] : sorted[0];
+      selected.push({
+        ...row,
+        path_family: family.id,
+        path_family_label: family.label,
+        path_step: index + 1,
+      });
+    });
+    return selected;
   }
 
   function intervalSortIndex(interval) {
@@ -701,6 +845,12 @@
 
   function getRows() {
     const baseRows = getBaseRows();
+    if (isPathMode() && selectedTopFilter === "all") {
+      return baseRows;
+    }
+    if (isPathMode()) {
+      return baseRows.filter((row) => activeTopFilterLabel(row) === selectedTopFilter);
+    }
     if (selectedTopFilter === "all") {
       return baseRows.filter((row) => rowInRange(row));
     }
@@ -710,6 +860,9 @@
   }
 
   function getRowsBeforeRange(baseRows) {
+    if (isPathMode()) {
+      return baseRows;
+    }
     if (selectedTopFilter === "all") {
       return baseRows;
     }
@@ -726,6 +879,9 @@
   }
 
   function groupLabel(row) {
+    if (isPathMode()) {
+      return "Harmonized scale path";
+    }
     if (row.harmony_type === "five_eight_branch" || row.string_group === "5-8") {
       return "5&8 branch";
     }
@@ -739,6 +895,29 @@
       return "2-string pair";
     }
     return "Explorer row";
+  }
+
+  function pathChangeNote(row) {
+    if (!isPathMode()) {
+      return "";
+    }
+    const index = currentRows.findIndex((item) => item.id === row.id && item.path_step === row.path_step);
+    const previous = index > 0 ? currentRows[index - 1] : null;
+    const next = index >= 0 && index < currentRows.length - 1 ? currentRows[index + 1] : null;
+    const changedFromPrevious = previous && previous.string_group !== row.string_group;
+    const changesToNext = next && next.string_group !== row.string_group;
+    if (!changedFromPrevious && !changesToNext) {
+      return "";
+    }
+    const controls = normalizePedals(row);
+    const reason = row.string_group.includes("7") && controls.includes("A") && controls.includes("B")
+      ? "minor position uses this A+B string group in this path"
+      : "this path changes string groups when the harmony requires it";
+    const fromText = changedFromPrevious ? `from ${previous.string_group}` : "";
+    const toText = changesToNext ? `to ${next.string_group}` : "";
+    return ["String group changes", [fromText, toText].filter(Boolean).join(" and "), reason]
+      .filter(Boolean)
+      .join(": ");
   }
 
   function colorRoleForRow(row) {
@@ -995,7 +1174,7 @@
   function rowStringsForActiveContext() {
     const selectedGroups = selectedStringGroups();
     const sourceRows = currentRows.length ? currentRows : getRows();
-    const rows = selectedGroups.length
+    const rows = !isPathMode() && selectedGroups.length
       ? sourceRows.filter((row) => selectedGroups.includes(row.string_group))
       : sourceRows;
     const strings = new Set();
@@ -1019,8 +1198,8 @@
 
   function impactContextSentence(controls) {
     const selectedGroups = selectedStringGroups();
-    const groupText = selectedGroups.length ? selectedGroups.join(", ") : selectedGroupLabel();
-    const harmonyText = HARMONY_LABELS[els.harmony.value] || selectedOptionLabel(els.harmony);
+    const groupText = !isPathMode() && selectedGroups.length ? selectedGroups.join(", ") : selectedGroupLabel();
+    const harmonyText = isPathMode() ? "harmonized scale path" : (HARMONY_LABELS[activeHarmonyValue()] || selectedOptionLabel(els.harmony));
     const modeText = `${notationModeLabel()} notation`;
     if (!controls.length) {
       return `Choose one or more controls to preview changes for ${groupText} in ${harmonyText}. Showing ${modeText}.`;
@@ -1176,6 +1355,11 @@
 
   function renderFretRangeFilter(rowsBeforeRange, rows) {
     if (!els.fretRangeFilter) {
+      return;
+    }
+    if (isPathMode()) {
+      els.fretRangeFilter.hidden = true;
+      els.fretRangeFilter.innerHTML = "";
       return;
     }
     const outsideCount = Math.max(0, rowsBeforeRange.length - rows.length);
@@ -1419,8 +1603,8 @@
     }
     els.activeResults.innerHTML = `
       <div class="explorer-active-results__header">
-        <strong>${escapeHtml(label)}: ${rows.length} visible ${rows.length === 1 ? "position" : "positions"}</strong>
-        <span>Cards match the SVG markers below.</span>
+        <strong>${escapeHtml(label)}: ${rows.length} visible ${isPathMode() ? "scale degrees" : rows.length === 1 ? "position" : "positions"}</strong>
+        <span>${isPathMode() ? "This path changes string groups when the harmony requires it." : "Cards match the SVG markers below."}</span>
       </div>
       <div class="explorer-active-results__track">
         ${rows.map((row) => resultButtonHtml(row, "data-active-result-row")).join("")}
@@ -1444,7 +1628,7 @@
         return `
           <button class="explorer-row-button${buttonClass}${isSelected ? " is-selected" : ""}" type="button" data-explorer-row="${escapeHtml(row.id)}" data-string-group="${escapeHtml(row.string_group)}" data-harmony-type="${escapeHtml(row.harmony_type)}" aria-pressed="${isSelected ? "true" : "false"}">
             <strong>${escapeHtml(shortLabel(row))}</strong>
-            <span class="explorer-row-button__meta">Fret: ${escapeHtml(formatValue(row.fret))} · Strings: ${escapeHtml(row.string_group)} · ${escapeHtml(groupLabel(row))} · Harmony: ${escapeHtml(harmonyIntervalText(row))}</span>
+            <span class="explorer-row-button__meta">Fret: ${escapeHtml(formatValue(row.fret))} · Strings: ${escapeHtml(row.string_group)} · ${escapeHtml(groupLabel(row))} · Harmony: ${escapeHtml(harmonyIntervalText(row))}${pathChangeNote(row) ? ` · ${escapeHtml(pathChangeNote(row))}` : ""}</span>
           </button>
         `;
       })
@@ -1471,6 +1655,7 @@
       `Notes: ${formatValue(rowNoteLabels(row))}`,
       `${notationModeLabel()} harmony: ${harmonyIntervalText(row)}`,
       `Pedals/levers: ${formatValue(controls)}`,
+      pathChangeNote(row),
       stringActions ? `String actions: ${stringActions}` : "",
       warnings.length ? `Warning: ${formatValue(warnings)}` : "",
     ].filter(Boolean).map(formatTheoryText);
@@ -1632,7 +1817,7 @@
     els.empty.hidden = rows.length > 0;
     els.empty.textContent = rows.length
       ? ""
-      : `No validated ${HARMONY_LABELS[els.harmony.value] || "Explorer"} rows are available for ${els.scale.options[els.scale.selectedIndex]?.text || "this scale"} yet.`;
+      : `No validated ${isPathMode() ? "harmonized scale path" : (HARMONY_LABELS[activeHarmonyValue()] || "Explorer")} rows are available for ${els.scale.options[els.scale.selectedIndex]?.text || "this scale"} yet.`;
     renderCopedentChart();
     renderControlImpactPreview();
     currentMarkerGroups = groupRowsForMarkers(rows);
@@ -1787,6 +1972,19 @@
       updateStringGroupOptions();
       render();
     });
+    if (els.exploreMode) {
+      els.exploreMode.addEventListener("change", () => {
+        selectedTopFilter = "all";
+        updateControls();
+        render();
+      });
+    }
+    if (els.pathFamily) {
+      els.pathFamily.addEventListener("change", () => {
+        selectedTopFilter = "all";
+        render();
+      });
+    }
     els.stringGroup.addEventListener("change", () => {
       render();
     });
@@ -1801,5 +1999,6 @@
     availableHarmonies,
     rowsForScaleAndHarmony,
     uniqueGroups,
+    pathRows,
   };
 })();

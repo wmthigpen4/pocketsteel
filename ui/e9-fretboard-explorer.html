@@ -1341,6 +1341,14 @@
         <p class="explorer-control-help" id="explorer-copedent-help">Choose the E9 setup that matches your guitar. My Copedent (E9) is coming soon in Backstage.</p>
       </div>
       <div class="explorer-control">
+        <label for="explorer-explore-mode">Explore mode</label>
+        <select id="explorer-explore-mode" aria-describedby="explorer-explore-mode-help">
+          <option value="single" selected>Single grip</option>
+          <option value="path">Harmonized scale path</option>
+        </select>
+        <p class="explorer-control-help" id="explorer-explore-mode-help">Single grip filters exact strings. Scale path shows a practical route that can change string groups.</p>
+      </div>
+      <div class="explorer-control">
         <label for="explorer-scale">Scale</label>
         <select id="explorer-scale">
           <option value="major">G major</option>
@@ -1354,7 +1362,16 @@
           <option value="three_string_diatonic" selected>3-string diatonic harmony</option>
         </select>
       </div>
-      <div class="explorer-control explorer-control--string-group">
+      <div class="explorer-control" id="explorer-path-family-control" hidden>
+        <label for="explorer-path-family">Path family</label>
+        <select id="explorer-path-family" aria-describedby="explorer-path-family-help">
+          <option value="high">High path: 3-4-5 / 4-5-6</option>
+          <option value="middle">Middle path: 5-6-8 / 5-6-7</option>
+          <option value="low" selected>Low path: 6-8-10 / 6-7-10</option>
+        </select>
+        <p class="explorer-control-help" id="explorer-path-family-help">This path changes string groups when the harmony requires it. Cards show the actual strings and pedals/levers for each degree.</p>
+      </div>
+      <div class="explorer-control explorer-control--string-group" id="explorer-string-group-control">
         <label for="explorer-string-group">String group</label>
         <div class="explorer-string-group-layout">
           <select id="explorer-string-group" multiple size="4" aria-describedby="explorer-string-group-help">
@@ -1450,8 +1467,8 @@
     </section>
   </main>
 
-  <script src="pedal-steel-fretboard.js?v=explorer-top-note-marker-source-20260626"></script>
-  <script src="e9-fretboard-explorer-data.js?v=explorer-top-note-marker-source-20260626"></script>
-  <script src="e9-fretboard-explorer.js?v=explorer-top-note-marker-source-20260626"></script>
+  <script src="pedal-steel-fretboard.js?v=explorer-harmonized-path-mode-20260626"></script>
+  <script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>
+  <script src="e9-fretboard-explorer.js?v=explorer-harmonized-path-mode-20260626"></script>
 </body>
 </html>

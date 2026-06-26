@@ -269,13 +269,14 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "checked against tuning and pedal/lever changes" in html
     assert "These Explorer rows are deterministic teaching data, separate from source-card answers." not in html
     assert "not corpus retrieval or RAG-generated fretboard positions" not in html
-    assert '<script src="pedal-steel-fretboard.js?v=explorer-top-note-marker-source-20260626"></script>' in html
+    assert '<script src="pedal-steel-fretboard.js?v=explorer-harmonized-path-mode-20260626"></script>' in html
     assert "pedal-steel-fretboard.js?v=e9-explorer-explanation-ui-20260623" not in html
     assert "pedal-steel-fretboard.js?v=explorer-ui-cleanup-20260623" not in html
     assert "pedal-steel-fretboard.js?v=selected-svg-render-20260623" not in html
     assert "pedal-steel-fretboard.js?v=explorer-compact-copedent-20260625" not in html
-    assert '<script src="e9-fretboard-explorer-data.js?v=explorer-top-note-marker-source-20260626"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=explorer-top-note-marker-source-20260626"></script>' in html
+    assert '<script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=explorer-harmonized-path-mode-20260626"></script>' in html
+    assert "explorer-top-note-marker-source-20260626" not in html
     assert "e9-fretboard-explorer.js?v=explorer-compact-copedent-20260625" not in html
     assert "e9-fretboard-explorer.js?v=explorer-harmonized-scale-clarity-20260626" not in html
     expected_key_options = {
@@ -322,6 +323,15 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert len(root_fret_classes) == 12
     assert '<option value="major">G major</option>' in html
     assert '<option value="natural_minor">G natural minor</option>' in html
+    assert '<label for="explorer-explore-mode">Explore mode</label>' in html
+    assert '<option value="single" selected>Single grip</option>' in html
+    assert '<option value="path">Harmonized scale path</option>' in html
+    assert "Single grip filters exact strings" in html
+    assert '<label for="explorer-path-family">Path family</label>' in html
+    assert '<option value="high">High path: 3-4-5 / 4-5-6</option>' in html
+    assert '<option value="middle">Middle path: 5-6-8 / 5-6-7</option>' in html
+    assert '<option value="low" selected>Low path: 6-8-10 / 6-7-10</option>' in html
+    assert "This path changes string groups when the harmony requires it" in html
     assert '<option value="two_string_harmonized">2-string harmonized scale</option>' in html
     assert '<option value="five_eight_branch">5&amp;8 branch positions (2-string)</option>' not in html
     assert '<option value="three_string_diatonic" selected>3-string diatonic harmony</option>' in html
@@ -331,7 +341,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "height: 42px;" in html
     assert ".explorer-control--string-group" in html
     assert "grid-column: 1 / -1;" in html
-    assert '<div class="explorer-control explorer-control--string-group">' in html
+    assert '<div class="explorer-control explorer-control--string-group" id="explorer-string-group-control">' in html
     assert '<select id="explorer-string-group" multiple size="4"' in html
     assert "Select one or more groups" in html
     assert '<optgroup label="Core grips">' in html
@@ -406,6 +416,13 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "emphasizeVisibleHighlights" in script
     assert 'highlightStyle: "prominent"' in script
     assert "selectedStringGroups" in script
+    assert "EXPLORE_MODES" in script
+    assert "PATH_FAMILIES" in script
+    assert "Harmonized scale path" in script
+    assert "pathRows" in script
+    assert "degreeSequenceForPath" in script
+    assert "pathChangeNote" in script
+    assert "this path changes string groups when the harmony requires it" in script
     assert "selectedCopedentId" in script
     component = Path("ui/pedal-steel-fretboard.js").read_text(encoding="utf-8")
     assert "data-selected-string-group-lanes" not in component
@@ -756,6 +773,10 @@ const elements = {
     { value: "custom-e9-lkv", text: "Custom E9 (with LKV)" },
     { value: "my-copedent-e9", text: "My Copedent (E9) - Coming soon in Backstage" }
   ]),
+  "explorer-explore-mode": new FakeSelect("explorer-explore-mode", "single", [
+    { value: "single", text: "Single grip" },
+    { value: "path", text: "Harmonized scale path" }
+  ]),
   "explorer-scale": new FakeSelect("explorer-scale", "major", [
     { value: "major", text: "G major" },
     { value: "natural_minor", text: "G natural minor" }
@@ -765,6 +786,13 @@ const elements = {
     { value: "three_string_diatonic", text: "3-string diatonic harmony" }
   ]),
   "explorer-string-group": new FakeSelect("explorer-string-group", "all", [{ value: "all", text: "All 3-string groups" }]),
+  "explorer-string-group-control": new FakeNode("explorer-string-group-control"),
+  "explorer-path-family": new FakeSelect("explorer-path-family", "low", [
+    { value: "high", text: "High path: 3-4-5 / 4-5-6" },
+    { value: "middle", text: "Middle path: 5-6-8 / 5-6-7" },
+    { value: "low", text: "Low path: 6-8-10 / 6-7-10" }
+  ]),
+  "explorer-path-family-control": new FakeNode("explorer-path-family-control"),
   "explorer-scale-notes": new FakeNode("explorer-scale-notes"),
   "explorer-result-count": new FakeNode("explorer-result-count"),
   "explorer-top-interval-filter": new FakeNode("explorer-top-interval-filter"),
@@ -838,6 +866,10 @@ assert.match(elements["explorer-string-group"].innerHTML, /Core grips/);
 assert.match(elements["explorer-string-group"].innerHTML, /Advanced swaps/);
 assert.match(elements["explorer-string-group"].innerHTML, /5-7-8/);
 assert.doesNotMatch(elements["explorer-string-group"].innerHTML, />3-5</);
+assert.equal(elements["explorer-explore-mode"].value, "single");
+assert.equal(elements["explorer-string-group-control"].hidden, false);
+assert.equal(elements["explorer-path-family-control"].hidden, true);
+assert.equal(elements["explorer-harmony"].disabled, false);
 assert.equal(lastMount.options.showHighlightLabels, true);
 assert.equal(lastMount.options.hideFilterControls, true);
 assert.equal(lastMount.options.hidePositionTools, true);
@@ -1074,6 +1106,52 @@ elements["explorer-string-group"].selectValues(["4-5-6", "5-6-8"]);
 assert.equal(lastMount.options.positions.every((row) => ["4-5-6", "5-6-8"].includes(row.grip)), true);
 assert.equal(lastMount.options.positions.some((row) => row.grip === "4-5-6"), true);
 assert.equal(lastMount.options.positions.some((row) => row.grip === "5-6-8"), true);
+
+elements["explorer-explore-mode"].value = "path";
+elements["explorer-explore-mode"].dispatchChange();
+assert.equal(elements["explorer-string-group-control"].hidden, true);
+assert.equal(elements["explorer-path-family-control"].hidden, false);
+assert.equal(elements["explorer-harmony"].value, "three_string_diatonic");
+assert.equal(elements["explorer-harmony"].disabled, true);
+assert.equal(elements["explorer-fret-range-filter"].hidden, true);
+assert.match(elements["explorer-active-results"].textContent, /Low path \(6-8-10 \/ 6-7-10\): 8 visible scale degrees/);
+assert.match(elements["explorer-active-results"].textContent, /This path changes string groups when the harmony requires it/);
+const pathCardGroups = Array.from(elements["explorer-row-list"].innerHTML.matchAll(/data-string-group="([^"]+)"/g)).map((match) => match[1]);
+const pathCardIds = Array.from(elements["explorer-row-list"].innerHTML.matchAll(/data-explorer-row="([^"]+)"/g)).map((match) => match[1]);
+const pathFrets = pathCardIds.map((id) => {
+  const match = id.match(/-(\d+)$/);
+  return match ? Number(match[1]) : null;
+});
+assert.equal(JSON.stringify(pathCardGroups), JSON.stringify(["6-8-10", "6-7-10", "6-7-10", "6-8-10", "6-8-10", "6-7-10", "6-8-10", "6-8-10"]));
+assert.equal(JSON.stringify(pathFrets), JSON.stringify([3, 3, 5, 8, 10, 10, 13, 15]));
+assert.match(elements["explorer-row-list"].textContent, /A — Am/);
+assert.match(elements["explorer-row-list"].textContent, /B — Bm/);
+assert.match(elements["explorer-row-list"].textContent, /F# — F# diminished|F# — F# half-diminished/);
+assert.match(elements["explorer-row-list"].textContent, /String group changes/);
+assert.match(elements["explorer-row-list"].textContent, /minor position uses this A\+B string group in this path/);
+assert.equal(lastMount.options.positions.length, 8);
+assert.equal(lastMount.options.positions.some((row) => row.grip === "6-8-10"), true);
+assert.equal(lastMount.options.positions.some((row) => row.grip === "6-7-10"), true);
+notationModeButtons[2].onclick();
+assert.match(elements["explorer-row-list"].textContent, /I — G/);
+assert.match(elements["explorer-row-list"].textContent, /ii — Am/);
+assert.match(elements["explorer-row-list"].textContent, /iii — Bm/);
+assert.equal(lastMount.options.positions[0].label, "iii");
+assert.equal(lastMount.options.positions[1].label, "IV");
+notationModeButtons[0].onclick();
+elements["explorer-path-family"].value = "middle";
+elements["explorer-path-family"].dispatchChange();
+assert.equal(elements["explorer-row-list"].innerHTML.includes('data-string-group="5-6-8"'), true);
+assert.equal(elements["explorer-row-list"].innerHTML.includes('data-string-group="5-6-7"'), true);
+elements["explorer-path-family"].value = "high";
+elements["explorer-path-family"].dispatchChange();
+assert.equal(elements["explorer-row-list"].innerHTML.includes('data-string-group="3-4-5"'), true);
+assert.equal(elements["explorer-row-list"].innerHTML.includes('data-string-group="4-5-6"'), true);
+elements["explorer-explore-mode"].value = "single";
+elements["explorer-explore-mode"].dispatchChange();
+assert.equal(elements["explorer-string-group-control"].hidden, false);
+assert.equal(elements["explorer-path-family-control"].hidden, true);
+assert.equal(elements["explorer-harmony"].disabled, false);
 
 elements["explorer-harmony"].value = "two_string_harmonized";
 elements["explorer-harmony"].dispatchChange();
