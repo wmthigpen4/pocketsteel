@@ -53,6 +53,13 @@
       margin-bottom: 14px;
     }
 
+    .explorer-header-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
     .explorer-back {
       display: inline-flex;
       align-items: center;
@@ -64,6 +71,18 @@
       font-size: 0.9rem;
       font-weight: 700;
       background: rgba(0, 0, 0, 0.28);
+    }
+
+    button.explorer-back {
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .explorer-back:hover,
+    .explorer-back:focus-visible {
+      border-color: rgba(246, 190, 88, 0.62);
+      background: rgba(246, 190, 88, 0.08);
+      outline: none;
     }
 
     .explorer-kicker {
@@ -270,6 +289,10 @@
       box-shadow: 0 28px 90px rgba(0, 0, 0, 0.58);
     }
 
+    .explorer-glossary-dialog {
+      width: min(780px, calc(100vw - 32px));
+    }
+
     .explorer-copedent-dialog::backdrop {
       background: rgba(0, 0, 0, 0.58);
     }
@@ -300,6 +323,37 @@
       border-radius: 0;
       padding: 14px;
       background: transparent;
+    }
+
+    .explorer-glossary {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+      margin: 0;
+      padding: 14px;
+    }
+
+    .explorer-glossary div {
+      border: 1px solid rgba(246, 190, 88, 0.14);
+      border-radius: 12px;
+      padding: 10px 11px;
+      background: rgba(0, 0, 0, 0.18);
+    }
+
+    .explorer-glossary dt {
+      margin: 0 0 4px;
+      color: var(--gold);
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    .explorer-glossary dd {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.45;
     }
 
     .explorer-copedent-chart[hidden] {
@@ -493,6 +547,18 @@
       outline: none;
     }
 
+    .explorer-control-impact-clear {
+      border-style: dashed;
+      color: rgba(255, 247, 232, 0.68);
+    }
+
+    .explorer-control-impact-context {
+      margin: 0;
+      color: rgba(255, 247, 232, 0.66);
+      font-size: 0.78rem;
+      line-height: 1.4;
+    }
+
     .explorer-control-impact-detail {
       border: 1px solid rgba(246, 190, 88, 0.14);
       border-radius: 12px;
@@ -586,18 +652,16 @@
     }
 
     .explorer-active-results__track {
-      display: flex;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
       gap: 8px;
-      overflow-x: auto;
       padding-bottom: 12px;
-      scrollbar-color: rgba(246, 190, 88, 0.44) rgba(0, 0, 0, 0.2);
     }
 
     .explorer-active-result {
-      flex: 0 0 clamp(180px, 22vw, 260px);
       border: 1px solid rgba(246, 190, 88, 0.22);
       border-radius: 11px;
-      padding: 9px 11px;
+      padding: 8px 10px;
       background: rgba(16, 14, 11, 0.78);
       color: var(--text);
       cursor: pointer;
@@ -622,7 +686,7 @@
       display: block;
       margin-top: 3px;
       color: var(--muted);
-      font-size: 0.76rem;
+      font-size: 0.72rem;
       font-weight: 700;
     }
 
@@ -640,7 +704,7 @@
     .explorer-tooltip {
       position: fixed;
       z-index: 50;
-      max-width: min(320px, calc(100vw - 24px));
+      max-width: min(390px, calc(100vw - 24px));
       border: 1px solid rgba(246, 190, 88, 0.4);
       border-radius: 12px;
       padding: 10px 12px;
@@ -665,6 +729,24 @@
     .explorer-tooltip span {
       display: block;
       color: var(--muted);
+    }
+
+    .explorer-tooltip__item {
+      display: grid;
+      gap: 3px;
+      border-top: 1px solid rgba(246, 190, 88, 0.14);
+      margin-top: 8px;
+      padding-top: 8px;
+    }
+
+    .explorer-tooltip__item:first-child {
+      border-top: 0;
+      margin-top: 0;
+      padding-top: 0;
+    }
+
+    .explorer-tooltip__item strong {
+      margin-bottom: 0;
     }
 
     .explorer-details {
@@ -893,7 +975,8 @@
       }
 
       .explorer-control-impact-preview,
-      .explorer-row-control-impacts__grid {
+      .explorer-row-control-impacts__grid,
+      .explorer-glossary {
         grid-template-columns: 1fr;
       }
 
@@ -915,7 +998,10 @@
         <h1>E9 Fretboard Explorer</h1>
         <p class="explorer-lede">Choose a key, scale, harmony type, and string group to see E9 positions that have been checked against tuning and pedal/lever changes.</p>
       </div>
-      <a class="explorer-back" href="steel-guitar-rag-mock.html">Back to app</a>
+      <div class="explorer-header-actions" aria-label="Explorer actions">
+        <button class="explorer-back" id="explorer-glossary-open" type="button" aria-haspopup="dialog" aria-controls="explorer-glossary-dialog">Glossary</button>
+        <a class="explorer-back" href="steel-guitar-rag-mock.html">Back to app</a>
+      </div>
     </header>
 
     <section class="explorer-controls" aria-label="Explorer controls">
@@ -1005,6 +1091,29 @@
         <button class="explorer-inline-button" id="explorer-copedent-close" type="button">Close</button>
       </div>
       <section class="explorer-copedent-chart" id="explorer-copedent-chart" aria-label="Selected E9 copedent chart"></section>
+    </dialog>
+
+    <dialog class="explorer-copedent-dialog explorer-glossary-dialog" id="explorer-glossary-dialog" aria-labelledby="explorer-glossary-dialog-title">
+      <div class="explorer-copedent-dialog__bar">
+        <h2 id="explorer-glossary-dialog-title">Explorer glossary</h2>
+        <button class="explorer-inline-button" id="explorer-glossary-close" type="button">Close</button>
+      </div>
+      <dl class="explorer-glossary">
+        <div><dt>Copedent</dt><dd>The tuning and pedal/lever changes on a pedal steel.</dd></div>
+        <div><dt>Diatonic harmony</dt><dd>Chords built from the notes of one key or scale.</dd></div>
+        <div><dt>Harmonized scale</dt><dd>A scale played as paired or grouped notes instead of single notes.</dd></div>
+        <div><dt>Diminished</dt><dd>A tense chord built from stacked minor-thirds; often shown with °.</dd></div>
+        <div><dt>Half-diminished</dt><dd>A minor seven flat five sound; often shown as m7b5 or ø.</dd></div>
+        <div><dt>NNS / Nashville Number System</dt><dd>Number names for scale degrees and chords, so a pattern moves between keys.</dd></div>
+        <div><dt>Intervals</dt><dd>Numbers that describe each note’s job against the root, such as 1, 3, or 5.</dd></div>
+        <div><dt>Notes</dt><dd>The letter names being played, such as G, B, or D.</dd></div>
+        <div><dt>Grips</dt><dd>Common sets of strings picked together.</dd></div>
+        <div><dt>Pedals</dt><dd>Foot controls that raise or lower selected strings.</dd></div>
+        <div><dt>Levers</dt><dd>Knee controls that raise or lower selected strings.</dd></div>
+        <div><dt>Root</dt><dd>The home note or chord name that the other notes relate to.</dd></div>
+        <div><dt>Inversion</dt><dd>The same chord tones with a note other than the root on top or bottom.</dd></div>
+        <div><dt>String group</dt><dd>The selected set of strings used for a row, such as 4-5-6.</dd></div>
+      </dl>
     </dialog>
 
     <section class="explorer-control-impact-preview" id="explorer-control-impact-preview" aria-label="Pedal and lever impact preview" hidden></section>

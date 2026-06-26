@@ -403,13 +403,42 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "data-selected-string-row" not in component
     assert "emphasizeStringGroups" not in component
     assert "tooltipText" in script
+    assert "tooltipHtmlForRows" in script
+    assert "groupRowsForMarkers" in script
+    assert "markerLabelForGroup" in script
+    assert "pos." in script
+    assert "setups" in script
+    assert "selectedImpactControlIds" in script
+    assert "data-control-impact-clear" in script
+    assert "No direct impact on the selected string group" in script
+    assert "B by itself may not match rows in this view that expect A+B together" in script
     assert "selectedRowId" in script
     assert "renderActiveResults" in script
     assert "data-active-result-row" in script
     assert "Pitch validated" not in script
     assert "validated row" not in script
     assert "Starter" not in html
-    assert "Common" not in html
+    assert "Common" not in html.split("explorer-active-results", 1)[0]
+    assert 'id="explorer-glossary-open"' in html
+    assert 'id="explorer-glossary-dialog"' in html
+    for term in [
+        "Copedent",
+        "Diatonic harmony",
+        "Harmonized scale",
+        "Diminished",
+        "Half-diminished",
+        "NNS / Nashville Number System",
+        "Intervals",
+        "Notes",
+        "Grips",
+        "Pedals",
+        "Levers",
+        "Root",
+        "Inversion",
+        "String group",
+    ]:
+        assert f"<dt>{term}</dt>" in html
+    assert "external" not in html.lower()
     assert "[object Object]" not in data
     assert "validated E9 pitch logic" in data
     assert "STEEL_RAG_E9_EXPLORER_PAYLOADS_BY_COPEDENT" in data
@@ -522,29 +551,42 @@ class FakeNode {
     this.classList = {
       toggle: () => {}
     };
+    this._buttons = {};
   }
   set innerHTML(value) {
     this._innerHTML = value;
     this.textContent = value.replace(/<[^>]*>/g, "");
     this._markers = Array.from(value.matchAll(/data-highlight-id="([^"]+)"/g)).map((match) => new FakeMarker(match[1]));
+    this._buttons = {
+      "[data-explorer-row]": Array.from(value.matchAll(/data-explorer-row="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-explorer-row")),
+      "[data-active-result-row]": Array.from(value.matchAll(/data-active-result-row="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-active-result-row")),
+      "[data-control-impact-tab]": Array.from(value.matchAll(/data-control-impact-tab="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-control-impact-tab")),
+      "[data-control-impact-clear]": value.includes("data-control-impact-clear") ? [new FakeButton("clear", "data-control-impact-clear")] : []
+    };
   }
   get innerHTML() {
     return this._innerHTML;
   }
   querySelectorAll(selector) {
     if (selector === "[data-explorer-row]") {
-      return Array.from(this._innerHTML.matchAll(/data-explorer-row="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-explorer-row"));
+      return this._buttons[selector] || [];
     }
     if (selector === "[data-active-result-row]") {
-      return Array.from(this._innerHTML.matchAll(/data-active-result-row="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-active-result-row"));
+      return this._buttons[selector] || [];
     }
     if (selector === "[data-control-impact-tab]") {
-      return Array.from(this._innerHTML.matchAll(/data-control-impact-tab="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-control-impact-tab"));
+      return this._buttons[selector] || [];
+    }
+    if (selector === "[data-control-impact-clear]") {
+      return this._buttons[selector] || [];
     }
     if (selector === ".pedal-steel-fretboard__highlight[data-highlight-id]") {
       return this._markers;
     }
     return [];
+  }
+  querySelector(selector) {
+    return this.querySelectorAll(selector)[0] || null;
   }
   addEventListener(type, handler) {
     this.listeners[type] = handler;
@@ -642,6 +684,10 @@ const elements = {
   "explorer-tooltip": new FakeNode("explorer-tooltip"),
 };
 let lastMount;
+const labelModeButtons = [
+  new FakeButton("intervals", "data-explorer-label-mode"),
+  new FakeButton("notes", "data-explorer-label-mode")
+];
 const sandbox = {
   window: {
     innerWidth: 1280,
@@ -652,10 +698,7 @@ const sandbox = {
     getElementById: (id) => elements[id],
     querySelectorAll: (selector) => {
       if (selector === "[data-explorer-label-mode]") {
-        return [
-          new FakeButton("intervals", "data-explorer-label-mode"),
-          new FakeButton("notes", "data-explorer-label-mode")
-        ];
+        return labelModeButtons;
       }
       return [];
     }
@@ -727,8 +770,20 @@ assert.doesNotMatch(elements["explorer-control-impact-preview"].textContent, /ra
 assert.doesNotMatch(elements["explorer-control-impact-preview"].textContent, /B-to-Bb vertical/);
 assert.doesNotMatch(elements["explorer-control-impact-preview"].textContent, /\[object Object\]/);
 assert.match(elements["explorer-control-impact-preview"].textContent, /A pedal/);
+let impactButtons = elements["explorer-control-impact-preview"].querySelectorAll("[data-control-impact-tab]");
+impactButtons.find((button) => button.getAttribute("data-control-impact-tab") === "A").onclick();
+impactButtons = elements["explorer-control-impact-preview"].querySelectorAll("[data-control-impact-tab]");
+impactButtons.find((button) => button.getAttribute("data-control-impact-tab") === "B").onclick();
+assert.match(elements["explorer-control-impact-preview"].textContent, /Previewing A pedal \+ B pedal/);
+assert.match(elements["explorer-control-impact-preview"].textContent, /String 5/);
+assert.match(elements["explorer-control-impact-preview"].textContent, /String 6/);
+assert.match(elements["explorer-control-impact-preview"].innerHTML, /aria-pressed="true"[^>]*data-control-impact-tab="A"/);
+assert.match(elements["explorer-control-impact-preview"].innerHTML, /aria-pressed="true"[^>]*data-control-impact-tab="B"/);
+elements["explorer-control-impact-preview"].querySelector("[data-control-impact-clear]").onclick();
+assert.doesNotMatch(elements["explorer-control-impact-preview"].textContent, /String 5/);
 assert.match(elements["explorer-active-results"].textContent, /all 3-string groups/);
-assert.equal(elements["explorer-active-results"].querySelectorAll("[data-active-result-row]").length, lastMount.options.positions.length);
+assert.equal(elements["explorer-active-results"].querySelectorAll("[data-active-result-row]").length > lastMount.options.positions.length, true);
+assert.equal(elements["explorer-fretboard"].querySelectorAll(".pedal-steel-fretboard__highlight[data-highlight-id]").length, lastMount.options.positions.length);
 assert.match(elements["explorer-selected-detail"].textContent, /Notes/);
 assert.match(elements["explorer-selected-detail"].textContent, /Intervals/);
 assert.match(elements["explorer-selected-detail"].textContent, /Why this position works/);
@@ -738,6 +793,13 @@ assert.doesNotMatch(elements["explorer-fretboard"].textContent, /Why this positi
 assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /Pitch validated/);
 assert.doesNotMatch(elements["explorer-row-list"].textContent, /\b\d+\s+(?:I|ii|iii|iv|v|vi|vii)\b/);
 assert.doesNotMatch(elements["explorer-active-results"].textContent, /\b\d+\s+(?:I|ii|iii|iv|v|vi|vii)\b/);
+assert.match(elements["explorer-active-results"].innerHTML, /Intervals:/);
+assert.doesNotMatch(elements["explorer-active-results"].innerHTML, /<strong>G<\/strong>/);
+labelModeButtons[1].onclick();
+assert.match(elements["explorer-active-results"].innerHTML, /Notes:/);
+assert.match(elements["explorer-active-results"].innerHTML, /<strong>G<\/strong>|<strong>B<\/strong>|<strong>D<\/strong>/);
+labelModeButtons[0].onclick();
+assert.match(elements["explorer-active-results"].innerHTML, /Intervals:/);
 
 const expectedMajorScales = {
   C: "C D E F G A B",
@@ -804,7 +866,7 @@ assert.equal(Object.prototype.hasOwnProperty.call(lastMount.options, "emphasizeS
 assert.equal(Object.prototype.hasOwnProperty.call(lastMount.options, "selectedStringGroups"), false);
 assert.match(elements["explorer-active-results"].textContent, /6-8-10/);
 assert.match(elements["explorer-active-results"].textContent, /visible positions/);
-assert.equal(elements["explorer-active-results"].querySelectorAll("[data-active-result-row]").length, lastMount.options.positions.length);
+assert.equal(elements["explorer-active-results"].querySelectorAll("[data-active-result-row]").length >= lastMount.options.positions.length, true);
 assert.equal(elements["explorer-fretboard"].querySelectorAll(".pedal-steel-fretboard__highlight[data-highlight-id]").length, lastMount.options.positions.length);
 assert.match(elements["explorer-row-list"].textContent, /6-8-10/);
 assert.match(elements["explorer-selected-detail"].textContent, /String group6-8-10/);
@@ -838,6 +900,18 @@ assert.match(elements["explorer-string-group"].innerHTML, />3-5</);
 assert.doesNotMatch(elements["explorer-string-group"].innerHTML, /Core grips/);
 assert.doesNotMatch(elements["explorer-string-group"].innerHTML, /5-7-8/);
 assert.equal(elements["explorer-empty"].hidden, true);
+elements["explorer-string-group"].selectValues(["3-5"]);
+impactButtons = elements["explorer-control-impact-preview"].querySelectorAll("[data-control-impact-tab]");
+impactButtons.find((button) => button.getAttribute("data-control-impact-tab") === "E-lower").onclick();
+assert.match(elements["explorer-control-impact-preview"].textContent, /No direct impact on the selected string group/);
+assert.match(elements["explorer-control-impact-preview"].textContent, /strings 4, 8/);
+elements["explorer-control-impact-preview"].querySelector("[data-control-impact-clear]").onclick();
+impactButtons = elements["explorer-control-impact-preview"].querySelectorAll("[data-control-impact-tab]");
+impactButtons.find((button) => button.getAttribute("data-control-impact-tab") === "B").onclick();
+assert.match(elements["explorer-control-impact-preview"].textContent, /String 3/);
+assert.match(elements["explorer-control-impact-preview"].textContent, /G# -&gt; A/);
+assert.match(elements["explorer-control-impact-preview"].textContent, /B by itself may not match rows in this view that expect A\+B together/);
+elements["explorer-control-impact-preview"].querySelector("[data-control-impact-clear]").onclick();
 
 elements["explorer-scale"].value = "natural_minor";
 elements["explorer-scale"].dispatchChange();

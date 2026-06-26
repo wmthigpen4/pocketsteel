@@ -43,6 +43,9 @@
     copedentDialog: document.getElementById("explorer-copedent-dialog"),
     copedentOpen: document.getElementById("explorer-copedent-open"),
     copedentClose: document.getElementById("explorer-copedent-close"),
+    glossaryDialog: document.getElementById("explorer-glossary-dialog"),
+    glossaryOpen: document.getElementById("explorer-glossary-open"),
+    glossaryClose: document.getElementById("explorer-glossary-close"),
     copedentChart: document.getElementById("explorer-copedent-chart"),
     controlPreview: document.getElementById("explorer-control-impact-preview"),
     activeResults: document.getElementById("explorer-active-results"),
@@ -54,9 +57,10 @@
   };
 
   let selectedRowId = "";
-  let selectedImpactControlId = "";
+  let selectedImpactControlIds = new Set();
   let labelMode = "intervals";
   let lastCopedentDialogOpener = null;
+  let lastGlossaryDialogOpener = null;
   let currentRows = [];
 
   function availableKeys() {
@@ -191,6 +195,18 @@
 
   function activeLabelText(row) {
     return formatValue(activeLabelValues(row));
+  }
+
+  function primaryLabelForRow(row) {
+    const values = activeLabelValues(row);
+    if (values.length) {
+      return values[0];
+    }
+    return row.chord_function || row.scale_degree || row.chord_name || "Position";
+  }
+
+  function labelModeNoun() {
+    return labelMode === "notes" ? "Notes" : "Intervals";
   }
 
   function rowsForScale(scale) {
@@ -461,9 +477,49 @@
     };
   }
 
+  function markerGroupKey(row) {
+    return [
+      "marker",
+      row.fret,
+      row.string_group,
+      (row.strings || []).join("-"),
+    ].join(":");
+  }
+
+  function groupRowsForMarkers(rows) {
+    const groups = new Map();
+    rows.forEach((row) => {
+      const key = markerGroupKey(row);
+      if (!groups.has(key)) {
+        groups.set(key, []);
+      }
+      groups.get(key).push(row);
+    });
+    return Array.from(groups.entries()).map(([id, groupRows]) => ({ id, rows: groupRows }));
+  }
+
+  function markerLabelForGroup(groupRows) {
+    if (groupRows.length > 1) {
+      return `${groupRows.length} pos.`;
+    }
+    const row = groupRows[0];
+    return primaryLabelForRow(row);
+  }
+
+  function asMarkerPosition(group) {
+    const row = group.rows[0];
+    return {
+      ...asFretboardPosition(row),
+      id: group.id,
+      label: markerLabelForGroup(group.rows),
+      explanation: group.rows.length > 1
+        ? `${group.rows.length} validated setups share this fret and string group.`
+        : row.display_summary || row.explanation,
+    };
+  }
+
   function shortLabel(row) {
-    const degree = row.chord_function || row.scale_degree || "";
-    const chord = row.chord_name || degree || "Position";
+    const chord = primaryLabelForRow(row);
     const controls = normalizePedals(row);
     return `${chord}${controls.length ? ` · ${controls.join("+")}` : ""}`;
   }
@@ -602,16 +658,76 @@
     `;
   }
 
-  function controlImpactDetailHtml(control) {
+  function rowStringsForActiveContext() {
+    const selectedGroups = selectedStringGroups();
+    const sourceRows = currentRows.length ? currentRows : getRows();
+    const rows = selectedGroups.length
+      ? sourceRows.filter((row) => selectedGroups.includes(row.string_group))
+      : sourceRows;
+    const strings = new Set();
+    rows.forEach((row) => toArray(row.strings).forEach((stringNumber) => strings.add(Number(stringNumber))));
+    return Array.from(strings).filter(Number.isFinite).sort((a, b) => a - b);
+  }
+
+  function impactStringsForContext(control) {
+    const activeStrings = rowStringsForActiveContext();
     const impacts = toArray(control.string_impacts);
-    if (!impacts.length) {
-      return "";
+    if (!activeStrings.length) {
+      return impacts;
     }
+    const activeSet = new Set(activeStrings);
+    return impacts.filter((impact) => activeSet.has(Number(impact.string)));
+  }
+
+  function selectedControlObjects(controls) {
+    return controls.filter((control) => selectedImpactControlIds.has(control.id));
+  }
+
+  function impactContextSentence(controls) {
+    const selectedGroups = selectedStringGroups();
+    const groupText = selectedGroups.length ? selectedGroups.join(", ") : selectedGroupLabel();
+    const harmonyText = HARMONY_LABELS[els.harmony.value] || selectedOptionLabel(els.harmony);
+    const modeText = labelMode === "notes" ? "note names" : "interval/NNS labels";
+    if (!controls.length) {
+      return `Choose one or more controls to preview changes for ${groupText} in ${harmonyText}. Showing ${modeText}.`;
+    }
+    return `Previewing ${controls.map((control) => control.label || control.id).join(" + ")} for ${groupText} in ${harmonyText}. Showing ${modeText}.`;
+  }
+
+  function combinedImpactCaution(controls) {
+    const ids = new Set(controls.map((control) => control.id));
+    const rows = currentRows.length ? currentRows : getRows();
+    const selectedControlNames = Array.from(ids);
+    const matchingRows = rows.filter((row) => {
+      const rowControls = new Set(normalizePedals(row));
+      return selectedControlNames.every((control) => rowControls.has(control));
+    });
+    const messages = [];
+    if (ids.has("B") && !ids.has("A") && rows.some((row) => normalizePedals(row).includes("A") && normalizePedals(row).includes("B"))) {
+      messages.push("B by itself may not match rows in this view that expect A+B together.");
+    }
+    if (controls.length && !matchingRows.length) {
+      messages.push("No visible row uses exactly this selected control set; treat this as a mechanical preview, not a validated position.");
+    }
+    return messages;
+  }
+
+  function controlImpactDetailHtml(control) {
+    const impacts = impactStringsForContext(control);
+    const allImpacts = toArray(control.string_impacts);
     const affectedStrings = formatValue(control.affected_strings);
+    if (!impacts.length) {
+      return `
+        <article class="explorer-control-impact-detail" data-control-impact-detail="${escapeHtml(control.id || control.label || "")}">
+          <strong>${escapeHtml(formatValue(control.label || control.id || "Control"))}</strong>
+          <p>No direct impact on the selected string group. This control affects strings ${escapeHtml(affectedStrings)}, but those strings are not active in the current view.</p>
+        </article>
+      `;
+    }
     return `
       <article class="explorer-control-impact-detail" data-control-impact-detail="${escapeHtml(control.id || control.label || "")}">
         <strong>${escapeHtml(formatValue(control.label || control.id || "Control"))}</strong>
-        <p>Affects strings ${escapeHtml(affectedStrings)}.</p>
+        <p>Affects strings ${escapeHtml(affectedStrings)}${impacts.length === allImpacts.length ? "." : "; direct changes in this view are shown below."}</p>
         <ul class="explorer-control-impact-list">
           ${impacts.map((impact) => impactLineHtml(impact)).join("")}
         </ul>
@@ -628,47 +744,63 @@
     if (!controls.length) {
       els.controlPreview.hidden = true;
       els.controlPreview.innerHTML = "";
-      selectedImpactControlId = "";
+      selectedImpactControlIds = new Set();
       return;
     }
     const key = preview?.key_context?.key || activeKey();
-    if (!controls.some((control) => control.id === selectedImpactControlId)) {
-      selectedImpactControlId = "";
-    }
-    const selected = controls.find((control) => control.id === selectedImpactControlId) || controls[0];
+    const availableIds = new Set(controls.map((control) => control.id));
+    selectedImpactControlIds = new Set(Array.from(selectedImpactControlIds).filter((id) => availableIds.has(id)));
+    const selectedControls = selectedControlObjects(controls);
+    const cautions = combinedImpactCaution(selectedControls);
     els.controlPreview.hidden = false;
     els.controlPreview.innerHTML = `
       <div class="explorer-control-impact-preview__header">
         <div>
           <strong>Pedal and lever impact</strong>
-          <p>Select a control to see what it changes in ${escapeHtml(key)} before choosing a position.</p>
+          <p>Select one or more controls to see what changes in ${escapeHtml(key)} for the current view.</p>
         </div>
         <span>${escapeHtml(formatValue(preview?.copedent_profile?.label || "Standard E9"))}</span>
       </div>
       <div class="explorer-control-impact-preview__body">
-        <div class="explorer-control-impact-tabs" role="tablist" aria-label="Pedal and lever controls">
+        <div class="explorer-control-impact-tabs" role="group" aria-label="Pedal and lever controls">
           ${controls.map((control) => `
             <button
-              class="explorer-control-impact-tab${control.id === selectedImpactControlId ? " is-selected" : ""}"
+              class="explorer-control-impact-tab${selectedImpactControlIds.has(control.id) ? " is-selected" : ""}"
               type="button"
-              role="tab"
-              aria-selected="${control.id === selectedImpactControlId ? "true" : "false"}"
+              aria-pressed="${selectedImpactControlIds.has(control.id) ? "true" : "false"}"
               data-control-impact-tab="${escapeHtml(control.id || "")}"
             >${escapeHtml(formatValue(control.label || control.id || "Control"))}</button>
           `).join("")}
+          <button class="explorer-control-impact-tab explorer-control-impact-clear" type="button" data-control-impact-clear>Clear</button>
         </div>
-        ${selectedImpactControlId && selected ? controlImpactDetailHtml(selected) : ""}
+        <p class="explorer-control-impact-context">${escapeHtml(impactContextSentence(selectedControls))}</p>
+        ${selectedControls.map((control) => controlImpactDetailHtml(control)).join("")}
+        ${cautions.length ? `<p class="explorer-control-impact-context">${escapeHtml(cautions.join(" "))}</p>` : ""}
       </div>
     `;
     Array.from(els.controlPreview.querySelectorAll("[data-control-impact-tab]")).forEach((button) => {
       const selectControl = () => {
-        selectedImpactControlId = button.getAttribute("data-control-impact-tab") || "";
+        const controlId = button.getAttribute("data-control-impact-tab") || "";
+        const next = new Set(selectedImpactControlIds);
+        if (next.has(controlId)) {
+          next.delete(controlId);
+        } else {
+          next.add(controlId);
+        }
+        selectedImpactControlIds = next;
         renderControlImpactPreview();
       };
       button.addEventListener("click", selectControl);
-      button.addEventListener("focus", selectControl);
-      button.addEventListener("mouseenter", selectControl);
     });
+    const clearButton = typeof els.controlPreview.querySelector === "function"
+      ? els.controlPreview.querySelector("[data-control-impact-clear]")
+      : null;
+    if (clearButton) {
+      clearButton.addEventListener("click", () => {
+        selectedImpactControlIds = new Set();
+        renderControlImpactPreview();
+      });
+    }
   }
 
   function rowControlImpactsHtml(row) {
@@ -751,7 +883,7 @@
     return `
       <button class="explorer-active-result${buttonClass}${isSelected ? " is-selected" : ""}" type="button" ${dataAttributeName}="${escapeHtml(row.id)}" data-string-group="${escapeHtml(row.string_group)}" data-harmony-type="${escapeHtml(row.harmony_type)}" aria-pressed="${isSelected ? "true" : "false"}">
         <strong>${escapeHtml(shortLabel(row))}</strong>
-        <span class="explorer-active-result__meta">Fret ${escapeHtml(formatValue(row.fret))} · ${escapeHtml(row.string_group)} · ${escapeHtml(labelMode === "notes" ? "Notes" : "Intervals")}: ${escapeHtml(activeLabelText(row))}</span>
+        <span class="explorer-active-result__meta">Fret ${escapeHtml(formatValue(row.fret))} · ${escapeHtml(row.string_group)} · ${escapeHtml(labelModeNoun())}: ${escapeHtml(activeLabelText(row))}</span>
       </button>
     `;
   }
@@ -792,7 +924,7 @@
         return `
           <button class="explorer-row-button${buttonClass}${isSelected ? " is-selected" : ""}" type="button" data-explorer-row="${escapeHtml(row.id)}" data-string-group="${escapeHtml(row.string_group)}" data-harmony-type="${escapeHtml(row.harmony_type)}" aria-pressed="${isSelected ? "true" : "false"}">
             <strong>${escapeHtml(shortLabel(row))}</strong>
-            <span class="explorer-row-button__meta">Fret ${escapeHtml(formatValue(row.fret))} · ${escapeHtml(row.string_group)} · ${escapeHtml(groupLabel(row))} · ${escapeHtml(labelMode === "notes" ? "Notes" : "Intervals")}: ${escapeHtml(activeLabelText(row))}</span>
+            <span class="explorer-row-button__meta">Fret ${escapeHtml(formatValue(row.fret))} · ${escapeHtml(row.string_group)} · ${escapeHtml(groupLabel(row))} · ${escapeHtml(labelModeNoun())}: ${escapeHtml(activeLabelText(row))}</span>
           </button>
         `;
       })
@@ -820,11 +952,39 @@
     return `<strong>${escapeHtml(lines[0] || "Explorer position")}</strong>${lines.slice(1).map((line) => `<span>${escapeHtml(line)}</span>`).join("")}`;
   }
 
-  function showTooltip(row, target) {
-    if (!row || !els.tooltip) {
+  function tooltipHtmlForRows(rows) {
+    if (rows.length <= 1) {
+      return tooltipHtml(rows[0]);
+    }
+    return `
+      <strong>${escapeHtml(`${rows.length} positions at fret ${formatValue(rows[0]?.fret)} on ${formatValue(rows[0]?.string_group)}`)}</strong>
+      ${rows.map((row) => {
+        const lines = tooltipText(row);
+        return `
+          <span class="explorer-tooltip__item">
+            <strong>${escapeHtml(lines[0] || "Explorer position")}</strong>
+            ${lines.slice(1).map((line) => `<span>${escapeHtml(line)}</span>`).join("")}
+          </span>
+        `;
+      }).join("")}
+    `;
+  }
+
+  function tooltipTextForRows(rows) {
+    if (rows.length <= 1) {
+      return tooltipText(rows[0]).join(". ");
+    }
+    return [
+      `${rows.length} positions at fret ${rows[0]?.fret} on ${rows[0]?.string_group}`,
+      ...rows.map((row) => tooltipText(row).join(". ")),
+    ].join(". ");
+  }
+
+  function showTooltipForRows(rows, target) {
+    if (!rows.length || !els.tooltip) {
       return;
     }
-    els.tooltip.innerHTML = tooltipHtml(row);
+    els.tooltip.innerHTML = tooltipHtmlForRows(rows);
     els.tooltip.hidden = false;
     const rect = target.getBoundingClientRect();
     const left = Math.min(window.innerWidth - 332, Math.max(12, rect.left + rect.width / 2 + 12));
@@ -839,31 +999,31 @@
     }
   }
 
-  function wireFretboardMarkers(rows) {
-    const byId = new Map(rows.map((row) => [row.id, row]));
+  function wireFretboardMarkers(rows, markerGroups) {
+    const byMarkerId = new Map(markerGroups.map((group) => [group.id, group.rows]));
     Array.from(els.fretboard.querySelectorAll(".pedal-steel-fretboard__highlight[data-highlight-id]")).forEach((marker) => {
-      const row = byId.get(marker.getAttribute("data-highlight-id"));
-      if (!row) {
+      const markerRows = byMarkerId.get(marker.getAttribute("data-highlight-id")) || [];
+      if (!markerRows.length) {
         return;
       }
-      const text = tooltipText(row).join(". ");
+      const text = tooltipTextForRows(markerRows);
       marker.setAttribute("tabindex", "0");
       marker.setAttribute("role", "button");
       marker.setAttribute("aria-label", text);
       marker.setAttribute("title", text);
-      marker.addEventListener("mouseenter", () => showTooltip(row, marker));
-      marker.addEventListener("focus", () => showTooltip(row, marker));
+      marker.addEventListener("mouseenter", () => showTooltipForRows(markerRows, marker));
+      marker.addEventListener("focus", () => showTooltipForRows(markerRows, marker));
       marker.addEventListener("mouseleave", hideTooltip);
       marker.addEventListener("blur", hideTooltip);
       marker.addEventListener("click", () => {
-        selectRow(row.id);
-        showTooltip(row, marker);
+        selectRow(markerRows[0].id);
+        showTooltipForRows(markerRows, marker);
       });
       marker.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          selectRow(row.id);
-          showTooltip(row, marker);
+          selectRow(markerRows[0].id);
+          showTooltipForRows(markerRows, marker);
         }
       });
     });
@@ -874,10 +1034,11 @@
       els.fretboard.innerHTML = '<p class="explorer-empty">Fretboard renderer unavailable.</p>';
       return;
     }
+    const markerGroups = groupRowsForMarkers(rows);
     fretboardApi.mountPedalSteelFretboard(els.fretboard, {
       title: "Validated Explorer positions",
       description: "Validated E9 positions for the selected filters.",
-      positions: rows.map(asFretboardPosition),
+      positions: markerGroups.map(asMarkerPosition),
       highlights: [],
       legend: activePayload()?.legend || [],
       query: activePayload()?.query || {},
@@ -888,7 +1049,7 @@
       emphasizeVisibleHighlights: true,
       highlightStyle: "prominent",
     });
-    wireFretboardMarkers(rows);
+    wireFretboardMarkers(rows, markerGroups);
   }
 
   function render() {
@@ -955,6 +1116,30 @@
     }
   }
 
+  function openGlossaryDialog() {
+    if (!els.glossaryDialog) {
+      return;
+    }
+    lastGlossaryDialogOpener = document.activeElement;
+    if (typeof els.glossaryDialog.showModal === "function") {
+      els.glossaryDialog.showModal();
+    } else {
+      els.glossaryDialog.setAttribute("open", "");
+    }
+    els.glossaryClose?.focus();
+  }
+
+  function closeGlossaryDialog() {
+    if (!els.glossaryDialog?.open) {
+      return;
+    }
+    if (typeof els.glossaryDialog.close === "function") {
+      els.glossaryDialog.close();
+    } else {
+      els.glossaryDialog.removeAttribute("open");
+    }
+  }
+
   function init() {
     if (!activePayload()) {
       els.empty.hidden = false;
@@ -976,6 +1161,12 @@
     if (els.copedentClose) {
       els.copedentClose.addEventListener("click", closeCopedentDialog);
     }
+    if (els.glossaryOpen) {
+      els.glossaryOpen.addEventListener("click", openGlossaryDialog);
+    }
+    if (els.glossaryClose) {
+      els.glossaryClose.addEventListener("click", closeGlossaryDialog);
+    }
     if (els.copedentDialog) {
       els.copedentDialog.addEventListener("click", (event) => {
         if (event.target === els.copedentDialog) {
@@ -987,6 +1178,19 @@
           lastCopedentDialogOpener.focus();
         }
         lastCopedentDialogOpener = null;
+      });
+    }
+    if (els.glossaryDialog) {
+      els.glossaryDialog.addEventListener("click", (event) => {
+        if (event.target === els.glossaryDialog) {
+          closeGlossaryDialog();
+        }
+      });
+      els.glossaryDialog.addEventListener("close", () => {
+        if (lastGlossaryDialogOpener && typeof lastGlossaryDialogOpener.focus === "function") {
+          lastGlossaryDialogOpener.focus();
+        }
+        lastGlossaryDialogOpener = null;
       });
     }
     Array.from(els.labelModeButtons || []).forEach((button) => {
