@@ -42,7 +42,7 @@
     .explorer-shell {
       width: min(1180px, calc(100% - 32px));
       margin: 0 auto;
-      padding: 24px 0 56px;
+      padding: 16px 0 56px;
     }
 
     .explorer-header {
@@ -50,7 +50,7 @@
       justify-content: space-between;
       align-items: flex-start;
       gap: 24px;
-      margin-bottom: 28px;
+      margin-bottom: 14px;
     }
 
     .explorer-back {
@@ -78,26 +78,26 @@
     h1 {
       margin: 0;
       font-family: "Source Serif 4", Georgia, serif;
-      font-size: clamp(2.2rem, 5vw, 4.9rem);
+      font-size: clamp(1.9rem, 4.4vw, 4rem);
       line-height: 0.94;
       letter-spacing: 0;
     }
 
     .explorer-lede {
       max-width: 760px;
-      margin: 16px 0 0;
+      margin: 10px 0 0;
       color: var(--muted);
       font-size: 1rem;
-      line-height: 1.65;
+      line-height: 1.5;
     }
 
     .explorer-controls {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 12px;
-      padding: 16px;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      padding: 12px;
       border: 1px solid var(--line);
-      border-radius: 18px;
+      border-radius: 16px;
       background: var(--panel);
       box-shadow: 0 22px 60px rgba(0, 0, 0, 0.34);
     }
@@ -116,7 +116,8 @@
       text-transform: uppercase;
     }
 
-    .explorer-control select {
+    .explorer-control select,
+    .explorer-inline-button {
       width: 100%;
       min-height: 42px;
       border: 1px solid rgba(246, 190, 88, 0.3);
@@ -128,39 +129,68 @@
       font-weight: 700;
     }
 
+    .explorer-inline-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .explorer-inline-button:hover,
+    .explorer-inline-button:focus-visible {
+      border-color: rgba(246, 190, 88, 0.62);
+      background: rgba(246, 190, 88, 0.08);
+      outline: none;
+    }
+
+    .explorer-copedent-control-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .explorer-copedent-control-row .explorer-inline-button {
+      width: auto;
+      min-width: 112px;
+      padding-inline: 11px;
+      white-space: nowrap;
+    }
+
     .explorer-control:not(.explorer-control--string-group) select {
       height: 42px;
     }
 
     .explorer-control select[multiple] {
-      min-height: 112px;
+      min-height: 76px;
       padding: 8px 10px;
     }
 
     .explorer-control--string-group {
       grid-column: 1 / -1;
       border-top: 1px solid rgba(246, 190, 88, 0.16);
-      padding-top: 14px;
+      padding-top: 10px;
     }
 
     .explorer-string-group-layout {
       display: grid;
-      grid-template-columns: minmax(220px, 0.48fr) minmax(0, 1fr);
-      gap: 12px;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 10px;
       align-items: stretch;
     }
 
     .explorer-string-group-copy {
-      display: grid;
+      display: none;
       align-content: start;
-      gap: 8px;
+      gap: 6px;
       border: 1px solid rgba(246, 190, 88, 0.16);
       border-radius: 12px;
-      padding: 12px;
+      padding: 10px;
       background: rgba(0, 0, 0, 0.18);
     }
 
     .explorer-control-help {
+      display: none;
       margin: 0;
       color: rgba(255, 247, 232, 0.6);
       font-size: 0.78rem;
@@ -177,7 +207,7 @@
       flex-wrap: wrap;
       align-items: center;
       gap: 10px;
-      margin: 18px 0;
+      margin: 12px 0;
       color: var(--muted);
       font-size: 0.95rem;
     }
@@ -198,14 +228,78 @@
       border-color: rgba(141, 199, 141, 0.28);
     }
 
+    .explorer-label-toggle {
+      display: inline-flex;
+      gap: 4px;
+      border: 1px solid rgba(246, 190, 88, 0.22);
+      border-radius: 999px;
+      padding: 3px;
+      background: rgba(0, 0, 0, 0.26);
+    }
+
+    .explorer-label-toggle button {
+      border: 0;
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 800;
+    }
+
+    .explorer-label-toggle button.is-selected {
+      background: rgba(246, 190, 88, 0.14);
+      color: var(--text);
+    }
+
+    .explorer-label-toggle button:focus-visible {
+      outline: 2px solid rgba(246, 190, 88, 0.72);
+      outline-offset: 2px;
+    }
+
+    .explorer-copedent-dialog {
+      width: min(1040px, calc(100vw - 32px));
+      max-height: min(82vh, 760px);
+      border: 1px solid rgba(246, 190, 88, 0.34);
+      border-radius: 18px;
+      padding: 0;
+      background: rgba(13, 11, 8, 0.98);
+      color: var(--text);
+      box-shadow: 0 28px 90px rgba(0, 0, 0, 0.58);
+    }
+
+    .explorer-copedent-dialog::backdrop {
+      background: rgba(0, 0, 0, 0.58);
+    }
+
+    .explorer-copedent-dialog__bar {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      border-bottom: 1px solid rgba(246, 190, 88, 0.18);
+      padding: 12px 14px;
+    }
+
+    .explorer-copedent-dialog__bar h2 {
+      margin: 0;
+      color: var(--gold);
+      font-size: 0.92rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
     .explorer-copedent-chart {
       display: grid;
       gap: 12px;
-      margin: 0 0 18px;
-      border: 1px solid rgba(246, 190, 88, 0.22);
-      border-radius: 16px;
+      margin: 0;
+      border: 0;
+      border-radius: 0;
       padding: 14px;
-      background: rgba(15, 13, 10, 0.82);
+      background: transparent;
     }
 
     .explorer-copedent-chart[hidden] {
@@ -327,11 +421,12 @@
 
     .explorer-control-impact-preview {
       display: grid;
+      grid-template-columns: minmax(210px, 0.34fr) minmax(0, 1fr);
       gap: 12px;
-      margin: 0 0 18px;
+      margin: 0 0 12px;
       border: 1px solid rgba(246, 190, 88, 0.2);
       border-radius: 16px;
-      padding: 14px;
+      padding: 11px 12px;
       background: rgba(14, 12, 9, 0.78);
     }
 
@@ -340,11 +435,9 @@
     }
 
     .explorer-control-impact-preview__header {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      gap: 10px 16px;
-      align-items: baseline;
+      display: grid;
+      gap: 5px;
+      align-content: start;
     }
 
     .explorer-control-impact-preview__header strong {
@@ -357,10 +450,10 @@
     }
 
     .explorer-control-impact-preview__header p {
-      margin: 5px 0 0;
+      margin: 0;
       color: var(--muted);
-      font-size: 0.88rem;
-      line-height: 1.45;
+      font-size: 0.8rem;
+      line-height: 1.38;
     }
 
     .explorer-control-impact-preview__header span {
@@ -369,44 +462,57 @@
       font-weight: 800;
     }
 
-    .explorer-control-impact-preview__grid {
+    .explorer-control-impact-preview__body {
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 10px;
+      gap: 9px;
     }
 
-    .explorer-control-impact-card {
-      display: grid;
-      gap: 8px;
-      border: 1px solid rgba(246, 190, 88, 0.16);
-      border-radius: 12px;
-      padding: 11px;
-      background: rgba(0, 0, 0, 0.2);
-      min-width: 0;
-    }
-
-    .explorer-control-impact-card__header {
+    .explorer-control-impact-tabs {
       display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      align-items: baseline;
+      flex-wrap: wrap;
+      gap: 6px;
     }
 
-    .explorer-control-impact-card__header strong {
+    .explorer-control-impact-tab {
+      border: 1px solid rgba(246, 190, 88, 0.18);
+      border-radius: 999px;
+      padding: 6px 9px;
+      background: rgba(0, 0, 0, 0.24);
+      color: var(--text);
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 800;
+    }
+
+    .explorer-control-impact-tab:hover,
+    .explorer-control-impact-tab:focus-visible,
+    .explorer-control-impact-tab.is-selected {
+      border-color: rgba(246, 190, 88, 0.62);
+      background: rgba(246, 190, 88, 0.1);
+      outline: none;
+    }
+
+    .explorer-control-impact-detail {
+      border: 1px solid rgba(246, 190, 88, 0.14);
+      border-radius: 12px;
+      padding: 9px 10px;
+      background: rgba(0, 0, 0, 0.18);
+    }
+
+    .explorer-control-impact-detail > strong,
+    .explorer-control-impact-detail > p {
+      display: block;
+      margin: 0 0 7px;
+    }
+
+    .explorer-control-impact-detail > strong {
       color: var(--text);
       font-size: 0.9rem;
       font-weight: 800;
     }
 
-    .explorer-control-impact-card__header span {
-      color: var(--gold);
-      font-size: 0.7rem;
-      font-weight: 800;
-      text-transform: uppercase;
-    }
-
-    .explorer-control-impact-card p {
-      margin: 0;
+    .explorer-control-impact-detail > p {
       color: rgba(255, 247, 232, 0.66);
       font-size: 0.78rem;
       line-height: 1.4;
@@ -774,6 +880,10 @@
         grid-template-columns: 1fr;
       }
 
+      .explorer-copedent-control-row {
+        grid-template-columns: 1fr;
+      }
+
       .explorer-string-group-layout {
         grid-template-columns: 1fr;
       }
@@ -782,7 +892,7 @@
         grid-template-columns: 1fr;
       }
 
-      .explorer-control-impact-preview__grid,
+      .explorer-control-impact-preview,
       .explorer-row-control-impacts__grid {
         grid-template-columns: 1fr;
       }
@@ -829,11 +939,15 @@
       </div>
       <div class="explorer-control">
         <label for="explorer-copedent">E9 setup</label>
-        <select id="explorer-copedent" aria-describedby="explorer-copedent-help">
-          <option value="emmons-e9-basic" selected>Emmons E9</option>
-          <option value="day-e9-basic">Day E9</option>
-          <option value="my-copedent-e9" disabled>My Copedent (E9) - Coming soon in Backstage</option>
-        </select>
+        <div class="explorer-copedent-control-row">
+          <select id="explorer-copedent" aria-describedby="explorer-copedent-help">
+            <option value="emmons-e9-basic" selected>Emmons E9</option>
+            <option value="day-e9-basic">Day E9</option>
+            <option value="custom-e9-lkv">Custom E9 (with LKV)</option>
+            <option value="my-copedent-e9" disabled>My Copedent (E9) - Coming soon in Backstage</option>
+          </select>
+          <button class="explorer-inline-button" id="explorer-copedent-open" type="button" aria-haspopup="dialog" aria-controls="explorer-copedent-dialog">View chart</button>
+        </div>
         <p class="explorer-control-help" id="explorer-copedent-help">Choose the E9 setup that matches your guitar. My Copedent (E9) is coming soon in Backstage.</p>
       </div>
       <div class="explorer-control">
@@ -853,7 +967,7 @@
       <div class="explorer-control explorer-control--string-group">
         <label for="explorer-string-group">String group</label>
         <div class="explorer-string-group-layout">
-          <select id="explorer-string-group" multiple size="6" aria-describedby="explorer-string-group-help">
+          <select id="explorer-string-group" multiple size="4" aria-describedby="explorer-string-group-help">
             <option value="all" selected>All 3-string groups</option>
             <optgroup label="Core grips">
               <option value="3-4-5">3-4-5</option>
@@ -879,9 +993,19 @@
     <div class="explorer-summary" aria-live="polite">
       <span class="explorer-pill">Scale notes: <span id="explorer-scale-notes">G A B C D E F#</span></span>
       <span class="explorer-pill explorer-pill--trust" id="explorer-result-count">Showing validated positions</span>
+      <div class="explorer-label-toggle" role="group" aria-label="Fretboard marker labels">
+        <button type="button" data-explorer-label-mode="intervals" class="is-selected" aria-pressed="true">Intervals</button>
+        <button type="button" data-explorer-label-mode="notes" aria-pressed="false">Notes</button>
+      </div>
     </div>
 
-    <section class="explorer-copedent-chart" id="explorer-copedent-chart" aria-label="Selected E9 copedent chart" hidden></section>
+    <dialog class="explorer-copedent-dialog" id="explorer-copedent-dialog" aria-labelledby="explorer-copedent-dialog-title">
+      <div class="explorer-copedent-dialog__bar">
+        <h2 id="explorer-copedent-dialog-title">Selected E9 setup chart</h2>
+        <button class="explorer-inline-button" id="explorer-copedent-close" type="button">Close</button>
+      </div>
+      <section class="explorer-copedent-chart" id="explorer-copedent-chart" aria-label="Selected E9 copedent chart"></section>
+    </dialog>
 
     <section class="explorer-control-impact-preview" id="explorer-control-impact-preview" aria-label="Pedal and lever impact preview" hidden></section>
 
@@ -903,8 +1027,8 @@
     </section>
   </main>
 
-  <script src="pedal-steel-fretboard.js?v=visual-grip-render-20260623"></script>
-  <script src="e9-fretboard-explorer-data.js?v=e9-copedent-selector-20260624"></script>
-  <script src="e9-fretboard-explorer.js?v=e9-copedent-selector-20260624"></script>
+  <script src="pedal-steel-fretboard.js?v=explorer-compact-copedent-20260625"></script>
+  <script src="e9-fretboard-explorer-data.js?v=explorer-compact-copedent-20260625"></script>
+  <script src="e9-fretboard-explorer.js?v=explorer-compact-copedent-20260625"></script>
 </body>
 </html>

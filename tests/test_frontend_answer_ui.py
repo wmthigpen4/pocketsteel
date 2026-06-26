@@ -269,12 +269,12 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "checked against tuning and pedal/lever changes" in html
     assert "These Explorer rows are deterministic teaching data, separate from source-card answers." not in html
     assert "not corpus retrieval or RAG-generated fretboard positions" not in html
-    assert '<script src="pedal-steel-fretboard.js?v=visual-grip-render-20260623"></script>' in html
+    assert '<script src="pedal-steel-fretboard.js?v=explorer-compact-copedent-20260625"></script>' in html
     assert "pedal-steel-fretboard.js?v=e9-explorer-explanation-ui-20260623" not in html
     assert "pedal-steel-fretboard.js?v=explorer-ui-cleanup-20260623" not in html
     assert "pedal-steel-fretboard.js?v=selected-svg-render-20260623" not in html
-    assert '<script src="e9-fretboard-explorer-data.js?v=e9-copedent-selector-20260624"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=e9-copedent-selector-20260624"></script>' in html
+    assert '<script src="e9-fretboard-explorer-data.js?v=explorer-compact-copedent-20260625"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=explorer-compact-copedent-20260625"></script>' in html
     expected_key_options = {
         "C": "C",
         "Db": "C# (or D♭)",
@@ -301,7 +301,13 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<select id="explorer-copedent"' in html
     assert '<option value="emmons-e9-basic" selected>Emmons E9</option>' in html
     assert '<option value="day-e9-basic">Day E9</option>' in html
+    assert '<option value="custom-e9-lkv">Custom E9 (with LKV)</option>' in html
     assert '<option value="my-copedent-e9" disabled>My Copedent (E9) - Coming soon in Backstage</option>' in html
+    assert 'id="explorer-copedent-open"' in html
+    assert 'aria-haspopup="dialog"' in html
+    assert 'aria-controls="explorer-copedent-dialog"' in html
+    assert '<dialog class="explorer-copedent-dialog" id="explorer-copedent-dialog"' in html
+    assert '<button class="explorer-inline-button" id="explorer-copedent-close" type="button">Close</button>' in html
     assert "Choose the E9 setup that matches your guitar" in html
     assert "My Copedent (E9) is coming soon in Backstage" in html
     assert "C6" not in html
@@ -316,14 +322,14 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<option value="two_string_harmonized">2-string harmonized scale</option>' in html
     assert '<option value="five_eight_branch">5&amp;8 branch positions (2-string)</option>' not in html
     assert '<option value="three_string_diatonic" selected>3-string diatonic harmony</option>' in html
-    assert "grid-template-columns: repeat(4, minmax(0, 1fr));" in html
+    assert "grid-template-columns: repeat(5, minmax(0, 1fr));" in html
     assert "align-content: start;" in html
     assert ".explorer-control:not(.explorer-control--string-group) select" in html
     assert "height: 42px;" in html
     assert ".explorer-control--string-group" in html
     assert "grid-column: 1 / -1;" in html
     assert '<div class="explorer-control explorer-control--string-group">' in html
-    assert '<select id="explorer-string-group" multiple size="6"' in html
+    assert '<select id="explorer-string-group" multiple size="4"' in html
     assert "Select one or more groups" in html
     assert '<optgroup label="Core grips">' in html
     assert '<optgroup label="Advanced swaps">' in html
@@ -345,15 +351,23 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert 'id="explorer-copedent-chart"' in html
     assert 'id="explorer-control-impact-preview"' in html
     assert 'id="explorer-selected-detail"' in html
+    assert 'data-explorer-label-mode="intervals"' in html
+    assert 'data-explorer-label-mode="notes"' in html
+    assert 'aria-label="Fretboard marker labels"' in html
     assert "explorer-teaching-note" in html
     assert "explorer-copedent-chart__table" in html
-    assert "Pedal and lever impact preview" in script
+    assert "Pedal and lever impact" in script
     assert "payloadsByCopedent" in script
     assert "renderCopedentChart" in script
+    assert "openCopedentDialog" in script
+    assert "closeCopedentDialog" in script
+    assert "data-explorer-label-mode" in script
+    assert 'labelMode = "intervals"' in script
     assert "control_impact_preview" in script
     assert "control_impacts" in script
     assert "rowControlImpactsHtml" in script
-    assert "explorer-control-impact-card" in html
+    assert "explorer-control-impact-tab" in html
+    assert "explorer-control-impact-detail" in html
     assert "explorer-row-control-impacts" in html
     assert "Showing validated positions" in html
     assert "0 validated rows" not in html
@@ -379,7 +393,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "hideFilterControls: true" in script
     assert "hidePositionTools: true" in script
     assert "hideLegend: true" in script
-    assert "showHighlightLabels: false" in script
+    assert "showHighlightLabels: true" in script
     assert "emphasizeVisibleHighlights" in script
     assert 'highlightStyle: "prominent"' in script
     assert "selectedStringGroups" in script
@@ -402,6 +416,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '"selected_copedent"' in data
     assert '"emmons-e9-basic"' in data
     assert '"day-e9-basic"' in data
+    assert '"custom-e9-lkv"' in data
     assert '"my-copedent-e9"' in data
     assert '"disabled_reason": "Coming soon in Backstage"' in data
     assert '"physical_position": "RKR"' in data
@@ -409,6 +424,8 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '"selected_copedent_id": "day-e9-basic"' in data
     assert payload["control_impact_preview"]["type"] == "e9-pedal-lever-impact-preview"
     assert payload["selected_copedent"]["id"] == "emmons-e9-basic"
+    assert "B-to-Bb" not in [column["id"] for column in payload["selected_copedent"]["chart"]["columns"]]
+    assert "B-to-Bb" not in [control["id"] for control in payload["control_impact_preview"]["controls"]]
     assert len(payload["selected_copedent"]["chart"]["rows"]) == 10
     assert payload["control_impact_preview"]["controls"][0]["string_impacts"][0]["before_note"]
     assert any(row["control_impacts"] for row in payload["positions"])
@@ -429,6 +446,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert any(row["string_group"] == "5-7-8" and row["harmony_type"] == "advanced_pocket" for row in payload["positions"])
     assert any(row.get("warnings") for row in payload["positions"])
     assert all(row["pitch_validated"] is True for row in payload["positions"])
+    assert not re.search(r"\\b\\d+\\s+(?:I|ii|iii|iv|v|vi|vii)\\b", script)
 
 
 def test_e9_fretboard_explorer_controls_are_mode_aware() -> None:
@@ -520,10 +538,33 @@ class FakeNode {
     if (selector === "[data-active-result-row]") {
       return Array.from(this._innerHTML.matchAll(/data-active-result-row="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-active-result-row"));
     }
+    if (selector === "[data-control-impact-tab]") {
+      return Array.from(this._innerHTML.matchAll(/data-control-impact-tab="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-control-impact-tab"));
+    }
     if (selector === ".pedal-steel-fretboard__highlight[data-highlight-id]") {
       return this._markers;
     }
     return [];
+  }
+  addEventListener(type, handler) {
+    this.listeners[type] = handler;
+  }
+  focus() {}
+}
+
+class FakeDialog extends FakeNode {
+  constructor(id) {
+    super(id);
+    this.open = false;
+  }
+  showModal() {
+    this.open = true;
+  }
+  close() {
+    this.open = false;
+    if (this.listeners.close) {
+      this.listeners.close();
+    }
   }
 }
 
@@ -543,6 +584,7 @@ class FakeButton {
   addEventListener(type, handler) {
     this[`on${type}`] = handler;
   }
+  focus() {}
 }
 
 class FakeMarker extends FakeButton {
@@ -573,6 +615,7 @@ const elements = {
   "explorer-copedent": new FakeSelect("explorer-copedent", "emmons-e9-basic", [
     { value: "emmons-e9-basic", text: "Emmons E9" },
     { value: "day-e9-basic", text: "Day E9" },
+    { value: "custom-e9-lkv", text: "Custom E9 (with LKV)" },
     { value: "my-copedent-e9", text: "My Copedent (E9) - Coming soon in Backstage" }
   ]),
   "explorer-scale": new FakeSelect("explorer-scale", "major", [
@@ -586,6 +629,9 @@ const elements = {
   "explorer-string-group": new FakeSelect("explorer-string-group", "all", [{ value: "all", text: "All 3-string groups" }]),
   "explorer-scale-notes": new FakeNode("explorer-scale-notes"),
   "explorer-result-count": new FakeNode("explorer-result-count"),
+  "explorer-copedent-dialog": new FakeDialog("explorer-copedent-dialog"),
+  "explorer-copedent-open": new FakeButton("open", "id"),
+  "explorer-copedent-close": new FakeButton("close", "id"),
   "explorer-copedent-chart": new FakeNode("explorer-copedent-chart"),
   "explorer-control-impact-preview": new FakeNode("explorer-control-impact-preview"),
   "explorer-active-results": new FakeNode("explorer-active-results"),
@@ -602,7 +648,17 @@ const sandbox = {
     innerHeight: 720,
   },
   document: {
-    getElementById: (id) => elements[id]
+    activeElement: null,
+    getElementById: (id) => elements[id],
+    querySelectorAll: (selector) => {
+      if (selector === "[data-explorer-label-mode]") {
+        return [
+          new FakeButton("intervals", "data-explorer-label-mode"),
+          new FakeButton("notes", "data-explorer-label-mode")
+        ];
+      }
+      return [];
+    }
   },
   console
 };
@@ -630,6 +686,7 @@ assert.match(elements["explorer-key"].innerHTML, /C# \(or D♭\)/);
 assert.match(elements["explorer-key"].innerHTML, /A# \(or B♭\)/);
 assert.match(elements["explorer-copedent"].innerHTML, /Emmons E9/);
 assert.match(elements["explorer-copedent"].innerHTML, /Day E9/);
+assert.match(elements["explorer-copedent"].innerHTML, /Custom E9 \(with LKV\)/);
 assert.match(elements["explorer-copedent"].innerHTML, /My Copedent \(E9\) - Coming soon in Backstage/);
 assert.match(elements["explorer-copedent"].innerHTML, /value="my-copedent-e9"[^>]*disabled/);
 assert.equal(elements["explorer-copedent"].value, "emmons-e9-basic");
@@ -638,7 +695,7 @@ assert.match(elements["explorer-string-group"].innerHTML, /Core grips/);
 assert.match(elements["explorer-string-group"].innerHTML, /Advanced swaps/);
 assert.match(elements["explorer-string-group"].innerHTML, /5-7-8/);
 assert.doesNotMatch(elements["explorer-string-group"].innerHTML, />3-5</);
-assert.equal(lastMount.options.showHighlightLabels, false);
+assert.equal(lastMount.options.showHighlightLabels, true);
 assert.equal(lastMount.options.hideFilterControls, true);
 assert.equal(lastMount.options.hidePositionTools, true);
 assert.equal(lastMount.options.hideLegend, true);
@@ -658,24 +715,29 @@ assert.match(elements["explorer-copedent-chart"].textContent, /D-lower lever\s+R
 assert.match(elements["explorer-copedent-chart"].textContent, /G-lower lever\s+RKL/);
 assert.match(elements["explorer-copedent-chart"].textContent, /B -&gt; C#/);
 assert.match(elements["explorer-copedent-chart"].textContent, /raise \+2/);
+assert.doesNotMatch(elements["explorer-copedent-chart"].textContent, /B-to-Bb vertical/);
 assert.doesNotMatch(elements["explorer-copedent-chart"].textContent, /\[object Object\]/);
 assert.equal(elements["explorer-control-impact-preview"].hidden, false);
-assert.match(elements["explorer-control-impact-preview"].textContent, /Pedal and lever impact preview/);
+assert.match(elements["explorer-control-impact-preview"].textContent, /Pedal and lever impact/);
 assert.match(elements["explorer-control-impact-preview"].textContent, /Emmons E9/);
 assert.match(elements["explorer-control-impact-preview"].textContent, /A pedal/);
-assert.match(elements["explorer-control-impact-preview"].textContent, /String 5/);
-assert.match(elements["explorer-control-impact-preview"].textContent, /B -&gt; C#/);
-assert.match(elements["explorer-control-impact-preview"].textContent, /raises 2 semitones/);
+assert.match(elements["explorer-control-impact-preview"].innerHTML, /data-control-impact-tab="A"/);
+assert.doesNotMatch(elements["explorer-control-impact-preview"].textContent, /String 5/);
+assert.doesNotMatch(elements["explorer-control-impact-preview"].textContent, /raises 2 semitones/);
+assert.doesNotMatch(elements["explorer-control-impact-preview"].textContent, /B-to-Bb vertical/);
 assert.doesNotMatch(elements["explorer-control-impact-preview"].textContent, /\[object Object\]/);
 assert.match(elements["explorer-control-impact-preview"].textContent, /A pedal/);
 assert.match(elements["explorer-active-results"].textContent, /all 3-string groups/);
 assert.equal(elements["explorer-active-results"].querySelectorAll("[data-active-result-row]").length, lastMount.options.positions.length);
-assert.match(elements["explorer-selected-detail"].textContent, /Display notes/);
+assert.match(elements["explorer-selected-detail"].textContent, /Notes/);
+assert.match(elements["explorer-selected-detail"].textContent, /Intervals/);
 assert.match(elements["explorer-selected-detail"].textContent, /Why this position works/);
 assert.match(elements["explorer-selected-detail"].textContent, /validated E9 pitch logic/);
 assert.match(elements["explorer-selected-detail"].innerHTML, /explorer-teaching-note/);
 assert.doesNotMatch(elements["explorer-fretboard"].textContent, /Why this position works/);
 assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /Pitch validated/);
+assert.doesNotMatch(elements["explorer-row-list"].textContent, /\b\d+\s+(?:I|ii|iii|iv|v|vi|vii)\b/);
+assert.doesNotMatch(elements["explorer-active-results"].textContent, /\b\d+\s+(?:I|ii|iii|iv|v|vi|vii)\b/);
 
 const expectedMajorScales = {
   C: "C D E F G A B",
@@ -718,9 +780,16 @@ assert.match(elements["explorer-control-impact-preview"].textContent, /C pedal/)
 assert.match(elements["explorer-control-impact-preview"].textContent, /A pedal/);
 assert.doesNotMatch(elements["explorer-copedent-chart"].textContent, /\[object Object\]/);
 assert.doesNotMatch(elements["explorer-control-impact-preview"].textContent, /\[object Object\]/);
+elements["explorer-copedent"].value = "custom-e9-lkv";
+elements["explorer-copedent"].dispatchChange();
+assert.match(elements["explorer-copedent-chart"].textContent, /Custom E9 \(with LKV\)/);
+assert.match(elements["explorer-copedent-chart"].textContent, /B-to-Bb vertical/);
+assert.match(elements["explorer-control-impact-preview"].textContent, /Custom E9 \(with LKV\)/);
+assert.match(elements["explorer-control-impact-preview"].textContent, /B-to-Bb vertical/);
 elements["explorer-copedent"].value = "emmons-e9-basic";
 elements["explorer-copedent"].dispatchChange();
 assert.match(elements["explorer-copedent-chart"].textContent, /Emmons E9/);
+assert.doesNotMatch(elements["explorer-copedent-chart"].textContent, /B-to-Bb vertical/);
 
 elements["explorer-key"].value = "A";
 elements["explorer-key"].dispatchChange();

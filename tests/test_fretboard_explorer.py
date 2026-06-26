@@ -22,6 +22,7 @@ from pocketsteel.fretboard_explorer import (
     validate_explorer_payload,
 )
 from pocketsteel.e9_copedents import (
+    CUSTOM_LKV_COPEDENT_ID,
     DAY_COPEDENT_ID,
     DEFAULT_COPEDENT_ID,
     MY_COPEDENT_ID,
@@ -113,7 +114,8 @@ def test_control_impact_preview_contract_describes_standard_e9_changes_in_key_co
     assert preview["key_context"]["natural_minor_scale"] == ["G", "A", "Bb", "C", "D", "Eb", "F"]
 
     controls = {control["id"]: control for control in preview["controls"]}
-    assert set(controls) == {"A", "B", "C", "E-raise", "E-lower", "B-to-Bb", "D-lower", "G-lower"}
+    assert set(controls) == {"A", "B", "C", "E-raise", "E-lower", "D-lower", "G-lower"}
+    assert "B-to-Bb" not in controls
 
     a_pedal = controls["A"]
     assert a_pedal["label"] == "A pedal"
@@ -151,15 +153,21 @@ def test_control_impact_preview_contract_describes_standard_e9_changes_in_key_co
     assert d_lower_string_9["interval_effect"] == "lowers 1 semitone"
 
 
-def test_e9_copedent_selector_data_exposes_emmons_day_and_disabled_my_copedent() -> None:
+def test_e9_copedent_selector_data_exposes_emmons_day_custom_and_disabled_my_copedent() -> None:
     options = [profile.selector_option() for profile in available_e9_copedents()]
 
-    assert [option["id"] for option in options] == [DEFAULT_COPEDENT_ID, DAY_COPEDENT_ID, MY_COPEDENT_ID]
+    assert [option["id"] for option in options] == [
+        DEFAULT_COPEDENT_ID,
+        DAY_COPEDENT_ID,
+        CUSTOM_LKV_COPEDENT_ID,
+        MY_COPEDENT_ID,
+    ]
     assert options[0] == {"id": DEFAULT_COPEDENT_ID, "label": "Emmons E9", "status": "enabled"}
     assert options[1] == {"id": DAY_COPEDENT_ID, "label": "Day E9", "status": "enabled"}
-    assert options[2]["label"] == "My Copedent (E9)"
-    assert options[2]["status"] == "disabled"
-    assert options[2]["disabled_reason"] == "Coming soon in Backstage"
+    assert options[2] == {"id": CUSTOM_LKV_COPEDENT_ID, "label": "Custom E9 (with LKV)", "status": "enabled"}
+    assert options[3]["label"] == "My Copedent (E9)"
+    assert options[3]["status"] == "disabled"
+    assert options[3]["disabled_reason"] == "Coming soon in Backstage"
     assert not any("C6" in option["label"] for option in options)
 
 
@@ -175,13 +183,37 @@ def test_selected_copedent_chart_payload_is_visual_table_ready() -> None:
     chart = payload["chart"]
     assert len(chart["rows"]) == 10
     assert [column["id"] for column in chart["columns"]][:3] == ["A", "B", "C"]
+    assert "B-to-Bb" not in [column["id"] for column in chart["columns"]]
     row_5 = next(row for row in chart["rows"] if row["string"] == 5)
     assert row_5["open_note"] == "B"
     assert row_5["cells"]["A"]["label"] == "B -> C#"
     assert row_5["cells"]["A"]["direction"] == "raise"
     assert row_5["cells"]["B"] is None
+    assert "B-to-Bb" not in row_5["cells"]
+
+
+def test_custom_lkv_copedent_extracts_user_specific_vertical_without_polluting_emmons() -> None:
+    emmons_payload = selected_copedent_payload(DEFAULT_COPEDENT_ID)
+    emmons_columns = [column["id"] for column in emmons_payload["chart"]["columns"]]
+    assert "B-to-Bb" not in emmons_columns
+
+    payload = selected_copedent_payload(CUSTOM_LKV_COPEDENT_ID)
+    assert payload["id"] == CUSTOM_LKV_COPEDENT_ID
+    assert payload["label"] == "Custom E9 (with LKV)"
+    assert payload["pedal_order"] == ["A", "B", "C"]
+    chart = payload["chart"]
+    columns = [column["id"] for column in chart["columns"]]
+    assert columns[:3] == ["A", "B", "C"]
+    assert "B-to-Bb" in columns
+    assert "RKL-half" in columns
+    assert "RKR-full" in columns
+    row_5 = next(row for row in chart["rows"] if row["string"] == 5)
     assert row_5["cells"]["B-to-Bb"]["label"] == "B -> Bb/A#"
     assert row_5["cells"]["B-to-Bb"]["direction"] == "lower"
+    preview = build_control_impact_preview("G", copedent_id=CUSTOM_LKV_COPEDENT_ID)
+    preview_controls = {control["id"]: control for control in preview["controls"]}
+    assert "B-to-Bb" in preview_controls
+    assert preview_controls["B-to-Bb"]["affected_strings"] == [5, 10]
 
 
 def test_day_e9_changes_physical_pedal_order_but_not_named_pedal_changes() -> None:

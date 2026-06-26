@@ -10,6 +10,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
+from pocketsteel.user_copedent import CopedentState, StringChange, USER_E9_COPEDENT
+
 
 E9_OPEN_STRINGS: dict[int, str] = {
     1: "F#",
@@ -26,6 +28,7 @@ E9_OPEN_STRINGS: dict[int, str] = {
 
 DEFAULT_COPEDENT_ID = "emmons-e9-basic"
 DAY_COPEDENT_ID = "day-e9-basic"
+CUSTOM_LKV_COPEDENT_ID = "custom-e9-lkv"
 MY_COPEDENT_ID = "my-copedent-e9"
 
 ControlType = Literal["pedal", "lever"]
@@ -231,18 +234,7 @@ class E9CopedentProfile:
         return payload
 
 
-SOURCE_CONTEXT: list[dict[str, str]] = [
-    {
-        "kind": "context",
-        "label": "b0b Pedal Steel Pages - Understanding E9th",
-        "url": "https://b0b.com/wp/copedents/understanding-e9th/",
-    },
-    {
-        "kind": "context",
-        "label": "b0b Pedal Steel Pages - Some E9th Copedents",
-        "url": "https://b0b.com/wp/copedents/e9th/",
-    },
-]
+SOURCE_CONTEXT: list[dict[str, str]] = []
 
 
 def _note_to_semitone(note: str) -> int:
@@ -325,17 +317,6 @@ def standard_e9_controls_for_positions(physical_positions: dict[str, str]) -> tu
             notes="Physical knee label varies; mechanical E-lower is the source of truth.",
         ),
         E9CopedentControl(
-            id="B-to-Bb",
-            label="B-to-Bb vertical",
-            control_type="lever",
-            physical_position="LKV",
-            mechanical_name="B-to-Bb/A# lower",
-            changes=(
-                E9CopedentChange(5, "B", "Bb/A#"),
-                E9CopedentChange(10, "B", "Bb/A#"),
-            ),
-        ),
-        E9CopedentControl(
             id="D-lower",
             label="D-lower lever",
             control_type="lever",
@@ -361,6 +342,48 @@ def standard_e9_controls_for_positions(physical_positions: dict[str, str]) -> tu
     )
 
 
+def _user_string_change_to_e9(change: StringChange) -> E9CopedentChange:
+    return E9CopedentChange(
+        string=change.string,
+        from_note=change.from_note,
+        to_note=change.to_note,
+        notes=change.note,
+    )
+
+
+def _user_control(state: CopedentState, *, control_id: str, label: str, control_type: ControlType) -> E9CopedentControl:
+    return E9CopedentControl(
+        id=control_id,
+        label=label,
+        control_type=control_type,
+        physical_position=state.mechanical_label,
+        mechanical_name=state.display_label,
+        changes=tuple(_user_string_change_to_e9(change) for change in state.changes),
+        notes=state.notes,
+    )
+
+
+def custom_lkv_controls() -> tuple[E9CopedentControl, ...]:
+    states = {state.id: state for state in USER_E9_COPEDENT.states}
+    ordered_states: tuple[tuple[str, str, str, ControlType], ...] = (
+        ("P1", "A", "A pedal", "pedal"),
+        ("P2", "B", "B pedal", "pedal"),
+        ("P3", "C", "C pedal", "pedal"),
+        ("LKL", "E-raise", "E-raise / F lever", "lever"),
+        ("LKR", "E-lower", "E-lower lever", "lever"),
+        ("LKV", "B-to-Bb", "B-to-Bb vertical", "lever"),
+        ("RKL.half", "RKL-half", "RKL half-stop", "lever"),
+        ("RKL.full", "G-lower", "RKL full-stop / G-lower", "lever"),
+        ("RKR.half", "D-lower", "D-lower half-stop", "lever"),
+        ("RKR.full", "RKR-full", "RKR full-stop", "lever"),
+    )
+    return tuple(
+        _user_control(states[state_id], control_id=control_id, label=label, control_type=control_type)
+        for state_id, control_id, label, control_type in ordered_states
+        if state_id in states
+    )
+
+
 EMMONS_E9 = E9CopedentProfile(
     id=DEFAULT_COPEDENT_ID,
     label="Emmons E9",
@@ -379,6 +402,15 @@ DAY_E9 = E9CopedentProfile(
     notes="Named A/B/C musical changes match Emmons E9; physical pedal order is C-B-A.",
 )
 
+CUSTOM_LKV_E9 = E9CopedentProfile(
+    id=CUSTOM_LKV_COPEDENT_ID,
+    label="Custom E9 (with LKV)",
+    status="enabled",
+    pedal_order=("A", "B", "C"),
+    controls=custom_lkv_controls(),
+    notes="Custom E9 setup with an LKV B-to-Bb vertical lever.",
+)
+
 MY_COPEDENT_E9 = E9CopedentProfile(
     id=MY_COPEDENT_ID,
     label="My Copedent (E9)",
@@ -390,7 +422,7 @@ MY_COPEDENT_E9 = E9CopedentProfile(
 
 
 def available_e9_copedents() -> tuple[E9CopedentProfile, ...]:
-    return (EMMONS_E9, DAY_E9, MY_COPEDENT_E9)
+    return (EMMONS_E9, DAY_E9, CUSTOM_LKV_E9, MY_COPEDENT_E9)
 
 
 def selectable_e9_copedents() -> tuple[E9CopedentProfile, ...]:
