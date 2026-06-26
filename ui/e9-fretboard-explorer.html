@@ -54,34 +54,49 @@
     }
 
     .explorer-header-actions {
-      display: flex;
+      display: inline-flex;
+      align-items: center;
       flex-wrap: wrap;
       justify-content: flex-end;
-      gap: 8px;
+      gap: 10px;
+      flex: 0 0 auto;
     }
 
     .explorer-back {
       display: inline-flex;
       align-items: center;
-      border: 1px solid var(--line);
+      gap: 9px;
+      min-height: 42px;
+      padding: 0 16px;
       border-radius: 999px;
-      padding: 10px 14px;
+      border: 1px solid rgba(240, 191, 105, 0.34);
+      background: rgba(13, 14, 14, 0.68);
+      color: rgba(244, 234, 214, 0.88);
+      cursor: pointer;
+      font-family: "Gill Sans", "Gill Sans MT", "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
+      font-size: 1rem;
+      font-weight: 400;
+      letter-spacing: normal;
       text-decoration: none;
-      color: var(--muted);
-      font-size: 0.9rem;
-      font-weight: 700;
-      background: rgba(0, 0, 0, 0.28);
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.26), 0 18px 48px rgba(0, 0, 0, 0.24);
     }
 
-    button.explorer-back {
-      cursor: pointer;
-      font-family: inherit;
+    .explorer-back svg {
+      width: 18px;
+      height: 18px;
+      flex: 0 0 auto;
+      stroke: currentColor;
+      stroke-width: 1.9;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
     }
 
     .explorer-back:hover,
     .explorer-back:focus-visible {
+      color: var(--cream);
       border-color: rgba(246, 190, 88, 0.62);
-      background: rgba(246, 190, 88, 0.08);
+      background: rgba(240, 191, 105, 0.075);
       outline: none;
     }
 
@@ -1249,6 +1264,15 @@
         display: grid;
       }
 
+      .explorer-header-actions {
+        gap: 8px;
+      }
+
+      .explorer-back {
+        min-height: 40px;
+        padding: 0 12px;
+      }
+
       .explorer-controls {
         grid-template-columns: 1fr;
       }
@@ -1303,8 +1327,14 @@
         <p class="explorer-lede">Choose a key, scale, harmony type, and string group to see E9 positions that have been checked against tuning and pedal/lever changes.</p>
       </div>
       <div class="explorer-header-actions" aria-label="Explorer actions">
-        <button class="explorer-back" id="explorer-glossary-open" type="button" aria-haspopup="dialog" aria-controls="explorer-glossary-dialog">Glossary</button>
-        <a class="explorer-back" href="steel-guitar-rag-mock.html">Back to app</a>
+        <button class="explorer-back" id="explorer-glossary-open" type="button" aria-haspopup="dialog" aria-controls="explorer-glossary-dialog">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v14H5z"/><path d="M8 9h8"/><path d="M8 13h5"/></svg>
+          <span>Glossary</span>
+        </button>
+        <a class="explorer-back" href="steel-guitar-rag-mock.html">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6 4 12l6 6"/><path d="M4 12h16"/></svg>
+          <span>Back to app</span>
+        </a>
       </div>
     </header>
 

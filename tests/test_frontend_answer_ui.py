@@ -335,6 +335,52 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<option value="two_string_harmonized">2-string harmonized scale</option>' in html
     assert '<option value="five_eight_branch">5&amp;8 branch positions (2-string)</option>' not in html
     assert '<option value="three_string_diatonic" selected>3-string diatonic harmony</option>' in html
+    assert '<div class="explorer-header-actions" aria-label="Explorer actions">' in html
+    assert '<button class="explorer-back" id="explorer-glossary-open" type="button" aria-haspopup="dialog" aria-controls="explorer-glossary-dialog">' in html
+    assert "<span>Glossary</span>" in html
+    assert '<a class="explorer-back" href="steel-guitar-rag-mock.html">' in html
+    assert "<span>Back to app</span>" in html
+    assert ".explorer-back {" in html
+    explorer_back_rule = html.split(".explorer-back {", 1)[1].split("}", 1)[0]
+    for expected_style in [
+        "display: inline-flex;",
+        "align-items: center;",
+        "gap: 9px;",
+        "min-height: 42px;",
+        "padding: 0 16px;",
+        "border-radius: 999px;",
+        "border: 1px solid rgba(240, 191, 105, 0.34);",
+        "background: rgba(13, 14, 14, 0.68);",
+        "color: rgba(244, 234, 214, 0.88);",
+        "cursor: pointer;",
+        'font-family: "Gill Sans", "Gill Sans MT", "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;',
+        "font-size: 1rem;",
+        "font-weight: 400;",
+        "letter-spacing: normal;",
+        "text-decoration: none;",
+        "box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.26), 0 18px 48px rgba(0, 0, 0, 0.24);",
+    ]:
+        assert expected_style in explorer_back_rule
+    assert "Source Serif" not in explorer_back_rule
+    assert "button.explorer-back" not in html
+    explorer_back_svg_rule = html.split(".explorer-back svg {", 1)[1].split("}", 1)[0]
+    for expected_style in [
+        "width: 18px;",
+        "height: 18px;",
+        "flex: 0 0 auto;",
+        "stroke: currentColor;",
+        "stroke-width: 1.9;",
+        "fill: none;",
+        "stroke-linecap: round;",
+        "stroke-linejoin: round;",
+    ]:
+        assert expected_style in explorer_back_svg_rule
+    explorer_hover_rule = html.split(".explorer-back:hover,\n    .explorer-back:focus-visible {", 1)[1].split("}", 1)[0]
+    assert "color: var(--cream);" in explorer_hover_rule
+    assert "border-color: rgba(246, 190, 88, 0.62);" in explorer_hover_rule
+    assert "background: rgba(240, 191, 105, 0.075);" in explorer_hover_rule
+    assert "outline: none;" in explorer_hover_rule
+    assert ".explorer-back {\n        min-height: 40px;\n        padding: 0 12px;" in html
     assert "grid-template-columns: repeat(5, minmax(0, 1fr));" in html
     assert "align-content: start;" in html
     assert ".explorer-control:not(.explorer-control--string-group) select" in html
