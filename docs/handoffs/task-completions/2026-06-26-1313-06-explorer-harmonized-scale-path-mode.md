@@ -37,11 +37,14 @@ Intentionally not changed:
 - `ui/e9-fretboard-explorer.js`
 - `tests/test_frontend_answer_ui.py`
 - `docs/handoffs/task-completions/assets/2026-06-26-06-explorer-harmonized-scale-path-mode/explorer-harmonized-scale-path-mode-local.png`
+- `docs/handoffs/task-completions/assets/2026-06-26-06-explorer-harmonized-scale-path-mode/explorer-harmonized-scale-path-mode-protected.png`
 - `docs/handoffs/task-completions/2026-06-26-1313-06-explorer-harmonized-scale-path-mode.md`
 
 Generated artifacts:
 - Local browser smoke screenshot:
   - `docs/handoffs/task-completions/assets/2026-06-26-06-explorer-harmonized-scale-path-mode/explorer-harmonized-scale-path-mode-local.png`
+- Protected-preview browser smoke screenshot:
+  - `docs/handoffs/task-completions/assets/2026-06-26-06-explorer-harmonized-scale-path-mode/explorer-harmonized-scale-path-mode-protected.png`
 
 Deleted files:
 - None.
@@ -63,6 +66,7 @@ Commands run:
 - `.venv/bin/python -m pytest tests/test_fretboard_explorer.py -q`
 - `.venv/bin/python -m pytest -q`
 - `git diff --check`
+- Protected-preview browser smoke at `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-harmonized-path-mode-726cb80`
 
 Results:
 - JS syntax checks passed.
@@ -71,6 +75,7 @@ Results:
 - `tests/test_fretboard_explorer.py`: 38 passed.
 - Full pytest: 854 passed.
 - `git diff --check`: passed.
+- Protected-preview browser smoke: passed, with `/api/version` caveat noted below.
 
 ## Local Browser Smoke
 
@@ -79,7 +84,7 @@ Smoke Target:
 - Result type: browser smoke
 - Exact browser URL tested: `http://127.0.0.1:8770/ui/e9-fretboard-explorer.html?v=explorer-harmonized-path-mode-local`
 - Cache-busted URL tested: `http://127.0.0.1:8770/ui/e9-fretboard-explorer.html?v=explorer-harmonized-path-mode-local`
-- Exact URL the user should use: pending protected-preview refresh/smoke
+- Exact URL the user should use: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-harmonized-path-mode-726cb80`
 - Auth required: no
 - Auth provider: none
 - Cloudflare Access login result: not required
@@ -108,6 +113,42 @@ Browser smoke result:
 - Roman notation updated row labels and marker labels while staying in low path.
 - No `[object Object]` appeared.
 
+## Protected-Preview Browser Smoke
+
+Smoke Target:
+- Target type: protected-preview
+- Result type: browser smoke
+- Exact browser URL tested: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-harmonized-path-mode-726cb80`
+- Cache-busted URL tested: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-harmonized-path-mode-726cb80`
+- Exact URL the user should use: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-harmonized-path-mode-726cb80`
+- Auth required: yes
+- Auth provider: Cloudflare Access
+- Cloudflare Access login result: succeeded in authenticated in-app browser
+- Local backend URL: `http://127.0.0.1:8770`
+- Expected backend port: 8770
+- Expected git HEAD: `726cb80`
+- Version endpoint: `http://127.0.0.1:8770/api/version`
+- Version endpoint result: `git_sha=4040a47`, `git_branch=feature/answer-api`, `auth_provider=cloudflare_access`
+- If version endpoint missing, how version is inferred: not applicable; endpoint exists but reports the currently running Python runtime SHA, not the freshly committed static Explorer UI slice
+- Whether app root `/` works: not checked for this Explorer-only protected smoke
+- Whether app root `/` is expected to work: yes, but not part of this task
+- Whether `/ui/steel-guitar-rag-mock.html` works: not checked
+- Whether `/ui/steel-guitar-rag-mock.html` is expected to work: yes, but not part of this Explorer-only smoke
+- Who should test this URL: the user
+- Do not test these URLs: uncache-busted Explorer URLs for this slice
+- Known caveats: `/api/version` still reports `4040a47`; the protected browser page nevertheless loaded the cache-busted static Explorer HTML/JS and displayed the new path-mode UI. No deployment, restart, DNS, auth, or tunnel configuration was changed.
+
+Protected smoke result:
+- Page loaded after Cloudflare Access-authenticated browser navigation.
+- `Explore mode` appeared.
+- `Harmonized scale path` mode worked.
+- `Low path (6-8-10 / 6-7-10)` rendered 8 visible scale degrees.
+- Protected-preview row groups matched `6-8-10, 6-7-10, 6-7-10, 6-8-10, 6-8-10, 6-7-10, 6-8-10, 6-8-10`.
+- Protected-preview rows included the expected IDs for G, Am, Bm, C, D, Em, F# half-diminished, and octave G.
+- Roman notation marker labels updated to `iii, IV, V, vi, vii°, I, ii, iii`.
+- No `[object Object]` appeared.
+- Screenshot saved at `docs/handoffs/task-completions/assets/2026-06-26-06-explorer-harmonized-scale-path-mode/explorer-harmonized-scale-path-mode-protected.png`.
+
 ## Integration Notes
 
 - Path mode is frontend selection over validated existing Explorer rows. It does not add or alter backend rows.
@@ -125,7 +166,8 @@ Reasons:
 - UI behavior changes are limited to the Explorer surface.
 - Full automated test suite passed.
 - Local browser smoke passed.
-- Protected-preview cache freshness still needs Lane 12 verification after commit.
+- Protected-preview browser smoke passed for the cache-busted Explorer URL.
+- `/api/version` still reports older runtime SHA `4040a47`, so runtime restart freshness is not claimed.
 
 Rollback notes:
 - Revert the Explorer HTML/script/test changes from this slice to return to exact string-group filtering only.
@@ -141,6 +183,7 @@ No.
 - `tests/test_frontend_answer_ui.py`
 - `docs/handoffs/task-completions/2026-06-26-1313-06-explorer-harmonized-scale-path-mode.md`
 - `docs/handoffs/task-completions/assets/2026-06-26-06-explorer-harmonized-scale-path-mode/explorer-harmonized-scale-path-mode-local.png`
+- `docs/handoffs/task-completions/assets/2026-06-26-06-explorer-harmonized-scale-path-mode/explorer-harmonized-scale-path-mode-protected.png`
 
 ## Files That Must Not Be Staged
 
@@ -150,12 +193,12 @@ No.
 
 ## Recommended Next Lane
 
-Lane 01 exact-path commit for this scoped UI slice, then Lane 12 protected-preview smoke after the committed UI is available in the protected preview.
+Lane 15 focused QA or user smoke at the exact protected-preview URL above.
 
 ## Commit Readiness
 
-Safe to commit.
+Safe to commit for the docs-only protected smoke update. Implementation commit already created as `726cb80`.
 
 ## Suggested Next Step
 
-Lane 01: stage only the safe-to-stage files above, commit with `feat: add explorer harmonized scale path mode`, then Lane 12 should smoke the protected-preview Explorer URL with a fresh cache-bust.
+Lane 15 or the user should smoke `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-harmonized-path-mode-726cb80`, focusing on `Explore mode -> Harmonized scale path -> Low path`.

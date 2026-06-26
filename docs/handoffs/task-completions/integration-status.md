@@ -5,11 +5,11 @@ Generated for ChatGPT reset/guidance on branch `feature/answer-api`.
 ## Current State
 
 - Current branch: `feature/answer-api`.
-- Current repo HEAD at this refresh: `71a163e fix: derive explorer markers from top note`.
+- Current repo HEAD at this refresh: `726cb80 feat: add explorer harmonized scale path mode`.
 - Runtime commit smoked for E9 copedent selector/chart: `ecec173 feat: add E9 copedent selector and chart`.
 - Related impact-preview runtime smoke: `670d635 feat: add e9 pedal lever impact preview contract`.
-- Latest local UI smoke status: **PASS for Explorer top-note marker-source labels at commit `71a163e`**. Local browser smoke verified marker labels are derived from final top notes in the selected key/scale: Notes `B, C` / `F#, G`, NNS `3-, 4` / `7°, 1`, Roman `iii, IV` / `vii°, I`, and Numbers `3m, 4` / `7dim, 1`.
-- Protected-preview status: **PASS for Explorer top-note marker-source labels at commit `71a163e`**. The protected page loaded refreshed script URLs with `explorer-top-note-marker-source-20260626`; marker labels are no longer derived from harmony formulas or mixed card labels, and no `[object Object]` appeared.
+- Latest local UI smoke status: **PASS for Explorer harmonized scale path mode at commit `726cb80`**. Local browser smoke verified `Single grip` preserves exact string-group filtering and `Harmonized scale path -> Low path` renders the requested mixed string-group G major path: `6-8-10, 6-7-10, 6-7-10, 6-8-10, 6-8-10, 6-7-10, 6-8-10, 6-8-10` at frets `3, 3, 5, 8, 10, 10, 13, 15`.
+- Protected-preview status: **PASS for Explorer harmonized scale path mode at commit `726cb80`, with version caveat**. The protected page loaded the cache-busted Explorer URL and displayed `Explore mode`, `Harmonized scale path`, and `Low path (6-8-10 / 6-7-10): 8 visible scale degrees`; Roman marker labels updated to `iii, IV, V, vi, vii°, I, ii, iii`; no `[object Object]` appeared. `/api/version` still reports runtime SHA `4040a47`, so this pass verifies static UI behavior at the cache-busted page URL, not a runtime restart.
 - User-smoke status: **ready for focused user smoke at the direct cache-busted Explorer URL below**.
 - App control state: **park or choose the next small slice**.
 - Broad unrelated dirty/untracked work remains parked. Do not broad-stage.
@@ -36,6 +36,9 @@ https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-notation
 
 Explorer top-note marker-source labels after commit `71a163e`:
 https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-top-note-marker-source-71a163e
+
+Explorer harmonized scale path mode after commit `726cb80`:
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-harmonized-path-mode-726cb80
 
 Explorer marker/impact/glossary UI baseline commit `4a3f422`:
 https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-marker-impact-glossary-4a3f422
