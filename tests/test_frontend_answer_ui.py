@@ -275,11 +275,13 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "pedal-steel-fretboard.js?v=selected-svg-render-20260623" not in html
     assert "pedal-steel-fretboard.js?v=explorer-compact-copedent-20260625" not in html
     assert '<script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=top-label-chip-order-20260626"></script>' in html
+    assert "[hidden] {\n      display: none !important;\n    }" in html
+    assert '<script src="e9-fretboard-explorer.js?v=path-string-group-visibility-20260626"></script>' in html
     assert "explorer-top-note-marker-source-20260626" not in html
     assert "e9-fretboard-explorer.js?v=explorer-compact-copedent-20260625" not in html
     assert "e9-fretboard-explorer.js?v=explorer-harmonized-scale-clarity-20260626" not in html
     assert "e9-fretboard-explorer.js?v=explorer-harmonized-path-mode-20260626" not in html
+    assert "e9-fretboard-explorer.js?v=top-label-chip-order-20260626" not in html
     expected_key_options = {
         "C": "C",
         "Db": "C# (or D♭)",
@@ -646,6 +648,7 @@ class FakeSelect {
     this.value = value;
     this.options = options.map((item) => ({ ...item, disabled: false }));
     this.selectedIndex = Math.max(0, this.options.findIndex((item) => item.value === value));
+    this.disabled = false;
     this.listeners = {};
     this._innerHTML = "";
   }
@@ -759,6 +762,12 @@ class FakeNode {
   }
   addEventListener(type, handler) {
     this.listeners[type] = handler;
+  }
+  getAttribute(name) {
+    return this.attributes[name] || null;
+  }
+  setAttribute(name, value) {
+    this.attributes[name] = String(value);
   }
   focus() {}
 }
@@ -1174,7 +1183,11 @@ assert.equal(lastMount.options.positions.some((row) => row.grip === "5-6-8"), tr
 elements["explorer-explore-mode"].value = "path";
 elements["explorer-explore-mode"].dispatchChange();
 assert.equal(elements["explorer-string-group-control"].hidden, true);
+assert.equal(elements["explorer-string-group-control"].getAttribute("aria-hidden"), "true");
+assert.equal(elements["explorer-string-group"].disabled, true);
 assert.equal(elements["explorer-path-family-control"].hidden, false);
+assert.equal(elements["explorer-path-family-control"].getAttribute("aria-hidden"), "false");
+assert.equal(elements["explorer-path-family"].disabled, false);
 assert.equal(elements["explorer-harmony"].value, "three_string_diatonic");
 assert.equal(elements["explorer-harmony"].disabled, true);
 assert.equal(elements["explorer-fret-range-filter"].hidden, true);
@@ -1214,7 +1227,11 @@ assert.equal(elements["explorer-row-list"].innerHTML.includes('data-string-group
 elements["explorer-explore-mode"].value = "single";
 elements["explorer-explore-mode"].dispatchChange();
 assert.equal(elements["explorer-string-group-control"].hidden, false);
+assert.equal(elements["explorer-string-group-control"].getAttribute("aria-hidden"), "false");
+assert.equal(elements["explorer-string-group"].disabled, false);
 assert.equal(elements["explorer-path-family-control"].hidden, true);
+assert.equal(elements["explorer-path-family-control"].getAttribute("aria-hidden"), "true");
+assert.equal(elements["explorer-path-family"].disabled, true);
 assert.equal(elements["explorer-harmony"].disabled, false);
 
 elements["explorer-harmony"].value = "two_string_harmonized";

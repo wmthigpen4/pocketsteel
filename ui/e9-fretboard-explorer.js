@@ -640,9 +640,17 @@
     const pathMode = isPathMode();
     if (els.stringGroupControl) {
       els.stringGroupControl.hidden = pathMode;
+      els.stringGroupControl.setAttribute?.("aria-hidden", pathMode ? "true" : "false");
+    }
+    if (els.stringGroup) {
+      els.stringGroup.disabled = pathMode;
     }
     if (els.pathFamilyControl) {
       els.pathFamilyControl.hidden = !pathMode;
+      els.pathFamilyControl.setAttribute?.("aria-hidden", pathMode ? "false" : "true");
+    }
+    if (els.pathFamily) {
+      els.pathFamily.disabled = !pathMode;
     }
     if (els.harmony) {
       els.harmony.disabled = pathMode;
