@@ -274,7 +274,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "pedal-steel-fretboard.js?v=explorer-ui-cleanup-20260623" not in html
     assert "pedal-steel-fretboard.js?v=selected-svg-render-20260623" not in html
     assert '<script src="e9-fretboard-explorer-data.js?v=explorer-compact-copedent-20260625"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=explorer-top-interval-marker-clarity-20260626"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=explorer-harmonized-scale-clarity-20260626"></script>' in html
     assert "e9-fretboard-explorer.js?v=explorer-compact-copedent-20260625" not in html
     expected_key_options = {
         "C": "C",
@@ -410,6 +410,14 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "renderTopIntervalFilter" in script
     assert "data-top-interval-filter" in script
     assert 'id="explorer-top-interval-filter"' in html
+    assert "renderFretRangeFilter" in script
+    assert "data-fret-range-filter" in script
+    assert 'id="explorer-fret-range-filter"' in html
+    assert "Visible fret range" in script
+    assert "Core" in script and "Frets 1-15" in script
+    assert "Low" in script and "Frets 0-8" in script
+    assert "High" in script and "Frets 10-24" in script
+    assert "All" in script and "Frets 0-24" in script
     assert "Top interval" in html
     assert "Top note" in html
     assert "Flat symbol" in html
@@ -420,14 +428,36 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "is-explorer-selected-marker" in script
     assert "is-explorer-hover-marker" in script
     assert "Marker ${escapeHtml(markerLabel)}" not in script
+    assert "Fretboard ${escapeHtml(markerLabel)}" not in script
     assert "activeTopLabelName()" in script
     assert "topVoiceExplanationHtml" in script
-    assert "noteBubbleHtml" in script
+    assert "stringActionRowsHtml" in script
+    assert "String actions" in script
+    assert "String map" not in script
     assert "pos." not in script
     assert "setups" in script
     assert "selectedImpactControlIds" in script
     assert "data-control-impact-clear" in script
     assert "No direct impact on the selected string group" in script
+
+    g_major_three = [
+        row for row in payload["positions"]
+        if row["key"] == "G" and row["scale_type"] == "major" and row["harmony_type"] == "three_string_diatonic"
+    ]
+    g_minor_three = [
+        row for row in payload["positions"]
+        if row["key"] == "G" and row["scale_type"] == "natural_minor" and row["harmony_type"] == "three_string_diatonic"
+    ]
+    assert g_major_three
+    assert g_minor_three
+    for rows in (g_major_three, g_minor_three):
+        assert {"3-4-5", "4-5-6", "5-6-8", "5-6-7", "6-8-10", "6-7-10"}.issubset({row["string_group"] for row in rows})
+    g_major_456 = [row for row in g_major_three if row["string_group"] == "4-5-6"]
+    assert [row["chord_name"] for row in g_major_456] == ["G", "A", "B", "C", "D", "E", "F#", "G"]
+    assert [row["fret"] for row in g_major_456] == [3, 3, 5, 8, 10, 10, 13, 15]
+    g_minor_456 = [row for row in g_minor_three if row["string_group"] == "4-5-6"]
+    assert [row["chord_name"] for row in g_minor_456] == ["G", "A", "Bb", "C", "D", "Eb", "F", "G"]
+    assert [row["fret"] for row in g_minor_456] == [1, 4, 6, 6, 8, 11, 13, 13]
     assert "B by itself may not match rows in this view that expect A+B together" in script
     assert "selectedRowId" in script
     assert "renderActiveResults" in script
@@ -603,6 +633,7 @@ class FakeNode {
       "[data-active-result-row]": Array.from(value.matchAll(/data-active-result-row="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-active-result-row")),
       "[data-control-impact-tab]": Array.from(value.matchAll(/data-control-impact-tab="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-control-impact-tab")),
       "[data-top-interval-filter]": Array.from(value.matchAll(/data-top-interval-filter="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-top-interval-filter")),
+      "[data-fret-range-filter]": Array.from(value.matchAll(/data-fret-range-filter="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-fret-range-filter")),
       "[data-control-impact-clear]": value.includes("data-control-impact-clear") ? [new FakeButton("clear", "data-control-impact-clear")] : []
     };
   }
@@ -620,6 +651,9 @@ class FakeNode {
       return this._buttons[selector] || [];
     }
     if (selector === "[data-top-interval-filter]") {
+      return this._buttons[selector] || [];
+    }
+    if (selector === "[data-fret-range-filter]") {
       return this._buttons[selector] || [];
     }
     if (selector === "[data-control-impact-clear]") {
@@ -724,6 +758,7 @@ const elements = {
   "explorer-scale-notes": new FakeNode("explorer-scale-notes"),
   "explorer-result-count": new FakeNode("explorer-result-count"),
   "explorer-top-interval-filter": new FakeNode("explorer-top-interval-filter"),
+  "explorer-fret-range-filter": new FakeNode("explorer-fret-range-filter"),
   "explorer-copedent-dialog": new FakeDialog("explorer-copedent-dialog"),
   "explorer-copedent-open": new FakeButton("open", "id"),
   "explorer-copedent-close": new FakeButton("close", "id"),
@@ -806,6 +841,10 @@ assert.equal(lastMount.options.positions.some((row) => row.grip === "5-7-8"), tr
 assert.equal(elements["explorer-top-interval-filter"].hidden, false);
 assert.match(elements["explorer-top-interval-filter"].textContent, /Find top interval/);
 assert.match(elements["explorer-top-interval-filter"].innerHTML, /data-top-interval-filter="1"/);
+assert.equal(elements["explorer-fret-range-filter"].hidden, false);
+assert.match(elements["explorer-fret-range-filter"].textContent, /Visible fret range/);
+assert.match(elements["explorer-fret-range-filter"].textContent, /Core/);
+assert.match(elements["explorer-fret-range-filter"].innerHTML, /data-fret-range-filter="high"/);
 assert.match(elements["explorer-result-count"].textContent, /Showing validated positions/);
 assert.doesNotMatch(elements["explorer-result-count"].textContent, /validated rows/);
 assert.equal(elements["explorer-copedent-chart"].hidden, false);
@@ -840,8 +879,9 @@ assert.match(elements["explorer-control-impact-preview"].innerHTML, /aria-presse
 elements["explorer-control-impact-preview"].querySelector("[data-control-impact-clear]").onclick();
 assert.doesNotMatch(elements["explorer-control-impact-preview"].textContent, /String 5/);
 assert.match(elements["explorer-active-results"].textContent, /all 3-string groups/);
-assert.match(elements["explorer-active-results"].textContent, /Top interval:/);
+assert.match(elements["explorer-active-results"].textContent, /Top note interval:/);
 assert.doesNotMatch(elements["explorer-active-results"].textContent, /Marker \d|Marker \+\d/);
+assert.doesNotMatch(elements["explorer-active-results"].textContent, /Fretboard \d|Fretboard \d\+/);
 assert.match(elements["explorer-active-results"].innerHTML, /data-marker-id=/);
 assert.match(elements["explorer-active-results"].innerHTML, /data-marker-tone=/);
 assert.equal(elements["explorer-active-results"].querySelectorAll("[data-active-result-row]").length > lastMount.options.positions.length, true);
@@ -859,7 +899,8 @@ assert.match(elements["explorer-selected-detail"].textContent, /Notes/);
 assert.match(elements["explorer-selected-detail"].textContent, /Intervals/);
 assert.match(elements["explorer-selected-detail"].textContent, /Top-note focus/);
 assert.match(elements["explorer-selected-detail"].textContent, /Top interval/);
-assert.match(elements["explorer-selected-detail"].textContent, /String map/);
+assert.match(elements["explorer-selected-detail"].textContent, /String actions/);
+assert.match(elements["explorer-selected-detail"].textContent, /no change|B\+C|A\+B|E-raise/);
 assert.match(elements["explorer-selected-detail"].textContent, /Why this position works/);
 assert.match(elements["explorer-selected-detail"].textContent, /validated E9 pitch logic/);
 assert.match(elements["explorer-selected-detail"].innerHTML, /explorer-teaching-note/);
@@ -867,20 +908,28 @@ assert.doesNotMatch(elements["explorer-fretboard"].textContent, /Why this positi
 assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /Pitch validated/);
 assert.doesNotMatch(elements["explorer-row-list"].textContent, /\b\d+\s+(?:I|ii|iii|iv|v|vi|vii)\b/);
 assert.doesNotMatch(elements["explorer-active-results"].textContent, /\b\d+\s+(?:I|ii|iii|iv|v|vi|vii)\b/);
-assert.match(elements["explorer-active-results"].innerHTML, /Top interval:/);
+assert.match(elements["explorer-active-results"].innerHTML, /Top note interval:/);
 assert.doesNotMatch(elements["explorer-active-results"].innerHTML, /<strong>G<\/strong>/);
 const intervalFilterButtons = elements["explorer-top-interval-filter"].querySelectorAll("[data-top-interval-filter]");
 intervalFilterButtons.find((button) => button.getAttribute("data-top-interval-filter") === "1").onclick();
-assert.match(elements["explorer-active-results"].textContent, /Top interval: 1/);
+assert.match(elements["explorer-active-results"].textContent, /Top note interval: 1/);
 assert.equal(lastMount.options.positions.every((row) => row.label === "1" || row.label === "1+"), true);
 elements["explorer-top-interval-filter"].querySelectorAll("[data-top-interval-filter]").find((button) => button.getAttribute("data-top-interval-filter") === "all").onclick();
+const rangeButtons = elements["explorer-fret-range-filter"].querySelectorAll("[data-fret-range-filter]");
+const coreCount = lastMount.options.positions.length;
+rangeButtons.find((button) => button.getAttribute("data-fret-range-filter") === "high").onclick();
+assert.match(elements["explorer-fret-range-filter"].textContent, /Frets 10-24/);
+assert.equal(lastMount.options.positions.every((row) => Number(row.fret) >= 10 && Number(row.fret) <= 24), true);
+assert.equal(lastMount.options.positions.length > 0, true);
+rangeButtons.find((button) => button.getAttribute("data-fret-range-filter") === "all").onclick();
+assert.equal(lastMount.options.positions.length >= coreCount, true);
 labelModeButtons[1].onclick();
 assert.equal(lastMount.options.positions.some((row) => /^[A-G][b#]?\+?$/.test(row.label)), true);
 assert.match(elements["explorer-active-results"].innerHTML, /Top note:/);
 assert.match(elements["explorer-active-results"].innerHTML, /<strong>Top note: (G|B|D)/);
 labelModeButtons[0].onclick();
 assert.equal(lastMount.options.positions.some((row) => /^(1|2|3|4|5|6|7)\+?$/.test(row.label)), true);
-assert.match(elements["explorer-active-results"].innerHTML, /Top interval:/);
+assert.match(elements["explorer-active-results"].innerHTML, /Top note interval:/);
 
 const expectedMajorScales = {
   C: "C D E F G A B",

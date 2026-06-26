@@ -30,6 +30,12 @@
     two_string_harmonized: "2-string harmonized scale",
     three_string_diatonic: "3-string diatonic harmony",
   };
+  const FRET_RANGE_OPTIONS = [
+    { id: "core", label: "Core", description: "Frets 1-15", min: 1, max: 15 },
+    { id: "low", label: "Low", description: "Frets 0-8", min: 0, max: 8 },
+    { id: "high", label: "High", description: "Frets 10-24", min: 10, max: 24 },
+    { id: "all", label: "All", description: "Frets 0-24", min: 0, max: 24 },
+  ];
 
   const els = {
     key: document.getElementById("explorer-key"),
@@ -41,6 +47,7 @@
     resultCount: document.getElementById("explorer-result-count"),
     labelModeButtons: document.querySelectorAll("[data-explorer-label-mode]"),
     topIntervalFilter: document.getElementById("explorer-top-interval-filter"),
+    fretRangeFilter: document.getElementById("explorer-fret-range-filter"),
     copedentDialog: document.getElementById("explorer-copedent-dialog"),
     copedentOpen: document.getElementById("explorer-copedent-open"),
     copedentClose: document.getElementById("explorer-copedent-close"),
@@ -60,6 +67,7 @@
   let selectedRowId = "";
   let selectedImpactControlIds = new Set();
   let selectedTopInterval = "all";
+  let selectedFretRange = "core";
   let labelMode = "intervals";
   let lastCopedentDialogOpener = null;
   let lastGlossaryDialogOpener = null;
@@ -261,7 +269,17 @@
   }
 
   function primaryLabelForRow(row) {
-    return `${activeTopLabelName()}: ${activeTopLabel(row) || row.chord_function || row.scale_degree || row.chord_name || "Position"}`;
+    const label = labelMode === "notes" ? "Top note" : "Top note interval";
+    return `${label}: ${activeTopLabel(row) || row.chord_function || row.scale_degree || row.chord_name || "Position"}`;
+  }
+
+  function activeRangeOption() {
+    return FRET_RANGE_OPTIONS.find((option) => option.id === selectedFretRange) || FRET_RANGE_OPTIONS[0];
+  }
+
+  function rowInRange(row, range = activeRangeOption()) {
+    const fret = Number(row?.fret);
+    return Number.isFinite(fret) && fret >= range.min && fret <= range.max;
   }
 
   function labelModeNoun() {
@@ -491,6 +509,15 @@
 
   function getRows() {
     const baseRows = getBaseRows();
+    if (selectedTopInterval === "all") {
+      return baseRows.filter((row) => rowInRange(row));
+    }
+    return baseRows
+      .filter((row) => topIntervalLabel(row) === selectedTopInterval)
+      .filter((row) => rowInRange(row));
+  }
+
+  function getRowsBeforeRange(baseRows) {
     if (selectedTopInterval === "all") {
       return baseRows;
     }
@@ -944,6 +971,42 @@
     });
   }
 
+  function renderFretRangeFilter(rowsBeforeRange, rows) {
+    if (!els.fretRangeFilter) {
+      return;
+    }
+    const outsideCount = Math.max(0, rowsBeforeRange.length - rows.length);
+    const activeRange = activeRangeOption();
+    els.fretRangeFilter.hidden = false;
+    els.fretRangeFilter.innerHTML = `
+      <div class="explorer-fret-range-filter__label">
+        <strong>Visible fret range</strong>
+        <span>${outsideCount
+          ? `${outsideCount} matching ${outsideCount === 1 ? "position is" : "positions are"} outside ${activeRange.description.toLowerCase()}.`
+          : `Showing ${activeRange.description.toLowerCase()}.`}</span>
+      </div>
+      <div class="explorer-fret-range-filter__chips" role="group" aria-label="Choose visible fret range">
+        ${FRET_RANGE_OPTIONS.map((range) => `
+          <button
+            class="explorer-fret-range-filter__chip${selectedFretRange === range.id ? " is-selected" : ""}"
+            type="button"
+            aria-pressed="${selectedFretRange === range.id ? "true" : "false"}"
+            data-fret-range-filter="${escapeHtml(range.id)}"
+          >
+            <strong>${escapeHtml(range.label)}</strong>
+            <span>${escapeHtml(range.description)}</span>
+          </button>
+        `).join("")}
+      </div>
+    `;
+    Array.from(els.fretRangeFilter.querySelectorAll("[data-fret-range-filter]")).forEach((button) => {
+      button.addEventListener("click", () => {
+        selectedFretRange = button.getAttribute("data-fret-range-filter") || "core";
+        render();
+      });
+    });
+  }
+
   function rowControlImpactsHtml(row) {
     const impacts = toArray(row.control_impacts);
     if (!impacts.length) {
@@ -987,20 +1050,42 @@
     return controls.length ? `S${stringNumber} ${controls.join("+")}` : `S${stringNumber}`;
   }
 
-  function noteBubbleHtml(row) {
+  function stringActionForEntry(row, entry) {
+    const change = row.per_string_changes?.[String(entry.string)];
+    const controls = controlsForString(row, entry.string);
+    const role = entry.interval ? formatInterval(entry.interval) : "";
+    if (change) {
+      return {
+        string: entry.string,
+        action: controls.length ? controls.join("+") : formatValue(change.controls, "changed"),
+        change: `${formatValue(change.from, "")} -> ${formatValue(change.to, "")}`,
+        role,
+      };
+    }
+    return {
+      string: entry.string,
+      action: "no change",
+      change: formatValue(entry.note, ""),
+      role,
+    };
+  }
+
+  function stringActionRowsHtml(row) {
     const entries = displayNoteEntries(row);
     if (!entries.length) {
       return "";
     }
+    const rows = entries.map((entry) => stringActionForEntry(row, entry));
     return `
-      <section class="explorer-note-bubbles" aria-label="String and control map for selected position">
-        <strong>String map</strong>
-        <div class="explorer-note-bubbles__grid">
-          ${entries.map((entry) => `
-            <span class="explorer-note-bubble">
-              <b>${escapeHtml(stringStateLabel(row, entry.string))}</b>
-              <span>${escapeHtml(formatValue(entry.note, ""))}${entry.interval ? ` · ${escapeHtml(formatInterval(entry.interval))}` : ""}</span>
-            </span>
+      <section class="explorer-string-actions" aria-label="String actions for selected position">
+        <strong>String actions</strong>
+        <div class="explorer-string-actions__grid">
+          ${rows.map((entry) => `
+            <div class="explorer-string-action">
+              <span>String ${escapeHtml(entry.string)}</span>
+              <b>${escapeHtml(entry.action)}</b>
+              <em>${escapeHtml(entry.change)}${entry.role ? ` · role: ${escapeHtml(entry.role)}` : ""}</em>
+            </div>
           `).join("")}
         </div>
       </section>
@@ -1053,7 +1138,7 @@
         ${detailRow("Per-string changes", row.per_string_changes)}
         ${detailRow("Warnings", warnings)}
       </dl>
-      ${noteBubbleHtml(row)}
+      ${stringActionRowsHtml(row)}
       ${rowControlImpactsHtml(row)}
     `;
   }
@@ -1099,10 +1184,16 @@
     const controlText = controls.length ? `With ${controls.join("+")}` : "Open";
     return `
       <button class="explorer-active-result${buttonClass}${isSelected ? " is-selected" : ""}" type="button" ${dataAttributeName}="${escapeHtml(row.id)}" data-marker-id="${escapeHtml(markerGroupKey(row))}" data-marker-tone="${escapeHtml(markerTone)}" data-string-group="${escapeHtml(row.string_group)}" data-harmony-type="${escapeHtml(row.harmony_type)}" aria-pressed="${isSelected ? "true" : "false"}">
-        ${markerLabel ? `<span class="explorer-active-result__marker"><span class="explorer-marker-token" aria-hidden="true"></span>Fretboard ${escapeHtml(markerLabel)}</span>` : ""}
-        <strong>${escapeHtml(shortLabel(row))}</strong>
-        <span class="explorer-active-result__meta">Fret ${escapeHtml(formatValue(row.fret))} · ${escapeHtml(row.string_group)} · ${escapeHtml(controlText)}</span>
-        <span class="explorer-active-result__meta">Harmony: ${escapeHtml(harmonyIntervalText(row))}</span>
+        <span class="explorer-active-result__top">
+          ${markerLabel ? `<span class="explorer-active-result__marker" aria-label="Matching fretboard marker ${escapeHtml(markerLabel)}"><span class="explorer-marker-token" aria-hidden="true"></span>${escapeHtml(markerLabel)}</span>` : ""}
+          <strong>${escapeHtml(primaryLabelForRow(row))}</strong>
+        </span>
+        <span class="explorer-active-result__fields">
+          <span><b>Fret</b>${escapeHtml(formatValue(row.fret))}</span>
+          <span><b>Strings</b>${escapeHtml(row.string_group)}</span>
+          <span><b>Pedals/levers</b>${escapeHtml(controlText)}</span>
+          <span><b>Harmony</b>${escapeHtml(harmonyIntervalText(row))}</span>
+        </span>
       </button>
     `;
   }
@@ -1148,7 +1239,7 @@
         return `
           <button class="explorer-row-button${buttonClass}${isSelected ? " is-selected" : ""}" type="button" data-explorer-row="${escapeHtml(row.id)}" data-string-group="${escapeHtml(row.string_group)}" data-harmony-type="${escapeHtml(row.harmony_type)}" aria-pressed="${isSelected ? "true" : "false"}">
             <strong>${escapeHtml(shortLabel(row))}</strong>
-            <span class="explorer-row-button__meta">Fret ${escapeHtml(formatValue(row.fret))} · ${escapeHtml(row.string_group)} · ${escapeHtml(groupLabel(row))} · Harmony: ${escapeHtml(harmonyIntervalText(row))}</span>
+            <span class="explorer-row-button__meta">Fret: ${escapeHtml(formatValue(row.fret))} · Strings: ${escapeHtml(row.string_group)} · ${escapeHtml(groupLabel(row))} · Harmony: ${escapeHtml(harmonyIntervalText(row))}</span>
           </button>
         `;
       })
@@ -1161,8 +1252,11 @@
   function tooltipText(row) {
     const warnings = toArray(row.warnings);
     const controls = normalizePedals(row);
-    const stringMap = displayNoteEntries(row)
-      .map((entry) => `${stringStateLabel(row, entry.string)} ${formatValue(entry.note, "")}${entry.interval ? `/${formatInterval(entry.interval)}` : ""}`)
+    const stringActions = displayNoteEntries(row)
+      .map((entry) => {
+        const action = stringActionForEntry(row, entry);
+        return `String ${action.string} - ${action.action} - ${action.change}${action.role ? ` - role: ${action.role}` : ""}`;
+      })
       .join("; ");
     return [
       row.display_summary || row.chord_name || row.chord_function || row.id,
@@ -1172,7 +1266,7 @@
       `Notes: ${formatValue(rowNoteLabels(row))}`,
       `Intervals: ${formatValue(rowIntervalLabels(row))}`,
       `Pedals/levers: ${formatValue(controls)}`,
-      stringMap ? `String map: ${stringMap}` : "",
+      stringActions ? `String actions: ${stringActions}` : "",
       warnings.length ? `Warning: ${formatValue(warnings)}` : "",
     ].filter(Boolean).map(formatTheoryText);
   }
@@ -1321,7 +1415,9 @@
     const baseRows = getBaseRows();
     syncSelectedTopInterval(baseRows);
     renderTopIntervalFilter(baseRows);
+    const rowsBeforeRange = getRowsBeforeRange(baseRows);
     const rows = getRows();
+    renderFretRangeFilter(rowsBeforeRange, rows);
     currentRows = rows;
     if (!rows.some((row) => row.id === selectedRowId)) {
       selectedRowId = rows[0]?.id || "";
@@ -1347,6 +1443,7 @@
       els.copedentChart?.textContent || "",
       els.controlPreview?.textContent || "",
       els.topIntervalFilter?.textContent || "",
+      els.fretRangeFilter?.textContent || "",
       els.fretboard.textContent,
       els.tooltip.textContent,
     ].join(" ");
