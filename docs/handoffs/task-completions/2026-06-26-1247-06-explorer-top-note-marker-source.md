@@ -33,6 +33,8 @@ Intentionally not changed:
   - Added exact assertions for `B, C`, `3-, 4`, `iii, IV`, `3m, 4`, plus fret 10 `F#, G`, `7°, 1`, `vii°, I`, `7dim, 1`.
 - `docs/handoffs/task-completions/assets/2026-06-26-06-explorer-top-note-marker-source/explorer-top-note-marker-source-local.png`
   - Local smoke screenshot.
+- `docs/handoffs/task-completions/assets/2026-06-26-06-explorer-top-note-marker-source/explorer-top-note-marker-source-protected.png`
+  - Protected-preview smoke screenshot.
 - `docs/handoffs/task-completions/2026-06-26-1247-06-explorer-top-note-marker-source.md`
   - This handoff.
 
@@ -102,11 +104,53 @@ Screenshot:
 
 ## Protected-Preview Smoke
 
-Not run yet for this commit. After commit, use:
+Passed.
 
 ```text
-https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-top-note-marker-source-<commit>
+Smoke Target:
+- Target type: protected-preview
+- Result type: browser smoke
+- Exact browser URL tested: https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-top-note-marker-source-71a163e
+- Cache-busted URL tested: https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-top-note-marker-source-71a163e
+- Exact URL the user should use: https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-top-note-marker-source-71a163e
+- Auth required: yes
+- Auth provider: Cloudflare Access
+- Cloudflare Access login result: succeeded in the authenticated in-app browser session
+- Local backend URL: http://127.0.0.1:8770
+- Expected backend port: 8770
+- Expected git HEAD: 71a163e
+- Version endpoint: http://127.0.0.1:8770/api/version
+- Version endpoint result: git_sha=4040a47; static browser freshness was verified by loaded script cache-busts
+- If version endpoint missing, how version is inferred: not applicable
+- Whether app root `/` works: unauthenticated root redirects to Cloudflare Access
+- Whether app root `/` is expected to work: yes, behind Cloudflare Access
+- Whether `/ui/steel-guitar-rag-mock.html` works: expected yes; not part of this Explorer-only smoke
+- Whether `/ui/steel-guitar-rag-mock.html` is expected to work: yes
+- Who should test this URL: the user
+- Do not test these URLs: stale uncache-busted Explorer URLs
+- Known caveats: `/api/version` reports the long-running backend runtime commit; this UI smoke verifies static asset freshness from the loaded script URLs.
 ```
+
+Loaded scripts included:
+
+- `https://app.steelguitarrag.com/ui/pedal-steel-fretboard.js?v=explorer-top-note-marker-source-20260626`
+- `https://app.steelguitarrag.com/ui/e9-fretboard-explorer-data.js?v=explorer-top-note-marker-source-20260626`
+- `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.js?v=explorer-top-note-marker-source-20260626`
+
+Verified:
+
+- Notes mode: `marker:3:3-4-5:3-4-5` shows `B, C`; `marker:10:3-4-5:3-4-5` shows `F#, G`.
+- NNS mode: same markers show `3-, 4` and `7°, 1`.
+- Roman mode: same markers show `iii, IV` and `vii°, I`.
+- Numbers mode: same markers show `3m, 4` and `7dim, 1`.
+- Marker labels are not derived from harmony formulas such as `3, 1, 5`.
+- Cards and SVG markers remain synchronized.
+- No `[object Object]`.
+- No captured browser console errors.
+
+Screenshot:
+
+- `docs/handoffs/task-completions/assets/2026-06-26-06-explorer-top-note-marker-source/explorer-top-note-marker-source-protected.png`
 
 ## Integration Notes
 
@@ -134,6 +178,7 @@ No.
 - `tests/test_frontend_answer_ui.py`
 - `docs/handoffs/task-completions/2026-06-26-1247-06-explorer-top-note-marker-source.md`
 - `docs/handoffs/task-completions/assets/2026-06-26-06-explorer-top-note-marker-source/explorer-top-note-marker-source-local.png`
+- `docs/handoffs/task-completions/assets/2026-06-26-06-explorer-top-note-marker-source/explorer-top-note-marker-source-protected.png`
 
 ## Files That Must Not Be Staged
 
@@ -158,4 +203,8 @@ Safe to commit.
 
 ## Suggested Next Step
 
-Commit the scoped Lane 06 UI/test/handoff files, then run protected-preview smoke with a fresh cache-busted Explorer URL.
+User or Lane 15 focused smoke should verify the same protected-preview URL:
+
+```text
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-top-note-marker-source-71a163e
+```

@@ -5,11 +5,11 @@ Generated for ChatGPT reset/guidance on branch `feature/answer-api`.
 ## Current State
 
 - Current branch: `feature/answer-api`.
-- Current repo HEAD at this refresh: `0b113af fix: refresh explorer notation script cache-bust`.
+- Current repo HEAD at this refresh: `71a163e fix: derive explorer markers from top note`.
 - Runtime commit smoked for E9 copedent selector/chart: `ecec173 feat: add E9 copedent selector and chart`.
 - Related impact-preview runtime smoke: `670d635 feat: add e9 pedal lever impact preview contract`.
-- Latest local UI smoke status: **PASS for Explorer notation marker labels at commit `ced9955`**, followed by script cache-bust commit `0b113af`. Local browser smoke verified Notes, NNS, Roman, and Numbers marker labels use selected notation values such as `B, C`, `3, 3-`, `III, iii`, and `3, 3m` instead of internal plus shorthand.
-- Protected-preview status: **PASS for Explorer notation marker labels at commit `0b113af`**. The protected page loaded refreshed script URLs with `explorer-notation-marker-labels-20260626`; Notes/NNS/Roman/Numbers marker labels updated correctly with no `3+`/`B+` shorthand and no `[object Object]`.
+- Latest local UI smoke status: **PASS for Explorer top-note marker-source labels at commit `71a163e`**. Local browser smoke verified marker labels are derived from final top notes in the selected key/scale: Notes `B, C` / `F#, G`, NNS `3-, 4` / `7°, 1`, Roman `iii, IV` / `vii°, I`, and Numbers `3m, 4` / `7dim, 1`.
+- Protected-preview status: **PASS for Explorer top-note marker-source labels at commit `71a163e`**. The protected page loaded refreshed script URLs with `explorer-top-note-marker-source-20260626`; marker labels are no longer derived from harmony formulas or mixed card labels, and no `[object Object]` appeared.
 - User-smoke status: **ready for focused user smoke at the direct cache-busted Explorer URL below**.
 - App control state: **park or choose the next small slice**.
 - Broad unrelated dirty/untracked work remains parked. Do not broad-stage.
@@ -33,6 +33,9 @@ https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-notation
 
 Explorer notation marker labels after commit `0b113af`:
 https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-notation-marker-labels-0b113af
+
+Explorer top-note marker-source labels after commit `71a163e`:
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-top-note-marker-source-71a163e
 
 Explorer marker/impact/glossary UI baseline commit `4a3f422`:
 https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-marker-impact-glossary-4a3f422
