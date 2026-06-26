@@ -276,12 +276,13 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "pedal-steel-fretboard.js?v=explorer-compact-copedent-20260625" not in html
     assert '<script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>' in html
     assert "[hidden] {\n      display: none !important;\n    }" in html
-    assert '<script src="e9-fretboard-explorer.js?v=path-string-group-visibility-20260626"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=compact-controls-20260626"></script>' in html
     assert "explorer-top-note-marker-source-20260626" not in html
     assert "e9-fretboard-explorer.js?v=explorer-compact-copedent-20260625" not in html
     assert "e9-fretboard-explorer.js?v=explorer-harmonized-scale-clarity-20260626" not in html
     assert "e9-fretboard-explorer.js?v=explorer-harmonized-path-mode-20260626" not in html
     assert "e9-fretboard-explorer.js?v=top-label-chip-order-20260626" not in html
+    assert "e9-fretboard-explorer.js?v=path-string-group-visibility-20260626" not in html
     expected_key_options = {
         "C": "C",
         "Db": "C# (or D♭)",
@@ -393,21 +394,24 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
         "padding: 0 14px;",
     ]:
         assert expected_style in dialog_close_rule
-    assert "grid-template-columns: repeat(5, minmax(0, 1fr));" in html
+    assert "grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));" in html
     assert "align-content: start;" in html
-    assert ".explorer-control:not(.explorer-control--string-group) select" in html
+    assert ".explorer-control select {\n      height: 42px;" in html
     assert "height: 42px;" in html
-    assert ".explorer-control--string-group" in html
-    assert "grid-column: 1 / -1;" in html
+    assert "explorer-control--string-group" in html
+    assert ".explorer-control--string-group {\n      grid-column: 1 / -1;" not in html
     assert '<div class="explorer-control explorer-control--string-group" id="explorer-string-group-control">' in html
-    assert '<select id="explorer-string-group" multiple size="4"' in html
-    assert "Select one or more groups" in html
+    assert '<select id="explorer-string-group" aria-describedby="explorer-string-group-help">' in html
+    assert '<select id="explorer-string-group" multiple' not in html
+    assert 'size="4"' not in html
+    assert "Select one or more groups" not in html
+    assert "Choose All or one exact group. Path mode uses Path family instead." in html
     assert '<optgroup label="Core grips">' in html
     assert '<optgroup label="Advanced swaps">' in html
     assert '<option value="5-7-8">5-7-8</option>' in html
     assert '<option value="all" selected>All 3-string groups</option>' in html
-    assert "Advanced swaps:</strong> less direct string combinations" in html
-    assert "5&amp;8 branch:</strong> 5-8 appears with the 2-string harmonized-scale groups" in html
+    assert "Advanced swaps:</strong> less direct string combinations" not in html
+    assert "5&amp;8 branch:</strong> 5-8 appears with the 2-string harmonized-scale groups" not in html
     assert "deterministic teaching data" not in html
     assert "corpus retrieval" not in html
     assert "source-card answers" not in html
@@ -426,7 +430,11 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert 'data-explorer-notation-mode="nns"' in html
     assert 'data-explorer-notation-mode="roman"' in html
     assert 'data-explorer-notation-mode="numbers"' in html
-    assert 'aria-label="Notation mode"' in html
+    assert '<span class="explorer-control-label" id="explorer-notation-label">Notation</span>' in html
+    assert 'aria-labelledby="explorer-notation-label"' in html
+    assert "Controls card, marker, and top-label display." in html
+    assert ".explorer-control--notation {\n      grid-column: span 2;" in html
+    assert "flex-wrap: wrap;" in html
     assert "explorer-teaching-note" in html
     assert "explorer-copedent-chart__table" in html
     assert "Pedal and lever impact" in script
@@ -446,7 +454,8 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "explorer-control-impact-tab" in html
     assert "explorer-control-impact-detail" in html
     assert "explorer-row-control-impacts" in html
-    assert "Showing validated positions" in html
+    assert "Showing validated positions" not in html
+    assert 'id="explorer-result-count"' not in html
     assert "0 validated rows" not in html
     assert "explorer-row-card" not in html
 
@@ -969,7 +978,7 @@ assert.equal(elements["explorer-fret-range-filter"].hidden, false);
 assert.match(elements["explorer-fret-range-filter"].textContent, /Visible fret range/);
 assert.match(elements["explorer-fret-range-filter"].textContent, /Core/);
 assert.match(elements["explorer-fret-range-filter"].innerHTML, /data-fret-range-filter="high"/);
-assert.match(elements["explorer-result-count"].textContent, /Showing validated positions/);
+assert.equal(elements["explorer-result-count"].textContent, "");
 assert.doesNotMatch(elements["explorer-result-count"].textContent, /validated rows/);
 assert.equal(elements["explorer-copedent-chart"].hidden, false);
 assert.match(elements["explorer-copedent-chart"].textContent, /Emmons E9/);

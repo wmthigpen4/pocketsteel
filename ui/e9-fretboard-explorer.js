@@ -1835,7 +1835,9 @@
       selectedRowId = rows[0]?.id || "";
     }
     els.scaleNotes.textContent = getScaleNotes();
-    els.resultCount.textContent = "Showing validated positions";
+    if (els.resultCount) {
+      els.resultCount.textContent = "";
+    }
     els.empty.hidden = rows.length > 0;
     els.empty.textContent = rows.length
       ? ""

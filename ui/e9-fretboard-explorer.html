@@ -131,7 +131,7 @@
 
     .explorer-controls {
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
       gap: 10px;
       padding: 12px;
       border: 1px solid var(--line);
@@ -146,12 +146,21 @@
       gap: 7px;
     }
 
-    .explorer-control label {
+    .explorer-control label,
+    .explorer-control-label {
       color: var(--gold);
       font-size: 0.75rem;
       font-weight: 800;
       letter-spacing: 0.08em;
       text-transform: uppercase;
+    }
+
+    .explorer-control--copedent {
+      grid-column: span 2;
+    }
+
+    .explorer-control--notation {
+      grid-column: span 2;
     }
 
     .explorer-control select,
@@ -195,36 +204,8 @@
       white-space: nowrap;
     }
 
-    .explorer-control:not(.explorer-control--string-group) select {
+    .explorer-control select {
       height: 42px;
-    }
-
-    .explorer-control select[multiple] {
-      min-height: 76px;
-      padding: 8px 10px;
-    }
-
-    .explorer-control--string-group {
-      grid-column: 1 / -1;
-      border-top: 1px solid rgba(246, 190, 88, 0.16);
-      padding-top: 10px;
-    }
-
-    .explorer-string-group-layout {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr);
-      gap: 10px;
-      align-items: stretch;
-    }
-
-    .explorer-string-group-copy {
-      display: none;
-      align-content: start;
-      gap: 6px;
-      border: 1px solid rgba(246, 190, 88, 0.16);
-      border-radius: 12px;
-      padding: 10px;
-      background: rgba(0, 0, 0, 0.18);
     }
 
     .explorer-control-help {
@@ -268,7 +249,10 @@
 
     .explorer-notation-selector {
       display: inline-flex;
+      align-items: center;
+      flex-wrap: wrap;
       gap: 4px;
+      width: 100%;
       border: 1px solid rgba(246, 190, 88, 0.22);
       border-radius: 999px;
       padding: 3px;
@@ -278,6 +262,7 @@
     .explorer-notation-selector button {
       border: 0;
       border-radius: 999px;
+      flex: 1 0 auto;
       padding: 6px 10px;
       background: transparent;
       color: var(--muted);
@@ -1292,8 +1277,9 @@
         grid-template-columns: 1fr;
       }
 
-      .explorer-string-group-layout {
-        grid-template-columns: 1fr;
+      .explorer-control--copedent,
+      .explorer-control--notation {
+        grid-column: auto;
       }
 
       .explorer-details {
@@ -1368,7 +1354,7 @@
         </select>
         <p class="explorer-control-help" id="explorer-key-help">Enharmonic keys share one selector entry so learner-facing notes stay readable.</p>
       </div>
-      <div class="explorer-control">
+      <div class="explorer-control explorer-control--copedent">
         <label for="explorer-copedent">E9 setup</label>
         <div class="explorer-copedent-control-row">
           <select id="explorer-copedent" aria-describedby="explorer-copedent-help">
@@ -1414,39 +1400,36 @@
       </div>
       <div class="explorer-control explorer-control--string-group" id="explorer-string-group-control">
         <label for="explorer-string-group">String group</label>
-        <div class="explorer-string-group-layout">
-          <select id="explorer-string-group" multiple size="4" aria-describedby="explorer-string-group-help">
-            <option value="all" selected>All 3-string groups</option>
-            <optgroup label="Core grips">
-              <option value="3-4-5">3-4-5</option>
-              <option value="4-5-6">4-5-6</option>
-              <option value="5-6-8">5-6-8</option>
-              <option value="6-8-10">6-8-10</option>
-            </optgroup>
-            <optgroup label="Advanced swaps">
-              <option value="5-6-7">5-6-7</option>
-              <option value="6-7-10">6-7-10</option>
-              <option value="5-7-8">5-7-8</option>
-            </optgroup>
-          </select>
-          <div class="explorer-string-group-copy" id="explorer-string-group-help">
-            <p class="explorer-control-help">Select one or more groups. Leave All selected to show every group in this view.</p>
-            <p class="explorer-control-help"><strong>5&amp;8 branch:</strong> 5-8 appears with the 2-string harmonized-scale groups when those branch positions are available.</p>
-            <p class="explorer-control-help"><strong>Advanced swaps:</strong> less direct string combinations or lever-pocket routes that can add useful color after the main grips.</p>
-          </div>
+        <select id="explorer-string-group" aria-describedby="explorer-string-group-help">
+          <option value="all" selected>All 3-string groups</option>
+          <optgroup label="Core grips">
+            <option value="3-4-5">3-4-5</option>
+            <option value="4-5-6">4-5-6</option>
+            <option value="5-6-8">5-6-8</option>
+            <option value="6-8-10">6-8-10</option>
+          </optgroup>
+          <optgroup label="Advanced swaps">
+            <option value="5-6-7">5-6-7</option>
+            <option value="6-7-10">6-7-10</option>
+            <option value="5-7-8">5-7-8</option>
+          </optgroup>
+        </select>
+        <p class="explorer-control-help" id="explorer-string-group-help">Choose All or one exact group. Path mode uses Path family instead.</p>
+      </div>
+      <div class="explorer-control explorer-control--notation" id="explorer-notation-control">
+        <span class="explorer-control-label" id="explorer-notation-label">Notation</span>
+        <div class="explorer-notation-selector" role="group" aria-labelledby="explorer-notation-label" aria-describedby="explorer-notation-help">
+          <button type="button" data-explorer-notation-mode="notes" class="is-selected" aria-pressed="true">Notes</button>
+          <button type="button" data-explorer-notation-mode="nns" aria-pressed="false">NNS</button>
+          <button type="button" data-explorer-notation-mode="roman" aria-pressed="false">Roman</button>
+          <button type="button" data-explorer-notation-mode="numbers" aria-pressed="false">Numbers</button>
         </div>
+        <p class="explorer-control-help" id="explorer-notation-help">Controls card, marker, and top-label display.</p>
       </div>
     </section>
 
     <div class="explorer-summary" aria-live="polite">
       <span class="explorer-pill">Scale: <span id="explorer-scale-notes">G - A - B - C - D - E - F#</span></span>
-      <span class="explorer-pill explorer-pill--trust" id="explorer-result-count">Showing validated positions</span>
-      <div class="explorer-notation-selector" role="group" aria-label="Notation mode">
-        <button type="button" data-explorer-notation-mode="notes" class="is-selected" aria-pressed="true">Notes</button>
-        <button type="button" data-explorer-notation-mode="nns" aria-pressed="false">NNS</button>
-        <button type="button" data-explorer-notation-mode="roman" aria-pressed="false">Roman</button>
-        <button type="button" data-explorer-notation-mode="numbers" aria-pressed="false">Numbers</button>
-      </div>
     </div>
 
     <div class="explorer-top-interval-filter" id="explorer-top-interval-filter" aria-label="Top label filter" hidden></div>
@@ -1510,6 +1493,6 @@
 
   <script src="pedal-steel-fretboard.js?v=explorer-harmonized-path-mode-20260626"></script>
   <script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>
-  <script src="e9-fretboard-explorer.js?v=path-string-group-visibility-20260626"></script>
+  <script src="e9-fretboard-explorer.js?v=compact-controls-20260626"></script>
 </body>
 </html>
