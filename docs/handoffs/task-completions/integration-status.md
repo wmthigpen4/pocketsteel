@@ -9,8 +9,8 @@ Generated for ChatGPT reset/guidance on branch `feature/answer-api`.
 - Runtime commit smoked for E9 copedent selector/chart: `ecec173 feat: add E9 copedent selector and chart`.
 - Related impact-preview runtime smoke: `670d635 feat: add e9 pedal lever impact preview contract`.
 - Latest local UI smoke status: **PASS for compact Explorer/copedent controls at commit `9a3513b`**.
-- Protected-preview status: **blocked before smoke**. Lane 12 verified the LaunchDaemon runtime is still serving `ffac52a`; the documented non-interactive restart attempt could not run because `sudo` requires a password in this shell.
-- User-smoke status: **hold for compact Explorer/copedent UI until `/api/version` reports `5a59739` and protected-preview smoke passes**.
+- Protected-preview status: **blocked at Cloudflare Access after runtime refresh**. Lane 12 rerun verified `/api/version` now reports `4040a47`, which contains expected UI commit `5a59739`, but the in-app browser landed on Cloudflare Access login / verification-code flow before reaching the Explorer page.
+- User-smoke status: **hold for compact Explorer/copedent UI until Cloudflare Access is completed in the in-app browser and protected-preview Explorer smoke passes**.
 - App control state: **park or choose the next small slice**.
 - Broad unrelated dirty/untracked work remains parked. Do not broad-stage.
 
@@ -86,36 +86,27 @@ Known impact-preview caveat:
 
 Local smoke status at commit `9a3513b`: **PASS**.
 
-Protected-preview status at commit `5a59739`: **BLOCKED BEFORE SMOKE**.
+Protected-preview status at commit `5a59739`: **BLOCKED AT CLOUDFLARE ACCESS AFTER RUNTIME REFRESH**.
 
-Lane 12 blocker summary:
+Lane 12 current rerun summary:
 
-- Repo HEAD: `5a59739`.
-- Expected runtime: `5a59739`.
-- Actual `/api/version`: `ffac52a`.
+- Repo HEAD: `4040a47`.
+- Expected UI code commit: `5a59739`.
+- Runtime commit: `4040a47`.
+- Runtime contains `5a59739`: yes.
+- Actual `/api/version`: `4040a47`.
 - LaunchDaemon: running as `system/com.steelguitarrag.private-preview`.
 - Listener: Python on `127.0.0.1:8770`.
-- Documented restart path attempted non-interactively:
-
-```bash
-sudo -n launchctl kickstart -k system/com.steelguitarrag.private-preview
-```
-
-- Result:
+- Previous stale runtime `ffac52a` is resolved.
+- Protected browser URL attempted:
 
 ```text
-sudo: a password is required
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-compact-copedent-20260625
 ```
 
-No protected-preview browser smoke was run against the stale runtime. The next required action is an interactive Mac mini restart using:
+- Result: blocked at Cloudflare Access login / verification-code flow before reaching the Explorer page.
 
-```bash
-cd /Users/cory/Documents/Pocket\ Steel
-deploy/macos/install-private-preview-launchdaemon.sh restart
-curl -sS http://127.0.0.1:8770/api/version
-```
-
-Proceed to protected-preview smoke only after `/api/version` reports `5a59739`.
+No API fallback was used as browser smoke. The next required action is to complete Cloudflare Access in the in-app browser, then rerun the exact protected Explorer smoke URL.
 
 Recorded behavior:
 
@@ -135,7 +126,7 @@ Smoke Target:
 - Result type: browser smoke
 - Exact browser URL tested: http://127.0.0.1:8770/ui/e9-fretboard-explorer.html?v=explorer-compact-copedent-20260625
 - Cache-busted URL tested: http://127.0.0.1:8770/ui/e9-fretboard-explorer.html?v=explorer-compact-copedent-20260625
-- Exact URL the user should use: blocked pending LaunchDaemon restart to `5a59739`; intended URL remains https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-compact-copedent-20260625
+- Exact URL the user should use: blocked pending Cloudflare Access completion in the in-app browser; intended URL remains https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-compact-copedent-20260625
 - Auth required: no for local smoke / yes for protected preview
 - Auth provider: none for local smoke / Cloudflare Access for protected preview
 - Cloudflare Access login result: not required for local smoke / not attempted for protected preview
@@ -143,7 +134,7 @@ Smoke Target:
 - Expected backend port: 8770
 - Expected git HEAD: 9a3513b
 - Version endpoint: http://127.0.0.1:8770/api/version
-- Version endpoint result: git_sha=ffac52a during pre-commit local smoke; implementation commit after smoke is 9a3513b
+- Version endpoint result: git_sha=4040a47 in the Lane 12 rerun; runtime contains UI commit 5a59739
 - If version endpoint missing, how version is inferred: not applicable
 - Whether app root `/` works: not tested in this local smoke
 - Whether app root `/` is expected to work: yes, protected root redirects to app UI
@@ -151,7 +142,7 @@ Smoke Target:
 - Whether `/ui/steel-guitar-rag-mock.html` is expected to work: yes
 - Who should test this URL: Lane 12 first, then the user
 - Do not test these URLs: uncache-busted Explorer URLs for this slice
-- Known caveats: local smoke is not protected-preview smoke; Lane 12 restart is currently blocked by interactive sudo requirement; user smoke remains on hold
+- Known caveats: local smoke is not protected-preview smoke; protected-preview smoke is currently blocked at Cloudflare Access verification in the in-app browser; user smoke remains on hold
 ```
 
 ## Latest Relevant Handoffs
@@ -163,13 +154,15 @@ Smoke Target:
 - `docs/handoffs/task-completions/2026-06-24-1045-06-e9-pedal-lever-impact-preview-ui.md`
 - `docs/handoffs/task-completions/2026-06-25-1920-06-explorer-compact-copedent-ui.md`
 - `docs/handoffs/task-completions/2026-06-25-2045-12-explorer-compact-copedent-protected-smoke.md`
+- `docs/handoffs/task-completions/2026-06-25-2052-12-explorer-compact-copedent-protected-smoke-rerun.md`
 
 ## Remaining Caveats
 
 - Root URL redirects to `/ui/steel-guitar-rag-mock.html` and drops query strings.
 - Direct `/ui/...?...` URLs remain required for cache-busted smoke.
-- `deploy/macos/install-private-preview-launchdaemon.sh status` and `restart` need interactive sudo in this environment. Lane 12 could verify runtime health with `launchctl`, `lsof`, `ps`, and `/api/version`, but could not restart the LaunchDaemon non-interactively.
-- Current protected-preview runtime is stale at `ffac52a` until the interactive restart is run.
+- `deploy/macos/install-private-preview-launchdaemon.sh status` and `restart` need interactive sudo in this environment.
+- Current protected-preview runtime is refreshed to `4040a47`, which contains `5a59739`.
+- Protected-preview browser smoke is blocked until Cloudflare Access is completed in the in-app browser.
 - Broad unrelated dirty/untracked files remain parked.
 
 ## Current Git / Worktree Notes
@@ -207,14 +200,14 @@ Do not stage parked work unless a later exact-scope handoff approves it.
 
 ## Recommended Next Slice
 
-Run an interactive Mac mini LaunchDaemon restart so `/api/version` reports `5a59739`, then rerun Lane 12 protected-preview smoke. Resume user smoke only if protected-preview evidence passes.
+Complete Cloudflare Access in the in-app browser, then rerun Lane 12 protected-preview smoke. Resume user smoke only if protected-preview evidence passes.
 
 Recommended next slice if continuing:
 
-- Lane 12 Self-Hosted Deployment: restart/verify the launchd-supervised protected preview against `5a59739` and smoke the cache-busted Explorer URL.
+- Lane 12 Self-Hosted Deployment: rerun protected-preview browser smoke against runtime `4040a47` containing `5a59739` after Cloudflare Access is completed.
 
 Recommended exact control step:
 
 ```text
-Lane 12: after an interactive Mac mini restart makes /api/version report 5a59739, smoke https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-compact-copedent-20260625 and the main app entry URL.
+Lane 12: after Cloudflare Access is completed in the in-app browser, smoke https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-compact-copedent-20260625 and the main app entry URL. Runtime /api/version already reports 4040a47, which contains 5a59739.
 ```
