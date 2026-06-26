@@ -74,7 +74,7 @@ Smoke Target:
 - Result type: browser smoke
 - Exact browser URL tested: `http://127.0.0.1:8770/ui/e9-fretboard-explorer.html?v=top-label-chip-order-local`
 - Cache-busted URL tested: `http://127.0.0.1:8770/ui/e9-fretboard-explorer.html?v=top-label-chip-order-local`
-- Exact URL the user should use: protected-preview URL after commit/protected smoke
+- Exact URL the user should use: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=top-label-chip-order-64f9fff`
 - Auth required: no
 - Auth provider: none
 - Cloudflare Access login result: not required
@@ -105,6 +105,45 @@ Local smoke result:
 Screenshot:
 
 - `docs/handoffs/task-completions/assets/2026-06-26-top-label-chip-order/local-chip-order.png`
+
+Protected-preview smoke:
+
+- Target type: protected-preview
+- Result type: browser smoke
+- Exact browser URL tested: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=top-label-chip-order-64f9fff`
+- Cache-busted URL tested: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=top-label-chip-order-64f9fff`
+- Exact URL the user should use: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=top-label-chip-order-64f9fff`
+- Auth required: yes
+- Auth provider: Cloudflare Access
+- Cloudflare Access login result: succeeded via existing in-app browser session
+- Local backend URL: `http://127.0.0.1:8770`
+- Expected backend port: `8770`
+- Expected git HEAD: `64f9fff`
+- Version endpoint: `http://127.0.0.1:8770/api/version`
+- Version endpoint result: `{"git_sha":"4040a47","git_branch":"feature/answer-api","server_started_at":"2026-06-26T01:51:23.747502+00:00","python_module":"pocketsteel.api","retrieval_mode":"hybrid_private_first","auth_provider":"cloudflare_access"}`
+- If version endpoint missing, how version is inferred: not applicable
+- Whether app root `/` works: not checked for this direct Explorer slice
+- Whether app root `/` is expected to work: yes, but root behavior was not part of this smoke
+- Whether `/ui/steel-guitar-rag-mock.html` works: not checked
+- Whether `/ui/steel-guitar-rag-mock.html` is expected to work: yes, but main app behavior was not part of this smoke
+- Who should test this URL: the user
+- Do not test these URLs: uncache-busted Explorer URLs for this fix
+- Known caveats: `/api/version` still reports runtime SHA `4040a47`; this pass verifies static UI behavior at the cache-busted Explorer URL, not a runtime restart.
+
+Protected result:
+
+- Page loaded after Cloudflare Access.
+- HTML loaded `e9-fretboard-explorer.js?v=top-label-chip-order-20260626`.
+- G major Notes chips: `All, G, A, B, C, D, E, F#`.
+- G major NNS chips: `All, 1, 2-, 3-, 4, 5, 6-, 7°`.
+- G major Roman chips: `All, I, ii, iii, IV, V, vi, vii°`.
+- G major Numbers chips: `All, 1, 2m, 3m, 4, 5, 6m, 7dim`.
+- No `[object Object]`.
+- No relevant console errors.
+
+Protected screenshot:
+
+- `docs/handoffs/task-completions/assets/2026-06-26-top-label-chip-order/protected-chip-order.png`
 
 ## Integration Notes
 
