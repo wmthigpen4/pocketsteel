@@ -5,11 +5,12 @@ Generated for ChatGPT reset/guidance on branch `feature/answer-api`.
 ## Current State
 
 - Current branch: `feature/answer-api`.
-- Current repo HEAD at this refresh: `8093a3c docs: record E9 copedent selector protected smoke`.
+- Current repo HEAD at this refresh: `9a3513b fix: compact explorer copedent controls`.
 - Runtime commit smoked for E9 copedent selector/chart: `ecec173 feat: add E9 copedent selector and chart`.
 - Related impact-preview runtime smoke: `670d635 feat: add e9 pedal lever impact preview contract`.
-- Protected-preview status: **PASS for E9 copedent selector/chart**.
-- User-smoke status: **allowed for the E9 copedent selector/chart and Explorer flow**.
+- Latest local UI smoke status: **PASS for compact Explorer/copedent controls at commit `9a3513b`**.
+- Protected-preview status: **needs Lane 12 restart/smoke for commit `9a3513b` before user smoke**.
+- User-smoke status: **hold for compact Explorer/copedent UI until protected-preview smoke records `9a3513b`**.
 - App control state: **park or choose the next small slice**.
 - Broad unrelated dirty/untracked work remains parked. Do not broad-stage.
 
@@ -19,13 +20,13 @@ Use direct `/ui/...?...` URLs for cache-busted validation after Cloudflare Acces
 
 ```text
 Explorer copedent selector/chart:
-https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=ecec173
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-compact-copedent-20260625
 
 Main app:
-https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=ecec173
+https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=explorer-compact-copedent-20260625
 
 Root:
-https://app.steelguitarrag.com/?v=ecec173
+https://app.steelguitarrag.com/?v=explorer-compact-copedent-20260625
 ```
 
 Root caveat:
@@ -81,6 +82,47 @@ Known impact-preview caveat:
 
 - Earlier protected-preview impact-preview evidence was gathered while serving scoped Lane 06 Explorer UI worktree assets. The later copedent selector/chart commit now contains the selector/chart UI baseline, but future user-smoke defects should still be routed by exact slice rather than broad feature work.
 
+## Compact Explorer / Copedent Controls Status
+
+Local smoke status at commit `9a3513b`: **PASS**.
+
+Recorded behavior:
+
+- Copedent chart is hidden by default and opens from a compact `View chart` dialog control.
+- `Emmons E9` remains the default and no longer exposes the user-specific LKV/B-to-Bb control.
+- `Custom E9 (with LKV)` is selectable and retains the LKV/B-to-Bb setup.
+- External E9 reference context is not exposed in Explorer learner-facing UI or payload source context.
+- Pedal/lever impact preview is compact by default and opens details from control tabs.
+- Fretboard labels use either interval labels or note labels; they do not combine fret numbers with note/interval text.
+- Desktop local smoke at 1280x720 showed the fretboard visible without scrolling after the compact control pass.
+- Mobile local smoke at 390x844 had no page-level horizontal overflow; the fretboard remains below the first viewport because of normal mobile stacking.
+
+Smoke Target:
+
+```text
+- Target type: local
+- Result type: browser smoke
+- Exact browser URL tested: http://127.0.0.1:8770/ui/e9-fretboard-explorer.html?v=explorer-compact-copedent-20260625
+- Cache-busted URL tested: http://127.0.0.1:8770/ui/e9-fretboard-explorer.html?v=explorer-compact-copedent-20260625
+- Exact URL the user should use: https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-compact-copedent-20260625 after Lane 12 protected-preview restart/smoke
+- Auth required: no for local smoke / yes for protected preview
+- Auth provider: none for local smoke / Cloudflare Access for protected preview
+- Cloudflare Access login result: not required for local smoke / not attempted for protected preview
+- Local backend URL: http://127.0.0.1:8770
+- Expected backend port: 8770
+- Expected git HEAD: 9a3513b
+- Version endpoint: http://127.0.0.1:8770/api/version
+- Version endpoint result: git_sha=ffac52a during pre-commit local smoke; implementation commit after smoke is 9a3513b
+- If version endpoint missing, how version is inferred: not applicable
+- Whether app root `/` works: not tested in this local smoke
+- Whether app root `/` is expected to work: yes, protected root redirects to app UI
+- Whether `/ui/steel-guitar-rag-mock.html` works: yes, local entry smoke passed at http://127.0.0.1:8770/ui/steel-guitar-rag-mock.html?access=beta_user&v=explorer-compact-copedent-20260625
+- Whether `/ui/steel-guitar-rag-mock.html` is expected to work: yes
+- Who should test this URL: Lane 12 first, then the user
+- Do not test these URLs: uncache-busted Explorer URLs for this slice
+- Known caveats: local smoke is not protected-preview smoke; Lane 12 must restart/verify the launchd-supervised runtime before user smoke
+```
+
 ## Latest Relevant Handoffs
 
 - `docs/handoffs/task-completions/2026-06-23-12-e9-copedent-selector-protected-smoke.md`
@@ -88,6 +130,7 @@ Known impact-preview caveat:
 - `docs/handoffs/task-completions/2026-06-23-06-e9-copedent-selector-chart.md`
 - `docs/handoffs/task-completions/2026-06-24-12-e9-pedal-lever-impact-preview-protected-smoke.md`
 - `docs/handoffs/task-completions/2026-06-24-1045-06-e9-pedal-lever-impact-preview-ui.md`
+- `docs/handoffs/task-completions/2026-06-25-1920-06-explorer-compact-copedent-ui.md`
 
 ## Remaining Caveats
 
@@ -101,7 +144,7 @@ Known impact-preview caveat:
 Current checked state at this refresh:
 
 - Branch: `feature/answer-api`.
-- Repo HEAD before this docs refresh: `8093a3c`.
+- Repo HEAD before this docs refresh: `9a3513b`.
 - Cached index before this docs refresh: empty.
 - `git diff --check`: to be run for this docs refresh.
 
@@ -119,7 +162,7 @@ Do not stage parked work unless a later exact-scope handoff approves it.
 ## Safe To Stage For This Refresh
 
 - `docs/handoffs/task-completions/integration-status.md`
-- `docs/handoffs/task-completions/2026-06-24-01-e9-copedent-selector-integration-refresh.md`
+- no new handoff required; this is the integration-status refresh after `9a3513b`
 
 ## Files Not To Stage For This Refresh
 
@@ -131,14 +174,14 @@ Do not stage parked work unless a later exact-scope handoff approves it.
 
 ## Recommended Next Slice
 
-Park the app, or choose one small follow-up slice.
+Run Lane 12 protected-preview restart/smoke for `9a3513b`, then resume user smoke if protected-preview evidence passes.
 
 Recommended next slice if continuing:
 
-- Lane 06 UX/UI Design: root cache-bust/query-string behavior is Lane 12 if it must be fixed at routing/runtime level; otherwise prioritize the next user-visible Explorer polish issue found in smoke.
+- Lane 12 Self-Hosted Deployment: restart/verify the launchd-supervised protected preview against `9a3513b` and smoke the cache-busted Explorer URL.
 
 Recommended exact control step:
 
 ```text
-Park the app with known caveats, or open a single scoped follow-up for the next user-visible Explorer issue. Use direct /ui/...?... protected-preview URLs for any cache-busted smoke.
+Lane 12: restart/verify protected preview for commit 9a3513b, then smoke https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-compact-copedent-20260625 and the main app entry URL.
 ```
