@@ -275,10 +275,11 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "pedal-steel-fretboard.js?v=selected-svg-render-20260623" not in html
     assert "pedal-steel-fretboard.js?v=explorer-compact-copedent-20260625" not in html
     assert '<script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=explorer-harmonized-path-mode-20260626"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=top-label-chip-order-20260626"></script>' in html
     assert "explorer-top-note-marker-source-20260626" not in html
     assert "e9-fretboard-explorer.js?v=explorer-compact-copedent-20260625" not in html
     assert "e9-fretboard-explorer.js?v=explorer-harmonized-scale-clarity-20260626" not in html
+    assert "e9-fretboard-explorer.js?v=explorer-harmonized-path-mode-20260626" not in html
     expected_key_options = {
         "C": "C",
         "Db": "C# (or D♭)",
@@ -901,6 +902,10 @@ vm.createContext(sandbox);
 vm.runInContext(fs.readFileSync("ui/e9-fretboard-explorer-data.js", "utf8"), sandbox);
 vm.runInContext(fs.readFileSync("ui/e9-fretboard-explorer.js", "utf8"), sandbox);
 
+const topFilterValues = () => elements["explorer-top-interval-filter"]
+  .querySelectorAll("[data-top-interval-filter]")
+  .map((button) => button.getAttribute("data-top-interval-filter"));
+
 assert.match(elements["explorer-key"].innerHTML, /value="G" selected/);
 for (const key of ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"]) {
   assert.match(elements["explorer-key"].innerHTML, new RegExp(`value="${key}"`));
@@ -950,6 +955,7 @@ assert.equal(lastMount.options.positions.some((row) => row.grip === "5-7-8"), tr
 assert.equal(elements["explorer-top-interval-filter"].hidden, false);
 assert.match(elements["explorer-top-interval-filter"].textContent, /Find top note/);
 assert.match(elements["explorer-top-interval-filter"].innerHTML, /data-top-interval-filter="G"/);
+assert.equal(JSON.stringify(topFilterValues()), JSON.stringify(["all", "G", "A", "B", "C", "D", "E", "F#"]));
 assert.equal(elements["explorer-fret-range-filter"].hidden, false);
 assert.match(elements["explorer-fret-range-filter"].textContent, /Visible fret range/);
 assert.match(elements["explorer-fret-range-filter"].textContent, /Core/);
@@ -1033,6 +1039,7 @@ rangeButtons.find((button) => button.getAttribute("data-fret-range-filter") === 
 assert.equal(lastMount.options.positions.length >= coreCount, true);
 notationModeButtons[1].onclick();
 assert.match(elements["explorer-scale-notes"].textContent, /1 - 2- - 3- - 4 - 5 - 6- - 7°/);
+assert.equal(JSON.stringify(topFilterValues()), JSON.stringify(["all", "1", "2-", "3-", "4", "5", "6-", "7°"]));
 assert.match(elements["explorer-active-results"].innerHTML, /Top note interval:/);
 assert.match(elements["explorer-active-results"].textContent, /Top note interval: (1|3-|5)/);
 assert.match(elements["explorer-active-results"].textContent, /Harmony/);
@@ -1046,6 +1053,7 @@ assert.equal(lastMount.options.positions.every((row) => row.label !== "3, 3-"), 
 assert.match(elements["explorer-control-impact-preview"].textContent, /Showing NNS notation/);
 notationModeButtons[2].onclick();
 assert.match(elements["explorer-scale-notes"].textContent, /I - ii - iii - IV - V - vi - vii°/);
+assert.equal(JSON.stringify(topFilterValues()), JSON.stringify(["all", "I", "ii", "iii", "IV", "V", "vi", "vii°"]));
 assert.match(elements["explorer-active-results"].textContent, /Top note interval: (I|iii|V)/);
 assert.equal(g345Fret3Marker().label, "iii, IV");
 assert.equal(JSON.stringify(Array.from(g345Fret3Marker().labelValues)), JSON.stringify(["iii", "IV"]));
@@ -1054,6 +1062,7 @@ assert.equal(JSON.stringify(Array.from(g345Fret10Marker().labelValues)), JSON.st
 assert.equal(lastMount.options.positions.some((row) => /^(I|ii|iii|IV|V|vi|vii°)(, (I|ii|iii|IV|V|vi|vii°))*$/.test(row.label)), true);
 notationModeButtons[3].onclick();
 assert.match(elements["explorer-scale-notes"].textContent, /1 - 2m - 3m - 4 - 5 - 6m - 7dim/);
+assert.equal(JSON.stringify(topFilterValues()), JSON.stringify(["all", "1", "2m", "3m", "4", "5", "6m", "7dim"]));
 assert.match(elements["explorer-active-results"].textContent, /Top note interval: (1|3m|5)/);
 assert.equal(g345Fret3Marker().label, "3m, 4");
 assert.equal(JSON.stringify(Array.from(g345Fret3Marker().labelValues)), JSON.stringify(["3m", "4"]));

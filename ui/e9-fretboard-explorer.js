@@ -828,10 +828,24 @@
     return activeTopLabel(row);
   }
 
+  function topFilterSortIndex(label) {
+    const sequenceIndex = activeScaleSequence().indexOf(label);
+    if (sequenceIndex !== -1) {
+      return sequenceIndex;
+    }
+    if (notationMode === "notes") {
+      const scaleIndex = scaleDegreeIndexForNote(label);
+      if (scaleIndex !== -1) {
+        return scaleIndex;
+      }
+    }
+    return 100 + intervalSortIndex(label);
+  }
+
   function availableTopFilters(rows) {
     return dedupeValues(rows.map(activeTopFilterLabel))
       .sort((a, b) => {
-        const byOrder = intervalSortIndex(a) - intervalSortIndex(b);
+        const byOrder = topFilterSortIndex(a) - topFilterSortIndex(b);
         return byOrder || a.localeCompare(b);
       });
   }
