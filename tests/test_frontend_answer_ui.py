@@ -269,13 +269,13 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "checked against tuning and pedal/lever changes" in html
     assert "These Explorer rows are deterministic teaching data, separate from source-card answers." not in html
     assert "not corpus retrieval or RAG-generated fretboard positions" not in html
-    assert '<script src="pedal-steel-fretboard.js?v=explorer-notation-marker-labels-20260626"></script>' in html
+    assert '<script src="pedal-steel-fretboard.js?v=explorer-top-note-marker-source-20260626"></script>' in html
     assert "pedal-steel-fretboard.js?v=e9-explorer-explanation-ui-20260623" not in html
     assert "pedal-steel-fretboard.js?v=explorer-ui-cleanup-20260623" not in html
     assert "pedal-steel-fretboard.js?v=selected-svg-render-20260623" not in html
     assert "pedal-steel-fretboard.js?v=explorer-compact-copedent-20260625" not in html
-    assert '<script src="e9-fretboard-explorer-data.js?v=explorer-notation-marker-labels-20260626"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=explorer-notation-marker-labels-20260626"></script>' in html
+    assert '<script src="e9-fretboard-explorer-data.js?v=explorer-top-note-marker-source-20260626"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=explorer-top-note-marker-source-20260626"></script>' in html
     assert "e9-fretboard-explorer.js?v=explorer-compact-copedent-20260625" not in html
     assert "e9-fretboard-explorer.js?v=explorer-harmonized-scale-clarity-20260626" not in html
     expected_key_options = {
@@ -850,6 +850,15 @@ assert.equal(lastMount.options.positions.length > 0, true);
 assert.equal(lastMount.options.positions.some((row) => /^[A-G][b#]?$/.test(row.label) || /^[A-G][b#]?, [A-G][b#]?$/.test(row.label)), true);
 assert.equal(lastMount.options.positions.some((row) => Array.isArray(row.labelValues) && row.labelValues.length > 1 && row.label.includes(", ")), true);
 assert.equal(lastMount.options.positions.every((row) => !/^[A-G][b#]?\+$/.test(row.label)), true);
+const markerPosition = (id) => lastMount.options.positions.find((row) => row.id === id);
+const g345Fret3Marker = () => markerPosition("marker:3:3-4-5:3-4-5");
+const g345Fret10Marker = () => markerPosition("marker:10:3-4-5:3-4-5");
+assert.equal(g345Fret3Marker().label, "B, C");
+assert.equal(JSON.stringify(Array.from(g345Fret3Marker().labelValues)), JSON.stringify(["B", "C"]));
+assert.equal(g345Fret10Marker().label, "F#, G");
+assert.equal(JSON.stringify(Array.from(g345Fret10Marker().labelValues)), JSON.stringify(["F#", "G"]));
+assert.equal(lastMount.options.positions.every((row) => row.label !== "3, 3m"), true);
+assert.equal(lastMount.options.positions.every((row) => row.label !== "3m, 4"), true);
 assert.equal(lastMount.options.positions.some((row) => row.grip === "5-7-8"), true);
 assert.equal(elements["explorer-top-interval-filter"].hidden, false);
 assert.match(elements["explorer-top-interval-filter"].textContent, /Find top note/);
@@ -940,22 +949,37 @@ assert.match(elements["explorer-scale-notes"].textContent, /1 - 2- - 3- - 4 - 5 
 assert.match(elements["explorer-active-results"].innerHTML, /Top note interval:/);
 assert.match(elements["explorer-active-results"].textContent, /Top note interval: (1|3-|5)/);
 assert.match(elements["explorer-active-results"].textContent, /Harmony/);
+assert.equal(g345Fret3Marker().label, "3-, 4");
+assert.equal(JSON.stringify(Array.from(g345Fret3Marker().labelValues)), JSON.stringify(["3-", "4"]));
+assert.equal(g345Fret10Marker().label, "7°, 1");
+assert.equal(JSON.stringify(Array.from(g345Fret10Marker().labelValues)), JSON.stringify(["7°", "1"]));
 assert.equal(lastMount.options.positions.some((row) => /^(1|2-|3-|4|5|6-|7°)(, (1|2-|3-|4|5|6-|7°))*$/.test(row.label)), true);
 assert.equal(lastMount.options.positions.every((row) => row.label !== "3+"), true);
+assert.equal(lastMount.options.positions.every((row) => row.label !== "3, 3-"), true);
 assert.match(elements["explorer-control-impact-preview"].textContent, /Showing NNS notation/);
 notationModeButtons[2].onclick();
 assert.match(elements["explorer-scale-notes"].textContent, /I - ii - iii - IV - V - vi - vii°/);
 assert.match(elements["explorer-active-results"].textContent, /Top note interval: (I|iii|V)/);
+assert.equal(g345Fret3Marker().label, "iii, IV");
+assert.equal(JSON.stringify(Array.from(g345Fret3Marker().labelValues)), JSON.stringify(["iii", "IV"]));
+assert.equal(g345Fret10Marker().label, "vii°, I");
+assert.equal(JSON.stringify(Array.from(g345Fret10Marker().labelValues)), JSON.stringify(["vii°", "I"]));
 assert.equal(lastMount.options.positions.some((row) => /^(I|ii|iii|IV|V|vi|vii°)(, (I|ii|iii|IV|V|vi|vii°))*$/.test(row.label)), true);
 notationModeButtons[3].onclick();
 assert.match(elements["explorer-scale-notes"].textContent, /1 - 2m - 3m - 4 - 5 - 6m - 7dim/);
 assert.match(elements["explorer-active-results"].textContent, /Top note interval: (1|3m|5)/);
+assert.equal(g345Fret3Marker().label, "3m, 4");
+assert.equal(JSON.stringify(Array.from(g345Fret3Marker().labelValues)), JSON.stringify(["3m", "4"]));
+assert.equal(g345Fret10Marker().label, "7dim, 1");
+assert.equal(JSON.stringify(Array.from(g345Fret10Marker().labelValues)), JSON.stringify(["7dim", "1"]));
 assert.equal(lastMount.options.positions.some((row) => /^(1|2m|3m|4|5|6m|7dim)(, (1|2m|3m|4|5|6m|7dim))*$/.test(row.label)), true);
 notationModeButtons[0].onclick();
 assert.equal(lastMount.options.positions.some((row) => /^[A-G][b#]?$/.test(row.label) || /^[A-G][b#]?, [A-G][b#]?$/.test(row.label)), true);
+assert.equal(g345Fret3Marker().label, "B, C");
 assert.match(elements["explorer-active-results"].innerHTML, /Top note:/);
 assert.match(elements["explorer-active-results"].innerHTML, /<strong>Top note: (G|B|D)/);
 notationModeButtons[1].onclick();
+assert.equal(g345Fret3Marker().label, "3-, 4");
 assert.equal(lastMount.options.positions.some((row) => /^(1|2-|3-|4|5|6-|7°)(, (1|2-|3-|4|5|6-|7°))*$/.test(row.label)), true);
 assert.match(elements["explorer-active-results"].innerHTML, /Top note interval:/);
 notationModeButtons[0].onclick();

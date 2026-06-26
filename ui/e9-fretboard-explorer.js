@@ -250,11 +250,79 @@
 
   function activeScaleSequence() {
     if (notationMode === "notes") {
-      const notes = activePayload()?.query?.display_scale_notes?.[els.scale.value];
-      return Array.isArray(notes) ? notes : [];
+      return activeScaleNotes();
     }
     const source = els.scale.value === "natural_minor" ? NATURAL_MINOR_SCALE_SEQUENCES : MAJOR_SCALE_SEQUENCES;
     return source[notationMode] || [];
+  }
+
+  function activeScaleNotes() {
+    const notes = activePayload()?.query?.display_scale_notes?.[els.scale.value];
+    return Array.isArray(notes) ? notes : [];
+  }
+
+  function noteAlternates(note) {
+    return formatValue(note, "")
+      .replace(/♭/g, "b")
+      .replace(/♯/g, "#")
+      .split("/")
+      .map((part) => part.trim())
+      .filter(Boolean);
+  }
+
+  function pitchClassForNote(note) {
+    const match = /^([A-G])([b#]{0,2})/.exec(formatValue(note, "").replace(/♭/g, "b").replace(/♯/g, "#"));
+    if (!match) {
+      return null;
+    }
+    const base = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[match[1]];
+    const accidental = match[2].split("").reduce((total, symbol) => {
+      if (symbol === "#") {
+        return total + 1;
+      }
+      if (symbol === "b") {
+        return total - 1;
+      }
+      return total;
+    }, 0);
+    return (base + accidental + 120) % 12;
+  }
+
+  function scaleDegreeIndexForNote(note) {
+    const scaleNotes = activeScaleNotes();
+    const candidates = noteAlternates(note);
+    if (!scaleNotes.length || !candidates.length) {
+      return -1;
+    }
+    const exactIndex = scaleNotes.findIndex((scaleNote) => {
+      const scaleAlternates = noteAlternates(scaleNote);
+      return candidates.some((candidate) => scaleAlternates.includes(candidate));
+    });
+    if (exactIndex !== -1) {
+      return exactIndex;
+    }
+    const candidatePitchClasses = candidates
+      .map(pitchClassForNote)
+      .filter((value) => value !== null);
+    if (!candidatePitchClasses.length) {
+      return -1;
+    }
+    return scaleNotes.findIndex((scaleNote) => noteAlternates(scaleNote)
+      .map(pitchClassForNote)
+      .some((pitchClass) => candidatePitchClasses.includes(pitchClass)));
+  }
+
+  function notationLabelForFinalNote(note, fallbackInterval = "") {
+    const displayNote = formatValue(note, "");
+    if (notationMode === "notes") {
+      return displayNote;
+    }
+    const scaleIndex = scaleDegreeIndexForNote(displayNote);
+    const sequence = activeScaleSequence();
+    if (scaleIndex >= 0 && sequence[scaleIndex]) {
+      return sequence[scaleIndex];
+    }
+    return fallbackInterval ? formatIntervalForNotation(fallbackInterval) : displayNote;
   }
 
   function dedupeValues(values) {
@@ -367,7 +435,8 @@
   }
 
   function activeTopLabel(row) {
-    return notationMode === "notes" ? topNoteLabel(row) : formatIntervalForNotation(topIntervalLabel(row));
+    const voice = topVoice(row);
+    return notationLabelForFinalNote(voice.note || topNoteLabel(row), voice.interval || topIntervalLabel(row));
   }
 
   function activeTopLabelName() {
@@ -379,7 +448,8 @@
   }
 
   function activeLabelValues(row) {
-    return notationMode === "notes" ? rowNoteLabels(row) : rowIntervalLabels(row).map(formatIntervalForNotation);
+    const label = activeTopLabel(row);
+    return label ? [label] : [];
   }
 
   function activeLabelText(row) {
@@ -1186,7 +1256,7 @@
   function stringActionForEntry(row, entry) {
     const change = row.per_string_changes?.[String(entry.string)];
     const controls = controlsForString(row, entry.string);
-    const role = entry.interval ? formatIntervalForNotation(entry.interval) : "";
+    const role = notationLabelForFinalNote(entry.note, entry.interval);
     if (change) {
       return {
         string: entry.string,
@@ -1231,12 +1301,13 @@
       return "";
     }
     const stringText = voice.string ? `string ${voice.string}` : "the top string";
-    const intervalText = voice.interval ? `${notationMode === "notes" ? "top interval" : `${notationModeLabel()} top label`} ${formatIntervalForNotation(voice.interval)}` : "the top interval";
+    const notationText = activeTopLabel(row);
     const noteText = voice.note ? `top note ${voice.note}` : "the top note";
+    const scaleText = selectedOptionLabel(els.scale) || `${activeKey()} ${els.scale.value}`;
     return `
       <section class="explorer-top-voice-note" aria-label="Top-note interval explanation">
         <strong>Top-note focus</strong>
-        <p>${escapeHtml(`This view indexes the grip by ${stringText}: ${noteText} is ${intervalText} in ${activeKey()}. The other notes below it support the harmony (${harmonyIntervalText(row)}).`)}</p>
+        <p>${escapeHtml(`This view indexes the grip by ${stringText}: final ${noteText} maps to ${notationModeLabel()} label ${notationText} in ${scaleText}. The other notes below it support the harmony (${harmonyIntervalText(row)}).`)}</p>
       </section>
     `;
   }
@@ -1396,7 +1467,7 @@
       row.display_summary || row.chord_name || row.chord_function || row.id,
       `Fret ${row.fret} · strings ${row.string_group}`,
       `${activeTopLabelName()}: ${activeTopLabel(row)}`,
-      `Top-note focus: string ${topVoice(row).string || "top"} carries ${activeTopLabel(row)} in ${activeKey()}`,
+      `Top-note focus: string ${topVoice(row).string || "top"} final note ${topVoice(row).note || "unknown"} maps to ${activeTopLabel(row)} in ${activeKey()}`,
       `Notes: ${formatValue(rowNoteLabels(row))}`,
       `${notationModeLabel()} harmony: ${harmonyIntervalText(row)}`,
       `Pedals/levers: ${formatValue(controls)}`,
