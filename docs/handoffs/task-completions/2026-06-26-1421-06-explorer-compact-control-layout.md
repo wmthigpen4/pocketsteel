@@ -30,6 +30,7 @@ Intentionally not changed:
 - `docs/handoffs/task-completions/2026-06-26-1421-06-explorer-compact-control-layout.md`
 - `docs/handoffs/task-completions/assets/2026-06-26-compact-explorer-controls/local-desktop-controls.png`
 - `docs/handoffs/task-completions/assets/2026-06-26-compact-explorer-controls/local-mobile-controls.png`
+- `docs/handoffs/task-completions/assets/2026-06-26-compact-explorer-controls/protected-desktop-controls.png`
 
 ## Behavior Changed
 
@@ -79,30 +80,56 @@ Results:
 
 ## Browser Smoke
 
-Smoke Target:
+Local Smoke Target:
 
 ```text
 - Target type: local
 - Result type: browser smoke
-- Exact browser URL tested: http://127.0.0.1:8770/ui/e9-fretboard-explorer.html?v=compact-controls-local
-- Cache-busted URL tested: http://127.0.0.1:8770/ui/e9-fretboard-explorer.html?v=compact-controls-local
-- Exact URL the user should use: protected-preview URL after commit/protected smoke
+- Exact browser URL tested: http://127.0.0.1:8770/ui/e9-fretboard-explorer.html?v=compact-controls-local-final
+- Cache-busted URL tested: http://127.0.0.1:8770/ui/e9-fretboard-explorer.html?v=compact-controls-local-final
+- Exact URL the user should use: https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=compact-controls-672ec51
 - Auth required: no
 - Auth provider: none
 - Cloudflare Access login result: not required
 - Local backend URL: http://127.0.0.1:8770
 - Expected backend port: 8770
-- Expected git HEAD: 5b9ba1f plus scoped local changes
-- Version endpoint: not checked for local static browser smoke
-- Version endpoint result: not checked
-- If version endpoint missing, how version is inferred: local working tree and browser URL cache-bust
-- Whether app root `/` works: not checked
-- Whether app root `/` is expected to work: not relevant to direct Explorer smoke
-- Whether `/ui/steel-guitar-rag-mock.html` works: not checked
-- Whether `/ui/steel-guitar-rag-mock.html` is expected to work: not relevant to direct Explorer smoke
-- Who should test this URL: Codex locally, then the user after protected-preview smoke
+- Expected git HEAD: 672ec51
+- Version endpoint: http://127.0.0.1:8770/api/version
+- Version endpoint result: git_sha=4040a47
+- If version endpoint missing, how version is inferred: not applicable
+- Whether app root `/` works: yes, local root redirects to `/ui/steel-guitar-rag-mock.html`
+- Whether app root `/` is expected to work: yes
+- Whether `/ui/steel-guitar-rag-mock.html` works: expected yes; not the target for this Explorer-only smoke
+- Whether `/ui/steel-guitar-rag-mock.html` is expected to work: yes
+- Who should test this URL: Codex and the user
 - Do not test these URLs: uncache-busted Explorer URLs for this slice
-- Known caveats: local browser smoke does not prove protected-preview static asset freshness
+- Known caveats: `/api/version` still reports runtime SHA `4040a47`, so the protected pass below verifies static UI behavior through the cache-busted Explorer URL, not a runtime restart.
+```
+
+Protected Smoke Target:
+
+```text
+- Target type: protected-preview
+- Result type: browser smoke
+- Exact browser URL tested: https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=compact-controls-672ec51
+- Cache-busted URL tested: https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=compact-controls-672ec51
+- Exact URL the user should use: https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=compact-controls-672ec51
+- Auth required: yes
+- Auth provider: Cloudflare Access
+- Cloudflare Access login result: succeeded
+- Local backend URL: http://127.0.0.1:8770
+- Expected backend port: 8770
+- Expected git HEAD: 672ec51
+- Version endpoint: http://127.0.0.1:8770/api/version
+- Version endpoint result: git_sha=4040a47
+- If version endpoint missing, how version is inferred: not applicable
+- Whether app root `/` works: not checked in protected browser during this Explorer-only smoke; local root redirects to `/ui/steel-guitar-rag-mock.html`
+- Whether app root `/` is expected to work: yes
+- Whether `/ui/steel-guitar-rag-mock.html` works: not checked in protected browser; expected yes and not the target for this Explorer-only smoke
+- Whether `/ui/steel-guitar-rag-mock.html` is expected to work: yes
+- Who should test this URL: Codex and the user
+- Do not test these URLs: uncache-busted Explorer URLs for this slice
+- Known caveats: `/api/version` still reports runtime SHA `4040a47`, so this pass verifies static UI behavior through the cache-busted Explorer URL, not a runtime restart.
 ```
 
 Local desktop smoke result:
@@ -126,16 +153,31 @@ Local narrow smoke result:
 - `Notation` label remained visible.
 - `Showing validated positions` stayed absent.
 
+Protected-preview desktop smoke result:
+
+- URL tested: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=compact-controls-672ec51`
+- Cloudflare Access login result: succeeded; the Explorer page loaded without Access login, verification-code, or sign-in text.
+- Explorer loaded `e9-fretboard-explorer.js?v=compact-controls-20260626`.
+- `String group` rendered as a compact 184px dropdown, not a multi-select listbox.
+- `Notation` label was visible, and the notation control wrapped without page-level overflow.
+- `Showing validated positions` was absent and `#explorer-result-count` was not present.
+- Selecting `6-8-10` filtered visible rows to only `6-8-10`.
+- Switching to `Harmonized scale path` and `Low path` hid/disabled `String group`, showed/enabled `Path family`, and rendered mixed groups `6-8-10` and `6-7-10`.
+- No `[object Object]`.
+- No relevant browser console warnings/errors.
+
 Screenshots:
 
 - `docs/handoffs/task-completions/assets/2026-06-26-compact-explorer-controls/local-desktop-controls.png`
 - `docs/handoffs/task-completions/assets/2026-06-26-compact-explorer-controls/local-mobile-controls.png`
+- `docs/handoffs/task-completions/assets/2026-06-26-compact-explorer-controls/protected-desktop-controls.png`
 
 ## Integration Notes
 
 - The UI now exposes only one string group at a time from the compact dropdown. The underlying renderer still handles selected option state and preserves `All` or exact group filtering.
 - The path mode fix from `7b934e6` remains intact.
-- Protected-preview smoke should use a fresh direct Explorer cache-busted URL after commit.
+- Protected-preview smoke passed at `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=compact-controls-672ec51`.
+- The local `/api/version` endpoint still reports `4040a47`, so the smoke confirms cache-busted static UI behavior rather than a restarted runtime SHA.
 
 ## Risk Assessment
 
@@ -157,15 +199,16 @@ No.
 - `docs/handoffs/task-completions/2026-06-26-1421-06-explorer-compact-control-layout.md`
 - `docs/handoffs/task-completions/assets/2026-06-26-compact-explorer-controls/local-desktop-controls.png`
 - `docs/handoffs/task-completions/assets/2026-06-26-compact-explorer-controls/local-mobile-controls.png`
+- `docs/handoffs/task-completions/assets/2026-06-26-compact-explorer-controls/protected-desktop-controls.png`
 
 ## Files That Must Not Be Staged
 
 - Existing unrelated dirty files listed by `git status --short`, especially corpus/source/private/design/deployment-adjacent files.
-- `docs/handoffs/task-completions/integration-status.md` until protected-preview smoke is recorded.
+- Broad parked handoff/docs/status files outside this compact-control slice.
 
 ## Recommended Next Lane
 
-Lane 01 exact-path commit, then Lane 12/protected-preview browser smoke for the direct Explorer page.
+Lane 15 focused user-smoke verification at the direct protected-preview Explorer URL.
 
 ## Commit Readiness
 
@@ -173,9 +216,14 @@ Safe to commit.
 
 ## Suggested Next Step
 
-Commit scoped files with:
+The implementation commit has been created as:
 
 ```bash
-git add ui/e9-fretboard-explorer.html ui/e9-fretboard-explorer.js tests/test_frontend_answer_ui.py docs/handoffs/task-completions/2026-06-26-1421-06-explorer-compact-control-layout.md docs/handoffs/task-completions/assets/2026-06-26-compact-explorer-controls/local-desktop-controls.png docs/handoffs/task-completions/assets/2026-06-26-compact-explorer-controls/local-mobile-controls.png
-git commit -m "fix: compact explorer control layout"
+672ec51 fix: compact explorer control layout
+```
+
+Next user-smoke URL:
+
+```text
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=compact-controls-672ec51
 ```
