@@ -247,7 +247,7 @@
       border-color: rgba(141, 199, 141, 0.28);
     }
 
-    .explorer-label-toggle {
+    .explorer-notation-selector {
       display: inline-flex;
       gap: 4px;
       border: 1px solid rgba(246, 190, 88, 0.22);
@@ -256,7 +256,7 @@
       background: rgba(0, 0, 0, 0.26);
     }
 
-    .explorer-label-toggle button {
+    .explorer-notation-selector button {
       border: 0;
       border-radius: 999px;
       padding: 6px 10px;
@@ -268,12 +268,12 @@
       font-weight: 800;
     }
 
-    .explorer-label-toggle button.is-selected {
+    .explorer-notation-selector button.is-selected {
       background: rgba(246, 190, 88, 0.14);
       color: var(--text);
     }
 
-    .explorer-label-toggle button:focus-visible {
+    .explorer-notation-selector button:focus-visible {
       outline: 2px solid rgba(246, 190, 88, 0.72);
       outline-offset: 2px;
     }
@@ -1371,15 +1371,17 @@
     </section>
 
     <div class="explorer-summary" aria-live="polite">
-      <span class="explorer-pill">Scale notes: <span id="explorer-scale-notes">G A B C D E F#</span></span>
+      <span class="explorer-pill">Scale: <span id="explorer-scale-notes">G - A - B - C - D - E - F#</span></span>
       <span class="explorer-pill explorer-pill--trust" id="explorer-result-count">Showing validated positions</span>
-      <div class="explorer-label-toggle" role="group" aria-label="Fretboard marker labels">
-        <button type="button" data-explorer-label-mode="intervals" class="is-selected" aria-pressed="true">Intervals</button>
-        <button type="button" data-explorer-label-mode="notes" aria-pressed="false">Notes</button>
+      <div class="explorer-notation-selector" role="group" aria-label="Notation mode">
+        <button type="button" data-explorer-notation-mode="notes" class="is-selected" aria-pressed="true">Notes</button>
+        <button type="button" data-explorer-notation-mode="nns" aria-pressed="false">NNS</button>
+        <button type="button" data-explorer-notation-mode="roman" aria-pressed="false">Roman</button>
+        <button type="button" data-explorer-notation-mode="numbers" aria-pressed="false">Numbers</button>
       </div>
     </div>
 
-    <div class="explorer-top-interval-filter" id="explorer-top-interval-filter" aria-label="Top interval filter" hidden></div>
+    <div class="explorer-top-interval-filter" id="explorer-top-interval-filter" aria-label="Top label filter" hidden></div>
     <div class="explorer-fret-range-filter" id="explorer-fret-range-filter" aria-label="Visible fret range filter" hidden></div>
 
     <dialog class="explorer-copedent-dialog" id="explorer-copedent-dialog" aria-labelledby="explorer-copedent-dialog-title">
@@ -1402,9 +1404,11 @@
         <div><dt>Diminished</dt><dd>A tense chord built from stacked minor-thirds; often shown with °.</dd></div>
         <div><dt>Half-diminished</dt><dd>A minor seven flat five sound; often shown as m7b5 or ø.</dd></div>
         <div><dt>NNS / Nashville Number System</dt><dd>Number names for scale degrees and chords, so a pattern moves between keys.</dd></div>
-        <div><dt>Intervals</dt><dd>Numbers that describe each note’s job against the root, such as 1, 3, or 5.</dd></div>
-        <div><dt>Top interval</dt><dd>The interval carried by the highest selected string in a grip. In Intervals mode, fretboard markers use this value.</dd></div>
-        <div><dt>Top note</dt><dd>The letter note on the highest selected string in a grip. In Notes mode, fretboard markers use this value.</dd></div>
+        <div><dt>Notation mode</dt><dd>Choose notes, Nashville numbers, Roman numerals, or number-plus-quality labels for cards and markers.</dd></div>
+        <div><dt>NNS</dt><dd>Nashville-style numbers, such as 1, 2-, 3-, 4, 5, 6-, and 7° in a major key.</dd></div>
+        <div><dt>Roman</dt><dd>Roman numerals with chord quality, such as I, ii, iii, IV, V, vi, and vii°.</dd></div>
+        <div><dt>Top note interval</dt><dd>The selected notation label carried by the highest selected string in a grip.</dd></div>
+        <div><dt>Top note</dt><dd>The letter note on the highest selected string in a grip.</dd></div>
         <div><dt>Flat symbol</dt><dd>♭ means the note or interval is lowered, so ♭3 means flat third and ♭7 means flat seventh.</dd></div>
         <div><dt>Notes</dt><dd>The letter names being played, such as G, B, or D.</dd></div>
         <div><dt>Grips</dt><dd>Common sets of strings picked together.</dd></div>

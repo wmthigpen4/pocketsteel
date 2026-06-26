@@ -352,9 +352,11 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert 'id="explorer-copedent-chart"' in html
     assert 'id="explorer-control-impact-preview"' in html
     assert 'id="explorer-selected-detail"' in html
-    assert 'data-explorer-label-mode="intervals"' in html
-    assert 'data-explorer-label-mode="notes"' in html
-    assert 'aria-label="Fretboard marker labels"' in html
+    assert 'data-explorer-notation-mode="notes"' in html
+    assert 'data-explorer-notation-mode="nns"' in html
+    assert 'data-explorer-notation-mode="roman"' in html
+    assert 'data-explorer-notation-mode="numbers"' in html
+    assert 'aria-label="Notation mode"' in html
     assert "explorer-teaching-note" in html
     assert "explorer-copedent-chart__table" in html
     assert "Pedal and lever impact" in script
@@ -362,8 +364,12 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "renderCopedentChart" in script
     assert "openCopedentDialog" in script
     assert "closeCopedentDialog" in script
-    assert "data-explorer-label-mode" in script
-    assert 'labelMode = "intervals"' in script
+    assert "data-explorer-notation-mode" in script
+    assert 'notationMode = "notes"' in script
+    assert "MAJOR_SCALE_SEQUENCES" in script
+    assert '"1", "2-", "3-", "4", "5", "6-", "7°"' in script
+    assert '"I", "ii", "iii", "IV", "V", "vi", "vii°"' in script
+    assert '"1", "2m", "3m", "4", "5", "6m", "7dim"' in script
     assert "control_impact_preview" in script
     assert "control_impacts" in script
     assert "rowControlImpactsHtml" in script
@@ -418,7 +424,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "Low" in script and "Frets 0-8" in script
     assert "High" in script and "Frets 10-24" in script
     assert "All" in script and "Frets 0-24" in script
-    assert "Top interval" in html
+    assert "Top note interval" in html
     assert "Top note" in html
     assert "Flat symbol" in html
     assert "data-marker-id" in script
@@ -475,8 +481,10 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
         "Diminished",
         "Half-diminished",
         "NNS / Nashville Number System",
-        "Intervals",
+        "Notation mode",
         "Notes",
+        "NNS",
+        "Roman",
         "Grips",
         "Pedals",
         "Levers",
@@ -772,9 +780,11 @@ const elements = {
   "explorer-tooltip": new FakeNode("explorer-tooltip"),
 };
 let lastMount;
-const labelModeButtons = [
-  new FakeButton("intervals", "data-explorer-label-mode"),
-  new FakeButton("notes", "data-explorer-label-mode")
+const notationModeButtons = [
+  new FakeButton("notes", "data-explorer-notation-mode"),
+  new FakeButton("nns", "data-explorer-notation-mode"),
+  new FakeButton("roman", "data-explorer-notation-mode"),
+  new FakeButton("numbers", "data-explorer-notation-mode")
 ];
 const sandbox = {
   window: {
@@ -785,8 +795,8 @@ const sandbox = {
     activeElement: null,
     getElementById: (id) => elements[id],
     querySelectorAll: (selector) => {
-      if (selector === "[data-explorer-label-mode]") {
-        return labelModeButtons;
+      if (selector === "[data-explorer-notation-mode]") {
+        return notationModeButtons;
       }
       return [];
     }
@@ -835,12 +845,11 @@ assert.equal(lastMount.options.highlightStyle, "prominent");
 assert.equal(Object.prototype.hasOwnProperty.call(lastMount.options, "emphasizeStringGroups"), false);
 assert.equal(Object.prototype.hasOwnProperty.call(lastMount.options, "selectedStringGroups"), false);
 assert.equal(lastMount.options.positions.length > 0, true);
-assert.equal(lastMount.options.positions.every((row) => !/^\d+\+?$/.test(row.label) || /^(1|2|3|4|5|6|7)\+?$/.test(row.label)), true);
-assert.equal(lastMount.options.positions.every((row) => !/\bb\d/.test(row.label)), true);
+assert.equal(lastMount.options.positions.some((row) => /^[A-G][b#]?\+?$/.test(row.label)), true);
 assert.equal(lastMount.options.positions.some((row) => row.grip === "5-7-8"), true);
 assert.equal(elements["explorer-top-interval-filter"].hidden, false);
-assert.match(elements["explorer-top-interval-filter"].textContent, /Find top interval/);
-assert.match(elements["explorer-top-interval-filter"].innerHTML, /data-top-interval-filter="1"/);
+assert.match(elements["explorer-top-interval-filter"].textContent, /Find top note/);
+assert.match(elements["explorer-top-interval-filter"].innerHTML, /data-top-interval-filter="G"/);
 assert.equal(elements["explorer-fret-range-filter"].hidden, false);
 assert.match(elements["explorer-fret-range-filter"].textContent, /Visible fret range/);
 assert.match(elements["explorer-fret-range-filter"].textContent, /Core/);
@@ -860,6 +869,7 @@ assert.doesNotMatch(elements["explorer-copedent-chart"].textContent, /\[object O
 assert.equal(elements["explorer-control-impact-preview"].hidden, false);
 assert.match(elements["explorer-control-impact-preview"].textContent, /Pedal and lever impact/);
 assert.match(elements["explorer-control-impact-preview"].textContent, /Emmons E9/);
+assert.match(elements["explorer-control-impact-preview"].textContent, /Showing Notes notation/);
 assert.match(elements["explorer-control-impact-preview"].textContent, /A pedal/);
 assert.match(elements["explorer-control-impact-preview"].innerHTML, /data-control-impact-tab="A"/);
 assert.doesNotMatch(elements["explorer-control-impact-preview"].textContent, /String 5/);
@@ -879,7 +889,7 @@ assert.match(elements["explorer-control-impact-preview"].innerHTML, /aria-presse
 elements["explorer-control-impact-preview"].querySelector("[data-control-impact-clear]").onclick();
 assert.doesNotMatch(elements["explorer-control-impact-preview"].textContent, /String 5/);
 assert.match(elements["explorer-active-results"].textContent, /all 3-string groups/);
-assert.match(elements["explorer-active-results"].textContent, /Top note interval:/);
+assert.match(elements["explorer-active-results"].textContent, /Top note:/);
 assert.doesNotMatch(elements["explorer-active-results"].textContent, /Marker \d|Marker \+\d/);
 assert.doesNotMatch(elements["explorer-active-results"].textContent, /Fretboard \d|Fretboard \d\+/);
 assert.match(elements["explorer-active-results"].innerHTML, /data-marker-id=/);
@@ -896,9 +906,9 @@ assert.equal(elements["explorer-fretboard"].querySelectorAll(".pedal-steel-fretb
 activeResultButtons[1].onclick();
 assert.equal(elements["explorer-fretboard"].querySelectorAll(".pedal-steel-fretboard__highlight[data-highlight-id]").filter((marker) => marker.getAttribute("data-explorer-selected-marker") === "true").length, 1);
 assert.match(elements["explorer-selected-detail"].textContent, /Notes/);
-assert.match(elements["explorer-selected-detail"].textContent, /Intervals/);
+assert.match(elements["explorer-selected-detail"].textContent, /Chord intervals/);
 assert.match(elements["explorer-selected-detail"].textContent, /Top-note focus/);
-assert.match(elements["explorer-selected-detail"].textContent, /Top interval/);
+assert.match(elements["explorer-selected-detail"].textContent, /Top note/);
 assert.match(elements["explorer-selected-detail"].textContent, /String actions/);
 assert.match(elements["explorer-selected-detail"].textContent, /no change|B\+C|A\+B|E-raise/);
 assert.match(elements["explorer-selected-detail"].textContent, /Why this position works/);
@@ -906,14 +916,12 @@ assert.match(elements["explorer-selected-detail"].textContent, /validated E9 pit
 assert.match(elements["explorer-selected-detail"].innerHTML, /explorer-teaching-note/);
 assert.doesNotMatch(elements["explorer-fretboard"].textContent, /Why this position works/);
 assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /Pitch validated/);
-assert.doesNotMatch(elements["explorer-row-list"].textContent, /\b\d+\s+(?:I|ii|iii|iv|v|vi|vii)\b/);
-assert.doesNotMatch(elements["explorer-active-results"].textContent, /\b\d+\s+(?:I|ii|iii|iv|v|vi|vii)\b/);
-assert.match(elements["explorer-active-results"].innerHTML, /Top note interval:/);
-assert.doesNotMatch(elements["explorer-active-results"].innerHTML, /<strong>G<\/strong>/);
+assert.match(elements["explorer-active-results"].innerHTML, /Top note:/);
+assert.match(elements["explorer-active-results"].innerHTML, /<strong>Top note: (G|B|D)/);
 const intervalFilterButtons = elements["explorer-top-interval-filter"].querySelectorAll("[data-top-interval-filter]");
-intervalFilterButtons.find((button) => button.getAttribute("data-top-interval-filter") === "1").onclick();
-assert.match(elements["explorer-active-results"].textContent, /Top note interval: 1/);
-assert.equal(lastMount.options.positions.every((row) => row.label === "1" || row.label === "1+"), true);
+intervalFilterButtons.find((button) => button.getAttribute("data-top-interval-filter") === "G").onclick();
+assert.match(elements["explorer-active-results"].textContent, /Top note: G/);
+assert.equal(lastMount.options.positions.every((row) => row.label === "G" || row.label === "G+"), true);
 elements["explorer-top-interval-filter"].querySelectorAll("[data-top-interval-filter]").find((button) => button.getAttribute("data-top-interval-filter") === "all").onclick();
 const rangeButtons = elements["explorer-fret-range-filter"].querySelectorAll("[data-fret-range-filter]");
 const coreCount = lastMount.options.positions.length;
@@ -923,13 +931,29 @@ assert.equal(lastMount.options.positions.every((row) => Number(row.fret) >= 10 &
 assert.equal(lastMount.options.positions.length > 0, true);
 rangeButtons.find((button) => button.getAttribute("data-fret-range-filter") === "all").onclick();
 assert.equal(lastMount.options.positions.length >= coreCount, true);
-labelModeButtons[1].onclick();
+notationModeButtons[1].onclick();
+assert.match(elements["explorer-scale-notes"].textContent, /1 - 2- - 3- - 4 - 5 - 6- - 7°/);
+assert.match(elements["explorer-active-results"].innerHTML, /Top note interval:/);
+assert.match(elements["explorer-active-results"].textContent, /Top note interval: (1|3-|5)/);
+assert.match(elements["explorer-active-results"].textContent, /Harmony/);
+assert.equal(lastMount.options.positions.some((row) => /^(1|2-|3-|4|5|6-|7°)\+?$/.test(row.label)), true);
+assert.match(elements["explorer-control-impact-preview"].textContent, /Showing NNS notation/);
+notationModeButtons[2].onclick();
+assert.match(elements["explorer-scale-notes"].textContent, /I - ii - iii - IV - V - vi - vii°/);
+assert.match(elements["explorer-active-results"].textContent, /Top note interval: (I|iii|V)/);
+assert.equal(lastMount.options.positions.some((row) => /^(I|ii|iii|IV|V|vi|vii°)\+?$/.test(row.label)), true);
+notationModeButtons[3].onclick();
+assert.match(elements["explorer-scale-notes"].textContent, /1 - 2m - 3m - 4 - 5 - 6m - 7dim/);
+assert.match(elements["explorer-active-results"].textContent, /Top note interval: (1|3m|5)/);
+assert.equal(lastMount.options.positions.some((row) => /^(1|2m|3m|4|5|6m|7dim)\+?$/.test(row.label)), true);
+notationModeButtons[0].onclick();
 assert.equal(lastMount.options.positions.some((row) => /^[A-G][b#]?\+?$/.test(row.label)), true);
 assert.match(elements["explorer-active-results"].innerHTML, /Top note:/);
 assert.match(elements["explorer-active-results"].innerHTML, /<strong>Top note: (G|B|D)/);
-labelModeButtons[0].onclick();
-assert.equal(lastMount.options.positions.some((row) => /^(1|2|3|4|5|6|7)\+?$/.test(row.label)), true);
+notationModeButtons[1].onclick();
+assert.equal(lastMount.options.positions.some((row) => /^(1|2-|3-|4|5|6-|7°)\+?$/.test(row.label)), true);
 assert.match(elements["explorer-active-results"].innerHTML, /Top note interval:/);
+notationModeButtons[0].onclick();
 
 const expectedMajorScales = {
   C: "C D E F G A B",
@@ -948,7 +972,7 @@ const expectedMajorScales = {
 for (const [key, scaleNotes] of Object.entries(expectedMajorScales)) {
   elements["explorer-key"].value = key;
   elements["explorer-key"].dispatchChange();
-  assert.equal(elements["explorer-scale-notes"].textContent, scaleNotes);
+  assert.equal(elements["explorer-scale-notes"].textContent, scaleNotes.replaceAll(" ", " - "));
   assert.doesNotMatch(elements["explorer-scale-notes"].textContent, /##|B#|E#/);
   assert.equal(lastMount.options.query.key, key);
   assert.equal(lastMount.options.positions.length > 0, true);
@@ -1015,7 +1039,7 @@ assert.equal(Object.prototype.hasOwnProperty.call(lastMount.options, "selectedSt
 
 elements["explorer-key"].value = "G";
 elements["explorer-key"].dispatchChange();
-assert.match(elements["explorer-scale-notes"].textContent, /G A B C D E F#/);
+assert.match(elements["explorer-scale-notes"].textContent, /G - A - B - C - D - E - F#/);
 
 elements["explorer-string-group"].selectValues(["4-5-6", "5-6-8"]);
 assert.equal(lastMount.options.positions.every((row) => ["4-5-6", "5-6-8"].includes(row.grip)), true);
@@ -1049,7 +1073,7 @@ assert.equal(elements["explorer-harmony"].value, "three_string_diatonic");
 assert.equal(elements["explorer-harmony"].options.find((item) => item.value === "two_string_harmonized").disabled, true);
 assert.equal(elements["explorer-harmony"].options.some((item) => item.value === "five_eight_branch"), false);
 assert.equal(elements["explorer-string-group"].value, "all");
-assert.match(elements["explorer-scale-notes"].textContent, /G A Bb C D Eb F/);
+assert.match(elements["explorer-scale-notes"].textContent, /G - A - Bb - C - D - Eb - F/);
 assert.doesNotMatch(elements["explorer-scale-notes"].textContent, /A#|D#/);
 assert.equal(elements["explorer-empty"].hidden, true);
 assert.doesNotMatch(elements["explorer-row-list"].textContent, /\[object Object\]/);

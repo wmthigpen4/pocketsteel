@@ -36,6 +36,22 @@
     { id: "high", label: "High", description: "Frets 10-24", min: 10, max: 24 },
     { id: "all", label: "All", description: "Frets 0-24", min: 0, max: 24 },
   ];
+  const NOTATION_MODES = [
+    { id: "notes", label: "Notes", description: "C - D - E" },
+    { id: "nns", label: "NNS", description: "1 - 2-" },
+    { id: "roman", label: "Roman", description: "I - ii" },
+    { id: "numbers", label: "Numbers", description: "1 - 2m" },
+  ];
+  const MAJOR_SCALE_SEQUENCES = {
+    nns: ["1", "2-", "3-", "4", "5", "6-", "7°"],
+    roman: ["I", "ii", "iii", "IV", "V", "vi", "vii°"],
+    numbers: ["1", "2m", "3m", "4", "5", "6m", "7dim"],
+  };
+  const NATURAL_MINOR_SCALE_SEQUENCES = {
+    nns: ["1-", "2°", "3", "4-", "5-", "6", "7"],
+    roman: ["i", "ii°", "III", "iv", "v", "VI", "VII"],
+    numbers: ["1m", "2dim", "3", "4m", "5m", "6", "7"],
+  };
 
   const els = {
     key: document.getElementById("explorer-key"),
@@ -45,7 +61,7 @@
     stringGroup: document.getElementById("explorer-string-group"),
     scaleNotes: document.getElementById("explorer-scale-notes"),
     resultCount: document.getElementById("explorer-result-count"),
-    labelModeButtons: document.querySelectorAll("[data-explorer-label-mode]"),
+    notationModeButtons: document.querySelectorAll("[data-explorer-notation-mode]"),
     topIntervalFilter: document.getElementById("explorer-top-interval-filter"),
     fretRangeFilter: document.getElementById("explorer-fret-range-filter"),
     copedentDialog: document.getElementById("explorer-copedent-dialog"),
@@ -66,9 +82,9 @@
 
   let selectedRowId = "";
   let selectedImpactControlIds = new Set();
-  let selectedTopInterval = "all";
+  let selectedTopFilter = "all";
   let selectedFretRange = "core";
-  let labelMode = "intervals";
+  let notationMode = "notes";
   let lastCopedentDialogOpener = null;
   let lastGlossaryDialogOpener = null;
   let currentRows = [];
@@ -140,6 +156,105 @@
       .replace(/bb(?=\d)/g, "𝄫")
       .replace(/b(?=\d)/g, "♭")
       .replace(/#(?=\d)/g, "♯");
+  }
+
+  function normalizeIntervalToken(value) {
+    return formatValue(value, "")
+      .replace(/♭/g, "b")
+      .replace(/♯/g, "#")
+      .trim();
+  }
+
+  function notationModeLabel() {
+    return NOTATION_MODES.find((mode) => mode.id === notationMode)?.label || "Notes";
+  }
+
+  function intervalAsNns(value) {
+    const token = normalizeIntervalToken(value);
+    const map = {
+      "1": "1",
+      "b2": "2-",
+      "2": "2",
+      "b3": "3-",
+      "3": "3",
+      "4": "4",
+      "#4": "4+",
+      "b5": "5°",
+      "b5/#11": "5°",
+      "#11": "4+",
+      "5": "5",
+      "b6": "6-",
+      "6": "6",
+      "b7": "7-",
+      "7": "7",
+    };
+    return map[token] || formatTheoryText(value);
+  }
+
+  function intervalAsRoman(value) {
+    const token = normalizeIntervalToken(value);
+    const map = {
+      "1": "I",
+      "b2": "ii",
+      "2": "II",
+      "b3": "iii",
+      "3": "III",
+      "4": "IV",
+      "#4": "IV+",
+      "b5": "v°",
+      "b5/#11": "v°",
+      "#11": "IV+",
+      "5": "V",
+      "b6": "vi",
+      "6": "VI",
+      "b7": "vii",
+      "7": "VII",
+    };
+    return map[token] || formatTheoryText(value);
+  }
+
+  function intervalAsNumberQuality(value) {
+    const token = normalizeIntervalToken(value);
+    const map = {
+      "1": "1",
+      "b2": "2m",
+      "2": "2",
+      "b3": "3m",
+      "3": "3",
+      "4": "4",
+      "#4": "4aug",
+      "b5": "5dim",
+      "b5/#11": "5dim",
+      "#11": "4aug",
+      "5": "5",
+      "b6": "6m",
+      "6": "6",
+      "b7": "7m",
+      "7": "7",
+    };
+    return map[token] || formatTheoryText(value);
+  }
+
+  function formatIntervalForNotation(value) {
+    if (notationMode === "nns") {
+      return intervalAsNns(value);
+    }
+    if (notationMode === "roman") {
+      return intervalAsRoman(value);
+    }
+    if (notationMode === "numbers") {
+      return intervalAsNumberQuality(value);
+    }
+    return formatTheoryText(value);
+  }
+
+  function activeScaleSequence() {
+    if (notationMode === "notes") {
+      const notes = activePayload()?.query?.display_scale_notes?.[els.scale.value];
+      return Array.isArray(notes) ? notes : [];
+    }
+    const source = els.scale.value === "natural_minor" ? NATURAL_MINOR_SCALE_SEQUENCES : MAJOR_SCALE_SEQUENCES;
+    return source[notationMode] || [];
   }
 
   function dedupeValues(values) {
@@ -233,7 +348,10 @@
   function topVoiceLabel(row) {
     const voice = topVoice(row);
     if (voice.note || voice.interval || voice.string) {
-      return [voice.note, voice.interval ? `interval ${voice.interval}` : "", voice.string ? `string ${voice.string}` : ""]
+      const intervalText = notationMode === "notes"
+        ? `interval ${formatIntervalForNotation(voice.interval)}`
+        : `${notationModeLabel()} ${formatIntervalForNotation(voice.interval)}`;
+      return [voice.note, voice.interval ? intervalText : "", voice.string ? `string ${voice.string}` : ""]
         .filter(Boolean)
         .join(" · ");
     }
@@ -249,19 +367,19 @@
   }
 
   function activeTopLabel(row) {
-    return labelMode === "notes" ? topNoteLabel(row) : topIntervalLabel(row);
+    return notationMode === "notes" ? topNoteLabel(row) : formatIntervalForNotation(topIntervalLabel(row));
   }
 
   function activeTopLabelName() {
-    return labelMode === "notes" ? "Top note" : "Top interval";
+    return notationMode === "notes" ? "Top note" : "Top note interval";
   }
 
   function harmonyIntervalText(row) {
-    return formatValue(rowIntervalLabels(row), "");
+    return formatValue(rowIntervalLabels(row).map(formatIntervalForNotation), "");
   }
 
   function activeLabelValues(row) {
-    return labelMode === "notes" ? rowNoteLabels(row) : rowIntervalLabels(row);
+    return notationMode === "notes" ? rowNoteLabels(row) : rowIntervalLabels(row).map(formatIntervalForNotation);
   }
 
   function activeLabelText(row) {
@@ -269,7 +387,7 @@
   }
 
   function primaryLabelForRow(row) {
-    const label = labelMode === "notes" ? "Top note" : "Top note interval";
+    const label = notationMode === "notes" ? "Top note" : "Top note interval";
     return `${label}: ${activeTopLabel(row) || row.chord_function || row.scale_degree || row.chord_name || "Position"}`;
   }
 
@@ -282,8 +400,8 @@
     return Number.isFinite(fret) && fret >= range.min && fret <= range.max;
   }
 
-  function labelModeNoun() {
-    return labelMode === "notes" ? "Notes" : "Intervals";
+  function notationModeNoun() {
+    return notationModeLabel();
   }
 
   function rowsForScale(scale) {
@@ -492,42 +610,45 @@
     return found === -1 ? 100 + interval.localeCompare("") : found;
   }
 
-  function availableTopIntervals(rows) {
-    return dedupeValues(rows.map(topIntervalLabel))
+  function activeTopFilterLabel(row) {
+    return activeTopLabel(row);
+  }
+
+  function availableTopFilters(rows) {
+    return dedupeValues(rows.map(activeTopFilterLabel))
       .sort((a, b) => {
         const byOrder = intervalSortIndex(a) - intervalSortIndex(b);
         return byOrder || a.localeCompare(b);
       });
   }
 
-  function syncSelectedTopInterval(baseRows) {
-    const available = new Set(availableTopIntervals(baseRows));
-    if (selectedTopInterval !== "all" && !available.has(selectedTopInterval)) {
-      selectedTopInterval = "all";
+  function syncSelectedTopFilter(baseRows) {
+    const available = new Set(availableTopFilters(baseRows));
+    if (selectedTopFilter !== "all" && !available.has(selectedTopFilter)) {
+      selectedTopFilter = "all";
     }
   }
 
   function getRows() {
     const baseRows = getBaseRows();
-    if (selectedTopInterval === "all") {
+    if (selectedTopFilter === "all") {
       return baseRows.filter((row) => rowInRange(row));
     }
     return baseRows
-      .filter((row) => topIntervalLabel(row) === selectedTopInterval)
+      .filter((row) => activeTopFilterLabel(row) === selectedTopFilter)
       .filter((row) => rowInRange(row));
   }
 
   function getRowsBeforeRange(baseRows) {
-    if (selectedTopInterval === "all") {
+    if (selectedTopFilter === "all") {
       return baseRows;
     }
-    return baseRows.filter((row) => topIntervalLabel(row) === selectedTopInterval);
+    return baseRows.filter((row) => activeTopFilterLabel(row) === selectedTopFilter);
   }
 
   function getScaleNotes() {
-    const payload = activePayload();
-    const notes = payload?.query?.display_scale_notes?.[els.scale.value];
-    return Array.isArray(notes) ? notes.join(" ") : "Unavailable";
+    const values = activeScaleSequence();
+    return values.length ? values.join(" - ") : "Unavailable";
   }
 
   function isAdvanced(row) {
@@ -585,7 +706,7 @@
       pedals: dedupeValues(row.pedals),
       levers: dedupeValues(row.levers),
       notes: rowNoteLabels(row),
-      intervals: rowIntervalLabels(row),
+      intervals: rowIntervalLabels(row).map(formatIntervalForNotation),
       explanation: row.display_summary || row.explanation,
       colorRole: colorRoleForRow(row),
       visibleByDefault: true,
@@ -776,8 +897,8 @@
     }
     const stringNumber = formatValue(impact.string, "");
     const intervalEffect = formatValue(impact.interval_effect, "");
-    const beforeInterval = formatValue(impact.before_interval, "");
-    const afterInterval = formatValue(impact.after_interval, "");
+    const beforeInterval = impact.before_interval ? formatIntervalForNotation(impact.before_interval) : "";
+    const afterInterval = impact.after_interval ? formatIntervalForNotation(impact.after_interval) : "";
     const intervalContext = includeChordIntervals && beforeInterval && afterInterval
       ? `; chord role ${beforeInterval} -> ${afterInterval}`
       : "";
@@ -819,7 +940,7 @@
     const selectedGroups = selectedStringGroups();
     const groupText = selectedGroups.length ? selectedGroups.join(", ") : selectedGroupLabel();
     const harmonyText = HARMONY_LABELS[els.harmony.value] || selectedOptionLabel(els.harmony);
-    const modeText = labelMode === "notes" ? "note names" : "interval/NNS labels";
+    const modeText = `${notationModeLabel()} notation`;
     if (!controls.length) {
       return `Choose one or more controls to preview changes for ${groupText} in ${harmonyText}. Showing ${modeText}.`;
     }
@@ -939,33 +1060,34 @@
     if (!els.topIntervalFilter) {
       return;
     }
-    const intervals = availableTopIntervals(baseRows);
-    if (intervals.length <= 1) {
+    const filters = availableTopFilters(baseRows);
+    if (filters.length <= 1) {
       els.topIntervalFilter.hidden = true;
       els.topIntervalFilter.innerHTML = "";
       return;
     }
     els.topIntervalFilter.hidden = false;
-    const allSelected = selectedTopInterval === "all";
+    const allSelected = selectedTopFilter === "all";
+    const filterNoun = notationMode === "notes" ? "top note" : `${notationModeLabel()} top label`;
     const chips = [
       `<button class="explorer-top-interval-filter__chip${allSelected ? " is-selected" : ""}" type="button" data-top-interval-filter="all" aria-pressed="${allSelected ? "true" : "false"}">All</button>`,
-      ...intervals.map((interval) => {
-        const selected = selectedTopInterval === interval;
-        return `<button class="explorer-top-interval-filter__chip${selected ? " is-selected" : ""}" type="button" data-top-interval-filter="${escapeHtml(interval)}" aria-pressed="${selected ? "true" : "false"}">${escapeHtml(interval)}</button>`;
+      ...filters.map((filter) => {
+        const selected = selectedTopFilter === filter;
+        return `<button class="explorer-top-interval-filter__chip${selected ? " is-selected" : ""}" type="button" data-top-interval-filter="${escapeHtml(filter)}" aria-pressed="${selected ? "true" : "false"}">${escapeHtml(filter)}</button>`;
       }),
     ];
     els.topIntervalFilter.innerHTML = `
       <div class="explorer-top-interval-filter__label">
-        <strong>Find top interval</strong>
-        <span>The marker label follows the top string of each selected grip.</span>
+        <strong>Find ${escapeHtml(filterNoun)}</strong>
+        <span>The marker label follows the top string of each selected grip in ${escapeHtml(notationModeLabel())} mode.</span>
       </div>
-      <div class="explorer-top-interval-filter__chips" role="group" aria-label="Filter by top interval">
+      <div class="explorer-top-interval-filter__chips" role="group" aria-label="Filter by ${escapeHtml(filterNoun)}">
         ${chips.join("")}
       </div>
     `;
     Array.from(els.topIntervalFilter.querySelectorAll("[data-top-interval-filter]")).forEach((button) => {
       button.addEventListener("click", () => {
-        selectedTopInterval = button.getAttribute("data-top-interval-filter") || "all";
+        selectedTopFilter = button.getAttribute("data-top-interval-filter") || "all";
         render();
       });
     });
@@ -1053,7 +1175,7 @@
   function stringActionForEntry(row, entry) {
     const change = row.per_string_changes?.[String(entry.string)];
     const controls = controlsForString(row, entry.string);
-    const role = entry.interval ? formatInterval(entry.interval) : "";
+    const role = entry.interval ? formatIntervalForNotation(entry.interval) : "";
     if (change) {
       return {
         string: entry.string,
@@ -1098,7 +1220,7 @@
       return "";
     }
     const stringText = voice.string ? `string ${voice.string}` : "the top string";
-    const intervalText = voice.interval ? `top interval ${voice.interval}` : "the top interval";
+    const intervalText = voice.interval ? `${notationMode === "notes" ? "top interval" : `${notationModeLabel()} top label`} ${formatIntervalForNotation(voice.interval)}` : "the top interval";
     const noteText = voice.note ? `top note ${voice.note}` : "the top note";
     return `
       <section class="explorer-top-voice-note" aria-label="Top-note interval explanation">
@@ -1126,11 +1248,11 @@
       ${topVoiceExplanationHtml(row)}
       ${teachingNoteHtml(row)}
       <dl class="explorer-detail-grid">
-        ${detailRow("Top note", topNoteLabel(row))}
-        ${detailRow("Top interval", topIntervalLabel(row))}
+        ${detailRow(activeTopLabelName(), activeTopLabel(row))}
         ${detailRow("Supporting harmony", harmonyIntervalText(row))}
         ${detailRow("Notes", rowNoteLabels(row))}
-        ${detailRow("Intervals", rowIntervalLabels(row))}
+        ${detailRow("Chord intervals", rowIntervalLabels(row))}
+        ${detailRow("Notation mode", notationModeLabel())}
         ${detailRow("Top voice", topVoiceLabel(row))}
         ${detailRow("Fret", row.fret)}
         ${detailRow("String group", row.string_group)}
@@ -1262,9 +1384,9 @@
       row.display_summary || row.chord_name || row.chord_function || row.id,
       `Fret ${row.fret} · strings ${row.string_group}`,
       `${activeTopLabelName()}: ${activeTopLabel(row)}`,
-      `Top-note focus: string ${topVoice(row).string || "top"} carries ${topIntervalLabel(row)} in ${activeKey()}`,
+      `Top-note focus: string ${topVoice(row).string || "top"} carries ${activeTopLabel(row)} in ${activeKey()}`,
       `Notes: ${formatValue(rowNoteLabels(row))}`,
-      `Intervals: ${formatValue(rowIntervalLabels(row))}`,
+      `${notationModeLabel()} harmony: ${harmonyIntervalText(row)}`,
       `Pedals/levers: ${formatValue(controls)}`,
       stringActions ? `String actions: ${stringActions}` : "",
       warnings.length ? `Warning: ${formatValue(warnings)}` : "",
@@ -1413,7 +1535,7 @@
 
   function render() {
     const baseRows = getBaseRows();
-    syncSelectedTopInterval(baseRows);
+    syncSelectedTopFilter(baseRows);
     renderTopIntervalFilter(baseRows);
     const rowsBeforeRange = getRowsBeforeRange(baseRows);
     const rows = getRows();
@@ -1452,9 +1574,9 @@
     }
   }
 
-  function updateLabelModeButtons() {
-    Array.from(els.labelModeButtons || []).forEach((button) => {
-      const isSelected = button.getAttribute("data-explorer-label-mode") === labelMode;
+  function updateNotationModeButtons() {
+    Array.from(els.notationModeButtons || []).forEach((button) => {
+      const isSelected = button.getAttribute("data-explorer-notation-mode") === notationMode;
       button.classList.toggle("is-selected", isSelected);
       button.setAttribute("aria-pressed", isSelected ? "true" : "false");
     });
@@ -1561,11 +1683,12 @@
         lastGlossaryDialogOpener = null;
       });
     }
-    Array.from(els.labelModeButtons || []).forEach((button) => {
+    Array.from(els.notationModeButtons || []).forEach((button) => {
       button.addEventListener("click", () => {
-        const nextMode = button.getAttribute("data-explorer-label-mode");
-        labelMode = nextMode === "notes" ? "notes" : "intervals";
-        updateLabelModeButtons();
+        const nextMode = button.getAttribute("data-explorer-notation-mode");
+        notationMode = NOTATION_MODES.some((mode) => mode.id === nextMode) ? nextMode : "notes";
+        selectedTopFilter = "all";
+        updateNotationModeButtons();
         render();
       });
     });
@@ -1586,7 +1709,7 @@
     });
 
     updateControls();
-    updateLabelModeButtons();
+    updateNotationModeButtons();
     render();
   }
 
