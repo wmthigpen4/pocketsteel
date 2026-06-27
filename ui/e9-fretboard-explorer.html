@@ -670,6 +670,102 @@
       outline: none;
     }
 
+    .explorer-note-workflow-panel {
+      display: grid;
+      gap: 9px;
+      border: 1px solid rgba(246, 190, 88, 0.16);
+      border-radius: 14px;
+      padding: 10px;
+      background: rgba(255, 247, 232, 0.035);
+    }
+
+    .explorer-note-workflow-panel > strong {
+      color: var(--text);
+      font-size: 0.92rem;
+      font-weight: 900;
+    }
+
+    .explorer-note-workflow-panel p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.82rem;
+      line-height: 1.42;
+    }
+
+    .explorer-note-workflow-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 8px;
+    }
+
+    .explorer-note-change-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 7px;
+    }
+
+    .explorer-note-change-row {
+      display: grid;
+      gap: 2px;
+      border: 1px solid rgba(255, 247, 232, 0.1);
+      border-radius: 12px;
+      padding: 8px 9px;
+      background: rgba(0, 0, 0, 0.2);
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 800;
+    }
+
+    .explorer-note-change-row strong {
+      color: var(--text);
+      font-size: 0.82rem;
+    }
+
+    .explorer-note-change-row span {
+      color: var(--gold);
+      font-weight: 900;
+    }
+
+    .explorer-note-change-row em {
+      color: rgba(255, 247, 232, 0.58);
+      font-style: normal;
+    }
+
+    .explorer-note-change-row.is-affected {
+      border-color: rgba(112, 183, 255, 0.38);
+      background: rgba(112, 183, 255, 0.09);
+    }
+
+    .explorer-note-feedback {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 10px;
+      align-items: center;
+      border: 1px solid rgba(255, 247, 232, 0.14);
+      border-radius: 12px;
+      padding: 8px 10px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 800;
+    }
+
+    .explorer-note-feedback strong {
+      color: var(--text);
+      font-size: 0.86rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .explorer-note-feedback--correct {
+      border-color: rgba(115, 202, 137, 0.36);
+      background: rgba(115, 202, 137, 0.1);
+    }
+
+    .explorer-note-feedback--try {
+      border-color: rgba(246, 190, 88, 0.34);
+      background: rgba(246, 190, 88, 0.1);
+    }
+
     .explorer-control-impact-preview__header {
       display: grid;
       gap: 5px;
@@ -1114,6 +1210,13 @@
       background: rgba(247, 189, 88, 0.18);
       color: var(--text);
       box-shadow: inset 0 0 0 1px rgba(247, 189, 88, 0.24);
+    }
+
+    .explorer-note-cell.is-grip {
+      border-color: rgba(116, 224, 191, 0.72);
+      background: rgba(116, 224, 191, 0.18);
+      color: var(--text);
+      box-shadow: inset 0 0 0 1px rgba(116, 224, 191, 0.28);
     }
 
     .explorer-note-cell:hover,
@@ -1652,6 +1755,6 @@
 
   <script src="pedal-steel-fretboard.js?v=explorer-harmonized-path-mode-20260626"></script>
   <script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>
-  <script src="e9-fretboard-explorer.js?v=single-note-finder-20260626"></script>
+  <script src="e9-fretboard-explorer.js?v=single-note-learning-20260626"></script>
 </body>
 </html>

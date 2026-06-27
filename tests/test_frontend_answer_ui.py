@@ -276,7 +276,8 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "pedal-steel-fretboard.js?v=explorer-compact-copedent-20260625" not in html
     assert '<script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>' in html
     assert "[hidden] {\n      display: none !important;\n    }" in html
-    assert '<script src="e9-fretboard-explorer.js?v=single-note-finder-20260626"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=single-note-learning-20260626"></script>' in html
+    assert "e9-fretboard-explorer.js?v=single-note-finder-20260626" not in html
     assert "explorer-top-note-marker-source-20260626" not in html
     assert "e9-fretboard-explorer.js?v=compact-controls-20260626" not in html
     assert "e9-fretboard-explorer.js?v=explorer-compact-copedent-20260625" not in html
@@ -546,12 +547,25 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "data-control-impact-clear" in script
     assert "No direct impact on the selected string group" in script
     assert "NOTE_CONTROL_STATES" in script
+    assert "NOTE_WORKFLOWS" in script
     assert "Single-note finder" in script
+    assert "Find all" in script
+    assert "Reverse lookup" in script
+    assert "Pedal changes" in script
+    assert "Build grip" in script
+    assert "Drill" in script
+    assert "Event sync" in script
     assert "data-note-control-state" in script
+    assert "data-note-workflow" in script
+    assert "data-note-string-filter" in script
+    assert "data-note-reverse-result" in script
+    assert "data-note-grip-card" in script
+    assert "data-note-sync-event" in script
     assert "data-note-cell" in script
     assert "Open note at fret" in script
     assert "Final note" in script
     assert "Pedals and levers change the note on affected strings" in script
+    assert "Deterministic event sync demo" in script
 
     g_major_three = [
         row for row in payload["positions"]
@@ -762,12 +776,18 @@ class FakeNode {
       "[data-top-interval-filter]": Array.from(value.matchAll(/data-top-interval-filter="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-top-interval-filter")),
       "[data-fret-range-filter]": Array.from(value.matchAll(/data-fret-range-filter="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-fret-range-filter")),
       "[data-control-impact-clear]": value.includes("data-control-impact-clear") ? [new FakeButton("clear", "data-control-impact-clear")] : [],
+      "[data-note-workflow]": Array.from(value.matchAll(/data-note-workflow="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-workflow")),
       "[data-note-control-state]": Array.from(value.matchAll(/data-note-control-state="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-control-state")),
       "[data-note-target]": Array.from(value.matchAll(/data-note-target="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-target")),
+      "[data-note-string-filter]": Array.from(value.matchAll(/data-note-string-filter="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-string-filter")),
       "[data-note-cell]": noteCells,
       "[data-note-result]": Array.from(value.matchAll(/data-note-result="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-result")),
       "[data-note-result-card]": Array.from(value.matchAll(/data-note-result-card="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-result-card")),
-      "[data-note-result-list]": Array.from(value.matchAll(/data-note-result-list="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-result-list"))
+      "[data-note-result-list]": Array.from(value.matchAll(/data-note-result-list="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-result-list")),
+      "[data-note-reverse-result]": Array.from(value.matchAll(/data-note-reverse-result="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-reverse-result")),
+      "[data-note-grip-target]": Array.from(value.matchAll(/data-note-grip-target="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-grip-target")),
+      "[data-note-grip-card]": Array.from(value.matchAll(/data-note-grip-card="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-grip-card")),
+      "[data-note-sync-event]": Array.from(value.matchAll(/data-note-sync-event="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-sync-event"))
     };
   }
   get innerHTML() {
@@ -1137,17 +1157,25 @@ assert.equal(elements["explorer-harmony"].disabled, true);
 assert.equal(elements["explorer-control-impact-preview"].hidden, true);
 assert.equal(elements["explorer-fret-range-filter"].hidden, false);
 assert.match(elements["explorer-note-finder"].textContent, /Pedals and levers change the note on affected strings/);
-assert.match(elements["explorer-active-results"].textContent, /Single-note finder:/);
+assert.match(elements["explorer-active-results"].textContent, /Find all:/);
 assert.match(elements["explorer-selected-detail"].textContent, /String 3, fret 3: B/);
 assert.match(elements["explorer-selected-detail"].textContent, /Active controlsOpen/);
 assert.match(elements["explorer-selected-detail"].textContent, /Open note at fretB/);
 assert.match(elements["explorer-selected-detail"].textContent, /Final noteB/);
 assert.match(elements["explorer-selected-detail"].textContent, /Open position: no pedals or levers are active/);
+const noteWorkflowButtons = () => elements["explorer-note-finder"].querySelectorAll("[data-note-workflow]");
 const noteTargetButtons = () => elements["explorer-note-finder"].querySelectorAll("[data-note-target]");
 const noteControlButtons = () => elements["explorer-note-finder"].querySelectorAll("[data-note-control-state]");
+const noteStringFilterButtons = () => elements["explorer-note-finder"].querySelectorAll("[data-note-string-filter]");
+const noteReverseButtons = () => elements["explorer-note-finder"].querySelectorAll("[data-note-reverse-result]");
+const noteGripButtons = () => elements["explorer-note-finder"].querySelectorAll("[data-note-grip-card]");
+const noteSyncButtons = () => elements["explorer-note-finder"].querySelectorAll("[data-note-sync-event]");
 const noteCell = (stringNumber, fret) => elements["explorer-fretboard"]
   .querySelectorAll("[data-note-cell]")
   .find((button) => button.getAttribute("data-note-string") === String(stringNumber) && button.getAttribute("data-note-fret") === String(fret));
+assert.deepEqual(noteWorkflowButtons().map((button) => button.getAttribute("data-note-workflow")), ["find", "reverse", "changes", "grip", "drill", "sync"]);
+assert.match(elements["explorer-note-finder"].textContent, /Find all/);
+assert.match(elements["explorer-note-finder"].textContent, /All strings/);
 noteTargetButtons().find((button) => button.getAttribute("data-note-target") === "2").onclick();
 assert.equal(noteCell(3, 3).getAttribute("data-note-result"), "3:3");
 noteControlButtons().find((button) => button.getAttribute("data-note-control-state") === "B").onclick();
@@ -1165,12 +1193,42 @@ assert.match(elements["explorer-selected-detail"].textContent, /String 5, fret 3
 assert.match(elements["explorer-selected-detail"].textContent, /Open note at fretD/);
 assert.match(elements["explorer-selected-detail"].textContent, /Final noteE/);
 assert.match(elements["explorer-selected-detail"].textContent, /A pedal raises this string from D to E/);
+noteControlButtons().find((button) => button.getAttribute("data-note-control-state") === "B").onclick();
+noteWorkflowButtons().find((button) => button.getAttribute("data-note-workflow") === "changes").onclick();
+assert.match(elements["explorer-note-finder"].textContent, /B pedal affected strings/);
+assert.match(elements["explorer-note-finder"].textContent, /Affected strings: 3, 6/);
+assert.match(elements["explorer-note-finder"].textContent, /G# -&gt; A/);
+noteWorkflowButtons().find((button) => button.getAttribute("data-note-workflow") === "reverse").onclick();
+noteStringFilterButtons().find((button) => button.getAttribute("data-note-string-filter") === "3").onclick();
+assert.match(elements["explorer-note-finder"].textContent, /Reverse lookup/);
+assert.match(elements["explorer-note-finder"].textContent, /How to get B/);
+assert.ok(noteReverseButtons().length > 0);
+assert.equal(elements["explorer-row-list"].textContent.includes("String 5,"), false);
+noteWorkflowButtons().find((button) => button.getAttribute("data-note-workflow") === "grip").onclick();
+noteStringFilterButtons().find((button) => button.getAttribute("data-note-string-filter") === "all").onclick();
+assert.match(elements["explorer-note-finder"].textContent, /Build a grip/);
+assert.match(elements["explorer-note-finder"].textContent, /The 1-3-5 chord tones/);
+assert.ok(noteGripButtons().length > 0);
+noteGripButtons()[0].onclick();
+assert.match(elements["explorer-selected-detail"].textContent, /Single-note finder/);
+noteWorkflowButtons().find((button) => button.getAttribute("data-note-workflow") === "drill").onclick();
+noteControlButtons().find((button) => button.getAttribute("data-note-control-state") === "open").onclick();
+noteTargetButtons().find((button) => button.getAttribute("data-note-target") === "2").onclick();
+noteCell(4, 3).onclick();
+assert.match(elements["explorer-note-finder"].textContent, /Try again/);
+noteCell(3, 3).onclick();
+assert.match(elements["explorer-note-finder"].textContent, /Correct/);
+noteWorkflowButtons().find((button) => button.getAttribute("data-note-workflow") === "sync").onclick();
+assert.match(elements["explorer-note-finder"].textContent, /Deterministic event sync demo/);
+noteSyncButtons().find((button) => button.getAttribute("data-note-sync-event") === "s3-f3-b").onclick();
+assert.match(elements["explorer-selected-detail"].textContent, /String 3, fret 3: C/);
+assert.match(elements["explorer-selected-detail"].textContent, /B pedal raises this string from B to C/);
 noteCell(3, 3).onmouseenter();
-assert.match(elements["explorer-selected-detail"].textContent, /String 3, fret 3: B/);
+assert.match(elements["explorer-selected-detail"].textContent, /String 3, fret 3: C/);
 noteCell(3, 3).onmouseleave();
-assert.match(elements["explorer-selected-detail"].textContent, /String 5, fret 3: E/);
+assert.match(elements["explorer-selected-detail"].textContent, /String 3, fret 3: C/);
 notationModeButtons[1].onclick();
-assert.match(elements["explorer-selected-detail"].textContent, /NNS in G major6-/);
+assert.match(elements["explorer-selected-detail"].textContent, /NNS in G major4/);
 assert.doesNotMatch(elements["explorer-note-finder"].textContent, /\[object Object\]/);
 assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /\[object Object\]/);
 elements["explorer-explore-mode"].value = "single";

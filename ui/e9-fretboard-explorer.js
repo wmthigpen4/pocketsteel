@@ -79,6 +79,14 @@
     { id: "E-raise", label: "E-raise", controls: ["E-raise"] },
     { id: "E-lower", label: "E-lower", controls: ["E-lower"] },
   ];
+  const NOTE_WORKFLOWS = [
+    { id: "find", label: "Find all", description: "Highlight every matching note or scale value in the visible fret range." },
+    { id: "reverse", label: "Reverse lookup", description: "List ways to get the target note or notation value on selected strings." },
+    { id: "changes", label: "Pedal changes", description: "Compare open/no-control notes against the active pedal or lever state." },
+    { id: "grip", label: "Build grip", description: "Find practical validated grips that contain the selected note set." },
+    { id: "drill", label: "Drill", description: "Click a matching cell and get deterministic practice feedback." },
+    { id: "sync", label: "Event sync", description: "Step through safe deterministic events and focus the matching cell." },
+  ];
   const CHROMATIC_SHARP_NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
   const MAJOR_SCALE_SEQUENCES = {
     nns: ["1", "2-", "3-", "4", "5", "6-", "7°"],
@@ -130,6 +138,12 @@
   let selectedFretRange = "core";
   let selectedNoteControlStateId = "open";
   let selectedNoteTargetIndex = 0;
+  let selectedNoteWorkflow = "find";
+  let selectedNoteStringFilter = "all";
+  let selectedGripTargetId = "scale-triad";
+  let selectedGripCandidateId = "";
+  let selectedSyncEventId = "s3-f3-open";
+  let drillFeedback = null;
   let pinnedNoteCell = { stringNumber: 3, fret: 3 };
   let previewNoteCell = null;
   let notationMode = "notes";
@@ -461,10 +475,49 @@
     return noteFinderTargets().find((target) => target.index === selectedNoteTargetIndex) || noteFinderTargets()[0] || null;
   }
 
-  function noteCellState(stringNumber, fret) {
+  function activeNoteWorkflow() {
+    return NOTE_WORKFLOWS.find((workflow) => workflow.id === selectedNoteWorkflow) || NOTE_WORKFLOWS[0];
+  }
+
+  function noteControlStateById(stateId) {
+    return NOTE_CONTROL_STATES.find((item) => item.id === stateId) || NOTE_CONTROL_STATES[0];
+  }
+
+  function availableNoteControlStates() {
+    const availableIds = new Set(copedentControls().map((control) => control.id));
+    return NOTE_CONTROL_STATES
+      .map((state) => ({
+        ...state,
+        controls: state.controls.filter((controlId) => availableIds.has(controlId)),
+      }))
+      .filter((state) => !state.controls.length || state.controls.length === NOTE_CONTROL_STATES.find((item) => item.id === state.id)?.controls.length);
+  }
+
+  function noteControlStateIdForControlIds(controlIds) {
+    const wanted = new Set(toArray(controlIds).map(String));
+    const match = availableNoteControlStates().find((state) => {
+      if (state.controls.length !== wanted.size) {
+        return false;
+      }
+      return state.controls.every((controlId) => wanted.has(controlId));
+    });
+    return match?.id || "open";
+  }
+
+  function noteStringFilterOptions() {
+    return [{ value: "all", label: "All strings" }].concat(copedentChartRows().map((row) => ({
+      value: String(row.string),
+      label: `String ${row.string}`,
+    })));
+  }
+
+  function noteMatchesStringFilter(cell) {
+    return selectedNoteStringFilter === "all" || String(cell.stringNumber) === selectedNoteStringFilter;
+  }
+
+  function noteCellState(stringNumber, fret, controlState = activeNoteControlState()) {
     const row = chartRowForString(stringNumber);
     const openStringNote = formatValue(row?.open_note, "");
-    const controlState = activeNoteControlState();
     const activeControls = controlState.controls;
     const affectedCells = noteControlCellsForString(stringNumber, activeControls);
     const delta = noteControlDeltaForString(stringNumber, activeControls);
@@ -494,6 +547,174 @@
       notationValue: notationLabelForFinalNote(finalNote),
       explanation,
     };
+  }
+
+  function decorateNoteCellForRender(cell) {
+    const selectedGrip = selectedGripCandidate();
+    const gripStrings = new Set(toArray(selectedGrip?.strings).map(Number));
+    const isGripMatch = selectedGrip
+      && Number(selectedGrip.fret) === Number(cell.fret)
+      && gripStrings.has(Number(cell.stringNumber));
+    return {
+      ...cell,
+      isTargetMatch: cell.isTargetMatch && noteMatchesStringFilter(cell),
+      isGripMatch: Boolean(isGripMatch),
+    };
+  }
+
+  function noteChangeRowsAtFret(fret = pinnedNoteCell.fret, controlState = activeNoteControlState()) {
+    return copedentChartRows().map((row) => {
+      const cell = noteCellState(row.string, fret, controlState);
+      return {
+        ...cell,
+        row,
+        controlChanges: noteControlCellsForString(row.string, controlState.controls),
+      };
+    });
+  }
+
+  function gripTargetOptions() {
+    const notes = activeScaleNotes();
+    const labels = activeScaleSequence();
+    const triadNotes = [notes[0], notes[2], notes[4]].filter(Boolean);
+    const triadLabels = [labels[0], labels[2], labels[4]].filter(Boolean);
+    const selectedTarget = selectedNoteFinderTarget();
+    return [
+      {
+        id: "scale-triad",
+        label: notationMode === "notes" ? triadNotes.join("-") : triadLabels.join("-"),
+        description: "The 1-3-5 chord tones for the selected key and scale.",
+        pitchClasses: triadNotes.map(pitchClassForNote).filter((value) => value !== null),
+        preferFret: null,
+      },
+      {
+        id: "near-fret-3",
+        label: `${notationMode === "notes" ? triadNotes.join("-") : triadLabels.join("-")} near fret 3`,
+        description: "A beginner-friendly nearby triad search.",
+        pitchClasses: triadNotes.map(pitchClassForNote).filter((value) => value !== null),
+        preferFret: 3,
+      },
+      {
+        id: "current-target",
+        label: `Target ${selectedTarget?.label || "note"}`,
+        description: "Find grips that include the current target value.",
+        pitchClasses: selectedTarget?.pitchClass === null || selectedTarget?.pitchClass === undefined ? [] : [selectedTarget.pitchClass],
+        preferFret: null,
+      },
+    ].filter((target) => target.pitchClasses.length);
+  }
+
+  function selectedGripTarget() {
+    const options = gripTargetOptions();
+    return options.find((option) => option.id === selectedGripTargetId) || options[0] || null;
+  }
+
+  function rowPitchClasses(row) {
+    return rowNoteLabels(row)
+      .map(pitchClassForNote)
+      .filter((value) => value !== null);
+  }
+
+  function rowMatchesGripTarget(row, target) {
+    const pitchClasses = rowPitchClasses(row);
+    return target?.pitchClasses?.every((pitchClass) => pitchClasses.includes(pitchClass));
+  }
+
+  function gripFinderCandidates() {
+    const target = selectedGripTarget();
+    if (!target) {
+      return [];
+    }
+    const practicalGroups = new Set([...CORE_GROUPS, ...ADVANCED_GROUPS]);
+    return rowsForScale(els.scale.value)
+      .filter((row) => practicalGroups.has(row.string_group))
+      .filter((row) => rowInRange(row))
+      .filter((row) => rowMatchesGripTarget(row, target))
+      .sort((a, b) => {
+        const aCore = CORE_GROUPS.has(a.string_group) ? 0 : 1;
+        const bCore = CORE_GROUPS.has(b.string_group) ? 0 : 1;
+        if (aCore !== bCore) {
+          return aCore - bCore;
+        }
+        if (target.preferFret !== null) {
+          const byDistance = Math.abs(Number(a.fret) - target.preferFret) - Math.abs(Number(b.fret) - target.preferFret);
+          if (byDistance) {
+            return byDistance;
+          }
+        }
+        const byFret = Number(a.fret || 0) - Number(b.fret || 0);
+        return byFret || String(a.id || "").localeCompare(String(b.id || ""));
+      })
+      .slice(0, 8);
+  }
+
+  function selectedGripCandidate() {
+    return gripFinderCandidates().find((row) => row.id === selectedGripCandidateId) || null;
+  }
+
+  function focusGripCandidate(row) {
+    if (!row) {
+      return;
+    }
+    selectedGripCandidateId = row.id || "";
+    const strings = toArray(row.strings).map(Number).filter(Number.isFinite).sort((a, b) => a - b);
+    pinnedNoteCell = {
+      stringNumber: strings[0] || Number(row.string || 1),
+      fret: Number(row.fret || 0),
+    };
+    selectedNoteControlStateId = noteControlStateIdForControlIds(normalizePedals(row));
+    drillFeedback = null;
+    previewNoteCell = null;
+  }
+
+  function syncEventOptions() {
+    const events = [
+      { id: "s3-f3-open", step: "1", label: "String 3 fret 3 open", stringNumber: 3, fret: 3, controlStateId: "open" },
+      { id: "s3-f3-b", step: "2", label: "String 3 fret 3 with B pedal", stringNumber: 3, fret: 3, controlStateId: "B" },
+      { id: "s5-f3-a", step: "3", label: "String 5 fret 3 with A pedal", stringNumber: 5, fret: 3, controlStateId: "A" },
+    ];
+    return events.map((event) => {
+      const controlState = noteControlStateById(event.controlStateId);
+      const cell = noteCellState(event.stringNumber, event.fret, controlState);
+      return {
+        ...event,
+        controlState,
+        cell,
+      };
+    });
+  }
+
+  function selectedSyncEvent() {
+    return syncEventOptions().find((event) => event.id === selectedSyncEventId) || syncEventOptions()[0] || null;
+  }
+
+  function focusSyncEvent(event) {
+    if (!event) {
+      return;
+    }
+    selectedSyncEventId = event.id;
+    selectedNoteControlStateId = event.controlStateId;
+    pinnedNoteCell = { stringNumber: event.stringNumber, fret: event.fret };
+    previewNoteCell = null;
+    drillFeedback = null;
+  }
+
+  function syncNoteFinderSelections() {
+    if (!NOTE_WORKFLOWS.some((workflow) => workflow.id === selectedNoteWorkflow)) {
+      selectedNoteWorkflow = "find";
+    }
+    if (!noteStringFilterOptions().some((option) => option.value === selectedNoteStringFilter)) {
+      selectedNoteStringFilter = "all";
+    }
+    if (!noteFinderTargets().some((target) => target.index === selectedNoteTargetIndex)) {
+      selectedNoteTargetIndex = 0;
+    }
+    if (!availableNoteControlStates().some((state) => state.id === selectedNoteControlStateId)) {
+      selectedNoteControlStateId = "open";
+    }
+    if (!gripTargetOptions().some((target) => target.id === selectedGripTargetId)) {
+      selectedGripTargetId = gripTargetOptions()[0]?.id || "scale-triad";
+    }
   }
 
   function visibleNoteFinderFrets() {
@@ -2026,9 +2247,7 @@
   }
 
   function noteFinderControlButtonsHtml() {
-    const availableIds = new Set(copedentControls().map((control) => control.id));
-    return NOTE_CONTROL_STATES
-      .filter((state) => !state.controls.length || state.controls.some((controlId) => availableIds.has(controlId)))
+    return availableNoteControlStates()
       .map((state) => `
         <button
           class="explorer-note-finder__chip${selectedNoteControlStateId === state.id ? " is-selected" : ""}"
@@ -2037,6 +2256,18 @@
           aria-pressed="${selectedNoteControlStateId === state.id ? "true" : "false"}"
         >${escapeHtml(state.label)}</button>
       `).join("");
+  }
+
+  function noteWorkflowButtonsHtml() {
+    return NOTE_WORKFLOWS.map((workflow) => `
+      <button
+        class="explorer-note-finder__chip${selectedNoteWorkflow === workflow.id ? " is-selected" : ""}"
+        type="button"
+        data-note-workflow="${escapeHtml(workflow.id)}"
+        aria-pressed="${selectedNoteWorkflow === workflow.id ? "true" : "false"}"
+        title="${escapeHtml(workflow.description)}"
+      >${escapeHtml(workflow.label)}</button>
+    `).join("");
   }
 
   function noteFinderTargetButtonsHtml() {
@@ -2051,6 +2282,17 @@
     `).join("");
   }
 
+  function noteStringFilterButtonsHtml() {
+    return noteStringFilterOptions().map((item) => `
+      <button
+        class="explorer-note-finder__chip${selectedNoteStringFilter === item.value ? " is-selected" : ""}"
+        type="button"
+        data-note-string-filter="${escapeHtml(item.value)}"
+        aria-pressed="${selectedNoteStringFilter === item.value ? "true" : "false"}"
+      >${escapeHtml(item.label)}</button>
+    `).join("");
+  }
+
   function noteFinderCellButtonHtml(cell) {
     const pinnedKey = `${pinnedNoteCell.stringNumber}:${pinnedNoteCell.fret}`;
     const key = noteCellKey(cell);
@@ -2058,6 +2300,7 @@
       "explorer-note-cell",
       cell.isAffected ? "is-affected" : "",
       cell.isTargetMatch ? "is-result" : "",
+      cell.isGripMatch ? "is-grip" : "",
       key === pinnedKey ? "is-selected" : "",
     ].filter(Boolean).join(" ");
     const resultAttribute = cell.isTargetMatch ? ` data-note-result="${escapeHtml(key)}"` : "";
@@ -2074,6 +2317,255 @@
         aria-label="${escapeHtml(`String ${cell.stringNumber}, fret ${cell.fret}: ${cell.finalNote} with ${cell.activeControlLabel}`)}"
       ><span>${cell.isTargetMatch ? escapeHtml(cell.finalNote) : ""}</span></button>
     `;
+  }
+
+  function noteFinderInstructionText(resultCount) {
+    const workflow = activeNoteWorkflow();
+    const target = selectedNoteFinderTarget();
+    const activeControls = activeNoteControlState();
+    if (workflow.id === "changes") {
+      return `Comparing open/no-control notes against ${activeControls.label} at fret ${pinnedNoteCell.fret}. Changed strings are highlighted; unchanged strings are marked no change.`;
+    }
+    if (workflow.id === "reverse") {
+      return `Reverse lookup for ${target?.label || "the selected target"} uses the selected string filter and all standard control states. Selecting a result focuses the matching cell.`;
+    }
+    if (workflow.id === "grip") {
+      return "Grip finder searches validated Explorer rows and practical string groups only. It does not invent unsupported grips.";
+    }
+    if (workflow.id === "drill") {
+      return `Practice prompt: find ${target?.label || "the selected target"} with ${activeControls.label} in the visible fret range.`;
+    }
+    if (workflow.id === "sync") {
+      return "Event sync uses safe deterministic example events only in this slice. Each event focuses the matching string, fret, and control state.";
+    }
+    return `Finding ${target?.label || "scale tones"} with ${activeControls.label}. ${resultCount} visible matches use the selected notation mode and fret range.`;
+  }
+
+  function noteFinderResultButtonHtml(cell, options = {}) {
+    const key = options.key || noteCellKey(cell);
+    const isSelected = options.isSelected || key === `${pinnedNoteCell.stringNumber}:${pinnedNoteCell.fret}`;
+    const dataAttribute = options.attribute || "data-note-result-card";
+    return `
+      <button class="explorer-active-result explorer-note-result-card${isSelected ? " is-selected" : ""}" type="button" ${dataAttribute}="${escapeHtml(key)}" aria-pressed="${isSelected ? "true" : "false"}">
+        <span class="explorer-active-result__top">
+          <span class="explorer-active-result__marker"><span class="explorer-marker-token" aria-hidden="true"></span><span>${escapeHtml(cell.finalNote)}</span></span>
+          <strong>${escapeHtml(`String ${cell.stringNumber} · fret ${cell.fret}`)}</strong>
+        </span>
+        <span class="explorer-active-result__fields">
+          <span><b>Open note</b>${escapeHtml(cell.openNoteAtFret)}</span>
+          <span><b>Final note</b>${escapeHtml(cell.finalNote)}</span>
+          <span><b>Controls</b>${escapeHtml(cell.activeControlLabel)}</span>
+          <span><b>${escapeHtml(notationModeLabel())}</b>${escapeHtml(cell.notationValue)}</span>
+        </span>
+      </button>
+    `;
+  }
+
+  function noteFinderResultListHtml(cells, currentCell) {
+    if (!cells.length) {
+      return '<p class="explorer-empty">No notes match this target in the visible fret range. Try a different target, control state, string filter, or fret range.</p>';
+    }
+    return cells.map((cell) => `
+      <button class="explorer-row-button${noteCellKey(cell) === noteCellKey(currentCell) ? " is-selected" : ""}" type="button" data-note-result-list="${escapeHtml(noteCellKey(cell))}">
+        <strong>${escapeHtml(`String ${cell.stringNumber}, fret ${cell.fret}: ${cell.finalNote}`)}</strong>
+        <span class="explorer-row-button__meta">Open note: ${escapeHtml(cell.openNoteAtFret)} · Final note: ${escapeHtml(cell.finalNote)} · Controls: ${escapeHtml(cell.activeControlLabel)} · ${escapeHtml(notationModeLabel())}: ${escapeHtml(cell.notationValue)}</span>
+      </button>
+    `).join("");
+  }
+
+  function noteChangeRowsHtml(rows) {
+    return rows.map((cell) => {
+      const controlText = cell.controlChanges.length
+        ? cell.controlChanges.map((change) => `${noteControlLabel(change.controlId)}: ${formatValue(change.cell.from, "")} -> ${formatValue(change.cell.to, "")}`).join(", ")
+        : "No direct control change";
+      return `
+        <div class="explorer-note-change-row${cell.isAffected ? " is-affected" : " is-unchanged"}">
+          <strong>${escapeHtml(`String ${cell.stringNumber}`)}</strong>
+          <span>${escapeHtml(`${cell.openNoteAtFret} -> ${cell.finalNote}`)}</span>
+          <em>${escapeHtml(cell.isAffected ? controlText : `No change at fret ${cell.fret}`)}</em>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function renderFindAllPanel(resultCells) {
+    const target = selectedNoteFinderTarget();
+    return `
+      <section class="explorer-note-workflow-panel" aria-label="Find all matching notes">
+        <strong>Find all ${escapeHtml(target?.label || "target")} positions</strong>
+        <p>Highlighted cells match the selected ${escapeHtml(notationModeLabel())} target after the active pedal or lever state is applied.</p>
+        <p>${escapeHtml(`${resultCells.length} visible ${resultCells.length === 1 ? "match" : "matches"} in ${activeRangeOption().label}.`)}</p>
+      </section>
+    `;
+  }
+
+  function reverseLookupCells() {
+    const frets = visibleNoteFinderFrets();
+    const rows = copedentChartRows();
+    return availableNoteControlStates().flatMap((state) => rows.flatMap((row) => frets.map((fret) => ({
+      ...noteCellState(row.string, fret, state),
+      controlStateId: state.id,
+    }))))
+      .filter((cell) => cell.isTargetMatch && noteMatchesStringFilter(cell))
+      .sort((a, b) => {
+        const byFret = Number(a.fret) - Number(b.fret);
+        if (byFret) {
+          return byFret;
+        }
+        const byString = Number(a.stringNumber) - Number(b.stringNumber);
+        if (byString) {
+          return byString;
+        }
+        return String(a.controlStateId || "").localeCompare(String(b.controlStateId || ""));
+      })
+      .slice(0, 32);
+  }
+
+  function reverseLookupKey(cell) {
+    return `${cell.controlStateId || "open"}:${cell.stringNumber}:${cell.fret}`;
+  }
+
+  function renderReverseLookupPanel() {
+    const cells = reverseLookupCells();
+    const target = selectedNoteFinderTarget();
+    return `
+      <section class="explorer-note-workflow-panel" aria-label="Reverse note lookup">
+        <strong>How to get ${escapeHtml(target?.label || "target")}</strong>
+        <p>These are deterministic ways to reach the target with standard control states in the visible fret range.</p>
+        <div class="explorer-note-workflow-grid">
+          ${cells.length ? cells.map((cell) => noteFinderResultButtonHtml(cell, {
+            key: reverseLookupKey(cell),
+            attribute: "data-note-reverse-result",
+            isSelected: noteCellKey(cell) === `${pinnedNoteCell.stringNumber}:${pinnedNoteCell.fret}` && selectedNoteControlStateId === cell.controlStateId,
+          })).join("") : '<p class="explorer-empty">No reverse-lookup matches for this target and string filter.</p>'}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderPedalChangesPanel(currentCell) {
+    const rows = noteChangeRowsAtFret(currentCell?.fret || pinnedNoteCell.fret);
+    const changedRows = rows.filter((cell) => cell.isAffected);
+    const activeControls = activeNoteControlState();
+    const activeControlText = noteControlLabels(activeControls.controls).join(" + ");
+    const affected = changedRows.map((cell) => cell.stringNumber).join(", ");
+    return `
+      <section class="explorer-note-workflow-panel" aria-label="Pedal and lever before-after comparison">
+        <strong>${escapeHtml(activeControlText)} affected strings</strong>
+        <p>${activeControls.controls.length ? escapeHtml(`Affected strings: ${affected || "none"}. Pedals and levers change notes only on affected strings.`) : "Open state has no pedal or lever changes."}</p>
+        <div class="explorer-note-change-list">${noteChangeRowsHtml(rows)}</div>
+      </section>
+    `;
+  }
+
+  function gripTargetButtonsHtml() {
+    const options = gripTargetOptions();
+    return options.map((target) => `
+      <button
+        class="explorer-note-finder__chip${selectedGripTarget()?.id === target.id ? " is-selected" : ""}"
+        type="button"
+        data-note-grip-target="${escapeHtml(target.id)}"
+        aria-pressed="${selectedGripTarget()?.id === target.id ? "true" : "false"}"
+        title="${escapeHtml(target.description)}"
+      >${escapeHtml(target.label)}</button>
+    `).join("");
+  }
+
+  function gripCandidateButtonHtml(row) {
+    const isSelected = selectedGripCandidateId === row.id;
+    return `
+      <button class="explorer-active-result explorer-note-grip-card${isSelected ? " is-selected" : ""}" type="button" data-note-grip-card="${escapeHtml(row.id || "")}" aria-pressed="${isSelected ? "true" : "false"}">
+        <span class="explorer-active-result__top">
+          <span class="explorer-active-result__marker"><span class="explorer-marker-token" aria-hidden="true"></span><span>${escapeHtml(row.string_group)}</span></span>
+          <strong>${escapeHtml(`${row.fret} ${normalizePedals(row).join("+") || "open"}`)}</strong>
+        </span>
+        <span class="explorer-active-result__fields">
+          <span><b>Strings</b>${escapeHtml(formatValue(row.strings))}</span>
+          <span><b>Notes</b>${escapeHtml(formatValue(rowNoteLabels(row)))}</span>
+          <span><b>${escapeHtml(notationModeLabel())}</b>${escapeHtml(formatValue(rowIntervalLabels(row).map(formatIntervalForNotation)))}</span>
+        </span>
+      </button>
+    `;
+  }
+
+  function renderGripFinderPanel() {
+    const target = selectedGripTarget();
+    const candidates = gripFinderCandidates();
+    return `
+      <section class="explorer-note-workflow-panel" aria-label="Build a grip from notes">
+        <strong>Build a grip</strong>
+        <p>${escapeHtml(target?.description || "Choose a target note set.")}</p>
+        <div class="explorer-note-finder__chips" role="group" aria-label="Grip finder target">
+          ${gripTargetButtonsHtml()}
+        </div>
+        <div class="explorer-note-workflow-grid">
+          ${candidates.length ? candidates.map(gripCandidateButtonHtml).join("") : '<p class="explorer-empty">No practical validated grips match this target in the visible fret range.</p>'}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderDrillPanel(currentCell) {
+    const target = selectedNoteFinderTarget();
+    const feedbackClass = drillFeedback?.status === "correct" ? " explorer-note-feedback--correct" : drillFeedback ? " explorer-note-feedback--try" : "";
+    return `
+      <section class="explorer-note-workflow-panel" aria-label="Single note drill">
+        <strong>${escapeHtml(`Drill: find ${target?.label || "the target"}`)}</strong>
+        <p>Click a cell that matches the target with ${escapeHtml(activeNoteControlState().label)}. Use the highlighted matches as a hint if you need one.</p>
+        ${drillFeedback ? `<div class="explorer-note-feedback${feedbackClass}"><strong>${escapeHtml(drillFeedback.status === "correct" ? "Correct" : "Try again")}</strong><span>${escapeHtml(drillFeedback.message)}</span></div>` : ""}
+        <p class="explorer-note-finder__context">Current pinned cell: string ${escapeHtml(currentCell.stringNumber)}, fret ${escapeHtml(currentCell.fret)} gives ${escapeHtml(currentCell.finalNote)}.</p>
+      </section>
+    `;
+  }
+
+  function syncEventButtonHtml(event) {
+    const isSelected = selectedSyncEvent()?.id === event.id;
+    return `
+      <button class="explorer-active-result explorer-note-event-card${isSelected ? " is-selected" : ""}" type="button" data-note-sync-event="${escapeHtml(event.id)}" aria-pressed="${isSelected ? "true" : "false"}">
+        <span class="explorer-active-result__top">
+          <span class="explorer-active-result__marker"><span class="explorer-marker-token" aria-hidden="true"></span><span>${escapeHtml(event.step)}</span></span>
+          <strong>${escapeHtml(event.label)}</strong>
+        </span>
+        <span class="explorer-active-result__fields">
+          <span><b>Final note</b>${escapeHtml(event.cell.finalNote)}</span>
+          <span><b>Controls</b>${escapeHtml(event.controlState.label)}</span>
+          <span><b>${escapeHtml(notationModeLabel())}</b>${escapeHtml(event.cell.notationValue)}</span>
+        </span>
+      </button>
+    `;
+  }
+
+  function renderEventSyncPanel() {
+    const events = syncEventOptions();
+    return `
+      <section class="explorer-note-workflow-panel" aria-label="Deterministic event sync">
+        <strong>Deterministic event sync demo</strong>
+        <p>This uses safe built-in educational events only. Full tab/fretboard event sync should use shared backend event data when available.</p>
+        <div class="explorer-note-workflow-grid">
+          ${events.map(syncEventButtonHtml).join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  function renderNoteWorkflowPanel(resultCells, currentCell) {
+    const workflow = activeNoteWorkflow();
+    if (workflow.id === "reverse") {
+      return renderReverseLookupPanel();
+    }
+    if (workflow.id === "changes") {
+      return renderPedalChangesPanel(currentCell);
+    }
+    if (workflow.id === "grip") {
+      return renderGripFinderPanel();
+    }
+    if (workflow.id === "drill") {
+      return renderDrillPanel(currentCell);
+    }
+    if (workflow.id === "sync") {
+      return renderEventSyncPanel();
+    }
+    return renderFindAllPanel(resultCells);
   }
 
   function renderNoteFinderGrid(cells) {
@@ -2125,37 +2617,20 @@
     `;
   }
 
-  function noteFinderResultButtonHtml(cell) {
-    const key = noteCellKey(cell);
-    const isSelected = key === `${pinnedNoteCell.stringNumber}:${pinnedNoteCell.fret}`;
-    return `
-      <button class="explorer-active-result explorer-note-result-card${isSelected ? " is-selected" : ""}" type="button" data-note-result-card="${escapeHtml(key)}" aria-pressed="${isSelected ? "true" : "false"}">
-        <span class="explorer-active-result__top">
-          <span class="explorer-active-result__marker"><span class="explorer-marker-token" aria-hidden="true"></span><span>${escapeHtml(cell.finalNote)}</span></span>
-          <strong>${escapeHtml(`String ${cell.stringNumber} · fret ${cell.fret}`)}</strong>
-        </span>
-        <span class="explorer-active-result__fields">
-          <span><b>Open note</b>${escapeHtml(cell.openNoteAtFret)}</span>
-          <span><b>Final note</b>${escapeHtml(cell.finalNote)}</span>
-          <span><b>Controls</b>${escapeHtml(cell.activeControlLabel)}</span>
-          <span><b>${escapeHtml(notationModeLabel())}</b>${escapeHtml(cell.notationValue)}</span>
-        </span>
-      </button>
-    `;
-  }
-
   function renderNoteFinder() {
     if (!els.noteFinder) {
       return;
     }
+    syncNoteFinderSelections();
     ensurePinnedNoteCellInRange();
-    const cells = visibleNoteCells();
+    const cells = visibleNoteCells().map(decorateNoteCellForRender);
     const resultCells = cells.filter((cell) => cell.isTargetMatch);
     const target = selectedNoteFinderTarget();
     const currentCell = previewNoteCell
       ? noteCellState(previewNoteCell.stringNumber, previewNoteCell.fret)
       : noteCellState(pinnedNoteCell.stringNumber, pinnedNoteCell.fret);
     const activeControls = activeNoteControlState();
+    const workflow = activeNoteWorkflow();
     els.noteFinder.hidden = false;
     els.noteFinder.innerHTML = `
       <div class="explorer-note-finder__header">
@@ -2166,6 +2641,12 @@
         <span>${escapeHtml(formatValue(activeCopedent()?.label || "E9 copedent"))}</span>
       </div>
       <div class="explorer-note-finder__controls">
+        <div>
+          <span class="explorer-note-finder__label">Workflow</span>
+          <div class="explorer-note-finder__chips" role="group" aria-label="Single-note learning workflow">
+            ${noteWorkflowButtonsHtml()}
+          </div>
+        </div>
         <div>
           <span class="explorer-note-finder__label">Active controls</span>
           <div class="explorer-note-finder__chips" role="group" aria-label="Single-note control state">
@@ -2178,44 +2659,108 @@
             ${noteFinderTargetButtonsHtml()}
           </div>
         </div>
+        <div>
+          <span class="explorer-note-finder__label">String filter</span>
+          <div class="explorer-note-finder__chips" role="group" aria-label="Single-note string filter">
+            ${noteStringFilterButtonsHtml()}
+          </div>
+        </div>
       </div>
-      <p class="explorer-note-finder__context">Finding ${escapeHtml(target?.label || "scale tones")} with ${escapeHtml(activeControls.label)}. Visible fret range applies.</p>
+      <p class="explorer-note-finder__context">${escapeHtml(noteFinderInstructionText(resultCells.length))}</p>
+      ${renderNoteWorkflowPanel(resultCells, currentCell)}
     `;
 
     els.activeResults.innerHTML = `
       <div class="explorer-active-results__header">
-        <strong>Single-note finder: ${resultCells.length} visible ${resultCells.length === 1 ? "match" : "matches"} for ${escapeHtml(target?.label || "target")}</strong>
-        <span>Cards and grid results use the selected control state.</span>
+        <strong>${escapeHtml(`${workflow.label}: ${resultCells.length} visible ${resultCells.length === 1 ? "match" : "matches"} for ${target?.label || "target"}`)}</strong>
+        <span>Cards and grid results use ${escapeHtml(activeControls.label)} unless the workflow card says otherwise.</span>
       </div>
       <div class="explorer-active-results__track">
         ${resultCells.map(noteFinderResultButtonHtml).join("")}
       </div>
     `;
     els.fretboard.innerHTML = renderNoteFinderGrid(cells);
-    els.rowList.innerHTML = resultCells.length
-      ? resultCells.map((cell) => `
-          <button class="explorer-row-button${noteCellKey(cell) === noteCellKey(currentCell) ? " is-selected" : ""}" type="button" data-note-result-list="${escapeHtml(noteCellKey(cell))}">
-            <strong>${escapeHtml(`String ${cell.stringNumber}, fret ${cell.fret}: ${cell.finalNote}`)}</strong>
-            <span class="explorer-row-button__meta">Open note: ${escapeHtml(cell.openNoteAtFret)} · Final note: ${escapeHtml(cell.finalNote)} · Controls: ${escapeHtml(cell.activeControlLabel)} · ${escapeHtml(notationModeLabel())}: ${escapeHtml(cell.notationValue)}</span>
-          </button>
-        `).join("")
-      : '<p class="explorer-empty">No notes match this target in the visible fret range. Try a different target, control state, or fret range.</p>';
+    els.rowList.innerHTML = noteFinderResultListHtml(resultCells, currentCell);
     renderNoteFinderDetail(currentCell);
 
     const selectCell = (stringNumber, fret) => {
+      const selectedCell = decorateNoteCellForRender(noteCellState(stringNumber, fret));
       pinnedNoteCell = { stringNumber: Number(stringNumber), fret: Number(fret) };
       previewNoteCell = null;
+      if (selectedNoteWorkflow === "drill") {
+        const targetLabel = selectedNoteFinderTarget()?.label || "the target";
+        if (selectedCell.isTargetMatch) {
+          drillFeedback = {
+            status: "correct",
+            message: `String ${selectedCell.stringNumber}, fret ${selectedCell.fret} gives ${selectedCell.finalNote}, which matches ${targetLabel}.`,
+          };
+        } else {
+          drillFeedback = {
+            status: "try",
+            message: `String ${selectedCell.stringNumber}, fret ${selectedCell.fret} gives ${selectedCell.finalNote}. Try another cell for ${targetLabel}.`,
+          };
+        }
+      }
       renderNoteFinder();
     };
+    Array.from(els.noteFinder.querySelectorAll("[data-note-workflow]")).forEach((button) => {
+      button.addEventListener("click", () => {
+        selectedNoteWorkflow = button.getAttribute("data-note-workflow") || "find";
+        drillFeedback = null;
+        renderNoteFinder();
+      });
+    });
     Array.from(els.noteFinder.querySelectorAll("[data-note-control-state]")).forEach((button) => {
       button.addEventListener("click", () => {
         selectedNoteControlStateId = button.getAttribute("data-note-control-state") || "open";
+        drillFeedback = null;
         renderNoteFinder();
       });
     });
     Array.from(els.noteFinder.querySelectorAll("[data-note-target]")).forEach((button) => {
       button.addEventListener("click", () => {
         selectedNoteTargetIndex = Number(button.getAttribute("data-note-target") || 0);
+        drillFeedback = null;
+        renderNoteFinder();
+      });
+    });
+    Array.from(els.noteFinder.querySelectorAll("[data-note-string-filter]")).forEach((button) => {
+      button.addEventListener("click", () => {
+        selectedNoteStringFilter = button.getAttribute("data-note-string-filter") || "all";
+        drillFeedback = null;
+        renderNoteFinder();
+      });
+    });
+    Array.from(els.noteFinder.querySelectorAll("[data-note-grip-target]")).forEach((button) => {
+      button.addEventListener("click", () => {
+        selectedGripTargetId = button.getAttribute("data-note-grip-target") || "scale-triad";
+        selectedGripCandidateId = "";
+        renderNoteFinder();
+      });
+    });
+    Array.from(els.noteFinder.querySelectorAll("[data-note-grip-card]")).forEach((button) => {
+      button.addEventListener("click", () => {
+        const rowId = button.getAttribute("data-note-grip-card") || "";
+        const row = gripFinderCandidates().find((candidate) => candidate.id === rowId);
+        focusGripCandidate(row);
+        renderNoteFinder();
+      });
+    });
+    Array.from(els.noteFinder.querySelectorAll("[data-note-sync-event]")).forEach((button) => {
+      button.addEventListener("click", () => {
+        const eventId = button.getAttribute("data-note-sync-event") || "";
+        const event = syncEventOptions().find((item) => item.id === eventId);
+        focusSyncEvent(event);
+        renderNoteFinder();
+      });
+    });
+    Array.from(els.noteFinder.querySelectorAll("[data-note-reverse-result]")).forEach((button) => {
+      button.addEventListener("click", () => {
+        const [stateId, stringNumber, fret] = (button.getAttribute("data-note-reverse-result") || "").split(":");
+        selectedNoteControlStateId = stateId || "open";
+        pinnedNoteCell = { stringNumber: Number(stringNumber), fret: Number(fret) };
+        previewNoteCell = null;
+        drillFeedback = null;
         renderNoteFinder();
       });
     });
@@ -2246,6 +2791,7 @@
   }
 
   function renderNoteFinderMode() {
+    syncNoteFinderSelections();
     selectedRowId = "";
     currentRows = [];
     currentMarkerGroups = [];
@@ -2254,8 +2800,8 @@
       els.topIntervalFilter.innerHTML = "";
     }
     renderFretRangeFilter(
-      allNoteCells().filter((cell) => cell.isTargetMatch),
-      visibleNoteCells().filter((cell) => cell.isTargetMatch),
+      allNoteCells().map(decorateNoteCellForRender).filter((cell) => cell.isTargetMatch),
+      visibleNoteCells().map(decorateNoteCellForRender).filter((cell) => cell.isTargetMatch),
     );
     els.scaleNotes.textContent = getScaleNotes();
     if (els.resultCount) {
