@@ -499,6 +499,21 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert panel_markup.index('id="explorer-notation-control"') < panel_markup.index('id="explorer-fretboard"')
     assert ".explorer-panel-notation {" in html
     assert "grid-template-columns: auto minmax(240px, 380px) minmax(0, 1fr);" in html
+    active_result_track_rule = html.split(".explorer-active-results__track {", 1)[1].split("}", 1)[0]
+    for expected_style in [
+        "display: flex;",
+        "overflow-x: auto;",
+        "scroll-snap-type: x proximity;",
+        "-webkit-overflow-scrolling: touch;",
+    ]:
+        assert expected_style in active_result_track_rule
+    active_result_rule = html.split(".explorer-active-result {", 1)[1].split("}", 1)[0]
+    assert "flex: 0 0 clamp(150px, 15vw, 184px);" in active_result_rule
+    assert "scroll-snap-align: start;" in active_result_rule
+    mobile_rule = html.split("@media (max-width: 760px) {", 1)[1].split("</style>", 1)[0]
+    assert ".explorer-control-impact-tabs" in mobile_rule
+    assert "flex-wrap: nowrap;" in mobile_rule
+    assert "overscroll-behavior-x: contain;" in mobile_rule
     assert 'data-explorer-notation-mode="notes"' in html
     assert 'data-explorer-notation-mode="nns"' in html
     assert 'data-explorer-notation-mode="roman"' in html
