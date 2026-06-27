@@ -9,24 +9,33 @@
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Steel Guitar RAG">
   <meta property="og:title" content="Steel Guitar RAG - Fretboard Explorer + Steel Guitar Brain">
-  <meta property="og:description" content="Explore the E9 neck visually, then ask the Steel Guitar Brain for source-aware steel-guitar guidance.">
+  <meta property="og:description" content="Explore E9 grips, scales, chords, notes, voicings, and pedal/lever moves visually, then ask source-aware steel-guitar questions.">
   <meta property="og:image" content="assets/steel_on_stage2.png">
   <meta property="og:url" content="https://steelguitarrag.com/">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Steel Guitar RAG - Fretboard Explorer + Steel Guitar Brain">
-  <meta name="twitter:description" content="Explore E9 grips, pedals, levers, copedents, notes, and voicings visually, then ask for source-aware steel-guitar guidance.">
-  <meta name="theme-color" content="#080a0a">
+  <meta name="twitter:description" content="A dark premium E9 fretboard explorer and source-aware steel guitar brain for players.">
+  <meta name="theme-color" content="#060504">
   <style>
     :root {
       color-scheme: dark;
-      --cream: #f4ead6;
-      --muted: #c5b8a0;
-      --soft: rgba(244, 234, 214, 0.72);
-      --brass: #f0bf69;
-      --brass-2: #bd8842;
-      --ink: #080a0a;
-      --panel: rgba(20, 23, 23, 0.72);
-      --line: rgba(240, 191, 105, 0.22);
+      --bg: #050403;
+      --bg-2: #0c0906;
+      --panel: rgba(15, 13, 10, 0.88);
+      --panel-2: rgba(27, 23, 17, 0.76);
+      --line: rgba(239, 176, 67, 0.34);
+      --line-strong: rgba(255, 193, 79, 0.74);
+      --gold: #ffc45e;
+      --gold-2: #e29528;
+      --amber: #ff9f31;
+      --cream: #fff2dc;
+      --soft: rgba(255, 242, 220, 0.76);
+      --muted: rgba(255, 242, 220, 0.58);
+      --green: #86d45d;
+      --blue: #64b7ff;
+      --red: #ff7657;
+      --teal: #55d0bf;
+      --pink: #f472b6;
       --font-ui: "Gill Sans", "Gill Sans MT", "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
       --font-display: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
       font-family: var(--font-ui);
@@ -38,6 +47,7 @@
 
     html {
       scroll-behavior: smooth;
+      background: var(--bg);
     }
 
     body {
@@ -45,12 +55,13 @@
       min-height: 100vh;
       color: var(--cream);
       background:
-        linear-gradient(180deg, rgba(4, 5, 5, 0.24), rgba(4, 5, 5, 0.78) 68%, #050606 100%),
-        radial-gradient(ellipse at 50% 16%, rgba(240, 191, 105, 0.15), transparent 35%),
+        radial-gradient(circle at 50% -4%, rgba(255, 180, 72, 0.2), transparent 24rem),
+        radial-gradient(circle at 8% 15%, rgba(255, 122, 32, 0.13), transparent 26rem),
+        linear-gradient(180deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.82) 78%),
         url("assets/steel_on_stage2.png"),
-        linear-gradient(180deg, #050606, #111414);
-      background-size: cover, cover, cover, cover;
-      background-position: center center, center top, center center, center center;
+        linear-gradient(180deg, #060504, #100a05 44%, #050403);
+      background-size: cover, cover, cover, cover, cover;
+      background-position: center top, left top, center top, center top, center center;
       background-repeat: no-repeat;
       background-attachment: fixed;
       overflow-x: hidden;
@@ -62,12 +73,18 @@
       inset: 0;
       pointer-events: none;
       background:
-        linear-gradient(90deg, rgba(0, 0, 0, 0.72), transparent 28%, transparent 72%, rgba(0, 0, 0, 0.7)),
-        radial-gradient(ellipse at 50% 44%, transparent 0 34%, rgba(0, 0, 0, 0.54) 76%);
+        linear-gradient(90deg, rgba(0, 0, 0, 0.82), transparent 18%, transparent 82%, rgba(0, 0, 0, 0.76)),
+        radial-gradient(ellipse at 50% 24%, rgba(255, 167, 44, 0.16), transparent 16rem),
+        repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 3px);
+      mix-blend-mode: screen;
+      opacity: 0.62;
     }
 
     a,
-    button {
+    button,
+    input,
+    select,
+    textarea {
       font: inherit;
     }
 
@@ -82,41 +99,32 @@
     }
 
     .site-header {
-      position: relative;
-      z-index: 4;
-      width: min(1160px, calc(100% - 40px));
-      margin: 0 auto;
-      padding: 18px 0 8px;
-      display: flex;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      min-height: 82px;
+      display: grid;
+      grid-template-columns: minmax(170px, 230px) 1fr auto;
+      gap: clamp(18px, 3vw, 34px);
       align-items: center;
-      justify-content: flex-end;
-      gap: 18px;
-      flex-wrap: wrap;
-    }
-
-    .brand-link {
-      display: none;
-    }
-
-    .brand-logo {
-      width: clamp(198px, 24vw, 304px);
-      height: auto;
-      display: block;
-      filter: drop-shadow(0 0 14px rgba(240, 128, 24, 0.24)) drop-shadow(0 0 26px rgba(240, 191, 105, 0.13));
+      padding: 12px clamp(18px, 4vw, 48px);
+      background: linear-gradient(180deg, rgba(5, 4, 3, 0.94), rgba(5, 4, 3, 0.74));
+      border-bottom: 1px solid rgba(255, 196, 94, 0.22);
+      box-shadow: 0 18px 46px rgba(0, 0, 0, 0.38);
+      backdrop-filter: blur(14px);
     }
 
     .hero-hanging-sign {
-      position: absolute;
-      top: clamp(-42px, -3vw, -24px);
-      left: -18px;
-      width: clamp(300px, 23vw, 340px);
-      z-index: 2;
-      pointer-events: none;
-      transform: rotate(-1.5deg);
-      transform-origin: top left;
+      position: relative;
+      display: block;
+      width: clamp(168px, 18vw, 224px);
+      margin-left: -8px;
       filter:
-        drop-shadow(0 18px 28px rgba(0, 0, 0, 0.55))
-        drop-shadow(0 0 22px rgba(255, 106, 0, 0.22));
+        drop-shadow(0 15px 26px rgba(0, 0, 0, 0.72))
+        drop-shadow(0 0 24px rgba(255, 120, 30, 0.34));
+      transform: rotate(-1deg);
+      transform-origin: top left;
+      text-decoration: none;
     }
 
     .hero-hanging-sign video,
@@ -125,8 +133,6 @@
       width: 100%;
       height: auto;
       object-fit: contain;
-      object-position: top left;
-      image-rendering: auto;
     }
 
     .hero-hanging-sign video {
@@ -141,84 +147,88 @@
       display: none;
     }
 
-    @media (prefers-reduced-motion: reduce) {
-      .hero-hanging-sign.is-animated video {
-        display: none;
-      }
-
-      .hero-hanging-sign.is-animated img {
-        display: block;
-      }
-    }
-
-    .header-actions {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .access-note {
-      color: rgba(244, 234, 214, 0.58);
-      font-size: 13px;
-      white-space: nowrap;
-    }
-
     .site-nav {
       display: flex;
-      flex-wrap: wrap;
+      justify-content: center;
       align-items: center;
-      justify-content: flex-end;
-      gap: 8px;
-      margin-right: auto;
-      margin-left: clamp(250px, 24vw, 350px);
+      gap: clamp(8px, 1.6vw, 24px);
     }
 
     .nav-link {
-      min-height: 34px;
-      padding: 0 10px;
+      position: relative;
+      min-height: 40px;
       display: inline-flex;
       align-items: center;
-      border-radius: 999px;
-      color: rgba(244, 234, 214, 0.72);
-      font-size: 13px;
+      color: rgba(255, 242, 220, 0.78);
+      font-size: 14px;
       font-weight: 700;
       text-decoration: none;
-      transition: background 160ms ease, color 160ms ease;
+      white-space: nowrap;
+    }
+
+    .nav-link::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -22px;
+      height: 2px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+      opacity: 0;
+      transition: opacity 160ms ease;
     }
 
     .nav-link:hover,
     .nav-link:focus-visible {
-      background: rgba(240, 191, 105, 0.085);
-      color: var(--cream);
+      color: var(--gold);
       outline: none;
+    }
+
+    .nav-link:hover::after,
+    .nav-link:focus-visible::after,
+    .nav-link.is-active::after {
+      opacity: 1;
+    }
+
+    .header-actions,
+    .hero-actions,
+    .example-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
     }
 
     .button,
     .ghost-button,
     .backstage-link {
+      min-height: 46px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      min-height: 42px;
-      border-radius: 999px;
-      padding: 0 17px;
+      gap: 9px;
+      border-radius: 9px;
+      padding: 0 22px;
+      font-weight: 800;
       text-decoration: none;
-      transition: border-color 160ms ease, background 160ms ease, color 160ms ease, transform 160ms ease;
+      white-space: nowrap;
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
     }
 
     .button {
-      border: 1px solid rgba(240, 191, 105, 0.74);
-      background: linear-gradient(180deg, #ffd27c, #e49f45);
-      color: #1a1209;
-      font-weight: 700;
-      box-shadow: 0 14px 34px rgba(240, 160, 70, 0.18);
+      border: 1px solid rgba(255, 213, 126, 0.82);
+      color: #1d1205;
+      background: linear-gradient(180deg, #ffd77d, #f0a331 70%, #d9851f);
+      box-shadow: 0 16px 38px rgba(244, 155, 38, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.42);
     }
 
     .ghost-button,
     .backstage-link {
-      border: 1px solid rgba(240, 191, 105, 0.32);
-      background: rgba(13, 14, 14, 0.68);
-      color: rgba(244, 234, 214, 0.88);
+      border: 1px solid rgba(255, 196, 94, 0.42);
+      color: var(--cream);
+      background: linear-gradient(180deg, rgba(22, 18, 13, 0.86), rgba(8, 7, 5, 0.82));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
     }
 
     .button:hover,
@@ -229,53 +239,34 @@
     .backstage-link:focus-visible {
       transform: translateY(-1px);
       outline: none;
+      box-shadow: 0 18px 48px rgba(244, 155, 38, 0.3), 0 0 0 3px rgba(255, 196, 94, 0.16);
     }
 
-    .ghost-button:hover,
-    .ghost-button:focus-visible,
-    .backstage-link:hover,
-    .backstage-link:focus-visible {
-      border-color: rgba(240, 191, 105, 0.62);
-      background: rgba(240, 191, 105, 0.075);
-      color: var(--cream);
-    }
-
-    main {
-      width: min(1160px, calc(100% - 40px));
+    .shell {
+      width: min(1220px, calc(100% - 44px));
       margin: 0 auto;
-      padding: 58px 0 70px;
     }
 
     .hero {
-      position: relative;
-      z-index: 4;
-      display: grid;
-      gap: 24px;
-      max-width: none;
-      padding: clamp(130px, 12vw, 172px) 0 58px;
+      padding: clamp(42px, 6vw, 86px) 0 32px;
     }
 
-    .hero-layout {
+    .hero-grid {
       display: grid;
-      grid-template-columns: minmax(0, 0.76fr) minmax(440px, 1.24fr);
-      gap: clamp(26px, 3.6vw, 50px);
+      grid-template-columns: minmax(0, 0.9fr) minmax(520px, 1.16fr);
+      gap: clamp(26px, 4.8vw, 58px);
       align-items: center;
     }
 
-    .hero-text {
-      display: grid;
-      gap: 22px;
-    }
-
     .eyebrow,
-    .section-kicker {
-      margin: 0;
-      color: rgba(240, 191, 105, 0.82);
-      font-size: 12px;
-      line-height: 1.35;
-      letter-spacing: 0.13em;
+    .section-kicker,
+    .mini-label {
+      margin: 0 0 14px;
+      color: var(--gold);
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0.18em;
       text-transform: uppercase;
-      font-weight: 700;
     }
 
     h1,
@@ -285,481 +276,556 @@
       margin-top: 0;
     }
 
-    h1 {
-      margin-bottom: 0;
-      color: #fff2dc;
+    h1,
+    .section-heading,
+    .card h3,
+    .pricing-panel h2 {
       font-family: var(--font-display);
-      font-size: clamp(48px, 6vw, 78px);
-      line-height: 0.98;
-      font-weight: 500;
       letter-spacing: 0;
-      text-wrap: balance;
     }
 
-    .hero-copy {
-      max-width: 680px;
-      margin-bottom: 0;
-      color: rgba(244, 234, 214, 0.78);
-      font-size: clamp(18px, 2vw, 23px);
-      line-height: 1.45;
-    }
-
-    .hero-actions,
-    .example-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-
-    .beta-note {
-      max-width: 620px;
-      margin: 0;
-      padding: 13px 15px;
-      border: 1px solid rgba(240, 191, 105, 0.2);
-      border-radius: 10px;
-      background: rgba(13, 14, 14, 0.56);
-      color: rgba(244, 234, 214, 0.74);
-      font-size: 14px;
-      line-height: 1.5;
-    }
-
-    .trust-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin: 0;
-      padding: 0;
-      list-style: none;
-    }
-
-    .trust-row li {
-      min-height: 32px;
-      display: inline-flex;
-      align-items: center;
-      padding: 0 11px;
-      border: 1px solid rgba(240, 191, 105, 0.22);
-      border-radius: 999px;
-      background: rgba(8, 10, 10, 0.52);
-      color: rgba(244, 234, 214, 0.78);
-      font-size: 13px;
-      font-weight: 700;
-    }
-
-    .hero-visual {
-      min-width: 0;
-    }
-
-    .fretboard-preview {
-      position: relative;
-      overflow: hidden;
-      border: 1px solid rgba(240, 191, 105, 0.26);
-      border-radius: 18px;
-      background:
-        radial-gradient(ellipse at 34% 12%, rgba(240, 191, 105, 0.18), transparent 42%),
-        linear-gradient(180deg, rgba(29, 31, 29, 0.9), rgba(6, 7, 7, 0.92));
-      box-shadow:
-        0 24px 80px rgba(0, 0, 0, 0.42),
-        0 0 40px rgba(240, 160, 70, 0.08);
-    }
-
-    .fretboard-preview::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      background:
-        linear-gradient(90deg, rgba(240, 191, 105, 0.08), transparent 16%, transparent 84%, rgba(240, 191, 105, 0.08)),
-        radial-gradient(ellipse at 72% 76%, rgba(49, 135, 129, 0.14), transparent 32%);
-    }
-
-    .fretboard-toolbar,
-    .fretboard-footer {
-      position: relative;
-      z-index: 1;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      padding: 14px 16px;
-      color: rgba(244, 234, 214, 0.78);
-      font-size: 13px;
-      font-weight: 700;
-    }
-
-    .fretboard-toolbar strong {
-      color: var(--cream);
-    }
-
-    .fretboard-chip {
-      display: inline-flex;
-      align-items: center;
-      min-height: 28px;
-      padding: 0 10px;
-      border: 1px solid rgba(240, 191, 105, 0.28);
-      border-radius: 999px;
-      background: rgba(8, 10, 10, 0.5);
-      color: rgba(244, 234, 214, 0.84);
-      font-size: 12px;
-    }
-
-    .fretboard-svg {
-      position: relative;
-      z-index: 1;
-      display: block;
-      width: 100%;
-      height: auto;
-    }
-
-    .fretboard-footer {
-      justify-content: flex-start;
-      border-top: 1px solid rgba(240, 191, 105, 0.14);
-    }
-
-    .section-grid {
-      display: grid;
-      gap: 18px;
-      margin-top: 18px;
-    }
-
-    .feature-grid {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-
-    .example-grid {
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-    }
-
-    .trust-grid {
-      grid-template-columns: 0.9fr 1.1fr;
-      align-items: stretch;
-    }
-
-    .product-grid {
-      grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
-      align-items: stretch;
-    }
-
-    .mode-grid {
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-    }
-
-    .section {
-      margin-top: 26px;
-      padding: 26px;
-      border: 1px solid rgba(240, 191, 105, 0.18);
-      border-radius: 18px;
-      background:
-        linear-gradient(180deg, rgba(28, 31, 31, 0.82), rgba(14, 16, 16, 0.72)),
-        var(--panel);
-      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
-      backdrop-filter: blur(8px);
-    }
-
-    .section-heading {
-      margin: 6px 0 0;
-      color: var(--cream);
-      font-family: var(--font-display);
-      font-size: clamp(30px, 4vw, 48px);
-      line-height: 1.05;
-      font-weight: 500;
-    }
-
-    .section-copy {
+    h1 {
       max-width: 720px;
-      margin: 12px 0 0;
-      color: rgba(244, 234, 214, 0.75);
-      font-size: 16px;
+      margin-bottom: 20px;
+      font-size: clamp(48px, 6.5vw, 86px);
+      line-height: 0.94;
+      text-wrap: balance;
+      text-shadow: 0 0 28px rgba(255, 177, 64, 0.12);
+    }
+
+    .hero-emphasis {
+      color: var(--gold);
+      font-style: italic;
+    }
+
+    .hero-copy,
+    .section-copy,
+    .card p,
+    .feature p,
+    .beta-panel p,
+    footer {
+      color: var(--soft);
       line-height: 1.55;
     }
 
-    .card,
-    .question-card,
-    .source-card {
-      border: 1px solid rgba(244, 234, 214, 0.1);
-      border-radius: 10px;
-      background: rgba(9, 11, 11, 0.48);
+    .hero-copy {
+      max-width: 620px;
+      margin-bottom: 26px;
+      font-size: clamp(17px, 1.8vw, 20px);
     }
 
-    .card {
-      min-height: 150px;
-      padding: 18px;
-    }
-
-    .card h3 {
-      margin: 0 0 9px;
-      color: rgba(255, 242, 220, 0.96);
-      font-size: 18px;
-      line-height: 1.2;
-    }
-
-    .card p {
-      margin-bottom: 0;
-      color: rgba(244, 234, 214, 0.7);
-      font-size: 14px;
-      line-height: 1.52;
-    }
-
-    .product-card {
-      display: grid;
-      gap: 16px;
-      min-height: 300px;
-      padding: 20px;
-    }
-
-    .product-card.is-primary {
-      border-color: rgba(240, 191, 105, 0.3);
-      background:
-        radial-gradient(ellipse at 28% 14%, rgba(240, 191, 105, 0.16), transparent 42%),
-        rgba(9, 11, 11, 0.58);
-    }
-
-    .product-card__meta {
+    .proof-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
-      margin: 0;
+      gap: 12px;
       padding: 0;
+      margin: 28px 0 0;
       list-style: none;
     }
 
-    .product-card__meta li,
-    .mode-tag {
+    .proof-row li,
+    .pill {
       display: inline-flex;
       align-items: center;
-      min-height: 27px;
-      padding: 0 9px;
-      border: 1px solid rgba(240, 191, 105, 0.18);
-      border-radius: 999px;
-      background: rgba(240, 191, 105, 0.055);
-      color: rgba(244, 234, 214, 0.78);
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .mini-neck {
-      height: 88px;
-      border: 1px solid rgba(244, 234, 214, 0.12);
-      border-radius: 10px;
-      background:
-        linear-gradient(90deg, rgba(240, 191, 105, 0.2) 0 1px, transparent 1px 100%) 0 0 / 11.5% 100%,
-        repeating-linear-gradient(180deg, rgba(244, 234, 214, 0.28) 0 1px, transparent 1px 13px),
-        rgba(4, 5, 5, 0.62);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .mini-neck::before,
-    .mini-neck::after {
-      content: "";
-      position: absolute;
-      width: 34px;
-      height: 20px;
-      border-radius: 999px;
-      box-shadow: 0 0 22px currentColor;
-    }
-
-    .mini-neck::before {
-      left: 34%;
-      top: 28px;
-      color: rgba(104, 205, 178, 0.78);
-      background: #68cdb2;
-    }
-
-    .mini-neck::after {
-      left: 58%;
-      top: 42px;
-      color: rgba(239, 191, 105, 0.82);
-      background: var(--brass);
-    }
-
-    .mode-card {
-      min-height: 184px;
-      display: grid;
-      gap: 10px;
-      align-content: start;
-    }
-
-    .mode-card h3 {
-      font-size: 17px;
-    }
-
-    .mode-card__visual {
-      height: 54px;
-      border-radius: 9px;
-      border: 1px solid rgba(240, 191, 105, 0.14);
-      background:
-        repeating-linear-gradient(90deg, rgba(240, 191, 105, 0.18) 0 1px, transparent 1px 22px),
-        repeating-linear-gradient(180deg, rgba(244, 234, 214, 0.24) 0 1px, transparent 1px 10px),
-        rgba(7, 8, 8, 0.54);
-      position: relative;
-    }
-
-    .mode-card__visual::after {
-      content: "";
-      position: absolute;
-      left: var(--marker-left, 36%);
-      top: var(--marker-top, 18px);
-      width: 24px;
-      height: 16px;
-      border-radius: 999px;
-      background: var(--marker-color, #68cdb2);
-      box-shadow: 0 0 16px var(--marker-color, #68cdb2);
-    }
-
-    .brain-band {
-      display: grid;
-      grid-template-columns: minmax(0, 0.92fr) minmax(320px, 1.08fr);
-      gap: 18px;
-      align-items: center;
-    }
-
-    .brain-panel {
-      display: grid;
-      gap: 12px;
-      padding: 16px;
-      border: 1px solid rgba(244, 234, 214, 0.1);
-      border-radius: 14px;
-      background: rgba(5, 6, 6, 0.44);
-    }
-
-    .brain-input {
-      min-height: 54px;
-      display: flex;
-      align-items: center;
-      padding: 0 16px;
-      border: 1px solid rgba(240, 191, 105, 0.28);
-      border-radius: 999px;
-      background: rgba(8, 10, 10, 0.58);
-      color: rgba(244, 234, 214, 0.62);
-      font-weight: 700;
-    }
-
-    .prompt-chips {
-      display: flex;
-      flex-wrap: wrap;
       gap: 8px;
-    }
-
-    .prompt-chip {
-      display: inline-flex;
-      align-items: center;
-      min-height: 31px;
-      padding: 0 10px;
-      border: 1px solid rgba(240, 191, 105, 0.18);
+      min-height: 34px;
+      border: 1px solid rgba(255, 196, 94, 0.24);
       border-radius: 999px;
-      color: rgba(244, 234, 214, 0.74);
+      padding: 0 12px;
+      color: rgba(255, 242, 220, 0.84);
+      background: rgba(8, 7, 5, 0.54);
       font-size: 13px;
       font-weight: 700;
     }
 
-    .question-card {
-      min-height: 112px;
-      padding: 16px;
-      color: rgba(244, 234, 214, 0.88);
-      font-size: 15px;
-      line-height: 1.42;
+    .proof-row li::before,
+    .pill::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--gold);
+      box-shadow: 0 0 14px rgba(255, 196, 94, 0.72);
+    }
+
+    .app-preview {
+      border: 1px solid rgba(255, 196, 94, 0.52);
+      border-radius: 18px;
+      background:
+        radial-gradient(circle at 14% 16%, rgba(255, 177, 64, 0.12), transparent 18rem),
+        linear-gradient(180deg, rgba(17, 14, 10, 0.96), rgba(6, 5, 4, 0.92));
+      box-shadow: 0 26px 72px rgba(0, 0, 0, 0.48), 0 0 52px rgba(255, 151, 42, 0.12);
+      overflow: hidden;
+    }
+
+    .preview-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.55fr) minmax(230px, 0.78fr);
+      min-height: 420px;
+    }
+
+    .preview-pane {
+      padding: 18px;
+      border-right: 1px solid rgba(255, 196, 94, 0.2);
+    }
+
+    .brain-preview {
+      padding: 18px;
       display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .preview-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+      color: var(--gold);
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+    }
+
+    .fretboard-window {
+      border: 1px solid rgba(255, 196, 94, 0.25);
+      border-radius: 11px;
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.42);
+      overflow-x: auto;
+    }
+
+    .fretboard-preview-svg {
+      min-width: 600px;
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .mode-dock {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .mode-dock span {
+      min-height: 74px;
+      display: grid;
+      place-items: center;
+      gap: 6px;
+      border: 1px solid rgba(255, 196, 94, 0.22);
+      border-radius: 10px;
+      padding: 8px;
+      color: rgba(255, 242, 220, 0.78);
+      background: rgba(0, 0, 0, 0.26);
+      font-size: 11px;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .icon-dot {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 1px solid currentColor;
+      box-shadow: 0 0 18px currentColor;
+    }
+
+    .icon-dot.is-gold { color: var(--gold); }
+    .icon-dot.is-green { color: var(--green); }
+    .icon-dot.is-blue { color: var(--blue); }
+    .icon-dot.is-red { color: var(--red); }
+    .icon-dot.is-teal { color: var(--teal); }
+
+    .question-bubble,
+    .answer-bubble,
+    .mini-input {
+      border: 1px solid rgba(255, 196, 94, 0.22);
+      border-radius: 12px;
+      padding: 14px;
+      background: rgba(0, 0, 0, 0.32);
+      color: rgba(255, 242, 220, 0.88);
+      line-height: 1.45;
+    }
+
+    .answer-bubble {
+      color: var(--soft);
+    }
+
+    .source-pills,
+    .prompt-chips,
+    .feature-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .source-pills span,
+    .prompt-chip,
+    .feature-chip {
+      border: 1px solid rgba(255, 196, 94, 0.24);
+      border-radius: 999px;
+      padding: 6px 10px;
+      color: rgba(255, 242, 220, 0.74);
+      background: rgba(0, 0, 0, 0.24);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .mini-input {
+      margin-top: auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-height: 48px;
+      color: var(--muted);
+    }
+
+    .mini-input strong {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: #1a1206;
+      background: var(--gold);
+      box-shadow: 0 0 24px rgba(255, 196, 94, 0.44);
+    }
+
+    .feature-strip,
+    .section,
+    .brain-band,
+    .pricing-panel,
+    .beta-panel {
+      border: 1px solid rgba(255, 196, 94, 0.28);
+      border-radius: 16px;
+      background:
+        radial-gradient(circle at 10% 0%, rgba(255, 196, 94, 0.12), transparent 16rem),
+        linear-gradient(180deg, rgba(21, 18, 13, 0.86), rgba(8, 7, 5, 0.82));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 24px 70px rgba(0, 0, 0, 0.35);
+    }
+
+    .feature-strip {
+      margin-top: 42px;
+      padding: 18px;
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 1px;
+    }
+
+    .feature {
+      min-height: 82px;
+      padding: 0 16px;
+      display: grid;
+      grid-template-columns: 46px minmax(0, 1fr);
+      gap: 12px;
+      align-items: center;
+      border-right: 1px solid rgba(255, 196, 94, 0.14);
+    }
+
+    .feature:last-child {
+      border-right: 0;
+    }
+
+    .feature-icon,
+    .card-icon,
+    .brain-icon,
+    .pricing-icon {
+      width: 52px;
+      height: 52px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(255, 196, 94, 0.48);
+      border-radius: 50%;
+      color: var(--gold);
+      background: rgba(0, 0, 0, 0.28);
+      box-shadow: 0 0 24px rgba(255, 155, 36, 0.16);
+    }
+
+    .feature strong {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--cream);
+      font-family: var(--font-display);
+      font-size: 17px;
+    }
+
+    .feature p {
+      margin: 0;
+      font-size: 12px;
+    }
+
+    .section {
+      margin-top: 34px;
+      padding: clamp(24px, 4vw, 42px);
+    }
+
+    .section-header {
+      max-width: 780px;
+      margin: 0 auto 22px;
+      text-align: center;
+    }
+
+    .section-heading {
+      margin-bottom: 12px;
+      font-size: clamp(30px, 4vw, 48px);
+      line-height: 1.02;
+      text-wrap: balance;
+    }
+
+    .section-copy {
+      max-width: 780px;
+      margin-bottom: 0;
+      font-size: 16px;
+    }
+
+    .two-path-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 22px;
+    }
+
+    .card,
+    .mode-card,
+    .question-card {
+      position: relative;
+      border: 1px solid rgba(255, 196, 94, 0.28);
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(22, 19, 15, 0.88), rgba(8, 7, 5, 0.88));
+      overflow: hidden;
+    }
+
+    .card {
+      padding: 26px;
+    }
+
+    .card.is-primary {
+      border-color: rgba(255, 196, 94, 0.56);
+      box-shadow: 0 0 42px rgba(255, 150, 35, 0.12);
+    }
+
+    .card h3 {
+      margin: 10px 0 10px;
+      font-size: clamp(28px, 3vw, 36px);
+    }
+
+    .card p {
+      margin-bottom: 18px;
+    }
+
+    .product-preview {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      margin: 18px 0;
+    }
+
+    .tiny-neck {
+      min-height: 84px;
+      border: 1px solid rgba(255, 196, 94, 0.22);
+      border-radius: 9px;
+      background:
+        linear-gradient(90deg, transparent 0 14%, rgba(255, 255, 255, 0.13) 14% 15%, transparent 15% 28%, rgba(255, 255, 255, 0.13) 28% 29%, transparent 29% 44%, rgba(255, 255, 255, 0.13) 44% 45%, transparent 45% 62%, rgba(255, 255, 255, 0.13) 62% 63%, transparent 63%),
+        repeating-linear-gradient(0deg, transparent 0 12px, rgba(255, 255, 255, 0.12) 12px 13px),
+        rgba(0, 0, 0, 0.28);
+    }
+
+    .tiny-neck::after,
+    .mode-graphic::after {
+      content: "";
+      display: block;
+      width: 25px;
+      height: 50px;
+      margin: 18px auto 0;
+      border-radius: 999px;
+      background: var(--marker, var(--gold));
+      box-shadow: 0 0 18px var(--marker, var(--gold));
+    }
+
+    .mode-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .mode-card {
+      padding: 18px;
+      text-align: center;
+      min-height: 292px;
+    }
+
+    .mode-card h3 {
+      margin: 14px 0 8px;
+      font-family: var(--font-display);
+      font-size: 24px;
+      line-height: 1.05;
+    }
+
+    .mode-card p {
+      margin: 0;
+      color: var(--soft);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .mode-graphic {
+      min-height: 100px;
+      border: 1px solid rgba(255, 196, 94, 0.18);
+      border-radius: 10px;
+      background:
+        repeating-linear-gradient(90deg, transparent 0 18px, rgba(255, 255, 255, 0.12) 18px 19px),
+        repeating-linear-gradient(0deg, transparent 0 14px, rgba(255, 255, 255, 0.11) 14px 15px),
+        rgba(0, 0, 0, 0.28);
+    }
+
+    .play-link {
+      margin: 22px auto 0;
+      width: fit-content;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--gold);
+      font-weight: 900;
+      text-decoration: none;
+    }
+
+    .play-link::before {
+      content: "";
+      width: 26px;
+      height: 26px;
+      border: 1px solid currentColor;
+      border-radius: 50%;
+      box-shadow: 0 0 16px rgba(255, 196, 94, 0.3);
+    }
+
+    .brain-band {
+      margin-top: 34px;
+      padding: clamp(24px, 4vw, 42px);
+      display: grid;
+      grid-template-columns: 0.75fr 1.25fr;
+      gap: 28px;
       align-items: center;
     }
 
-    .question-card span {
-      color: var(--brass);
-      margin-right: 8px;
-    }
-
-    .source-demo {
+    .brain-lead {
       display: grid;
-      gap: 12px;
+      grid-template-columns: 74px minmax(0, 1fr);
+      gap: 20px;
+      align-items: center;
     }
 
-    .source-card {
-      padding: 15px;
+    .brain-icon,
+    .pricing-icon {
+      width: 74px;
+      height: 74px;
+      font-size: 30px;
+    }
+
+    .brain-form-mock {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: center;
+    }
+
+    .brain-input {
+      min-height: 70px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 1px solid rgba(255, 196, 94, 0.34);
+      border-radius: 13px;
+      padding: 0 14px 0 18px;
+      background: rgba(0, 0, 0, 0.34);
+      color: var(--muted);
+    }
+
+    .send-dot {
+      width: 46px;
+      height: 46px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: #180f06;
+      background: var(--gold);
+      font-weight: 900;
+      box-shadow: 0 0 22px rgba(255, 196, 94, 0.35);
+    }
+
+    .try-list {
       display: grid;
       gap: 8px;
     }
 
-    .source-card small {
-      color: rgba(240, 191, 105, 0.86);
-      font-weight: 700;
+    .try-list strong {
+      color: var(--gold);
+      font-size: 13px;
     }
 
-    .source-card strong {
-      color: var(--cream);
-      font-size: 16px;
-      line-height: 1.25;
-    }
-
-    .source-card p {
-      margin-bottom: 0;
-      color: rgba(244, 234, 214, 0.69);
-      font-size: 14px;
-      line-height: 1.48;
-    }
-
-    .evidence-list {
+    .trust-grid {
       display: grid;
-      gap: 12px;
-      margin: 0;
-      padding: 0;
-      list-style: none;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
     }
 
-    .evidence-list li {
-      padding-left: 22px;
-      position: relative;
-      color: rgba(244, 234, 214, 0.76);
-      font-size: 15px;
-      line-height: 1.5;
+    .trust-card {
+      padding: 20px;
+      border: 1px solid rgba(255, 196, 94, 0.24);
+      border-radius: 13px;
+      background: rgba(0, 0, 0, 0.28);
     }
 
-    .evidence-list li::before {
-      content: "";
-      position: absolute;
-      left: 0;
-      top: 0.68em;
-      width: 9px;
-      height: 1px;
-      background: var(--brass);
-      box-shadow: 0 0 10px rgba(240, 191, 105, 0.5);
+    .trust-card strong {
+      display: block;
+      margin-bottom: 8px;
+      font-family: var(--font-display);
+      font-size: 21px;
+    }
+
+    .pricing-panel,
+    .beta-panel {
+      margin-top: 34px;
+      padding: clamp(26px, 4vw, 46px);
+    }
+
+    .pricing-panel {
+      display: grid;
+      grid-template-columns: 92px minmax(0, 1fr) auto;
+      gap: 24px;
+      align-items: center;
+      background:
+        linear-gradient(90deg, rgba(255, 181, 65, 0.08), transparent 44%, rgba(255, 181, 65, 0.16)),
+        linear-gradient(180deg, rgba(22, 19, 15, 0.9), rgba(8, 7, 5, 0.9));
+    }
+
+    .pricing-panel h2 {
+      margin-bottom: 8px;
+      font-size: clamp(32px, 4vw, 48px);
+    }
+
+    .pricing-panel p {
+      margin-bottom: 18px;
     }
 
     .beta-panel {
       display: grid;
-      grid-template-columns: minmax(0, 0.8fr) minmax(320px, 1fr);
-      gap: 18px;
+      grid-template-columns: minmax(0, 0.86fr) minmax(360px, 1.14fr);
+      gap: 30px;
       align-items: start;
-      margin-top: 26px;
-      padding: 22px;
-      border: 1px solid rgba(240, 191, 105, 0.22);
-      border-radius: 16px;
-      background: rgba(9, 11, 11, 0.62);
-    }
-
-    .beta-panel p {
-      margin: 0;
-      color: rgba(244, 234, 214, 0.74);
-      line-height: 1.5;
     }
 
     .interest-form {
       display: grid;
-      gap: 13px;
-      padding: 16px;
-      border: 1px solid rgba(244, 234, 214, 0.1);
-      border-radius: 12px;
-      background: rgba(5, 6, 6, 0.38);
+      gap: 16px;
     }
 
     .field-grid {
       display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    .field {
-      display: grid;
-      gap: 7px;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
     }
 
     .field.is-wide {
@@ -768,53 +834,35 @@
 
     label,
     legend {
-      color: rgba(240, 191, 105, 0.86);
+      display: block;
+      margin-bottom: 7px;
+      color: var(--gold);
       font-size: 12px;
-      line-height: 1.35;
-      letter-spacing: 0.08em;
+      font-weight: 900;
+      letter-spacing: 0.1em;
       text-transform: uppercase;
-      font-weight: 700;
     }
 
     input,
     select,
     textarea {
       width: 100%;
-      border: 1px solid rgba(244, 234, 214, 0.13);
-      border-radius: 9px;
-      background: rgba(9, 11, 11, 0.68);
+      border: 1px solid rgba(255, 196, 94, 0.3);
+      border-radius: 10px;
+      padding: 13px 14px;
       color: var(--cream);
-      font: inherit;
-      font-size: 15px;
-    }
-
-    input,
-    select {
-      min-height: 42px;
-      padding: 0 11px;
+      background: rgba(0, 0, 0, 0.36);
     }
 
     textarea {
-      min-height: 96px;
+      min-height: 116px;
       resize: vertical;
-      padding: 11px;
-      line-height: 1.45;
-    }
-
-    input:focus,
-    select:focus,
-    textarea:focus {
-      border-color: rgba(240, 191, 105, 0.5);
-      outline: none;
-      box-shadow: 0 0 0 3px rgba(240, 191, 105, 0.09);
     }
 
     fieldset {
-      display: grid;
-      gap: 10px;
       margin: 0;
-      padding: 0;
       border: 0;
+      padding: 0;
     }
 
     .checkbox-list {
@@ -824,227 +872,189 @@
     }
 
     .checkbox-list label {
+      margin: 0;
       display: flex;
       align-items: center;
       gap: 8px;
-      min-height: 36px;
-      padding: 8px 9px;
-      border: 1px solid rgba(244, 234, 214, 0.1);
-      border-radius: 9px;
-      background: rgba(244, 234, 214, 0.035);
-      color: rgba(244, 234, 214, 0.78);
-      cursor: pointer;
-      font-size: 13px;
+      border: 1px solid rgba(255, 196, 94, 0.18);
+      border-radius: 999px;
+      padding: 9px 12px;
+      color: var(--soft);
+      background: rgba(0, 0, 0, 0.24);
       letter-spacing: 0;
       text-transform: none;
-      font-weight: 500;
+      font-size: 13px;
+      font-weight: 700;
     }
 
     .checkbox-list input {
       width: auto;
-      min-height: auto;
-      accent-color: var(--brass);
     }
 
     .form-note,
     .form-status {
       margin: 0;
-      color: rgba(244, 234, 214, 0.62);
+      color: var(--muted);
       font-size: 13px;
-      line-height: 1.45;
-    }
-
-    .form-status {
-      min-height: 1.45em;
-      color: rgba(240, 191, 105, 0.88);
     }
 
     footer {
-      width: min(1160px, calc(100% - 40px));
-      margin: 0 auto;
-      padding: 0 0 34px;
-      color: rgba(244, 234, 214, 0.58);
-      font-size: 13px;
+      padding: 34px 0 48px;
       text-align: center;
+      color: var(--muted);
+      font-size: 13px;
     }
 
-    .footer-ornament {
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      align-items: center;
-      gap: 14px;
-      width: min(320px, 76vw);
-      margin: 0 auto 14px;
-      color: var(--brass);
-    }
-
-    .footer-ornament::before,
-    .footer-ornament::after {
-      content: "";
-      height: 1px;
-      opacity: 0.55;
-    }
-
-    .footer-ornament::before {
-      background: linear-gradient(to left, rgba(240, 191, 105, 0.75), transparent);
-    }
-
-    .footer-ornament::after {
-      background: linear-gradient(to right, rgba(240, 191, 105, 0.75), transparent);
-    }
-
-    @media (max-width: 900px) {
+    @media (max-width: 1100px) {
       .site-header {
-        align-items: flex-start;
+        grid-template-columns: minmax(150px, 190px) 1fr;
       }
 
       .site-nav {
         order: 3;
-        width: 100%;
-        margin: 8px 0 0;
+        grid-column: 1 / -1;
         justify-content: flex-start;
+        overflow-x: auto;
+        padding-bottom: 4px;
       }
 
       .header-actions {
-        align-items: flex-end;
-        flex-direction: column;
+        justify-content: flex-end;
       }
 
-      .access-note {
-        display: none;
+      .hero-grid,
+      .preview-grid,
+      .two-path-grid,
+      .brain-band,
+      .beta-panel {
+        grid-template-columns: 1fr;
       }
 
-      main {
-        padding-top: 32px;
+      .mode-grid,
+      .feature-strip,
+      .trust-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
-      .hero {
-        padding-top: clamp(80px, 18vw, 135px);
+      .feature {
+        border-right: 0;
+      }
+
+      .pricing-panel {
+        grid-template-columns: 74px minmax(0, 1fr);
+      }
+
+      .pricing-panel .button {
+        grid-column: 2;
+        width: fit-content;
+      }
+    }
+
+    @media (max-width: 700px) {
+      body {
+        background-attachment: scroll;
+      }
+
+      .site-header {
+        position: relative;
+        grid-template-columns: 1fr;
+        padding: 12px 16px 14px;
       }
 
       .hero-hanging-sign {
-        width: clamp(220px, 30vw, 300px);
-        top: 8px;
-        left: -18px;
-        transform: rotate(-1.5deg);
+        width: clamp(142px, 45vw, 190px);
+        margin-left: -4px;
       }
 
-      .hero-layout,
-      .product-grid,
-      .brain-band,
-      .feature-grid,
-      .example-grid,
-      .trust-grid,
+      .site-nav {
+        justify-content: flex-start;
+        gap: 16px;
+      }
+
+      .hero-actions,
+      .example-actions,
+      .brain-form-mock {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .hero-actions .button,
+      .hero-actions .ghost-button,
+      .example-actions .button,
+      .example-actions .ghost-button,
+      .brain-form-mock .button,
+      .brain-form-mock .ghost-button {
+        width: 100%;
+      }
+
+      .header-actions {
+        justify-content: flex-start;
+        gap: 8px;
+      }
+
+      .site-header .button,
+      .site-header .backstage-link {
+        min-height: 38px;
+        width: auto;
+        padding: 0 12px;
+        font-size: 13px;
+      }
+
+      .shell {
+        width: min(100% - 24px, 1220px);
+      }
+
+      h1 {
+        font-size: clamp(43px, 15vw, 64px);
+      }
+
+      .hero {
+        padding-top: 34px;
+      }
+
+      .feature-strip,
       .mode-grid,
-      .beta-panel,
+      .trust-grid,
+      .product-preview,
       .field-grid,
       .checkbox-list {
         grid-template-columns: 1fr;
       }
 
-      .hero-layout {
-        gap: 24px;
+      .preview-pane,
+      .brain-preview,
+      .section,
+      .brain-band,
+      .pricing-panel,
+      .beta-panel {
+        padding: 18px;
+      }
+
+      .mode-dock {
+        grid-template-columns: 1fr;
+      }
+
+      .pricing-panel {
+        grid-template-columns: 1fr;
+      }
+
+      .pricing-panel .button {
+        grid-column: auto;
+        width: 100%;
       }
     }
 
-    @media (max-width: 640px) {
-      body {
-        background-position: center center, center top, 58% center, center center;
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
       }
 
-      .site-header,
-      main,
-      footer {
-        width: calc(100% - 28px);
-      }
-
-      .site-header {
-        padding-top: 14px;
-      }
-
-      .site-nav {
-        gap: 4px;
-      }
-
-      .nav-link {
-        min-height: 30px;
-        padding: 0 8px;
-        font-size: 12px;
-      }
-
-      .header-actions {
-        width: 100%;
-        align-items: stretch;
-        gap: 8px;
-      }
-
-      .brand-logo {
-        width: min(210px, 58vw);
-      }
-
-      .backstage-link {
-        min-height: 38px;
-        padding: 0 12px;
-        font-size: 13px;
-      }
-
-      h1 {
-        font-size: clamp(44px, 15vw, 68px);
-      }
-
-      .hero {
-        padding-top: 120px;
-        padding-bottom: 40px;
-      }
-
-      .hero-hanging-sign {
-        display: block;
-        top: 8px;
-        left: -18px;
-        width: clamp(190px, 55vw, 240px);
-        transform: rotate(-1.5deg);
-        z-index: 2;
-        pointer-events: none;
-      }
-
-      .hero-hanging-sign video,
       .hero-hanging-sign.is-animated video {
         display: none;
       }
 
-      .hero-hanging-sign img,
       .hero-hanging-sign.is-animated img {
         display: block;
-        width: 100%;
-        height: auto;
-      }
-
-      .hero-actions,
-      .example-actions {
-        align-items: stretch;
-        flex-direction: column;
-      }
-
-      .button,
-      .ghost-button {
-        width: 100%;
-      }
-
-      .section {
-        padding: 20px;
-      }
-
-      .fretboard-toolbar,
-      .fretboard-footer {
-        padding: 11px 12px;
-      }
-
-      .fretboard-svg {
-        min-width: 620px;
-      }
-
-      .fretboard-scroll {
-        overflow-x: auto;
       }
     }
   </style>
@@ -1052,294 +1062,314 @@
 <body>
   <div class="page">
     <header class="site-header">
-      <a class="brand-link" href="#top" aria-label="Steel Guitar RAG home">
-        <img class="brand-logo" src="assets/steel-guitar-rag-logo-transparent.png" alt="Steel Guitar RAG">
+      <a class="hero-hanging-sign" href="#top" aria-label="Steel Guitar RAG home">
+        <video muted loop playsinline poster="brand/steel-guitar-rag-landing-fallback-alpha.png" preload="none" data-src="brand/steel-guitar-rag-landing-alpha.webm"></video>
+        <img src="brand/steel-guitar-rag-landing-fallback-alpha.png" alt="Steel Guitar RAG">
       </a>
       <nav class="site-nav" aria-label="Landing page">
+        <a class="nav-link is-active" href="#top">Home</a>
         <a class="nav-link" href="#explorer">Fretboard Explorer</a>
         <a class="nav-link" href="#brain">Ask the Brain</a>
         <a class="nav-link" href="#modes">Modes</a>
         <a class="nav-link" href="#why">Why it works</a>
-        <a class="nav-link" href="#beta">Access</a>
+        <a class="nav-link" href="#beta">Pricing</a>
+        <a class="nav-link" href="#why">Glossary</a>
       </nav>
       <div class="header-actions">
-        <a class="backstage-link" href="#interest-form" aria-label="Request preview access to open the app">Open app</a>
+        <a class="backstage-link" href="#beta" aria-label="Request preview access to open the app">Open app</a>
         <a class="button" href="#modes">Start exploring</a>
       </div>
     </header>
 
-    <div class="hero-hanging-sign" aria-hidden="true">
-      <video muted loop playsinline poster="brand/steel-guitar-rag-landing-fallback-alpha.png" preload="none" data-src="brand/steel-guitar-rag-landing-alpha.webm"></video>
-      <img src="brand/steel-guitar-rag-landing-fallback-alpha.png" alt="">
-    </div>
-
-    <main id="top">
+    <main id="top" class="shell">
       <section class="hero" aria-labelledby="hero-title">
-        <div class="hero-layout">
-          <div class="hero-text">
-            <p class="eyebrow">Fretboard Explorer + Steel Guitar Brain</p>
-            <h1 id="hero-title">Explore the E9 neck. Ask better questions.</h1>
-            <p class="hero-copy">Find grips, scales, chords, notes, and voicings across the neck, then ask the Steel Guitar Brain for source-aware guidance on tone, setup, theory, troubleshooting, copedents, and practice.</p>
+        <div class="hero-grid">
+          <div class="hero-copy-block">
+            <p class="eyebrow">Explore the neck. Ask the brain.</p>
+            <h1 id="hero-title">Explore the neck. Ask <span class="hero-emphasis">better</span> questions.</h1>
+            <p class="hero-copy">The Fretboard Explorer helps you see grips, scales, chords, notes, voicings, and pedal/lever moves across the E9 neck. The Steel Guitar Brain is the companion for source-aware explanation on tone, setup, theory, troubleshooting, copedents, and practice.</p>
             <div class="hero-actions">
-              <a class="button" href="#modes">Start with the Fretboard Explorer</a>
-              <a class="ghost-button" href="#brain">Ask the Steel Guitar Brain</a>
+              <a class="button" href="#modes">Start with the Explorer</a>
+              <a class="ghost-button" href="#brain">Ask the Brain</a>
             </div>
-            <ul class="trust-row" aria-label="Product strengths">
+            <ul class="proof-row" aria-label="Product strengths">
               <li>Validated explorer data</li>
-              <li>Pedal/lever aware</li>
+              <li>Real copedents</li>
               <li>Source-backed guidance</li>
-              <li>Built for real copedents</li>
+              <li>Pedal/lever aware</li>
               <li>Not a generic chatbot</li>
             </ul>
           </div>
-          <div class="hero-visual">
-            <div class="fretboard-preview" aria-label="E9 Fretboard Explorer preview">
-              <div class="fretboard-toolbar">
-                <strong>E9 Fretboard Explorer</strong>
-                <span class="fretboard-chip">G major · 4-5-6 · A+B</span>
+
+          <div class="app-preview" aria-label="Steel Guitar RAG app preview">
+            <div class="preview-grid">
+              <div class="preview-pane">
+                <div class="preview-title">
+                  <span>Fretboard Explorer</span>
+                  <span>G major · E9</span>
+                </div>
+                <div class="fretboard-window" aria-label="E9 Fretboard Explorer preview">
+                  <svg class="fretboard-preview-svg" viewBox="0 0 760 300" role="img" aria-labelledby="fretboard-preview-title">
+                    <title id="fretboard-preview-title">E9 Fretboard Explorer preview with colorful chord and scale markers</title>
+                    <rect x="58" y="34" width="650" height="204" rx="10" fill="#050505" stroke="rgba(255,196,94,0.4)" />
+                    <g stroke="rgba(255,242,220,0.36)" stroke-width="1.4">
+                      <line x1="82" y1="58" x2="690" y2="58" />
+                      <line x1="82" y1="76" x2="690" y2="76" />
+                      <line x1="82" y1="94" x2="690" y2="94" />
+                      <line x1="82" y1="112" x2="690" y2="112" />
+                      <line x1="82" y1="130" x2="690" y2="130" />
+                      <line x1="82" y1="148" x2="690" y2="148" />
+                      <line x1="82" y1="166" x2="690" y2="166" />
+                      <line x1="82" y1="184" x2="690" y2="184" />
+                      <line x1="82" y1="202" x2="690" y2="202" />
+                      <line x1="82" y1="220" x2="690" y2="220" />
+                    </g>
+                    <g stroke="rgba(255,196,94,0.34)">
+                      <line x1="82" y1="44" x2="82" y2="232" stroke-width="3" />
+                      <line x1="128" y1="44" x2="128" y2="232" />
+                      <line x1="172" y1="44" x2="172" y2="232" />
+                      <line x1="214" y1="44" x2="214" y2="232" />
+                      <line x1="254" y1="44" x2="254" y2="232" />
+                      <line x1="292" y1="44" x2="292" y2="232" />
+                      <line x1="328" y1="44" x2="328" y2="232" />
+                      <line x1="362" y1="44" x2="362" y2="232" />
+                      <line x1="394" y1="44" x2="394" y2="232" />
+                      <line x1="424" y1="44" x2="424" y2="232" />
+                      <line x1="452" y1="44" x2="452" y2="232" />
+                      <line x1="478" y1="44" x2="478" y2="232" />
+                      <line x1="503" y1="44" x2="503" y2="232" />
+                      <line x1="527" y1="44" x2="527" y2="232" />
+                      <line x1="550" y1="44" x2="550" y2="232" />
+                      <line x1="572" y1="44" x2="572" y2="232" />
+                      <line x1="593" y1="44" x2="593" y2="232" />
+                      <line x1="613" y1="44" x2="613" y2="232" />
+                      <line x1="632" y1="44" x2="632" y2="232" />
+                      <line x1="650" y1="44" x2="650" y2="232" />
+                    </g>
+                    <g fill="rgba(255,196,94,0.28)">
+                      <path d="M192 140 l9 -9 l9 9 l-9 9z" />
+                      <path d="M292 140 l9 -9 l9 9 l-9 9z" />
+                      <path d="M394 124 l9 -9 l9 9 l-9 9z" />
+                      <path d="M394 158 l9 -9 l9 9 l-9 9z" />
+                      <path d="M503 140 l9 -9 l9 9 l-9 9z" />
+                      <path d="M572 140 l9 -9 l9 9 l-9 9z" />
+                      <path d="M632 124 l9 -9 l9 9 l-9 9z" />
+                      <path d="M632 158 l9 -9 l9 9 l-9 9z" />
+                    </g>
+                    <g font-family="Gill Sans, Segoe UI, sans-serif" font-size="16" font-weight="800" fill="#fff2dc">
+                      <text x="28" y="63">1 F#</text>
+                      <text x="28" y="81">2 D#</text>
+                      <text x="28" y="99">3 G#</text>
+                      <text x="28" y="117">4 E</text>
+                      <text x="28" y="135">5 B</text>
+                      <text x="28" y="153">6 G#</text>
+                      <text x="28" y="171">7 F#</text>
+                      <text x="28" y="189">8 E</text>
+                      <text x="28" y="207">9 D</text>
+                      <text x="23" y="225">10 B</text>
+                    </g>
+                    <g filter="url(#hero-glow)">
+                      <rect x="156" y="118" width="28" height="52" rx="13" fill="#ffb23f" />
+                      <rect x="248" y="118" width="28" height="24" rx="12" fill="#86d45d" />
+                      <rect x="326" y="118" width="28" height="24" rx="12" fill="#64b7ff" />
+                      <rect x="404" y="118" width="28" height="78" rx="13" fill="#ff7657" />
+                      <rect x="486" y="118" width="28" height="24" rx="12" fill="#55d0bf" />
+                      <rect x="548" y="118" width="28" height="24" rx="12" fill="#f472b6" />
+                      <rect x="604" y="118" width="28" height="24" rx="12" fill="#d6df37" />
+                    </g>
+                    <g font-family="Gill Sans, Segoe UI, sans-serif" font-size="16" font-weight="900" fill="#fff2dc">
+                      <text x="160" y="104">iii</text>
+                      <text x="251" y="104">IV</text>
+                      <text x="330" y="104">V</text>
+                      <text x="410" y="104">vi</text>
+                      <text x="488" y="104">vii</text>
+                      <text x="552" y="104">ii</text>
+                      <text x="608" y="104">iii</text>
+                      <text x="157" y="268">1</text>
+                      <text x="248" y="268">5</text>
+                      <text x="326" y="268">9</text>
+                      <text x="404" y="268">12</text>
+                      <text x="486" y="268">15</text>
+                      <text x="548" y="268">17</text>
+                      <text x="604" y="268">21</text>
+                    </g>
+                    <defs>
+                      <filter id="hero-glow" x="-40%" y="-40%" width="180%" height="180%">
+                        <feGaussianBlur stdDeviation="7" result="blur" />
+                        <feMerge>
+                          <feMergeNode in="blur" />
+                          <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                      </filter>
+                    </defs>
+                  </svg>
+                </div>
+                <div class="mode-dock" aria-label="Explorer modes">
+                  <span><i class="icon-dot is-gold"></i>Single Grip</span>
+                  <span><i class="icon-dot is-green"></i>Path Scale</span>
+                  <span><i class="icon-dot is-blue"></i>Note Finder</span>
+                  <span><i class="icon-dot is-red"></i>Chord Finder</span>
+                  <span><i class="icon-dot is-teal"></i>Voicing ID</span>
+                </div>
               </div>
-              <div class="fretboard-scroll">
-                <svg class="fretboard-svg" viewBox="0 0 940 360" role="img" aria-labelledby="fretboard-preview-title">
-                  <title id="fretboard-preview-title">Preview of the E9 fretboard with strings, frets, note markers, and colored grip positions</title>
-                  <rect x="38" y="44" width="850" height="236" rx="14" fill="#050606" stroke="rgba(240, 191, 105, 0.32)" />
-                  <g stroke="rgba(244, 234, 214, 0.42)" stroke-width="2">
-                    <line x1="70" y1="72" x2="852" y2="72" />
-                    <line x1="70" y1="94" x2="852" y2="94" />
-                    <line x1="70" y1="116" x2="852" y2="116" />
-                    <line x1="70" y1="138" x2="852" y2="138" />
-                    <line x1="70" y1="160" x2="852" y2="160" />
-                    <line x1="70" y1="182" x2="852" y2="182" />
-                    <line x1="70" y1="204" x2="852" y2="204" />
-                    <line x1="70" y1="226" x2="852" y2="226" />
-                    <line x1="70" y1="248" x2="852" y2="248" />
-                  </g>
-                  <g stroke="rgba(240, 191, 105, 0.32)" stroke-width="1.5">
-                    <line x1="70" y1="52" x2="70" y2="270" stroke-width="4" />
-                    <line x1="124" y1="52" x2="124" y2="270" />
-                    <line x1="176" y1="52" x2="176" y2="270" />
-                    <line x1="226" y1="52" x2="226" y2="270" />
-                    <line x1="274" y1="52" x2="274" y2="270" />
-                    <line x1="320" y1="52" x2="320" y2="270" />
-                    <line x1="364" y1="52" x2="364" y2="270" />
-                    <line x1="406" y1="52" x2="406" y2="270" />
-                    <line x1="446" y1="52" x2="446" y2="270" />
-                    <line x1="484" y1="52" x2="484" y2="270" />
-                    <line x1="520" y1="52" x2="520" y2="270" />
-                    <line x1="555" y1="52" x2="555" y2="270" />
-                    <line x1="588" y1="52" x2="588" y2="270" />
-                    <line x1="620" y1="52" x2="620" y2="270" />
-                    <line x1="650" y1="52" x2="650" y2="270" />
-                    <line x1="679" y1="52" x2="679" y2="270" />
-                    <line x1="706" y1="52" x2="706" y2="270" />
-                    <line x1="732" y1="52" x2="732" y2="270" />
-                    <line x1="757" y1="52" x2="757" y2="270" />
-                    <line x1="780" y1="52" x2="780" y2="270" />
-                    <line x1="802" y1="52" x2="802" y2="270" />
-                    <line x1="823" y1="52" x2="823" y2="270" />
-                    <line x1="843" y1="52" x2="843" y2="270" />
-                  </g>
-                  <g fill="rgba(240, 191, 105, 0.32)">
-                    <path d="M200 148 l10 -10 l10 10 l-10 10z" />
-                    <path d="M300 148 l10 -10 l10 10 l-10 10z" />
-                    <path d="M400 148 l10 -10 l10 10 l-10 10z" />
-                    <path d="M500 132 l10 -10 l10 10 l-10 10z" />
-                    <path d="M500 164 l10 -10 l10 10 l-10 10z" />
-                    <path d="M650 148 l10 -10 l10 10 l-10 10z" />
-                    <path d="M732 148 l10 -10 l10 10 l-10 10z" />
-                    <path d="M823 132 l10 -10 l10 10 l-10 10z" />
-                    <path d="M823 164 l10 -10 l10 10 l-10 10z" />
-                  </g>
-                  <g font-family="Gill Sans, Segoe UI, sans-serif" font-size="17" font-weight="700" fill="#fff2dc">
-                    <text x="42" y="77">1</text>
-                    <text x="42" y="99">2</text>
-                    <text x="42" y="121">3</text>
-                    <text x="42" y="143">4</text>
-                    <text x="42" y="165">5</text>
-                    <text x="42" y="187">6</text>
-                    <text x="42" y="209">7</text>
-                    <text x="42" y="231">8</text>
-                    <text x="42" y="253">9</text>
-                    <text x="36" y="275">10</text>
-                  </g>
-                  <g filter="url(#preview-glow)">
-                    <rect x="254" y="147" width="54" height="25" rx="13" fill="#68cdb2" />
-                    <rect x="254" y="173" width="54" height="25" rx="13" fill="#68cdb2" />
-                    <rect x="254" y="199" width="54" height="25" rx="13" fill="#f0bf69" />
-                    <rect x="444" y="147" width="54" height="25" rx="13" fill="#f08b5f" />
-                    <rect x="444" y="173" width="54" height="25" rx="13" fill="#f08b5f" />
-                    <rect x="444" y="199" width="54" height="25" rx="13" fill="#b68cf0" />
-                    <rect x="617" y="147" width="54" height="25" rx="13" fill="#e981ad" />
-                    <rect x="617" y="173" width="54" height="25" rx="13" fill="#d4df36" />
-                    <rect x="617" y="199" width="54" height="25" rx="13" fill="#e981ad" />
-                  </g>
-                  <defs>
-                    <filter id="preview-glow" x="-20%" y="-20%" width="140%" height="140%">
-                      <feGaussianBlur stdDeviation="8" result="blur" />
-                      <feMerge>
-                        <feMergeNode in="blur" />
-                        <feMergeNode in="SourceGraphic" />
-                      </feMerge>
-                    </filter>
-                  </defs>
-                  <g font-family="Gill Sans, Segoe UI, sans-serif" font-size="16" font-weight="700" fill="#f4ead6">
-                    <text x="263" y="136">G</text>
-                    <text x="453" y="136">C</text>
-                    <text x="626" y="136">D</text>
-                  </g>
-                </svg>
-              </div>
-              <div class="fretboard-footer">
-                <span class="fretboard-chip">Single Grip</span>
-                <span class="fretboard-chip">Harmonized Path Scale</span>
-                <span class="fretboard-chip">Single-Note Finder</span>
-              </div>
+              <aside class="brain-preview" aria-label="Steel Guitar Brain preview">
+                <div class="preview-title">Steel Guitar Brain</div>
+                <div class="question-bubble">Why does touching the changer reduce hum?</div>
+                <div class="answer-bubble">Touching the changer can complete a ground path that reduces static charge or electromagnetic interference. Check bridge, changer, and cable shielding before chasing amp settings.</div>
+                <div class="source-pills">
+                  <span>Forum evidence</span>
+                  <span>Setup notes</span>
+                  <span>Manuals</span>
+                </div>
+                <div class="mini-input">Ask a question... <strong>&uarr;</strong></div>
+              </aside>
             </div>
           </div>
         </div>
+
+        <div class="feature-strip" aria-label="Why steel players use it">
+          <div class="feature"><span class="feature-icon">01</span><p><strong>Validated data</strong>Built from checked tuning and pedal/lever rules.</p></div>
+          <div class="feature"><span class="feature-icon">02</span><p><strong>Real copedents</strong>Emmons, universal, and custom setups.</p></div>
+          <div class="feature"><span class="feature-icon">03</span><p><strong>Source-backed</strong>Forum, manual, and curated guidance when relevant.</p></div>
+          <div class="feature"><span class="feature-icon">04</span><p><strong>Faster learning</strong>Less hunting; more playing.</p></div>
+          <div class="feature"><span class="feature-icon">05</span><p><strong>Built for steel</strong>Not a generic chatbot.</p></div>
+        </div>
       </section>
 
-      <section class="section" id="explorer" aria-labelledby="products-title">
-        <p class="section-kicker">Two ways to learn</p>
-        <h2 class="section-heading" id="products-title">Use the Explorer when you want to see it. Use the Brain when you need explanation.</h2>
-        <div class="section-grid product-grid">
-          <article class="card product-card is-primary">
-            <div>
-              <p class="section-kicker">Primary visual path</p>
-              <h3>Fretboard Explorer</h3>
-              <p>See grips, scales, chords, notes, voicings, and pedal/lever moves on the E9 neck without translating generic theory by hand.</p>
+      <section class="section" id="explorer" aria-labelledby="paths-title">
+        <div class="section-header">
+          <p class="section-kicker">Two ways to learn faster</p>
+          <h2 class="section-heading" id="paths-title">Use the Explorer when you want to see it. Use the Brain when you need explanation.</h2>
+        </div>
+        <div class="two-path-grid">
+          <article class="card is-primary">
+            <span class="card-icon">1</span>
+            <h3>Fretboard Explorer</h3>
+            <p>See the E9 neck come alive. Explore grips, scales, chords, note locations, voicings, and control changes with validated copedent logic.</p>
+            <div class="product-preview" aria-label="Explorer mode mini previews">
+              <div class="tiny-neck" style="--marker:#ffb23f"></div>
+              <div class="tiny-neck" style="--marker:#86d45d"></div>
+              <div class="tiny-neck" style="--marker:#64b7ff"></div>
+              <div class="tiny-neck" style="--marker:#ff7657"></div>
+              <div class="tiny-neck" style="--marker:#55d0bf"></div>
             </div>
-            <div class="mini-neck" aria-hidden="true"></div>
-            <ul class="product-card__meta">
-              <li>Strings</li>
-              <li>Frets</li>
-              <li>Pedals/levers</li>
-              <li>Intervals</li>
-              <li>Copedents</li>
-            </ul>
-            <a class="button" href="#modes">Explore the neck</a>
+            <a class="button" href="#modes">Choose your mode</a>
           </article>
-          <article class="card product-card">
-            <div>
-              <p class="section-kicker">Companion guidance</p>
-              <h3>Steel Guitar Brain</h3>
-              <p>Ask practical steel-guitar questions and get source-aware guidance on tone, technique, setup, theory, troubleshooting, copedents, and practice.</p>
+          <article class="card">
+            <span class="card-icon">2</span>
+            <h3>Steel Guitar Brain</h3>
+            <p>Get source-aware answers on tone, copedents, setup, technique, theory, and troubleshooting, with the Explorer nearby when a question needs the neck.</p>
+            <div class="prompt-chips">
+              <span class="prompt-chip">Tone</span>
+              <span class="prompt-chip">Copedents</span>
+              <span class="prompt-chip">Setup</span>
+              <span class="prompt-chip">Technique</span>
+              <span class="prompt-chip">Troubleshooting</span>
             </div>
-            <ul class="product-card__meta">
-              <li>Forum wisdom</li>
-              <li>Gear and tone</li>
-              <li>Blocking</li>
-              <li>Setup</li>
-              <li>Practice</li>
-            </ul>
+            <div class="question-bubble">What grip works for Fmaj7?</div>
             <a class="ghost-button" href="#brain">Ask the Brain</a>
           </article>
         </div>
       </section>
 
       <section class="section" id="modes" aria-labelledby="modes-title">
-        <p class="section-kicker">Choose your explorer mode</p>
-        <h2 class="section-heading" id="modes-title">Start from the musical question in front of you.</h2>
-        <p class="section-copy">The Fretboard Explorer is the visual first step for static grips, chord locations, scale paths, note locations, and voicing checks.</p>
-        <div class="section-grid mode-grid">
-          <article class="card mode-card">
-            <span class="mode-tag">Mode 01</span>
-            <div class="mode-card__visual" style="--marker-left: 42%; --marker-color: #68cdb2;" aria-hidden="true"></div>
+        <div class="section-header">
+          <p class="section-kicker">Choose your Explorer mode</p>
+          <h2 class="section-heading" id="modes-title">Five powerful ways to explore the E9 fretboard.</h2>
+        </div>
+        <div class="mode-grid">
+          <article class="mode-card">
+            <span class="card-icon">01</span>
             <h3>Single Grip</h3>
-            <p>Jump straight to one practical pocket and see the fret, strings, pedals, and levers.</p>
+            <p>Jump straight to one practical pocket.</p>
+            <div class="mode-graphic" style="--marker:#ffb23f" aria-hidden="true"></div>
           </article>
-          <article class="card mode-card">
-            <span class="mode-tag">Mode 02</span>
-            <div class="mode-card__visual" style="--marker-left: 32%; --marker-color: #f0bf69;" aria-hidden="true"></div>
+          <article class="mode-card">
+            <span class="card-icon">02</span>
             <h3>Harmonized Path Scale</h3>
-            <p>Trace diatonic movement across the neck with compact path controls.</p>
+            <p>Trace diatonic movement across the neck.</p>
+            <div class="mode-graphic" style="--marker:#86d45d" aria-hidden="true"></div>
           </article>
-          <article class="card mode-card">
-            <span class="mode-tag">Mode 03</span>
-            <div class="mode-card__visual" style="--marker-left: 58%; --marker-color: #72aef0;" aria-hidden="true"></div>
+          <article class="mode-card">
+            <span class="card-icon">03</span>
             <h3>Single-Note Finder</h3>
-            <p>Find every place a note lives across strings, frets, and common controls.</p>
+            <p>Find every note position instantly.</p>
+            <div class="mode-graphic" style="--marker:#64b7ff" aria-hidden="true"></div>
           </article>
-          <article class="card mode-card">
-            <span class="mode-tag">Mode 04</span>
-            <div class="mode-card__visual" style="--marker-left: 46%; --marker-color: #e981ad;" aria-hidden="true"></div>
+          <article class="mode-card">
+            <span class="card-icon">04</span>
             <h3>Chord Finder</h3>
-            <p>Locate chord families, functions, and pockets without losing the steel layout.</p>
+            <p>Locate chord families, functions, and pockets.</p>
+            <div class="mode-graphic" style="--marker:#ff7657" aria-hidden="true"></div>
           </article>
-          <article class="card mode-card">
-            <span class="mode-tag">Mode 05</span>
-            <div class="mode-card__visual" style="--marker-left: 68%; --marker-color: #b68cf0;" aria-hidden="true"></div>
+          <article class="mode-card">
+            <span class="card-icon">05</span>
             <h3>Voicing Identifier</h3>
-            <p>Select strings and pedals, then identify what the grip gives you.</p>
+            <p>Select strings and pedals, then identify the result.</p>
+            <div class="mode-graphic" style="--marker:#55d0bf" aria-hidden="true"></div>
           </article>
         </div>
+        <a class="play-link" href="#explorer">See how it works</a>
       </section>
 
-      <section class="section brain-band" id="brain" aria-labelledby="brain-title">
-        <div>
-          <p class="section-kicker">Steel Guitar Brain</p>
-          <h2 class="section-heading" id="brain-title">Stuck? Ask for the explanation.</h2>
-          <p class="section-copy">The Brain is for the practical questions around the neck: why a grip works, why a rig hums, what a pedal move does, how to practice a pocket, and where source-backed player wisdom helps.</p>
+      <section class="brain-band" id="brain" aria-labelledby="brain-title">
+        <div class="brain-lead">
+          <span class="brain-icon">B</span>
+          <div>
+            <p class="section-kicker">Steel Guitar Brain</p>
+            <h2 class="section-heading" id="brain-title">Stuck? The Brain is here.</h2>
+            <p class="section-copy">Ask anything. Get answers backed by real players, manuals, and steel-specific sources when evidence is available.</p>
+          </div>
         </div>
-        <div class="brain-panel">
-          <div class="brain-input" aria-label="Example Steel Guitar Brain question">Ask a steel guitar question...</div>
-          <div class="prompt-chips" aria-label="Example Brain prompts">
+        <div class="brain-form-mock">
+          <div class="brain-input">Ask the steel guitar brain... <span class="send-dot">&uarr;</span></div>
+          <div class="try-list">
+            <strong>Try asking:</strong>
             <span class="prompt-chip">Why does touching the changer reduce hum?</span>
             <span class="prompt-chip">What grip works for Fmaj7?</span>
             <span class="prompt-chip">Give me a practice rut breaker</span>
-            <span class="prompt-chip">What are good Fender Steel King settings?</span>
-          </div>
-          <a class="ghost-button" href="#interest-form">Request Brain access</a>
-        </div>
-      </section>
-
-      <section class="section" id="why" aria-labelledby="trust-title">
-        <p class="section-kicker">Why it works</p>
-        <h2 class="section-heading" id="trust-title">Instrument logic first, sources when they matter.</h2>
-        <p class="section-copy">Steel Guitar RAG is being built from real steel-guitar material: forum discussions, lesson transcripts, gear conversations, copedent notes, manuals, tab references, and player experience gathered over decades.</p>
-        <div class="section-grid trust-grid">
-          <ul class="evidence-list">
-            <li>Validated Explorer data handles static grips, chord locations, scale paths, notes, and voicing checks as fretboard-first teaching surfaces.</li>
-            <li>Source-aware SGF and curated guidance can support answers when relevant.</li>
-            <li>Long discussions are broken into smaller musical ideas and searched by meaning, not just exact wording.</li>
-            <li>The goal is a calm answer that knows where it came from and how it lays out on the guitar.</li>
-          </ul>
-          <div class="source-demo" aria-label="Example source cards">
-            <article class="source-card">
-              <small>Steel Guitar Forum - Electronics</small>
-              <strong>Hum that changes when touching the guitar</strong>
-              <p>Example source cards will summarize the relevant excerpt and link back to the original material when available.</p>
-            </article>
-            <article class="source-card">
-              <small>Curated setup note</small>
-              <strong>Fender Steel King baseline settings</strong>
-              <p>Manuals, setup notes, and reviewed steel-specific references can support an answer alongside forum wisdom.</p>
-            </article>
           </div>
         </div>
       </section>
 
-      <section class="section" id="examples" aria-labelledby="examples-title">
-        <p class="section-kicker">Example questions</p>
-        <h2 class="section-heading" id="examples-title">Start with the problem you are actually trying to solve.</h2>
-        <div class="section-grid example-grid">
-          <article class="question-card"><span>01</span>Where can I play a G chord on E9?</article>
-          <article class="question-card"><span>02</span>Show me the G major scale on strings 4-5-6.</article>
-          <article class="question-card"><span>03</span>What are common Fender Steel King settings?</article>
-          <article class="question-card"><span>04</span>Help me clean up palm blocking on strings 4-5-6.</article>
-          <article class="question-card"><span>05</span>Why does my amp buzz until I touch the changer?</article>
+      <section class="section" id="why" aria-labelledby="why-title">
+        <div class="section-header">
+          <p class="section-kicker">Built by players. Backed by data.</p>
+          <h2 class="section-heading" id="why-title">Premium tools without generic chatbot drift.</h2>
+        </div>
+        <div class="trust-grid">
+          <article class="trust-card"><strong>Validated, not guessed</strong><p>Every Explorer position is checked against tuning and pedal/lever changes so you see what really works.</p></article>
+          <article class="trust-card"><strong>10x faster</strong><p>Find positions and voicings in seconds instead of hunting across charts and forum threads.</p></article>
+          <article class="trust-card"><strong>Deeper learning</strong><p>See scales, functions, relationships, and context across the entire neck.</p></article>
+          <article class="trust-card"><strong>Built for real copedents</strong><p>Emmons, universal, and custom setups are part of the product direction.</p></article>
+          <article class="trust-card"><strong>Source-aware guidance</strong><p>Forum discussions, manuals, courses, and player notes can support answers when relevant.</p></article>
+          <article class="trust-card"><strong>Built for steel players</strong><p>A purpose-built Explorer and assistant for pedal steel, not a general chatbot with steel-guitar wording.</p></article>
+          <article class="trust-card"><strong>Practice guardrails</strong><p>The product is not built to hand out full copyrighted song tabs or transcribe recorded solos on demand.</p></article>
+          <article class="trust-card"><strong>Future-ready</strong><p>Saved copedents, deeper tools, and more explorer paths are planned as the beta matures.</p></article>
         </div>
       </section>
 
-      <section class="section" aria-labelledby="guardrails-title">
-        <p class="section-kicker">Practice guardrails</p>
-        <h2 class="section-heading" id="guardrails-title">Useful examples without crossing provenance lines.</h2>
-        <p class="section-copy">Steel Guitar RAG is not being built to hand out full copyrighted song tabs or transcribe recorded solos on demand. Practice examples are original and deterministic unless reviewed source provenance supports something more specific.</p>
+      <section class="pricing-panel" aria-labelledby="pricing-title">
+        <span class="pricing-icon">P</span>
+        <div>
+          <p class="section-kicker">Full explorer access</p>
+          <h2 id="pricing-title">Unlock the full explorer</h2>
+          <p>All five modes. Deeper tools. More saving. Future-ready. Payments are not public yet, so this currently routes to early access.</p>
+          <div class="feature-chips">
+            <span class="feature-chip">All 5 modes</span>
+            <span class="feature-chip">Saved copedents coming soon</span>
+            <span class="feature-chip">Notation toggles</span>
+            <span class="feature-chip">Pocket routes</span>
+            <span class="feature-chip">Future C6 support</span>
+          </div>
+        </div>
+        <a class="button" href="#interest-form">Request full access</a>
       </section>
 
       <section class="beta-panel" id="beta" aria-labelledby="beta-title">
         <div>
-          <p class="section-kicker">Not public yet</p>
-          <h2 class="section-heading" id="beta-title">Request early access</h2>
+          <p class="section-kicker">Private preview</p>
+          <h2 class="section-heading" id="beta-title">Join the interest list</h2>
           <p>Tell me what you play and what you want Steel Guitar RAG to help with. This list is for inviting preview testers while the corpus, fretboard behavior, and beta access model are tuned.</p>
           <p>Live AI access requires login and is not public yet.</p>
         </div>
@@ -1389,7 +1419,6 @@
     </main>
 
     <footer>
-      <div class="footer-ornament" aria-hidden="true">☆</div>
       Steel Guitar RAG is in private-preview preparation. No live RAG access is exposed from this public landing page.
     </footer>
   </div>
@@ -1418,6 +1447,8 @@
 
       initializeHeroHangingSigns();
 
+      if (!form || !status) return;
+
       function valuesFor(formData, name) {
         return formData.getAll(name).map((value) => String(value)).filter(Boolean);
       }
@@ -1443,14 +1474,14 @@
             body: JSON.stringify(payload)
           });
           const result = await response.json().catch(() => ({}));
-          if (!response.ok || !result.ok) {
-            status.textContent = result.error || "That did not go through. Please check your email and try again.";
+          if (!response.ok || result.ok === false) {
+            status.textContent = result.error || "That did not go through. Please try again.";
             return;
           }
+          status.textContent = "Request received. Thank you.";
           form.reset();
-          status.textContent = "Thanks. You are on the interest list.";
         } catch (error) {
-          status.textContent = "The interest form is not connected in this preview. Try again after deployment.";
+          status.textContent = "Network error. Please try again.";
         }
       });
     })();
