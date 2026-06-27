@@ -5,10 +5,10 @@ Generated for ChatGPT reset/guidance on branch `feature/answer-api`.
 ## Current State
 
 - Current branch: `feature/answer-api`.
-- Latest implementation commit: `f305c49 fix: classify partial extended voicings`.
-- Latest local Explorer Voicing Identifier smoke: **PASS at commit `f305c49`**. Local browser smoke verified partial extended voicing naming for `Fmaj7(no3)`, `Fmaj7(no5)`, and `F7(no5)`, omitted-tone wording, outside-scale warning, no dominant/V7 leak on major-7 partials, no `[object Object]`, and no browser warn/error logs.
-- Latest protected-preview Explorer Voicing Identifier smoke: **FAIL / stale static assets**. The protected URL `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=voicing-extended-chords-f305c49` loaded after Cloudflare Access, but still served older Explorer behavior: `G / fret 3 / strings 5-6-9 / A+B` showed old `Dominant 7 / V7 grip` wording instead of `Fmaj7(no3)`. Local `/api/version` still reports `git_sha=4040a47`; protected preview needs Lane 12 update/restart from commit `f305c49` before user smoke.
-- Current repo HEAD at this refresh: implementation commit `f305c49 fix: classify partial extended voicings`; status refresh commit follows separately.
+- Latest implementation commit: `c6fa25e fix: label dominant seven grip vocabulary`.
+- Latest local Explorer Dominant 7 / V7 smoke: **PASS at commit `c6fa25e`**. Local browser smoke verified Build Grip exposes `Core triads`, `Dominant 7 / V7`, `Extended grips`, and `All practical`; selecting Dominant 7 / V7 reveals D7/V7 and practical 9th-string grip options including `4-5-6-9`; Voicing Identifier accepts `G / fret 10 / strings 4-5-6-9 / Open` and displays `D7`, `V7 in G`, notes `D, A, F#, C`, and `Dominant 7 / V7 grip`; glossary contains flat-7, dominant-7, V7, and 9th-string definitions; no `[object Object]` or browser console errors.
+- Latest protected-preview Explorer Dominant 7 / V7 smoke: **PASS at commit `c6fa25e`**. The protected URL `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=dominant-v7-c6fa25e` loaded after Cloudflare Access authentication, served `e9-fretboard-explorer.js?v=dominant-v7-grips-20260627`, exposed the Dominant 7 / V7 grip vocabulary, showed practical 9th-string D7/V7 candidates, and displayed the exact D7/V7 identifier label for fret 10 strings 4-5-6-9. Browser console error log was empty.
+- Current repo HEAD at this refresh: implementation commit `c6fa25e fix: label dominant seven grip vocabulary`; status refresh commit follows separately.
 - Runtime commit smoked for E9 copedent selector/chart: `ecec173 feat: add E9 copedent selector and chart`.
 - Related impact-preview runtime smoke: `670d635 feat: add e9 pedal lever impact preview contract`.
 - Latest local UI smoke status: **PASS for Explorer Voicing Identifier control polish at commit `de7f545`**. Local browser smoke verified `Voicing identifier` appears in Explore mode, Fret is constrained to `1` through `10`, Strings use selectable chips with a maximum of three selections, pedals/levers are individually multi-selectable, combined preset buttons such as `A+B` and `B+C` are absent, `F / fret 3 / strings 4-6-10 / A pedal + B pedal` computes `G, C, E` and identifies `C / V function in F`, odd `G / fret 3 / strings 1-2-3 / open` calculates notes while warning that it is not a common musical grip, attempting a fourth string is blocked with a clear warning, and no `[object Object]` or relevant console errors appear.
@@ -64,6 +64,9 @@ https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=voicing-identifie
 
 Explorer Voicing Identifier control polish after commit `de7f545`:
 https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=voicing-controls-de7f545
+
+Explorer Dominant 7 / V7 grip vocabulary after commit `c6fa25e`:
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=dominant-v7-c6fa25e
 
 Explorer marker/impact/glossary UI baseline commit `4a3f422`:
 https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-marker-impact-glossary-4a3f422
