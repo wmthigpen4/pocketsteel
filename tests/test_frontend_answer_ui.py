@@ -276,7 +276,8 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "pedal-steel-fretboard.js?v=explorer-compact-copedent-20260625" not in html
     assert '<script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>' in html
     assert "[hidden] {\n      display: none !important;\n    }" in html
-    assert '<script src="e9-fretboard-explorer.js?v=grip-vocabulary-20260627"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=notation-near-fretboard-20260627"></script>' in html
+    assert "e9-fretboard-explorer.js?v=grip-vocabulary-20260627" not in html
     assert "e9-fretboard-explorer.js?v=single-note-learning-20260626" not in html
     assert "e9-fretboard-explorer.js?v=single-note-finder-20260626" not in html
     assert "explorer-top-note-marker-source-20260626" not in html
@@ -318,6 +319,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<div class="explorer-copedent-control-row">' not in html
     mode_markup = html.split('<section class="explorer-mode-panel" aria-label="Explorer mode">', 1)[1].split("</section>", 1)[0]
     controls_markup = html.split('<section class="explorer-controls" aria-label="Explorer filters">', 1)[1].split("</section>", 1)[0]
+    panel_markup = html.split('<section class="explorer-panel" aria-label="Explorer fretboard">', 1)[1].split("</section>", 1)[0]
     assert html.index('<section class="explorer-mode-panel" aria-label="Explorer mode">') < html.index('<section class="explorer-controls" aria-label="Explorer filters">')
     assert 'id="explorer-copedent-open"' not in controls_markup
     assert '<dialog class="explorer-copedent-dialog" id="explorer-copedent-dialog"' in html
@@ -477,6 +479,15 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert 'id="explorer-copedent-chart"' in html
     assert 'id="explorer-control-impact-preview"' in html
     assert 'id="explorer-selected-detail"' in html
+    assert html.count('id="explorer-notation-control"') == 1
+    assert html.count('id="explorer-notation-label"') == 1
+    assert html.count('id="explorer-notation-help"') == 1
+    assert "data-explorer-notation-mode" not in controls_markup
+    assert '<div class="explorer-control explorer-control--notation explorer-panel-notation" id="explorer-notation-control">' in panel_markup
+    assert panel_markup.index('id="explorer-notation-control"') < panel_markup.index('id="explorer-active-results"')
+    assert panel_markup.index('id="explorer-notation-control"') < panel_markup.index('id="explorer-fretboard"')
+    assert ".explorer-panel-notation {" in html
+    assert "grid-template-columns: auto minmax(240px, 380px) minmax(0, 1fr);" in html
     assert 'data-explorer-notation-mode="notes"' in html
     assert 'data-explorer-notation-mode="nns"' in html
     assert 'data-explorer-notation-mode="roman"' in html
@@ -622,7 +633,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '"4-6-9"' in script
     assert '"3-6"' in script
     assert '"8-10"' in script
-    assert "grip-vocabulary-20260627" in html
+    assert "notation-near-fretboard-20260627" in html
     assert "data-note-sync-event" in script
     assert "data-note-cell" in script
     assert "Dominant 7 / V7" in script

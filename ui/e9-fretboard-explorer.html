@@ -184,6 +184,27 @@
       grid-column: span 2;
     }
 
+    .explorer-panel-notation {
+      display: grid;
+      grid-template-columns: auto minmax(240px, 380px) minmax(0, 1fr);
+      gap: 8px 12px;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(246, 190, 88, 0.14);
+      background: rgba(0, 0, 0, 0.18);
+    }
+
+    .explorer-panel-notation .explorer-notation-selector {
+      width: min(100%, 380px);
+    }
+
+    .explorer-panel-notation .explorer-control-help {
+      margin: 0;
+      color: rgba(255, 247, 232, 0.58);
+      font-size: 0.78rem;
+      line-height: 1.35;
+    }
+
     .explorer-control select,
     .explorer-inline-button {
       width: 100%;
@@ -1795,6 +1816,15 @@
         grid-column: auto;
       }
 
+      .explorer-panel-notation {
+        grid-template-columns: 1fr;
+        padding: 10px 12px;
+      }
+
+      .explorer-panel-notation .explorer-notation-selector {
+        width: 100%;
+      }
+
       .explorer-details {
         grid-template-columns: 1fr;
       }
@@ -1949,16 +1979,6 @@
         </select>
         <p class="explorer-control-help" id="explorer-string-group-help">Choose All or one exact group. Path mode uses Path family instead.</p>
       </div>
-      <div class="explorer-control explorer-control--notation" id="explorer-notation-control">
-        <span class="explorer-control-label" id="explorer-notation-label">Notation</span>
-        <div class="explorer-notation-selector" role="group" aria-labelledby="explorer-notation-label" aria-describedby="explorer-notation-help">
-          <button type="button" data-explorer-notation-mode="notes" class="is-selected" aria-pressed="true">Notes</button>
-          <button type="button" data-explorer-notation-mode="nns" aria-pressed="false">NNS</button>
-          <button type="button" data-explorer-notation-mode="roman" aria-pressed="false">Roman</button>
-          <button type="button" data-explorer-notation-mode="numbers" aria-pressed="false">Numbers</button>
-        </div>
-        <p class="explorer-control-help" id="explorer-notation-help">Controls card, marker, and top-label display.</p>
-      </div>
       <p class="explorer-controls-note">Core grips are common string sets; extended and two-string vocabulary are opt-in. 5-7-8 is the advanced E-lower pocket, and 5-8 appears in 2-string branch routes.</p>
     </section>
 
@@ -2023,6 +2043,16 @@
     <section class="explorer-control-impact-preview" id="explorer-control-impact-preview" aria-label="Pedal and lever impact preview" hidden></section>
 
     <section class="explorer-panel" aria-label="Explorer fretboard">
+      <div class="explorer-control explorer-control--notation explorer-panel-notation" id="explorer-notation-control">
+        <span class="explorer-control-label" id="explorer-notation-label">Notation</span>
+        <div class="explorer-notation-selector" role="group" aria-labelledby="explorer-notation-label" aria-describedby="explorer-notation-help">
+          <button type="button" data-explorer-notation-mode="notes" class="is-selected" aria-pressed="true">Notes</button>
+          <button type="button" data-explorer-notation-mode="nns" aria-pressed="false">NNS</button>
+          <button type="button" data-explorer-notation-mode="roman" aria-pressed="false">Roman</button>
+          <button type="button" data-explorer-notation-mode="numbers" aria-pressed="false">Numbers</button>
+        </div>
+        <p class="explorer-control-help" id="explorer-notation-help">Controls card, marker, and top-label display.</p>
+      </div>
       <p class="explorer-empty" id="explorer-empty" hidden>No validated rows match these controls.</p>
       <div class="explorer-active-results" id="explorer-active-results" aria-label="Visible selected positions"></div>
       <div class="explorer-fretboard" id="explorer-fretboard"></div>
@@ -2037,6 +2067,6 @@
 
   <script src="pedal-steel-fretboard.js?v=explorer-harmonized-path-mode-20260626"></script>
   <script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>
-  <script src="e9-fretboard-explorer.js?v=grip-vocabulary-20260627"></script>
+  <script src="e9-fretboard-explorer.js?v=notation-near-fretboard-20260627"></script>
 </body>
 </html>
