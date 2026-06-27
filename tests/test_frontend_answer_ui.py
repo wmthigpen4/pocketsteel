@@ -276,7 +276,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "pedal-steel-fretboard.js?v=explorer-compact-copedent-20260625" not in html
     assert '<script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>' in html
     assert "[hidden] {\n      display: none !important;\n    }" in html
-    assert '<script src="e9-fretboard-explorer.js?v=dominant-v7-grips-20260627"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=grip-vocabulary-20260627"></script>' in html
     assert "e9-fretboard-explorer.js?v=single-note-learning-20260626" not in html
     assert "e9-fretboard-explorer.js?v=single-note-finder-20260626" not in html
     assert "explorer-top-note-marker-source-20260626" not in html
@@ -428,8 +428,14 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "align-content: start;" in html
     assert ".explorer-control select {\n      height: 42px;" in html
     assert "height: 42px;" in html
+    assert '<label for="explorer-grip-vocabulary">Grip vocabulary</label>' in html
+    assert '<option value="core" selected>Core</option>' in html
+    assert '<option value="extended">Extended</option>' in html
+    assert '<option value="two_string">Two-string</option>' in html
+    assert '<option value="all">All practical</option>' in html
+    assert "Core keeps the default view clean. Extended and two-string reveal wider tab and dyad vocabulary." in html
     assert ".explorer-controls-note {" in html
-    assert '<p class="explorer-controls-note">Core grips are common string sets; advanced swaps are pocket routes.' in controls_markup
+    assert '<p class="explorer-controls-note">Core grips are common string sets; extended and two-string vocabulary are opt-in.' in controls_markup
     assert "5-7-8 is the advanced E-lower pocket" in controls_markup
     assert "5-8 appears in 2-string branch routes" in controls_markup
     assert '<p class="explorer-note">Core grips are common string sets.' not in html
@@ -461,6 +467,11 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "<dt>°</dt><dd>The diminished symbol." in html
     assert "vii° means the diminished chord built on the seventh scale degree" in html
     assert "<dt>Partial row</dt><dd>A row that does not contain every chord tone by itself." in html
+    assert "<dt>Core grip</dt><dd>A beginner-friendly string set" in html
+    assert "<dt>Extended grip</dt><dd>A real-world tab or voicing-discovery grip" in html
+    assert "<dt>Two-string grip / dyad</dt><dd>A two-note grip." in html
+    assert "<dt>Pad / sustain</dt><dd>A held support sound" in html
+    assert "<dt>Partial voicing</dt><dd>A useful part of a chord" in html
     assert 'id="explorer-tooltip"' in html
     assert 'id="explorer-active-results"' in html
     assert 'id="explorer-copedent-chart"' in html
@@ -601,6 +612,17 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "data-note-reverse-result" in script
     assert "data-note-grip-card" in script
     assert "data-note-grip-vocabulary" in script
+    assert "data-note-grip-role" in script
+    assert "GRIP_REGISTRY" in script
+    assert "GRIP_ROLE_OPTIONS" in script
+    assert "pad_sustain" in script
+    assert '"4-6-10"' in script
+    assert '"3-5-8"' in script
+    assert '"5-6-9"' in script
+    assert '"4-6-9"' in script
+    assert '"3-6"' in script
+    assert '"8-10"' in script
+    assert "grip-vocabulary-20260627" in html
     assert "data-note-sync-event" in script
     assert "data-note-cell" in script
     assert "Dominant 7 / V7" in script
@@ -839,6 +861,7 @@ class FakeNode {
       "[data-note-reverse-result]": Array.from(value.matchAll(/data-note-reverse-result="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-reverse-result")),
       "[data-note-grip-target]": Array.from(value.matchAll(/data-note-grip-target="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-grip-target")),
       "[data-note-grip-vocabulary]": Array.from(value.matchAll(/data-note-grip-vocabulary="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-grip-vocabulary")),
+      "[data-note-grip-role]": Array.from(value.matchAll(/data-note-grip-role="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-grip-role")),
       "[data-note-grip-card]": Array.from(value.matchAll(/data-note-grip-card="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-grip-card")),
       "[data-note-sync-event]": Array.from(value.matchAll(/data-note-sync-event="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-sync-event")),
       "[data-voicing-control]": Array.from(value.matchAll(/data-voicing-control="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-voicing-control")),
@@ -961,6 +984,13 @@ const elements = {
     { value: "three_string_diatonic", text: "3-string diatonic harmony" }
   ]),
   "explorer-harmony-control": new FakeNode("explorer-harmony-control"),
+  "explorer-grip-vocabulary": new FakeSelect("explorer-grip-vocabulary", "core", [
+    { value: "core", text: "Core" },
+    { value: "extended", text: "Extended" },
+    { value: "two_string", text: "Two-string" },
+    { value: "all", text: "All practical" }
+  ]),
+  "explorer-grip-vocabulary-control": new FakeNode("explorer-grip-vocabulary-control"),
   "explorer-string-group": new FakeSelect("explorer-string-group", "all", [{ value: "all", text: "All 3-string groups" }]),
   "explorer-string-group-control": new FakeNode("explorer-string-group-control"),
   "explorer-path-family": new FakeSelect("explorer-path-family", "low", [
@@ -1047,10 +1077,11 @@ assert.match(elements["explorer-copedent"].innerHTML, /Custom E9 \(with LKV\)/);
 assert.match(elements["explorer-copedent"].innerHTML, /My Copedent \(E9\) - Coming soon in Backstage/);
 assert.match(elements["explorer-copedent"].innerHTML, /value="my-copedent-e9"[^>]*disabled/);
 assert.equal(elements["explorer-copedent"].value, "emmons-e9-basic");
-assert.match(elements["explorer-string-group"].innerHTML, /All 3-string groups/);
+assert.match(elements["explorer-string-group"].innerHTML, /All core grips/);
 assert.match(elements["explorer-string-group"].innerHTML, /Core grips/);
-assert.match(elements["explorer-string-group"].innerHTML, /Advanced swaps/);
-assert.match(elements["explorer-string-group"].innerHTML, /5-7-8/);
+assert.match(elements["explorer-string-group"].innerHTML, /5-6-7/);
+assert.match(elements["explorer-string-group"].innerHTML, /6-7-10/);
+assert.doesNotMatch(elements["explorer-string-group"].innerHTML, /5-7-8/);
 assert.doesNotMatch(elements["explorer-string-group"].innerHTML, />3-5</);
 assert.equal(elements["explorer-explore-mode"].value, "single");
 assert.equal(elements["explorer-string-group-control"].hidden, false);
@@ -1058,6 +1089,25 @@ assert.equal(elements["explorer-path-family-control"].hidden, true);
 assert.equal(elements["explorer-harmony-control"].hidden, false);
 assert.equal(elements["explorer-harmony-control"].getAttribute("aria-hidden"), "false");
 assert.equal(elements["explorer-harmony"].disabled, false);
+assert.equal(elements["explorer-grip-vocabulary-control"].hidden, false);
+assert.equal(elements["explorer-grip-vocabulary"].disabled, false);
+elements["explorer-grip-vocabulary"].value = "extended";
+elements["explorer-grip-vocabulary"].dispatchChange();
+assert.match(elements["explorer-string-group"].innerHTML, /All extended grips/);
+assert.match(elements["explorer-string-group"].innerHTML, /Extended grips/);
+assert.match(elements["explorer-string-group"].innerHTML, /4-6-10/);
+assert.match(elements["explorer-string-group"].innerHTML, /3-5-8/);
+assert.match(elements["explorer-string-group"].innerHTML, /5-6-9/);
+assert.match(elements["explorer-string-group"].innerHTML, /4-6-9/);
+elements["explorer-grip-vocabulary"].value = "two_string";
+elements["explorer-grip-vocabulary"].dispatchChange();
+assert.match(elements["explorer-string-group"].innerHTML, /All two-string grips/);
+assert.match(elements["explorer-string-group"].innerHTML, /Two-string grips/);
+assert.match(elements["explorer-string-group"].innerHTML, /3-6/);
+assert.match(elements["explorer-string-group"].innerHTML, /5-8/);
+assert.match(elements["explorer-string-group"].innerHTML, /6-10/);
+elements["explorer-grip-vocabulary"].value = "core";
+elements["explorer-grip-vocabulary"].dispatchChange();
 assert.equal(lastMount.options.showHighlightLabels, true);
 assert.equal(lastMount.options.hideFilterControls, true);
 assert.equal(lastMount.options.hidePositionTools, true);
@@ -1231,6 +1281,7 @@ const noteControlButtons = () => elements["explorer-note-finder"].querySelectorA
 const noteStringFilterButtons = () => elements["explorer-note-finder"].querySelectorAll("[data-note-string-filter]");
 const noteReverseButtons = () => elements["explorer-note-finder"].querySelectorAll("[data-note-reverse-result]");
 const noteGripVocabularyButtons = () => elements["explorer-note-finder"].querySelectorAll("[data-note-grip-vocabulary]");
+const noteGripRoleButtons = () => elements["explorer-note-finder"].querySelectorAll("[data-note-grip-role]");
 const noteGripButtons = () => elements["explorer-note-finder"].querySelectorAll("[data-note-grip-card]");
 const noteSyncButtons = () => elements["explorer-note-finder"].querySelectorAll("[data-note-sync-event]");
 const noteCell = (stringNumber, fret) => elements["explorer-fretboard"]
@@ -1271,18 +1322,23 @@ noteWorkflowButtons().find((button) => button.getAttribute("data-note-workflow")
 noteStringFilterButtons().find((button) => button.getAttribute("data-note-string-filter") === "all").onclick();
 assert.match(elements["explorer-note-finder"].textContent, /Build a grip/);
 assert.match(elements["explorer-note-finder"].textContent, /The 1-3-5 chord tones/);
-assert.deepEqual(noteGripVocabularyButtons().map((button) => button.getAttribute("data-note-grip-vocabulary")), ["core", "dominant7", "extended", "all"]);
+assert.deepEqual(noteGripVocabularyButtons().map((button) => button.getAttribute("data-note-grip-vocabulary")), ["core", "extended", "two_string", "all"]);
 assert.ok(noteGripButtons().length > 0);
 noteGripButtons()[0].onclick();
 assert.match(elements["explorer-selected-detail"].textContent, /Single-note finder/);
-noteGripVocabularyButtons().find((button) => button.getAttribute("data-note-grip-vocabulary") === "dominant7").onclick();
+noteGripVocabularyButtons().find((button) => button.getAttribute("data-note-grip-vocabulary") === "extended").onclick();
 assert.match(elements["explorer-note-finder"].textContent, /Dominant 7 \/ V7/);
-assert.match(elements["explorer-note-finder"].textContent, /D7|V7|5\^7/);
-assert.match(elements["explorer-note-finder"].textContent, /5-6-9|4-6-9|6-9|5-9/);
+assert.match(elements["explorer-note-finder"].textContent, /D7|V7|5\^7|Dominant 7/);
+assert.deepEqual(noteGripRoleButtons().map((button) => button.getAttribute("data-note-grip-role")), ["all", "melody_harmony", "pad_sustain", "chord_voicing", "dominant_color", "bass_root_support", "passing_color"]);
+noteGripRoleButtons().find((button) => button.getAttribute("data-note-grip-role") === "dominant_color").onclick();
+assert.match(elements["explorer-note-finder"].textContent, /5-6-9|4-6-9|6-9|5-9|Dominant color/);
 assert.ok(noteGripButtons().length > 0);
+noteGripVocabularyButtons().find((button) => button.getAttribute("data-note-grip-vocabulary") === "two_string").onclick();
+noteGripRoleButtons().find((button) => button.getAttribute("data-note-grip-role") === "pad_sustain").onclick();
+assert.match(elements["explorer-note-finder"].textContent, /Pad use|possible pad \/ sustain|Pads/);
 noteGripButtons()[0].onclick();
-assert.match(elements["explorer-note-finder"].textContent, /Dominant 7 \/ V7|V7 color|D7/);
-assert.match(elements["explorer-note-finder"].textContent, /5-6-9|4-6-9|6-9|5-9|4-5-6-9/);
+assert.match(elements["explorer-note-finder"].textContent, /Pad use|possible pad \/ sustain|Two-string/);
+assert.match(elements["explorer-note-finder"].textContent, /5-8|6-10|5-9|6-9|8-10/);
 noteWorkflowButtons().find((button) => button.getAttribute("data-note-workflow") === "drill").onclick();
 noteControlButtons().find((button) => button.getAttribute("data-note-control-state") === "open").onclick();
 noteTargetButtons().find((button) => button.getAttribute("data-note-target") === "2").onclick();
@@ -1308,6 +1364,7 @@ elements["explorer-explore-mode"].dispatchChange();
 notationModeButtons[0].onclick();
 assert.equal(elements["explorer-note-finder"].hidden, true);
 assert.equal(elements["explorer-voicing-identifier"].hidden, true);
+assert.equal(elements["explorer-grip-vocabulary-control"].hidden, false);
 assert.equal(elements["explorer-string-group-control"].hidden, false);
 assert.equal(elements["explorer-harmony-control"].hidden, false);
 
@@ -1547,6 +1604,9 @@ assert.equal(elements["explorer-string-group"].disabled, true);
 assert.equal(elements["explorer-path-family-control"].hidden, false);
 assert.equal(elements["explorer-path-family-control"].getAttribute("aria-hidden"), "false");
 assert.equal(elements["explorer-path-family"].disabled, false);
+assert.equal(elements["explorer-grip-vocabulary-control"].hidden, true);
+assert.equal(elements["explorer-grip-vocabulary-control"].getAttribute("aria-hidden"), "true");
+assert.equal(elements["explorer-grip-vocabulary"].disabled, true);
 assert.equal(elements["explorer-harmony-control"].hidden, true);
 assert.equal(elements["explorer-harmony-control"].getAttribute("aria-hidden"), "true");
 assert.equal(elements["explorer-harmony"].value, "three_string_diatonic");
@@ -1635,6 +1695,9 @@ assert.equal(elements["explorer-string-group"].disabled, false);
 assert.equal(elements["explorer-path-family-control"].hidden, true);
 assert.equal(elements["explorer-path-family-control"].getAttribute("aria-hidden"), "true");
 assert.equal(elements["explorer-path-family"].disabled, true);
+assert.equal(elements["explorer-grip-vocabulary-control"].hidden, false);
+assert.equal(elements["explorer-grip-vocabulary-control"].getAttribute("aria-hidden"), "false");
+assert.equal(elements["explorer-grip-vocabulary"].disabled, false);
 assert.equal(elements["explorer-harmony-control"].hidden, false);
 assert.equal(elements["explorer-harmony-control"].getAttribute("aria-hidden"), "false");
 assert.equal(elements["explorer-harmony"].disabled, false);
@@ -1704,6 +1767,8 @@ assert.equal(elements["explorer-string-group"].value, "all");
 assert.equal(lastMount.options.positions.length > 0, true);
 assert.equal(lastMount.options.positions.some((row) => row.grip === "5-8"), false);
 assert.equal(elements["explorer-empty"].hidden, true);
+elements["explorer-grip-vocabulary"].value = "all";
+elements["explorer-grip-vocabulary"].dispatchChange();
 elements["explorer-string-group"].selectValues(["5-7-8"]);
 assert.match(elements["explorer-selected-detail"].textContent, /Per-string changes/);
 assert.match(elements["explorer-selected-detail"].textContent, /Changes used here/);

@@ -1898,6 +1898,16 @@
         </select>
         <p class="explorer-control-help" id="explorer-copedent-help">Choose the copedent that matches your guitar. My Copedent (E9) is coming soon in Backstage.</p>
       </div>
+      <div class="explorer-control" id="explorer-grip-vocabulary-control">
+        <label for="explorer-grip-vocabulary">Grip vocabulary</label>
+        <select id="explorer-grip-vocabulary" aria-describedby="explorer-grip-vocabulary-help">
+          <option value="core" selected>Core</option>
+          <option value="extended">Extended</option>
+          <option value="two_string">Two-string</option>
+          <option value="all">All practical</option>
+        </select>
+        <p class="explorer-control-help" id="explorer-grip-vocabulary-help">Core keeps the default view clean. Extended and two-string reveal wider tab and dyad vocabulary.</p>
+      </div>
       <div class="explorer-control">
         <label for="explorer-scale">Scale</label>
         <select id="explorer-scale">
@@ -1949,7 +1959,7 @@
         </div>
         <p class="explorer-control-help" id="explorer-notation-help">Controls card, marker, and top-label display.</p>
       </div>
-      <p class="explorer-controls-note">Core grips are common string sets; advanced swaps are pocket routes. 5-7-8 is the advanced E-lower pocket, and 5-8 appears in 2-string branch routes.</p>
+      <p class="explorer-controls-note">Core grips are common string sets; extended and two-string vocabulary are opt-in. 5-7-8 is the advanced E-lower pocket, and 5-8 appears in 2-string branch routes.</p>
     </section>
 
     <div class="explorer-summary" aria-live="polite">
@@ -1984,6 +1994,11 @@
         <div><dt>ø</dt><dd>The half-diminished symbol. It usually means the same sound as m7b5.</dd></div>
         <div><dt>°</dt><dd>The diminished symbol. In a scale-degree label, vii° means the diminished chord built on the seventh scale degree.</dd></div>
         <div><dt>Partial row</dt><dd>A row that does not contain every chord tone by itself. Use the warning text to see whether it is partial diminished, partial m7b5, rootless, or needs musical context.</dd></div>
+        <div><dt>Core grip</dt><dd>A beginner-friendly string set used for the default Explorer and harmonized-scale views.</dd></div>
+        <div><dt>Extended grip</dt><dd>A real-world tab or voicing-discovery grip, often wider or less direct than the beginner core grips.</dd></div>
+        <div><dt>Two-string grip / dyad</dt><dd>A two-note grip. It may function as harmony, a partial chord, a pad, or passing color depending on context.</dd></div>
+        <div><dt>Pad / sustain</dt><dd>A held support sound, often two or more strings, used underneath or around moving melody notes.</dd></div>
+        <div><dt>Partial voicing</dt><dd>A useful part of a chord that does not include every chord tone by itself.</dd></div>
         <div><dt>NNS / Nashville Number System</dt><dd>Number names for scale degrees and chords, so a pattern moves between keys.</dd></div>
         <div><dt>Notation mode</dt><dd>Choose notes, Nashville numbers, Roman numerals, or number-plus-quality labels for cards and markers.</dd></div>
         <div><dt>NNS</dt><dd>Nashville-style numbers, such as 1, 2-, 3-, 4, 5, 6-, and 7° in a major key.</dd></div>
@@ -2022,6 +2037,6 @@
 
   <script src="pedal-steel-fretboard.js?v=explorer-harmonized-path-mode-20260626"></script>
   <script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>
-  <script src="e9-fretboard-explorer.js?v=dominant-v7-grips-20260627"></script>
+  <script src="e9-fretboard-explorer.js?v=grip-vocabulary-20260627"></script>
 </body>
 </html>
