@@ -12,13 +12,15 @@ INTEREST_DIGEST_WORKER = Path("workers/interest-digest.js")
 def test_public_landing_page_has_required_beta_copy_and_ctas() -> None:
     html = LANDING_PAGE.read_text(encoding="utf-8")
 
-    assert "The steel-guitar answers you wish were easier to find." in html
-    assert "Steel Guitar RAG is a private-preview assistant built for E9 players" in html
-    assert "forum wisdom, practical teaching answers, fretboard-aware positions, and safe deterministic practice examples" in html
-    assert "Private preview in preparation" in html
+    assert "Explore the E9 neck. Ask better questions." in html
+    assert "Fretboard Explorer + Steel Guitar Brain" in html
+    assert "Find grips, scales, chords, notes, and voicings across the neck" in html
+    assert "Steel Guitar Brain for source-aware guidance" in html
     assert "Join the interest list" in html
-    assert "Request early access" in html
-    assert "See example questions" in html
+    assert "Open app" in html
+    assert "Start exploring" in html
+    assert "Start with the Fretboard Explorer" in html
+    assert "Ask the Steel Guitar Brain" in html
     assert "Live AI access requires login and is not public yet." in html
     assert "Tell me what you play and what you want Steel Guitar RAG to help with. This list is for inviting preview testers while the corpus, fretboard behavior, and beta access model are tuned." in html
     assert '<form class="interest-form" id="interest-form" action="/api/interest" method="post">' in html
@@ -27,9 +29,13 @@ def test_public_landing_page_has_required_beta_copy_and_ctas() -> None:
 def test_public_landing_page_describes_pedal_steel_specific_preview() -> None:
     html = LANDING_PAGE.read_text(encoding="utf-8")
 
-    assert "Not generic guitar theory with a steel label." in html
-    assert "Ask about grips, pedals, levers, tone, copedents, blocking, positions, practice" in html
-    assert "Fretboard-aware teaching" in html
+    assert "Use the Explorer when you want to see it. Use the Brain when you need explanation." in html
+    assert "See grips, scales, chords, notes, voicings, and pedal/lever moves on the E9 neck" in html
+    assert "Ask practical steel-guitar questions and get source-aware guidance" in html
+    assert "Validated explorer data" in html
+    assert "Pedal/lever aware" in html
+    assert "Built for real copedents" in html
+    assert "Not a generic chatbot" in html
     assert "Source-aware SGF and curated guidance can support answers when relevant." in html
     assert "full copyrighted song tabs" in html
     assert "transcribe recorded solos on demand" in html
@@ -41,15 +47,50 @@ def test_public_landing_page_lists_expected_example_questions() -> None:
     html = LANDING_PAGE.read_text(encoding="utf-8")
 
     expected_questions = [
-        "What are common Fender Steel King settings?",
         "Where can I play a G chord on E9?",
+        "Show me the G major scale on strings 4-5-6.",
+        "What are common Fender Steel King settings?",
         "Help me clean up palm blocking on strings 4-5-6.",
         "Why does my amp buzz until I touch the changer?",
-        "How do players use B+C pedals?",
     ]
 
     for question in expected_questions:
         assert question in html
+
+
+def test_public_landing_page_makes_explorer_first_class() -> None:
+    html = LANDING_PAGE.read_text(encoding="utf-8")
+
+    assert '<a class="nav-link" href="#explorer">Fretboard Explorer</a>' in html
+    assert '<a class="nav-link" href="#brain">Ask the Brain</a>' in html
+    assert 'class="fretboard-preview"' in html
+    assert "E9 Fretboard Explorer preview" in html
+    assert "Primary visual path" in html
+    assert "Companion guidance" in html
+
+    expected_modes = [
+        "Single Grip",
+        "Harmonized Path Scale",
+        "Single-Note Finder",
+        "Chord Finder",
+        "Voicing Identifier",
+    ]
+
+    for mode in expected_modes:
+        assert mode in html
+
+
+def test_public_landing_page_keeps_brain_compact_and_secondary() -> None:
+    html = LANDING_PAGE.read_text(encoding="utf-8")
+
+    assert 'class="section brain-band"' in html
+    assert 'class="brain-input"' in html
+    assert "Ask a steel guitar question..." in html
+    assert "Why does touching the changer reduce hum?" in html
+    assert "What grip works for Fmaj7?" in html
+    assert "Give me a practice rut breaker" in html
+    assert "What are good Fender Steel King settings?" in html
+    assert "chat transcript" not in html.lower()
 
 
 def test_public_landing_page_is_static_and_uses_local_assets() -> None:

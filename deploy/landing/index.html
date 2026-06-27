@@ -3,18 +3,18 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Steel Guitar RAG | Pedal Steel Answers In Private Preview</title>
-  <meta name="description" content="Steel Guitar RAG is a private-preview assistant being tuned for E9 players: forum wisdom, teaching answers, fretboard-aware positions, deterministic practice examples, and source-aware steel-guitar guidance.">
+  <title>Steel Guitar RAG | Fretboard Explorer + Steel Guitar Brain</title>
+  <meta name="description" content="Explore the E9 neck visually with the Fretboard Explorer, then ask the Steel Guitar Brain for source-aware steel-guitar guidance on tone, setup, theory, troubleshooting, copedents, and practice.">
   <meta name="robots" content="index,follow">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Steel Guitar RAG">
-  <meta property="og:title" content="Steel Guitar RAG - Pedal Steel Answers In Private Preview">
-  <meta property="og:description" content="A private-preview assistant for E9 players: forum wisdom, practical teaching answers, fretboard-aware positions, and deterministic practice examples.">
+  <meta property="og:title" content="Steel Guitar RAG - Fretboard Explorer + Steel Guitar Brain">
+  <meta property="og:description" content="Explore the E9 neck visually, then ask the Steel Guitar Brain for source-aware steel-guitar guidance.">
   <meta property="og:image" content="assets/steel_on_stage2.png">
   <meta property="og:url" content="https://steelguitarrag.com/">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Steel Guitar RAG - Pedal Steel Answers In Private Preview">
-  <meta name="twitter:description" content="Request preview access to a steel-guitar assistant built for E9 grips, pedals, levers, tone, copedents, positions, practice, and source-aware guidance.">
+  <meta name="twitter:title" content="Steel Guitar RAG - Fretboard Explorer + Steel Guitar Brain">
+  <meta name="twitter:description" content="Explore E9 grips, pedals, levers, copedents, notes, and voicings visually, then ask for source-aware steel-guitar guidance.">
   <meta name="theme-color" content="#080a0a">
   <style>
     :root {
@@ -91,6 +91,7 @@
       align-items: center;
       justify-content: flex-end;
       gap: 18px;
+      flex-wrap: wrap;
     }
 
     .brand-link {
@@ -162,6 +163,36 @@
       white-space: nowrap;
     }
 
+    .site-nav {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-right: auto;
+      margin-left: clamp(250px, 24vw, 350px);
+    }
+
+    .nav-link {
+      min-height: 34px;
+      padding: 0 10px;
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      color: rgba(244, 234, 214, 0.72);
+      font-size: 13px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: background 160ms ease, color 160ms ease;
+    }
+
+    .nav-link:hover,
+    .nav-link:focus-visible {
+      background: rgba(240, 191, 105, 0.085);
+      color: var(--cream);
+      outline: none;
+    }
+
     .button,
     .ghost-button,
     .backstage-link {
@@ -220,8 +251,20 @@
       z-index: 4;
       display: grid;
       gap: 24px;
-      max-width: 780px;
-      padding: clamp(150px, 15vw, 205px) 0 64px;
+      max-width: none;
+      padding: clamp(130px, 12vw, 172px) 0 58px;
+    }
+
+    .hero-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 0.76fr) minmax(440px, 1.24fr);
+      gap: clamp(26px, 3.6vw, 50px);
+      align-items: center;
+    }
+
+    .hero-text {
+      display: grid;
+      gap: 22px;
     }
 
     .eyebrow,
@@ -246,8 +289,8 @@
       margin-bottom: 0;
       color: #fff2dc;
       font-family: var(--font-display);
-      font-size: clamp(48px, 8vw, 96px);
-      line-height: 0.95;
+      font-size: clamp(48px, 6vw, 78px);
+      line-height: 0.98;
       font-weight: 500;
       letter-spacing: 0;
       text-wrap: balance;
@@ -280,6 +323,99 @@
       line-height: 1.5;
     }
 
+    .trust-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .trust-row li {
+      min-height: 32px;
+      display: inline-flex;
+      align-items: center;
+      padding: 0 11px;
+      border: 1px solid rgba(240, 191, 105, 0.22);
+      border-radius: 999px;
+      background: rgba(8, 10, 10, 0.52);
+      color: rgba(244, 234, 214, 0.78);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .hero-visual {
+      min-width: 0;
+    }
+
+    .fretboard-preview {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(240, 191, 105, 0.26);
+      border-radius: 18px;
+      background:
+        radial-gradient(ellipse at 34% 12%, rgba(240, 191, 105, 0.18), transparent 42%),
+        linear-gradient(180deg, rgba(29, 31, 29, 0.9), rgba(6, 7, 7, 0.92));
+      box-shadow:
+        0 24px 80px rgba(0, 0, 0, 0.42),
+        0 0 40px rgba(240, 160, 70, 0.08);
+    }
+
+    .fretboard-preview::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(90deg, rgba(240, 191, 105, 0.08), transparent 16%, transparent 84%, rgba(240, 191, 105, 0.08)),
+        radial-gradient(ellipse at 72% 76%, rgba(49, 135, 129, 0.14), transparent 32%);
+    }
+
+    .fretboard-toolbar,
+    .fretboard-footer {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 14px 16px;
+      color: rgba(244, 234, 214, 0.78);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .fretboard-toolbar strong {
+      color: var(--cream);
+    }
+
+    .fretboard-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 0 10px;
+      border: 1px solid rgba(240, 191, 105, 0.28);
+      border-radius: 999px;
+      background: rgba(8, 10, 10, 0.5);
+      color: rgba(244, 234, 214, 0.84);
+      font-size: 12px;
+    }
+
+    .fretboard-svg {
+      position: relative;
+      z-index: 1;
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+
+    .fretboard-footer {
+      justify-content: flex-start;
+      border-top: 1px solid rgba(240, 191, 105, 0.14);
+    }
+
     .section-grid {
       display: grid;
       gap: 18px;
@@ -297,6 +433,15 @@
     .trust-grid {
       grid-template-columns: 0.9fr 1.1fr;
       align-items: stretch;
+    }
+
+    .product-grid {
+      grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+      align-items: stretch;
+    }
+
+    .mode-grid {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
     }
 
     .section {
@@ -353,6 +498,159 @@
       color: rgba(244, 234, 214, 0.7);
       font-size: 14px;
       line-height: 1.52;
+    }
+
+    .product-card {
+      display: grid;
+      gap: 16px;
+      min-height: 300px;
+      padding: 20px;
+    }
+
+    .product-card.is-primary {
+      border-color: rgba(240, 191, 105, 0.3);
+      background:
+        radial-gradient(ellipse at 28% 14%, rgba(240, 191, 105, 0.16), transparent 42%),
+        rgba(9, 11, 11, 0.58);
+    }
+
+    .product-card__meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .product-card__meta li,
+    .mode-tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 27px;
+      padding: 0 9px;
+      border: 1px solid rgba(240, 191, 105, 0.18);
+      border-radius: 999px;
+      background: rgba(240, 191, 105, 0.055);
+      color: rgba(244, 234, 214, 0.78);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .mini-neck {
+      height: 88px;
+      border: 1px solid rgba(244, 234, 214, 0.12);
+      border-radius: 10px;
+      background:
+        linear-gradient(90deg, rgba(240, 191, 105, 0.2) 0 1px, transparent 1px 100%) 0 0 / 11.5% 100%,
+        repeating-linear-gradient(180deg, rgba(244, 234, 214, 0.28) 0 1px, transparent 1px 13px),
+        rgba(4, 5, 5, 0.62);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .mini-neck::before,
+    .mini-neck::after {
+      content: "";
+      position: absolute;
+      width: 34px;
+      height: 20px;
+      border-radius: 999px;
+      box-shadow: 0 0 22px currentColor;
+    }
+
+    .mini-neck::before {
+      left: 34%;
+      top: 28px;
+      color: rgba(104, 205, 178, 0.78);
+      background: #68cdb2;
+    }
+
+    .mini-neck::after {
+      left: 58%;
+      top: 42px;
+      color: rgba(239, 191, 105, 0.82);
+      background: var(--brass);
+    }
+
+    .mode-card {
+      min-height: 184px;
+      display: grid;
+      gap: 10px;
+      align-content: start;
+    }
+
+    .mode-card h3 {
+      font-size: 17px;
+    }
+
+    .mode-card__visual {
+      height: 54px;
+      border-radius: 9px;
+      border: 1px solid rgba(240, 191, 105, 0.14);
+      background:
+        repeating-linear-gradient(90deg, rgba(240, 191, 105, 0.18) 0 1px, transparent 1px 22px),
+        repeating-linear-gradient(180deg, rgba(244, 234, 214, 0.24) 0 1px, transparent 1px 10px),
+        rgba(7, 8, 8, 0.54);
+      position: relative;
+    }
+
+    .mode-card__visual::after {
+      content: "";
+      position: absolute;
+      left: var(--marker-left, 36%);
+      top: var(--marker-top, 18px);
+      width: 24px;
+      height: 16px;
+      border-radius: 999px;
+      background: var(--marker-color, #68cdb2);
+      box-shadow: 0 0 16px var(--marker-color, #68cdb2);
+    }
+
+    .brain-band {
+      display: grid;
+      grid-template-columns: minmax(0, 0.92fr) minmax(320px, 1.08fr);
+      gap: 18px;
+      align-items: center;
+    }
+
+    .brain-panel {
+      display: grid;
+      gap: 12px;
+      padding: 16px;
+      border: 1px solid rgba(244, 234, 214, 0.1);
+      border-radius: 14px;
+      background: rgba(5, 6, 6, 0.44);
+    }
+
+    .brain-input {
+      min-height: 54px;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      border: 1px solid rgba(240, 191, 105, 0.28);
+      border-radius: 999px;
+      background: rgba(8, 10, 10, 0.58);
+      color: rgba(244, 234, 214, 0.62);
+      font-weight: 700;
+    }
+
+    .prompt-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .prompt-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 31px;
+      padding: 0 10px;
+      border: 1px solid rgba(240, 191, 105, 0.18);
+      border-radius: 999px;
+      color: rgba(244, 234, 214, 0.74);
+      font-size: 13px;
+      font-weight: 700;
     }
 
     .question-card {
@@ -600,6 +898,13 @@
         align-items: flex-start;
       }
 
+      .site-nav {
+        order: 3;
+        width: 100%;
+        margin: 8px 0 0;
+        justify-content: flex-start;
+      }
+
       .header-actions {
         align-items: flex-end;
         flex-direction: column;
@@ -624,13 +929,21 @@
         transform: rotate(-1.5deg);
       }
 
+      .hero-layout,
+      .product-grid,
+      .brain-band,
       .feature-grid,
       .example-grid,
       .trust-grid,
+      .mode-grid,
       .beta-panel,
       .field-grid,
       .checkbox-list {
         grid-template-columns: 1fr;
+      }
+
+      .hero-layout {
+        gap: 24px;
       }
     }
 
@@ -647,6 +960,22 @@
 
       .site-header {
         padding-top: 14px;
+      }
+
+      .site-nav {
+        gap: 4px;
+      }
+
+      .nav-link {
+        min-height: 30px;
+        padding: 0 8px;
+        font-size: 12px;
+      }
+
+      .header-actions {
+        width: 100%;
+        align-items: stretch;
+        gap: 8px;
       }
 
       .brand-logo {
@@ -704,6 +1033,19 @@
       .section {
         padding: 20px;
       }
+
+      .fretboard-toolbar,
+      .fretboard-footer {
+        padding: 11px 12px;
+      }
+
+      .fretboard-svg {
+        min-width: 620px;
+      }
+
+      .fretboard-scroll {
+        overflow-x: auto;
+      }
     }
   </style>
 </head>
@@ -713,9 +1055,16 @@
       <a class="brand-link" href="#top" aria-label="Steel Guitar RAG home">
         <img class="brand-logo" src="assets/steel-guitar-rag-logo-transparent.png" alt="Steel Guitar RAG">
       </a>
+      <nav class="site-nav" aria-label="Landing page">
+        <a class="nav-link" href="#explorer">Fretboard Explorer</a>
+        <a class="nav-link" href="#brain">Ask the Brain</a>
+        <a class="nav-link" href="#modes">Modes</a>
+        <a class="nav-link" href="#why">Why it works</a>
+        <a class="nav-link" href="#beta">Access</a>
+      </nav>
       <div class="header-actions">
-        <span class="access-note">Private-preview interest list</span>
-        <a class="backstage-link" href="#interest-form">Request early access</a>
+        <a class="backstage-link" href="#interest-form" aria-label="Request preview access to open the app">Open app</a>
+        <a class="button" href="#modes">Start exploring</a>
       </div>
     </header>
 
@@ -726,54 +1075,230 @@
 
     <main id="top">
       <section class="hero" aria-labelledby="hero-title">
-        <p class="eyebrow">Private preview in preparation</p>
-        <h1 id="hero-title">The steel-guitar answers you wish were easier to find.</h1>
-        <p class="hero-copy">Steel Guitar RAG is a private-preview assistant built for E9 players: forum wisdom, practical teaching answers, fretboard-aware positions, and safe deterministic practice examples.</p>
-        <div class="hero-actions">
-          <a class="button" href="#interest-form">Request early access</a>
-          <a class="ghost-button" href="#examples">See example questions</a>
+        <div class="hero-layout">
+          <div class="hero-text">
+            <p class="eyebrow">Fretboard Explorer + Steel Guitar Brain</p>
+            <h1 id="hero-title">Explore the E9 neck. Ask better questions.</h1>
+            <p class="hero-copy">Find grips, scales, chords, notes, and voicings across the neck, then ask the Steel Guitar Brain for source-aware guidance on tone, setup, theory, troubleshooting, copedents, and practice.</p>
+            <div class="hero-actions">
+              <a class="button" href="#modes">Start with the Fretboard Explorer</a>
+              <a class="ghost-button" href="#brain">Ask the Steel Guitar Brain</a>
+            </div>
+            <ul class="trust-row" aria-label="Product strengths">
+              <li>Validated explorer data</li>
+              <li>Pedal/lever aware</li>
+              <li>Source-backed guidance</li>
+              <li>Built for real copedents</li>
+              <li>Not a generic chatbot</li>
+            </ul>
+          </div>
+          <div class="hero-visual">
+            <div class="fretboard-preview" aria-label="E9 Fretboard Explorer preview">
+              <div class="fretboard-toolbar">
+                <strong>E9 Fretboard Explorer</strong>
+                <span class="fretboard-chip">G major · 4-5-6 · A+B</span>
+              </div>
+              <div class="fretboard-scroll">
+                <svg class="fretboard-svg" viewBox="0 0 940 360" role="img" aria-labelledby="fretboard-preview-title">
+                  <title id="fretboard-preview-title">Preview of the E9 fretboard with strings, frets, note markers, and colored grip positions</title>
+                  <rect x="38" y="44" width="850" height="236" rx="14" fill="#050606" stroke="rgba(240, 191, 105, 0.32)" />
+                  <g stroke="rgba(244, 234, 214, 0.42)" stroke-width="2">
+                    <line x1="70" y1="72" x2="852" y2="72" />
+                    <line x1="70" y1="94" x2="852" y2="94" />
+                    <line x1="70" y1="116" x2="852" y2="116" />
+                    <line x1="70" y1="138" x2="852" y2="138" />
+                    <line x1="70" y1="160" x2="852" y2="160" />
+                    <line x1="70" y1="182" x2="852" y2="182" />
+                    <line x1="70" y1="204" x2="852" y2="204" />
+                    <line x1="70" y1="226" x2="852" y2="226" />
+                    <line x1="70" y1="248" x2="852" y2="248" />
+                  </g>
+                  <g stroke="rgba(240, 191, 105, 0.32)" stroke-width="1.5">
+                    <line x1="70" y1="52" x2="70" y2="270" stroke-width="4" />
+                    <line x1="124" y1="52" x2="124" y2="270" />
+                    <line x1="176" y1="52" x2="176" y2="270" />
+                    <line x1="226" y1="52" x2="226" y2="270" />
+                    <line x1="274" y1="52" x2="274" y2="270" />
+                    <line x1="320" y1="52" x2="320" y2="270" />
+                    <line x1="364" y1="52" x2="364" y2="270" />
+                    <line x1="406" y1="52" x2="406" y2="270" />
+                    <line x1="446" y1="52" x2="446" y2="270" />
+                    <line x1="484" y1="52" x2="484" y2="270" />
+                    <line x1="520" y1="52" x2="520" y2="270" />
+                    <line x1="555" y1="52" x2="555" y2="270" />
+                    <line x1="588" y1="52" x2="588" y2="270" />
+                    <line x1="620" y1="52" x2="620" y2="270" />
+                    <line x1="650" y1="52" x2="650" y2="270" />
+                    <line x1="679" y1="52" x2="679" y2="270" />
+                    <line x1="706" y1="52" x2="706" y2="270" />
+                    <line x1="732" y1="52" x2="732" y2="270" />
+                    <line x1="757" y1="52" x2="757" y2="270" />
+                    <line x1="780" y1="52" x2="780" y2="270" />
+                    <line x1="802" y1="52" x2="802" y2="270" />
+                    <line x1="823" y1="52" x2="823" y2="270" />
+                    <line x1="843" y1="52" x2="843" y2="270" />
+                  </g>
+                  <g fill="rgba(240, 191, 105, 0.32)">
+                    <path d="M200 148 l10 -10 l10 10 l-10 10z" />
+                    <path d="M300 148 l10 -10 l10 10 l-10 10z" />
+                    <path d="M400 148 l10 -10 l10 10 l-10 10z" />
+                    <path d="M500 132 l10 -10 l10 10 l-10 10z" />
+                    <path d="M500 164 l10 -10 l10 10 l-10 10z" />
+                    <path d="M650 148 l10 -10 l10 10 l-10 10z" />
+                    <path d="M732 148 l10 -10 l10 10 l-10 10z" />
+                    <path d="M823 132 l10 -10 l10 10 l-10 10z" />
+                    <path d="M823 164 l10 -10 l10 10 l-10 10z" />
+                  </g>
+                  <g font-family="Gill Sans, Segoe UI, sans-serif" font-size="17" font-weight="700" fill="#fff2dc">
+                    <text x="42" y="77">1</text>
+                    <text x="42" y="99">2</text>
+                    <text x="42" y="121">3</text>
+                    <text x="42" y="143">4</text>
+                    <text x="42" y="165">5</text>
+                    <text x="42" y="187">6</text>
+                    <text x="42" y="209">7</text>
+                    <text x="42" y="231">8</text>
+                    <text x="42" y="253">9</text>
+                    <text x="36" y="275">10</text>
+                  </g>
+                  <g filter="url(#preview-glow)">
+                    <rect x="254" y="147" width="54" height="25" rx="13" fill="#68cdb2" />
+                    <rect x="254" y="173" width="54" height="25" rx="13" fill="#68cdb2" />
+                    <rect x="254" y="199" width="54" height="25" rx="13" fill="#f0bf69" />
+                    <rect x="444" y="147" width="54" height="25" rx="13" fill="#f08b5f" />
+                    <rect x="444" y="173" width="54" height="25" rx="13" fill="#f08b5f" />
+                    <rect x="444" y="199" width="54" height="25" rx="13" fill="#b68cf0" />
+                    <rect x="617" y="147" width="54" height="25" rx="13" fill="#e981ad" />
+                    <rect x="617" y="173" width="54" height="25" rx="13" fill="#d4df36" />
+                    <rect x="617" y="199" width="54" height="25" rx="13" fill="#e981ad" />
+                  </g>
+                  <defs>
+                    <filter id="preview-glow" x="-20%" y="-20%" width="140%" height="140%">
+                      <feGaussianBlur stdDeviation="8" result="blur" />
+                      <feMerge>
+                        <feMergeNode in="blur" />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
+                    </filter>
+                  </defs>
+                  <g font-family="Gill Sans, Segoe UI, sans-serif" font-size="16" font-weight="700" fill="#f4ead6">
+                    <text x="263" y="136">G</text>
+                    <text x="453" y="136">C</text>
+                    <text x="626" y="136">D</text>
+                  </g>
+                </svg>
+              </div>
+              <div class="fretboard-footer">
+                <span class="fretboard-chip">Single Grip</span>
+                <span class="fretboard-chip">Harmonized Path Scale</span>
+                <span class="fretboard-chip">Single-Note Finder</span>
+              </div>
+            </div>
+          </div>
         </div>
-        <p class="beta-note">Private preview is being tuned now. Request preview access if you want help testing steel-specific answers before broader release.</p>
       </section>
 
-      <section class="section" aria-labelledby="helps-title">
-        <p class="section-kicker">Built for pedal steel</p>
-        <h2 class="section-heading" id="helps-title">Not generic guitar theory with a steel label.</h2>
-        <p class="section-copy">Ask about grips, pedals, levers, tone, copedents, blocking, positions, practice, and the practical problems that come up when E9 is under your hands.</p>
-        <div class="section-grid feature-grid">
-          <article class="card">
-            <h3>Instrument-aware answers</h3>
-            <p>Pedals, knee levers, string groups, copedent details, tone controls, bar movement, blocking, and position choices are treated as part of the question.</p>
+      <section class="section" id="explorer" aria-labelledby="products-title">
+        <p class="section-kicker">Two ways to learn</p>
+        <h2 class="section-heading" id="products-title">Use the Explorer when you want to see it. Use the Brain when you need explanation.</h2>
+        <div class="section-grid product-grid">
+          <article class="card product-card is-primary">
+            <div>
+              <p class="section-kicker">Primary visual path</p>
+              <h3>Fretboard Explorer</h3>
+              <p>See grips, scales, chords, notes, voicings, and pedal/lever moves on the E9 neck without translating generic theory by hand.</p>
+            </div>
+            <div class="mini-neck" aria-hidden="true"></div>
+            <ul class="product-card__meta">
+              <li>Strings</li>
+              <li>Frets</li>
+              <li>Pedals/levers</li>
+              <li>Intervals</li>
+              <li>Copedents</li>
+            </ul>
+            <a class="button" href="#modes">Explore the neck</a>
           </article>
-          <article class="card">
-            <h3>Fretboard-aware teaching</h3>
-            <p>Where structured data is available, answers can show E9 positions and grips instead of leaving you to translate theory into steel-guitar layout.</p>
-          </article>
-          <article class="card">
-            <h3>Practice that stays usable</h3>
-            <p>Safe deterministic examples, focused drills, and next steps are designed to help you practice without turning the page into a pile of fragments.</p>
+          <article class="card product-card">
+            <div>
+              <p class="section-kicker">Companion guidance</p>
+              <h3>Steel Guitar Brain</h3>
+              <p>Ask practical steel-guitar questions and get source-aware guidance on tone, technique, setup, theory, troubleshooting, copedents, and practice.</p>
+            </div>
+            <ul class="product-card__meta">
+              <li>Forum wisdom</li>
+              <li>Gear and tone</li>
+              <li>Blocking</li>
+              <li>Setup</li>
+              <li>Practice</li>
+            </ul>
+            <a class="ghost-button" href="#brain">Ask the Brain</a>
           </article>
         </div>
       </section>
 
-      <section class="section" id="examples" aria-labelledby="examples-title">
-        <p class="section-kicker">Example questions</p>
-        <h2 class="section-heading" id="examples-title">Start with the problem you are actually trying to solve.</h2>
-        <div class="section-grid example-grid">
-          <article class="question-card"><span>01</span>What are common Fender Steel King settings?</article>
-          <article class="question-card"><span>02</span>Where can I play a G chord on E9?</article>
-          <article class="question-card"><span>03</span>Help me clean up palm blocking on strings 4-5-6.</article>
-          <article class="question-card"><span>04</span>Why does my amp buzz until I touch the changer?</article>
-          <article class="question-card"><span>05</span>How do players use B+C pedals?</article>
+      <section class="section" id="modes" aria-labelledby="modes-title">
+        <p class="section-kicker">Choose your explorer mode</p>
+        <h2 class="section-heading" id="modes-title">Start from the musical question in front of you.</h2>
+        <p class="section-copy">The Fretboard Explorer is the visual first step for static grips, chord locations, scale paths, note locations, and voicing checks.</p>
+        <div class="section-grid mode-grid">
+          <article class="card mode-card">
+            <span class="mode-tag">Mode 01</span>
+            <div class="mode-card__visual" style="--marker-left: 42%; --marker-color: #68cdb2;" aria-hidden="true"></div>
+            <h3>Single Grip</h3>
+            <p>Jump straight to one practical pocket and see the fret, strings, pedals, and levers.</p>
+          </article>
+          <article class="card mode-card">
+            <span class="mode-tag">Mode 02</span>
+            <div class="mode-card__visual" style="--marker-left: 32%; --marker-color: #f0bf69;" aria-hidden="true"></div>
+            <h3>Harmonized Path Scale</h3>
+            <p>Trace diatonic movement across the neck with compact path controls.</p>
+          </article>
+          <article class="card mode-card">
+            <span class="mode-tag">Mode 03</span>
+            <div class="mode-card__visual" style="--marker-left: 58%; --marker-color: #72aef0;" aria-hidden="true"></div>
+            <h3>Single-Note Finder</h3>
+            <p>Find every place a note lives across strings, frets, and common controls.</p>
+          </article>
+          <article class="card mode-card">
+            <span class="mode-tag">Mode 04</span>
+            <div class="mode-card__visual" style="--marker-left: 46%; --marker-color: #e981ad;" aria-hidden="true"></div>
+            <h3>Chord Finder</h3>
+            <p>Locate chord families, functions, and pockets without losing the steel layout.</p>
+          </article>
+          <article class="card mode-card">
+            <span class="mode-tag">Mode 05</span>
+            <div class="mode-card__visual" style="--marker-left: 68%; --marker-color: #b68cf0;" aria-hidden="true"></div>
+            <h3>Voicing Identifier</h3>
+            <p>Select strings and pedals, then identify what the grip gives you.</p>
+          </article>
         </div>
       </section>
 
-      <section class="section" aria-labelledby="trust-title">
-        <p class="section-kicker">Sources and evidence</p>
-        <h2 class="section-heading" id="trust-title">Source-aware when the corpus is used.</h2>
+      <section class="section brain-band" id="brain" aria-labelledby="brain-title">
+        <div>
+          <p class="section-kicker">Steel Guitar Brain</p>
+          <h2 class="section-heading" id="brain-title">Stuck? Ask for the explanation.</h2>
+          <p class="section-copy">The Brain is for the practical questions around the neck: why a grip works, why a rig hums, what a pedal move does, how to practice a pocket, and where source-backed player wisdom helps.</p>
+        </div>
+        <div class="brain-panel">
+          <div class="brain-input" aria-label="Example Steel Guitar Brain question">Ask a steel guitar question...</div>
+          <div class="prompt-chips" aria-label="Example Brain prompts">
+            <span class="prompt-chip">Why does touching the changer reduce hum?</span>
+            <span class="prompt-chip">What grip works for Fmaj7?</span>
+            <span class="prompt-chip">Give me a practice rut breaker</span>
+            <span class="prompt-chip">What are good Fender Steel King settings?</span>
+          </div>
+          <a class="ghost-button" href="#interest-form">Request Brain access</a>
+        </div>
+      </section>
+
+      <section class="section" id="why" aria-labelledby="trust-title">
+        <p class="section-kicker">Why it works</p>
+        <h2 class="section-heading" id="trust-title">Instrument logic first, sources when they matter.</h2>
         <p class="section-copy">Steel Guitar RAG is being built from real steel-guitar material: forum discussions, lesson transcripts, gear conversations, copedent notes, manuals, tab references, and player experience gathered over decades.</p>
         <div class="section-grid trust-grid">
           <ul class="evidence-list">
+            <li>Validated Explorer data handles static grips, chord locations, scale paths, notes, and voicing checks as fretboard-first teaching surfaces.</li>
             <li>Source-aware SGF and curated guidance can support answers when relevant.</li>
             <li>Long discussions are broken into smaller musical ideas and searched by meaning, not just exact wording.</li>
             <li>The goal is a calm answer that knows where it came from and how it lays out on the guitar.</li>
@@ -790,6 +1315,18 @@
               <p>Manuals, setup notes, and reviewed steel-specific references can support an answer alongside forum wisdom.</p>
             </article>
           </div>
+        </div>
+      </section>
+
+      <section class="section" id="examples" aria-labelledby="examples-title">
+        <p class="section-kicker">Example questions</p>
+        <h2 class="section-heading" id="examples-title">Start with the problem you are actually trying to solve.</h2>
+        <div class="section-grid example-grid">
+          <article class="question-card"><span>01</span>Where can I play a G chord on E9?</article>
+          <article class="question-card"><span>02</span>Show me the G major scale on strings 4-5-6.</article>
+          <article class="question-card"><span>03</span>What are common Fender Steel King settings?</article>
+          <article class="question-card"><span>04</span>Help me clean up palm blocking on strings 4-5-6.</article>
+          <article class="question-card"><span>05</span>Why does my amp buzz until I touch the changer?</article>
         </div>
       </section>
 
