@@ -1806,9 +1806,10 @@
     }
     const markerGroups = groupRowsForMarkers(rows);
     const selectedMarkerId = markerGroupKey(rows.find((row) => row.id === selectedRowId) || {});
+    // SVG paints later groups on top, so the selected marker must render last.
     const sortedMarkerGroups = [
-      ...markerGroups.filter((group) => group.id === selectedMarkerId),
       ...markerGroups.filter((group) => group.id !== selectedMarkerId),
+      ...markerGroups.filter((group) => group.id === selectedMarkerId),
     ];
     currentMarkerGroups = markerGroups;
     fretboardApi.mountPedalSteelFretboard(els.fretboard, {

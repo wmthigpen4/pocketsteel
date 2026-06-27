@@ -1226,12 +1226,15 @@ assert.match(elements["explorer-row-list"].textContent, /minor position uses thi
 assert.equal(lastMount.options.positions.length, 8);
 assert.equal(lastMount.options.positions.some((row) => row.grip === "6-8-10"), true);
 assert.equal(lastMount.options.positions.some((row) => row.grip === "6-7-10"), true);
+const pathMarkerOrder = lastMount.options.positions.map((row) => row.id);
+assert.equal(pathMarkerOrder[pathMarkerOrder.length - 1], "marker:3:6-8-10:6-8-10");
+assert.equal(lastMount.options.positions[lastMount.options.positions.length - 1].grip, "6-8-10");
 notationModeButtons[2].onclick();
 assert.match(elements["explorer-row-list"].textContent, /I — G/);
 assert.match(elements["explorer-row-list"].textContent, /ii — Am/);
 assert.match(elements["explorer-row-list"].textContent, /iii — Bm/);
-assert.equal(lastMount.options.positions[0].label, "iii");
-assert.equal(lastMount.options.positions[1].label, "IV");
+assert.equal(markerPosition("marker:3:6-8-10:6-8-10").label, "iii");
+assert.equal(markerPosition("marker:3:6-7-10:6-7-10").label, "IV");
 notationModeButtons[0].onclick();
 elements["explorer-path-family"].value = "middle";
 elements["explorer-path-family"].dispatchChange();
