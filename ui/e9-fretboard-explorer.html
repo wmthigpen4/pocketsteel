@@ -1289,6 +1289,14 @@
       -webkit-overflow-scrolling: touch;
     }
 
+    .explorer-active-results__track--wrap {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(152px, 1fr));
+      overflow-x: visible;
+      padding-bottom: 0;
+      scroll-snap-type: none;
+    }
+
     .explorer-active-result {
       --explorer-marker-color: #f7bd58;
       flex: 0 0 clamp(150px, 15vw, 184px);
@@ -1305,6 +1313,63 @@
       font: inherit;
       line-height: 1.25;
       scroll-snap-align: start;
+    }
+
+    .explorer-active-results__track--wrap .explorer-active-result {
+      min-width: 0;
+      width: 100%;
+    }
+
+    .explorer-chord-map-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin: 2px 0 6px;
+    }
+
+    .explorer-chord-map-filter {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 30px;
+      border: 1px solid rgba(246, 190, 88, 0.24);
+      border-radius: 999px;
+      padding: 5px 10px;
+      background: rgba(0, 0, 0, 0.22);
+      color: var(--muted);
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.76rem;
+      font-weight: 900;
+    }
+
+    .explorer-chord-map-filter small {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: rgba(246, 190, 88, 0.12);
+      color: rgba(255, 247, 232, 0.76);
+      font-size: 0.66rem;
+      line-height: 1;
+    }
+
+    .explorer-chord-map-filter:hover,
+    .explorer-chord-map-filter:focus-visible,
+    .explorer-chord-map-filter.is-selected {
+      border-color: rgba(246, 190, 88, 0.68);
+      background: rgba(246, 190, 88, 0.14);
+      color: var(--text);
+      outline: none;
+    }
+
+    .explorer-chord-map-summary {
+      margin: -1px 0 6px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 800;
     }
 
     .explorer-active-result__top {
@@ -2138,6 +2203,6 @@
   <script src="pedal-steel-fretboard.js?v=explorer-harmonized-path-mode-20260626"></script>
   <script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>
   <script src="e9-music-rules.js?v=shared-music-rules-20260627"></script>
-  <script src="e9-fretboard-explorer.js?v=structured-chord-picker-20260627"></script>
+  <script src="e9-fretboard-explorer.js?v=chord-map-view-20260627"></script>
 </body>
 </html>

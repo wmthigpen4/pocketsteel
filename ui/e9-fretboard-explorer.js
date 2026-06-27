@@ -215,6 +215,7 @@
   let selectedChordQuality = "major7";
   let selectedChordControlScope = "common";
   let selectedChordCandidateId = "";
+  let selectedChordMapFilter = "all";
   let voicingFret = 3;
   let selectedVoicingStrings = [3, 4, 5];
   let selectedVoicingControlIds = new Set();
@@ -1346,6 +1347,106 @@
 
   function selectedChordCandidate(rows = chordFinderCandidates()) {
     return rows.find((row) => row.id === selectedChordCandidateId) || rows[0] || null;
+  }
+
+  function chordFinderFretBucket(row) {
+    const fret = Number(row?.fret);
+    if (!Number.isFinite(fret)) {
+      return "";
+    }
+    if (fret <= 4) {
+      return "low";
+    }
+    if (fret <= 10) {
+      return "mid";
+    }
+    return "high";
+  }
+
+  function chordFinderCompleteness(row) {
+    const omitted = toArray(row?.chord_finder?.omittedIntervals);
+    if (!omitted.length) {
+      return "complete";
+    }
+    if (omitted.map(Number).includes(0)) {
+      return "rootless";
+    }
+    return "partial";
+  }
+
+  function chordFinderControlFilter(row) {
+    const controls = normalizePedals(row);
+    if (!controls.length) {
+      return "open";
+    }
+    return controls.some((control) => String(control).toLowerCase().includes("lower") || String(control).toLowerCase().includes("raise"))
+      ? "levers"
+      : "pedals";
+  }
+
+  function chordFinderTierFilter(row) {
+    const tier = String(gripMetadata(row?.string_group)?.tier || "").toLowerCase();
+    if (tier === "core" || tier === "extended" || tier === "two_string") {
+      return tier;
+    }
+    return isAdvanced(row) ? "advanced" : "extended";
+  }
+
+  function chordFinderMapFilterOptions(rows) {
+    const options = [
+      { id: "all", label: "All" },
+      { id: "open", label: "Open" },
+      { id: "pedals", label: "Pedals" },
+      { id: "levers", label: "Levers" },
+      { id: "low", label: "Low frets" },
+      { id: "mid", label: "Mid frets" },
+      { id: "high", label: "High frets" },
+      { id: "complete", label: "Complete" },
+      { id: "partial", label: "Partial" },
+      { id: "rootless", label: "Rootless" },
+      { id: "core", label: "Core" },
+      { id: "extended", label: "Extended" },
+      { id: "two_string", label: "Two-string" },
+    ];
+    return options.map((item) => {
+      const count = item.id === "all"
+        ? rows.length
+        : rows.filter((row) => chordFinderRowMatchesMapFilter(row, item.id)).length;
+      return { ...item, count };
+    }).filter((item) => item.id === "all" || item.count > 0);
+  }
+
+  function chordFinderRowMatchesMapFilter(row, filterId = selectedChordMapFilter) {
+    if (!filterId || filterId === "all") {
+      return true;
+    }
+    if (["open", "pedals", "levers"].includes(filterId)) {
+      return chordFinderControlFilter(row) === filterId;
+    }
+    if (["low", "mid", "high"].includes(filterId)) {
+      return chordFinderFretBucket(row) === filterId;
+    }
+    if (["complete", "partial", "rootless"].includes(filterId)) {
+      return chordFinderCompleteness(row) === filterId;
+    }
+    if (["core", "extended", "two_string"].includes(filterId)) {
+      return chordFinderTierFilter(row) === filterId;
+    }
+    return true;
+  }
+
+  function chordFinderVisibleRows(rows) {
+    return rows.filter((row) => chordFinderRowMatchesMapFilter(row));
+  }
+
+  function chordFinderRowsForMap(rows, selected) {
+    if (!selected) {
+      return rows;
+    }
+    return [
+      selected,
+      ...rows.filter((row) => row.id !== selected.id),
+    ];
   }
 
   function selectedGripCandidate() {
@@ -3917,6 +4018,7 @@
       rootInput.addEventListener("change", () => {
         selectedChordRoot = rootInput.value || "F";
         selectedChordCandidateId = "";
+        selectedChordMapFilter = "all";
         renderChordFinderMode();
       });
     }
@@ -3925,6 +4027,7 @@
       qualityInput.addEventListener("change", () => {
         selectedChordQuality = qualityInput.value || "major7";
         selectedChordCandidateId = "";
+        selectedChordMapFilter = "all";
         renderChordFinderMode();
       });
     }
@@ -3933,6 +4036,7 @@
       scopeInput.addEventListener("change", () => {
         selectedChordControlScope = scopeInput.value || "common";
         selectedChordCandidateId = "";
+        selectedChordMapFilter = "all";
         renderChordFinderMode();
       });
     }
@@ -3944,15 +4048,20 @@
     const controls = normalizePedals(row);
     const present = formatValue(finder.presentTones, "");
     const omitted = formatValue(finder.omittedTones, "none");
+    const markerLabel = markerLabelForRow(row);
+    const markerOverflowCount = markerOverflowCountForGroup(currentMarkerGroups.find((item) => item.id === markerGroupKey(row)) || { rows: [row] });
+    const markerTone = markerToneForRow(row);
     return `
-      <button class="explorer-active-result${isAdvanced(row) ? " explorer-active-result--advanced" : ""}${isSelected ? " is-selected" : ""}" type="button" ${dataAttributeName}="${escapeHtml(row.id)}" data-chord-finder-result="${escapeHtml(row.id)}" data-string-group="${escapeHtml(row.string_group)}" aria-pressed="${isSelected ? "true" : "false"}">
+      <button class="explorer-active-result explorer-chord-map-card${isAdvanced(row) ? " explorer-active-result--advanced" : ""}${isSelected ? " is-selected" : ""}" type="button" ${dataAttributeName}="${escapeHtml(row.id)}" data-chord-finder-result="${escapeHtml(row.id)}" data-marker-id="${escapeHtml(markerGroupKey(row))}" data-marker-tone="${escapeHtml(markerTone)}" data-string-group="${escapeHtml(row.string_group)}" data-chord-map-filter="${escapeHtml(chordFinderControlFilter(row))}" data-chord-completeness="${escapeHtml(chordFinderCompleteness(row))}" aria-pressed="${isSelected ? "true" : "false"}">
         <span class="explorer-active-result__top">
+          ${markerLabel ? `<span class="explorer-active-result__marker" aria-label="Matching fretboard marker ${escapeHtml(markerLabel)}${markerOverflowCount ? ` plus ${markerOverflowCount} more` : ""}"><span class="explorer-marker-token" aria-hidden="true"></span><span>${escapeHtml(markerLabel)}</span>${markerOverflowCount ? `<small aria-hidden="true">+${markerOverflowCount}</small>` : ""}</span>` : ""}
           <strong>${escapeHtml(row.chord_name || row.display_summary || "Chord finder result")}</strong>
         </span>
         <span class="explorer-active-result__fields">
           <span><b>Fret</b>${escapeHtml(formatValue(row.fret))}</span>
           <span><b>Strings</b>${escapeHtml(row.string_group)}</span>
           <span><b>Pedals/levers</b>${escapeHtml(controls.length ? `With ${controls.join("+")}` : "Open")}</span>
+          <span><b>Grip</b>${escapeHtml(formatValue(finder.gripTier))}</span>
           <span><b>Confidence</b>${escapeHtml(formatValue(finder.confidence))}</span>
           <span><b>Present</b>${escapeHtml(present)}</span>
           <span><b>Omitted</b>${escapeHtml(omitted)}</span>
@@ -3961,28 +4070,54 @@
     `;
   }
 
-  function renderChordFinderResults(target, rows) {
+  function chordFinderMapFiltersHtml(allRows, visibleRows) {
+    const options = chordFinderMapFilterOptions(allRows);
+    return `
+      <div class="explorer-chord-map-filters" role="group" aria-label="Filter chord candidates shown on the fretboard">
+        ${options.map((item) => `
+          <button class="explorer-chord-map-filter${selectedChordMapFilter === item.id ? " is-selected" : ""}" type="button" data-chord-map-filter-control="${escapeHtml(item.id)}" aria-pressed="${selectedChordMapFilter === item.id ? "true" : "false"}"${item.count ? "" : " disabled"}>
+            <span>${escapeHtml(item.label)}</span>
+            <small>${escapeHtml(String(item.count))}</small>
+          </button>
+        `).join("")}
+      </div>
+      <p class="explorer-chord-map-summary">${escapeHtml(`${visibleRows.length} of ${allRows.length} candidates shown on the fretboard. Cards and SVG markers use the same colors.`)}</p>
+    `;
+  }
+
+  function renderChordFinderResults(target, rows, allRows = rows) {
     const selected = selectedChordCandidate(rows);
     const targetLabel = target?.ok ? target.label : "target";
     if (!rows.length) {
       const message = target?.ok
-        ? `No practical voicing found for ${targetLabel} with the current grip vocabulary, control scope, and fret range. Try All practical, Include levers, or All frets.`
+        ? allRows.length
+          ? `No ${targetLabel} candidates match this card filter. Try All, a different fret bucket, or a broader pedals/levers scope.`
+          : `No practical voicing found for ${targetLabel} with the current grip vocabulary, control scope, and fret range. Try All practical, Include levers, or All frets.`
         : target?.message || "Enter a chord target to search.";
       els.activeResults.innerHTML = `
         <div class="explorer-active-results__header">
           <strong>No Chord / Voicing Finder candidates</strong>
           <span>${escapeHtml(message)}</span>
         </div>
+        ${allRows.length ? chordFinderMapFiltersHtml(allRows, rows) : ""}
       `;
       els.rowList.innerHTML = "";
+      Array.from(els.activeResults.querySelectorAll("[data-chord-map-filter-control]")).forEach((button) => {
+        button.addEventListener("click", () => {
+          selectedChordMapFilter = button.getAttribute("data-chord-map-filter-control") || "all";
+          selectedChordCandidateId = "";
+          renderChordFinderMode();
+        });
+      });
       return;
     }
     els.activeResults.innerHTML = `
       <div class="explorer-active-results__header">
-        <strong>${escapeHtml(`${targetLabel}: ${rows.length} practical ${rows.length === 1 ? "candidate" : "candidates"}`)}</strong>
-        <span>Cards are ranked by complete chord tones, practical grip tier, control scope, and omissions. The SVG focuses the selected candidate.</span>
+        <strong>${escapeHtml(`${targetLabel}: ${rows.length} mapped ${rows.length === 1 ? "candidate" : "candidates"}`)}</strong>
+        <span>All visible cards are also visible on the SVG. Select any card or marker to inspect it.</span>
       </div>
-      <div class="explorer-active-results__track">
+      ${chordFinderMapFiltersHtml(allRows, rows)}
+      <div class="explorer-active-results__track explorer-active-results__track--wrap">
         ${rows.map((row) => chordFinderResultCardHtml(row, "data-active-result-row")).join("")}
       </div>
     `;
@@ -3993,9 +4128,20 @@
         selectedChordCandidateId = rowId;
         selectRow(rowId);
       });
+      button.addEventListener("mouseenter", () => showMarkerForRow(rowId));
+      button.addEventListener("focus", () => showMarkerForRow(rowId));
+      button.addEventListener("mouseleave", clearMarkerHover);
+      button.addEventListener("blur", clearMarkerHover);
     };
     Array.from(els.activeResults.querySelectorAll("[data-chord-finder-result]")).forEach(wireButton);
     Array.from(els.rowList.querySelectorAll("[data-chord-finder-result]")).forEach(wireButton);
+    Array.from(els.activeResults.querySelectorAll("[data-chord-map-filter-control]")).forEach((button) => {
+      button.addEventListener("click", () => {
+        selectedChordMapFilter = button.getAttribute("data-chord-map-filter-control") || "all";
+        selectedChordCandidateId = "";
+        renderChordFinderMode();
+      });
+    });
     selectedChordCandidateId = selected?.id || "";
   }
 
@@ -4037,12 +4183,17 @@
   function renderChordFinderMode() {
     const target = parseChordFinderQuery();
     const rowsBeforeRange = chordFinderCandidates(target, { ignoreRange: true });
-    const rows = chordFinderCandidates(target);
+    const allRows = chordFinderCandidates(target);
+    if (!chordFinderMapFilterOptions(allRows).some((item) => item.id === selectedChordMapFilter)) {
+      selectedChordMapFilter = "all";
+    }
+    const rows = chordFinderVisibleRows(allRows);
     const selected = selectedChordCandidate(rows);
     selectedRowId = selected?.id || "";
     selectedChordCandidateId = selectedRowId;
     currentRows = rows;
-    currentMarkerGroups = selected ? groupRowsForMarkers([selected]) : [];
+    const rowsForMap = chordFinderRowsForMap(rows, selected);
+    currentMarkerGroups = groupRowsForMarkers(rowsForMap);
     if (els.noteFinder) {
       els.noteFinder.hidden = true;
       els.noteFinder.innerHTML = "";
@@ -4065,8 +4216,8 @@
     renderChordFinderPanel(target, rows);
     renderFretRangeFilter(rowsBeforeRange, rows);
     renderControlImpactPreview();
-    renderChordFinderResults(target, rows);
-    renderFretboard(selected ? [selected] : []);
+    renderChordFinderResults(target, rows, allRows);
+    renderFretboard(rowsForMap);
     renderChordFinderDetail(selected);
     syncSelectedState();
     const renderedText = [
