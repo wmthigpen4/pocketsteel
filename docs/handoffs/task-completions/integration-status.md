@@ -5,12 +5,12 @@ Generated for ChatGPT reset/guidance on branch `feature/answer-api`.
 ## Current State
 
 - Current branch: `feature/answer-api`.
-- Current repo HEAD at this refresh: this audit commit, `docs: record explorer integration audit`.
+- Current repo HEAD at this refresh: implementation commit `de7f545 fix: polish voicing identifier controls`; status refresh commit follows separately.
 - Runtime commit smoked for E9 copedent selector/chart: `ecec173 feat: add E9 copedent selector and chart`.
 - Related impact-preview runtime smoke: `670d635 feat: add e9 pedal lever impact preview contract`.
-- Latest local UI smoke status: **PASS for Explorer Voicing Identifier mode at commit `4ac80e8`**. Local browser smoke verified `Voicing identifier` appears in Explore mode, default `G / fret 3 / strings 3-4-5 / open` computes `B, G, D` and identifies `G / I function in G`, `B+C` computes `C, A, E` and identifies `Am / ii function in G`, invalid string input shows a validation message with no stale SVG highlight, and no `[object Object]` appears.
+- Latest local UI smoke status: **PASS for Explorer Voicing Identifier control polish at commit `de7f545`**. Local browser smoke verified `Voicing identifier` appears in Explore mode, Fret is constrained to `1` through `10`, Strings use selectable chips with a maximum of three selections, pedals/levers are individually multi-selectable, combined preset buttons such as `A+B` and `B+C` are absent, `F / fret 3 / strings 4-6-10 / A pedal + B pedal` computes `G, C, E` and identifies `C / V function in F`, odd `G / fret 3 / strings 1-2-3 / open` calculates notes while warning that it is not a common musical grip, attempting a fourth string is blocked with a clear warning, and no `[object Object]` or relevant console errors appear.
 - Protected-preview status: **PASS for Explorer compact control layout at commit `672ec51`, with version caveat**. The protected page loaded `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=compact-controls-672ec51` after Cloudflare Access and verified `e9-fretboard-explorer.js?v=compact-controls-20260626` is active. `String group` rendered as a compact dropdown, `Notation` was labeled, no `Showing validated positions` status or `#explorer-result-count` remained, selecting `6-8-10` filtered visible rows to `6-8-10`, and path mode still hid `String group` while low path rendered `6-8-10` plus `6-7-10`. No `[object Object]`, no horizontal overflow, and no relevant console errors appeared. `/api/version` still reports runtime SHA `4040a47`, so this pass verifies static UI behavior at the cache-busted page URL, not a runtime restart.
-- User-smoke status: **ready for focused user smoke at the direct cache-busted Explorer URL below**.
+- User-smoke status: **ready for Lane 12 protected-preview smoke at the direct cache-busted Explorer URL below, then focused user smoke if protected-preview passes**.
 - App control state: **park or choose the next small slice**.
 - Repo audit status: **WARN / clean Explorer scope, dirty parked work remains**. Audit after the smoke-driven Explorer changes found no staged files and no dirty Explorer runtime/test files. The remaining dirty/untracked work is unrelated parked corpus/provenance/RAG/brand/design/documentation work and must not be broad-staged.
 - Broad unrelated dirty/untracked work remains parked. Do not broad-stage.
@@ -58,6 +58,9 @@ https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=compact-controls-
 
 Explorer Voicing Identifier mode after commit `4ac80e8`:
 https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=voicing-identifier-4ac80e8
+
+Explorer Voicing Identifier control polish after commit `de7f545`:
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=voicing-controls-de7f545
 
 Explorer marker/impact/glossary UI baseline commit `4a3f422`:
 https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-marker-impact-glossary-4a3f422
