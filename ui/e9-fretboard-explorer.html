@@ -681,9 +681,15 @@
 
     .explorer-voicing-identifier__controls {
       display: grid;
-      grid-template-columns: minmax(120px, 0.35fr) minmax(180px, 0.5fr) minmax(0, 1fr);
+      grid-template-columns: minmax(96px, 0.25fr) minmax(210px, 0.45fr) minmax(0, 1fr);
       gap: 10px 14px;
-      align-items: end;
+      align-items: start;
+    }
+
+    .explorer-voicing-identifier__field {
+      display: grid;
+      align-content: start;
+      gap: 7px;
     }
 
     .explorer-voicing-identifier__input {
@@ -703,7 +709,7 @@
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
-      margin-top: 7px;
+      margin-top: 0;
     }
 
     .explorer-note-finder__chip,
@@ -2012,6 +2018,6 @@
 
   <script src="pedal-steel-fretboard.js?v=explorer-harmonized-path-mode-20260626"></script>
   <script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>
-  <script src="e9-fretboard-explorer.js?v=voicing-identifier-20260627"></script>
+  <script src="e9-fretboard-explorer.js?v=voicing-controls-20260627"></script>
 </body>
 </html>

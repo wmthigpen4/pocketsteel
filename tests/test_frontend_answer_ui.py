@@ -276,7 +276,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "pedal-steel-fretboard.js?v=explorer-compact-copedent-20260625" not in html
     assert '<script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>' in html
     assert "[hidden] {\n      display: none !important;\n    }" in html
-    assert '<script src="e9-fretboard-explorer.js?v=voicing-identifier-20260627"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=voicing-controls-20260627"></script>' in html
     assert "e9-fretboard-explorer.js?v=single-note-learning-20260626" not in html
     assert "e9-fretboard-explorer.js?v=single-note-finder-20260626" not in html
     assert "explorer-top-note-marker-source-20260626" not in html
@@ -350,6 +350,9 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert 'id="explorer-note-finder"' in html
     assert 'id="explorer-voicing-identifier"' in html
     assert ".explorer-voicing-identifier__input" in html
+    assert ".explorer-voicing-identifier__field" in html
+    assert "grid-template-columns: minmax(96px, 0.25fr) minmax(210px, 0.45fr) minmax(0, 1fr);" in html
+    assert "align-items: start;" in html
     assert ".explorer-note-grid" in html
     assert ".explorer-note-cell.is-result" in html
     assert '<label for="explorer-path-family">Path family</label>' in html
@@ -576,10 +579,14 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "No direct impact on the selected string group" in script
     assert "NOTE_CONTROL_STATES" in script
     assert "NOTE_WORKFLOWS" in script
-    assert "VOICING_CONTROL_STATES" in script
     assert "identifyVoicing" in script
-    assert "data-voicing-control-state" in script
-    assert "data-voicing-string-preset" in script
+    assert "data-voicing-control-state" not in script
+    assert "data-voicing-string-preset" not in script
+    assert "data-voicing-control" in script
+    assert "data-voicing-control-clear" in script
+    assert "data-voicing-string" in script
+    assert "Choose up to 3 strings" in script
+    assert "This is not a common musical grip on E9" in script
     assert "Single-note finder" in script
     assert "Voicing identifier" in script
     assert "Find all" in script
@@ -826,8 +833,9 @@ class FakeNode {
       "[data-note-grip-target]": Array.from(value.matchAll(/data-note-grip-target="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-grip-target")),
       "[data-note-grip-card]": Array.from(value.matchAll(/data-note-grip-card="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-grip-card")),
       "[data-note-sync-event]": Array.from(value.matchAll(/data-note-sync-event="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-sync-event")),
-      "[data-voicing-control-state]": Array.from(value.matchAll(/data-voicing-control-state="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-voicing-control-state")),
-      "[data-voicing-string-preset]": Array.from(value.matchAll(/data-voicing-string-preset="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-voicing-string-preset"))
+      "[data-voicing-control]": Array.from(value.matchAll(/data-voicing-control="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-voicing-control")),
+      "[data-voicing-control-clear]": value.includes("data-voicing-control-clear") ? [new FakeButton("clear", "data-voicing-control-clear")] : [],
+      "[data-voicing-string]": Array.from(value.matchAll(/data-voicing-string="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-voicing-string"))
     };
   }
   get innerHTML() {
@@ -1293,7 +1301,7 @@ assert.equal(elements["explorer-harmony"].disabled, true);
 assert.equal(elements["explorer-control-impact-preview"].hidden, true);
 assert.equal(elements["explorer-top-interval-filter"].hidden, true);
 assert.equal(elements["explorer-fret-range-filter"].hidden, true);
-assert.match(elements["explorer-voicing-identifier"].textContent, /Enter a fret, string set, and pedal\/lever state/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /Choose a fret, up to three strings/);
 assert.match(elements["explorer-voicing-identifier"].textContent, /G major/);
 assert.match(elements["explorer-voicing-identifier"].textContent, /Fret 3; strings 3-4-5; Open; notes B, G, D/);
 assert.match(elements["explorer-active-results"].textContent, /Identified G/);
@@ -1301,21 +1309,56 @@ assert.match(elements["explorer-selected-detail"].textContent, /Voicing identifi
 assert.match(elements["explorer-selected-detail"].textContent, /NotesB, G, D/);
 assert.match(elements["explorer-selected-detail"].textContent, /Likely functionI function in G/);
 assert.match(elements["explorer-selected-detail"].textContent, /Per-string details/);
+assert.match(elements["explorer-selected-detail"].textContent, /Grip typeCore grip/);
 assert.equal(lastMount.options.positions.length, 1);
 assert.equal(lastMount.options.positions[0].fret, 3);
 assert.equal(lastMount.options.positions[0].grip, "3-4-5");
 assert.equal(lastMount.options.positions[0].notes.join(","), "B,G,D");
-const voicingControlButtons = () => elements["explorer-voicing-identifier"].querySelectorAll("[data-voicing-control-state]");
-const voicingGripButtons = () => elements["explorer-voicing-identifier"].querySelectorAll("[data-voicing-string-preset]");
-assert.deepEqual(voicingControlButtons().map((button) => button.getAttribute("data-voicing-control-state")), ["open", "A", "B", "AB", "BC", "E-raise", "E-lower", "D-lower", "G-lower"]);
-voicingControlButtons().find((button) => button.getAttribute("data-voicing-control-state") === "BC").onclick();
-assert.match(elements["explorer-voicing-identifier"].textContent, /Fret 3; strings 3-4-5; B\+C; notes C, A, E/);
+const voicingControlButtons = () => elements["explorer-voicing-identifier"].querySelectorAll("[data-voicing-control]");
+const voicingClearButtons = () => elements["explorer-voicing-identifier"].querySelectorAll("[data-voicing-control-clear]");
+const voicingStringButtons = () => elements["explorer-voicing-identifier"].querySelectorAll("[data-voicing-string]");
+assert.deepEqual(voicingControlButtons().map((button) => button.getAttribute("data-voicing-control")), ["A", "B", "C", "E-raise", "E-lower", "D-lower", "G-lower"]);
+assert.equal(voicingControlButtons().some((button) => button.getAttribute("data-voicing-control") === "AB"), false);
+assert.equal(voicingControlButtons().some((button) => button.getAttribute("data-voicing-control") === "BC"), false);
+voicingControlButtons().find((button) => button.getAttribute("data-voicing-control") === "B").onclick();
+voicingControlButtons().find((button) => button.getAttribute("data-voicing-control") === "C").onclick();
+assert.match(elements["explorer-voicing-identifier"].textContent, /Fret 3; strings 3-4-5; B pedal \+ C pedal; notes C, A, E/);
 assert.match(elements["explorer-selected-detail"].textContent, /Am/);
 assert.match(elements["explorer-selected-detail"].textContent, /Likely functionii function in G/);
+assert.match(elements["explorer-selected-detail"].textContent, /selecting B pedal and C pedal individually/);
 assert.equal(lastMount.options.positions[0].notes.join(","), "C,A,E");
-voicingGripButtons().find((button) => button.getAttribute("data-voicing-string-preset") === "6-8-10").onclick();
-assert.match(elements["explorer-voicing-identifier"].textContent, /strings 6-8-10/);
-assert.equal(lastMount.options.positions[0].grip, "6-8-10");
+voicingClearButtons()[0].onclick();
+elements["explorer-key"].value = "F";
+elements["explorer-key"].dispatchChange();
+voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "3").onclick();
+voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "5").onclick();
+voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "6").onclick();
+voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "10").onclick();
+voicingControlButtons().find((button) => button.getAttribute("data-voicing-control") === "A").onclick();
+voicingControlButtons().find((button) => button.getAttribute("data-voicing-control") === "B").onclick();
+assert.match(elements["explorer-voicing-identifier"].textContent, /F major/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /Fret 3; strings 4-6-10; A pedal \+ B pedal; notes G, C, E/);
+assert.match(elements["explorer-selected-detail"].textContent, /C/);
+assert.match(elements["explorer-selected-detail"].textContent, /Likely functionV function in F/);
+assert.equal(lastMount.options.positions[0].grip, "4-6-10");
+assert.equal(lastMount.options.positions[0].notes.join(","), "G,C,E");
+voicingClearButtons()[0].onclick();
+elements["explorer-key"].value = "G";
+elements["explorer-key"].dispatchChange();
+voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "4").onclick();
+voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "6").onclick();
+voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "10").onclick();
+voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "1").onclick();
+voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "2").onclick();
+voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "3").onclick();
+assert.match(elements["explorer-voicing-identifier"].textContent, /strings 1-2-3/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /not a common musical grip/);
+assert.equal(lastMount.options.positions[0].grip, "1-2-3");
+const notesBeforeFourthString = lastMount.options.positions[0].notes.join(",");
+voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "4").onclick();
+assert.match(elements["explorer-voicing-identifier"].textContent, /Choose up to 3 strings/);
+assert.equal(lastMount.options.positions[0].grip, "1-2-3");
+assert.equal(lastMount.options.positions[0].notes.join(","), notesBeforeFourthString);
 assert.doesNotMatch(elements["explorer-voicing-identifier"].textContent, /\[object Object\]/);
 assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /\[object Object\]/);
 elements["explorer-explore-mode"].value = "single";

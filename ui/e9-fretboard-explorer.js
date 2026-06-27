@@ -11,6 +11,7 @@
   const ADVANCED_GROUPS = new Set(["5-6-7", "6-7-10", "5-7-8"]);
   const TWO_STRING_GROUPS = new Set(["3-5", "5-6", "6-10", "4-6", "3-4"]);
   const FIVE_EIGHT_GROUPS = new Set(["5-8"]);
+  const EXTENDED_VOICING_GRIPS = new Set(["4-6-10"]);
   const TWO_STRING_DISPLAY_GROUPS = new Set([...TWO_STRING_GROUPS, ...FIVE_EIGHT_GROUPS]);
   const EXPLORE_MODES = {
     single: "single",
@@ -87,7 +88,13 @@
     { id: "D-lower", label: "D-lower", controls: ["D-lower"] },
     { id: "G-lower", label: "G-lower", controls: ["G-lower"] },
   ];
-  const VOICING_CONTROL_STATES = NOTE_CONTROL_STATES;
+  const COMMON_VOICING_GRIPS = new Set([
+    ...CORE_GROUPS,
+    ...ADVANCED_GROUPS,
+    ...TWO_STRING_GROUPS,
+    ...FIVE_EIGHT_GROUPS,
+    ...EXTENDED_VOICING_GRIPS,
+  ]);
   const CHORD_QUALITY_PATTERNS = [
     { id: "major", label: "major", suffix: "", intervals: [0, 4, 7], required: [0, 4, 7] },
     { id: "minor", label: "minor", suffix: "m", intervals: [0, 3, 7], required: [0, 3, 7] },
@@ -168,9 +175,10 @@
   let selectedGripTargetId = "scale-triad";
   let selectedGripCandidateId = "";
   let selectedSyncEventId = "s3-f3-open";
-  let voicingFret = "3";
-  let voicingStrings = "3-4-5";
-  let selectedVoicingControlStateId = "open";
+  let voicingFret = 3;
+  let selectedVoicingStrings = [3, 4, 5];
+  let selectedVoicingControlIds = new Set();
+  let voicingUiWarning = "";
   let drillFeedback = null;
   let pinnedNoteCell = { stringNumber: 3, fret: 3 };
   let previewNoteCell = null;
@@ -699,11 +707,13 @@
   }
 
   function parseVoicingStrings(value) {
-    const rawParts = String(value || "")
-      .split(/[,\s-]+/)
-      .map((part) => part.trim())
-      .filter(Boolean);
-    const strings = rawParts.map(Number);
+    const strings = Array.isArray(value)
+      ? value.map(Number)
+      : String(value || "")
+        .split(/[,\s-]+/)
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .map(Number);
     const invalid = strings.filter((stringNumber) => !Number.isInteger(stringNumber) || stringNumber < 1 || stringNumber > 10);
     const seen = new Set();
     const duplicates = strings.filter((stringNumber) => {
@@ -713,8 +723,8 @@
       seen.add(stringNumber);
       return false;
     });
-    if (!rawParts.length) {
-      return { strings: [], warning: "Enter at least two strings, such as 3-4-5." };
+    if (!strings.length) {
+      return { strings: [], warning: "Select 1, 2, or 3 strings to identify the voicing." };
     }
     if (invalid.length) {
       return { strings: [], warning: "Strings must be E9 string numbers from 1 through 10." };
@@ -722,58 +732,104 @@
     if (duplicates.length) {
       return { strings: [], warning: "Each string can only appear once in the voicing." };
     }
-    if (strings.length < 2) {
-      return { strings: [], warning: "Use at least two strings to identify a voicing." };
+    if (strings.length > 3) {
+      return { strings: [], warning: "Choose no more than 3 strings for this identifier." };
     }
     return { strings: strings.sort((a, b) => a - b), warning: "" };
   }
 
-  function activeVoicingControlState() {
-    return VOICING_CONTROL_STATES.find((state) => state.id === selectedVoicingControlStateId)
-      || VOICING_CONTROL_STATES[0];
+  function voicingGripLabel(strings) {
+    const grip = strings.join("-");
+    if (strings.length === 1) {
+      return "Single-string pitch check";
+    }
+    if (CORE_GROUPS.has(grip)) {
+      return "Core grip";
+    }
+    if (ADVANCED_GROUPS.has(grip) || FIVE_EIGHT_GROUPS.has(grip)) {
+      return "Advanced / unusual grip";
+    }
+    if (EXTENDED_VOICING_GRIPS.has(grip)) {
+      return "Extended grip";
+    }
+    if (TWO_STRING_GROUPS.has(grip)) {
+      return "Two-string grip";
+    }
+    return "Not a common musical grip";
   }
 
-  function availableVoicingControlStates() {
+  function voicingGripWarning(strings) {
+    const grip = strings.join("-");
+    if (COMMON_VOICING_GRIPS.has(grip) || strings.length === 1) {
+      return "";
+    }
+    return "This is not a common musical grip on E9. The notes are still calculated, but treat the result as a pitch check rather than a standard voicing.";
+  }
+
+  function activeVoicingControlState() {
     const availableIds = new Set(copedentControls().map((control) => control.id));
-    return VOICING_CONTROL_STATES.filter((state) => state.controls.every((controlId) => availableIds.has(controlId)));
+    const orderedControls = copedentControls()
+      .map((control) => control.id)
+      .filter((controlId) => availableIds.has(controlId) && selectedVoicingControlIds.has(controlId));
+    return {
+      id: orderedControls.length ? orderedControls.join("+") : "open",
+      label: noteControlLabels(orderedControls).join(" + "),
+      controls: orderedControls,
+    };
   }
 
   function voicingControlButtonsHtml() {
     const activeState = activeVoicingControlState();
-    return availableVoicingControlStates().map((state) => `
+    const buttons = copedentControls().map((control) => `
       <button
-        class="explorer-voicing-identifier__chip${activeState.id === state.id ? " is-selected" : ""}"
+        class="explorer-voicing-identifier__chip${activeState.controls.includes(control.id) ? " is-selected" : ""}"
         type="button"
-        data-voicing-control-state="${escapeHtml(state.id)}"
-        aria-pressed="${activeState.id === state.id ? "true" : "false"}"
-      >${escapeHtml(state.label)}</button>
-    `).join("");
+        data-voicing-control="${escapeHtml(control.id)}"
+        aria-pressed="${activeState.controls.includes(control.id) ? "true" : "false"}"
+      >${escapeHtml(control.label || control.id)}</button>
+    `);
+    buttons.push(`
+      <button
+        class="explorer-voicing-identifier__chip${activeState.controls.length ? "" : " is-selected"}"
+        type="button"
+        data-voicing-control-clear
+        aria-pressed="${activeState.controls.length ? "false" : "true"}"
+      >Clear</button>
+    `);
+    return buttons.join("");
   }
 
-  function voicingGripButtonsHtml() {
-    const grips = ["3-4-5", "4-5-6", "5-6-8", "6-8-10", "5-6-7", "6-7-10", "5-7-8"];
-    return grips.map((grip) => `
+  function voicingStringButtonsHtml() {
+    return Array.from({ length: 10 }, (_, index) => index + 1).map((stringNumber) => `
       <button
-        class="explorer-voicing-identifier__chip${voicingStrings === grip ? " is-selected" : ""}"
+        class="explorer-voicing-identifier__chip${selectedVoicingStrings.includes(stringNumber) ? " is-selected" : ""}"
         type="button"
-        data-voicing-string-preset="${escapeHtml(grip)}"
-        aria-pressed="${voicingStrings === grip ? "true" : "false"}"
-      >${escapeHtml(grip)}</button>
+        data-voicing-string="${escapeHtml(stringNumber)}"
+        aria-pressed="${selectedVoicingStrings.includes(stringNumber) ? "true" : "false"}"
+      >${escapeHtml(stringNumber)}</button>
     `).join("");
   }
 
   function voicingStringStates() {
     const fret = Number.parseInt(voicingFret, 10);
-    const parsedStrings = parseVoicingStrings(voicingStrings);
-    if (!Number.isInteger(fret) || fret < 0 || fret > 24) {
-      return { warning: "Fret must be a whole number from 0 through 24.", strings: [], cells: [] };
+    const parsedStrings = parseVoicingStrings(selectedVoicingStrings);
+    if (!Number.isInteger(fret) || fret < 1 || fret > 10) {
+      return { warning: "Fret must be a whole number from 1 through 10.", strings: [], cells: [] };
     }
     if (parsedStrings.warning) {
       return { warning: parsedStrings.warning, strings: [], cells: [] };
     }
     const controlState = activeVoicingControlState();
     const cells = parsedStrings.strings.map((stringNumber) => noteCellState(stringNumber, fret, controlState));
-    return { warning: "", fret, strings: parsedStrings.strings, controlState, cells };
+    return {
+      warning: "",
+      fret,
+      strings: parsedStrings.strings,
+      gripLabel: voicingGripLabel(parsedStrings.strings),
+      gripWarning: voicingGripWarning(parsedStrings.strings),
+      controlState,
+      cells,
+    };
   }
 
   function voicingSyntheticRow(result, identity) {
@@ -3349,6 +3405,11 @@
   }
 
   function renderVoicingIdentifierDetail(row, result, identity) {
+    const controlText = result.controlState.label;
+    const combinationText = result.controlState.controls.length > 1
+      ? ` This combination was created by selecting ${noteControlLabels(result.controlState.controls).join(" and ")} individually.`
+      : "";
+    const gripWarningText = result.gripWarning ? ` ${result.gripWarning}` : "";
     els.selectedDetail.className = "explorer-selected-detail";
     els.selectedDetail.innerHTML = `
       <div class="explorer-selected-detail__header">
@@ -3357,12 +3418,13 @@
       </div>
       <section class="explorer-teaching-note" aria-label="Voicing explanation">
         <strong>Why this name fits</strong>
-        <p>${escapeHtml(`${identity.label} is the best common-name match for ${result.cells.map((cell) => cell.finalNote).join(", ")}. Confidence is ${identity.confidence}. ${identity.partial ? "This is a partial voicing, so context matters." : "The selected notes match the chord tones directly."}`)}</p>
+        <p>${escapeHtml(`${identity.label} is the best common-name match for ${result.cells.map((cell) => cell.finalNote).join(", ")}. Confidence is ${identity.confidence}. ${identity.partial ? "This is a partial or ambiguous voicing, so context matters." : "The selected notes match the chord tones directly."}${combinationText}${gripWarningText}`)}</p>
       </section>
       <dl class="explorer-detail-grid">
         ${detailRow("Fret", result.fret)}
         ${detailRow("Strings", result.strings.join("-"))}
-        ${detailRow("Pedals / levers", result.controlState.label)}
+        ${detailRow("Grip type", result.gripLabel)}
+        ${detailRow("Pedals / levers", controlText)}
         ${detailRow("Notes", result.cells.map((cell) => cell.finalNote))}
         ${detailRow("Intervals against key", result.cells.map((cell) => cell.notationValue))}
         ${detailRow("Intervals in voicing", identity.intervals.map(formatInterval))}
@@ -3383,56 +3445,80 @@
       <div class="explorer-voicing-identifier__header">
         <div>
           <strong>Voicing identifier</strong>
-          <p>Enter a fret, string set, and pedal/lever state. The result is calculated from the selected copedent and key.</p>
+          <p>Choose a fret, up to three strings, and any individual pedals/levers. The result is calculated from the selected copedent and key.</p>
         </div>
         <span>${escapeHtml(formatValue(activeCopedent()?.label || "E9 copedent"))}</span>
       </div>
       <div class="explorer-voicing-identifier__controls">
-        <div>
+        <div class="explorer-voicing-identifier__field">
           <label class="explorer-voicing-identifier__label" for="explorer-voicing-fret">Fret</label>
-          <input class="explorer-voicing-identifier__input" id="explorer-voicing-fret" type="number" min="0" max="24" step="1" value="${escapeHtml(voicingFret)}" inputmode="numeric" />
+          <select class="explorer-voicing-identifier__input" id="explorer-voicing-fret">
+            ${Array.from({ length: 10 }, (_, index) => index + 1).map((fret) => `
+              <option value="${escapeHtml(fret)}"${Number(voicingFret) === fret ? " selected" : ""}>${escapeHtml(fret)}</option>
+            `).join("")}
+          </select>
         </div>
-        <div>
-          <label class="explorer-voicing-identifier__label" for="explorer-voicing-strings">Strings</label>
-          <input class="explorer-voicing-identifier__input" id="explorer-voicing-strings" type="text" value="${escapeHtml(voicingStrings)}" placeholder="3-4-5" />
-          <div class="explorer-voicing-identifier__chips" role="group" aria-label="Common string groups">${voicingGripButtonsHtml()}</div>
+        <div class="explorer-voicing-identifier__field">
+          <span class="explorer-voicing-identifier__label">Strings</span>
+          <div class="explorer-voicing-identifier__chips" role="group" aria-label="Voicing strings">${voicingStringButtonsHtml()}</div>
+          <p class="explorer-voicing-identifier__context">Select 1, 2, or 3 strings.</p>
         </div>
-        <div>
+        <div class="explorer-voicing-identifier__field">
           <span class="explorer-voicing-identifier__label">Pedals / levers</span>
-          <div class="explorer-voicing-identifier__chips" role="group" aria-label="Voicing control state">${voicingControlButtonsHtml()}</div>
+          <div class="explorer-voicing-identifier__chips" role="group" aria-label="Voicing pedal and lever controls">${voicingControlButtonsHtml()}</div>
         </div>
       </div>
-      ${result.warning ? `<p class="explorer-voicing-identifier__warning">${escapeHtml(result.warning)}</p>` : `
+      ${result.warning || voicingUiWarning || result.gripWarning ? `<p class="explorer-voicing-identifier__warning">${escapeHtml([result.warning, voicingUiWarning, result.gripWarning].filter(Boolean).join(" "))}</p>` : ""}
+      ${result.warning ? "" : `
         <section class="explorer-voicing-summary" aria-label="Identified voicing">
           <strong>${escapeHtml(identity.label)} · ${escapeHtml(identity.functionText)}</strong>
-          <p>${escapeHtml(`${selectedOptionLabel(els.scale) || `${activeKey()} ${els.scale.value}`}. Fret ${result.fret}; strings ${result.strings.join("-")}; ${result.controlState.label}; notes ${result.cells.map((cell) => cell.finalNote).join(", ")}; ${notationModeLabel()} ${result.cells.map((cell) => cell.notationValue).join(", ")}.`)}</p>
+          <p>${escapeHtml(`${selectedOptionLabel(els.scale) || `${activeKey()} ${els.scale.value}`}. Fret ${result.fret}; strings ${result.strings.join("-")}; ${result.controlState.label}; notes ${result.cells.map((cell) => cell.finalNote).join(", ")}; ${notationModeLabel()} ${result.cells.map((cell) => cell.notationValue).join(", ")}. ${result.gripLabel}.`)}</p>
         </section>
       `}
     `;
 
     const fretInput = document.getElementById("explorer-voicing-fret");
     if (fretInput) {
-      fretInput.addEventListener("input", () => {
-        voicingFret = fretInput.value;
+      fretInput.addEventListener("change", () => {
+        voicingFret = Number.parseInt(fretInput.value, 10) || 3;
+        voicingUiWarning = "";
         renderVoicingIdentifierMode();
       });
     }
-    const stringsInput = document.getElementById("explorer-voicing-strings");
-    if (stringsInput) {
-      stringsInput.addEventListener("input", () => {
-        voicingStrings = stringsInput.value;
-        renderVoicingIdentifierMode();
-      });
-    }
-    Array.from(els.voicingIdentifier.querySelectorAll("[data-voicing-string-preset]")).forEach((button) => {
+    Array.from(els.voicingIdentifier.querySelectorAll("[data-voicing-string]")).forEach((button) => {
       button.addEventListener("click", () => {
-        voicingStrings = button.getAttribute("data-voicing-string-preset") || "3-4-5";
+        const stringNumber = Number.parseInt(button.getAttribute("data-voicing-string") || "", 10);
+        if (!Number.isInteger(stringNumber)) {
+          return;
+        }
+        if (selectedVoicingStrings.includes(stringNumber)) {
+          selectedVoicingStrings = selectedVoicingStrings.filter((item) => item !== stringNumber);
+          voicingUiWarning = "";
+        } else if (selectedVoicingStrings.length >= 3) {
+          voicingUiWarning = "Choose up to 3 strings. Remove one string before adding another.";
+        } else {
+          selectedVoicingStrings = selectedVoicingStrings.concat(stringNumber).sort((a, b) => a - b);
+          voicingUiWarning = "";
+        }
         renderVoicingIdentifierMode();
       });
     });
-    Array.from(els.voicingIdentifier.querySelectorAll("[data-voicing-control-state]")).forEach((button) => {
+    Array.from(els.voicingIdentifier.querySelectorAll("[data-voicing-control]")).forEach((button) => {
       button.addEventListener("click", () => {
-        selectedVoicingControlStateId = button.getAttribute("data-voicing-control-state") || "open";
+        const controlId = button.getAttribute("data-voicing-control") || "";
+        if (selectedVoicingControlIds.has(controlId)) {
+          selectedVoicingControlIds.delete(controlId);
+        } else {
+          selectedVoicingControlIds.add(controlId);
+        }
+        voicingUiWarning = "";
+        renderVoicingIdentifierMode();
+      });
+    });
+    Array.from(els.voicingIdentifier.querySelectorAll("[data-voicing-control-clear]")).forEach((button) => {
+      button.addEventListener("click", () => {
+        selectedVoicingControlIds = new Set();
+        voicingUiWarning = "";
         renderVoicingIdentifierMode();
       });
     });
