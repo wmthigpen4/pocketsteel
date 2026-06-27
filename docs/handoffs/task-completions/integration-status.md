@@ -5,7 +5,10 @@ Generated for ChatGPT reset/guidance on branch `feature/answer-api`.
 ## Current State
 
 - Current branch: `feature/answer-api`.
-- Current repo HEAD at this refresh: implementation commit `de7f545 fix: polish voicing identifier controls`; status refresh commit follows separately.
+- Latest implementation commit: `f305c49 fix: classify partial extended voicings`.
+- Latest local Explorer Voicing Identifier smoke: **PASS at commit `f305c49`**. Local browser smoke verified partial extended voicing naming for `Fmaj7(no3)`, `Fmaj7(no5)`, and `F7(no5)`, omitted-tone wording, outside-scale warning, no dominant/V7 leak on major-7 partials, no `[object Object]`, and no browser warn/error logs.
+- Latest protected-preview Explorer Voicing Identifier smoke: **FAIL / stale static assets**. The protected URL `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=voicing-extended-chords-f305c49` loaded after Cloudflare Access, but still served older Explorer behavior: `G / fret 3 / strings 5-6-9 / A+B` showed old `Dominant 7 / V7 grip` wording instead of `Fmaj7(no3)`. Local `/api/version` still reports `git_sha=4040a47`; protected preview needs Lane 12 update/restart from commit `f305c49` before user smoke.
+- Current repo HEAD at this refresh: implementation commit `f305c49 fix: classify partial extended voicings`; status refresh commit follows separately.
 - Runtime commit smoked for E9 copedent selector/chart: `ecec173 feat: add E9 copedent selector and chart`.
 - Related impact-preview runtime smoke: `670d635 feat: add e9 pedal lever impact preview contract`.
 - Latest local UI smoke status: **PASS for Explorer Voicing Identifier control polish at commit `de7f545`**. Local browser smoke verified `Voicing identifier` appears in Explore mode, Fret is constrained to `1` through `10`, Strings use selectable chips with a maximum of three selections, pedals/levers are individually multi-selectable, combined preset buttons such as `A+B` and `B+C` are absent, `F / fret 3 / strings 4-6-10 / A pedal + B pedal` computes `G, C, E` and identifies `C / V function in F`, odd `G / fret 3 / strings 1-2-3 / open` calculates notes while warning that it is not a common musical grip, attempting a fourth string is blocked with a clear warning, and no `[object Object]` or relevant console errors appear.
