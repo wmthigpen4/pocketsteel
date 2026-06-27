@@ -1481,33 +1481,6 @@
       line-height: 1.6;
     }
 
-    .explorer-help-grid {
-      grid-column: 1 / -1;
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-      margin-top: 14px;
-    }
-
-    .explorer-help-card {
-      border: 1px solid rgba(246, 190, 88, 0.18);
-      border-radius: 14px;
-      padding: 13px 14px;
-      background: rgba(0, 0, 0, 0.22);
-      color: rgba(255, 247, 232, 0.7);
-      font-size: 0.88rem;
-      line-height: 1.55;
-    }
-
-    .explorer-help-card strong {
-      display: block;
-      margin-bottom: 5px;
-      color: var(--gold);
-      font-size: 0.78rem;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-    }
-
     @media (max-width: 760px) {
       .explorer-shell {
         width: min(100% - 20px, 1180px);
@@ -1556,10 +1529,6 @@
       .explorer-top-interval-filter__chips,
       .explorer-fret-range-filter__chips {
         justify-content: flex-start;
-      }
-
-      .explorer-help-grid {
-        grid-template-columns: 1fr;
       }
 
       .explorer-detail-row {
@@ -1716,6 +1685,10 @@
         <div><dt>Harmonized scale</dt><dd>A scale played as paired or grouped notes instead of single notes.</dd></div>
         <div><dt>Diminished</dt><dd>A tense chord built from stacked minor-thirds; often shown with °.</dd></div>
         <div><dt>Half-diminished</dt><dd>A minor seven flat five sound; often shown as m7b5 or ø.</dd></div>
+        <div><dt>m7b5</dt><dd>Means minor seven flat five. It is another common label for half-diminished.</dd></div>
+        <div><dt>ø</dt><dd>The half-diminished symbol. It usually means the same sound as m7b5.</dd></div>
+        <div><dt>°</dt><dd>The diminished symbol. In a scale-degree label, vii° means the diminished chord built on the seventh scale degree.</dd></div>
+        <div><dt>Partial row</dt><dd>A row that does not contain every chord tone by itself. Use the warning text to see whether it is partial diminished, partial m7b5, rootless, or needs musical context.</dd></div>
         <div><dt>NNS / Nashville Number System</dt><dd>Number names for scale degrees and chords, so a pattern moves between keys.</dd></div>
         <div><dt>Notation mode</dt><dd>Choose notes, Nashville numbers, Roman numerals, or number-plus-quality labels for cards and markers.</dd></div>
         <div><dt>NNS</dt><dd>Nashville-style numbers, such as 1, 2-, 3-, 4, 5, 6-, and 7° in a major key.</dd></div>
@@ -1746,10 +1719,6 @@
       <div class="explorer-row-list" id="explorer-row-list" aria-label="Explorer row details"></div>
       <div class="explorer-selected-detail" id="explorer-selected-detail" aria-live="polite"></div>
       <p class="explorer-note">Core grips are common string sets. Advanced swaps use less direct string combinations or lever/pocket logic; 5-7-8 is shown only as an advanced E-lower pocket. The 5&amp;8 branch positions appear inside the 2-string harmonized-scale view because they use a distinct E9 route.</p>
-      <div class="explorer-help-grid" aria-label="Explorer shorthand help">
-        <p class="explorer-help-card"><strong>Shorthand</strong> m7b5 means minor seven flat five. The ø symbol means half-diminished, which is another common label for m7b5. The ° symbol means diminished; vii° means the diminished chord built on the seventh scale degree.</p>
-        <p class="explorer-help-card"><strong>Partial rows</strong> Partial means the row does not contain every chord tone by itself. Use the warning text to see whether a row is partial diminished, partial m7b5, rootless, or needs musical context.</p>
-      </div>
     </section>
   </main>
 

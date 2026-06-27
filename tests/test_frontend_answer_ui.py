@@ -429,11 +429,15 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "corpus retrieval" not in html
     assert "source-card answers" not in html
     assert "RAG-generated" not in html
-    assert "m7b5 means minor seven flat five" in html
-    assert "The ø symbol means half-diminished" in html
-    assert "The ° symbol means diminished" in html
+    assert "Explorer shorthand help" not in html
+    assert "explorer-help-grid" not in html
+    assert "explorer-help-card" not in html
+    assert "<strong>Shorthand</strong>" not in html
+    assert "<dt>m7b5</dt><dd>Means minor seven flat five." in html
+    assert "<dt>ø</dt><dd>The half-diminished symbol." in html
+    assert "<dt>°</dt><dd>The diminished symbol." in html
     assert "vii° means the diminished chord built on the seventh scale degree" in html
-    assert "Partial means the row does not contain every chord tone" in html
+    assert "<dt>Partial row</dt><dd>A row that does not contain every chord tone by itself." in html
     assert 'id="explorer-tooltip"' in html
     assert 'id="explorer-active-results"' in html
     assert 'id="explorer-copedent-chart"' in html
