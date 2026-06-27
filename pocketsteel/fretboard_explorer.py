@@ -23,6 +23,7 @@ from pocketsteel.e9_copedents import (
     control_labels_for_profile,
     control_order_for_profile,
     control_types_for_profile,
+    controls_by_id_for_profile,
     get_e9_copedent_profile,
     selected_copedent_payload,
 )
@@ -1151,10 +1152,10 @@ def build_control_impact_preview(key: str = "G", copedent_id: str | None = None)
     key = normalize_explorer_key(key)
     profile = get_e9_copedent_profile(copedent_id)
     control_changes = control_changes_for_profile(profile.id)
-    control_labels = control_labels_for_profile(profile.id)
-    control_types = control_types_for_profile(profile.id)
+    profile_controls = controls_by_id_for_profile(profile.id)
     controls: list[dict[str, object]] = []
     for control in control_order_for_profile(profile.id):
+        control_record = profile_controls[control]
         changes = control_changes[control]
         string_impacts: list[dict[str, object]] = []
         for string in sorted(changes):
@@ -1172,17 +1173,16 @@ def build_control_impact_preview(key: str = "G", copedent_id: str | None = None)
                     "after_key_context": key_context_for_note(key, after_note),
                 }
             )
-        controls.append(
+        control_payload = control_record.to_dict()
+        control_payload.update(
             {
-                "id": control,
-                "label": control_labels[control],
-                "control_type": control_types[control],
                 "affected_strings": sorted(changes),
                 "string_impacts": string_impacts,
                 "summary": control_impact_summary(key, control, string_impacts, profile.id),
                 "validation_status": "deterministic_standard_e9",
             }
         )
+        controls.append(control_payload)
     return {
         "type": "e9-pedal-lever-impact-preview",
         "version": "1.0",
@@ -1240,6 +1240,21 @@ def validate_explorer_payload(payload: dict[str, object]) -> None:
     chart = selected_copedent.get("chart")
     if not isinstance(chart, dict) or not isinstance(chart.get("rows"), list) or not isinstance(chart.get("columns"), list):
         raise ValueError("Explorer selected_copedent requires chart rows and columns")
+    for column in chart["columns"]:
+        if not isinstance(column, dict):
+            raise ValueError("Explorer selected_copedent chart columns must be dicts")
+        for field in (
+            "id",
+            "stable_id",
+            "display_label",
+            "mechanical_name",
+            "physical_position",
+            "change_type",
+            "affected_strings",
+            "string_actions",
+        ):
+            if field not in column:
+                raise ValueError(f"Explorer selected_copedent chart column missing {field}")
     options = selected_copedent.get("available_options")
     if not isinstance(options, list) or not options:
         raise ValueError("Explorer selected_copedent requires available_options")
@@ -1254,6 +1269,21 @@ def validate_explorer_payload(payload: dict[str, object]) -> None:
     controls = impact_preview.get("controls")
     if not isinstance(controls, list) or not controls:
         raise ValueError("Explorer control_impact_preview requires controls")
+    for control in controls:
+        if not isinstance(control, dict):
+            raise ValueError("Explorer control_impact_preview controls must be dicts")
+        for field in (
+            "id",
+            "stable_id",
+            "display_label",
+            "mechanical_name",
+            "change_type",
+            "affected_strings",
+            "string_actions",
+            "string_impacts",
+        ):
+            if field not in control:
+                raise ValueError(f"Explorer control_impact_preview control missing {field}")
     ids: set[str] = set()
     for position in positions:
         if not isinstance(position, dict):

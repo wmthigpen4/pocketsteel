@@ -211,7 +211,10 @@
   }
 
   function selectedCopedentId() {
-    return els.copedent?.value || fallbackPayload?.selected_copedent?.id || DEFAULT_COPEDENT_ID;
+    return els.copedent?.options?.[els.copedent.selectedIndex]?.value
+      || els.copedent?.value
+      || fallbackPayload?.selected_copedent?.id
+      || DEFAULT_COPEDENT_ID;
   }
 
   function payloadsForSelectedCopedent() {
@@ -248,6 +251,10 @@
       return entries.length ? entries.join("; ") : emptyText;
     }
     return String(value);
+  }
+
+  function controlDisplayLabel(control, emptyText = "Control") {
+    return formatValue(control?.display_label || control?.label || control?.id, emptyText);
   }
 
   function formatInterval(value) {
@@ -359,7 +366,7 @@
   }
 
   function noteControlLabel(controlId) {
-    return controlById(controlId)?.label || controlId;
+    return controlDisplayLabel(controlById(controlId), controlId);
   }
 
   function noteControlLabels(controlIds) {
@@ -646,7 +653,7 @@
         type="button"
         data-voicing-control="${escapeHtml(control.id)}"
         aria-pressed="${activeState.controls.includes(control.id) ? "true" : "false"}"
-      >${escapeHtml(control.label || control.id)}</button>
+      >${escapeHtml(controlDisplayLabel(control, "Control"))}</button>
     `);
     buttons.push(`
       <button
@@ -2318,7 +2325,7 @@
               <th scope="col">Open</th>
               ${columns.map((column) => `
                 <th scope="col">
-                  <span>${escapeHtml(formatValue(column.label || column.id))}</span>
+                  <span>${escapeHtml(controlDisplayLabel(column, "Control"))}</span>
                   <small>${escapeHtml(formatValue(column.physical_position || column.control_type, ""))}</small>
                 </th>
               `).join("")}
@@ -2401,7 +2408,7 @@
     if (!controls.length) {
       return `Choose one or more controls to preview changes for ${groupText} in ${harmonyText}. Showing ${modeText}.`;
     }
-    return `Previewing ${controls.map((control) => control.label || control.id).join(" + ")} for ${groupText} in ${harmonyText}. Showing ${modeText}.`;
+    return `Previewing ${controls.map((control) => controlDisplayLabel(control, "Control")).join(" + ")} for ${groupText} in ${harmonyText}. Showing ${modeText}.`;
   }
 
   function combinedImpactCaution(controls) {
@@ -2429,14 +2436,14 @@
     if (!impacts.length) {
       return `
         <article class="explorer-control-impact-detail" data-control-impact-detail="${escapeHtml(control.id || control.label || "")}">
-          <strong>${escapeHtml(formatValue(control.label || control.id || "Control"))}</strong>
+          <strong>${escapeHtml(controlDisplayLabel(control, "Control"))}</strong>
           <p>No direct impact on the selected string group. This control affects strings ${escapeHtml(affectedStrings)}, but those strings are not active in the current view.</p>
         </article>
       `;
     }
     return `
       <article class="explorer-control-impact-detail" data-control-impact-detail="${escapeHtml(control.id || control.label || "")}">
-        <strong>${escapeHtml(formatValue(control.label || control.id || "Control"))}</strong>
+        <strong>${escapeHtml(controlDisplayLabel(control, "Control"))}</strong>
         <p>Affects strings ${escapeHtml(affectedStrings)}${impacts.length === allImpacts.length ? "." : "; direct changes in this view are shown below."}</p>
         <ul class="explorer-control-impact-list">
           ${impacts.map((impact) => impactLineHtml(impact)).join("")}
@@ -2485,7 +2492,7 @@
               type="button"
               aria-pressed="${selectedImpactControlIds.has(control.id) ? "true" : "false"}"
               data-control-impact-tab="${escapeHtml(control.id || "")}"
-            >${escapeHtml(formatValue(control.label || control.id || "Control"))}</button>
+            >${escapeHtml(controlDisplayLabel(control, "Control"))}</button>
           `).join("")}
           <button class="explorer-control-impact-tab explorer-control-impact-clear" type="button" data-control-impact-clear>Clear</button>
         </div>

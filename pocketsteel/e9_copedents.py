@@ -89,6 +89,18 @@ class E9CopedentChange:
             return "down"
         return "none"
 
+    @property
+    def string_action_description(self) -> str:
+        direction = {
+            "raise": "raises",
+            "lower": "lowers",
+        }.get(self.direction, "keeps")
+        interval = abs(self.semitones)
+        unit = "semitone" if interval == 1 else "semitones"
+        if self.direction == "none":
+            return f"String {self.string}: {self.from_note} stays {self.to_note}."
+        return f"String {self.string}: {direction} {self.from_note} to {self.to_note} ({interval} {unit})."
+
     def to_dict(self) -> dict[str, object]:
         payload: dict[str, object] = {
             "string": self.string,
@@ -102,6 +114,11 @@ class E9CopedentChange:
             payload["notes"] = self.notes
         return payload
 
+    def string_action(self) -> dict[str, object]:
+        payload = self.to_dict()
+        payload["description"] = self.string_action_description
+        return payload
+
 
 @dataclass(frozen=True)
 class E9CopedentControl:
@@ -112,19 +129,49 @@ class E9CopedentControl:
     changes: tuple[E9CopedentChange, ...]
     mechanical_name: str = ""
     notes: str = ""
+    player_shorthand: tuple[str, ...] = ()
+    compatibility_aliases: tuple[str, ...] = ()
+    travel: str = ""
+    change_type: str = ""
 
     @property
     def affected_strings(self) -> tuple[int, ...]:
         return tuple(change.string for change in self.changes)
 
+    @property
+    def stable_id(self) -> str:
+        return self.id
+
+    @property
+    def display_label(self) -> str:
+        return self.label
+
+    @property
+    def resolved_change_type(self) -> str:
+        if self.change_type:
+            return self.change_type
+        directions = {change.direction for change in self.changes if change.direction != "none"}
+        if not directions:
+            return "none"
+        if len(directions) == 1:
+            return directions.pop()
+        return "mixed"
+
     def to_dict(self) -> dict[str, object]:
         payload: dict[str, object] = {
             "id": self.id,
+            "stable_id": self.stable_id,
             "label": self.label,
+            "display_label": self.display_label,
             "control_type": self.control_type,
             "physical_position": self.physical_position,
+            "player_shorthand": list(self.player_shorthand),
+            "compatibility_aliases": list(self.compatibility_aliases),
+            "travel": self.travel,
+            "change_type": self.resolved_change_type,
             "affected_strings": list(self.affected_strings),
             "changes": [change.to_dict() for change in self.changes],
+            "string_actions": [change.string_action() for change in self.changes],
         }
         if self.mechanical_name:
             payload["mechanical_name"] = self.mechanical_name
@@ -202,9 +249,18 @@ class E9CopedentProfile:
             "columns": [
                 {
                     "id": control.id,
+                    "stable_id": control.stable_id,
                     "label": control.label,
+                    "display_label": control.display_label,
                     "control_type": control.control_type,
                     "physical_position": control.physical_position,
+                    "mechanical_name": control.mechanical_name,
+                    "player_shorthand": list(control.player_shorthand),
+                    "compatibility_aliases": list(control.compatibility_aliases),
+                    "travel": control.travel,
+                    "change_type": control.resolved_change_type,
+                    "affected_strings": list(control.affected_strings),
+                    "string_actions": [change.string_action() for change in control.changes],
                 }
                 for control in controls
             ],
@@ -264,7 +320,11 @@ def standard_e9_controls_for_positions(physical_positions: dict[str, str]) -> tu
             label="A pedal",
             control_type="pedal",
             physical_position=physical_positions["A"],
-            mechanical_name="B-to-C# raise",
+            mechanical_name="B-to-C# raise on strings 5 and 10",
+            player_shorthand=("A",),
+            compatibility_aliases=(physical_positions["A"],),
+            travel="pedal",
+            change_type="raise",
             changes=(
                 E9CopedentChange(5, "B", "C#"),
                 E9CopedentChange(10, "B", "C#"),
@@ -275,7 +335,11 @@ def standard_e9_controls_for_positions(physical_positions: dict[str, str]) -> tu
             label="B pedal",
             control_type="pedal",
             physical_position=physical_positions["B"],
-            mechanical_name="G#-to-A raise",
+            mechanical_name="G#-to-A raise on strings 3 and 6",
+            player_shorthand=("B",),
+            compatibility_aliases=(physical_positions["B"],),
+            travel="pedal",
+            change_type="raise",
             changes=(
                 E9CopedentChange(3, "G#", "A"),
                 E9CopedentChange(6, "G#", "A"),
@@ -286,7 +350,11 @@ def standard_e9_controls_for_positions(physical_positions: dict[str, str]) -> tu
             label="C pedal",
             control_type="pedal",
             physical_position=physical_positions["C"],
-            mechanical_name="E-to-F# and B-to-C# raise",
+            mechanical_name="E-to-F# and B-to-C# raise on strings 4 and 5",
+            player_shorthand=("C",),
+            compatibility_aliases=(physical_positions["C"],),
+            travel="pedal",
+            change_type="raise",
             changes=(
                 E9CopedentChange(4, "E", "F#"),
                 E9CopedentChange(5, "B", "C#"),
@@ -294,10 +362,14 @@ def standard_e9_controls_for_positions(physical_positions: dict[str, str]) -> tu
         ),
         E9CopedentControl(
             id="E-raise",
-            label="E-raise lever",
+            label="E raise (F lever)",
             control_type="lever",
             physical_position="LKL",
-            mechanical_name="E-to-F raise",
+            mechanical_name="E-to-F raise on strings 4 and 8",
+            player_shorthand=("F", "F lever"),
+            compatibility_aliases=("E-raise", "E raise", "LKL"),
+            travel="full",
+            change_type="raise",
             changes=(
                 E9CopedentChange(4, "E", "F"),
                 E9CopedentChange(8, "E", "F"),
@@ -309,7 +381,11 @@ def standard_e9_controls_for_positions(physical_positions: dict[str, str]) -> tu
             label="E-lower lever",
             control_type="lever",
             physical_position="LKR",
-            mechanical_name="E-to-Eb/D# lower",
+            mechanical_name="E-to-Eb/D# lower on strings 4 and 8",
+            player_shorthand=("E", "E lever"),
+            compatibility_aliases=("E-lower", "E lower", "LKR"),
+            travel="full",
+            change_type="lower",
             changes=(
                 E9CopedentChange(4, "E", "Eb/D#"),
                 E9CopedentChange(8, "E", "Eb/D#"),
@@ -318,10 +394,14 @@ def standard_e9_controls_for_positions(physical_positions: dict[str, str]) -> tu
         ),
         E9CopedentControl(
             id="D-lower",
-            label="D-lower lever",
+            label="D lower half-stop",
             control_type="lever",
             physical_position="RKR",
-            mechanical_name="2nd-string half/full stop and 9th-string lower",
+            mechanical_name="D#-to-D half-stop on string 2 plus D-to-C# lower on string 9",
+            player_shorthand=("D-", "D half-stop"),
+            compatibility_aliases=("D-lower", "RKR"),
+            travel="half-stop",
+            change_type="lower",
             changes=(
                 E9CopedentChange(2, "D#", "D", notes="Half-stop representation; full-stop C# varies by setup."),
                 E9CopedentChange(9, "D", "C#"),
@@ -329,10 +409,14 @@ def standard_e9_controls_for_positions(physical_positions: dict[str, str]) -> tu
         ),
         E9CopedentControl(
             id="G-lower",
-            label="G-lower lever",
+            label="RKL G raise/lower",
             control_type="lever",
             physical_position="RKL",
-            mechanical_name="6th-string G# lower family",
+            mechanical_name="string 1 F#-to-G raise plus string 6 G#-to-F# lower",
+            player_shorthand=("G+", "G-", "RKL"),
+            compatibility_aliases=("G-lower", "RKL"),
+            travel="full",
+            change_type="mixed",
             changes=(
                 E9CopedentChange(1, "F#", "G"),
                 E9CopedentChange(6, "G#", "F#"),
@@ -351,13 +435,28 @@ def _user_string_change_to_e9(change: StringChange) -> E9CopedentChange:
     )
 
 
-def _user_control(state: CopedentState, *, control_id: str, label: str, control_type: ControlType) -> E9CopedentControl:
+def _user_control(
+    state: CopedentState,
+    *,
+    control_id: str,
+    label: str,
+    control_type: ControlType,
+    mechanical_name: str,
+    player_shorthand: tuple[str, ...] = (),
+    compatibility_aliases: tuple[str, ...] = (),
+    travel: str = "",
+    change_type: str = "",
+) -> E9CopedentControl:
     return E9CopedentControl(
         id=control_id,
         label=label,
         control_type=control_type,
-        physical_position=state.mechanical_label,
-        mechanical_name=state.display_label,
+        physical_position=state.physical_control,
+        mechanical_name=mechanical_name,
+        player_shorthand=player_shorthand,
+        compatibility_aliases=compatibility_aliases,
+        travel=travel or state.travel,
+        change_type=change_type,
         changes=tuple(_user_string_change_to_e9(change) for change in state.changes),
         notes=state.notes,
     )
@@ -365,21 +464,31 @@ def _user_control(state: CopedentState, *, control_id: str, label: str, control_
 
 def custom_lkv_controls() -> tuple[E9CopedentControl, ...]:
     states = {state.id: state for state in USER_E9_COPEDENT.states}
-    ordered_states: tuple[tuple[str, str, str, ControlType], ...] = (
-        ("P1", "A", "A pedal", "pedal"),
-        ("P2", "B", "B pedal", "pedal"),
-        ("P3", "C", "C pedal", "pedal"),
-        ("LKL", "E-raise", "E-raise / F lever", "lever"),
-        ("LKR", "E-lower", "E-lower lever", "lever"),
-        ("LKV", "B-to-Bb", "B-to-Bb vertical", "lever"),
-        ("RKL.half", "RKL-half", "RKL half-stop", "lever"),
-        ("RKL.full", "G-lower", "RKL full-stop / G-lower", "lever"),
-        ("RKR.half", "D-lower", "D-lower half-stop", "lever"),
-        ("RKR.full", "RKR-full", "RKR full-stop", "lever"),
+    ordered_states: tuple[tuple[str, str, str, ControlType, str, tuple[str, ...], tuple[str, ...], str, str], ...] = (
+        ("P1", "A", "A pedal", "pedal", "B-to-C# raise on strings 5 and 10", ("A",), ("P1",), "pedal", "raise"),
+        ("P2", "B", "B pedal", "pedal", "G#-to-A raise on strings 3 and 6", ("B",), ("P2",), "pedal", "raise"),
+        ("P3", "C", "C pedal", "pedal", "E-to-F# and B-to-C# raise on strings 4 and 5", ("C",), ("P3",), "pedal", "raise"),
+        ("LKL", "E-raise", "E raise (F lever)", "lever", "E-to-F raise on strings 4 and 8", ("F", "F lever"), ("LKL",), "full", "raise"),
+        ("LKR", "E-lower", "E-lower lever", "lever", "E-to-Eb/D# lower on strings 4 and 8", ("E", "E lever"), ("LKR",), "full", "lower"),
+        ("LKV", "B-to-Bb", "B-to-Bb vertical", "lever", "B-to-Bb/A# lower on strings 5 and 10", ("V", "vertical", "LKV"), ("B-to-A#", "LKV"), "full", "lower"),
+        ("RKL.half", "RKL-half", "RKL half-stop", "lever", "string 1 F#-to-G raise plus string 6 G#-to-G lower", ("G+", "RKL"), ("RKL", "RKL-half"), "half-stop", "mixed"),
+        ("RKL.full", "G-lower", "RKL full-stop / G lower", "lever", "string 1 F#-to-G raise plus string 6 G#-to-F# lower", ("G+", "G-", "RKLL"), ("G-lower", "RKL.full", "RKLL"), "full-stop", "mixed"),
+        ("RKR.half", "D-lower", "D lower half-stop", "lever", "D#-to-D half-stop on string 2 plus D-to-C# lower on string 9", ("D-", "RKR"), ("D-lower", "RKR.half"), "half-stop", "lower"),
+        ("RKR.full", "RKR-full", "D lower full-stop", "lever", "D#-to-C# full-stop on string 2 plus D-to-C# lower on string 9", ("D--", "RKRR"), ("RKR-full", "RKR.full", "RKRR"), "full-stop", "lower"),
     )
     return tuple(
-        _user_control(states[state_id], control_id=control_id, label=label, control_type=control_type)
-        for state_id, control_id, label, control_type in ordered_states
+        _user_control(
+            states[state_id],
+            control_id=control_id,
+            label=label,
+            control_type=control_type,
+            mechanical_name=mechanical_name,
+            player_shorthand=player_shorthand,
+            compatibility_aliases=compatibility_aliases,
+            travel=travel,
+            change_type=change_type,
+        )
+        for state_id, control_id, label, control_type, mechanical_name, player_shorthand, compatibility_aliases, travel, change_type in ordered_states
         if state_id in states
     )
 
@@ -449,6 +558,10 @@ def control_changes_for_profile(copedent_id: str | None = None) -> dict[str, dic
         control.id: {change.string: change.to_note for change in control.changes}
         for control in profile.controls
     }
+
+
+def controls_by_id_for_profile(copedent_id: str | None = None) -> dict[str, E9CopedentControl]:
+    return get_e9_copedent_profile(copedent_id).controls_by_id()
 
 
 def control_labels_for_profile(copedent_id: str | None = None) -> dict[str, str]:

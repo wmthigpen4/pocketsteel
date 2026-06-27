@@ -119,8 +119,15 @@ def test_control_impact_preview_contract_describes_standard_e9_changes_in_key_co
 
     a_pedal = controls["A"]
     assert a_pedal["label"] == "A pedal"
+    assert a_pedal["stable_id"] == "A"
+    assert a_pedal["display_label"] == "A pedal"
+    assert a_pedal["mechanical_name"] == "B-to-C# raise on strings 5 and 10"
+    assert a_pedal["player_shorthand"] == ["A"]
+    assert a_pedal["change_type"] == "raise"
+    assert a_pedal["travel"] == "pedal"
     assert a_pedal["control_type"] == "pedal"
     assert a_pedal["affected_strings"] == [5, 10]
+    assert a_pedal["string_actions"][0]["description"] == "String 5: raises B to C# (2 semitones)."
     a_string_5 = next(impact for impact in a_pedal["string_impacts"] if impact["string"] == 5)
     assert a_string_5["before_note"] == "B"
     assert a_string_5["after_note"] == "C#"
@@ -144,13 +151,26 @@ def test_control_impact_preview_contract_describes_standard_e9_changes_in_key_co
     assert "deterministic Emmons E9 10-string E9 pitch logic" in preview["notes"][0]
 
     d_lower = controls["D-lower"]
-    assert d_lower["label"] == "D-lower lever"
+    assert d_lower["label"] == "D lower half-stop"
+    assert d_lower["display_label"] == "D lower half-stop"
+    assert d_lower["mechanical_name"] == "D#-to-D half-stop on string 2 plus D-to-C# lower on string 9"
+    assert d_lower["player_shorthand"] == ["D-", "D half-stop"]
+    assert d_lower["change_type"] == "lower"
+    assert d_lower["travel"] == "half-stop"
     assert d_lower["control_type"] == "lever"
     assert d_lower["affected_strings"] == [2, 9]
     d_lower_string_9 = next(impact for impact in d_lower["string_impacts"] if impact["string"] == 9)
     assert d_lower_string_9["before_note"] == "D"
     assert d_lower_string_9["after_note"] == "C#"
     assert d_lower_string_9["interval_effect"] == "lowers 1 semitone"
+
+    g_control = controls["G-lower"]
+    assert g_control["label"] == "RKL G raise/lower"
+    assert g_control["mechanical_name"] == "string 1 F#-to-G raise plus string 6 G#-to-F# lower"
+    assert g_control["change_type"] == "mixed"
+    assert g_control["affected_strings"] == [1, 6]
+    assert g_control["string_actions"][0]["description"] == "String 1: raises F# to G (1 semitone)."
+    assert g_control["string_actions"][1]["description"] == "String 6: lowers G# to F# (2 semitones)."
 
 
 def test_e9_copedent_selector_data_exposes_emmons_day_custom_and_disabled_my_copedent() -> None:
@@ -183,6 +203,14 @@ def test_selected_copedent_chart_payload_is_visual_table_ready() -> None:
     chart = payload["chart"]
     assert len(chart["rows"]) == 10
     assert [column["id"] for column in chart["columns"]][:3] == ["A", "B", "C"]
+    a_column = chart["columns"][0]
+    assert a_column["stable_id"] == "A"
+    assert a_column["display_label"] == "A pedal"
+    assert a_column["mechanical_name"] == "B-to-C# raise on strings 5 and 10"
+    assert a_column["player_shorthand"] == ["A"]
+    assert a_column["affected_strings"] == [5, 10]
+    assert a_column["change_type"] == "raise"
+    assert a_column["string_actions"][0]["description"] == "String 5: raises B to C# (2 semitones)."
     assert "B-to-Bb" not in [column["id"] for column in chart["columns"]]
     row_5 = next(row for row in chart["rows"] if row["string"] == 5)
     assert row_5["open_note"] == "B"
@@ -214,6 +242,26 @@ def test_custom_lkv_copedent_extracts_user_specific_vertical_without_polluting_e
     preview_controls = {control["id"]: control for control in preview["controls"]}
     assert "B-to-Bb" in preview_controls
     assert preview_controls["B-to-Bb"]["affected_strings"] == [5, 10]
+    assert preview_controls["B-to-Bb"]["display_label"] == "B-to-Bb vertical"
+    assert preview_controls["B-to-Bb"]["mechanical_name"] == "B-to-Bb/A# lower on strings 5 and 10"
+    assert preview_controls["B-to-Bb"]["player_shorthand"] == ["V", "vertical", "LKV"]
+    assert preview_controls["B-to-Bb"]["compatibility_aliases"] == ["B-to-A#", "LKV"]
+
+    rkl_full = preview_controls["G-lower"]
+    assert rkl_full["display_label"] == "RKL full-stop / G lower"
+    assert rkl_full["change_type"] == "mixed"
+    assert rkl_full["string_actions"][0]["description"] == "String 1: raises F# to G (1 semitone)."
+    assert rkl_full["string_actions"][1]["description"] == "String 6: lowers G# to F# (2 semitones)."
+
+    rkr_half = preview_controls["D-lower"]
+    assert rkr_half["display_label"] == "D lower half-stop"
+    assert rkr_half["mechanical_name"] == "D#-to-D half-stop on string 2 plus D-to-C# lower on string 9"
+    assert any(action["string"] == 9 and action["to"] == "C#" for action in rkr_half["string_actions"])
+
+    rkr_full = preview_controls["RKR-full"]
+    assert rkr_full["display_label"] == "D lower full-stop"
+    assert rkr_full["mechanical_name"] == "D#-to-C# full-stop on string 2 plus D-to-C# lower on string 9"
+    assert any(action["string"] == 9 and action["from"] == "D" and action["to"] == "C#" for action in rkr_full["string_actions"])
 
 
 def test_day_e9_changes_physical_pedal_order_but_not_named_pedal_changes() -> None:
@@ -228,6 +276,9 @@ def test_day_e9_changes_physical_pedal_order_but_not_named_pedal_changes() -> No
 
     controls = {control["id"]: control for control in selected["controls"]}
     assert controls["A"]["physical_position"] == "P3"
+    assert controls["A"]["display_label"] == "A pedal"
+    assert controls["A"]["stable_id"] == "A"
+    assert controls["A"]["mechanical_name"] == "B-to-C# raise on strings 5 and 10"
     assert controls["A"]["changes"] == [
         {"string": 5, "from": "B", "to": "C#", "semitones": 2, "direction": "raise", "arrow": "up"},
         {"string": 10, "from": "B", "to": "C#", "semitones": 2, "direction": "raise", "arrow": "up"},
