@@ -276,8 +276,9 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "pedal-steel-fretboard.js?v=explorer-compact-copedent-20260625" not in html
     assert '<script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>' in html
     assert "[hidden] {\n      display: none !important;\n    }" in html
-    assert '<script src="e9-fretboard-explorer.js?v=compact-controls-20260626"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=single-note-finder-20260626"></script>' in html
     assert "explorer-top-note-marker-source-20260626" not in html
+    assert "e9-fretboard-explorer.js?v=compact-controls-20260626" not in html
     assert "e9-fretboard-explorer.js?v=explorer-compact-copedent-20260625" not in html
     assert "e9-fretboard-explorer.js?v=explorer-harmonized-scale-clarity-20260626" not in html
     assert "e9-fretboard-explorer.js?v=explorer-harmonized-path-mode-20260626" not in html
@@ -332,7 +333,12 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<label for="explorer-explore-mode">Explore mode</label>' in html
     assert '<option value="single" selected>Single grip</option>' in html
     assert '<option value="path">Harmonized scale path</option>' in html
+    assert '<option value="note">Single-note finder</option>' in html
     assert "Single grip filters exact strings" in html
+    assert "Single-note finder shows how pedals and levers change one note at a time." in html
+    assert 'id="explorer-note-finder"' in html
+    assert ".explorer-note-grid" in html
+    assert ".explorer-note-cell.is-result" in html
     assert '<label for="explorer-path-family">Path family</label>' in html
     assert '<option value="high">High path: 3-4-5 / 4-5-6</option>' in html
     assert '<option value="middle">Middle path: 5-6-8 / 5-6-7</option>' in html
@@ -539,6 +545,13 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "selectedImpactControlIds" in script
     assert "data-control-impact-clear" in script
     assert "No direct impact on the selected string group" in script
+    assert "NOTE_CONTROL_STATES" in script
+    assert "Single-note finder" in script
+    assert "data-note-control-state" in script
+    assert "data-note-cell" in script
+    assert "Open note at fret" in script
+    assert "Final note" in script
+    assert "Pedals and levers change the note on affected strings" in script
 
     g_major_three = [
         row for row in payload["positions"]
@@ -731,35 +744,37 @@ class FakeNode {
     this._innerHTML = value;
     this.textContent = value.replace(/<[^>]*>/g, "");
     this._markers = Array.from(value.matchAll(/data-highlight-id="([^"]+)"/g)).map((match) => new FakeMarker(match[1]));
+    const noteCells = Array.from(value.matchAll(/<button[\s\S]*?data-note-cell="([^"]+)"[\s\S]*?<\/button>/g)).map((match) => {
+      const rawButton = match[0];
+      const button = new FakeButton(match[1], "data-note-cell");
+      button.attributes["data-note-string"] = (rawButton.match(/data-note-string="([^"]+)"/) || [])[1] || "";
+      button.attributes["data-note-fret"] = (rawButton.match(/data-note-fret="([^"]+)"/) || [])[1] || "";
+      const result = (rawButton.match(/data-note-result="([^"]+)"/) || [])[1];
+      if (result) {
+        button.attributes["data-note-result"] = result;
+      }
+      return button;
+    });
     this._buttons = {
       "[data-explorer-row]": Array.from(value.matchAll(/data-explorer-row="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-explorer-row")),
       "[data-active-result-row]": Array.from(value.matchAll(/data-active-result-row="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-active-result-row")),
       "[data-control-impact-tab]": Array.from(value.matchAll(/data-control-impact-tab="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-control-impact-tab")),
       "[data-top-interval-filter]": Array.from(value.matchAll(/data-top-interval-filter="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-top-interval-filter")),
       "[data-fret-range-filter]": Array.from(value.matchAll(/data-fret-range-filter="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-fret-range-filter")),
-      "[data-control-impact-clear]": value.includes("data-control-impact-clear") ? [new FakeButton("clear", "data-control-impact-clear")] : []
+      "[data-control-impact-clear]": value.includes("data-control-impact-clear") ? [new FakeButton("clear", "data-control-impact-clear")] : [],
+      "[data-note-control-state]": Array.from(value.matchAll(/data-note-control-state="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-control-state")),
+      "[data-note-target]": Array.from(value.matchAll(/data-note-target="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-target")),
+      "[data-note-cell]": noteCells,
+      "[data-note-result]": Array.from(value.matchAll(/data-note-result="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-result")),
+      "[data-note-result-card]": Array.from(value.matchAll(/data-note-result-card="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-result-card")),
+      "[data-note-result-list]": Array.from(value.matchAll(/data-note-result-list="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-result-list"))
     };
   }
   get innerHTML() {
     return this._innerHTML;
   }
   querySelectorAll(selector) {
-    if (selector === "[data-explorer-row]") {
-      return this._buttons[selector] || [];
-    }
-    if (selector === "[data-active-result-row]") {
-      return this._buttons[selector] || [];
-    }
-    if (selector === "[data-control-impact-tab]") {
-      return this._buttons[selector] || [];
-    }
-    if (selector === "[data-top-interval-filter]") {
-      return this._buttons[selector] || [];
-    }
-    if (selector === "[data-fret-range-filter]") {
-      return this._buttons[selector] || [];
-    }
-    if (selector === "[data-control-impact-clear]") {
+    if (this._buttons[selector]) {
       return this._buttons[selector] || [];
     }
     if (selector === ".pedal-steel-fretboard__highlight[data-highlight-id]") {
@@ -857,7 +872,8 @@ const elements = {
   ]),
   "explorer-explore-mode": new FakeSelect("explorer-explore-mode", "single", [
     { value: "single", text: "Single grip" },
-    { value: "path", text: "Harmonized scale path" }
+    { value: "path", text: "Harmonized scale path" },
+    { value: "note", text: "Single-note finder" }
   ]),
   "explorer-scale": new FakeSelect("explorer-scale", "major", [
     { value: "major", text: "G major" },
@@ -885,6 +901,7 @@ const elements = {
   "explorer-copedent-close": new FakeButton("close", "id"),
   "explorer-copedent-chart": new FakeNode("explorer-copedent-chart"),
   "explorer-control-impact-preview": new FakeNode("explorer-control-impact-preview"),
+  "explorer-note-finder": new FakeNode("explorer-note-finder"),
   "explorer-active-results": new FakeNode("explorer-active-results"),
   "explorer-fretboard": new FakeNode("explorer-fretboard"),
   "explorer-row-list": new FakeNode("explorer-row-list"),
@@ -1108,6 +1125,60 @@ assert.equal(g345Fret3Marker().label, "3-, 4");
 assert.equal(lastMount.options.positions.some((row) => /^(1|2-|3-|4|5|6-|7°)(, (1|2-|3-|4|5|6-|7°))*$/.test(row.label)), true);
 assert.match(elements["explorer-active-results"].innerHTML, /Top note interval:/);
 notationModeButtons[0].onclick();
+
+elements["explorer-explore-mode"].value = "note";
+elements["explorer-explore-mode"].dispatchChange();
+assert.equal(elements["explorer-note-finder"].hidden, false);
+assert.equal(elements["explorer-string-group-control"].hidden, true);
+assert.equal(elements["explorer-string-group"].disabled, true);
+assert.equal(elements["explorer-path-family-control"].hidden, true);
+assert.equal(elements["explorer-harmony-control"].hidden, true);
+assert.equal(elements["explorer-harmony"].disabled, true);
+assert.equal(elements["explorer-control-impact-preview"].hidden, true);
+assert.equal(elements["explorer-fret-range-filter"].hidden, false);
+assert.match(elements["explorer-note-finder"].textContent, /Pedals and levers change the note on affected strings/);
+assert.match(elements["explorer-active-results"].textContent, /Single-note finder:/);
+assert.match(elements["explorer-selected-detail"].textContent, /String 3, fret 3: B/);
+assert.match(elements["explorer-selected-detail"].textContent, /Active controlsOpen/);
+assert.match(elements["explorer-selected-detail"].textContent, /Open note at fretB/);
+assert.match(elements["explorer-selected-detail"].textContent, /Final noteB/);
+assert.match(elements["explorer-selected-detail"].textContent, /Open position: no pedals or levers are active/);
+const noteTargetButtons = () => elements["explorer-note-finder"].querySelectorAll("[data-note-target]");
+const noteControlButtons = () => elements["explorer-note-finder"].querySelectorAll("[data-note-control-state]");
+const noteCell = (stringNumber, fret) => elements["explorer-fretboard"]
+  .querySelectorAll("[data-note-cell]")
+  .find((button) => button.getAttribute("data-note-string") === String(stringNumber) && button.getAttribute("data-note-fret") === String(fret));
+noteTargetButtons().find((button) => button.getAttribute("data-note-target") === "2").onclick();
+assert.equal(noteCell(3, 3).getAttribute("data-note-result"), "3:3");
+noteControlButtons().find((button) => button.getAttribute("data-note-control-state") === "B").onclick();
+assert.equal(noteCell(3, 3).getAttribute("data-note-result"), null);
+assert.match(elements["explorer-selected-detail"].textContent, /String 3, fret 3: C/);
+assert.match(elements["explorer-selected-detail"].textContent, /Open note at fretB/);
+assert.match(elements["explorer-selected-detail"].textContent, /Final noteC/);
+assert.match(elements["explorer-selected-detail"].textContent, /B pedal raises this string from B to C/);
+noteControlButtons().find((button) => button.getAttribute("data-note-control-state") === "A").onclick();
+noteCell(3, 3).onclick();
+assert.match(elements["explorer-selected-detail"].textContent, /String 3, fret 3: B/);
+assert.match(elements["explorer-selected-detail"].textContent, /Selected controls do not change this string; final note remains B/);
+noteCell(5, 3).onclick();
+assert.match(elements["explorer-selected-detail"].textContent, /String 5, fret 3: E/);
+assert.match(elements["explorer-selected-detail"].textContent, /Open note at fretD/);
+assert.match(elements["explorer-selected-detail"].textContent, /Final noteE/);
+assert.match(elements["explorer-selected-detail"].textContent, /A pedal raises this string from D to E/);
+noteCell(3, 3).onmouseenter();
+assert.match(elements["explorer-selected-detail"].textContent, /String 3, fret 3: B/);
+noteCell(3, 3).onmouseleave();
+assert.match(elements["explorer-selected-detail"].textContent, /String 5, fret 3: E/);
+notationModeButtons[1].onclick();
+assert.match(elements["explorer-selected-detail"].textContent, /NNS in G major6-/);
+assert.doesNotMatch(elements["explorer-note-finder"].textContent, /\[object Object\]/);
+assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /\[object Object\]/);
+elements["explorer-explore-mode"].value = "single";
+elements["explorer-explore-mode"].dispatchChange();
+notationModeButtons[0].onclick();
+assert.equal(elements["explorer-note-finder"].hidden, true);
+assert.equal(elements["explorer-string-group-control"].hidden, false);
+assert.equal(elements["explorer-harmony-control"].hidden, false);
 
 const expectedMajorScales = {
   C: "C D E F G A B",

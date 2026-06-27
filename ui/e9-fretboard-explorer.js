@@ -15,6 +15,7 @@
   const EXPLORE_MODES = {
     single: "single",
     path: "path",
+    note: "note",
   };
   const PATH_FAMILIES = [
     {
@@ -69,6 +70,16 @@
     { id: "roman", label: "Roman", description: "I - ii" },
     { id: "numbers", label: "Numbers", description: "1 - 2m" },
   ];
+  const NOTE_CONTROL_STATES = [
+    { id: "open", label: "Open", controls: [] },
+    { id: "A", label: "A", controls: ["A"] },
+    { id: "B", label: "B", controls: ["B"] },
+    { id: "AB", label: "A+B", controls: ["A", "B"] },
+    { id: "BC", label: "B+C", controls: ["B", "C"] },
+    { id: "E-raise", label: "E-raise", controls: ["E-raise"] },
+    { id: "E-lower", label: "E-lower", controls: ["E-lower"] },
+  ];
+  const CHROMATIC_SHARP_NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
   const MAJOR_SCALE_SEQUENCES = {
     nns: ["1", "2-", "3-", "4", "5", "6-", "7°"],
     roman: ["I", "ii", "iii", "IV", "V", "vi", "vii°"],
@@ -104,6 +115,7 @@
     glossaryClose: document.getElementById("explorer-glossary-close"),
     copedentChart: document.getElementById("explorer-copedent-chart"),
     controlPreview: document.getElementById("explorer-control-impact-preview"),
+    noteFinder: document.getElementById("explorer-note-finder"),
     activeResults: document.getElementById("explorer-active-results"),
     fretboard: document.getElementById("explorer-fretboard"),
     rowList: document.getElementById("explorer-row-list"),
@@ -116,6 +128,10 @@
   let selectedImpactControlIds = new Set();
   let selectedTopFilter = "all";
   let selectedFretRange = "core";
+  let selectedNoteControlStateId = "open";
+  let selectedNoteTargetIndex = 0;
+  let pinnedNoteCell = { stringNumber: 3, fret: 3 };
+  let previewNoteCell = null;
   let notationMode = "notes";
   let lastCopedentDialogOpener = null;
   let lastGlossaryDialogOpener = null;
@@ -320,6 +336,24 @@
     return (base + accidental + 120) % 12;
   }
 
+  function displayNoteForPitchClass(pitchClass) {
+    const normalized = ((Number(pitchClass) % 12) + 12) % 12;
+    const scaleNote = activeScaleNotes().find((note) => noteAlternates(note)
+      .map(pitchClassForNote)
+      .some((candidate) => candidate === normalized));
+    return scaleNote || CHROMATIC_SHARP_NOTES[normalized] || "";
+  }
+
+  function noteAtFret(openNote, fret, semitoneDelta = 0) {
+    const pitchClass = pitchClassForNote(openNote);
+    const fretNumber = Number(fret);
+    const delta = Number(semitoneDelta) || 0;
+    if (pitchClass === null || !Number.isFinite(fretNumber)) {
+      return "";
+    }
+    return displayNoteForPitchClass(pitchClass + fretNumber + delta);
+  }
+
   function scaleDegreeIndexForNote(note) {
     const scaleNotes = activeScaleNotes();
     const candidates = noteAlternates(note);
@@ -355,6 +389,135 @@
       return sequence[scaleIndex];
     }
     return fallbackInterval ? formatIntervalForNotation(fallbackInterval) : displayNote;
+  }
+
+  function activeCopedent() {
+    return activePayload()?.selected_copedent || null;
+  }
+
+  function copedentChartRows() {
+    return toArray(activeCopedent()?.chart?.rows)
+      .slice()
+      .sort((a, b) => Number(a.string || 0) - Number(b.string || 0));
+  }
+
+  function copedentControls() {
+    return toArray(activeCopedent()?.controls);
+  }
+
+  function controlById(controlId) {
+    return copedentControls().find((control) => control.id === controlId) || null;
+  }
+
+  function activeNoteControlState() {
+    const state = NOTE_CONTROL_STATES.find((item) => item.id === selectedNoteControlStateId) || NOTE_CONTROL_STATES[0];
+    const availableIds = new Set(copedentControls().map((control) => control.id));
+    return {
+      ...state,
+      controls: state.controls.filter((controlId) => availableIds.has(controlId)),
+    };
+  }
+
+  function noteControlLabel(controlId) {
+    return controlById(controlId)?.label || controlId;
+  }
+
+  function noteControlLabels(controlIds) {
+    return controlIds.length ? controlIds.map(noteControlLabel) : ["Open"];
+  }
+
+  function chartRowForString(stringNumber) {
+    return copedentChartRows().find((row) => Number(row.string) === Number(stringNumber)) || null;
+  }
+
+  function controlCellForString(controlId, stringNumber) {
+    const row = chartRowForString(stringNumber);
+    return row?.cells?.[controlId] || null;
+  }
+
+  function noteControlCellsForString(stringNumber, controlIds = activeNoteControlState().controls) {
+    return controlIds
+      .map((controlId) => ({ controlId, control: controlById(controlId), cell: controlCellForString(controlId, stringNumber) }))
+      .filter((item) => item.cell);
+  }
+
+  function noteControlDeltaForString(stringNumber, controlIds = activeNoteControlState().controls) {
+    return noteControlCellsForString(stringNumber, controlIds)
+      .reduce((total, item) => total + (Number(item.cell.semitones) || 0), 0);
+  }
+
+  function noteFinderTargets() {
+    const notes = activeScaleNotes();
+    const labels = activeScaleSequence();
+    return notes.map((note, index) => ({
+      index,
+      note,
+      label: labels[index] || note,
+      pitchClass: pitchClassForNote(note),
+    }));
+  }
+
+  function selectedNoteFinderTarget() {
+    return noteFinderTargets().find((target) => target.index === selectedNoteTargetIndex) || noteFinderTargets()[0] || null;
+  }
+
+  function noteCellState(stringNumber, fret) {
+    const row = chartRowForString(stringNumber);
+    const openStringNote = formatValue(row?.open_note, "");
+    const controlState = activeNoteControlState();
+    const activeControls = controlState.controls;
+    const affectedCells = noteControlCellsForString(stringNumber, activeControls);
+    const delta = noteControlDeltaForString(stringNumber, activeControls);
+    const openNoteAtFret = noteAtFret(openStringNote, fret, 0);
+    const finalNote = noteAtFret(openStringNote, fret, delta);
+    const target = selectedNoteFinderTarget();
+    const finalPitchClass = pitchClassForNote(finalNote);
+    const isTargetMatch = target && target.pitchClass !== null && finalPitchClass === target.pitchClass;
+    const direction = delta > 0 ? "raises" : delta < 0 ? "lowers" : "changes";
+    let explanation = "Open position: no pedals or levers are active.";
+    if (activeControls.length && affectedCells.length) {
+      explanation = `${noteControlLabels(activeControls).join(" + ")} ${direction} this string from ${openNoteAtFret} to ${finalNote}.`;
+    } else if (activeControls.length) {
+      explanation = `Selected controls do not change this string; final note remains ${finalNote}.`;
+    }
+    return {
+      stringNumber: Number(stringNumber),
+      fret: Number(fret),
+      openStringNote,
+      openNoteAtFret,
+      finalNote,
+      activeControlIds: activeControls,
+      activeControlLabel: controlState.label,
+      affectedCells,
+      isAffected: Boolean(activeControls.length && affectedCells.length),
+      isTargetMatch,
+      notationValue: notationLabelForFinalNote(finalNote),
+      explanation,
+    };
+  }
+
+  function visibleNoteFinderFrets() {
+    const range = activeRangeOption();
+    const frets = [];
+    for (let fret = range.min; fret <= range.max; fret += 1) {
+      frets.push(fret);
+    }
+    return frets;
+  }
+
+  function visibleNoteCells() {
+    const frets = visibleNoteFinderFrets();
+    return copedentChartRows().flatMap((row) => frets.map((fret) => noteCellState(row.string, fret)));
+  }
+
+  function allNoteCells() {
+    return copedentChartRows().flatMap((row) => {
+      const cells = [];
+      for (let fret = 0; fret <= 24; fret += 1) {
+        cells.push(noteCellState(row.string, fret));
+      }
+      return cells;
+    });
   }
 
   function dedupeValues(values) {
@@ -504,6 +667,10 @@
     return els.exploreMode?.value === EXPLORE_MODES.path;
   }
 
+  function isNoteFinderMode() {
+    return els.exploreMode?.value === EXPLORE_MODES.note;
+  }
+
   function activeHarmonyValue() {
     return isPathMode() ? "three_string_diatonic" : els.harmony.value;
   }
@@ -639,12 +806,13 @@
 
   function syncExploreModeControls() {
     const pathMode = isPathMode();
+    const noteMode = isNoteFinderMode();
     if (els.stringGroupControl) {
-      els.stringGroupControl.hidden = pathMode;
-      els.stringGroupControl.setAttribute?.("aria-hidden", pathMode ? "true" : "false");
+      els.stringGroupControl.hidden = pathMode || noteMode;
+      els.stringGroupControl.setAttribute?.("aria-hidden", pathMode || noteMode ? "true" : "false");
     }
     if (els.stringGroup) {
-      els.stringGroup.disabled = pathMode;
+      els.stringGroup.disabled = pathMode || noteMode;
     }
     if (els.pathFamilyControl) {
       els.pathFamilyControl.hidden = !pathMode;
@@ -654,11 +822,11 @@
       els.pathFamily.disabled = !pathMode;
     }
     if (els.harmonyControl) {
-      els.harmonyControl.hidden = pathMode;
-      els.harmonyControl.setAttribute?.("aria-hidden", pathMode ? "true" : "false");
+      els.harmonyControl.hidden = pathMode || noteMode;
+      els.harmonyControl.setAttribute?.("aria-hidden", pathMode || noteMode ? "true" : "false");
     }
     if (els.harmony) {
-      els.harmony.disabled = pathMode;
+      els.harmony.disabled = pathMode || noteMode;
       if (pathMode) {
         els.harmony.value = "three_string_diatonic";
       }
@@ -1279,6 +1447,12 @@
     if (!els.controlPreview) {
       return;
     }
+    if (isNoteFinderMode()) {
+      els.controlPreview.hidden = true;
+      els.controlPreview.innerHTML = "";
+      selectedImpactControlIds = new Set();
+      return;
+    }
     const preview = activePayload()?.control_impact_preview;
     const controls = toArray(preview?.controls);
     if (!controls.length) {
@@ -1347,6 +1521,11 @@
     if (!els.topIntervalFilter) {
       return;
     }
+    if (isNoteFinderMode()) {
+      els.topIntervalFilter.hidden = true;
+      els.topIntervalFilter.innerHTML = "";
+      return;
+    }
     const filters = availableTopFilters(baseRows);
     if (filters.length <= 1) {
       els.topIntervalFilter.hidden = true;
@@ -1391,12 +1570,13 @@
     }
     const outsideCount = Math.max(0, rowsBeforeRange.length - rows.length);
     const activeRange = activeRangeOption();
+    const matchNoun = isNoteFinderMode() ? "note" : "position";
     els.fretRangeFilter.hidden = false;
     els.fretRangeFilter.innerHTML = `
       <div class="explorer-fret-range-filter__label">
         <strong>Visible fret range</strong>
         <span>${outsideCount
-          ? `${outsideCount} matching ${outsideCount === 1 ? "position is" : "positions are"} outside ${activeRange.description.toLowerCase()}.`
+          ? `${outsideCount} matching ${outsideCount === 1 ? `${matchNoun} is` : `${matchNoun}s are`} outside ${activeRange.description.toLowerCase()}.`
           : `Showing ${activeRange.description.toLowerCase()}.`}</span>
       </div>
       <div class="explorer-fret-range-filter__chips" role="group" aria-label="Choose visible fret range">
@@ -1829,7 +2009,284 @@
     wireFretboardMarkers(rows, markerGroups);
   }
 
+  function noteCellKey(cell) {
+    return `${cell.stringNumber}:${cell.fret}`;
+  }
+
+  function ensurePinnedNoteCellInRange() {
+    const rows = copedentChartRows();
+    const frets = visibleNoteFinderFrets();
+    const validStrings = new Set(rows.map((row) => Number(row.string)));
+    if (!validStrings.has(Number(pinnedNoteCell.stringNumber)) || !frets.includes(Number(pinnedNoteCell.fret))) {
+      pinnedNoteCell = {
+        stringNumber: validStrings.has(3) ? 3 : Number(rows[0]?.string || 1),
+        fret: frets.includes(3) ? 3 : Number(frets[0] || 0),
+      };
+    }
+  }
+
+  function noteFinderControlButtonsHtml() {
+    const availableIds = new Set(copedentControls().map((control) => control.id));
+    return NOTE_CONTROL_STATES
+      .filter((state) => !state.controls.length || state.controls.some((controlId) => availableIds.has(controlId)))
+      .map((state) => `
+        <button
+          class="explorer-note-finder__chip${selectedNoteControlStateId === state.id ? " is-selected" : ""}"
+          type="button"
+          data-note-control-state="${escapeHtml(state.id)}"
+          aria-pressed="${selectedNoteControlStateId === state.id ? "true" : "false"}"
+        >${escapeHtml(state.label)}</button>
+      `).join("");
+  }
+
+  function noteFinderTargetButtonsHtml() {
+    const target = selectedNoteFinderTarget();
+    return noteFinderTargets().map((item) => `
+      <button
+        class="explorer-note-finder__chip${target && target.index === item.index ? " is-selected" : ""}"
+        type="button"
+        data-note-target="${escapeHtml(String(item.index))}"
+        aria-pressed="${target && target.index === item.index ? "true" : "false"}"
+      >${escapeHtml(item.label)}</button>
+    `).join("");
+  }
+
+  function noteFinderCellButtonHtml(cell) {
+    const pinnedKey = `${pinnedNoteCell.stringNumber}:${pinnedNoteCell.fret}`;
+    const key = noteCellKey(cell);
+    const classes = [
+      "explorer-note-cell",
+      cell.isAffected ? "is-affected" : "",
+      cell.isTargetMatch ? "is-result" : "",
+      key === pinnedKey ? "is-selected" : "",
+    ].filter(Boolean).join(" ");
+    const resultAttribute = cell.isTargetMatch ? ` data-note-result="${escapeHtml(key)}"` : "";
+    return `
+      <button
+        class="${classes}"
+        type="button"
+        data-note-cell="${escapeHtml(key)}"
+        data-note-string="${escapeHtml(String(cell.stringNumber))}"
+        data-note-fret="${escapeHtml(String(cell.fret))}"
+        data-note-final-note="${escapeHtml(cell.finalNote)}"
+        ${resultAttribute}
+        aria-pressed="${key === pinnedKey ? "true" : "false"}"
+        aria-label="${escapeHtml(`String ${cell.stringNumber}, fret ${cell.fret}: ${cell.finalNote} with ${cell.activeControlLabel}`)}"
+      ><span>${cell.isTargetMatch ? escapeHtml(cell.finalNote) : ""}</span></button>
+    `;
+  }
+
+  function renderNoteFinderGrid(cells) {
+    const rows = copedentChartRows();
+    const frets = visibleNoteFinderFrets();
+    const byStringAndFret = new Map(cells.map((cell) => [noteCellKey(cell), cell]));
+    const gridTemplate = `grid-template-columns: 54px repeat(${frets.length}, minmax(34px, 1fr));`;
+    return `
+      <div class="explorer-note-grid" style="${escapeHtml(gridTemplate)}" role="grid" aria-label="Single-note finder grid">
+        <div class="explorer-note-grid__corner" aria-hidden="true"></div>
+        ${frets.map((fret) => `<div class="explorer-note-grid__fret" role="columnheader">F${escapeHtml(fret)}</div>`).join("")}
+        ${rows.map((row) => `
+          <div class="explorer-note-grid__string" role="rowheader">
+            <strong>${escapeHtml(row.string)}</strong>
+            <span>${escapeHtml(formatValue(row.open_note, ""))}</span>
+          </div>
+          ${frets.map((fret) => noteFinderCellButtonHtml(byStringAndFret.get(`${Number(row.string)}:${fret}`))).join("")}
+        `).join("")}
+      </div>
+    `;
+  }
+
+  function renderNoteFinderDetail(cell) {
+    if (!cell) {
+      els.selectedDetail.className = "explorer-selected-detail";
+      els.selectedDetail.innerHTML = '<p class="explorer-empty">Choose a string and fret to inspect the note.</p>';
+      return;
+    }
+    const scaleText = selectedOptionLabel(els.scale) || `${activeKey()} ${els.scale.value}`;
+    els.selectedDetail.className = "explorer-selected-detail";
+    els.selectedDetail.innerHTML = `
+      <div class="explorer-selected-detail__header">
+        <span class="explorer-selected-detail__kind">Single-note finder</span>
+        <strong>${escapeHtml(`String ${cell.stringNumber}, fret ${cell.fret}: ${cell.finalNote}`)}</strong>
+      </div>
+      <section class="explorer-teaching-note" aria-label="Pedal and lever note change">
+        <strong>What changed</strong>
+        <p>${escapeHtml(cell.explanation)}</p>
+      </section>
+      <dl class="explorer-detail-grid">
+        ${detailRow("String", cell.stringNumber)}
+        ${detailRow("Fret", cell.fret)}
+        ${detailRow("Active controls", cell.activeControlLabel)}
+        ${detailRow("Open string", `${cell.openStringNote} on string ${cell.stringNumber}`)}
+        ${detailRow("Open note at fret", cell.openNoteAtFret)}
+        ${detailRow("Final note", cell.finalNote)}
+        ${detailRow(`${notationModeLabel()} in ${scaleText}`, cell.notationValue)}
+      </dl>
+    `;
+  }
+
+  function noteFinderResultButtonHtml(cell) {
+    const key = noteCellKey(cell);
+    const isSelected = key === `${pinnedNoteCell.stringNumber}:${pinnedNoteCell.fret}`;
+    return `
+      <button class="explorer-active-result explorer-note-result-card${isSelected ? " is-selected" : ""}" type="button" data-note-result-card="${escapeHtml(key)}" aria-pressed="${isSelected ? "true" : "false"}">
+        <span class="explorer-active-result__top">
+          <span class="explorer-active-result__marker"><span class="explorer-marker-token" aria-hidden="true"></span><span>${escapeHtml(cell.finalNote)}</span></span>
+          <strong>${escapeHtml(`String ${cell.stringNumber} · fret ${cell.fret}`)}</strong>
+        </span>
+        <span class="explorer-active-result__fields">
+          <span><b>Open note</b>${escapeHtml(cell.openNoteAtFret)}</span>
+          <span><b>Final note</b>${escapeHtml(cell.finalNote)}</span>
+          <span><b>Controls</b>${escapeHtml(cell.activeControlLabel)}</span>
+          <span><b>${escapeHtml(notationModeLabel())}</b>${escapeHtml(cell.notationValue)}</span>
+        </span>
+      </button>
+    `;
+  }
+
+  function renderNoteFinder() {
+    if (!els.noteFinder) {
+      return;
+    }
+    ensurePinnedNoteCellInRange();
+    const cells = visibleNoteCells();
+    const resultCells = cells.filter((cell) => cell.isTargetMatch);
+    const target = selectedNoteFinderTarget();
+    const currentCell = previewNoteCell
+      ? noteCellState(previewNoteCell.stringNumber, previewNoteCell.fret)
+      : noteCellState(pinnedNoteCell.stringNumber, pinnedNoteCell.fret);
+    const activeControls = activeNoteControlState();
+    els.noteFinder.hidden = false;
+    els.noteFinder.innerHTML = `
+      <div class="explorer-note-finder__header">
+        <div>
+          <strong>Single-note finder</strong>
+          <p>Pedals and levers change the note on affected strings. Choose a control state, then hover or click a string/fret cell.</p>
+        </div>
+        <span>${escapeHtml(formatValue(activeCopedent()?.label || "E9 copedent"))}</span>
+      </div>
+      <div class="explorer-note-finder__controls">
+        <div>
+          <span class="explorer-note-finder__label">Active controls</span>
+          <div class="explorer-note-finder__chips" role="group" aria-label="Single-note control state">
+            ${noteFinderControlButtonsHtml()}
+          </div>
+        </div>
+        <div>
+          <span class="explorer-note-finder__label">Find by ${escapeHtml(notationModeLabel())}</span>
+          <div class="explorer-note-finder__chips" role="group" aria-label="Find matching single notes">
+            ${noteFinderTargetButtonsHtml()}
+          </div>
+        </div>
+      </div>
+      <p class="explorer-note-finder__context">Finding ${escapeHtml(target?.label || "scale tones")} with ${escapeHtml(activeControls.label)}. Visible fret range applies.</p>
+    `;
+
+    els.activeResults.innerHTML = `
+      <div class="explorer-active-results__header">
+        <strong>Single-note finder: ${resultCells.length} visible ${resultCells.length === 1 ? "match" : "matches"} for ${escapeHtml(target?.label || "target")}</strong>
+        <span>Cards and grid results use the selected control state.</span>
+      </div>
+      <div class="explorer-active-results__track">
+        ${resultCells.map(noteFinderResultButtonHtml).join("")}
+      </div>
+    `;
+    els.fretboard.innerHTML = renderNoteFinderGrid(cells);
+    els.rowList.innerHTML = resultCells.length
+      ? resultCells.map((cell) => `
+          <button class="explorer-row-button${noteCellKey(cell) === noteCellKey(currentCell) ? " is-selected" : ""}" type="button" data-note-result-list="${escapeHtml(noteCellKey(cell))}">
+            <strong>${escapeHtml(`String ${cell.stringNumber}, fret ${cell.fret}: ${cell.finalNote}`)}</strong>
+            <span class="explorer-row-button__meta">Open note: ${escapeHtml(cell.openNoteAtFret)} · Final note: ${escapeHtml(cell.finalNote)} · Controls: ${escapeHtml(cell.activeControlLabel)} · ${escapeHtml(notationModeLabel())}: ${escapeHtml(cell.notationValue)}</span>
+          </button>
+        `).join("")
+      : '<p class="explorer-empty">No notes match this target in the visible fret range. Try a different target, control state, or fret range.</p>';
+    renderNoteFinderDetail(currentCell);
+
+    const selectCell = (stringNumber, fret) => {
+      pinnedNoteCell = { stringNumber: Number(stringNumber), fret: Number(fret) };
+      previewNoteCell = null;
+      renderNoteFinder();
+    };
+    Array.from(els.noteFinder.querySelectorAll("[data-note-control-state]")).forEach((button) => {
+      button.addEventListener("click", () => {
+        selectedNoteControlStateId = button.getAttribute("data-note-control-state") || "open";
+        renderNoteFinder();
+      });
+    });
+    Array.from(els.noteFinder.querySelectorAll("[data-note-target]")).forEach((button) => {
+      button.addEventListener("click", () => {
+        selectedNoteTargetIndex = Number(button.getAttribute("data-note-target") || 0);
+        renderNoteFinder();
+      });
+    });
+    Array.from(els.fretboard.querySelectorAll("[data-note-cell]")).forEach((button) => {
+      const stringNumber = button.getAttribute("data-note-string");
+      const fret = button.getAttribute("data-note-fret");
+      button.addEventListener("mouseenter", () => {
+        previewNoteCell = { stringNumber: Number(stringNumber), fret: Number(fret) };
+        renderNoteFinderDetail(noteCellState(stringNumber, fret));
+      });
+      button.addEventListener("mouseleave", () => {
+        previewNoteCell = null;
+        renderNoteFinderDetail(noteCellState(pinnedNoteCell.stringNumber, pinnedNoteCell.fret));
+      });
+      button.addEventListener("click", () => selectCell(stringNumber, fret));
+    });
+    const resultButtons = [
+      ...Array.from(els.activeResults.querySelectorAll("[data-note-result-card]")),
+      ...Array.from(els.rowList.querySelectorAll("[data-note-result-list]")),
+    ];
+    resultButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const raw = button.getAttribute("data-note-result-card") || button.getAttribute("data-note-result-list") || "";
+        const [stringNumber, fret] = raw.split(":").map(Number);
+        selectCell(stringNumber, fret);
+      });
+    });
+  }
+
+  function renderNoteFinderMode() {
+    selectedRowId = "";
+    currentRows = [];
+    currentMarkerGroups = [];
+    if (els.topIntervalFilter) {
+      els.topIntervalFilter.hidden = true;
+      els.topIntervalFilter.innerHTML = "";
+    }
+    renderFretRangeFilter(
+      allNoteCells().filter((cell) => cell.isTargetMatch),
+      visibleNoteCells().filter((cell) => cell.isTargetMatch),
+    );
+    els.scaleNotes.textContent = getScaleNotes();
+    if (els.resultCount) {
+      els.resultCount.textContent = "";
+    }
+    els.empty.hidden = true;
+    els.empty.textContent = "";
+    renderCopedentChart();
+    renderControlImpactPreview();
+    renderNoteFinder();
+    const renderedText = [
+      els.noteFinder?.textContent || "",
+      els.activeResults?.textContent || "",
+      els.rowList?.textContent || "",
+      els.selectedDetail?.textContent || "",
+      els.fretboard?.textContent || "",
+    ].join(" ");
+    if (renderedText.includes("[object Object]")) {
+      console.warn("Explorer rendered an unsafe object string.");
+    }
+  }
+
   function render() {
+    if (isNoteFinderMode()) {
+      renderNoteFinderMode();
+      return;
+    }
+    if (els.noteFinder) {
+      els.noteFinder.hidden = true;
+      els.noteFinder.innerHTML = "";
+    }
     const baseRows = getBaseRows();
     syncSelectedTopFilter(baseRows);
     renderTopIntervalFilter(baseRows);
