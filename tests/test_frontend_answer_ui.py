@@ -1374,7 +1374,7 @@ voicingStringButtons().find((button) => button.getAttribute("data-voicing-string
 voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "9").onclick();
 assert.match(elements["explorer-voicing-identifier"].textContent, /D7/);
 assert.match(elements["explorer-selected-detail"].textContent, /Likely functionV7 in G/);
-assert.match(elements["explorer-selected-detail"].textContent, /9th-string color grip/);
+assert.match(elements["explorer-selected-detail"].textContent, /Dominant 7 \/ V7 grip/);
 assert.equal(lastMount.options.positions[0].grip, "4-5-6-9");
 assert.equal(lastMount.options.positions[0].notes.join(","), "D,A,F#,C");
 voicingClearButtons()[0].onclick();

@@ -3881,6 +3881,9 @@
   function renderVoicingIdentifierMode() {
     const result = voicingStringStates();
     const identity = result.warning ? null : identifyVoicing(result.cells.map((cell) => cell.finalNote));
+    if (/^dominant 7$/i.test(identity?.quality || "")) {
+      result.gripLabel = "Dominant 7 / V7 grip";
+    }
     const row = result.warning ? null : voicingSyntheticRow(result, identity);
     selectedRowId = row?.id || "";
     currentRows = row ? [row] : [];
