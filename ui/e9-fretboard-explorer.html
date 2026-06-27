@@ -760,6 +760,18 @@
       font-weight: 800;
     }
 
+    .explorer-chord-finder__controls {
+      grid-template-columns: minmax(280px, 1.25fr) repeat(3, minmax(150px, 0.55fr));
+    }
+
+    .explorer-chord-finder__field--target {
+      min-width: 0;
+    }
+
+    .explorer-chord-finder__input {
+      font-weight: 900;
+    }
+
     .explorer-note-finder__chips,
     .explorer-voicing-identifier__chips {
       display: flex;
@@ -1928,8 +1940,9 @@
           <option value="path">Harmonized scale path</option>
           <option value="note">Single-note finder</option>
           <option value="voicing">Voicing identifier</option>
+          <option value="chord">Chord / Voicing Finder</option>
         </select>
-        <p class="explorer-control-help" id="explorer-explore-mode-help">Single grip filters exact strings. Scale path shows a practical route. Single-note finder shows one note at a time. Voicing identifier explains one fret/string/control shape.</p>
+        <p class="explorer-control-help" id="explorer-explore-mode-help">Single grip filters exact strings. Scale path shows a practical route. Single-note finder shows one note at a time. Voicing identifier explains one shape. Chord / Voicing Finder searches practical shapes for a target chord.</p>
       </div>
       <p class="explorer-mode-panel__copy">Start by choosing the kind of fretboard question you want to explore, then use the filters below to narrow the view.</p>
     </section>
@@ -2028,6 +2041,7 @@
     <div class="explorer-fret-range-filter" id="explorer-fret-range-filter" aria-label="Visible fret range filter" hidden></div>
     <section class="explorer-note-finder" id="explorer-note-finder" aria-label="Single-note finder" hidden></section>
     <section class="explorer-voicing-identifier" id="explorer-voicing-identifier" aria-label="Voicing identifier" hidden></section>
+    <section class="explorer-voicing-identifier explorer-chord-finder" id="explorer-chord-finder" aria-label="Chord / Voicing Finder" hidden></section>
 
     <dialog class="explorer-copedent-dialog" id="explorer-copedent-dialog" aria-labelledby="explorer-copedent-dialog-title">
       <div class="explorer-copedent-dialog__bar">
@@ -2105,6 +2119,6 @@
 
   <script src="pedal-steel-fretboard.js?v=explorer-harmonized-path-mode-20260626"></script>
   <script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>
-  <script src="e9-fretboard-explorer.js?v=notation-near-fretboard-20260627"></script>
+  <script src="e9-fretboard-explorer.js?v=chord-voicing-finder-20260627"></script>
 </body>
 </html>

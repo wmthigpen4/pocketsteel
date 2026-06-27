@@ -60,6 +60,7 @@
     path: "path",
     note: "note",
     voicing: "voicing",
+    chord: "chord",
   };
   const PATH_FAMILIES = [
     {
@@ -145,6 +146,9 @@
     { id: "dominant7", label: "dominant 7", suffix: "7", intervals: [0, 4, 7, 10], required: [0, 4, 10] },
     { id: "major7", label: "major 7", suffix: "maj7", intervals: [0, 4, 7, 11], required: [0, 4, 11] },
     { id: "minor7", label: "minor 7", suffix: "m7", intervals: [0, 3, 7, 10], required: [0, 3, 10] },
+    { id: "dominant9", label: "dominant 9", suffix: "9", intervals: [0, 2, 4, 7, 10], required: [2, 4, 10] },
+    { id: "major9", label: "major 9", suffix: "maj9", intervals: [0, 2, 4, 7, 11], required: [2, 4, 11] },
+    { id: "minor9", label: "minor 9", suffix: "m9", intervals: [0, 2, 3, 7, 10], required: [2, 3, 10] },
     { id: "minor7flat5", label: "minor 7 flat 5", suffix: "m7b5", intervals: [0, 3, 6, 10], required: [0, 3, 6, 10] },
     { id: "diminished", label: "diminished", suffix: "dim", intervals: [0, 3, 6], required: [0, 3, 6] },
     { id: "major6", label: "major 6", suffix: "6", intervals: [0, 4, 7, 9], required: [0, 4, 9] },
@@ -162,6 +166,17 @@
     { id: "sync", label: "Event sync", description: "Step through safe deterministic events and focus the matching cell." },
   ];
   const CHROMATIC_SHARP_NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  const CHROMATIC_FLAT_NOTES = ["C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B"];
+  const MAJOR_SCALE_INTERVALS = [0, 2, 4, 5, 7, 9, 11];
+  const CHORD_FINDER_QUALITY_OPTIONS = CHORD_QUALITY_PATTERNS
+    .filter((quality) => quality.id !== "fifth")
+    .map((quality) => ({ id: quality.id, label: quality.label }));
+  const CHORD_FINDER_CONTROL_SCOPES = [
+    { id: "open", label: "Open only", controlCombos: [[]] },
+    { id: "common", label: "Common controls", controlCombos: [[], ["A"], ["B"], ["A", "B"], ["B", "C"]] },
+    { id: "levers", label: "Include levers", controlCombos: [[], ["A"], ["B"], ["A", "B"], ["B", "C"], ["A", "E-raise"], ["E-raise"], ["E-lower"], ["D-lower"], ["G-lower"]] },
+    { id: "all", label: "All practical", controlCombos: [[], ["A"], ["B"], ["A", "B"], ["B", "C"], ["A", "E-raise"], ["A", "B", "E-lower"], ["E-raise"], ["E-lower"], ["D-lower"], ["G-lower"]] },
+  ];
   const MAJOR_SCALE_SEQUENCES = {
     nns: ["1", "2-", "3-", "4", "5", "6-", "7°"],
     roman: ["I", "ii", "iii", "IV", "V", "vi", "vii°"],
@@ -201,6 +216,7 @@
     controlPreview: document.getElementById("explorer-control-impact-preview"),
     noteFinder: document.getElementById("explorer-note-finder"),
     voicingIdentifier: document.getElementById("explorer-voicing-identifier"),
+    chordFinder: document.getElementById("explorer-chord-finder"),
     activeResults: document.getElementById("explorer-active-results"),
     fretboard: document.getElementById("explorer-fretboard"),
     rowList: document.getElementById("explorer-row-list"),
@@ -224,6 +240,11 @@
   let selectedGripRole = "all";
   let selectedGripCandidateId = "";
   let selectedSyncEventId = "s3-f3-open";
+  let chordFinderQuery = "Fmaj7";
+  let selectedChordRoot = "auto";
+  let selectedChordQuality = "auto";
+  let selectedChordControlScope = "common";
+  let selectedChordCandidateId = "";
   let voicingFret = 3;
   let selectedVoicingStrings = [3, 4, 5];
   let selectedVoicingControlIds = new Set();
@@ -441,6 +462,16 @@
       .map(pitchClassForNote)
       .some((candidate) => candidate === normalized));
     return scaleNote || CHROMATIC_SHARP_NOTES[normalized] || "";
+  }
+
+  function prefersFlatSpelling(key = activeKey()) {
+    return /b/.test(formatValue(key, "")) || ["F", "Bb", "Eb", "Ab", "Db", "Gb"].includes(formatValue(key, ""));
+  }
+
+  function displayNoteForPitchClassInKey(pitchClass, key = activeKey()) {
+    const normalized = ((Number(pitchClass) % 12) + 12) % 12;
+    const spellings = prefersFlatSpelling(key) ? CHROMATIC_FLAT_NOTES : CHROMATIC_SHARP_NOTES;
+    return spellings[normalized] || CHROMATIC_SHARP_NOTES[normalized] || "";
   }
 
   function noteAtFret(openNote, fret, semitoneDelta = 0) {
@@ -744,7 +775,7 @@
   }
 
   function isExtendedChordQuality(quality) {
-    return ["dominant7", "major7", "minor7", "minor7flat5", "major6", "minor6"].includes(quality?.id);
+    return ["dominant7", "major7", "minor7", "dominant9", "major9", "minor9", "minor7flat5", "major6", "minor6"].includes(quality?.id);
   }
 
   function extendedQualityGate(quality, intervals) {
@@ -755,6 +786,9 @@
       dominant7: [10],
       major7: [11],
       minor7: [10],
+      dominant9: [10, 2],
+      major9: [11, 2],
+      minor9: [10, 2],
       minor7flat5: [10],
       major6: [9],
       minor6: [9],
@@ -791,6 +825,9 @@
       dominant7: 14,
       major7: 14,
       minor7: 14,
+      dominant9: 15,
+      major9: 15,
+      minor9: 15,
       minor7flat5: 13,
       major6: 10,
       minor6: 10,
@@ -1444,6 +1481,452 @@
       .slice(0, 8);
   }
 
+  function normalizeChordFinderText(value) {
+    return formatValue(value, "")
+      .replace(/♭/g, "b")
+      .replace(/♯/g, "#")
+      .replace(/Δ/g, "maj")
+      .replace(/ø/g, "m7b5")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function chordQualityById(id) {
+    return CHORD_QUALITY_PATTERNS.find((quality) => quality.id === id) || CHORD_QUALITY_PATTERNS[0];
+  }
+
+  function parseChordFinderQuality(rawValue, options = {}) {
+    const raw = normalizeChordFinderText(rawValue).toLowerCase().replace(/[-_]/g, " ");
+    const compact = raw.replace(/\s+/g, "");
+    const lowerDegree = Boolean(options.lowerDegree);
+    if (!compact) {
+      return chordQualityById(options.defaultQualityId || "major");
+    }
+    if (/^(maj9|major9)$/.test(compact)) {
+      return chordQualityById("major9");
+    }
+    if (/^(m9|min9|minor9)$/.test(compact)) {
+      return chordQualityById("minor9");
+    }
+    if (/^9$/.test(compact)) {
+      return chordQualityById(lowerDegree ? "minor9" : "dominant9");
+    }
+    if (/^(maj7|major7)$/.test(compact)) {
+      return chordQualityById("major7");
+    }
+    if (/^(m7b5|half diminished|halfdiminished)$/.test(raw) || /^m7b5$/.test(compact)) {
+      return chordQualityById("minor7flat5");
+    }
+    if (/^(m7|min7|minor7)$/.test(compact)) {
+      return chordQualityById("minor7");
+    }
+    if (/^7$/.test(compact)) {
+      return chordQualityById(lowerDegree ? "minor7" : "dominant7");
+    }
+    if (/^(dim|diminished)$/.test(compact)) {
+      return chordQualityById("diminished");
+    }
+    if (/^sus2$/.test(compact)) {
+      return chordQualityById("sus2");
+    }
+    if (/^sus4$/.test(compact)) {
+      return chordQualityById("sus4");
+    }
+    if (/^(m|min|minor)$/.test(compact)) {
+      return chordQualityById("minor");
+    }
+    if (/^(maj|major)$/.test(compact)) {
+      return chordQualityById("major");
+    }
+    return null;
+  }
+
+  function romanDegreeInfo(value) {
+    const token = formatValue(value, "").trim();
+    const lower = token.toLowerCase();
+    const map = { i: 0, ii: 1, iii: 2, iv: 3, v: 4, vi: 5, vii: 6 };
+    if (/^[1-7]$/.test(token)) {
+      return { index: Number(token) - 1, lowerDegree: false, raw: token };
+    }
+    if (Object.prototype.hasOwnProperty.call(map, lower)) {
+      return { index: map[lower], lowerDegree: token === lower, raw: token };
+    }
+    return null;
+  }
+
+  function defaultQualityForDegree(degree) {
+    if (!degree) {
+      return chordQualityById("major");
+    }
+    if (degree.index === 6) {
+      return chordQualityById("diminished");
+    }
+    if (degree.lowerDegree || [1, 2, 5].includes(degree.index)) {
+      return chordQualityById("minor");
+    }
+    return chordQualityById("major");
+  }
+
+  function buildChordFinderTarget(rootPitchClass, quality, options = {}) {
+    const contextKey = options.contextKey || activeKey();
+    const rootLabel = options.rootLabel || displayNoteForPitchClassInKey(rootPitchClass, contextKey);
+    const intervals = Array.isArray(quality?.intervals) ? quality.intervals : [];
+    const notes = intervals.map((interval) => displayNoteForPitchClassInKey(rootPitchClass + interval, contextKey));
+    const toneLabels = intervals.map((interval, index) => ({
+      interval,
+      note: notes[index],
+      role: intervalRoleLabel(interval),
+    }));
+    return {
+      ok: true,
+      source: options.source || "direct",
+      input: options.input || chordFinderQuery,
+      contextKey,
+      rootPitchClass,
+      rootLabel,
+      quality,
+      label: `${rootLabel}${quality?.suffix || ""}`,
+      notes,
+      toneLabels,
+      pitchClasses: intervals.map((interval) => (rootPitchClass + interval) % 12),
+      message: options.message || "",
+    };
+  }
+
+  function parseFunctionChordFinderQuery(value) {
+    const text = normalizeChordFinderText(value);
+    const match = text.match(/^([ivIV]+|[1-7])\s*([A-Za-z0-9#b\s]*)\s+in\s+([A-G](?:#|b)?)/);
+    if (!match) {
+      return null;
+    }
+    const degree = romanDegreeInfo(match[1]);
+    const contextKey = match[3];
+    const keyPitchClass = pitchClassForNote(contextKey);
+    if (!degree || keyPitchClass === null) {
+      return {
+        ok: false,
+        message: "Use a function such as V7 in G, ii9 in Bb, Imaj7 in F, or vi minor 7 in G.",
+      };
+    }
+    const quality = parseChordFinderQuality(match[2], {
+      lowerDegree: degree.lowerDegree,
+      defaultQualityId: defaultQualityForDegree(degree).id,
+    });
+    if (!quality) {
+      return {
+        ok: false,
+        message: "I could not read that chord quality. Try Fmaj7, Cmin9, D7, V7 in G, or ii9 in Bb.",
+      };
+    }
+    const rootPitchClass = (keyPitchClass + MAJOR_SCALE_INTERVALS[degree.index]) % 12;
+    const target = buildChordFinderTarget(rootPitchClass, quality, {
+      source: "function",
+      input: value,
+      contextKey,
+      message: `${match[1]}${quality.suffix || ""} in ${contextKey} resolves to ${displayNoteForPitchClassInKey(rootPitchClass, contextKey)}${quality.suffix || ""}.`,
+    });
+    return target;
+  }
+
+  function parseDirectChordFinderQuery(value) {
+    const text = normalizeChordFinderText(value);
+    const match = text.match(/^([A-G](?:#|b)?)(.*)$/);
+    if (!match) {
+      return null;
+    }
+    const rootPitchClass = pitchClassForNote(match[1]);
+    const quality = parseChordFinderQuality(match[2], { defaultQualityId: "major" });
+    if (rootPitchClass === null || !quality) {
+      return {
+        ok: false,
+        message: "I could not read that chord. Try Fmaj7, F major 7, Cmin9, Cm9, D7, G9, Bbmaj7, or V7 in G.",
+      };
+    }
+    return buildChordFinderTarget(rootPitchClass, quality, {
+      source: "direct",
+      input: value,
+      contextKey: match[1],
+      rootLabel: displayNoteForPitchClassInKey(rootPitchClass, match[1]),
+    });
+  }
+
+  function applyChordFinderOverrides(target) {
+    if (!target?.ok) {
+      return target;
+    }
+    const rootPitchClass = selectedChordRoot === "auto"
+      ? target.rootPitchClass
+      : pitchClassForNote(selectedChordRoot);
+    const quality = selectedChordQuality === "auto"
+      ? target.quality
+      : chordQualityById(selectedChordQuality);
+    if (rootPitchClass === null || !quality) {
+      return target;
+    }
+    if (rootPitchClass === target.rootPitchClass && quality.id === target.quality.id) {
+      return target;
+    }
+    return buildChordFinderTarget(rootPitchClass, quality, {
+      source: target.source,
+      input: target.input,
+      contextKey: selectedChordRoot === "auto" ? target.contextKey : selectedChordRoot,
+      message: `Using selected root ${selectedChordRoot === "auto" ? target.rootLabel : selectedChordRoot} and quality ${quality.label}.`,
+    });
+  }
+
+  function parseChordFinderQuery(value = chordFinderQuery) {
+    const text = normalizeChordFinderText(value);
+    if (!text) {
+      return {
+        ok: false,
+        message: "Enter a chord or function, such as Fmaj7, Cmin9, V7 in G, or ii9 in Bb.",
+      };
+    }
+    const parsed = parseFunctionChordFinderQuery(text) || parseDirectChordFinderQuery(text) || {
+      ok: false,
+      message: "Try a chord symbol such as Fmaj7, Cmin9, D7, G9, Bbmaj7, or a function such as V7 in G.",
+    };
+    return applyChordFinderOverrides(parsed);
+  }
+
+  function chordFinderRootOptionsHtml() {
+    const roots = CHROMATIC_SHARP_NOTES.map((note) => option(note, note, selectedChordRoot));
+    return option("auto", "Auto", selectedChordRoot) + roots.join("");
+  }
+
+  function chordFinderQualityOptionsHtml() {
+    return option("auto", "Auto", selectedChordQuality)
+      + CHORD_FINDER_QUALITY_OPTIONS.map((quality) => option(quality.id, quality.label, selectedChordQuality)).join("");
+  }
+
+  function chordFinderControlScopeOptionsHtml() {
+    return CHORD_FINDER_CONTROL_SCOPES.map((scope) => option(scope.id, scope.label, selectedChordControlScope)).join("");
+  }
+
+  function controlStateForIds(ids) {
+    const availableIds = new Set(copedentControls().map((control) => control.id));
+    const controls = toArray(ids).filter((controlId) => availableIds.has(controlId));
+    return {
+      id: controls.length ? controls.join("+") : "open",
+      label: noteControlLabels(controls).join(" + "),
+      controls,
+    };
+  }
+
+  function chordFinderControlStates() {
+    const scope = CHORD_FINDER_CONTROL_SCOPES.find((item) => item.id === selectedChordControlScope) || CHORD_FINDER_CONTROL_SCOPES[1];
+    const seen = new Set();
+    return scope.controlCombos
+      .map(controlStateForIds)
+      .filter((state) => {
+        if (seen.has(state.id)) {
+          return false;
+        }
+        seen.add(state.id);
+        return true;
+      });
+  }
+
+  function chordTargetIntervalForPitchClass(pitchClass, target) {
+    const normalized = ((Number(pitchClass) % 12) + 12) % 12;
+    const match = target.toneLabels.find((tone) => ((target.rootPitchClass + tone.interval) % 12) === normalized);
+    return match ? match.interval : null;
+  }
+
+  function chordFinderQualityGate(target, presentIntervals) {
+    const hasRoot = presentIntervals.includes(0);
+    const hasMajorThird = presentIntervals.includes(4);
+    const hasMinorThird = presentIntervals.includes(3);
+    const hasThird = hasMajorThird || hasMinorThird;
+    const hasFlatSeven = presentIntervals.includes(10);
+    const hasMajorSeven = presentIntervals.includes(11);
+    const hasNinth = presentIntervals.includes(2);
+    if (target.quality.id === "major7") {
+      return hasMajorSeven && (hasRoot || hasMajorThird);
+    }
+    if (target.quality.id === "dominant7") {
+      return hasFlatSeven && (hasRoot || hasMajorThird);
+    }
+    if (target.quality.id === "minor7") {
+      return hasFlatSeven && (hasRoot || hasMinorThird);
+    }
+    if (target.quality.id === "major9") {
+      return hasNinth && hasMajorSeven && (hasRoot || hasMajorThird);
+    }
+    if (target.quality.id === "dominant9") {
+      return hasNinth && hasFlatSeven && (hasRoot || hasMajorThird);
+    }
+    if (target.quality.id === "minor9") {
+      return hasNinth && hasFlatSeven && (hasRoot || hasMinorThird);
+    }
+    if (target.quality.id === "minor7flat5") {
+      return hasFlatSeven && hasMinorThird && presentIntervals.includes(6);
+    }
+    if (target.quality.id === "diminished") {
+      return hasMinorThird && presentIntervals.includes(6);
+    }
+    if (target.quality.id === "minor") {
+      return hasRoot && hasMinorThird;
+    }
+    if (target.quality.id === "major") {
+      return hasRoot && hasMajorThird;
+    }
+    return presentIntervals.length >= 2;
+  }
+
+  function chordFinderConfidence(target, presentIntervals, omittedIntervals) {
+    if (!omittedIntervals.length) {
+      return "high";
+    }
+    const missingThird = omittedIntervals.includes(3) || omittedIntervals.includes(4);
+    const missingSeventh = omittedIntervals.includes(10) || omittedIntervals.includes(11);
+    const missingNinth = target.quality.id.includes("9") && omittedIntervals.includes(2);
+    if (missingThird || missingSeventh || missingNinth) {
+      return "medium";
+    }
+    if (omittedIntervals.includes(0)) {
+      return "medium, rootless";
+    }
+    return "medium-high";
+  }
+
+  function chordFinderCandidateScore(row, target, presentIntervals, omittedIntervals) {
+    const metadata = gripMetadata(row.string_group);
+    const tierOrder = { core: 0, extended: 1, two_string: 2, advanced: 3 };
+    const tierPenalty = (tierOrder[metadata?.tier || "advanced"] ?? 3) * 6;
+    const controlPenalty = normalizePedals(row).length * 3;
+    const missingPenalty = omittedIntervals.reduce((total, interval) => {
+      if (interval === 7) {
+        return total + 2;
+      }
+      if (interval === 0) {
+        return total + 6;
+      }
+      if (interval === 3 || interval === 4) {
+        return total + 14;
+      }
+      if (interval === 10 || interval === 11 || interval === 2) {
+        return total + 12;
+      }
+      return total + 5;
+    }, 0);
+    const definitionBonus = presentIntervals.filter((interval) => target.quality.required.includes(interval)).length * 14;
+    const completeBonus = omittedIntervals.length ? 0 : 48;
+    return 100 + completeBonus + definitionBonus - missingPenalty - tierPenalty - controlPenalty - Math.abs(Number(row.fret) - 8) * 0.3;
+  }
+
+  function chordFinderRowFromCells(target, group, fret, controlState, cells) {
+    const targetPitchClasses = new Set(target.pitchClasses);
+    const entries = [];
+    const intervals = [];
+    const extraNotes = [];
+    cells.forEach((cell) => {
+      const pitchClass = pitchClassForNote(cell.finalNote);
+      const interval = chordTargetIntervalForPitchClass(pitchClass, target);
+      if (pitchClass === null || !targetPitchClasses.has(pitchClass) || interval === null) {
+        extraNotes.push(cell.finalNote);
+        return;
+      }
+      intervals.push(interval);
+      entries.push({ cell, interval });
+    });
+    const presentIntervals = Array.from(new Set(intervals)).sort((a, b) => a - b);
+    const omittedIntervals = target.quality.intervals.filter((interval) => !presentIntervals.includes(interval));
+    if (extraNotes.length || presentIntervals.length < 2 || !chordFinderQualityGate(target, presentIntervals)) {
+      return null;
+    }
+    const displayNotes = {};
+    entries.forEach(({ cell, interval }) => {
+      displayNotes[cell.stringNumber] = {
+        note: cell.finalNote,
+        interval: intervalNameFromSemitones(interval),
+      };
+    });
+    const strings = group.split("-").map(Number).filter(Number.isFinite);
+    const topCell = entries.find(({ cell }) => Number(cell.stringNumber) === strings[0])?.cell || entries[0]?.cell;
+    const row = {
+      id: `chord-finder:${target.label}:${group}:${fret}:${controlState.id}`,
+      key: activeKey(),
+      scale_type: els.scale.value,
+      harmony_type: "chord_voicing_finder",
+      chord_name: omittedIntervals.length ? `${target.label}(${omittedIntervals.map((interval) => `no${omittedIntervalLabel(interval)}`).join(", ")})` : target.label,
+      chord_function: target.source === "function" ? target.message : `${target.quality.label} target`,
+      chord_quality: target.quality.label,
+      fret,
+      string_group: group,
+      strings,
+      pedals: controlState.controls,
+      levers: [],
+      notes: entries.map(({ cell }) => cell.finalNote),
+      intervals: presentIntervals.map(intervalNameFromSemitones),
+      display_notes: displayNotes,
+      display_top_voice: {
+        note: topCell?.finalNote || "",
+        interval: topCell ? intervalNameFromSemitones(chordTargetIntervalForPitchClass(pitchClassForNote(topCell.finalNote), target)) : "",
+        string: topCell?.stringNumber || "",
+      },
+      display_summary: `${omittedIntervals.length ? "Partial " : ""}${target.label} on strings ${group}`,
+      explanation_summary: `${omittedIntervals.length ? "Partial voicing" : "Complete voicing"} for ${target.label}: present ${presentIntervals.map(intervalRoleLabel).join(", ")}${omittedIntervals.length ? `; omitted ${omittedIntervals.map(intervalRoleLabel).join(", ")}` : ""}.`,
+      warnings: omittedIntervals.length ? [`Partial ${target.label}: omitted ${omittedIntervals.map(intervalRoleLabel).join(", ")}.`] : [],
+      per_string_changes: Object.fromEntries(cells.map((cell) => [
+        cell.stringNumber,
+        {
+          from: cell.openNoteAtFret,
+          to: cell.finalNote,
+          controls: cell.isAffected ? cell.activeControlLabel : "no change",
+        },
+      ])),
+      chord_finder: {
+        target,
+        presentIntervals,
+        omittedIntervals,
+        presentTones: presentIntervals.map((interval) => `${intervalRoleLabel(interval)} (${displayNoteForPitchClassInKey(target.rootPitchClass + interval, target.contextKey)})`),
+        omittedTones: omittedIntervals.map((interval) => `${intervalRoleLabel(interval)} (${displayNoteForPitchClassInKey(target.rootPitchClass + interval, target.contextKey)})`),
+        confidence: chordFinderConfidence(target, presentIntervals, omittedIntervals),
+        gripTier: gripTierLabel(group),
+      },
+    };
+    row.chord_finder.score = chordFinderCandidateScore(row, target, presentIntervals, omittedIntervals);
+    return row;
+  }
+
+  function chordFinderGroups() {
+    return Array.from(gripVocabularyGroups(selectedGripVocabulary))
+      .filter((group) => group.split("-").filter(Boolean).length <= 4);
+  }
+
+  function chordFinderCandidates(target = parseChordFinderQuery(), options = {}) {
+    if (!target?.ok) {
+      return [];
+    }
+    const range = options.ignoreRange ? { min: 0, max: 24 } : activeRangeOption();
+    const rows = [];
+    chordFinderGroups().forEach((group) => {
+      const strings = group.split("-").map(Number).filter(Number.isFinite);
+      if (!strings.length) {
+        return;
+      }
+      chordFinderControlStates().forEach((state) => {
+        for (let fret = range.min; fret <= range.max; fret += 1) {
+          const cells = strings.map((stringNumber) => noteCellState(stringNumber, fret, state));
+          const row = chordFinderRowFromCells(target, group, fret, state, cells);
+          if (row) {
+            rows.push(row);
+          }
+        }
+      });
+    });
+    return rows
+      .sort((a, b) => (b.chord_finder?.score || 0) - (a.chord_finder?.score || 0)
+        || Number(a.fret || 0) - Number(b.fret || 0)
+        || String(a.id || "").localeCompare(String(b.id || "")))
+      .slice(0, options.ignoreRange ? 64 : 24);
+  }
+
+  function selectedChordCandidate(rows = chordFinderCandidates()) {
+    return rows.find((row) => row.id === selectedChordCandidateId) || rows[0] || null;
+  }
+
   function selectedGripCandidate() {
     return gripFinderCandidates().find((row) => row.id === selectedGripCandidateId) || null;
   }
@@ -1698,6 +2181,10 @@
     return els.exploreMode?.value === EXPLORE_MODES.voicing;
   }
 
+  function isChordFinderMode() {
+    return els.exploreMode?.value === EXPLORE_MODES.chord;
+  }
+
   function activeHarmonyValue() {
     return isPathMode() ? "three_string_diatonic" : els.harmony.value;
   }
@@ -1842,12 +2329,13 @@
     const pathMode = isPathMode();
     const noteMode = isNoteFinderMode();
     const voicingMode = isVoicingIdentifierMode();
+    const chordMode = isChordFinderMode();
     if (els.stringGroupControl) {
-      els.stringGroupControl.hidden = pathMode || noteMode || voicingMode;
-      els.stringGroupControl.setAttribute?.("aria-hidden", pathMode || noteMode || voicingMode ? "true" : "false");
+      els.stringGroupControl.hidden = pathMode || noteMode || voicingMode || chordMode;
+      els.stringGroupControl.setAttribute?.("aria-hidden", pathMode || noteMode || voicingMode || chordMode ? "true" : "false");
     }
     if (els.stringGroup) {
-      els.stringGroup.disabled = pathMode || noteMode || voicingMode;
+      els.stringGroup.disabled = pathMode || noteMode || voicingMode || chordMode;
     }
     if (els.pathFamilyControl) {
       els.pathFamilyControl.hidden = !pathMode;
@@ -1862,13 +2350,16 @@
     }
     if (els.gripVocabulary) {
       els.gripVocabulary.disabled = pathMode || noteMode || voicingMode;
+      if (chordMode && gripVocabularyOptions().some((optionItem) => optionItem.id === selectedGripVocabulary)) {
+        els.gripVocabulary.value = selectedGripVocabulary;
+      }
     }
     if (els.harmonyControl) {
-      els.harmonyControl.hidden = pathMode || noteMode || voicingMode;
-      els.harmonyControl.setAttribute?.("aria-hidden", pathMode || noteMode || voicingMode ? "true" : "false");
+      els.harmonyControl.hidden = pathMode || noteMode || voicingMode || chordMode;
+      els.harmonyControl.setAttribute?.("aria-hidden", pathMode || noteMode || voicingMode || chordMode ? "true" : "false");
     }
     if (els.harmony) {
-      els.harmony.disabled = pathMode || noteMode || voicingMode;
+      els.harmony.disabled = pathMode || noteMode || voicingMode || chordMode;
       if (pathMode) {
         els.harmony.value = "three_string_diatonic";
       }
@@ -1935,17 +2426,18 @@
     const scale = els.scale.value;
     const harmony = activeHarmonyValue();
     const rows = rowsForScaleAndHarmony(scale, harmony);
-    if (els.gripVocabulary && gripVocabularyOptions().some((optionItem) => optionItem.id === selectedSingleGripVocabulary)) {
-      els.gripVocabulary.value = selectedSingleGripVocabulary;
+    const vocabularyValue = isChordFinderMode() ? selectedGripVocabulary : selectedSingleGripVocabulary;
+    if (els.gripVocabulary && gripVocabularyOptions().some((optionItem) => optionItem.id === vocabularyValue)) {
+      els.gripVocabulary.value = vocabularyValue;
     }
-    const registryGroups = gripVocabularyGroups(selectedSingleGripVocabulary);
+    const registryGroups = gripVocabularyGroups(vocabularyValue);
     const validGroups = harmony === "two_string_harmonized"
       ? availableStringGroups(rows, harmony)
       : Array.from(registryGroups);
     const currentValues = selectedStringGroups().filter((group) => validGroups.includes(group));
     const allLabel = harmony === "two_string_harmonized"
       ? "All 2-string groups"
-      : `All ${gripVocabularyLabel(selectedSingleGripVocabulary).toLowerCase()} grips`;
+      : `All ${gripVocabularyLabel(vocabularyValue).toLowerCase()} grips`;
     const selectedValues = currentValues.length ? currentValues : ["all"];
     let html = option("all", allLabel, selectedValues);
 
@@ -2129,6 +2621,9 @@
     }
     if (row.harmony_type === "dominant_v7_grip") {
       return "Dominant 7 / V7 grip";
+    }
+    if (row.harmony_type === "chord_voicing_finder") {
+      return row.chord_finder?.gripTier || "Chord / voicing finder";
     }
     if (row.harmony_type === "five_eight_branch" || row.string_group === "5-8") {
       return "5&8 branch";
@@ -2646,7 +3141,7 @@
     if (!els.topIntervalFilter) {
       return;
     }
-    if (isNoteFinderMode() || isVoicingIdentifierMode()) {
+    if (isNoteFinderMode() || isVoicingIdentifierMode() || isChordFinderMode()) {
       els.topIntervalFilter.hidden = true;
       els.topIntervalFilter.innerHTML = "";
       return;
@@ -2695,7 +3190,7 @@
     }
     const outsideCount = Math.max(0, rowsBeforeRange.length - rows.length);
     const activeRange = activeRangeOption();
-    const matchNoun = isNoteFinderMode() ? "note" : "position";
+    const matchNoun = isNoteFinderMode() ? "note" : isChordFinderMode() ? "candidate" : "position";
     els.fretRangeFilter.hidden = false;
     els.fretRangeFilter.innerHTML = `
       <div class="explorer-fret-range-filter__label">
@@ -2872,6 +3367,11 @@
       selectedRowId = currentRows[0]?.id || "";
     } else {
       selectedRowId = rowId;
+    }
+    if (isChordFinderMode()) {
+      selectedChordCandidateId = selectedRowId;
+      renderChordFinderMode();
+      return;
     }
     if (isVoicingIdentifierMode()) {
       renderVoicingIdentifierMode();
@@ -3927,6 +4427,10 @@
     if (els.resultCount) {
       els.resultCount.textContent = "";
     }
+    if (els.chordFinder) {
+      els.chordFinder.hidden = true;
+      els.chordFinder.innerHTML = "";
+    }
     els.empty.hidden = true;
     els.empty.textContent = "";
     renderCopedentChart();
@@ -3934,6 +4438,236 @@
     renderNoteFinder();
     const renderedText = [
       els.noteFinder?.textContent || "",
+      els.activeResults?.textContent || "",
+      els.rowList?.textContent || "",
+      els.selectedDetail?.textContent || "",
+      els.fretboard?.textContent || "",
+    ].join(" ");
+    if (renderedText.includes("[object Object]")) {
+      console.warn("Explorer rendered an unsafe object string.");
+    }
+  }
+
+  function chordFinderTargetSummaryHtml(target) {
+    if (!target?.ok) {
+      return `<p class="explorer-voicing-identifier__warning">${escapeHtml(target?.message || "Enter a chord target to search practical E9 voicings.")}</p>`;
+    }
+    return `
+      <section class="explorer-voicing-summary explorer-chord-finder__summary" aria-label="Chord finder target">
+        <strong>${escapeHtml(`Target: ${target.label} (${target.quality.label})`)}</strong>
+        <p>${escapeHtml(`${target.message ? `${target.message} ` : ""}Chord tones: ${target.toneLabels.map((tone) => `${tone.role} ${tone.note}`).join(", ")}.`)}</p>
+      </section>
+    `;
+  }
+
+  function renderChordFinderPanel(target, candidates) {
+    if (!els.chordFinder) {
+      return;
+    }
+    els.chordFinder.hidden = false;
+    els.chordFinder.innerHTML = `
+      <div class="explorer-voicing-identifier__header">
+        <div>
+          <strong>Chord / Voicing Finder</strong>
+          <p>Type a target chord or key function, then filter the practical grip vocabulary and fret range.</p>
+        </div>
+        <span>${escapeHtml(`${candidates.length} ${candidates.length === 1 ? "candidate" : "candidates"}`)}</span>
+      </div>
+      <div class="explorer-voicing-identifier__controls explorer-chord-finder__controls">
+        <div class="explorer-voicing-identifier__field explorer-chord-finder__field--target">
+          <label class="explorer-voicing-identifier__label" for="explorer-chord-query">Target chord or function</label>
+          <input class="explorer-voicing-identifier__input explorer-chord-finder__input" id="explorer-chord-query" value="${escapeHtml(chordFinderQuery)}" placeholder="Fmaj7, Cmin9, V7 in G" />
+          <p class="explorer-voicing-identifier__context">Examples: Fmaj7, F major 7, Cmin9, Cm9, D7, G9, Bbmaj7, V7 in G, ii9 in Bb.</p>
+        </div>
+        <div class="explorer-voicing-identifier__field">
+          <label class="explorer-voicing-identifier__label" for="explorer-chord-root">Root</label>
+          <select class="explorer-voicing-identifier__input" id="explorer-chord-root">${chordFinderRootOptionsHtml()}</select>
+        </div>
+        <div class="explorer-voicing-identifier__field">
+          <label class="explorer-voicing-identifier__label" for="explorer-chord-quality">Quality</label>
+          <select class="explorer-voicing-identifier__input" id="explorer-chord-quality">${chordFinderQualityOptionsHtml()}</select>
+        </div>
+        <div class="explorer-voicing-identifier__field">
+          <label class="explorer-voicing-identifier__label" for="explorer-chord-control-scope">Pedals / levers scope</label>
+          <select class="explorer-voicing-identifier__input" id="explorer-chord-control-scope">${chordFinderControlScopeOptionsHtml()}</select>
+        </div>
+      </div>
+      ${chordFinderTargetSummaryHtml(target)}
+    `;
+    const queryInput = document.getElementById("explorer-chord-query");
+    if (queryInput) {
+      queryInput.addEventListener("change", () => {
+        chordFinderQuery = queryInput.value || "";
+        selectedChordCandidateId = "";
+        renderChordFinderMode();
+      });
+      queryInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          chordFinderQuery = queryInput.value || "";
+          selectedChordCandidateId = "";
+          renderChordFinderMode();
+        }
+      });
+    }
+    const rootInput = document.getElementById("explorer-chord-root");
+    if (rootInput) {
+      rootInput.addEventListener("change", () => {
+        selectedChordRoot = rootInput.value || "auto";
+        selectedChordCandidateId = "";
+        renderChordFinderMode();
+      });
+    }
+    const qualityInput = document.getElementById("explorer-chord-quality");
+    if (qualityInput) {
+      qualityInput.addEventListener("change", () => {
+        selectedChordQuality = qualityInput.value || "auto";
+        selectedChordCandidateId = "";
+        renderChordFinderMode();
+      });
+    }
+    const scopeInput = document.getElementById("explorer-chord-control-scope");
+    if (scopeInput) {
+      scopeInput.addEventListener("change", () => {
+        selectedChordControlScope = scopeInput.value || "common";
+        selectedChordCandidateId = "";
+        renderChordFinderMode();
+      });
+    }
+  }
+
+  function chordFinderResultCardHtml(row, dataAttributeName) {
+    const isSelected = row.id === selectedRowId;
+    const finder = row.chord_finder || {};
+    const controls = normalizePedals(row);
+    const present = formatValue(finder.presentTones, "");
+    const omitted = formatValue(finder.omittedTones, "none");
+    return `
+      <button class="explorer-active-result${isAdvanced(row) ? " explorer-active-result--advanced" : ""}${isSelected ? " is-selected" : ""}" type="button" ${dataAttributeName}="${escapeHtml(row.id)}" data-chord-finder-result="${escapeHtml(row.id)}" data-string-group="${escapeHtml(row.string_group)}" aria-pressed="${isSelected ? "true" : "false"}">
+        <span class="explorer-active-result__top">
+          <strong>${escapeHtml(row.chord_name || row.display_summary || "Chord finder result")}</strong>
+        </span>
+        <span class="explorer-active-result__fields">
+          <span><b>Fret</b>${escapeHtml(formatValue(row.fret))}</span>
+          <span><b>Strings</b>${escapeHtml(row.string_group)}</span>
+          <span><b>Pedals/levers</b>${escapeHtml(controls.length ? `With ${controls.join("+")}` : "Open")}</span>
+          <span><b>Confidence</b>${escapeHtml(formatValue(finder.confidence))}</span>
+          <span><b>Present</b>${escapeHtml(present)}</span>
+          <span><b>Omitted</b>${escapeHtml(omitted)}</span>
+        </span>
+      </button>
+    `;
+  }
+
+  function renderChordFinderResults(target, rows) {
+    const selected = selectedChordCandidate(rows);
+    const targetLabel = target?.ok ? target.label : "target";
+    if (!rows.length) {
+      const message = target?.ok
+        ? `No practical voicing found for ${targetLabel} with the current grip vocabulary, control scope, and fret range. Try All practical, Include levers, or All frets.`
+        : target?.message || "Enter a chord target to search.";
+      els.activeResults.innerHTML = `
+        <div class="explorer-active-results__header">
+          <strong>No Chord / Voicing Finder candidates</strong>
+          <span>${escapeHtml(message)}</span>
+        </div>
+      `;
+      els.rowList.innerHTML = "";
+      return;
+    }
+    els.activeResults.innerHTML = `
+      <div class="explorer-active-results__header">
+        <strong>${escapeHtml(`${targetLabel}: ${rows.length} practical ${rows.length === 1 ? "candidate" : "candidates"}`)}</strong>
+        <span>Cards are ranked by complete chord tones, practical grip tier, control scope, and omissions. The SVG focuses the selected candidate.</span>
+      </div>
+      <div class="explorer-active-results__track">
+        ${rows.map((row) => chordFinderResultCardHtml(row, "data-active-result-row")).join("")}
+      </div>
+    `;
+    els.rowList.innerHTML = rows.map((row) => chordFinderResultCardHtml(row, "data-explorer-row")).join("");
+    const wireButton = (button) => {
+      const rowId = button.getAttribute("data-chord-finder-result") || button.getAttribute("data-active-result-row") || button.getAttribute("data-explorer-row") || "";
+      button.addEventListener("click", () => {
+        selectedChordCandidateId = rowId;
+        selectRow(rowId);
+      });
+    };
+    Array.from(els.activeResults.querySelectorAll("[data-chord-finder-result]")).forEach(wireButton);
+    Array.from(els.rowList.querySelectorAll("[data-chord-finder-result]")).forEach(wireButton);
+    selectedChordCandidateId = selected?.id || "";
+  }
+
+  function renderChordFinderDetail(row) {
+    if (!row) {
+      els.selectedDetail.className = "explorer-selected-detail";
+      els.selectedDetail.innerHTML = '<p class="explorer-empty">Choose a Chord / Voicing Finder candidate to inspect it.</p>';
+      return;
+    }
+    const finder = row.chord_finder || {};
+    const target = finder.target || {};
+    els.selectedDetail.className = isAdvanced(row) ? "explorer-selected-detail explorer-selected-detail--advanced" : "explorer-selected-detail";
+    els.selectedDetail.innerHTML = `
+      <div class="explorer-selected-detail__header">
+        <span class="explorer-selected-detail__kind">${escapeHtml(finder.gripTier || groupLabel(row))}</span>
+        <strong>${escapeHtml(row.chord_name || row.display_summary || "Chord finder candidate")}</strong>
+      </div>
+      <section class="explorer-teaching-note" aria-label="Why this voicing matches">
+        <strong>Why this voicing matches</strong>
+        <p>${escapeHtml(formatTheoryText(row.explanation_summary || `This candidate matches ${target.label || "the target chord"} from deterministic E9 pitch logic.`))}</p>
+      </section>
+      <dl class="explorer-detail-grid">
+        ${detailRow("Target", target.label)}
+        ${detailRow("Fret", row.fret)}
+        ${detailRow("String group", row.string_group)}
+        ${detailRow("Grip type", finder.gripTier)}
+        ${detailRow("Pedals / levers", normalizePedals(row))}
+        ${detailRow("Notes", rowNoteLabels(row))}
+        ${detailRow("Present chord tones", finder.presentTones)}
+        ${detailRow("Omitted tones", finder.omittedTones)}
+        ${detailRow("Confidence", finder.confidence)}
+        ${detailRow("Notation mode", notationModeLabel())}
+        ${detailRow("Warnings", row.warnings)}
+      </dl>
+      ${stringActionRowsHtml(row)}
+    `;
+  }
+
+  function renderChordFinderMode() {
+    const target = parseChordFinderQuery();
+    const rowsBeforeRange = chordFinderCandidates(target, { ignoreRange: true });
+    const rows = chordFinderCandidates(target);
+    const selected = selectedChordCandidate(rows);
+    selectedRowId = selected?.id || "";
+    selectedChordCandidateId = selectedRowId;
+    currentRows = rows;
+    currentMarkerGroups = selected ? groupRowsForMarkers([selected]) : [];
+    if (els.noteFinder) {
+      els.noteFinder.hidden = true;
+      els.noteFinder.innerHTML = "";
+    }
+    if (els.voicingIdentifier) {
+      els.voicingIdentifier.hidden = true;
+      els.voicingIdentifier.innerHTML = "";
+    }
+    if (els.topIntervalFilter) {
+      els.topIntervalFilter.hidden = true;
+      els.topIntervalFilter.innerHTML = "";
+    }
+    els.scaleNotes.textContent = getScaleNotes();
+    if (els.resultCount) {
+      els.resultCount.textContent = "";
+    }
+    els.empty.hidden = true;
+    els.empty.textContent = "";
+    renderCopedentChart();
+    renderChordFinderPanel(target, rows);
+    renderFretRangeFilter(rowsBeforeRange, rows);
+    renderControlImpactPreview();
+    renderChordFinderResults(target, rows);
+    renderFretboard(selected ? [selected] : []);
+    renderChordFinderDetail(selected);
+    syncSelectedState();
+    const renderedText = [
+      els.chordFinder?.textContent || "",
       els.activeResults?.textContent || "",
       els.rowList?.textContent || "",
       els.selectedDetail?.textContent || "",
@@ -4101,6 +4835,10 @@
       els.noteFinder.hidden = true;
       els.noteFinder.innerHTML = "";
     }
+    if (els.chordFinder) {
+      els.chordFinder.hidden = true;
+      els.chordFinder.innerHTML = "";
+    }
     if (els.topIntervalFilter) {
       els.topIntervalFilter.hidden = true;
       els.topIntervalFilter.innerHTML = "";
@@ -4157,6 +4895,10 @@
   }
 
   function render() {
+    if (isChordFinderMode()) {
+      renderChordFinderMode();
+      return;
+    }
     if (isVoicingIdentifierMode()) {
       renderVoicingIdentifierMode();
       return;
@@ -4172,6 +4914,10 @@
     if (els.voicingIdentifier) {
       els.voicingIdentifier.hidden = true;
       els.voicingIdentifier.innerHTML = "";
+    }
+    if (els.chordFinder) {
+      els.chordFinder.hidden = true;
+      els.chordFinder.innerHTML = "";
     }
     const baseRows = getBaseRows();
     syncSelectedTopFilter(baseRows);
@@ -4347,7 +5093,12 @@
     });
     if (els.gripVocabulary) {
       els.gripVocabulary.addEventListener("change", () => {
-        selectedSingleGripVocabulary = els.gripVocabulary.value || "core";
+        if (isChordFinderMode()) {
+          selectedGripVocabulary = els.gripVocabulary.value || "core";
+          selectedChordCandidateId = "";
+        } else {
+          selectedSingleGripVocabulary = els.gripVocabulary.value || "core";
+        }
         updateStringGroupOptions();
         selectedTopFilter = "all";
         render();
@@ -4381,5 +5132,7 @@
     rowsForScaleAndHarmony,
     uniqueGroups,
     pathRows,
+    parseChordFinderQuery,
+    chordFinderCandidates,
   };
 })();

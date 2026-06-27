@@ -276,7 +276,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "pedal-steel-fretboard.js?v=explorer-compact-copedent-20260625" not in html
     assert '<script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>' in html
     assert "[hidden] {\n      display: none !important;\n    }" in html
-    assert '<script src="e9-fretboard-explorer.js?v=notation-near-fretboard-20260627"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=chord-voicing-finder-20260627"></script>' in html
     assert "e9-fretboard-explorer.js?v=grip-vocabulary-20260627" not in html
     assert "e9-fretboard-explorer.js?v=single-note-learning-20260626" not in html
     assert "e9-fretboard-explorer.js?v=single-note-finder-20260626" not in html
@@ -344,13 +344,17 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<option value="path">Harmonized scale path</option>' in html
     assert '<option value="note">Single-note finder</option>' in html
     assert '<option value="voicing">Voicing identifier</option>' in html
+    assert '<option value="chord">Chord / Voicing Finder</option>' in html
     assert "Single grip filters exact strings" in html
-    assert "Voicing identifier explains one fret/string/control shape." in html
+    assert "Voicing identifier explains one shape." in html
+    assert "Chord / Voicing Finder searches practical shapes for a target chord." in html
     assert ".explorer-mode-panel {" in html
     assert "grid-template-columns: minmax(220px, 340px) minmax(0, 1fr);" in html
     assert "Start by choosing the kind of fretboard question you want to explore" in mode_markup
     assert 'id="explorer-note-finder"' in html
     assert 'id="explorer-voicing-identifier"' in html
+    assert 'id="explorer-chord-finder"' in html
+    assert ".explorer-chord-finder__controls" in html
     assert ".explorer-voicing-identifier__input" in html
     assert ".explorer-voicing-identifier__field" in html
     assert "grid-template-columns: minmax(96px, 0.25fr) minmax(210px, 0.45fr) minmax(0, 1fr);" in html
@@ -637,7 +641,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '"4-6-9"' in script
     assert '"3-6"' in script
     assert '"8-10"' in script
-    assert "notation-near-fretboard-20260627" in html
+    assert "chord-voicing-finder-20260627" in html
     assert "data-note-sync-event" in script
     assert "data-note-cell" in script
     assert "Dominant 7 / V7" in script
@@ -881,7 +885,8 @@ class FakeNode {
       "[data-note-sync-event]": Array.from(value.matchAll(/data-note-sync-event="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-sync-event")),
       "[data-voicing-control]": Array.from(value.matchAll(/data-voicing-control="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-voicing-control")),
       "[data-voicing-control-clear]": value.includes("data-voicing-control-clear") ? [new FakeButton("clear", "data-voicing-control-clear")] : [],
-      "[data-voicing-string]": Array.from(value.matchAll(/data-voicing-string="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-voicing-string"))
+      "[data-voicing-string]": Array.from(value.matchAll(/data-voicing-string="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-voicing-string")),
+      "[data-chord-finder-result]": Array.from(value.matchAll(/data-chord-finder-result="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-chord-finder-result"))
     };
   }
   get innerHTML() {
@@ -988,7 +993,8 @@ const elements = {
     { value: "single", text: "Single grip" },
     { value: "path", text: "Harmonized scale path" },
     { value: "note", text: "Single-note finder" },
-    { value: "voicing", text: "Voicing identifier" }
+    { value: "voicing", text: "Voicing identifier" },
+    { value: "chord", text: "Chord / Voicing Finder" }
   ]),
   "explorer-scale": new FakeSelect("explorer-scale", "major", [
     { value: "major", text: "G major" },
@@ -1025,6 +1031,7 @@ const elements = {
   "explorer-control-impact-preview": new FakeNode("explorer-control-impact-preview"),
   "explorer-note-finder": new FakeNode("explorer-note-finder"),
   "explorer-voicing-identifier": new FakeNode("explorer-voicing-identifier"),
+  "explorer-chord-finder": new FakeNode("explorer-chord-finder"),
   "explorer-active-results": new FakeNode("explorer-active-results"),
   "explorer-fretboard": new FakeNode("explorer-fretboard"),
   "explorer-row-list": new FakeNode("explorer-row-list"),
@@ -1035,6 +1042,10 @@ const elements = {
     const value = String(index + 1);
     return { value, text: value };
   })),
+  "explorer-chord-query": new FakeSelect("explorer-chord-query", "Fmaj7", []),
+  "explorer-chord-root": new FakeSelect("explorer-chord-root", "auto", [{ value: "auto", text: "Auto" }]),
+  "explorer-chord-quality": new FakeSelect("explorer-chord-quality", "auto", [{ value: "auto", text: "Auto" }]),
+  "explorer-chord-control-scope": new FakeSelect("explorer-chord-control-scope", "common", [{ value: "common", text: "Common controls" }]),
 };
 let lastMount;
 const notationModeButtons = [
@@ -1230,6 +1241,63 @@ assert.equal(lastMount.options.positions.every((row) => Number(row.fret) >= 10 &
 assert.equal(lastMount.options.positions.length > 0, true);
 rangeButtons.find((button) => button.getAttribute("data-fret-range-filter") === "all").onclick();
 assert.equal(lastMount.options.positions.length >= coreCount, true);
+
+const explorerApi = sandbox.window.STEEL_RAG_E9_EXPLORER;
+const fMaj7Target = explorerApi.parseChordFinderQuery("Fmaj7");
+assert.equal(fMaj7Target.ok, true);
+assert.equal(fMaj7Target.label, "Fmaj7");
+assert.equal(fMaj7Target.quality.id, "major7");
+assert.equal(JSON.stringify(fMaj7Target.toneLabels.map((tone) => tone.note)), JSON.stringify(["F", "A", "C", "E"]));
+const fMajor7Target = explorerApi.parseChordFinderQuery("F major 7");
+assert.equal(fMajor7Target.label, "Fmaj7");
+const fDelta7Target = explorerApi.parseChordFinderQuery("FΔ7");
+assert.equal(fDelta7Target.label, "Fmaj7");
+const cMin9Target = explorerApi.parseChordFinderQuery("Cmin9");
+assert.equal(cMin9Target.ok, true);
+assert.equal(cMin9Target.label, "Cm9");
+assert.equal(cMin9Target.quality.id, "minor9");
+const cM9Target = explorerApi.parseChordFinderQuery("Cm9");
+assert.equal(cM9Target.label, "Cm9");
+const v7Target = explorerApi.parseChordFinderQuery("V7 in G");
+assert.equal(v7Target.label, "D7");
+assert.equal(v7Target.quality.id, "dominant7");
+assert.match(v7Target.message, /resolves to D7/);
+const iMaj7Target = explorerApi.parseChordFinderQuery("Imaj7 in F");
+assert.equal(iMaj7Target.label, "Fmaj7");
+assert.equal(iMaj7Target.quality.id, "major7");
+
+elements["explorer-explore-mode"].value = "chord";
+elements["explorer-explore-mode"].dispatchChange();
+assert.equal(elements["explorer-chord-finder"].hidden, false);
+assert.equal(elements["explorer-string-group-control"].hidden, true);
+assert.equal(elements["explorer-harmony-control"].hidden, true);
+assert.equal(elements["explorer-grip-vocabulary-control"].hidden, false);
+assert.match(elements["explorer-chord-finder"].textContent, /Chord \/ Voicing Finder/);
+assert.match(elements["explorer-chord-finder"].textContent, /Target: Fmaj7/);
+assert.match(elements["explorer-active-results"].textContent, /Fmaj7/);
+assert.match(elements["explorer-active-results"].textContent, /Present/);
+assert.match(elements["explorer-active-results"].textContent, /Omitted/);
+assert.match(elements["explorer-selected-detail"].textContent, /Present chord tones/);
+assert.match(elements["explorer-selected-detail"].textContent, /Omitted tones/);
+assert.match(elements["explorer-selected-detail"].textContent, /Confidence/);
+assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /omitted 0/);
+assert.equal(lastMount.options.positions.length <= 1, true);
+assert.equal(elements["explorer-active-results"].querySelectorAll("[data-chord-finder-result]").length > 0, true);
+elements["explorer-chord-query"].value = "Cmin9";
+elements["explorer-chord-query"].dispatchChange();
+assert.match(elements["explorer-chord-finder"].textContent, /Target: Cm9/);
+assert.doesNotMatch(elements["explorer-chord-finder"].textContent, /\[object Object\]/);
+elements["explorer-chord-query"].value = "V7 in G";
+elements["explorer-chord-query"].dispatchChange();
+assert.match(elements["explorer-chord-finder"].textContent, /resolves to D7/);
+assert.doesNotMatch(elements["explorer-active-results"].textContent, /Fmaj7/);
+elements["explorer-explore-mode"].value = "voicing";
+elements["explorer-explore-mode"].dispatchChange();
+assert.equal(elements["explorer-voicing-identifier"].hidden, false);
+assert.equal(elements["explorer-chord-finder"].hidden, true);
+elements["explorer-explore-mode"].value = "single";
+elements["explorer-explore-mode"].dispatchChange();
+
 notationModeButtons[1].onclick();
 assert.match(elements["explorer-scale-notes"].textContent, /1 - 2- - 3- - 4 - 5 - 6- - 7°/);
 assert.equal(JSON.stringify(topFilterValues()), JSON.stringify(["all", "1", "2-", "3-", "4", "5", "6-", "7°"]));
