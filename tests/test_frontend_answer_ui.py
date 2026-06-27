@@ -278,8 +278,8 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>' in html
     assert "[hidden] {\n      display: none !important;\n    }" in html
     assert '<script src="e9-music-rules.js?v=shared-music-rules-20260627"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=shared-music-rules-20260627"></script>' in html
-    assert html.index("e9-music-rules.js?v=shared-music-rules-20260627") < html.index("e9-fretboard-explorer.js?v=shared-music-rules-20260627")
+    assert '<script src="e9-fretboard-explorer.js?v=structured-chord-picker-20260627"></script>' in html
+    assert html.index("e9-music-rules.js?v=shared-music-rules-20260627") < html.index("e9-fretboard-explorer.js?v=structured-chord-picker-20260627")
     assert "e9-fretboard-explorer.js?v=grip-vocabulary-20260627" not in html
     assert "e9-fretboard-explorer.js?v=single-note-learning-20260626" not in html
     assert "e9-fretboard-explorer.js?v=single-note-finder-20260626" not in html
@@ -358,6 +358,8 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert 'id="explorer-voicing-identifier"' in html
     assert 'id="explorer-chord-finder"' in html
     assert ".explorer-chord-finder__controls" in html
+    assert ".explorer-chord-finder__field--target" not in html
+    assert ".explorer-chord-finder__input" not in html
     assert ".explorer-voicing-identifier__input" in html
     assert ".explorer-voicing-identifier__field" in html
     assert "grid-template-columns: minmax(96px, 0.25fr) minmax(210px, 0.45fr) minmax(0, 1fr);" in html
@@ -530,6 +532,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "musicRules.identifyVoicing" in script
     assert "musicRules.parseChordFinderQuery" in script
     assert "musicRules.chordFinderQualityGate" in script
+    assert 'e9-fretboard-explorer.js?v=structured-chord-picker-20260627' in html
     assert "payloadsByCopedent" in script
     assert "renderCopedentChart" in script
     assert "openCopedentDialog" in script
@@ -1147,9 +1150,8 @@ const elements = {
     const value = String(index + 1);
     return { value, text: value };
   })),
-  "explorer-chord-query": new FakeSelect("explorer-chord-query", "Fmaj7", []),
-  "explorer-chord-root": new FakeSelect("explorer-chord-root", "auto", [{ value: "auto", text: "Auto" }]),
-  "explorer-chord-quality": new FakeSelect("explorer-chord-quality", "auto", [{ value: "auto", text: "Auto" }]),
+  "explorer-chord-root": new FakeSelect("explorer-chord-root", "F", [{ value: "F", text: "F" }]),
+  "explorer-chord-quality": new FakeSelect("explorer-chord-quality", "major7", [{ value: "major7", text: "Major 7" }]),
   "explorer-chord-control-scope": new FakeSelect("explorer-chord-control-scope", "common", [{ value: "common", text: "Common controls" }]),
 };
 let lastMount;
@@ -1380,6 +1382,11 @@ assert.equal(elements["explorer-harmony-control"].hidden, true);
 assert.equal(elements["explorer-grip-vocabulary-control"].hidden, false);
 assert.match(elements["explorer-chord-finder"].textContent, /Chord \/ Voicing Finder/);
 assert.match(elements["explorer-chord-finder"].textContent, /Target: Fmaj7/);
+assert.match(elements["explorer-chord-finder"].textContent, /Root/);
+assert.match(elements["explorer-chord-finder"].textContent, /Quality/);
+assert.doesNotMatch(elements["explorer-chord-finder"].textContent, /Target chord or function/);
+assert.doesNotMatch(elements["explorer-chord-finder"].textContent, /Fmaj7, Cmin9, V7 in G/);
+assert.doesNotMatch(elements["explorer-chord-finder"].textContent, /I could not read|Enter a chord|Try a chord symbol/);
 assert.match(elements["explorer-active-results"].textContent, /Fmaj7/);
 assert.match(elements["explorer-active-results"].textContent, /Present/);
 assert.match(elements["explorer-active-results"].textContent, /Omitted/);
@@ -1389,14 +1396,19 @@ assert.match(elements["explorer-selected-detail"].textContent, /Confidence/);
 assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /omitted 0/);
 assert.equal(lastMount.options.positions.length <= 1, true);
 assert.equal(elements["explorer-active-results"].querySelectorAll("[data-chord-finder-result]").length > 0, true);
-elements["explorer-chord-query"].value = "Cmin9";
-elements["explorer-chord-query"].dispatchChange();
+elements["explorer-chord-root"].value = "C";
+elements["explorer-chord-root"].dispatchChange();
+elements["explorer-chord-quality"].value = "minor9";
+elements["explorer-chord-quality"].dispatchChange();
 assert.match(elements["explorer-chord-finder"].textContent, /Target: Cm9/);
 assert.doesNotMatch(elements["explorer-chord-finder"].textContent, /\[object Object\]/);
-elements["explorer-chord-query"].value = "V7 in G";
-elements["explorer-chord-query"].dispatchChange();
-assert.match(elements["explorer-chord-finder"].textContent, /resolves to D7/);
+elements["explorer-chord-root"].value = "D";
+elements["explorer-chord-root"].dispatchChange();
+elements["explorer-chord-quality"].value = "dominant7";
+elements["explorer-chord-quality"].dispatchChange();
+assert.match(elements["explorer-chord-finder"].textContent, /Target: D7/);
 assert.doesNotMatch(elements["explorer-active-results"].textContent, /Fmaj7/);
+assert.equal(lastMount.options.positions.length <= 1, true);
 elements["explorer-explore-mode"].value = "voicing";
 elements["explorer-explore-mode"].dispatchChange();
 assert.equal(elements["explorer-voicing-identifier"].hidden, false);

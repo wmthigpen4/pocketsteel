@@ -114,9 +114,41 @@
   const CHROMATIC_SHARP_NOTES = musicRules.CHROMATIC_SHARP_NOTES;
   const CHROMATIC_FLAT_NOTES = musicRules.CHROMATIC_FLAT_NOTES;
   const MAJOR_SCALE_INTERVALS = musicRules.MAJOR_SCALE_INTERVALS;
-  const CHORD_FINDER_QUALITY_OPTIONS = CHORD_QUALITY_PATTERNS
-    .filter((quality) => quality.id !== "fifth")
-    .map((quality) => ({ id: quality.id, label: quality.label }));
+  const CHORD_FINDER_ROOT_OPTIONS = [
+    "C", "C#", "Db", "D", "D#", "Eb", "E", "F", "F#", "Gb", "G", "G#", "Ab", "A", "A#", "Bb", "B",
+  ];
+  const CHORD_FINDER_QUALITY_LABELS = {
+    major: "Major",
+    minor: "Minor",
+    diminished: "Diminished",
+    minor7flat5: "Half-diminished",
+    sus2: "Sus2",
+    sus4: "Sus4",
+    dominant7: "Dominant 7",
+    major7: "Major 7",
+    minor7: "Minor 7",
+    dominant9: "Dominant 9",
+    minor9: "Minor 9",
+    major9: "Major 9",
+  };
+  const CHORD_FINDER_QUALITY_ORDER = [
+    "major",
+    "minor",
+    "diminished",
+    "minor7flat5",
+    "sus2",
+    "sus4",
+    "dominant7",
+    "major7",
+    "minor7",
+    "dominant9",
+    "minor9",
+    "major9",
+  ];
+  const CHORD_FINDER_QUALITY_OPTIONS = CHORD_FINDER_QUALITY_ORDER
+    .map((id) => chordQualityById(id))
+    .filter(Boolean)
+    .map((quality) => ({ id: quality.id, label: CHORD_FINDER_QUALITY_LABELS[quality.id] || quality.label }));
   const CHORD_FINDER_CONTROL_SCOPES = [
     { id: "open", label: "Open only", controlCombos: [[]] },
     { id: "common", label: "Common controls", controlCombos: [[], ["A"], ["B"], ["A", "B"], ["B", "C"]] },
@@ -178,9 +210,9 @@
   let selectedGripRole = "all";
   let selectedGripCandidateId = "";
   let selectedSyncEventId = "s3-f3-open";
-  let chordFinderQuery = "Fmaj7";
-  let selectedChordRoot = "auto";
-  let selectedChordQuality = "auto";
+  let chordFinderQuery = "";
+  let selectedChordRoot = "F";
+  let selectedChordQuality = "major7";
   let selectedChordControlScope = "common";
   let selectedChordCandidateId = "";
   let voicingFret = 3;
@@ -1098,43 +1130,43 @@
     return musicRules.parseDirectChordFinderQuery(value);
   }
 
-  function applyChordFinderOverrides(target) {
-    if (!target?.ok) {
-      return target;
-    }
-    const rootPitchClass = selectedChordRoot === "auto"
-      ? target.rootPitchClass
-      : pitchClassForNote(selectedChordRoot);
-    const quality = selectedChordQuality === "auto"
-      ? target.quality
-      : chordQualityById(selectedChordQuality);
+  function chordFinderQualityDisplayLabel(qualityOrId) {
+    const id = typeof qualityOrId === "string" ? qualityOrId : qualityOrId?.id;
+    return CHORD_FINDER_QUALITY_LABELS[id] || formatValue(qualityOrId?.label || id, "");
+  }
+
+  function selectedChordFinderTarget() {
+    const rootPitchClass = pitchClassForNote(selectedChordRoot);
+    const quality = chordQualityById(selectedChordQuality) || chordQualityById("major");
     if (rootPitchClass === null || !quality) {
-      return target;
+      return {
+        ok: false,
+        message: "Choose a root and chord quality to search practical E9 voicings.",
+      };
     }
-    if (rootPitchClass === target.rootPitchClass && quality.id === target.quality.id) {
-      return target;
-    }
+    const rootLabel = displayNoteForPitchClassInKey(rootPitchClass, selectedChordRoot);
     return buildChordFinderTarget(rootPitchClass, quality, {
-      source: target.source,
-      input: target.input,
-      contextKey: selectedChordRoot === "auto" ? target.contextKey : selectedChordRoot,
-      message: `Using selected root ${selectedChordRoot === "auto" ? target.rootLabel : selectedChordRoot} and quality ${quality.label}.`,
+      source: "structured",
+      input: `${rootLabel}${quality.suffix || ""}`,
+      contextKey: selectedChordRoot,
+      rootLabel,
+      message: `Using ${rootLabel} ${chordFinderQualityDisplayLabel(quality)} from the structured chord picker.`,
     });
   }
 
-  function parseChordFinderQuery(value = chordFinderQuery) {
-    const parsed = musicRules.parseChordFinderQuery(value);
-    return applyChordFinderOverrides(parsed);
+  function parseChordFinderQuery(value) {
+    if (arguments.length === 0) {
+      return selectedChordFinderTarget();
+    }
+    return musicRules.parseChordFinderQuery(value);
   }
 
   function chordFinderRootOptionsHtml() {
-    const roots = CHROMATIC_SHARP_NOTES.map((note) => option(note, note, selectedChordRoot));
-    return option("auto", "Auto", selectedChordRoot) + roots.join("");
+    return CHORD_FINDER_ROOT_OPTIONS.map((note) => option(note, note, selectedChordRoot)).join("");
   }
 
   function chordFinderQualityOptionsHtml() {
-    return option("auto", "Auto", selectedChordQuality)
-      + CHORD_FINDER_QUALITY_OPTIONS.map((quality) => option(quality.id, quality.label, selectedChordQuality)).join("");
+    return CHORD_FINDER_QUALITY_OPTIONS.map((quality) => option(quality.id, quality.label, selectedChordQuality)).join("");
   }
 
   function chordFinderControlScopeOptionsHtml() {
@@ -3839,11 +3871,11 @@
 
   function chordFinderTargetSummaryHtml(target) {
     if (!target?.ok) {
-      return `<p class="explorer-voicing-identifier__warning">${escapeHtml(target?.message || "Enter a chord target to search practical E9 voicings.")}</p>`;
+      return `<p class="explorer-voicing-identifier__warning">${escapeHtml(target?.message || "Choose a root and quality to search practical E9 voicings.")}</p>`;
     }
     return `
       <section class="explorer-voicing-summary explorer-chord-finder__summary" aria-label="Chord finder target">
-        <strong>${escapeHtml(`Target: ${target.label} (${target.quality.label})`)}</strong>
+        <strong>${escapeHtml(`Target: ${target.label} (${chordFinderQualityDisplayLabel(target.quality)})`)}</strong>
         <p>${escapeHtml(`${target.message ? `${target.message} ` : ""}Chord tones: ${target.toneLabels.map((tone) => `${tone.role} ${tone.note}`).join(", ")}.`)}</p>
       </section>
     `;
@@ -3858,23 +3890,20 @@
       <div class="explorer-voicing-identifier__header">
         <div>
           <strong>Chord / Voicing Finder</strong>
-          <p>Type a target chord or key function, then filter the practical grip vocabulary and fret range.</p>
+          <p>Choose a root and quality, then filter the practical grip vocabulary, fret range, and pedal/lever scope.</p>
         </div>
         <span>${escapeHtml(`${candidates.length} ${candidates.length === 1 ? "candidate" : "candidates"}`)}</span>
       </div>
       <div class="explorer-voicing-identifier__controls explorer-chord-finder__controls">
-        <div class="explorer-voicing-identifier__field explorer-chord-finder__field--target">
-          <label class="explorer-voicing-identifier__label" for="explorer-chord-query">Target chord or function</label>
-          <input class="explorer-voicing-identifier__input explorer-chord-finder__input" id="explorer-chord-query" value="${escapeHtml(chordFinderQuery)}" placeholder="Fmaj7, Cmin9, V7 in G" />
-          <p class="explorer-voicing-identifier__context">Examples: Fmaj7, F major 7, Cmin9, Cm9, D7, G9, Bbmaj7, V7 in G, ii9 in Bb.</p>
-        </div>
         <div class="explorer-voicing-identifier__field">
           <label class="explorer-voicing-identifier__label" for="explorer-chord-root">Root</label>
           <select class="explorer-voicing-identifier__input" id="explorer-chord-root">${chordFinderRootOptionsHtml()}</select>
+          <p class="explorer-voicing-identifier__context">Use the spelled root you want to search.</p>
         </div>
         <div class="explorer-voicing-identifier__field">
           <label class="explorer-voicing-identifier__label" for="explorer-chord-quality">Quality</label>
           <select class="explorer-voicing-identifier__input" id="explorer-chord-quality">${chordFinderQualityOptionsHtml()}</select>
+          <p class="explorer-voicing-identifier__context">Examples: Major 7, Dominant 7, Minor 9.</p>
         </div>
         <div class="explorer-voicing-identifier__field">
           <label class="explorer-voicing-identifier__label" for="explorer-chord-control-scope">Pedals / levers scope</label>
@@ -3883,25 +3912,10 @@
       </div>
       ${chordFinderTargetSummaryHtml(target)}
     `;
-    const queryInput = document.getElementById("explorer-chord-query");
-    if (queryInput) {
-      queryInput.addEventListener("change", () => {
-        chordFinderQuery = queryInput.value || "";
-        selectedChordCandidateId = "";
-        renderChordFinderMode();
-      });
-      queryInput.addEventListener("keydown", (event) => {
-        if (event.key === "Enter") {
-          chordFinderQuery = queryInput.value || "";
-          selectedChordCandidateId = "";
-          renderChordFinderMode();
-        }
-      });
-    }
     const rootInput = document.getElementById("explorer-chord-root");
     if (rootInput) {
       rootInput.addEventListener("change", () => {
-        selectedChordRoot = rootInput.value || "auto";
+        selectedChordRoot = rootInput.value || "F";
         selectedChordCandidateId = "";
         renderChordFinderMode();
       });
@@ -3909,7 +3923,7 @@
     const qualityInput = document.getElementById("explorer-chord-quality");
     if (qualityInput) {
       qualityInput.addEventListener("change", () => {
-        selectedChordQuality = qualityInput.value || "auto";
+        selectedChordQuality = qualityInput.value || "major7";
         selectedChordCandidateId = "";
         renderChordFinderMode();
       });
