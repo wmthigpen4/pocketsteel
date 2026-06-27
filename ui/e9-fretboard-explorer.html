@@ -263,13 +263,48 @@
       font-weight: 800;
     }
 
-    .explorer-controls-note {
+    .explorer-grip-help-disclosure {
       grid-column: 1 / -1;
       max-width: 980px;
       margin: -2px 0 0;
+    }
+
+    .explorer-grip-help-disclosure summary {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       color: rgba(255, 247, 232, 0.56);
       font-size: 0.78rem;
+      font-weight: 800;
       line-height: 1.42;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .explorer-grip-help-disclosure summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .explorer-grip-help-disclosure summary::after {
+      content: "+";
+      color: var(--gold);
+      font-size: 0.9rem;
+    }
+
+    .explorer-grip-help-disclosure[open] summary {
+      margin-bottom: 6px;
+    }
+
+    .explorer-grip-help-disclosure[open] summary::after {
+      content: "-";
+    }
+
+    .explorer-grip-help-disclosure p {
+      max-width: 760px;
+      margin: 0;
+      color: rgba(255, 247, 232, 0.58);
+      font-size: 0.78rem;
+      line-height: 1.45;
     }
 
     .explorer-summary {
@@ -1979,7 +2014,10 @@
         </select>
         <p class="explorer-control-help" id="explorer-string-group-help">Choose All or one exact group. Path mode uses Path family instead.</p>
       </div>
-      <p class="explorer-controls-note">Core grips are common string sets; extended and two-string vocabulary are opt-in. 5-7-8 is the advanced E-lower pocket, and 5-8 appears in 2-string branch routes.</p>
+      <details class="explorer-grip-help-disclosure">
+        <summary>About grip vocabulary</summary>
+        <p>Core grips are common string sets. Extended and two-string vocabulary are opt-in; 5-7-8 is the advanced E-lower pocket, and 5-8 appears in 2-string branch routes.</p>
+      </details>
     </section>
 
     <div class="explorer-summary" aria-live="polite">

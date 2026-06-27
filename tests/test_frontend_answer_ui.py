@@ -436,8 +436,12 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<option value="two_string">Two-string</option>' in html
     assert '<option value="all">All practical</option>' in html
     assert "Core keeps the default view clean. Extended and two-string reveal wider tab and dyad vocabulary." in html
-    assert ".explorer-controls-note {" in html
-    assert '<p class="explorer-controls-note">Core grips are common string sets; extended and two-string vocabulary are opt-in.' in controls_markup
+    assert ".explorer-controls-note {" not in html
+    assert "explorer-controls-note" not in html
+    assert '<details class="explorer-grip-help-disclosure">' in controls_markup
+    assert '<details class="explorer-grip-help-disclosure" open>' not in html
+    assert "<summary>About grip vocabulary</summary>" in controls_markup
+    assert "Core grips are common string sets. Extended and two-string vocabulary are opt-in" in controls_markup
     assert "5-7-8 is the advanced E-lower pocket" in controls_markup
     assert "5-8 appears in 2-string branch routes" in controls_markup
     assert '<p class="explorer-note">Core grips are common string sets.' not in html
