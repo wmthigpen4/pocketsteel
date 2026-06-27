@@ -1328,6 +1328,10 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v14H5z"/><path d="M8 9h8"/><path d="M8 13h5"/></svg>
           <span>Glossary</span>
         </button>
+        <button class="explorer-back" id="explorer-copedent-open" type="button" aria-haspopup="dialog" aria-controls="explorer-copedent-dialog">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/><path d="M8 5v14"/><path d="M16 5v14"/></svg>
+          <span>View chart</span>
+        </button>
         <a class="explorer-back" href="steel-guitar-rag-mock.html">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6 4 12l6 6"/><path d="M4 12h16"/></svg>
           <span>Back to app</span>
@@ -1356,15 +1360,12 @@
       </div>
       <div class="explorer-control explorer-control--copedent">
         <label for="explorer-copedent">E9 setup</label>
-        <div class="explorer-copedent-control-row">
-          <select id="explorer-copedent" aria-describedby="explorer-copedent-help">
-            <option value="emmons-e9-basic" selected>Emmons E9</option>
-            <option value="day-e9-basic">Day E9</option>
-            <option value="custom-e9-lkv">Custom E9 (with LKV)</option>
-            <option value="my-copedent-e9" disabled>My Copedent (E9) - Coming soon in Backstage</option>
-          </select>
-          <button class="explorer-inline-button" id="explorer-copedent-open" type="button" aria-haspopup="dialog" aria-controls="explorer-copedent-dialog">View chart</button>
-        </div>
+        <select id="explorer-copedent" aria-describedby="explorer-copedent-help">
+          <option value="emmons-e9-basic" selected>Emmons E9</option>
+          <option value="day-e9-basic">Day E9</option>
+          <option value="custom-e9-lkv">Custom E9 (with LKV)</option>
+          <option value="my-copedent-e9" disabled>My Copedent (E9) - Coming soon in Backstage</option>
+        </select>
         <p class="explorer-control-help" id="explorer-copedent-help">Choose the E9 setup that matches your guitar. My Copedent (E9) is coming soon in Backstage.</p>
       </div>
       <div class="explorer-control">

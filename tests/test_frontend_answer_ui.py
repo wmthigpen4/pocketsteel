@@ -311,9 +311,9 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<option value="day-e9-basic">Day E9</option>' in html
     assert '<option value="custom-e9-lkv">Custom E9 (with LKV)</option>' in html
     assert '<option value="my-copedent-e9" disabled>My Copedent (E9) - Coming soon in Backstage</option>' in html
-    assert 'id="explorer-copedent-open"' in html
-    assert 'aria-haspopup="dialog"' in html
-    assert 'aria-controls="explorer-copedent-dialog"' in html
+    assert '<div class="explorer-copedent-control-row">' not in html
+    controls_markup = html.split('<section class="explorer-controls" aria-label="Explorer controls">', 1)[1].split("</section>", 1)[0]
+    assert 'id="explorer-copedent-open"' not in controls_markup
     assert '<dialog class="explorer-copedent-dialog" id="explorer-copedent-dialog"' in html
     assert '<button class="explorer-inline-button" id="explorer-copedent-close" type="button">Close</button>' in html
     assert "Choose the E9 setup that matches your guitar" in html
@@ -342,6 +342,8 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<div class="explorer-header-actions" aria-label="Explorer actions">' in html
     assert '<button class="explorer-back" id="explorer-glossary-open" type="button" aria-haspopup="dialog" aria-controls="explorer-glossary-dialog">' in html
     assert "<span>Glossary</span>" in html
+    assert '<button class="explorer-back" id="explorer-copedent-open" type="button" aria-haspopup="dialog" aria-controls="explorer-copedent-dialog">' in html
+    assert "<span>View chart</span>" in html
     assert '<a class="explorer-back" href="steel-guitar-rag-mock.html">' in html
     assert "<span>Back to app</span>" in html
     assert ".explorer-back {" in html
