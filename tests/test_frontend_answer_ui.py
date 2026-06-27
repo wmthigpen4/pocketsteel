@@ -276,7 +276,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "pedal-steel-fretboard.js?v=explorer-compact-copedent-20260625" not in html
     assert '<script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>' in html
     assert "[hidden] {\n      display: none !important;\n    }" in html
-    assert '<script src="e9-fretboard-explorer.js?v=harmonized-path-rail-20260627"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=voicing-identifier-20260627"></script>' in html
     assert "e9-fretboard-explorer.js?v=single-note-learning-20260626" not in html
     assert "e9-fretboard-explorer.js?v=single-note-finder-20260626" not in html
     assert "explorer-top-note-marker-source-20260626" not in html
@@ -341,12 +341,15 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<option value="single" selected>Single grip</option>' in html
     assert '<option value="path">Harmonized scale path</option>' in html
     assert '<option value="note">Single-note finder</option>' in html
+    assert '<option value="voicing">Voicing identifier</option>' in html
     assert "Single grip filters exact strings" in html
-    assert "Single-note finder shows how pedals and levers change one note at a time." in html
+    assert "Voicing identifier explains one fret/string/control shape." in html
     assert ".explorer-mode-panel {" in html
     assert "grid-template-columns: minmax(220px, 340px) minmax(0, 1fr);" in html
     assert "Start by choosing the kind of fretboard question you want to explore" in mode_markup
     assert 'id="explorer-note-finder"' in html
+    assert 'id="explorer-voicing-identifier"' in html
+    assert ".explorer-voicing-identifier__input" in html
     assert ".explorer-note-grid" in html
     assert ".explorer-note-cell.is-result" in html
     assert '<label for="explorer-path-family">Path family</label>' in html
@@ -573,7 +576,12 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "No direct impact on the selected string group" in script
     assert "NOTE_CONTROL_STATES" in script
     assert "NOTE_WORKFLOWS" in script
+    assert "VOICING_CONTROL_STATES" in script
+    assert "identifyVoicing" in script
+    assert "data-voicing-control-state" in script
+    assert "data-voicing-string-preset" in script
     assert "Single-note finder" in script
+    assert "Voicing identifier" in script
     assert "Find all" in script
     assert "Reverse lookup" in script
     assert "Pedal changes" in script
@@ -817,7 +825,9 @@ class FakeNode {
       "[data-note-reverse-result]": Array.from(value.matchAll(/data-note-reverse-result="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-reverse-result")),
       "[data-note-grip-target]": Array.from(value.matchAll(/data-note-grip-target="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-grip-target")),
       "[data-note-grip-card]": Array.from(value.matchAll(/data-note-grip-card="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-grip-card")),
-      "[data-note-sync-event]": Array.from(value.matchAll(/data-note-sync-event="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-sync-event"))
+      "[data-note-sync-event]": Array.from(value.matchAll(/data-note-sync-event="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-sync-event")),
+      "[data-voicing-control-state]": Array.from(value.matchAll(/data-voicing-control-state="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-voicing-control-state")),
+      "[data-voicing-string-preset]": Array.from(value.matchAll(/data-voicing-string-preset="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-voicing-string-preset"))
     };
   }
   get innerHTML() {
@@ -923,7 +933,8 @@ const elements = {
   "explorer-explore-mode": new FakeSelect("explorer-explore-mode", "single", [
     { value: "single", text: "Single grip" },
     { value: "path", text: "Harmonized scale path" },
-    { value: "note", text: "Single-note finder" }
+    { value: "note", text: "Single-note finder" },
+    { value: "voicing", text: "Voicing identifier" }
   ]),
   "explorer-scale": new FakeSelect("explorer-scale", "major", [
     { value: "major", text: "G major" },
@@ -952,6 +963,7 @@ const elements = {
   "explorer-copedent-chart": new FakeNode("explorer-copedent-chart"),
   "explorer-control-impact-preview": new FakeNode("explorer-control-impact-preview"),
   "explorer-note-finder": new FakeNode("explorer-note-finder"),
+  "explorer-voicing-identifier": new FakeNode("explorer-voicing-identifier"),
   "explorer-active-results": new FakeNode("explorer-active-results"),
   "explorer-fretboard": new FakeNode("explorer-fretboard"),
   "explorer-row-list": new FakeNode("explorer-row-list"),
@@ -1265,6 +1277,50 @@ elements["explorer-explore-mode"].value = "single";
 elements["explorer-explore-mode"].dispatchChange();
 notationModeButtons[0].onclick();
 assert.equal(elements["explorer-note-finder"].hidden, true);
+assert.equal(elements["explorer-voicing-identifier"].hidden, true);
+assert.equal(elements["explorer-string-group-control"].hidden, false);
+assert.equal(elements["explorer-harmony-control"].hidden, false);
+
+elements["explorer-explore-mode"].value = "voicing";
+elements["explorer-explore-mode"].dispatchChange();
+assert.equal(elements["explorer-voicing-identifier"].hidden, false);
+assert.equal(elements["explorer-note-finder"].hidden, true);
+assert.equal(elements["explorer-string-group-control"].hidden, true);
+assert.equal(elements["explorer-string-group"].disabled, true);
+assert.equal(elements["explorer-path-family-control"].hidden, true);
+assert.equal(elements["explorer-harmony-control"].hidden, true);
+assert.equal(elements["explorer-harmony"].disabled, true);
+assert.equal(elements["explorer-control-impact-preview"].hidden, true);
+assert.equal(elements["explorer-top-interval-filter"].hidden, true);
+assert.equal(elements["explorer-fret-range-filter"].hidden, true);
+assert.match(elements["explorer-voicing-identifier"].textContent, /Enter a fret, string set, and pedal\/lever state/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /G major/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /Fret 3; strings 3-4-5; Open; notes B, G, D/);
+assert.match(elements["explorer-active-results"].textContent, /Identified G/);
+assert.match(elements["explorer-selected-detail"].textContent, /Voicing identifier/);
+assert.match(elements["explorer-selected-detail"].textContent, /NotesB, G, D/);
+assert.match(elements["explorer-selected-detail"].textContent, /Likely functionI function in G/);
+assert.match(elements["explorer-selected-detail"].textContent, /Per-string details/);
+assert.equal(lastMount.options.positions.length, 1);
+assert.equal(lastMount.options.positions[0].fret, 3);
+assert.equal(lastMount.options.positions[0].grip, "3-4-5");
+assert.equal(lastMount.options.positions[0].notes.join(","), "B,G,D");
+const voicingControlButtons = () => elements["explorer-voicing-identifier"].querySelectorAll("[data-voicing-control-state]");
+const voicingGripButtons = () => elements["explorer-voicing-identifier"].querySelectorAll("[data-voicing-string-preset]");
+assert.deepEqual(voicingControlButtons().map((button) => button.getAttribute("data-voicing-control-state")), ["open", "A", "B", "AB", "BC", "E-raise", "E-lower", "D-lower", "G-lower"]);
+voicingControlButtons().find((button) => button.getAttribute("data-voicing-control-state") === "BC").onclick();
+assert.match(elements["explorer-voicing-identifier"].textContent, /Fret 3; strings 3-4-5; B\+C; notes C, A, E/);
+assert.match(elements["explorer-selected-detail"].textContent, /Am/);
+assert.match(elements["explorer-selected-detail"].textContent, /Likely functionii function in G/);
+assert.equal(lastMount.options.positions[0].notes.join(","), "C,A,E");
+voicingGripButtons().find((button) => button.getAttribute("data-voicing-string-preset") === "6-8-10").onclick();
+assert.match(elements["explorer-voicing-identifier"].textContent, /strings 6-8-10/);
+assert.equal(lastMount.options.positions[0].grip, "6-8-10");
+assert.doesNotMatch(elements["explorer-voicing-identifier"].textContent, /\[object Object\]/);
+assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /\[object Object\]/);
+elements["explorer-explore-mode"].value = "single";
+elements["explorer-explore-mode"].dispatchChange();
+assert.equal(elements["explorer-voicing-identifier"].hidden, true);
 assert.equal(elements["explorer-string-group-control"].hidden, false);
 assert.equal(elements["explorer-harmony-control"].hidden, false);
 

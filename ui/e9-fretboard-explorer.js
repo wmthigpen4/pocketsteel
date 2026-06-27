@@ -16,6 +16,7 @@
     single: "single",
     path: "path",
     note: "note",
+    voicing: "voicing",
   };
   const PATH_FAMILIES = [
     {
@@ -83,6 +84,23 @@
     { id: "BC", label: "B+C", controls: ["B", "C"] },
     { id: "E-raise", label: "E-raise", controls: ["E-raise"] },
     { id: "E-lower", label: "E-lower", controls: ["E-lower"] },
+    { id: "D-lower", label: "D-lower", controls: ["D-lower"] },
+    { id: "G-lower", label: "G-lower", controls: ["G-lower"] },
+  ];
+  const VOICING_CONTROL_STATES = NOTE_CONTROL_STATES;
+  const CHORD_QUALITY_PATTERNS = [
+    { id: "major", label: "major", suffix: "", intervals: [0, 4, 7], required: [0, 4, 7] },
+    { id: "minor", label: "minor", suffix: "m", intervals: [0, 3, 7], required: [0, 3, 7] },
+    { id: "dominant7", label: "dominant 7", suffix: "7", intervals: [0, 4, 7, 10], required: [0, 4, 10] },
+    { id: "major7", label: "major 7", suffix: "maj7", intervals: [0, 4, 7, 11], required: [0, 4, 11] },
+    { id: "minor7", label: "minor 7", suffix: "m7", intervals: [0, 3, 7, 10], required: [0, 3, 10] },
+    { id: "minor7flat5", label: "minor 7 flat 5", suffix: "m7b5", intervals: [0, 3, 6, 10], required: [0, 3, 6] },
+    { id: "diminished", label: "diminished", suffix: "dim", intervals: [0, 3, 6], required: [0, 3, 6] },
+    { id: "major6", label: "major 6", suffix: "6", intervals: [0, 4, 7, 9], required: [0, 4, 9] },
+    { id: "minor6", label: "minor 6", suffix: "m6", intervals: [0, 3, 7, 9], required: [0, 3, 9] },
+    { id: "sus2", label: "sus2", suffix: "sus2", intervals: [0, 2, 7], required: [0, 2, 7] },
+    { id: "sus4", label: "sus4", suffix: "sus4", intervals: [0, 5, 7], required: [0, 5, 7] },
+    { id: "fifth", label: "5/no third", suffix: "5", intervals: [0, 7], required: [0, 7] },
   ];
   const NOTE_WORKFLOWS = [
     { id: "find", label: "Find all", description: "Highlight every matching note or scale value in the visible fret range." },
@@ -129,6 +147,7 @@
     copedentChart: document.getElementById("explorer-copedent-chart"),
     controlPreview: document.getElementById("explorer-control-impact-preview"),
     noteFinder: document.getElementById("explorer-note-finder"),
+    voicingIdentifier: document.getElementById("explorer-voicing-identifier"),
     activeResults: document.getElementById("explorer-active-results"),
     fretboard: document.getElementById("explorer-fretboard"),
     rowList: document.getElementById("explorer-row-list"),
@@ -149,6 +168,9 @@
   let selectedGripTargetId = "scale-triad";
   let selectedGripCandidateId = "";
   let selectedSyncEventId = "s3-f3-open";
+  let voicingFret = "3";
+  let voicingStrings = "3-4-5";
+  let selectedVoicingControlStateId = "open";
   let drillFeedback = null;
   let pinnedNoteCell = { stringNumber: 3, fret: 3 };
   let previewNoteCell = null;
@@ -555,6 +577,247 @@
     };
   }
 
+  function displayNoteForActiveKey(pitchClass) {
+    const scaleNote = activeScaleNotes().find((note) => pitchClassForNote(note) === pitchClass);
+    return scaleNote || displayNoteForPitchClass(pitchClass);
+  }
+
+  function intervalNameFromSemitones(semitones) {
+    const normalized = ((Number(semitones) || 0) % 12 + 12) % 12;
+    const map = {
+      0: "1",
+      1: "b2",
+      2: "2",
+      3: "b3",
+      4: "3",
+      5: "4",
+      6: "b5/#11",
+      7: "5",
+      8: "b6",
+      9: "6",
+      10: "b7",
+      11: "7",
+    };
+    return map[normalized] || "";
+  }
+
+  function intervalLabelsAgainstRoot(notes, rootPitchClass) {
+    return notes.map((note) => {
+      const pitchClass = pitchClassForNote(note);
+      if (pitchClass === null) {
+        return "";
+      }
+      return intervalNameFromSemitones(pitchClass - rootPitchClass);
+    }).filter(Boolean);
+  }
+
+  function voicingFunctionForRoot(rootPitchClass, quality) {
+    const rootNote = displayNoteForActiveKey(rootPitchClass);
+    const degreeIndex = scaleDegreeIndexForNote(rootNote);
+    if (degreeIndex === -1) {
+      return "outside the selected scale";
+    }
+    const sequence = els.scale.value === "natural_minor"
+      ? NATURAL_MINOR_SCALE_SEQUENCES.roman
+      : MAJOR_SCALE_SEQUENCES.roman;
+    const degree = sequence[degreeIndex] || `degree ${degreeIndex + 1}`;
+    if (quality?.id === "dominant7") {
+      return `${degree} dominant color in ${activeKey()}`;
+    }
+    return `${degree} function in ${activeKey()}`;
+  }
+
+  function chordLabel(rootPitchClass, quality) {
+    const root = displayNoteForActiveKey(rootPitchClass);
+    if (!quality || !quality.suffix) {
+      return root;
+    }
+    return `${root}${quality.suffix}`;
+  }
+
+  function identifyVoicing(notes) {
+    const pitchClasses = Array.from(new Set(notes.map(pitchClassForNote).filter((value) => value !== null)));
+    if (pitchClasses.length < 2) {
+      return {
+        label: "Need at least two notes",
+        quality: "incomplete",
+        confidence: "low",
+        functionText: "not enough notes to identify a voicing",
+        alternates: [],
+        intervals: [],
+      };
+    }
+    const candidates = [];
+    pitchClasses.forEach((rootPitchClass) => {
+      CHORD_QUALITY_PATTERNS.forEach((quality) => {
+        const intervals = pitchClasses.map((pitchClass) => ((pitchClass - rootPitchClass) % 12 + 12) % 12);
+        const allContained = intervals.every((interval) => quality.intervals.includes(interval));
+        const requiredPresent = quality.required.every((interval) => intervals.includes(interval));
+        if (!allContained) {
+          return;
+        }
+        const exact = intervals.length === quality.intervals.length && requiredPresent;
+        const partial = !requiredPresent || intervals.length < quality.intervals.length;
+        const score = (exact ? 100 : 70) + (requiredPresent ? 12 : 0) - Math.abs(quality.intervals.length - intervals.length) * 4;
+        candidates.push({
+          rootPitchClass,
+          quality,
+          intervals,
+          exact,
+          partial,
+          score,
+        });
+      });
+    });
+    candidates.sort((a, b) => b.score - a.score || String(a.quality.id).localeCompare(String(b.quality.id)));
+    const best = candidates[0];
+    if (!best) {
+      return {
+        label: "Ambiguous voicing",
+        quality: "ambiguous",
+        confidence: "low",
+        functionText: "not a clear common triad or seventh shape",
+        alternates: [],
+        intervals: notes.map((note) => notationLabelForFinalNote(note)),
+      };
+    }
+    const label = chordLabel(best.rootPitchClass, best.quality);
+    const alternates = candidates
+      .filter((candidate) => candidate !== best)
+      .slice(0, 3)
+      .map((candidate) => chordLabel(candidate.rootPitchClass, candidate.quality));
+    return {
+      label,
+      quality: best.partial ? `partial ${best.quality.label}` : best.quality.label,
+      confidence: best.exact ? "high" : best.partial ? "medium" : "low",
+      functionText: voicingFunctionForRoot(best.rootPitchClass, best.quality),
+      alternates,
+      intervals: intervalLabelsAgainstRoot(notes, best.rootPitchClass),
+      rootPitchClass: best.rootPitchClass,
+      partial: best.partial,
+    };
+  }
+
+  function parseVoicingStrings(value) {
+    const rawParts = String(value || "")
+      .split(/[,\s-]+/)
+      .map((part) => part.trim())
+      .filter(Boolean);
+    const strings = rawParts.map(Number);
+    const invalid = strings.filter((stringNumber) => !Number.isInteger(stringNumber) || stringNumber < 1 || stringNumber > 10);
+    const seen = new Set();
+    const duplicates = strings.filter((stringNumber) => {
+      if (seen.has(stringNumber)) {
+        return true;
+      }
+      seen.add(stringNumber);
+      return false;
+    });
+    if (!rawParts.length) {
+      return { strings: [], warning: "Enter at least two strings, such as 3-4-5." };
+    }
+    if (invalid.length) {
+      return { strings: [], warning: "Strings must be E9 string numbers from 1 through 10." };
+    }
+    if (duplicates.length) {
+      return { strings: [], warning: "Each string can only appear once in the voicing." };
+    }
+    if (strings.length < 2) {
+      return { strings: [], warning: "Use at least two strings to identify a voicing." };
+    }
+    return { strings: strings.sort((a, b) => a - b), warning: "" };
+  }
+
+  function activeVoicingControlState() {
+    return VOICING_CONTROL_STATES.find((state) => state.id === selectedVoicingControlStateId)
+      || VOICING_CONTROL_STATES[0];
+  }
+
+  function availableVoicingControlStates() {
+    const availableIds = new Set(copedentControls().map((control) => control.id));
+    return VOICING_CONTROL_STATES.filter((state) => state.controls.every((controlId) => availableIds.has(controlId)));
+  }
+
+  function voicingControlButtonsHtml() {
+    const activeState = activeVoicingControlState();
+    return availableVoicingControlStates().map((state) => `
+      <button
+        class="explorer-voicing-identifier__chip${activeState.id === state.id ? " is-selected" : ""}"
+        type="button"
+        data-voicing-control-state="${escapeHtml(state.id)}"
+        aria-pressed="${activeState.id === state.id ? "true" : "false"}"
+      >${escapeHtml(state.label)}</button>
+    `).join("");
+  }
+
+  function voicingGripButtonsHtml() {
+    const grips = ["3-4-5", "4-5-6", "5-6-8", "6-8-10", "5-6-7", "6-7-10", "5-7-8"];
+    return grips.map((grip) => `
+      <button
+        class="explorer-voicing-identifier__chip${voicingStrings === grip ? " is-selected" : ""}"
+        type="button"
+        data-voicing-string-preset="${escapeHtml(grip)}"
+        aria-pressed="${voicingStrings === grip ? "true" : "false"}"
+      >${escapeHtml(grip)}</button>
+    `).join("");
+  }
+
+  function voicingStringStates() {
+    const fret = Number.parseInt(voicingFret, 10);
+    const parsedStrings = parseVoicingStrings(voicingStrings);
+    if (!Number.isInteger(fret) || fret < 0 || fret > 24) {
+      return { warning: "Fret must be a whole number from 0 through 24.", strings: [], cells: [] };
+    }
+    if (parsedStrings.warning) {
+      return { warning: parsedStrings.warning, strings: [], cells: [] };
+    }
+    const controlState = activeVoicingControlState();
+    const cells = parsedStrings.strings.map((stringNumber) => noteCellState(stringNumber, fret, controlState));
+    return { warning: "", fret, strings: parsedStrings.strings, controlState, cells };
+  }
+
+  function voicingSyntheticRow(result, identity) {
+    const displayNotes = {};
+    result.cells.forEach((cell) => {
+      displayNotes[cell.stringNumber] = {
+        note: cell.finalNote,
+        interval: notationLabelForFinalNote(cell.finalNote),
+      };
+    });
+    const topCell = result.cells[0];
+    return {
+      id: `voicing:${activeKey()}:${result.fret}:${result.strings.join("-")}:${result.controlState.id}`,
+      key: activeKey(),
+      scale_type: els.scale.value,
+      harmony_type: "voicing_identifier",
+      chord_name: identity.label,
+      chord_function: identity.functionText,
+      fret: result.fret,
+      string_group: result.strings.join("-"),
+      strings: result.strings,
+      pedals: result.controlState.controls,
+      levers: [],
+      notes: result.cells.map((cell) => cell.finalNote),
+      intervals: identity.intervals,
+      display_notes: displayNotes,
+      display_top_voice: {
+        note: topCell?.finalNote || "",
+        interval: topCell ? notationLabelForFinalNote(topCell.finalNote) : "",
+        string: topCell?.stringNumber || "",
+      },
+      display_summary: `${identity.label} at fret ${result.fret} on strings ${result.strings.join("-")}`,
+      explanation: `Computed from ${activeCopedent()?.label || "the selected copedent"}; no retrieval is used.`,
+      per_string_changes: Object.fromEntries(result.cells.map((cell) => [
+        cell.stringNumber,
+        {
+          open_at_fret: cell.openNoteAtFret,
+          final_note: cell.finalNote,
+          controls: cell.isAffected ? cell.activeControlLabel : "no change",
+        },
+      ])),
+    };
+  }
+
   function decorateNoteCellForRender(cell) {
     const selectedGrip = selectedGripCandidate();
     const gripStrings = new Set(toArray(selectedGrip?.strings).map(Number));
@@ -898,6 +1161,10 @@
     return els.exploreMode?.value === EXPLORE_MODES.note;
   }
 
+  function isVoicingIdentifierMode() {
+    return els.exploreMode?.value === EXPLORE_MODES.voicing;
+  }
+
   function activeHarmonyValue() {
     return isPathMode() ? "three_string_diatonic" : els.harmony.value;
   }
@@ -1041,12 +1308,13 @@
   function syncExploreModeControls() {
     const pathMode = isPathMode();
     const noteMode = isNoteFinderMode();
+    const voicingMode = isVoicingIdentifierMode();
     if (els.stringGroupControl) {
-      els.stringGroupControl.hidden = pathMode || noteMode;
-      els.stringGroupControl.setAttribute?.("aria-hidden", pathMode || noteMode ? "true" : "false");
+      els.stringGroupControl.hidden = pathMode || noteMode || voicingMode;
+      els.stringGroupControl.setAttribute?.("aria-hidden", pathMode || noteMode || voicingMode ? "true" : "false");
     }
     if (els.stringGroup) {
-      els.stringGroup.disabled = pathMode || noteMode;
+      els.stringGroup.disabled = pathMode || noteMode || voicingMode;
     }
     if (els.pathFamilyControl) {
       els.pathFamilyControl.hidden = !pathMode;
@@ -1056,11 +1324,11 @@
       els.pathFamily.disabled = !pathMode;
     }
     if (els.harmonyControl) {
-      els.harmonyControl.hidden = pathMode || noteMode;
-      els.harmonyControl.setAttribute?.("aria-hidden", pathMode || noteMode ? "true" : "false");
+      els.harmonyControl.hidden = pathMode || noteMode || voicingMode;
+      els.harmonyControl.setAttribute?.("aria-hidden", pathMode || noteMode || voicingMode ? "true" : "false");
     }
     if (els.harmony) {
-      els.harmony.disabled = pathMode || noteMode;
+      els.harmony.disabled = pathMode || noteMode || voicingMode;
       if (pathMode) {
         els.harmony.value = "three_string_diatonic";
       }
@@ -1755,7 +2023,7 @@
     if (!els.controlPreview) {
       return;
     }
-    if (isNoteFinderMode()) {
+    if (isNoteFinderMode() || isVoicingIdentifierMode()) {
       els.controlPreview.hidden = true;
       els.controlPreview.innerHTML = "";
       selectedImpactControlIds = new Set();
@@ -1829,7 +2097,7 @@
     if (!els.topIntervalFilter) {
       return;
     }
-    if (isNoteFinderMode()) {
+    if (isNoteFinderMode() || isVoicingIdentifierMode()) {
       els.topIntervalFilter.hidden = true;
       els.topIntervalFilter.innerHTML = "";
       return;
@@ -1871,7 +2139,7 @@
     if (!els.fretRangeFilter) {
       return;
     }
-    if (isPathMode()) {
+    if (isPathMode() || isVoicingIdentifierMode()) {
       els.fretRangeFilter.hidden = true;
       els.fretRangeFilter.innerHTML = "";
       return;
@@ -2055,6 +2323,10 @@
       selectedRowId = currentRows[0]?.id || "";
     } else {
       selectedRowId = rowId;
+    }
+    if (isVoicingIdentifierMode()) {
+      renderVoicingIdentifierMode();
+      return;
     }
     const selected = currentRows.find((row) => row.id === selectedRowId);
     renderSelectedDetail(selected);
@@ -3057,7 +3329,186 @@
     }
   }
 
+  function voicingStringActionRowsHtml(cells) {
+    if (!cells.length) {
+      return "";
+    }
+    return `
+      <section class="explorer-string-actions" aria-label="Voicing string actions">
+        <strong>Per-string details</strong>
+        ${cells.map((cell) => `
+          <div class="explorer-string-action">
+            <span>String ${escapeHtml(cell.stringNumber)}</span>
+            <span>${escapeHtml(cell.openNoteAtFret)} -> ${escapeHtml(cell.finalNote)}</span>
+            <span>${escapeHtml(cell.isAffected ? cell.activeControlLabel : "no change")}</span>
+            <span>${escapeHtml(`${notationModeLabel()}: ${cell.notationValue}`)}</span>
+          </div>
+        `).join("")}
+      </section>
+    `;
+  }
+
+  function renderVoicingIdentifierDetail(row, result, identity) {
+    els.selectedDetail.className = "explorer-selected-detail";
+    els.selectedDetail.innerHTML = `
+      <div class="explorer-selected-detail__header">
+        <span class="explorer-selected-detail__kind">Voicing identifier</span>
+        <strong>${escapeHtml(identity.label)}</strong>
+      </div>
+      <section class="explorer-teaching-note" aria-label="Voicing explanation">
+        <strong>Why this name fits</strong>
+        <p>${escapeHtml(`${identity.label} is the best common-name match for ${result.cells.map((cell) => cell.finalNote).join(", ")}. Confidence is ${identity.confidence}. ${identity.partial ? "This is a partial voicing, so context matters." : "The selected notes match the chord tones directly."}`)}</p>
+      </section>
+      <dl class="explorer-detail-grid">
+        ${detailRow("Fret", result.fret)}
+        ${detailRow("Strings", result.strings.join("-"))}
+        ${detailRow("Pedals / levers", result.controlState.label)}
+        ${detailRow("Notes", result.cells.map((cell) => cell.finalNote))}
+        ${detailRow("Intervals against key", result.cells.map((cell) => cell.notationValue))}
+        ${detailRow("Intervals in voicing", identity.intervals.map(formatInterval))}
+        ${detailRow("Likely function", identity.functionText)}
+        ${detailRow("Confidence", identity.confidence)}
+        ${detailRow("Alternate readings", identity.alternates)}
+      </dl>
+      ${voicingStringActionRowsHtml(result.cells)}
+    `;
+  }
+
+  function renderVoicingIdentifierPanel(result, identity) {
+    if (!els.voicingIdentifier) {
+      return;
+    }
+    els.voicingIdentifier.hidden = false;
+    els.voicingIdentifier.innerHTML = `
+      <div class="explorer-voicing-identifier__header">
+        <div>
+          <strong>Voicing identifier</strong>
+          <p>Enter a fret, string set, and pedal/lever state. The result is calculated from the selected copedent and key.</p>
+        </div>
+        <span>${escapeHtml(formatValue(activeCopedent()?.label || "E9 copedent"))}</span>
+      </div>
+      <div class="explorer-voicing-identifier__controls">
+        <div>
+          <label class="explorer-voicing-identifier__label" for="explorer-voicing-fret">Fret</label>
+          <input class="explorer-voicing-identifier__input" id="explorer-voicing-fret" type="number" min="0" max="24" step="1" value="${escapeHtml(voicingFret)}" inputmode="numeric" />
+        </div>
+        <div>
+          <label class="explorer-voicing-identifier__label" for="explorer-voicing-strings">Strings</label>
+          <input class="explorer-voicing-identifier__input" id="explorer-voicing-strings" type="text" value="${escapeHtml(voicingStrings)}" placeholder="3-4-5" />
+          <div class="explorer-voicing-identifier__chips" role="group" aria-label="Common string groups">${voicingGripButtonsHtml()}</div>
+        </div>
+        <div>
+          <span class="explorer-voicing-identifier__label">Pedals / levers</span>
+          <div class="explorer-voicing-identifier__chips" role="group" aria-label="Voicing control state">${voicingControlButtonsHtml()}</div>
+        </div>
+      </div>
+      ${result.warning ? `<p class="explorer-voicing-identifier__warning">${escapeHtml(result.warning)}</p>` : `
+        <section class="explorer-voicing-summary" aria-label="Identified voicing">
+          <strong>${escapeHtml(identity.label)} · ${escapeHtml(identity.functionText)}</strong>
+          <p>${escapeHtml(`${selectedOptionLabel(els.scale) || `${activeKey()} ${els.scale.value}`}. Fret ${result.fret}; strings ${result.strings.join("-")}; ${result.controlState.label}; notes ${result.cells.map((cell) => cell.finalNote).join(", ")}; ${notationModeLabel()} ${result.cells.map((cell) => cell.notationValue).join(", ")}.`)}</p>
+        </section>
+      `}
+    `;
+
+    const fretInput = document.getElementById("explorer-voicing-fret");
+    if (fretInput) {
+      fretInput.addEventListener("input", () => {
+        voicingFret = fretInput.value;
+        renderVoicingIdentifierMode();
+      });
+    }
+    const stringsInput = document.getElementById("explorer-voicing-strings");
+    if (stringsInput) {
+      stringsInput.addEventListener("input", () => {
+        voicingStrings = stringsInput.value;
+        renderVoicingIdentifierMode();
+      });
+    }
+    Array.from(els.voicingIdentifier.querySelectorAll("[data-voicing-string-preset]")).forEach((button) => {
+      button.addEventListener("click", () => {
+        voicingStrings = button.getAttribute("data-voicing-string-preset") || "3-4-5";
+        renderVoicingIdentifierMode();
+      });
+    });
+    Array.from(els.voicingIdentifier.querySelectorAll("[data-voicing-control-state]")).forEach((button) => {
+      button.addEventListener("click", () => {
+        selectedVoicingControlStateId = button.getAttribute("data-voicing-control-state") || "open";
+        renderVoicingIdentifierMode();
+      });
+    });
+  }
+
+  function renderVoicingIdentifierMode() {
+    const result = voicingStringStates();
+    const identity = result.warning ? null : identifyVoicing(result.cells.map((cell) => cell.finalNote));
+    const row = result.warning ? null : voicingSyntheticRow(result, identity);
+    selectedRowId = row?.id || "";
+    currentRows = row ? [row] : [];
+    currentMarkerGroups = row ? groupRowsForMarkers([row]) : [];
+    if (els.noteFinder) {
+      els.noteFinder.hidden = true;
+      els.noteFinder.innerHTML = "";
+    }
+    if (els.topIntervalFilter) {
+      els.topIntervalFilter.hidden = true;
+      els.topIntervalFilter.innerHTML = "";
+    }
+    if (els.fretRangeFilter) {
+      els.fretRangeFilter.hidden = true;
+      els.fretRangeFilter.innerHTML = "";
+    }
+    els.scaleNotes.textContent = getScaleNotes();
+    if (els.resultCount) {
+      els.resultCount.textContent = "";
+    }
+    els.empty.hidden = true;
+    els.empty.textContent = "";
+    renderCopedentChart();
+    renderControlImpactPreview();
+    renderVoicingIdentifierPanel(result, identity);
+    if (!row) {
+      els.activeResults.innerHTML = '<p class="explorer-empty">Fix the fret or string entry to identify the voicing.</p>';
+      els.rowList.innerHTML = "";
+      els.fretboard.innerHTML = "";
+      els.selectedDetail.innerHTML = '<p class="explorer-empty">No voicing result yet.</p>';
+      return;
+    }
+    els.activeResults.innerHTML = `
+      <div class="explorer-active-results__header">
+        <strong>${escapeHtml(`Identified ${identity.label}`)}</strong>
+        <span>Card and SVG marker show the same fret/string group.</span>
+      </div>
+      <div class="explorer-active-results__track">
+        ${resultButtonHtml(row, "data-active-result-row")}
+      </div>
+    `;
+    els.rowList.innerHTML = resultButtonHtml(row, "data-explorer-row");
+    renderFretboard([row]);
+    renderVoicingIdentifierDetail(row, result, identity);
+    syncSelectedState();
+    Array.from(els.activeResults.querySelectorAll("[data-active-result-row]")).forEach((button) => {
+      button.addEventListener("click", () => selectRow(button.getAttribute("data-active-result-row")));
+    });
+    Array.from(els.rowList.querySelectorAll("[data-explorer-row]")).forEach((button) => {
+      button.addEventListener("click", () => selectRow(button.getAttribute("data-explorer-row")));
+    });
+    const renderedText = [
+      els.voicingIdentifier?.textContent || "",
+      els.activeResults?.textContent || "",
+      els.rowList?.textContent || "",
+      els.selectedDetail?.textContent || "",
+      els.fretboard?.textContent || "",
+    ].join(" ");
+    if (renderedText.includes("[object Object]")) {
+      console.warn("Explorer rendered an unsafe object string.");
+    }
+  }
+
   function render() {
+    if (isVoicingIdentifierMode()) {
+      renderVoicingIdentifierMode();
+      return;
+    }
     if (isNoteFinderMode()) {
       renderNoteFinderMode();
       return;
@@ -3065,6 +3516,10 @@
     if (els.noteFinder) {
       els.noteFinder.hidden = true;
       els.noteFinder.innerHTML = "";
+    }
+    if (els.voicingIdentifier) {
+      els.voicingIdentifier.hidden = true;
+      els.voicingIdentifier.innerHTML = "";
     }
     const baseRows = getBaseRows();
     syncSelectedTopFilter(baseRows);

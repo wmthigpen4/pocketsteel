@@ -619,7 +619,8 @@
       display: none;
     }
 
-    .explorer-note-finder {
+    .explorer-note-finder,
+    .explorer-voicing-identifier {
       display: grid;
       gap: 12px;
       margin: 0 0 12px;
@@ -629,11 +630,13 @@
       background: rgba(14, 12, 9, 0.78);
     }
 
-    .explorer-note-finder[hidden] {
+    .explorer-note-finder[hidden],
+    .explorer-voicing-identifier[hidden] {
       display: none;
     }
 
-    .explorer-note-finder__header {
+    .explorer-note-finder__header,
+    .explorer-voicing-identifier__header {
       display: flex;
       flex-wrap: wrap;
       justify-content: space-between;
@@ -642,7 +645,9 @@
     }
 
     .explorer-note-finder__header strong,
-    .explorer-note-finder__label {
+    .explorer-note-finder__label,
+    .explorer-voicing-identifier__header strong,
+    .explorer-voicing-identifier__label {
       display: block;
       color: var(--gold);
       font-size: 0.82rem;
@@ -652,14 +657,17 @@
     }
 
     .explorer-note-finder__header p,
-    .explorer-note-finder__context {
+    .explorer-note-finder__context,
+    .explorer-voicing-identifier__header p,
+    .explorer-voicing-identifier__context {
       margin: 0;
       color: var(--muted);
       font-size: 0.82rem;
       line-height: 1.42;
     }
 
-    .explorer-note-finder__header span {
+    .explorer-note-finder__header span,
+    .explorer-voicing-identifier__header span {
       color: rgba(255, 247, 232, 0.62);
       font-size: 0.78rem;
       font-weight: 800;
@@ -671,14 +679,35 @@
       gap: 10px 14px;
     }
 
-    .explorer-note-finder__chips {
+    .explorer-voicing-identifier__controls {
+      display: grid;
+      grid-template-columns: minmax(120px, 0.35fr) minmax(180px, 0.5fr) minmax(0, 1fr);
+      gap: 10px 14px;
+      align-items: end;
+    }
+
+    .explorer-voicing-identifier__input {
+      width: 100%;
+      min-height: 42px;
+      border: 1px solid rgba(246, 190, 88, 0.3);
+      border-radius: 10px;
+      padding: 0 12px;
+      background: rgba(0, 0, 0, 0.36);
+      color: var(--text);
+      font: inherit;
+      font-weight: 800;
+    }
+
+    .explorer-note-finder__chips,
+    .explorer-voicing-identifier__chips {
       display: flex;
       flex-wrap: wrap;
       gap: 6px;
       margin-top: 7px;
     }
 
-    .explorer-note-finder__chip {
+    .explorer-note-finder__chip,
+    .explorer-voicing-identifier__chip {
       min-height: 30px;
       border: 1px solid rgba(246, 190, 88, 0.24);
       border-radius: 999px;
@@ -693,11 +722,45 @@
 
     .explorer-note-finder__chip:hover,
     .explorer-note-finder__chip:focus-visible,
-    .explorer-note-finder__chip.is-selected {
+    .explorer-note-finder__chip.is-selected,
+    .explorer-voicing-identifier__chip:hover,
+    .explorer-voicing-identifier__chip:focus-visible,
+    .explorer-voicing-identifier__chip.is-selected {
       border-color: rgba(246, 190, 88, 0.68);
       background: rgba(246, 190, 88, 0.14);
       color: var(--text);
       outline: none;
+    }
+
+    .explorer-voicing-identifier__warning {
+      margin: 0;
+      border: 1px solid rgba(255, 130, 95, 0.32);
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: rgba(255, 93, 48, 0.09);
+      color: rgba(255, 231, 218, 0.92);
+      font-size: 0.86rem;
+      font-weight: 800;
+    }
+
+    .explorer-voicing-summary {
+      display: grid;
+      gap: 8px;
+      border: 1px solid rgba(246, 190, 88, 0.2);
+      border-radius: 14px;
+      padding: 12px;
+      background: rgba(255, 247, 232, 0.04);
+    }
+
+    .explorer-voicing-summary strong {
+      color: var(--text);
+      font-size: 1rem;
+    }
+
+    .explorer-voicing-summary p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.45;
     }
 
     .explorer-note-workflow-panel {
@@ -1732,6 +1795,7 @@
 
       .explorer-control-impact-preview,
       .explorer-note-finder__controls,
+      .explorer-voicing-identifier__controls,
       .explorer-row-control-impacts__grid,
       .explorer-top-interval-filter,
       .explorer-fret-range-filter,
@@ -1792,8 +1856,9 @@
           <option value="single" selected>Single grip</option>
           <option value="path">Harmonized scale path</option>
           <option value="note">Single-note finder</option>
+          <option value="voicing">Voicing identifier</option>
         </select>
-        <p class="explorer-control-help" id="explorer-explore-mode-help">Single grip filters exact strings. Scale path shows a practical route that can change string groups. Single-note finder shows how pedals and levers change one note at a time.</p>
+        <p class="explorer-control-help" id="explorer-explore-mode-help">Single grip filters exact strings. Scale path shows a practical route. Single-note finder shows one note at a time. Voicing identifier explains one fret/string/control shape.</p>
       </div>
       <p class="explorer-mode-panel__copy">Start by choosing the kind of fretboard question you want to explore, then use the filters below to narrow the view.</p>
     </section>
@@ -1888,6 +1953,7 @@
     <div class="explorer-top-interval-filter" id="explorer-top-interval-filter" aria-label="Top label filter" hidden></div>
     <div class="explorer-fret-range-filter" id="explorer-fret-range-filter" aria-label="Visible fret range filter" hidden></div>
     <section class="explorer-note-finder" id="explorer-note-finder" aria-label="Single-note finder" hidden></section>
+    <section class="explorer-voicing-identifier" id="explorer-voicing-identifier" aria-label="Voicing identifier" hidden></section>
 
     <dialog class="explorer-copedent-dialog" id="explorer-copedent-dialog" aria-labelledby="explorer-copedent-dialog-title">
       <div class="explorer-copedent-dialog__bar">
@@ -1946,6 +2012,6 @@
 
   <script src="pedal-steel-fretboard.js?v=explorer-harmonized-path-mode-20260626"></script>
   <script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>
-  <script src="e9-fretboard-explorer.js?v=harmonized-path-rail-20260627"></script>
+  <script src="e9-fretboard-explorer.js?v=voicing-identifier-20260627"></script>
 </body>
 </html>
