@@ -23,7 +23,9 @@ Intentionally not changed:
 
 - Branch: `feature/answer-api`
 - Starting HEAD: `02d9f89`
-- Final HEAD / commit: included in the final task response after exact-path commit.
+- Implementation commit: `3c78758 feat: redesign landing page around explorer and brain`
+- Integration-status refresh commit: `6280648 docs: refresh landing redesign status`
+- Protected-smoke documentation commit: recorded after this handoff update.
 
 ## Files Changed
 
@@ -50,7 +52,6 @@ git diff --check
 Not run:
 - `node --check ui/answer-client.js` and `node --check ui/pedal-steel-fretboard.js`: not touched.
 - `tests/test_frontend_answer_ui.py` and `tests/test_pedal_steel_fretboard_ui.py`: shared app shell / fretboard renderer files were not touched.
-- Protected-preview smoke: not run in this Lane 06 implementation pass. The local app server root currently redirects to the private app shell, so protected root behavior needs Lane 12 confirmation before treating root as the public landing target.
 
 ## Local Browser Smoke
 
@@ -84,6 +85,37 @@ Local smoke observations:
 - Browser console had no relevant errors.
 - Local root `http://127.0.0.1:8770/?v=landing-explorer-brain-local-root` redirected to `http://127.0.0.1:8770/ui/steel-guitar-rag-mock.html`, which is existing local app-server behavior.
 
+## Protected-Preview Smoke
+
+Smoke Target:
+- Target type: protected-preview
+- Result type: browser smoke
+- Exact browser URL tested: `https://app.steelguitarrag.com/ui/steel-guitar-rag-landing.html?v=landing-redesign-3c78758`
+- Cache-busted URL tested: `https://app.steelguitarrag.com/ui/steel-guitar-rag-landing.html?v=landing-redesign-3c78758`
+- Exact URL the user should use: `https://app.steelguitarrag.com/ui/steel-guitar-rag-landing.html?v=landing-redesign-3c78758`
+- Auth required: yes
+- Auth provider: Cloudflare Access
+- Cloudflare Access login result: succeeded / already authenticated in the in-app browser
+- Local backend URL: `http://127.0.0.1:8770`
+- Expected backend port: `8770`
+- Expected git HEAD: implementation commit `3c78758`; static file served from current working tree
+- Version endpoint: `https://app.steelguitarrag.com/api/version?v=landing-redesign-3c78758`
+- Version endpoint result: `{"git_sha": "4040a47", "git_branch": "feature/answer-api", "server_started_at": "2026-06-26T01:51:23.747502+00:00", "python_module": "pocketsteel.api", "retrieval_mode": "hybrid_private_first", "auth_provider": "cloudflare_access"}`
+- If version endpoint missing, how version is inferred: not applicable
+- Whether app root `/` works: yes
+- Whether app root `/` is expected to work: yes, but root redirects to app shell in the current protected-preview runtime
+- Whether `/ui/steel-guitar-rag-mock.html` works: yes; protected root redirected there
+- Whether `/ui/steel-guitar-rag-mock.html` is expected to work: yes
+- Who should test this URL: both Codex and the user
+- Do not test these URLs: do not use root `/` as proof of the redesigned static landing page until product/routing decides root should serve it
+- Known caveats: `/api/version` reports runtime SHA `4040a47`, so this protected smoke verifies cache-busted static file behavior, not a runtime restart to `3c78758`
+
+Protected smoke observations:
+- Direct static landing URL showed `Explore the E9 neck. Ask better questions.`
+- Direct static landing URL showed Explorer hero, compact Brain band, five mode cards, no page-level horizontal overflow, and no relevant console errors.
+- Direct static landing HTML did not expose `/api/answer` or `steel-guitar-rag-mock.html`.
+- Protected root `https://app.steelguitarrag.com/?v=landing-redesign-3c78758` redirected to `https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html` and showed the app shell hero `Ask the steel guitar brain.`
+
 ## Behavior Changed
 
 - The landing page no longer presents the Brain/chat experience as the dominant first impression.
@@ -99,7 +131,7 @@ Risk: medium-low.
 Why:
 - Scope is isolated to the public static landing source, deploy copy, and landing tests.
 - Static HTML changes are broad visually, but no backend/app runtime files were touched.
-- Root-route ambiguity remains: the local same-origin server redirects `/` to the app shell, so Lane 12 must confirm the actual public/protected landing route before user smoke.
+- Root-route ambiguity remains: the local same-origin server and protected-preview root both redirect `/` to the app shell, so Lane 12 / product must confirm whether root should serve the static landing page or continue serving the app shell.
 
 Rollback:
 - Revert the scoped commit touching the two landing HTML files, landing tests, and this handoff.
@@ -150,5 +182,5 @@ Lane 12 protected-preview / public route smoke.
 Suggested prompt:
 
 ```text
-Lane 12: Run protected/public landing smoke for the redesigned landing page at the exact cache-busted static landing URL and confirm whether root `/` should serve the landing page or continue redirecting to the app shell. Verify the Fretboard Explorer is the first-class hero, the Brain is compact and secondary, and no private app route is exposed from the public landing page.
+Lane 12: Decide and verify public/protected root routing for the redesigned static landing page. The direct protected static URL `https://app.steelguitarrag.com/ui/steel-guitar-rag-landing.html?v=landing-redesign-3c78758` passes browser smoke, but protected root `/` still redirects to `/ui/steel-guitar-rag-mock.html`. Confirm whether root should serve the redesigned landing page or continue serving the app shell.
 ```
