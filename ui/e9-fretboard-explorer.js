@@ -86,6 +86,7 @@
     exploreMode: document.getElementById("explorer-explore-mode"),
     scale: document.getElementById("explorer-scale"),
     harmony: document.getElementById("explorer-harmony"),
+    harmonyControl: document.getElementById("explorer-harmony-control"),
     stringGroup: document.getElementById("explorer-string-group"),
     stringGroupControl: document.getElementById("explorer-string-group-control"),
     pathFamily: document.getElementById("explorer-path-family"),
@@ -651,6 +652,10 @@
     }
     if (els.pathFamily) {
       els.pathFamily.disabled = !pathMode;
+    }
+    if (els.harmonyControl) {
+      els.harmonyControl.hidden = pathMode;
+      els.harmonyControl.setAttribute?.("aria-hidden", pathMode ? "true" : "false");
     }
     if (els.harmony) {
       els.harmony.disabled = pathMode;

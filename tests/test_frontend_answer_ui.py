@@ -339,6 +339,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<option value="two_string_harmonized">2-string harmonized scale</option>' in html
     assert '<option value="five_eight_branch">5&amp;8 branch positions (2-string)</option>' not in html
     assert '<option value="three_string_diatonic" selected>3-string diatonic harmony</option>' in html
+    assert '<div class="explorer-control" id="explorer-harmony-control">' in html
     assert '<div class="explorer-header-actions" aria-label="Explorer actions">' in html
     assert '<button class="explorer-back" id="explorer-glossary-open" type="button" aria-haspopup="dialog" aria-controls="explorer-glossary-dialog">' in html
     assert "<span>Glossary</span>" in html
@@ -861,6 +862,7 @@ const elements = {
     { value: "two_string_harmonized", text: "2-string harmonized scale" },
     { value: "three_string_diatonic", text: "3-string diatonic harmony" }
   ]),
+  "explorer-harmony-control": new FakeNode("explorer-harmony-control"),
   "explorer-string-group": new FakeSelect("explorer-string-group", "all", [{ value: "all", text: "All 3-string groups" }]),
   "explorer-string-group-control": new FakeNode("explorer-string-group-control"),
   "explorer-path-family": new FakeSelect("explorer-path-family", "low", [
@@ -949,6 +951,8 @@ assert.doesNotMatch(elements["explorer-string-group"].innerHTML, />3-5</);
 assert.equal(elements["explorer-explore-mode"].value, "single");
 assert.equal(elements["explorer-string-group-control"].hidden, false);
 assert.equal(elements["explorer-path-family-control"].hidden, true);
+assert.equal(elements["explorer-harmony-control"].hidden, false);
+assert.equal(elements["explorer-harmony-control"].getAttribute("aria-hidden"), "false");
 assert.equal(elements["explorer-harmony"].disabled, false);
 assert.equal(lastMount.options.showHighlightLabels, true);
 assert.equal(lastMount.options.hideFilterControls, true);
@@ -1199,6 +1203,8 @@ assert.equal(elements["explorer-string-group"].disabled, true);
 assert.equal(elements["explorer-path-family-control"].hidden, false);
 assert.equal(elements["explorer-path-family-control"].getAttribute("aria-hidden"), "false");
 assert.equal(elements["explorer-path-family"].disabled, false);
+assert.equal(elements["explorer-harmony-control"].hidden, true);
+assert.equal(elements["explorer-harmony-control"].getAttribute("aria-hidden"), "true");
 assert.equal(elements["explorer-harmony"].value, "three_string_diatonic");
 assert.equal(elements["explorer-harmony"].disabled, true);
 assert.equal(elements["explorer-fret-range-filter"].hidden, true);
@@ -1243,6 +1249,8 @@ assert.equal(elements["explorer-string-group"].disabled, false);
 assert.equal(elements["explorer-path-family-control"].hidden, true);
 assert.equal(elements["explorer-path-family-control"].getAttribute("aria-hidden"), "true");
 assert.equal(elements["explorer-path-family"].disabled, true);
+assert.equal(elements["explorer-harmony-control"].hidden, false);
+assert.equal(elements["explorer-harmony-control"].getAttribute("aria-hidden"), "false");
 assert.equal(elements["explorer-harmony"].disabled, false);
 
 elements["explorer-harmony"].value = "two_string_harmonized";
