@@ -276,7 +276,8 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "pedal-steel-fretboard.js?v=explorer-compact-copedent-20260625" not in html
     assert '<script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>' in html
     assert "[hidden] {\n      display: none !important;\n    }" in html
-    assert '<script src="e9-fretboard-explorer.js?v=single-note-learning-20260626"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=harmonized-path-rail-20260627"></script>' in html
+    assert "e9-fretboard-explorer.js?v=single-note-learning-20260626" not in html
     assert "e9-fretboard-explorer.js?v=single-note-finder-20260626" not in html
     assert "explorer-top-note-marker-source-20260626" not in html
     assert "e9-fretboard-explorer.js?v=compact-controls-20260626" not in html
@@ -504,6 +505,10 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "PATH_FAMILIES" in script
     assert "Harmonized scale path" in script
     assert "pathRows" in script
+    assert "Scale path rail" in script
+    assert "data-path-step" in script
+    assert "data-path-display-mode" in script
+    assert "Compare same fret" in script
     assert "degreeSequenceForPath" in script
     assert "pathChangeNote" in script
     assert "this path changes string groups when the harmony requires it" in script
@@ -776,6 +781,11 @@ class FakeNode {
     this._buttons = {
       "[data-explorer-row]": Array.from(value.matchAll(/data-explorer-row="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-explorer-row")),
       "[data-active-result-row]": Array.from(value.matchAll(/data-active-result-row="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-active-result-row")),
+      "[data-path-step]": Array.from(value.matchAll(/data-path-step="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-path-step")),
+      "[data-path-display-mode]": Array.from(value.matchAll(/data-path-display-mode="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-path-display-mode")),
+      "[data-path-compare-row]": Array.from(value.matchAll(/data-path-compare-row="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-path-compare-row")),
+      "[data-path-prev]": value.includes("data-path-prev") ? [new FakeButton("previous", "data-path-prev")] : [],
+      "[data-path-next]": value.includes("data-path-next") ? [new FakeButton("next", "data-path-next")] : [],
       "[data-control-impact-tab]": Array.from(value.matchAll(/data-control-impact-tab="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-control-impact-tab")),
       "[data-top-interval-filter]": Array.from(value.matchAll(/data-top-interval-filter="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-top-interval-filter")),
       "[data-fret-range-filter]": Array.from(value.matchAll(/data-fret-range-filter="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-fret-range-filter")),
@@ -1346,8 +1356,20 @@ assert.equal(elements["explorer-harmony-control"].getAttribute("aria-hidden"), "
 assert.equal(elements["explorer-harmony"].value, "three_string_diatonic");
 assert.equal(elements["explorer-harmony"].disabled, true);
 assert.equal(elements["explorer-fret-range-filter"].hidden, true);
-assert.match(elements["explorer-active-results"].textContent, /Low path \(6-8-10 \/ 6-7-10\): 8 visible scale degrees/);
-assert.match(elements["explorer-active-results"].textContent, /This path changes string groups when the harmony requires it/);
+assert.match(elements["explorer-active-results"].textContent, /Low path \(6-8-10 \/ 6-7-10\): Scale path rail/);
+assert.match(elements["explorer-active-results"].textContent, /Some scale degrees share the same fret/);
+assert.match(elements["explorer-active-results"].textContent, /Step/);
+assert.match(elements["explorer-active-results"].textContent, /Ghost all/);
+assert.match(elements["explorer-active-results"].textContent, /Compare same fret/);
+const pathStepButtons = elements["explorer-active-results"].querySelectorAll("[data-path-step]");
+assert.equal(pathStepButtons.length, 8);
+assert.match(elements["explorer-active-results"].textContent, /G — G/);
+assert.match(elements["explorer-active-results"].textContent, /A — Am/);
+assert.match(elements["explorer-active-results"].textContent, /B — Bm/);
+assert.match(elements["explorer-active-results"].textContent, /C — C/);
+assert.match(elements["explorer-active-results"].textContent, /D — D/);
+assert.match(elements["explorer-active-results"].textContent, /E — Em/);
+assert.match(elements["explorer-active-results"].textContent, /F# — F# half-diminished/);
 const pathCardGroups = Array.from(elements["explorer-row-list"].innerHTML.matchAll(/data-string-group="([^"]+)"/g)).map((match) => match[1]);
 const pathCardIds = Array.from(elements["explorer-row-list"].innerHTML.matchAll(/data-explorer-row="([^"]+)"/g)).map((match) => match[1]);
 const pathFrets = pathCardIds.map((id) => {
@@ -1361,18 +1383,45 @@ assert.match(elements["explorer-row-list"].textContent, /B — Bm/);
 assert.match(elements["explorer-row-list"].textContent, /F# — F# diminished|F# — F# half-diminished/);
 assert.match(elements["explorer-row-list"].textContent, /String group changes/);
 assert.match(elements["explorer-row-list"].textContent, /minor position uses this A\+B string group in this path/);
+assert.equal(lastMount.options.positions.length, 1);
+assert.equal(lastMount.options.positions[0].grip, "6-8-10");
+assert.equal(lastMount.options.positions[0].strings.join(","), "6,8,10");
+pathStepButtons[1].onclick();
+assert.match(elements["explorer-selected-detail"].textContent, /A — Am/);
+assert.equal(lastMount.options.positions.length, 1);
+assert.equal(lastMount.options.positions[0].grip, "6-7-10");
+assert.equal(lastMount.options.positions[0].strings.join(","), "6,7,10");
+elements["explorer-active-results"].querySelector("[data-path-prev]").onclick();
+assert.match(elements["explorer-selected-detail"].textContent, /G — G/);
+elements["explorer-active-results"].querySelector("[data-path-next]").onclick();
+assert.match(elements["explorer-selected-detail"].textContent, /A — Am/);
+elements["explorer-active-results"].querySelectorAll("[data-path-display-mode]")
+  .find((button) => button.getAttribute("data-path-display-mode") === "ghost").onclick();
 assert.equal(lastMount.options.positions.length, 8);
-assert.equal(lastMount.options.positions.some((row) => row.grip === "6-8-10"), true);
-assert.equal(lastMount.options.positions.some((row) => row.grip === "6-7-10"), true);
-const pathMarkerOrder = lastMount.options.positions.map((row) => row.id);
-assert.equal(pathMarkerOrder[pathMarkerOrder.length - 1], "marker:3:6-8-10:6-8-10");
-assert.equal(lastMount.options.positions[lastMount.options.positions.length - 1].grip, "6-8-10");
+assert.equal(lastMount.options.positions.filter((row) => row.strings.length === 1).length, 7);
+assert.equal(lastMount.options.positions.some((row) => row.grip === "6-7-10" && row.strings.join(",") === "6,7,10"), true);
+elements["explorer-active-results"].querySelectorAll("[data-path-display-mode]")
+  .find((button) => button.getAttribute("data-path-display-mode") === "compare").onclick();
+assert.match(elements["explorer-active-results"].textContent, /Fret 3 contains/);
+assert.match(elements["explorer-active-results"].textContent, /G — G[\s\S]*strings 6-8-10[\s\S]*Open/);
+assert.match(elements["explorer-active-results"].textContent, /A — Am[\s\S]*strings 6-7-10[\s\S]*With A\+B/);
+assert.equal(lastMount.options.positions.length, 2);
+assert.equal(lastMount.options.positions.filter((row) => row.grip === "6-8-10").length, 1);
+assert.equal(lastMount.options.positions.filter((row) => row.grip === "6-7-10").length, 1);
+pathStepButtons[4].onclick();
+elements["explorer-active-results"].querySelectorAll("[data-path-display-mode]")
+  .find((button) => button.getAttribute("data-path-display-mode") === "compare").onclick();
+assert.match(elements["explorer-active-results"].textContent, /Fret 10 contains/);
+assert.match(elements["explorer-active-results"].textContent, /D — D[\s\S]*strings 6-8-10[\s\S]*Open/);
+assert.match(elements["explorer-active-results"].textContent, /E — Em[\s\S]*strings 6-7-10[\s\S]*With A\+B/);
 notationModeButtons[2].onclick();
 assert.match(elements["explorer-row-list"].textContent, /I — G/);
 assert.match(elements["explorer-row-list"].textContent, /ii — Am/);
 assert.match(elements["explorer-row-list"].textContent, /iii — Bm/);
-assert.equal(markerPosition("marker:3:6-8-10:6-8-10").label, "iii");
-assert.equal(markerPosition("marker:3:6-7-10:6-7-10").label, "IV");
+assert.match(elements["explorer-active-results"].textContent, /I — G/);
+assert.match(elements["explorer-active-results"].textContent, /ii — Am/);
+assert.match(elements["explorer-active-results"].textContent, /V — D/);
+assert.match(elements["explorer-active-results"].textContent, /vi — Em/);
 notationModeButtons[0].onclick();
 elements["explorer-path-family"].value = "middle";
 elements["explorer-path-family"].dispatchChange();
