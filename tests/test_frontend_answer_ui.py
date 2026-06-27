@@ -316,7 +316,9 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<option value="custom-e9-lkv">Custom E9 (with LKV)</option>' in html
     assert '<option value="my-copedent-e9" disabled>My Copedent (E9) - Coming soon in Backstage</option>' in html
     assert '<div class="explorer-copedent-control-row">' not in html
-    controls_markup = html.split('<section class="explorer-controls" aria-label="Explorer controls">', 1)[1].split("</section>", 1)[0]
+    mode_markup = html.split('<section class="explorer-mode-panel" aria-label="Explorer mode">', 1)[1].split("</section>", 1)[0]
+    controls_markup = html.split('<section class="explorer-controls" aria-label="Explorer filters">', 1)[1].split("</section>", 1)[0]
+    assert html.index('<section class="explorer-mode-panel" aria-label="Explorer mode">') < html.index('<section class="explorer-controls" aria-label="Explorer filters">')
     assert 'id="explorer-copedent-open"' not in controls_markup
     assert '<dialog class="explorer-copedent-dialog" id="explorer-copedent-dialog"' in html
     assert '<button class="explorer-inline-button" id="explorer-copedent-close" type="button">Close</button>' in html
@@ -334,11 +336,16 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<option value="major">G major</option>' in html
     assert '<option value="natural_minor">G natural minor</option>' in html
     assert '<label for="explorer-explore-mode">Explore mode</label>' in html
+    assert '<label for="explorer-explore-mode">Explore mode</label>' in mode_markup
+    assert '<label for="explorer-explore-mode">Explore mode</label>' not in controls_markup
     assert '<option value="single" selected>Single grip</option>' in html
     assert '<option value="path">Harmonized scale path</option>' in html
     assert '<option value="note">Single-note finder</option>' in html
     assert "Single grip filters exact strings" in html
     assert "Single-note finder shows how pedals and levers change one note at a time." in html
+    assert ".explorer-mode-panel {" in html
+    assert "grid-template-columns: minmax(220px, 340px) minmax(0, 1fr);" in html
+    assert "Start by choosing the kind of fretboard question you want to explore" in mode_markup
     assert 'id="explorer-note-finder"' in html
     assert ".explorer-note-grid" in html
     assert ".explorer-note-cell.is-result" in html

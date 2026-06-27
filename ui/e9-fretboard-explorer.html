@@ -129,15 +129,32 @@
       line-height: 1.5;
     }
 
+    .explorer-mode-panel,
     .explorer-controls {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
       gap: 10px;
       padding: 12px;
       border: 1px solid var(--line);
       border-radius: 16px;
       background: var(--panel);
       box-shadow: 0 22px 60px rgba(0, 0, 0, 0.34);
+    }
+
+    .explorer-mode-panel {
+      grid-template-columns: minmax(220px, 340px) minmax(0, 1fr);
+      align-items: end;
+      margin-bottom: 10px;
+    }
+
+    .explorer-mode-panel__copy {
+      margin: 0;
+      color: rgba(255, 247, 232, 0.62);
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
+
+    .explorer-controls {
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
     }
 
     .explorer-control {
@@ -1694,6 +1711,7 @@
         padding: 0 12px;
       }
 
+      .explorer-mode-panel,
       .explorer-controls {
         grid-template-columns: 1fr;
       }
@@ -1767,7 +1785,20 @@
       </div>
     </header>
 
-    <section class="explorer-controls" aria-label="Explorer controls">
+    <section class="explorer-mode-panel" aria-label="Explorer mode">
+      <div class="explorer-control explorer-control--mode">
+        <label for="explorer-explore-mode">Explore mode</label>
+        <select id="explorer-explore-mode" aria-describedby="explorer-explore-mode-help">
+          <option value="single" selected>Single grip</option>
+          <option value="path">Harmonized scale path</option>
+          <option value="note">Single-note finder</option>
+        </select>
+        <p class="explorer-control-help" id="explorer-explore-mode-help">Single grip filters exact strings. Scale path shows a practical route that can change string groups. Single-note finder shows how pedals and levers change one note at a time.</p>
+      </div>
+      <p class="explorer-mode-panel__copy">Start by choosing the kind of fretboard question you want to explore, then use the filters below to narrow the view.</p>
+    </section>
+
+    <section class="explorer-controls" aria-label="Explorer filters">
       <div class="explorer-control">
         <label for="explorer-key">Key</label>
         <select id="explorer-key" aria-describedby="explorer-key-help">
@@ -1795,15 +1826,6 @@
           <option value="my-copedent-e9" disabled>My Copedent (E9) - Coming soon in Backstage</option>
         </select>
         <p class="explorer-control-help" id="explorer-copedent-help">Choose the copedent that matches your guitar. My Copedent (E9) is coming soon in Backstage.</p>
-      </div>
-      <div class="explorer-control">
-        <label for="explorer-explore-mode">Explore mode</label>
-        <select id="explorer-explore-mode" aria-describedby="explorer-explore-mode-help">
-          <option value="single" selected>Single grip</option>
-          <option value="path">Harmonized scale path</option>
-          <option value="note">Single-note finder</option>
-        </select>
-        <p class="explorer-control-help" id="explorer-explore-mode-help">Single grip filters exact strings. Scale path shows a practical route that can change string groups. Single-note finder shows how pedals and levers change one note at a time.</p>
       </div>
       <div class="explorer-control">
         <label for="explorer-scale">Scale</label>
