@@ -19,11 +19,14 @@ from pocketsteel.fretboard_examples import (
 )
 from pocketsteel.e9_copedents import (
     DEFAULT_COPEDENT_ID,
+    E9_OPEN_STRING_PITCH_VALUES,
     control_changes_for_profile,
     control_labels_for_profile,
     control_order_for_profile,
     control_types_for_profile,
     controls_by_id_for_profile,
+    octave_band_for_value,
+    scientific_pitch_for_value,
     get_e9_copedent_profile,
     selected_copedent_payload,
 )
@@ -144,6 +147,8 @@ class ExplorerRow:
     notes: dict[str, str]
     intervals: dict[str, str]
     display_notes: dict[str, str]
+    note_registers: dict[str, dict[str, object]] = field(default_factory=dict)
+    notes_with_register: tuple[dict[str, object], ...] = ()
     display_top_voice: dict[str, str | int] = field(default_factory=dict)
     display_summary: str = ""
     pedals: tuple[str, ...] = ()
@@ -181,6 +186,8 @@ class ExplorerRow:
             "notes": dict(self.notes),
             "intervals": dict(self.intervals),
             "display_notes": dict(self.display_notes),
+            "note_registers": dict(self.note_registers),
+            "notes_with_register": [dict(entry) for entry in self.notes_with_register],
             "display_top_voice": dict(self.display_top_voice),
             "display_summary": self.display_summary,
             "pedals": list(self.pedals),
@@ -338,6 +345,74 @@ def validate_control_effects(strings: tuple[int, ...], controls: tuple[str, ...]
 def resolve_notes(fret: int, strings: tuple[int, ...], controls: tuple[str, ...]) -> dict[str, str]:
     changed_notes = standard_notes_for_controls(controls)
     return {str(string): note_at_fret(changed_notes[string], fret) for string in strings}
+
+
+def pitch_register_for_note(
+    *,
+    string: int,
+    fret: int,
+    controls: tuple[str, ...],
+    note: str,
+    display_note: str | None = None,
+    voice_role: str = "",
+    pitch_value: int | None = None,
+) -> dict[str, object]:
+    resolved_pitch_value = absolute_pitch_for_string(string, fret, controls) if pitch_value is None else int(pitch_value)
+    payload: dict[str, object] = {
+        "string": string,
+        "fret": fret,
+        "active_controls": list(controls),
+        "pitch_class": note,
+        "display_note": display_note or note,
+        "scientific_pitch": scientific_pitch_for_value(resolved_pitch_value),
+        "pitch_value": resolved_pitch_value,
+        "octave": (resolved_pitch_value // 12) - 1,
+        "octave_band": octave_band_for_value(resolved_pitch_value),
+    }
+    if voice_role:
+        payload["voice_role"] = voice_role
+    return payload
+
+
+def voice_roles_for_strings(strings: tuple[int, ...], fret: int, controls: tuple[str, ...]) -> dict[int, str]:
+    ordered = sorted(strings, key=lambda string: absolute_pitch_for_string(string, fret, controls))
+    if len(ordered) == 1:
+        return {ordered[0]: "single"}
+    roles: dict[int, str] = {}
+    for index, string in enumerate(ordered):
+        if index == 0:
+            roles[string] = "bottom"
+        elif index == len(ordered) - 1:
+            roles[string] = "top"
+        else:
+            roles[string] = "middle"
+    return roles
+
+
+def note_registers_for_row(
+    *,
+    fret: int,
+    strings: tuple[int, ...],
+    controls: tuple[str, ...],
+    notes: dict[str, str],
+    display_notes: dict[str, str],
+) -> tuple[dict[str, dict[str, object]], tuple[dict[str, object], ...]]:
+    roles = voice_roles_for_strings(strings, fret, controls)
+    by_string: dict[str, dict[str, object]] = {}
+    for string in strings:
+        by_string[str(string)] = pitch_register_for_note(
+            string=string,
+            fret=fret,
+            controls=controls,
+            note=notes[str(string)],
+            display_note=display_notes.get(str(string), notes[str(string)]),
+            voice_role=roles.get(string, ""),
+        )
+    ordered = tuple(
+        by_string[str(string)]
+        for string in sorted(strings, key=lambda item: absolute_pitch_for_string(item, fret, controls))
+    )
+    return by_string, ordered
 
 
 def note_in_scale(note: str, scale_notes: tuple[str, ...]) -> bool:
@@ -624,6 +699,20 @@ def row_control_impacts(candidate: ExplorerCandidate) -> tuple[dict[str, object]
             before_open_note = standard_notes_for_controls(before_controls)[string]
             after_open_note = standard_notes_for_controls(candidate.controls)[string]
             delta = semitone_delta_for_change(before_open_note, after_open_note)
+            before_register = pitch_register_for_note(
+                string=string,
+                fret=candidate.fret,
+                controls=before_controls,
+                note=before_note,
+                display_note=display_note_for_chord_interval(chord_root, before_interval, before_note),
+            )
+            after_register = pitch_register_for_note(
+                string=string,
+                fret=candidate.fret,
+                controls=candidate.controls,
+                note=after_note,
+                display_note=display_note_for_chord_interval(chord_root, after_interval, after_note),
+            )
             string_impacts.append(
                 {
                     "string": string,
@@ -637,6 +726,8 @@ def row_control_impacts(candidate: ExplorerCandidate) -> tuple[dict[str, object]
                     "after_interval": after_interval,
                     "semitone_delta": delta,
                     "interval_effect": interval_effect_label(delta),
+                    "before_register": before_register,
+                    "after_register": after_register,
                 }
             )
         before_intervals = [impact["before_interval"] for impact in string_impacts]
@@ -725,8 +816,23 @@ def validate_explorer_candidate(candidate: ExplorerCandidate) -> ExplorerRow:
         notes=notes,
         intervals=intervals,
     )
+    note_registers, notes_with_register = note_registers_for_row(
+        fret=candidate.fret,
+        strings=candidate.strings,
+        controls=candidate.controls,
+        notes=notes,
+        display_notes=display_notes,
+    )
     top_voice = top_voice_for(candidate.strings, candidate.fret, candidate.controls, notes, intervals)
     display_top_voice = display_top_voice_for(top_voice, display_notes)
+    top_register = note_registers.get(str(top_voice["string"]))
+    if top_register:
+        display_top_voice = {
+            **display_top_voice,
+            "scientific_pitch": top_register["scientific_pitch"],
+            "pitch_value": top_register["pitch_value"],
+            "octave_band": top_register["octave_band"],
+        }
     display_summary = display_summary_for(candidate, display_notes)
     pedals, levers = controls_to_pedals_levers(candidate.controls)
     explanation_summary = row_teaching_explanation(
@@ -775,6 +881,8 @@ def validate_explorer_candidate(candidate: ExplorerCandidate) -> ExplorerRow:
         notes=notes,
         intervals=intervals,
         display_notes=display_notes,
+        note_registers=note_registers,
+        notes_with_register=notes_with_register,
         display_top_voice=display_top_voice,
         display_summary=display_summary,
         pedals=pedals,
@@ -1162,11 +1270,27 @@ def build_control_impact_preview(key: str = "G", copedent_id: str | None = None)
             before_note = E9_OPEN_STRINGS[string]
             after_note = changes[string]
             delta = semitone_delta_for_change(before_note, after_note)
+            before_pitch_value = E9_OPEN_STRING_PITCH_VALUES[string]
+            after_pitch_value = before_pitch_value + delta
             string_impacts.append(
                 {
                     "string": string,
                     "before_note": before_note,
                     "after_note": after_note,
+                    "before_register": pitch_register_for_note(
+                        string=string,
+                        fret=0,
+                        controls=(),
+                        note=before_note,
+                        pitch_value=before_pitch_value,
+                    ),
+                    "after_register": pitch_register_for_note(
+                        string=string,
+                        fret=0,
+                        controls=(control,),
+                        note=after_note,
+                        pitch_value=after_pitch_value,
+                    ),
                     "semitone_delta": delta,
                     "interval_effect": interval_effect_label(delta),
                     "before_key_context": key_context_for_note(key, before_note),
@@ -1306,6 +1430,27 @@ def validate_explorer_payload(payload: dict[str, object]) -> None:
         display_notes = position.get("display_notes")
         if not isinstance(display_notes, dict) or set(display_notes) != {str(string) for string in strings}:
             raise ValueError("Explorer row display_notes must match played strings")
+        note_registers = position.get("note_registers")
+        if not isinstance(note_registers, dict) or set(note_registers) != {str(string) for string in strings}:
+            raise ValueError("Explorer row note_registers must match played strings")
+        for entry in note_registers.values():
+            if not isinstance(entry, dict):
+                raise ValueError("Explorer row note_registers entries must be dicts")
+            for field in (
+                "pitch_class",
+                "scientific_pitch",
+                "pitch_value",
+                "octave_band",
+                "string",
+                "fret",
+                "active_controls",
+                "voice_role",
+            ):
+                if field not in entry:
+                    raise ValueError(f"Explorer row note_register missing {field}")
+        notes_with_register = position.get("notes_with_register")
+        if not isinstance(notes_with_register, list) or len(notes_with_register) != len(strings):
+            raise ValueError("Explorer row notes_with_register must match played strings")
         control_impacts = position.get("control_impacts")
         if not isinstance(control_impacts, list):
             raise ValueError("Explorer row control_impacts must be a list")

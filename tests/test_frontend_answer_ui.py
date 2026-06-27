@@ -277,9 +277,9 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "pedal-steel-fretboard.js?v=explorer-compact-copedent-20260625" not in html
     assert '<script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>' in html
     assert "[hidden] {\n      display: none !important;\n    }" in html
-    assert '<script src="e9-music-rules.js?v=shared-music-rules-20260627"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=chord-map-view-20260627"></script>' in html
-    assert html.index("e9-music-rules.js?v=shared-music-rules-20260627") < html.index("e9-fretboard-explorer.js?v=chord-map-view-20260627")
+    assert '<script src="e9-music-rules.js?v=explorer-octave-register-20260627"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=explorer-octave-register-20260627"></script>' in html
+    assert html.index("e9-music-rules.js?v=explorer-octave-register-20260627") < html.index("e9-fretboard-explorer.js?v=explorer-octave-register-20260627")
     assert "e9-fretboard-explorer.js?v=grip-vocabulary-20260627" not in html
     assert "e9-fretboard-explorer.js?v=single-note-learning-20260626" not in html
     assert "e9-fretboard-explorer.js?v=single-note-finder-20260626" not in html
@@ -532,13 +532,15 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "musicRules.identifyVoicing" in script
     assert "musicRules.parseChordFinderQuery" in script
     assert "musicRules.chordFinderQualityGate" in script
-    assert 'e9-fretboard-explorer.js?v=chord-map-view-20260627' in html
+    assert 'e9-fretboard-explorer.js?v=explorer-octave-register-20260627' in html
     assert "payloadsByCopedent" in script
     assert "renderCopedentChart" in script
     assert "openCopedentDialog" in script
     assert "closeCopedentDialog" in script
     assert "data-explorer-notation-mode" in script
+    assert "data-explorer-pitch-register" in script
     assert 'notationMode = "notes"' in script
+    assert 'pitchRegisterMode = "off"' in script
     assert "MAJOR_SCALE_SEQUENCES" in rules
     assert '"1", "2-", "3-", "4", "5", "6-", "7°"' in rules
     assert '"I", "ii", "iii", "IV", "V", "vi", "vii°"' in rules
@@ -670,7 +672,11 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '"4-6-9"' in rules
     assert '"3-6"' in rules
     assert '"8-10"' in rules
-    assert "shared-music-rules-20260627" in html
+    assert "explorer-octave-register-20260627" in html
+    assert "notes_with_register" in script
+    assert "note_registers" in script
+    assert "Open note with register" in script
+    assert "Final note with register" in script
     assert "data-note-sync-event" in script
     assert "data-note-cell" in script
     assert "Dominant 7 / V7" in script
@@ -761,6 +767,17 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert any(row["harmony_type"] == "five_eight_branch" and row["string_group"] == "5-8" for row in payload["positions"])
     assert any("validated E9 pitch logic" in row["explanation_summary"] for row in payload["positions"])
     assert any("Teaching text explains the row" in row["explanation_summary"] for row in payload["positions"])
+    assert 'id="explorer-pitch-register-control"' in html
+    assert 'data-explorer-pitch-register="off"' in html
+    assert 'data-explorer-pitch-register="scientific"' in html
+    assert 'data-explorer-pitch-register="band"' in html
+    assert "<dt>Scientific octave notation</dt>" in html
+    assert "<dt>Pitch register</dt>" in html
+    assert "<dt>Octave band</dt>" in html
+    assert "<dt>Peterson octave labels</dt>" in html
+    assert all("notes_with_register" in row for row in payload["positions"])
+    assert all("note_registers" in row for row in payload["positions"])
+    assert any(register["scientific_pitch"].endswith("4") for row in payload["positions"] for register in row["notes_with_register"])
     assert payloads["C"]["query"]["display_scale_notes"]["natural_minor"] == ["C", "D", "Eb", "F", "G", "Ab", "Bb"]
     assert payloads["Db"]["query"]["display_scale_notes"]["major"] == ["Db", "Eb", "F", "Gb", "Ab", "Bb", "C"]
     assert payloads["Bb"]["query"]["display_scale_notes"]["major"] == ["Bb", "C", "D", "Eb", "F", "G", "A"]
@@ -786,6 +803,13 @@ assert.equal(resolve(3, 3), "B");
 assert.equal(resolve(3, 3, ["B"]), "C");
 assert.equal(resolve(5, 3, ["A"]), "E");
 assert.equal(resolve(9, 3), "F");
+assert.equal(rules.resolveE9Note({ stringNumber: 4, fret: 0, scaleNotes: gMajor }).finalScientificPitch, "E4");
+assert.equal(rules.resolveE9Note({ stringNumber: 8, fret: 0, scaleNotes: gMajor }).finalScientificPitch, "E3");
+assert.equal(rules.resolveE9Note({ stringNumber: 5, fret: 3, scaleNotes: gMajor }).finalScientificPitch, "D4");
+assert.equal(rules.resolveE9Note({ stringNumber: 5, fret: 3, controls: ["A"], scaleNotes: gMajor }).finalScientificPitch, "E4");
+assert.equal(rules.resolveE9Note({ stringNumber: 3, fret: 3, scaleNotes: gMajor }).finalScientificPitch, "B4");
+assert.equal(rules.resolveE9Note({ stringNumber: 3, fret: 3, controls: ["B"], scaleNotes: gMajor }).finalScientificPitch, "C5");
+assert.equal(rules.resolveE9Note({ stringNumber: 5, fret: 3, scaleNotes: gMajor }).finalOctaveBand, "middle");
 
 const cOverFNotes = [4, 6, 10].map((stringNumber) => resolve(stringNumber, 3, ["A", "B"], fMajor));
 assert.deepEqual(cOverFNotes, ["G", "C", "E"]);
@@ -1166,6 +1190,11 @@ const notationModeButtons = [
   new FakeButton("roman", "data-explorer-notation-mode"),
   new FakeButton("numbers", "data-explorer-notation-mode")
 ];
+const pitchRegisterButtons = [
+  new FakeButton("off", "data-explorer-pitch-register"),
+  new FakeButton("scientific", "data-explorer-pitch-register"),
+  new FakeButton("band", "data-explorer-pitch-register")
+];
 const sandbox = {
   window: {
     innerWidth: 1280,
@@ -1177,6 +1206,9 @@ const sandbox = {
     querySelectorAll: (selector) => {
       if (selector === "[data-explorer-notation-mode]") {
         return notationModeButtons;
+      }
+      if (selector === "[data-explorer-pitch-register]") {
+        return pitchRegisterButtons;
       }
       return [];
     }
@@ -1516,6 +1548,16 @@ assert.match(elements["explorer-selected-detail"].textContent, /String 3, fret 3
 assert.match(elements["explorer-selected-detail"].textContent, /Open note at fretB/);
 assert.match(elements["explorer-selected-detail"].textContent, /Final noteC/);
 assert.match(elements["explorer-selected-detail"].textContent, /B pedal raises this string from B to C/);
+assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /C5/);
+pitchRegisterButtons.find((button) => button.getAttribute("data-explorer-pitch-register") === "scientific").onclick();
+assert.match(elements["explorer-selected-detail"].textContent, /String 3, fret 3: C5/);
+assert.match(elements["explorer-selected-detail"].textContent, /Open note with registerB4/);
+assert.match(elements["explorer-selected-detail"].textContent, /Final note with registerC5/);
+pitchRegisterButtons.find((button) => button.getAttribute("data-explorer-pitch-register") === "band").onclick();
+assert.match(elements["explorer-selected-detail"].textContent, /String 3, fret 3: C · upper/);
+assert.match(elements["explorer-selected-detail"].textContent, /Final note with registerC · upper/);
+pitchRegisterButtons.find((button) => button.getAttribute("data-explorer-pitch-register") === "off").onclick();
+assert.match(elements["explorer-selected-detail"].textContent, /String 3, fret 3: C/);
 noteControlButtons().find((button) => button.getAttribute("data-note-control-state") === "A").onclick();
 noteCell(3, 3).onclick();
 assert.match(elements["explorer-selected-detail"].textContent, /String 3, fret 3: B/);

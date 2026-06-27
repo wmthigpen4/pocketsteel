@@ -26,6 +26,19 @@ E9_OPEN_STRINGS: dict[int, str] = {
     10: "B",
 }
 
+E9_OPEN_STRING_PITCH_VALUES: dict[int, int] = {
+    1: 66,  # F#4
+    2: 63,  # D#4
+    3: 68,  # G#4
+    4: 64,  # E4
+    5: 59,  # B3
+    6: 56,  # G#3
+    7: 54,  # F#3
+    8: 52,  # E3
+    9: 50,  # D3
+    10: 47,  # B2
+}
+
 DEFAULT_COPEDENT_ID = "emmons-e9-basic"
 DAY_COPEDENT_ID = "day-e9-basic"
 CUSTOM_LKV_COPEDENT_ID = "custom-e9-lkv"
@@ -57,6 +70,37 @@ NOTE_TO_SEMITONE: dict[str, int] = {
     "B": 11,
     "Cb": 11,
 }
+
+CANONICAL_NOTES: dict[int, str] = {
+    0: "C",
+    1: "C#",
+    2: "D",
+    3: "D#",
+    4: "E",
+    5: "F",
+    6: "F#",
+    7: "G",
+    8: "G#",
+    9: "A",
+    10: "A#",
+    11: "B",
+}
+
+
+def scientific_pitch_for_value(pitch_value: int) -> str:
+    """Return scientific pitch notation where middle C is C4."""
+    value = int(pitch_value)
+    return f"{CANONICAL_NOTES[value % 12]}{(value // 12) - 1}"
+
+
+def octave_band_for_value(pitch_value: int) -> str:
+    """Return a compact player-facing register band for standard E9."""
+    value = int(pitch_value)
+    if value <= 54:
+        return "lower"
+    if value <= 64:
+        return "middle"
+    return "upper"
 
 
 @dataclass(frozen=True)
@@ -197,7 +241,13 @@ class E9CopedentProfile:
     @property
     def strings(self) -> tuple[dict[str, object], ...]:
         return tuple(
-            {"string": string, "open_note": E9_OPEN_STRINGS[string]}
+            {
+                "string": string,
+                "open_note": E9_OPEN_STRINGS[string],
+                "open_pitch_value": E9_OPEN_STRING_PITCH_VALUES[string],
+                "open_scientific_pitch": scientific_pitch_for_value(E9_OPEN_STRING_PITCH_VALUES[string]),
+                "open_octave_band": octave_band_for_value(E9_OPEN_STRING_PITCH_VALUES[string]),
+            }
             for string in sorted(E9_OPEN_STRINGS)
         )
 

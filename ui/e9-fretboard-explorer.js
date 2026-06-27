@@ -95,6 +95,11 @@
     { id: "roman", label: "Roman", description: "I - ii" },
     { id: "numbers", label: "Numbers", description: "1 - 2m" },
   ];
+  const PITCH_REGISTER_MODES = [
+    { id: "off", label: "Off" },
+    { id: "scientific", label: "Scientific" },
+    { id: "band", label: "Octave band" },
+  ];
   const NOTE_CONTROL_STATES = musicRules.NOTE_CONTROL_STATES;
   const COMMON_VOICING_GRIPS = musicRules.COMMON_VOICING_GRIPS;
   const CHORD_QUALITY_PATTERNS = musicRules.CHORD_QUALITY_PATTERNS;
@@ -169,6 +174,7 @@
     scaleNotes: document.getElementById("explorer-scale-notes"),
     resultCount: document.getElementById("explorer-result-count"),
     notationModeButtons: document.querySelectorAll("[data-explorer-notation-mode]"),
+    pitchRegisterButtons: document.querySelectorAll("[data-explorer-pitch-register]"),
     topIntervalFilter: document.getElementById("explorer-top-interval-filter"),
     fretRangeFilter: document.getElementById("explorer-fret-range-filter"),
     copedentDialog: document.getElementById("explorer-copedent-dialog"),
@@ -218,6 +224,7 @@
   let pinnedNoteCell = { stringNumber: 3, fret: 3 };
   let previewNoteCell = null;
   let notationMode = "notes";
+  let pitchRegisterMode = "off";
   let lastCopedentDialogOpener = null;
   let lastGlossaryDialogOpener = null;
   let currentRows = [];
@@ -298,6 +305,96 @@
 
   function notationModeLabel() {
     return NOTATION_MODES.find((mode) => mode.id === notationMode)?.label || "Notes";
+  }
+
+  function activePitchRegisterMode() {
+    return PITCH_REGISTER_MODES.some((mode) => mode.id === pitchRegisterMode) ? pitchRegisterMode : "off";
+  }
+
+  function pitchRegisterModeLabel() {
+    return PITCH_REGISTER_MODES.find((mode) => mode.id === activePitchRegisterMode())?.label || "Off";
+  }
+
+  function registerLabelFor(register, fallbackNote = "") {
+    const mode = activePitchRegisterMode();
+    const note = formatValue(register?.display_note || register?.pitch_class || fallbackNote, "");
+    if (mode === "scientific") {
+      return formatValue(register?.scientific_pitch, note);
+    }
+    if (mode === "band") {
+      return [note, formatValue(register?.octave_band, "")]
+        .filter(Boolean)
+        .join(" · ");
+    }
+    return note;
+  }
+
+  function registerRowsLowToHigh(registers) {
+    return toArray(registers)
+      .filter((entry) => entry && typeof entry === "object")
+      .slice()
+      .sort((a, b) => Number(a.pitch_value ?? 0) - Number(b.pitch_value ?? 0));
+  }
+
+  function notesWithRegisterForRow(row) {
+    if (activePitchRegisterMode() === "off") {
+      return [];
+    }
+    const rowRegisters = registerRowsLowToHigh(row?.notes_with_register);
+    if (rowRegisters.length) {
+      return rowRegisters.map((entry) => registerLabelFor(entry, entry.display_note || entry.pitch_class));
+    }
+    const registerMap = row?.note_registers;
+    if (registerMap && typeof registerMap === "object" && !Array.isArray(registerMap)) {
+      return registerRowsLowToHigh(Object.values(registerMap))
+        .map((entry) => registerLabelFor(entry, entry.display_note || entry.pitch_class));
+    }
+    return [];
+  }
+
+  function notesWithRegisterText(row) {
+    return formatValue(notesWithRegisterForRow(row), "");
+  }
+
+  function cellRegisterLabel(cell) {
+    return registerLabelFor(cell?.finalRegister, cell?.finalNote);
+  }
+
+  function cellOpenRegisterLabel(cell) {
+    if (activePitchRegisterMode() === "scientific") {
+      return formatValue(cell?.openScientificPitch, cell?.openNoteAtFret);
+    }
+    if (activePitchRegisterMode() === "band") {
+      return [formatValue(cell?.openNoteAtFret, ""), formatValue(cell?.openOctaveBand, "")]
+        .filter(Boolean)
+        .join(" · ");
+    }
+    return formatValue(cell?.openNoteAtFret, "");
+  }
+
+  function registerEntriesForCells(cells) {
+    const sorted = toArray(cells)
+      .filter((cell) => cell?.finalRegister)
+      .slice()
+      .sort((a, b) => Number(a.finalRegister.pitch_value ?? 0) - Number(b.finalRegister.pitch_value ?? 0));
+    return sorted.map((cell, index) => {
+      let voiceRole = "middle";
+      if (sorted.length === 1) {
+        voiceRole = "single";
+      } else if (index === 0) {
+        voiceRole = "bottom";
+      } else if (index === sorted.length - 1) {
+        voiceRole = "top";
+      }
+      return {
+        ...cell.finalRegister,
+        voice_role: voiceRole,
+      };
+    });
+  }
+
+  function noteRegistersByStringFromCells(cells) {
+    return Object.fromEntries(registerEntriesForCells(cells).map((entry) => [String(entry.string), entry]));
   }
 
   function intervalAsNns(value) {
@@ -481,8 +578,15 @@
     const activeControls = controlState.controls;
     const affectedCells = noteControlCellsForString(stringNumber, activeControls);
     const delta = noteControlDeltaForString(stringNumber, activeControls);
-    const openNoteAtFret = noteAtFret(openStringNote, fret, 0);
-    const finalNote = noteAtFret(openStringNote, fret, delta);
+    const resolved = musicRules.resolveE9Note({
+      stringNumber,
+      fret,
+      controls: activeControls,
+      copedent: activeCopedent(),
+      scaleNotes: activeScaleNotes(),
+    });
+    const openNoteAtFret = resolved.openNoteAtFret || noteAtFret(openStringNote, fret, 0);
+    const finalNote = resolved.finalNote || noteAtFret(openStringNote, fret, delta);
     const target = selectedNoteFinderTarget();
     const finalPitchClass = pitchClassForNote(finalNote);
     const isTargetMatch = target && target.pitchClass !== null && finalPitchClass === target.pitchClass;
@@ -499,6 +603,13 @@
       openStringNote,
       openNoteAtFret,
       finalNote,
+      openPitchValueAtFret: resolved.openPitchValueAtFret,
+      finalPitchValue: resolved.finalPitchValue,
+      openScientificPitch: resolved.openScientificPitch,
+      finalScientificPitch: resolved.finalScientificPitch,
+      openOctaveBand: resolved.openOctaveBand,
+      finalOctaveBand: resolved.finalOctaveBand,
+      finalRegister: resolved.finalRegister,
       activeControlIds: activeControls,
       activeControlLabel: controlState.label,
       affectedCells,
@@ -1260,6 +1371,8 @@
     });
     const strings = group.split("-").map(Number).filter(Number.isFinite);
     const topCell = entries.find(({ cell }) => Number(cell.stringNumber) === strings[0])?.cell || entries[0]?.cell;
+    const notesWithRegister = registerEntriesForCells(entries.map(({ cell }) => cell));
+    const topRegister = notesWithRegister.find((entry) => Number(entry.string) === Number(topCell?.stringNumber));
     const row = {
       id: `chord-finder:${target.label}:${group}:${fret}:${controlState.id}`,
       key: activeKey(),
@@ -1280,7 +1393,12 @@
         note: topCell?.finalNote || "",
         interval: topCell ? intervalNameFromSemitones(chordTargetIntervalForPitchClass(pitchClassForNote(topCell.finalNote), target)) : "",
         string: topCell?.stringNumber || "",
+        scientific_pitch: topRegister?.scientific_pitch || "",
+        pitch_value: topRegister?.pitch_value ?? "",
+        octave_band: topRegister?.octave_band || "",
       },
+      note_registers: noteRegistersByStringFromCells(entries.map(({ cell }) => cell)),
+      notes_with_register: notesWithRegister,
       display_summary: `${omittedIntervals.length ? "Partial " : ""}${target.label} on strings ${group}`,
       explanation_summary: `${omittedIntervals.length ? "Partial voicing" : "Complete voicing"} for ${target.label}: present ${presentIntervals.map(intervalRoleLabel).join(", ")}${omittedIntervals.length ? `; omitted ${omittedIntervals.map(intervalRoleLabel).join(", ")}` : ""}.`,
       warnings: omittedIntervals.length ? [`Partial ${target.label}: omitted ${omittedIntervals.map(intervalRoleLabel).join(", ")}.`] : [],
@@ -2808,8 +2926,10 @@
         ${detailRow("Path step", isPathMode() ? pathStepTitle(row) : "")}
         ${detailRow("Supporting harmony", harmonyIntervalText(row))}
         ${detailRow("Notes", rowNoteLabels(row))}
+        ${detailRow("Notes with register", notesWithRegisterText(row))}
         ${detailRow("Chord intervals", rowIntervalLabels(row))}
         ${detailRow("Notation mode", notationModeLabel())}
+        ${detailRow("Pitch register", activePitchRegisterMode() === "off" ? "" : pitchRegisterModeLabel())}
         ${detailRow("Top voice", topVoiceLabel(row))}
         ${detailRow("Fret", row.fret)}
         ${detailRow("String group", row.string_group)}
@@ -2896,6 +3016,7 @@
           <span><b>Strings</b>${escapeHtml(row.string_group)}</span>
           <span><b>Pedals/levers</b>${escapeHtml(controlText)}</span>
           <span><b>Harmony</b>${escapeHtml(harmonyIntervalText(row))}</span>
+          ${activePitchRegisterMode() !== "off" ? `<span><b>Register</b>${escapeHtml(notesWithRegisterText(row))}</span>` : ""}
         </span>
       </button>
     `;
@@ -3249,8 +3370,8 @@
         data-note-final-note="${escapeHtml(cell.finalNote)}"
         ${resultAttribute}
         aria-pressed="${key === pinnedKey ? "true" : "false"}"
-        aria-label="${escapeHtml(`String ${cell.stringNumber}, fret ${cell.fret}: ${cell.finalNote} with ${cell.activeControlLabel}`)}"
-      ><span>${cell.isTargetMatch ? escapeHtml(cell.finalNote) : ""}</span></button>
+        aria-label="${escapeHtml(`String ${cell.stringNumber}, fret ${cell.fret}: ${cellRegisterLabel(cell)} with ${cell.activeControlLabel}`)}"
+      ><span>${cell.isTargetMatch ? escapeHtml(cellRegisterLabel(cell)) : ""}</span></button>
     `;
   }
 
@@ -3283,12 +3404,12 @@
     return `
       <button class="explorer-active-result explorer-note-result-card${isSelected ? " is-selected" : ""}" type="button" ${dataAttribute}="${escapeHtml(key)}" aria-pressed="${isSelected ? "true" : "false"}">
         <span class="explorer-active-result__top">
-          <span class="explorer-active-result__marker"><span class="explorer-marker-token" aria-hidden="true"></span><span>${escapeHtml(cell.finalNote)}</span></span>
+          <span class="explorer-active-result__marker"><span class="explorer-marker-token" aria-hidden="true"></span><span>${escapeHtml(cellRegisterLabel(cell))}</span></span>
           <strong>${escapeHtml(`String ${cell.stringNumber} · fret ${cell.fret}`)}</strong>
         </span>
         <span class="explorer-active-result__fields">
-          <span><b>Open note</b>${escapeHtml(cell.openNoteAtFret)}</span>
-          <span><b>Final note</b>${escapeHtml(cell.finalNote)}</span>
+          <span><b>Open note</b>${escapeHtml(cellOpenRegisterLabel(cell))}</span>
+          <span><b>Final note</b>${escapeHtml(cellRegisterLabel(cell))}</span>
           <span><b>Controls</b>${escapeHtml(cell.activeControlLabel)}</span>
           <span><b>${escapeHtml(notationModeLabel())}</b>${escapeHtml(cell.notationValue)}</span>
         </span>
@@ -3302,8 +3423,8 @@
     }
     return cells.map((cell) => `
       <button class="explorer-row-button${noteCellKey(cell) === noteCellKey(currentCell) ? " is-selected" : ""}" type="button" data-note-result-list="${escapeHtml(noteCellKey(cell))}">
-        <strong>${escapeHtml(`String ${cell.stringNumber}, fret ${cell.fret}: ${cell.finalNote}`)}</strong>
-        <span class="explorer-row-button__meta">Open note: ${escapeHtml(cell.openNoteAtFret)} · Final note: ${escapeHtml(cell.finalNote)} · Controls: ${escapeHtml(cell.activeControlLabel)} · ${escapeHtml(notationModeLabel())}: ${escapeHtml(cell.notationValue)}</span>
+        <strong>${escapeHtml(`String ${cell.stringNumber}, fret ${cell.fret}: ${cellRegisterLabel(cell)}`)}</strong>
+        <span class="explorer-row-button__meta">Open note: ${escapeHtml(cellOpenRegisterLabel(cell))} · Final note: ${escapeHtml(cellRegisterLabel(cell))} · Controls: ${escapeHtml(cell.activeControlLabel)} · ${escapeHtml(notationModeLabel())}: ${escapeHtml(cell.notationValue)}</span>
       </button>
     `).join("");
   }
@@ -3316,7 +3437,7 @@
       return `
         <div class="explorer-note-change-row${cell.isAffected ? " is-affected" : " is-unchanged"}">
           <strong>${escapeHtml(`String ${cell.stringNumber}`)}</strong>
-          <span>${escapeHtml(`${cell.openNoteAtFret} -> ${cell.finalNote}`)}</span>
+          <span>${escapeHtml(`${cellOpenRegisterLabel(cell)} -> ${cellRegisterLabel(cell)}`)}</span>
           <em>${escapeHtml(cell.isAffected ? controlText : `No change at fret ${cell.fret}`)}</em>
         </div>
       `;
@@ -3492,7 +3613,7 @@
         <strong>${escapeHtml(`Drill: find ${target?.label || "the target"}`)}</strong>
         <p>Click a cell that matches the target with ${escapeHtml(activeNoteControlState().label)}. Use the highlighted matches as a hint if you need one.</p>
         ${drillFeedback ? `<div class="explorer-note-feedback${feedbackClass}"><strong>${escapeHtml(drillFeedback.status === "correct" ? "Correct" : "Try again")}</strong><span>${escapeHtml(drillFeedback.message)}</span></div>` : ""}
-        <p class="explorer-note-finder__context">Current pinned cell: string ${escapeHtml(currentCell.stringNumber)}, fret ${escapeHtml(currentCell.fret)} gives ${escapeHtml(currentCell.finalNote)}.</p>
+        <p class="explorer-note-finder__context">Current pinned cell: string ${escapeHtml(currentCell.stringNumber)}, fret ${escapeHtml(currentCell.fret)} gives ${escapeHtml(cellRegisterLabel(currentCell))}.</p>
       </section>
     `;
   }
@@ -3506,7 +3627,7 @@
           <strong>${escapeHtml(event.label)}</strong>
         </span>
         <span class="explorer-active-result__fields">
-          <span><b>Final note</b>${escapeHtml(event.cell.finalNote)}</span>
+          <span><b>Final note</b>${escapeHtml(cellRegisterLabel(event.cell))}</span>
           <span><b>Controls</b>${escapeHtml(event.controlState.label)}</span>
           <span><b>${escapeHtml(notationModeLabel())}</b>${escapeHtml(event.cell.notationValue)}</span>
         </span>
@@ -3578,7 +3699,7 @@
     els.selectedDetail.innerHTML = `
       <div class="explorer-selected-detail__header">
         <span class="explorer-selected-detail__kind">Single-note finder</span>
-        <strong>${escapeHtml(`String ${cell.stringNumber}, fret ${cell.fret}: ${cell.finalNote}`)}</strong>
+        <strong>${escapeHtml(`String ${cell.stringNumber}, fret ${cell.fret}: ${cellRegisterLabel(cell)}`)}</strong>
       </div>
       <section class="explorer-teaching-note" aria-label="Pedal and lever note change">
         <strong>What changed</strong>
@@ -3591,6 +3712,8 @@
         ${detailRow("Open string", `${cell.openStringNote} on string ${cell.stringNumber}`)}
         ${detailRow("Open note at fret", cell.openNoteAtFret)}
         ${detailRow("Final note", cell.finalNote)}
+        ${detailRow("Open note with register", activePitchRegisterMode() === "off" ? "" : cellOpenRegisterLabel(cell))}
+        ${detailRow("Final note with register", activePitchRegisterMode() === "off" ? "" : cellRegisterLabel(cell))}
         ${detailRow(`${notationModeLabel()} in ${scaleText}`, cell.notationValue)}
       </dl>
     `;
@@ -4101,7 +4224,7 @@
         ${cells.map((cell) => `
           <div class="explorer-string-action">
             <span>String ${escapeHtml(cell.stringNumber)}</span>
-            <span>${escapeHtml(cell.openNoteAtFret)} -> ${escapeHtml(cell.finalNote)}</span>
+            <span>${escapeHtml(cellOpenRegisterLabel(cell))} -> ${escapeHtml(cellRegisterLabel(cell))}</span>
             <span>${escapeHtml(cell.isAffected ? cell.activeControlLabel : "no change")}</span>
             <span>${escapeHtml(`${notationModeLabel()}: ${cell.notationValue}`)}</span>
           </div>
@@ -4134,6 +4257,7 @@
         ${detailRow("Grip type", result.gripLabel)}
         ${detailRow("Pedals / levers", controlText)}
         ${detailRow("Notes", result.cells.map((cell) => cell.finalNote))}
+        ${detailRow("Notes with register", activePitchRegisterMode() === "off" ? "" : result.cells.map((cell) => cellRegisterLabel(cell)))}
         ${detailRow(keyLabelTitle, result.cells.map((cell) => cell.notationValue))}
         ${detailRow("Intervals in voicing", identity.intervals.map(formatInterval))}
         ${detailRow("Likely function", identity.functionText)}
@@ -4382,6 +4506,14 @@
     });
   }
 
+  function updatePitchRegisterButtons() {
+    Array.from(els.pitchRegisterButtons || []).forEach((button) => {
+      const isSelected = button.getAttribute("data-explorer-pitch-register") === activePitchRegisterMode();
+      button.classList.toggle("is-selected", isSelected);
+      button.setAttribute("aria-pressed", isSelected ? "true" : "false");
+    });
+  }
+
   function openCopedentDialog() {
     if (!els.copedentDialog) {
       return;
@@ -4492,6 +4624,14 @@
         render();
       });
     });
+    Array.from(els.pitchRegisterButtons || []).forEach((button) => {
+      button.addEventListener("click", () => {
+        const nextMode = button.getAttribute("data-explorer-pitch-register");
+        pitchRegisterMode = PITCH_REGISTER_MODES.some((mode) => mode.id === nextMode) ? nextMode : "off";
+        updatePitchRegisterButtons();
+        render();
+      });
+    });
     els.key.addEventListener("change", () => {
       updateControls();
       render();
@@ -4536,6 +4676,7 @@
 
     updateControls();
     updateNotationModeButtons();
+    updatePitchRegisterButtons();
     render();
   }
 

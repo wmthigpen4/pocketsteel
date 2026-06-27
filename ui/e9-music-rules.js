@@ -20,6 +20,18 @@
     9: "D",
     10: "B",
   };
+  const DEFAULT_E9_OPEN_STRING_PITCH_VALUES = {
+    1: 66,
+    2: 63,
+    3: 68,
+    4: 64,
+    5: 59,
+    6: 56,
+    7: 54,
+    8: 52,
+    9: 50,
+    10: 47,
+  };
   const DEFAULT_E9_CONTROL_CHANGES = {
     A: { 5: "C#", 10: "C#" },
     B: { 3: "A", 6: "A" },
@@ -256,6 +268,44 @@
     return scaleNote || CHROMATIC_SHARP_NOTES[normalized] || "";
   }
 
+  function scientificPitchForValue(pitchValue) {
+    const value = Number(pitchValue);
+    if (!Number.isFinite(value)) {
+      return "";
+    }
+    return `${CHROMATIC_SHARP_NOTES[normalizePitchClass(value)]}${Math.floor(value / 12) - 1}`;
+  }
+
+  function octaveBandForPitchValue(pitchValue) {
+    const value = Number(pitchValue);
+    if (!Number.isFinite(value)) {
+      return "";
+    }
+    if (value <= 54) {
+      return "lower";
+    }
+    if (value <= 64) {
+      return "middle";
+    }
+    return "upper";
+  }
+
+  function pitchRegisterDetail({ stringNumber, fret, controls = [], pitchValue, note = "", displayNote = "", voiceRole = "" }) {
+    const value = Number(pitchValue);
+    return {
+      string: Number(stringNumber),
+      fret: Number(fret),
+      active_controls: toArray(controls).map(String),
+      pitch_class: note || displayNote,
+      display_note: displayNote || note,
+      scientific_pitch: scientificPitchForValue(value),
+      pitch_value: value,
+      octave: Number.isFinite(value) ? Math.floor(value / 12) - 1 : null,
+      octave_band: octaveBandForPitchValue(value),
+      voice_role: voiceRole,
+    };
+  }
+
   function prefersFlatSpelling(key = "") {
     return /b/.test(formatValue(key, "")) || ["F", "Bb", "Eb", "Ab", "Db", "Gb"].includes(formatValue(key, ""));
   }
@@ -295,9 +345,23 @@
     return Object.fromEntries(strings.map((entry) => [Number(entry.string), entry.open_note]));
   }
 
+  function openPitchValuesForCopedent(copedent) {
+    const strings = Array.isArray(copedent?.strings) ? copedent.strings : [];
+    if (!strings.length) {
+      return DEFAULT_E9_OPEN_STRING_PITCH_VALUES;
+    }
+    return Object.fromEntries(strings.map((entry) => [
+      Number(entry.string),
+      Number.isFinite(Number(entry.open_pitch_value))
+        ? Number(entry.open_pitch_value)
+        : DEFAULT_E9_OPEN_STRING_PITCH_VALUES[Number(entry.string)],
+    ]));
+  }
+
   function resolveE9Note({ stringNumber, fret, controls = [], copedent = null, scaleNotes = [] }) {
     const stringKey = Number(stringNumber);
     const openStrings = openStringsForCopedent(copedent);
+    const openPitchValues = openPitchValuesForCopedent(copedent);
     const changes = controlChangesForCopedent(copedent);
     const openStringNote = openStrings[stringKey];
     const activeControls = toArray(controls).map(String);
@@ -310,13 +374,41 @@
         affectedControls.push(controlId);
       }
     });
+    const openPitchValue = Number(openPitchValues[stringKey]);
+    const openPitchClass = pitchClassForNote(openStringNote);
+    const changedPitchClass = pitchClassForNote(changedOpenNote);
+    let pitchDelta = 0;
+    if (openPitchClass !== null && changedPitchClass !== null) {
+      pitchDelta = normalizePitchClass(changedPitchClass - openPitchClass);
+      if (pitchDelta > 6) {
+        pitchDelta -= 12;
+      }
+    }
+    const fretNumber = Number(fret);
+    const openPitchValueAtFret = openPitchValue + fretNumber;
+    const finalPitchValue = openPitchValueAtFret + pitchDelta;
+    const openNoteAtFret = noteAtFret(openStringNote, fret, 0, { scaleNotes });
+    const finalNote = noteAtFret(changedOpenNote, fret, 0, { scaleNotes });
     return {
       stringNumber: stringKey,
-      fret: Number(fret),
+      fret: fretNumber,
       openStringNote,
       changedOpenNote,
-      openNoteAtFret: noteAtFret(openStringNote, fret, 0, { scaleNotes }),
-      finalNote: noteAtFret(changedOpenNote, fret, 0, { scaleNotes }),
+      openNoteAtFret,
+      finalNote,
+      openPitchValueAtFret,
+      finalPitchValue,
+      openScientificPitch: scientificPitchForValue(openPitchValueAtFret),
+      finalScientificPitch: scientificPitchForValue(finalPitchValue),
+      openOctaveBand: octaveBandForPitchValue(openPitchValueAtFret),
+      finalOctaveBand: octaveBandForPitchValue(finalPitchValue),
+      finalRegister: pitchRegisterDetail({
+        stringNumber: stringKey,
+        fret: fretNumber,
+        controls: activeControls,
+        pitchValue: finalPitchValue,
+        note: finalNote,
+      }),
       affectedControls,
     };
   }
@@ -951,6 +1043,7 @@
     ]),
     CORE_GROUPS,
     DEFAULT_E9_CONTROL_CHANGES,
+    DEFAULT_E9_OPEN_STRING_PITCH_VALUES,
     DEFAULT_E9_OPEN_STRINGS,
     DOMINANT_9TH_GRIPS,
     EXTENDED_VOICING_GRIPS,
@@ -992,6 +1085,7 @@
     notationLabelForFinalNote,
     noteAlternates,
     noteAtFret,
+    octaveBandForPitchValue,
     omittedIntervalLabel,
     parseChordFinderQuality,
     parseChordFinderQuery,
@@ -999,11 +1093,13 @@
     parseFunctionChordFinderQuery,
     partialChordLabel,
     pitchClassForNote,
+    pitchRegisterDetail,
     prefersFlatSpelling,
     qualityPriority,
     resolveE9Note,
     romanDegreeInfo,
     scaleDegreeIndexForNote,
+    scientificPitchForValue,
     voicingExplanation,
     voicingFunctionForRoot,
   };

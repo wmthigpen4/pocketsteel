@@ -2047,6 +2047,10 @@
         <div><dt>Partial voicing</dt><dd>A useful part of a chord that does not include every chord tone by itself.</dd></div>
         <div><dt>NNS / Nashville Number System</dt><dd>Number names for scale degrees and chords, so a pattern moves between keys.</dd></div>
         <div><dt>Notation mode</dt><dd>Choose notes, Nashville numbers, Roman numerals, or number-plus-quality labels for cards and markers.</dd></div>
+        <div><dt>Scientific octave notation</dt><dd>A register naming system where middle C is C4. On standard E9, string 4 is E4 and string 8 is E3.</dd></div>
+        <div><dt>Pitch register</dt><dd>The octave location of a pitch, tracked separately from the pitch class so chord names still use notes like G, B, and D.</dd></div>
+        <div><dt>Octave band</dt><dd>A simplified register label: lower, middle, or upper. It helps compare where the same note appears on the E9 neck.</dd></div>
+        <div><dt>Peterson octave labels</dt><dd>Device-specific labels such as 1 Oct. or 2 Oct. need verified manual mapping before this Explorer displays them.</dd></div>
         <div><dt>NNS</dt><dd>Nashville-style numbers, such as 1, 2-, 3-, 4, 5, 6-, and 7° in a major key.</dd></div>
         <div><dt>Roman</dt><dd>Roman numerals with chord quality, such as I, ii, iii, IV, V, vi, and vii°.</dd></div>
         <div><dt>Top note interval</dt><dd>The selected notation label carried by the highest selected string in a grip.</dd></div>
@@ -2079,6 +2083,15 @@
         </div>
         <p class="explorer-control-help" id="explorer-notation-help">Controls card, marker, and top-label display.</p>
       </div>
+      <div class="explorer-control explorer-control--notation explorer-panel-notation" id="explorer-pitch-register-control">
+        <span class="explorer-control-label" id="explorer-pitch-register-label">Pitch register</span>
+        <div class="explorer-notation-selector" role="group" aria-labelledby="explorer-pitch-register-label" aria-describedby="explorer-pitch-register-help">
+          <button type="button" data-explorer-pitch-register="off" class="is-selected" aria-pressed="true">Off</button>
+          <button type="button" data-explorer-pitch-register="scientific" aria-pressed="false">Scientific</button>
+          <button type="button" data-explorer-pitch-register="band" aria-pressed="false">Octave band</button>
+        </div>
+        <p class="explorer-control-help" id="explorer-pitch-register-help">Shows octave/register detail in cards and detail panels without changing fretboard marker labels.</p>
+      </div>
       <p class="explorer-empty" id="explorer-empty" hidden>No validated rows match these controls.</p>
       <div class="explorer-active-results" id="explorer-active-results" aria-label="Visible selected positions"></div>
       <div class="explorer-fretboard" id="explorer-fretboard"></div>
@@ -2093,7 +2106,7 @@
 
   <script src="pedal-steel-fretboard.js?v=explorer-harmonized-path-mode-20260626"></script>
   <script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>
-  <script src="e9-music-rules.js?v=shared-music-rules-20260627"></script>
-  <script src="e9-fretboard-explorer.js?v=chord-map-view-20260627"></script>
+  <script src="e9-music-rules.js?v=explorer-octave-register-20260627"></script>
+  <script src="e9-fretboard-explorer.js?v=explorer-octave-register-20260627"></script>
 </body>
 </html>

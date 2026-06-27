@@ -27,8 +27,10 @@ from pocketsteel.e9_copedents import (
     DEFAULT_COPEDENT_ID,
     MY_COPEDENT_ID,
     available_e9_copedents,
+    scientific_pitch_for_value,
     selected_copedent_payload,
 )
+from pocketsteel.fretboard_examples import absolute_pitch_for_string
 
 
 REQUIRED_ROW_KEYS = {
@@ -62,6 +64,8 @@ REQUIRED_ROW_KEYS = {
     "availability_status",
     "pitch_validated",
     "copedent_profile",
+    "note_registers",
+    "notes_with_register",
     "source_guidance_refs",
     "explanation_summary",
     "warnings",
@@ -99,6 +103,22 @@ def test_g_explorer_payload_shape_and_row_model() -> None:
     assert "validated E9 pitch logic" in row["explanation_summary"]
     assert "Teaching text explains the row; it does not choose the row" in row["explanation_summary"]
     assert isinstance(row["control_impacts"], list)
+    assert set(row["note_registers"]) == {str(string) for string in row["strings"]}
+    assert len(row["notes_with_register"]) == len(row["strings"])
+    for register in row["notes_with_register"]:
+        assert {
+            "string",
+            "fret",
+            "active_controls",
+            "pitch_class",
+            "display_note",
+            "scientific_pitch",
+            "pitch_value",
+            "octave",
+            "octave_band",
+            "voice_role",
+        }.issubset(register)
+        assert register["octave_band"] in {"lower", "middle", "upper"}
 
 
 def test_control_impact_preview_contract_describes_standard_e9_changes_in_key_context() -> None:
@@ -197,8 +217,16 @@ def test_selected_copedent_chart_payload_is_visual_table_ready() -> None:
     assert payload["id"] == DEFAULT_COPEDENT_ID
     assert payload["pedal_order"] == ["A", "B", "C"]
     assert [row["string"] for row in payload["strings"]] == list(range(1, 11))
-    assert payload["strings"][0] == {"string": 1, "open_note": "F#"}
-    assert payload["strings"][8] == {"string": 9, "open_note": "D"}
+    assert payload["strings"][0]["open_note"] == "F#"
+    assert payload["strings"][0]["open_scientific_pitch"] == "F#4"
+    assert payload["strings"][0]["open_pitch_value"] == 66
+    assert payload["strings"][0]["open_octave_band"] == "upper"
+    assert payload["strings"][3]["open_note"] == "E"
+    assert payload["strings"][3]["open_scientific_pitch"] == "E4"
+    assert payload["strings"][7]["open_note"] == "E"
+    assert payload["strings"][7]["open_scientific_pitch"] == "E3"
+    assert payload["strings"][8]["open_note"] == "D"
+    assert payload["strings"][8]["open_scientific_pitch"] == "D3"
 
     chart = payload["chart"]
     assert len(chart["rows"]) == 10
@@ -218,6 +246,27 @@ def test_selected_copedent_chart_payload_is_visual_table_ready() -> None:
     assert row_5["cells"]["A"]["direction"] == "raise"
     assert row_5["cells"]["B"] is None
     assert "B-to-Bb" not in row_5["cells"]
+
+
+def test_standard_e9_absolute_pitch_register_map() -> None:
+    payload = selected_copedent_payload()
+
+    assert [item["open_scientific_pitch"] for item in payload["strings"]] == [
+        "F#4",
+        "D#4",
+        "G#4",
+        "E4",
+        "B3",
+        "G#3",
+        "F#3",
+        "E3",
+        "D3",
+        "B2",
+    ]
+    assert scientific_pitch_for_value(absolute_pitch_for_string(5, 3, ())) == "D4"
+    assert scientific_pitch_for_value(absolute_pitch_for_string(5, 3, ("A",))) == "E4"
+    assert scientific_pitch_for_value(absolute_pitch_for_string(3, 3, ())) == "B4"
+    assert scientific_pitch_for_value(absolute_pitch_for_string(3, 3, ("B",))) == "C5"
 
 
 def test_custom_lkv_copedent_extracts_user_specific_vertical_without_polluting_emmons() -> None:
