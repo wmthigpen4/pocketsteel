@@ -12,7 +12,14 @@
   const TWO_STRING_GROUPS = new Set(["3-5", "5-6", "6-10", "4-6", "3-4"]);
   const FIVE_EIGHT_GROUPS = new Set(["5-8"]);
   const EXTENDED_VOICING_GRIPS = new Set(["4-6-10"]);
+  const DOMINANT_9TH_GRIPS = new Set(["5-6-9", "4-6-9", "6-9", "5-9", "4-5-6-9"]);
   const TWO_STRING_DISPLAY_GROUPS = new Set([...TWO_STRING_GROUPS, ...FIVE_EIGHT_GROUPS]);
+  const GRIP_VOCABULARY_OPTIONS = [
+    { id: "core", label: "Core triads", description: "Common triad grips from validated Explorer rows." },
+    { id: "dominant7", label: "Dominant 7 / V7", description: "Dominant-7 colors, including practical 9th-string grips computed from the selected copedent." },
+    { id: "extended", label: "Extended grips", description: "Less direct but useful string combinations and color grips." },
+    { id: "all", label: "All practical", description: "Core, dominant, and extended practical grip vocabulary." },
+  ];
   const EXPLORE_MODES = {
     single: "single",
     path: "path",
@@ -94,6 +101,7 @@
     ...TWO_STRING_GROUPS,
     ...FIVE_EIGHT_GROUPS,
     ...EXTENDED_VOICING_GRIPS,
+    ...DOMINANT_9TH_GRIPS,
   ]);
   const CHORD_QUALITY_PATTERNS = [
     { id: "major", label: "major", suffix: "", intervals: [0, 4, 7], required: [0, 4, 7] },
@@ -101,7 +109,7 @@
     { id: "dominant7", label: "dominant 7", suffix: "7", intervals: [0, 4, 7, 10], required: [0, 4, 10] },
     { id: "major7", label: "major 7", suffix: "maj7", intervals: [0, 4, 7, 11], required: [0, 4, 11] },
     { id: "minor7", label: "minor 7", suffix: "m7", intervals: [0, 3, 7, 10], required: [0, 3, 10] },
-    { id: "minor7flat5", label: "minor 7 flat 5", suffix: "m7b5", intervals: [0, 3, 6, 10], required: [0, 3, 6] },
+    { id: "minor7flat5", label: "minor 7 flat 5", suffix: "m7b5", intervals: [0, 3, 6, 10], required: [0, 3, 6, 10] },
     { id: "diminished", label: "diminished", suffix: "dim", intervals: [0, 3, 6], required: [0, 3, 6] },
     { id: "major6", label: "major 6", suffix: "6", intervals: [0, 4, 7, 9], required: [0, 4, 9] },
     { id: "minor6", label: "minor 6", suffix: "m6", intervals: [0, 3, 7, 9], required: [0, 3, 9] },
@@ -173,6 +181,7 @@
   let selectedNoteWorkflow = "find";
   let selectedNoteStringFilter = "all";
   let selectedGripTargetId = "scale-triad";
+  let selectedGripVocabulary = "core";
   let selectedGripCandidateId = "";
   let selectedSyncEventId = "s3-f3-open";
   let voicingFret = 3;
@@ -619,6 +628,29 @@
     }).filter(Boolean);
   }
 
+  function dominantRootPitchClass() {
+    const keyPitchClass = pitchClassForNote(activeKey());
+    return keyPitchClass === null ? null : (keyPitchClass + 7) % 12;
+  }
+
+  function dominantTargetForActiveKey() {
+    const rootPitchClass = dominantRootPitchClass();
+    if (rootPitchClass === null) {
+      return null;
+    }
+    const pitchClasses = [0, 4, 7, 10].map((interval) => (rootPitchClass + interval) % 12);
+    const notes = pitchClasses.map(displayNoteForPitchClass);
+    return {
+      rootPitchClass,
+      pitchClasses,
+      requiredPitchClasses: [(rootPitchClass + 4) % 12, (rootPitchClass + 10) % 12],
+      rootNote: displayNoteForPitchClass(rootPitchClass),
+      notes,
+      label: notationMode === "roman" ? "V7" : notationMode === "notes" ? `${displayNoteForPitchClass(rootPitchClass)}7` : "5^7 / V7",
+      description: `Dominant 7 / V7 in ${activeKey()}: ${notes.join(" - ")}. The flat 7 creates pull back to I.`,
+    };
+  }
+
   function voicingFunctionForRoot(rootPitchClass, quality) {
     const rootNote = displayNoteForActiveKey(rootPitchClass);
     const degreeIndex = scaleDegreeIndexForNote(rootNote);
@@ -630,7 +662,7 @@
       : MAJOR_SCALE_SEQUENCES.roman;
     const degree = sequence[degreeIndex] || `degree ${degreeIndex + 1}`;
     if (quality?.id === "dominant7") {
-      return `${degree} dominant color in ${activeKey()}`;
+      return degree === "V" ? `V7 in ${activeKey()}` : `${degree}7 dominant color in ${activeKey()}`;
     }
     return `${degree} function in ${activeKey()}`;
   }
@@ -641,6 +673,152 @@
       return root;
     }
     return `${root}${quality.suffix}`;
+  }
+
+  function intervalRoleLabel(interval) {
+    const map = {
+      0: "root",
+      2: "9th",
+      3: "minor 3rd",
+      4: "3rd",
+      5: "4th",
+      6: "flat 5",
+      7: "5th",
+      9: "6th",
+      10: "flat 7",
+      11: "major 7th",
+    };
+    return map[interval] || formatInterval(intervalNameFromSemitones(interval));
+  }
+
+  function omittedIntervalLabel(interval) {
+    return formatInterval(intervalNameFromSemitones(interval));
+  }
+
+  function partialChordLabel(rootPitchClass, quality, missingIntervals) {
+    const base = chordLabel(rootPitchClass, quality);
+    if (!missingIntervals.length) {
+      return base;
+    }
+    return `${base}(${missingIntervals.map((interval) => `no${omittedIntervalLabel(interval)}`).join(", ")})`;
+  }
+
+  function isExtendedChordQuality(quality) {
+    return ["dominant7", "major7", "minor7", "minor7flat5", "major6", "minor6"].includes(quality?.id);
+  }
+
+  function extendedQualityGate(quality, intervals) {
+    if (!isExtendedChordQuality(quality)) {
+      return quality.required.every((interval) => intervals.includes(interval));
+    }
+    const extensionIntervals = {
+      dominant7: [10],
+      major7: [11],
+      minor7: [10],
+      minor7flat5: [10],
+      major6: [9],
+      minor6: [9],
+    }[quality.id] || [];
+    const hasExtension = extensionIntervals.some((interval) => intervals.includes(interval));
+    const hasRootOrThird = intervals.includes(0) || intervals.includes(3) || intervals.includes(4);
+    const hasEnoughNotes = intervals.length >= 3;
+    return hasExtension && hasRootOrThird && hasEnoughNotes;
+  }
+
+  function chordConfidence(quality, exact, missingIntervals, intervals) {
+    if (exact && !missingIntervals.length) {
+      return "high";
+    }
+    if (!isExtendedChordQuality(quality)) {
+      return "low";
+    }
+    const hasRoot = intervals.includes(0);
+    const hasThird = intervals.includes(3) || intervals.includes(4);
+    if (!hasRoot) {
+      return "medium, context-dependent";
+    }
+    if (!hasThird) {
+      return "medium";
+    }
+    return "medium-high";
+  }
+
+  function qualityPriority(quality) {
+    const priorities = {
+      major: 20,
+      minor: 20,
+      diminished: 18,
+      dominant7: 14,
+      major7: 14,
+      minor7: 14,
+      minor7flat5: 13,
+      major6: 10,
+      minor6: 10,
+      sus2: 8,
+      sus4: 8,
+      fifth: 2,
+    };
+    return priorities[quality?.id] || 0;
+  }
+
+  function voicingExplanation(label, quality, intervals, missingIntervals) {
+    if (!missingIntervals.length) {
+      return quality.id === "dominant7"
+        ? `${label} spells a dominant-7 voicing: ${intervals.map(intervalRoleLabel).join(", ")}.`
+        : `${label} matches the selected notes directly: ${intervals.map(intervalRoleLabel).join(", ")}.`;
+    }
+    const presentRoles = intervals.map(intervalRoleLabel).join(", ");
+    const missingRoles = missingIntervals.map(intervalRoleLabel).join(", ");
+    const partialKind = quality.id === "major7"
+      ? "partial major-7"
+      : quality.id === "dominant7"
+        ? "partial dominant-7"
+        : `partial ${quality.label}`;
+    return `Likely voicing: ${label}. This is a ${partialKind} grip: it includes ${presentRoles}, but omits ${missingRoles}. On pedal steel, three-note grips often imply extended chords with one or more tones omitted.`;
+  }
+
+  function dominantColorIdentity(notes, fallbackLabel = "") {
+    const target = dominantTargetForActiveKey();
+    if (!target) {
+      return null;
+    }
+    const pitchClasses = Array.from(new Set(notes.map(pitchClassForNote).filter((value) => value !== null)));
+    if (pitchClasses.length < 2 || !pitchClasses.every((pitchClass) => target.pitchClasses.includes(pitchClass))) {
+      return null;
+    }
+    const hasRoot = pitchClasses.includes(target.rootPitchClass);
+    const hasThird = pitchClasses.includes((target.rootPitchClass + 4) % 12);
+    const hasFlatSeven = pitchClasses.includes((target.rootPitchClass + 10) % 12);
+    const hasFifth = pitchClasses.includes((target.rootPitchClass + 7) % 12);
+    if (!hasFlatSeven || (!hasRoot && !hasThird)) {
+      return null;
+    }
+    const missingIntervals = [
+      hasRoot ? "" : "1",
+      hasThird ? "" : "3",
+      hasFifth ? "" : "5",
+      hasFlatSeven ? "" : "b7",
+    ].filter(Boolean);
+    const partial = missingIntervals.length > 0 || pitchClasses.length < 4;
+    const label = partial
+      ? `${target.rootNote}7 color / partial V7 in ${activeKey()}`
+      : `${target.rootNote}7`;
+    const explanation = partial
+      ? `This points at ${target.rootNote}7, the V7 chord in ${activeKey()}. It includes ${hasRoot ? "the root" : "a chord tone"} and flat 7 color but omits ${missingIntervals.map(formatInterval).join(", ")}.`
+      : `${target.notes.join("-")} spells ${target.rootNote} dominant 7, the V7 chord in ${activeKey()}.`;
+    return {
+      label,
+      quality: partial ? "partial dominant 7" : "dominant 7",
+      confidence: partial ? "medium" : "high",
+      functionText: partial ? `V7 color in ${activeKey()}` : `V7 in ${activeKey()}`,
+      alternates: fallbackLabel ? [fallbackLabel] : [],
+      intervals: intervalLabelsAgainstRoot(notes, target.rootPitchClass),
+      rootPitchClass: target.rootPitchClass,
+      partial,
+      missingIntervals,
+      missingIntervalNames: missingIntervals,
+      explanation,
+    };
   }
 
   function identifyVoicing(notes) {
@@ -658,19 +836,36 @@
     const candidates = [];
     pitchClasses.forEach((rootPitchClass) => {
       CHORD_QUALITY_PATTERNS.forEach((quality) => {
-        const intervals = pitchClasses.map((pitchClass) => ((pitchClass - rootPitchClass) % 12 + 12) % 12);
+        const intervals = pitchClasses
+          .map((pitchClass) => ((pitchClass - rootPitchClass) % 12 + 12) % 12)
+          .sort((a, b) => a - b);
         const allContained = intervals.every((interval) => quality.intervals.includes(interval));
-        const requiredPresent = quality.required.every((interval) => intervals.includes(interval));
         if (!allContained) {
           return;
         }
+        if (!extendedQualityGate(quality, intervals)) {
+          return;
+        }
+        const requiredPresent = quality.required.every((interval) => intervals.includes(interval));
+        const missingIntervals = quality.intervals.filter((interval) => !intervals.includes(interval));
         const exact = intervals.length === quality.intervals.length && requiredPresent;
-        const partial = !requiredPresent || intervals.length < quality.intervals.length;
-        const score = (exact ? 100 : 70) + (requiredPresent ? 12 : 0) - Math.abs(quality.intervals.length - intervals.length) * 4;
+        const partial = missingIntervals.length > 0;
+        const missingRootPenalty = missingIntervals.includes(0) ? 16 : 0;
+        const missingThirdPenalty = missingIntervals.includes(3) || missingIntervals.includes(4) ? 14 : 0;
+        const missingFifthPenalty = missingIntervals.includes(7) ? 3 : 0;
+        const extensionBonus = isExtendedChordQuality(quality) ? 8 : 0;
+        const score = (exact ? 120 : 82)
+          + qualityPriority(quality)
+          + extensionBonus
+          - missingRootPenalty
+          - missingThirdPenalty
+          - missingFifthPenalty
+          - Math.max(0, missingIntervals.length - 1) * 4;
         candidates.push({
           rootPitchClass,
           quality,
           intervals,
+          missingIntervals,
           exact,
           partial,
           score,
@@ -679,6 +874,10 @@
     });
     candidates.sort((a, b) => b.score - a.score || String(a.quality.id).localeCompare(String(b.quality.id)));
     const best = candidates[0];
+    const keyDominant = dominantColorIdentity(notes, best ? chordLabel(best.rootPitchClass, best.quality) : "");
+    if (keyDominant && (!best || best.quality.id !== "dominant7" || best.partial)) {
+      return keyDominant;
+    }
     if (!best) {
       return {
         label: "Ambiguous voicing",
@@ -689,20 +888,22 @@
         intervals: notes.map((note) => notationLabelForFinalNote(note)),
       };
     }
-    const label = chordLabel(best.rootPitchClass, best.quality);
+    const label = partialChordLabel(best.rootPitchClass, best.quality, best.missingIntervals);
     const alternates = candidates
       .filter((candidate) => candidate !== best)
       .slice(0, 3)
-      .map((candidate) => chordLabel(candidate.rootPitchClass, candidate.quality));
+      .map((candidate) => partialChordLabel(candidate.rootPitchClass, candidate.quality, candidate.missingIntervals));
     return {
       label,
       quality: best.partial ? `partial ${best.quality.label}` : best.quality.label,
-      confidence: best.exact ? "high" : best.partial ? "medium" : "low",
+      confidence: chordConfidence(best.quality, best.exact, best.missingIntervals, best.intervals),
       functionText: voicingFunctionForRoot(best.rootPitchClass, best.quality),
       alternates,
       intervals: intervalLabelsAgainstRoot(notes, best.rootPitchClass),
       rootPitchClass: best.rootPitchClass,
       partial: best.partial,
+      missingIntervals: best.missingIntervals.map(omittedIntervalLabel),
+      explanation: voicingExplanation(label, best.quality, best.intervals, best.missingIntervals),
     };
   }
 
@@ -724,7 +925,7 @@
       return false;
     });
     if (!strings.length) {
-      return { strings: [], warning: "Select 1, 2, or 3 strings to identify the voicing." };
+      return { strings: [], warning: "Select 1, 2, 3, or 4 strings to identify the voicing." };
     }
     if (invalid.length) {
       return { strings: [], warning: "Strings must be E9 string numbers from 1 through 10." };
@@ -732,8 +933,8 @@
     if (duplicates.length) {
       return { strings: [], warning: "Each string can only appear once in the voicing." };
     }
-    if (strings.length > 3) {
-      return { strings: [], warning: "Choose no more than 3 strings for this identifier." };
+    if (strings.length > 4) {
+      return { strings: [], warning: "Choose no more than 4 strings for this identifier." };
     }
     return { strings: strings.sort((a, b) => a - b), warning: "" };
   }
@@ -748,6 +949,9 @@
     }
     if (ADVANCED_GROUPS.has(grip) || FIVE_EIGHT_GROUPS.has(grip)) {
       return "Advanced / unusual grip";
+    }
+    if (DOMINANT_9TH_GRIPS.has(grip)) {
+      return "9th-string color grip";
     }
     if (EXTENDED_VOICING_GRIPS.has(grip)) {
       return "Extended grip";
@@ -874,8 +1078,7 @@
     };
   }
 
-  function decorateNoteCellForRender(cell) {
-    const selectedGrip = selectedGripCandidate();
+  function decorateNoteCellForRender(cell, selectedGrip = selectedGripCandidate()) {
     const gripStrings = new Set(toArray(selectedGrip?.strings).map(Number));
     const isGripMatch = selectedGrip
       && Number(selectedGrip.fret) === Number(cell.fret)
@@ -904,7 +1107,8 @@
     const triadNotes = [notes[0], notes[2], notes[4]].filter(Boolean);
     const triadLabels = [labels[0], labels[2], labels[4]].filter(Boolean);
     const selectedTarget = selectedNoteFinderTarget();
-    return [
+    const dominantTarget = dominantTargetForActiveKey();
+    const options = [
       {
         id: "scale-triad",
         label: notationMode === "notes" ? triadNotes.join("-") : triadLabels.join("-"),
@@ -926,7 +1130,20 @@
         pitchClasses: selectedTarget?.pitchClass === null || selectedTarget?.pitchClass === undefined ? [] : [selectedTarget.pitchClass],
         preferFret: null,
       },
-    ].filter((target) => target.pitchClasses.length);
+    ];
+    if (dominantTarget && ["dominant7", "extended", "all"].includes(selectedGripVocabulary)) {
+      options.splice(1, 0, {
+        id: "dominant-v7",
+        label: dominantTarget.label,
+        description: dominantTarget.description,
+        pitchClasses: dominantTarget.pitchClasses,
+        requiredPitchClasses: dominantTarget.requiredPitchClasses,
+        rootPitchClass: dominantTarget.rootPitchClass,
+        preferFret: null,
+        kind: "dominant7",
+      });
+    }
+    return options.filter((target) => target.pitchClasses.length);
   }
 
   function selectedGripTarget() {
@@ -942,7 +1159,103 @@
 
   function rowMatchesGripTarget(row, target) {
     const pitchClasses = rowPitchClasses(row);
+    if (target?.kind === "dominant7") {
+      return pitchClasses.length
+        && pitchClasses.every((pitchClass) => target.pitchClasses.includes(pitchClass))
+        && target.requiredPitchClasses.some((pitchClass) => pitchClasses.includes(pitchClass));
+    }
     return target?.pitchClasses?.every((pitchClass) => pitchClasses.includes(pitchClass));
+  }
+
+  function gripVocabularyOptions() {
+    return GRIP_VOCABULARY_OPTIONS;
+  }
+
+  function selectedGripVocabularyOption() {
+    return gripVocabularyOptions().find((option) => option.id === selectedGripVocabulary) || gripVocabularyOptions()[0];
+  }
+
+  function practicalGroupsForGripVocabulary() {
+    if (selectedGripVocabulary === "dominant7") {
+      return new Set([...DOMINANT_9TH_GRIPS, ...EXTENDED_VOICING_GRIPS]);
+    }
+    if (selectedGripVocabulary === "extended") {
+      return new Set([...ADVANCED_GROUPS, ...FIVE_EIGHT_GROUPS, ...EXTENDED_VOICING_GRIPS, ...DOMINANT_9TH_GRIPS]);
+    }
+    if (selectedGripVocabulary === "all") {
+      return new Set([...CORE_GROUPS, ...ADVANCED_GROUPS, ...FIVE_EIGHT_GROUPS, ...EXTENDED_VOICING_GRIPS, ...DOMINANT_9TH_GRIPS]);
+    }
+    return new Set([...CORE_GROUPS, ...ADVANCED_GROUPS]);
+  }
+
+  function computedDominantGripRows(target) {
+    if (target?.kind !== "dominant7") {
+      return [];
+    }
+    const groups = Array.from(DOMINANT_9TH_GRIPS);
+    const states = availableNoteControlStates();
+    const frets = visibleNoteFinderFrets();
+    const rows = [];
+    groups.forEach((group) => {
+      const strings = group.split("-").map(Number);
+      states.forEach((state) => {
+        frets.forEach((fret) => {
+          const cells = strings.map((stringNumber) => noteCellState(stringNumber, fret, state));
+          const pitchClasses = Array.from(new Set(cells.map((cell) => pitchClassForNote(cell.finalNote)).filter((value) => value !== null)));
+          const allInsideDominant = pitchClasses.length && pitchClasses.every((pitchClass) => target.pitchClasses.includes(pitchClass));
+          const hasFlatSeven = pitchClasses.includes((target.rootPitchClass + 10) % 12);
+          const hasRootOrThird = pitchClasses.includes(target.rootPitchClass) || pitchClasses.includes((target.rootPitchClass + 4) % 12);
+          if (!allInsideDominant || !hasFlatSeven || !hasRootOrThird) {
+            return;
+          }
+          const identity = dominantColorIdentity(cells.map((cell) => cell.finalNote));
+          if (!identity) {
+            return;
+          }
+          const displayNotes = {};
+          cells.forEach((cell) => {
+            displayNotes[cell.stringNumber] = {
+              note: cell.finalNote,
+              interval: intervalNameFromSemitones(pitchClassForNote(cell.finalNote) - target.rootPitchClass),
+            };
+          });
+          const topCell = cells[0];
+          rows.push({
+            id: `computed-v7:${activeKey()}:${group}:${fret}:${state.id}`,
+            key: activeKey(),
+            scale_type: els.scale.value,
+            harmony_type: "dominant_v7_grip",
+            chord_name: identity.label,
+            chord_function: identity.functionText,
+            fret,
+            string_group: group,
+            strings,
+            pedals: state.controls,
+            levers: [],
+            notes: cells.map((cell) => cell.finalNote),
+            intervals: identity.intervals,
+            display_notes: displayNotes,
+            display_top_voice: {
+              note: topCell?.finalNote || "",
+              interval: topCell ? notationLabelForFinalNote(topCell.finalNote) : "",
+              string: topCell?.stringNumber || "",
+            },
+            display_summary: identity.label,
+            explanation: identity.explanation || `Computed from ${activeCopedent()?.label || "the selected copedent"}; no retrieval is used.`,
+            warnings: identity.partial ? [`Partial V7: missing ${identity.missingIntervals.map(formatInterval).join(", ") || "one or more chord tones"}.`] : [],
+            per_string_changes: Object.fromEntries(cells.map((cell) => [
+              cell.stringNumber,
+              {
+                open_at_fret: cell.openNoteAtFret,
+                final_note: cell.finalNote,
+                controls: cell.isAffected ? cell.activeControlLabel : "no change",
+              },
+            ])),
+          });
+        });
+      });
+    });
+    return rows;
   }
 
   function gripFinderCandidates() {
@@ -950,11 +1263,13 @@
     if (!target) {
       return [];
     }
-    const practicalGroups = new Set([...CORE_GROUPS, ...ADVANCED_GROUPS]);
+    const practicalGroups = practicalGroupsForGripVocabulary();
+    const generatedRows = computedDominantGripRows(target);
     return rowsForScale(els.scale.value)
       .filter((row) => practicalGroups.has(row.string_group))
       .filter((row) => rowInRange(row))
       .filter((row) => rowMatchesGripTarget(row, target))
+      .concat(generatedRows)
       .sort((a, b) => {
         const aCore = CORE_GROUPS.has(a.string_group) ? 0 : 1;
         const bCore = CORE_GROUPS.has(b.string_group) ? 0 : 1;
@@ -1039,6 +1354,9 @@
     }
     if (!gripTargetOptions().some((target) => target.id === selectedGripTargetId)) {
       selectedGripTargetId = gripTargetOptions()[0]?.id || "scale-triad";
+    }
+    if (!gripVocabularyOptions().some((option) => option.id === selectedGripVocabulary)) {
+      selectedGripVocabulary = "core";
     }
   }
 
@@ -1634,6 +1952,9 @@
   function groupLabel(row) {
     if (isPathMode()) {
       return "Harmonized scale path";
+    }
+    if (row.harmony_type === "dominant_v7_grip") {
+      return "Dominant 7 / V7 grip";
     }
     if (row.harmony_type === "five_eight_branch" || row.string_group === "5-8") {
       return "5&8 branch";
@@ -3032,6 +3353,18 @@
     `).join("");
   }
 
+  function gripVocabularyButtonsHtml() {
+    return gripVocabularyOptions().map((option) => `
+      <button
+        class="explorer-note-finder__chip${selectedGripVocabularyOption().id === option.id ? " is-selected" : ""}"
+        type="button"
+        data-note-grip-vocabulary="${escapeHtml(option.id)}"
+        aria-pressed="${selectedGripVocabularyOption().id === option.id ? "true" : "false"}"
+        title="${escapeHtml(option.description)}"
+      >${escapeHtml(option.label)}</button>
+    `).join("");
+  }
+
   function gripCandidateButtonHtml(row) {
     const isSelected = selectedGripCandidateId === row.id;
     return `
@@ -3043,6 +3376,7 @@
         <span class="explorer-active-result__fields">
           <span><b>Strings</b>${escapeHtml(formatValue(row.strings))}</span>
           <span><b>Notes</b>${escapeHtml(formatValue(rowNoteLabels(row)))}</span>
+          <span><b>Function</b>${escapeHtml(formatValue(row.chord_function || row.chord_name, ""))}</span>
           <span><b>${escapeHtml(notationModeLabel())}</b>${escapeHtml(formatValue(rowIntervalLabels(row).map(formatIntervalForNotation)))}</span>
         </span>
       </button>
@@ -3055,7 +3389,10 @@
     return `
       <section class="explorer-note-workflow-panel" aria-label="Build a grip from notes">
         <strong>Build a grip</strong>
-        <p>${escapeHtml(target?.description || "Choose a target note set.")}</p>
+        <p>${escapeHtml(`${selectedGripVocabularyOption().description} ${target?.description || "Choose a target note set."}`)}</p>
+        <div class="explorer-note-finder__chips" role="group" aria-label="Grip vocabulary">
+          ${gripVocabularyButtonsHtml()}
+        </div>
         <div class="explorer-note-finder__chips" role="group" aria-label="Grip finder target">
           ${gripTargetButtonsHtml()}
         </div>
@@ -3184,7 +3521,8 @@
     }
     syncNoteFinderSelections();
     ensurePinnedNoteCellInRange();
-    const cells = visibleNoteCells().map(decorateNoteCellForRender);
+    const selectedGrip = selectedGripCandidate();
+    const cells = visibleNoteCells().map((cell) => decorateNoteCellForRender(cell, selectedGrip));
     const resultCells = cells.filter((cell) => cell.isTargetMatch);
     const target = selectedNoteFinderTarget();
     const currentCell = previewNoteCell
@@ -3245,7 +3583,7 @@
     renderNoteFinderDetail(currentCell);
 
     const selectCell = (stringNumber, fret) => {
-      const selectedCell = decorateNoteCellForRender(noteCellState(stringNumber, fret));
+      const selectedCell = decorateNoteCellForRender(noteCellState(stringNumber, fret), selectedGripCandidate());
       pinnedNoteCell = { stringNumber: Number(stringNumber), fret: Number(fret) };
       previewNoteCell = null;
       if (selectedNoteWorkflow === "drill") {
@@ -3267,6 +3605,9 @@
     Array.from(els.noteFinder.querySelectorAll("[data-note-workflow]")).forEach((button) => {
       button.addEventListener("click", () => {
         selectedNoteWorkflow = button.getAttribute("data-note-workflow") || "find";
+        if (selectedNoteWorkflow !== "grip") {
+          selectedGripCandidateId = "";
+        }
         drillFeedback = null;
         renderNoteFinder();
       });
@@ -3295,6 +3636,16 @@
     Array.from(els.noteFinder.querySelectorAll("[data-note-grip-target]")).forEach((button) => {
       button.addEventListener("click", () => {
         selectedGripTargetId = button.getAttribute("data-note-grip-target") || "scale-triad";
+        selectedGripCandidateId = "";
+        renderNoteFinder();
+      });
+    });
+    Array.from(els.noteFinder.querySelectorAll("[data-note-grip-vocabulary]")).forEach((button) => {
+      button.addEventListener("click", () => {
+        selectedGripVocabulary = button.getAttribute("data-note-grip-vocabulary") || "core";
+        selectedGripTargetId = selectedGripVocabulary === "dominant7"
+          ? "dominant-v7"
+          : gripTargetOptions()[0]?.id || "scale-triad";
         selectedGripCandidateId = "";
         renderNoteFinder();
       });
@@ -3410,6 +3761,8 @@
       ? ` This combination was created by selecting ${noteControlLabels(result.controlState.controls).join(" and ")} individually.`
       : "";
     const gripWarningText = result.gripWarning ? ` ${result.gripWarning}` : "";
+    const keyLabelTitle = notationMode === "notes" ? "Selected-key note labels" : `${notationModeLabel()} against key`;
+    const explanationText = identity.explanation || `${identity.label} is the best common-name match for ${result.cells.map((cell) => cell.finalNote).join(", ")}. Confidence is ${identity.confidence}. ${identity.partial ? "This is a partial or ambiguous voicing, so context matters." : "The selected notes match the chord tones directly."}`;
     els.selectedDetail.className = "explorer-selected-detail";
     els.selectedDetail.innerHTML = `
       <div class="explorer-selected-detail__header">
@@ -3418,7 +3771,7 @@
       </div>
       <section class="explorer-teaching-note" aria-label="Voicing explanation">
         <strong>Why this name fits</strong>
-        <p>${escapeHtml(`${identity.label} is the best common-name match for ${result.cells.map((cell) => cell.finalNote).join(", ")}. Confidence is ${identity.confidence}. ${identity.partial ? "This is a partial or ambiguous voicing, so context matters." : "The selected notes match the chord tones directly."}${combinationText}${gripWarningText}`)}</p>
+        <p>${escapeHtml(`${explanationText}${combinationText}${gripWarningText}`)}</p>
       </section>
       <dl class="explorer-detail-grid">
         ${detailRow("Fret", result.fret)}
@@ -3426,9 +3779,10 @@
         ${detailRow("Grip type", result.gripLabel)}
         ${detailRow("Pedals / levers", controlText)}
         ${detailRow("Notes", result.cells.map((cell) => cell.finalNote))}
-        ${detailRow("Intervals against key", result.cells.map((cell) => cell.notationValue))}
+        ${detailRow(keyLabelTitle, result.cells.map((cell) => cell.notationValue))}
         ${detailRow("Intervals in voicing", identity.intervals.map(formatInterval))}
         ${detailRow("Likely function", identity.functionText)}
+        ${detailRow("Omitted tones", identity.missingIntervals?.map(formatInterval))}
         ${detailRow("Confidence", identity.confidence)}
         ${detailRow("Alternate readings", identity.alternates)}
       </dl>
@@ -3445,7 +3799,7 @@
       <div class="explorer-voicing-identifier__header">
         <div>
           <strong>Voicing identifier</strong>
-          <p>Choose a fret, up to three strings, and any individual pedals/levers. The result is calculated from the selected copedent and key.</p>
+          <p>Choose a fret, up to four strings, and any individual pedals/levers. The result is calculated from the selected copedent and key.</p>
         </div>
         <span>${escapeHtml(formatValue(activeCopedent()?.label || "E9 copedent"))}</span>
       </div>
@@ -3461,7 +3815,7 @@
         <div class="explorer-voicing-identifier__field">
           <span class="explorer-voicing-identifier__label">Strings</span>
           <div class="explorer-voicing-identifier__chips" role="group" aria-label="Voicing strings">${voicingStringButtonsHtml()}</div>
-          <p class="explorer-voicing-identifier__context">Select 1, 2, or 3 strings.</p>
+          <p class="explorer-voicing-identifier__context">Select 1, 2, 3, or 4 strings.</p>
         </div>
         <div class="explorer-voicing-identifier__field">
           <span class="explorer-voicing-identifier__label">Pedals / levers</span>
@@ -3494,8 +3848,8 @@
         if (selectedVoicingStrings.includes(stringNumber)) {
           selectedVoicingStrings = selectedVoicingStrings.filter((item) => item !== stringNumber);
           voicingUiWarning = "";
-        } else if (selectedVoicingStrings.length >= 3) {
-          voicingUiWarning = "Choose up to 3 strings. Remove one string before adding another.";
+        } else if (selectedVoicingStrings.length >= 4) {
+          voicingUiWarning = "Choose up to 4 strings. Remove one string before adding another.";
         } else {
           selectedVoicingStrings = selectedVoicingStrings.concat(stringNumber).sort((a, b) => a - b);
           voicingUiWarning = "";

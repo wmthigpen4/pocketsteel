@@ -276,7 +276,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "pedal-steel-fretboard.js?v=explorer-compact-copedent-20260625" not in html
     assert '<script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>' in html
     assert "[hidden] {\n      display: none !important;\n    }" in html
-    assert '<script src="e9-fretboard-explorer.js?v=voicing-controls-20260627"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=dominant-v7-grips-20260627"></script>' in html
     assert "e9-fretboard-explorer.js?v=single-note-learning-20260626" not in html
     assert "e9-fretboard-explorer.js?v=single-note-finder-20260626" not in html
     assert "explorer-top-note-marker-source-20260626" not in html
@@ -585,7 +585,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "data-voicing-control" in script
     assert "data-voicing-control-clear" in script
     assert "data-voicing-string" in script
-    assert "Choose up to 3 strings" in script
+    assert "Choose up to 4 strings" in script
     assert "This is not a common musical grip on E9" in script
     assert "Single-note finder" in script
     assert "Voicing identifier" in script
@@ -600,8 +600,11 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "data-note-string-filter" in script
     assert "data-note-reverse-result" in script
     assert "data-note-grip-card" in script
+    assert "data-note-grip-vocabulary" in script
     assert "data-note-sync-event" in script
     assert "data-note-cell" in script
+    assert "Dominant 7 / V7" in script
+    assert "DOMINANT_9TH_GRIPS" in script
     assert "Open note at fret" in script
     assert "Final note" in script
     assert "Pedals and levers change the note on affected strings" in script
@@ -652,6 +655,10 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
         "Root",
         "Inversion",
         "String group",
+        "Dominant 7",
+        "V7",
+        "9th string",
+        "Flat 7 / ♭7",
     ]:
         assert f"<dt>{term}</dt>" in html
     assert "external" not in html.lower()
@@ -831,6 +838,7 @@ class FakeNode {
       "[data-note-result-list]": Array.from(value.matchAll(/data-note-result-list="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-result-list")),
       "[data-note-reverse-result]": Array.from(value.matchAll(/data-note-reverse-result="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-reverse-result")),
       "[data-note-grip-target]": Array.from(value.matchAll(/data-note-grip-target="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-grip-target")),
+      "[data-note-grip-vocabulary]": Array.from(value.matchAll(/data-note-grip-vocabulary="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-grip-vocabulary")),
       "[data-note-grip-card]": Array.from(value.matchAll(/data-note-grip-card="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-grip-card")),
       "[data-note-sync-event]": Array.from(value.matchAll(/data-note-sync-event="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-note-sync-event")),
       "[data-voicing-control]": Array.from(value.matchAll(/data-voicing-control="([^"]+)"/g)).map((match) => new FakeButton(match[1], "data-voicing-control")),
@@ -978,6 +986,10 @@ const elements = {
   "explorer-selected-detail": new FakeNode("explorer-selected-detail"),
   "explorer-empty": new FakeNode("explorer-empty"),
   "explorer-tooltip": new FakeNode("explorer-tooltip"),
+  "explorer-voicing-fret": new FakeSelect("explorer-voicing-fret", "3", Array.from({ length: 10 }, (_, index) => {
+    const value = String(index + 1);
+    return { value, text: value };
+  })),
 };
 let lastMount;
 const notationModeButtons = [
@@ -1218,6 +1230,7 @@ const noteTargetButtons = () => elements["explorer-note-finder"].querySelectorAl
 const noteControlButtons = () => elements["explorer-note-finder"].querySelectorAll("[data-note-control-state]");
 const noteStringFilterButtons = () => elements["explorer-note-finder"].querySelectorAll("[data-note-string-filter]");
 const noteReverseButtons = () => elements["explorer-note-finder"].querySelectorAll("[data-note-reverse-result]");
+const noteGripVocabularyButtons = () => elements["explorer-note-finder"].querySelectorAll("[data-note-grip-vocabulary]");
 const noteGripButtons = () => elements["explorer-note-finder"].querySelectorAll("[data-note-grip-card]");
 const noteSyncButtons = () => elements["explorer-note-finder"].querySelectorAll("[data-note-sync-event]");
 const noteCell = (stringNumber, fret) => elements["explorer-fretboard"]
@@ -1258,9 +1271,18 @@ noteWorkflowButtons().find((button) => button.getAttribute("data-note-workflow")
 noteStringFilterButtons().find((button) => button.getAttribute("data-note-string-filter") === "all").onclick();
 assert.match(elements["explorer-note-finder"].textContent, /Build a grip/);
 assert.match(elements["explorer-note-finder"].textContent, /The 1-3-5 chord tones/);
+assert.deepEqual(noteGripVocabularyButtons().map((button) => button.getAttribute("data-note-grip-vocabulary")), ["core", "dominant7", "extended", "all"]);
 assert.ok(noteGripButtons().length > 0);
 noteGripButtons()[0].onclick();
 assert.match(elements["explorer-selected-detail"].textContent, /Single-note finder/);
+noteGripVocabularyButtons().find((button) => button.getAttribute("data-note-grip-vocabulary") === "dominant7").onclick();
+assert.match(elements["explorer-note-finder"].textContent, /Dominant 7 \/ V7/);
+assert.match(elements["explorer-note-finder"].textContent, /D7|V7|5\^7/);
+assert.match(elements["explorer-note-finder"].textContent, /5-6-9|4-6-9|6-9|5-9/);
+assert.ok(noteGripButtons().length > 0);
+noteGripButtons()[0].onclick();
+assert.match(elements["explorer-note-finder"].textContent, /Dominant 7 \/ V7|V7 color|D7/);
+assert.match(elements["explorer-note-finder"].textContent, /5-6-9|4-6-9|6-9|5-9|4-5-6-9/);
 noteWorkflowButtons().find((button) => button.getAttribute("data-note-workflow") === "drill").onclick();
 noteControlButtons().find((button) => button.getAttribute("data-note-control-state") === "open").onclick();
 noteTargetButtons().find((button) => button.getAttribute("data-note-target") === "2").onclick();
@@ -1301,7 +1323,7 @@ assert.equal(elements["explorer-harmony"].disabled, true);
 assert.equal(elements["explorer-control-impact-preview"].hidden, true);
 assert.equal(elements["explorer-top-interval-filter"].hidden, true);
 assert.equal(elements["explorer-fret-range-filter"].hidden, true);
-assert.match(elements["explorer-voicing-identifier"].textContent, /Choose a fret, up to three strings/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /Choose a fret, up to four strings/);
 assert.match(elements["explorer-voicing-identifier"].textContent, /G major/);
 assert.match(elements["explorer-voicing-identifier"].textContent, /Fret 3; strings 3-4-5; Open; notes B, G, D/);
 assert.match(elements["explorer-active-results"].textContent, /Identified G/);
@@ -1345,20 +1367,79 @@ assert.equal(lastMount.options.positions[0].notes.join(","), "G,C,E");
 voicingClearButtons()[0].onclick();
 elements["explorer-key"].value = "G";
 elements["explorer-key"].dispatchChange();
-voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "4").onclick();
-voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "6").onclick();
+elements["explorer-voicing-fret"].value = "10";
+elements["explorer-voicing-fret"].dispatchChange();
 voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "10").onclick();
+voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "5").onclick();
+voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "9").onclick();
+assert.match(elements["explorer-voicing-identifier"].textContent, /D7/);
+assert.match(elements["explorer-selected-detail"].textContent, /Likely functionV7 in G/);
+assert.match(elements["explorer-selected-detail"].textContent, /9th-string color grip/);
+assert.equal(lastMount.options.positions[0].grip, "4-5-6-9");
+assert.equal(lastMount.options.positions[0].notes.join(","), "D,A,F#,C");
+voicingClearButtons()[0].onclick();
+
+elements["explorer-voicing-fret"].value = "3";
+elements["explorer-voicing-fret"].dispatchChange();
+voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "4").onclick();
+voicingControlButtons().find((button) => button.getAttribute("data-voicing-control") === "A").onclick();
+voicingControlButtons().find((button) => button.getAttribute("data-voicing-control") === "B").onclick();
+assert.match(elements["explorer-voicing-identifier"].textContent, /Fret 3; strings 5-6-9; A pedal \+ B pedal; notes E, C, F/);
+assert.match(elements["explorer-selected-detail"].textContent, /Fmaj7\(no3\)/);
+assert.match(elements["explorer-selected-detail"].textContent, /partial major-7 grip/);
+assert.match(elements["explorer-selected-detail"].textContent, /Omitted tones3/);
+assert.match(elements["explorer-selected-detail"].textContent, /Confidencemedium/);
+assert.match(elements["explorer-selected-detail"].textContent, /Likely functionoutside the selected scale/);
+assert.match(elements["explorer-selected-detail"].textContent, /Selected-key note labels/);
+assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /Intervals against key/);
+assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /Dominant 7|V7 in G/);
+assert.equal(lastMount.options.positions[0].notes.join(","), "E,C,F");
+
+voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "6").onclick();
+voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "7").onclick();
+assert.match(elements["explorer-voicing-identifier"].textContent, /Fret 3; strings 5-7-9; A pedal \+ B pedal; notes E, A, F/);
+assert.match(elements["explorer-selected-detail"].textContent, /Fmaj7\(no5\)/);
+assert.match(elements["explorer-selected-detail"].textContent, /Omitted tones5/);
+assert.match(elements["explorer-selected-detail"].textContent, /Confidencemedium-high/);
+assert.match(elements["explorer-selected-detail"].textContent, /not a common musical grip/);
+assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /Dominant 7|V7 in G/);
+
+voicingClearButtons()[0].onclick();
+elements["explorer-key"].value = "F";
+elements["explorer-key"].dispatchChange();
+elements["explorer-voicing-fret"].value = "1";
+elements["explorer-voicing-fret"].dispatchChange();
+voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "5").onclick();
+voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "7").onclick();
+voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "3").onclick();
+voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "4").onclick();
+assert.match(elements["explorer-voicing-identifier"].textContent, /Fret 1; strings 3-4-9; Open; notes A, F, D#/);
+assert.match(elements["explorer-selected-detail"].textContent, /F7\(no5\)/);
+assert.match(elements["explorer-selected-detail"].textContent, /partial dominant-7 grip/);
+assert.match(elements["explorer-selected-detail"].textContent, /Intervals in voicing3, 1, ♭7/);
+assert.match(elements["explorer-selected-detail"].textContent, /Omitted tones5/);
+assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /Fmaj7/);
+
+elements["explorer-key"].value = "G";
+elements["explorer-key"].dispatchChange();
+elements["explorer-voicing-fret"].value = "3";
+elements["explorer-voicing-fret"].dispatchChange();
+voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "3").onclick();
+voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "4").onclick();
+voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "9").onclick();
 voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "1").onclick();
 voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "2").onclick();
 voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "3").onclick();
 assert.match(elements["explorer-voicing-identifier"].textContent, /strings 1-2-3/);
 assert.match(elements["explorer-voicing-identifier"].textContent, /not a common musical grip/);
 assert.equal(lastMount.options.positions[0].grip, "1-2-3");
-const notesBeforeFourthString = lastMount.options.positions[0].notes.join(",");
 voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "4").onclick();
-assert.match(elements["explorer-voicing-identifier"].textContent, /Choose up to 3 strings/);
-assert.equal(lastMount.options.positions[0].grip, "1-2-3");
-assert.equal(lastMount.options.positions[0].notes.join(","), notesBeforeFourthString);
+assert.equal(lastMount.options.positions[0].grip, "1-2-3-4");
+const notesBeforeFifthString = lastMount.options.positions[0].notes.join(",");
+voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "5").onclick();
+assert.match(elements["explorer-voicing-identifier"].textContent, /Choose up to 4 strings/);
+assert.equal(lastMount.options.positions[0].grip, "1-2-3-4");
+assert.equal(lastMount.options.positions[0].notes.join(","), notesBeforeFifthString);
 assert.doesNotMatch(elements["explorer-voicing-identifier"].textContent, /\[object Object\]/);
 assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /\[object Object\]/);
 elements["explorer-explore-mode"].value = "single";
