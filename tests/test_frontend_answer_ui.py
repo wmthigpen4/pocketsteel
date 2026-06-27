@@ -260,6 +260,7 @@ def test_answer_ui_links_to_e9_fretboard_explorer_surface() -> None:
 def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() -> None:
     html = Path("ui/e9-fretboard-explorer.html").read_text(encoding="utf-8")
     script = Path("ui/e9-fretboard-explorer.js").read_text(encoding="utf-8")
+    rules = Path("ui/e9-music-rules.js").read_text(encoding="utf-8")
     data = Path("ui/e9-fretboard-explorer-data.js").read_text(encoding="utf-8")
     payloads = json.loads(data.split("window.STEEL_RAG_E9_EXPLORER_PAYLOADS = ", 1)[1].split(";\nwindow.", 1)[0])
     payload = payloads["G"]
@@ -276,7 +277,9 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "pedal-steel-fretboard.js?v=explorer-compact-copedent-20260625" not in html
     assert '<script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>' in html
     assert "[hidden] {\n      display: none !important;\n    }" in html
-    assert '<script src="e9-fretboard-explorer.js?v=chord-voicing-finder-20260627"></script>' in html
+    assert '<script src="e9-music-rules.js?v=shared-music-rules-20260627"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=shared-music-rules-20260627"></script>' in html
+    assert html.index("e9-music-rules.js?v=shared-music-rules-20260627") < html.index("e9-fretboard-explorer.js?v=shared-music-rules-20260627")
     assert "e9-fretboard-explorer.js?v=grip-vocabulary-20260627" not in html
     assert "e9-fretboard-explorer.js?v=single-note-learning-20260626" not in html
     assert "e9-fretboard-explorer.js?v=single-note-finder-20260626" not in html
@@ -508,16 +511,20 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "explorer-teaching-note" in html
     assert "explorer-copedent-chart__table" in html
     assert "Pedal and lever impact" in script
+    assert "STEEL_RAG_E9_MUSIC_RULES" in rules
+    assert "musicRules.identifyVoicing" in script
+    assert "musicRules.parseChordFinderQuery" in script
+    assert "musicRules.chordFinderQualityGate" in script
     assert "payloadsByCopedent" in script
     assert "renderCopedentChart" in script
     assert "openCopedentDialog" in script
     assert "closeCopedentDialog" in script
     assert "data-explorer-notation-mode" in script
     assert 'notationMode = "notes"' in script
-    assert "MAJOR_SCALE_SEQUENCES" in script
-    assert '"1", "2-", "3-", "4", "5", "6-", "7°"' in script
-    assert '"I", "ii", "iii", "IV", "V", "vi", "vii°"' in script
-    assert '"1", "2m", "3m", "4", "5", "6m", "7dim"' in script
+    assert "MAJOR_SCALE_SEQUENCES" in rules
+    assert '"1", "2-", "3-", "4", "5", "6-", "7°"' in rules
+    assert '"I", "ii", "iii", "IV", "V", "vi", "vii°"' in rules
+    assert '"1", "2m", "3m", "4", "5", "6m", "7dim"' in rules
     assert "control_impact_preview" in script
     assert "control_impacts" in script
     assert "rowControlImpactsHtml" in script
@@ -635,13 +642,13 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "GRIP_REGISTRY" in script
     assert "GRIP_ROLE_OPTIONS" in script
     assert "pad_sustain" in script
-    assert '"4-6-10"' in script
-    assert '"3-5-8"' in script
-    assert '"5-6-9"' in script
-    assert '"4-6-9"' in script
-    assert '"3-6"' in script
-    assert '"8-10"' in script
-    assert "chord-voicing-finder-20260627" in html
+    assert '"4-6-10"' in rules
+    assert '"3-5-8"' in rules
+    assert '"5-6-9"' in rules
+    assert '"4-6-9"' in rules
+    assert '"3-6"' in rules
+    assert '"8-10"' in rules
+    assert "shared-music-rules-20260627" in html
     assert "data-note-sync-event" in script
     assert "data-note-cell" in script
     assert "Dominant 7 / V7" in script
@@ -740,6 +747,89 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert any(row.get("warnings") for row in payload["positions"])
     assert all(row["pitch_validated"] is True for row in payload["positions"])
     assert not re.search(r"\\b\\d+\\s+(?:I|ii|iii|iv|v|vi|vii)\\b", script)
+
+
+def test_e9_music_rules_boundary_covers_pitch_notation_and_voicing_contract() -> None:
+    script = r"""
+const assert = require("node:assert/strict");
+const rules = require("./ui/e9-music-rules.js");
+
+const gMajor = ["G", "A", "B", "C", "D", "E", "F#"];
+const fMajor = ["F", "G", "A", "Bb", "C", "D", "E"];
+const gContext = { key: "G", scaleType: "major", scaleNotes: gMajor, notationMode: "notes", scaleSequence: gMajor };
+const fContext = { key: "F", scaleType: "major", scaleNotes: fMajor, notationMode: "notes", scaleSequence: fMajor };
+const resolve = (stringNumber, fret, controls = [], scaleNotes = gMajor) => rules.resolveE9Note({ stringNumber, fret, controls, scaleNotes }).finalNote;
+
+assert.equal(resolve(3, 3), "B");
+assert.equal(resolve(3, 3, ["B"]), "C");
+assert.equal(resolve(5, 3, ["A"]), "E");
+assert.equal(resolve(9, 3), "F");
+
+const cOverFNotes = [4, 6, 10].map((stringNumber) => resolve(stringNumber, 3, ["A", "B"], fMajor));
+assert.deepEqual(cOverFNotes, ["G", "C", "E"]);
+const cOverF = rules.identifyVoicing(cOverFNotes, fContext);
+assert.equal(cOverF.label, "C");
+assert.equal(cOverF.functionText, "V function in F");
+
+const fMajNo3 = rules.identifyVoicing(["E", "C", "F"], gContext);
+assert.equal(fMajNo3.label, "Fmaj7(no3)");
+assert.equal(fMajNo3.quality, "partial major 7");
+assert.equal(fMajNo3.confidence, "medium");
+assert.equal(fMajNo3.functionText, "outside the selected scale");
+assert.doesNotMatch(fMajNo3.label + fMajNo3.functionText + fMajNo3.explanation, /Dominant|V7/);
+
+const fMajNo5 = rules.identifyVoicing(["E", "A", "F"], gContext);
+assert.equal(fMajNo5.label, "Fmaj7(no5)");
+assert.equal(fMajNo5.quality, "partial major 7");
+assert.equal(fMajNo5.confidence, "medium-high");
+assert.doesNotMatch(fMajNo5.label + fMajNo5.functionText + fMajNo5.explanation, /Dominant|V7/);
+
+const f7No5 = rules.identifyVoicing(["F", "A", "Eb"], fContext);
+assert.equal(f7No5.label, "F7(no5)");
+assert.equal(f7No5.quality, "partial dominant 7");
+assert.match(f7No5.explanation, /partial dominant-7 grip/);
+assert.doesNotMatch(f7No5.label, /maj7/);
+
+const d7 = rules.parseChordFinderQuery("V7 in G");
+assert.equal(d7.ok, true);
+assert.equal(d7.label, "D7");
+assert.equal(d7.quality.id, "dominant7");
+assert.match(d7.message, /resolves to D7/);
+
+const fMaj7 = rules.parseChordFinderQuery("Imaj7 in F");
+assert.equal(fMaj7.ok, true);
+assert.equal(fMaj7.label, "Fmaj7");
+assert.equal(fMaj7.quality.id, "major7");
+
+const cMin9 = rules.parseChordFinderQuery("Cmin9");
+assert.equal(cMin9.ok, true);
+assert.equal(cMin9.label, "Cm9");
+assert.equal(cMin9.quality.id, "minor9");
+assert.equal(rules.chordFinderQualityGate(cMin9, [0, 3, 7]), false);
+assert.equal(rules.chordFinderQualityGate(cMin9, [2, 3, 10]), true);
+assert.equal(rules.chordFinderConfidence(cMin9, [2, 3, 10], [0, 7]), "medium, rootless");
+
+assert.equal(rules.chordConfidence(rules.chordQualityById("major7"), false, [4], [0, 7, 11]), "medium");
+assert.equal(rules.chordConfidence(rules.chordQualityById("major7"), false, [7], [0, 4, 11]), "medium-high");
+assert.equal(rules.gripTierLabel("5-6-9"), "Extended grip");
+assert.equal(rules.intervalRoleLabel(10), "flat 7");
+assert.equal(rules.intervalRoleLabel(11), "major 7th");
+
+assert.equal(rules.notationLabelForFinalNote("B", "", { notationMode: "notes", scaleNotes: gMajor, scaleSequence: gMajor }), "B");
+assert.equal(rules.notationLabelForFinalNote("B", "", { notationMode: "nns", scaleNotes: gMajor, scaleSequence: rules.MAJOR_SCALE_SEQUENCES.nns }), "3-");
+assert.equal(rules.notationLabelForFinalNote("B", "", { notationMode: "roman", scaleNotes: gMajor, scaleSequence: rules.MAJOR_SCALE_SEQUENCES.roman }), "iii");
+assert.equal(rules.notationLabelForFinalNote("B", "", { notationMode: "numbers", scaleNotes: gMajor, scaleSequence: rules.MAJOR_SCALE_SEQUENCES.numbers }), "3m");
+"""
+
+    result = subprocess.run(
+        ["node", "-e", script],
+        cwd=Path(__file__).resolve().parents[1],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
 
 
 def test_e9_fretboard_explorer_controls_are_mode_aware() -> None:
@@ -1081,6 +1171,7 @@ sandbox.window.window = sandbox.window;
 sandbox.window.document = sandbox.document;
 sandbox.window.console = sandbox.console;
 vm.createContext(sandbox);
+vm.runInContext(fs.readFileSync("ui/e9-music-rules.js", "utf8"), sandbox);
 vm.runInContext(fs.readFileSync("ui/e9-fretboard-explorer-data.js", "utf8"), sandbox);
 vm.runInContext(fs.readFileSync("ui/e9-fretboard-explorer.js", "utf8"), sandbox);
 
