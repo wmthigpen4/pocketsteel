@@ -323,6 +323,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "Choose the copedent that matches your guitar" in html
     assert "Choose the E9 setup that matches your guitar" not in html
     assert "My Copedent (E9) is coming soon in Backstage" in html
+    assert ".explorer-control--copedent {\n      grid-column: span 1;" in html
     assert "C6" not in html
     root_fret_classes = {
         next(row["fret"] for row in key_payload["positions"] if row["scale_type"] == "major" and row["chord_function"] == "I")
@@ -346,6 +347,8 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<option value="middle">Middle path: 5-6-8 / 5-6-7</option>' in html
     assert '<option value="low" selected>Low path: 6-8-10 / 6-7-10</option>' in html
     assert "This path changes string groups when the harmony requires it" in html
+    assert "#explorer-path-family-control {\n      grid-column: span 2;" in html
+    assert "#explorer-path-family-control,\n      .explorer-control--notation" in html
     assert '<option value="two_string_harmonized">2-string harmonized scale</option>' in html
     assert '<option value="five_eight_branch">5&amp;8 branch positions (2-string)</option>' not in html
     assert '<option value="three_string_diatonic" selected>3-string diatonic harmony</option>' in html
@@ -412,6 +415,12 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "align-content: start;" in html
     assert ".explorer-control select {\n      height: 42px;" in html
     assert "height: 42px;" in html
+    assert ".explorer-controls-note {" in html
+    assert '<p class="explorer-controls-note">Core grips are common string sets; advanced swaps are pocket routes.' in controls_markup
+    assert "5-7-8 is the advanced E-lower pocket" in controls_markup
+    assert "5-8 appears in 2-string branch routes" in controls_markup
+    assert '<p class="explorer-note">Core grips are common string sets.' not in html
+    assert ".explorer-note {\n      grid-column: 1 / -1;" not in html
     assert "explorer-control--string-group" in html
     assert ".explorer-control--string-group {\n      grid-column: 1 / -1;" not in html
     assert '<div class="explorer-control explorer-control--string-group" id="explorer-string-group-control">' in html

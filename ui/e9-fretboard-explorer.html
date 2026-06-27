@@ -156,6 +156,10 @@
     }
 
     .explorer-control--copedent {
+      grid-column: span 1;
+    }
+
+    #explorer-path-family-control {
       grid-column: span 2;
     }
 
@@ -219,6 +223,15 @@
     .explorer-control-help strong {
       color: rgba(255, 247, 232, 0.82);
       font-weight: 800;
+    }
+
+    .explorer-controls-note {
+      grid-column: 1 / -1;
+      max-width: 980px;
+      margin: -2px 0 0;
+      color: rgba(255, 247, 232, 0.56);
+      font-size: 0.78rem;
+      line-height: 1.42;
     }
 
     .explorer-summary {
@@ -1662,14 +1675,6 @@
       font-weight: 800;
     }
 
-    .explorer-note {
-      grid-column: 1 / -1;
-      margin: 18px 0 0;
-      color: rgba(255, 247, 232, 0.62);
-      font-size: 0.9rem;
-      line-height: 1.6;
-    }
-
     @media (max-width: 760px) {
       .explorer-shell {
         width: min(100% - 20px, 1180px);
@@ -1698,6 +1703,7 @@
       }
 
       .explorer-control--copedent,
+      #explorer-path-family-control,
       .explorer-control--notation {
         grid-column: auto;
       }
@@ -1850,6 +1856,7 @@
         </div>
         <p class="explorer-control-help" id="explorer-notation-help">Controls card, marker, and top-label display.</p>
       </div>
+      <p class="explorer-controls-note">Core grips are common string sets; advanced swaps are pocket routes. 5-7-8 is the advanced E-lower pocket, and 5-8 appears in 2-string branch routes.</p>
     </section>
 
     <div class="explorer-summary" aria-live="polite">
@@ -1912,7 +1919,6 @@
     <section class="explorer-details" aria-label="Explorer position details">
       <div class="explorer-row-list" id="explorer-row-list" aria-label="Explorer row details"></div>
       <div class="explorer-selected-detail" id="explorer-selected-detail" aria-live="polite"></div>
-      <p class="explorer-note">Core grips are common string sets. Advanced swaps use less direct string combinations or lever/pocket logic; 5-7-8 is shown only as an advanced E-lower pocket. The 5&amp;8 branch positions appear inside the 2-string harmonized-scale view because they use a distinct E9 route.</p>
     </section>
   </main>
 
