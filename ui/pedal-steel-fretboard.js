@@ -1360,6 +1360,75 @@
     return normalizeToken(value) === "prominent" ? "prominent" : "standard";
   }
 
+  function setsOverlap(left, right) {
+    for (const value of left) {
+      if (right.has(value)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function assignSameFretRenderOffsets(highlights) {
+    const groups = new Map();
+    highlights.forEach((highlight) => {
+      const key = String(Number(highlight.fret));
+      const group = groups.get(key) || [];
+      group.push(highlight);
+      groups.set(key, group);
+    });
+
+    const offsetById = new Map();
+    const laneSpacing = 18;
+    groups.forEach((group) => {
+      if (group.length <= 1) {
+        const only = group[0];
+        offsetById.set(only.id, {
+          renderX: only.x,
+          renderOffsetX: 0,
+          overlapLane: 0,
+          overlapLaneCount: 1,
+        });
+        return;
+      }
+
+      const lanes = [];
+      const assignments = new Map();
+      group.forEach((highlight) => {
+        const stringSet = new Set(highlight.strings);
+        let laneIndex = lanes.findIndex((lane) => !setsOverlap(lane, stringSet));
+        if (laneIndex === -1) {
+          laneIndex = lanes.length;
+          lanes.push(new Set());
+        }
+        highlight.strings.forEach((stringNumber) => lanes[laneIndex].add(stringNumber));
+        assignments.set(highlight.id, laneIndex);
+      });
+
+      const center = (lanes.length - 1) / 2;
+      group.forEach((highlight) => {
+        const laneIndex = assignments.get(highlight.id) || 0;
+        const renderOffsetX = (laneIndex - center) * laneSpacing;
+        offsetById.set(highlight.id, {
+          renderX: highlight.x + renderOffsetX,
+          renderOffsetX,
+          overlapLane: laneIndex,
+          overlapLaneCount: lanes.length,
+        });
+      });
+    });
+
+    return highlights.map((highlight) => ({
+      ...highlight,
+      ...(offsetById.get(highlight.id) || {
+        renderX: highlight.x,
+        renderOffsetX: 0,
+        overlapLane: 0,
+        overlapLaneCount: 1,
+      }),
+    }));
+  }
+
   function buildFretboardModel(options = {}) {
     const maxFret = Math.max(1, Math.floor(Number(options.maxFret) || 24));
     const stringCount = Math.max(1, Math.floor(Number(options.stringCount) || 10));
@@ -1429,7 +1498,18 @@
       ? filteredHighlights.slice(0, MAX_RECOMMENDED_VISIBLE_POSITIONS)
       : filteredHighlights;
     const recommendedHiddenIds = new Set(filteredHighlights.slice(MAX_RECOMMENDED_VISIBLE_POSITIONS).map((highlight) => highlight.id));
-    const selectedPositionId = highlights[0]?.id || "";
+    const highlightsWithOffsets = assignSameFretRenderOffsets(highlights);
+    const visibleOffsetById = new Map(highlightsWithOffsets.map((highlight) => [highlight.id, highlight]));
+    const allHighlightsWithOffsets = allHighlights.map((highlight) => (
+      visibleOffsetById.get(highlight.id) || {
+        ...highlight,
+        renderX: highlight.x,
+        renderOffsetX: 0,
+        overlapLane: 0,
+        overlapLaneCount: 1,
+      }
+    ));
+    const selectedPositionId = highlightsWithOffsets[0]?.id || "";
 
     return {
       width: SVG_WIDTH,
@@ -1460,8 +1540,8 @@
       hasRecommendedCapAvailable: hasRecommendedLimit,
       recommendedHiddenIds,
       selectedPositionId,
-      allHighlights,
-      highlights,
+      allHighlights: allHighlightsWithOffsets,
+      highlights: highlightsWithOffsets,
       emphasizeVisibleHighlights: options.emphasizeVisibleHighlights === true,
       highlightStyle: normalizeHighlightStyle(options.highlightStyle),
       legend: normalizeLegend(options.legend),
@@ -1557,6 +1637,10 @@
     const hiddenStyle = highlight.isHiddenByFilter ? " display: none;" : "";
     const voicingCategory = voicingCategoryForPosition(highlight);
     const pedalLeverOption = pedalLeverOptionForPosition(highlight);
+    const renderX = Number.isFinite(Number(highlight.renderX)) ? Number(highlight.renderX) : highlight.x;
+    const renderOffsetX = Number.isFinite(Number(highlight.renderOffsetX)) ? Number(highlight.renderOffsetX) : 0;
+    const overlapLane = Number.isFinite(Number(highlight.overlapLane)) ? Number(highlight.overlapLane) : 0;
+    const overlapLaneCount = Number.isFinite(Number(highlight.overlapLaneCount)) ? Number(highlight.overlapLaneCount) : 1;
     const minY = Math.min(...highlight.stringYs);
     const maxY = Math.max(...highlight.stringYs);
     const isProminent = highlight.highlightStyle === "prominent";
@@ -1567,22 +1651,22 @@
     const bandHeight = Math.max(isProminent ? 46 : 34, maxY - minY + (isProminent ? 36 : 26));
     const bandY = minY - (isProminent ? 18 : 13);
     const labelY = Math.max(26, bandY - 12);
-    const dataAttrs = `data-highlight-id="${escapeHtml(highlight.id)}" data-highlight-fret="${highlight.fret}" data-highlight-strings="${escapeHtml(highlight.strings.join(","))}" data-color-role="${escapeHtml(highlight.colorRole)}" data-highlight-cluster-style="${escapeHtml(highlight.highlightStyle)}"`;
+    const dataAttrs = `data-highlight-id="${escapeHtml(highlight.id)}" data-highlight-fret="${highlight.fret}" data-highlight-strings="${escapeHtml(highlight.strings.join(","))}" data-highlight-fret-x="${highlight.x.toFixed(3)}" data-highlight-render-x="${renderX.toFixed(3)}" data-highlight-render-offset-x="${renderOffsetX.toFixed(3)}" data-highlight-overlap-lane="${overlapLane}" data-highlight-overlap-lanes="${overlapLaneCount}" data-color-role="${escapeHtml(highlight.colorRole)}" data-highlight-cluster-style="${escapeHtml(highlight.highlightStyle)}"`;
     const band = highlight.strings.length > 1
-      ? `<rect data-highlight-band ${dataAttrs} x="${(highlight.x - bandWidth / 2).toFixed(3)}" y="${bandY.toFixed(3)}" width="${bandWidth}" height="${bandHeight.toFixed(3)}" rx="${bandWidth / 2}" fill="${color.band}" stroke="${color.dot}" stroke-opacity="${isProminent ? "0.7" : "0.34"}" stroke-width="${isProminent ? "1.8" : "1"}" />`
+      ? `<rect data-highlight-band ${dataAttrs} x="${(renderX - bandWidth / 2).toFixed(3)}" y="${bandY.toFixed(3)}" width="${bandWidth}" height="${bandHeight.toFixed(3)}" rx="${bandWidth / 2}" fill="${color.band}" stroke="${color.dot}" stroke-opacity="${isProminent ? "0.7" : "0.34"}" stroke-width="${isProminent ? "1.8" : "1"}" />`
       : "";
     const halos = isProminent
       ? highlight.stringYs
         .map((y, index) => {
           const stringNumber = highlight.strings[index];
-          return `<rect data-highlight-halo ${dataAttrs} data-highlight-string="${stringNumber}" x="${(highlight.x - (dotWidth + 12) / 2).toFixed(3)}" y="${(y - (dotHeight + 10) / 2).toFixed(3)}" width="${dotWidth + 12}" height="${dotHeight + 10}" rx="${(dotHeight + 10) / 2}" fill="${color.glow}" opacity="0.42" filter="url(#fretboard-glow)" />`;
+          return `<rect data-highlight-halo ${dataAttrs} data-highlight-string="${stringNumber}" x="${(renderX - (dotWidth + 12) / 2).toFixed(3)}" y="${(y - (dotHeight + 10) / 2).toFixed(3)}" width="${dotWidth + 12}" height="${dotHeight + 10}" rx="${(dotHeight + 10) / 2}" fill="${color.glow}" opacity="0.42" filter="url(#fretboard-glow)" />`;
         })
         .join("")
       : "";
     const dots = highlight.stringYs
       .map((y, index) => {
         const stringNumber = highlight.strings[index];
-        return `<rect data-highlight-dot ${dataAttrs} data-highlight-string="${stringNumber}" x="${(highlight.x - dotWidth / 2).toFixed(3)}" y="${(y - dotHeight / 2).toFixed(3)}" width="${dotWidth}" height="${dotHeight}" rx="${dotRx}" fill="${color.dot}" fill-opacity="${isProminent ? "1" : "0.95"}" stroke="#fff6df" stroke-opacity="${isProminent ? "0.72" : "0.38"}" stroke-width="${isProminent ? "1.8" : "1"}" filter="url(#fretboard-glow)" />`;
+        return `<rect data-highlight-dot ${dataAttrs} data-highlight-string="${stringNumber}" x="${(renderX - dotWidth / 2).toFixed(3)}" y="${(y - dotHeight / 2).toFixed(3)}" width="${dotWidth}" height="${dotHeight}" rx="${dotRx}" fill="${color.dot}" fill-opacity="${isProminent ? "1" : "0.95"}" stroke="#fff6df" stroke-opacity="${isProminent ? "0.72" : "0.38"}" stroke-width="${isProminent ? "1.8" : "1"}" filter="url(#fretboard-glow)" />`;
       })
       .join("");
     const labelValues = Array.isArray(highlight.labelValues) ? highlight.labelValues.filter(Boolean) : [];
@@ -1590,7 +1674,7 @@
     const overflowCount = Number(highlight.labelOverflowCount) || 0;
     const label = highlight.showLabel === false
       ? ""
-      : `<text data-highlight-label="${escapeHtml(highlight.id)}" data-highlight-label-values="${escapeHtml(labelValues.join(","))}" data-highlight-label-overflow-count="${overflowCount}" x="${highlight.x.toFixed(3)}" y="${labelY.toFixed(3)}" text-anchor="middle" fill="${color.text}" font-size="18" font-weight="700"><tspan data-highlight-label-main>${escapeHtml(labelText)}</tspan>${overflowCount ? `<tspan data-highlight-label-overflow dx="5" font-size="12" font-weight="800" fill="${color.dot}">+${overflowCount}</tspan>` : ""}</text>`;
+      : `<text data-highlight-label="${escapeHtml(highlight.id)}" data-highlight-label-values="${escapeHtml(labelValues.join(","))}" data-highlight-label-overflow-count="${overflowCount}" x="${renderX.toFixed(3)}" y="${labelY.toFixed(3)}" text-anchor="middle" fill="${color.text}" font-size="18" font-weight="700"><tspan data-highlight-label-main>${escapeHtml(labelText)}</tspan>${overflowCount ? `<tspan data-highlight-label-overflow dx="5" font-size="12" font-weight="800" fill="${color.dot}">+${overflowCount}</tspan>` : ""}</text>`;
     return `<g class="pedal-steel-fretboard__highlight${highlight.isSelected ? " is-selected" : ""}${highlight.isEmphasizedVisible ? " is-emphasized-visible" : ""}${isProminent ? " is-prominent-cluster" : ""}${highlight.isHiddenByFilter ? " is-filter-hidden" : ""}" ${dataAttrs} data-position-family="${escapeHtml(highlight.family)}" data-position-tier="${escapeHtml(highlight.tier)}" data-position-kind="${escapeHtml(highlight.positionKind)}" data-position-grip="${escapeHtml(highlight.grip)}" data-position-pedal-lever-key="${escapeHtml(pedalLeverOption.key)}" data-position-pedal-lever-label="${escapeHtml(pedalLeverOption.label)}" data-voicing-type="${escapeHtml(highlight.voicingType)}" data-voicing-category="${escapeHtml(voicingCategory)}" data-is-root-position="${highlight.isRootPosition ? "true" : "false"}" data-is-inversion="${highlight.isInversion ? "true" : "false"}" data-is-partial-voicing="${highlight.isPartialVoicing ? "true" : "false"}" data-is-rootless="${highlight.isRootless ? "true" : "false"}" data-visible-by-default="${highlight.visibleByDefault ? "true" : "false"}" data-has-levers="${highlight.levers.length ? "true" : "false"}" data-is-starter="${isStarterPosition(highlight) ? "true" : "false"}" data-is-full-chord="${isFullChordPosition(highlight) ? "true" : "false"}" data-is-dominant="${isDominantPosition(highlight) ? "true" : "false"}" data-is-advanced="${isAdvancedPosition(highlight) ? "true" : "false"}" data-is-more="${isMorePosition(highlight) ? "true" : "false"}" data-recommended-extra="${highlight.isRecommendedExtra ? "true" : "false"}" data-emphasized-visible="${highlight.isEmphasizedVisible ? "true" : "false"}" data-filter-visible="${highlight.isHiddenByFilter ? "false" : "true"}" style="${colorStyle}${hiddenStyle}"${highlight.isHiddenByFilter ? " hidden" : ""}>
       ${band}
       ${halos}

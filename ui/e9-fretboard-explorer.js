@@ -95,11 +95,6 @@
     { id: "roman", label: "Roman", description: "I - ii" },
     { id: "numbers", label: "Numbers", description: "1 - 2m" },
   ];
-  const PATH_DISPLAY_MODES = [
-    { id: "step", label: "Step", description: "Show only the selected scale degree strongly." },
-    { id: "ghost", label: "Ghost all", description: "Show the selected grip plus compact markers for the other steps." },
-    { id: "compare", label: "Compare same fret", description: "Compare scale degrees that share the selected fret." },
-  ];
   const NOTE_CONTROL_STATES = musicRules.NOTE_CONTROL_STATES;
   const COMMON_VOICING_GRIPS = musicRules.COMMON_VOICING_GRIPS;
   const CHORD_QUALITY_PATTERNS = musicRules.CHORD_QUALITY_PATTERNS;
@@ -199,7 +194,6 @@
   let selectedImpactControlIds = new Set();
   let selectedTopFilter = "all";
   let selectedFretRange = "core";
-  let selectedPathDisplayMode = "step";
   let selectedNoteControlStateId = "open";
   let selectedNoteTargetIndex = 0;
   let selectedNoteWorkflow = "find";
@@ -2183,12 +2177,6 @@
       .join(": ");
   }
 
-  function pathDisplayMode() {
-    return PATH_DISPLAY_MODES.some((mode) => mode.id === selectedPathDisplayMode)
-      ? selectedPathDisplayMode
-      : "step";
-  }
-
   function selectedPathIndex(rows = currentRows) {
     const index = rows.findIndex((row) => row.id === selectedRowId);
     return index === -1 ? 0 : index;
@@ -2203,58 +2191,8 @@
     return `${pathStepNotationLabel(row)} — ${chordDisplayName(row)}`;
   }
 
-  function pathRowsAtSelectedFret(rows = currentRows) {
-    const selected = rows[selectedPathIndex(rows)] || rows[0];
-    if (!selected) {
-      return [];
-    }
-    return rows.filter((row) => Number(row.fret) === Number(selected.fret));
-  }
-
-  function pathCompactMarkerRow(row) {
-    const top = topVoice(row);
-    const strings = toArray(row.strings).map(Number).filter(Number.isFinite).sort((a, b) => a - b);
-    const markerString = Number(top.string) || strings[0] || Number(row.string_group?.split("-")[0]) || 1;
-    const entry = displayNoteEntries(row).find((item) => Number(item.string) === markerString);
-    const note = entry?.note || top.note || rowNoteLabels(row)[0] || "";
-    const interval = entry?.interval || top.interval || rowIntervalLabels(row)[0] || "";
-    return {
-      ...row,
-      strings: [markerString],
-      display_notes: {
-        [markerString]: {
-          note,
-          interval,
-        },
-      },
-      display_top_voice: {
-        note,
-        interval,
-        string: markerString,
-      },
-      path_marker_style: "compact",
-    };
-  }
-
   function pathRowsForFretboard(rows) {
-    if (!isPathMode()) {
-      return rows;
-    }
-    const selected = rows[selectedPathIndex(rows)] || rows[0];
-    if (!selected) {
-      return [];
-    }
-    if (pathDisplayMode() === "step") {
-      return [selected];
-    }
-    if (pathDisplayMode() === "compare") {
-      return pathRowsAtSelectedFret(rows).map((row) => (
-        row.id === selected.id ? row : pathCompactMarkerRow(row)
-      ));
-    }
-    return rows.map((row) => (
-      row.id === selected.id ? row : pathCompactMarkerRow(row)
-    ));
+    return rows;
   }
 
   function colorRoleForRow(row) {
@@ -2976,43 +2914,6 @@
     `;
   }
 
-  function pathDisplayModeButtonHtml(mode) {
-    const selected = pathDisplayMode() === mode.id;
-    return `
-      <button class="explorer-path-mode-chip${selected ? " is-selected" : ""}" type="button" data-path-display-mode="${escapeHtml(mode.id)}" aria-pressed="${selected ? "true" : "false"}">
-        <strong>${escapeHtml(mode.label)}</strong>
-        <span>${escapeHtml(mode.description)}</span>
-      </button>
-    `;
-  }
-
-  function pathSameFretComparisonHtml(rows) {
-    if (pathDisplayMode() !== "compare") {
-      return "";
-    }
-    const selected = rows[selectedPathIndex(rows)] || rows[0];
-    const sameFretRows = pathRowsAtSelectedFret(rows);
-    if (!selected || !sameFretRows.length) {
-      return "";
-    }
-    return `
-      <div class="explorer-path-compare" aria-label="Same-fret comparison">
-        <div class="explorer-path-compare__header">
-          <strong>Fret ${escapeHtml(formatValue(selected.fret))} contains</strong>
-          <span>Same fret, different string group or pedal state.</span>
-        </div>
-        <div class="explorer-path-compare__rows">
-          ${sameFretRows.map((row) => `
-            <button class="explorer-path-compare__row${row.id === selectedRowId ? " is-selected" : ""}" type="button" data-path-compare-row="${escapeHtml(row.id)}" aria-pressed="${row.id === selectedRowId ? "true" : "false"}">
-              <strong>${escapeHtml(pathStepTitle(row))}</strong>
-              <span>strings ${escapeHtml(row.string_group)} · ${escapeHtml(pathControlText(row))}</span>
-            </button>
-          `).join("")}
-        </div>
-      </div>
-    `;
-  }
-
   function renderPathRail(rows) {
     const label = selectedGroupLabel();
     if (!rows.length) {
@@ -3024,26 +2925,16 @@
       `;
       return;
     }
-    const selected = rows[selectedPathIndex(rows)] || rows[0];
     els.activeResults.innerHTML = `
       <div class="explorer-active-results__header explorer-path-rail__header">
         <div>
           <strong>${escapeHtml(label)}: Scale path rail</strong>
-          <span>Some scale degrees share the same fret but use different strings or pedals.</span>
+          <span>Each card has a matching full-grip marker on the fretboard. Same-fret grips are staggered so both colors remain visible.</span>
         </div>
-        <div class="explorer-path-rail__nav" aria-label="Move through scale path">
-          <button type="button" data-path-prev aria-label="Previous scale path step">Previous</button>
-          <span>${escapeHtml(pathStepTitle(selected))}</span>
-          <button type="button" data-path-next aria-label="Next scale path step">Next</button>
-        </div>
-      </div>
-      <div class="explorer-path-display" role="group" aria-label="Path display mode">
-        ${PATH_DISPLAY_MODES.map(pathDisplayModeButtonHtml).join("")}
       </div>
       <div class="explorer-path-rail" role="list" aria-label="Harmonized scale path">
         ${rows.map(pathStepButtonHtml).join("")}
       </div>
-      ${pathSameFretComparisonHtml(rows)}
     `;
     Array.from(els.activeResults.querySelectorAll("[data-path-step]")).forEach((button) => {
       const rowId = button.getAttribute("data-path-step");
@@ -3053,35 +2944,6 @@
       button.addEventListener("mouseleave", clearMarkerHover);
       button.addEventListener("blur", clearMarkerHover);
     });
-    Array.from(els.activeResults.querySelectorAll("[data-path-compare-row]")).forEach((button) => {
-      const rowId = button.getAttribute("data-path-compare-row");
-      button.addEventListener("click", () => selectRow(rowId));
-    });
-    Array.from(els.activeResults.querySelectorAll("[data-path-display-mode]")).forEach((button) => {
-      button.addEventListener("click", () => {
-        selectedPathDisplayMode = button.getAttribute("data-path-display-mode") || "step";
-        renderActiveResults(currentRows);
-        renderFretboard(pathRowsForFretboard(currentRows));
-        renderSelectedDetail(currentRows.find((row) => row.id === selectedRowId));
-        syncSelectedState();
-      });
-    });
-    const previousButton = els.activeResults.querySelector("[data-path-prev]");
-    const nextButton = els.activeResults.querySelector("[data-path-next]");
-    if (previousButton) {
-      previousButton.addEventListener("click", () => {
-        const index = selectedPathIndex(rows);
-        const nextIndex = (index - 1 + rows.length) % rows.length;
-        selectRow(rows[nextIndex].id);
-      });
-    }
-    if (nextButton) {
-      nextButton.addEventListener("click", () => {
-        const index = selectedPathIndex(rows);
-        const nextIndex = (index + 1) % rows.length;
-        selectRow(rows[nextIndex].id);
-      });
-    }
   }
 
   function renderActiveResults(rows) {
@@ -3253,10 +3115,7 @@
     if (!row) {
       return;
     }
-    const markerSource = isPathMode() && pathDisplayMode() !== "step" && row.id !== selectedRowId
-      ? pathCompactMarkerRow(row)
-      : row;
-    const markerId = markerGroupKey(markerSource);
+    const markerId = markerGroupKey(row);
     const group = currentMarkerGroups.find((item) => item.id === markerId);
     const marker = els.fretboard.querySelector(`.pedal-steel-fretboard__highlight[data-highlight-id="${markerId}"]`);
     if (!group || !marker) {

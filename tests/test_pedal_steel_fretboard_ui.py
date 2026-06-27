@@ -350,6 +350,66 @@ assert.doesNotMatch(prominentHtml, /five_eight_branch/);
     run_node(script)
 
 
+def test_same_fret_full_grips_are_staggered_without_changing_fret_math() -> None:
+    script = component_eval_script(
+        """
+const positions = [
+  {
+    id: "path-g-fret-3-6810",
+    label: "G",
+    fret: 3,
+    strings: [6, 8, 10],
+    grip: "6-8-10",
+    visibleByDefault: true,
+    colorRole: "open"
+  },
+  {
+    id: "path-am-fret-3-6710",
+    label: "Am",
+    fret: 3,
+    strings: [6, 7, 10],
+    grip: "6-7-10",
+    visibleByDefault: true,
+    colorRole: "a-b"
+  }
+];
+const model = fretboard.buildFretboardModel({
+  positions,
+  hideFilterControls: true,
+  hidePositionTools: true,
+  hideLegend: true,
+  showHighlightLabels: true,
+  emphasizeVisibleHighlights: true
+});
+assert.equal(model.highlights.length, 2);
+assert.equal(model.highlights[0].fret, 3);
+assert.equal(model.highlights[1].fret, 3);
+assert.equal(model.highlights[0].x, model.highlights[1].x);
+assert.notEqual(model.highlights[0].renderX, model.highlights[1].renderX);
+assert.equal(model.highlights[0].renderOffsetX, -9);
+assert.equal(model.highlights[1].renderOffsetX, 9);
+assert.equal(model.highlights[0].overlapLaneCount, 2);
+assert.equal(model.highlights[1].overlapLaneCount, 2);
+assert.equal(JSON.stringify(model.highlights.map((item) => item.strings.join(","))), JSON.stringify(["6,8,10", "6,7,10"]));
+const html = fretboard.renderPedalSteelFretboard({
+  positions,
+  hideFilterControls: true,
+  hidePositionTools: true,
+  hideLegend: true,
+  showHighlightLabels: true,
+  emphasizeVisibleHighlights: true
+});
+assert.match(html, /data-highlight-id="path-g-fret-3-6810"[^>]*data-highlight-fret-x="[^"]+"[^>]*data-highlight-render-offset-x="-9\\.000"/);
+assert.match(html, /data-highlight-id="path-am-fret-3-6710"[^>]*data-highlight-fret-x="[^"]+"[^>]*data-highlight-render-offset-x="9\\.000"/);
+assert.match(html, /data-highlight-id="path-g-fret-3-6810"[^>]*data-highlight-strings="6,8,10"/);
+assert.match(html, /data-highlight-id="path-am-fret-3-6710"[^>]*data-highlight-strings="6,7,10"/);
+assert.doesNotMatch(html, /\\[object Object\\]/);
+"""
+    )
+
+    run_node(script)
+
+
 def test_rendered_svg_uses_decorative_background_underlay() -> None:
     script = component_eval_script(
         """

@@ -584,8 +584,12 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "pathRows" in script
     assert "Scale path rail" in script
     assert "data-path-step" in script
-    assert "data-path-display-mode" in script
-    assert "Compare same fret" in script
+    assert "data-path-display-mode" not in script
+    assert "Compare same fret" not in script
+    assert "Ghost all" not in script
+    assert "data-path-prev" not in script
+    assert "data-path-next" not in script
+    assert "Same-fret grips are staggered" in script
     assert "degreeSequenceForPath" in script
     assert "pathChangeNote" in script
     assert "this path changes string groups when the harmony requires it" in script
@@ -1827,10 +1831,11 @@ assert.equal(elements["explorer-harmony"].value, "three_string_diatonic");
 assert.equal(elements["explorer-harmony"].disabled, true);
 assert.equal(elements["explorer-fret-range-filter"].hidden, true);
 assert.match(elements["explorer-active-results"].textContent, /Low path \(6-8-10 \/ 6-7-10\): Scale path rail/);
-assert.match(elements["explorer-active-results"].textContent, /Some scale degrees share the same fret/);
-assert.match(elements["explorer-active-results"].textContent, /Step/);
-assert.match(elements["explorer-active-results"].textContent, /Ghost all/);
-assert.match(elements["explorer-active-results"].textContent, /Compare same fret/);
+assert.match(elements["explorer-active-results"].textContent, /matching full-grip marker/);
+assert.match(elements["explorer-active-results"].textContent, /Same-fret grips are staggered/);
+assert.doesNotMatch(elements["explorer-active-results"].textContent, /Step/);
+assert.doesNotMatch(elements["explorer-active-results"].textContent, /Ghost all/);
+assert.doesNotMatch(elements["explorer-active-results"].textContent, /Compare same fret/);
 const pathStepButtons = elements["explorer-active-results"].querySelectorAll("[data-path-step]");
 assert.equal(pathStepButtons.length, 8);
 assert.match(elements["explorer-active-results"].textContent, /G — G/);
@@ -1853,37 +1858,18 @@ assert.match(elements["explorer-row-list"].textContent, /B — Bm/);
 assert.match(elements["explorer-row-list"].textContent, /F# — F# diminished|F# — F# half-diminished/);
 assert.match(elements["explorer-row-list"].textContent, /String group changes/);
 assert.match(elements["explorer-row-list"].textContent, /minor position uses this A\+B string group in this path/);
-assert.equal(lastMount.options.positions.length, 1);
-assert.equal(lastMount.options.positions[0].grip, "6-8-10");
-assert.equal(lastMount.options.positions[0].strings.join(","), "6,8,10");
+assert.equal(lastMount.options.positions.length, 8);
+assert.equal(lastMount.options.positions.every((row) => row.strings.length >= 3), true);
+assert.equal(lastMount.options.positions.some((row) => row.grip === "6-8-10" && row.strings.join(",") === "6,8,10"), true);
+assert.equal(lastMount.options.positions.some((row) => row.grip === "6-7-10" && row.strings.join(",") === "6,7,10"), true);
 pathStepButtons[1].onclick();
 assert.match(elements["explorer-selected-detail"].textContent, /A — Am/);
-assert.equal(lastMount.options.positions.length, 1);
-assert.equal(lastMount.options.positions[0].grip, "6-7-10");
-assert.equal(lastMount.options.positions[0].strings.join(","), "6,7,10");
-elements["explorer-active-results"].querySelector("[data-path-prev]").onclick();
-assert.match(elements["explorer-selected-detail"].textContent, /G — G/);
-elements["explorer-active-results"].querySelector("[data-path-next]").onclick();
-assert.match(elements["explorer-selected-detail"].textContent, /A — Am/);
-elements["explorer-active-results"].querySelectorAll("[data-path-display-mode]")
-  .find((button) => button.getAttribute("data-path-display-mode") === "ghost").onclick();
 assert.equal(lastMount.options.positions.length, 8);
-assert.equal(lastMount.options.positions.filter((row) => row.strings.length === 1).length, 7);
-assert.equal(lastMount.options.positions.some((row) => row.grip === "6-7-10" && row.strings.join(",") === "6,7,10"), true);
-elements["explorer-active-results"].querySelectorAll("[data-path-display-mode]")
-  .find((button) => button.getAttribute("data-path-display-mode") === "compare").onclick();
-assert.match(elements["explorer-active-results"].textContent, /Fret 3 contains/);
-assert.match(elements["explorer-active-results"].textContent, /G — G[\s\S]*strings 6-8-10[\s\S]*Open/);
-assert.match(elements["explorer-active-results"].textContent, /A — Am[\s\S]*strings 6-7-10[\s\S]*With A\+B/);
-assert.equal(lastMount.options.positions.length, 2);
-assert.equal(lastMount.options.positions.filter((row) => row.grip === "6-8-10").length, 1);
-assert.equal(lastMount.options.positions.filter((row) => row.grip === "6-7-10").length, 1);
+assert.equal(lastMount.options.positions.some((row) => row.grip === "6-8-10"), true);
+assert.equal(lastMount.options.positions.some((row) => row.grip === "6-7-10"), true);
 pathStepButtons[4].onclick();
-elements["explorer-active-results"].querySelectorAll("[data-path-display-mode]")
-  .find((button) => button.getAttribute("data-path-display-mode") === "compare").onclick();
-assert.match(elements["explorer-active-results"].textContent, /Fret 10 contains/);
-assert.match(elements["explorer-active-results"].textContent, /D — D[\s\S]*strings 6-8-10[\s\S]*Open/);
-assert.match(elements["explorer-active-results"].textContent, /E — Em[\s\S]*strings 6-7-10[\s\S]*With A\+B/);
+assert.match(elements["explorer-selected-detail"].textContent, /D — D/);
+assert.equal(lastMount.options.positions.length, 8);
 notationModeButtons[2].onclick();
 assert.match(elements["explorer-row-list"].textContent, /I — G/);
 assert.match(elements["explorer-row-list"].textContent, /ii — Am/);
