@@ -1134,8 +1134,8 @@
     els.copedentChart.innerHTML = `
       <div class="explorer-copedent-chart__header">
         <div>
-          <strong>${escapeHtml(formatValue(selected.label || "E9 setup"))}</strong>
-          <p>Choose the E9 setup that matches your guitar. Emmons and Day mainly differ in pedal arrangement.</p>
+          <strong>${escapeHtml(formatValue(selected.label || "E9 copedent"))}</strong>
+          <p>Choose the copedent that matches your guitar. Emmons and Day mainly differ in pedal arrangement.</p>
           <p>Copedents vary; this chart shows the setup currently used for guidance.</p>
         </div>
         <span>${escapeHtml(formatValue(selected.status || "selected"))}</span>

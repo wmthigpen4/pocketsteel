@@ -305,7 +305,8 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
         assert f'<option value="{hidden_value}"' not in html
     assert "Enharmonic spellings are listed separately" not in html
     assert "Enharmonic keys share one selector entry" in html
-    assert '<label for="explorer-copedent">E9 setup</label>' in html
+    assert '<label for="explorer-copedent">Copedent</label>' in html
+    assert '<label for="explorer-copedent">E9 setup</label>' not in html
     assert '<select id="explorer-copedent"' in html
     assert '<option value="emmons-e9-basic" selected>Emmons E9</option>' in html
     assert '<option value="day-e9-basic">Day E9</option>' in html
@@ -316,7 +317,8 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert 'id="explorer-copedent-open"' not in controls_markup
     assert '<dialog class="explorer-copedent-dialog" id="explorer-copedent-dialog"' in html
     assert '<button class="explorer-inline-button" id="explorer-copedent-close" type="button">Close</button>' in html
-    assert "Choose the E9 setup that matches your guitar" in html
+    assert "Choose the copedent that matches your guitar" in html
+    assert "Choose the E9 setup that matches your guitar" not in html
     assert "My Copedent (E9) is coming soon in Backstage" in html
     assert "C6" not in html
     root_fret_classes = {
@@ -344,7 +346,8 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<button class="explorer-back" id="explorer-glossary-open" type="button" aria-haspopup="dialog" aria-controls="explorer-glossary-dialog">' in html
     assert "<span>Glossary</span>" in html
     assert '<button class="explorer-back" id="explorer-copedent-open" type="button" aria-haspopup="dialog" aria-controls="explorer-copedent-dialog">' in html
-    assert "<span>View chart</span>" in html
+    assert "<span>Copedent</span>" in html
+    assert "<span>View chart</span>" not in html
     assert '<a class="explorer-back" href="steel-guitar-rag-mock.html">' in html
     assert "<span>Back to app</span>" in html
     assert ".explorer-back {" in html
@@ -531,6 +534,8 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "String map" not in script
     assert "pos." not in script
     assert "setups" in script
+    assert "Choose the E9 setup that matches your guitar" not in script
+    assert "Choose the copedent that matches your guitar" in script
     assert "selectedImpactControlIds" in script
     assert "data-control-impact-clear" in script
     assert "No direct impact on the selected string group" in script
