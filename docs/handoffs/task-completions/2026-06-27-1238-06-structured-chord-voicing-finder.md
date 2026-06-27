@@ -78,7 +78,7 @@ Local browser result:
 - No `[object Object]`.
 - Console warnings/errors: none.
 
-## Protected Preview Freshness Check
+## Protected Preview Smoke
 
 Initial protected-preview smoke target:
 
@@ -90,7 +90,43 @@ Result:
 - The page still showed the old free-text `explorer-chord-query` because `ui/e9-fretboard-explorer.html` was still requesting `e9-fretboard-explorer.js?v=shared-music-rules-20260627`.
 - Fixed within this slice by refreshing the Explorer script query string to `e9-fretboard-explorer.js?v=structured-chord-picker-20260627` and adding a focused test assertion.
 
-Protected-preview browser smoke needs to be rerun after the amended commit with a new cache-busted URL.
+Final protected-preview smoke target:
+
+Smoke Target:
+- Target type: protected-preview
+- Result type: browser smoke
+- Exact browser URL tested: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=structured-chord-finder-d988db7`
+- Cache-busted URL tested: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=structured-chord-finder-d988db7`
+- Exact URL the user should use: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=structured-chord-finder-d988db7`
+- Auth required: yes
+- Auth provider: Cloudflare Access
+- Cloudflare Access login result: succeeded previously; no Access login screen appeared during this smoke
+- Local backend URL: `http://127.0.0.1:8770`
+- Expected backend port: `8770`
+- Expected git HEAD: `d988db7`
+- Version endpoint: `https://app.steelguitarrag.com/api/version?v=structured-chord-finder-d988db7`
+- Version endpoint result: not obtained; opening the endpoint in the browser tool was blocked with `net::ERR_BLOCKED_BY_CLIENT`
+- If version endpoint missing, how version is inferred: protected page script source showed `e9-fretboard-explorer.js?v=structured-chord-picker-20260627`; committed HTML at `d988db7` contains that script query
+- Whether app root `/` works: yes; root redirected to `/ui/steel-guitar-rag-mock.html`
+- Whether app root `/` is expected to work: yes
+- Whether `/ui/steel-guitar-rag-mock.html` works: yes via root redirect
+- Whether `/ui/steel-guitar-rag-mock.html` is expected to work: yes
+- Who should test this URL: the user
+- Do not test these URLs: uncache-busted Explorer URL for this change
+- Known caveats: `/api/version` could not be read through the browser tool, so protected smoke verifies static/browser behavior at the cache-busted Explorer URL rather than strict runtime SHA proof
+
+Final protected result:
+- Explorer page loaded with no Access prompt.
+- Page requested `e9-fretboard-explorer.js?v=structured-chord-picker-20260627`.
+- Chord / Voicing Finder had no `explorer-chord-query` target input.
+- Root options included sharp and flat spellings.
+- Quality options used learner-facing labels.
+- Default target was `Fmaj7`.
+- `D` + `Dominant 7` showed `Target: D7` and returned candidates.
+- Fretboard highlights rendered.
+- No parser errors appeared in normal picker use.
+- No `[object Object]`.
+- Browser console warnings/errors: none.
 
 ## Integration Notes
 
