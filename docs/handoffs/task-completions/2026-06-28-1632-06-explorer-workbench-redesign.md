@@ -40,7 +40,7 @@ Smoke Target:
 - Result type: browser smoke
 - Exact browser URL tested: `http://127.0.0.1:8770/ui/e9-fretboard-explorer.html?v=explorer-workbench-redesign-local`
 - Cache-busted URL tested: `http://127.0.0.1:8770/ui/e9-fretboard-explorer.html?v=explorer-workbench-redesign-local`
-- Exact URL the user should use: pending protected-preview smoke after commit
+- Exact URL the user should use: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-workbench-redesign-d8ebad9`
 - Auth required: no
 - Auth provider: none
 - Cloudflare Access login result: not required
@@ -68,6 +68,14 @@ Local browser smoke result:
 - Narrow viewport smoke showed no page-level horizontal overflow; workbench collapsed to one column and inspector became static.
 - No `[object Object]` appeared.
 
+Protected-preview browser smoke result:
+- Protected URL tested: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-workbench-redesign-d8ebad9`
+- Cloudflare Access result: already authenticated in the in-app browser; no Access login screen shown.
+- Browser behavior: page loaded, five mode tabs rendered, default `Single Grip` tab selected, SVG fretboard mounted, workbench and right-side inspector rendered, active results appeared below the fretboard, no page-level horizontal overflow, and no `[object Object]`.
+- Root behavior: `https://app.steelguitarrag.com/` redirected to `https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html`.
+- Version endpoint: `https://app.steelguitarrag.com/api/version` returned runtime SHA `a6abc61`, branch `feature/answer-api`, auth provider `cloudflare_access`.
+- Caveat: protected preview verified cache-busted static/browser behavior for this Explorer UI change, but the backend runtime SHA is older than implementation commit `d8ebad9`; Lane 12 should restart or otherwise refresh runtime before strict runtime certification.
+
 ## Risk Assessment
 - Risk: medium. This is a broad layout restructuring of the Explorer surface, but the data contract and music/rendering logic are intentionally preserved.
 - Rollback: revert the scoped HTML/JS/test changes from this slice.
@@ -87,11 +95,11 @@ Local browser smoke result:
 - `docs/handoffs/task-completions/integration-status.md` unless refreshed in a separate Repo Steward status step.
 
 ## Recommended Next Lane
-- Lane 12 protected-preview smoke for the cache-busted Explorer URL after commit.
+- Lane 12 protected-preview restart/version alignment if strict runtime certification is required.
 - Lane 15 focused QA/user smoke on the new workbench layout.
 
 ## Commit Readiness
 Safe to commit.
 
 ## Suggested Next Step
-Lane 12: run protected-preview smoke against `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-workbench-redesign-<commit>` and verify the mode tabs, fretboard stage, cards, and inspector render with no stale script.
+Lane 15: run focused QA/user smoke against `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=explorer-workbench-redesign-d8ebad9`, then Lane 12 can refresh runtime if strict `/api/version` alignment is needed.
