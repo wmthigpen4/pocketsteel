@@ -1475,6 +1475,41 @@
     return 100 + completeBonus + definitionBonus - missingPenalty - tierPenalty - controlPenalty - Math.abs(Number(row.fret) - 8) * 0.3;
   }
 
+  function chordFinderCandidateSort(a, b) {
+    return (b.chord_finder?.score || 0) - (a.chord_finder?.score || 0)
+      || Number(a.fret || 0) - Number(b.fret || 0)
+      || String(a.id || "").localeCompare(String(b.id || ""));
+  }
+
+  function chordFinderCandidateLimit(options = {}) {
+    if (options.ignoreRange) {
+      return 96;
+    }
+    return selectedGripVocabulary === "all" ? 48 : 24;
+  }
+
+  function chordFinderMustKeepCandidate(row) {
+    const finder = row?.chord_finder || {};
+    const tier = gripMetadata(row?.string_group)?.tier;
+    const omitted = toArray(finder.omittedIntervals);
+    return ["e_lower_pocket", "song_tab_vocabulary", "extended", "path"].includes(tier)
+      && omitted.length === 0
+      && String(finder.confidence || "").toLowerCase().startsWith("high");
+  }
+
+  function limitChordFinderCandidates(rows, options = {}) {
+    const sorted = [...rows].sort(chordFinderCandidateSort);
+    const limited = sorted.slice(0, chordFinderCandidateLimit(options));
+    sorted
+      .filter(chordFinderMustKeepCandidate)
+      .forEach((row) => {
+        if (!limited.some((candidate) => candidate.id === row.id)) {
+          limited.push(row);
+        }
+      });
+    return limited.sort(chordFinderCandidateSort);
+  }
+
   function chordFinderRowFromCells(target, group, fret, controlState, cells) {
     const targetPitchClasses = new Set(target.pitchClasses);
     const entries = [];
@@ -1555,9 +1590,6 @@
 
   function chordFinderGroups() {
     const groups = new Set(gripVocabularyGroups(selectedGripVocabulary));
-    if (selectedGripVocabulary === "core") {
-      E_LOWER_POCKET_GROUPS.forEach((group) => groups.add(group));
-    }
     return Array.from(groups)
       .filter((group) => group.split("-").filter(Boolean).length <= 4);
   }
@@ -1586,11 +1618,7 @@
         }
       });
     });
-    return rows
-      .sort((a, b) => (b.chord_finder?.score || 0) - (a.chord_finder?.score || 0)
-        || Number(a.fret || 0) - Number(b.fret || 0)
-        || String(a.id || "").localeCompare(String(b.id || "")))
-      .slice(0, options.ignoreRange ? 64 : 24);
+    return limitChordFinderCandidates(rows, options);
   }
 
   function selectedChordCandidate(rows = chordFinderCandidates()) {
@@ -4146,12 +4174,35 @@
     if (!target?.ok) {
       return `<p class="explorer-voicing-identifier__warning">${escapeHtml(target?.message || "Choose a root and quality to search practical E9 voicings.")}</p>`;
     }
+    const filterExplanation = chordFinderFilterExplanation(target);
     return `
       <section class="explorer-voicing-summary explorer-chord-finder__summary" aria-label="Chord finder target">
         <strong>${escapeHtml(`Target: ${target.label} (${chordFinderQualityDisplayLabel(target.quality)})`)}</strong>
         <p>${escapeHtml(`${target.message ? `${target.message} ` : ""}Chord tones: ${target.toneLabels.map((tone) => `${tone.role} ${tone.note}`).join(", ")}.`)}</p>
+        ${filterExplanation ? `<p>${escapeHtml(filterExplanation)}</p>` : ""}
       </section>
     `;
+  }
+
+  function chordFinderFilterExplanation(target) {
+    if (!target?.ok) {
+      return "";
+    }
+    const isDMajor = target.quality?.id === "major" && target.rootPitchClass === pitchClassForNote("D");
+    if (!isDMajor) {
+      return "";
+    }
+    if (selectedChordControlScope === "open") {
+      return "The 5-7-8 E-lower pocket is hidden in Open only because it requires the E-lower lever.";
+    }
+    if (!chordFinderGroups().includes("5-7-8")) {
+      return "The 5-7-8 E-lower pocket is registered as E-lower pocket vocabulary; choose E-lower pockets or All legitimate to include it.";
+    }
+    const range = activeRangeOption();
+    if (range.min > 3 || range.max < 3) {
+      return "The 5-7-8 E-lower D major pocket is registered, but fret 3 is outside the selected fret range.";
+    }
+    return "";
   }
 
   function renderChordFinderPanel(target, candidates) {
@@ -4294,7 +4345,7 @@
         ${rows.map((row) => chordFinderResultCardHtml(row, "data-active-result-row")).join("")}
       </div>
     `;
-    els.rowList.innerHTML = rows.map((row) => chordFinderResultCardHtml(row, "data-explorer-row")).join("");
+    els.rowList.innerHTML = "";
     const wireButton = (button) => {
       const rowId = button.getAttribute("data-chord-finder-result") || button.getAttribute("data-active-result-row") || button.getAttribute("data-explorer-row") || "";
       button.addEventListener("click", () => {
@@ -4307,7 +4358,6 @@
       button.addEventListener("blur", clearMarkerHover);
     };
     Array.from(els.activeResults.querySelectorAll("[data-chord-finder-result]")).forEach(wireButton);
-    Array.from(els.rowList.querySelectorAll("[data-chord-finder-result]")).forEach(wireButton);
     Array.from(els.activeResults.querySelectorAll("[data-chord-map-filter-control]")).forEach((button) => {
       button.addEventListener("click", () => {
         selectedChordMapFilter = button.getAttribute("data-chord-map-filter-control") || "all";

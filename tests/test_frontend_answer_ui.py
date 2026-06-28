@@ -278,8 +278,8 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>' in html
     assert "[hidden] {\n      display: none !important;\n    }" in html
     assert '<script src="e9-music-rules.js?v=legitimate-grip-vocabulary-20260628"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=legitimate-grip-vocabulary-20260628"></script>' in html
-    assert html.index("e9-music-rules.js?v=legitimate-grip-vocabulary-20260628") < html.index("e9-fretboard-explorer.js?v=legitimate-grip-vocabulary-20260628")
+    assert '<script src="e9-fretboard-explorer.js?v=e-lower-pocket-d-major-20260628"></script>' in html
+    assert html.index("e9-music-rules.js?v=legitimate-grip-vocabulary-20260628") < html.index("e9-fretboard-explorer.js?v=e-lower-pocket-d-major-20260628")
     assert "e9-fretboard-explorer.js?v=compact-explorer-tools-20260628" not in html
     assert "e9-fretboard-explorer.js?v=voicing-identifier-copy-20260627" not in html
     assert "e9-fretboard-explorer.js?v=chord-map-label-cleanup-20260627" not in html
@@ -572,7 +572,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "musicRules.identifyVoicing" in script
     assert "musicRules.parseChordFinderQuery" in script
     assert "musicRules.chordFinderQualityGate" in script
-    assert 'e9-fretboard-explorer.js?v=legitimate-grip-vocabulary-20260628' in html
+    assert 'e9-fretboard-explorer.js?v=e-lower-pocket-d-major-20260628' in html
     assert ".explorer-chord-map-card .explorer-active-result__fields {" in html
     assert ".explorer-chord-map-card .explorer-active-result__fields span {" in html
     assert "grid-template-columns: minmax(72px, 0.48fr) minmax(0, 1fr);" in html
@@ -1545,9 +1545,31 @@ elements["explorer-chord-quality"].dispatchChange();
 elements["explorer-grip-vocabulary"].value = "core";
 elements["explorer-grip-vocabulary"].dispatchChange();
 assert.match(elements["explorer-chord-finder"].textContent, /Target: D/);
-assert.match(elements["explorer-active-results"].textContent, /5-7-8/);
-assert.match(elements["explorer-active-results"].textContent, /With E-lower/);
-assert.equal(lastMount.options.positions.some((row) => row.grip === "5-7-8" && Number(row.fret) === 3), true);
+assert.doesNotMatch(elements["explorer-active-results"].textContent, /5-7-8/);
+assert.equal(lastMount.options.positions.some((row) => row.grip === "5-7-8" && Number(row.fret) === 3), false);
+assert.match(elements["explorer-chord-finder"].textContent, /choose E-lower pockets or All legitimate/);
+elements["explorer-grip-vocabulary"].value = "all";
+elements["explorer-grip-vocabulary"].dispatchChange();
+elements["explorer-chord-control-scope"].value = "all";
+elements["explorer-chord-control-scope"].dispatchChange();
+assert.match(elements["explorer-chord-finder"].textContent, /Target: D/);
+assert.match(elements["explorer-active-results"].textContent, /E-lower pocket/);
+assert.match(elements["explorer-active-results"].textContent, /An E-lower pocket grip/);
+assert.equal(elements["explorer-row-list"].querySelectorAll("[data-chord-finder-result]").length, 0);
+assert.equal(elements["explorer-row-list"].textContent.trim(), "");
+const dMajorELowerPocket = lastMount.options.positions.find((row) => row.grip === "5-7-8" && Number(row.fret) === 3);
+assert.ok(dMajorELowerPocket);
+assert.equal(JSON.stringify(dMajorELowerPocket.strings), JSON.stringify([5, 7, 8]));
+assert.equal(JSON.stringify(dMajorELowerPocket.notes), JSON.stringify(["D", "A", "F#"]));
+assert.equal(JSON.stringify(dMajorELowerPocket.string_action_labels), JSON.stringify({ 5: "5", 7: "7", 8: "8E" }));
+assert.match(elements["explorer-active-results"].textContent, /Presentroot \(D\), 3rd \(F#\), 5th \(A\)/);
+assert.match(elements["explorer-active-results"].textContent, /Omittednone/);
+elements["explorer-chord-control-scope"].value = "open";
+elements["explorer-chord-control-scope"].dispatchChange();
+assert.equal(lastMount.options.positions.some((row) => row.grip === "5-7-8" && Number(row.fret) === 3), false);
+assert.match(elements["explorer-chord-finder"].textContent, /requires the E-lower lever/);
+elements["explorer-chord-control-scope"].value = "all";
+elements["explorer-chord-control-scope"].dispatchChange();
 elements["explorer-chord-quality"].value = "dominant7";
 elements["explorer-chord-quality"].dispatchChange();
 elements["explorer-grip-vocabulary"].value = "extended";
