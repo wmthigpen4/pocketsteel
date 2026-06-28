@@ -35,10 +35,11 @@ Passed:
 - `.venv/bin/python -m pytest tests/test_frontend_answer_ui.py -q` - 24 passed
 - `.venv/bin/python -m pytest tests/test_pedal_steel_fretboard_ui.py -q` - 36 passed
 
-Pending before commit closeout:
+Passed after implementation:
 
 - `git diff --check`
-- staged diff review/check
+- `git diff --cached --check`
+- staged diff review
 
 ## Browser Smoke
 
@@ -48,13 +49,13 @@ Smoke Target:
 - Result type: browser smoke
 - Exact browser URL tested: `http://127.0.0.1:8770/ui/e9-fretboard-explorer.html?v=chord-map-label-cleanup-local`
 - Cache-busted URL tested: `http://127.0.0.1:8770/ui/e9-fretboard-explorer.html?v=chord-map-label-cleanup-local`
-- Exact URL the user should use: pending protected-preview smoke after commit
+- Exact URL the user should use: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=chord-map-label-cleanup-bec3847`
 - Auth required: no
 - Auth provider: none
 - Cloudflare Access login result: not required
 - Local backend URL: `http://127.0.0.1:8770`
 - Expected backend port: `8770`
-- Expected git HEAD: pending commit
+- Expected git HEAD: `bec3847`
 - Version endpoint: not checked for local static UI smoke
 - Version endpoint result: not checked
 - If version endpoint missing, how version is inferred: direct local static file smoke
@@ -76,6 +77,42 @@ Verified:
 - First card field rows used two-column label/value CSS with `overflow-wrap: anywhere`.
 - SVG marker top labels were absent in Chord / Voicing Finder mode.
 - Marker tooltips/aria labels remained available.
+- No `[object Object]`.
+- No page-level horizontal overflow.
+- No relevant console errors.
+
+Protected-preview smoke result: PASS.
+
+Smoke Target:
+
+- Target type: protected-preview
+- Result type: browser smoke
+- Exact browser URL tested: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=chord-map-label-cleanup-bec3847`
+- Cache-busted URL tested: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=chord-map-label-cleanup-bec3847`
+- Exact URL the user should use: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=chord-map-label-cleanup-bec3847`
+- Auth required: yes
+- Auth provider: Cloudflare Access
+- Cloudflare Access login result: already authenticated in the in-app browser
+- Local backend URL: `http://127.0.0.1:8770`
+- Expected backend port: `8770`
+- Expected git HEAD: `bec3847`
+- Version endpoint: not checked for this static UI smoke
+- Version endpoint result: not checked
+- If version endpoint missing, how version is inferred: page served the refreshed `e9-fretboard-explorer.js?v=chord-map-label-cleanup-20260627` script and protected DOM behavior matched the commit
+- Whether app root `/` works: not checked
+- Whether app root `/` is expected to work: not relevant to this direct Explorer smoke
+- Whether `/ui/steel-guitar-rag-mock.html` works: not checked
+- Whether `/ui/steel-guitar-rag-mock.html` is expected to work: not relevant to this direct Explorer smoke
+- Who should test this URL: the user
+- Do not test these URLs: stale `?v=string-action-labels-d5a8b63` for this fix
+- Known caveats: this verifies cache-busted static/browser behavior, not a protected-preview restart
+
+Verified:
+
+- Chord / Voicing Finder with `F` + `Dominant 7`.
+- Refreshed Explorer script cache-bust loaded.
+- Candidate card fields used label/value grid rows with `overflow-wrap: anywhere`.
+- SVG marker top labels were absent in Chord / Voicing Finder mode.
 - No `[object Object]`.
 - No page-level horizontal overflow.
 - No relevant console errors.
@@ -122,10 +159,12 @@ Lane 12 protected-preview smoke after the scoped commit.
 
 ## Commit Readiness
 
-Safe to commit after `git diff --check`, staged diff review, and `git diff --cached --check` pass.
+Safe to commit. Implementation commit created:
+
+- `bec3847 fix: clean up chord map card labels`
 
 ## Suggested Next Step
 
-Run protected-preview smoke at:
+User smoke:
 
-`https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=chord-map-label-cleanup-<commit>`
+`https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=chord-map-label-cleanup-bec3847`
