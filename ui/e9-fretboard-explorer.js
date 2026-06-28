@@ -13,7 +13,9 @@
 
   const DEFAULT_COPEDENT_ID = "emmons-e9-basic";
   const CORE_GROUPS = musicRules.CORE_GROUPS;
+  const PATH_GROUPS = musicRules.PATH_GROUPS;
   const ADVANCED_GROUPS = musicRules.ADVANCED_GROUPS;
+  const E_LOWER_POCKET_GROUPS = musicRules.E_LOWER_POCKET_GROUPS;
   const TWO_STRING_GROUPS = musicRules.TWO_STRING_GROUPS;
   const FIVE_EIGHT_GROUPS = musicRules.FIVE_EIGHT_GROUPS;
   const EXTENDED_VOICING_GRIPS = musicRules.EXTENDED_VOICING_GRIPS;
@@ -22,17 +24,28 @@
   const GRIP_VOCABULARY_OPTIONS = [
     { id: "core", label: "Core", description: "Common beginner-friendly string sets and harmonized-scale grips." },
     { id: "extended", label: "Extended", description: "Real-world tab and voicing-discovery grips, including wider and 9th-string color grips." },
+    { id: "song_tab", label: "Song/tab vocabulary", description: "Context-dependent string sets seen in real playing and tab-like vocabulary." },
+    { id: "e_lower_pockets", label: "E-lower pockets", description: "Lever-pocket grips that depend on the E-lower change, including 5-7-8." },
     { id: "two_string", label: "Two-string", description: "Dyads for harmony lines, partial voicings, passing color, and possible pad/sustain uses." },
-    { id: "all", label: "All practical", description: "Core, extended, and two-string practical grip vocabulary." },
+    { id: "all", label: "All legitimate", description: "All registered core, path, extended, song/tab, E-lower, and two-string grip vocabulary." },
   ];
   const GRIP_ROLE_OPTIONS = [
     { id: "all", label: "All", description: "Show every role in the selected vocabulary." },
+    { id: "harmonized_scale_path", label: "Scale path", description: "Used for connected harmonized-scale movement." },
     { id: "melody_harmony", label: "Melody harmony", description: "Useful for harmonized melody movement." },
+    { id: "wide_voicing", label: "Wide voicing", description: "Spreads the chord across wider string gaps." },
+    { id: "spread_voicing", label: "Spread voicing", description: "Keeps more space between chord tones." },
+    { id: "chord_shell", label: "Chord shell", description: "A practical chord-tone subset or shell." },
     { id: "pad_sustain", label: "Pads", description: "Possible held support sounds; not every dyad is a pad." },
     { id: "chord_voicing", label: "Chord / voicing", description: "Useful for chord shapes and partial voicings." },
     { id: "dominant_color", label: "Dominant color", description: "Useful for V7 or flat-7 color." },
+    { id: "major_7_color", label: "Major-7 color", description: "Useful when the notes support major-7 color." },
+    { id: "minor_color", label: "Minor color", description: "Useful for minor pockets and relative-minor movement." },
     { id: "bass_root_support", label: "Bass/root support", description: "Useful when a low string supports the root or bass motion." },
     { id: "passing_color", label: "Passing color", description: "Useful for color tones between stronger chord positions." },
+    { id: "lever_pocket", label: "Lever pocket", description: "Depends on a lever change for the pocket color." },
+    { id: "alternate_position", label: "Alternate position", description: "A secondary way to find the same or related sound." },
+    { id: "e_lower_pocket", label: "E-lower pocket", description: "Specifically uses E-lower pocket vocabulary." },
   ];
   const GRIP_REGISTRY = musicRules.GRIP_REGISTRY;
   const EXPLORE_MODES = {
@@ -898,6 +911,8 @@
       gripLabel: voicingGripLabel(parsedStrings.strings),
       gripRoles: gripRoleText(parsedStrings.strings.join("-")),
       gripNote: gripMetadata(parsedStrings.strings.join("-"))?.note || "",
+      gripExplanation: gripMetadata(parsedStrings.strings.join("-"))?.explanation || "",
+      gripWatchOut: gripMetadata(parsedStrings.strings.join("-"))?.watchOut || "",
       gripWarning: voicingGripWarning(parsedStrings.strings),
       controlState,
       cells,
@@ -1053,10 +1068,24 @@
     return Boolean(gripMetadata(group)?.roles?.includes(roleId));
   }
 
+  function gripVocabularyShowsRoleFilter(vocabularyId = selectedGripVocabulary) {
+    return ["two_string", "all", "extended"].includes(vocabularyId);
+  }
+
   function gripVocabularyGroups(vocabularyId = "core") {
     if (vocabularyId === "extended") {
       return new Set(GRIP_REGISTRY
-        .filter((entry) => ["core", "extended", "advanced"].includes(entry.tier))
+        .filter((entry) => ["core", "path", "extended"].includes(entry.tier))
+        .map((entry) => entry.strings));
+    }
+    if (vocabularyId === "song_tab") {
+      return new Set(GRIP_REGISTRY
+        .filter((entry) => ["core", "path", "extended", "song_tab_vocabulary"].includes(entry.tier))
+        .map((entry) => entry.strings));
+    }
+    if (vocabularyId === "e_lower_pockets") {
+      return new Set(GRIP_REGISTRY
+        .filter((entry) => entry.tier === "e_lower_pocket")
         .map((entry) => entry.strings));
     }
     if (vocabularyId === "two_string") {
@@ -1072,6 +1101,21 @@
       .map((entry) => entry.strings));
   }
 
+  function gripTierSortValue(group) {
+    const tierOrder = {
+      core: 0,
+      path: 1,
+      extended: 2,
+      song_tab_vocabulary: 3,
+      e_lower_pocket: 4,
+      two_string: 5,
+      advanced: 6,
+      heuristic: 7,
+      unusual: 8,
+    };
+    return tierOrder[gripMetadata(group)?.tier || "unusual"] ?? 8;
+  }
+
   function gripVocabularyLabel(vocabularyId = "core") {
     return gripVocabularyOptions().find((option) => option.id === vocabularyId)?.label || "Core";
   }
@@ -1080,8 +1124,39 @@
     return GRIP_VOCABULARY_OPTIONS;
   }
 
+  function syncGripRoleWithVocabulary() {
+    if (!GRIP_ROLE_OPTIONS.some((option) => option.id === selectedGripRole)) {
+      selectedGripRole = "all";
+    }
+    if (!gripVocabularyShowsRoleFilter(selectedGripVocabulary)) {
+      selectedGripRole = "all";
+      return;
+    }
+    if (selectedGripRole !== "all") {
+      const groups = Array.from(gripVocabularyGroups(selectedGripVocabulary));
+      if (!groups.some((group) => gripHasRole(group, selectedGripRole))) {
+        selectedGripRole = "all";
+      }
+    }
+  }
+
   function selectedGripVocabularyOption() {
     return gripVocabularyOptions().find((option) => option.id === selectedGripVocabulary) || gripVocabularyOptions()[0];
+  }
+
+  function allGripOptionLabel(vocabularyId, harmony) {
+    if (harmony === "two_string_harmonized") {
+      return "All 2-string groups";
+    }
+    const labels = {
+      core: "All core grips",
+      extended: "All extended grips",
+      song_tab: "All song/tab vocabulary grips",
+      e_lower_pockets: "All E-lower pocket grips",
+      two_string: "All two-string grips",
+      all: "All legitimate grips",
+    };
+    return labels[vocabularyId] || `All ${gripVocabularyLabel(vocabularyId).toLowerCase()} grips`;
   }
 
   function practicalGroupsForGripVocabulary() {
@@ -1106,6 +1181,9 @@
           const hasFlatSeven = pitchClasses.includes((target.rootPitchClass + 10) % 12);
           const hasRootOrThird = pitchClasses.includes(target.rootPitchClass) || pitchClasses.includes((target.rootPitchClass + 4) % 12);
           if (!allInsideDominant || !hasFlatSeven || !hasRootOrThird) {
+            return;
+          }
+          if (state.controls.length && !cells.some((cell) => cell.isAffected)) {
             return;
           }
           const identity = dominantColorIdentity(cells.map((cell) => cell.finalNote));
@@ -1173,6 +1251,9 @@
           if (!completeMatch && !partialMatch) {
             return;
           }
+          if (state.controls.length && !cells.some((cell) => cell.isAffected)) {
+            return;
+          }
           const identity = identifyVoicing(cells.map((cell) => cell.finalNote));
           const displayNotes = {};
           cells.forEach((cell) => {
@@ -1229,9 +1310,8 @@
       .concat(generatedRows)
       .filter((row) => gripHasRole(row.string_group, selectedGripRole))
       .sort((a, b) => {
-        const tierOrder = { core: 0, extended: 1, two_string: 2, advanced: 3 };
-        const aCore = tierOrder[gripMetadata(a.string_group)?.tier || "advanced"] ?? 3;
-        const bCore = tierOrder[gripMetadata(b.string_group)?.tier || "advanced"] ?? 3;
+        const aCore = gripTierSortValue(a.string_group);
+        const bCore = gripTierSortValue(b.string_group);
         if (aCore !== bCore) {
           return aCore - bCore;
         }
@@ -1365,9 +1445,7 @@
   }
 
   function chordFinderCandidateScore(row, target, presentIntervals, omittedIntervals) {
-    const metadata = gripMetadata(row.string_group);
-    const tierOrder = { core: 0, extended: 1, two_string: 2, advanced: 3 };
-    const tierPenalty = (tierOrder[metadata?.tier || "advanced"] ?? 3) * 6;
+    const tierPenalty = gripTierSortValue(row.string_group) * 6;
     const controlPenalty = normalizePedals(row).length * 3;
     const missingPenalty = omittedIntervals.reduce((total, interval) => {
       if (interval === 7) {
@@ -1459,6 +1537,8 @@
         omittedTones: omittedIntervals.map((interval) => `${intervalRoleLabel(interval)} (${displayNoteForPitchClassInKey(target.rootPitchClass + interval, target.contextKey)})`),
         confidence: chordFinderConfidence(target, presentIntervals, omittedIntervals),
         gripTier: gripTierLabel(group),
+        whyGrip: gripMetadata(group)?.explanation || "",
+        gripWatchOut: gripMetadata(group)?.watchOut || "",
       },
     };
     row.chord_finder.score = chordFinderCandidateScore(row, target, presentIntervals, omittedIntervals);
@@ -1484,6 +1564,9 @@
       chordFinderControlStates().forEach((state) => {
         for (let fret = range.min; fret <= range.max; fret += 1) {
           const cells = strings.map((stringNumber) => noteCellState(stringNumber, fret, state));
+          if (state.controls.length && !cells.some((cell) => cell.isAffected)) {
+            continue;
+          }
           const row = chordFinderRowFromCells(target, group, fret, state, cells);
           if (row) {
             rows.push(row);
@@ -1539,7 +1622,7 @@
 
   function chordFinderTierFilter(row) {
     const tier = String(gripMetadata(row?.string_group)?.tier || "").toLowerCase();
-    if (tier === "core" || tier === "extended" || tier === "two_string") {
+    if (["core", "path", "extended", "song_tab_vocabulary", "e_lower_pocket", "two_string"].includes(tier)) {
       return tier;
     }
     return isAdvanced(row) ? "advanced" : "extended";
@@ -1558,7 +1641,10 @@
       { id: "partial", label: "Partial" },
       { id: "rootless", label: "Rootless" },
       { id: "core", label: "Core" },
+      { id: "path", label: "Path" },
       { id: "extended", label: "Extended" },
+      { id: "song_tab_vocabulary", label: "Song/tab" },
+      { id: "e_lower_pocket", label: "E-lower" },
       { id: "two_string", label: "Two-string" },
     ];
     return options.map((item) => {
@@ -1582,7 +1668,7 @@
     if (["complete", "partial", "rootless"].includes(filterId)) {
       return chordFinderCompleteness(row) === filterId;
     }
-    if (["core", "extended", "two_string"].includes(filterId)) {
+    if (["core", "path", "extended", "song_tab_vocabulary", "e_lower_pocket", "two_string"].includes(filterId)) {
       return chordFinderTierFilter(row) === filterId;
     }
     return true;
@@ -1672,9 +1758,7 @@
     if (!gripVocabularyOptions().some((option) => option.id === selectedGripVocabulary)) {
       selectedGripVocabulary = "core";
     }
-    if (!GRIP_ROLE_OPTIONS.some((option) => option.id === selectedGripRole)) {
-      selectedGripRole = "all";
-    }
+    syncGripRoleWithVocabulary();
   }
 
   function visibleNoteFinderFrets() {
@@ -2110,9 +2194,7 @@
       ? availableStringGroups(rows, harmony)
       : Array.from(registryGroups);
     const currentValues = selectedStringGroups().filter((group) => validGroups.includes(group));
-    const allLabel = harmony === "two_string_harmonized"
-      ? "All 2-string groups"
-      : `All ${gripVocabularyLabel(vocabularyValue).toLowerCase()} grips`;
+    const allLabel = allGripOptionLabel(vocabularyValue, harmony);
     const selectedValues = currentValues.length ? currentValues : ["all"];
     let html = option("all", allLabel, selectedValues);
 
@@ -2120,7 +2202,10 @@
       html += optionGroup("2-string groups", validGroups, selectedValues);
     } else {
       html += optionGroup("Core grips", Array.from(registryGroups).filter((group) => gripMetadata(group)?.tier === "core"), selectedValues);
+      html += optionGroup("Path grips", Array.from(registryGroups).filter((group) => gripMetadata(group)?.tier === "path"), selectedValues);
       html += optionGroup("Extended grips", Array.from(registryGroups).filter((group) => gripMetadata(group)?.tier === "extended"), selectedValues);
+      html += optionGroup("Song/tab vocabulary grips", Array.from(registryGroups).filter((group) => gripMetadata(group)?.tier === "song_tab_vocabulary"), selectedValues);
+      html += optionGroup("E-lower pocket grips", Array.from(registryGroups).filter((group) => gripMetadata(group)?.tier === "e_lower_pocket"), selectedValues);
       html += optionGroup("Two-string grips", Array.from(registryGroups).filter((group) => gripMetadata(group)?.tier === "two_string"), selectedValues);
       html += optionGroup("Advanced grips", Array.from(registryGroups).filter((group) => gripMetadata(group)?.tier === "advanced"), selectedValues);
     }
@@ -2286,6 +2371,12 @@
     return values.length ? values.join(" - ") : "Unavailable";
   }
 
+  function updateScaleNotes() {
+    if (els.scaleNotes) {
+      els.scaleNotes.textContent = getScaleNotes();
+    }
+  }
+
   function isAdvanced(row) {
     return ADVANCED_GROUPS.has(row.string_group) || row.harmony_type === "advanced_pocket";
   }
@@ -2303,12 +2394,12 @@
     if (row.harmony_type === "five_eight_branch" || row.string_group === "5-8") {
       return "5&8 branch";
     }
-    if (isAdvanced(row)) {
-      return row.string_group === "5-7-8" ? "Advanced swap - E-lower pocket" : "Advanced swap";
-    }
     const metadata = gripMetadata(row.string_group);
     if (metadata) {
       return metadata.label;
+    }
+    if (isAdvanced(row)) {
+      return row.string_group === "5-7-8" ? "Advanced swap - E-lower pocket" : "Advanced swap";
     }
     return "Explorer row";
   }
@@ -3629,7 +3720,7 @@
   }
 
   function gripRoleButtonsHtml() {
-    if (!["two_string", "all", "extended"].includes(selectedGripVocabulary)) {
+    if (!gripVocabularyShowsRoleFilter(selectedGripVocabulary)) {
       return "";
     }
     return `
@@ -3937,9 +4028,7 @@
       button.addEventListener("click", () => {
         selectedGripVocabulary = button.getAttribute("data-note-grip-vocabulary") || "core";
         selectedGripTargetId = gripTargetOptions()[0]?.id || "scale-triad";
-        if (selectedGripVocabulary === "core") {
-          selectedGripRole = "all";
-        }
+        syncGripRoleWithVocabulary();
         selectedGripCandidateId = "";
         renderNoteFinder();
       });
@@ -4016,7 +4105,7 @@
       allNoteCells().map(decorateNoteCellForRender).filter((cell) => cell.isTargetMatch),
       visibleNoteCells().map(decorateNoteCellForRender).filter((cell) => cell.isTargetMatch),
     );
-    els.scaleNotes.textContent = getScaleNotes();
+    updateScaleNotes();
     if (els.resultCount) {
       els.resultCount.textContent = "";
     }
@@ -4133,6 +4222,7 @@
           <span><b>Strings</b>${escapeHtml(row.string_group)}</span>
           <span><b>Pedals/levers</b>${escapeHtml(controls.length ? `With ${controls.join("+")}` : "Open")}</span>
           <span><b>Grip</b>${escapeHtml(formatValue(finder.gripTier))}</span>
+          ${finder.whyGrip ? `<span><b>Why</b>${escapeHtml(finder.whyGrip)}</span>` : ""}
           <span><b>Confidence</b>${escapeHtml(formatValue(finder.confidence))}</span>
           <span><b>Present</b>${escapeHtml(present)}</span>
           <span><b>Omitted</b>${escapeHtml(omitted)}</span>
@@ -4239,6 +4329,8 @@
         ${detailRow("Fret", row.fret)}
         ${detailRow("String group", row.string_group)}
         ${detailRow("Grip type", finder.gripTier)}
+        ${detailRow("Why use this grip", finder.whyGrip)}
+        ${detailRow("Watch out", finder.gripWatchOut)}
         ${detailRow("Pedals / levers", normalizePedals(row))}
         ${detailRow("Notes", rowNoteLabels(row))}
         ${detailRow("Present chord tones", finder.presentTones)}
@@ -4277,7 +4369,7 @@
       els.topIntervalFilter.hidden = true;
       els.topIntervalFilter.innerHTML = "";
     }
-    els.scaleNotes.textContent = getScaleNotes();
+    updateScaleNotes();
     if (els.resultCount) {
       els.resultCount.textContent = "";
     }
@@ -4345,6 +4437,8 @@
         ${detailRow("Fret", result.fret)}
         ${detailRow("Strings", result.strings.join("-"))}
         ${detailRow("Grip type", result.gripLabel)}
+        ${detailRow("Why use this grip", result.gripExplanation)}
+        ${detailRow("Watch out", result.gripWatchOut)}
         ${detailRow("Pedals / levers", controlText)}
         ${detailRow("Notes", result.cells.map((cell) => cell.finalNote))}
         ${detailRow("Notes with register", activePitchRegisterMode() === "off" ? "" : result.cells.map((cell) => cellRegisterLabel(cell)))}
@@ -4418,6 +4512,8 @@
         <section class="explorer-voicing-summary" aria-label="Identified voicing">
           <strong>${escapeHtml(voicingIdentifierTitle(result, identity))}</strong>
           <p>${escapeHtml(voicingIdentifierSummaryText(result, identity))}</p>
+          ${result.gripExplanation ? `<p>${escapeHtml(result.gripExplanation)}</p>` : ""}
+          ${result.gripWatchOut ? `<p>${escapeHtml(result.gripWatchOut)}</p>` : ""}
           ${result.gripRoles ? `<p>${escapeHtml(`Grip roles are contextual: ${result.gripRoles}. A two-note grip is a dyad or partial voicing unless the notes spell a complete chord.`)}</p>` : ""}
         </section>
       `}
@@ -4496,7 +4592,7 @@
       els.fretRangeFilter.hidden = true;
       els.fretRangeFilter.innerHTML = "";
     }
-    els.scaleNotes.textContent = getScaleNotes();
+    updateScaleNotes();
     if (els.resultCount) {
       els.resultCount.textContent = "";
     }
@@ -4577,7 +4673,7 @@
     if (!rows.some((row) => row.id === selectedRowId)) {
       selectedRowId = rows[0]?.id || "";
     }
-    els.scaleNotes.textContent = getScaleNotes();
+    updateScaleNotes();
     if (els.resultCount) {
       els.resultCount.textContent = "";
     }

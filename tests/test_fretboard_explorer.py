@@ -5,6 +5,8 @@ import pytest
 from pocketsteel.fretboard_explorer import (
     E9_OPEN_STRINGS,
     ExplorerCandidate,
+    THREE_STRING_GRIP_VOCABULARY,
+    all_three_string_grip_labels,
     build_control_impact_preview,
     build_explorer_payload,
     build_g_explorer_payload,
@@ -16,6 +18,8 @@ from pocketsteel.fretboard_explorer import (
     g_major_three_string_rows,
     g_major_two_string_rows,
     g_natural_minor_three_string_rows,
+    grip_vocabulary_audit,
+    grip_vocabulary_entry,
     normalize_explorer_key,
     SUPPORTED_EXPLORER_KEYS,
     validate_explorer_candidate,
@@ -119,6 +123,64 @@ def test_g_explorer_payload_shape_and_row_model() -> None:
             "voice_role",
         }.issubset(register)
         assert register["octave_band"] in {"lower", "middle", "upper"}
+
+
+def test_three_string_grip_vocabulary_audits_all_possible_combinations() -> None:
+    payload = build_g_explorer_payload()
+    validate_explorer_payload(payload)
+
+    assert len(all_three_string_grip_labels()) == 120
+    assert all_three_string_grip_labels()[0] == "1-2-3"
+    assert all_three_string_grip_labels()[-1] == "8-9-10"
+
+    required = {
+        "3-4-5",
+        "4-5-6",
+        "5-6-8",
+        "6-8-10",
+        "5-6-7",
+        "6-7-10",
+        "4-6-10",
+        "3-5-8",
+        "3-5-9",
+        "4-6-9",
+        "5-6-9",
+        "3-5-6",
+        "4-5-8",
+        "5-8-10",
+        "5-7-8",
+    }
+    assert required.issubset(set(THREE_STRING_GRIP_VOCABULARY))
+
+    audit = grip_vocabulary_audit()
+    assert audit["total_three_string_combinations"] == 120
+    assert audit["registered_count"] == len(required)
+    assert audit["unclassified_count"] == 120 - len(required)
+    assert audit["known_required_present"] == {
+        "5-7-8": True,
+        "5-6-7": True,
+        "6-7-10": True,
+        "4-6-10": True,
+        "3-5-9": True,
+        "3-5-8": True,
+    }
+    assert "5-7-8" in audit["hidden_from_default"]
+    assert "Calculate all 120 mechanical 3-string groups" in audit["policy"]
+    assert payload["grip_vocabulary"]["three_string_audit"]["total_three_string_combinations"] == 120
+
+
+def test_three_string_grip_vocabulary_classifies_required_extended_and_pocket_grips() -> None:
+    assert grip_vocabulary_entry("3-4-5").tier == "core"
+    assert grip_vocabulary_entry("5-6-7").tier == "path"
+    assert grip_vocabulary_entry("6-7-10").tier == "path"
+    assert grip_vocabulary_entry("4-6-10").tier == "extended"
+    assert grip_vocabulary_entry("3-5-8").tier == "song-tab-vocabulary"
+    assert grip_vocabulary_entry("3-5-9").tier == "song-tab-vocabulary"
+    assert grip_vocabulary_entry("5-7-8").tier == "e-lower-pocket"
+    assert grip_vocabulary_entry((5, 7, 8)).required_vocabulary == "e-lower-pockets"
+    assert "E-lower pocket grip" in grip_vocabulary_entry("5-7-8").explanation
+    assert "9th-string color is context-dependent" in grip_vocabulary_entry("3-5-9").watch_out
+    assert grip_vocabulary_entry("1-2-3") is None
 
 
 def test_control_impact_preview_contract_describes_standard_e9_changes_in_key_context() -> None:
@@ -585,7 +647,8 @@ def test_explanation_text_for_advanced_e_lower_pocket_uses_mechanical_name() -> 
     assert "G major" in explanation
     assert "E-lower lever" in explanation
     assert "mechanical E-lower lever name" in explanation
-    assert "advanced swap" in explanation
+    assert "Grip vocabulary: E-lower pocket" in explanation
+    assert "An E-lower pocket grip" in explanation
     assert "validated E9 pitch logic" in explanation
 
 
@@ -916,6 +979,60 @@ def test_advanced_swaps_and_e_lower_pocket_are_explicit() -> None:
         assert row["per_string_changes"] == {
             "8": {"from": "E", "to": "Eb/D#", "controls": "E-lower"}
         }
+
+
+def test_required_extended_grip_examples_are_pitch_validated_when_the_notes_fit() -> None:
+    wide_ab = validate_explorer_candidate(
+        ExplorerCandidate(
+            key="F",
+            scale_type="major",
+            harmony_type="three_string_diatonic",
+            scale_degree=5,
+            chord_function="V",
+            chord_name="C",
+            chord_quality="major",
+            fret=3,
+            strings=(4, 6, 10),
+            controls=("A", "B"),
+            position_family="wide_ab",
+            difficulty_tier="advanced",
+        )
+    ).to_dict()
+    assert wide_ab["string_group"] == "4-6-10"
+    assert wide_ab["notes"] == {"4": "G", "6": "C", "10": "E"}
+    assert set(wide_ab["intervals"].values()) == {"1", "3", "5"}
+    assert wide_ab["pedals"] == ["A", "B"]
+    assert wide_ab["per_string_changes"] == {
+        "6": {"from": "G#", "to": "A", "controls": "B"},
+        "10": {"from": "B", "to": "C#", "controls": "A"},
+    }
+    assert "wide grip" in wide_ab["explanation_summary"]
+
+    spread_bc = validate_explorer_candidate(
+        ExplorerCandidate(
+            key="F",
+            scale_type="major",
+            harmony_type="three_string_diatonic",
+            scale_degree=5,
+            chord_function="V",
+            chord_name="C",
+            chord_quality="major",
+            fret=3,
+            strings=(3, 5, 8),
+            controls=("B", "C"),
+            position_family="spread_bc",
+            difficulty_tier="advanced",
+        )
+    ).to_dict()
+    assert spread_bc["string_group"] == "3-5-8"
+    assert spread_bc["notes"] == {"3": "C", "5": "E", "8": "G"}
+    assert spread_bc["intervals"] == {"3": "1", "5": "3", "8": "5"}
+    assert spread_bc["pedals"] == ["B", "C"]
+    assert spread_bc["per_string_changes"] == {
+        "3": {"from": "G#", "to": "A", "controls": "B"},
+        "5": {"from": "B", "to": "C#", "controls": "C"},
+    }
+    assert "spread grip" in spread_bc["explanation_summary"]
 
 
 def test_b_plus_c_rejects_unvalidated_string_groups() -> None:

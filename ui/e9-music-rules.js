@@ -1,11 +1,13 @@
 (function (root) {
   "use strict";
 
-  const CORE_GROUPS = new Set(["3-4-5", "4-5-6", "5-6-8", "6-8-10", "5-6-7", "6-7-10"]);
-  const ADVANCED_GROUPS = new Set(["5-7-8"]);
+  const CORE_GROUPS = new Set(["3-4-5", "4-5-6", "5-6-8", "6-8-10"]);
+  const PATH_GROUPS = new Set(["5-6-7", "6-7-10"]);
+  const E_LOWER_POCKET_GROUPS = new Set(["5-7-8"]);
+  const ADVANCED_GROUPS = new Set([...PATH_GROUPS, ...E_LOWER_POCKET_GROUPS]);
   const TWO_STRING_GROUPS = new Set(["3-5", "3-6", "4-6", "4-8", "5-8", "5-9", "6-9", "6-10", "8-10", "5-6", "3-4"]);
   const FIVE_EIGHT_GROUPS = new Set(["5-8"]);
-  const EXTENDED_VOICING_GRIPS = new Set(["4-6-10", "3-5-8", "5-6-9", "4-6-9", "3-5-6", "4-5-8", "5-8-10"]);
+  const EXTENDED_VOICING_GRIPS = new Set(["4-6-10", "3-5-8", "3-5-9", "5-6-9", "4-6-9", "3-5-6", "4-5-8", "5-8-10"]);
   const DOMINANT_9TH_GRIPS = new Set(["5-6-9", "4-6-9", "6-9", "5-9", "4-5-6-9"]);
   const TWO_STRING_DISPLAY_GROUPS = new Set([...TWO_STRING_GROUPS, ...FIVE_EIGHT_GROUPS]);
   const DEFAULT_E9_OPEN_STRINGS = {
@@ -42,19 +44,20 @@
     "G-lower": { 1: "G", 6: "F#" },
   };
   const GRIP_REGISTRY = [
-    { strings: "3-4-5", tier: "core", label: "Core grip", roles: ["melody_harmony", "chord_voicing"], note: "common high triad" },
-    { strings: "4-5-6", tier: "core", label: "Core grip", roles: ["melody_harmony", "chord_voicing"], note: "common middle triad" },
-    { strings: "5-6-8", tier: "core", label: "Core grip", roles: ["chord_voicing", "bass_root_support"], note: "common straight-bar support grip" },
-    { strings: "6-8-10", tier: "core", label: "Core grip", roles: ["chord_voicing", "bass_root_support"], note: "common lower support grip" },
-    { strings: "5-6-7", tier: "core", label: "Core grip", roles: ["melody_harmony", "chord_voicing"], note: "common A+B minor route" },
-    { strings: "6-7-10", tier: "core", label: "Core grip", roles: ["chord_voicing", "bass_root_support"], note: "common lower A+B route" },
-    { strings: "4-6-10", tier: "extended", label: "Extended grip", roles: ["chord_voicing", "bass_root_support"], note: "wide grip / tab vocabulary" },
-    { strings: "3-5-8", tier: "extended", label: "Extended grip", roles: ["chord_voicing", "passing_color"], note: "wide grip / tab vocabulary" },
-    { strings: "5-6-9", tier: "extended", label: "Extended grip", roles: ["dominant_color", "chord_voicing"], note: "9th-string color" },
-    { strings: "4-6-9", tier: "extended", label: "Extended grip", roles: ["dominant_color", "chord_voicing"], note: "9th-string color" },
-    { strings: "3-5-6", tier: "extended", label: "Extended grip", roles: ["melody_harmony", "passing_color"], note: "tab vocabulary" },
-    { strings: "4-5-8", tier: "extended", label: "Extended grip", roles: ["chord_voicing", "passing_color"], note: "tab vocabulary" },
-    { strings: "5-8-10", tier: "extended", label: "Extended grip", roles: ["chord_voicing", "bass_root_support", "pad_sustain"], note: "wide support grip; possible pad / sustain" },
+    { strings: "3-4-5", tier: "core", label: "Core grip", roles: ["harmonized_scale_path", "melody_harmony", "chord_voicing", "chord_shell"], note: "common high triad", explanation: "A core adjacent grip for higher triad work and harmonized-scale teaching." },
+    { strings: "4-5-6", tier: "core", label: "Core grip", roles: ["harmonized_scale_path", "melody_harmony", "chord_voicing", "chord_shell"], note: "common middle triad", explanation: "A core adjacent grip for middle-register triads and beginner chord work." },
+    { strings: "5-6-8", tier: "core", label: "Core grip", roles: ["chord_voicing", "chord_shell", "bass_root_support", "pad_sustain"], note: "common straight-bar support grip", explanation: "A core support grip that keeps the chord compact on the lower-middle strings." },
+    { strings: "6-8-10", tier: "core", label: "Core grip", roles: ["chord_voicing", "chord_shell", "bass_root_support", "pad_sustain"], note: "common lower support grip", explanation: "A core lower support grip for straight-bar triads and pocket reference." },
+    { strings: "5-6-7", tier: "path", label: "Path grip", roles: ["harmonized_scale_path", "minor_color", "passing_color", "alternate_position"], note: "A+B minor path route", explanation: "A path grip often used with pedals to get minor or harmonized-scale movement without leaving the pocket." },
+    { strings: "6-7-10", tier: "path", label: "Path grip", roles: ["harmonized_scale_path", "minor_color", "bass_root_support", "alternate_position"], note: "lower A+B path route", explanation: "A lower path grip often used with pedals to keep harmonized movement connected in the low strings." },
+    { strings: "4-6-10", tier: "extended", label: "Extended grip", roles: ["wide_voicing", "chord_voicing", "bass_root_support", "alternate_position"], note: "wide grip / tab vocabulary", explanation: "A wide grip that spreads the chord out. Useful when a tight adjacent grip sounds too crowded or when you want a lower support note under the top voice." },
+    { strings: "3-5-8", tier: "song_tab_vocabulary", label: "Song/tab vocabulary grip", roles: ["spread_voicing", "chord_voicing", "passing_color", "alternate_position"], note: "spread grip / song vocabulary", explanation: "A spread grip with more space between notes. Useful when the close-position grip sounds too tight or when you want a more open color." },
+    { strings: "3-5-9", tier: "song_tab_vocabulary", label: "Song/tab vocabulary grip", roles: ["wide_voicing", "dominant_color", "passing_color"], note: "wider 9th-string color grip", explanation: "A wider color grip that can bring the 9th string into the voicing. Useful in some song pockets, but more context-dependent than the core grips.", watchOut: "The 9th-string color is context-dependent; validate the target chord before naming it." },
+    { strings: "5-6-9", tier: "extended", label: "Extended grip", roles: ["dominant_color", "passing_color", "chord_voicing"], note: "9th-string color", explanation: "Uses the 9th string to add a color tone. Useful for dominant-7 or passing-color sounds when the notes support that function.", watchOut: "9th-string involvement alone does not make a dominant chord." },
+    { strings: "4-6-9", tier: "extended", label: "Extended grip", roles: ["wide_voicing", "dominant_color", "passing_color"], note: "9th-string color", explanation: "A wide partial grip that brings in the 9th string. Useful for color tones and less crowded voicings.", watchOut: "Treat as a partial/color grip unless the pitch math confirms the full target chord." },
+    { strings: "3-5-6", tier: "extended", label: "Extended grip", roles: ["spread_voicing", "melody_harmony", "passing_color"], note: "tab vocabulary", explanation: "A non-core spread grip for passing color or alternate melody-harmony spacing." },
+    { strings: "4-5-8", tier: "extended", label: "Extended grip", roles: ["spread_voicing", "chord_voicing", "pad_sustain", "alternate_position"], note: "tab vocabulary", explanation: "An alternate spread grip that can keep a held lower note under a tighter upper pair." },
+    { strings: "5-8-10", tier: "extended", label: "Extended grip", roles: ["wide_voicing", "chord_voicing", "bass_root_support", "pad_sustain"], note: "wide support grip; possible pad / sustain", explanation: "A wide lower support grip that can work as a pad or sustain shape when the notes fit the chord." },
     { strings: "3-5", tier: "two_string", label: "Two-string grip", roles: ["melody_harmony"], note: "dyad / melody harmony" },
     { strings: "3-6", tier: "two_string", label: "Two-string grip", roles: ["melody_harmony", "passing_color"], note: "dyad / passing color" },
     { strings: "4-6", tier: "two_string", label: "Two-string grip", roles: ["melody_harmony", "passing_color"], note: "dyad / melody harmony" },
@@ -64,7 +67,7 @@
     { strings: "6-9", tier: "two_string", label: "Two-string grip", roles: ["dominant_color", "bass_root_support", "pad_sustain"], note: "9th-string color; possible pad / sustain" },
     { strings: "6-10", tier: "two_string", label: "Two-string grip", roles: ["bass_root_support", "pad_sustain"], note: "low dyad / possible pad / sustain" },
     { strings: "8-10", tier: "two_string", label: "Two-string grip", roles: ["bass_root_support", "pad_sustain"], note: "low dyad / possible pad / sustain" },
-    { strings: "5-7-8", tier: "advanced", label: "Advanced grip", roles: ["passing_color", "chord_voicing"], note: "advanced E-lower pocket" },
+    { strings: "5-7-8", tier: "e_lower_pocket", label: "E-lower pocket", roles: ["e_lower_pocket", "lever_pocket", "alternate_position", "chord_voicing"], note: "advanced E-lower pocket", explanation: "An E-lower pocket grip. Useful when you want a smooth color change at the same fret instead of moving the bar.", watchOut: "Most useful when the E-lower lever is part of the control state." },
     { strings: "4-5-6-9", tier: "advanced", label: "Advanced grip", roles: ["dominant_color", "chord_voicing"], note: "four-string 9th-string dominant color" },
   ];
   const NOTE_CONTROL_STATES = [
@@ -1049,10 +1052,12 @@
     EXTENDED_VOICING_GRIPS,
     FIVE_EIGHT_GROUPS,
     GRIP_REGISTRY,
+    E_LOWER_POCKET_GROUPS,
     MAJOR_SCALE_INTERVALS,
     MAJOR_SCALE_SEQUENCES,
     NATURAL_MINOR_SCALE_SEQUENCES,
     NOTE_CONTROL_STATES,
+    PATH_GROUPS,
     TWO_STRING_DISPLAY_GROUPS,
     TWO_STRING_GROUPS,
     buildChordFinderTarget,

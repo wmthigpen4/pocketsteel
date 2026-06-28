@@ -340,50 +340,6 @@
       font-weight: 800;
     }
 
-    .explorer-grip-help-disclosure {
-      grid-column: 1 / -1;
-      max-width: 980px;
-      margin: -2px 0 0;
-    }
-
-    .explorer-grip-help-disclosure summary {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      color: rgba(255, 247, 232, 0.56);
-      font-size: 0.78rem;
-      font-weight: 800;
-      line-height: 1.42;
-      cursor: pointer;
-      list-style: none;
-    }
-
-    .explorer-grip-help-disclosure summary::-webkit-details-marker {
-      display: none;
-    }
-
-    .explorer-grip-help-disclosure summary::after {
-      content: "+";
-      color: var(--gold);
-      font-size: 0.9rem;
-    }
-
-    .explorer-grip-help-disclosure[open] summary {
-      margin-bottom: 6px;
-    }
-
-    .explorer-grip-help-disclosure[open] summary::after {
-      content: "-";
-    }
-
-    .explorer-grip-help-disclosure p {
-      max-width: 760px;
-      margin: 0;
-      color: rgba(255, 247, 232, 0.58);
-      font-size: 0.78rem;
-      line-height: 1.45;
-    }
-
     .explorer-summary {
       display: flex;
       flex-wrap: wrap;
@@ -403,11 +359,6 @@
       background: rgba(0, 0, 0, 0.28);
       color: var(--text);
       font-weight: 700;
-    }
-
-    .explorer-scale-summary {
-      align-self: end;
-      margin-top: auto;
     }
 
     .explorer-pill--trust {
@@ -2107,10 +2058,12 @@
         <select id="explorer-grip-vocabulary" aria-describedby="explorer-grip-vocabulary-help">
           <option value="core" selected>Core</option>
           <option value="extended">Extended</option>
+          <option value="song_tab">Song/tab vocabulary</option>
+          <option value="e_lower_pockets">E-lower pockets</option>
           <option value="two_string">Two-string</option>
-          <option value="all">All practical</option>
+          <option value="all">All legitimate</option>
         </select>
-        <p class="explorer-control-help" id="explorer-grip-vocabulary-help">Core keeps the default view clean. Extended and two-string reveal wider tab and dyad vocabulary.</p>
+        <p class="explorer-control-help" id="explorer-grip-vocabulary-help">Core keeps the default view clean. Extended, song/tab, E-lower pockets, and two-string vocabulary are opt-in.</p>
       </div>
       <div class="explorer-control">
         <label for="explorer-scale">Scale</label>
@@ -2145,20 +2098,27 @@
             <option value="5-6-8">5-6-8</option>
             <option value="6-8-10">6-8-10</option>
           </optgroup>
-          <optgroup label="Advanced swaps">
+          <optgroup label="Path grips">
             <option value="5-6-7">5-6-7</option>
             <option value="6-7-10">6-7-10</option>
+          </optgroup>
+          <optgroup label="Extended grips">
+            <option value="4-6-10">4-6-10</option>
+            <option value="4-6-9">4-6-9</option>
+            <option value="5-6-9">5-6-9</option>
+            <option value="3-5-6">3-5-6</option>
+            <option value="4-5-8">4-5-8</option>
+            <option value="5-8-10">5-8-10</option>
+          </optgroup>
+          <optgroup label="Song/tab vocabulary grips">
+            <option value="3-5-8">3-5-8</option>
+            <option value="3-5-9">3-5-9</option>
+          </optgroup>
+          <optgroup label="E-lower pocket grips">
             <option value="5-7-8">5-7-8</option>
           </optgroup>
         </select>
         <p class="explorer-control-help" id="explorer-string-group-help">Choose All or one exact group. Path mode uses Path family instead.</p>
-      </div>
-      <details class="explorer-grip-help-disclosure">
-        <summary>About grip vocabulary</summary>
-        <p>Core grips are common string sets. Extended and two-string vocabulary are opt-in; 5-7-8 is the advanced E-lower pocket, and 5-8 appears in 2-string branch routes.</p>
-      </details>
-      <div class="explorer-scale-summary" aria-live="polite">
-        <span class="explorer-pill">Scale: <span id="explorer-scale-notes">G - A - B - C - D - E - F#</span></span>
       </div>
     </section>
 
@@ -2192,7 +2152,10 @@
         <div><dt>°</dt><dd>The diminished symbol. In a scale-degree label, vii° means the diminished chord built on the seventh scale degree.</dd></div>
         <div><dt>Partial row</dt><dd>A row that does not contain every chord tone by itself. Use the warning text to see whether it is partial diminished, partial m7b5, rootless, or needs musical context.</dd></div>
         <div><dt>Core grip</dt><dd>A beginner-friendly string set used for the default Explorer and harmonized-scale views.</dd></div>
+        <div><dt>Path grip</dt><dd>A string set used to keep harmonized movement connected inside a pocket.</dd></div>
         <div><dt>Extended grip</dt><dd>A real-world tab or voicing-discovery grip, often wider or less direct than the beginner core grips.</dd></div>
+        <div><dt>Song/tab vocabulary grip</dt><dd>A context-dependent grip seen in real playing vocabulary. It is calculated and explained, but not treated as a beginner default.</dd></div>
+        <div><dt>E-lower pocket</dt><dd>A grip whose practical value depends on the E-lower lever; 5-7-8 is the required pocket case.</dd></div>
         <div><dt>Two-string grip / dyad</dt><dd>A two-note grip. It may function as harmony, a partial chord, a pad, or passing color depending on context.</dd></div>
         <div><dt>Pad / sustain</dt><dd>A held support sound, often two or more strings, used underneath or around moving melody notes.</dd></div>
         <div><dt>Partial voicing</dt><dd>A useful part of a chord that does not include every chord tone by itself.</dd></div>
@@ -2220,8 +2183,6 @@
         <div><dt>String group</dt><dd>The selected set of strings used for a row, such as 4-5-6.</dd></div>
       </dl>
     </dialog>
-
-    <section class="explorer-control-impact-preview" id="explorer-control-impact-preview" aria-label="Pedal and lever impact preview" hidden></section>
 
     <section class="explorer-panel" aria-label="Explorer fretboard">
       <div class="explorer-fretboard-tools" aria-label="Fretboard display controls">
@@ -2258,6 +2219,8 @@
       <div class="explorer-tooltip" id="explorer-tooltip" role="tooltip" hidden></div>
     </section>
 
+    <section class="explorer-control-impact-preview" id="explorer-control-impact-preview" aria-label="Pedal and lever impact preview" hidden></section>
+
     <section class="explorer-details" aria-label="Explorer position details">
       <div class="explorer-row-list" id="explorer-row-list" aria-label="Explorer row details"></div>
       <div class="explorer-selected-detail" id="explorer-selected-detail" aria-live="polite"></div>
@@ -2266,7 +2229,7 @@
 
   <script src="pedal-steel-fretboard.js?v=explorer-harmonized-path-mode-20260626"></script>
   <script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>
-  <script src="e9-music-rules.js?v=explorer-octave-register-20260627"></script>
-  <script src="e9-fretboard-explorer.js?v=compact-explorer-tools-20260628"></script>
+  <script src="e9-music-rules.js?v=legitimate-grip-vocabulary-20260628"></script>
+  <script src="e9-fretboard-explorer.js?v=legitimate-grip-vocabulary-20260628"></script>
 </body>
 </html>

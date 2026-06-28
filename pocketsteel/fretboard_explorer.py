@@ -8,6 +8,7 @@ harmonized-scale and diatonic-harmony surfaces.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from itertools import combinations
 from typing import Literal
 
 from pocketsteel.fretboard_examples import (
@@ -45,10 +46,215 @@ VoicingStatus = Literal["full", "partial", "implied", "unavailable"]
 MVP_COPEDENT_ID = DEFAULT_COPEDENT_ID
 MVP_COPEDENT_LABEL = "Emmons E9"
 
+GripTier = Literal[
+    "core",
+    "path",
+    "extended",
+    "e-lower-pocket",
+    "song-tab-vocabulary",
+    "heuristic",
+    "unusual",
+]
+
+
+@dataclass(frozen=True)
+class GripVocabularyEntry:
+    strings: tuple[int, ...]
+    tier: GripTier
+    roles: tuple[str, ...]
+    default_visible: bool
+    harmonized_scale_default: bool
+    allowed_in_chord_finder: bool
+    allowed_in_voicing_identifier: bool
+    required_vocabulary: str
+    explanation: str
+    watch_out: str = ""
+
+    @property
+    def label(self) -> str:
+        return grip_label(self.strings)
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "strings": list(self.strings),
+            "label": self.label,
+            "tier": self.tier,
+            "roles": list(self.roles),
+            "default_visible": self.default_visible,
+            "harmonized_scale_default": self.harmonized_scale_default,
+            "allowed_in_chord_finder": self.allowed_in_chord_finder,
+            "allowed_in_voicing_identifier": self.allowed_in_voicing_identifier,
+            "required_vocabulary": self.required_vocabulary,
+            "explanation": self.explanation,
+            "watch_out": self.watch_out,
+        }
+
+
 CORE_GRIPS: tuple[str, ...] = ("3-4-5", "4-5-6", "5-6-8", "6-8-10")
-ADVANCED_GRIPS: tuple[str, ...] = ("5-6-7", "6-7-10", "5-7-8")
+PATH_GRIPS: tuple[str, ...] = ("5-6-7", "6-7-10")
+EXTENDED_GRIPS: tuple[str, ...] = ("4-6-10", "4-6-9", "5-6-9", "3-5-6", "4-5-8", "5-8-10")
+SONG_TAB_VOCABULARY_GRIPS: tuple[str, ...] = ("3-5-8", "3-5-9")
+E_LOWER_POCKET_GRIPS: tuple[str, ...] = ("5-7-8",)
+ADVANCED_GRIPS: tuple[str, ...] = PATH_GRIPS + E_LOWER_POCKET_GRIPS
 FIVE_EIGHT_BRANCH_GRIPS: tuple[str, ...] = ("5-8",)
-SUPPORTED_GRIPS: tuple[str, ...] = CORE_GRIPS + ADVANCED_GRIPS + FIVE_EIGHT_BRANCH_GRIPS
+SUPPORTED_THREE_STRING_GRIPS: tuple[str, ...] = (
+    CORE_GRIPS + PATH_GRIPS + EXTENDED_GRIPS + SONG_TAB_VOCABULARY_GRIPS + E_LOWER_POCKET_GRIPS
+)
+SUPPORTED_GRIPS: tuple[str, ...] = SUPPORTED_THREE_STRING_GRIPS + FIVE_EIGHT_BRANCH_GRIPS
+
+
+def _grip_entry(
+    label: str,
+    *,
+    tier: GripTier,
+    roles: tuple[str, ...],
+    default_visible: bool = False,
+    harmonized_scale_default: bool = False,
+    required_vocabulary: str,
+    explanation: str,
+    watch_out: str = "",
+) -> tuple[str, GripVocabularyEntry]:
+    strings = tuple(int(part) for part in label.split("-"))
+    return (
+        label,
+        GripVocabularyEntry(
+            strings=strings,
+            tier=tier,
+            roles=roles,
+            default_visible=default_visible,
+            harmonized_scale_default=harmonized_scale_default,
+            allowed_in_chord_finder=True,
+            allowed_in_voicing_identifier=True,
+            required_vocabulary=required_vocabulary,
+            explanation=explanation,
+            watch_out=watch_out,
+        ),
+    )
+
+
+THREE_STRING_GRIP_VOCABULARY: dict[str, GripVocabularyEntry] = dict(
+    [
+        _grip_entry(
+            "3-4-5",
+            tier="core",
+            roles=("harmonized scale path", "chord shell", "melody harmony"),
+            default_visible=True,
+            harmonized_scale_default=True,
+            required_vocabulary="core",
+            explanation="A core adjacent grip for higher triad work and harmonized-scale teaching.",
+        ),
+        _grip_entry(
+            "4-5-6",
+            tier="core",
+            roles=("harmonized scale path", "chord shell", "melody harmony"),
+            default_visible=True,
+            harmonized_scale_default=True,
+            required_vocabulary="core",
+            explanation="A core adjacent grip for middle-register triads and beginner chord work.",
+        ),
+        _grip_entry(
+            "5-6-8",
+            tier="core",
+            roles=("chord shell", "pad / sustain", "bass/root support"),
+            default_visible=True,
+            harmonized_scale_default=True,
+            required_vocabulary="core",
+            explanation="A core support grip that keeps the chord compact on the lower-middle strings.",
+        ),
+        _grip_entry(
+            "6-8-10",
+            tier="core",
+            roles=("chord shell", "pad / sustain", "bass/root support"),
+            default_visible=True,
+            harmonized_scale_default=True,
+            required_vocabulary="core",
+            explanation="A core lower support grip for straight-bar triads and pocket reference.",
+        ),
+        _grip_entry(
+            "5-6-7",
+            tier="path",
+            roles=("harmonized scale path", "minor color", "passing color"),
+            harmonized_scale_default=True,
+            required_vocabulary="extended",
+            explanation="A path grip often used with pedals to get minor or harmonized-scale movement without leaving the pocket.",
+        ),
+        _grip_entry(
+            "6-7-10",
+            tier="path",
+            roles=("harmonized scale path", "minor color", "bass/root support"),
+            harmonized_scale_default=True,
+            required_vocabulary="extended",
+            explanation="A lower path grip often used with pedals to keep harmonized movement connected in the low strings.",
+        ),
+        _grip_entry(
+            "4-6-10",
+            tier="extended",
+            roles=("wide voicing", "bass/root support", "alternate position"),
+            required_vocabulary="extended",
+            explanation="A wide grip that spreads the chord out. Useful when a tight adjacent grip sounds too crowded or when you want a lower support note under the top voice.",
+        ),
+        _grip_entry(
+            "3-5-8",
+            tier="song-tab-vocabulary",
+            roles=("spread voicing", "alternate position", "song/tab vocabulary"),
+            required_vocabulary="song-tab",
+            explanation="A spread grip with more space between notes. Useful when the close-position grip sounds too tight or when you want a more open color.",
+        ),
+        _grip_entry(
+            "3-5-9",
+            tier="song-tab-vocabulary",
+            roles=("wide voicing", "dominant color", "song/tab vocabulary"),
+            required_vocabulary="song-tab",
+            explanation="A wider color grip that can bring the 9th string into the voicing. Useful in some song pockets, but more context-dependent than the core grips.",
+            watch_out="The 9th-string color is context-dependent; validate the target chord before naming it.",
+        ),
+        _grip_entry(
+            "5-6-9",
+            tier="extended",
+            roles=("dominant color", "passing color", "chord shell"),
+            required_vocabulary="extended",
+            explanation="Uses the 9th string to add a color tone. Useful for dominant-7 or passing-color sounds when the notes support that function.",
+            watch_out="9th-string involvement alone does not make a dominant chord.",
+        ),
+        _grip_entry(
+            "4-6-9",
+            tier="extended",
+            roles=("wide voicing", "dominant color", "passing color"),
+            required_vocabulary="extended",
+            explanation="A wide partial grip that brings in the 9th string. Useful for color tones and less crowded voicings.",
+            watch_out="Treat as a partial/color grip unless the pitch math confirms the full target chord.",
+        ),
+        _grip_entry(
+            "3-5-6",
+            tier="extended",
+            roles=("spread voicing", "passing color", "alternate position"),
+            required_vocabulary="extended",
+            explanation="A non-core spread grip for passing color or alternate melody-harmony spacing.",
+        ),
+        _grip_entry(
+            "4-5-8",
+            tier="extended",
+            roles=("spread voicing", "pad / sustain", "alternate position"),
+            required_vocabulary="extended",
+            explanation="An alternate spread grip that can keep a held lower note under a tighter upper pair.",
+        ),
+        _grip_entry(
+            "5-8-10",
+            tier="extended",
+            roles=("wide voicing", "pad / sustain", "bass/root support"),
+            required_vocabulary="extended",
+            explanation="A wide lower support grip that can work as a pad or sustain shape when the notes fit the chord.",
+        ),
+        _grip_entry(
+            "5-7-8",
+            tier="e-lower-pocket",
+            roles=("E-lower pocket", "lever pocket", "alternate position"),
+            required_vocabulary="e-lower-pockets",
+            explanation="An E-lower pocket grip. Useful when you want a smooth color change at the same fret instead of moving the bar.",
+            watch_out="Most useful when the E-lower lever is part of the control state.",
+        ),
+    ]
+)
 
 G_MAJOR_SCALE_NOTES: tuple[str, ...] = ("G", "A", "B", "C", "D", "E", "F#")
 G_NATURAL_MINOR_SCALE_NOTES: tuple[str, ...] = ("G", "A", "Bb", "C", "D", "Eb", "F")
@@ -229,6 +435,54 @@ class ExplorerCandidate:
 
 def grip_label(strings: tuple[int, ...]) -> str:
     return "-".join(str(string) for string in strings)
+
+
+def grip_vocabulary_entry(strings: tuple[int, ...] | str) -> GripVocabularyEntry | None:
+    label = strings if isinstance(strings, str) else grip_label(strings)
+    return THREE_STRING_GRIP_VOCABULARY.get(label)
+
+
+def grip_vocabulary_payload() -> list[dict[str, object]]:
+    return [entry.to_dict() for entry in THREE_STRING_GRIP_VOCABULARY.values()]
+
+
+def all_three_string_grip_labels() -> tuple[str, ...]:
+    return tuple(grip_label(group) for group in combinations(range(1, 11), 3))
+
+
+def grip_vocabulary_audit() -> dict[str, object]:
+    all_groups = all_three_string_grip_labels()
+    registered = tuple(THREE_STRING_GRIP_VOCABULARY)
+    unclassified = tuple(group for group in all_groups if group not in THREE_STRING_GRIP_VOCABULARY)
+    hidden_from_default = tuple(
+        group
+        for group, entry in THREE_STRING_GRIP_VOCABULARY.items()
+        if not entry.default_visible
+    )
+    known_required = (
+        "5-7-8",
+        "5-6-7",
+        "6-7-10",
+        "4-6-10",
+        "3-5-9",
+        "3-5-8",
+    )
+    return {
+        "total_three_string_combinations": len(all_groups),
+        "registered_count": len(registered),
+        "registered": list(registered),
+        "unclassified_count": len(unclassified),
+        "unclassified": list(unclassified),
+        "hidden_from_default": list(hidden_from_default),
+        "known_required_present": {
+            group: group in THREE_STRING_GRIP_VOCABULARY
+            for group in known_required
+        },
+        "policy": (
+            "Calculate all 120 mechanical 3-string groups, teach registered/core groups first, "
+            "and keep unclassified heuristic candidates out of beginner/default views until reviewed."
+        ),
+    }
 
 
 def normalize_explorer_key(key: str) -> str:
@@ -560,6 +814,18 @@ def controls_for_teaching(controls: tuple[str, ...]) -> str:
     return " + ".join(CONTROL_EXPLANATION_LABELS.get(control, control) for control in controls)
 
 
+def grip_tier_display_label(tier: str) -> str:
+    return {
+        "core": "core",
+        "path": "path",
+        "extended": "extended",
+        "song-tab-vocabulary": "song/tab vocabulary",
+        "e-lower-pocket": "E-lower pocket",
+        "heuristic": "heuristic",
+        "unusual": "unusual",
+    }.get(tier, tier.replace("-", " "))
+
+
 def scale_label(key: str, scale_type: ExplorerScaleType) -> str:
     return f"{key} {'natural minor' if scale_type == 'natural_minor' else 'major'}"
 
@@ -591,6 +857,7 @@ def row_teaching_explanation(
     notes_text = notes_for_teaching(strings, display_notes)
     intervals_text = notes_for_teaching(strings, intervals)
     controls_text = controls_for_teaching(controls)
+    grip_entry = grip_vocabulary_entry(strings)
 
     if harmony_type == "two_string_harmonized":
         opening = (
@@ -635,7 +902,11 @@ def row_teaching_explanation(
         sentences.append("Use the mechanical E-raise lever name here; shorthand varies by copedent.")
     if harmony_type == "five_eight_branch":
         sentences.append("Keep the A+F and E-lower routes separate; they are both valid mechanical paths for this branch.")
-    if string_group in ADVANCED_GRIPS:
+    if grip_entry and grip_entry.tier != "core":
+        sentences.append(f"Grip vocabulary: {grip_tier_display_label(grip_entry.tier)}. {grip_entry.explanation}")
+        if grip_entry.watch_out:
+            sentences.append(grip_entry.watch_out)
+    elif string_group in ADVANCED_GRIPS:
         sentences.append("This is an advanced swap, so compare it with the nearby core grip before treating it as a default.")
     if voicing_status == "partial" and "b7" in omitted_intervals:
         sentences.append(
@@ -1183,9 +1454,6 @@ def advanced_e_lower_pocket_rows(key: str = "G") -> list[ExplorerRow]:
             position_family="e_lower_pocket",
             difficulty_tier="advanced",
             source_guidance_refs=("e9-harmony-guidance:5-7-8-e-lower-pocket",),
-            explanation_summary=(
-                f"Advanced 5-7-8 E-lower {key} major pocket; validated by pitch math."
-            ),
         )
         for fret in (8, 20)
     ]
@@ -1237,6 +1505,12 @@ def build_explorer_payload(key: str = "G", copedent_id: str | None = None) -> di
             },
             "harmony_types": ["two_string_harmonized", "three_string_diatonic", "five_eight_branch", "advanced_pocket"],
             "string_groups": list(SUPPORTED_GRIPS),
+        },
+        "grip_vocabulary": {
+            "version": "1.0",
+            "policy": "Calculate broadly, teach narrowly, rank honestly.",
+            "three_string_entries": grip_vocabulary_payload(),
+            "three_string_audit": grip_vocabulary_audit(),
         },
         "control_impact_preview": build_control_impact_preview(key, profile.id),
         "positions": rows,
@@ -1387,6 +1661,32 @@ def validate_explorer_payload(payload: dict[str, object]) -> None:
     positions = payload.get("positions")
     if not isinstance(positions, list) or not positions:
         raise ValueError("Explorer payload requires positions")
+    grip_vocabulary = payload.get("grip_vocabulary")
+    if not isinstance(grip_vocabulary, dict):
+        raise ValueError("Explorer payload requires grip_vocabulary")
+    entries = grip_vocabulary.get("three_string_entries")
+    audit = grip_vocabulary.get("three_string_audit")
+    if not isinstance(entries, list) or not entries:
+        raise ValueError("Explorer grip_vocabulary requires three_string_entries")
+    if not isinstance(audit, dict) or audit.get("total_three_string_combinations") != 120:
+        raise ValueError("Explorer grip_vocabulary requires 120-combination audit")
+    if not all(
+        isinstance(entry, dict)
+        and {
+            "strings",
+            "label",
+            "tier",
+            "roles",
+            "default_visible",
+            "harmonized_scale_default",
+            "allowed_in_chord_finder",
+            "allowed_in_voicing_identifier",
+            "required_vocabulary",
+            "explanation",
+        }.issubset(entry)
+        for entry in entries
+    ):
+        raise ValueError("Explorer grip_vocabulary entries are incomplete")
     impact_preview = payload.get("control_impact_preview")
     if not isinstance(impact_preview, dict) or impact_preview.get("type") != "e9-pedal-lever-impact-preview":
         raise ValueError("Explorer payload requires control_impact_preview")
