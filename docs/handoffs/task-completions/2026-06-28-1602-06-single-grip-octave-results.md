@@ -45,13 +45,13 @@ The browser UI was filtering correctly for `All Frets 0-24`, but the determinist
 - Result type: browser smoke
 - Exact browser URL tested: `http://127.0.0.1:8770/ui/e9-fretboard-explorer.html?v=single-grip-octave-results-local`
 - Cache-busted URL tested: `http://127.0.0.1:8770/ui/e9-fretboard-explorer.html?v=single-grip-octave-results-local`
-- Exact URL the user should use after protected-preview refresh: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=single-grip-octave-results-<commit>`
+- Exact URL the user should use after protected-preview refresh: `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=single-grip-octave-results-bbbe01c`
 - Auth required: no for local smoke; yes for protected preview
 - Auth provider: none locally; Cloudflare Access for protected preview
-- Cloudflare Access login result: not required locally
+- Cloudflare Access login result: not required locally; already authenticated for protected-preview smoke
 - Local backend URL: `http://127.0.0.1:8770`
 - Expected backend port: `8770`
-- Expected git HEAD: `1c1383b` at task start; final commit reported in closeout
+- Expected git HEAD: `1c1383b` at task start; implementation commit `bbbe01c`
 - Version endpoint: not checked for local static smoke
 - Version endpoint result: not checked
 - If version endpoint missing, how version is inferred: local working tree plus cache-busted URL
@@ -61,7 +61,7 @@ The browser UI was filtering correctly for `All Frets 0-24`, but the determinist
 - Whether `/ui/steel-guitar-rag-mock.html` is expected to work: not required for this scoped Explorer bug
 - Who should test this URL: Codex locally; Lane 12/user on protected preview after commit
 - Do not test these URLs: stale Explorer cache-bust URLs from prior slices for this fix
-- Known caveats: local smoke does not prove protected-preview cache freshness
+- Known caveats: first protected-preview navigation reported a timeout, but the tab reached the expected Explorer URL/title and the DOM smoke passed from the loaded page.
 
 ## Local Browser Smoke Result
 
@@ -85,6 +85,21 @@ Additional checks:
 - No `[object Object]` in body text.
 - No browser console warnings/errors were reported.
 
+## Protected-Preview Browser Smoke Result
+
+Protected URL tested:
+
+`https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=single-grip-octave-results-bbbe01c`
+
+Observed:
+- The page served `e9-fretboard-explorer-data.js?v=single-grip-octave-results-20260628`.
+- Cloudflare Access was already authenticated in the in-app browser.
+- The exact reported scenario rendered both fret 10 and fret 22 result cards:
+  - `Top note: G`, `Fret 10`, `Strings 3-4-5`, `With B+C`, `Harmony b3, 1, 5`
+  - `Top note: G`, `Fret 22`, `Strings 3-4-5`, `With B+C`, `Harmony b3, 1, 5`
+- No `[object Object]` in body text.
+- No browser console warnings/errors were reported.
+
 ## Tests And Checks
 
 Passed:
@@ -100,7 +115,6 @@ Passed:
 
 Not run:
 - Full pytest. Focused Explorer, frontend, and fretboard suites covered the touched generation and rendering path.
-- Protected-preview smoke. This should run after the scoped commit is available to the launchd/protected-preview runtime.
 
 ## Integration Notes
 
@@ -157,11 +171,11 @@ No.
 
 ## Recommended Next Lane
 
-Lane 12 protected-preview smoke against:
+User smoke against:
 
-`https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=single-grip-octave-results-<commit>`
+`https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=single-grip-octave-results-bbbe01c`
 
-Then user smoke the exact reported scenario.
+Verify the exact reported scenario remains visible after any browser caching or restart activity.
 
 ## Commit Readiness
 
@@ -169,4 +183,4 @@ Safe to commit.
 
 ## Suggested Next Step
 
-Lane 12: run protected-preview smoke for the E9 Fretboard Explorer at the cache-busted URL above, verify the All Frets 0-24 scenario renders fret 10 and fret 22, and record the protected-preview result.
+Lane 15 / user smoke: verify the E9 Fretboard Explorer at the cache-busted protected-preview URL above, especially the All Frets 0-24 scenario rendering both fret 10 and fret 22.
