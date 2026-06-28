@@ -410,6 +410,66 @@ assert.doesNotMatch(html, /\\[object Object\\]/);
     run_node(script)
 
 
+def test_same_fret_same_string_groups_are_staggered_as_whole_grips() -> None:
+    script = component_eval_script(
+        """
+const positions = [
+  {
+    id: "same-fret-b-345",
+    label: "B",
+    fret: 3,
+    strings: [3, 4, 5],
+    grip: "3-4-5",
+    visibleByDefault: true,
+    colorRole: "open"
+  },
+  {
+    id: "same-fret-c-345",
+    label: "C",
+    fret: 3,
+    strings: [3, 4, 5],
+    grip: "3-4-5",
+    visibleByDefault: true,
+    colorRole: "a-b"
+  }
+];
+const model = fretboard.buildFretboardModel({
+  positions,
+  hideFilterControls: true,
+  hidePositionTools: true,
+  hideLegend: true,
+  showHighlightLabels: true,
+  emphasizeVisibleHighlights: true
+});
+assert.equal(model.highlights.length, 2);
+assert.equal(model.highlights[0].fret, 3);
+assert.equal(model.highlights[1].fret, 3);
+assert.equal(model.highlights[0].x, model.highlights[1].x);
+assert.notEqual(model.highlights[0].renderX, model.highlights[1].renderX);
+assert.equal(model.highlights[0].renderOffsetX, -9);
+assert.equal(model.highlights[1].renderOffsetX, 9);
+assert.equal(model.highlights[0].overlapLaneCount, 2);
+assert.equal(model.highlights[1].overlapLaneCount, 2);
+assert.equal(JSON.stringify(model.highlights.map((item) => item.strings.join(","))), JSON.stringify(["3,4,5", "3,4,5"]));
+const html = fretboard.renderPedalSteelFretboard({
+  positions,
+  hideFilterControls: true,
+  hidePositionTools: true,
+  hideLegend: true,
+  showHighlightLabels: true,
+  emphasizeVisibleHighlights: true
+});
+assert.match(html, /data-highlight-id="same-fret-b-345"[^>]*data-highlight-fret-x="[^"]+"[^>]*data-highlight-render-offset-x="-9\\.000"/);
+assert.match(html, /data-highlight-id="same-fret-c-345"[^>]*data-highlight-fret-x="[^"]+"[^>]*data-highlight-render-offset-x="9\\.000"/);
+assert.match(html, /data-highlight-id="same-fret-b-345"[^>]*data-highlight-strings="3,4,5"/);
+assert.match(html, /data-highlight-id="same-fret-c-345"[^>]*data-highlight-strings="3,4,5"/);
+assert.doesNotMatch(html, /\\[object Object\\]/);
+"""
+    )
+
+    run_node(script)
+
+
 def test_optional_string_action_marker_labels_are_compact_and_off_by_default() -> None:
     script = component_eval_script(
         """

@@ -2528,11 +2528,13 @@
   }
 
   function markerGroupKey(row) {
+    const label = activeTopLabel(row) || row.chord_name || row.chord_function || row.scale_degree || "";
     return [
       "marker",
       row.fret,
       row.string_group,
       (row.strings || []).join("-"),
+      label,
     ].join(":");
   }
 
