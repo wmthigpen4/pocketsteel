@@ -520,6 +520,15 @@ def transpose_fret_from_g(g_fret: int, key: str) -> int:
     return fret
 
 
+def octave_equivalent_frets_from_g(g_fret: int, key: str) -> tuple[int, ...]:
+    fret = transpose_fret_from_g(g_fret, key)
+    frets = [fret]
+    octave_fret = fret + 12
+    if octave_fret <= 24:
+        frets.append(octave_fret)
+    return tuple(frets)
+
+
 def scale_notes_for_key(key: str, scale_type: ExplorerScaleType) -> tuple[str, ...]:
     root = normalize_explorer_key(key)
     intervals = MAJOR_SCALE_INTERVALS if scale_type == "major" else NATURAL_MINOR_SCALE_INTERVALS
@@ -1208,24 +1217,36 @@ def _major_candidate_rows_for_grip(strings: tuple[int, ...], *, key: str = "G") 
         (7, "vii° / partial viiø", "diminished", 13, ("E-raise",), strings, "e_raise_diminished"),
         (1, "I", "major", 15, (), strings, "no_pedals_no_levers"),
     ]
-    return tuple(
-        ExplorerCandidate(
-            key=key,
-            scale_type="major",
-            harmony_type="three_string_diatonic",
-            scale_degree=degree,
-            chord_function=function,
-            chord_name=chord_name_for_scale_degree(key, "major", degree),
-            chord_quality=quality,
-            fret=transpose_fret_from_g(fret, key),
-            strings=row_strings,
-            controls=controls,
-            position_family=family,
-            difficulty_tier="advanced" if row_strings != strings else "starter",
-            source_guidance_refs=(base_ref,),
-        )
-        for degree, function, quality, fret, controls, row_strings, family in rows
-    )
+    candidates: list[ExplorerCandidate] = []
+    seen: set[tuple[int, int, tuple[str, ...], tuple[int, ...], str]] = set()
+    for pass_index in (0, 1):
+        for degree, function, quality, g_fret, controls, row_strings, family in rows:
+            frets = octave_equivalent_frets_from_g(g_fret, key)
+            if pass_index >= len(frets):
+                continue
+            fret = frets[pass_index]
+            row_key = (degree, fret, controls, row_strings, family)
+            if row_key in seen:
+                continue
+            seen.add(row_key)
+            candidates.append(
+                ExplorerCandidate(
+                    key=key,
+                    scale_type="major",
+                    harmony_type="three_string_diatonic",
+                    scale_degree=degree,
+                    chord_function=function,
+                    chord_name=chord_name_for_scale_degree(key, "major", degree),
+                    chord_quality=quality,
+                    fret=fret,
+                    strings=row_strings,
+                    controls=controls,
+                    position_family=family,
+                    difficulty_tier="advanced" if row_strings != strings else "starter",
+                    source_guidance_refs=(base_ref,),
+                )
+            )
+    return tuple(candidates)
 
 
 def major_three_string_rows(key: str = "G") -> list[ExplorerRow]:
@@ -1263,24 +1284,36 @@ def _natural_minor_candidate_rows_for_grip(strings: tuple[int, ...], *, key: str
         (7, "VII", "major", 13, (), strings, "no_pedals_no_levers"),
         (1, "i", "minor", 13, minor_controls, minor_strings, "bc_minor" if "C" in minor_controls else "ab_minor"),
     ]
-    return tuple(
-        ExplorerCandidate(
-            key=key,
-            scale_type="natural_minor",
-            harmony_type="three_string_diatonic",
-            scale_degree=degree,
-            chord_function=function,
-            chord_name=chord_name_for_scale_degree(key, "natural_minor", degree),
-            chord_quality=quality,
-            fret=transpose_fret_from_g(fret, key),
-            strings=row_strings,
-            controls=controls,
-            position_family=family,
-            difficulty_tier="advanced" if row_strings != strings else "starter",
-            source_guidance_refs=(base_ref,),
-        )
-        for degree, function, quality, fret, controls, row_strings, family in rows
-    )
+    candidates: list[ExplorerCandidate] = []
+    seen: set[tuple[int, int, tuple[str, ...], tuple[int, ...], str]] = set()
+    for pass_index in (0, 1):
+        for degree, function, quality, g_fret, controls, row_strings, family in rows:
+            frets = octave_equivalent_frets_from_g(g_fret, key)
+            if pass_index >= len(frets):
+                continue
+            fret = frets[pass_index]
+            row_key = (degree, fret, controls, row_strings, family)
+            if row_key in seen:
+                continue
+            seen.add(row_key)
+            candidates.append(
+                ExplorerCandidate(
+                    key=key,
+                    scale_type="natural_minor",
+                    harmony_type="three_string_diatonic",
+                    scale_degree=degree,
+                    chord_function=function,
+                    chord_name=chord_name_for_scale_degree(key, "natural_minor", degree),
+                    chord_quality=quality,
+                    fret=fret,
+                    strings=row_strings,
+                    controls=controls,
+                    position_family=family,
+                    difficulty_tier="advanced" if row_strings != strings else "starter",
+                    source_guidance_refs=(base_ref,),
+                )
+            )
+    return tuple(candidates)
 
 
 def natural_minor_three_string_rows(key: str = "G") -> list[ExplorerRow]:

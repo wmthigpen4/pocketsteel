@@ -275,7 +275,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "pedal-steel-fretboard.js?v=explorer-ui-cleanup-20260623" not in html
     assert "pedal-steel-fretboard.js?v=selected-svg-render-20260623" not in html
     assert "pedal-steel-fretboard.js?v=explorer-compact-copedent-20260625" not in html
-    assert '<script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>' in html
+    assert '<script src="e9-fretboard-explorer-data.js?v=single-grip-octave-results-20260628"></script>' in html
     assert "[hidden] {\n      display: none !important;\n    }" in html
     assert '<script src="e9-music-rules.js?v=legitimate-grip-vocabulary-20260628"></script>' in html
     assert '<script src="e9-fretboard-explorer.js?v=e-lower-pocket-d-major-20260628"></script>' in html
@@ -744,11 +744,23 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     for rows in (g_major_three, g_minor_three):
         assert {"3-4-5", "4-5-6", "5-6-8", "5-6-7", "6-8-10", "6-7-10"}.issubset({row["string_group"] for row in rows})
     g_major_456 = [row for row in g_major_three if row["string_group"] == "4-5-6"]
-    assert [row["chord_name"] for row in g_major_456] == ["G", "A", "B", "C", "D", "E", "F#", "G"]
-    assert [row["fret"] for row in g_major_456] == [3, 3, 5, 8, 10, 10, 13, 15]
+    assert [row["chord_name"] for row in g_major_456[:8]] == ["G", "A", "B", "C", "D", "E", "F#", "G"]
+    assert [row["fret"] for row in g_major_456[:8]] == [3, 3, 5, 8, 10, 10, 13, 15]
+    assert [row["chord_name"] for row in g_major_456[8:]] == ["A", "B", "C", "D", "E"]
+    assert [row["fret"] for row in g_major_456[8:]] == [15, 17, 20, 22, 22]
+    g_major_345_top_g = [
+        row for row in g_major_three
+        if row["string_group"] == "3-4-5"
+        and row["display_top_voice"]["note"] == "G"
+        and row["pedals"] == ["B", "C"]
+        and row["levers"] == []
+    ]
+    assert [row["fret"] for row in g_major_345_top_g] == [10, 22]
     g_minor_456 = [row for row in g_minor_three if row["string_group"] == "4-5-6"]
-    assert [row["chord_name"] for row in g_minor_456] == ["G", "A", "Bb", "C", "D", "Eb", "F", "G"]
-    assert [row["fret"] for row in g_minor_456] == [1, 4, 6, 6, 8, 11, 13, 13]
+    assert [row["chord_name"] for row in g_minor_456[:8]] == ["G", "A", "Bb", "C", "D", "Eb", "F", "G"]
+    assert [row["fret"] for row in g_minor_456[:8]] == [1, 4, 6, 6, 8, 11, 13, 13]
+    assert [row["chord_name"] for row in g_minor_456[8:]] == ["A", "Bb", "C", "D", "Eb"]
+    assert [row["fret"] for row in g_minor_456[8:]] == [16, 18, 18, 20, 23]
     assert "B by itself may not match rows in this view that expect A+B together" in script
     assert "selectedRowId" in script
     assert "renderActiveResults" in script
@@ -1476,6 +1488,12 @@ assert.equal(lastMount.options.positions.every((row) => Number(row.fret) >= 10 &
 assert.equal(lastMount.options.positions.length > 0, true);
 rangeButtons.find((button) => button.getAttribute("data-fret-range-filter") === "all").onclick();
 assert.equal(lastMount.options.positions.length >= coreCount, true);
+intervalFilterButtons.find((button) => button.getAttribute("data-top-interval-filter") === "G").onclick();
+const gTop345Frets = lastMount.options.positions
+  .filter((row) => row.grip === "3-4-5" && row.label === "G" && JSON.stringify(row.pedals) === JSON.stringify(["B", "C"]))
+  .map((row) => Number(row.fret))
+  .sort((a, b) => a - b);
+assert.equal(JSON.stringify(gTop345Frets), JSON.stringify([10, 22]));
 
 const explorerApi = sandbox.window.STEEL_RAG_E9_EXPLORER;
 const fMaj7Target = explorerApi.parseChordFinderQuery("Fmaj7");

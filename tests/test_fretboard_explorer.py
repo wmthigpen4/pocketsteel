@@ -728,8 +728,10 @@ def test_expanded_key_payloads_keep_core_invariants(key: str) -> None:
         and row["harmony_type"] == "three_string_diatonic"
         and row["string_group"] == "4-5-6"
     ]
-    assert [row["scale_degree"] for row in group_456_major] == [1, 2, 3, 4, 5, 6, 7, 1]
-    assert [row["scale_degree"] for row in group_456_minor] == [1, 2, 3, 4, 5, 6, 7, 1]
+    assert [row["scale_degree"] for row in group_456_major[:8]] == [1, 2, 3, 4, 5, 6, 7, 1]
+    assert [row["scale_degree"] for row in group_456_minor[:8]] == [1, 2, 3, 4, 5, 6, 7, 1]
+    assert len(group_456_major) >= 8
+    assert len(group_456_minor) >= 8
 
     advanced_578 = [row for row in rows if row["string_group"] == "5-7-8"]
     assert advanced_578
@@ -753,7 +755,7 @@ def test_g_major_three_string_diatonic_harmony_core_grips() -> None:
     rows = g_major_three_string_rows()
     group_456 = by_group(rows, "4-5-6")
 
-    assert [row["chord_function"] for row in group_456] == [
+    assert [row["chord_function"] for row in group_456[:8]] == [
         "I",
         "ii",
         "iii",
@@ -763,9 +765,11 @@ def test_g_major_three_string_diatonic_harmony_core_grips() -> None:
         "vii° / partial viiø",
         "I",
     ]
-    assert [row["fret"] for row in group_456] == [3, 3, 5, 8, 10, 10, 13, 15]
-    assert [row["chord_name"] for row in group_456] == ["G", "A", "B", "C", "D", "E", "F#", "G"]
-    assert [row["chord_quality"] for row in group_456] == [
+    assert [row["fret"] for row in group_456[:8]] == [3, 3, 5, 8, 10, 10, 13, 15]
+    assert [row["chord_name"] for row in group_456[:8]] == ["G", "A", "B", "C", "D", "E", "F#", "G"]
+    assert [row["fret"] for row in group_456[8:]] == [15, 17, 20, 22, 22]
+    assert [row["chord_name"] for row in group_456[8:]] == ["A", "B", "C", "D", "E"]
+    assert [row["chord_quality"] for row in group_456[:8]] == [
         "major",
         "minor",
         "minor",
@@ -793,11 +797,26 @@ def test_g_major_three_string_diatonic_harmony_core_grips() -> None:
     assert {"5-6-7", "6-7-10"}.issubset(groups)
 
 
+def test_g_major_single_grip_keeps_octave_equivalent_top_note_results() -> None:
+    rows = g_major_three_string_rows()
+    group_345 = by_group(rows, "3-4-5")
+    top_g_bc = [
+        row
+        for row in group_345
+        if row["display_top_voice"]["note"] == "G"
+        and row["pedals"] == ["B", "C"]
+        and row["levers"] == []
+    ]
+
+    assert [row["fret"] for row in top_g_bc] == [10, 22]
+    assert all(row["intervals"] == {"3": "b3", "4": "1", "5": "5"} for row in top_g_bc)
+
+
 def test_g_natural_minor_three_string_diatonic_harmony() -> None:
     rows = g_natural_minor_three_string_rows()
     group_456 = by_group(rows, "4-5-6")
 
-    assert [row["chord_function"] for row in group_456] == [
+    assert [row["chord_function"] for row in group_456[:8]] == [
         "i",
         "ii° / partial iiø",
         "III",
@@ -807,9 +826,11 @@ def test_g_natural_minor_three_string_diatonic_harmony() -> None:
         "VII",
         "i",
     ]
-    assert [row["fret"] for row in group_456] == [1, 4, 6, 6, 8, 11, 13, 13]
-    assert [row["chord_name"] for row in group_456] == ["G", "A", "Bb", "C", "D", "Eb", "F", "G"]
-    assert [row["chord_quality"] for row in group_456] == [
+    assert [row["fret"] for row in group_456[:8]] == [1, 4, 6, 6, 8, 11, 13, 13]
+    assert [row["chord_name"] for row in group_456[:8]] == ["G", "A", "Bb", "C", "D", "Eb", "F", "G"]
+    assert [row["fret"] for row in group_456[8:]] == [16, 18, 18, 20, 23]
+    assert [row["chord_name"] for row in group_456[8:]] == ["A", "Bb", "C", "D", "Eb"]
+    assert [row["chord_quality"] for row in group_456[:8]] == [
         "minor",
         "diminished",
         "major",
