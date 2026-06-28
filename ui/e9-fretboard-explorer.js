@@ -2642,9 +2642,30 @@
     if (controlImpactGroup(control) === "pedals") {
       return control?.id || controlDisplayLabel(control, "Pedal").replace(/\s+pedal$/i, "");
     }
+    const shortLabels = {
+      "E-raise": "F",
+      "E-lower": "E",
+      "G-lower": "G",
+      "D-lower": "D",
+    };
+    if (shortLabels[control?.id]) {
+      return shortLabels[control.id];
+    }
     return controlDisplayLabel(control, "Lever")
       .replace(/\s+\(F lever\)$/i, " (F)")
       .replace(/\s+lever$/i, "");
+  }
+
+  function sortImpactLevers(controls) {
+    const order = ["E-raise", "E-lower", "G-lower", "D-lower"];
+    return controls.slice().sort((a, b) => {
+      const aIndex = order.indexOf(a?.id);
+      const bIndex = order.indexOf(b?.id);
+      if (aIndex !== -1 || bIndex !== -1) {
+        return (aIndex === -1 ? order.length : aIndex) - (bIndex === -1 ? order.length : bIndex);
+      }
+      return controlDisplayLabel(a, "").localeCompare(controlDisplayLabel(b, ""));
+    });
   }
 
   function controlImpactButtonHtml(control) {
@@ -2660,7 +2681,7 @@
 
   function controlImpactGroupsHtml(controls) {
     const pedals = controls.filter((control) => controlImpactGroup(control) === "pedals");
-    const levers = controls.filter((control) => controlImpactGroup(control) === "levers");
+    const levers = sortImpactLevers(controls.filter((control) => controlImpactGroup(control) === "levers"));
     const groupHtml = [
       { label: "Pedals", controls: pedals },
       { label: "Levers", controls: levers },
@@ -2678,17 +2699,6 @@
         <button class="explorer-control-impact-tab explorer-control-impact-clear" type="button" data-control-impact-clear>Clear</button>
       </div>
     `;
-  }
-
-  function impactContextSentence(controls) {
-    const selectedGroups = selectedStringGroups();
-    const groupText = !isPathMode() && selectedGroups.length ? selectedGroups.join(", ") : selectedGroupLabel();
-    const harmonyText = isPathMode() ? "harmonized scale path" : (HARMONY_LABELS[activeHarmonyValue()] || selectedOptionLabel(els.harmony));
-    const modeText = `${notationModeLabel()} notation`;
-    if (!controls.length) {
-      return `Choose one or more controls to preview changes for ${groupText} in ${harmonyText}. Showing ${modeText}.`;
-    }
-    return `Previewing ${controls.map((control) => controlDisplayLabel(control, "Control")).join(" + ")} for ${groupText} in ${harmonyText}. Showing ${modeText}.`;
   }
 
   function combinedImpactCaution(controls) {
@@ -2762,11 +2772,9 @@
           <strong>Pedal and lever impact</strong>
           <p>Select one or more controls to see what changes in ${escapeHtml(key)} for the current view.</p>
         </div>
-        <span>${escapeHtml(formatValue(preview?.copedent_profile?.label || "Standard E9"))}</span>
       </div>
       <div class="explorer-control-impact-preview__body">
         ${controlImpactGroupsHtml(controls)}
-        <p class="explorer-control-impact-context">${escapeHtml(impactContextSentence(selectedControls))}</p>
         ${selectedControls.map((control) => controlImpactDetailHtml(control)).join("")}
         ${cautions.length ? `<p class="explorer-control-impact-context">${escapeHtml(cautions.join(" "))}</p>` : ""}
       </div>

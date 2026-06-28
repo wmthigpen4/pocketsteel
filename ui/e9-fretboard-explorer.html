@@ -185,24 +185,33 @@
     }
 
     .explorer-fretboard-tools {
-      display: grid;
-      grid-template-columns: minmax(240px, 1.25fr) minmax(260px, 1.35fr) minmax(150px, auto);
-      gap: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
       align-items: center;
-      padding: 12px 16px;
+      padding: 8px 12px;
       border-bottom: 1px solid rgba(246, 190, 88, 0.14);
       background: rgba(0, 0, 0, 0.18);
     }
 
     .explorer-panel-notation {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr);
-      gap: 8px 10px;
+      display: inline-flex;
+      gap: 6px 8px;
       align-items: center;
+      min-width: 0;
     }
 
     .explorer-panel-notation .explorer-notation-selector {
-      width: 100%;
+      width: auto;
+      min-width: min(100%, 230px);
+    }
+
+    #explorer-pitch-register-control .explorer-notation-selector {
+      min-width: min(100%, 270px);
+    }
+
+    #explorer-string-action-label-control {
+      flex: 0 0 auto;
     }
 
     .explorer-panel-notation .explorer-control-help {
@@ -390,10 +399,15 @@
       align-items: center;
       border: 1px solid rgba(246, 190, 88, 0.24);
       border-radius: 999px;
-      padding: 7px 10px;
+      padding: 6px 10px;
       background: rgba(0, 0, 0, 0.28);
       color: var(--text);
       font-weight: 700;
+    }
+
+    .explorer-scale-summary {
+      align-self: end;
+      margin-top: auto;
     }
 
     .explorer-pill--trust {
@@ -417,12 +431,12 @@
       border: 0;
       border-radius: 999px;
       flex: 1 0 auto;
-      padding: 6px 10px;
+      padding: 5px 8px;
       background: transparent;
       color: var(--muted);
       cursor: pointer;
       font: inherit;
-      font-size: 0.78rem;
+      font-size: 0.74rem;
       font-weight: 800;
     }
 
@@ -1950,17 +1964,13 @@
         grid-column: auto;
       }
 
-      .explorer-panel-notation {
-        grid-template-columns: 1fr;
-      }
-
       .explorer-fretboard-tools {
-        grid-template-columns: 1fr;
+        align-items: flex-start;
         padding: 10px 12px;
       }
 
       .explorer-panel-notation .explorer-notation-selector {
-        width: 100%;
+        min-width: 0;
       }
 
       .explorer-details {
@@ -2147,11 +2157,10 @@
         <summary>About grip vocabulary</summary>
         <p>Core grips are common string sets. Extended and two-string vocabulary are opt-in; 5-7-8 is the advanced E-lower pocket, and 5-8 appears in 2-string branch routes.</p>
       </details>
+      <div class="explorer-scale-summary" aria-live="polite">
+        <span class="explorer-pill">Scale: <span id="explorer-scale-notes">G - A - B - C - D - E - F#</span></span>
+      </div>
     </section>
-
-    <div class="explorer-summary" aria-live="polite">
-      <span class="explorer-pill">Scale: <span id="explorer-scale-notes">G - A - B - C - D - E - F#</span></span>
-    </div>
 
     <div class="explorer-top-interval-filter" id="explorer-top-interval-filter" aria-label="Top label filter" hidden></div>
     <div class="explorer-fret-range-filter" id="explorer-fret-range-filter" aria-label="Visible fret range filter" hidden></div>
@@ -2236,8 +2245,7 @@
           <p class="explorer-control-help" id="explorer-pitch-register-help">Shows octave/register detail in cards and detail panels without changing fretboard marker labels.</p>
         </div>
         <div class="explorer-control explorer-control--notation explorer-panel-notation" id="explorer-string-action-label-control">
-          <span class="explorer-control-label" id="explorer-string-action-label-label">Labels</span>
-          <button class="explorer-string-label-toggle" id="explorer-string-action-label-toggle" type="button" aria-pressed="false" aria-describedby="explorer-string-action-label-help">
+          <button class="explorer-string-label-toggle" id="explorer-string-action-label-toggle" type="button" aria-pressed="false" aria-label="String labels" aria-describedby="explorer-string-action-label-help">
             <span class="explorer-string-label-toggle__track" aria-hidden="true"><span class="explorer-string-label-toggle__knob"></span></span>
             <span>String labels</span>
           </button>
@@ -2259,6 +2267,6 @@
   <script src="pedal-steel-fretboard.js?v=explorer-harmonized-path-mode-20260626"></script>
   <script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>
   <script src="e9-music-rules.js?v=explorer-octave-register-20260627"></script>
-  <script src="e9-fretboard-explorer.js?v=voicing-identifier-copy-20260627"></script>
+  <script src="e9-fretboard-explorer.js?v=compact-explorer-tools-20260628"></script>
 </body>
 </html>
