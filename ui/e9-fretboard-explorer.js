@@ -3334,7 +3334,7 @@
     hideTooltip();
   }
 
-  function renderFretboard(rows) {
+  function renderFretboard(rows, options = {}) {
     if (!fretboardApi || typeof fretboardApi.mountPedalSteelFretboard !== "function") {
       els.fretboard.innerHTML = '<p class="explorer-empty">Fretboard renderer unavailable.</p>';
       return;
@@ -3358,7 +3358,7 @@
       hideFilterControls: true,
       hidePositionTools: true,
       hideLegend: true,
-      showHighlightLabels: true,
+      showHighlightLabels: options.showHighlightLabels !== false,
       showStringActionLabels,
       stringActionLabelMode,
       emphasizeVisibleHighlights: true,
@@ -4280,7 +4280,7 @@
     renderFretRangeFilter(rowsBeforeRange, rows);
     renderControlImpactPreview();
     renderChordFinderResults(target, rows, allRows);
-    renderFretboard(rowsForMap);
+    renderFretboard(rowsForMap, { showHighlightLabels: false });
     renderChordFinderDetail(selected);
     syncSelectedState();
     const renderedText = [

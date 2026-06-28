@@ -1314,6 +1314,10 @@
       width: 100%;
     }
 
+    .explorer-active-results__track--wrap .explorer-chord-map-card {
+      min-width: 176px;
+    }
+
     .explorer-chord-map-filters {
       display: flex;
       flex-wrap: wrap;
@@ -1420,6 +1424,22 @@
       color: var(--muted);
       font-size: 0.7rem;
       font-weight: 800;
+    }
+
+    .explorer-chord-map-card .explorer-active-result__fields {
+      grid-template-columns: 1fr;
+      gap: 5px;
+    }
+
+    .explorer-chord-map-card .explorer-active-result__fields span {
+      grid-template-columns: minmax(72px, 0.48fr) minmax(0, 1fr);
+      gap: 6px;
+      align-items: baseline;
+      overflow-wrap: anywhere;
+    }
+
+    .explorer-chord-map-card .explorer-active-result__fields b {
+      line-height: 1.15;
     }
 
     .explorer-active-result__fields b {
@@ -1994,6 +2014,10 @@
         grid-template-columns: 1fr;
       }
 
+      .explorer-chord-map-card .explorer-active-result__fields span {
+        grid-template-columns: 1fr;
+      }
+
       .explorer-path-rail {
         grid-template-columns: repeat(8, minmax(132px, 1fr));
       }
@@ -2235,6 +2259,6 @@
   <script src="pedal-steel-fretboard.js?v=explorer-harmonized-path-mode-20260626"></script>
   <script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>
   <script src="e9-music-rules.js?v=explorer-octave-register-20260627"></script>
-  <script src="e9-fretboard-explorer.js?v=impact-control-groups-20260627"></script>
+  <script src="e9-fretboard-explorer.js?v=chord-map-label-cleanup-20260627"></script>
 </body>
 </html>

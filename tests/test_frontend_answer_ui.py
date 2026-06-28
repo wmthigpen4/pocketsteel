@@ -278,10 +278,11 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>' in html
     assert "[hidden] {\n      display: none !important;\n    }" in html
     assert '<script src="e9-music-rules.js?v=explorer-octave-register-20260627"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=impact-control-groups-20260627"></script>' in html
-    assert html.index("e9-music-rules.js?v=explorer-octave-register-20260627") < html.index("e9-fretboard-explorer.js?v=impact-control-groups-20260627")
+    assert '<script src="e9-fretboard-explorer.js?v=chord-map-label-cleanup-20260627"></script>' in html
+    assert html.index("e9-music-rules.js?v=explorer-octave-register-20260627") < html.index("e9-fretboard-explorer.js?v=chord-map-label-cleanup-20260627")
     assert "e9-fretboard-explorer.js?v=explorer-octave-register-20260627" not in html
     assert "e9-fretboard-explorer.js?v=path-card-colors-20260627" not in html
+    assert "e9-fretboard-explorer.js?v=impact-control-groups-20260627" not in html
     assert "e9-fretboard-explorer.js?v=compact-fretboard-tools-20260627" not in html
     assert "e9-fretboard-explorer.js?v=grip-vocabulary-20260627" not in html
     assert "e9-fretboard-explorer.js?v=single-note-learning-20260626" not in html
@@ -550,7 +551,11 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "musicRules.identifyVoicing" in script
     assert "musicRules.parseChordFinderQuery" in script
     assert "musicRules.chordFinderQualityGate" in script
-    assert 'e9-fretboard-explorer.js?v=impact-control-groups-20260627' in html
+    assert 'e9-fretboard-explorer.js?v=chord-map-label-cleanup-20260627' in html
+    assert ".explorer-chord-map-card .explorer-active-result__fields {" in html
+    assert ".explorer-chord-map-card .explorer-active-result__fields span {" in html
+    assert "grid-template-columns: minmax(72px, 0.48fr) minmax(0, 1fr);" in html
+    assert "overflow-wrap: anywhere;" in html
     assert "payloadsByCopedent" in script
     assert "renderCopedentChart" in script
     assert "openCopedentDialog" in script
@@ -594,7 +599,8 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "hideFilterControls: true" in script
     assert "hidePositionTools: true" in script
     assert "hideLegend: true" in script
-    assert "showHighlightLabels: true" in script
+    assert "showHighlightLabels: options.showHighlightLabels !== false" in script
+    assert "renderFretboard(rowsForMap, { showHighlightLabels: false })" in script
     assert "emphasizeVisibleHighlights" in script
     assert 'highlightStyle: "prominent"' in script
     assert "selectedStringGroups" in script
@@ -1468,6 +1474,7 @@ assert.match(elements["explorer-selected-detail"].textContent, /Omitted tones/);
 assert.match(elements["explorer-selected-detail"].textContent, /Confidence/);
 assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /omitted 0/);
 assert.equal(lastMount.options.positions.length > 1, true);
+assert.equal(lastMount.options.showHighlightLabels, false);
 assert.equal(elements["explorer-active-results"].querySelectorAll("[data-chord-finder-result]").length > 0, true);
 assert.equal(elements["explorer-active-results"].querySelectorAll("[data-chord-map-filter-control]").length > 1, true);
 assert.equal(lastMount.options.positions.every((row) => row.id.startsWith("marker:")), true);
