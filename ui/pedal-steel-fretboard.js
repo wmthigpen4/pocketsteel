@@ -457,6 +457,23 @@
     drop-shadow(0 0 3px rgba(255, 246, 223, 0.18));
 }
 
+.pedal-steel-fretboard__string-action-label {
+  pointer-events: none;
+  user-select: none;
+}
+
+.pedal-steel-fretboard__highlight[data-string-action-label-mode="selected"] .pedal-steel-fretboard__string-action-label {
+  opacity: 0;
+}
+
+.pedal-steel-fretboard__highlight[data-string-action-label-mode="selected"].is-selected .pedal-steel-fretboard__string-action-label,
+.pedal-steel-fretboard__highlight[data-string-action-label-mode="selected"].is-explorer-selected-marker .pedal-steel-fretboard__string-action-label,
+.pedal-steel-fretboard__highlight[data-string-action-label-mode="selected"].is-explorer-hover-marker .pedal-steel-fretboard__string-action-label,
+.pedal-steel-fretboard__highlight[data-string-action-label-mode="selected"]:focus .pedal-steel-fretboard__string-action-label,
+.pedal-steel-fretboard__highlight[data-string-action-label-mode="selected"]:hover .pedal-steel-fretboard__string-action-label {
+  opacity: 1;
+}
+
 .pedal-steel-fretboard__empty[hidden] {
   display: none;
 }
@@ -668,6 +685,89 @@
     }
     const text = String(value || "").trim();
     return text ? [text] : [];
+  }
+
+  function compactControlShorthand(value) {
+    const text = normalizeMetadataText(value).toLowerCase();
+    if (!text || text === "none" || text === "open" || text.includes("no change")) {
+      return "";
+    }
+    if (text.includes("b-to-bb") || text.includes("b to bb") || text.includes("b-to-b") || text.includes("lkv") || text.includes("vertical") || text === "v") {
+      return "V";
+    }
+    if (/\ba\s*(pedal)?\b/.test(text) || text === "a") {
+      return "A";
+    }
+    if (/\bb\s*(pedal)?\b/.test(text) || text === "b") {
+      return "B";
+    }
+    if (/\bc\s*(pedal)?\b/.test(text) || text === "c") {
+      return "C";
+    }
+    if (text.includes("e-raise") || text.includes("e raise") || text.includes("f lever") || text === "f") {
+      return "F";
+    }
+    if (text.includes("e-lower") || text.includes("e lower") || text.includes("e lever") || text === "e") {
+      return "E";
+    }
+    if (text.includes("d-lower") || text.includes("d lower") || text.includes("d lever") || text.includes("half-stop") || text === "d") {
+      return "D";
+    }
+    if (text.includes("g-lower") || text.includes("g raise") || text.includes("g lever") || text.includes("raise/lower") || text === "g") {
+      return "G";
+    }
+    return "";
+  }
+
+  function compactControlsFromValue(value) {
+    const source = Array.isArray(value)
+      ? value
+      : String(value || "").split(/\s*(?:\+|,|\/|;|\band\b)\s*/i);
+    return Array.from(new Set(source.map(compactControlShorthand).filter(Boolean))).join("");
+  }
+
+  function normalizeStringActionLabels(item, strings) {
+    const explicit = item.stringActionLabels || item.string_action_labels || item.markerStringLabels || item.marker_string_labels;
+    const entries = new Map();
+    const addLabel = (stringNumber, label) => {
+      const parsedString = Number(stringNumber);
+      const safeLabel = normalizeMetadataText(label).replace(/\s+/g, "");
+      if (Number.isInteger(parsedString) && strings.includes(parsedString) && safeLabel) {
+        entries.set(parsedString, safeLabel);
+      }
+    };
+    if (Array.isArray(explicit)) {
+      explicit.forEach((entry) => {
+        if (entry && typeof entry === "object") {
+          addLabel(entry.string || entry.stringNumber || entry.string_number, entry.label || entry.value);
+        }
+      });
+    } else if (explicit && typeof explicit === "object") {
+      Object.entries(explicit).forEach(([stringNumber, label]) => addLabel(stringNumber, label));
+    }
+
+    const changes = item.perStringChanges || item.per_string_changes || item.stringActions || item.string_actions;
+    if (changes && typeof changes === "object" && !Array.isArray(changes)) {
+      Object.entries(changes).forEach(([stringNumber, detail]) => {
+        const parsedString = Number(stringNumber);
+        if (!Number.isInteger(parsedString) || !strings.includes(parsedString) || entries.has(parsedString)) {
+          return;
+        }
+        const entry = detail && typeof detail === "object" ? detail : {};
+        const explicitLabel = entry.marker_label || entry.markerLabel || entry.compact_label || entry.compactLabel;
+        if (explicitLabel) {
+          addLabel(parsedString, explicitLabel);
+          return;
+        }
+        const suffix = compactControlsFromValue(entry.compact_controls || entry.compactControls || entry.controls || entry.control || entry.action);
+        addLabel(parsedString, `${parsedString}${suffix}`);
+      });
+    }
+
+    return strings.map((stringNumber) => ({
+      string: stringNumber,
+      label: entries.get(stringNumber) || String(stringNumber),
+    }));
   }
 
   function formatDetailValue(detail) {
@@ -890,6 +990,7 @@
       caveats: normalizeDetailList(item.caveats),
       warnings: normalizeDetailList(item.warnings),
       perStringChanges: normalizeDetailList(item.perStringChanges || item.per_string_changes),
+      stringActionLabels: normalizeStringActionLabels(item, uniqueStrings),
       displaySummary: normalizeMetadataText(item.displaySummary || item.display_summary),
       tierReason: normalizeMetadataText(item.tierReason || item.tier_reason),
       whenToUse: normalizeMetadataText(item.whenToUse || item.when_to_use),
@@ -1547,6 +1648,8 @@
       legend: normalizeLegend(options.legend),
       displayScaleNotes: normalizeDisplayScaleNotes(options.query),
       showHighlightLabels: options.showHighlightLabels !== false,
+      showStringActionLabels: options.showStringActionLabels === true,
+      stringActionLabelMode: options.stringActionLabelMode === "selected" ? "selected" : "all",
       hidePositionTools: options.hidePositionTools === true,
       hideLegend: options.hideLegend === true,
     };
@@ -1669,16 +1772,27 @@
         return `<rect data-highlight-dot ${dataAttrs} data-highlight-string="${stringNumber}" x="${(renderX - dotWidth / 2).toFixed(3)}" y="${(y - dotHeight / 2).toFixed(3)}" width="${dotWidth}" height="${dotHeight}" rx="${dotRx}" fill="${color.dot}" fill-opacity="${isProminent ? "1" : "0.95"}" stroke="#fff6df" stroke-opacity="${isProminent ? "0.72" : "0.38"}" stroke-width="${isProminent ? "1.8" : "1"}" filter="url(#fretboard-glow)" />`;
       })
       .join("");
+    const stringActionLabelByString = new Map((highlight.stringActionLabels || []).map((entry) => [Number(entry.string), entry.label]));
+    const stringActionLabels = highlight.showStringActionLabels
+      ? highlight.stringYs
+        .map((y, index) => {
+          const stringNumber = highlight.strings[index];
+          const text = stringActionLabelByString.get(Number(stringNumber)) || String(stringNumber);
+          return `<text class="pedal-steel-fretboard__string-action-label" data-string-action-label="${escapeHtml(text)}" data-string-action-label-string="${stringNumber}" x="${renderX.toFixed(3)}" y="${(y + 4).toFixed(3)}" text-anchor="middle" fill="#160f08" font-size="${isProminent ? "13" : "11"}" font-weight="900" paint-order="stroke fill" stroke="rgba(255, 248, 220, 0.86)" stroke-width="2.2">${escapeHtml(text)}</text>`;
+        })
+        .join("")
+      : "";
     const labelValues = Array.isArray(highlight.labelValues) ? highlight.labelValues.filter(Boolean) : [];
     const labelText = labelValues.length ? labelValues.slice(0, 2).join(", ") : highlight.label;
     const overflowCount = Number(highlight.labelOverflowCount) || 0;
     const label = highlight.showLabel === false
       ? ""
       : `<text data-highlight-label="${escapeHtml(highlight.id)}" data-highlight-label-values="${escapeHtml(labelValues.join(","))}" data-highlight-label-overflow-count="${overflowCount}" x="${renderX.toFixed(3)}" y="${labelY.toFixed(3)}" text-anchor="middle" fill="${color.text}" font-size="18" font-weight="700"><tspan data-highlight-label-main>${escapeHtml(labelText)}</tspan>${overflowCount ? `<tspan data-highlight-label-overflow dx="5" font-size="12" font-weight="800" fill="${color.dot}">+${overflowCount}</tspan>` : ""}</text>`;
-    return `<g class="pedal-steel-fretboard__highlight${highlight.isSelected ? " is-selected" : ""}${highlight.isEmphasizedVisible ? " is-emphasized-visible" : ""}${isProminent ? " is-prominent-cluster" : ""}${highlight.isHiddenByFilter ? " is-filter-hidden" : ""}" ${dataAttrs} data-position-family="${escapeHtml(highlight.family)}" data-position-tier="${escapeHtml(highlight.tier)}" data-position-kind="${escapeHtml(highlight.positionKind)}" data-position-grip="${escapeHtml(highlight.grip)}" data-position-pedal-lever-key="${escapeHtml(pedalLeverOption.key)}" data-position-pedal-lever-label="${escapeHtml(pedalLeverOption.label)}" data-voicing-type="${escapeHtml(highlight.voicingType)}" data-voicing-category="${escapeHtml(voicingCategory)}" data-is-root-position="${highlight.isRootPosition ? "true" : "false"}" data-is-inversion="${highlight.isInversion ? "true" : "false"}" data-is-partial-voicing="${highlight.isPartialVoicing ? "true" : "false"}" data-is-rootless="${highlight.isRootless ? "true" : "false"}" data-visible-by-default="${highlight.visibleByDefault ? "true" : "false"}" data-has-levers="${highlight.levers.length ? "true" : "false"}" data-is-starter="${isStarterPosition(highlight) ? "true" : "false"}" data-is-full-chord="${isFullChordPosition(highlight) ? "true" : "false"}" data-is-dominant="${isDominantPosition(highlight) ? "true" : "false"}" data-is-advanced="${isAdvancedPosition(highlight) ? "true" : "false"}" data-is-more="${isMorePosition(highlight) ? "true" : "false"}" data-recommended-extra="${highlight.isRecommendedExtra ? "true" : "false"}" data-emphasized-visible="${highlight.isEmphasizedVisible ? "true" : "false"}" data-filter-visible="${highlight.isHiddenByFilter ? "false" : "true"}" style="${colorStyle}${hiddenStyle}"${highlight.isHiddenByFilter ? " hidden" : ""}>
+    return `<g class="pedal-steel-fretboard__highlight${highlight.isSelected ? " is-selected" : ""}${highlight.isEmphasizedVisible ? " is-emphasized-visible" : ""}${isProminent ? " is-prominent-cluster" : ""}${highlight.isHiddenByFilter ? " is-filter-hidden" : ""}" ${dataAttrs} data-position-family="${escapeHtml(highlight.family)}" data-position-tier="${escapeHtml(highlight.tier)}" data-position-kind="${escapeHtml(highlight.positionKind)}" data-position-grip="${escapeHtml(highlight.grip)}" data-position-pedal-lever-key="${escapeHtml(pedalLeverOption.key)}" data-position-pedal-lever-label="${escapeHtml(pedalLeverOption.label)}" data-voicing-type="${escapeHtml(highlight.voicingType)}" data-voicing-category="${escapeHtml(voicingCategory)}" data-is-root-position="${highlight.isRootPosition ? "true" : "false"}" data-is-inversion="${highlight.isInversion ? "true" : "false"}" data-is-partial-voicing="${highlight.isPartialVoicing ? "true" : "false"}" data-is-rootless="${highlight.isRootless ? "true" : "false"}" data-visible-by-default="${highlight.visibleByDefault ? "true" : "false"}" data-has-levers="${highlight.levers.length ? "true" : "false"}" data-is-starter="${isStarterPosition(highlight) ? "true" : "false"}" data-is-full-chord="${isFullChordPosition(highlight) ? "true" : "false"}" data-is-dominant="${isDominantPosition(highlight) ? "true" : "false"}" data-is-advanced="${isAdvancedPosition(highlight) ? "true" : "false"}" data-is-more="${isMorePosition(highlight) ? "true" : "false"}" data-recommended-extra="${highlight.isRecommendedExtra ? "true" : "false"}" data-emphasized-visible="${highlight.isEmphasizedVisible ? "true" : "false"}" data-filter-visible="${highlight.isHiddenByFilter ? "false" : "true"}" data-string-action-label-mode="${escapeHtml(highlight.stringActionLabelMode || "all")}" style="${colorStyle}${hiddenStyle}"${highlight.isHiddenByFilter ? " hidden" : ""}>
       ${band}
       ${halos}
       ${dots}
+      ${stringActionLabels}
       ${label}
     </g>`;
   }
@@ -1692,6 +1806,8 @@
       isEmphasizedVisible: model.emphasizeVisibleHighlights && visibleIds.has(highlight.id),
       isRecommendedExtra: model.recommendedHiddenIds.has(highlight.id),
       showLabel: model.showHighlightLabels,
+      showStringActionLabels: model.showStringActionLabels,
+      stringActionLabelMode: model.stringActionLabelMode,
       highlightStyle: model.highlightStyle,
     })).join("");
   }

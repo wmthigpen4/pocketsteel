@@ -175,6 +175,7 @@
     resultCount: document.getElementById("explorer-result-count"),
     notationModeButtons: document.querySelectorAll("[data-explorer-notation-mode]"),
     pitchRegisterButtons: document.querySelectorAll("[data-explorer-pitch-register]"),
+    stringActionLabelToggle: document.getElementById("explorer-string-action-label-toggle"),
     topIntervalFilter: document.getElementById("explorer-top-interval-filter"),
     fretRangeFilter: document.getElementById("explorer-fret-range-filter"),
     copedentDialog: document.getElementById("explorer-copedent-dialog"),
@@ -225,6 +226,7 @@
   let previewNoteCell = null;
   let notationMode = "notes";
   let pitchRegisterMode = "off";
+  let showStringActionLabels = false;
   let lastCopedentDialogOpener = null;
   let lastGlossaryDialogOpener = null;
   let currentRows = [];
@@ -620,6 +622,69 @@
     };
   }
 
+  function compactControlLetter(value) {
+    const text = String(value || "").toLowerCase();
+    if (!text || text.includes("no change")) {
+      return "";
+    }
+    if (text.includes("b-to-bb") || text.includes("b to bb") || text.includes("b-to-b") || text.includes("lkv") || text.includes("vertical") || text === "v") {
+      return "V";
+    }
+    if (/\ba\s*(pedal)?\b/.test(text) || text === "a") {
+      return "A";
+    }
+    if (/\bb\s*(pedal)?\b/.test(text) || text === "b") {
+      return "B";
+    }
+    if (/\bc\s*(pedal)?\b/.test(text) || text === "c") {
+      return "C";
+    }
+    if (text.includes("e-raise") || text.includes("e raise") || text.includes("f lever") || text === "f") {
+      return "F";
+    }
+    if (text.includes("e-lower") || text.includes("e lower") || text.includes("e lever") || text === "e") {
+      return "E";
+    }
+    if (text.includes("d-lower") || text.includes("d lower") || text.includes("d lever") || text.includes("half-stop") || text === "d") {
+      return "D";
+    }
+    if (text.includes("g-lower") || text.includes("g raise") || text.includes("g lever") || text.includes("raise/lower") || text === "g") {
+      return "G";
+    }
+    return "";
+  }
+
+  function compactControlLettersForCell(cell) {
+    return Array.from(new Set(toArray(cell.affectedCells)
+      .map((entry) => compactControlLetter(entry.controlId || entry.control?.id || entry.control?.display_label || entry.control?.label))
+      .filter(Boolean))).join("");
+  }
+
+  function markerLabelForCell(cell) {
+    return `${cell.stringNumber}${cell.isAffected ? compactControlLettersForCell(cell) : ""}`;
+  }
+
+  function stringActionLabelsFromCells(cells) {
+    return Object.fromEntries(cells.map((cell) => [cell.stringNumber, markerLabelForCell(cell)]));
+  }
+
+  function perStringChangesFromCells(cells, options = {}) {
+    return Object.fromEntries(cells.map((cell) => [
+      cell.stringNumber,
+      options.useFromTo
+        ? {
+          from: cell.openNoteAtFret,
+          to: cell.finalNote,
+          controls: cell.isAffected ? cell.activeControlLabel : "no change",
+        }
+        : {
+          open_at_fret: cell.openNoteAtFret,
+          final_note: cell.finalNote,
+          controls: cell.isAffected ? cell.activeControlLabel : "no change",
+        },
+    ]));
+  }
+
   function displayNoteForActiveKey(pitchClass) {
     const scaleNote = activeScaleNotes().find((note) => pitchClassForNote(note) === pitchClass);
     return scaleNote || displayNoteForPitchClass(pitchClass);
@@ -870,14 +935,8 @@
       },
       display_summary: `${identity.label} at fret ${result.fret} on strings ${result.strings.join("-")}`,
       explanation: `Computed from ${activeCopedent()?.label || "the selected copedent"}; no retrieval is used.`,
-      per_string_changes: Object.fromEntries(result.cells.map((cell) => [
-        cell.stringNumber,
-        {
-          open_at_fret: cell.openNoteAtFret,
-          final_note: cell.finalNote,
-          controls: cell.isAffected ? cell.activeControlLabel : "no change",
-        },
-      ])),
+      per_string_changes: perStringChangesFromCells(result.cells),
+      string_action_labels: stringActionLabelsFromCells(result.cells),
     };
   }
 
@@ -1084,14 +1143,8 @@
             display_summary: identity.label,
             explanation: identity.explanation || `Computed from ${activeCopedent()?.label || "the selected copedent"}; no retrieval is used.`,
             warnings: identity.partial ? [`Partial V7: missing ${identity.missingIntervals.map(formatInterval).join(", ") || "one or more chord tones"}.`] : [],
-            per_string_changes: Object.fromEntries(cells.map((cell) => [
-              cell.stringNumber,
-              {
-                open_at_fret: cell.openNoteAtFret,
-                final_note: cell.finalNote,
-                controls: cell.isAffected ? cell.activeControlLabel : "no change",
-              },
-            ])),
+            per_string_changes: perStringChangesFromCells(cells),
+            string_action_labels: stringActionLabelsFromCells(cells),
           });
         });
       });
@@ -1152,14 +1205,8 @@
             display_summary: `${identity.label} on strings ${group}`,
             explanation: `Computed from ${activeCopedent()?.label || "the selected copedent"} practical grip vocabulary; no retrieval is used.`,
             warnings: completeMatch ? [] : ["Partial voicing: this grip contains part of the target sound, not every chord tone."],
-            per_string_changes: Object.fromEntries(cells.map((cell) => [
-              cell.stringNumber,
-              {
-                open_at_fret: cell.openNoteAtFret,
-                final_note: cell.finalNote,
-                controls: cell.isAffected ? cell.activeControlLabel : "no change",
-              },
-            ])),
+            per_string_changes: perStringChangesFromCells(cells),
+            string_action_labels: stringActionLabelsFromCells(cells),
           });
         });
       });
@@ -1402,14 +1449,8 @@
       display_summary: `${omittedIntervals.length ? "Partial " : ""}${target.label} on strings ${group}`,
       explanation_summary: `${omittedIntervals.length ? "Partial voicing" : "Complete voicing"} for ${target.label}: present ${presentIntervals.map(intervalRoleLabel).join(", ")}${omittedIntervals.length ? `; omitted ${omittedIntervals.map(intervalRoleLabel).join(", ")}` : ""}.`,
       warnings: omittedIntervals.length ? [`Partial ${target.label}: omitted ${omittedIntervals.map(intervalRoleLabel).join(", ")}.`] : [],
-      per_string_changes: Object.fromEntries(cells.map((cell) => [
-        cell.stringNumber,
-        {
-          from: cell.openNoteAtFret,
-          to: cell.finalNote,
-          controls: cell.isAffected ? cell.activeControlLabel : "no change",
-        },
-      ])),
+      per_string_changes: perStringChangesFromCells(cells, { useFromTo: true }),
+      string_action_labels: stringActionLabelsFromCells(cells),
       chord_finder: {
         target,
         presentIntervals,
@@ -3263,6 +3304,7 @@
     }
     const markerGroups = groupRowsForMarkers(rows);
     const selectedMarkerId = markerGroupKey(rows.find((row) => row.id === selectedRowId) || {});
+    const stringActionLabelMode = markerGroups.length > 12 ? "selected" : "all";
     // SVG paints later groups on top, so the selected marker must render last.
     const sortedMarkerGroups = [
       ...markerGroups.filter((group) => group.id !== selectedMarkerId),
@@ -3280,6 +3322,8 @@
       hidePositionTools: true,
       hideLegend: true,
       showHighlightLabels: true,
+      showStringActionLabels,
+      stringActionLabelMode,
       emphasizeVisibleHighlights: true,
       highlightStyle: "prominent",
     });
@@ -4514,6 +4558,14 @@
     });
   }
 
+  function updateStringActionLabelToggle() {
+    if (!els.stringActionLabelToggle) {
+      return;
+    }
+    els.stringActionLabelToggle.classList.toggle("is-selected", showStringActionLabels);
+    els.stringActionLabelToggle.setAttribute("aria-pressed", showStringActionLabels ? "true" : "false");
+  }
+
   function openCopedentDialog() {
     if (!els.copedentDialog) {
       return;
@@ -4632,6 +4684,14 @@
         render();
       });
     });
+    if (els.stringActionLabelToggle) {
+      updateStringActionLabelToggle();
+      els.stringActionLabelToggle.addEventListener("click", () => {
+        showStringActionLabels = !showStringActionLabels;
+        updateStringActionLabelToggle();
+        render();
+      });
+    }
     els.key.addEventListener("change", () => {
       updateControls();
       render();

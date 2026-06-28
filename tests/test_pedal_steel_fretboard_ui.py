@@ -410,6 +410,81 @@ assert.doesNotMatch(html, /\\[object Object\\]/);
     run_node(script)
 
 
+def test_optional_string_action_marker_labels_are_compact_and_off_by_default() -> None:
+    script = component_eval_script(
+        """
+const positions = [
+  {
+    id: "bc-pedal-grip",
+    label: "B+C grip",
+    fret: 5,
+    strings: [3, 4, 5],
+    grip: "3-4-5",
+    pedals: ["B", "C"],
+    per_string_changes: {
+      3: { open_at_fret: "B", final_note: "C", controls: "B pedal", marker_label: "3B" },
+      4: { open_at_fret: "E", final_note: "F#", controls: "C pedal", marker_label: "4C" },
+      5: { open_at_fret: "B", final_note: "C#", controls: "C pedal", marker_label: "5C" }
+    }
+  },
+  {
+    id: "lever-grip",
+    label: "Lever grip",
+    fret: 8,
+    strings: [2, 4, 6, 8],
+    grip: "2-4-6-8",
+    per_string_changes: {
+      2: { open_at_fret: "D#", final_note: "D", controls: "D lower half-stop" },
+      4: { open_at_fret: "E", final_note: "F", controls: "E-raise lever" },
+      6: { open_at_fret: "G#", final_note: "G", controls: "G lever" },
+      8: { open_at_fret: "E", final_note: "Eb", controls: "E-lower lever" }
+    }
+  },
+  {
+    id: "vertical-grip",
+    label: "Vertical grip",
+    fret: 3,
+    strings: [5, 6],
+    grip: "5-6",
+    per_string_changes: {
+      5: { open_at_fret: "B", final_note: "Bb", controls: "B-to-Bb vertical" },
+      6: { open_at_fret: "G#", final_note: "G#", controls: "no change" }
+    }
+  }
+];
+const cleanHtml = fretboard.renderPedalSteelFretboard({
+  positions,
+  hideFilterControls: true,
+  hidePositionTools: true,
+  hideLegend: true,
+  showStringActionLabels: false
+});
+assert.doesNotMatch(cleanHtml, /data-string-action-label=/);
+assert.doesNotMatch(cleanHtml, />3B</);
+
+const labeledHtml = fretboard.renderPedalSteelFretboard({
+  positions,
+  hideFilterControls: true,
+  hidePositionTools: true,
+  hideLegend: true,
+  showStringActionLabels: true,
+  stringActionLabelMode: "selected"
+});
+for (const expected of ["3B", "4C", "5C", "2D", "4F", "6G", "8E", "5V", "6"]) {
+  assert.match(labeledHtml, new RegExp(`data-string-action-label="${expected}"`));
+  assert.match(labeledHtml, new RegExp(`>${expected}<`));
+}
+for (const invalid of ["S3", "String 3", "3 B", "E-raise", "E-lower", "E↑", "E↓", "B pedal", "C pedal"]) {
+  assert.equal(labeledHtml.includes(invalid), false);
+}
+assert.match(labeledHtml, /data-string-action-label-mode="selected"/);
+assert.doesNotMatch(labeledHtml, /\\[object Object\\]/);
+"""
+    )
+
+    run_node(script)
+
+
 def test_rendered_svg_uses_decorative_background_underlay() -> None:
     script = component_eval_script(
         """

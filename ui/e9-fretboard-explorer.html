@@ -205,6 +205,29 @@
       line-height: 1.35;
     }
 
+    .explorer-string-label-toggle {
+      width: fit-content;
+      min-height: 36px;
+      border: 1px solid rgba(246, 190, 88, 0.28);
+      border-radius: 999px;
+      padding: 0 14px;
+      background: rgba(0, 0, 0, 0.28);
+      color: rgba(255, 247, 232, 0.8);
+      cursor: pointer;
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 900;
+    }
+
+    .explorer-string-label-toggle.is-selected,
+    .explorer-string-label-toggle:hover,
+    .explorer-string-label-toggle:focus-visible {
+      border-color: rgba(246, 190, 88, 0.74);
+      background: rgba(246, 190, 88, 0.18);
+      color: var(--text);
+      outline: none;
+    }
+
     .explorer-control select,
     .explorer-inline-button {
       width: 100%;
@@ -2091,6 +2114,11 @@
           <button type="button" data-explorer-pitch-register="band" aria-pressed="false">Octave band</button>
         </div>
         <p class="explorer-control-help" id="explorer-pitch-register-help">Shows octave/register detail in cards and detail panels without changing fretboard marker labels.</p>
+      </div>
+      <div class="explorer-control explorer-control--notation explorer-panel-notation" id="explorer-string-action-label-control">
+        <span class="explorer-control-label" id="explorer-string-action-label-label">Marker detail</span>
+        <button class="explorer-string-label-toggle" id="explorer-string-action-label-toggle" type="button" aria-pressed="false" aria-describedby="explorer-string-action-label-help">String labels</button>
+        <p class="explorer-control-help" id="explorer-string-action-label-help">Adds compact string and pedal/lever shorthand inside fretboard marker bubbles.</p>
       </div>
       <p class="explorer-empty" id="explorer-empty" hidden>No validated rows match these controls.</p>
       <div class="explorer-active-results" id="explorer-active-results" aria-label="Visible selected positions"></div>

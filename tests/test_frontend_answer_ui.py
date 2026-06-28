@@ -1166,6 +1166,7 @@ const elements = {
   "explorer-copedent-close": new FakeButton("close", "id"),
   "explorer-copedent-chart": new FakeNode("explorer-copedent-chart"),
   "explorer-control-impact-preview": new FakeNode("explorer-control-impact-preview"),
+  "explorer-string-action-label-toggle": new FakeButton("string-labels", "id"),
   "explorer-note-finder": new FakeNode("explorer-note-finder"),
   "explorer-voicing-identifier": new FakeNode("explorer-voicing-identifier"),
   "explorer-chord-finder": new FakeNode("explorer-chord-finder"),
@@ -1285,6 +1286,16 @@ assert.equal(lastMount.options.hidePositionTools, true);
 assert.equal(lastMount.options.hideLegend, true);
 assert.equal(lastMount.options.emphasizeVisibleHighlights, true);
 assert.equal(lastMount.options.highlightStyle, "prominent");
+assert.equal(lastMount.options.showStringActionLabels, false);
+assert.equal(elements["explorer-string-action-label-toggle"].getAttribute("aria-pressed"), "false");
+elements["explorer-string-action-label-toggle"].onclick();
+assert.equal(lastMount.options.showStringActionLabels, true);
+assert.equal(["all", "selected"].includes(lastMount.options.stringActionLabelMode), true);
+assert.equal(elements["explorer-string-action-label-toggle"].getAttribute("aria-pressed"), "true");
+assert.equal(elements["explorer-string-action-label-toggle"].classList.contains("is-selected"), true);
+elements["explorer-string-action-label-toggle"].onclick();
+assert.equal(lastMount.options.showStringActionLabels, false);
+assert.equal(elements["explorer-string-action-label-toggle"].getAttribute("aria-pressed"), "false");
 assert.equal(Object.prototype.hasOwnProperty.call(lastMount.options, "emphasizeStringGroups"), false);
 assert.equal(Object.prototype.hasOwnProperty.call(lastMount.options, "selectedStringGroups"), false);
 assert.equal(lastMount.options.positions.length > 0, true);
