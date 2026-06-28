@@ -1177,26 +1177,33 @@
     }
 
     .explorer-path-step {
+      --explorer-marker-color: #f7bd58;
       display: grid;
       grid-template-columns: auto minmax(0, 1fr);
       gap: 7px;
       min-width: 128px;
-      border: 1px solid rgba(246, 190, 88, 0.2);
+      border: 1px solid color-mix(in srgb, var(--explorer-marker-color) 42%, transparent);
       border-radius: 12px;
       padding: 8px 9px;
-      background: rgba(16, 14, 11, 0.76);
+      background:
+        linear-gradient(135deg, color-mix(in srgb, var(--explorer-marker-color) 18%, transparent), transparent 56%),
+        rgba(16, 14, 11, 0.76);
       color: var(--text);
       cursor: pointer;
       text-align: left;
       font: inherit;
       line-height: 1.22;
+      box-shadow: inset 0 1px 0 color-mix(in srgb, var(--explorer-marker-color) 14%, transparent);
     }
 
     .explorer-path-step:hover,
     .explorer-path-step:focus-visible,
     .explorer-path-step.is-selected {
-      border-color: rgba(246, 190, 88, 0.68);
-      background: rgba(246, 190, 88, 0.1);
+      border-color: color-mix(in srgb, var(--explorer-marker-color) 76%, #fff3cf 10%);
+      background:
+        linear-gradient(135deg, color-mix(in srgb, var(--explorer-marker-color) 26%, transparent), transparent 58%),
+        rgba(18, 16, 12, 0.86);
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.26), 0 0 10px color-mix(in srgb, var(--explorer-marker-color) 36%, transparent);
       outline: none;
     }
 
@@ -1205,15 +1212,16 @@
       place-items: center;
       width: 24px;
       height: 24px;
-      border: 1px solid rgba(246, 190, 88, 0.3);
+      border: 1px solid color-mix(in srgb, var(--explorer-marker-color) 58%, transparent);
       border-radius: 50%;
-      color: var(--gold);
+      color: #fff4ce;
       font-size: 0.72rem;
       font-weight: 900;
+      background: color-mix(in srgb, var(--explorer-marker-color) 20%, transparent);
     }
 
     .explorer-path-step.is-selected .explorer-path-step__number {
-      background: rgba(246, 190, 88, 0.2);
+      background: color-mix(in srgb, var(--explorer-marker-color) 42%, transparent);
       color: #fff4ce;
     }
 
@@ -1408,41 +1416,49 @@
     }
 
     .explorer-active-result[data-marker-tone="1"],
+    .explorer-path-step[data-marker-tone="1"],
     .explorer-fretboard .pedal-steel-fretboard__highlight[data-explorer-marker-tone="1"] {
       --explorer-marker-color: #f7bd58;
     }
 
     .explorer-active-result[data-marker-tone="2"],
+    .explorer-path-step[data-marker-tone="2"],
     .explorer-fretboard .pedal-steel-fretboard__highlight[data-explorer-marker-tone="2"] {
       --explorer-marker-color: #8dc78d;
     }
 
     .explorer-active-result[data-marker-tone="3"],
+    .explorer-path-step[data-marker-tone="3"],
     .explorer-fretboard .pedal-steel-fretboard__highlight[data-explorer-marker-tone="3"] {
       --explorer-marker-color: #70b7ff;
     }
 
     .explorer-active-result[data-marker-tone="4"],
+    .explorer-path-step[data-marker-tone="4"],
     .explorer-fretboard .pedal-steel-fretboard__highlight[data-explorer-marker-tone="4"] {
       --explorer-marker-color: #ff9f7a;
     }
 
     .explorer-active-result[data-marker-tone="5"],
+    .explorer-path-step[data-marker-tone="5"],
     .explorer-fretboard .pedal-steel-fretboard__highlight[data-explorer-marker-tone="5"] {
       --explorer-marker-color: #d6a7ff;
     }
 
     .explorer-active-result[data-marker-tone="6"],
+    .explorer-path-step[data-marker-tone="6"],
     .explorer-fretboard .pedal-steel-fretboard__highlight[data-explorer-marker-tone="6"] {
       --explorer-marker-color: #64d7c2;
     }
 
     .explorer-active-result[data-marker-tone="7"],
+    .explorer-path-step[data-marker-tone="7"],
     .explorer-fretboard .pedal-steel-fretboard__highlight[data-explorer-marker-tone="7"] {
       --explorer-marker-color: #f48fb1;
     }
 
     .explorer-active-result[data-marker-tone="8"],
+    .explorer-path-step[data-marker-tone="8"],
     .explorer-fretboard .pedal-steel-fretboard__highlight[data-explorer-marker-tone="8"] {
       --explorer-marker-color: #cddc39;
     }
@@ -2189,6 +2205,6 @@
   <script src="pedal-steel-fretboard.js?v=explorer-harmonized-path-mode-20260626"></script>
   <script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>
   <script src="e9-music-rules.js?v=explorer-octave-register-20260627"></script>
-  <script src="e9-fretboard-explorer.js?v=compact-fretboard-tools-20260627"></script>
+  <script src="e9-fretboard-explorer.js?v=path-card-colors-20260627"></script>
 </body>
 </html>

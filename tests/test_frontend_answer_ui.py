@@ -278,9 +278,10 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>' in html
     assert "[hidden] {\n      display: none !important;\n    }" in html
     assert '<script src="e9-music-rules.js?v=explorer-octave-register-20260627"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=compact-fretboard-tools-20260627"></script>' in html
-    assert html.index("e9-music-rules.js?v=explorer-octave-register-20260627") < html.index("e9-fretboard-explorer.js?v=compact-fretboard-tools-20260627")
+    assert '<script src="e9-fretboard-explorer.js?v=path-card-colors-20260627"></script>' in html
+    assert html.index("e9-music-rules.js?v=explorer-octave-register-20260627") < html.index("e9-fretboard-explorer.js?v=path-card-colors-20260627")
     assert "e9-fretboard-explorer.js?v=explorer-octave-register-20260627" not in html
+    assert "e9-fretboard-explorer.js?v=compact-fretboard-tools-20260627" not in html
     assert "e9-fretboard-explorer.js?v=grip-vocabulary-20260627" not in html
     assert "e9-fretboard-explorer.js?v=single-note-learning-20260626" not in html
     assert "e9-fretboard-explorer.js?v=single-note-finder-20260626" not in html
@@ -523,6 +524,11 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     active_result_rule = html.split(".explorer-active-result {", 1)[1].split("}", 1)[0]
     assert "flex: 0 0 clamp(150px, 15vw, 184px);" in active_result_rule
     assert "scroll-snap-align: start;" in active_result_rule
+    path_step_rule = html.split(".explorer-path-step {", 1)[1].split("}", 1)[0]
+    assert "--explorer-marker-color: #f7bd58;" in path_step_rule
+    assert "color-mix(in srgb, var(--explorer-marker-color)" in path_step_rule
+    assert '.explorer-path-step[data-marker-tone="1"]' in html
+    assert '.explorer-path-step[data-marker-tone="8"]' in html
     mobile_rule = html.split("@media (max-width: 760px) {", 1)[1].split("</style>", 1)[0]
     assert ".explorer-control-impact-tabs" in mobile_rule
     assert "flex-wrap: nowrap;" in mobile_rule
@@ -543,7 +549,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "musicRules.identifyVoicing" in script
     assert "musicRules.parseChordFinderQuery" in script
     assert "musicRules.chordFinderQualityGate" in script
-    assert 'e9-fretboard-explorer.js?v=compact-fretboard-tools-20260627' in html
+    assert 'e9-fretboard-explorer.js?v=path-card-colors-20260627' in html
     assert "payloadsByCopedent" in script
     assert "renderCopedentChart" in script
     assert "openCopedentDialog" in script
@@ -1905,6 +1911,9 @@ assert.doesNotMatch(elements["explorer-active-results"].textContent, /Ghost all/
 assert.doesNotMatch(elements["explorer-active-results"].textContent, /Compare same fret/);
 const pathStepButtons = elements["explorer-active-results"].querySelectorAll("[data-path-step]");
 assert.equal(pathStepButtons.length, 8);
+assert.match(elements["explorer-active-results"].innerHTML, /data-path-step="[^"]+"[^>]*data-marker-tone="/);
+assert.match(elements["explorer-active-results"].innerHTML, /data-path-step="[^"]+"[^>]*data-string-group="6-8-10"/);
+assert.match(elements["explorer-active-results"].innerHTML, /data-path-step="[^"]+"[^>]*data-string-group="6-7-10"/);
 assert.match(elements["explorer-active-results"].textContent, /G — G/);
 assert.match(elements["explorer-active-results"].textContent, /A — Am/);
 assert.match(elements["explorer-active-results"].textContent, /B — Bm/);

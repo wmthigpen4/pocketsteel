@@ -3065,8 +3065,9 @@
 
   function pathStepButtonHtml(row, index) {
     const selected = row.id === selectedRowId;
+    const markerTone = markerToneForRow(row);
     return `
-      <button class="explorer-path-step${selected ? " is-selected" : ""}" type="button" data-path-step="${escapeHtml(row.id)}" aria-pressed="${selected ? "true" : "false"}">
+      <button class="explorer-path-step${selected ? " is-selected" : ""}" type="button" data-path-step="${escapeHtml(row.id)}" data-marker-tone="${escapeHtml(markerTone)}" data-string-group="${escapeHtml(row.string_group)}" aria-pressed="${selected ? "true" : "false"}">
         <span class="explorer-path-step__number">${escapeHtml(String(index + 1))}</span>
         <span class="explorer-path-step__main">
           <strong>${escapeHtml(pathStepTitle(row))}</strong>
