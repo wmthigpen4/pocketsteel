@@ -1430,6 +1430,14 @@
       });
   }
 
+  function chordFinderControlStatesForGroup(group) {
+    const states = chordFinderControlStates();
+    if (selectedChordControlScope !== "open" && E_LOWER_POCKET_GROUPS.has(group) && !states.some((state) => state.id === "E-lower")) {
+      return [...states, controlStateForIds(["E-lower"])];
+    }
+    return states;
+  }
+
   function chordTargetIntervalForPitchClass(pitchClass, target) {
     const normalized = ((Number(pitchClass) % 12) + 12) % 12;
     const match = target.toneLabels.find((tone) => ((target.rootPitchClass + tone.interval) % 12) === normalized);
@@ -1546,7 +1554,11 @@
   }
 
   function chordFinderGroups() {
-    return Array.from(gripVocabularyGroups(selectedGripVocabulary))
+    const groups = new Set(gripVocabularyGroups(selectedGripVocabulary));
+    if (selectedGripVocabulary === "core") {
+      E_LOWER_POCKET_GROUPS.forEach((group) => groups.add(group));
+    }
+    return Array.from(groups)
       .filter((group) => group.split("-").filter(Boolean).length <= 4);
   }
 
@@ -1561,7 +1573,7 @@
       if (!strings.length) {
         return;
       }
-      chordFinderControlStates().forEach((state) => {
+      chordFinderControlStatesForGroup(group).forEach((state) => {
         for (let fret = range.min; fret <= range.max; fret += 1) {
           const cells = strings.map((stringNumber) => noteCellState(stringNumber, fret, state));
           if (state.controls.length && !cells.some((cell) => cell.isAffected)) {
@@ -3440,7 +3452,7 @@
     }
     const markerGroups = groupRowsForMarkers(rows);
     const selectedMarkerId = markerGroupKey(rows.find((row) => row.id === selectedRowId) || {});
-    const stringActionLabelMode = markerGroups.length > 12 ? "selected" : "all";
+    const stringActionLabelMode = "all";
     // SVG paints later groups on top, so the selected marker must render last.
     const sortedMarkerGroups = [
       ...markerGroups.filter((group) => group.id !== selectedMarkerId),
