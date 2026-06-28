@@ -5,6 +5,8 @@ Generated for ChatGPT reset/guidance on branch `feature/answer-api`.
 ## Current State
 
 - Current branch: `feature/answer-api`.
+- Latest Explorer impact-control grouping commit: `e80d637 fix: group explorer impact controls`. This commit changes the Pedal and lever impact controls from one flat row into labeled groups: `Pedals` with compact `A`, `B`, and `C` buttons, and `Levers` with the existing lever controls. It keeps the same internal control IDs, clear behavior, detail-panel text, fretboard behavior, and Explorer cache-busts. Focused checks passed: `node --check` for Explorer/fretboard/answer JS, `tests/test_frontend_answer_ui.py`, `tests/test_pedal_steel_fretboard_ui.py`, and `git diff --check`.
+- Latest protected-preview Explorer impact-control grouping smoke: **PASS / static-browser behavior verified**. Protected URL `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=impact-control-groups-e80d637` loaded after prior Cloudflare Access authentication. Smoke verified Harmonized scale path mode, impact controls grouped under `Pedals` and `Levers`, pedal button labels `A`, `B`, and `C`, lever controls preserved, clear button preserved, no `[object Object]`, no page-level horizontal overflow, and no console errors.
 - Latest Explorer path-card color-link commit: `44b0c38 fix: color link explorer path cards`. This commit makes Harmonized scale path rail cards use the same marker-tone color system as the result cards and SVG fretboard highlights. It adds `data-marker-tone` and `data-string-group` metadata to path step cards, updates path-card CSS to read `--explorer-marker-color`, and refreshes `e9-fretboard-explorer.js` to `?v=path-card-colors-20260627`. Focused checks passed: `node --check` for Explorer/fretboard/answer JS, `tests/test_frontend_answer_ui.py`, `tests/test_pedal_steel_fretboard_ui.py`, and `git diff --check`.
 - Latest protected-preview Explorer path-card color-link smoke: **PASS / static-browser behavior verified**. Protected URL `https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=path-card-colors-44b0c38` loaded after prior Cloudflare Access authentication. Smoke verified Harmonized scale path mode, eight path rail cards, marker tones `1` through `8`, string groups `6-8-10` and `6-7-10`, SVG highlights with matching marker-tone metadata, distinct computed card colors by marker tone, no `[object Object]`, no page-level horizontal overflow, and no console errors.
 - Latest Explorer compact display-controls commit: `c515c5a fix: compact explorer fretboard display controls`. This commit removes the redundant active-result summary copy above Explorer cards, including strings like `all 3-string groups: 33 visible positions` and `Cards match the SVG markers below.` It also groups Notation, Pitch register, and Labels into one fretboard display-control row and changes the marker-detail control into a compact `String labels` switch. Focused checks passed: `node --check` for Explorer/fretboard/answer JS, `tests/test_frontend_answer_ui.py`, `tests/test_pedal_steel_fretboard_ui.py`, and `git diff --check`.
@@ -61,6 +63,9 @@ https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=compact-fretboard
 
 Explorer path-card color linkage after commit `44b0c38`:
 https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=path-card-colors-44b0c38
+
+Explorer impact-control grouping after commit `e80d637`:
+https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=impact-control-groups-e80d637
 
 Explorer shared music-rules / copedent naming boundary after commit `b55a12e`:
 https://app.steelguitarrag.com/ui/e9-fretboard-explorer.html?v=shared-rules-boundary-b55a12e
