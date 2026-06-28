@@ -2630,6 +2630,56 @@
     return controls.filter((control) => selectedImpactControlIds.has(control.id));
   }
 
+  function controlImpactGroup(control) {
+    const type = String(control?.control_type || "").toLowerCase();
+    if (type === "pedal" || ["A", "B", "C"].includes(control?.id)) {
+      return "pedals";
+    }
+    return "levers";
+  }
+
+  function controlImpactButtonLabel(control) {
+    if (controlImpactGroup(control) === "pedals") {
+      return control?.id || controlDisplayLabel(control, "Pedal").replace(/\s+pedal$/i, "");
+    }
+    return controlDisplayLabel(control, "Lever")
+      .replace(/\s+\(F lever\)$/i, " (F)")
+      .replace(/\s+lever$/i, "");
+  }
+
+  function controlImpactButtonHtml(control) {
+    return `
+      <button
+        class="explorer-control-impact-tab${selectedImpactControlIds.has(control.id) ? " is-selected" : ""}"
+        type="button"
+        aria-pressed="${selectedImpactControlIds.has(control.id) ? "true" : "false"}"
+        data-control-impact-tab="${escapeHtml(control.id || "")}"
+      >${escapeHtml(controlImpactButtonLabel(control))}</button>
+    `;
+  }
+
+  function controlImpactGroupsHtml(controls) {
+    const pedals = controls.filter((control) => controlImpactGroup(control) === "pedals");
+    const levers = controls.filter((control) => controlImpactGroup(control) === "levers");
+    const groupHtml = [
+      { label: "Pedals", controls: pedals },
+      { label: "Levers", controls: levers },
+    ].filter((group) => group.controls.length).map((group) => `
+      <fieldset class="explorer-control-impact-group">
+        <legend>${escapeHtml(group.label)}</legend>
+        <div class="explorer-control-impact-tabs" role="group" aria-label="${escapeHtml(group.label)}">
+          ${group.controls.map((control) => controlImpactButtonHtml(control)).join("")}
+        </div>
+      </fieldset>
+    `).join("");
+    return `
+      <div class="explorer-control-impact-control-groups" role="group" aria-label="Pedal and lever controls">
+        ${groupHtml}
+        <button class="explorer-control-impact-tab explorer-control-impact-clear" type="button" data-control-impact-clear>Clear</button>
+      </div>
+    `;
+  }
+
   function impactContextSentence(controls) {
     const selectedGroups = selectedStringGroups();
     const groupText = !isPathMode() && selectedGroups.length ? selectedGroups.join(", ") : selectedGroupLabel();
@@ -2715,17 +2765,7 @@
         <span>${escapeHtml(formatValue(preview?.copedent_profile?.label || "Standard E9"))}</span>
       </div>
       <div class="explorer-control-impact-preview__body">
-        <div class="explorer-control-impact-tabs" role="group" aria-label="Pedal and lever controls">
-          ${controls.map((control) => `
-            <button
-              class="explorer-control-impact-tab${selectedImpactControlIds.has(control.id) ? " is-selected" : ""}"
-              type="button"
-              aria-pressed="${selectedImpactControlIds.has(control.id) ? "true" : "false"}"
-              data-control-impact-tab="${escapeHtml(control.id || "")}"
-            >${escapeHtml(controlDisplayLabel(control, "Control"))}</button>
-          `).join("")}
-          <button class="explorer-control-impact-tab explorer-control-impact-clear" type="button" data-control-impact-clear>Clear</button>
-        </div>
+        ${controlImpactGroupsHtml(controls)}
         <p class="explorer-control-impact-context">${escapeHtml(impactContextSentence(selectedControls))}</p>
         ${selectedControls.map((control) => controlImpactDetailHtml(control)).join("")}
         ${cautions.length ? `<p class="explorer-control-impact-context">${escapeHtml(cautions.join(" "))}</p>` : ""}

@@ -1026,6 +1026,31 @@
       gap: 9px;
     }
 
+    .explorer-control-impact-control-groups {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: end;
+      gap: 8px 12px;
+    }
+
+    .explorer-control-impact-group {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+      border: 0;
+      padding: 0;
+      margin: 0;
+    }
+
+    .explorer-control-impact-group legend {
+      padding: 0;
+      color: var(--gold);
+      font-size: 0.68rem;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
     .explorer-control-impact-tabs {
       display: flex;
       flex-wrap: wrap;
@@ -1055,6 +1080,7 @@
     .explorer-control-impact-clear {
       border-style: dashed;
       color: rgba(255, 247, 232, 0.68);
+      align-self: end;
     }
 
     .explorer-control-impact-context {
@@ -1955,6 +1981,10 @@
         -webkit-overflow-scrolling: touch;
       }
 
+      .explorer-control-impact-control-groups {
+        align-items: start;
+      }
+
       .explorer-detail-row {
         grid-template-columns: 1fr;
       }
@@ -2205,6 +2235,6 @@
   <script src="pedal-steel-fretboard.js?v=explorer-harmonized-path-mode-20260626"></script>
   <script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>
   <script src="e9-music-rules.js?v=explorer-octave-register-20260627"></script>
-  <script src="e9-fretboard-explorer.js?v=path-card-colors-20260627"></script>
+  <script src="e9-fretboard-explorer.js?v=impact-control-groups-20260627"></script>
 </body>
 </html>

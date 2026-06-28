@@ -278,9 +278,10 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>' in html
     assert "[hidden] {\n      display: none !important;\n    }" in html
     assert '<script src="e9-music-rules.js?v=explorer-octave-register-20260627"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=path-card-colors-20260627"></script>' in html
-    assert html.index("e9-music-rules.js?v=explorer-octave-register-20260627") < html.index("e9-fretboard-explorer.js?v=path-card-colors-20260627")
+    assert '<script src="e9-fretboard-explorer.js?v=impact-control-groups-20260627"></script>' in html
+    assert html.index("e9-music-rules.js?v=explorer-octave-register-20260627") < html.index("e9-fretboard-explorer.js?v=impact-control-groups-20260627")
     assert "e9-fretboard-explorer.js?v=explorer-octave-register-20260627" not in html
+    assert "e9-fretboard-explorer.js?v=path-card-colors-20260627" not in html
     assert "e9-fretboard-explorer.js?v=compact-fretboard-tools-20260627" not in html
     assert "e9-fretboard-explorer.js?v=grip-vocabulary-20260627" not in html
     assert "e9-fretboard-explorer.js?v=single-note-learning-20260626" not in html
@@ -549,7 +550,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "musicRules.identifyVoicing" in script
     assert "musicRules.parseChordFinderQuery" in script
     assert "musicRules.chordFinderQualityGate" in script
-    assert 'e9-fretboard-explorer.js?v=path-card-colors-20260627' in html
+    assert 'e9-fretboard-explorer.js?v=impact-control-groups-20260627' in html
     assert "payloadsByCopedent" in script
     assert "renderCopedentChart" in script
     assert "openCopedentDialog" in script
@@ -1353,13 +1354,17 @@ assert.equal(elements["explorer-control-impact-preview"].hidden, false);
 assert.match(elements["explorer-control-impact-preview"].textContent, /Pedal and lever impact/);
 assert.match(elements["explorer-control-impact-preview"].textContent, /Emmons E9/);
 assert.match(elements["explorer-control-impact-preview"].textContent, /Showing Notes notation/);
-assert.match(elements["explorer-control-impact-preview"].textContent, /A pedal/);
+assert.match(elements["explorer-control-impact-preview"].textContent, /Pedals/);
+assert.match(elements["explorer-control-impact-preview"].textContent, /Levers/);
 assert.match(elements["explorer-control-impact-preview"].innerHTML, /data-control-impact-tab="A"/);
+assert.match(elements["explorer-control-impact-preview"].innerHTML, /data-control-impact-tab="A"[^>]*>A<\/button>/);
+assert.match(elements["explorer-control-impact-preview"].innerHTML, /data-control-impact-tab="B"[^>]*>B<\/button>/);
+assert.match(elements["explorer-control-impact-preview"].innerHTML, /data-control-impact-tab="C"[^>]*>C<\/button>/);
+assert.match(elements["explorer-control-impact-preview"].innerHTML, /<legend>Pedals<\/legend>[\s\S]*data-control-impact-tab="A"[\s\S]*data-control-impact-tab="B"[\s\S]*data-control-impact-tab="C"/);
 assert.doesNotMatch(elements["explorer-control-impact-preview"].textContent, /String 5/);
 assert.doesNotMatch(elements["explorer-control-impact-preview"].textContent, /raises 2 semitones/);
 assert.doesNotMatch(elements["explorer-control-impact-preview"].textContent, /B-to-Bb vertical/);
 assert.doesNotMatch(elements["explorer-control-impact-preview"].textContent, /\[object Object\]/);
-assert.match(elements["explorer-control-impact-preview"].textContent, /A pedal/);
 let impactButtons = elements["explorer-control-impact-preview"].querySelectorAll("[data-control-impact-tab]");
 impactButtons.find((button) => button.getAttribute("data-control-impact-tab") === "A").onclick();
 impactButtons = elements["explorer-control-impact-preview"].querySelectorAll("[data-control-impact-tab]");
@@ -1832,8 +1837,8 @@ assert.match(elements["explorer-copedent-chart"].textContent, /Day E9/);
 assert.match(elements["explorer-copedent-chart"].textContent, /enabled/);
 assert.match(elements["explorer-copedent-chart"].textContent, /String\s+Open[\s\S]*C pedal\s+P1[\s\S]*B pedal\s+P2[\s\S]*A pedal\s+P3/);
 assert.match(elements["explorer-control-impact-preview"].textContent, /Day E9/);
-assert.match(elements["explorer-control-impact-preview"].textContent, /C pedal/);
-assert.match(elements["explorer-control-impact-preview"].textContent, /A pedal/);
+assert.match(elements["explorer-control-impact-preview"].innerHTML, /data-control-impact-tab="C"[^>]*>C<\/button>/);
+assert.match(elements["explorer-control-impact-preview"].innerHTML, /data-control-impact-tab="A"[^>]*>A<\/button>/);
 assert.doesNotMatch(elements["explorer-copedent-chart"].textContent, /\[object Object\]/);
 assert.doesNotMatch(elements["explorer-control-impact-preview"].textContent, /\[object Object\]/);
 elements["explorer-copedent"].value = "custom-e9-lkv";
