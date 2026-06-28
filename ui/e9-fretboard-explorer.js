@@ -3127,10 +3127,6 @@
       return;
     }
     els.activeResults.innerHTML = `
-      <div class="explorer-active-results__header">
-        <strong>${escapeHtml(label)}: ${rows.length} visible ${isPathMode() ? "scale degrees" : rows.length === 1 ? "position" : "positions"}</strong>
-        <span>${isPathMode() ? "This path changes string groups when the harmony requires it." : "Cards match the SVG markers below."}</span>
-      </div>
       <div class="explorer-active-results__track">
         ${rows.map((row) => resultButtonHtml(row, "data-active-result-row")).join("")}
       </div>

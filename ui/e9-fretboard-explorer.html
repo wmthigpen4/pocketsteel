@@ -184,39 +184,54 @@
       grid-column: span 2;
     }
 
-    .explorer-panel-notation {
+    .explorer-fretboard-tools {
       display: grid;
-      grid-template-columns: auto minmax(240px, 380px) minmax(0, 1fr);
-      gap: 8px 12px;
+      grid-template-columns: minmax(240px, 1.25fr) minmax(260px, 1.35fr) minmax(150px, auto);
+      gap: 10px;
       align-items: center;
       padding: 12px 16px;
       border-bottom: 1px solid rgba(246, 190, 88, 0.14);
       background: rgba(0, 0, 0, 0.18);
     }
 
+    .explorer-panel-notation {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 8px 10px;
+      align-items: center;
+    }
+
     .explorer-panel-notation .explorer-notation-selector {
-      width: min(100%, 380px);
+      width: 100%;
     }
 
     .explorer-panel-notation .explorer-control-help {
-      margin: 0;
-      color: rgba(255, 247, 232, 0.58);
-      font-size: 0.78rem;
-      line-height: 1.35;
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
     }
 
     .explorer-string-label-toggle {
-      width: fit-content;
-      min-height: 36px;
+      width: max-content;
+      min-height: 30px;
       border: 1px solid rgba(246, 190, 88, 0.28);
       border-radius: 999px;
-      padding: 0 14px;
+      padding: 0 10px 0 8px;
       background: rgba(0, 0, 0, 0.28);
       color: rgba(255, 247, 232, 0.8);
       cursor: pointer;
       font: inherit;
-      font-size: 0.78rem;
+      font-size: 0.72rem;
       font-weight: 900;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
     }
 
     .explorer-string-label-toggle.is-selected,
@@ -226,6 +241,36 @@
       background: rgba(246, 190, 88, 0.18);
       color: var(--text);
       outline: none;
+    }
+
+    .explorer-string-label-toggle__track {
+      position: relative;
+      width: 30px;
+      height: 16px;
+      border-radius: 999px;
+      background: rgba(255, 247, 232, 0.18);
+      box-shadow: inset 0 0 0 1px rgba(255, 247, 232, 0.16);
+      flex: 0 0 auto;
+    }
+
+    .explorer-string-label-toggle__knob {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: rgba(255, 247, 232, 0.72);
+      transition: transform 0.16s ease, background 0.16s ease;
+    }
+
+    .explorer-string-label-toggle.is-selected .explorer-string-label-toggle__track {
+      background: rgba(246, 190, 88, 0.32);
+    }
+
+    .explorer-string-label-toggle.is-selected .explorer-string-label-toggle__knob {
+      transform: translateX(14px);
+      background: var(--gold);
     }
 
     .explorer-control select,
@@ -1845,6 +1890,10 @@
 
       .explorer-panel-notation {
         grid-template-columns: 1fr;
+      }
+
+      .explorer-fretboard-tools {
+        grid-template-columns: 1fr;
         padding: 10px 12px;
       }
 
@@ -2096,29 +2145,34 @@
     <section class="explorer-control-impact-preview" id="explorer-control-impact-preview" aria-label="Pedal and lever impact preview" hidden></section>
 
     <section class="explorer-panel" aria-label="Explorer fretboard">
-      <div class="explorer-control explorer-control--notation explorer-panel-notation" id="explorer-notation-control">
-        <span class="explorer-control-label" id="explorer-notation-label">Notation</span>
-        <div class="explorer-notation-selector" role="group" aria-labelledby="explorer-notation-label" aria-describedby="explorer-notation-help">
-          <button type="button" data-explorer-notation-mode="notes" class="is-selected" aria-pressed="true">Notes</button>
-          <button type="button" data-explorer-notation-mode="nns" aria-pressed="false">NNS</button>
-          <button type="button" data-explorer-notation-mode="roman" aria-pressed="false">Roman</button>
-          <button type="button" data-explorer-notation-mode="numbers" aria-pressed="false">Numbers</button>
+      <div class="explorer-fretboard-tools" aria-label="Fretboard display controls">
+        <div class="explorer-control explorer-control--notation explorer-panel-notation" id="explorer-notation-control">
+          <span class="explorer-control-label" id="explorer-notation-label">Notation</span>
+          <div class="explorer-notation-selector" role="group" aria-labelledby="explorer-notation-label" aria-describedby="explorer-notation-help">
+            <button type="button" data-explorer-notation-mode="notes" class="is-selected" aria-pressed="true">Notes</button>
+            <button type="button" data-explorer-notation-mode="nns" aria-pressed="false">NNS</button>
+            <button type="button" data-explorer-notation-mode="roman" aria-pressed="false">Roman</button>
+            <button type="button" data-explorer-notation-mode="numbers" aria-pressed="false">Numbers</button>
+          </div>
+          <p class="explorer-control-help" id="explorer-notation-help">Controls card, marker, and top-label display.</p>
         </div>
-        <p class="explorer-control-help" id="explorer-notation-help">Controls card, marker, and top-label display.</p>
-      </div>
-      <div class="explorer-control explorer-control--notation explorer-panel-notation" id="explorer-pitch-register-control">
-        <span class="explorer-control-label" id="explorer-pitch-register-label">Pitch register</span>
-        <div class="explorer-notation-selector" role="group" aria-labelledby="explorer-pitch-register-label" aria-describedby="explorer-pitch-register-help">
-          <button type="button" data-explorer-pitch-register="off" class="is-selected" aria-pressed="true">Off</button>
-          <button type="button" data-explorer-pitch-register="scientific" aria-pressed="false">Scientific</button>
-          <button type="button" data-explorer-pitch-register="band" aria-pressed="false">Octave band</button>
+        <div class="explorer-control explorer-control--notation explorer-panel-notation" id="explorer-pitch-register-control">
+          <span class="explorer-control-label" id="explorer-pitch-register-label">Pitch register</span>
+          <div class="explorer-notation-selector" role="group" aria-labelledby="explorer-pitch-register-label" aria-describedby="explorer-pitch-register-help">
+            <button type="button" data-explorer-pitch-register="off" class="is-selected" aria-pressed="true">Off</button>
+            <button type="button" data-explorer-pitch-register="scientific" aria-pressed="false">Scientific</button>
+            <button type="button" data-explorer-pitch-register="band" aria-pressed="false">Octave band</button>
+          </div>
+          <p class="explorer-control-help" id="explorer-pitch-register-help">Shows octave/register detail in cards and detail panels without changing fretboard marker labels.</p>
         </div>
-        <p class="explorer-control-help" id="explorer-pitch-register-help">Shows octave/register detail in cards and detail panels without changing fretboard marker labels.</p>
-      </div>
-      <div class="explorer-control explorer-control--notation explorer-panel-notation" id="explorer-string-action-label-control">
-        <span class="explorer-control-label" id="explorer-string-action-label-label">Marker detail</span>
-        <button class="explorer-string-label-toggle" id="explorer-string-action-label-toggle" type="button" aria-pressed="false" aria-describedby="explorer-string-action-label-help">String labels</button>
-        <p class="explorer-control-help" id="explorer-string-action-label-help">Adds compact string and pedal/lever shorthand inside fretboard marker bubbles.</p>
+        <div class="explorer-control explorer-control--notation explorer-panel-notation" id="explorer-string-action-label-control">
+          <span class="explorer-control-label" id="explorer-string-action-label-label">Labels</span>
+          <button class="explorer-string-label-toggle" id="explorer-string-action-label-toggle" type="button" aria-pressed="false" aria-describedby="explorer-string-action-label-help">
+            <span class="explorer-string-label-toggle__track" aria-hidden="true"><span class="explorer-string-label-toggle__knob"></span></span>
+            <span>String labels</span>
+          </button>
+          <p class="explorer-control-help" id="explorer-string-action-label-help">Adds compact string and pedal/lever shorthand inside fretboard marker bubbles.</p>
+        </div>
       </div>
       <p class="explorer-empty" id="explorer-empty" hidden>No validated rows match these controls.</p>
       <div class="explorer-active-results" id="explorer-active-results" aria-label="Visible selected positions"></div>
@@ -2135,6 +2189,6 @@
   <script src="pedal-steel-fretboard.js?v=explorer-harmonized-path-mode-20260626"></script>
   <script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>
   <script src="e9-music-rules.js?v=explorer-octave-register-20260627"></script>
-  <script src="e9-fretboard-explorer.js?v=explorer-octave-register-20260627"></script>
+  <script src="e9-fretboard-explorer.js?v=compact-fretboard-tools-20260627"></script>
 </body>
 </html>
