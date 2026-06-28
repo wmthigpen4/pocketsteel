@@ -278,8 +278,9 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<script src="e9-fretboard-explorer-data.js?v=single-grip-octave-results-20260628"></script>' in html
     assert "[hidden] {\n      display: none !important;\n    }" in html
     assert '<script src="e9-music-rules.js?v=legitimate-grip-vocabulary-20260628"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=e-lower-pocket-d-major-20260628"></script>' in html
-    assert html.index("e9-music-rules.js?v=legitimate-grip-vocabulary-20260628") < html.index("e9-fretboard-explorer.js?v=e-lower-pocket-d-major-20260628")
+    assert '<script src="e9-fretboard-explorer.js?v=explorer-workbench-redesign-20260628"></script>' in html
+    assert html.index("e9-music-rules.js?v=legitimate-grip-vocabulary-20260628") < html.index("e9-fretboard-explorer.js?v=explorer-workbench-redesign-20260628")
+    assert "e9-fretboard-explorer.js?v=e-lower-pocket-d-major-20260628" not in html
     assert "e9-fretboard-explorer.js?v=compact-explorer-tools-20260628" not in html
     assert "e9-fretboard-explorer.js?v=voicing-identifier-copy-20260627" not in html
     assert "e9-fretboard-explorer.js?v=chord-map-label-cleanup-20260627" not in html
@@ -330,7 +331,9 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<div class="explorer-copedent-control-row">' not in html
     mode_markup = html.split('<section class="explorer-mode-panel" aria-label="Explorer mode">', 1)[1].split("</section>", 1)[0]
     controls_markup = html.split('<section class="explorer-controls" aria-label="Explorer filters">', 1)[1].split("</section>", 1)[0]
+    workbench_markup = html.split('<section class="explorer-workbench" aria-label="Explorer workbench">', 1)[1].split('<section class="explorer-control-impact-preview"', 1)[0]
     panel_markup = html.split('<section class="explorer-panel" aria-label="Explorer fretboard">', 1)[1].split("</section>", 1)[0]
+    inspector_markup = html.split('<aside class="explorer-inspector" aria-label="Why this works">', 1)[1].split("</aside>", 1)[0]
     assert html.index('<section class="explorer-mode-panel" aria-label="Explorer mode">') < html.index('<section class="explorer-controls" aria-label="Explorer filters">')
     assert 'id="explorer-copedent-open"' not in controls_markup
     assert '<dialog class="explorer-copedent-dialog" id="explorer-copedent-dialog"' in html
@@ -351,6 +354,17 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<label for="explorer-explore-mode">Explore mode</label>' in html
     assert '<label for="explorer-explore-mode">Explore mode</label>' in mode_markup
     assert '<label for="explorer-explore-mode">Explore mode</label>' not in controls_markup
+    assert 'class="explorer-control explorer-control--mode explorer-mode-select-proxy"' in mode_markup
+    assert '<div class="explorer-mode-tabs" role="tablist" aria-label="Explorer mode">' in mode_markup
+    for mode_id, label in [
+        ("single", "Single Grip"),
+        ("path", "Harmonized Scale Path"),
+        ("note", "Single-Note Finder"),
+        ("voicing", "Voicing Identifier"),
+        ("chord", "Chord / Voicing Finder"),
+    ]:
+        assert f'data-explorer-mode-tab="{mode_id}"' in mode_markup
+        assert f"<strong>{label}</strong>" in mode_markup
     assert '<option value="single" selected>Single grip</option>' in html
     assert '<option value="path">Harmonized scale path</option>' in html
     assert '<option value="note">Single-note finder</option>' in html
@@ -360,8 +374,11 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "Voicing identifier explains one shape." in html
     assert "Chord / Voicing Finder searches practical shapes for a target chord." in html
     assert ".explorer-mode-panel {" in html
-    assert "grid-template-columns: minmax(220px, 340px) minmax(0, 1fr);" in html
-    assert "Start by choosing the kind of fretboard question you want to explore" in mode_markup
+    assert "grid-template-columns: 1fr;" in html.split(".explorer-mode-panel {", 1)[1].split("}", 1)[0]
+    assert "grid-template-columns: minmax(220px, 340px) minmax(0, 1fr);" not in html
+    assert ".explorer-mode-tabs {" in html
+    assert ".explorer-mode-select-proxy {" in html
+    assert "Start by choosing the kind of fretboard question you want to explore" not in mode_markup
     assert 'id="explorer-note-finder"' in html
     assert 'id="explorer-voicing-identifier"' in html
     assert 'id="explorer-chord-finder"' in html
@@ -512,6 +529,18 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "explorer-scale-summary" not in html
     assert "Scale: <span" not in html
     assert 'id="explorer-selected-detail"' in html
+    assert '<section class="explorer-workbench" aria-label="Explorer workbench">' in html
+    assert '<aside class="explorer-inspector" aria-label="Why this works">' in html
+    assert '<strong>Why this works</strong>' in inspector_markup
+    assert '<span>Selected position</span>' in inspector_markup
+    assert 'id="explorer-selected-detail"' in inspector_markup
+    assert ".explorer-workbench {" in html
+    assert "grid-template-columns: minmax(0, 1fr) minmax(280px, 0.28fr);" in html
+    assert ".explorer-inspector {" in html
+    assert "position: sticky;" in html.split(".explorer-inspector {", 1)[1].split("}", 1)[0]
+    assert ".explorer-stage-header {" in html
+    assert "<h2>E9 Fretboard</h2>" in panel_markup
+    assert '<span class="explorer-stage-trust">Validated data</span>' in panel_markup
     assert html.count('id="explorer-notation-control"') == 1
     assert html.count('id="explorer-notation-label"') == 1
     assert html.count('id="explorer-notation-help"') == 1
@@ -528,8 +557,9 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert panel_markup.index('id="explorer-notation-control"') < panel_markup.index('id="explorer-fretboard"')
     assert panel_markup.index('id="explorer-pitch-register-control"') < panel_markup.index('id="explorer-fretboard"')
     assert panel_markup.index('id="explorer-string-action-label-control"') < panel_markup.index('id="explorer-fretboard"')
+    assert panel_markup.index('id="explorer-fretboard"') < panel_markup.index('id="explorer-active-results"')
+    assert workbench_markup.index('id="explorer-fretboard"') < workbench_markup.index('id="explorer-selected-detail"')
     assert html.index('id="explorer-fretboard"') < html.index('id="explorer-control-impact-preview"')
-    assert html.index('id="explorer-control-impact-preview"') < html.index('id="explorer-selected-detail"')
     assert "Marker detail" not in panel_markup
     assert ".explorer-panel-notation {" in html
     assert ".explorer-fretboard-tools {" in html
@@ -572,7 +602,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "musicRules.identifyVoicing" in script
     assert "musicRules.parseChordFinderQuery" in script
     assert "musicRules.chordFinderQualityGate" in script
-    assert 'e9-fretboard-explorer.js?v=e-lower-pocket-d-major-20260628' in html
+    assert 'e9-fretboard-explorer.js?v=explorer-workbench-redesign-20260628' in html
     assert ".explorer-chord-map-card .explorer-active-result__fields {" in html
     assert ".explorer-chord-map-card .explorer-active-result__fields span {" in html
     assert "grid-template-columns: minmax(72px, 0.48fr) minmax(0, 1fr);" in html
@@ -583,6 +613,8 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "closeCopedentDialog" in script
     assert "data-explorer-notation-mode" in script
     assert "data-explorer-pitch-register" in script
+    assert "data-explorer-mode-tab" in script
+    assert "updateExploreModeTabs" in script
     assert 'notationMode = "notes"' in script
     assert 'pitchRegisterMode = "off"' in script
     assert "MAJOR_SCALE_SEQUENCES" in rules
@@ -1261,6 +1293,13 @@ const pitchRegisterButtons = [
   new FakeButton("scientific", "data-explorer-pitch-register"),
   new FakeButton("band", "data-explorer-pitch-register")
 ];
+const modeButtons = [
+  new FakeButton("single", "data-explorer-mode-tab"),
+  new FakeButton("path", "data-explorer-mode-tab"),
+  new FakeButton("note", "data-explorer-mode-tab"),
+  new FakeButton("voicing", "data-explorer-mode-tab"),
+  new FakeButton("chord", "data-explorer-mode-tab")
+];
 const sandbox = {
   window: {
     innerWidth: 1280,
@@ -1275,6 +1314,9 @@ const sandbox = {
       }
       if (selector === "[data-explorer-pitch-register]") {
         return pitchRegisterButtons;
+      }
+      if (selector === "[data-explorer-mode-tab]") {
+        return modeButtons;
       }
       return [];
     }

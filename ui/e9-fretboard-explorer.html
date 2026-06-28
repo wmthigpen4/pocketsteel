@@ -44,7 +44,7 @@
     }
 
     .explorer-shell {
-      width: min(1180px, calc(100% - 32px));
+      width: min(1480px, calc(100% - 32px));
       margin: 0 auto;
       padding: 16px 0 56px;
     }
@@ -141,16 +141,122 @@
     }
 
     .explorer-mode-panel {
-      grid-template-columns: minmax(220px, 340px) minmax(0, 1fr);
-      align-items: end;
+      grid-template-columns: 1fr;
+      align-items: stretch;
       margin-bottom: 10px;
+      padding: 10px;
+      background:
+        linear-gradient(180deg, rgba(255, 247, 232, 0.035), transparent 62%),
+        rgba(12, 12, 10, 0.86);
     }
 
-    .explorer-mode-panel__copy {
-      margin: 0;
-      color: rgba(255, 247, 232, 0.62);
-      font-size: 0.82rem;
-      line-height: 1.45;
+    .explorer-mode-select-proxy {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .explorer-mode-tabs {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .explorer-mode-tab {
+      --mode-accent: var(--gold);
+      min-height: 76px;
+      border: 1px solid rgba(246, 190, 88, 0.2);
+      border-radius: 14px;
+      padding: 12px 14px;
+      background:
+        radial-gradient(circle at 16% 50%, color-mix(in srgb, var(--mode-accent) 18%, transparent), transparent 40%),
+        linear-gradient(180deg, rgba(255, 247, 232, 0.035), rgba(255, 247, 232, 0.012)),
+        rgba(12, 12, 10, 0.82);
+      color: var(--text);
+      cursor: pointer;
+      font: inherit;
+      text-align: left;
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: 12px;
+      align-items: center;
+      box-shadow: inset 0 1px 0 rgba(255, 247, 232, 0.05), 0 16px 42px rgba(0, 0, 0, 0.24);
+    }
+
+    .explorer-mode-tab[data-explorer-mode-tab="path"] {
+      --mode-accent: #8dc78d;
+    }
+
+    .explorer-mode-tab[data-explorer-mode-tab="note"] {
+      --mode-accent: #70b7ff;
+    }
+
+    .explorer-mode-tab[data-explorer-mode-tab="voicing"] {
+      --mode-accent: #64d7c2;
+    }
+
+    .explorer-mode-tab[data-explorer-mode-tab="chord"] {
+      --mode-accent: #ff9f7a;
+    }
+
+    .explorer-mode-tab__icon {
+      display: inline-grid;
+      place-items: center;
+      width: 40px;
+      height: 40px;
+      border: 1px solid color-mix(in srgb, var(--mode-accent) 58%, transparent);
+      border-radius: 999px;
+      color: color-mix(in srgb, var(--mode-accent) 82%, #fff8df 18%);
+      background: color-mix(in srgb, var(--mode-accent) 9%, transparent);
+      box-shadow: 0 0 18px color-mix(in srgb, var(--mode-accent) 16%, transparent);
+    }
+
+    .explorer-mode-tab__icon svg {
+      width: 24px;
+      height: 24px;
+      stroke: currentColor;
+      stroke-width: 1.8;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .explorer-mode-tab__copy {
+      display: grid;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .explorer-mode-tab__copy strong {
+      font-family: "Source Serif 4", Georgia, serif;
+      font-size: clamp(1rem, 1.25vw, 1.22rem);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .explorer-mode-tab__copy span {
+      color: var(--muted);
+      font-size: 0.76rem;
+      font-weight: 700;
+      line-height: 1.28;
+    }
+
+    .explorer-mode-tab:hover,
+    .explorer-mode-tab:focus-visible,
+    .explorer-mode-tab.is-selected {
+      border-color: color-mix(in srgb, var(--mode-accent) 72%, #fff2c8 8%);
+      background:
+        radial-gradient(circle at 16% 50%, color-mix(in srgb, var(--mode-accent) 24%, transparent), transparent 42%),
+        linear-gradient(180deg, rgba(255, 247, 232, 0.055), rgba(255, 247, 232, 0.018)),
+        rgba(16, 15, 12, 0.92);
+      outline: none;
+      box-shadow: inset 0 1px 0 rgba(255, 247, 232, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.32), 0 0 22px color-mix(in srgb, var(--mode-accent) 20%, transparent);
     }
 
     .explorer-controls {
@@ -1119,11 +1225,94 @@
       overflow: hidden;
     }
 
+    .explorer-workbench {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(280px, 0.28fr);
+      gap: 12px;
+      align-items: start;
+      margin-top: 12px;
+    }
+
+    .explorer-stage-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 8px 12px;
+      align-items: center;
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(246, 190, 88, 0.14);
+      background:
+        linear-gradient(90deg, rgba(246, 190, 88, 0.08), transparent 42%),
+        rgba(0, 0, 0, 0.16);
+    }
+
+    .explorer-stage-header h2 {
+      margin: 0;
+      color: var(--gold);
+      font-size: 0.86rem;
+      font-weight: 900;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+
+    .explorer-stage-trust {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: rgba(141, 199, 141, 0.9);
+      font-size: 0.75rem;
+      font-weight: 900;
+    }
+
+    .explorer-stage-trust::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: #8dc78d;
+      box-shadow: 0 0 10px rgba(141, 199, 141, 0.42);
+    }
+
+    .explorer-inspector {
+      position: sticky;
+      top: 12px;
+      border: 1px solid rgba(246, 190, 88, 0.22);
+      border-radius: 18px;
+      background:
+        radial-gradient(circle at 10% 0%, rgba(246, 190, 88, 0.12), transparent 35%),
+        rgba(15, 13, 10, 0.92);
+      box-shadow: 0 24px 68px rgba(0, 0, 0, 0.34);
+      overflow: hidden;
+    }
+
+    .explorer-inspector__header {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+      padding: 13px 14px;
+      border-bottom: 1px solid rgba(246, 190, 88, 0.14);
+    }
+
+    .explorer-inspector__header strong {
+      color: var(--gold);
+      font-size: 0.82rem;
+      font-weight: 900;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+
+    .explorer-inspector__header span {
+      color: rgba(255, 247, 232, 0.54);
+      font-size: 0.72rem;
+      font-weight: 800;
+    }
+
     .explorer-active-results {
       display: grid;
       gap: 10px;
-      padding: 14px 16px 0;
-      border-bottom: 1px solid rgba(246, 190, 88, 0.14);
+      padding: 13px 16px 16px;
+      border-top: 1px solid rgba(246, 190, 88, 0.14);
       background: rgba(0, 0, 0, 0.16);
     }
 
@@ -1552,8 +1741,11 @@
     }
 
     .explorer-fretboard {
-      padding: 16px;
+      padding: 18px 16px;
       overflow-x: auto;
+      background:
+        radial-gradient(circle at 50% 6%, rgba(246, 190, 88, 0.08), transparent 42%),
+        rgba(0, 0, 0, 0.08);
     }
 
     .explorer-note-grid {
@@ -1719,19 +1911,24 @@
 
     .explorer-details {
       display: grid;
-      grid-template-columns: minmax(220px, 0.36fr) minmax(0, 1fr);
-      gap: 14px;
-      margin-top: 18px;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-top: 12px;
     }
 
     .explorer-row-list {
-      display: grid;
-      align-content: start;
+      display: flex;
+      align-items: stretch;
       gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 6px;
+      overscroll-behavior-x: contain;
+      -webkit-overflow-scrolling: touch;
     }
 
     .explorer-row-button {
-      width: 100%;
+      width: auto;
+      flex: 0 0 clamp(190px, 18vw, 250px);
       border: 1px solid rgba(246, 190, 88, 0.2);
       border-radius: 11px;
       padding: 10px 12px;
@@ -1764,14 +1961,17 @@
     }
 
     .explorer-selected-detail {
-      border: 1px solid rgba(246, 190, 88, 0.22);
-      border-radius: 14px;
+      border: 0;
+      border-radius: 0;
       padding: 16px;
-      background: rgba(16, 14, 11, 0.82);
+      background: transparent;
+    }
+
+    .explorer-inspector .explorer-selected-detail {
+      min-height: 220px;
     }
 
     .explorer-selected-detail--advanced {
-      border-color: rgba(141, 199, 141, 0.42);
       background: rgba(15, 22, 15, 0.78);
     }
 
@@ -1905,6 +2105,22 @@
         grid-template-columns: 1fr;
       }
 
+      .explorer-mode-tabs {
+        grid-template-columns: 1fr;
+      }
+
+      .explorer-mode-tab {
+        min-height: 64px;
+      }
+
+      .explorer-workbench {
+        grid-template-columns: 1fr;
+      }
+
+      .explorer-inspector {
+        position: static;
+      }
+
       .explorer-copedent-control-row {
         grid-template-columns: 1fr;
       }
@@ -2010,7 +2226,7 @@
     </header>
 
     <section class="explorer-mode-panel" aria-label="Explorer mode">
-      <div class="explorer-control explorer-control--mode">
+      <div class="explorer-control explorer-control--mode explorer-mode-select-proxy">
         <label for="explorer-explore-mode">Explore mode</label>
         <select id="explorer-explore-mode" aria-describedby="explorer-explore-mode-help">
           <option value="single" selected>Single grip</option>
@@ -2021,7 +2237,38 @@
         </select>
         <p class="explorer-control-help" id="explorer-explore-mode-help">Single grip filters exact strings. Scale path shows a practical route. Single-note finder shows one note at a time. Voicing identifier explains one shape. Chord / Voicing Finder searches practical shapes for a target chord.</p>
       </div>
-      <p class="explorer-mode-panel__copy">Start by choosing the kind of fretboard question you want to explore, then use the filters below to narrow the view.</p>
+      <div class="explorer-mode-tabs" role="tablist" aria-label="Explorer mode">
+        <button class="explorer-mode-tab is-selected" type="button" role="tab" aria-selected="true" aria-pressed="true" data-explorer-mode-tab="single">
+          <span class="explorer-mode-tab__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 4v16"/><path d="M4 12h16"/><circle cx="12" cy="12" r="5"/></svg>
+          </span>
+          <span class="explorer-mode-tab__copy"><strong>Single Grip</strong><span>Jump to one playable pocket.</span></span>
+        </button>
+        <button class="explorer-mode-tab" type="button" role="tab" aria-selected="false" aria-pressed="false" data-explorer-mode-tab="path">
+          <span class="explorer-mode-tab__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="6" cy="16" r="2.5"/><circle cx="12" cy="7" r="2.5"/><circle cx="18" cy="16" r="2.5"/><path d="m8 14 3-5"/><path d="m13 9 3 5"/></svg>
+          </span>
+          <span class="explorer-mode-tab__copy"><strong>Harmonized Scale Path</strong><span>Trace diatonic movement across the neck.</span></span>
+        </button>
+        <button class="explorer-mode-tab" type="button" role="tab" aria-selected="false" aria-pressed="false" data-explorer-mode-tab="note">
+          <span class="explorer-mode-tab__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="5"/><path d="m14 14 5 5"/><path d="M10 6v8"/><path d="M6 10h8"/></svg>
+          </span>
+          <span class="explorer-mode-tab__copy"><strong>Single-Note Finder</strong><span>Locate any note instantly.</span></span>
+        </button>
+        <button class="explorer-mode-tab" type="button" role="tab" aria-selected="false" aria-pressed="false" data-explorer-mode-tab="voicing">
+          <span class="explorer-mode-tab__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M6 4v16"/><path d="M12 4v16"/><path d="M18 4v16"/><circle cx="6" cy="8" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="18" cy="7" r="2"/></svg>
+          </span>
+          <span class="explorer-mode-tab__copy"><strong>Voicing Identifier</strong><span>Identify what you are playing.</span></span>
+        </button>
+        <button class="explorer-mode-tab" type="button" role="tab" aria-selected="false" aria-pressed="false" data-explorer-mode-tab="chord">
+          <span class="explorer-mode-tab__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="m7 8 5-3 5 3-5 3z"/><path d="m7 13 5 3 5-3"/><path d="m7 17 5 3 5-3"/></svg>
+          </span>
+          <span class="explorer-mode-tab__copy"><strong>Chord / Voicing Finder</strong><span>Search chords, functions, and pockets.</span></span>
+        </button>
+      </div>
     </section>
 
     <section class="explorer-controls" aria-label="Explorer filters">
@@ -2184,52 +2431,64 @@
       </dl>
     </dialog>
 
-    <section class="explorer-panel" aria-label="Explorer fretboard">
-      <div class="explorer-fretboard-tools" aria-label="Fretboard display controls">
-        <div class="explorer-control explorer-control--notation explorer-panel-notation" id="explorer-notation-control">
-          <span class="explorer-control-label" id="explorer-notation-label">Notation</span>
-          <div class="explorer-notation-selector" role="group" aria-labelledby="explorer-notation-label" aria-describedby="explorer-notation-help">
-            <button type="button" data-explorer-notation-mode="notes" class="is-selected" aria-pressed="true">Notes</button>
-            <button type="button" data-explorer-notation-mode="nns" aria-pressed="false">NNS</button>
-            <button type="button" data-explorer-notation-mode="roman" aria-pressed="false">Roman</button>
-            <button type="button" data-explorer-notation-mode="numbers" aria-pressed="false">Numbers</button>
+    <section class="explorer-workbench" aria-label="Explorer workbench">
+      <section class="explorer-panel" aria-label="Explorer fretboard">
+        <div class="explorer-stage-header">
+          <h2>E9 Fretboard</h2>
+          <span class="explorer-stage-trust">Validated data</span>
+        </div>
+        <div class="explorer-fretboard-tools" aria-label="Fretboard display controls">
+          <div class="explorer-control explorer-control--notation explorer-panel-notation" id="explorer-notation-control">
+            <span class="explorer-control-label" id="explorer-notation-label">Notation</span>
+            <div class="explorer-notation-selector" role="group" aria-labelledby="explorer-notation-label" aria-describedby="explorer-notation-help">
+              <button type="button" data-explorer-notation-mode="notes" class="is-selected" aria-pressed="true">Notes</button>
+              <button type="button" data-explorer-notation-mode="nns" aria-pressed="false">NNS</button>
+              <button type="button" data-explorer-notation-mode="roman" aria-pressed="false">Roman</button>
+              <button type="button" data-explorer-notation-mode="numbers" aria-pressed="false">Numbers</button>
+            </div>
+            <p class="explorer-control-help" id="explorer-notation-help">Controls card, marker, and top-label display.</p>
           </div>
-          <p class="explorer-control-help" id="explorer-notation-help">Controls card, marker, and top-label display.</p>
-        </div>
-        <div class="explorer-control explorer-control--notation explorer-panel-notation" id="explorer-pitch-register-control">
-          <span class="explorer-control-label" id="explorer-pitch-register-label">Pitch register</span>
-          <div class="explorer-notation-selector" role="group" aria-labelledby="explorer-pitch-register-label" aria-describedby="explorer-pitch-register-help">
-            <button type="button" data-explorer-pitch-register="off" class="is-selected" aria-pressed="true">Off</button>
-            <button type="button" data-explorer-pitch-register="scientific" aria-pressed="false">Scientific</button>
-            <button type="button" data-explorer-pitch-register="band" aria-pressed="false">Octave band</button>
+          <div class="explorer-control explorer-control--notation explorer-panel-notation" id="explorer-pitch-register-control">
+            <span class="explorer-control-label" id="explorer-pitch-register-label">Pitch register</span>
+            <div class="explorer-notation-selector" role="group" aria-labelledby="explorer-pitch-register-label" aria-describedby="explorer-pitch-register-help">
+              <button type="button" data-explorer-pitch-register="off" class="is-selected" aria-pressed="true">Off</button>
+              <button type="button" data-explorer-pitch-register="scientific" aria-pressed="false">Scientific</button>
+              <button type="button" data-explorer-pitch-register="band" aria-pressed="false">Octave band</button>
+            </div>
+            <p class="explorer-control-help" id="explorer-pitch-register-help">Shows octave/register detail in cards and detail panels without changing fretboard marker labels.</p>
           </div>
-          <p class="explorer-control-help" id="explorer-pitch-register-help">Shows octave/register detail in cards and detail panels without changing fretboard marker labels.</p>
+          <div class="explorer-control explorer-control--notation explorer-panel-notation" id="explorer-string-action-label-control">
+            <button class="explorer-string-label-toggle" id="explorer-string-action-label-toggle" type="button" aria-pressed="false" aria-label="String labels" aria-describedby="explorer-string-action-label-help">
+              <span class="explorer-string-label-toggle__track" aria-hidden="true"><span class="explorer-string-label-toggle__knob"></span></span>
+              <span>String labels</span>
+            </button>
+            <p class="explorer-control-help" id="explorer-string-action-label-help">Adds compact string and pedal/lever shorthand inside fretboard marker bubbles.</p>
+          </div>
         </div>
-        <div class="explorer-control explorer-control--notation explorer-panel-notation" id="explorer-string-action-label-control">
-          <button class="explorer-string-label-toggle" id="explorer-string-action-label-toggle" type="button" aria-pressed="false" aria-label="String labels" aria-describedby="explorer-string-action-label-help">
-            <span class="explorer-string-label-toggle__track" aria-hidden="true"><span class="explorer-string-label-toggle__knob"></span></span>
-            <span>String labels</span>
-          </button>
-          <p class="explorer-control-help" id="explorer-string-action-label-help">Adds compact string and pedal/lever shorthand inside fretboard marker bubbles.</p>
+        <p class="explorer-empty" id="explorer-empty" hidden>No validated rows match these controls.</p>
+        <div class="explorer-fretboard" id="explorer-fretboard"></div>
+        <div class="explorer-active-results" id="explorer-active-results" aria-label="Visible selected positions"></div>
+        <div class="explorer-tooltip" id="explorer-tooltip" role="tooltip" hidden></div>
+      </section>
+      <aside class="explorer-inspector" aria-label="Why this works">
+        <div class="explorer-inspector__header">
+          <strong>Why this works</strong>
+          <span>Selected position</span>
         </div>
-      </div>
-      <p class="explorer-empty" id="explorer-empty" hidden>No validated rows match these controls.</p>
-      <div class="explorer-active-results" id="explorer-active-results" aria-label="Visible selected positions"></div>
-      <div class="explorer-fretboard" id="explorer-fretboard"></div>
-      <div class="explorer-tooltip" id="explorer-tooltip" role="tooltip" hidden></div>
+        <div class="explorer-selected-detail" id="explorer-selected-detail" aria-live="polite"></div>
+      </aside>
     </section>
 
     <section class="explorer-control-impact-preview" id="explorer-control-impact-preview" aria-label="Pedal and lever impact preview" hidden></section>
 
     <section class="explorer-details" aria-label="Explorer position details">
       <div class="explorer-row-list" id="explorer-row-list" aria-label="Explorer row details"></div>
-      <div class="explorer-selected-detail" id="explorer-selected-detail" aria-live="polite"></div>
     </section>
   </main>
 
   <script src="pedal-steel-fretboard.js?v=explorer-harmonized-path-mode-20260626"></script>
   <script src="e9-fretboard-explorer-data.js?v=single-grip-octave-results-20260628"></script>
   <script src="e9-music-rules.js?v=legitimate-grip-vocabulary-20260628"></script>
-  <script src="e9-fretboard-explorer.js?v=e-lower-pocket-d-major-20260628"></script>
+  <script src="e9-fretboard-explorer.js?v=explorer-workbench-redesign-20260628"></script>
 </body>
 </html>

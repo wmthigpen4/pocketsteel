@@ -175,6 +175,7 @@
     key: document.getElementById("explorer-key"),
     copedent: document.getElementById("explorer-copedent"),
     exploreMode: document.getElementById("explorer-explore-mode"),
+    modeTabs: document.querySelectorAll("[data-explorer-mode-tab]"),
     scale: document.getElementById("explorer-scale"),
     harmony: document.getElementById("explorer-harmony"),
     harmonyControl: document.getElementById("explorer-harmony-control"),
@@ -2163,6 +2164,17 @@
         els.harmony.value = "three_string_diatonic";
       }
     }
+  }
+
+  function updateExploreModeTabs() {
+    const selectedMode = els.exploreMode?.value || EXPLORE_MODES.single;
+    Array.from(els.modeTabs || []).forEach((button) => {
+      const isSelected = button.getAttribute("data-explorer-mode-tab") === selectedMode;
+      button.classList.toggle("is-selected", isSelected);
+      button.setAttribute("aria-selected", isSelected ? "true" : "false");
+      button.setAttribute("aria-pressed", isSelected ? "true" : "false");
+      button.setAttribute("tabindex", isSelected ? "0" : "-1");
+    });
   }
 
   function updateHarmonyOptions() {
@@ -4947,10 +4959,24 @@
     if (els.exploreMode) {
       els.exploreMode.addEventListener("change", () => {
         selectedTopFilter = "all";
+        updateExploreModeTabs();
         updateControls();
         render();
       });
     }
+    Array.from(els.modeTabs || []).forEach((button) => {
+      button.addEventListener("click", () => {
+        const nextMode = button.getAttribute("data-explorer-mode-tab") || EXPLORE_MODES.single;
+        const validMode = Object.values(EXPLORE_MODES).includes(nextMode) ? nextMode : EXPLORE_MODES.single;
+        if (els.exploreMode) {
+          els.exploreMode.value = validMode;
+        }
+        selectedTopFilter = "all";
+        updateExploreModeTabs();
+        updateControls();
+        render();
+      });
+    });
     if (els.pathFamily) {
       els.pathFamily.addEventListener("change", () => {
         selectedTopFilter = "all";
@@ -4962,6 +4988,7 @@
     });
 
     updateControls();
+    updateExploreModeTabs();
     updateNotationModeButtons();
     updatePitchRegisterButtons();
     render();
