@@ -4319,6 +4319,7 @@
     const combinationText = result.controlState.controls.length > 1
       ? ` This combination was created by selecting ${noteControlLabels(result.controlState.controls).join(" and ")} individually.`
       : "";
+    const alternateGripText = voicingIdentifierAlternateGripText(result);
     const gripWarningText = result.gripWarning ? ` ${result.gripWarning}` : "";
     const keyLabelTitle = notationMode === "notes" ? "Selected-key note labels" : `${notationModeLabel()} against key`;
     const explanationText = identity.explanation || `${identity.label} is the best common-name match for ${result.cells.map((cell) => cell.finalNote).join(", ")}. Confidence is ${identity.confidence}. ${identity.partial ? "This is a partial or ambiguous voicing, so context matters." : "The selected notes match the chord tones directly."}`;
@@ -4326,11 +4327,11 @@
     els.selectedDetail.innerHTML = `
       <div class="explorer-selected-detail__header">
         <span class="explorer-selected-detail__kind">Voicing identifier</span>
-        <strong>${escapeHtml(identity.label)}</strong>
+        <strong>${escapeHtml(voicingIdentifierTitle(result, identity))}</strong>
       </div>
       <section class="explorer-teaching-note" aria-label="Voicing explanation">
         <strong>Why this name fits</strong>
-        <p>${escapeHtml(`${explanationText}${combinationText}${gripWarningText}`)}</p>
+        <p>${escapeHtml(`${explanationText}${combinationText}${alternateGripText}${gripWarningText}`)}</p>
       </section>
       <dl class="explorer-detail-grid">
         ${detailRow("Fret", result.fret)}
@@ -4348,6 +4349,28 @@
       </dl>
       ${voicingStringActionRowsHtml(result.cells)}
     `;
+  }
+
+  function voicingIdentifierTitle(result, identity) {
+    const baseLabel = result.strings.length === 1 ? identity.label : `${identity.label} chord`;
+    return identity.functionText ? `${baseLabel} (${identity.functionText})` : baseLabel;
+  }
+
+  function voicingIdentifierAlternateGripText(result) {
+    if (result.strings.includes(4) && result.strings.includes(10) && !result.strings.includes(8)) {
+      return " This is an alternate spread grip: it uses string 4 instead of string 8, so the upper voice sits higher than the common lower-string pocket.";
+    }
+    return "";
+  }
+
+  function voicingIdentifierSummaryText(result, identity) {
+    const scaleLabel = selectedOptionLabel(els.scale) || `${activeKey()} ${els.scale.value}`;
+    const notes = result.cells.map((cell) => cell.finalNote).join(", ");
+    const stringRoles = result.cells
+      .map((cell) => `String ${cell.stringNumber} gives ${cell.finalNote}`)
+      .join(", ");
+    const functionText = identity.functionText ? ` In ${scaleLabel}, that is ${identity.functionText}.` : "";
+    return `${identity.label} chord: ${notes}. Fret ${result.fret}; strings ${result.strings.join("-")}; ${result.controlState.label}.${functionText} ${stringRoles}.${voicingIdentifierAlternateGripText(result)}`;
   }
 
   function renderVoicingIdentifierPanel(result, identity) {
@@ -4385,8 +4408,8 @@
       ${result.warning || voicingUiWarning || result.gripWarning ? `<p class="explorer-voicing-identifier__warning">${escapeHtml([result.warning, voicingUiWarning, result.gripWarning].filter(Boolean).join(" "))}</p>` : ""}
       ${result.warning ? "" : `
         <section class="explorer-voicing-summary" aria-label="Identified voicing">
-          <strong>${escapeHtml(identity.label)} · ${escapeHtml(identity.functionText)}</strong>
-          <p>${escapeHtml(`${selectedOptionLabel(els.scale) || `${activeKey()} ${els.scale.value}`}. Fret ${result.fret}; strings ${result.strings.join("-")}; ${result.controlState.label}; notes ${result.cells.map((cell) => cell.finalNote).join(", ")}; ${notationModeLabel()} ${result.cells.map((cell) => cell.notationValue).join(", ")}. ${result.gripLabel}${result.gripRoles ? `; possible roles: ${result.gripRoles}` : ""}${result.gripNote ? `; ${result.gripNote}` : ""}.`)}</p>
+          <strong>${escapeHtml(voicingIdentifierTitle(result, identity))}</strong>
+          <p>${escapeHtml(voicingIdentifierSummaryText(result, identity))}</p>
           ${result.gripRoles ? `<p>${escapeHtml(`Grip roles are contextual: ${result.gripRoles}. A two-note grip is a dyad or partial voicing unless the notes spell a complete chord.`)}</p>` : ""}
         </section>
       `}
@@ -4483,8 +4506,7 @@
     }
     els.activeResults.innerHTML = `
       <div class="explorer-active-results__header">
-        <strong>${escapeHtml(`Identified ${identity.label}`)}</strong>
-        <span>Card and SVG marker show the same fret/string group.</span>
+        <strong>${escapeHtml(`Identified ${result.strings.length === 1 ? identity.label : `${identity.label} chord`}`)}</strong>
       </div>
       <div class="explorer-active-results__track">
         ${resultButtonHtml(row, "data-active-result-row")}

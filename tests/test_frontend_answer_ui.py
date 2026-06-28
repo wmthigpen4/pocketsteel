@@ -278,8 +278,9 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<script src="e9-fretboard-explorer-data.js?v=explorer-harmonized-path-mode-20260626"></script>' in html
     assert "[hidden] {\n      display: none !important;\n    }" in html
     assert '<script src="e9-music-rules.js?v=explorer-octave-register-20260627"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=chord-map-label-cleanup-20260627"></script>' in html
-    assert html.index("e9-music-rules.js?v=explorer-octave-register-20260627") < html.index("e9-fretboard-explorer.js?v=chord-map-label-cleanup-20260627")
+    assert '<script src="e9-fretboard-explorer.js?v=voicing-identifier-copy-20260627"></script>' in html
+    assert html.index("e9-music-rules.js?v=explorer-octave-register-20260627") < html.index("e9-fretboard-explorer.js?v=voicing-identifier-copy-20260627")
+    assert "e9-fretboard-explorer.js?v=chord-map-label-cleanup-20260627" not in html
     assert "e9-fretboard-explorer.js?v=explorer-octave-register-20260627" not in html
     assert "e9-fretboard-explorer.js?v=path-card-colors-20260627" not in html
     assert "e9-fretboard-explorer.js?v=impact-control-groups-20260627" not in html
@@ -551,7 +552,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "musicRules.identifyVoicing" in script
     assert "musicRules.parseChordFinderQuery" in script
     assert "musicRules.chordFinderQualityGate" in script
-    assert 'e9-fretboard-explorer.js?v=chord-map-label-cleanup-20260627' in html
+    assert 'e9-fretboard-explorer.js?v=voicing-identifier-copy-20260627' in html
     assert ".explorer-chord-map-card .explorer-active-result__fields {" in html
     assert ".explorer-chord-map-card .explorer-active-result__fields span {" in html
     assert "grid-template-columns: minmax(72px, 0.48fr) minmax(0, 1fr);" in html
@@ -1684,7 +1685,7 @@ assert.equal(elements["explorer-top-interval-filter"].hidden, true);
 assert.equal(elements["explorer-fret-range-filter"].hidden, true);
 assert.match(elements["explorer-voicing-identifier"].textContent, /Choose a fret, up to four strings/);
 assert.match(elements["explorer-voicing-identifier"].textContent, /G major/);
-assert.match(elements["explorer-voicing-identifier"].textContent, /Fret 3; strings 3-4-5; Open; notes B, G, D/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /G chord: B, G, D\. Fret 3; strings 3-4-5; Open/);
 assert.match(elements["explorer-active-results"].textContent, /Identified G/);
 assert.match(elements["explorer-selected-detail"].textContent, /Voicing identifier/);
 assert.match(elements["explorer-selected-detail"].textContent, /NotesB, G, D/);
@@ -1703,7 +1704,7 @@ assert.equal(voicingControlButtons().some((button) => button.getAttribute("data-
 assert.equal(voicingControlButtons().some((button) => button.getAttribute("data-voicing-control") === "BC"), false);
 voicingControlButtons().find((button) => button.getAttribute("data-voicing-control") === "B").onclick();
 voicingControlButtons().find((button) => button.getAttribute("data-voicing-control") === "C").onclick();
-assert.match(elements["explorer-voicing-identifier"].textContent, /Fret 3; strings 3-4-5; B pedal \+ C pedal; notes C, A, E/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /Am chord: C, A, E\. Fret 3; strings 3-4-5; B pedal \+ C pedal/);
 assert.match(elements["explorer-selected-detail"].textContent, /Am/);
 assert.match(elements["explorer-selected-detail"].textContent, /Likely functionii function in G/);
 assert.match(elements["explorer-selected-detail"].textContent, /selecting B pedal and C pedal individually/);
@@ -1718,9 +1719,15 @@ voicingStringButtons().find((button) => button.getAttribute("data-voicing-string
 voicingControlButtons().find((button) => button.getAttribute("data-voicing-control") === "A").onclick();
 voicingControlButtons().find((button) => button.getAttribute("data-voicing-control") === "B").onclick();
 assert.match(elements["explorer-voicing-identifier"].textContent, /F major/);
-assert.match(elements["explorer-voicing-identifier"].textContent, /Fret 3; strings 4-6-10; A pedal \+ B pedal; notes G, C, E/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /C chord \(V function in F\)/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /C chord: G, C, E\. Fret 3; strings 4-6-10; A pedal \+ B pedal/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /String 4 gives G, String 6 gives C, String 10 gives E/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /uses string 4 instead of string 8/);
+assert.doesNotMatch(elements["explorer-active-results"].textContent, /Card and SVG marker show the same fret\/string group/);
+assert.match(elements["explorer-active-results"].textContent, /Identified C chord/);
 assert.match(elements["explorer-selected-detail"].textContent, /C/);
 assert.match(elements["explorer-selected-detail"].textContent, /Likely functionV function in F/);
+assert.match(elements["explorer-selected-detail"].textContent, /uses string 4 instead of string 8/);
 assert.equal(lastMount.options.positions[0].grip, "4-6-10");
 assert.equal(lastMount.options.positions[0].notes.join(","), "G,C,E");
 voicingClearButtons()[0].onclick();
@@ -1743,7 +1750,7 @@ elements["explorer-voicing-fret"].dispatchChange();
 voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "4").onclick();
 voicingControlButtons().find((button) => button.getAttribute("data-voicing-control") === "A").onclick();
 voicingControlButtons().find((button) => button.getAttribute("data-voicing-control") === "B").onclick();
-assert.match(elements["explorer-voicing-identifier"].textContent, /Fret 3; strings 5-6-9; A pedal \+ B pedal; notes E, C, F/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /Fmaj7\(no3\) chord: E, C, F\. Fret 3; strings 5-6-9; A pedal \+ B pedal/);
 assert.match(elements["explorer-selected-detail"].textContent, /Fmaj7\(no3\)/);
 assert.match(elements["explorer-selected-detail"].textContent, /partial major-7 grip/);
 assert.match(elements["explorer-selected-detail"].textContent, /Omitted tones3/);
@@ -1756,7 +1763,7 @@ assert.equal(lastMount.options.positions[0].notes.join(","), "E,C,F");
 
 voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "6").onclick();
 voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "7").onclick();
-assert.match(elements["explorer-voicing-identifier"].textContent, /Fret 3; strings 5-7-9; A pedal \+ B pedal; notes E, A, F/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /Fmaj7\(no5\) chord: E, A, F\. Fret 3; strings 5-7-9; A pedal \+ B pedal/);
 assert.match(elements["explorer-selected-detail"].textContent, /Fmaj7\(no5\)/);
 assert.match(elements["explorer-selected-detail"].textContent, /Omitted tones5/);
 assert.match(elements["explorer-selected-detail"].textContent, /Confidencemedium-high/);
@@ -1772,7 +1779,7 @@ voicingStringButtons().find((button) => button.getAttribute("data-voicing-string
 voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "7").onclick();
 voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "3").onclick();
 voicingStringButtons().find((button) => button.getAttribute("data-voicing-string") === "4").onclick();
-assert.match(elements["explorer-voicing-identifier"].textContent, /Fret 1; strings 3-4-9; Open; notes A, F, D#/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /F7\(no5\) chord: A, F, D#\. Fret 1; strings 3-4-9; Open/);
 assert.match(elements["explorer-selected-detail"].textContent, /F7\(no5\)/);
 assert.match(elements["explorer-selected-detail"].textContent, /partial dominant-7 grip/);
 assert.match(elements["explorer-selected-detail"].textContent, /Intervals in voicing3, 1, ♭7/);
