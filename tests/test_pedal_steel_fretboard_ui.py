@@ -902,6 +902,17 @@ assert.match(html, />\\s*<span class="pedal-steel-fretboard__selector-main">16 A
 assert.match(html, /data-selected-position-id="csharp-open-9"/);
 assert.match(html, /data-position-detail="csharp-open-9"[^>]*aria-live="polite">/);
 assert.match(html, /data-position-detail="csharp-af-12"[^>]*aria-live="polite" hidden>/);
+assert.match(html, /data-learning-summary/);
+assert.match(html, /Start here/);
+assert.match(html, /<strong>Fret 9 · 4-5-6 · open<\\/strong>/);
+assert.match(html, /data-chord-tone-chip="4"[^>]*>\\s*<span class="pedal-steel-fretboard__tone-string">S4<\\/span><strong>C#<\\/strong><span class="pedal-steel-fretboard__tone-interval">1<\\/span>/);
+assert.match(html, /data-chord-tone-chip="5"[^>]*>\\s*<span class="pedal-steel-fretboard__tone-string">S5<\\/span><strong>G#<\\/strong><span class="pedal-steel-fretboard__tone-interval">5<\\/span>/);
+assert.match(html, /<strong>Why this works:<\\/strong> No-pedal C# at fret 9\\./);
+assert.match(html, /Compare starter positions/);
+assert.equal((html.match(/data-position-compare="/g) || []).length, 9);
+assert.match(html, /data-position-compare="csharp-open-9"[^>]*aria-pressed="true"/);
+assert.match(html, /data-position-compare="csharp-af-12"[^>]*>\\s*<span class="pedal-steel-fretboard__starter-row-main">Fret 12 · A\\+F<\\/span>/);
+assert.match(html, /<strong>Try this next:<\\/strong> Play this 4-5-6 once, block cleanly, then compare the other starter positions\\./);
 assert.match(html, /<span class="pedal-steel-fretboard__detail-label">Fret<\\/span>\\s*<span class="pedal-steel-fretboard__detail-value">9<\\/span>/);
 assert.match(html, /<span class="pedal-steel-fretboard__detail-label">Grip<\\/span>\\s*<span class="pedal-steel-fretboard__detail-value">4-5-6<\\/span>/);
 assert.doesNotMatch(html, /<span class="pedal-steel-fretboard__detail-label">Pedals<\\/span>\\s*<span class="pedal-steel-fretboard__detail-value">none<\\/span>/);
@@ -926,6 +937,8 @@ const nestedHtml = fretboard.renderPedalSteelFretboard({
 });
 assert.match(nestedHtml, /String 4: G \\/ 1/);
 assert.match(nestedHtml, /String 5: D \\/ 5/);
+assert.match(nestedHtml, /data-chord-tone-chip="4"[^>]*>\\s*<span class="pedal-steel-fretboard__tone-string">S4<\\/span><strong>G<\\/strong><span class="pedal-steel-fretboard__tone-interval">1<\\/span>/);
+assert.doesNotMatch(nestedHtml, /Compare starter positions/);
 assert.doesNotMatch(nestedHtml, /\\[object Object\\]/);
 """
     )

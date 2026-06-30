@@ -364,6 +364,117 @@
   font-weight: 800;
 }
 
+.pedal-steel-fretboard__learning {
+  border: 1px solid rgba(240, 191, 105, 0.18);
+  border-radius: 12px;
+  background: rgba(255, 246, 223, 0.04);
+  display: grid;
+  gap: 10px;
+  margin: 0 0 11px;
+  padding: 11px;
+}
+
+.pedal-steel-fretboard__learning-kicker {
+  color: rgba(240, 191, 105, 0.82);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.11em;
+  line-height: 1.2;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.pedal-steel-fretboard__learning-copy {
+  color: rgba(255, 246, 223, 0.84);
+  font-size: 0.9rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.pedal-steel-fretboard__tone-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.pedal-steel-fretboard__tone-chip {
+  align-items: center;
+  background: rgba(12, 12, 11, 0.62);
+  border: 1px solid rgba(240, 191, 105, 0.22);
+  border-radius: 999px;
+  color: rgba(255, 246, 223, 0.86);
+  display: inline-flex;
+  font-size: 0.82rem;
+  gap: 5px;
+  line-height: 1.2;
+  max-width: 100%;
+  padding: 5px 8px;
+}
+
+.pedal-steel-fretboard__tone-string {
+  color: rgba(240, 191, 105, 0.78);
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.pedal-steel-fretboard__tone-interval {
+  color: rgba(255, 246, 223, 0.62);
+}
+
+.pedal-steel-fretboard__starter-compare {
+  display: grid;
+  gap: 7px;
+}
+
+.pedal-steel-fretboard__starter-compare-title {
+  color: rgba(240, 191, 105, 0.76);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  line-height: 1.2;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.pedal-steel-fretboard__starter-row-list {
+  display: grid;
+  gap: 6px;
+}
+
+.pedal-steel-fretboard__starter-row {
+  align-items: center;
+  border: 1px solid var(--fretboard-card-border, rgba(240, 191, 105, 0.22));
+  border-radius: 10px;
+  background: rgba(12, 12, 11, 0.58);
+  color: rgba(255, 246, 223, 0.82);
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  gap: 5px;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr) minmax(0, 1.2fr);
+  padding: 7px 9px;
+  text-align: left;
+}
+
+.pedal-steel-fretboard__starter-row:hover,
+.pedal-steel-fretboard__starter-row:focus-visible,
+.pedal-steel-fretboard__starter-row.is-selected {
+  border-color: var(--fretboard-swatch, rgba(240, 191, 105, 0.62));
+  background: linear-gradient(135deg, var(--fretboard-band, rgba(240, 191, 105, 0.12)), rgba(12, 12, 11, 0.64));
+  outline: none;
+}
+
+.pedal-steel-fretboard__starter-row-main {
+  color: #fff6df;
+  font-weight: 850;
+}
+
+.pedal-steel-fretboard__starter-row-meta {
+  color: rgba(255, 246, 223, 0.64);
+  font-size: 0.78rem;
+}
+
 .pedal-steel-fretboard__detail-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -573,6 +684,10 @@
   .pedal-steel-fretboard__detail-item.is-wide {
     grid-column: auto;
   }
+
+  .pedal-steel-fretboard__starter-row {
+    grid-template-columns: 1fr;
+  }
 }
 `;
 
@@ -685,6 +800,63 @@
     }
     const text = String(value || "").trim();
     return text ? [text] : [];
+  }
+
+  function detailObjectValue(detail, keys) {
+    if (detail && typeof detail === "object" && !Array.isArray(detail)) {
+      for (const key of keys) {
+        if (detail[key] !== undefined && detail[key] !== null) {
+          return formatDetailValue(detail[key]);
+        }
+      }
+      return "";
+    }
+    return formatDetailValue(detail);
+  }
+
+  function detailValueForString(source, stringNumber, keys) {
+    if (!source) {
+      return "";
+    }
+    if (Array.isArray(source)) {
+      const index = Number(stringNumber) - 1;
+      return source[index] !== undefined ? detailObjectValue(source[index], keys) : "";
+    }
+    if (source && typeof source === "object") {
+      const value = source[String(stringNumber)] ?? source[Number(stringNumber)];
+      return value !== undefined ? detailObjectValue(value, keys) : "";
+    }
+    return "";
+  }
+
+  function normalizeChordToneChips(item, strings) {
+    const noteSource = item.displayNotes || item.display_notes || item.notes;
+    const intervalSource = item.intervals || item.chordTonesByString || item.chord_tones_by_string;
+    const chips = strings
+      .map((stringNumber) => {
+        const note = detailValueForString(noteSource, stringNumber, ["displayNote", "display_note", "note", "finalNote", "final_note", "value", "label", "name"]);
+        const interval = detailValueForString(intervalSource, stringNumber, ["interval", "value", "chordTone", "chord_tone", "role", "label", "name"]) ||
+          detailValueForString(noteSource, stringNumber, ["interval", "chordTone", "chord_tone", "role"]);
+        if (!note && !interval) {
+          return null;
+        }
+        return {
+          string: stringNumber,
+          note: normalizeMetadataText(note),
+          interval: normalizeMetadataText(interval),
+        };
+      })
+      .filter(Boolean);
+    if (chips.length) {
+      return chips;
+    }
+    const chordTones = normalizeDetailList(item.chordTones || item.chord_tones || item.intervalsLowToHigh || item.intervals_low_to_high);
+    return chordTones.map((tone, index) => ({
+      string: "",
+      note: normalizeMetadataText(tone),
+      interval: "",
+      fallbackIndex: index + 1,
+    }));
   }
 
   function compactControlShorthand(value) {
@@ -982,6 +1154,7 @@
       levers: normalizeTextList(item.levers),
       role: String(item.role || item.chord_function || ""),
       notes: normalizeDetailList(item.displayNotes || item.display_notes || item.notes),
+      chordToneChips: normalizeChordToneChips(item, uniqueStrings),
       topVoice: normalizeMetadataText(item.displayTopVoice || item.display_top_voice || item.topVoice || item.top_voice),
       explanation: normalizeMetadataText(item.explanation),
       explanationSummary: normalizeMetadataText(item.explanationSummary || item.explanation_summary),
@@ -1828,6 +2001,91 @@
     return text || "none";
   }
 
+  function playCommandLabel(highlight) {
+    const controls = [...highlight.pedals, ...highlight.levers];
+    return `Fret ${highlight.fret} · ${highlight.grip || highlight.strings.join("-")} · ${controls.length ? controls.join(" + ") : "open"}`;
+  }
+
+  function selectedLearningKicker(highlight) {
+    return highlight.visibleByDefault ? "Start here" : "Selected position";
+  }
+
+  function learningWhyCopy(highlight) {
+    return highlight.displaySummary ||
+      highlight.explanationShort ||
+      highlight.explanationSummary ||
+      highlight.explanation ||
+      highlight.whenToUse ||
+      highlight.soundCharacter ||
+      fallbackPositionReason(highlight);
+  }
+
+  function learningPracticePrompt(highlight) {
+    return highlight.movementUse ||
+      highlight.resolutionUse ||
+      `Play this ${highlight.grip || "grip"} once, block cleanly, then compare the other starter positions.`;
+  }
+
+  function renderChordToneChips(highlight) {
+    if (!highlight.chordToneChips.length) {
+      return "";
+    }
+    const chips = highlight.chordToneChips.map((chip) => {
+      const stringLabel = chip.string ? `<span class="pedal-steel-fretboard__tone-string">S${escapeHtml(chip.string)}</span>` : "";
+      const intervalLabel = chip.interval ? `<span class="pedal-steel-fretboard__tone-interval">${escapeHtml(chip.interval)}</span>` : "";
+      const noteLabel = chip.note ? `<strong>${escapeHtml(chip.note)}</strong>` : "";
+      return `<span class="pedal-steel-fretboard__tone-chip" data-chord-tone-chip="${escapeHtml(chip.string || chip.fallbackIndex || "")}">
+        ${stringLabel}${noteLabel}${intervalLabel}
+      </span>`;
+    }).join("");
+    return `<div class="pedal-steel-fretboard__tone-row" aria-label="Chord tones in the selected grip">${chips}</div>`;
+  }
+
+  function starterComparePositions(model) {
+    if (!model || !Array.isArray(model.allHighlights)) {
+      return [];
+    }
+    return model.allHighlights
+      .filter((highlight) => highlight.visibleByDefault)
+      .slice(0, 5);
+  }
+
+  function renderStarterComparisonRows(highlight, model) {
+    const starters = starterComparePositions(model);
+    if (starters.length < 2) {
+      return "";
+    }
+    const rows = starters.map((starter) => {
+      const color = getColorRole(starter.colorRole);
+      const colorStyle = `--fretboard-swatch: ${color.dot}; --fretboard-glow: ${color.glow}; --fretboard-band: ${color.band}; --fretboard-card-border: ${color.dot};`;
+      const isSelected = starter.id === highlight.id;
+      const controls = [...starter.pedals, ...starter.levers];
+      const voicing = voicingExplanation(starter) || starter.inversionLabel || starter.voicingType || starter.role || "starter";
+      return `<button class="pedal-steel-fretboard__starter-row${isSelected ? " is-selected" : ""}" type="button" data-position-compare="${escapeHtml(starter.id)}" style="${colorStyle}" aria-pressed="${isSelected ? "true" : "false"}">
+        <span class="pedal-steel-fretboard__starter-row-main">Fret ${escapeHtml(starter.fret)} · ${escapeHtml(controls.length ? controls.join("+") : "open")}</span>
+        <span class="pedal-steel-fretboard__starter-row-meta">${escapeHtml(starter.grip || starter.strings.join("-"))}</span>
+        <span class="pedal-steel-fretboard__starter-row-meta">${escapeHtml(voicing)}</span>
+      </button>`;
+    }).join("");
+    return `<div class="pedal-steel-fretboard__starter-compare" data-starter-comparison>
+      <p class="pedal-steel-fretboard__starter-compare-title">Compare starter positions</p>
+      <div class="pedal-steel-fretboard__starter-row-list">${rows}</div>
+    </div>`;
+  }
+
+  function renderLearningSummary(highlight, model) {
+    const why = learningWhyCopy(highlight);
+    const practice = learningPracticePrompt(highlight);
+    return `<div class="pedal-steel-fretboard__learning" data-learning-summary>
+      <p class="pedal-steel-fretboard__learning-kicker">${escapeHtml(selectedLearningKicker(highlight))}</p>
+      <p class="pedal-steel-fretboard__learning-copy"><strong>${escapeHtml(playCommandLabel(highlight))}</strong></p>
+      ${renderChordToneChips(highlight)}
+      <p class="pedal-steel-fretboard__learning-copy"><strong>Why this works:</strong> ${escapeHtml(why)}</p>
+      ${renderStarterComparisonRows(highlight, model)}
+      <p class="pedal-steel-fretboard__learning-copy"><strong>Try this next:</strong> ${escapeHtml(practice)}</p>
+    </div>`;
+  }
+
   function isEmptyLearnerValue(text) {
     const normalized = String(text || "").trim().toLowerCase().replace(/[_-]+/g, " ");
     return !normalized ||
@@ -1862,7 +2120,7 @@
     </details>`;
   }
 
-  function renderPositionDetail(highlight, selectedPositionId, visibleIds) {
+  function renderPositionDetail(highlight, selectedPositionId, visibleIds, model) {
     const color = getColorRole(highlight.colorRole);
     const colorStyle = `--fretboard-swatch: ${color.dot}; --fretboard-glow: ${color.glow}; --fretboard-band: ${color.band}; --fretboard-card-border: ${color.dot};`;
     const isVisible = visibleIds.has(highlight.id);
@@ -1878,6 +2136,7 @@
     ].filter(Boolean).join(" · ");
     return `<section class="pedal-steel-fretboard__detail" data-position-detail="${escapeHtml(highlight.id)}" data-color-role="${escapeHtml(highlight.colorRole)}" data-position-family="${escapeHtml(highlight.family)}" data-position-tier="${escapeHtml(highlight.tier)}" data-position-kind="${escapeHtml(highlight.positionKind)}" data-position-grip="${escapeHtml(highlight.grip)}" data-position-pedal-lever-key="${escapeHtml(pedalLeverOption.key)}" data-position-pedal-lever-label="${escapeHtml(pedalLeverOption.label)}" data-voicing-type="${escapeHtml(highlight.voicingType)}" data-voicing-category="${escapeHtml(voicingCategory)}" data-is-root-position="${highlight.isRootPosition ? "true" : "false"}" data-is-inversion="${highlight.isInversion ? "true" : "false"}" data-is-partial-voicing="${highlight.isPartialVoicing ? "true" : "false"}" data-is-rootless="${highlight.isRootless ? "true" : "false"}" data-visible-by-default="${highlight.visibleByDefault ? "true" : "false"}" data-has-levers="${highlight.levers.length ? "true" : "false"}" data-is-starter="${isStarterPosition(highlight) ? "true" : "false"}" data-is-full-chord="${isFullChordPosition(highlight) ? "true" : "false"}" data-is-dominant="${isDominantPosition(highlight) ? "true" : "false"}" data-is-advanced="${isAdvancedPosition(highlight) ? "true" : "false"}" data-is-more="${isMorePosition(highlight) ? "true" : "false"}" data-filter-visible="${isVisible ? "true" : "false"}" style="${colorStyle}${hiddenStyle}" aria-live="polite"${isVisible && isSelected ? "" : " hidden"}>
       <p class="pedal-steel-fretboard__detail-title"><span class="pedal-steel-fretboard__detail-marker" data-color-role="${escapeHtml(highlight.colorRole)}" aria-hidden="true"></span><strong>${escapeHtml(highlight.label)}</strong><span>${escapeHtml(positionSelectorLabel(highlight))}</span></p>
+      ${renderLearningSummary(highlight, model)}
       <div class="pedal-steel-fretboard__detail-grid">
         ${renderDetailItem("Fret", highlight.fret, "", { hideEmpty: false })}
         ${renderDetailItem("Grip", highlight.grip || highlight.strings.join("-"), "", { hideEmpty: false })}
@@ -1996,7 +2255,7 @@
       </button>`;
       })
       .join("");
-    const details = model.allHighlights.map((highlight) => renderPositionDetail(highlight, selectedPositionId, visibleIds)).join("");
+    const details = model.allHighlights.map((highlight) => renderPositionDetail(highlight, selectedPositionId, visibleIds, model)).join("");
     const recommendedNote = model.hasRecommendedLimit
       ? `<p class="pedal-steel-fretboard__recommended-note" data-recommended-note>Showing ${Math.min(MAX_RECOMMENDED_VISIBLE_POSITIONS, model.highlights.length)} recommended positions first. Use the filters or all positions for the full map.</p>`
       : "";
@@ -2101,6 +2360,11 @@
     figure.dataset.selectedPositionId = positionId;
     figure.querySelectorAll("[data-position-selector]").forEach((button) => {
       const isSelected = !button.hidden && button.getAttribute("data-position-selector") === positionId;
+      button.classList.toggle("is-selected", isSelected);
+      button.setAttribute("aria-pressed", String(isSelected));
+    });
+    figure.querySelectorAll("[data-position-compare]").forEach((button) => {
+      const isSelected = !button.hidden && button.getAttribute("data-position-compare") === positionId;
       button.classList.toggle("is-selected", isSelected);
       button.setAttribute("aria-pressed", String(isSelected));
     });
@@ -2375,6 +2639,11 @@
     figure.querySelectorAll("[data-position-selector]").forEach((button) => {
       button.addEventListener("click", () => {
         selectPosition(figure, button.getAttribute("data-position-selector"));
+      });
+    });
+    figure.querySelectorAll("[data-position-compare]").forEach((button) => {
+      button.addEventListener("click", () => {
+        selectPosition(figure, button.getAttribute("data-position-compare"));
       });
     });
     if (hasPositionSelectors) {
