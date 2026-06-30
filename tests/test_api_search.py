@@ -2192,9 +2192,10 @@ def test_deterministic_answer_preserves_sources_and_real_urls() -> None:
 
 def test_deterministic_mode_specific_sections_render() -> None:
     gear = deterministic_payload("gear", question="What are common Fender Steel King settings?")
-    assert "Likely causes or common settings:" in gear["answer"]
-    assert "Diagnostic steps:" in gear["answer"]
-    assert "Safety/caution:" in gear["answer"]
+    assert "Buddy Emmons Steel King E9 starting point:" in gear["answer"]
+    assert "EQ Tilt: around 10 to 11 o'clock" in gear["answer"]
+    assert "Mid Level and Mid Frequency interact" in gear["answer"]
+    assert "Safety/caution:" not in gear["answer"]
 
     copedent = deterministic_payload(
         "copedent",
@@ -3275,11 +3276,21 @@ def test_remaining_retrieval_gating_smoke_failures_get_teacher_first_answers() -
 
     steel_king = answer_for_question("What are common Fender Steel King settings?", noisy_practical_sources())
     assert_clean_answer_body(steel_king)
-    assert "Steel King settings" in steel_king["answer"]
-    assert "adjust for the room" in steel_king["answer"]
-    assert "EQ" in steel_king["answer"]
+    assert steel_king["answer"].startswith("A useful Fender Steel King starting point is Buddy Emmons")
+    assert "EQ Tilt: around 10 to 11 o'clock" in steel_king["answer"]
+    assert "Treble: around 11 o'clock" in steel_king["answer"]
+    assert "Mid Level: around 10 to 11 o'clock" in steel_king["answer"]
+    assert "Mid Frequency: around 11 o'clock" in steel_king["answer"]
+    assert "Bass: around 1 o'clock" in steel_king["answer"]
+    assert "Reverb: around 10 o'clock" in steel_king["answer"]
+    assert "straight-up/neutral setting is safe" in steel_king["answer"]
+    assert "Mid Level and Mid Frequency interact" in steel_king["answer"]
+    assert "Safety/caution" not in steel_king["answer"]
     assert "fretboard" not in steel_king
     assert steel_king["sources"]
+    assert len(steel_king["sources"]) == 2
+    assert steel_king["sources"][0]["title"] == "Fender Steel King settings"
+    assert steel_king["sources"][0]["url"] == "https://bb.steelguitarforum.com/viewtopic.php?t=65647"
 
     hum = answer_for_question(
         "How do players diagnose hum that changes when touching the changer?",
@@ -5826,6 +5837,36 @@ def test_non_location_answer_omits_fretboard_payload() -> None:
 
     assert "fretboard" not in payload
     assert payload["sources"]
+
+
+def test_fender_steel_king_settings_answer_includes_buddy_source_backed_settings() -> None:
+    for question in [
+        "What are good Fender Steel King settings?",
+        "What Steel King settings did Buddy Emmons use?",
+        "How do I set the mid controls on a Fender Steel King?",
+    ]:
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert_clean_answer_body(payload)
+        answer = payload["answer"]
+        assert answer.startswith("A useful Fender Steel King starting point is Buddy Emmons")
+        assert "EQ Tilt: around 10 to 11 o'clock" in answer
+        assert "Treble: around 11 o'clock" in answer
+        assert "Mid Level: around 10 to 11 o'clock" in answer
+        assert "Mid Frequency: around 11 o'clock" in answer
+        assert "Bass: around 1 o'clock" in answer
+        assert "Reverb: around 10 o'clock" in answer
+        assert "straight-up/neutral setting is safe" in answer
+        assert "Mid Level and Mid Frequency interact" in answer
+        assert "JCH" in answer
+        assert "Players tend to" not in answer
+        assert "Safety/caution" not in answer
+        assert "fretboard" not in payload
+        assert "tab_example" not in payload
+        assert payload["warnings"] == []
+        assert len(payload["sources"]) == 2
+        assert {source["title"] for source in payload["sources"]} == {"Fender Steel King settings"}
+        assert all(source["url"] == "https://bb.steelguitarforum.com/viewtopic.php?t=65647" for source in payload["sources"])
 
 
 def test_non_position_questions_do_not_get_fretboard_payloads() -> None:

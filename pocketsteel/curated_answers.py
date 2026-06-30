@@ -2862,20 +2862,25 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
     if _mentions_steel_king_settings_forum_wisdom(q):
         return CuratedAnswer(
             intent="forum_wisdom",
-            confidence="curated_medium",
+            confidence="curated_high",
             answer=(
-                "Players tend to treat Steel King settings as starting points, then adjust for the room, pickup, and speaker height.\n\n"
-                "Likely causes or common settings:\n"
-                "- Keep the EQ moderate first rather than extreme.\n"
-                "- Set volume at gig level before judging treble or presence.\n"
-                "- If the sound is thin, reduce brightness and pick slightly farther from the changer.\n"
-                "- If the sound is muddy, lower bass before adding treble.\n\n"
-                "Diagnostic steps:\n"
-                "- Start flat or near the middle, then change one EQ control at a time.\n"
-                "- Listen from where the audience or mic hears the amp, not only from above the speaker.\n"
-                "- Save forum settings as reference notes, not as guaranteed settings for every guitar.\n\n"
-                "Safety/caution: if noise, heat, burning smell, or electrical problems are part of the issue, stop adjusting settings and have the amp checked."
+                "A useful Fender Steel King starting point is Buddy Emmons' published E9 setting, then adjust for your guitar and room.\n\n"
+                "Buddy Emmons Steel King E9 starting point:\n"
+                "- EQ Tilt: around 10 to 11 o'clock for E9.\n"
+                "- Treble: around 11 o'clock.\n"
+                "- Mid Level: around 10 to 11 o'clock.\n"
+                "- Mid Frequency: around 11 o'clock.\n"
+                "- Bass: around 1 o'clock.\n"
+                "- Reverb: around 10 o'clock.\n\n"
+                "Why this is a starting point:\n"
+                "- A straight-up/neutral setting is safe when you do not know the room yet, but it is not the only useful answer.\n"
+                "- This setting shapes the tilt, mids, and bass instead of leaving every tone control generic.\n"
+                "- Mid Level and Mid Frequency interact, so move them together: pick the frequency area, then decide how much of it you want.\n"
+                "- Players often treat these settings as reference notes rather than fixed rules.\n"
+                "- The quoted setting was for Buddy's JCH, so a different steel, pickup, room, stage volume, or speaker height can need changes.\n\n"
+                "Practical use: start there at playing volume, make one small EQ change at a time, and judge it from where the audience or microphone hears the amp."
             ),
+            source_cards=steel_king_settings_source_cards(),
         )
 
     if _mentions_diminished_chords_forum_wisdom(q):
@@ -3890,9 +3895,48 @@ def _mentions_wound_sixth_forum_wisdom(question: str) -> bool:
 
 
 def _mentions_steel_king_settings_forum_wisdom(question: str) -> bool:
-    return bool(
-        re.search(r"\bsteel\s+king\s+settings?\b", question)
-        and re.search(r"\b(?:what\s+do\s+players\s+say|common|settings?|starting|eq|fender)\b", question)
+    if re.search(r"\b(?:buzz|hum|idle|noise|ground|shock|burning|heat|smell|repair|fix|diagnos)\b", question):
+        return False
+    mentions_amp = bool(re.search(r"\b(?:fender\s+)?steel\s+king\b", question))
+    mentions_settings = bool(
+        re.search(r"\b(?:settings?|set|eq|tilt|treble|mids?|middle|bass|reverb|tone controls?)\b", question)
+    )
+    mentions_named_source = bool(re.search(r"\bbuddy\s+emmons\b", question))
+    return mentions_amp and mentions_settings and (
+        mentions_named_source
+        or re.search(r"\b(?:what\s+do\s+players\s+say|how\s+(?:do|should)\s+i\s+set|good|common|safe|starting|use|used|recommend)\b", question)
+    )
+
+
+def steel_king_settings_source_cards() -> tuple[dict[str, Any], ...]:
+    return (
+        {
+            "score": 1.0,
+            "excerpt": (
+                "Forum discussion cites Buddy Emmons' 26 July 2004 Fender Steel King settings, "
+                "including E9 EQ Tilt around 10-11, Treble 11, Mid Level 10-11, Mid Frequency 11, "
+                "Bass 1, and Reverb 10, with a caveat that the settings were for his JCH."
+            ),
+            "forum_name": "Electronics",
+            "thread_title": "Fender Steel King settings",
+            "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=65647",
+            "chunk_id": "curated-steel-king-buddy-emmons-settings",
+            "post_uid": "curated-steel-king-buddy-emmons-settings",
+            "source_system": "curated_source_registry",
+        },
+        {
+            "score": 0.92,
+            "excerpt": (
+                "The same Steel King settings discussion includes neutral or straight-up baseline advice "
+                "and notes that the mid controls should be adjusted as an interacting pair."
+            ),
+            "forum_name": "Electronics",
+            "thread_title": "Fender Steel King settings",
+            "thread_url": "https://bb.steelguitarforum.com/viewtopic.php?t=65647",
+            "chunk_id": "curated-steel-king-neutral-mid-controls",
+            "post_uid": "curated-steel-king-neutral-mid-controls",
+            "source_system": "curated_source_registry",
+        },
     )
 
 
