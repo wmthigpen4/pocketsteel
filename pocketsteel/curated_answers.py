@@ -35,6 +35,7 @@ from pocketsteel.fretboard_examples import (
     minor_chord_answer_for_question,
     multi_chord_answer_for_question,
     rootless_chord_quality_answer_for_question,
+    specific_major_grip_answer_for_question,
     chord_quality_definition_lines,
     unsupported_chord_location_request_for_question,
 )
@@ -474,6 +475,13 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
             confidence="curated_high",
             answer=minor_chord_answer,
         )
+    specific_major_grip_answer = specific_major_grip_answer_for_question(question)
+    if specific_major_grip_answer is not None:
+        return CuratedAnswer(
+            intent="copedent_fretboard",
+            confidence="curated_high",
+            answer=specific_major_grip_answer,
+        )
     major_request = major_chord_location_request_for_question(question)
     if major_request is not None:
         major_key = major_request.normalized_key
@@ -544,9 +552,9 @@ def visual_fretboard_curated_answer(question: str) -> CuratedAnswer | None:
                 "- Open/no-pedals grips are the easiest straight-bar reference for intonation and quick fills.",
                 "- A+F gives a smooth pedal/lever color that is useful for connected movement.",
                 "- A+B is the strong pedals-down home position and octave/register alternate.",
-                "- E-lower grips are more context-dependent; the selector may show pitch-validated 5-7-8, 7-8-10, 4-5-7, and 1-4-5 positions when they truly spell the chord or a useful partial/rootless color.",
+                "- E-lower grips are more context-dependent; the selector may show pitch-validated 5-7-8, 7-8-10, 4-5-7, and 1-4-5 positions when they truly spell the chord. Plain no-pedals 5-7-8 is usually a partial/color grip when it omits the 3rd.",
                 "",
-                "Common grips to try are 3-4-5, 4-5-6, 5-6-8, 5-7-8 when it validates, and 6-8-10. The fretboard selector may include alternate octaves, grip variants, and lever pockets, so treat these as several useful places rather than every possible position.",
+                "Common full-triad grips to try first are 3-4-5, 4-5-6, 5-6-8, and 6-8-10. Treat 5-7-8 as an advanced partial/color or E-lower pocket unless the pitch-checked card says it is a full chord.",
                 "",
                 "Terminology note: the A+F position is the A-pedal + F-lever position.",
             ]

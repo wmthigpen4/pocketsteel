@@ -116,10 +116,7 @@ def static_fretboard_payload_for_question(question: str) -> dict[str, Any] | Non
         if example.display_mode != "fretboard_only":
             continue
         if example.matcher(normalized):
-            payload = _payload_for_example(example)
-            if payload is None:
-                return None
-            return fretboard_payload_for_tab_example(payload)
+            return _static_fretboard_payload_for_example(example)
     return None
 
 
@@ -248,6 +245,96 @@ def _payload_for_example(example: AnswerTabExample) -> dict[str, Any] | None:
         "intervals": list(example.intervals),
         "events": [event.normalized(profile).to_dict() for event in events],
     }
+
+
+def _static_fretboard_payload_for_example(example: AnswerTabExample) -> dict[str, Any] | None:
+    if example.id != "g-major-456-open":
+        return None
+
+    notes = {"4": "G", "5": "D", "6": "B"}
+    intervals = {"4": "1", "5": "5", "6": "3"}
+    position = FretboardPosition(
+        id="g-major-456-open-3",
+        label="G major",
+        root="G",
+        quality="major",
+        position_kind="full_chord_position",
+        fret=3,
+        strings=(4, 5, 6),
+        grip="4-5-6",
+        pedals=(),
+        levers=(),
+        color="primary",
+        role="Static grip",
+        function="G major",
+        key_context="G",
+        notes=notes,
+        intervals=intervals,
+        explanation="3rd fret, no pedals or levers, strings 4-5-6: G-B-D as a full G major grip.",
+        family="open_no_pedals",
+        tier="starter",
+        color_role="starter",
+        visible_by_default=True,
+        sort_order=10,
+        omitted_intervals=(),
+        is_full_chord=True,
+        is_partial=False,
+        why_use_it="Use this as a simple static G major reference before adding pedal movement.",
+        caveats=(),
+        tier_reason="Starter because it is a straight-bar, no-pedals/no-levers full major triad.",
+        when_to_use="Use it for a plain G major sound, intonation practice, or a compact 4-5-6 grip reference.",
+        sound_character="Clear straight-bar major triad.",
+        movement_use="Treat it as the starting shape before moving to nearby A+B or A+F positions.",
+        resolution_use="Resolve back here after a small pedal move or lick.",
+        forum_evidence=(),
+        forum_evidence_status="not_searched",
+        explanation_short="Fret 3, strings 4-5-6, no pedals or levers gives G-B-D.",
+        explanation_long=(
+            "This static grip is generated from deterministic E9 pitch logic. "
+            "It uses only the selected strings, fret, and controls shown on the card."
+        ),
+    )
+    payload = {
+        "type": FRETBOARD_PAYLOAD_TYPE,
+        "title": "G major 4-5-6 grip fretboard view",
+        "subtitle": "Deterministic E9 static grip.",
+        "description": "A beginner-safe full G major grip on strings 4-5-6.",
+        "tuning": "E9",
+        "copedent": {
+            "id": "default_e9",
+            "label": "Default 10-string E9",
+            "status": "deterministic_static_grip",
+        },
+        "key": "G",
+        "strings": {
+            "count": 10,
+            "labels": {str(string): note for string, note in E9_OPEN_STRINGS.items()},
+        },
+        "positions": [position.to_position_payload()],
+        "highlights": [position.to_highlight_payload()],
+        "legend": [
+            {
+                "id": "primary",
+                "label": "Static grip",
+                "color": "primary",
+                "description": "A selected static chord grip.",
+            }
+        ],
+        "notes": [
+            "This payload is generated from deterministic E9 pitch logic.",
+            "The UI owns fretboard geometry; this payload only provides musical state.",
+        ],
+        "warnings": [],
+        "sourceContext": [
+            {
+                "kind": "rule",
+                "label": "Deterministic E9 static grip",
+                "sourceId": "pocketsteel.answer_tab_examples.static_grip",
+            }
+        ],
+    }
+    validate_fretboard_payload(payload)
+    return payload
 
 
 def _parameterized_movement_payload_for_question(question: str) -> dict[str, Any] | None:

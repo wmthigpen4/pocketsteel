@@ -2747,12 +2747,14 @@ def assert_valid_static_grip_fretboard_payload(payload: dict[str, Any]) -> None:
     assert fretboard["type"] == "e9-fretboard-diagram"
     assert fretboard["tuning"] == "E9"
     assert fretboard["sourceContext"][0]["kind"] == "rule"
-    assert fretboard["sourceContext"][0]["sourceId"] == "pocketsteel.answer_tab_examples"
+    assert fretboard["sourceContext"][0]["sourceId"] == "pocketsteel.answer_tab_examples.static_grip"
     assert len(fretboard["positions"]) == 1
     position = fretboard["positions"][0]
-    assert position["id"] == "g-major-456-open-event-1"
-    assert position["positionKind"] == "tab_example_event"
-    assert position["family"] == "tab_example"
+    assert position["id"] == "g-major-456-open-3"
+    assert position["positionKind"] == "full_chord_position"
+    assert position["family"] == "open_no_pedals"
+    assert position["isFullChord"] is True
+    assert position["isPartial"] is False
     assert position["fret"] == 3
     assert position["strings"] == [4, 5, 6]
     assert position["grip"] == "4-5-6"
@@ -7792,6 +7794,37 @@ def test_answer_uses_fretboard_without_tab_for_static_g_location_request() -> No
     assert "tab_example" not in payload
     assert "fretboard" in payload
     assert_no_tab_specificity_fallback(payload)
+    positions = payload["fretboard"]["positions"]
+    visible_ids = [position["id"] for position in positions if position["visibleByDefault"]]
+    assert visible_ids == ["g-open-3", "g-af-6", "g-ab-10"]
+    g_578 = next(position for position in positions if position["id"] == "g-open-grip-5-7-8-3")
+    assert g_578["label"] == "G5/add9 (no 3rd)"
+    assert g_578["isFullChord"] is False
+    assert g_578["isPartial"] is True
+    assert g_578["visibleByDefault"] is False
+    assert g_578["omittedIntervals"] == ["3"]
+    assert g_578["addedIntervals"] == ["2/9"]
+    assert not any(position["grip"] == "5-7-8" and position["pedals"] == ["A", "B"] for position in positions)
+
+
+def test_answer_routes_explicit_g_578_static_grip_as_partial_color() -> None:
+    for question in ["Show me a 5-7-8 G grip.", "Show me a G chord on strings 5-7-8."]:
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert "tab_example" not in payload
+        assert "fretboard" in payload
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+        assert "Not as a full plain G major grip" in payload["answer"]
+        assert "partial/color sound" in payload["answer"]
+        position = payload["fretboard"]["positions"][0]
+        assert position["id"] == "g-grip-5-7-8-3"
+        assert position["label"] == "G5/add9 (no 3rd)"
+        assert position["isFullChord"] is False
+        assert position["omittedIntervals"] == ["3"]
+        assert position["addedIntervals"] == ["2/9"]
+        assert position["pedals"] == []
+        assert position["levers"] == []
 
 
 def test_answer_attaches_tab_example_for_supported_a_b_request() -> None:

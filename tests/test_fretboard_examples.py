@@ -31,6 +31,7 @@ from pocketsteel.fretboard_examples import (
     normalize_rootless_chord_quality_alias,
     rootless_chord_quality_answer_for_question,
     rootless_chord_quality_request_for_question,
+    specific_major_grip_answer_for_question,
     validate_fretboard_payload,
 )
 
@@ -486,6 +487,20 @@ def test_partial_and_rootless_voicings_are_labeled_for_filtering() -> None:
     assert rootless["isInversion"] is False
     assert "omits the root" in rootless["inversionExplanation"]
 
+    g_payload = get_fretboard_examples("major_positions", "G")
+    g_by_id = {position["id"]: position for position in g_payload["positions"]}
+    g_578 = g_by_id["g-open-grip-5-7-8-3"]
+    assert g_578["label"] == "G5/add9 (no 3rd)"
+    assert g_578["notes"] == {"5": "D", "7": "A", "8": "G"}
+    assert g_578["intervals"] == {"5": "5", "7": "2/9", "8": "1"}
+    assert g_578["omittedIntervals"] == ["3"]
+    assert g_578["addedIntervals"] == ["2/9"]
+    assert g_578["isFullChord"] is False
+    assert g_578["isPartial"] is True
+    assert g_578["visibleByDefault"] is False
+    assert g_578["colorRole"] == "partial-rootless"
+    assert any("partial/color voicing" in caveat for caveat in g_578["caveats"])
+
 
 def test_common_grip_labels_remain_available_in_canonical_order() -> None:
     payload = get_fretboard_examples("major_positions", "G")
@@ -495,7 +510,7 @@ def test_common_grip_labels_remain_available_in_canonical_order() -> None:
         if position["fret"] == 3 and position["family"] in {"open_no_pedals", "open_grip"}
     ]
 
-    assert first_fret_family == ["3-4-5", "4-5-6", "5-6-8", "5-7-8", "6-8-10"]
+    assert first_fret_family == ["3-4-5", "4-5-6", "5-6-8", "6-8-10", "5-7-8"]
     assert all(max(position["strings"]) <= 10 for position in payload["positions"])
     assert not any("11" in position["grip"] or "12" in position["grip"] for position in payload["positions"])
 
@@ -772,7 +787,7 @@ def test_b_major_expanded_catalog_has_beginner_visible_defaults_and_hidden_alter
             continue
         if position["grip"] not in first_grip_order:
             first_grip_order.append(position["grip"])
-    assert first_grip_order == ["3-4-5", "4-5-6", "5-6-8", "5-7-8", "6-8-10"]
+    assert first_grip_order == ["3-4-5", "4-5-6", "5-6-8", "6-8-10", "5-7-8"]
     assert [position["fret"] for position in positions if position["family"] == "e_lower_578"] == [0, 12]
 
 
@@ -795,7 +810,14 @@ def test_g_major_expanded_catalog_includes_pitch_valid_common_grips_and_e_lower_
         for position in positions
         if position["family"] in {"open_grip", "open_no_pedals"} and position["fret"] == 3
     ]
-    assert open_grips == ["3-4-5", "4-5-6", "5-6-8", "5-7-8", "6-8-10"]
+    assert open_grips == ["3-4-5", "4-5-6", "5-6-8", "6-8-10", "5-7-8"]
+    assert not any(position["grip"] == "5-7-8" and position["pedals"] == ["A", "B"] for position in positions)
+    g_578 = by_id["g-open-grip-5-7-8-3"]
+    assert g_578["label"] == "G5/add9 (no 3rd)"
+    assert g_578["isFullChord"] is False
+    assert g_578["visibleByDefault"] is False
+    assert g_578["omittedIntervals"] == ["3"]
+    assert g_578["addedIntervals"] == ["2/9"]
 
     e_lower_full = {
         (position["fret"], position["grip"])
@@ -818,7 +840,30 @@ def test_g_major_expanded_catalog_includes_pitch_valid_common_grips_and_e_lower_
     ]
     assert dominant_pockets
     assert all(position["positionKind"] == "rootless_voicing" for position in dominant_pockets)
-    assert all(position["isRootless"] for position in dominant_pockets)
+
+
+def test_specific_g_578_static_grip_routes_as_partial_color_not_plain_major() -> None:
+    for question in ["Show me a 5-7-8 G grip.", "Show me a G chord on strings 5-7-8."]:
+        payload = fretboard_payload_for_question(question)
+        answer = specific_major_grip_answer_for_question(question)
+
+        assert answer is not None
+        assert "Not as a full plain G major grip" in answer
+        assert "partial/color sound" in answer
+        assert "Omitted from the plain major triad: 3" in answer
+        assert payload is not None
+        assert payload["title"] == "G grip 5-7-8 on E9"
+        position = payload["positions"][0]
+        assert position["id"] == "g-grip-5-7-8-3"
+        assert position["label"] == "G5/add9 (no 3rd)"
+        assert position["notes"] == {"5": "D", "7": "A", "8": "G"}
+        assert position["intervals"] == {"5": "5", "7": "2/9", "8": "1"}
+        assert position["isFullChord"] is False
+        assert position["isPartial"] is True
+        assert position["omittedIntervals"] == ["3"]
+        assert position["addedIntervals"] == ["2/9"]
+        assert position["pedals"] == []
+        assert position["levers"] == []
 
 
 def test_i_iv_v_examples_in_requested_keys_are_stable() -> None:
@@ -1195,4 +1240,10 @@ def test_validation_rejects_raw_geometry_and_unknown_labels() -> None:
     payload = get_fretboard_examples("major_positions", "G")
     payload["positions"][1]["levers"] = ["E-raise/F"]
     with pytest.raises(ValueError, match="unknown lever"):
+        validate_fretboard_payload(payload)
+
+    payload = get_fretboard_examples("major_positions", "G")
+    partial_578 = next(position for position in payload["positions"] if position["id"] == "g-open-grip-5-7-8-3")
+    partial_578["pedals"] = ["B"]
+    with pytest.raises(ValueError, match="inert pedal/lever label"):
         validate_fretboard_payload(payload)

@@ -150,6 +150,13 @@ class MultiChordLocationRequest:
 
 
 @dataclass(frozen=True)
+class SpecificMajorGripRequest:
+    requested_root: str
+    normalized_key: str
+    strings: tuple[int, ...]
+
+
+@dataclass(frozen=True)
 class ChordConceptRequest:
     requested_root: str
     normalized_key: str
@@ -572,6 +579,9 @@ def validate_fretboard_payload(payload: dict) -> None:
             raise ValueError(f"Fretboard position {position_id} has unknown pedal label")
         if any(lever not in CANONICAL_LEVER_LABELS for lever in position.get("levers", [])):
             raise ValueError(f"Fretboard position {position_id} has unknown lever label")
+        controls = tuple(position.get("pedals", [])) + tuple(position.get("levers", []))
+        if controls and not controls_affect_selected_strings(controls, tuple(strings)):
+            raise ValueError(f"Fretboard position {position_id} has inert pedal/lever label")
         if position.get("color") not in POSITION_COLORS:
             raise ValueError(f"Fretboard position {position_id} has unknown color role")
         if not isinstance(position.get("family"), str) or not position.get("family"):
@@ -845,6 +855,21 @@ def semitone_for_copedent_note(note: str) -> int:
 
 def notes_for_controls(labels: tuple[str, ...]) -> dict[int, str]:
     return apply_changes(labels, USER_E9_COPEDENT)
+
+
+def control_affects_selected_strings(label: str, strings: tuple[int, ...]) -> bool:
+    """Return true when a displayed pedal/lever changes at least one played string."""
+    changed_notes = notes_for_controls((label,))
+    selected = set(strings)
+    return any(
+        string in selected
+        and semitone_for_copedent_note(changed_notes[string]) != semitone_for_copedent_note(E9_OPEN_STRINGS[string])
+        for string in E9_OPEN_STRINGS
+    )
+
+
+def controls_affect_selected_strings(controls: tuple[str, ...], strings: tuple[int, ...]) -> bool:
+    return all(control_affects_selected_strings(control, strings) for control in controls)
 
 
 def note_at_fret(open_note: str, fret: int) -> str:
@@ -1144,6 +1169,8 @@ def major_position_candidate(
     allow_added_intervals: bool = True,
 ) -> FretboardPosition | None:
     controls = pedals + levers
+    if controls and not controls_affect_selected_strings(controls, strings):
+        return None
     classification = classify_grip_against_root(
         key,
         quality,
@@ -1156,6 +1183,16 @@ def major_position_candidate(
         return None
     notes, intervals, omitted_intervals, added_intervals, is_full_chord, is_partial, is_rootless = classification
     quality_key = chord_quality_key(quality)
+    label = position_label_for_classification(
+        key,
+        quality_key,
+        omitted_intervals=omitted_intervals,
+        added_intervals=added_intervals,
+        is_partial=is_partial,
+        is_rootless=is_rootless,
+    )
+    if is_partial or is_rootless:
+        color_role = "partial-rootless"
     position_kind = position_kind_for_classification(
         family=family,
         quality=quality_key,
@@ -1166,7 +1203,7 @@ def major_position_candidate(
     )
     return FretboardPosition(
         id=f"{slug(key)}-{suffix}",
-        label=f"{key} {quality_label(quality)}",
+        label=label,
         root=key,
         quality=chord_quality_key(quality),
         position_kind=position_kind,
@@ -1213,6 +1250,28 @@ def quality_label(quality: str) -> str:
         "dominant9": "dominant 9",
         "minor7": "minor 7",
     }.get(chord_quality_key(quality), quality)
+
+
+def position_label_for_classification(
+    root: str,
+    quality: str,
+    *,
+    omitted_intervals: tuple[str, ...],
+    added_intervals: tuple[str, ...],
+    is_partial: bool,
+    is_rootless: bool,
+) -> str:
+    if quality == "major" and (is_partial or is_rootless):
+        omitted = set(omitted_intervals)
+        added = set(added_intervals)
+        if omitted == {"3"} and "2/9" in added:
+            return f"{root}5/add9 (no 3rd)"
+        if "3" in omitted and not is_rootless:
+            return f"{root} major partial (no 3rd)"
+        if is_rootless:
+            return f"{root} major color (no root)"
+        return f"{root} major partial"
+    return f"{root} {quality_label(quality)}"
 
 
 def position_kind_for_classification(
@@ -2683,6 +2742,9 @@ def fretboard_payload_for_question(question: str) -> dict | None:
     minor_chord_payload = minor_chord_payload_for_question(q)
     if minor_chord_payload is not None:
         return minor_chord_payload
+    specific_major_grip_payload = specific_major_grip_payload_for_question(q)
+    if specific_major_grip_payload is not None:
+        return specific_major_grip_payload
     chord_concept_payload = chord_concept_payload_for_question(q)
     if chord_concept_payload is not None:
         return chord_concept_payload
@@ -2713,6 +2775,116 @@ def major_chord_location_key_for_question(question: str) -> str | None:
     """Extract a deterministic major-key request from narrow location prompts."""
     request = major_chord_location_request_for_question(question)
     return request.normalized_key if request else None
+
+
+def specific_major_grip_request_for_question(question: str) -> SpecificMajorGripRequest | None:
+    q = normalize_chord_intent_text(question)
+    if not q:
+        return None
+    patterns = (
+        rf"^show me (?:a|an)?\s*(?P<grip>\d{{1,2}}\s*[-/ ]\s*\d{{1,2}}\s*[-/ ]\s*\d{{1,2}})\s+(?P<root>{CHORD_ROOT_RE})(?:\s+major)?\s+grip(?:\s+on\s+e9)?$",
+        rf"^show me (?:a|an)?\s*(?P<root>{CHORD_ROOT_RE})(?:\s+major)?\s+(?:chord|grip)\s+on\s+strings?\s+(?P<grip>\d{{1,2}}\s*[-/ ]\s*\d{{1,2}}\s*[-/ ]\s*\d{{1,2}})(?:\s+on\s+e9)?$",
+        rf"^where is (?:a|an)?\s*(?P<root>{CHORD_ROOT_RE})(?:\s+major)?\s+(?:chord|grip)\s+on\s+strings?\s+(?P<grip>\d{{1,2}}\s*[-/ ]\s*\d{{1,2}}\s*[-/ ]\s*\d{{1,2}})(?:\s+on\s+e9)?$",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, q)
+        if not match:
+            continue
+        strings = parse_grip_strings(match.group("grip"))
+        if strings is None:
+            continue
+        if strings != E_LOWER_578_GRIP:
+            continue
+        requested_root = normalize_requested_root(match.group("root"))
+        return SpecificMajorGripRequest(
+            requested_root=requested_root,
+            normalized_key=normalize_key(requested_root),
+            strings=strings,
+        )
+    return None
+
+
+def specific_major_grip_position(request: SpecificMajorGripRequest) -> FretboardPosition | None:
+    key = request.normalized_key
+    open_fret = open_major_fret(key)
+    return major_position_candidate(
+        key=key,
+        suffix=f"grip-{grip_label(request.strings)}-{open_fret}",
+        fret=open_fret,
+        strings=request.strings,
+        color="reference",
+        role=f"Pitch-checked {grip_label(request.strings)} grip",
+        family="specific_grip",
+        tier="beginner" if request.strings != E_LOWER_578_GRIP else "advanced",
+        color_role="reference",
+        visible_by_default=True,
+        sort_order=10,
+        explanation=f"No-pedal fret {open_fret} is pitch-checked against {key} major on strings {grip_label(request.strings)}.",
+        function="I",
+        key_context=key,
+        why_use_it="Use this focused card to check whether the requested grip is a complete major triad or a partial color.",
+    )
+
+
+def specific_major_grip_payload_for_question(question: str) -> dict | None:
+    request = specific_major_grip_request_for_question(question)
+    if request is None:
+        return None
+    position = specific_major_grip_position(request)
+    if position is None:
+        return None
+    display_key = display_major_key_for_request(
+        MajorChordLocationRequest(requested_root=request.requested_root, normalized_key=request.normalized_key)
+    )
+    if display_key != position.root:
+        position = replace(
+            position,
+            root=display_key,
+            label=position.label.replace(position.root, display_key, 1),
+            key_context=display_key,
+        )
+    return FretboardVisualizationPayload(
+        title=f"{display_key} grip {grip_label(request.strings)} on E9",
+        subtitle=f"Pitch-checked static grip for {display_key} on strings {grip_label(request.strings)}.",
+        key=display_key,
+        positions=(position,),
+    ).to_payload()
+
+
+def specific_major_grip_answer_for_question(question: str) -> str | None:
+    request = specific_major_grip_request_for_question(question)
+    if request is None:
+        return None
+    position = specific_major_grip_position(request)
+    if position is None:
+        return None
+    display_key = display_major_key_for_request(
+        MajorChordLocationRequest(requested_root=request.requested_root, normalized_key=request.normalized_key)
+    )
+    note_text = ", ".join(
+        f"string {string} = {note}" for string, note in sorted((position.notes or {}).items(), key=lambda item: int(item[0]))
+    )
+    interval_text = ", ".join(
+        f"string {string} = {interval}"
+        for string, interval in sorted((position.intervals or {}).items(), key=lambda item: int(item[0]))
+    )
+    if position.is_full_chord:
+        return (
+            f"Yes. On E9, strings {grip_label(request.strings)} at the {fret_label(position.fret)} with no pedals/no levers "
+            f"spell a full {display_key} major grip.\n\n"
+            f"Notes: {note_text}.\n"
+            f"Intervals: {interval_text}."
+        )
+    omitted = ", ".join(position.omitted_intervals) or "none"
+    added = ", ".join(position.added_intervals) or "none"
+    return (
+        f"Not as a full plain {display_key} major grip. On E9, strings {grip_label(request.strings)} at the "
+        f"{fret_label(position.fret)} with no pedals/no levers are a partial/color sound, not a complete triad.\n\n"
+        f"Notes: {note_text}.\n"
+        f"Intervals: {interval_text}.\n"
+        f"Omitted from the plain major triad: {omitted}. Added color: {added}.\n\n"
+        f"For a beginner-safe full {display_key} major grip, start with 4-5-6, 5-6-8, or 6-8-10 at the same no-pedals fret."
+    )
 
 
 def major_chord_location_request_for_question(question: str) -> MajorChordLocationRequest | None:
@@ -3059,6 +3231,21 @@ def major_positions(key: str) -> FretboardVisualizationPayload:
                 key_context=key,
                 why_use_it=f"Use this as a {key} major grip in the {starter_role.lower()} family.",
             )
+            if candidate is not None and candidate.is_partial:
+                candidate = replace(
+                    candidate,
+                    tier="advanced" if grip == E_LOWER_578_GRIP else candidate.tier,
+                    sort_order=candidate.sort_order + 45,
+                    why_use_it=f"Use this as a contextual {key} color grip only after you know the complete triad positions.",
+                    caveats=tuple(
+                        dict.fromkeys(
+                            (
+                                *candidate.caveats,
+                                "This grip is a partial/color voicing, not a complete major triad.",
+                            )
+                        )
+                    ),
+                )
             if is_starter and required_starter:
                 candidates.append(require_major_position(candidate, key=key, role=starter_role))
             elif candidate is not None:
@@ -3200,7 +3387,7 @@ def major_positions(key: str) -> FretboardVisualizationPayload:
                 tier="advanced",
                 color_role="e-lower",
                 visible_by_default=False,
-                sort_order=55 + grip_index + octave_sort_offset,
+                sort_order=420 + grip_index * 10 + octave_sort_offset,
                 explanation=f"E-lower at fret {fret} gives a {key} major {grip_label(grip)} grip when strings 4 and 8 lower from E to D#/Eb.",
                 function="I",
                 key_context=key,

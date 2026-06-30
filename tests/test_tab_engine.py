@@ -160,7 +160,9 @@ def test_static_g_major_grip_uses_fretboard_without_tab_payload() -> None:
 
     fretboard = static_fretboard_payload_for_question("Show me a G major grip.")
     assert fretboard is not None
-    assert fretboard["sourceContext"][0]["sourceId"] == "pocketsteel.answer_tab_examples"
+    assert fretboard["sourceContext"][0]["sourceId"] == "pocketsteel.answer_tab_examples.static_grip"
+    assert fretboard["positions"][0]["positionKind"] == "full_chord_position"
+    assert fretboard["positions"][0]["family"] == "open_no_pedals"
     assert fretboard["positions"][0]["strings"] == [4, 5, 6]
     assert fretboard["positions"][0]["notes"] == {"4": "G", "5": "D", "6": "B"}
 
