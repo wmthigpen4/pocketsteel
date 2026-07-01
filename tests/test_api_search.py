@@ -7945,8 +7945,59 @@ def test_answer_attaches_parameterized_tab_example_for_i_to_v_move() -> None:
     ]
 
 
+def test_answer_attaches_parameterized_tab_example_for_g_to_d_move() -> None:
+    payload = answer_for_question("Show me a G to D move.", noisy_practical_sources())
+
+    assert "tab_example" in payload
+    assert_valid_tab_example_payload(payload, "movement-g-i-v-v1")
+    assert_valid_tab_example_fretboard_payload(payload)
+    assert_no_tab_specificity_fallback(payload)
+    assert payload["answer"].startswith("Here is a short original G I-V movement on E9.")
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert payload["tab_example"]["context"]["progression"] == "I-V"
+    assert payload["tab_example"]["context"]["chords"] == ["G", "D"]
+    assert [event["function"] for event in payload["tab_example"]["events"]] == ["I", "V"]
+
+
+def test_answer_attaches_parameterized_tab_example_for_numeric_i_to_iv_and_i_to_v_moves() -> None:
+    cases = [
+        ("Show me a 1 to 4 move in G.", "movement-g-i-iv-v1", "I-IV", ["G", "C"], ["I", "IV"]),
+        ("Show me a 1 to 5 move in G.", "movement-g-i-v-v1", "I-V", ["G", "D"], ["I", "V"]),
+    ]
+
+    for question, expected_id, progression, chords, functions in cases:
+        payload = answer_for_question(question, noisy_practical_sources())
+        assert "tab_example" in payload
+        assert_valid_tab_example_payload(payload, expected_id)
+        assert_valid_tab_example_fretboard_payload(payload)
+        assert_no_tab_specificity_fallback(payload)
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+        assert payload["tab_example"]["context"]["progression"] == progression
+        assert payload["tab_example"]["context"]["chords"] == chords
+        assert [event["function"] for event in payload["tab_example"]["events"]] == functions
+
+
 def test_answer_attaches_parameterized_tab_example_for_i_iv_v_i_move() -> None:
     payload = answer_for_question("Show me a G C D G movement.", noisy_practical_sources())
+
+    assert "tab_example" in payload
+    assert_valid_tab_example_payload(payload, "movement-g-i-iv-v-i-v1")
+    assert_valid_tab_example_fretboard_payload(payload)
+    assert_no_tab_specificity_fallback(payload)
+    assert payload["answer"].startswith("Here is a short original G I-IV-V-I movement on E9.")
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert payload["tab_example"]["context"]["progression"] == "I-IV-V-I"
+    assert payload["tab_example"]["context"]["chords"] == ["G", "C", "D", "G"]
+    assert [event["function"] for event in payload["tab_example"]["events"]] == ["I", "IV", "V", "I"]
+    assert payload["tab_example"]["validation"]["eventCount"] == 4
+    assert len(payload["fretboard"]["positions"]) == 4
+
+
+def test_answer_attaches_parameterized_tab_example_for_numeric_i_iv_v_i_move() -> None:
+    payload = answer_for_question("Show me a 1 4 5 1 move in G.", noisy_practical_sources())
 
     assert "tab_example" in payload
     assert_valid_tab_example_payload(payload, "movement-g-i-iv-v-i-v1")
@@ -7971,6 +8022,24 @@ def test_answer_attaches_parameterized_tab_example_for_default_key_i_to_iv_move(
     assert "defaulting to G" in payload["answer"]
     assert payload["sources"] == []
     assert payload["warnings"] == []
+    assert payload["tab_example"]["context"]["defaultedKey"] is True
+
+
+def test_answer_attaches_parameterized_tab_example_for_no_pedals_to_ab_connection() -> None:
+    payload = answer_for_question("How do I connect no-pedals to A+B positions?", noisy_practical_sources())
+
+    assert "tab_example" in payload
+    assert_valid_tab_example_payload(payload, "movement-g-i-iv-v1")
+    assert_valid_tab_example_fretboard_payload(payload)
+    assert_no_tab_specificity_fallback(payload)
+    assert payload["answer"].startswith("Here is a short original G I-IV movement on E9.")
+    assert "defaulting to G" in payload["answer"]
+    assert "no-pedals position" in payload["answer"]
+    assert "A+B" in payload["answer"]
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert payload["tab_example"]["context"]["progression"] == "I-IV"
+    assert payload["tab_example"]["context"]["chords"] == ["G", "C"]
     assert payload["tab_example"]["context"]["defaultedKey"] is True
 
 

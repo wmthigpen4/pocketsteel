@@ -406,6 +406,16 @@ def _parse_parameterized_movement_request(question: str) -> ParameterizedMovemen
         return None
     if re.search(r"\b(?:minor|7th|seventh|dominant|blues|solo|song|recording|youtube|custom copedent)\b", question):
         return None
+    if _mentions_no_pedals_to_ab_movement(question):
+        key_label, key_pc = _normalize_root_token("G") or ("G", PITCH_CLASSES["G"])
+        chords = _chords_for_progression(key_pc, "I-IV")
+        return ParameterizedMovementRequest(
+            key=key_label,
+            key_pc=key_pc,
+            progression="I-IV",
+            chords=chords,
+            defaulted_key=True,
+        )
     if not _looks_like_movement_request(question):
         return None
 
@@ -434,10 +444,18 @@ def _parse_parameterized_movement_request(question: str) -> ParameterizedMovemen
 
 def _looks_like_movement_request(question: str) -> bool:
     return bool(
-        re.search(r"\b(?:move|movement|transition|phrase|walk|go from|from|beginner example|short example|pedal move)\b", question)
+        re.search(r"\b(?:move|movement|transition|phrase|walk|connect|go from|from|beginner example|short example|pedal move)\b", question)
         or re.search(r"\b(?:i|1)(?:\s+chord)?\s*to\s*(?:the\s+)?(?:iv|4)(?:\s+chord)?\b", question)
         or re.search(r"\b(?:i|1)(?:\s+chord)?\s*to\s*(?:the\s+)?(?:v|5)(?:\s+chord)?\b", question)
         or re.search(r"\b(?:i|1)\s*[- ]\s*(?:iv|4)\s*[- ]\s*(?:v|5)\s*[- ]\s*(?:i|1)\b", question)
+    )
+
+
+def _mentions_no_pedals_to_ab_movement(question: str) -> bool:
+    mentions_no_pedals = bool(re.search(r"\bno[- ]?pedals?\b", question) or "no pedals" in question)
+    return mentions_no_pedals and _mentions_ab_pedals(question) and re.search(
+        r"\b(?:connect|move|movement|go from|from|to|into)\b",
+        question,
     )
 
 

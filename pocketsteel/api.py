@@ -176,7 +176,10 @@ def _attach_tab_example_if_available(
         if tab_example.get("kind") == "parameterized_chord_movement":
             payload["sources"] = []
             payload["warnings"] = []
-        if "fretboard" not in payload:
+            fretboard = fretboard_payload_for_tab_example(tab_example)
+            if fretboard is not None:
+                payload["fretboard"] = fretboard
+        elif "fretboard" not in payload:
             fretboard = fretboard_payload_for_tab_example(tab_example)
             if fretboard is not None:
                 payload["fretboard"] = fretboard

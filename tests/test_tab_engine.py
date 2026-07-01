@@ -196,9 +196,18 @@ def test_answer_tab_example_selector_supports_safe_first_examples() -> None:
 def test_parameterized_chord_movement_selector_supports_major_key_progressions() -> None:
     cases = [
         ("Show me a I to IV move in G.", "movement-g-i-iv-v1", "I-IV", ["G", "C"], ["I", "IV"]),
+        ("Show me a G to C move.", "movement-g-i-iv-v1", "I-IV", ["G", "C"], ["I", "IV"]),
         ("Show me a I to V move in G.", "movement-g-i-v-v1", "I-V", ["G", "D"], ["I", "V"]),
+        ("Show me a G to D move.", "movement-g-i-v-v1", "I-V", ["G", "D"], ["I", "V"]),
         (
             "Show me a G C D G movement.",
+            "movement-g-i-iv-v-i-v1",
+            "I-IV-V-I",
+            ["G", "C", "D", "G"],
+            ["I", "IV", "V", "I"],
+        ),
+        (
+            "Show me a 1 4 5 1 move in G.",
             "movement-g-i-iv-v-i-v1",
             "I-IV-V-I",
             ["G", "C", "D", "G"],
@@ -234,6 +243,19 @@ def test_parameterized_chord_movement_defaults_numeral_only_requests_to_g() -> N
     assert payload["id"] == "movement-g-i-iv-v1"
     assert payload["context"]["defaultedKey"] is True
     assert "defaulting to G" in answer_body_for_tab_example(payload)
+
+
+def test_parameterized_chord_movement_defaults_no_pedals_to_ab_to_g_i_iv() -> None:
+    payload = tab_example_payload_for_question("How do I connect no-pedals to A+B positions?")
+
+    assert payload is not None
+    assert payload["id"] == "movement-g-i-iv-v1"
+    assert payload["context"]["progression"] == "I-IV"
+    assert payload["context"]["chords"] == ["G", "C"]
+    assert payload["context"]["defaultedKey"] is True
+    assert [event["function"] for event in payload["events"]] == ["I", "IV"]
+    assert answer_body_for_tab_example(payload).startswith("Here is a short original G I-IV movement on E9.")
+    assert fretboard_payload_for_tab_example(payload) is not None
 
 
 def test_beginner_g_lick_press_event_only_contains_changed_a_b_strings() -> None:
