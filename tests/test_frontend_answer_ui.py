@@ -3589,12 +3589,26 @@ const tabExample = answerUi.normalizeAnswerResponse({
   tab_example: {
     id: "g-major-456-open",
     title: "G major 4-5-6 grip",
+    kind: "parameterized_chord_movement",
     context: { tuning: "E9", profile: "default_e9", difficulty: "beginner" },
     rendered_tab: tabText,
     validation: { ok: true, issues: [], profile: "default_e9", eventCount: 2 },
     explanation: "A compact validated G grip.",
     intervals: [{ role: "root", note: "G" }],
-    events: []
+    events: [
+      {
+        id: "g-major-456-open-event-1",
+        label: "I",
+        function: "I",
+        chord: "G",
+        lyric: "pick",
+        notes: [
+          { string: 4, fret: 3, changes: [] },
+          { string: 5, fret: 3, changes: [] },
+          { string: 6, fret: 3, changes: [] }
+        ]
+      }
+    ]
   }
 });
 
@@ -3602,9 +3616,14 @@ assert.equal(tabExample.tabs.length, 1);
 assert.equal(tabExample.tabs[0].id, "g-major-456-open");
 assert.equal(tabExample.tabs[0].title, "G major 4-5-6 grip");
 assert.equal(tabExample.tabs[0].tabText, tabText);
+assert.equal(tabExample.tabs[0].kind, "parameterized_chord_movement");
+assert.equal(tabExample.tabs[0].contextData.tuning, "E9");
 assert.equal(tabExample.tabs[0].metadata.difficulty, "beginner");
 assert.equal(tabExample.tabs[0].metadata.event_count, 2);
 assert.equal(tabExample.tabs[0].why, "A compact validated G grip.");
+assert.equal(tabExample.tabs[0].events.length, 1);
+assert.equal(tabExample.tabs[0].events[0].chord, "G");
+assert.equal(tabExample.tabs[0].events[0].notes[1].string, 5);
 assert.equal("fretboard" in tabExample, false);
 
 const tabExampleWithFretboard = answerUi.normalizeAnswerResponse({
@@ -3711,6 +3730,16 @@ def test_answer_ui_wires_tab_examples_between_answer_and_fretboard() -> None:
     assert ".answer-tab[hidden]" in html
     assert ".tab-card" in html
     assert ".tab-block" in html
+    assert ".movement-lesson-card" in html
+    assert "function renderMovementLessonCard(tab)" in html
+    assert "card.dataset.movementLessonCard" in html
+    assert "Movement lesson" in html
+    assert "Why this move works" in html
+    assert "Tab ↔ fretboard" in html
+    assert "Practice it slowly" in html
+    assert "function shouldRenderMovementLesson(tab)" in html
+    assert "tab.events.length" in html
+    assert "tab.contextData?.progression" in html
     assert "font-family: ui-monospace" in html
     assert "white-space: pre;" in html
     assert "overflow-x: auto;" in html
@@ -3719,6 +3748,8 @@ def test_answer_ui_wires_tab_examples_between_answer_and_fretboard() -> None:
     assert "function clearTabExamples()" in html
     assert "renderTabExamples(response.tabs);" in html
     assert "clearTabExamples();" in html
+    assert "hideEmptySourceCards" in html
+    assert "!response.sources?.length && response.tabs?.some((tab) => shouldRenderMovementLesson(tab))" in html
 
 
 def test_answer_ui_wires_optional_fretboard_visualization_section() -> None:

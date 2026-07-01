@@ -371,6 +371,32 @@ const STEEL_RAG_ANSWER_UI = (() => {
     return [label];
   }
 
+  function normalizeTabEvents(events) {
+    if (!Array.isArray(events)) {
+      return [];
+    }
+    return events
+      .filter(isObjectRecord)
+      .map((event, index) => ({
+        id: firstTextValue(event.id, `event-${index + 1}`),
+        label: firstTextValue(event.label, event.function, event.chord, `Step ${index + 1}`),
+        function: firstTextValue(event.function),
+        chord: firstTextValue(event.chord),
+        lyric: firstTextValue(event.lyric),
+        notes: Array.isArray(event.notes)
+          ? event.notes
+            .filter(isObjectRecord)
+            .map((note) => ({
+              string: note.string,
+              fret: note.fret,
+              changes: Array.isArray(note.changes) ? note.changes.map(compactValueLabel).filter(Boolean) : [],
+              articulation: firstTextValue(note.articulation)
+            }))
+          : []
+      }))
+      .filter((event) => event.notes.length);
+  }
+
   function normalizeTabIssue(issue) {
     if (isObjectRecord(issue)) {
       return {
@@ -434,6 +460,7 @@ const STEEL_RAG_ANSWER_UI = (() => {
     if (!tabText) {
       return null;
     }
+    const contextData = isObjectRecord(payload.context) ? payload.context : {};
 
     const rawIssues = Array.isArray(payload.issues)
       ? payload.issues
@@ -455,6 +482,8 @@ const STEEL_RAG_ANSWER_UI = (() => {
       id: firstTextValue(payload.id, `tab-${index + 1}`),
       title: firstTextValue(payload.title, index === 0 ? "Tab example" : `Tab example ${index + 1}`),
       context: firstTextValue(payload.contextLine, payload.context_line, payload.context),
+      contextData,
+      kind: firstTextValue(payload.kind),
       tabText,
       ok,
       validation: validationLabel,
@@ -463,7 +492,8 @@ const STEEL_RAG_ANSWER_UI = (() => {
       why: firstTextValue(payload.whyItWorks, payload.why_it_works, payload.explanation, payload.why),
       intervals: normalizeStringList(payload.intervals),
       chordTones: normalizeStringList(payload.chordTones || payload.chord_tones),
-      sourceNote: firstTextValue(payload.sourceNote, payload.source_note)
+      sourceNote: firstTextValue(payload.sourceNote, payload.source_note),
+      events: normalizeTabEvents(payload.events)
     };
   }
 

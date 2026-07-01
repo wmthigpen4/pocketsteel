@@ -1430,6 +1430,91 @@
       margin-top: 12px;
     }
 
+    .movement-lesson-card {
+      display: grid;
+      gap: 14px;
+      margin-top: 14px;
+      padding: 14px;
+      border: 1px solid rgba(240, 191, 105, 0.22);
+      border-radius: 13px;
+      background:
+        radial-gradient(circle at 12% 0%, rgba(240, 191, 105, 0.1), transparent 40%),
+        rgba(240, 191, 105, 0.045);
+    }
+
+    .movement-lesson-card__kicker,
+    .movement-lesson-card__label {
+      margin: 0;
+      color: rgba(240, 191, 105, 0.92);
+      font-size: 12px;
+      line-height: 1.25;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .movement-lesson-card__title {
+      margin: 3px 0 0;
+      color: rgba(255, 246, 223, 0.96);
+      font-family: var(--font-lesson);
+      font-size: 22px;
+      line-height: 1.18;
+      font-weight: 700;
+    }
+
+    .movement-lesson-card__summary {
+      margin: 6px 0 0;
+      color: rgba(244, 234, 214, 0.78);
+      font-size: 15px;
+      line-height: 1.45;
+    }
+
+    .movement-lesson-card__facts,
+    .movement-lesson-card__path {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .movement-lesson-card__fact,
+    .movement-lesson-card__step {
+      min-width: 0;
+      border: 1px solid rgba(244, 234, 214, 0.11);
+      border-radius: 11px;
+      background: rgba(7, 9, 9, 0.3);
+      padding: 11px 12px;
+    }
+
+    .movement-lesson-card__value,
+    .movement-lesson-card__step-main {
+      display: block;
+      margin-top: 4px;
+      color: rgba(255, 246, 223, 0.94);
+      font-size: 15px;
+      line-height: 1.32;
+      font-weight: 750;
+    }
+
+    .movement-lesson-card__step-meta {
+      display: block;
+      margin-top: 6px;
+      color: rgba(244, 234, 214, 0.72);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .movement-lesson-card__copy {
+      margin: 0;
+      color: rgba(244, 234, 214, 0.78);
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    .movement-lesson-card__copy strong {
+      color: rgba(255, 246, 223, 0.94);
+      font-weight: 800;
+    }
+
     .tab-card-header {
       display: flex;
       align-items: flex-start;
@@ -1548,6 +1633,10 @@
     .followup-section {
       display: grid;
       gap: 12px;
+    }
+
+    .source-section[hidden] {
+      display: none;
     }
 
     .source-section-title,
@@ -1801,6 +1890,11 @@
 
       .followup-chips {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .movement-lesson-card__facts,
+      .movement-lesson-card__path {
+        grid-template-columns: 1fr;
       }
     }
 
@@ -2749,6 +2843,7 @@
     const answerFretboardDescription = document.querySelector("#answer-fretboard-description");
     const answerFretboardMount = document.querySelector("#answer-fretboard-mount");
     const sourceGrid = document.querySelector("#source-grid");
+    const sourceSection = document.querySelector(".source-section");
     const followupQuestion = document.querySelector("#followup-question");
     const answerSend = document.querySelector(".answer-send");
     const followupChipList = document.querySelector(".followup-chips");
@@ -3486,6 +3581,148 @@
       card.appendChild(line);
     }
 
+    function uniqueTabValues(values) {
+      return Array.from(new Set(values
+        .filter((value) => value !== undefined && value !== null && String(value).trim() !== "")
+        .map((value) => String(value).trim())));
+    }
+
+    function eventFret(event) {
+      const frets = uniqueTabValues((event.notes || []).map((note) => note.fret));
+      return frets.length === 1 ? frets[0] : frets.join("/");
+    }
+
+    function eventStrings(event) {
+      return uniqueTabValues((event.notes || []).map((note) => note.string)).join("-");
+    }
+
+    function eventControls(event) {
+      return uniqueTabValues((event.notes || []).flatMap((note) => note.changes || []));
+    }
+
+    function eventControlsLabel(event) {
+      const controls = eventControls(event);
+      return controls.length ? controls.join("+") : "open";
+    }
+
+    function eventChordLabel(event, fallback = "") {
+      return event.chord || event.label || event.function || fallback || "Position";
+    }
+
+    function movementSummaryParts(tab) {
+      const context = tab.contextData || {};
+      const parts = [];
+      if (context.key) parts.push(`Key: ${context.key}`);
+      if (context.progression) parts.push(`Move: ${context.progression}`);
+      if (Array.isArray(context.chords) && context.chords.length) parts.push(`Chords: ${context.chords.join(" → ")}`);
+      if (context.grip) parts.push(`Grip: ${context.grip}`);
+      if (context.difficulty) parts.push(`Difficulty: ${context.difficulty}`);
+      return parts;
+    }
+
+    function shouldRenderMovementLesson(tab) {
+      if (!tab?.events?.length) return false;
+      const kind = String(tab.kind || "").toLowerCase();
+      return kind.includes("move")
+        || kind.includes("movement")
+        || kind.includes("pedal")
+        || tab.events.length > 0
+        || Boolean(tab.contextData?.progression);
+    }
+
+    function appendMovementFact(container, label, value) {
+      if (!value) return;
+      const fact = document.createElement("div");
+      fact.className = "movement-lesson-card__fact";
+      const factLabel = document.createElement("span");
+      factLabel.className = "movement-lesson-card__label";
+      factLabel.textContent = label;
+      const factValue = document.createElement("span");
+      factValue.className = "movement-lesson-card__value";
+      factValue.textContent = value;
+      fact.append(factLabel, factValue);
+      container.appendChild(fact);
+    }
+
+    function appendMovementStep(container, event, index) {
+      const step = document.createElement("div");
+      step.className = "movement-lesson-card__step";
+      step.dataset.tabEventId = event.id || `event-${index + 1}`;
+      const main = document.createElement("span");
+      main.className = "movement-lesson-card__step-main";
+      const functionLabel = event.function ? `${event.function} · ` : "";
+      main.textContent = `${index + 1}. ${functionLabel}${eventChordLabel(event, `Step ${index + 1}`)}`;
+      const meta = document.createElement("span");
+      meta.className = "movement-lesson-card__step-meta";
+      meta.textContent = `Fret ${eventFret(event)} · strings ${eventStrings(event)} · ${eventControlsLabel(event)}`;
+      step.append(main, meta);
+      container.appendChild(step);
+    }
+
+    function renderMovementLessonCard(tab) {
+      if (!shouldRenderMovementLesson(tab)) return null;
+      const events = tab.events || [];
+      const start = events[0];
+      const destination = events[events.length - 1];
+      const card = document.createElement("section");
+      card.className = "movement-lesson-card";
+      card.dataset.movementLessonCard = "true";
+
+      const intro = document.createElement("div");
+      const kicker = document.createElement("p");
+      kicker.className = "movement-lesson-card__kicker";
+      kicker.textContent = "Movement lesson";
+      const lessonTitle = document.createElement("h3");
+      lessonTitle.className = "movement-lesson-card__title";
+      lessonTitle.textContent = tab.title || "Pedal steel movement";
+      intro.append(kicker, lessonTitle);
+      const summaryParts = movementSummaryParts(tab);
+      if (summaryParts.length) {
+        const summary = document.createElement("p");
+        summary.className = "movement-lesson-card__summary";
+        summary.textContent = summaryParts.join(" · ");
+        intro.appendChild(summary);
+      }
+      card.appendChild(intro);
+
+      const facts = document.createElement("div");
+      facts.className = "movement-lesson-card__facts";
+      appendMovementFact(facts, "Start", `${eventChordLabel(start)} · fret ${eventFret(start)} · strings ${eventStrings(start)}`);
+      appendMovementFact(facts, events.length > 1 ? "Resolve" : "Position", `${eventChordLabel(destination)} · fret ${eventFret(destination)} · strings ${eventStrings(destination)}`);
+      appendMovementFact(facts, "Pedals / levers", uniqueTabValues(events.flatMap(eventControls)).join("+") || "open");
+      card.appendChild(facts);
+
+      const path = document.createElement("div");
+      path.className = "movement-lesson-card__path";
+      events.forEach((event, index) => appendMovementStep(path, event, index));
+      card.appendChild(path);
+
+      if (tab.why) {
+        const why = document.createElement("p");
+        why.className = "movement-lesson-card__copy";
+        const label = document.createElement("strong");
+        label.textContent = "Why this move works: ";
+        why.append(label, document.createTextNode(tab.why));
+        card.appendChild(why);
+      }
+
+      const relation = document.createElement("p");
+      relation.className = "movement-lesson-card__copy";
+      const relationLabel = document.createElement("strong");
+      relationLabel.textContent = "Tab ↔ fretboard: ";
+      relation.append(relationLabel, document.createTextNode("The steps above use the same event order as the tab below and the fretboard cards that follow."));
+      card.appendChild(relation);
+
+      const practice = document.createElement("p");
+      practice.className = "movement-lesson-card__copy";
+      const practiceLabel = document.createElement("strong");
+      practiceLabel.textContent = "Practice it slowly: ";
+      practice.append(practiceLabel, document.createTextNode("Pick the first step cleanly, add the pedal or lever change without rushing, then resolve before increasing speed."));
+      card.appendChild(practice);
+
+      return card;
+    }
+
     function renderTabCard(tab) {
       const card = document.createElement("article");
       card.className = "tab-card";
@@ -3502,6 +3739,10 @@
       card.appendChild(header);
 
       appendTabTextLine(card, "tab-context", "", tabContextParts(tab));
+      const movementLessonCard = renderMovementLessonCard(tab);
+      if (movementLessonCard) {
+        card.appendChild(movementLessonCard);
+      }
 
       const pre = document.createElement("pre");
       pre.className = "tab-block";
@@ -3608,8 +3849,10 @@
       renderTabExamples(response.tabs);
       renderFretboardVisualization(response.fretboard);
 
+      const hideEmptySourceCards = !response.sources?.length && response.tabs?.some((tab) => shouldRenderMovementLesson(tab));
+      sourceSection.hidden = Boolean(hideEmptySourceCards);
       sourceGrid.innerHTML = "";
-      if (!response.sources?.length) {
+      if (!response.sources?.length && !hideEmptySourceCards) {
         const emptyCard = document.createElement("article");
         emptyCard.className = "source-card";
         const meta = document.createElement("div");
@@ -3623,6 +3866,9 @@
         excerpt.textContent = "The answer service did not return source cards for this response.";
         emptyCard.append(meta, title, excerpt);
         sourceGrid.appendChild(emptyCard);
+      }
+      if (response.sources?.length) {
+        sourceSection.hidden = false;
       }
       (response.sources || []).forEach((source) => {
         const card = document.createElement("article");
@@ -3687,6 +3933,7 @@
       answerSectionGrid.classList.remove("is-structured-answer");
       clearTabExamples();
       clearFretboardVisualization();
+      sourceSection.hidden = false;
       sourceGrid.innerHTML = "";
       const loadingCard = document.createElement("article");
       loadingCard.className = "source-card";
@@ -3705,6 +3952,7 @@
       answerSectionGrid.classList.remove("is-structured-answer");
       clearTabExamples();
       clearFretboardVisualization();
+      sourceSection.hidden = false;
       sourceGrid.innerHTML = "";
       const errorCard = document.createElement("article");
       errorCard.className = "source-card";
