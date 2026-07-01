@@ -79,6 +79,41 @@ Additional local smoke assertions:
 - Tab text retains newline-preserved `<pre><code>` content.
 - Mobile/narrow smoke showed no page-level horizontal overflow in DOM metrics.
 
+## Protected-Preview Smoke After Commit
+WARN / not ready for user smoke.
+
+Smoke Target:
+- Target type: protected-preview
+- Result type: browser smoke
+- Exact browser URL tested: `https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?access=beta_user&v=movement-lesson-card-29bfd24`
+- Cache-busted URL tested: `https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?access=beta_user&v=movement-lesson-card-29bfd24`
+- Exact URL the user should use: none yet; protected-preview needs Lane 12 restart/update and re-smoke first
+- Auth required: yes
+- Auth provider: Cloudflare Access
+- Cloudflare Access login result: succeeded; protected page loaded
+- Local backend URL: `http://127.0.0.1:8770`
+- Expected backend port: `8770`
+- Expected git HEAD: `29bfd24`
+- Version endpoint: `/api/version`
+- Version endpoint result: loopback `http://127.0.0.1:8770/api/version` returned `git_sha: e449180`; protected browser navigation to `/api/version` was blocked by the browser client
+- If version endpoint missing, how version is inferred: protected static page loaded, but runtime version did not match expected commit
+- Whether app root `/` works: loopback `/` returns `302` to `/ui/steel-guitar-rag-mock.html`
+- Whether app root `/` is expected to work: yes as redirect
+- Whether `/ui/steel-guitar-rag-mock.html` works: yes
+- Whether `/ui/steel-guitar-rag-mock.html` is expected to work: yes
+- Who should test this URL: Codex after Lane 12 restart/update; user after protected re-smoke passes
+- Do not test these URLs: stale cache-bust `movement-lesson-card-29bfd24` as proof of current committed UI
+- Known caveats: protected-preview served old answer UI behavior; movement prompts still had tab + fretboard but no Movement Lesson Card and showed the empty source-card section.
+
+Protected prompts checked:
+- `Show me a G to C move.`: tab + fretboard rendered, but `movementLessons: 0`; not pass.
+- `Show me a G to D move.`: tab + fretboard rendered, but `movementLessons: 0`; not pass.
+- `Show me a 1 4 5 1 move in G.`: tab + fretboard rendered, but `movementLessons: 0`; not pass.
+- `Show me a G major grip.`: static fretboard/no-tab behavior preserved.
+- `What are good Fender Steel King settings?`: source-backed/no-fretboard behavior preserved.
+
+Protected console errors: none observed.
+
 ## Screenshots
 - Desktop: `docs/handoffs/task-completions/assets/2026-06-30-movement-lesson-card/g-to-c-movement-desktop.png`
 - Mobile/narrow: `docs/handoffs/task-completions/assets/2026-06-30-movement-lesson-card/g-to-c-movement-mobile.png`
@@ -138,10 +173,10 @@ All unrelated dirty and untracked files, including but not limited to:
 - private/corpus/generated/source data and all unrelated untracked handoffs/assets
 
 ## Recommended Next Lane
-Lane 12 protected-preview smoke after scoped commit, then user smoke on the cache-busted protected-preview URL.
+Lane 12 protected-preview restart/update and smoke. The local implementation is test-green, but protected preview is still serving old answer-page UI behavior.
 
 ## Commit Readiness
 Safe to commit after exact-path staging and staged-diff checks.
 
 ## Suggested Next Step
-Lane 12: run protected-preview smoke for Movement Lesson Card UI v1 using a cache-busted `/ui/steel-guitar-rag-mock.html` URL after the commit hash is known. Verify movement prompts show lesson card + tab + fretboard and static/gear prompts do not show stale UI.
+Lane 12: restart or update the protected-preview runtime for commit `29bfd24`, then run protected-preview smoke for Movement Lesson Card UI v1 using a fresh cache-busted `/ui/steel-guitar-rag-mock.html` URL. Verify movement prompts show lesson card + tab + fretboard and static/gear prompts do not show stale UI.
