@@ -170,7 +170,8 @@ def test_answer_ui_uses_live_answer_client_not_mock_answer_data() -> None:
 
     assert '<script src="answer-client.js?v=movement-lesson-card-29bfd24"></script>' in html
     assert '<script src="answer-client.js?v=e9-explorer-home-entry-20260623"></script>' not in html
-    assert '<script src="pedal-steel-fretboard.js?v=e9-explorer-home-entry-20260623"></script>' in html
+    assert '<script src="pedal-steel-fretboard.js?v=explorer-handoff-20260701"></script>' in html
+    assert '<script src="pedal-steel-fretboard.js?v=e9-explorer-home-entry-20260623"></script>' not in html
     assert '<script src="mock-answer-data.js"></script>' not in html
     assert "STEEL_RAG_ANSWER_UI.requestAnswer" in html
     assert "STEEL_RAG_ANSWER_UI.requestSession" in html
@@ -279,8 +280,9 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<script src="e9-fretboard-explorer-data.js?v=single-grip-octave-results-20260628"></script>' in html
     assert "[hidden] {\n      display: none !important;\n    }" in html
     assert '<script src="e9-music-rules.js?v=legitimate-grip-vocabulary-20260628"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=explorer-workbench-redesign-20260628"></script>' in html
-    assert html.index("e9-music-rules.js?v=legitimate-grip-vocabulary-20260628") < html.index("e9-fretboard-explorer.js?v=explorer-workbench-redesign-20260628")
+    assert '<script src="e9-fretboard-explorer.js?v=explorer-handoff-20260701"></script>' in html
+    assert html.index("e9-music-rules.js?v=legitimate-grip-vocabulary-20260628") < html.index("e9-fretboard-explorer.js?v=explorer-handoff-20260701")
+    assert "e9-fretboard-explorer.js?v=explorer-workbench-redesign-20260628" not in html
     assert "e9-fretboard-explorer.js?v=e-lower-pocket-d-major-20260628" not in html
     assert "e9-fretboard-explorer.js?v=compact-explorer-tools-20260628" not in html
     assert "e9-fretboard-explorer.js?v=voicing-identifier-copy-20260627" not in html
@@ -366,6 +368,8 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     ]:
         assert f'data-explorer-mode-tab="{mode_id}"' in mode_markup
         assert f"<strong>{label}</strong>" in mode_markup
+    for task_id in ["find-grip", "trace-path", "find-note", "identify-shape", "find-chord"]:
+        assert f'data-explorer-task="{task_id}"' in mode_markup
     assert '<option value="single" selected>Single grip</option>' in html
     assert '<option value="path">Harmonized scale path</option>' in html
     assert '<option value="note">Single-note finder</option>' in html
@@ -374,6 +378,11 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "Single grip filters exact strings" in html
     assert "Voicing identifier explains one shape." in html
     assert "Chord / Voicing Finder searches practical shapes for a target chord." in html
+    assert "function applyExplorerQueryState()" in script
+    assert "queryModeValue(params.get(\"mode\"))" in script
+    assert "safeSelectValue(els.stringGroup, grip)" in script
+    assert "if (CHORD_FINDER_ROOT_OPTIONS.includes(root))" in script
+    assert "selectedChordQuality = quality;" in script
     assert ".explorer-mode-panel {" in html
     assert "grid-template-columns: 1fr;" in html.split(".explorer-mode-panel {", 1)[1].split("}", 1)[0]
     assert "grid-template-columns: minmax(220px, 340px) minmax(0, 1fr);" not in html
@@ -603,7 +612,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "musicRules.identifyVoicing" in script
     assert "musicRules.parseChordFinderQuery" in script
     assert "musicRules.chordFinderQualityGate" in script
-    assert 'e9-fretboard-explorer.js?v=explorer-workbench-redesign-20260628' in html
+    assert 'e9-fretboard-explorer.js?v=explorer-handoff-20260701' in html
     assert ".explorer-chord-map-card .explorer-active-result__fields {" in html
     assert ".explorer-chord-map-card .explorer-active-result__fields span {" in html
     assert "grid-template-columns: minmax(72px, 0.48fr) minmax(0, 1fr);" in html
@@ -3738,6 +3747,10 @@ def test_answer_ui_wires_tab_examples_between_answer_and_fretboard() -> None:
     assert "Why this move works" in html
     assert "Tab ↔ fretboard" in html
     assert "Practice it slowly" in html
+    assert "function movementExplorerUrl(tab)" in html
+    assert 'link.dataset.explorerHandoff = "movement";' in html
+    assert 'link.textContent = "Explore related path";' in html
+    assert "/ui/e9-fretboard-explorer.html" in html
     assert "function shouldRenderMovementLesson(tab)" in html
     assert "tab.events.length" in html
     assert "tab.contextData?.progression" in html

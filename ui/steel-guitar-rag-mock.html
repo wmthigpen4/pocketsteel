@@ -1515,6 +1515,34 @@
       font-weight: 800;
     }
 
+    .movement-lesson-card__handoff {
+      align-items: center;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .movement-lesson-card__handoff-link {
+      border: 1px solid rgba(240, 191, 105, 0.34);
+      border-radius: 999px;
+      background: rgba(12, 12, 11, 0.72);
+      color: rgba(255, 246, 223, 0.9);
+      display: inline-flex;
+      font-size: 13px;
+      font-weight: 850;
+      line-height: 1.2;
+      padding: 8px 11px;
+      text-decoration: none;
+    }
+
+    .movement-lesson-card__handoff-link:hover,
+    .movement-lesson-card__handoff-link:focus-visible {
+      border-color: rgba(240, 191, 105, 0.72);
+      background: rgba(240, 191, 105, 0.13);
+      color: #fff6df;
+      outline: none;
+    }
+
     .tab-card-header {
       display: flex;
       align-items: flex-start;
@@ -2816,7 +2844,7 @@
   </div>
 
   <script src="answer-client.js?v=movement-lesson-card-29bfd24"></script>
-  <script src="pedal-steel-fretboard.js?v=e9-explorer-home-entry-20260623"></script>
+  <script src="pedal-steel-fretboard.js?v=explorer-handoff-20260701"></script>
   <script>
     const question = document.querySelector("#question");
     const promptBox = document.querySelector(".prompt");
@@ -3630,6 +3658,34 @@
         || Boolean(tab.contextData?.progression);
     }
 
+    function normalizedExplorerKey(value) {
+      const text = String(value || "").trim();
+      const aliases = {
+        "C#": "Db",
+        "D#": "Eb",
+        "F#": "Gb",
+        "G#": "Ab",
+        "A#": "Bb"
+      };
+      return aliases[text] || text;
+    }
+
+    function movementExplorerUrl(tab) {
+      const context = tab.contextData || {};
+      const key = normalizedExplorerKey(context.key);
+      const progression = context.progression || (Array.isArray(context.chords) ? context.chords.join("-") : "");
+      if (!key && !progression) {
+        return "";
+      }
+      const params = new URLSearchParams();
+      params.set("mode", "path");
+      params.set("source", "movement-card");
+      if (key) params.set("key", key);
+      if (progression) params.set("progression", progression);
+      if (context.grip) params.set("grip", context.grip);
+      return `/ui/e9-fretboard-explorer.html?${params.toString()}`;
+    }
+
     function appendMovementFact(container, label, value) {
       if (!value) return;
       const fact = document.createElement("div");
@@ -3712,6 +3768,19 @@
       relationLabel.textContent = "Tab ↔ fretboard: ";
       relation.append(relationLabel, document.createTextNode("The steps above use the same event order as the tab below and the fretboard cards that follow."));
       card.appendChild(relation);
+
+      const handoffUrl = movementExplorerUrl(tab);
+      if (handoffUrl) {
+        const handoff = document.createElement("div");
+        handoff.className = "movement-lesson-card__handoff";
+        const link = document.createElement("a");
+        link.className = "movement-lesson-card__handoff-link";
+        link.dataset.explorerHandoff = "movement";
+        link.href = handoffUrl;
+        link.textContent = "Explore related path";
+        handoff.appendChild(link);
+        card.appendChild(handoff);
+      }
 
       const practice = document.createElement("p");
       practice.className = "movement-lesson-card__copy";

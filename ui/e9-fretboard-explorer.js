@@ -246,6 +246,166 @@
   let currentRows = [];
   let currentMarkerGroups = [];
 
+  function createQueryParams(search) {
+    const query = String(search || "").replace(/^\?/, "");
+    if (typeof URLSearchParams !== "undefined") {
+      return new URLSearchParams(query);
+    }
+    const values = {};
+    if (query) {
+      query.split("&").forEach((pair) => {
+        const [rawKey, rawValue = ""] = pair.split("=");
+        if (!rawKey) return;
+        const key = decodeURIComponent(rawKey.replace(/\+/g, " "));
+        values[key] = decodeURIComponent(rawValue.replace(/\+/g, " "));
+      });
+    }
+    return {
+      get(key) {
+        return Object.prototype.hasOwnProperty.call(values, key) ? values[key] : null;
+      },
+      keys() {
+        return Object.keys(values)[Symbol.iterator]();
+      },
+    };
+  }
+
+  function startupSearchParams() {
+    try {
+      return createQueryParams(window.location?.search || "");
+    } catch (_error) {
+      return createQueryParams("");
+    }
+  }
+
+  function normalizeQueryKey(value) {
+    const text = String(value || "").trim();
+    const aliases = {
+      "C#": "Db",
+      "D#": "Eb",
+      "F#": "Gb",
+      "G#": "Ab",
+      "A#": "Bb",
+    };
+    return aliases[text] || text;
+  }
+
+  function safeSelectValue(select, value) {
+    if (!select || value === undefined || value === null || String(value).trim() === "") {
+      return false;
+    }
+    const wanted = String(value).trim();
+    const match = Array.from(select.options || []).find((item) => item.value === wanted && !item.disabled);
+    if (!match) {
+      return false;
+    }
+    select.value = wanted;
+    Array.from(select.options || []).forEach((item) => {
+      item.selected = item === match;
+    });
+    return true;
+  }
+
+  function queryModeValue(value) {
+    const token = String(value || "").trim().toLowerCase();
+    const aliases = {
+      single: EXPLORE_MODES.single,
+      "single-grip": EXPLORE_MODES.single,
+      grip: EXPLORE_MODES.single,
+      path: EXPLORE_MODES.path,
+      "harmonized-scale-path": EXPLORE_MODES.path,
+      movement: EXPLORE_MODES.path,
+      note: EXPLORE_MODES.note,
+      "single-note": EXPLORE_MODES.note,
+      "single-note-finder": EXPLORE_MODES.note,
+      voicing: EXPLORE_MODES.voicing,
+      "voicing-identifier": EXPLORE_MODES.voicing,
+      chord: EXPLORE_MODES.chord,
+      "chord-finder": EXPLORE_MODES.chord,
+      "chord-voicing-finder": EXPLORE_MODES.chord,
+    };
+    return aliases[token] || "";
+  }
+
+  function normalizeQueryQuality(value) {
+    const token = String(value || "").trim().toLowerCase().replace(/[\s_-]+/g, "");
+    const aliases = {
+      major: "major",
+      maj: "major",
+      minor: "minor",
+      min: "minor",
+      dominant7: "dominant7",
+      dom7: "dominant7",
+      seven: "dominant7",
+      "7": "dominant7",
+      major7: "major7",
+      maj7: "major7",
+      minor7: "minor7",
+      min7: "minor7",
+      minor7flat5: "minor7flat5",
+      m7b5: "minor7flat5",
+      diminished: "diminished",
+      dim: "diminished",
+      augmented: "augmented",
+      aug: "augmented",
+      sus2: "sus2",
+      sus4: "sus4",
+      dominant9: "dominant9",
+      minor9: "minor9",
+      major9: "major9",
+    };
+    return aliases[token] || "";
+  }
+
+  function queryVocabularyForGrip(group) {
+    const wanted = String(group || "").trim();
+    if (!wanted) return "";
+    return gripVocabularyOptions()
+      .map((item) => item.id)
+      .filter((id) => id !== "all")
+      .find((id) => gripVocabularyGroups(id).has(wanted)) || "";
+  }
+
+  function applyExplorerQueryState() {
+    const params = startupSearchParams();
+    if (!Array.from(params.keys()).length) {
+      return;
+    }
+    const mode = queryModeValue(params.get("mode"));
+    if (mode && els.exploreMode) {
+      els.exploreMode.value = mode;
+    }
+    const key = normalizeQueryKey(params.get("key") || params.get("root"));
+    if (key) {
+      safeSelectValue(els.key, key);
+    }
+    const quality = normalizeQueryQuality(params.get("quality"));
+    if (params.get("root")) {
+      const root = normalizeQueryKey(params.get("root"));
+      if (CHORD_FINDER_ROOT_OPTIONS.includes(root)) {
+        selectedChordRoot = root;
+      }
+    }
+    if (quality) {
+      selectedChordQuality = quality;
+    }
+    const grip = params.get("grip") || params.get("strings");
+    const vocabulary = queryVocabularyForGrip(grip);
+    if (vocabulary) {
+      selectedSingleGripVocabulary = vocabulary;
+      selectedGripVocabulary = vocabulary;
+    }
+    const fret = Number(params.get("fret"));
+    if (Number.isFinite(fret) && fret > 15) {
+      selectedFretRange = fret >= 10 ? "high" : "all";
+    }
+    updateControls();
+    safeSelectValue(els.scale, params.get("scale"));
+    if (grip) {
+      safeSelectValue(els.stringGroup, grip);
+    }
+  }
+
   function availableKeys() {
     const sourcePayloads = Object.keys(payloadsByKey).length ? payloadsByKey : payloadsForSelectedCopedent();
     const keys = Object.keys(sourcePayloads);
@@ -4862,6 +5022,7 @@
 
     updateCopedentOptions();
     updateKeyOptions();
+    applyExplorerQueryState();
     if (els.copedent) {
       els.copedent.addEventListener("change", () => {
         updateControls();

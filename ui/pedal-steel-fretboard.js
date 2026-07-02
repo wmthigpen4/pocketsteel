@@ -391,6 +391,34 @@
   margin: 0;
 }
 
+.pedal-steel-fretboard__handoff {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pedal-steel-fretboard__handoff-link {
+  border: 1px solid rgba(240, 191, 105, 0.34);
+  border-radius: 999px;
+  background: rgba(12, 12, 11, 0.72);
+  color: rgba(255, 246, 223, 0.9);
+  display: inline-flex;
+  font-size: 0.82rem;
+  font-weight: 850;
+  line-height: 1.2;
+  padding: 7px 10px;
+  text-decoration: none;
+}
+
+.pedal-steel-fretboard__handoff-link:hover,
+.pedal-steel-fretboard__handoff-link:focus-visible {
+  border-color: rgba(240, 191, 105, 0.72);
+  background: rgba(240, 191, 105, 0.13);
+  color: #fff6df;
+  outline: none;
+}
+
 .pedal-steel-fretboard__tone-row {
   display: flex;
   flex-wrap: wrap;
@@ -1820,6 +1848,7 @@
       highlightStyle: normalizeHighlightStyle(options.highlightStyle),
       legend: normalizeLegend(options.legend),
       displayScaleNotes: normalizeDisplayScaleNotes(options.query),
+      query: options.query && typeof options.query === "object" ? options.query : {},
       showHighlightLabels: options.showHighlightLabels !== false,
       showStringActionLabels: options.showStringActionLabels === true,
       stringActionLabelMode: options.stringActionLabelMode === "selected" ? "selected" : "all",
@@ -2026,6 +2055,108 @@
       `Play this ${highlight.grip || "grip"} once, block cleanly, then compare the other starter positions.`;
   }
 
+  function firstNonEmptyValue(...values) {
+    return values.find((value) => value !== undefined && value !== null && String(value).trim() !== "") || "";
+  }
+
+  function normalizeExplorerKey(value) {
+    const text = String(value || "").trim();
+    const aliases = {
+      "C#": "Db",
+      "D#": "Eb",
+      "F#": "Gb",
+      "G#": "Ab",
+      "A#": "Bb",
+    };
+    return aliases[text] || text;
+  }
+
+  function createExplorerParams() {
+    if (typeof URLSearchParams !== "undefined") {
+      return new URLSearchParams();
+    }
+    const entries = [];
+    return {
+      set(key, value) {
+        const existing = entries.find((entry) => entry[0] === key);
+        if (existing) {
+          existing[1] = value;
+        } else {
+          entries.push([key, value]);
+        }
+      },
+      toString() {
+        return entries
+          .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+          .join("&");
+      },
+    };
+  }
+
+  function explorerParamsFromPosition(highlight, model) {
+    if (!highlight || highlight.fret === undefined || !(highlight.grip || highlight.strings.length)) {
+      return null;
+    }
+    const query = model?.query || {};
+    const params = createExplorerParams();
+    params.set("mode", "single");
+    params.set("source", "answer");
+    const key = normalizeExplorerKey(firstNonEmptyValue(
+      query.key,
+      query.root,
+      query.chord,
+      query.chord_root,
+      highlight.key
+    ));
+    if (key) {
+      params.set("key", key);
+    }
+    const grip = highlight.grip || highlight.strings.join("-");
+    params.set("fret", String(highlight.fret));
+    params.set("strings", grip);
+    params.set("grip", grip);
+    if (highlight.pedals.length) {
+      params.set("pedals", highlight.pedals.join(","));
+    }
+    if (highlight.levers.length) {
+      params.set("levers", highlight.levers.join(","));
+    }
+    return params;
+  }
+
+  function compareExplorerParams(model) {
+    const query = model?.query || {};
+    const root = normalizeExplorerKey(firstNonEmptyValue(query.root, query.chord, query.key));
+    const quality = firstNonEmptyValue(query.quality, query.chord_quality, query.chordQuality, "major");
+    if (!root || !model?.allHighlights || model.allHighlights.length < 2) {
+      return null;
+    }
+    const params = createExplorerParams();
+    params.set("mode", "chord");
+    params.set("root", root);
+    params.set("quality", String(quality).toLowerCase().replace(/\s+/g, "_"));
+    params.set("source", "answer");
+    return params;
+  }
+
+  function explorerUrl(params) {
+    if (!params) return "";
+    return `/ui/e9-fretboard-explorer.html?${params.toString()}`;
+  }
+
+  function renderExplorerHandoffLinks(highlight, model) {
+    const positionUrl = explorerUrl(explorerParamsFromPosition(highlight, model));
+    const compareUrl = explorerUrl(compareExplorerParams(model));
+    const links = [];
+    if (positionUrl) {
+      links.push(`<a class="pedal-steel-fretboard__handoff-link" data-explorer-handoff="position" href="${escapeHtml(positionUrl)}">Explore this position</a>`);
+    }
+    if (compareUrl) {
+      links.push(`<a class="pedal-steel-fretboard__handoff-link" data-explorer-handoff="compare" href="${escapeHtml(compareUrl)}">Compare in Explorer</a>`);
+    }
+    return links.length ? `<div class="pedal-steel-fretboard__handoff" data-explorer-handoff-links>${links.join("")}</div>` : "";
+  }
+
   function renderChordToneChips(highlight) {
     if (!highlight.chordToneChips.length) {
       return "";
@@ -2083,6 +2214,7 @@
       <p class="pedal-steel-fretboard__learning-copy"><strong>Why this works:</strong> ${escapeHtml(why)}</p>
       ${renderStarterComparisonRows(highlight, model)}
       <p class="pedal-steel-fretboard__learning-copy"><strong>Try this next:</strong> ${escapeHtml(practice)}</p>
+      ${renderExplorerHandoffLinks(highlight, model)}
     </div>`;
   }
 

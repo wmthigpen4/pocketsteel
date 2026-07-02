@@ -2238,31 +2238,31 @@
         <p class="explorer-control-help" id="explorer-explore-mode-help">Single grip filters exact strings. Scale path shows a practical route. Single-note finder shows one note at a time. Voicing identifier explains one shape. Chord / Voicing Finder searches practical shapes for a target chord.</p>
       </div>
       <div class="explorer-mode-tabs" role="tablist" aria-label="Explorer mode">
-        <button class="explorer-mode-tab is-selected" type="button" role="tab" aria-selected="true" aria-pressed="true" data-explorer-mode-tab="single">
+        <button class="explorer-mode-tab is-selected" type="button" role="tab" aria-selected="true" aria-pressed="true" data-explorer-mode-tab="single" data-explorer-task="find-grip">
           <span class="explorer-mode-tab__icon" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="M12 4v16"/><path d="M4 12h16"/><circle cx="12" cy="12" r="5"/></svg>
           </span>
           <span class="explorer-mode-tab__copy"><strong>Single Grip</strong><span>Jump to one playable pocket.</span></span>
         </button>
-        <button class="explorer-mode-tab" type="button" role="tab" aria-selected="false" aria-pressed="false" data-explorer-mode-tab="path">
+        <button class="explorer-mode-tab" type="button" role="tab" aria-selected="false" aria-pressed="false" data-explorer-mode-tab="path" data-explorer-task="trace-path">
           <span class="explorer-mode-tab__icon" aria-hidden="true">
             <svg viewBox="0 0 24 24"><circle cx="6" cy="16" r="2.5"/><circle cx="12" cy="7" r="2.5"/><circle cx="18" cy="16" r="2.5"/><path d="m8 14 3-5"/><path d="m13 9 3 5"/></svg>
           </span>
           <span class="explorer-mode-tab__copy"><strong>Harmonized Scale Path</strong><span>Trace diatonic movement across the neck.</span></span>
         </button>
-        <button class="explorer-mode-tab" type="button" role="tab" aria-selected="false" aria-pressed="false" data-explorer-mode-tab="note">
+        <button class="explorer-mode-tab" type="button" role="tab" aria-selected="false" aria-pressed="false" data-explorer-mode-tab="note" data-explorer-task="find-note">
           <span class="explorer-mode-tab__icon" aria-hidden="true">
             <svg viewBox="0 0 24 24"><circle cx="10" cy="10" r="5"/><path d="m14 14 5 5"/><path d="M10 6v8"/><path d="M6 10h8"/></svg>
           </span>
           <span class="explorer-mode-tab__copy"><strong>Single-Note Finder</strong><span>Locate any note instantly.</span></span>
         </button>
-        <button class="explorer-mode-tab" type="button" role="tab" aria-selected="false" aria-pressed="false" data-explorer-mode-tab="voicing">
+        <button class="explorer-mode-tab" type="button" role="tab" aria-selected="false" aria-pressed="false" data-explorer-mode-tab="voicing" data-explorer-task="identify-shape">
           <span class="explorer-mode-tab__icon" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="M6 4v16"/><path d="M12 4v16"/><path d="M18 4v16"/><circle cx="6" cy="8" r="2"/><circle cx="12" cy="13" r="2"/><circle cx="18" cy="7" r="2"/></svg>
           </span>
           <span class="explorer-mode-tab__copy"><strong>Voicing Identifier</strong><span>Identify what you are playing.</span></span>
         </button>
-        <button class="explorer-mode-tab" type="button" role="tab" aria-selected="false" aria-pressed="false" data-explorer-mode-tab="chord">
+        <button class="explorer-mode-tab" type="button" role="tab" aria-selected="false" aria-pressed="false" data-explorer-mode-tab="chord" data-explorer-task="find-chord">
           <span class="explorer-mode-tab__icon" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="m7 8 5-3 5 3-5 3z"/><path d="m7 13 5 3 5-3"/><path d="m7 17 5 3 5-3"/></svg>
           </span>
@@ -2489,6 +2489,6 @@
   <script src="pedal-steel-fretboard.js?v=explorer-harmonized-path-mode-20260626"></script>
   <script src="e9-fretboard-explorer-data.js?v=single-grip-octave-results-20260628"></script>
   <script src="e9-music-rules.js?v=legitimate-grip-vocabulary-20260628"></script>
-  <script src="e9-fretboard-explorer.js?v=explorer-workbench-redesign-20260628"></script>
+  <script src="e9-fretboard-explorer.js?v=explorer-handoff-20260701"></script>
 </body>
 </html>

@@ -893,7 +893,7 @@ const csharpPositions = [
     explanation: "A+B C# at fret 16."
   }
 ];
-const html = fretboard.renderPedalSteelFretboard({ positions: csharpPositions });
+const html = fretboard.renderPedalSteelFretboard({ positions: csharpPositions, query: { key: "C#", quality: "major" } });
 assert.equal((html.match(/data-position-selector="/g) || []).length, 3);
 assert.match(html, /data-position-selector="csharp-open-9"/);
 assert.match(html, />\\s*<span class="pedal-steel-fretboard__selector-main">9 open<\\/span>/);
@@ -913,6 +913,10 @@ assert.equal((html.match(/data-position-compare="/g) || []).length, 9);
 assert.match(html, /data-position-compare="csharp-open-9"[^>]*aria-pressed="true"/);
 assert.match(html, /data-position-compare="csharp-af-12"[^>]*>\\s*<span class="pedal-steel-fretboard__starter-row-main">Fret 12 · A\\+F<\\/span>/);
 assert.match(html, /<strong>Try this next:<\\/strong> Play this 4-5-6 once, block cleanly, then compare the other starter positions\\./);
+assert.match(html, /data-explorer-handoff="position" href="\\/ui\\/e9-fretboard-explorer.html\\?mode=single&amp;source=answer&amp;key=Db&amp;fret=9&amp;strings=4-5-6&amp;grip=4-5-6"/);
+assert.match(html, />Explore this position<\\/a>/);
+assert.match(html, /data-explorer-handoff="compare" href="\\/ui\\/e9-fretboard-explorer.html\\?mode=chord&amp;root=Db&amp;quality=major&amp;source=answer"/);
+assert.match(html, />Compare in Explorer<\\/a>/);
 assert.match(html, /<span class="pedal-steel-fretboard__detail-label">Fret<\\/span>\\s*<span class="pedal-steel-fretboard__detail-value">9<\\/span>/);
 assert.match(html, /<span class="pedal-steel-fretboard__detail-label">Grip<\\/span>\\s*<span class="pedal-steel-fretboard__detail-value">4-5-6<\\/span>/);
 assert.doesNotMatch(html, /<span class="pedal-steel-fretboard__detail-label">Pedals<\\/span>\\s*<span class="pedal-steel-fretboard__detail-value">none<\\/span>/);
