@@ -1149,6 +1149,8 @@
 
   function normalizePosition(position, index, maxFret, stringCount, sourceType) {
     const item = position && typeof position === "object" ? position : {};
+    const label = String(item.label || `Position ${index + 1}`);
+    const labelChord = chordMetadataFromLabel(label);
     const strings = normalizeStringList(item.strings, stringCount);
     const gripStrings = normalizeStringList(item.grip, stringCount);
     const uniqueStrings = strings.length ? strings : gripStrings;
@@ -1172,7 +1174,7 @@
     const colorRole = normalizeColorRole(item.colorRole || item.color, item);
     return {
       id: String(item.id || `${sourceType}-${index + 1}`),
-      label: String(item.label || `Position ${index + 1}`),
+      label,
       labelValues: normalizeDetailList(item.labelValues || item.label_values),
       labelOverflowCount: Math.max(0, Number.isFinite(Number(item.labelOverflowCount || item.label_overflow_count)) ? Number(item.labelOverflowCount || item.label_overflow_count) : 0),
       fret: clampNumber(item.fret, 0, maxFret),
@@ -1204,6 +1206,8 @@
       positionKind,
       family: normalizeMetadataText(item.family || item.positionFamily || item.position_family),
       tier: normalizeTier(item.tier || item.difficultyTier || item.difficulty_tier),
+      root: normalizeMetadataText(item.root || item.chord || item.key || labelChord.root),
+      quality: normalizeMetadataText(item.quality || item.chordQuality || item.chord_quality || labelChord.quality),
       isPartial,
       isRootless,
       voicingType,
@@ -2059,6 +2063,21 @@
     return values.find((value) => value !== undefined && value !== null && String(value).trim() !== "") || "";
   }
 
+  function valueFromHighlights(highlights, ...keys) {
+    if (!Array.isArray(highlights)) {
+      return "";
+    }
+    for (const highlight of highlights) {
+      for (const key of keys) {
+        const value = highlight?.[key];
+        if (value !== undefined && value !== null && String(value).trim() !== "") {
+          return value;
+        }
+      }
+    }
+    return "";
+  }
+
   function normalizeExplorerKey(value) {
     const text = String(value || "").trim();
     const aliases = {
@@ -2069,6 +2088,27 @@
       "A#": "Bb",
     };
     return aliases[text] || text;
+  }
+
+  function chordMetadataFromLabel(value) {
+    const text = normalizeMetadataText(value);
+    const match = text.match(/^([A-G](?:#|b)?)(?:\s+|[-_])?([A-Za-z0-9+#/() -]*)?/);
+    if (!match) {
+      return { root: "", quality: "" };
+    }
+    const qualityText = String(match[2] || "").trim().toLowerCase();
+    let quality = "";
+    if (qualityText.includes("minor") || /\bmin\b|\bm\b/.test(qualityText)) {
+      quality = "minor";
+    } else if (qualityText.includes("dominant") || qualityText.includes("7")) {
+      quality = "dominant7";
+    } else if (qualityText.includes("major") || /\bmaj\b/.test(qualityText)) {
+      quality = "major";
+    }
+    return {
+      root: match[1],
+      quality,
+    };
   }
 
   function createExplorerParams() {
@@ -2124,11 +2164,28 @@
     return params;
   }
 
-  function compareExplorerParams(model) {
+  function compareExplorerParams(model, highlight) {
     const query = model?.query || {};
-    const root = normalizeExplorerKey(firstNonEmptyValue(query.root, query.chord, query.key));
-    const quality = firstNonEmptyValue(query.quality, query.chord_quality, query.chordQuality, "major");
-    if (!root || !model?.allHighlights || model.allHighlights.length < 2) {
+    const root = normalizeExplorerKey(firstNonEmptyValue(
+      query.root,
+      query.chord,
+      query.key,
+      highlight?.root,
+      highlight?.chord,
+      highlight?.key,
+      valueFromHighlights(model?.allHighlights, "root", "chord", "key")
+    ));
+    const quality = firstNonEmptyValue(
+      query.quality,
+      query.chord_quality,
+      query.chordQuality,
+      highlight?.quality,
+      highlight?.chordQuality,
+      highlight?.chord_quality,
+      valueFromHighlights(model?.allHighlights, "quality", "chordQuality", "chord_quality"),
+      "major"
+    );
+    if (!root) {
       return null;
     }
     const params = createExplorerParams();
@@ -2146,7 +2203,7 @@
 
   function renderExplorerHandoffLinks(highlight, model) {
     const positionUrl = explorerUrl(explorerParamsFromPosition(highlight, model));
-    const compareUrl = explorerUrl(compareExplorerParams(model));
+    const compareUrl = explorerUrl(compareExplorerParams(model, highlight));
     const links = [];
     if (positionUrl) {
       links.push(`<a class="pedal-steel-fretboard__handoff-link" data-explorer-handoff="position" href="${escapeHtml(positionUrl)}">Explore this position</a>`);

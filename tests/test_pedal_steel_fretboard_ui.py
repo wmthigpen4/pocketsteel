@@ -859,6 +859,8 @@ const csharpPositions = [
     fret: 9,
     strings: [4, 5, 6],
     grip: "4-5-6",
+    root: "C#",
+    quality: "major",
     pedals: [],
     levers: [],
     role: "Open position",
@@ -872,6 +874,8 @@ const csharpPositions = [
     fret: 12,
     strings: [4, 5, 6],
     grip: "4-5-6",
+    root: "C#",
+    quality: "major",
     pedals: ["A"],
     levers: ["F"],
     role: "A+F position",
@@ -885,6 +889,8 @@ const csharpPositions = [
     fret: 16,
     strings: [4, 5, 6],
     grip: "4-5-6",
+    root: "C#",
+    quality: "major",
     pedals: ["A", "B"],
     levers: [],
     role: "A+B position",
@@ -917,6 +923,27 @@ assert.match(html, /data-explorer-handoff="position" href="\\/ui\\/e9-fretboard-
 assert.match(html, />Explore this position<\\/a>/);
 assert.match(html, /data-explorer-handoff="compare" href="\\/ui\\/e9-fretboard-explorer.html\\?mode=chord&amp;root=Db&amp;quality=major&amp;source=answer"/);
 assert.match(html, />Compare in Explorer<\\/a>/);
+const htmlWithoutQuery = fretboard.renderPedalSteelFretboard({ positions: csharpPositions });
+assert.match(htmlWithoutQuery, /data-explorer-handoff="position"/);
+assert.match(htmlWithoutQuery, /data-explorer-handoff="compare" href="\\/ui\\/e9-fretboard-explorer.html\\?mode=chord&amp;root=Db&amp;quality=major&amp;source=answer"/);
+assert.match(htmlWithoutQuery, />Compare in Explorer<\\/a>/);
+const labelOnlyHtml = fretboard.renderPedalSteelFretboard({
+  positions: [
+    { id: "g-open-3", label: "G major", fret: 3, strings: [4, 5, 6], grip: "4-5-6", pedals: [], levers: [] },
+    { id: "g-ab-10", label: "G major", fret: 10, strings: [4, 5, 6], grip: "4-5-6", pedals: ["A", "B"], levers: [] }
+  ]
+});
+assert.match(labelOnlyHtml, /data-explorer-handoff="position" href="\\/ui\\/e9-fretboard-explorer.html\\?mode=single&amp;source=answer&amp;fret=3&amp;strings=4-5-6&amp;grip=4-5-6"/);
+assert.match(labelOnlyHtml, /data-explorer-handoff="compare" href="\\/ui\\/e9-fretboard-explorer.html\\?mode=chord&amp;root=G&amp;quality=major&amp;source=answer"/);
+assert.match(labelOnlyHtml, />Compare in Explorer<\\/a>/);
+const singleLabelOnlyHtml = fretboard.renderPedalSteelFretboard({
+  positions: [
+    { id: "g-single-open-3", label: "G major", fret: 3, strings: [4, 5, 6], grip: "4-5-6", pedals: [], levers: [] }
+  ]
+});
+assert.match(singleLabelOnlyHtml, /data-explorer-handoff="position"/);
+assert.match(singleLabelOnlyHtml, /data-explorer-handoff="compare" href="\\/ui\\/e9-fretboard-explorer.html\\?mode=chord&amp;root=G&amp;quality=major&amp;source=answer"/);
+assert.match(singleLabelOnlyHtml, />Compare in Explorer<\\/a>/);
 assert.match(html, /<span class="pedal-steel-fretboard__detail-label">Fret<\\/span>\\s*<span class="pedal-steel-fretboard__detail-value">9<\\/span>/);
 assert.match(html, /<span class="pedal-steel-fretboard__detail-label">Grip<\\/span>\\s*<span class="pedal-steel-fretboard__detail-value">4-5-6<\\/span>/);
 assert.doesNotMatch(html, /<span class="pedal-steel-fretboard__detail-label">Pedals<\\/span>\\s*<span class="pedal-steel-fretboard__detail-value">none<\\/span>/);
