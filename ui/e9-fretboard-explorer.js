@@ -175,6 +175,7 @@
     key: document.getElementById("explorer-key"),
     copedent: document.getElementById("explorer-copedent"),
     exploreMode: document.getElementById("explorer-explore-mode"),
+    taskCards: document.querySelectorAll("[data-explorer-task-card]"),
     modeTabs: document.querySelectorAll("[data-explorer-mode-tab]"),
     scale: document.getElementById("explorer-scale"),
     harmony: document.getElementById("explorer-harmony"),
@@ -212,6 +213,7 @@
   };
 
   let selectedRowId = "";
+  let selectedTaskCard = "explore-grip";
   let selectedImpactControlIds = new Set();
   let selectedTopFilter = "all";
   let selectedFretRange = "core";
@@ -327,6 +329,26 @@
     return aliases[token] || "";
   }
 
+  function isValidExploreMode(value) {
+    return Object.values(EXPLORE_MODES).includes(value);
+  }
+
+  function defaultTaskCardForMode(mode) {
+    if (mode === EXPLORE_MODES.chord) {
+      return "find-chord";
+    }
+    if (mode === EXPLORE_MODES.note) {
+      return "find-note";
+    }
+    if (mode === EXPLORE_MODES.path) {
+      return "walk-harmonized-scale";
+    }
+    if (mode === EXPLORE_MODES.voicing) {
+      return "identify-voicing";
+    }
+    return "explore-grip";
+  }
+
   function normalizeQueryQuality(value) {
     const token = String(value || "").trim().toLowerCase().replace(/[\s_-]+/g, "");
     const aliases = {
@@ -374,6 +396,9 @@
     const mode = queryModeValue(params.get("mode"));
     if (mode && els.exploreMode) {
       els.exploreMode.value = mode;
+      selectedTaskCard = params.get("source") === "movement-card" && mode === EXPLORE_MODES.path
+        ? "study-movement-path"
+        : defaultTaskCardForMode(mode);
     }
     const key = normalizeQueryKey(params.get("key") || params.get("root"));
     if (key) {
@@ -2335,6 +2360,69 @@
       button.setAttribute("aria-pressed", isSelected ? "true" : "false");
       button.setAttribute("tabindex", isSelected ? "0" : "-1");
     });
+  }
+
+  function updateTaskCards() {
+    const fallbackTask = defaultTaskCardForMode(els.exploreMode?.value || EXPLORE_MODES.single);
+    const knownTask = Array.from(els.taskCards || []).some((button) => (
+      button.getAttribute("data-explorer-task-card") === selectedTaskCard
+    ));
+    const activeTask = knownTask ? selectedTaskCard : fallbackTask;
+    selectedTaskCard = activeTask;
+    Array.from(els.taskCards || []).forEach((button) => {
+      const isSelected = button.getAttribute("data-explorer-task-card") === activeTask;
+      button.classList.toggle("is-selected", isSelected);
+      button.setAttribute("aria-pressed", isSelected ? "true" : "false");
+    });
+  }
+
+  function applyTaskCard(taskId) {
+    const task = String(taskId || "explore-grip");
+    const taskModeMap = {
+      "find-chord": EXPLORE_MODES.chord,
+      "find-note": EXPLORE_MODES.note,
+      "explore-grip": EXPLORE_MODES.single,
+      "walk-harmonized-scale": EXPLORE_MODES.path,
+      "study-movement-path": EXPLORE_MODES.path,
+      "identify-voicing": EXPLORE_MODES.voicing,
+    };
+    const nextMode = taskModeMap[task] || EXPLORE_MODES.single;
+    selectedTaskCard = taskModeMap[task] ? task : "explore-grip";
+    if (els.exploreMode) {
+      els.exploreMode.value = nextMode;
+    }
+    selectedTopFilter = "all";
+    selectedFretRange = "core";
+    if (task === "find-chord") {
+      selectedChordRoot = activeKey();
+      selectedChordQuality = "major";
+      selectedChordControlScope = "common";
+      selectedChordCandidateId = "";
+      selectedChordMapFilter = "all";
+      selectedGripVocabulary = "core";
+    } else if (task === "find-note") {
+      selectedNoteWorkflow = "find";
+      selectedNoteControlStateId = "open";
+      selectedNoteStringFilter = "all";
+      selectedNoteTargetIndex = 0;
+      pinnedNoteCell = { stringNumber: 3, fret: 3 };
+      previewNoteCell = null;
+    } else if (task === "explore-grip") {
+      selectedSingleGripVocabulary = "core";
+    } else if (task === "walk-harmonized-scale") {
+      safeSelectValue(els.pathFamily, "middle");
+    } else if (task === "study-movement-path") {
+      safeSelectValue(els.pathFamily, "low");
+    } else if (task === "identify-voicing") {
+      voicingFret = 3;
+      selectedVoicingStrings = [3, 4, 5];
+      selectedVoicingControlIds = new Set();
+      voicingUiWarning = "";
+    }
+    updateExploreModeTabs();
+    updateTaskCards();
+    updateControls();
+    render();
   }
 
   function updateHarmonyOptions() {
@@ -5120,20 +5208,29 @@
     if (els.exploreMode) {
       els.exploreMode.addEventListener("change", () => {
         selectedTopFilter = "all";
+        selectedTaskCard = defaultTaskCardForMode(els.exploreMode.value);
         updateExploreModeTabs();
+        updateTaskCards();
         updateControls();
         render();
       });
     }
+    Array.from(els.taskCards || []).forEach((button) => {
+      button.addEventListener("click", () => {
+        applyTaskCard(button.getAttribute("data-explorer-task-card"));
+      });
+    });
     Array.from(els.modeTabs || []).forEach((button) => {
       button.addEventListener("click", () => {
         const nextMode = button.getAttribute("data-explorer-mode-tab") || EXPLORE_MODES.single;
-        const validMode = Object.values(EXPLORE_MODES).includes(nextMode) ? nextMode : EXPLORE_MODES.single;
+        const validMode = isValidExploreMode(nextMode) ? nextMode : EXPLORE_MODES.single;
         if (els.exploreMode) {
           els.exploreMode.value = validMode;
         }
+        selectedTaskCard = defaultTaskCardForMode(validMode);
         selectedTopFilter = "all";
         updateExploreModeTabs();
+        updateTaskCards();
         updateControls();
         render();
       });
@@ -5150,6 +5247,7 @@
 
     updateControls();
     updateExploreModeTabs();
+    updateTaskCards();
     updateNotationModeButtons();
     updatePitchRegisterButtons();
     render();

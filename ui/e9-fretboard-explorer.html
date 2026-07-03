@@ -150,6 +150,143 @@
         rgba(12, 12, 10, 0.86);
     }
 
+    .explorer-task-home {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 10px;
+      padding: 10px;
+      border: 1px solid rgba(246, 190, 88, 0.22);
+      border-radius: 18px;
+      background:
+        radial-gradient(circle at 14% 10%, rgba(246, 190, 88, 0.12), transparent 32%),
+        rgba(12, 12, 10, 0.78);
+      box-shadow: 0 22px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .explorer-task-home__header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 6px 16px;
+      align-items: baseline;
+      padding: 2px 2px 0;
+    }
+
+    .explorer-task-home__header strong {
+      color: var(--gold);
+      font-size: 0.78rem;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .explorer-task-home__header span {
+      color: rgba(255, 247, 232, 0.62);
+      font-size: 0.8rem;
+      font-weight: 800;
+    }
+
+    .explorer-task-home__grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+      gap: 8px;
+    }
+
+    .explorer-task-card {
+      --task-accent: var(--gold);
+      min-height: 126px;
+      border: 1px solid rgba(246, 190, 88, 0.2);
+      border-radius: 14px;
+      padding: 11px;
+      background:
+        radial-gradient(circle at 18% 18%, color-mix(in srgb, var(--task-accent) 16%, transparent), transparent 34%),
+        linear-gradient(180deg, rgba(255, 247, 232, 0.04), rgba(255, 247, 232, 0.012)),
+        rgba(10, 10, 8, 0.82);
+      color: var(--text);
+      cursor: pointer;
+      font: inherit;
+      text-align: left;
+      display: grid;
+      gap: 8px;
+      align-content: start;
+      box-shadow: inset 0 1px 0 rgba(255, 247, 232, 0.05);
+    }
+
+    .explorer-task-card[data-explorer-task-card="find-note"] {
+      --task-accent: #70b7ff;
+    }
+
+    .explorer-task-card[data-explorer-task-card="walk-harmonized-scale"],
+    .explorer-task-card[data-explorer-task-card="study-movement-path"] {
+      --task-accent: #8dc78d;
+    }
+
+    .explorer-task-card[data-explorer-task-card="identify-voicing"] {
+      --task-accent: #64d7c2;
+    }
+
+    .explorer-task-card[data-explorer-task-card="find-chord"] {
+      --task-accent: #ff9f7a;
+    }
+
+    .explorer-task-card:hover,
+    .explorer-task-card:focus-visible,
+    .explorer-task-card.is-selected {
+      border-color: color-mix(in srgb, var(--task-accent) 70%, #fff2c8 10%);
+      background:
+        radial-gradient(circle at 18% 18%, color-mix(in srgb, var(--task-accent) 24%, transparent), transparent 36%),
+        linear-gradient(180deg, rgba(255, 247, 232, 0.06), rgba(255, 247, 232, 0.018)),
+        rgba(15, 14, 11, 0.92);
+      outline: none;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.3), 0 0 20px color-mix(in srgb, var(--task-accent) 16%, transparent);
+    }
+
+    .explorer-task-card__eyebrow {
+      color: color-mix(in srgb, var(--task-accent) 76%, #fff6dc 24%);
+      font-size: 0.66rem;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .explorer-task-card strong {
+      font-family: "Source Serif 4", Georgia, serif;
+      font-size: clamp(1rem, 1.25vw, 1.2rem);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .explorer-task-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.76rem;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
+    .explorer-task-card__example {
+      display: block;
+      color: rgba(255, 247, 232, 0.62);
+      font-size: 0.7rem;
+      font-weight: 800;
+      line-height: 1.3;
+    }
+
+    .explorer-task-card__action {
+      align-self: end;
+      display: inline-flex;
+      width: fit-content;
+      min-height: 28px;
+      align-items: center;
+      border: 1px solid color-mix(in srgb, var(--task-accent) 46%, transparent);
+      border-radius: 999px;
+      padding: 5px 9px;
+      color: #fff4ce;
+      background: color-mix(in srgb, var(--task-accent) 12%, transparent);
+      font-size: 0.72rem;
+      font-weight: 900;
+    }
+
     .explorer-mode-select-proxy {
       position: absolute;
       width: 1px;
@@ -2101,8 +2238,26 @@
       }
 
       .explorer-mode-panel,
+      .explorer-task-home,
       .explorer-controls {
         grid-template-columns: 1fr;
+      }
+
+      .explorer-task-home {
+        overflow: hidden;
+      }
+
+      .explorer-task-home__grid {
+        grid-template-columns: repeat(6, minmax(184px, 1fr));
+        overflow-x: auto;
+        padding-bottom: 4px;
+        scroll-snap-type: x proximity;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .explorer-task-card {
+        min-height: 128px;
+        scroll-snap-align: start;
       }
 
       .explorer-mode-tabs {
@@ -2224,6 +2379,57 @@
         </a>
       </div>
     </header>
+
+    <section class="explorer-task-home" aria-label="Explorer task shortcuts">
+      <div class="explorer-task-home__header">
+        <strong>Choose what you want to learn</strong>
+        <span>These start the existing Explorer modes; the full controls stay available below.</span>
+      </div>
+      <div class="explorer-task-home__grid">
+        <button class="explorer-task-card" type="button" data-explorer-task-card="find-chord" data-explorer-task-mode="chord" aria-pressed="false">
+          <span class="explorer-task-card__eyebrow">Chord search</span>
+          <strong>Find a chord</strong>
+          <p>Search practical E9 pockets for a chord or color.</p>
+          <span class="explorer-task-card__example">Example: G major or D7 in G</span>
+          <span class="explorer-task-card__action">Open chord finder</span>
+        </button>
+        <button class="explorer-task-card" type="button" data-explorer-task-card="find-note" data-explorer-task-mode="note" aria-pressed="false">
+          <span class="explorer-task-card__eyebrow">Note map</span>
+          <strong>Find a note</strong>
+          <p>Locate a note, check pedals/levers, or build a grip around it.</p>
+          <span class="explorer-task-card__example">Example: every G on the E9 neck</span>
+          <span class="explorer-task-card__action">Open note finder</span>
+        </button>
+        <button class="explorer-task-card is-selected" type="button" data-explorer-task-card="explore-grip" data-explorer-task-mode="single" aria-pressed="true">
+          <span class="explorer-task-card__eyebrow">Pocket view</span>
+          <strong>Explore a grip</strong>
+          <p>Start with one playable string set and see validated positions.</p>
+          <span class="explorer-task-card__example">Example: 4-5-6 or 5-6-8</span>
+          <span class="explorer-task-card__action">Open single grip</span>
+        </button>
+        <button class="explorer-task-card" type="button" data-explorer-task-card="walk-harmonized-scale" data-explorer-task-mode="path" aria-pressed="false">
+          <span class="explorer-task-card__eyebrow">Scale path</span>
+          <strong>Walk a harmonized scale</strong>
+          <p>Trace diatonic chord movement across connected grips.</p>
+          <span class="explorer-task-card__example">Example: G - Am - Bm - C</span>
+          <span class="explorer-task-card__action">Open scale path</span>
+        </button>
+        <button class="explorer-task-card" type="button" data-explorer-task-card="study-movement-path" data-explorer-task-mode="path" aria-pressed="false">
+          <span class="explorer-task-card__eyebrow">Movement</span>
+          <strong>Study a movement path</strong>
+          <p>Compare nearby pockets that help connect one chord to another.</p>
+          <span class="explorer-task-card__example">Example: no-pedals to A+B</span>
+          <span class="explorer-task-card__action">Open path view</span>
+        </button>
+        <button class="explorer-task-card" type="button" data-explorer-task-card="identify-voicing" data-explorer-task-mode="voicing" aria-pressed="false">
+          <span class="explorer-task-card__eyebrow">What is this?</span>
+          <strong>Identify a voicing</strong>
+          <p>Choose fret, strings, and controls to name what you are playing.</p>
+          <span class="explorer-task-card__example">Example: fret 3, strings 4-6-10</span>
+          <span class="explorer-task-card__action">Open identifier</span>
+        </button>
+      </div>
+    </section>
 
     <section class="explorer-mode-panel" aria-label="Explorer mode">
       <div class="explorer-control explorer-control--mode explorer-mode-select-proxy">
@@ -2489,6 +2695,6 @@
   <script src="pedal-steel-fretboard.js?v=explorer-harmonized-path-mode-20260626"></script>
   <script src="e9-fretboard-explorer-data.js?v=single-grip-octave-results-20260628"></script>
   <script src="e9-music-rules.js?v=legitimate-grip-vocabulary-20260628"></script>
-  <script src="e9-fretboard-explorer.js?v=explorer-handoff-20260701"></script>
+  <script src="e9-fretboard-explorer.js?v=explorer-mode-home-20260702"></script>
 </body>
 </html>
