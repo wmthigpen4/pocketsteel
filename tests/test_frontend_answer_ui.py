@@ -335,8 +335,8 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     task_home_markup = html.split('<section class="explorer-task-home" aria-label="Explorer task shortcuts">', 1)[1].split('<section class="explorer-mode-panel explorer-mode-panel--state-only" aria-label="Explorer mode">', 1)[0]
     mode_markup = html.split('<section class="explorer-mode-panel explorer-mode-panel--state-only" aria-label="Explorer mode">', 1)[1].split("</section>", 1)[0]
     controls_markup = html.split('<section class="explorer-controls" aria-label="Explorer filters">', 1)[1].split("</section>", 1)[0]
-    workbench_markup = html.split('<section class="explorer-workbench" aria-label="Explorer workbench">', 1)[1].split('<section class="explorer-control-impact-preview"', 1)[0]
-    panel_markup = html.split('<section class="explorer-panel" aria-label="Explorer fretboard">', 1)[1].split("</section>", 1)[0]
+    workbench_markup = html.split('<section class="explorer-workbench" aria-label="Explorer workbench">', 1)[1].split('<section class="explorer-details"', 1)[0]
+    panel_markup = html.split('<section class="explorer-panel" aria-label="Explorer fretboard">', 1)[1].split('<aside class="explorer-inspector"', 1)[0]
     inspector_markup = html.split('<aside class="explorer-inspector" aria-label="Why this works">', 1)[1].split("</aside>", 1)[0]
     details_markup = html.split('<section class="explorer-details" aria-label="Explorer position details"', 1)[1].split("</section>", 1)[0]
     assert html.index('<section class="explorer-task-home" aria-label="Explorer task shortcuts">') < html.index('<section class="explorer-mode-panel explorer-mode-panel--state-only" aria-label="Explorer mode">')
@@ -593,6 +593,8 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert panel_markup.index('id="explorer-notation-control"') < panel_markup.index('id="explorer-fretboard"')
     assert panel_markup.index('id="explorer-pitch-register-control"') < panel_markup.index('id="explorer-fretboard"')
     assert panel_markup.index('id="explorer-string-action-label-control"') < panel_markup.index('id="explorer-fretboard"')
+    assert panel_markup.index('id="explorer-fretboard"') < panel_markup.index('id="explorer-control-impact-preview"')
+    assert panel_markup.index('id="explorer-control-impact-preview"') < panel_markup.index('id="explorer-active-results"')
     assert panel_markup.index('id="explorer-fretboard"') < panel_markup.index('id="explorer-active-results"')
     assert workbench_markup.index('id="explorer-fretboard"') < workbench_markup.index('id="explorer-selected-detail"')
     assert html.index('id="explorer-fretboard"') < html.index('id="explorer-control-impact-preview"')
