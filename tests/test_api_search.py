@@ -7944,6 +7944,27 @@ def test_answer_returns_progression_guide_for_beginner_g_c_d_g_route() -> None:
     assert_valid_fretboard_payload(payload)
 
 
+def test_answer_returns_progression_guide_for_simple_song_progression_in_g() -> None:
+    payload = answer_for_question("How do I move through a simple song progression in G?", noisy_practical_sources())
+
+    assert "progression_guide" in payload
+    assert "fretboard" in payload
+    assert "tab_example" not in payload
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert "I need a more specific steel-guitar question" not in payload["answer"]
+    assert "original deterministic practice route" in payload["answer"]
+    assert payload["progression_guide"]["key"] == "G"
+    assert payload["progression_guide"]["progression"] == "I-IV-V-I"
+    assert [_progression_event_signature(event) for event in _progression_route_events(payload)] == [
+        ("I", "G", 3, "5-6-8", (), ()),
+        ("IV", "C", 3, "5-6-8", ("A", "B"), ()),
+        ("V", "D", 5, "5-6-8", ("A", "B"), ()),
+        ("I", "G", 3, "5-6-8", (), ()),
+    ]
+    assert_valid_fretboard_payload(payload)
+
+
 def test_answer_returns_progression_guide_for_c_diatonic_route_with_honest_g7_shell() -> None:
     payload = answer_for_question(
         "Show me C Am Em F Dm G7 C as a pedal steel progression.",

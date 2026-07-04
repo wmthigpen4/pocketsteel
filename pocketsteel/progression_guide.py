@@ -157,6 +157,9 @@ def _routes_for_question(question: str) -> tuple[RouteTemplate, ...] | None:
     if _looks_like_i_iv_v_i(normalized) and not _looks_like_tab_movement_request(normalized):
         return _i_iv_v_i_routes(key or _parse_key_from_chord_sequence(question))
 
+    if _looks_like_simple_song_progression_request(normalized):
+        return _i_iv_v_i_routes(key or "G")
+
     symbols = _chord_symbols_from_question(question)
     if len(symbols) >= 3 and _looks_like_progression_route_request(normalized):
         return _routes_for_chord_symbols(symbols)
@@ -204,6 +207,17 @@ def _looks_like_tab_movement_request(normalized: str) -> bool:
 def _looks_like_progression_route_request(normalized: str) -> bool:
     return bool(
         re.search(r"\b(?:progression|route|through|chord\s+route|chord\s+path)\b", normalized)
+    )
+
+
+def _looks_like_simple_song_progression_request(normalized: str) -> bool:
+    if not re.search(r"\bprogression\b", normalized):
+        return False
+    if re.search(r"\b(?:minor|copyright|copyrighted|transcribe|youtube|recording|solo|full\s+tab)\b", normalized):
+        return False
+    return bool(
+        re.search(r"\b(?:simple|beginner|basic|song|practice)\b", normalized)
+        or re.search(r"\bmove\s+through\b", normalized)
     )
 
 
@@ -723,6 +737,7 @@ def _answer_text(key: str, progression_label: str, routes: list[dict[str, Any]])
     recommended = routes[0]
     lines = [
         f"Here is a practical {key} {progression_label} route on E9.",
+        "This is an original deterministic practice route, not a song transcription or source-backed arrangement.",
         recommended["summary"],
         "",
         "Recommended route:",

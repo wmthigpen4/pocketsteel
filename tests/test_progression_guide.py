@@ -86,6 +86,21 @@ def test_g_i_iv_v_i_progression_transposes_home_and_pedals_down_routes() -> None
     ]
 
 
+def test_simple_song_progression_in_g_defaults_to_i_iv_v_i_route() -> None:
+    result = _guide("How do I move through a simple song progression in G?")
+    events = _recommended_events(result)
+
+    assert result["progression_guide"]["key"] == "G"
+    assert result["progression_guide"]["progression"] == "I-IV-V-I"
+    assert "original deterministic practice route" in result["answer"]
+    assert [_event_signature(event) for event in events] == [
+        ("I", "G", 3, "5-6-8", (), ()),
+        ("IV", "C", 3, "5-6-8", ("A", "B"), ()),
+        ("V", "D", 5, "5-6-8", ("A", "B"), ()),
+        ("I", "G", 3, "5-6-8", (), ()),
+    ]
+
+
 def test_c_diatonic_route_labels_minor_chords_and_dominant_shell_honestly() -> None:
     result = _guide("Show me C Am Em F Dm G7 C as a pedal steel progression.")
     events = _recommended_events(result)
