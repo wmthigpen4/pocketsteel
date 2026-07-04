@@ -157,3 +157,4 @@ class AnswerResponse(TypedDict):
     sections: list[AnswerSection]
     fretboard: NotRequired[FretboardPayload]
     tab_example: NotRequired[TabExamplePayload]
+    progression_guide: NotRequired[dict[str, Any]]

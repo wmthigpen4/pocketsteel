@@ -7868,6 +7868,103 @@ def test_answer_routes_explicit_g_578_static_grip_as_partial_color() -> None:
         assert position["levers"] == []
 
 
+def _progression_route_events(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    guide = payload["progression_guide"]
+    return guide["recommendedRoute"]["events"]
+
+
+def _progression_event_signature(event: dict[str, Any]) -> tuple[str, str, int, str, tuple[str, ...], tuple[str, ...]]:
+    return (
+        event["function"],
+        event["chordName"],
+        event["fret"],
+        event["grip"],
+        tuple(event["pedals"]),
+        tuple(event["levers"]),
+    )
+
+
+def test_answer_returns_progression_guide_for_c_f_g_c_source_free_and_fretboard_first() -> None:
+    payload = answer_for_question("Show me a C F G C progression on E9.", noisy_practical_sources())
+
+    assert "progression_guide" in payload
+    assert "fretboard" in payload
+    assert "tab_example" not in payload
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert "practical C I-IV-V-I route on E9" in payload["answer"]
+    assert_valid_fretboard_payload(payload)
+    events = _progression_route_events(payload)
+    assert [_progression_event_signature(event) for event in events] == [
+        ("I", "C", 8, "5-6-8", (), ()),
+        ("IV", "F", 8, "5-6-8", ("A", "B"), ()),
+        ("V", "G", 10, "5-6-8", ("A", "B"), ()),
+        ("I", "C", 8, "5-6-8", (), ()),
+    ]
+    assert payload["progression_guide"]["routes"][1]["family"] == "ascending_same_grip"
+    assert payload["progression_guide"]["routes"][2]["family"] == "pedals_down"
+    assert payload["progression_guide"]["routes"][3]["family"] == "dominant_shell"
+
+
+def test_answer_returns_progression_guide_for_roman_i_iv_v_i_in_c() -> None:
+    payload = answer_for_question("How do I play I IV V I in C on pedal steel?", noisy_practical_sources())
+
+    assert "progression_guide" in payload
+    assert "fretboard" in payload
+    assert "tab_example" not in payload
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert [_progression_event_signature(event) for event in _progression_route_events(payload)] == [
+        ("I", "C", 8, "5-6-8", (), ()),
+        ("IV", "F", 8, "5-6-8", ("A", "B"), ()),
+        ("V", "G", 10, "5-6-8", ("A", "B"), ()),
+        ("I", "C", 8, "5-6-8", (), ()),
+    ]
+    assert_valid_fretboard_payload(payload)
+
+
+def test_answer_returns_progression_guide_for_beginner_g_c_d_g_route() -> None:
+    payload = answer_for_question("Give me a beginner route through G C D G.", noisy_practical_sources())
+
+    assert "progression_guide" in payload
+    assert "fretboard" in payload
+    assert "tab_example" not in payload
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    assert [_progression_event_signature(event) for event in _progression_route_events(payload)] == [
+        ("I", "G", 3, "5-6-8", (), ()),
+        ("IV", "C", 3, "5-6-8", ("A", "B"), ()),
+        ("V", "D", 5, "5-6-8", ("A", "B"), ()),
+        ("I", "G", 3, "5-6-8", (), ()),
+    ]
+    assert [route["family"] for route in payload["progression_guide"]["routes"]] == [
+        "home_pocket",
+        "pedals_down",
+    ]
+    assert_valid_fretboard_payload(payload)
+
+
+def test_answer_returns_progression_guide_for_c_diatonic_route_with_honest_g7_shell() -> None:
+    payload = answer_for_question(
+        "Show me C Am Em F Dm G7 C as a pedal steel progression.",
+        noisy_practical_sources(),
+    )
+
+    assert "progression_guide" in payload
+    assert "fretboard" in payload
+    assert "tab_example" not in payload
+    assert payload["sources"] == []
+    assert payload["warnings"] == []
+    events = _progression_route_events(payload)
+    assert [event["chordName"] for event in events] == ["C", "Am", "Em", "F", "Dm", "G7", "C"]
+    g7 = events[5]
+    assert g7["voicingType"] == "dominant_shell"
+    assert set(g7["contains"]) >= {"1", "3", "b7"}
+    assert g7["omits"] == ["5"]
+    assert "Dominant shell" in g7["routeReason"]
+    assert_valid_fretboard_payload(payload)
+
+
 def test_answer_attaches_tab_example_for_supported_a_b_request() -> None:
     payload = answer_for_question("How do I use A+B pedals?", noisy_practical_sources())
 

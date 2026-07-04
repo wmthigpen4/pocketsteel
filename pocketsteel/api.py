@@ -79,6 +79,7 @@ from pocketsteel.curated_guidance_retriever import (
 )
 from pocketsteel.curated_source_registry import slide_bar_vendor_source_cards
 from pocketsteel.fretboard_examples import fretboard_payload_for_question
+from pocketsteel.progression_guide import progression_guide_for_question
 from pocketsteel.rag_guardrails import sanitize_retrieved_sources
 from pocketsteel.rag_guardrails import is_injection_like
 from pocketsteel.private_source_search import PrivateSourceSearchIndex
@@ -389,6 +390,37 @@ class RetrievalApi:
                     "sources": [],
                     "warnings": [],
                     "sections": build_sections(final_answer),
+                }
+                self._log_answer_attempt(
+                    request_payload,
+                    role=access.role,
+                    identity_email=access.identity_email,
+                    access_status="authorized",
+                    authorized=True,
+                    source_count=0,
+                    warning_count=0,
+                )
+                return self._json_response(start_response, "200 OK", payload)
+
+            progression_guide_answer = progression_guide_for_question(answer_request.question)
+            if (
+                progression_guide_answer is not None
+                and answer_intent_decision.get("domain") != "unsafe_or_impossible"
+            ):
+                final_answer = final_answer_quality_gate(
+                    str(progression_guide_answer["answer"]),
+                    answer_request.question,
+                )
+                contract_validation = enforce_answer_contract(final_answer, "copedent_fretboard")
+                final_answer = normalize_answer_list_markers(contract_validation.answer)
+                payload: AnswerResponse = {
+                    "answer": final_answer,
+                    "mode": answer_request.mode,
+                    "sources": [],
+                    "warnings": [],
+                    "sections": build_sections(final_answer),
+                    "progression_guide": progression_guide_answer["progression_guide"],
+                    "fretboard": progression_guide_answer["fretboard"],
                 }
                 self._log_answer_attempt(
                     request_payload,

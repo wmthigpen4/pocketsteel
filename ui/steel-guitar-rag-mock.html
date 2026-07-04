@@ -1407,13 +1407,94 @@
       display: none;
     }
 
+    .answer-progression[hidden] {
+      display: none;
+    }
+
     .answer-tab[hidden] {
       display: none;
     }
 
+    .answer-progression,
     .answer-tab {
       display: grid;
       gap: 12px;
+    }
+
+    .progression-guide-card {
+      display: grid;
+      gap: 14px;
+      border: 1px solid rgba(240, 191, 105, 0.22);
+      border-radius: 17px;
+      background:
+        radial-gradient(circle at 50% 0%, rgba(240, 191, 105, 0.08), transparent 42%),
+        linear-gradient(180deg, rgba(30, 32, 31, 0.88), rgba(13, 14, 14, 0.86));
+      box-shadow: 0 22px 54px rgba(0, 0, 0, 0.34);
+      padding: 17px 18px;
+    }
+
+    .progression-guide-header {
+      display: grid;
+      gap: 4px;
+    }
+
+    .progression-guide-title {
+      margin: 0;
+      color: rgba(255, 246, 223, 0.96);
+      font-family: var(--font-lesson);
+      font-size: 22px;
+      line-height: 1.18;
+      font-weight: 700;
+    }
+
+    .progression-guide-meta,
+    .progression-event-meta,
+    .progression-alternates {
+      margin: 0;
+      color: rgba(244, 234, 214, 0.72);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .progression-event-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 10px;
+    }
+
+    .progression-event {
+      display: grid;
+      gap: 7px;
+      min-width: 0;
+      border: 1px solid rgba(240, 191, 105, 0.18);
+      border-radius: 13px;
+      background: rgba(240, 191, 105, 0.045);
+      padding: 12px;
+    }
+
+    .progression-event-title {
+      margin: 0;
+      color: rgba(240, 191, 105, 0.92);
+      font-size: 13px;
+      line-height: 1.25;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .progression-event-summary {
+      margin: 0;
+      color: rgba(255, 246, 223, 0.92);
+      font-size: 15px;
+      line-height: 1.35;
+      font-weight: 650;
+    }
+
+    .progression-event-copy {
+      margin: 0;
+      color: rgba(244, 234, 214, 0.78);
+      font-size: 14px;
+      line-height: 1.45;
     }
 
     .tab-card {
@@ -2383,6 +2464,10 @@
           <div id="answer-tab-list"></div>
         </section>
 
+        <section class="answer-progression" id="answer-progression" aria-label="Progression guide" hidden>
+          <div id="answer-progression-list"></div>
+        </section>
+
         <section class="answer-fretboard" id="answer-fretboard" aria-labelledby="answer-fretboard-title" hidden>
           <div class="fretboard-card">
             <details class="answer-fretboard-details" id="answer-fretboard-details">
@@ -2843,7 +2928,7 @@
     </div>
   </div>
 
-  <script src="answer-client.js?v=movement-lesson-card-29bfd24"></script>
+  <script src="answer-client.js?v=progression-guide-v0-20260704"></script>
   <script src="pedal-steel-fretboard.js?v=explorer-compare-fix-20260702b"></script>
   <script>
     const question = document.querySelector("#question");
@@ -2863,6 +2948,8 @@
     const answerLead = document.querySelector("#answer-lead");
     const answerStatus = document.querySelector("#answer-status");
     const answerSectionGrid = document.querySelector("#answer-section-grid");
+    const answerProgression = document.querySelector("#answer-progression");
+    const answerProgressionList = document.querySelector("#answer-progression-list");
     const answerTab = document.querySelector("#answer-tab");
     const answerTabList = document.querySelector("#answer-tab-list");
     const answerFretboard = document.querySelector("#answer-fretboard");
@@ -3779,7 +3866,7 @@
         link.href = handoffUrl;
         link.textContent = "Explore related path";
         handoff.appendChild(link);
-        card.appendChild(handoff);
+      card.appendChild(handoff);
       }
 
       const practice = document.createElement("p");
@@ -3790,6 +3877,110 @@
       card.appendChild(practice);
 
       return card;
+    }
+
+    function progressionListLabel(items, fallback = "") {
+      if (Array.isArray(items)) {
+        return items.filter(Boolean).join(", ");
+      }
+      return String(items || fallback || "").trim();
+    }
+
+    function clearProgressionGuide() {
+      answerProgression.hidden = true;
+      answerProgressionList.innerHTML = "";
+    }
+
+    function renderProgressionEvent(event) {
+      const card = document.createElement("article");
+      card.className = "progression-event";
+      if (event.renderablePositionId) {
+        card.dataset.positionId = event.renderablePositionId;
+      }
+
+      const title = document.createElement("p");
+      title.className = "progression-event-title";
+      title.textContent = `${event.function || "Step"} · ${event.chordName || "Chord"}`;
+
+      const controls = progressionListLabel(event.changes, "no pedals/no levers") || "no pedals/no levers";
+      const summary = document.createElement("p");
+      summary.className = "progression-event-summary";
+      summary.textContent = `Fret ${event.fret || "?"} · strings ${event.grip || progressionListLabel(event.strings)} · ${controls}`;
+
+      const notes = progressionListLabel(event.notes);
+      const intervals = progressionListLabel(event.intervals);
+      const meta = document.createElement("p");
+      meta.className = "progression-event-meta";
+      meta.textContent = [notes ? `Notes: ${notes}` : "", intervals ? `Intervals: ${intervals}` : ""]
+        .filter(Boolean)
+        .join(" · ");
+
+      const reason = document.createElement("p");
+      reason.className = "progression-event-copy";
+      reason.textContent = event.routeReason || "Validated E9 position for this route step.";
+
+      const omits = progressionListLabel(event.omits);
+      const nextMove = event.nextMove;
+      const movement = document.createElement("p");
+      movement.className = "progression-event-copy";
+      movement.textContent = [
+        omits ? `${event.voicingType || "voicing"}; omits ${omits}.` : "",
+        nextMove || ""
+      ].filter(Boolean).join(" ");
+
+      card.append(title, summary);
+      if (meta.textContent) card.appendChild(meta);
+      card.appendChild(reason);
+      if (movement.textContent) card.appendChild(movement);
+      return card;
+    }
+
+    function renderProgressionGuide(guide) {
+      clearProgressionGuide();
+      const route = guide?.recommendedRoute || guide?.routes?.[0];
+      if (!route?.events?.length) {
+        return;
+      }
+
+      answerProgression.hidden = false;
+      const card = document.createElement("article");
+      card.className = "progression-guide-card";
+
+      const header = document.createElement("div");
+      header.className = "progression-guide-header";
+      const kicker = document.createElement("p");
+      kicker.className = "answer-section-title";
+      kicker.textContent = "Progression guide";
+      const title = document.createElement("h3");
+      title.className = "progression-guide-title";
+      title.textContent = route.label || "Recommended E9 route";
+      const meta = document.createElement("p");
+      meta.className = "progression-guide-meta";
+      meta.textContent = [
+        guide.key ? `Key ${guide.key}` : "",
+        guide.progression || "",
+        route.difficulty || ""
+      ].filter(Boolean).join(" · ");
+      const summary = document.createElement("p");
+      summary.className = "progression-event-copy";
+      summary.textContent = route.summary || "Use this validated route to compare chord locations.";
+      header.append(kicker, title, meta, summary);
+
+      const eventList = document.createElement("div");
+      eventList.className = "progression-event-list";
+      route.events.forEach((event) => {
+        eventList.appendChild(renderProgressionEvent(event));
+      });
+
+      card.append(header, eventList);
+      const alternateCount = Math.max(0, (guide.routes || []).length - 1);
+      if (alternateCount) {
+        const alternates = document.createElement("p");
+        alternates.className = "progression-alternates";
+        alternates.textContent = `${alternateCount} alternate route${alternateCount === 1 ? "" : "s"} are included in the fretboard payload for comparison.`;
+        card.appendChild(alternates);
+      }
+      answerProgressionList.appendChild(card);
     }
 
     function renderTabCard(tab) {
@@ -3915,10 +4106,17 @@
         answerSectionGrid.appendChild(sectionEl);
       });
 
+      renderProgressionGuide(response.progressionGuide);
       renderTabExamples(response.tabs);
       renderFretboardVisualization(response.fretboard);
 
-      const hideEmptySourceCards = !response.sources?.length && response.tabs?.some((tab) => shouldRenderMovementLesson(tab));
+      const isCopyrightTabGuardrail = /^I can’t provide a full copyrighted song tab/i.test(response.answer || "");
+      const hideEmptySourceCards = !response.sources?.length && (
+        Boolean(response.progressionGuide)
+        || Boolean(response.fretboard)
+        || Boolean(isCopyrightTabGuardrail)
+        || response.tabs?.some((tab) => shouldRenderMovementLesson(tab))
+      );
       sourceSection.hidden = Boolean(hideEmptySourceCards);
       sourceGrid.innerHTML = "";
       if (!response.sources?.length && !hideEmptySourceCards) {
@@ -4000,6 +4198,7 @@
       answerStatus.textContent = "Retrieving a source-backed answer.";
       answerSectionGrid.innerHTML = "";
       answerSectionGrid.classList.remove("is-structured-answer");
+      clearProgressionGuide();
       clearTabExamples();
       clearFretboardVisualization();
       sourceSection.hidden = false;
@@ -4019,6 +4218,7 @@
       answerStatus.textContent = message || "Try again once the local API is running.";
       answerSectionGrid.innerHTML = "";
       answerSectionGrid.classList.remove("is-structured-answer");
+      clearProgressionGuide();
       clearTabExamples();
       clearFretboardVisualization();
       sourceSection.hidden = false;
@@ -4116,6 +4316,7 @@
       question.value = "";
       followupQuestion.value = "";
       answeredQuestion.textContent = HUM_DEMO_QUESTION;
+      clearProgressionGuide();
       clearTabExamples();
       clearFretboardVisualization();
       updateHelperState();

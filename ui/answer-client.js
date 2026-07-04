@@ -532,6 +532,94 @@ const STEEL_RAG_ANSWER_UI = (() => {
     return tabs;
   }
 
+  function normalizeProgressionMap(value) {
+    if (!isObjectRecord(value)) {
+      return [];
+    }
+    return Object.entries(value)
+      .map(([key, item]) => {
+        const label = compactValueLabel(item);
+        return label ? `${key}: ${label}` : "";
+      })
+      .filter(Boolean);
+  }
+
+  function normalizeProgressionEvent(event, index = 0) {
+    if (!isObjectRecord(event)) {
+      return null;
+    }
+    return {
+      id: firstTextValue(event.id, `progression-event-${index + 1}`),
+      renderablePositionId: firstTextValue(event.renderablePositionId, event.positionId),
+      function: firstTextValue(event.function, event.nashvilleFunction),
+      chordName: firstTextValue(event.chordName, event.chord, event.label),
+      root: firstTextValue(event.root),
+      quality: firstTextValue(event.quality),
+      fret: firstTextValue(event.fret),
+      strings: normalizeStringList(event.strings),
+      grip: firstTextValue(event.grip),
+      pedals: normalizeStringList(event.pedals),
+      levers: normalizeStringList(event.levers),
+      changes: normalizeStringList(event.changes),
+      notes: normalizeProgressionMap(event.notes),
+      intervals: normalizeProgressionMap(event.intervals),
+      contains: normalizeStringList(event.contains),
+      omits: normalizeStringList(event.omits),
+      voicingType: firstTextValue(event.voicingType, event.positionKind),
+      isFullChord: Boolean(event.isFullChord),
+      isPartial: Boolean(event.isPartial),
+      routeReason: firstTextValue(event.routeReason, event.whyUseIt, event.explanationShort),
+      nextMove: firstTextValue(event.nextMove, event.movementUse),
+      difficulty: firstTextValue(event.difficulty, event.tier),
+      routeFamily: firstTextValue(event.routeFamily, event.family),
+      validationStatus: firstTextValue(event.validationStatus, "pitch_validated")
+    };
+  }
+
+  function normalizeProgressionRoute(route, index = 0) {
+    if (!isObjectRecord(route)) {
+      return null;
+    }
+    const events = Array.isArray(route.events)
+      ? route.events.map(normalizeProgressionEvent).filter(Boolean)
+      : [];
+    if (!events.length) {
+      return null;
+    }
+    return {
+      id: firstTextValue(route.id, `progression-route-${index + 1}`),
+      family: firstTextValue(route.family),
+      label: firstTextValue(route.label, index === 0 ? "Recommended progression route" : `Progression route ${index + 1}`),
+      difficulty: firstTextValue(route.difficulty),
+      summary: firstTextValue(route.summary),
+      events,
+      provenance: firstTextValue(route.provenance)
+    };
+  }
+
+  function normalizeProgressionGuide(payload) {
+    const guide = payload?.progression_guide || payload?.progressionGuide || payload?.progression;
+    if (!isObjectRecord(guide)) {
+      return null;
+    }
+    const routes = Array.isArray(guide.routes)
+      ? guide.routes.map(normalizeProgressionRoute).filter(Boolean)
+      : [];
+    if (!routes.length) {
+      return null;
+    }
+    const recommendedRouteId = firstTextValue(guide.recommendedRouteId, guide.recommended_route_id, routes[0]?.id);
+    return {
+      type: firstTextValue(guide.type, "e9-progression-guide-v0"),
+      key: firstTextValue(guide.key),
+      progression: firstTextValue(guide.progression),
+      chords: normalizeStringList(guide.chords),
+      recommendedRouteId,
+      recommendedRoute: routes.find((route) => route.id === recommendedRouteId) || routes[0],
+      routes
+    };
+  }
+
   function findFretboardPayload(payload) {
     const candidates = [
       payload?.fretboard,
@@ -567,6 +655,7 @@ const STEEL_RAG_ANSWER_UI = (() => {
       followups: Array.isArray(payload?.followups) ? payload.followups : []
     };
     const tabs = normalizeTabPayloads(payload);
+    const progressionGuide = normalizeProgressionGuide(payload);
     const rawFretboard = findFretboardPayload(payload);
     const fretboard = normalizeFretboard(rawFretboard);
     if (fretboard) {
@@ -582,6 +671,9 @@ const STEEL_RAG_ANSWER_UI = (() => {
     }
     if (tabs.length) {
       normalized.tabs = tabs;
+    }
+    if (progressionGuide) {
+      normalized.progressionGuide = progressionGuide;
     }
     return normalized;
   }
@@ -651,6 +743,7 @@ const STEEL_RAG_ANSWER_UI = (() => {
     findFretboardPayload,
     normalizeTabPayload,
     normalizeTabPayloads,
+    normalizeProgressionGuide,
     normalizeSections,
     normalizeAnswerResponse,
     requestSession,

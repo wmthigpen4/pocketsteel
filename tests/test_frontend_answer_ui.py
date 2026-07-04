@@ -168,7 +168,7 @@ let capturedRequest;
 def test_answer_ui_uses_live_answer_client_not_mock_answer_data() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
 
-    assert '<script src="answer-client.js?v=movement-lesson-card-29bfd24"></script>' in html
+    assert '<script src="answer-client.js?v=progression-guide-v0-20260704"></script>' in html
     assert '<script src="answer-client.js?v=e9-explorer-home-entry-20260623"></script>' not in html
     assert '<script src="pedal-steel-fretboard.js?v=explorer-compare-fix-20260702b"></script>' in html
     assert '<script src="pedal-steel-fretboard.js?v=e9-explorer-home-entry-20260623"></script>' not in html
@@ -176,6 +176,9 @@ def test_answer_ui_uses_live_answer_client_not_mock_answer_data() -> None:
     assert "STEEL_RAG_ANSWER_UI.requestAnswer" in html
     assert "STEEL_RAG_ANSWER_UI.requestSession" in html
     assert "No sources returned" in html
+    assert 'id="answer-progression"' in html
+    assert "renderProgressionGuide(response.progressionGuide)" in html
+    assert "clearProgressionGuide()" in html
 
 
 def test_answer_ui_includes_home_hero_hanging_sign_without_changing_answer_logo() -> None:
@@ -2491,6 +2494,67 @@ assert.equal(JSON.stringify(visualized.fretboard.highlights), JSON.stringify([])
 assert.equal(visualized.fretboard.legend[0].id, "primary");
 assert.equal(visualized.fretboard.query.display_scale_notes.natural_minor.join(" "), "G A Bb C D Eb F");
 
+const progression = answerUi.normalizeAnswerResponse({
+  question: "Show me a C F G C progression on E9.",
+  answer: "Here is a practical C I-IV-V-I route on E9.",
+  progression_guide: {
+    type: "e9-progression-guide-v0",
+    key: "C",
+    progression: "I-IV-V-I",
+    chords: ["C", "F", "G", "C"],
+    recommendedRouteId: "c-home",
+    routes: [
+      {
+        id: "c-home",
+        family: "home_pocket",
+        label: "C home route",
+        difficulty: "starter",
+        summary: "Stay near fret 8.",
+        events: [
+          {
+            id: "c-home-event-1",
+            renderablePositionId: "c-home-1",
+            function: "I",
+            chordName: "C",
+            root: "C",
+            quality: "major",
+            fret: 8,
+            strings: [5, 6, 8],
+            grip: "5-6-8",
+            pedals: [],
+            levers: [],
+            changes: [],
+            notes: { 5: "G", 6: "C", 8: "E" },
+            intervals: { 5: "5", 6: "1", 8: "3" },
+            contains: ["1", "3", "5"],
+            omits: [],
+            voicingType: "root_position",
+            isFullChord: true,
+            isPartial: false,
+            routeReason: "Straight-bar home position.",
+            nextMove: "Press A+B.",
+            difficulty: "starter",
+            routeFamily: "home_pocket",
+            validationStatus: "pitch_validated"
+          }
+        ]
+      }
+    ]
+  },
+  fretboard: {
+    title: "C progression route",
+    description: "Validated E9 route.",
+    positions: [{ id: "c-home-1", label: "C", fret: 8, strings: [5, 6, 8], grip: "5-6-8" }],
+    highlights: []
+  },
+  sources: []
+});
+assert.equal(progression.progressionGuide.key, "C");
+assert.equal(progression.progressionGuide.recommendedRoute.id, "c-home");
+assert.equal(progression.progressionGuide.recommendedRoute.events[0].notes[0], "5: G");
+assert.equal(progression.progressionGuide.recommendedRoute.events[0].intervals[1], "6: 1");
+assert.equal(JSON.stringify(progression.progressionGuide).includes("[object Object]"), false);
+
 const productionNestedVisualized = answerUi.normalizeAnswerResponse({
   question: "Where can I play a G chord?",
   answer: "Use G at frets 3, 6, and 10.",
@@ -3839,7 +3903,10 @@ def test_answer_ui_wires_tab_examples_between_answer_and_fretboard() -> None:
     assert "renderTabExamples(response.tabs);" in html
     assert "clearTabExamples();" in html
     assert "hideEmptySourceCards" in html
-    assert "!response.sources?.length && response.tabs?.some((tab) => shouldRenderMovementLesson(tab))" in html
+    assert "Boolean(response.progressionGuide)" in html
+    assert "Boolean(response.fretboard)" in html
+    assert "isCopyrightTabGuardrail" in html
+    assert "response.tabs?.some((tab) => shouldRenderMovementLesson(tab))" in html
 
 
 def test_answer_ui_wires_optional_fretboard_visualization_section() -> None:
