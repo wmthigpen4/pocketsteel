@@ -338,6 +338,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     workbench_markup = html.split('<section class="explorer-workbench" aria-label="Explorer workbench">', 1)[1].split('<section class="explorer-control-impact-preview"', 1)[0]
     panel_markup = html.split('<section class="explorer-panel" aria-label="Explorer fretboard">', 1)[1].split("</section>", 1)[0]
     inspector_markup = html.split('<aside class="explorer-inspector" aria-label="Why this works">', 1)[1].split("</aside>", 1)[0]
+    details_markup = html.split('<section class="explorer-details" aria-label="Explorer position details"', 1)[1].split("</section>", 1)[0]
     assert html.index('<section class="explorer-task-home" aria-label="Explorer task shortcuts">') < html.index('<section class="explorer-mode-panel explorer-mode-panel--state-only" aria-label="Explorer mode">')
     assert html.index('<section class="explorer-mode-panel explorer-mode-panel--state-only" aria-label="Explorer mode">') < html.index('<section class="explorer-controls" aria-label="Explorer filters">')
     assert "Choose what you want to learn" in task_home_markup
@@ -410,6 +411,10 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert ".explorer-mode-tabs {" not in html
     assert ".explorer-mode-select-proxy {" in html
     assert "Start by choosing the kind of fretboard question you want to explore" not in mode_markup
+    assert '<section class="explorer-details" aria-label="Explorer position details" hidden aria-hidden="true">' in html
+    assert 'id="explorer-row-list"' in details_markup
+    assert "display: none;" in html.split(".explorer-details {", 1)[1].split("}", 1)[0]
+    assert "display: none;" in html.split(".explorer-row-list {", 1)[1].split("}", 1)[0]
     assert 'id="explorer-note-finder"' in html
     assert 'id="explorer-voicing-identifier"' in html
     assert 'id="explorer-chord-finder"' in html

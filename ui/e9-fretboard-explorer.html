@@ -1954,14 +1954,14 @@
     }
 
     .explorer-details {
-      display: grid;
+      display: none;
       grid-template-columns: 1fr;
       gap: 12px;
       margin-top: 12px;
     }
 
     .explorer-row-list {
-      display: flex;
+      display: none;
       align-items: stretch;
       gap: 8px;
       overflow-x: auto;
@@ -2554,7 +2554,7 @@
 
     <section class="explorer-control-impact-preview" id="explorer-control-impact-preview" aria-label="Pedal and lever impact preview" hidden></section>
 
-    <section class="explorer-details" aria-label="Explorer position details">
+    <section class="explorer-details" aria-label="Explorer position details" hidden aria-hidden="true">
       <div class="explorer-row-list" id="explorer-row-list" aria-label="Explorer row details"></div>
     </section>
   </main>
