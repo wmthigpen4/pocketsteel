@@ -283,8 +283,8 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<script src="e9-fretboard-explorer-data.js?v=single-grip-octave-results-20260628"></script>' in html
     assert "[hidden] {\n      display: none !important;\n    }" in html
     assert '<script src="e9-music-rules.js?v=legitimate-grip-vocabulary-20260628"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=explorer-mode-home-dedupe-20260704"></script>' in html
-    assert html.index("e9-music-rules.js?v=legitimate-grip-vocabulary-20260628") < html.index("e9-fretboard-explorer.js?v=explorer-mode-home-dedupe-20260704")
+    assert '<script src="e9-fretboard-explorer.js?v=explorer-card-hierarchy-20260704b"></script>' in html
+    assert html.index("e9-music-rules.js?v=legitimate-grip-vocabulary-20260628") < html.index("e9-fretboard-explorer.js?v=explorer-card-hierarchy-20260704b")
     assert "e9-fretboard-explorer.js?v=explorer-workbench-redesign-20260628" not in html
     assert "e9-fretboard-explorer.js?v=e-lower-pocket-d-major-20260628" not in html
     assert "e9-fretboard-explorer.js?v=compact-explorer-tools-20260628" not in html
@@ -337,13 +337,15 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<div class="explorer-copedent-control-row">' not in html
     task_home_markup = html.split('<section class="explorer-task-home" aria-label="Explorer task shortcuts">', 1)[1].split('<section class="explorer-mode-panel explorer-mode-panel--state-only" aria-label="Explorer mode">', 1)[0]
     mode_markup = html.split('<section class="explorer-mode-panel explorer-mode-panel--state-only" aria-label="Explorer mode">', 1)[1].split("</section>", 1)[0]
+    context_markup = html.split('<section class="explorer-context-strip" id="explorer-context-strip" aria-label="Selected Explorer task">', 1)[1].split("</section>", 1)[0]
     controls_markup = html.split('<section class="explorer-controls" aria-label="Explorer filters">', 1)[1].split("</section>", 1)[0]
     workbench_markup = html.split('<section class="explorer-workbench" aria-label="Explorer workbench">', 1)[1].split('<section class="explorer-details"', 1)[0]
     panel_markup = html.split('<section class="explorer-panel" aria-label="Explorer fretboard">', 1)[1].split('<aside class="explorer-inspector"', 1)[0]
     inspector_markup = html.split('<aside class="explorer-inspector" aria-label="Why this works">', 1)[1].split("</aside>", 1)[0]
     details_markup = html.split('<section class="explorer-details" aria-label="Explorer position details"', 1)[1].split("</section>", 1)[0]
     assert html.index('<section class="explorer-task-home" aria-label="Explorer task shortcuts">') < html.index('<section class="explorer-mode-panel explorer-mode-panel--state-only" aria-label="Explorer mode">')
-    assert html.index('<section class="explorer-mode-panel explorer-mode-panel--state-only" aria-label="Explorer mode">') < html.index('<section class="explorer-controls" aria-label="Explorer filters">')
+    assert html.index('<section class="explorer-mode-panel explorer-mode-panel--state-only" aria-label="Explorer mode">') < html.index('<section class="explorer-context-strip" id="explorer-context-strip" aria-label="Selected Explorer task">')
+    assert html.index('<section class="explorer-context-strip" id="explorer-context-strip" aria-label="Selected Explorer task">') < html.index('<section class="explorer-controls" aria-label="Explorer filters">')
     assert "Choose what you want to learn" in task_home_markup
     assert "These start the existing Explorer modes; the full controls stay available below." in task_home_markup
     for task_id, mode_id, label, action in [
@@ -361,8 +363,15 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert 'data-explorer-task-card="explore-grip" data-explorer-task-mode="single" aria-pressed="true"' in task_home_markup
     assert "Example: no-pedals to A+B" in task_home_markup
     assert ".explorer-task-home__grid" in html
-    assert "grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));" in html
+    assert "grid-template-columns: repeat(6, minmax(132px, 1fr));" in html
+    assert "min-height: 96px;" in html.split(".explorer-task-card {", 1)[1].split("}", 1)[0]
     assert "scroll-snap-type: x proximity;" in html
+    assert "Current task" in context_markup
+    assert "Explore a grip" in context_markup
+    assert "Key: G" in context_markup
+    assert ".explorer-context-strip {" in html
+    assert "function updateContextStrip(rows)" in script
+    assert "TASK_CARD_META" in script
     assert 'id="explorer-copedent-open"' not in controls_markup
     assert '<dialog class="explorer-copedent-dialog" id="explorer-copedent-dialog"' in html
     assert '<button class="explorer-inline-button" id="explorer-copedent-close" type="button">Close</button>' in html
@@ -404,7 +413,8 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "data-explorer-task-card" in script
     assert "function applyTaskCard(taskId)" in script
     assert "study-movement-path" in script
-    assert "explorer-mode-home-dedupe-20260704" in html
+    assert "explorer-card-hierarchy-20260704" in html
+    assert "explorer-mode-home-dedupe-20260704" not in html
     assert "explorer-handoff-20260701" not in html
     assert ".explorer-mode-panel {" in html
     assert "grid-template-columns: 1fr;" in html.split(".explorer-mode-panel {", 1)[1].split("}", 1)[0]
@@ -501,8 +511,8 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
         assert expected_style in dialog_close_rule
     assert "grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));" in html
     assert "align-content: start;" in html
-    assert ".explorer-control select {\n      height: 42px;" in html
-    assert "height: 42px;" in html
+    assert ".explorer-control select {\n      height: 36px;" in html
+    assert "min-height: 36px;" in html
     assert '<label for="explorer-grip-vocabulary">Grip vocabulary</label>' in html
     assert '<option value="core" selected>Core</option>' in html
     assert '<option value="extended">Extended</option>' in html
@@ -616,7 +626,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     ]:
         assert expected_style in active_result_track_rule
     active_result_rule = html.split(".explorer-active-result {", 1)[1].split("}", 1)[0]
-    assert "flex: 0 0 clamp(150px, 15vw, 184px);" in active_result_rule
+    assert "flex: 0 0 clamp(136px, 13vw, 168px);" in active_result_rule
     assert "scroll-snap-align: start;" in active_result_rule
     path_step_rule = html.split(".explorer-path-step {", 1)[1].split("}", 1)[0]
     assert "--explorer-marker-color: #f7bd58;" in path_step_rule
@@ -643,7 +653,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "musicRules.identifyVoicing" in script
     assert "musicRules.parseChordFinderQuery" in script
     assert "musicRules.chordFinderQualityGate" in script
-    assert 'e9-fretboard-explorer.js?v=explorer-mode-home-dedupe-20260704' in html
+    assert 'e9-fretboard-explorer.js?v=explorer-card-hierarchy-20260704b' in html
     assert ".explorer-chord-map-card .explorer-active-result__fields {" in html
     assert ".explorer-chord-map-card .explorer-active-result__fields span {" in html
     assert "grid-template-columns: minmax(72px, 0.48fr) minmax(0, 1fr);" in html

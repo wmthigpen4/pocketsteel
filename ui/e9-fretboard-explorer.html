@@ -157,8 +157,8 @@
     .explorer-task-home {
       display: grid;
       gap: 10px;
-      margin-bottom: 10px;
-      padding: 10px;
+      margin-bottom: 8px;
+      padding: 9px;
       border: 1px solid rgba(246, 190, 88, 0.22);
       border-radius: 18px;
       background:
@@ -192,16 +192,16 @@
 
     .explorer-task-home__grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
-      gap: 8px;
+      grid-template-columns: repeat(6, minmax(132px, 1fr));
+      gap: 7px;
     }
 
     .explorer-task-card {
       --task-accent: var(--gold);
-      min-height: 126px;
+      min-height: 96px;
       border: 1px solid rgba(246, 190, 88, 0.2);
-      border-radius: 14px;
-      padding: 11px;
+      border-radius: 12px;
+      padding: 9px;
       background:
         radial-gradient(circle at 18% 18%, color-mix(in srgb, var(--task-accent) 16%, transparent), transparent 34%),
         linear-gradient(180deg, rgba(255, 247, 232, 0.04), rgba(255, 247, 232, 0.012)),
@@ -211,7 +211,7 @@
       font: inherit;
       text-align: left;
       display: grid;
-      gap: 8px;
+      gap: 5px;
       align-content: start;
       box-shadow: inset 0 1px 0 rgba(255, 247, 232, 0.05);
     }
@@ -255,7 +255,7 @@
 
     .explorer-task-card strong {
       font-family: "Source Serif 4", Georgia, serif;
-      font-size: clamp(1rem, 1.25vw, 1.2rem);
+      font-size: clamp(0.92rem, 1.05vw, 1.08rem);
       line-height: 1;
       letter-spacing: 0;
     }
@@ -263,9 +263,9 @@
     .explorer-task-card p {
       margin: 0;
       color: var(--muted);
-      font-size: 0.76rem;
+      font-size: 0.7rem;
       font-weight: 700;
-      line-height: 1.35;
+      line-height: 1.25;
     }
 
     .explorer-task-card__example {
@@ -277,18 +277,7 @@
     }
 
     .explorer-task-card__action {
-      align-self: end;
-      display: inline-flex;
-      width: fit-content;
-      min-height: 28px;
-      align-items: center;
-      border: 1px solid color-mix(in srgb, var(--task-accent) 46%, transparent);
-      border-radius: 999px;
-      padding: 5px 9px;
-      color: #fff4ce;
-      background: color-mix(in srgb, var(--task-accent) 12%, transparent);
-      font-size: 0.72rem;
-      font-weight: 900;
+      display: none;
     }
 
     .explorer-mode-select-proxy {
@@ -305,6 +294,78 @@
 
     .explorer-controls {
       grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      margin-bottom: 10px;
+      padding: 10px;
+      border-color: rgba(246, 190, 88, 0.18);
+      background:
+        linear-gradient(180deg, rgba(255, 247, 232, 0.025), transparent 70%),
+        rgba(10, 10, 8, 0.62);
+      box-shadow: none;
+    }
+
+    .explorer-context-strip {
+      display: grid;
+      grid-template-columns: minmax(180px, 0.36fr) minmax(0, 1fr);
+      gap: 8px 14px;
+      align-items: center;
+      margin: 0 0 8px;
+      border: 1px solid rgba(246, 190, 88, 0.2);
+      border-radius: 14px;
+      padding: 9px 12px;
+      background:
+        linear-gradient(90deg, rgba(246, 190, 88, 0.08), transparent 48%),
+        rgba(0, 0, 0, 0.26);
+      color: var(--muted);
+    }
+
+    .explorer-context-strip__label {
+      display: grid;
+      gap: 2px;
+    }
+
+    .explorer-context-strip__label span {
+      color: rgba(246, 190, 88, 0.72);
+      font-size: 0.64rem;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .explorer-context-strip__label strong {
+      color: var(--text);
+      font-size: 0.95rem;
+      line-height: 1.2;
+    }
+
+    .explorer-context-strip__body {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .explorer-context-strip__note {
+      grid-column: 1 / -1;
+      margin: -2px 0 0;
+      color: rgba(255, 247, 232, 0.6);
+      font-size: 0.76rem;
+      font-weight: 760;
+      line-height: 1.35;
+    }
+
+    .explorer-context-chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      border: 1px solid rgba(246, 190, 88, 0.18);
+      border-radius: 999px;
+      padding: 4px 9px;
+      background: rgba(0, 0, 0, 0.22);
+      color: rgba(255, 247, 232, 0.74);
+      font-size: 0.72rem;
+      font-weight: 850;
+      line-height: 1;
     }
 
     .explorer-control {
@@ -316,7 +377,7 @@
     .explorer-control label,
     .explorer-control-label {
       color: var(--gold);
-      font-size: 0.75rem;
+      font-size: 0.68rem;
       font-weight: 800;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -435,14 +496,15 @@
     .explorer-control select,
     .explorer-inline-button {
       width: 100%;
-      min-height: 42px;
+      min-height: 36px;
       border: 1px solid rgba(246, 190, 88, 0.3);
       border-radius: 10px;
-      padding: 0 12px;
+      padding: 0 10px;
       background: rgba(0, 0, 0, 0.36);
       color: var(--text);
       font: inherit;
-      font-weight: 700;
+      font-size: 0.84rem;
+      font-weight: 760;
     }
 
     .explorer-inline-button {
@@ -474,7 +536,7 @@
     }
 
     .explorer-control select {
-      height: 42px;
+      height: 36px;
     }
 
     .explorer-control-help {
@@ -847,7 +909,7 @@
       display: grid;
       grid-template-columns: minmax(210px, 0.34fr) minmax(0, 1fr);
       gap: 12px;
-      margin: 0 0 12px;
+      margin: 0 10px 10px;
       border: 1px solid rgba(246, 190, 88, 0.2);
       border-radius: 16px;
       padding: 11px 12px;
@@ -1263,10 +1325,11 @@
 
     .explorer-panel {
       position: relative;
-      border: 1px solid var(--line);
+      border: 1px solid rgba(246, 190, 88, 0.34);
       border-radius: 18px;
       background: var(--panel-strong);
       overflow: hidden;
+      box-shadow: 0 26px 86px rgba(0, 0, 0, 0.42), 0 0 0 1px rgba(246, 190, 88, 0.05);
     }
 
     .explorer-workbench {
@@ -1293,7 +1356,7 @@
     .explorer-stage-header h2 {
       margin: 0;
       color: var(--gold);
-      font-size: 0.86rem;
+      font-size: 0.95rem;
       font-weight: 900;
       letter-spacing: 0.13em;
       text-transform: uppercase;
@@ -1354,10 +1417,12 @@
 
     .explorer-active-results {
       display: grid;
-      gap: 10px;
-      padding: 13px 16px 16px;
+      gap: 8px;
+      padding: 10px 12px 12px;
       border-top: 1px solid rgba(246, 190, 88, 0.14);
-      background: rgba(0, 0, 0, 0.16);
+      background:
+        linear-gradient(180deg, rgba(255, 247, 232, 0.02), transparent 58%),
+        rgba(0, 0, 0, 0.24);
     }
 
     .explorer-active-results__header {
@@ -1370,13 +1435,13 @@
 
     .explorer-active-results__header strong {
       color: var(--text);
-      font-size: 0.9rem;
+      font-size: 0.82rem;
       line-height: 1.25;
     }
 
     .explorer-active-results__header span {
       color: var(--muted);
-      font-size: 0.78rem;
+      font-size: 0.72rem;
       font-weight: 700;
     }
 
@@ -1394,10 +1459,10 @@
 
     .explorer-path-rail {
       display: grid;
-      grid-template-columns: repeat(8, minmax(128px, 1fr));
-      gap: 8px;
+      grid-template-columns: repeat(8, minmax(112px, 1fr));
+      gap: 7px;
       overflow-x: auto;
-      padding-bottom: 12px;
+      padding-bottom: 8px;
     }
 
     .explorer-path-step {
@@ -1405,10 +1470,10 @@
       display: grid;
       grid-template-columns: auto minmax(0, 1fr);
       gap: 7px;
-      min-width: 128px;
+      min-width: 112px;
       border: 1px solid color-mix(in srgb, var(--explorer-marker-color) 42%, transparent);
       border-radius: 12px;
-      padding: 8px 9px;
+      padding: 7px 8px;
       background:
         linear-gradient(135deg, color-mix(in srgb, var(--explorer-marker-color) 18%, transparent), transparent 56%),
         rgba(16, 14, 11, 0.76);
@@ -1472,10 +1537,10 @@
     .explorer-active-results__track {
       display: flex;
       align-items: stretch;
-      gap: 8px;
+      gap: 7px;
       overflow-x: auto;
       overscroll-behavior-x: contain;
-      padding-bottom: 12px;
+      padding-bottom: 8px;
       scroll-padding-inline: 2px;
       scroll-snap-type: x proximity;
       -webkit-overflow-scrolling: touch;
@@ -1491,14 +1556,14 @@
 
     .explorer-active-result {
       --explorer-marker-color: #f7bd58;
-      flex: 0 0 clamp(150px, 15vw, 184px);
+      flex: 0 0 clamp(136px, 13vw, 168px);
       display: grid;
-      gap: 7px;
+      gap: 6px;
       align-content: start;
       border: 1px solid rgba(246, 190, 88, 0.22);
       border-radius: 11px;
-      padding: 8px 10px;
-      background: rgba(16, 14, 11, 0.78);
+      padding: 7px 9px;
+      background: rgba(14, 12, 10, 0.66);
       color: var(--text);
       cursor: pointer;
       text-align: left;
@@ -1578,7 +1643,7 @@
     .explorer-active-result__top > strong {
       min-width: 0;
       color: var(--text);
-      font-size: 0.82rem;
+      font-size: 0.78rem;
       font-weight: 900;
       line-height: 1.2;
     }
@@ -1620,7 +1685,7 @@
       gap: 1px;
       min-width: 0;
       color: var(--muted);
-      font-size: 0.7rem;
+      font-size: 0.66rem;
       font-weight: 800;
     }
 
@@ -1785,7 +1850,7 @@
     }
 
     .explorer-fretboard {
-      padding: 18px 16px;
+      padding: 20px 16px 18px;
       overflow-x: auto;
       background:
         radial-gradient(circle at 50% 6%, rgba(246, 190, 88, 0.08), transparent 42%),
@@ -2150,6 +2215,23 @@
         grid-template-columns: 1fr;
       }
 
+      .explorer-context-strip {
+        grid-template-columns: 1fr;
+      }
+
+      .explorer-context-strip__body {
+        justify-content: flex-start;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: 3px;
+        overscroll-behavior-x: contain;
+        -webkit-overflow-scrolling: touch;
+      }
+
+      .explorer-context-chip {
+        flex: 0 0 auto;
+      }
+
       .explorer-task-home {
         overflow: hidden;
       }
@@ -2163,7 +2245,7 @@
       }
 
       .explorer-task-card {
-        min-height: 128px;
+        min-height: 112px;
         scroll-snap-align: start;
       }
 
@@ -2341,6 +2423,18 @@
           <option value="chord">Chord / Voicing Finder</option>
         </select>
         <p class="explorer-control-help" id="explorer-explore-mode-help">Single grip filters exact strings. Scale path shows a practical route. Single-note finder shows one note at a time. Voicing identifier explains one shape. Chord / Voicing Finder searches practical shapes for a target chord.</p>
+      </div>
+    </section>
+
+    <section class="explorer-context-strip" id="explorer-context-strip" aria-label="Selected Explorer task">
+      <div class="explorer-context-strip__label">
+        <span>Current task</span>
+        <strong>Explore a grip</strong>
+      </div>
+      <div class="explorer-context-strip__body">
+        <span class="explorer-context-chip">Key: G</span>
+        <span class="explorer-context-chip">View: 3-string harmony</span>
+        <span class="explorer-context-chip">String group: all</span>
       </div>
     </section>
 
@@ -2561,6 +2655,6 @@
   <script src="pedal-steel-fretboard.js?v=explorer-harmonized-path-mode-20260626"></script>
   <script src="e9-fretboard-explorer-data.js?v=single-grip-octave-results-20260628"></script>
   <script src="e9-music-rules.js?v=legitimate-grip-vocabulary-20260628"></script>
-  <script src="e9-fretboard-explorer.js?v=explorer-mode-home-dedupe-20260704"></script>
+  <script src="e9-fretboard-explorer.js?v=explorer-card-hierarchy-20260704b"></script>
 </body>
 </html>

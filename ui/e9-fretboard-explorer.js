@@ -180,6 +180,7 @@
     scale: document.getElementById("explorer-scale"),
     harmony: document.getElementById("explorer-harmony"),
     harmonyControl: document.getElementById("explorer-harmony-control"),
+    contextStrip: document.getElementById("explorer-context-strip"),
     gripVocabulary: document.getElementById("explorer-grip-vocabulary"),
     gripVocabularyControl: document.getElementById("explorer-grip-vocabulary-control"),
     stringGroup: document.getElementById("explorer-string-group"),
@@ -228,6 +229,33 @@
   let selectedGripCandidateId = "";
   let selectedSyncEventId = "s3-f3-open";
   let chordFinderQuery = "";
+
+  const TASK_CARD_META = {
+    "find-chord": {
+      label: "Find a chord",
+      context: "Search practical chord pockets before choosing one on the fretboard.",
+    },
+    "find-note": {
+      label: "Find a note",
+      context: "Locate one note, then check which pedals or levers move it.",
+    },
+    "explore-grip": {
+      label: "Explore a grip",
+      context: "Start with one playable string set and compare validated pockets.",
+    },
+    "walk-harmonized-scale": {
+      label: "Walk a harmonized scale",
+      context: "Follow the scale path; each card maps to a visible fretboard marker.",
+    },
+    "study-movement-path": {
+      label: "Study a movement path",
+      context: "Compare nearby grips that connect one chord shape to another.",
+    },
+    "identify-voicing": {
+      label: "Identify a voicing",
+      context: "Choose fret, strings, and controls to name the shape.",
+    },
+  };
   let selectedChordRoot = "F";
   let selectedChordQuality = "major7";
   let selectedChordControlScope = "common";
@@ -2376,6 +2404,56 @@
     });
   }
 
+  function activeTaskMeta() {
+    const fallbackTask = defaultTaskCardForMode(els.exploreMode?.value || EXPLORE_MODES.single);
+    return TASK_CARD_META[selectedTaskCard] || TASK_CARD_META[fallbackTask] || TASK_CARD_META["explore-grip"];
+  }
+
+  function contextStripChips(rows) {
+    const chips = [
+      `Key: ${activeKey()}`,
+      `Copedent: ${selectedOptionLabel(els.copedent) || "Emmons E9"}`,
+    ];
+    if (isChordFinderMode()) {
+      const target = selectedChordFinderTarget();
+      chips.push(`Chord: ${target?.label || target?.rootLabel || selectedChordRoot}`);
+      chips.push(`Grip vocabulary: ${selectedOptionLabel(els.gripVocabulary) || "Core"}`);
+    } else if (isVoicingIdentifierMode()) {
+      chips.push(`Fret: ${voicingFret}`);
+      chips.push(`Strings: ${selectedVoicingStrings.join("-") || "choose strings"}`);
+    } else if (isNoteFinderMode()) {
+      chips.push(`Note: ${selectedNoteFinderTarget()?.note || activeKey()}`);
+      chips.push(`Workflow: ${selectedNoteWorkflow === "build" ? "Build a grip" : "Find note"}`);
+    } else if (isPathMode()) {
+      chips.push(`Path: ${selectedOptionLabel(els.pathFamily) || selectedGroupLabel()}`);
+      chips.push(`Scale: ${selectedOptionLabel(els.scale) || `${activeKey()} major`}`);
+    } else {
+      chips.push(`Scale: ${selectedOptionLabel(els.scale) || `${activeKey()} major`}`);
+      chips.push(`String group: ${selectedOptionLabel(els.stringGroup) || "All groups"}`);
+    }
+    if (Array.isArray(rows)) {
+      chips.push(`${rows.length} visible ${rows.length === 1 ? "card" : "cards"}`);
+    }
+    return chips.filter(Boolean);
+  }
+
+  function updateContextStrip(rows) {
+    if (!els.contextStrip) {
+      return;
+    }
+    const task = activeTaskMeta();
+    els.contextStrip.innerHTML = `
+      <div class="explorer-context-strip__label">
+        <span>Current task</span>
+        <strong>${escapeHtml(task.label)}</strong>
+      </div>
+      <div class="explorer-context-strip__body">
+        ${contextStripChips(rows).map((chip) => `<span class="explorer-context-chip">${escapeHtml(chip)}</span>`).join("")}
+      </div>
+      <p class="explorer-context-strip__note">${escapeHtml(task.context)}</p>
+    `;
+  }
+
   function applyTaskCard(taskId) {
     const task = String(taskId || "explore-grip");
     const taskModeMap = {
@@ -4420,6 +4498,7 @@
     renderCopedentChart();
     renderControlImpactPreview();
     renderNoteFinder();
+    updateContextStrip(visibleNoteCells().map(decorateNoteCellForRender).filter((cell) => cell.isTargetMatch));
     const renderedText = [
       els.noteFinder?.textContent || "",
       els.activeResults?.textContent || "",
@@ -4703,6 +4782,7 @@
     renderChordFinderPanel(target, rows);
     renderFretRangeFilter(rowsBeforeRange, rows);
     renderControlImpactPreview();
+    updateContextStrip(rows);
     renderChordFinderResults(target, rows, allRows);
     renderFretboard(rowsForMap, { showHighlightLabels: false });
     renderChordFinderDetail(selected);
@@ -4925,6 +5005,7 @@
     renderCopedentChart();
     renderControlImpactPreview();
     renderVoicingIdentifierPanel(result, identity);
+    updateContextStrip(currentRows);
     if (!row) {
       els.activeResults.innerHTML = '<p class="explorer-empty">Fix the fret or string entry to identify the voicing.</p>';
       els.rowList.innerHTML = "";
@@ -5008,6 +5089,7 @@
     renderCopedentChart();
     renderControlImpactPreview();
     currentMarkerGroups = groupRowsForMarkers(rows);
+    updateContextStrip(rows);
     renderActiveResults(rows);
     renderCards(rows);
     renderFretboard(pathRowsForFretboard(rows));
