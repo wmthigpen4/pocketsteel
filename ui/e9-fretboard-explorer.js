@@ -1164,6 +1164,12 @@
       },
       display_summary: `${identity.label} at fret ${result.fret} on strings ${result.strings.join("-")}`,
       explanation: `Computed from ${activeCopedent()?.label || "the selected copedent"}; no retrieval is used.`,
+      voicing_status: identity.voicing_status,
+      present_tones: identity.present_tones || [],
+      omitted_tones: identity.omitted_tones || identity.missingIntervals || [],
+      confidence: identity.confidence,
+      alternate_readings: identity.alternate_readings || identity.alternates || [],
+      warnings: identity.warnings || [],
       per_string_changes: perStringChangesFromCells(result.cells),
       string_action_labels: stringActionLabelsFromCells(result.cells),
     };
@@ -4825,6 +4831,7 @@
       : "";
     const alternateGripText = voicingIdentifierAlternateGripText(result);
     const gripWarningText = result.gripWarning ? ` ${result.gripWarning}` : "";
+    const identityWarnings = toArray(identity.warnings);
     const keyLabelTitle = notationMode === "notes" ? "Selected-key note labels" : `${notationModeLabel()} against key`;
     const explanationText = identity.explanation || `${identity.label} is the best common-name match for ${result.cells.map((cell) => cell.finalNote).join(", ")}. Confidence is ${identity.confidence}. ${identity.partial ? "This is a partial or ambiguous voicing, so context matters." : "The selected notes match the chord tones directly."}`;
     els.selectedDetail.className = "explorer-selected-detail";
@@ -4836,8 +4843,10 @@
       <section class="explorer-teaching-note" aria-label="Voicing explanation">
         <strong>Why this name fits</strong>
         <p>${escapeHtml(`${explanationText}${combinationText}${alternateGripText}${gripWarningText}`)}</p>
+        ${identityWarnings.length ? `<p>${escapeHtml(identityWarnings.join(" "))}</p>` : ""}
       </section>
       <dl class="explorer-detail-grid">
+        ${detailRow("Voicing status", voicingStatusLabel(identity))}
         ${detailRow("Fret", result.fret)}
         ${detailRow("Strings", result.strings.join("-"))}
         ${detailRow("Grip type", result.gripLabel)}
@@ -4845,21 +4854,38 @@
         ${detailRow("Watch out", result.gripWatchOut)}
         ${detailRow("Pedals / levers", controlText)}
         ${detailRow("Notes", result.cells.map((cell) => cell.finalNote))}
+        ${detailRow("Present tones", identity.present_tones || [])}
         ${detailRow("Notes with register", activePitchRegisterMode() === "off" ? "" : result.cells.map((cell) => cellRegisterLabel(cell)))}
         ${detailRow(keyLabelTitle, result.cells.map((cell) => cell.notationValue))}
         ${detailRow("Intervals in voicing", identity.intervals.map(formatInterval))}
         ${detailRow("Likely function", identity.functionText)}
-        ${detailRow("Omitted tones", identity.missingIntervals?.map(formatInterval))}
+        ${detailRow("Omitted tones", identity.omitted_tones || identity.missingIntervals?.map(formatInterval))}
         ${detailRow("Confidence", identity.confidence)}
-        ${detailRow("Alternate readings", identity.alternates)}
+        ${detailRow("Alternate readings", identity.alternate_readings || identity.alternates)}
+        ${detailRow("Warnings", identityWarnings)}
       </dl>
       ${voicingStringActionRowsHtml(result.cells)}
     `;
   }
 
   function voicingIdentifierTitle(result, identity) {
-    const baseLabel = result.strings.length === 1 ? identity.label : `${identity.label} chord`;
+    const status = String(identity.voicing_status || "").toLowerCase();
+    const shouldSayChord = result.strings.length > 1 && !["color", "partial", "ambiguous", "unsupported", "rootless"].includes(status);
+    const baseLabel = shouldSayChord ? `${identity.label} chord` : identity.label;
     return identity.functionText ? `${baseLabel} (${identity.functionText})` : baseLabel;
+  }
+
+  function voicingStatusLabel(identity) {
+    const labels = {
+      full: "Full chord",
+      partial: "Partial voicing",
+      color: "Color voicing / no 3rd",
+      rootless: "Rootless voicing",
+      ambiguous: "Ambiguous",
+      unsupported: "Not enough notes",
+    };
+    const status = String(identity?.voicing_status || "").toLowerCase();
+    return labels[status] || (identity?.partial ? "Partial voicing" : "Full chord");
   }
 
   function voicingIdentifierAlternateGripText(result) {
@@ -4876,7 +4902,11 @@
       .map((cell) => `String ${cell.stringNumber} gives ${cell.finalNote}`)
       .join(", ");
     const functionText = identity.functionText ? ` In ${scaleLabel}, that is ${identity.functionText}.` : "";
-    return `${identity.label} chord: ${notes}. Fret ${result.fret}; strings ${result.strings.join("-")}; ${result.controlState.label}.${functionText} ${stringRoles}.${voicingIdentifierAlternateGripText(result)}`;
+    const statusText = voicingStatusLabel(identity);
+    const omittedText = formatValue(identity.omitted_tones || identity.missingIntervals || [], "");
+    const warningText = toArray(identity.warnings).join(" ");
+    const chordNoun = String(identity.voicing_status || "").toLowerCase() === "full" ? "chord" : "voicing";
+    return `${identity.label} ${chordNoun}: ${notes}. Fret ${result.fret}; strings ${result.strings.join("-")}; ${result.controlState.label}. Status: ${statusText}${omittedText ? `; omitted ${omittedText}` : ""}. Confidence: ${identity.confidence}.${functionText} ${stringRoles}.${warningText ? ` ${warningText}` : ""}${voicingIdentifierAlternateGripText(result)}`;
   }
 
   function renderVoicingIdentifierPanel(result, identity) {
@@ -4916,6 +4946,8 @@
         <section class="explorer-voicing-summary" aria-label="Identified voicing">
           <strong>${escapeHtml(voicingIdentifierTitle(result, identity))}</strong>
           <p>${escapeHtml(voicingIdentifierSummaryText(result, identity))}</p>
+          <p>${escapeHtml(`Voicing status: ${voicingStatusLabel(identity)}. Present tones: ${formatValue(identity.present_tones || [], "none")}. Omitted tones: ${formatValue(identity.omitted_tones || identity.missingIntervals || [], "none")}.`)}</p>
+          ${(identity.alternate_readings || identity.alternates || []).length ? `<p>${escapeHtml(`Alternate readings: ${formatValue(identity.alternate_readings || identity.alternates)}.`)}</p>` : ""}
           ${result.gripExplanation ? `<p>${escapeHtml(result.gripExplanation)}</p>` : ""}
           ${result.gripWatchOut ? `<p>${escapeHtml(result.gripWatchOut)}</p>` : ""}
           ${result.gripRoles ? `<p>${escapeHtml(`Grip roles are contextual: ${result.gripRoles}. A two-note grip is a dyad or partial voicing unless the notes spell a complete chord.`)}</p>` : ""}
@@ -5015,7 +5047,7 @@
     }
     els.activeResults.innerHTML = `
       <div class="explorer-active-results__header">
-        <strong>${escapeHtml(`Identified ${result.strings.length === 1 ? identity.label : `${identity.label} chord`}`)}</strong>
+        <strong>${escapeHtml(`Identified ${voicingIdentifierTitle(result, identity)}`)}</strong>
       </div>
       <div class="explorer-active-results__track">
         ${resultButtonHtml(row, "data-active-result-row")}

@@ -586,6 +586,13 @@
   }
 
   function voicingExplanation(label, quality, intervals, missingIntervals) {
+    const hasNoThirdColor = (quality?.id === "sus2" || quality?.id === "sus4" || quality?.id === "fifth")
+      && !intervals.includes(3)
+      && !intervals.includes(4);
+    if (hasNoThirdColor) {
+      const presentRoles = intervals.map(intervalRoleLabel).join(", ");
+      return `${label} is a no-3rd color voicing: it includes ${presentRoles}, but does not include a major or minor 3rd. Treat it as a color/power shape, not a complete major or minor chord.`;
+    }
     if (!missingIntervals.length) {
       return quality.id === "dominant7"
         ? `${label} spells a dominant-7 voicing: ${intervals.map(intervalRoleLabel).join(", ")}.`
@@ -599,6 +606,66 @@
         ? "partial dominant-7"
         : `partial ${quality.label}`;
     return `Likely voicing: ${label}. This is a ${partialKind} grip: it includes ${presentRoles}, but omits ${missingRoles}. On pedal steel, three-note grips often imply extended chords with one or more tones omitted.`;
+  }
+
+  function displayToneForInterval(rootPitchClass, interval, context = {}) {
+    const pitchClass = normalizePitchClass(rootPitchClass + interval);
+    return `${intervalRoleLabel(interval)} (${displayNoteForPitchClassInKey(pitchClass, context.key || "", context)})`;
+  }
+
+  function presentToneLabels(rootPitchClass, intervals, context = {}) {
+    if (rootPitchClass === null || rootPitchClass === undefined) {
+      return [];
+    }
+    return Array.isArray(intervals)
+      ? intervals.map((interval) => displayToneForInterval(rootPitchClass, interval, context))
+      : [];
+  }
+
+  function omittedToneLabels(rootPitchClass, intervals, context = {}) {
+    if (rootPitchClass === null || rootPitchClass === undefined) {
+      return [];
+    }
+    return Array.isArray(intervals)
+      ? intervals.map((interval) => displayToneForInterval(rootPitchClass, interval, context))
+      : [];
+  }
+
+  function voicingStatusForQuality(quality, intervals, missingIntervals, noteCount) {
+    if (noteCount < 2) {
+      return "unsupported";
+    }
+    if (!quality || quality.id === "ambiguous") {
+      return "ambiguous";
+    }
+    if (missingIntervals.includes(0)) {
+      return "rootless";
+    }
+    const hasThird = intervals.includes(3) || intervals.includes(4);
+    if (!hasThird && (quality.id === "sus2" || quality.id === "sus4" || quality.id === "fifth")) {
+      return "color";
+    }
+    if (missingIntervals.length) {
+      return "partial";
+    }
+    return "full";
+  }
+
+  function voicingWarningsForQuality(quality, intervals, missingIntervals, status) {
+    const warnings = [];
+    if (status === "color") {
+      warnings.push("No 3rd is present, so this does not define major vs minor by itself.");
+    }
+    if (status === "rootless") {
+      warnings.push("The root is omitted; treat this as context-dependent unless another instrument supplies the root.");
+    }
+    if (status === "partial") {
+      warnings.push(`Partial voicing: omitted ${missingIntervals.map(intervalRoleLabel).join(", ")}.`);
+    }
+    if (quality?.id === "minor7flat5" && missingIntervals.includes(10)) {
+      warnings.push("This does not include the flat 7, so do not treat it as a full m7b5 chord.");
+    }
+    return warnings;
   }
 
   function displayNoteForActiveKey(pitchClass, context = {}) {
@@ -678,13 +745,23 @@
       label,
       quality: partial ? "partial dominant 7" : "dominant 7",
       confidence: partial ? "medium" : "high",
+      voicing_status: partial ? "partial" : "full",
       functionText: partial ? `V7 color in ${context.key}` : `V7 in ${context.key}`,
       alternates: fallbackLabel ? [fallbackLabel] : [],
+      alternate_readings: fallbackLabel ? [fallbackLabel] : [],
       intervals: intervalLabelsAgainstRoot(notes, target.rootPitchClass),
       rootPitchClass: target.rootPitchClass,
       partial,
       missingIntervals,
       missingIntervalNames: missingIntervals,
+      present_tones: [
+        hasRoot ? "root" : "",
+        hasThird ? "3rd" : "",
+        hasFifth ? "5th" : "",
+        hasFlatSeven ? "flat 7" : "",
+      ].filter(Boolean),
+      omitted_tones: missingIntervals.map(formatInterval),
+      warnings: partial ? [`Partial V7 color: omitted ${missingIntervals.map(formatInterval).join(", ")}.`] : [],
       explanation,
     };
   }
@@ -696,9 +773,14 @@
         label: "Need at least two notes",
         quality: "incomplete",
         confidence: "low",
+        voicing_status: "unsupported",
         functionText: "not enough notes to identify a voicing",
         alternates: [],
+        alternate_readings: [],
         intervals: [],
+        present_tones: [],
+        omitted_tones: [],
+        warnings: ["Choose at least two notes; one note is not enough to identify a voicing."],
       };
     }
     const candidates = [];
@@ -748,27 +830,49 @@
         label: "Ambiguous voicing",
         quality: "ambiguous",
         confidence: "low",
+        voicing_status: "ambiguous",
         functionText: "not a clear common triad or seventh shape",
         alternates: [],
+        alternate_readings: [],
         intervals: toArray(notes).map((note) => notationLabelForFinalNote(note, "", context)),
+        present_tones: [],
+        omitted_tones: [],
+        warnings: ["This pitch set does not clearly match one common E9 chord name."],
       };
     }
-    const label = partialChordLabel(best.rootPitchClass, best.quality, best.missingIntervals, context);
+    const status = voicingStatusForQuality(best.quality, best.intervals, best.missingIntervals, pitchClasses.length);
+    const noThirdAdd9 = status === "color"
+      && best.quality.id === "sus2"
+      && best.intervals.includes(0)
+      && best.intervals.includes(2)
+      && best.intervals.includes(7);
+    const label = noThirdAdd9
+      ? `${displayNoteForActiveKey(best.rootPitchClass, context)}5/add9(no3)`
+      : partialChordLabel(best.rootPitchClass, best.quality, best.missingIntervals, context);
     const alternates = candidates
       .filter((candidate) => candidate !== best)
       .slice(0, 3)
       .map((candidate) => partialChordLabel(candidate.rootPitchClass, candidate.quality, candidate.missingIntervals, context));
+    const omittedIntervals = status === "color" && !best.missingIntervals.length
+      ? [4]
+      : best.missingIntervals;
+    const warnings = voicingWarningsForQuality(best.quality, best.intervals, omittedIntervals, status);
     return {
       label,
-      quality: best.partial ? `partial ${best.quality.label}` : best.quality.label,
-      confidence: chordConfidence(best.quality, best.exact, best.missingIntervals, best.intervals),
+      quality: status === "color" ? "no-3rd color" : best.partial ? `partial ${best.quality.label}` : best.quality.label,
+      confidence: status === "color" ? "medium" : chordConfidence(best.quality, best.exact, best.missingIntervals, best.intervals),
+      voicing_status: status,
       functionText: voicingFunctionForRoot(best.rootPitchClass, best.quality, context),
       alternates,
+      alternate_readings: alternates,
       intervals: intervalLabelsAgainstRoot(notes, best.rootPitchClass),
       rootPitchClass: best.rootPitchClass,
-      partial: best.partial,
-      missingIntervals: best.missingIntervals.map(omittedIntervalLabel),
-      explanation: voicingExplanation(label, best.quality, best.intervals, best.missingIntervals),
+      partial: best.partial || status !== "full",
+      missingIntervals: omittedIntervals.map(omittedIntervalLabel),
+      present_tones: presentToneLabels(best.rootPitchClass, best.intervals, context),
+      omitted_tones: omittedToneLabels(best.rootPitchClass, omittedIntervals, context),
+      warnings,
+      explanation: voicingExplanation(label, best.quality, best.intervals, omittedIntervals),
     };
   }
 
@@ -1084,6 +1188,7 @@
     intervalLabelsAgainstRoot,
     intervalNameFromSemitones,
     intervalRoleLabel,
+    omittedToneLabels,
     isExtendedChordQuality,
     normalizeChordFinderText,
     normalizeIntervalToken,
@@ -1098,6 +1203,7 @@
     parseFunctionChordFinderQuery,
     partialChordLabel,
     pitchClassForNote,
+    presentToneLabels,
     pitchRegisterDetail,
     prefersFlatSpelling,
     qualityPriority,
