@@ -4895,18 +4895,179 @@
     return "";
   }
 
-  function voicingIdentifierSummaryText(result, identity) {
-    const scaleLabel = selectedOptionLabel(els.scale) || `${activeKey()} ${els.scale.value}`;
-    const notes = result.cells.map((cell) => cell.finalNote).join(", ");
-    const stringRoles = result.cells
-      .map((cell) => `String ${cell.stringNumber} gives ${cell.finalNote}`)
-      .join(", ");
-    const functionText = identity.functionText ? ` In ${scaleLabel}, that is ${identity.functionText}.` : "";
-    const statusText = voicingStatusLabel(identity);
-    const omittedText = formatValue(identity.omitted_tones || identity.missingIntervals || [], "");
-    const warningText = toArray(identity.warnings).join(" ");
-    const chordNoun = String(identity.voicing_status || "").toLowerCase() === "full" ? "chord" : "voicing";
-    return `${identity.label} ${chordNoun}: ${notes}. Fret ${result.fret}; strings ${result.strings.join("-")}; ${result.controlState.label}. Status: ${statusText}${omittedText ? `; omitted ${omittedText}` : ""}. Confidence: ${identity.confidence}.${functionText} ${stringRoles}.${warningText ? ` ${warningText}` : ""}${voicingIdentifierAlternateGripText(result)}`;
+  function voicingRootLabel(identity) {
+    const label = formatValue(identity?.label || "", "");
+    const match = label.match(/^([A-G](?:#|b)?)/);
+    if (match) {
+      return match[1];
+    }
+    if (Number.isFinite(identity?.rootPitchClass)) {
+      return displayNoteForPitchClassInKey(identity.rootPitchClass);
+    }
+    return activeKey();
+  }
+
+  function voicingLearnerTitle(identity) {
+    const status = String(identity?.voicing_status || "").toLowerCase();
+    const root = voicingRootLabel(identity);
+    if (status === "color") {
+      return `${root} color voicing — no 3rd`;
+    }
+    if (status === "partial") {
+      return `${identity.label} partial voicing`;
+    }
+    if (status === "rootless") {
+      return `${identity.label} rootless voicing`;
+    }
+    if (status === "ambiguous") {
+      return `${identity.label} ambiguous voicing`;
+    }
+    if (status === "unsupported") {
+      return "Not enough notes to name a voicing";
+    }
+    return `${identity.label} chord`;
+  }
+
+  function voicingConfidenceLabel(identity) {
+    const confidence = formatValue(identity?.confidence || "", "");
+    return confidence ? confidence.charAt(0).toUpperCase() + confidence.slice(1) : "Unknown";
+  }
+
+  function parseToneLabel(tone) {
+    const text = formatValue(tone, "");
+    const match = text.match(/^(.+?)\s*\(([^)]+)\)$/);
+    if (!match) {
+      return { role: text, note: "" };
+    }
+    return { role: match[1].trim(), note: match[2].trim() };
+  }
+
+  function displayToneRole(role) {
+    const normalized = formatValue(role, "").toLowerCase();
+    if (normalized === "9th") {
+      return "9th / 2nd";
+    }
+    if (normalized === "11th") {
+      return "11th / 4th";
+    }
+    if (normalized === "13th") {
+      return "13th / 6th";
+    }
+    return formatValue(role, "");
+  }
+
+  function toneRoleForCell(cell, identity) {
+    const cellPitchClass = pitchClassForNote(cell.finalNote);
+    const tone = toArray(identity.present_tones).map(parseToneLabel).find((candidate) => (
+      candidate.note && pitchClassForNote(candidate.note) === cellPitchClass
+    ));
+    return tone ? displayToneRole(tone.role) : formatValue(cell.notationValue || cell.finalNote, "");
+  }
+
+  function chipListHtml(items, className = "explorer-voicing-chip") {
+    return toArray(items).map((item) => `<span class="${className}">${escapeHtml(formatValue(item, ""))}</span>`).join("");
+  }
+
+  function voicingToneRowsHtml(result, identity) {
+    return result.cells.map((cell) => `
+      <li>
+        <span>String ${escapeHtml(cell.stringNumber)}</span>
+        <strong>${escapeHtml(cell.finalNote)}</strong>
+        <span>= ${escapeHtml(toneRoleForCell(cell, identity))}</span>
+      </li>
+    `).join("");
+  }
+
+  function voicingUseNotes(result, identity) {
+    const status = String(identity?.voicing_status || "").toLowerCase();
+    if (status === "color") {
+      return [
+        "Use as a color/partial voicing, not as your main beginner major grip.",
+        "Good for a suspended, open sound or a passing color.",
+      ];
+    }
+    if (status === "partial" || status === "rootless") {
+      return [
+        "Use when the band, melody, or next grip supplies the missing chord tone.",
+        "Treat it as context-dependent until the missing tone is clear.",
+      ];
+    }
+    if (status === "ambiguous" || status === "unsupported") {
+      return [
+        "Use this as a pitch check first; add another chord tone before treating it as a named voicing.",
+      ];
+    }
+    if (result.gripExplanation) {
+      return [result.gripExplanation];
+    }
+    return ["Use this as a complete voicing for the selected fret, strings, and pedals/levers."];
+  }
+
+  function voicingCautionNotes(identity) {
+    const status = String(identity?.voicing_status || "").toLowerCase();
+    const root = voicingRootLabel(identity);
+    const warnings = toArray(identity.warnings);
+    const notes = [];
+    if (status === "color" || toArray(identity.omitted_tones).some((tone) => /3rd/i.test(formatValue(tone, "")))) {
+      notes.push(`This is not a complete ${root} major chord by itself.`);
+      notes.push(`For a plain ${root} major grip, use a full triad such as 4-5-6, 5-6-8, or 6-8-10 where available.`);
+    }
+    warnings.forEach((warning) => {
+      if (!notes.some((note) => note.toLowerCase() === formatValue(warning, "").toLowerCase())) {
+        notes.push(warning);
+      }
+    });
+    return notes;
+  }
+
+  function voicingIdentifierStructuredSummaryHtml(result, identity) {
+    const omitted = identity.omitted_tones || identity.missingIntervals || [];
+    const alternates = identity.alternate_readings || identity.alternates || [];
+    const cautionNotes = voicingCautionNotes(identity);
+    return `
+      <section class="explorer-voicing-summary" aria-label="Identified voicing">
+        <div class="explorer-voicing-summary__header">
+          <div class="explorer-voicing-summary__title">
+            <strong>${escapeHtml(voicingLearnerTitle(identity))}</strong>
+            <span>Technical name: ${escapeHtml(identity.label)}</span>
+          </div>
+          <div class="explorer-voicing-summary__chips" aria-label="Voicing status">
+            <span class="explorer-voicing-chip">${escapeHtml(voicingStatusLabel(identity))}</span>
+            <span class="explorer-voicing-chip">Confidence: ${escapeHtml(voicingConfidenceLabel(identity))}</span>
+            <span class="explorer-voicing-chip">Fret ${escapeHtml(result.fret)}</span>
+            <span class="explorer-voicing-chip">strings ${escapeHtml(result.strings.join("-"))}</span>
+            <span class="explorer-voicing-chip">${escapeHtml(result.controlState.label)}</span>
+          </div>
+        </div>
+        <div class="explorer-voicing-summary__sections">
+          <section class="explorer-voicing-summary__section">
+            <h4>What notes are here</h4>
+            <ul class="explorer-voicing-tone-list">${voicingToneRowsHtml(result, identity)}</ul>
+          </section>
+          <section class="explorer-voicing-summary__section">
+            <h4>What is missing</h4>
+            <div class="explorer-voicing-summary__chips">${chipListHtml(omitted)}</div>
+            ${toArray(omitted).some((tone) => /3rd/i.test(formatValue(tone, ""))) ? "<p>Because there is no 3rd, this does not define major vs minor by itself.</p>" : ""}
+          </section>
+          <section class="explorer-voicing-summary__section">
+            <h4>How to use it</h4>
+            <ul>${voicingUseNotes(result, identity).map((note) => `<li>${escapeHtml(note)}</li>`).join("")}</ul>
+          </section>
+          ${toArray(alternates).length ? `
+            <section class="explorer-voicing-summary__section">
+              <h4>Alternate readings</h4>
+              <div class="explorer-voicing-summary__chips">${chipListHtml(alternates)}</div>
+            </section>
+          ` : ""}
+          ${cautionNotes.length ? `
+            <section class="explorer-voicing-summary__section explorer-voicing-summary__section--warning">
+              <h4>Warning / caution</h4>
+              <ul>${cautionNotes.map((note) => `<li>${escapeHtml(note)}</li>`).join("")}</ul>
+            </section>
+          ` : ""}
+        </div>
+      </section>
+    `;
   }
 
   function renderVoicingIdentifierPanel(result, identity) {
@@ -4942,17 +5103,7 @@
         </div>
       </div>
       ${result.warning || voicingUiWarning || result.gripWarning ? `<p class="explorer-voicing-identifier__warning">${escapeHtml([result.warning, voicingUiWarning, result.gripWarning].filter(Boolean).join(" "))}</p>` : ""}
-      ${result.warning ? "" : `
-        <section class="explorer-voicing-summary" aria-label="Identified voicing">
-          <strong>${escapeHtml(voicingIdentifierTitle(result, identity))}</strong>
-          <p>${escapeHtml(voicingIdentifierSummaryText(result, identity))}</p>
-          <p>${escapeHtml(`Voicing status: ${voicingStatusLabel(identity)}. Present tones: ${formatValue(identity.present_tones || [], "none")}. Omitted tones: ${formatValue(identity.omitted_tones || identity.missingIntervals || [], "none")}.`)}</p>
-          ${(identity.alternate_readings || identity.alternates || []).length ? `<p>${escapeHtml(`Alternate readings: ${formatValue(identity.alternate_readings || identity.alternates)}.`)}</p>` : ""}
-          ${result.gripExplanation ? `<p>${escapeHtml(result.gripExplanation)}</p>` : ""}
-          ${result.gripWatchOut ? `<p>${escapeHtml(result.gripWatchOut)}</p>` : ""}
-          ${result.gripRoles ? `<p>${escapeHtml(`Grip roles are contextual: ${result.gripRoles}. A two-note grip is a dyad or partial voicing unless the notes spell a complete chord.`)}</p>` : ""}
-        </section>
-      `}
+      ${result.warning ? "" : voicingIdentifierStructuredSummaryHtml(result, identity)}
     `;
 
     const fretInput = document.getElementById("explorer-voicing-fret");

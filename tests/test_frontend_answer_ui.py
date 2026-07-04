@@ -282,9 +282,10 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "pedal-steel-fretboard.js?v=explorer-compact-copedent-20260625" not in html
     assert '<script src="e9-fretboard-explorer-data.js?v=single-grip-octave-results-20260628"></script>' in html
     assert "[hidden] {\n      display: none !important;\n    }" in html
-    assert '<script src="e9-music-rules.js?v=voicing-identifier-hardening-20260704"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=voicing-identifier-hardening-20260704"></script>' in html
-    assert html.index("e9-music-rules.js?v=voicing-identifier-hardening-20260704") < html.index("e9-fretboard-explorer.js?v=voicing-identifier-hardening-20260704")
+    assert '<script src="e9-music-rules.js?v=voicing-readability-20260704"></script>' in html
+    assert '<script src="e9-fretboard-explorer.js?v=voicing-readability-20260704"></script>' in html
+    assert html.index("e9-music-rules.js?v=voicing-readability-20260704") < html.index("e9-fretboard-explorer.js?v=voicing-readability-20260704")
+    assert "e9-fretboard-explorer.js?v=voicing-identifier-hardening-20260704" not in html
     assert "e9-fretboard-explorer.js?v=explorer-workbench-redesign-20260628" not in html
     assert "e9-fretboard-explorer.js?v=e-lower-pocket-d-major-20260628" not in html
     assert "e9-fretboard-explorer.js?v=compact-explorer-tools-20260628" not in html
@@ -413,7 +414,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "data-explorer-task-card" in script
     assert "function applyTaskCard(taskId)" in script
     assert "study-movement-path" in script
-    assert "voicing-identifier-hardening-20260704" in html
+    assert "voicing-readability-20260704" in html
     assert "explorer-mode-home-dedupe-20260704" not in html
     assert "explorer-handoff-20260701" not in html
     assert ".explorer-mode-panel {" in html
@@ -653,7 +654,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "musicRules.identifyVoicing" in script
     assert "musicRules.parseChordFinderQuery" in script
     assert "musicRules.chordFinderQualityGate" in script
-    assert 'e9-fretboard-explorer.js?v=voicing-identifier-hardening-20260704' in html
+    assert 'e9-fretboard-explorer.js?v=voicing-readability-20260704' in html
     assert ".explorer-chord-map-card .explorer-active-result__fields {" in html
     assert ".explorer-chord-map-card .explorer-active-result__fields span {" in html
     assert "grid-template-columns: minmax(72px, 0.48fr) minmax(0, 1fr);" in html
@@ -1946,8 +1947,13 @@ assert.equal(elements["explorer-control-impact-preview"].hidden, true);
 assert.equal(elements["explorer-top-interval-filter"].hidden, true);
 assert.equal(elements["explorer-fret-range-filter"].hidden, true);
 assert.match(elements["explorer-voicing-identifier"].textContent, /Choose a fret, up to four strings/);
-assert.match(elements["explorer-voicing-identifier"].textContent, /G major/);
-assert.match(elements["explorer-voicing-identifier"].textContent, /G chord: B, G, D\. Fret 3; strings 3-4-5; Open/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /G chord/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /Technical name: G/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /Full chord/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /String 3\s*B\s*=\s*3rd/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /String 4\s*G\s*=\s*root/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /String 5\s*D\s*=\s*5th/);
+assert.doesNotMatch(elements["explorer-voicing-identifier"].textContent, /G chord: B, G, D/);
 assert.match(elements["explorer-active-results"].textContent, /Identified G/);
 assert.match(elements["explorer-selected-detail"].textContent, /Voicing identifier/);
 assert.match(elements["explorer-selected-detail"].textContent, /NotesB, G, D/);
@@ -2000,7 +2006,11 @@ assert.deepEqual(voicingControlButtons().map((button) => button.getAttribute("da
 assert.equal(voicingControlButtons().some((button) => button.getAttribute("data-voicing-control") === "AB"), false);
 assert.equal(voicingControlButtons().some((button) => button.getAttribute("data-voicing-control") === "BC"), false);
 setVoicingControls(["B", "C"]);
-assert.match(elements["explorer-voicing-identifier"].textContent, /Am chord: C, A, E\. Fret 3; strings 3-4-5; B pedal \+ C pedal/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /Am chord/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /Technical name: Am/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /String 3\s*C\s*=\s*minor 3rd/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /String 4\s*A\s*=\s*root/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /String 5\s*E\s*=\s*5th/);
 assert.match(elements["explorer-selected-detail"].textContent, /Am/);
 assert.match(elements["explorer-selected-detail"].textContent, /Likely functionii function in G/);
 assert.match(elements["explorer-selected-detail"].textContent, /selecting B pedal and C pedal individually/);
@@ -2010,11 +2020,11 @@ elements["explorer-key"].value = "F";
 elements["explorer-key"].dispatchChange();
 setVoicingStrings([4, 6, 10]);
 setVoicingControls(["A", "B"]);
-assert.match(elements["explorer-voicing-identifier"].textContent, /F major/);
-assert.match(elements["explorer-voicing-identifier"].textContent, /C chord \(V function in F\)/);
-assert.match(elements["explorer-voicing-identifier"].textContent, /C chord: G, C, E\. Fret 3; strings 4-6-10; A pedal \+ B pedal/);
-assert.match(elements["explorer-voicing-identifier"].textContent, /String 4 gives G, String 6 gives C, String 10 gives E/);
-assert.match(elements["explorer-voicing-identifier"].textContent, /uses string 4 instead of string 8/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /C chord/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /Technical name: C/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /String 4\s*G\s*=\s*5th/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /String 6\s*C\s*=\s*root/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /String 10\s*E\s*=\s*3rd/);
 assert.doesNotMatch(elements["explorer-active-results"].textContent, /Card and SVG marker show the same fret\/string group/);
 assert.match(elements["explorer-active-results"].textContent, /Identified C chord/);
 assert.match(elements["explorer-selected-detail"].textContent, /C/);
@@ -2030,8 +2040,11 @@ elements["explorer-voicing-fret"].value = "3";
 elements["explorer-voicing-fret"].dispatchChange();
 setVoicingStrings([3, 5, 8]);
 setVoicingControls(["B", "C"]);
-assert.match(elements["explorer-voicing-identifier"].textContent, /C chord \(V function in F\)/);
-assert.match(elements["explorer-voicing-identifier"].textContent, /C chord: C, E, G\. Fret 3; strings 3-5-8; B pedal \+ C pedal/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /C chord/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /Technical name: C/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /String 3\s*C\s*=\s*root/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /String 5\s*E\s*=\s*3rd/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /String 8\s*G\s*=\s*5th/);
 assert.match(elements["explorer-selected-detail"].textContent, /Grip typeSong\/tab vocabulary grip/);
 assert.match(elements["explorer-selected-detail"].textContent, /Why use this gripA spread grip/);
 assert.equal(lastMount.options.positions[0].grip, "3-5-8");
@@ -2044,8 +2057,12 @@ elements["explorer-voicing-fret"].value = "8";
 elements["explorer-voicing-fret"].dispatchChange();
 setVoicingStrings([5, 7, 8]);
 setVoicingControls(["E-lower"]);
-assert.match(elements["explorer-voicing-identifier"].textContent, /G chord \(I function in G\)/);
-assert.match(elements["explorer-voicing-identifier"].textContent, /G chord: G, D, B\. Fret 8; strings 5-7-8; E-lower lever/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /G chord/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /Technical name: G/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /What notes are here/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /String 5\s*G\s*=\s*root/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /String 7\s*D\s*=\s*5th/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /String 8\s*B\s*=\s*3rd/);
 assert.match(elements["explorer-selected-detail"].textContent, /Grip typeE-lower pocket/);
 assert.match(elements["explorer-selected-detail"].textContent, /Why use this gripAn E-lower pocket grip/);
 assert.equal(lastMount.options.positions[0].grip, "5-7-8");
@@ -2055,11 +2072,23 @@ setVoicingControls([]);
 elements["explorer-voicing-fret"].value = "3";
 elements["explorer-voicing-fret"].dispatchChange();
 setVoicingStrings([5, 7, 8]);
-assert.match(elements["explorer-voicing-identifier"].textContent, /G5\/add9\(no3\) voicing: D, A, G\. Fret 3; strings 5-7-8; Open/);
-assert.match(elements["explorer-voicing-identifier"].textContent, /Voicing status: Color voicing \/ no 3rd/);
-assert.match(elements["explorer-voicing-identifier"].textContent, /Omitted tones: 3rd \(B\)/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /G color voicing — no 3rd/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /Technical name: G5\/add9\(no3\)/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /Confidence: Medium/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /What notes are here/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /String 5\s*D\s*=\s*5th/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /String 7\s*A\s*=\s*9th \/ 2nd/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /String 8\s*G\s*=\s*root/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /What is missing/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /3rd \(B\)/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /Because there is no 3rd, this does not define major vs minor by itself/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /How to use it/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /Use as a color\/partial voicing/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /Alternate readings/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /Warning \/ caution/);
 assert.match(elements["explorer-voicing-identifier"].textContent, /No 3rd is present/);
 assert.doesNotMatch(elements["explorer-voicing-identifier"].textContent, /G chord: D, A, G/);
+assert.doesNotMatch(elements["explorer-voicing-identifier"].textContent, /G5\/add9\(no3\) voicing: D, A, G/);
 assert.doesNotMatch(elements["explorer-active-results"].textContent, /G5\/add9\(no3\) chord/);
 assert.match(elements["explorer-selected-detail"].textContent, /Voicing statusColor voicing \/ no 3rd/);
 assert.match(elements["explorer-selected-detail"].textContent, /Present tonesroot \(G\), 9th \(A\), 5th \(D\)/);
@@ -2105,8 +2134,9 @@ elements["explorer-voicing-fret"].value = "3";
 elements["explorer-voicing-fret"].dispatchChange();
 setVoicingStrings([5, 6, 9]);
 setVoicingControls(["A", "B"]);
-assert.match(elements["explorer-voicing-identifier"].textContent, /Fmaj7\(no3\) voicing: E, C, F\. Fret 3; strings 5-6-9; A pedal \+ B pedal/);
-assert.match(elements["explorer-voicing-identifier"].textContent, /Voicing status: Partial voicing/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /Fmaj7\(no3\) partial voicing/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /Technical name: Fmaj7\(no3\)/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /Partial voicing/);
 assert.match(elements["explorer-selected-detail"].textContent, /Fmaj7\(no3\)/);
 assert.match(elements["explorer-selected-detail"].textContent, /partial major-7 grip/);
 assert.match(elements["explorer-selected-detail"].textContent, /Voicing statusPartial voicing/);
@@ -2119,7 +2149,7 @@ assert.doesNotMatch(elements["explorer-selected-detail"].textContent, /Dominant 
 assert.equal(lastMount.options.positions[0].notes.join(","), "E,C,F");
 
 setVoicingStrings([5, 7, 9]);
-assert.match(elements["explorer-voicing-identifier"].textContent, /Fmaj7\(no5\) voicing: E, A, F\. Fret 3; strings 5-7-9; A pedal \+ B pedal/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /Fmaj7\(no5\) partial voicing/);
 assert.match(elements["explorer-selected-detail"].textContent, /Fmaj7\(no5\)/);
 assert.match(elements["explorer-selected-detail"].textContent, /Omitted tones5th \(C\)/);
 assert.match(elements["explorer-selected-detail"].textContent, /Confidencemedium-high/);
@@ -2132,7 +2162,7 @@ elements["explorer-key"].dispatchChange();
 elements["explorer-voicing-fret"].value = "1";
 elements["explorer-voicing-fret"].dispatchChange();
 setVoicingStrings([3, 4, 9]);
-assert.match(elements["explorer-voicing-identifier"].textContent, /F7\(no5\) voicing: A, F, D#\. Fret 1; strings 3-4-9; Open/);
+assert.match(elements["explorer-voicing-identifier"].textContent, /F7\(no5\) partial voicing/);
 assert.match(elements["explorer-selected-detail"].textContent, /F7\(no5\)/);
 assert.match(elements["explorer-selected-detail"].textContent, /partial dominant-7 grip/);
 assert.match(elements["explorer-selected-detail"].textContent, /Intervals in voicing3, 1, ♭7/);
