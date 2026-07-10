@@ -53,6 +53,8 @@ def test_structured_g_scale_degree_phrase_builds_synced_tab_and_fretboard() -> N
     assert tab["validation"]["ok"] is True
     assert tab["validation"]["eventCount"] == 4
     assert len(tab["events"]) == len(fretboard["positions"]) == len(exercise["events"])
+    assert "Ly |" not in tab["rendered_tab"]
+    assert all("lyric" not in event for event in tab["events"])
     assert [event["renderablePositionId"] for event in exercise["events"]] == [
         position["id"] for position in fretboard["positions"]
     ]

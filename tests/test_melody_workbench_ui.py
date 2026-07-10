@@ -61,6 +61,15 @@ Object.assign(original, { tokens: ["1", "3", "5"], artist: "Stale Artist", sourc
 const originalPayload = studio.buildMelodyRequest(original);
 assert.equal("material" in originalPayload, false);
 assert.deepEqual(originalPayload.melody, ["1", "3", "5"]);
+assert.deepEqual(
+  studio.eventStepPresentation({ step: 1, resolvedNote: "D", resolvedPitch: "D4", notes: [{ string: 5, fret: 3, changes: [] }] }),
+  { note: "1. D4", position: "String 5 · Fret 3 · Open" }
+);
+assert.deepEqual(
+  studio.eventStepPresentation({ step: 2, resolvedPitch: "E4", notes: [{ string: 4, fret: 3, changes: ["A"] }, { string: 6, fret: 3, changes: ["A"] }] }),
+  { note: "2. E4", position: "Strings 4 + 6 · Fret 3 · A pedal" }
+);
+assert.equal(studio.routeButtonLabel({ recommended: true, label: "Recommended harmony" }), "Recommended harmony");
 """
     )
 
@@ -92,11 +101,13 @@ def test_melody_workbench_has_guided_tasks_feature_state_and_fretboard_first_res
     assert "Select a note below to change its octave" in html
     assert "Only the selected note changes octave" in html
     assert "state.selectedPhraseIndex" in script
-    assert html.count("?v=melody-fretboard-cleanup-20260710") == 3
+    assert html.count("?v=melody-lesson-labels-20260710") == 3
     assert html.index('id="studio-fretboard"') < html.index('id="studio-tab"')
     assert 'id="studio-continue"' in html
     assert "does not listen to or extract notes from the link yet" in html
     assert "selectPedalSteelFretboardPosition" in script
+    assert "Active tab note" in script
+    assert "Active step" not in script
     assert "requestPayload: { melodyRequest: buildMelodyRequest(state) }" in script
     assert "clearMaterial();" in script
     assert "sectionNumber" in script

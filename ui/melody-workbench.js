@@ -236,6 +236,30 @@
     };
   }
 
+  function controlLabel(change) {
+    return ({ A: "A pedal", B: "B pedal", C: "C pedal", E: "E-lower lever", F: "F lever", V: "vertical lever", G: "G lever", D: "D lever" })[change] || change;
+  }
+
+  function eventStepPresentation(event) {
+    const notes = event?.notes || [];
+    const strings = notes.map((note) => note.string);
+    const frets = Array.from(new Set(notes.map((note) => note.fret)));
+    const controls = Array.from(new Set(notes.flatMap((note) => note.changes || []))).map(controlLabel);
+    const positionParts = [
+      `${strings.length === 1 ? "String" : "Strings"} ${strings.join(" + ")}`,
+      `${frets.length === 1 ? "Fret" : "Frets"} ${frets.join(" + ")}`,
+      controls.length ? controls.join(" + ") : "Open"
+    ];
+    return {
+      note: `${event?.step}. ${event?.resolvedPitch || event?.resolvedNote || "Note"}`,
+      position: positionParts.join(" · ")
+    };
+  }
+
+  function routeButtonLabel(route) {
+    return route?.label || (route?.recommended ? "Recommended harmony" : "Arrangement");
+  }
+
   const api = {
     MAX_EVENTS_PER_SECTION,
     TASKS,
@@ -251,7 +275,9 @@
     sectionCount,
     validateTokens,
     reorderToken,
-    buildMelodyRequest
+    buildMelodyRequest,
+    eventStepPresentation,
+    routeButtonLabel
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = api;
@@ -500,8 +526,8 @@
       button.setAttribute("aria-pressed", String(selected));
     });
     elements.eventDetail.textContent = event.explanation || `${event.resolvedNote} · string ${note.string} · fret ${note.fret}`;
-    const grip = (event.notes || []).map((item) => `S${item.string} F${item.fret}${item.changes?.length ? ` ${item.changes.join("+")}` : ""}`).join(" · ");
-    elements.activeTabStep.textContent = `Active step ${event.step}: ${event.resolvedNote}${event.resolvedPitch ? ` (${event.resolvedPitch})` : ""} · ${grip}`;
+    const presentation = eventStepPresentation(event);
+    elements.activeTabStep.textContent = `Active tab note ${event.step}: ${event.resolvedPitch || event.resolvedNote} · ${presentation.position}`;
     elements.previous.disabled = state.activeEventIndex === 0;
     elements.next.disabled = state.activeEventIndex === events.length - 1;
     if (event.renderablePositionId) {
@@ -512,13 +538,16 @@
   function renderEvents(exercise) {
     elements.eventStrip.replaceChildren();
     (exercise.events || []).forEach((event, index) => {
-      const note = event.notes?.[0] || {};
       const button = doc.createElement("button");
       button.type = "button";
       button.className = "event-step";
       button.dataset.eventIndex = String(index);
-      const grip = (event.notes || []).map((item) => `S${item.string}`).join("+");
-      button.textContent = `${event.step}. ${event.resolvedNote}${event.resolvedPitch ? ` ${event.resolvedPitch}` : ""} · ${grip} F${note.fret}`;
+      const presentation = eventStepPresentation(event);
+      const noteLabel = doc.createElement("strong");
+      noteLabel.textContent = presentation.note;
+      const positionLabel = doc.createElement("span");
+      positionLabel.textContent = presentation.position;
+      button.append(noteLabel, positionLabel);
       button.addEventListener("click", () => selectEvent(index));
       elements.eventStrip.appendChild(button);
     });
@@ -570,7 +599,7 @@
       button.type = "button";
       button.className = "route-tab";
       button.dataset.routeId = route.id;
-      button.textContent = `${route.recommended ? "Recommended · " : ""}${route.label}`;
+      button.textContent = routeButtonLabel(route);
       button.addEventListener("click", () => activateRoute(route.id));
       (primaryRoutes.includes(route) ? elements.routeTabs : elements.advancedRoutes).appendChild(button);
     });

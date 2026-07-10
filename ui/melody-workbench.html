@@ -205,7 +205,9 @@
     #studio-transport { display: grid; gap: 14px; margin-top: 18px; }
     .transport-buttons { display: flex; align-items: center; justify-content: center; gap: 10px; }
     .event-strip { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 8px; }
-    .event-step { flex: 0 0 auto; min-height: 48px; border: 1px solid rgba(244, 234, 214, 0.14); border-radius: 12px; background: rgba(5, 7, 7, 0.52); color: var(--muted); cursor: pointer; padding: 9px 11px; }
+    .event-step { flex: 0 0 auto; min-height: 58px; display: grid; gap: 4px; border: 1px solid rgba(244, 234, 214, 0.14); border-radius: 12px; background: rgba(5, 7, 7, 0.52); color: var(--muted); cursor: pointer; padding: 9px 12px; text-align: left; }
+    .event-step strong { color: var(--cream); font-size: 14px; }
+    .event-step span { font-size: 12px; }
     .event-step.is-selected { border-color: var(--gold); background: rgba(240, 191, 105, 0.13); color: var(--cream); }
     #studio-event-detail { margin: 0; text-align: center; color: var(--cream); font-size: 16px; }
     #studio-tab { margin-top: 18px; }
@@ -412,8 +414,8 @@
     </div>
   </main>
 
-  <script src="answer-client.js?v=melody-fretboard-cleanup-20260710"></script>
-  <script src="pedal-steel-fretboard.js?v=melody-fretboard-cleanup-20260710"></script>
-  <script src="melody-workbench.js?v=melody-fretboard-cleanup-20260710"></script>
+  <script src="answer-client.js?v=melody-lesson-labels-20260710"></script>
+  <script src="pedal-steel-fretboard.js?v=melody-lesson-labels-20260710"></script>
+  <script src="melody-workbench.js?v=melody-lesson-labels-20260710"></script>
 </body>
 </html>

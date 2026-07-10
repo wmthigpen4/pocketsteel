@@ -367,7 +367,6 @@ def build_route(
             TabEvent(
                 notes=candidate.notes,
                 chord=item.note,
-                lyric=f"step {index}",
                 comment=f"{scientific_pitch_for_value(resolved_pitches[index - 1])}; {label}",
             )
         )
