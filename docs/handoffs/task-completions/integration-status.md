@@ -1,6 +1,6 @@
 # Integration Status — Current Snapshot
 
-Updated: 2026-07-10 12:41 America/Chicago
+Updated: 2026-07-10 12:56 America/Chicago
 
 ## Repository state
 
@@ -11,7 +11,7 @@ Updated: 2026-07-10 12:41 America/Chicago
 
 ## Melody Exercise v0
 
-Status: **local development complete; protected-preview update blocked by host sudo**.
+Status: **PASS — implementation, local verification, protected-preview update, and authenticated protected browser smoke complete; ready for user smoke**.
 
 - Artist solos, commercial recordings, and complete arrangements route to teaching/transcription behavior, never copyright refusal.
 - Missing source material asks for a link, upload, passage, recording/version, or section.
@@ -35,26 +35,19 @@ Implementation handoff: `docs/handoffs/task-completions/2026-07-10-1238-01-melod
 - Local structured API smoke: ready artist lesson with four events, approximate label, tab, fretboard, and one recording source.
 - Local browser smoke: pass at `http://127.0.0.1:8898/ui/steel-guitar-rag-mock.html?access=beta_user&v=melody-v0-local-20260710`.
 - Browser verified synchronized event/position IDs, source attribution, original-source suppression, fixed tab whitespace/overflow, and no `[object Object]`.
+- Protected browser smoke: pass at `https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=melody-v0-c9e3650-20260710`.
+- Protected smoke verified artist attribution, transcription/adaptation and accuracy labels, shared event/tab/fretboard state, eight-event sectioning, Section 1 of 2 continuation, source-needed guidance without refusal, source suppression for original exercises, existing progression behavior, hidden empty source areas, and no `[object Object]`.
 
-## Protected preview blocker
+## Protected preview
 
-- Expected runtime HEAD: the current checkout HEAD after the status refresh, containing implementation commit `f37201a`.
-- Live loopback `/api/version`: `da1a763`, branch `feature/answer-api`, started 2026-07-09; Melody feature absent.
-- Installed LaunchDaemon wrapper differs from the committed wrapper and must be reinstalled.
-- `sudo -n true` failed because a host password is required. Codex did not request, read, or handle a password.
-- Public root, canonical UI URL, and `/api/version` correctly redirect unauthenticated requests to Cloudflare Access.
-- In-app protected navigation reached the Cloudflare Access email login page; login was not attempted, so protected browser behavior is **not tested**.
-- No protected-preview user-smoke URL is approved yet.
-
-Required privileged host step:
-
-```bash
-cd ~/Documents/Pocket\ Steel
-deploy/macos/install-private-preview-launchdaemon.sh install
-deploy/macos/install-private-preview-launchdaemon.sh restart
-```
-
-After the privileged step, Lane 12 must verify local `/api/version` equals the then-current `git rev-parse HEAD`, authenticate through Cloudflare Access, and smoke the exact cache-busted direct UI URL before user smoke begins.
+- Runtime smoke HEAD: `c9e3650` (contains implementation `f37201a`).
+- Loopback `/api/version`: `c9e3650`, branch `feature/answer-api`, `hybrid_private_first`, `cloudflare_access`, `features.melodyExercise=true`.
+- Installed wrapper matches the committed wrapper.
+- Cloudflare Access login succeeded in the in-app browser.
+- Exact protected UI URL passed authenticated browser smoke.
+- Browser navigation directly to `/api/version` was blocked by the browser client; the loopback version endpoint provided exact runtime proof. API fallback is not browser smoke.
+- Protected root `/` redirects to `/ui/steel-guitar-rag-mock.html`, drops the cache-bust, and the separate root tab showed the signed-out/backstage state. Use the exact direct `/ui/...?...` URL for user smoke.
+- Protected-smoke handoff: `docs/handoffs/task-completions/2026-07-10-1256-12-melody-protected-preview-pass.md`.
 
 ## Dirty worktree
 
@@ -67,6 +60,6 @@ After the implementation commit, unrelated work remains parked:
 
 ## Next action
 
-1. The user performs the two documented sudo commands above in a trusted local terminal.
-2. Codex resumes Lane 12, verifies `HEAD` and `/api/version`, runs authenticated protected browser smoke, records root/UI/API behavior, and produces one exact user-smoke URL only if green.
-3. User-reported issues then enter the approved end-to-end autopilot repair loop without renewed feature approval.
+1. The user runs the short Melody Exercise v0 checklist at `https://app.steelguitarrag.com/ui/steel-guitar-rag-mock.html?v=melody-v0-c9e3650-20260710`.
+2. User-reported issues enter the approved end-to-end autopilot repair loop without renewed feature approval.
+3. After user smoke passes, choose the next approved development slice; do not begin unrelated broad feature work during the smoke freeze.
