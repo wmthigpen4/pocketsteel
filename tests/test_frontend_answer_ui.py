@@ -247,15 +247,17 @@ let capturedRequest;
     assert result.returncode == 0, result.stderr
 
 
-def test_answer_ui_includes_melody_tool_and_synchronized_lesson_renderer() -> None:
+def test_answer_ui_links_to_melody_studio_and_keeps_lesson_renderer() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
     client = Path("ui/answer-client.js").read_text(encoding="utf-8")
 
-    assert 'id="melody-tool" hidden' in html
-    assert 'id="melody-kind"' in html
-    assert 'id="melody-key"' in html
-    assert 'id="melody-tokens"' in html
-    assert 'id="melody-submit"' in html
+    assert 'id="melody-studio-link"' in html
+    assert 'href="/ui/melody-workbench.html"' in html
+    assert 'aria-label="Open Melody Studio"' in html
+    assert '<span class="header-label-full">Melody Studio</span>' in html
+    assert '<span class="header-label-short">Melody</span>' in html
+    assert 'id="melody-tool"' not in html
+    assert 'id="melody-submit"' not in html
     assert 'id="answer-melody"' in html
     assert "function renderMelodyExercise(exercise)" in html
     assert "function clearMelodyExercise()" in html
@@ -264,9 +266,9 @@ def test_answer_ui_includes_melody_tool_and_synchronized_lesson_renderer() -> No
     assert "answerTab.dataset.activeMelodyEvent = selectedEvent.id;" in html
     assert "answerFretboardMount.dataset.activeMelodyEvent = selectedEvent.id;" in html
     assert "answerFretboardMount.dataset.activeMelodyPosition = selectedEvent.renderablePositionId;" in html
+    assert "selectPedalSteelFretboardPosition" in html
     assert "renderablePositionId: firstTextValue(event.renderablePositionId, event.positionId)" in client
-    assert "Up to eight events render per section" in html
-    assert "Copyright" not in html[html.index('id="melody-tool"'):html.index('<div class="try-asking"')]
+    assert 'studioLink.textContent = "Open in Melody Studio";' in html
 
 
 def test_answer_ui_uses_live_answer_client_not_mock_answer_data() -> None:
@@ -274,7 +276,7 @@ def test_answer_ui_uses_live_answer_client_not_mock_answer_data() -> None:
 
     assert '<script src="answer-client.js?v=melody-exercise-v0-20260710"></script>' in html
     assert '<script src="answer-client.js?v=e9-explorer-home-entry-20260623"></script>' not in html
-    assert '<script src="pedal-steel-fretboard.js?v=explorer-compare-fix-20260702b"></script>' in html
+    assert '<script src="pedal-steel-fretboard.js?v=melody-studio-ux-20260710"></script>' in html
     assert '<script src="pedal-steel-fretboard.js?v=e9-explorer-home-entry-20260623"></script>' not in html
     assert '<script src="mock-answer-data.js"></script>' not in html
     assert "STEEL_RAG_ANSWER_UI.requestAnswer" in html
@@ -334,7 +336,8 @@ def test_answer_ui_includes_home_hero_hanging_sign_without_changing_answer_logo(
 def test_answer_ui_links_to_e9_fretboard_explorer_surface() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
 
-    assert "<span>Explore Fretboard</span>" in html
+    assert '<span class="header-label-full">Explore Fretboard</span>' in html
+    assert '<span class="header-label-short">Fretboard</span>' in html
     assert 'href="/ui/e9-fretboard-explorer.html"' in html
     assert 'aria-label="Explore the E9 virtual fretboard"' in html
     assert 'title="Explore the E9 virtual fretboard"' in html
@@ -361,8 +364,8 @@ def test_answer_ui_links_to_e9_fretboard_explorer_surface() -> None:
     assert "explorer-entry-card" not in html
     assert "not corpus retrieval or RAG-generated fretboard positions" not in html
     assert "[object Object]" not in html
-    assert html.index("<span>Explore Fretboard</span>") < html.index('id="question"')
-    assert html.index("<span>Explore Fretboard</span>") < html.index("Get a Backstage Pass")
+    assert html.index('<span class="header-label-full">Explore Fretboard</span>') < html.index('id="question"')
+    assert html.index('<span class="header-label-full">Explore Fretboard</span>') < html.index("Get a Backstage Pass")
     assert ".explorer-header-link,\n    .backstage-trigger" not in html
 
 

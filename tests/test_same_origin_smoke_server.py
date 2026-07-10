@@ -66,7 +66,21 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     assert status == "200 OK"
     assert headers["Content-Type"] == "text/html; charset=utf-8"
     assert b'<script src="answer-client.js?v=melody-exercise-v0-20260710"></script>' in html
-    assert b'<script src="pedal-steel-fretboard.js?v=explorer-compare-fix-20260702b"></script>' in html
+    assert b'<script src="pedal-steel-fretboard.js?v=melody-studio-ux-20260710"></script>' in html
+
+    status, headers, studio = call_app(smoke_app(), "/ui/melody-workbench.html")
+    assert status == "200 OK"
+    assert headers["Content-Type"] == "text/html; charset=utf-8"
+    assert b"Turn a phrase into an E9 lesson." in studio
+    assert b'<script src="melody-workbench.js?v=melody-studio-ux-20260710"></script>' in studio
+
+    status, headers, studio_script = call_app(smoke_app(), "/ui/melody-workbench.js")
+    assert status == "200 OK"
+    assert headers["Content-Type"] in {
+        "text/javascript; charset=utf-8",
+        "application/javascript; charset=utf-8",
+    }
+    assert b"buildMelodyRequest" in studio_script
 
     status, headers, script = call_app(smoke_app(), "/ui/answer-client.js")
     assert status == "200 OK"

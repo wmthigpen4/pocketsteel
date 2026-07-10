@@ -176,8 +176,18 @@
     .header-actions {
       display: inline-flex;
       align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
       gap: 10px;
       flex: 0 0 auto;
+    }
+
+    .header-action-button[hidden] {
+      display: none;
+    }
+
+    .header-label-short {
+      display: none;
     }
 
     .header-action-button {
@@ -2325,6 +2335,14 @@
         gap: 8px;
       }
 
+      .header-label-full {
+        display: none;
+      }
+
+      .header-label-short {
+        display: inline;
+      }
+
       .backstage-overlay {
         padding: 12px;
         align-items: start;
@@ -2548,11 +2566,18 @@
       <div class="header-actions">
         <a class="header-action-button explorer-header-link" href="/ui/e9-fretboard-explorer.html" aria-label="Explore the E9 virtual fretboard" title="Explore the E9 virtual fretboard">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/><path d="M8 5v14"/><path d="M16 5v14"/></svg>
-          <span>Explore Fretboard</span>
+          <span class="header-label-full">Explore Fretboard</span>
+          <span class="header-label-short">Fretboard</span>
+        </a>
+        <a class="header-action-button melody-studio-header-link" id="melody-studio-link" href="/ui/melody-workbench.html" aria-label="Open Melody Studio" title="Open Melody Studio" hidden>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l10-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg>
+          <span class="header-label-full">Melody Studio</span>
+          <span class="header-label-short">Melody</span>
         </a>
         <button class="header-action-button backstage-trigger" type="button" aria-haspopup="dialog" aria-controls="backstage" aria-expanded="false">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5z"/><path d="M8 16h8"/><path d="M9 13l3-5 3 5"/><path d="M12 8v8"/></svg>
-          <span id="backstage-cta-label">Get a Backstage Pass</span>
+          <span class="header-label-full" id="backstage-cta-label">Get a Backstage Pass</span>
+          <span class="header-label-short" id="backstage-cta-short">Backstage</span>
         </button>
       </div>
     </header>
@@ -2588,52 +2613,6 @@
           <p class="access-helper" id="access-helper">Get a Backstage Pass to ask Steel Guitar RAG.</p>
         </div>
       </section>
-
-      <details class="melody-tool" id="melody-tool" hidden>
-        <summary>Build a melody or arrangement lesson</summary>
-        <div class="melody-tool-grid">
-          <label>
-            Teaching material
-            <select id="melody-kind">
-              <option value="user_melody">My melody</option>
-              <option value="artist_solo_lesson">Artist solo</option>
-              <option value="song_arrangement_lesson">Song arrangement</option>
-              <option value="original_exercise">Original exercise</option>
-            </select>
-          </label>
-          <label>
-            Key
-            <select id="melody-key">
-              <option value="G">G major</option>
-              <option value="C">C major</option>
-            </select>
-          </label>
-          <label>
-            Artist
-            <input id="melody-artist" type="text" placeholder="Artist or player">
-          </label>
-          <label>
-            Song / arrangement
-            <input id="melody-song" type="text" placeholder="Song or solo title">
-          </label>
-          <label>
-            Recording / section
-            <input id="melody-recording" type="text" placeholder="Version, timestamp, intro, solo...">
-          </label>
-          <label>
-            Source link
-            <input id="melody-source-url" type="url" placeholder="https://...">
-          </label>
-          <label class="is-wide">
-            Notes or scale degrees
-            <textarea id="melody-tokens" rows="2" placeholder="Example: 1 2 3 5 or G A B D"></textarea>
-          </label>
-        </div>
-        <div class="melody-tool-actions">
-          <button class="melody-tool-submit" id="melody-submit" type="button">Build Section 1</button>
-          <p class="melody-tool-note">Up to eight events render per section. Longer solos and arrangements continue section by section.</p>
-        </div>
-      </details>
 
       <div class="try-asking" aria-label="Suggested question">
         <div class="try-label-wrap"><p class="try-label">Try asking:</p></div>
@@ -3135,7 +3114,7 @@
   </div>
 
   <script src="answer-client.js?v=melody-exercise-v0-20260710"></script>
-  <script src="pedal-steel-fretboard.js?v=explorer-compare-fix-20260702b"></script>
+  <script src="pedal-steel-fretboard.js?v=melody-studio-ux-20260710"></script>
   <script>
     const question = document.querySelector("#question");
     const promptBox = document.querySelector(".prompt");
@@ -3143,7 +3122,7 @@
     const topic = document.querySelector("#topic");
     const suggestedPrompts = document.querySelector("#suggested-prompts");
     const page = document.querySelector(".page");
-    const homeSections = Array.from(document.querySelectorAll(".hero, .prompt-shell, .melody-tool, .try-asking"));
+    const homeSections = Array.from(document.querySelectorAll(".hero, .prompt-shell, .try-asking"));
     const brandHome = document.querySelector(".brand-home");
     const stageReturn = document.querySelector(".stage-return");
     const footer = document.querySelector("footer");
@@ -3154,15 +3133,7 @@
     const answerLead = document.querySelector("#answer-lead");
     const answerStatus = document.querySelector("#answer-status");
     const answerSectionGrid = document.querySelector("#answer-section-grid");
-    const melodyTool = document.querySelector("#melody-tool");
-    const melodyKind = document.querySelector("#melody-kind");
-    const melodyKey = document.querySelector("#melody-key");
-    const melodyArtist = document.querySelector("#melody-artist");
-    const melodySong = document.querySelector("#melody-song");
-    const melodyRecording = document.querySelector("#melody-recording");
-    const melodySourceUrl = document.querySelector("#melody-source-url");
-    const melodyTokens = document.querySelector("#melody-tokens");
-    const melodySubmit = document.querySelector("#melody-submit");
+    const melodyStudioLink = document.querySelector("#melody-studio-link");
     const answerMelody = document.querySelector("#answer-melody");
     const answerMelodyContent = document.querySelector("#answer-melody-content");
     const answerProgression = document.querySelector("#answer-progression");
@@ -3889,6 +3860,8 @@
       answerMelodyContent.innerHTML = "";
       delete answerTab.dataset.activeMelodyEvent;
       delete answerFretboardMount.dataset.activeMelodyEvent;
+      delete answerTab.dataset.activeMelodyPosition;
+      delete answerFretboardMount.dataset.activeMelodyPosition;
     }
 
     function melodyLabel(value) {
@@ -3975,6 +3948,10 @@
           if (selectedEvent.renderablePositionId) {
             answerTab.dataset.activeMelodyPosition = selectedEvent.renderablePositionId;
             answerFretboardMount.dataset.activeMelodyPosition = selectedEvent.renderablePositionId;
+            window.STEEL_RAG_FRETBOARD?.selectPedalSteelFretboardPosition?.(
+              answerFretboardMount,
+              selectedEvent.renderablePositionId
+            );
           } else {
             delete answerTab.dataset.activeMelodyPosition;
             delete answerFretboardMount.dataset.activeMelodyPosition;
@@ -4008,6 +3985,14 @@
           ? `Continue with Section ${section.nextSection} after this section is clean.`
           : "This arrangement continues in additional numbered sections.";
         card.appendChild(continuation);
+      }
+
+      if (exercise.status === "needs_source") {
+        const studioLink = document.createElement("a");
+        studioLink.className = "movement-lesson-card__handoff-link";
+        studioLink.href = `/ui/melody-workbench.html?kind=${encodeURIComponent(exercise.kind || "artist_solo_lesson")}`;
+        studioLink.textContent = "Open in Melody Studio";
+        card.appendChild(studioLink);
       }
 
       answerMelodyContent.appendChild(card);
@@ -4590,7 +4575,6 @@
       const canAskLive = STEEL_RAG_ANSWER_UI.canSubmitLiveQuestion(mockAccessState);
       primarySend.disabled = isBusy || !canAskLive;
       answerSend.disabled = isBusy || !canAskLive;
-      melodySubmit.disabled = isBusy || !canAskLive;
       suggestedPrompts.querySelectorAll(".example").forEach((button) => {
         button.disabled = isBusy;
       });
@@ -4644,40 +4628,6 @@
       return true;
     }
 
-    function melodyTokenList(value) {
-      return String(value || "").split(/[\s,]+/).map((token) => token.trim()).filter(Boolean);
-    }
-
-    function submitMelodyLesson() {
-      const kind = melodyKind.value;
-      const artist = melodyArtist.value.trim();
-      const song = melodySong.value.trim();
-      const recording = melodyRecording.value.trim();
-      const sourceUrl = melodySourceUrl.value.trim();
-      const tokens = melodyTokenList(melodyTokens.value);
-      const subject = [artist, song].filter(Boolean).join(" — ") || "my melody";
-      const questionText = kind === "artist_solo_lesson"
-        ? `Teach the artist solo from ${subject} on E9.`
-        : kind === "song_arrangement_lesson"
-          ? `Build an E9 teaching arrangement for ${subject}.`
-          : `Build an E9 melody exercise from ${subject}.`;
-      const melodyRequest = {
-        kind,
-        key: melodyKey.value,
-        tuning: "E9",
-        renderingMode: kind === "artist_solo_lesson" ? "transcription" : "e9_adaptation",
-        material: {
-          artist,
-          song,
-          recording,
-          sourceUrl,
-          section: "Section 1"
-        }
-      };
-      if (tokens.length) melodyRequest.melody = tokens;
-      submitQuestion(questionText, { melodyRequest });
-    }
-
     function submitHomeQuestion() {
       submitQuestion(question.value);
     }
@@ -4704,7 +4654,7 @@
       clearMelodyExercise();
       clearTabExamples();
       clearFretboardVisualization();
-      melodyTool.hidden = !backendSession.features?.melodyExercise;
+      melodyStudioLink.hidden = !backendSession.features?.melodyExercise;
       updateHelperState();
       question.focus();
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -4809,8 +4759,11 @@
 
     function applySessionAccess(session) {
       backendSession = session;
-      melodyTool.hidden = !session.features?.melodyExercise;
+      melodyStudioLink.hidden = !session.features?.melodyExercise;
       const isLocalDevSession = sessionUsesLocalDev(session);
+      melodyStudioLink.href = isLocalDevSession && sessionGrantsLiveAccess(session)
+        ? `/ui/melody-workbench.html?access=${encodeURIComponent(session.role)}`
+        : "/ui/melody-workbench.html";
       setDevPreviewAccessEnabled(isLocalDevSession);
 
       if (!isLocalDevSession) {
@@ -4980,7 +4933,6 @@
     });
 
     primarySend.addEventListener("click", submitHomeQuestion);
-    melodySubmit.addEventListener("click", submitMelodyLesson);
     brandHome.addEventListener("click", returnToStage);
     stageReturn.addEventListener("click", returnToStage);
 

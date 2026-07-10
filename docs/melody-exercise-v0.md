@@ -43,7 +43,9 @@ Ready exercises also return `tab_example` and `fretboard` derived from the same 
 
 ## Frontend Contract
 
-The main answer workspace provides a Melody / Arrangement teaching tool when the backend advertises `features.melodyExercise=true` through `/api/session`.
+When the backend advertises `features.melodyExercise=true` through `/api/session`, the home header exposes **Melody Studio** beside Explore Fretboard and Backstage. The technical inline form is not part of the home screen. `/ui/melody-workbench.html` owns the guided phrase-to-E9 workflow.
+
+Melody Studio begins with four learner jobs: artist solo, song arrangement, the learner's melody, and original practice phrase. Recording fields appear only for source-based jobs and must be cleared when the learner switches to a source-free job. The phrase builder accepts notes, scale degrees, or simple one-string E9 tab, provides deterministic presets and a note/degree palette, and states clearly that a source link supplies attribution rather than automatic audio transcription.
 
 The result shows:
 
@@ -53,6 +55,8 @@ The result shows:
 - numbered lesson section and continuation state;
 - synchronized event stepper, fixed-width tab, fretboard, and explanation;
 - no empty source section for source-free deterministic exercises.
+
+The dedicated lesson view is fretboard-first. Previous/next and event-step controls must visibly select the matching `renderablePositionId` in the fretboard component and update the active tab-step label. Long phrases expose a Continue to Section action using the existing `sectionNumber` request field. Mobile layout keeps the tab fixed-width inside its own horizontal scroller.
 
 The feature is controlled by `STEEL_RAG_ENABLE_MELODY_EXERCISE`, which defaults off. Protected preview may explicitly enable it for approved testing.
 

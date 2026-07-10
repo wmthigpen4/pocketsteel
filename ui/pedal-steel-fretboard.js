@@ -2863,6 +2863,20 @@
     return figure;
   }
 
+  function selectPedalSteelFretboardPosition(container, positionId) {
+    const figure = container?.matches?.("[data-component='PedalSteelFretboard']")
+      ? container
+      : container?.querySelector?.("[data-component='PedalSteelFretboard']");
+    if (!figure || !positionId) return false;
+    const selector = figure.querySelector(`[data-position-selector="${escapeSelectorValue(positionId)}"]`);
+    if (!selector) return false;
+    if (selector.hidden) {
+      showAllRecommendedPositions(figure);
+    }
+    selectPosition(figure, positionId);
+    return figure.dataset.selectedPositionId === positionId;
+  }
+
   const DEMO_HIGHLIGHTS = [
     {
       id: "g-major-open-3",
@@ -2947,6 +2961,7 @@
     mountPedalSteelFretboard,
     normalizedFretPosition,
     renderPedalSteelFretboard,
+    selectPedalSteelFretboardPosition,
   };
 
   global.STEEL_RAG_FRETBOARD = api;

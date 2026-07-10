@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Melody Studio · The Turnaround</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --cream: #fff4dc;
+      --muted: rgba(244, 234, 214, 0.7);
+      --gold: #f0bf69;
+      --panel: rgba(15, 17, 16, 0.9);
+      --line: rgba(240, 191, 105, 0.23);
+      --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --lesson: Georgia, "Times New Roman", serif;
+    }
+
+    * { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    html { min-height: 100%; background: #090a09; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: var(--cream);
+      font-family: var(--font);
+      background:
+        radial-gradient(circle at 50% -8%, rgba(225, 129, 42, 0.2), transparent 34rem),
+        linear-gradient(180deg, rgba(5, 6, 6, 0.42), rgba(5, 7, 7, 0.88)),
+        url("brand/steel-guitar-rag-landing-fallback-alpha.png?v=landing-alpha-app-20260618") center top / cover fixed;
+    }
+
+    button, input, textarea, select { font: inherit; }
+    button, a { -webkit-tap-highlight-color: transparent; }
+    a { color: var(--gold); }
+
+    .studio-header {
+      width: min(1240px, calc(100% - 40px));
+      margin: 0 auto;
+      min-height: 76px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+
+    .studio-brand {
+      color: var(--cream);
+      text-decoration: none;
+      display: grid;
+      gap: 2px;
+    }
+
+    .studio-brand span { color: var(--muted); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
+    .studio-brand strong { font-family: var(--lesson); font-size: 24px; }
+    .studio-nav { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+    .studio-nav a {
+      min-height: 40px;
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 0 14px;
+      background: rgba(8, 10, 9, 0.68);
+      color: var(--cream);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 750;
+    }
+
+    main { width: min(1160px, calc(100% - 40px)); margin: 0 auto; padding: 54px 0 80px; }
+    .studio-hero { max-width: 760px; margin: 0 auto 42px; text-align: center; }
+    .studio-kicker { margin: 0 0 10px; color: var(--gold); font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; font-size: 12px; }
+    h1 { margin: 0; font-family: var(--lesson); font-size: clamp(42px, 7vw, 76px); line-height: 0.98; font-weight: 650; }
+    .studio-hero p:last-child { max-width: 640px; margin: 20px auto 0; color: var(--muted); font-size: 18px; line-height: 1.6; }
+
+    .studio-panel {
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: linear-gradient(180deg, rgba(25, 25, 22, 0.94), var(--panel));
+      box-shadow: 0 28px 72px rgba(0, 0, 0, 0.42);
+      padding: clamp(20px, 4vw, 38px);
+    }
+
+    .studio-step-label { margin: 0 0 8px; color: var(--gold); font-size: 13px; font-weight: 800; }
+    h2, h3 { font-family: var(--lesson); font-weight: 650; }
+    h2 { margin: 0; font-size: clamp(28px, 4vw, 42px); }
+    h3 { margin: 0; font-size: 27px; }
+    .studio-copy { color: var(--muted); line-height: 1.55; }
+
+    .task-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 26px; }
+    .task-card {
+      min-height: 176px;
+      display: grid;
+      align-content: space-between;
+      gap: 20px;
+      border: 1px solid rgba(244, 234, 214, 0.14);
+      border-radius: 18px;
+      background: rgba(5, 7, 7, 0.52);
+      color: var(--cream);
+      cursor: pointer;
+      padding: 20px;
+      text-align: left;
+    }
+    .task-card:hover, .task-card:focus-visible, .task-card.is-selected { border-color: rgba(240, 191, 105, 0.7); background: rgba(240, 191, 105, 0.09); outline: none; }
+    .task-card strong { font-family: var(--lesson); font-size: 22px; line-height: 1.15; }
+    .task-card span { color: var(--muted); font-size: 14px; line-height: 1.45; }
+    .task-card em { color: var(--gold); font-style: normal; font-size: 13px; font-weight: 800; }
+
+    #studio-editor { margin-top: 24px; scroll-margin-top: 20px; }
+    .editor-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 26px; }
+    .key-field { min-width: 180px; }
+    .field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .field { display: grid; gap: 8px; color: var(--muted); font-size: 14px; font-weight: 700; }
+    .field.is-wide { grid-column: 1 / -1; }
+    .field input, .field textarea, .field select {
+      width: 100%;
+      border: 1px solid rgba(244, 234, 214, 0.16);
+      border-radius: 12px;
+      background: rgba(5, 7, 7, 0.72);
+      color: var(--cream);
+      padding: 12px 13px;
+      font-weight: 600;
+    }
+    .field textarea { min-height: 112px; resize: vertical; line-height: 1.5; }
+    .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--gold); outline: 2px solid rgba(240, 191, 105, 0.18); }
+    .field-help { margin: 0; color: rgba(244, 234, 214, 0.58); font-size: 13px; font-weight: 500; line-height: 1.5; }
+    #studio-material-fields { margin-bottom: 24px; }
+
+    .phrase-builder { margin-top: 24px; display: grid; gap: 18px; }
+    .palette-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .segmented { display: inline-flex; gap: 4px; border: 1px solid var(--line); border-radius: 999px; padding: 4px; background: rgba(5, 7, 7, 0.6); }
+    .segmented button, .preset-button {
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 8px 11px;
+      font-weight: 750;
+    }
+    .segmented button.is-selected { background: rgba(240, 191, 105, 0.16); color: var(--cream); }
+    .palette { display: grid; grid-template-columns: repeat(7, minmax(54px, 1fr)); gap: 9px; }
+    .palette-note {
+      min-height: 54px;
+      border: 1px solid rgba(240, 191, 105, 0.28);
+      border-radius: 14px;
+      background: rgba(240, 191, 105, 0.07);
+      color: var(--cream);
+      cursor: pointer;
+      font-size: 18px;
+      font-weight: 850;
+    }
+    .palette-note:hover, .palette-note:focus-visible { border-color: var(--gold); background: rgba(240, 191, 105, 0.15); outline: none; }
+    .presets { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+    .presets > span { color: var(--muted); font-size: 13px; }
+    .preset-button { border: 1px solid rgba(244, 234, 214, 0.14); color: var(--cream); }
+
+    .sequence-wrap { border: 1px solid rgba(244, 234, 214, 0.12); border-radius: 16px; padding: 14px; background: rgba(5, 7, 7, 0.38); }
+    .sequence { min-height: 50px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+    .sequence-empty { margin: 0; color: rgba(244, 234, 214, 0.48); font-size: 14px; }
+    .sequence-chip { display: inline-flex; align-items: center; gap: 3px; border: 1px solid rgba(240, 191, 105, 0.3); border-radius: 999px; padding: 5px 6px 5px 12px; background: rgba(240, 191, 105, 0.1); }
+    .sequence-chip strong { min-width: 24px; }
+    .sequence-chip button { width: 26px; height: 26px; border: 0; border-radius: 50%; background: rgba(0, 0, 0, 0.22); color: var(--muted); cursor: pointer; }
+    .sequence-chip button:disabled { opacity: 0.28; cursor: default; }
+    #studio-section-count { margin: 10px 0 0; color: var(--muted); font-size: 13px; }
+    #studio-error { margin: 0; border-left: 3px solid #f1a85f; padding: 10px 12px; color: #ffd7af; background: rgba(134, 61, 26, 0.14); }
+    .primary-action, .secondary-action {
+      min-height: 46px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-weight: 850;
+      padding: 0 18px;
+    }
+    .primary-action { border: 1px solid rgba(240, 191, 105, 0.6); background: var(--gold); color: #17120b; }
+    .secondary-action { border: 1px solid var(--line); background: rgba(7, 9, 9, 0.52); color: var(--cream); }
+    .editor-actions { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; margin-top: 24px; }
+
+    #studio-result { margin-top: 24px; scroll-margin-top: 20px; }
+    .result-head { display: grid; gap: 9px; margin-bottom: 22px; }
+    #studio-result-meta { color: var(--gold); font-size: 14px; font-weight: 800; text-transform: capitalize; }
+    #studio-result-source { margin: 0; color: var(--muted); }
+    #studio-source-needed { border: 1px solid var(--line); border-radius: 18px; background: rgba(240, 191, 105, 0.07); padding: 20px; }
+    #studio-source-needed p { color: var(--muted); line-height: 1.6; }
+    #studio-fretboard { margin-top: 18px; }
+    #studio-transport { display: grid; gap: 14px; margin-top: 18px; }
+    .transport-buttons { display: flex; align-items: center; justify-content: center; gap: 10px; }
+    .event-strip { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 8px; }
+    .event-step { flex: 0 0 auto; min-height: 48px; border: 1px solid rgba(244, 234, 214, 0.14); border-radius: 12px; background: rgba(5, 7, 7, 0.52); color: var(--muted); cursor: pointer; padding: 9px 11px; }
+    .event-step.is-selected { border-color: var(--gold); background: rgba(240, 191, 105, 0.13); color: var(--cream); }
+    #studio-event-detail { margin: 0; text-align: center; color: var(--cream); font-size: 16px; }
+    #studio-tab { margin-top: 18px; }
+    #studio-active-tab-step { margin: 0 0 8px; color: var(--gold); font-size: 14px; font-weight: 800; }
+    .tab-block { max-width: 100%; margin: 0; overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; background: rgba(4, 6, 6, 0.78); padding: 16px; color: var(--cream); font: 15px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre; }
+    .tab-block code { font: inherit; white-space: inherit; }
+    #studio-explanation { margin-top: 18px; border-radius: 16px; background: rgba(240, 191, 105, 0.06); padding: 16px; color: var(--muted); line-height: 1.6; }
+    .result-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+    .unavailable { max-width: 720px; margin: 0 auto; text-align: center; }
+
+    @media (max-width: 900px) {
+      .task-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 640px) {
+      .studio-header, main { width: calc(100% - 24px); }
+      .studio-header { align-items: flex-start; padding: 14px 0; }
+      .studio-brand strong { font-size: 19px; }
+      .studio-nav a { min-height: 36px; padding: 0 11px; font-size: 12px; }
+      main { padding-top: 34px; }
+      .task-grid, .field-grid { grid-template-columns: 1fr; }
+      .task-card { min-height: 142px; }
+      .field.is-wide { grid-column: auto; }
+      .editor-head, .palette-head { align-items: stretch; flex-direction: column; }
+      .key-field { min-width: 0; }
+      .palette { grid-template-columns: repeat(4, minmax(48px, 1fr)); }
+      .sequence-chip button { width: 30px; height: 30px; }
+      .tab-block { white-space: pre; overflow-x: auto; }
+    }
+  </style>
+</head>
+<body>
+  <header class="studio-header">
+    <a class="studio-brand" href="/ui/steel-guitar-rag-mock.html" aria-label="Return to The Turnaround home">
+      <span>The Turnaround</span>
+      <strong>Melody Studio</strong>
+    </a>
+    <nav class="studio-nav" aria-label="Studio navigation">
+      <a href="/ui/e9-fretboard-explorer.html">Explore Fretboard</a>
+      <a href="/ui/steel-guitar-rag-mock.html">Back home</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="studio-hero" aria-labelledby="studio-title">
+      <p class="studio-kicker">A phrase-to-E9 teaching workspace</p>
+      <h1 id="studio-title">Turn a phrase into an E9 lesson.</h1>
+      <p>Bring a short melody, solo passage, or song section. Melody Studio maps the notes into synchronized fretboard positions, tab, and practice steps.</p>
+    </section>
+
+    <section class="studio-panel unavailable" id="studio-unavailable" hidden>
+      <p class="studio-step-label">Melody Studio unavailable</p>
+      <h2>This workspace is not enabled here.</h2>
+      <p class="studio-copy">Return to The Turnaround and use the main question box, or try again in the protected preview.</p>
+      <a class="primary-action" href="/ui/steel-guitar-rag-mock.html" style="display:inline-flex;align-items:center;text-decoration:none;margin-top:12px;">Return home</a>
+    </section>
+
+    <div id="studio-workflow" hidden>
+      <section class="studio-panel" aria-labelledby="studio-task-heading">
+        <p class="studio-step-label">Step 1 of 4</p>
+        <h2 id="studio-task-heading">What do you want to learn?</h2>
+        <p class="studio-copy">Choose the job that sounds like what you came here to do.</p>
+        <div class="task-grid">
+          <button class="task-card" type="button" data-studio-task="artist_solo_lesson" aria-pressed="false">
+            <strong>Learn an artist’s solo</strong><span>Identify the recording, then build or paste the passage you want to practice.</span><em>Choose artist solo →</em>
+          </button>
+          <button class="task-card" type="button" data-studio-task="song_arrangement_lesson" aria-pressed="false">
+            <strong>Build a song arrangement</strong><span>Break a song into manageable E9 teaching sections.</span><em>Choose arrangement →</em>
+          </button>
+          <button class="task-card" type="button" data-studio-task="user_melody" aria-pressed="false">
+            <strong>Map my own melody</strong><span>Enter notes, degrees, or simple one-string tab and see where they live.</span><em>Choose my melody →</em>
+          </button>
+          <button class="task-card" type="button" data-studio-task="original_exercise" aria-pressed="false">
+            <strong>Make a practice phrase</strong><span>Start with a proven note pattern and turn it into an E9 drill.</span><em>Choose practice phrase →</em>
+          </button>
+        </div>
+      </section>
+
+      <section class="studio-panel" id="studio-editor" hidden aria-labelledby="studio-editor-title">
+        <div class="editor-head">
+          <div>
+            <p class="studio-step-label">Steps 2 and 3 of 4</p>
+            <h2 id="studio-editor-title">Build the phrase</h2>
+          </div>
+          <label class="field key-field">Key
+            <select id="studio-key"><option value="G">G major</option><option value="C">C major</option></select>
+            <span class="field-help">Melody Studio v0 supports G and C major.</span>
+          </label>
+        </div>
+
+        <div class="field-grid" id="studio-material-fields" hidden>
+          <label class="field">Artist or player<input id="studio-artist" placeholder="Example: Tom Brumley"></label>
+          <label class="field">Song or solo<input id="studio-song" placeholder="Song title"></label>
+          <label class="field">Recording / version<input id="studio-recording" placeholder="Album, live version, timestamp..."></label>
+          <label class="field">Section<input id="studio-section" placeholder="Intro, first chorus, solo at 1:32..."></label>
+          <label class="field is-wide">Attribution link<input id="studio-source-url" type="url" placeholder="https://..."><span class="field-help">This identifies the source. Melody Studio does not listen to or extract notes from the link yet.</span></label>
+        </div>
+
+        <div class="phrase-builder">
+          <div class="palette-head">
+            <div><h3>Build the phrase</h3><p class="field-help">Type below or add notes with the palette.</p></div>
+            <div class="segmented" aria-label="Phrase palette mode">
+              <button type="button" data-palette-mode="degrees" aria-pressed="true">Scale degrees</button>
+              <button type="button" data-palette-mode="notes" aria-pressed="false">Note names</button>
+            </div>
+          </div>
+          <div class="palette" id="studio-palette" aria-label="Phrase note palette"></div>
+          <div class="presets" aria-label="Practice phrase presets">
+            <span>Quick starts:</span>
+            <button class="preset-button" type="button" data-preset="1-2-3-5">1 2 3 5</button>
+            <button class="preset-button" type="button" data-preset="1-3-5-3">1 3 5 3</button>
+            <button class="preset-button" type="button" data-preset="5-6-5-3">5 6 5 3</button>
+          </div>
+          <label class="field">Phrase input
+            <textarea id="studio-phrase-input" placeholder="Try: 1 2 3 5, G A B D, or simple tab such as S4: 3 5 7 10"></textarea>
+            <span class="field-help">Use note names, scale degrees 1–7, or one-string E9 tab in the form “S4: 3 5 7”.</span>
+          </label>
+          <div class="sequence-wrap">
+            <div class="sequence" id="studio-sequence" aria-label="Current phrase sequence"></div>
+            <p id="studio-section-count"></p>
+          </div>
+          <p id="studio-error" role="alert" hidden></p>
+        </div>
+        <div class="editor-actions">
+          <p class="field-help">Long phrases continue as numbered lessons with up to eight notes per section.</p>
+          <button class="primary-action" type="button" id="studio-build">Build my E9 lesson</button>
+        </div>
+      </section>
+
+      <section class="studio-panel" id="studio-result" hidden aria-labelledby="studio-result-title">
+        <div class="result-head">
+          <p class="studio-step-label">Step 4 of 4 · Practice the lesson</p>
+          <h2 id="studio-result-title">Your E9 lesson</h2>
+          <div id="studio-result-meta"></div>
+          <p id="studio-result-source" hidden></p>
+        </div>
+
+        <div id="studio-source-needed" hidden>
+          <h3>Build or paste the passage</h3>
+          <p></p>
+          <button class="primary-action" type="button" data-edit-source>Edit recording and phrase</button>
+        </div>
+
+        <div id="studio-fretboard" aria-label="Melody Studio fretboard"></div>
+
+        <div id="studio-transport" hidden>
+          <div class="transport-buttons">
+            <button class="secondary-action" type="button" id="studio-previous">← Previous note</button>
+            <button class="secondary-action" type="button" id="studio-next">Next note →</button>
+          </div>
+          <div class="event-strip" id="studio-event-strip" aria-label="Lesson note steps"></div>
+          <p id="studio-event-detail" aria-live="polite"></p>
+        </div>
+
+        <div id="studio-tab" hidden>
+          <p id="studio-active-tab-step"></p>
+          <pre class="tab-block" aria-label="Melody Studio tab"><code id="studio-tab-code"></code></pre>
+        </div>
+        <div id="studio-explanation" hidden></div>
+
+        <div class="result-actions">
+          <button class="primary-action" id="studio-continue" type="button" hidden>Continue</button>
+          <button class="secondary-action" id="studio-edit" type="button">Edit phrase</button>
+          <button class="secondary-action" type="button" data-start-over>Start over</button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="answer-client.js?v=melody-studio-ux-20260710"></script>
+  <script src="pedal-steel-fretboard.js?v=melody-studio-ux-20260710"></script>
+  <script src="melody-workbench.js?v=melody-studio-ux-20260710"></script>
+</body>
+</html>
