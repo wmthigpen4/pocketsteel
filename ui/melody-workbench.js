@@ -131,28 +131,28 @@
     const notes = KEY_NOTES[key] || [];
     const anchor = 67;
     const result = [];
-    let previous = null;
+    let previousBase = null;
     (items || []).forEach((raw) => {
       const item = phraseItem(raw);
-      let pitch;
+      let basePitch;
       if (Number.isInteger(item.string) && Number.isInteger(item.fret)) {
         const changeDelta = (item.changes || []).reduce((sum, change) => sum + (E9_CHANGE_DELTAS[String(change).toUpperCase()]?.[item.string] || 0), 0);
-        pitch = (E9_OPEN_PITCHES[item.string] ?? 64) + item.fret + changeDelta;
+        basePitch = (E9_OPEN_PITCHES[item.string] ?? 64) + item.fret + changeDelta;
       } else {
         const token = normalizeToken(item.token);
         const note = /^[1-7]$/.test(token) ? notes[Number(token) - 1] : token;
         const pitchClass = semitoneForNote(note);
         const options = Array.from({ length: 48 }, (_, offset) => 47 + offset).filter((value) => value % 12 === pitchClass);
-        if (previous === null) pitch = options.sort((a, b) => Math.abs(a - anchor) - Math.abs(b - anchor) || a - b)[0];
+        if (previousBase === null) basePitch = options.sort((a, b) => Math.abs(a - anchor) - Math.abs(b - anchor) || a - b)[0];
         else {
           const direction = item.direction !== "auto" ? item.direction : contourMode === "ascending" ? "up" : contourMode === "descending" ? "down" : "nearest";
-          const directed = options.filter((value) => direction === "up" ? value >= previous : direction === "down" ? value <= previous : true);
-          pitch = (directed.length ? directed : options).sort((a, b) => Math.abs(a - previous) - Math.abs(b - previous) || a - b)[0];
+          const directed = options.filter((value) => direction === "up" ? value >= previousBase : direction === "down" ? value <= previousBase : true);
+          basePitch = (directed.length ? directed : options).sort((a, b) => Math.abs(a - previousBase) - Math.abs(b - previousBase) || a - b)[0];
         }
-        pitch += Number(item.octaveShift || 0) * 12;
       }
+      const pitch = basePitch + (Number.isInteger(item.string) ? 0 : Number(item.octaveShift || 0) * 12);
       result.push({ ...item, pitchValue: pitch, pitch: pitchLabel(pitch) });
-      previous = pitch;
+      previousBase = basePitch;
     });
     return result;
   }
@@ -428,6 +428,10 @@
       const selectedItem = phraseItem(selected);
       elements.selectedNote.textContent = `Selected: ${phraseItemLabel(selectedItem)}`;
       elements.selectedPitch.textContent = previews[state.selectedPhraseIndex]?.pitch || "";
+      const literal = Number.isInteger(selectedItem.string) && Number.isInteger(selectedItem.fret);
+      elements.octaveDown.disabled = literal;
+      elements.octaveAuto.disabled = literal;
+      elements.octaveUp.disabled = literal;
       elements.noteEarlier.disabled = state.selectedPhraseIndex === 0;
       elements.noteLater.disabled = state.selectedPhraseIndex === state.tokens.length - 1;
     }

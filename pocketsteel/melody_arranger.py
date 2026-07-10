@@ -236,12 +236,16 @@ def resolve_contour(inputs: Sequence[MelodyInput], contour_mode: str) -> list[in
         return list(reversed(path))
 
     baseline = solve()
-    forced = {
-        index: baseline[index] + item.octave_shift * 12
-        for index, item in enumerate(inputs)
-        if item.octave_shift
-    }
-    return solve(forced) if forced else baseline
+    adjusted = list(baseline)
+    for index, item in enumerate(inputs):
+        if not item.octave_shift:
+            continue
+        if item.literal is not None:
+            raise ValueError("Literal tab fixes its octave; edit the entered string or fret instead.")
+        adjusted[index] += item.octave_shift * 12
+        if adjusted[index] < 47 or adjusted[index] > 94:
+            raise ValueError(f"{item.token!r} resolves outside the supported E9 register.")
+    return adjusted
 
 
 def single_note_candidates(item: MelodyInput, target_pitch: int) -> list[PositionCandidate]:

@@ -37,6 +37,7 @@ assert.equal(studio.validateTokens(["F"], "G").ok, false);
 const literal = studio.parseSimpleTabEvents("S4: 3 5F 7");
 assert.deepEqual(literal.map((event) => [event.string, event.fret, event.changes]), [[4, 3, []], [4, 5, ["F"]], [4, 7, []]]);
 assert.deepEqual(studio.resolvePhrasePreview([{token: "5"}, {token: "6"}, {token: "1"}, {token: "3"}], "G").map((event) => event.pitch), ["D4", "E4", "G4", "B4"]);
+assert.deepEqual(studio.resolvePhrasePreview([{token: "5"}, {token: "6"}, {token: "1", octaveShift: 1}, {token: "3"}], "G").map((event) => event.pitch), ["D4", "E4", "G5", "B4"]);
 
 const artist = studio.createInitialState("artist_solo_lesson");
 Object.assign(artist, {
@@ -85,9 +86,9 @@ def test_melody_workbench_has_guided_tasks_feature_state_and_fretboard_first_res
     assert 'id="studio-change-task"' in html
     assert "activateRoute" in script
     assert "Select a note below to change its octave" in html
-    assert "Later automatic notes may follow it" in html
+    assert "Only the selected note changes octave" in html
     assert "state.selectedPhraseIndex" in script
-    assert html.count("?v=melody-studio-calm-20260710") == 3
+    assert html.count("?v=melody-octave-fix-20260710") == 3
     assert html.index('id="studio-fretboard"') < html.index('id="studio-tab"')
     assert 'id="studio-continue"' in html
     assert "does not listen to or extract notes from the link yet" in html

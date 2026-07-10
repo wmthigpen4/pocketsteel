@@ -96,12 +96,30 @@ def test_structured_octave_override_and_literal_tab_are_preserved() -> None:
     )
 
     assert shifted is not None and literal is not None
-    assert [event["resolvedPitch"] for event in shifted["melody_exercise"]["events"]] == ["D5", "E5", "G5", "B5"]
+    assert [event["resolvedPitch"] for event in shifted["melody_exercise"]["events"]] == ["D4", "E4", "G5", "B4"]
     assert [event["notes"][0] for event in literal["melody_exercise"]["events"]] == [
         {"string": 4, "fret": 3, "changes": []},
         {"string": 4, "fret": 5, "changes": []},
         {"string": 4, "fret": 7, "changes": []},
     ]
+
+
+def test_octave_override_changes_only_selected_note() -> None:
+    result = melody_exercise_response(
+        "Build",
+        {"key": "G", "melody": [{"token": "5"}, {"token": "6"}, {"token": "1", "octaveShift": 1}, {"token": "3"}]},
+    )
+
+    assert result is not None
+    assert [event["resolvedPitch"] for event in result["melody_exercise"]["events"]] == ["D4", "E4", "G5", "B4"]
+
+
+def test_literal_tab_rejects_octave_override_instead_of_moving_other_notes() -> None:
+    with pytest.raises(MelodyExerciseError, match="Literal tab fixes its octave"):
+        melody_exercise_response(
+            "Build",
+            {"key": "G", "melody": [{"string": 4, "fret": 3, "octaveShift": 1}]},
+        )
 
 
 def test_default_arranger_returns_single_note_and_recommended_harmony_routes() -> None:
