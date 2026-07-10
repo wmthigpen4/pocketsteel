@@ -1,11 +1,11 @@
 # Integration Status — Current Snapshot
 
-Updated: 2026-07-10 15:52 America/Chicago
+Updated: 2026-07-10 15:59 America/Chicago
 
 ## Repository state
 
 - Branch: `feature/answer-api`
-- Current implementation: `d41a9a9 fix: simplify Melody Studio controls`
+- Current implementation: `147323c fix: keep Melody octave edits independent`
 - Melody API baseline: `f37201a feat: add Melody Exercise teaching workflow`
 - Melody Studio now uses Steel Guitar RAG branding. No broad repository rename is approved.
 
@@ -21,6 +21,7 @@ Status: **PASS — octave-aware arranger is committed, deployed to protected pre
 - After task selection, the task-card grid collapses so the active editor/result is the page focus.
 - Phrase notes are clean selectable token/pitch chips. One Selected note toolbar provides plainly labeled octave, ordering, automatic, and removal actions.
 - Unmarked degrees use closest-playable octave contour by default; ascending, descending, preserve-input, and per-note octave controls are available.
+- Per-note octave controls modify only the selected event; they do not re-anchor later automatic notes.
 - Literal tab preserves string, fret, control state, and pitch register.
 - Source links are labeled as attribution only; Melody Studio does not claim to listen to or transcribe the link.
 - Results are fretboard-first. Single-note, Recommended Harmony, thirds, sixths, and chord-melody routes appear when mechanically available.
@@ -38,20 +39,21 @@ Adjustment handoff: `docs/handoffs/task-completions/2026-07-10-1404-12-melody-st
 Arranger implementation handoff: `docs/handoffs/task-completions/2026-07-10-1432-05-06-melody-studio-arranger-upgrade.md`.
 Arranger protected-smoke handoff: `docs/handoffs/task-completions/2026-07-10-1435-12-melody-arranger-protected-smoke.md`.
 Calm-controls protected-smoke handoff: `docs/handoffs/task-completions/2026-07-10-1552-12-melody-studio-calm-controls-protected-smoke.md`.
+Independent-octave protected-smoke handoff: `docs/handoffs/task-completions/2026-07-10-1559-12-independent-octave-protected-smoke.md`.
 
 ## Verification
 
-- Full pytest: `918 passed`.
+- Full pytest: `920 passed`.
 - Core JavaScript syntax: passed for answer client, Melody Studio, and fretboard component.
 - `git diff --check`: passed.
 - Local browser smoke: pass at `http://127.0.0.1:8898/ui/melody-workbench.html?access=beta_user&v=arranger-local-20260710`.
-- Protected browser smoke: pass at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-studio-calm-d41a9a9-20260710`.
+- Protected browser smoke: pass at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-octave-fix-147323c-20260710`.
 - Browser verified header ordering/gating, all task cards, stale-state cleanup, presets/sequence UI, original-source suppression, visible event/fretboard/tab synchronization, Section 2 continuation, honest source-needed guidance, fixed-width tab overflow, and no `[object Object]` or console errors.
 
 ## Protected preview
 
-- Runtime smoke HEAD: `d41a9a9`.
-- Loopback `/api/version`: `d41a9a9`, `feature/answer-api`, `hybrid_private_first`, `cloudflare_access`, `features.melodyExercise=true`.
+- Runtime smoke HEAD: `147323c`.
+- Loopback `/api/version`: `147323c`, `feature/answer-api`, `hybrid_private_first`, `cloudflare_access`, `features.melodyExercise=true`.
 - Preview refresh succeeded without `sudo` by terminating only the user-owned port-8770 listener and allowing the installed LaunchDaemon to restart it.
 - Installed wrapper matches the committed wrapper.
 - Cloudflare Access login succeeded in the in-app browser.
@@ -66,6 +68,6 @@ Calm-controls protected-smoke handoff: `docs/handoffs/task-completions/2026-07-1
 
 ## Next action
 
-1. The user tests the simplified selected-note workflow at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-studio-calm-d41a9a9-20260710`.
+1. The user tests independent octave editing at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-octave-fix-147323c-20260710`.
 2. User-reported defects enter the approved end-to-end autopilot repair loop without renewed feature approval.
 3. Keep the user-smoke freeze; do not begin unrelated broad feature work until this smoke closes.
