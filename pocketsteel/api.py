@@ -62,7 +62,6 @@ from pocketsteel.chroma_search import (
 from pocketsteel.curated_answers import (
     CURATED_FACT_WEAK_WARNING,
     WEAK_RETRIEVAL_WARNING,
-    full_song_tab_guardrail_answer,
     generic_sgf_quarantine_fallback_answer,
     intent_mode_curated_answer,
     lookup_curated_answer,
@@ -80,6 +79,11 @@ from pocketsteel.curated_guidance_retriever import (
 from pocketsteel.curated_source_registry import slide_bar_vendor_source_cards
 from pocketsteel.fretboard_examples import fretboard_payload_for_question
 from pocketsteel.progression_guide import progression_guide_for_question
+from pocketsteel.melody_assistant import (
+    MelodyExerciseError,
+    configured_melody_exercise_enabled,
+    melody_exercise_response,
+)
 from pocketsteel.rag_guardrails import sanitize_retrieved_sources
 from pocketsteel.rag_guardrails import is_injection_like
 from pocketsteel.private_source_search import PrivateSourceSearchIndex
@@ -252,6 +256,7 @@ class RetrievalApi:
         private_search_index: Any | None = None,
         retrieval_config: RetrievalModeConfig | None = None,
         curated_guidance_search: Callable[..., list[dict[str, object]]] | None = None,
+        melody_exercise_enabled: bool | None = None,
     ) -> None:
         self.search_index = search_index
         self.private_search_index = private_search_index
@@ -263,6 +268,11 @@ class RetrievalApi:
         self.answer_rate_limiter = answer_rate_limiter or InMemoryAnswerRateLimiter.from_env()
         self.answer_request_log: list[dict[str, Any]] = []
         self.retrieval_config = retrieval_config or configured_retrieval_mode_config()
+        self.melody_exercise_enabled = (
+            configured_melody_exercise_enabled()
+            if melody_exercise_enabled is None
+            else bool(melody_exercise_enabled)
+        )
         self.git_sha = self._git_value("rev-parse", "--short", "HEAD")
         self.git_branch = self._git_value("branch", "--show-current")
         self.server_started_at = datetime.now(timezone.utc).isoformat()
@@ -309,6 +319,8 @@ class RetrievalApi:
                 "role": access.role if access.allowed else "anonymous",
                 "authProvider": auth_provider,
             }
+            if self.melody_exercise_enabled:
+                payload["features"] = {"melodyExercise": True}
             if params.get("debug") == ["auth"]:
                 payload["accessDebug"] = {
                     "authProvider": auth_provider,
@@ -379,26 +391,50 @@ class RetrievalApi:
             curated_guidance_status: str | None = None
             curated_guidance_count: int | None = None
 
-            blocked_song_tab_answer = full_song_tab_guardrail_answer(answer_request.question)
-            if blocked_song_tab_answer is not None:
-                final_answer = final_answer_quality_gate(blocked_song_tab_answer.answer, answer_request.question)
-                contract_validation = enforce_answer_contract(final_answer, blocked_song_tab_answer.intent)
-                final_answer = normalize_answer_list_markers(contract_validation.answer)
+            melody_request = request_payload.get("melodyRequest") or request_payload.get("melody_request")
+            if melody_request is not None and not isinstance(melody_request, dict):
+                return self._json_response(
+                    start_response,
+                    "400 Bad Request",
+                    {"error": "melodyRequest must be an object"},
+                )
+            if self.melody_exercise_enabled:
+                try:
+                    melody_result = melody_exercise_response(answer_request.question, melody_request)
+                except MelodyExerciseError as exc:
+                    self._log_answer_attempt(
+                        request_payload,
+                        role=access.role,
+                        identity_email=access.identity_email,
+                        access_status="authorized",
+                        authorized=True,
+                        error_status="400 Bad Request",
+                    )
+                    return self._json_response(start_response, "400 Bad Request", {"error": str(exc)})
+            else:
+                melody_result = None
+            if melody_result is not None:
+                final_answer = normalize_answer_list_markers(str(melody_result["answer"]))
                 payload: AnswerResponse = {
                     "answer": final_answer,
                     "mode": answer_request.mode,
-                    "sources": [],
-                    "warnings": [],
+                    "sources": list(melody_result.get("sources") or []),
+                    "warnings": list(melody_result.get("warnings") or []),
                     "sections": build_sections(final_answer),
+                    "melody_exercise": melody_result["melody_exercise"],
                 }
+                if melody_result.get("tab_example") is not None:
+                    payload["tab_example"] = melody_result["tab_example"]
+                if melody_result.get("fretboard") is not None:
+                    payload["fretboard"] = melody_result["fretboard"]
                 self._log_answer_attempt(
                     request_payload,
                     role=access.role,
                     identity_email=access.identity_email,
                     access_status="authorized",
                     authorized=True,
-                    source_count=0,
-                    warning_count=0,
+                    source_count=len(payload["sources"]),
+                    warning_count=len(payload["warnings"]),
                 )
                 return self._json_response(start_response, "200 OK", payload)
 
@@ -908,7 +944,7 @@ class RetrievalApi:
         return f"email_sha256:{digest}"
 
     def _version_payload(self) -> dict[str, Any]:
-        return {
+        payload = {
             "git_sha": self.git_sha,
             "git_branch": self.git_branch,
             "server_started_at": self.server_started_at,
@@ -916,6 +952,9 @@ class RetrievalApi:
             "retrieval_mode": self.retrieval_config.requested_mode.value,
             "auth_provider": self.auth_provider,
         }
+        if self.melody_exercise_enabled:
+            payload["features"] = {"melodyExercise": True}
+        return payload
 
     @staticmethod
     def _git_value(*args: str) -> str:
@@ -955,6 +994,7 @@ def create_app(
     private_search_index: Any | None = None,
     retrieval_config: RetrievalModeConfig | None = None,
     curated_guidance_search: Callable[..., list[dict[str, object]]] | None = None,
+    melody_exercise_enabled: bool | None = None,
 ) -> RetrievalApi:
     retrieval_config = retrieval_config or configured_retrieval_mode_config()
     private_requested = retrieval_config.requested_mode in {
@@ -977,6 +1017,7 @@ def create_app(
         private_search_index=private_search_index,
         retrieval_config=retrieval_config,
         curated_guidance_search=curated_guidance_search,
+        melody_exercise_enabled=melody_exercise_enabled,
     )
 
 

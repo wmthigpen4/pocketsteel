@@ -63,7 +63,7 @@ def test_api_contract_fixture_matches_required_shapes() -> None:
     assert answer["mode"] in VALID_MODES
     required_answer_keys = {"answer", "mode", "sources", "warnings", "sections"}
     assert required_answer_keys.issubset(answer)
-    assert set(answer).issubset(required_answer_keys | {"fretboard", "tab_example"})
+    assert set(answer).issubset(required_answer_keys | {"fretboard", "tab_example", "progression_guide", "melody_exercise"})
     assert "fretboard" not in answer
     assert set(answer["sources"][0]) == {"title", "forumName", "url", "excerpt", "score", "chunkId", "postUid"}
     assert set(answer["sections"][0]) == {"title", "style", "body"}
@@ -277,6 +277,49 @@ def test_optional_tab_example_payload_contract_shape() -> None:
     assert set(note) == {"string", "fret", "changes"}
     assert 1 <= note["string"] <= 10
     assert 0 <= note["fret"] <= 24
+
+
+def test_optional_melody_exercise_payload_contract_shape() -> None:
+    melody_exercise = {
+        "schemaVersion": "melody_exercise_v0",
+        "id": "melody-g-section-1",
+        "status": "ready",
+        "kind": "artist_solo_lesson",
+        "title": "Artist — Song — Section 1 E9 lesson",
+        "material": {
+            "artist": "Artist",
+            "song": "Song",
+            "recording": "Studio version",
+            "sourceUrl": "https://example.test/recording",
+        },
+        "renderingMode": "e9_adaptation",
+        "accuracy": {"label": "approximate", "confidence": "medium", "note": "Checked against the supplied phrase."},
+        "section": {"number": 1, "total": 2, "label": "Solo", "hasMore": True, "nextSection": 2},
+        "events": [
+            {
+                "id": "melody-step-1",
+                "step": 1,
+                "inputToken": "1",
+                "resolvedNote": "G",
+                "scaleDegree": "1",
+                "technique": "pick",
+                "explanation": "Play G on string 4 at fret 3.",
+                "notes": [{"string": 4, "fret": 3, "changes": []}],
+            }
+        ],
+        "validation": {"ok": True, "mechanical": [], "musical": [], "steelPractical": [], "accuracy": []},
+    }
+
+    assert melody_exercise["kind"] in {
+        "original_exercise",
+        "user_melody",
+        "artist_solo_lesson",
+        "song_arrangement_lesson",
+    }
+    assert melody_exercise["renderingMode"] in {"transcription", "e9_adaptation", "teaching_simplification"}
+    assert melody_exercise["accuracy"]["label"] in {"exact", "approximate", "interpretive"}
+    assert melody_exercise["section"]["hasMore"] is True
+    assert melody_exercise["events"][0]["notes"][0] == {"string": 4, "fret": 3, "changes": []}
 
 
 def test_access_role_contract_gates_live_answer_access() -> None:

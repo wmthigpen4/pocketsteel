@@ -33,7 +33,7 @@ FallbackCategory = Literal[
     "not_enough_source_evidence",
     "current_info_not_in_corpus",
     "sensitive_identity_speculation",
-    "copyrighted_song_guardrail",
+    "song_source_needed",
     "ask_for_more_context",
     "rules_layer_answer_available",
 ]
@@ -284,7 +284,7 @@ def mode_guidance(mode: str) -> str:
     if mode == "copedent":
         return "Use interval-first language. Include strings, frets, pedals, levers, and interval functions when the sources support them."
     if mode == "tab":
-        return "Teach style, harmony, positions, chord tones, and pedal/lever purpose. Do not provide full note-for-note copyrighted tab or full copyrighted lyrics by default."
+        return "Teach songs and artist solos with attribution, sectioning, mechanically validated tab, and honest exact/approximate/adapted labels. Copyright status alone is not a refusal reason."
     if mode == "practice":
         return "Return practical numbered practice steps grounded in the provided sources."
     return "Give a clear, practical source-backed answer."
@@ -1391,7 +1391,7 @@ def fallback_category_for_question(question: str) -> FallbackCategory:
     if re.search(r"\bwho\s+plays\s+for\s+[a-z0-9'. -]+\??$", q):
         return "current_info_not_in_corpus"
     if "happy birthday" in q or re.search(r"\b(?:full lyrics|full tab|note-for-note|copyrighted)\b", q):
-        return "copyrighted_song_guardrail"
+        return "song_source_needed"
     if re.search(r"\b(?:play a song|teach me how to play anything specific|show me how to play a song)\b", q):
         return "ask_for_more_context"
     return "not_enough_source_evidence"
@@ -1421,15 +1421,15 @@ def fallback_answer_for_category(category: FallbackCategory, question: str) -> s
             "I don’t know. "
             "I would not want to guess about anyone’s private identity."
         )
-    if category == "copyrighted_song_guardrail":
+    if category == "song_source_needed":
         return (
-            "The Turnaround can help with the musical approach, but it does not provide full copyrighted lyrics or full note-for-note copyrighted tab by default. "
-            "Give me the key, tuning, and a short excerpt or your own tab attempt, and I can help map it to pedal-steel positions."
+            "The Turnaround can teach the song, artist solo, or arrangement on E9 and divide longer material into numbered sections. "
+            "Send the recording or video link, paste the notes or tab, or name the exact artist, version, and section so the result can be labeled as an exact transcription, E9 adaptation, or teaching simplification."
         )
     if category == "ask_for_more_context":
         return (
-            "Tell me the song, key, tuning, and what skill you want to work on. "
-            "If you want a safe starter now, use a public-domain tune such as Amazing Grace or an original mini-exercise and we can map it to E9 positions."
+            "Tell me the song, artist or recording version, key, tuning, and section you want to learn. "
+            "If you have a link, recording, chart, notes, or tab passage, provide it so I can keep the transcription accurate and map it to E9 positions."
         )
     return noisy_source_fallback()
 
@@ -2182,9 +2182,9 @@ class DeterministicAnswerProvider:
         lines.extend(
             [
                 "",
-                "Song-learning boundary:",
-                "- I can discuss style, harmony, chord tones, positions, and pedal/lever purpose.",
-                "- The Turnaround does not provide full note-for-note copyrighted tab or full copyrighted lyrics by default, but it can build public-domain arrangements, original exercises, or work from material you provide.",
+                "Teaching approach:",
+                "- I can teach the song, artist solo, or arrangement with style, harmony, chord tones, positions, and pedal/lever purpose.",
+                "- Preserve the recording/version and section when known, label exact versus approximate passages, and divide long material into numbered lessons.",
             ]
         )
         return "\n".join(lines)
@@ -2217,22 +2217,20 @@ class DeterministicAnswerProvider:
         lowered = request.question.lower()
         if "happy birthday" in lowered:
             return (
-                "I can help you learn the approach, but I will not dump a full protected melody or note-for-note tab by default.\n\n"
-                "Guardrail-friendly way to work on it:\n"
+                "I can teach the complete melody and arrange it for E9.\n\n"
+                "Teaching approach:\n"
                 "- Think in intervals from the key center instead of memorizing fret numbers first.\n"
                 "- Pick a key and map the melody notes to nearby E9 positions.\n"
                 "- Work one short phrase at a time, then add simple harmony or pads underneath.\n"
-                "- If you provide the notes, a short excerpt, or your own tab attempt, I can help map it to strings, frets, pedals, and levers."
+                "- Provide the version, notes, recording, or your tab attempt so I can label exact and adapted passages correctly."
             )
         return (
-            "Tell me the song, key, tuning, and what you want to work on, and I can map an approach for pedal steel.\n\n"
-            "A practical starter option:\n"
-            "- Use a public-domain tune such as “Amazing Grace” in G.\n"
-            "- Start with G at the 3rd fret open.\n"
-            "- Move to C at the 3rd fret with A+B.\n"
-            "- Move to D at the 5th fret with A+B.\n"
-            "- Resolve to G at the 6th fret with A pedal + F lever.\n\n"
-            "The Turnaround can discuss style, chord movement, positions, tone, and practice strategy. It does not provide full note-for-note copyrighted tab or full copyrighted lyrics by default."
+            "Tell me the song, artist or recording version, key, tuning, and section, and I can build a pedal-steel teaching arrangement.\n\n"
+            "Teaching approach:\n"
+            "- Choose faithful transcription, E9 adaptation, or teaching simplification.\n"
+            "- Work through numbered sections so tab, fretboard positions, and technique notes stay synchronized.\n"
+            "- Provide a link, recording, chart, notes, or tab passage when exactness matters.\n\n"
+            "Copyright status alone is not a refusal reason; accuracy and attribution determine how the lesson is labeled."
         )
 
 
@@ -2250,8 +2248,9 @@ class OllamaAnswerProvider:
                     "Answer only from the retrieved Steel Guitar Forum sources. "
                     "Cite sources with [1], [2], etc. Distinguish current phpBB from legacy UBB when relevant. "
                     "If the sources are weak, indirect, or conflicting, say so. "
-                    "Do not invent unsupported claims. You may discuss copyrighted songs, style, harmony, tone, and arrangement approach, "
-                    "but do not provide full note-for-note copyrighted tab or full copyrighted lyrics by default."
+                    "Do not invent unsupported claims. You may teach songs, commercial recordings, full arrangements, and artist solos; "
+                    "copyright status alone is not a refusal reason. Preserve attribution, distinguish transcription from E9 adaptation or simplification, "
+                    "label uncertain passages, and divide long material into numbered sections."
                 ),
             },
             {

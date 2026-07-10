@@ -165,10 +165,114 @@ let capturedRequest;
     assert result.returncode == 0, result.stderr
 
 
+def test_frontend_answer_client_posts_and_normalizes_melody_exercise() -> None:
+    script = r"""
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const vm = require("node:vm");
+
+const code = fs.readFileSync("ui/answer-client.js", "utf8");
+const sandbox = { window: {} };
+vm.createContext(sandbox);
+vm.runInContext(code, sandbox);
+const answerUi = vm.runInContext("STEEL_RAG_ANSWER_UI", sandbox);
+
+let capturedRequest;
+(async () => {
+  const melodyRequest = {
+    kind: "artist_solo_lesson",
+    key: "G",
+    melody: ["1", "2", "3"],
+    material: { artist: "Example Artist", song: "Example Song" }
+  };
+  const result = await answerUi.requestAnswer("Teach this solo", {
+    accessRole: "beta_user",
+    requestPayload: { melodyRequest },
+    fetchImpl: async (url, options) => {
+      capturedRequest = { url, options };
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          answer: "Here is Section 1.",
+          sources: [],
+          melody_exercise: {
+            schemaVersion: "melody_exercise_v0",
+            id: "melody-g-section-1",
+            status: "ready",
+            kind: "artist_solo_lesson",
+            title: "Example Artist — Example Song",
+            material: { artist: "Example Artist", song: "Example Song" },
+            renderingMode: "e9_adaptation",
+            accuracy: { label: "approximate", confidence: "medium", note: "Checked against the supplied phrase." },
+            section: { number: 1, total: 2, label: "Solo", hasMore: true, nextSection: 2 },
+            validation: { ok: true },
+            events: [{
+              id: "melody-step-1",
+              step: 1,
+              inputToken: "1",
+              resolvedNote: "G",
+              scaleDegree: "1",
+              technique: "pick",
+              explanation: "Play G on string 4 at fret 3.",
+              notes: [{ string: 4, fret: 3, changes: [] }]
+            }]
+          }
+        })
+      };
+    }
+  });
+
+  const body = JSON.parse(capturedRequest.options.body);
+  assert.equal(body.question, "Teach this solo");
+  assert.equal(body.melodyRequest.kind, "artist_solo_lesson");
+  assert.equal(result.melodyExercise.title, "Example Artist — Example Song");
+  assert.equal(result.melodyExercise.events[0].resolvedNote, "G");
+  assert.equal(result.melodyExercise.events[0].notes[0].fret, 3);
+  assert.equal(result.melodyExercise.section.hasMore, true);
+})().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
+"""
+
+    result = subprocess.run(
+        ["node", "-e", script],
+        cwd=Path(__file__).resolve().parents[1],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_answer_ui_includes_melody_tool_and_synchronized_lesson_renderer() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+    client = Path("ui/answer-client.js").read_text(encoding="utf-8")
+
+    assert 'id="melody-tool" hidden' in html
+    assert 'id="melody-kind"' in html
+    assert 'id="melody-key"' in html
+    assert 'id="melody-tokens"' in html
+    assert 'id="melody-submit"' in html
+    assert 'id="answer-melody"' in html
+    assert "function renderMelodyExercise(exercise)" in html
+    assert "function clearMelodyExercise()" in html
+    assert "renderMelodyExercise(response.melodyExercise);" in html
+    assert "button.dataset.melodyEventId = event.id;" in html
+    assert "answerTab.dataset.activeMelodyEvent = selectedEvent.id;" in html
+    assert "answerFretboardMount.dataset.activeMelodyEvent = selectedEvent.id;" in html
+    assert "answerFretboardMount.dataset.activeMelodyPosition = selectedEvent.renderablePositionId;" in html
+    assert "renderablePositionId: firstTextValue(event.renderablePositionId, event.positionId)" in client
+    assert "Up to eight events render per section" in html
+    assert "Copyright" not in html[html.index('id="melody-tool"'):html.index('<div class="try-asking"')]
+
+
 def test_answer_ui_uses_live_answer_client_not_mock_answer_data() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
 
-    assert '<script src="answer-client.js?v=progression-guide-v0-20260704"></script>' in html
+    assert '<script src="answer-client.js?v=melody-exercise-v0-20260710"></script>' in html
     assert '<script src="answer-client.js?v=e9-explorer-home-entry-20260623"></script>' not in html
     assert '<script src="pedal-steel-fretboard.js?v=explorer-compare-fix-20260702b"></script>' in html
     assert '<script src="pedal-steel-fretboard.js?v=e9-explorer-home-entry-20260623"></script>' not in html
@@ -3453,7 +3557,7 @@ def test_answer_ui_wires_enter_and_send_button_to_same_submit_path() -> None:
     assert "followupQuestion.addEventListener(\"keydown\"" in html
     assert "STEEL_RAG_ANSWER_UI.shouldSubmitQuestionKey(event)" in html
     assert "event.preventDefault();" in html
-    assert "function submitQuestion(questionText)" in html
+    assert "function submitQuestion(questionText, requestPayload = {})" in html
     assert "STEEL_RAG_ANSWER_UI.hasSubmittableQuestion(questionText)" in html
     assert "submitQuestion(question.value);" in html
     assert "primarySend.addEventListener(\"click\", submitHomeQuestion)" in html
@@ -3981,7 +4085,7 @@ def test_answer_ui_wires_tab_examples_between_answer_and_fretboard() -> None:
     assert "hideEmptySourceCards" in html
     assert "Boolean(response.progressionGuide)" in html
     assert "Boolean(response.fretboard)" in html
-    assert "isCopyrightTabGuardrail" in html
+    assert "Boolean(response.melodyExercise)" in html
     assert "response.tabs?.some((tab) => shouldRenderMovementLesson(tab))" in html
 
 

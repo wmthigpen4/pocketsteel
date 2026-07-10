@@ -12,6 +12,12 @@ from scripts.run_answer_eval import (
 )
 
 
+def test_report_records_explicit_local_auth_role() -> None:
+    report = render_report([], base_url="http://127.0.0.1:8898", question_bank=Path("questions.json"))
+
+    assert "Local auth: explicit development role `beta_user`" in report
+
+
 def failure_reasons(question: str, answer: str, *, source_count: int = 1, expected_intent: str = "") -> set[str]:
     return {
         failure.reason

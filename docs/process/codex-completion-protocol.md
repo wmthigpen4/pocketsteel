@@ -138,9 +138,23 @@ State exactly one:
 - Which active lane should act next
 - Exact recommended task/prompt for that lane
 
-Do not commit unless explicitly instructed.
+Do not commit unless explicitly instructed or the user approved an Autopilot feature/bug-fix scope that includes the normal exact-path commit loop.
 Do not stage broad dirty worktree changes.
 If committing is requested, stage only files listed in the handoff report.
+
+## Single Feature Approval
+
+When the user approves a new feature for development, that approval authorizes the normal loop through implementation, focused and full tests, local API/browser smoke, exact-path or exact-hunk commits, protected-preview update/restart, automated protected browser smoke, status refresh, and the final user-smoke handoff.
+
+Do not interrupt that loop for routine lane transitions. Stop only when:
+
+- the implementation needs an unapproved RED action or expands beyond the approved feature;
+- product judgment not settled by the approved contract is required;
+- unrelated dirty runtime state cannot be isolated safely;
+- unrelated tests fail and cannot be classified;
+- required protected-preview authentication or machine privileges are unavailable.
+
+After automated protected-preview smoke passes, provide the user one exact cache-busted URL and a short smoke checklist. A user-smoke defect enters the existing Autopilot repair loop without renewed approval.
 
 ## Repo Steward Auto-Approval Rule
 

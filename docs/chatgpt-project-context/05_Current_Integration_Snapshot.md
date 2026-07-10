@@ -1,5 +1,7 @@
 # 05 Current Integration Snapshot
 
+> Historical snapshot retained for context. It is no longer the current status source; use `docs/handoffs/task-completions/integration-status.md` for the active integration snapshot.
+
 ## Branch And Recent HEAD
 
 - Current branch at bundle generation: `feature/answer-api`.

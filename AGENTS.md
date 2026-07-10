@@ -1,6 +1,6 @@
 # Agent Operating Model
 
-This repo uses a human-in-the-loop workflow. Codex must classify every task before acting and must not continue into a second phase automatically unless the user explicitly approves it.
+This repo uses a human-in-the-loop workflow. Codex must classify every task before acting. For a new feature, the user approves the feature scope once; that approval authorizes the normal end-to-end Autopilot loop through implementation, tests, exact-path commits, protected-preview update, automated smoke, and the user-smoke handoff. Ask again only when the work expands beyond the approved scope or reaches an unapproved RED action.
 
 The current repo instruction is that the user-facing app name is **The Turnaround**. Many current product docs, UI files, tests, and handoffs still refer to **Steel Guitar RAG**. Do not perform a broad rename in either direction without explicit approval. Keep `pocketsteel`, `pocket-steel`, and `pocket_steel` as internal technical names unless the user explicitly approves a rename.
 
@@ -119,8 +119,8 @@ Codex must ask before taking action on:
 - Inspect current code before editing implementation. Do not patch by memory.
 - Read relevant handoffs in `docs/handoffs/task-completions/` before touching overlapping lanes.
 - For YELLOW or RED tasks, produce a plan/diff and stop for approval unless the user has already explicitly approved implementation.
-- Do not implement a second phase automatically. For example, do not proceed from docs planning into code, code into commit, or local smoke into deployment without approval.
-- Do not commit unless explicitly instructed.
+- Do not enter a materially different or expanded phase automatically. Within an approved Autopilot feature scope, proceed from design to code, tests, exact-path commit, protected-preview update, and automated smoke without repeated approval.
+- Do not commit unless explicitly instructed or the user has approved an Autopilot feature/bug-fix scope that includes the normal exact-path commit loop.
 - Do not use `git add .`.
 - Stage exact paths only. Use hunk-level staging when overlapping lane changes share files.
 - Treat `docs/handoffs/task-completions/integration-status.md` as a coordination artifact unless the user explicitly asks to commit it.
@@ -147,7 +147,7 @@ Autopilot lifecycle:
 5. Run local API or browser smoke when relevant.
 6. Stage exact intended files or hunks only.
 7. Commit the completed scope.
-8. Restart or update protected preview only when explicitly authorized and safe.
+8. Restart or update protected preview when the approved feature scope includes the normal protected-preview loop and the documented command is safe; otherwise stop before deployment.
 9. Run protected-preview smoke for runtime or user-facing changes.
 10. Refresh `docs/handoffs/task-completions/integration-status.md`.
 11. Return one pass/warn/fail report.

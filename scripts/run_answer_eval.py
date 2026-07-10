@@ -22,6 +22,7 @@ DEFAULT_BASE_URL = "http://127.0.0.1:8770"
 DEFAULT_QUESTION_BANK = Path("tests/fixtures/user_question_bank.json")
 DEFAULT_OUTPUT = Path("docs/answer-eval-report.md")
 DEFAULT_JSON_OUTPUT = Path("/tmp/answer-eval-results.json")
+DEFAULT_DEV_ACCESS_ROLE = "beta_user"
 
 REPORT_GROUPS = [
     "likely_intent_mismatch",
@@ -207,12 +208,16 @@ def load_question_bank(path: Path) -> list[dict[str, str]]:
     return rows
 
 
-def post_answer(base_url: str, question: str) -> tuple[int, dict[str, Any]]:
+def post_answer(base_url: str, question: str, *, dev_access_role: str = DEFAULT_DEV_ACCESS_ROLE) -> tuple[int, dict[str, Any]]:
     payload = json.dumps({"question": question}).encode("utf-8")
     request = urllib.request.Request(
         f"{base_url.rstrip('/')}/api/answer",
         data=payload,
-        headers={"Content-Type": "application/json", "Accept": "application/json"},
+        headers={
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "X-Steel-Rag-Dev-Access-Role": dev_access_role,
+        },
         method="POST",
     )
     try:
@@ -516,10 +521,15 @@ def result_from_payload(row: dict[str, str], status_code: int, payload: dict[str
     )
 
 
-def run_eval(base_url: str, questions: list[dict[str, str]]) -> list[EvalResult]:
+def run_eval(
+    base_url: str,
+    questions: list[dict[str, str]],
+    *,
+    dev_access_role: str = DEFAULT_DEV_ACCESS_ROLE,
+) -> list[EvalResult]:
     results = []
     for row in questions:
-        status_code, payload = post_answer(base_url, row["question"])
+        status_code, payload = post_answer(base_url, row["question"], dev_access_role=dev_access_role)
         results.append(result_from_payload(row, status_code, payload))
     return results
 
@@ -551,7 +561,13 @@ def result_to_json(result: EvalResult) -> dict[str, Any]:
     }
 
 
-def render_report(results: list[EvalResult], *, base_url: str, question_bank: Path) -> str:
+def render_report(
+    results: list[EvalResult],
+    *,
+    base_url: str,
+    question_bank: Path,
+    dev_access_role: str = DEFAULT_DEV_ACCESS_ROLE,
+) -> str:
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     group_counts = Counter(result.group for result in results)
     category_counts = Counter(result.category for result in results)
@@ -568,6 +584,7 @@ def render_report(results: list[EvalResult], *, base_url: str, question_bank: Pa
         f"Generated: {now}",
         f"Base URL: `{base_url}`",
         f"Question bank: `{question_bank}`",
+        f"Local auth: explicit development role `{dev_access_role}`",
         f"Total questions: {len(results)}",
         "",
         "## Summary",
@@ -589,6 +606,11 @@ def render_report(results: list[EvalResult], *, base_url: str, question_bank: Pa
     if not worst:
         lines.append("No failures detected by automatic checks.")
     for result in worst:
+        first_source = " · ".join(
+            value
+            for value in (result.first_source_forum, result.first_source_title, result.first_source_url)
+            if value
+        ) or "none"
         lines.extend(
             [
                 f"### {result.id} · {result.group}",
@@ -600,7 +622,7 @@ def render_report(results: list[EvalResult], *, base_url: str, question_bank: Pa
                 f"- Reasons: {failure_reason_text(result)}",
                 f"- Status: {result.status_code}",
                 f"- Sources: {result.source_count}",
-                f"- First source: {result.first_source_forum} · {result.first_source_title} · {result.first_source_url}",
+                f"- First source: {first_source}",
                 f"- Answer excerpt: {excerpt(result.answer)}",
                 "",
             ]
@@ -629,6 +651,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--question-bank", type=Path, default=DEFAULT_QUESTION_BANK)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--json-output", type=Path, default=DEFAULT_JSON_OUTPUT)
+    parser.add_argument("--dev-access-role", default=DEFAULT_DEV_ACCESS_ROLE)
     parser.add_argument("--limit", type=int, default=None)
     return parser
 
@@ -639,9 +662,17 @@ def main(argv: list[str] | None = None) -> int:
     if args.limit is not None:
         questions = questions[: max(0, args.limit)]
 
-    results = run_eval(args.base_url, questions)
+    results = run_eval(args.base_url, questions, dev_access_role=args.dev_access_role)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(render_report(results, base_url=args.base_url, question_bank=args.question_bank), encoding="utf-8")
+    args.output.write_text(
+        render_report(
+            results,
+            base_url=args.base_url,
+            question_bank=args.question_bank,
+            dev_access_role=args.dev_access_role,
+        ),
+        encoding="utf-8",
+    )
     args.json_output.parent.mkdir(parents=True, exist_ok=True)
     args.json_output.write_text(json.dumps([result_to_json(result) for result in results], indent=2), encoding="utf-8")
 

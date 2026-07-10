@@ -34,7 +34,7 @@ Disallowed or guarded domains include:
 
 - General cooking/weather/trivia/list-generation requests.
 - Arbitrary large output requests such as all numbers from 1 to 1 million or repeating text thousands of times.
-- Full copyrighted songs, lyrics, or note-for-note tab unless the user supplied the material, it is public domain, or rights are explicit.
+- Copyright status alone must not block song, solo, arrangement, or note-for-note tab teaching. Exactness requires an identified recording/passage or user-supplied material; otherwise request the source and label output approximate or interpretive.
 - Private source facts for anonymous/public users.
 
 ## Off-Domain Guardrail Behavior
@@ -149,14 +149,14 @@ Requirements:
 
 ## Tab/Interval Explainer Answer Requirements
 
-Tab/interval answers should explain music mechanics, not dump copyrighted tab.
+Tab/interval answers should explain music mechanics while supporting complete song, arrangement, and artist-solo teaching in manageable numbered sections.
 
 Requirements:
 
 - Explain strings, frets, pedals/levers, chord tones, and interval function.
 - Ask for missing context when the prompt says `this`, `that`, `here`, or asks whether an unspecified voicing is full/partial.
 - For interval questions, state the open note, changed note, and that interval function depends on key/chord context.
-- Respect copyright guardrails for songs and note-for-note tab.
+- Preserve artist/song/recording/section attribution and distinguish exact transcription, E9 adaptation, teaching simplification, and original exercise. Do not use copyright status as a refusal reason.
 
 ## Forbidden Answer Behaviors
 

@@ -38,6 +38,11 @@ The repo-managed wrapper is copied to `/usr/local/libexec/steel-guitar-rag/run-p
 
 The service wrapper reads `~/.steel-rag/env/private-preview.env` at runtime. That file must stay outside the repo and must not be pasted into handoffs, issues, prompts, shell history, or screenshots.
 
+The installed private-preview wrapper enables approved Melody Exercise v0 testing
+by default with `STEEL_RAG_ENABLE_MELODY_EXERCISE=true`. The app-wide feature
+default remains off, and the private-preview environment may explicitly set the
+flag to `false` for rollback.
+
 ## Install Or Update The App LaunchDaemon
 
 From the repo root on the Mac mini:

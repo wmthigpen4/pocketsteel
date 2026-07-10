@@ -8,10 +8,10 @@ from typing import Any
 
 
 COPYRIGHT_AWARE_SONG_HELP_POLICY = (
-    "The assistant may discuss songs, recordings, style, chord movement, technique, tone, practice strategy, "
-    "and arrangement approach. It may create original exercises and public-domain examples. It should not provide "
-    "full copyrighted lyrics, full copyrighted tablature, or complete note-for-note copyrighted arrangements unless "
-    "the user provides the material, the work is public domain, or permission/license is available."
+    "The assistant may teach songs, artist solos, commercial recordings, and complete arrangements. Copyright status "
+    "alone is never a refusal reason. Preserve artist, song, recording/version, source, and section information when "
+    "available; label the result as a transcription, E9 adaptation, teaching simplification, or original exercise; "
+    "and never claim exactness without identified or user-supplied source material. Teach long material in numbered sections."
 )
 
 
@@ -381,16 +381,17 @@ CONTRACTS: dict[str, AnswerContract] = {
     "song_learning": AnswerContract(
         intent="song_learning",
         required_answer_elements=(
-            ("song, key, tuning, or user-provided path", r"\b(?:song|key|tuning|user-provided|provide the notes|short excerpt|chart)\b"),
-            ("public-domain or original exercise path", r"\b(?:public-domain|public domain|original|mini-tab|exercise|Amazing Grace)\b"),
-            ("copyright-aware tab or lyrics boundary", r"\b(?:full note-for-note|full lyrics|copyrighted tab|copyrighted lyrics|protected melody)\b"),
+            ("song, recording, source, section, key, or tuning path", r"\b(?:song|recording|source|version|section|key|tuning|notes|tab|chart)\b"),
+            ("teaching or arrangement path", r"\b(?:teach|lesson|transcription|adaptation|arrangement|simplification|exercise|practice)\b"),
+            ("accuracy or source clarification", r"\b(?:exact|approximate|interpretive|source|recording|version|provide|send|upload|paste)\b"),
         ),
         forbidden_answer_patterns=COMMON_FORBIDDEN
         + (
             ("random contact", r"\b(?:email|e-mail)\b"),
-            ("blanket copyrighted-material refusal", r"\b(?:cannot|can't|do not|won't)\s+(?:discuss|talk about|help with)\s+copyrighted\b"),
+            ("blanket copyrighted-material refusal", r"\b(?:cannot|can't|can’t|do not|won't)\s+(?:discuss|talk about|help with|provide|transcribe|arrange|teach)\b[^.\n]*\bcopyrighted\b"),
+            ("copyright status used as refusal", r"\b(?:copyright|copyrighted)\b[^.\n]{0,80}\b(?:refus|block|cannot|can't|can’t|won't)\b"),
         ),
-        default_section_labels=("learning approach", "exercise"),
+        default_section_labels=("teaching approach", "section"),
         fallback_answer=(
             COPYRIGHT_AWARE_SONG_HELP_POLICY
         ),

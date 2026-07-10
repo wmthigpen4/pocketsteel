@@ -1,12 +1,12 @@
 # Progression Guide v0
 
-Progression Guide v0 is a deterministic E9 answer contract for static chord-route teaching. It is not a song-tab feature and does not use SGF/forum retrieval to choose frets, strings, pedals, or levers.
+Progression Guide v0 is a deterministic E9 answer contract for static chord-route teaching. It can support a section of a song or arrangement, but it does not use SGF/forum retrieval to choose frets, strings, pedals, or levers.
 
 ## Route Ownership
 
 - Static chord locations and grips remain fretboard-first.
 - Tab examples remain reserved for movement over time: licks, slides, pedal choreography, releases, fills, and short exercises.
-- Progression Guide routes are deterministic educational exercises, not public-domain or copyrighted song arrangements.
+- Progression Guide routes are deterministic educational routes. They may be used inside a song or copyrighted arrangement when the route matches the requested harmony; copyright status is not a refusal gate.
 
 ## Response Shape
 
@@ -45,7 +45,7 @@ Progression Guide v0 is a deterministic E9 answer contract for static chord-rout
 
 ## Guardrails
 
-- Full song tab, copyrighted arrangements, YouTube transcription, and whole-solo requests must be handled by the existing copyright/transcription guardrail before Progression Guide routing.
+- Song, arrangement, recording, and whole-solo requests route to Melody Exercise teaching. Progression Guide may supply validated harmonic sections, while transcription accuracy and source identity remain owned by the Melody Exercise contract.
 - Source cards are suppressed for deterministic progression answers.
 - `tab_example` is not attached for Progression Guide answers by default.
 - Two-chord movement prompts such as "Show me a G to C move" remain owned by the tab/movement engine.

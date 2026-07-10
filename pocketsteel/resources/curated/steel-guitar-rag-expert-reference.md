@@ -2,7 +2,7 @@
 
 **Curated content type:** song dossier / history / steel-guitar teaching reference
 **Primary topic:** “Steel Guitar Rag”
-**Best app behaviors:** answer history questions, identify recordings, explain authorship dispute, provide source links, teach style and short examples, avoid unlabeled myths, and avoid publishing full copyrighted tablature unless licensed.
+**Best app behaviors:** answer history questions, identify recordings, explain authorship disputes, provide source links, teach artist performances and complete arrangements in manageable sections, distinguish transcription from adaptation, and label uncertainty rather than inventing exactness.
 
 ---
 
@@ -154,28 +154,31 @@ Recommended answer:
 
 Recommended answer:
 
-> I can give you a short educational excerpt, a public-domain/source comparison, or an original “Steel Guitar Rag”-style exercise. I should not provide a full copyrighted arrangement unless we have licensed or public-domain source material.
+> Yes. Tell me which recording and section you want to learn, or share a link/upload if I cannot access it. I can teach a faithful transcription, an E9 adaptation, or a simplified arrangement. I will identify the source, label uncertain passages, and divide a complete arrangement into manageable numbered sections.
 
 ---
 
-## 9. Copyright / Tab Guardrail
+## 9. Recording, Attribution, and Accuracy Policy
 
-The app should not provide a full note-for-note copyrighted tab of “Steel Guitar Rag” unless the content is confirmed public domain, user-provided, licensed, or otherwise cleared. The tune has active licensing records, including Bourne Co. publishing contact information and modern writer listings in Easy Song.
+The app may teach a full performance or arrangement of “Steel Guitar Rag,” including a named artist's solo. Copyright status is provenance context, not an enablement gate and never a reason to refuse music instruction. Preserve the artist, recording/version, source, and requested section when known. If the source is unavailable, ask the learner for a link, upload, pasted passage, or identifying details.
 
-Allowed output types:
+Teaching output types:
 
-- Short educational excerpts.
+- Faithful transcription when the source and notes can be verified.
+- E9 adaptation when translating a lap-steel or other-instrument performance.
+- Simplified teaching arrangement with the simplification stated.
 - Chord chart / form summary.
 - Original exercises “in the style of Western swing steel rag.”
-- Public-domain “Guitar Rag” discussion if sourced and checked.
+- Public-domain “Guitar Rag” provenance discussion when useful.
 - User-provided tab analysis.
-- Links to authorized sheet music, recordings, or licensed sources.
+- Recording, sheet-music, and historical source links.
 
-Avoid:
+Required safeguards:
 
-- Full melody transcription of the 1936 recording.
-- Full lyric reproduction from Merle Travis vocal versions.
-- Long copied tab from forum posts or copyrighted books.
+- Never claim a passage is exact without enough evidence.
+- Label uncertain passages `approximate` or `interpretive` and include confidence.
+- Teach long solos and arrangements as numbered sections instead of one oversized response.
+- Do not expose private source material or reproduce full song lyrics.
 
 ---
 

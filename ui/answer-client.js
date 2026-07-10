@@ -620,6 +620,70 @@ const STEEL_RAG_ANSWER_UI = (() => {
     };
   }
 
+  function normalizeMelodyExercise(payload) {
+    const exercise = payload?.melody_exercise || payload?.melodyExercise;
+    if (!isObjectRecord(exercise)) {
+      return null;
+    }
+    const material = isObjectRecord(exercise.material) ? exercise.material : {};
+    const accuracy = isObjectRecord(exercise.accuracy) ? exercise.accuracy : {};
+    const section = isObjectRecord(exercise.section) ? exercise.section : {};
+    const validation = isObjectRecord(exercise.validation) ? exercise.validation : {};
+    const events = Array.isArray(exercise.events)
+      ? exercise.events.filter(isObjectRecord).map((event, index) => ({
+        id: firstTextValue(event.id, `melody-event-${index + 1}`),
+        renderablePositionId: firstTextValue(event.renderablePositionId, event.positionId),
+        step: event.step ?? index + 1,
+        inputToken: firstTextValue(event.inputToken, event.input_token),
+        resolvedNote: firstTextValue(event.resolvedNote, event.resolved_note, event.chord),
+        scaleDegree: firstTextValue(event.scaleDegree, event.scale_degree),
+        technique: firstTextValue(event.technique, "pick"),
+        explanation: firstTextValue(event.explanation, event.comment),
+        notes: Array.isArray(event.notes)
+          ? event.notes.filter(isObjectRecord).map((note) => ({
+            string: note.string,
+            fret: note.fret,
+            changes: normalizeStringList(note.changes),
+            articulation: firstTextValue(note.articulation)
+          }))
+          : []
+      }))
+      : [];
+    return {
+      schemaVersion: firstTextValue(exercise.schemaVersion, exercise.schema_version, "melody_exercise_v0"),
+      id: firstTextValue(exercise.id, "melody-exercise"),
+      status: firstTextValue(exercise.status, events.length ? "ready" : "needs_source"),
+      kind: firstTextValue(exercise.kind, "user_melody"),
+      title: firstTextValue(exercise.title, "Melody / arrangement lesson"),
+      material: {
+        artist: firstTextValue(material.artist),
+        song: firstTextValue(material.song, material.title),
+        recording: firstTextValue(material.recording, material.version),
+        section: firstTextValue(material.section),
+        sourceUrl: firstTextValue(material.sourceUrl, material.source_url, material.url),
+        sourceReference: firstTextValue(material.sourceReference, material.source_reference)
+      },
+      renderingMode: firstTextValue(exercise.renderingMode, exercise.rendering_mode, "e9_adaptation"),
+      accuracy: {
+        label: firstTextValue(accuracy.label, "approximate"),
+        confidence: firstTextValue(accuracy.confidence, "medium"),
+        note: firstTextValue(accuracy.note)
+      },
+      section: {
+        number: section.number ?? 1,
+        total: section.total ?? null,
+        label: firstTextValue(section.label, `Section ${section.number || 1}`),
+        hasMore: Boolean(section.hasMore ?? section.has_more),
+        nextSection: section.nextSection ?? section.next_section ?? null
+      },
+      events,
+      validation: {
+        ok: Boolean(validation.ok),
+        accuracy: normalizeStringList(validation.accuracy)
+      }
+    };
+  }
+
   function findFretboardPayload(payload) {
     const candidates = [
       payload?.fretboard,
@@ -656,6 +720,7 @@ const STEEL_RAG_ANSWER_UI = (() => {
     };
     const tabs = normalizeTabPayloads(payload);
     const progressionGuide = normalizeProgressionGuide(payload);
+    const melodyExercise = normalizeMelodyExercise(payload);
     const rawFretboard = findFretboardPayload(payload);
     const fretboard = normalizeFretboard(rawFretboard);
     if (fretboard) {
@@ -675,10 +740,17 @@ const STEEL_RAG_ANSWER_UI = (() => {
     if (progressionGuide) {
       normalized.progressionGuide = progressionGuide;
     }
+    if (melodyExercise) {
+      normalized.melodyExercise = melodyExercise;
+    }
     return normalized;
   }
 
-  async function requestAnswer(question, { fetchImpl = window.fetch, accessRole = ACCESS_ROLES.ANONYMOUS } = {}) {
+  async function requestAnswer(question, {
+    fetchImpl = window.fetch,
+    accessRole = ACCESS_ROLES.ANONYMOUS,
+    requestPayload = {}
+  } = {}) {
     const headers = {
       "Content-Type": "application/json",
       Accept: "application/json",
@@ -689,7 +761,7 @@ const STEEL_RAG_ANSWER_UI = (() => {
       method: "POST",
       credentials: "same-origin",
       headers,
-      body: JSON.stringify({ question })
+      body: JSON.stringify({ ...requestPayload, question })
     });
 
     if (!response.ok) {
@@ -703,11 +775,15 @@ const STEEL_RAG_ANSWER_UI = (() => {
   function normalizeSessionResponse(payload) {
     const role = normalizeAccessRole(payload?.role);
     const authenticated = Boolean(payload?.authenticated) && canSubmitLiveQuestion(role);
-    return {
+    const normalized = {
       authenticated,
       role: authenticated ? role : ACCESS_ROLES.ANONYMOUS,
       authProvider: normalizeAuthProvider(firstValue(payload?.authProvider, "local_dev"))
     };
+    if (payload?.features?.melodyExercise) {
+      normalized.features = { melodyExercise: true };
+    }
+    return normalized;
   }
 
   async function requestSession({ fetchImpl = window.fetch, accessRole = ACCESS_ROLES.ANONYMOUS } = {}) {
@@ -744,6 +820,7 @@ const STEEL_RAG_ANSWER_UI = (() => {
     normalizeTabPayload,
     normalizeTabPayloads,
     normalizeProgressionGuide,
+    normalizeMelodyExercise,
     normalizeSections,
     normalizeAnswerResponse,
     requestSession,

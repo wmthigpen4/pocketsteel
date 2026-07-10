@@ -149,6 +149,20 @@ class TabExamplePayload(TypedDict):
     events: list[dict[str, Any]]
 
 
+class MelodyExercisePayload(TypedDict):
+    schemaVersion: str
+    id: str
+    status: str
+    kind: str
+    title: str
+    material: dict[str, str]
+    renderingMode: str
+    accuracy: dict[str, Any]
+    section: dict[str, Any]
+    events: list[dict[str, Any]]
+    validation: dict[str, Any]
+
+
 class AnswerResponse(TypedDict):
     answer: str
     mode: AnswerMode
@@ -158,3 +172,4 @@ class AnswerResponse(TypedDict):
     fretboard: NotRequired[FretboardPayload]
     tab_example: NotRequired[TabExamplePayload]
     progression_guide: NotRequired[dict[str, Any]]
+    melody_exercise: NotRequired[MelodyExercisePayload]

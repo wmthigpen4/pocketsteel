@@ -959,27 +959,10 @@ def _normalize_question(question: str) -> str:
 
 
 def _is_blocked_tab_request(question: str) -> bool:
-    blocked_phrases = (
-        "copyrighted song",
-        "full song",
-        "whole song",
-        "whole solo",
-        "full solo",
-        "entire solo",
-        "note-for-note",
-        "note for note",
-        "transcribe",
-        "recording",
-        "from youtube",
-        "from a video",
-        "tab the",
-        "tablature for",
-        "tab for",
-        "named song",
-        "together again",
-        "panhandle rag",
-    )
-    return any(phrase in question for phrase in blocked_phrases)
+    # Copyright and named commercial material are valid teaching inputs. The
+    # Melody Exercise route handles missing source material by asking for the
+    # recording or passage instead of attaching an unrelated stock example.
+    return False
 
 
 def _mentions_g_major(question: str) -> bool:

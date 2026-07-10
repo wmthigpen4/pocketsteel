@@ -121,9 +121,10 @@ def test_brand_comparison_contract_requires_specific_dimensions_without_vendor_l
 
 def test_song_current_roster_sensitive_and_fallback_contracts_are_explicit() -> None:
     song = (
-        "Tell me the song, key, tuning, and whether you have a chart or short excerpt.\n\n"
-        "A safe path is a public-domain tune such as Amazing Grace or an original mini-tab exercise. "
-        "I do not provide full note-for-note copyrighted tab or full copyrighted lyrics by default."
+        "Tell me the artist, song, recording, key, tuning, and section you want to learn.\n\n"
+        "I can teach the complete solo or arrangement section by section as a faithful transcription, "
+        "an E9 adaptation, or a simplified teaching arrangement. I will label uncertain passages "
+        "approximate or interpretive instead of inventing exactness."
     )
     roster = (
         "I don’t know the current roster from the information I have. "
@@ -139,6 +140,10 @@ def test_song_current_roster_sensitive_and_fallback_contracts_are_explicit() -> 
     )
 
     assert validate_answer_against_contract(song, "song_learning").is_valid
+    assert not validate_answer_against_contract(
+        "I do not provide full note-for-note copyrighted tab.",
+        "song_learning",
+    ).is_valid
     assert validate_answer_against_contract(roster, "current_roster").is_valid
     assert validate_answer_against_contract(sensitive, "sensitive_identity").is_valid
     assert validate_answer_against_contract(fallback, "fallback_unknown").is_valid

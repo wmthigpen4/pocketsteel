@@ -82,7 +82,7 @@ def steel_guitar_rag_source_cards() -> tuple[dict[str, Any], ...]:
             "score": 0.92,
             "excerpt": (
                 "Easy Song lists modern copyright/licensing information for Steel Guitar Rag, "
-                "which is why the app avoids full note-for-note copyrighted tab by default."
+                "which is useful attribution context for a teaching transcription or arrangement."
             ),
             "forum_name": "Easy Song",
             "thread_title": "Steel Guitar Rag copyright and licensing listing",
@@ -108,8 +108,8 @@ def steel_guitar_rag_answer_for_question(question: str) -> str | None:
     if re.search(r"\btab\b|\btablature\b|\bteach\b|\bhow\s+do\s+i\s+play\b|\blearn\b", q):
         teaching_tab = _steel_guitar_rag_teaching_tab()
         return (
-            "I can help with a short educational Steel Guitar Rag-style E9 study, but I should not dump a full note-for-note copyrighted arrangement by default.\n\n"
-            "Use this as a compact original study of the sound: swing eighths, I-IV-V motion, slides, and clean blocking.\n\n"
+            "I can teach Steel Guitar Rag as a faithful transcription, an E9 adaptation, or a simplified arrangement. The study below is labeled as a compact original teaching version; identify the recording and section when you want note-for-note comparison.\n\n"
+            "Use it to learn swing eighths, I-IV-V motion, slides, and clean blocking.\n\n"
             f"{teaching_tab}\n\n"
             "Practice it slowly first. Keep the melody clear, let the bar movement sound intentional, and add ornaments only after the time feels steady."
         )

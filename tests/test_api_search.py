@@ -68,6 +68,7 @@ def call_app(
     private_search_index: Any | None = None,
     retrieval_config: RetrievalModeConfig | None = None,
     curated_guidance_search: Any | None = None,
+    melody_exercise_enabled: bool | None = None,
 ) -> tuple[str, dict[str, str], dict[str, Any]]:
     app = create_app(
         search_index or fake_search_index(),
@@ -78,6 +79,7 @@ def call_app(
         private_search_index=private_search_index,
         retrieval_config=retrieval_config,
         curated_guidance_search=curated_guidance_search,
+        melody_exercise_enabled=melody_exercise_enabled,
     )
     captured: dict[str, Any] = {}
     body = json.dumps(json_body or {}).encode("utf-8") if json_body is not None else b""
@@ -203,7 +205,7 @@ class FakeAnswerProvider:
         if request.mode == "copedent":
             return "Interval-first: treat the change as moving from the 5th toward a 6th or dominant color, then map it to string 6, frets, pedals, and levers. [1]"
         if request.mode == "tab":
-            return "I can explain style, harmony, chord tones, and pedal purpose from the sources, but I do not provide full note-for-note copyrighted tab by default. [1]"
+            return "I can teach the song, artist or recording version as a faithful transcription, E9 adaptation, or teaching simplification in numbered lesson sections. [1]"
         if request.mode == "practice":
             return "1. Isolate the move. 2. Repeat it slowly. 3. Move it to another fret. [1]"
         return "A source-backed answer grounded in the retrieved forum discussion. [1]"
@@ -380,13 +382,13 @@ def test_contract_validation_catches_template_leakage() -> None:
 def test_song_help_contract_contains_copyright_aware_teaching_policy() -> None:
     policy = COPYRIGHT_AWARE_SONG_HELP_POLICY
 
-    assert "may discuss songs" in policy
-    assert "style" in policy
-    assert "chord movement" in policy
-    assert "original exercises" in policy
-    assert "public-domain examples" in policy
-    assert "should not provide full copyrighted lyrics" in policy
-    assert "full copyrighted tablature" in policy
+    assert "may teach songs" in policy
+    assert "artist solos" in policy
+    assert "complete arrangements" in policy
+    assert "Copyright status alone is never a refusal reason" in policy
+    assert "recording/version" in policy
+    assert "never claim exactness" in policy
+    assert "numbered sections" in policy
 
     bad_refusal = "I cannot discuss copyrighted songs."
     validation = validate_answer_against_contract(bad_refusal, "song_learning_or_tab_request")
@@ -2225,8 +2227,8 @@ def test_deterministic_mode_specific_sections_render() -> None:
 
     tab = deterministic_payload("tab", question="Explain this E9 tab concept")
     assert "Concept explanation:" in tab["answer"]
-    assert "I can discuss style, harmony" in tab["answer"]
-    assert "full note-for-note copyrighted tab" in tab["answer"]
+    assert "I can teach the song, artist solo, or arrangement" in tab["answer"]
+    assert "numbered lessons" in tab["answer"]
 
     practice = deterministic_payload("practice", question="What should I practice tonight?")
     assert "25-minute plan:" in practice["answer"]
@@ -3827,7 +3829,7 @@ def test_sgf_quarantine_user_smoke_prompts_are_teacher_composed_and_source_free(
 def test_steel_guitar_rag_curated_reference_is_available_with_expected_checksum() -> None:
     assert STEEL_GUITAR_RAG_REFERENCE_PATH.exists()
     assert hashlib.sha256(STEEL_GUITAR_RAG_REFERENCE_PATH.read_bytes()).hexdigest() == (
-        "996b7b8cbf12ff09592726421d6ea4cf7cbd072ebd531d230bbd30b6bbf83c8a"
+        "61dfcb9c5f14f2704d17a3dd82fa3c00b0a41d2ad3a325b309fe3a4bda2b07f1"
     )
     reference = load_steel_guitar_rag_reference()
     assert "# Steel Guitar Rag — Expert Reference for Steel Guitar RAG" in reference
@@ -3864,8 +3866,8 @@ def test_steel_guitar_rag_tab_question_uses_curated_reference_and_preserves_tab_
     payload = answer_for_question("Show me Steel Guitar Rag tab", noisy_practical_sources())
 
     assert_clean_answer_body(payload)
-    assert "short educational Steel Guitar Rag-style E9 study" in payload["answer"]
-    assert "full note-for-note copyrighted arrangement" in payload["answer"]
+    assert "faithful transcription" in payload["answer"]
+    assert "compact original teaching version" in payload["answer"]
     assert "```text" in payload["answer"]
     assert "E9 original Western-swing rag study" in payload["answer"]
     assert "F#|--------------------------------------------------------------------------------|" in payload["answer"]
@@ -3886,7 +3888,7 @@ def test_steel_guitar_rag_variations_question_uses_curated_reference() -> None:
     assert any(source.get("source_system") == "curated_reference" for source in payload["sources"])
 
 
-def test_full_song_tab_and_transcription_requests_refuse_clearly() -> None:
+def test_full_song_tab_and_transcription_requests_route_to_sectioned_teaching() -> None:
     cases = [
         "Give me the full modern copyrighted arrangement of Steel Guitar Rag.",
         "Transcribe this YouTube recording into Steel Guitar Rag tab.",
@@ -3896,23 +3898,114 @@ def test_full_song_tab_and_transcription_requests_refuse_clearly() -> None:
 
     for question in cases:
         for mode in ("ask", "tab"):
-            payload = answer_for_question(question, noisy_practical_sources(), mode=mode)
+            status, _, payload = call_app(
+                "/api/answer",
+                method="POST",
+                json_body={"question": question, "mode": mode, "topK": 6},
+                search_index=FakeSearchIndex({"results": noisy_practical_sources(), "warnings": []}),
+                answer_provider=DeterministicAnswerProvider(),
+                melody_exercise_enabled=True,
+            )
+            assert status == "200 OK"
             assert_clean_answer_body(payload)
-            assert payload["answer"].startswith("I can’t provide a full copyrighted song tab")
-            assert "full modern arrangement" in payload["answer"]
-            assert "full solo transcription" in payload["answer"]
-            assert "YouTube/recording transcription" in payload["answer"]
-            assert "A title alone is not enough" in payload["answer"]
-            assert "short original E9 exercise" in payload["answer"]
-            assert "public-domain material when the provenance is explicit" in payload["answer"]
+            assert payload["answer"].startswith("Yes—I can teach")
+            assert "numbered sections" in payload["answer"]
+            assert "send the recording or video link" in payload["answer"]
             assert "```text" not in payload["answer"]
-            assert "short educational Steel Guitar Rag-style E9 study" not in payload["answer"]
             assert "E9 original Western-swing rag study" not in payload["answer"]
-            assert "three distinct 16-bar sections" not in payload["answer"]
             assert "tab_example" not in payload
             assert "fretboard" not in payload
+            assert payload["melody_exercise"]["status"] == "needs_source"
+            assert payload["melody_exercise"]["section"]["number"] == 1
+            assert payload["melody_exercise"]["section"]["hasMore"] is True
             assert payload["sources"] == []
             assert payload["warnings"] == []
+
+
+def test_api_answer_builds_structured_melody_exercise_when_feature_enabled() -> None:
+    status, _, payload = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={
+            "question": "Build an E9 melody exercise from 1 2 3 5 in G.",
+            "mode": "tab",
+            "melodyRequest": {
+                "kind": "user_melody",
+                "key": "G",
+                "tuning": "E9",
+                "melody": ["1", "2", "3", "5"],
+            },
+        },
+        search_index=FakeSearchIndex({"results": noisy_practical_sources(), "warnings": []}),
+        answer_provider=DeterministicAnswerProvider(),
+        melody_exercise_enabled=True,
+    )
+
+    assert status == "200 OK"
+    assert payload["melody_exercise"]["status"] == "ready"
+    assert payload["melody_exercise"]["kind"] == "user_melody"
+    assert [event["resolvedNote"] for event in payload["melody_exercise"]["events"]] == ["G", "A", "B", "D"]
+    assert payload["tab_example"]["validation"]["ok"] is True
+    assert len(payload["tab_example"]["events"]) == len(payload["fretboard"]["positions"]) == 4
+    assert payload["sources"] == []
+
+
+def test_api_answer_preserves_recording_attribution_for_melody_lesson() -> None:
+    status, _, payload = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={
+            "question": "Teach this artist solo.",
+            "mode": "tab",
+            "melodyRequest": {
+                "kind": "artist_solo_lesson",
+                "key": "G",
+                "melody": ["1", "2", "3"],
+                "material": {
+                    "artist": "Example Artist",
+                    "song": "Example Song",
+                    "recording": "Studio version",
+                    "sourceUrl": "https://example.test/recording",
+                },
+            },
+        },
+        search_index=FakeSearchIndex({"results": [], "warnings": []}),
+        answer_provider=DeterministicAnswerProvider(),
+        melody_exercise_enabled=True,
+    )
+
+    assert status == "200 OK"
+    assert payload["melody_exercise"]["material"]["recording"] == "Studio version"
+    assert payload["sources"][0]["url"] == "https://example.test/recording"
+    assert payload["sources"][0]["forumName"] == "Recording / arrangement reference"
+
+
+def test_api_answer_rejects_invalid_melody_without_rendering() -> None:
+    status, _, payload = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={
+            "question": "Build this melody.",
+            "melodyRequest": {"kind": "user_melody", "key": "F", "melody": ["1", "2"]},
+        },
+        melody_exercise_enabled=True,
+    )
+
+    assert status == "400 Bad Request"
+    assert "keys of G and C" in payload["error"]
+    assert "melody_exercise" not in payload
+    assert "tab_example" not in payload
+    assert "fretboard" not in payload
+
+
+def test_api_session_and_version_expose_melody_feature_only_when_enabled() -> None:
+    status, _, session = call_app("/api/session", method="GET", melody_exercise_enabled=True)
+    assert status == "200 OK"
+    assert session["features"] == {"melodyExercise": True}
+
+    status, _, version = call_app("/api/version", method="GET", melody_exercise_enabled=True)
+    assert status == "200 OK"
+    assert version["features"] == {"melodyExercise": True}
 
 
 def test_steel_guitar_rag_safe_curated_questions_still_work_after_full_tab_guardrail() -> None:
@@ -6683,7 +6776,7 @@ def test_latest_frontend_curated_failures_have_clean_answer_bodies() -> None:
         ("How heavy is a steel guitar?", "Pedal steel weight varies", ["S-10", "D-10"]),
         ("Red guitars are gay.", "Color does not affect playability or tone.", ["sound", "condition"]),
         ("Do you wear shoes or play barefoot?", "Use whatever footwear gives you consistent pedal feel", ["Thin-soled shoes", "Barefoot"]),
-        ("Can you give me tablature for a random song?", "For a random tab request", ["Amazing Grace", "Original E9 mini-tab/chord path"]),
+        ("Can you give me tablature for a random song?", "For a tab request", ["identified recording", "Original E9 mini-tab/chord path"]),
         ("Can you play Panhandle Rag with a pan handle?", "proper steel bar", ["intonation", "control"]),
         ("Who plays a Mullen steel guitar?", "current roster", ["Mullen guitars today", "official artist list"]),
         ("Is Emmons Guitar still in business today?", "Yes. Emmons Guitar Co. appears to be operating today", ["emmonsguitar.co", "ReSound’65"]),
@@ -6742,7 +6835,7 @@ def test_church_practice_answer_has_specific_resource_guidance_without_fake_url(
     assert payload["sources"]
 
 
-def test_random_tab_answer_offers_public_domain_and_concrete_exercise() -> None:
+def test_random_tab_answer_offers_source_based_teaching_and_concrete_exercise() -> None:
     payload = answer_for_question(
         "Can you give me tablature for a random song?",
         [
@@ -6760,9 +6853,8 @@ def test_random_tab_answer_offers_public_domain_and_concrete_exercise() -> None:
     )
 
     assert_clean_answer_body(payload)
-    assert "copyright-safe path" in payload["answer"]
-    assert "random emails" in payload["answer"]
-    assert "public-domain tune such as Amazing Grace or Silent Night" in payload["answer"]
+    assert "identified recording, chart, or passage" in payload["answer"]
+    assert "faithful transcription, E9 adaptation, or teaching simplification" in payload["answer"]
     assert "G to C to D to G" in payload["answer"]
     assert "Original E9 mini-tab/chord path" in payload["answer"]
     assert "3rd fret" in payload["answer"]
@@ -6772,7 +6864,7 @@ def test_random_tab_answer_offers_public_domain_and_concrete_exercise() -> None:
     assert payload["sources"]
 
 
-def test_song_tab_policy_allows_teaching_without_full_copyrighted_tab() -> None:
+def test_song_tab_policy_routes_named_material_to_teaching() -> None:
     noisy_source = [
         {
             "score": 0.77,
@@ -6788,13 +6880,13 @@ def test_song_tab_policy_allows_teaching_without_full_copyrighted_tab() -> None:
     cases = [
         (
             "Can you give me tab for Panhandle Rag?",
-            ["work toward “Panhandle Rag,”", "full note-for-note copyrighted tab", "Learning approach:", "Western-swing"],
+            ["teach “Panhandle Rag”", "faithful transcription", "E9 adaptation", "Section 1"],
             ["random email", "e-mail", "full lyrics"],
             True,
         ),
         (
             "How should I approach playing Together Again on E9?",
-            ["For “Together Again” on E9", "chord movement", "common major grips", "full note-for-note copyrighted tab"],
+            ["For “Together Again” on E9", "chord movement", "common major grips", "complete arrangement section by section"],
             ["I can’t", "cannot discuss"],
             True,
         ),
@@ -7171,13 +7263,13 @@ def test_named_fallback_categories_produce_safe_direct_answers() -> None:
         ),
         (
             "How do I play Happy Birthday?",
-            "copyrighted_song_guardrail",
-            "full copyrighted lyrics",
+            "song_source_needed",
+            "exact transcription",
         ),
         (
             "Show me how to play a song.",
             "ask_for_more_context",
-            "Tell me the song, key, tuning",
+            "Tell me the song, artist or recording version",
         ),
     ]
 
@@ -7251,7 +7343,7 @@ def test_two_minor_in_g_and_tab_notation_questions_route_to_fretboard_guidance()
     assert "diminished" not in notation["answer"].lower()
 
 
-def test_song_requests_use_copyright_aware_teaching_guardrails() -> None:
+def test_song_requests_use_source_and_accuracy_aware_teaching() -> None:
     noisy_source = [
         {
             "score": 0.81,
@@ -7267,21 +7359,20 @@ def test_song_requests_use_copyright_aware_teaching_guardrails() -> None:
 
     generic = answer_for_question("Show me how to play a song.", noisy_source)
     assert_clean_answer_body(generic)
-    assert "Tell me the song, key, tuning" in generic["answer"]
-    assert "Amazing Grace" in generic["answer"]
-    assert "3rd fret open" in generic["answer"]
-    assert "full note-for-note copyrighted tab" in generic["answer"]
+    assert "Tell me the song, artist or recording version, key, tuning, and section" in generic["answer"]
+    assert "faithful transcription" in generic["answer"]
+    assert "numbered lesson sections" in generic["answer"]
 
     specific = answer_for_question("Can you teach me how to play anything specific?", noisy_source)
     assert_clean_answer_body(specific)
-    assert "public-domain tune" in specific["answer"]
-    assert "A pedal + F lever" in specific["answer"]
+    assert "recording, chart, notes, or tab passage" in specific["answer"]
+    assert "faithful transcription" in specific["answer"]
 
     birthday = answer_for_question("How do I play Happy Birthday?", noisy_source)
     assert_clean_answer_body(birthday)
-    assert "Guardrail-friendly" in birthday["answer"]
+    assert "Teaching approach" in birthday["answer"]
     assert "intervals from the key center" in birthday["answer"]
-    assert "full protected melody" in birthday["answer"]
+    assert "complete melody" in birthday["answer"]
     assert "e-mail" not in birthday["answer"].lower()
 
 
@@ -8197,18 +8288,29 @@ def test_unrelated_vague_prompt_can_still_use_specificity_fallback_without_tab_e
     )
 
 
-def test_answer_omits_tab_example_for_copyrighted_song_tab_requests() -> None:
+def test_named_song_tab_request_asks_for_source_without_unrelated_tab() -> None:
     payload = answer_for_question("Can you give me tab for Panhandle Rag?", noisy_practical_sources(), mode="tab")
 
     assert "tab_example" not in payload
     assert "fretboard" not in payload
-    assert "full note-for-note copyrighted tab" in payload["answer"]
+    assert "faithful transcription" in payload["answer"]
+    assert "Section 1" in payload["answer"]
 
 
-def test_answer_omits_tab_example_for_full_solo_transcription_requests() -> None:
-    payload = answer_for_question("Transcribe this recording and tab the whole solo.", noisy_practical_sources(), mode="tab")
+def test_full_solo_transcription_request_returns_melody_source_prompt() -> None:
+    status, _, payload = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={"question": "Transcribe this recording and tab the whole solo.", "mode": "tab"},
+        search_index=FakeSearchIndex({"results": noisy_practical_sources(), "warnings": []}),
+        answer_provider=DeterministicAnswerProvider(),
+        melody_exercise_enabled=True,
+    )
 
+    assert status == "200 OK"
     assert "tab_example" not in payload
+    assert payload["melody_exercise"]["kind"] == "artist_solo_lesson"
+    assert payload["melody_exercise"]["status"] == "needs_source"
 
 
 def test_answer_omits_parameterized_tab_for_unsupported_progression_requests() -> None:
@@ -8233,11 +8335,12 @@ def test_copedent_mode_preserves_interval_first_language() -> None:
     assert "frets, pedals, and levers" in payload["answer"]
 
 
-def test_tab_mode_does_not_generate_copyrighted_song_tab() -> None:
+def test_tab_mode_describes_sectioned_attributed_teaching() -> None:
     payload = mode_payload("tab")
     assert payload["mode"] == "tab"
-    assert "full note-for-note copyrighted tab" in payload["answer"]
-    assert "style, harmony" in payload["answer"]
+    assert "song, artist or recording version" in payload["answer"]
+    assert "faithful transcription" in payload["answer"]
+    assert "numbered lesson sections" in payload["answer"]
 
 
 def test_practice_mode_returns_steps() -> None:

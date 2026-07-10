@@ -1,5 +1,7 @@
 # Current Steel Guitar RAG Project Status
 
+> Historical snapshot retained for context. It is no longer the current status source; use `docs/handoffs/task-completions/integration-status.md` for the active integration snapshot.
+
 Last updated: 2026-06-01
 
 This checkpoint records the current working state for The Turnaround / Steel Guitar RAG private preview. It is documentation only and does not switch runtime behavior, mutate Chroma, run embeddings, deploy, or change DNS.

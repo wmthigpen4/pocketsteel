@@ -4,7 +4,7 @@ The Turnaround uses a human-in-the-loop operating model for Codex work. The goal
 
 Codex should classify each request into one of three modes before acting. When the mode is ambiguous, choose the more cautious mode.
 
-Codex must not continue into a second phase automatically unless the user explicitly approves it.
+For a new feature, the user approves the scope once. That approval covers the normal end-to-end loop: implementation, focused and full tests, local smoke, exact-path commits, protected-preview update, automated protected smoke, and then user smoke. Codex asks again only for scope expansion, a new product decision, or an unapproved RED action.
 
 ## GREEN - Codex Can Proceed
 
@@ -30,9 +30,9 @@ Examples:
 - Run read-only analysis of current retrieval outputs.
 - Clean up wording in Streamlit labels without changing the UI flow.
 
-## YELLOW - Codex Must Stop After Plan/Diff
+## YELLOW - Codex Needs Feature-Scope Approval
 
-Codex can inspect, plan, and prepare a proposed diff, but must stop before applying or committing unless the user approves:
+Codex can inspect, plan, and prepare a proposed diff, but must stop before applying unless the user approves the feature scope. After that single approval, Codex runs the full Autopilot loop without asking at every lane transition:
 
 - RAG prompt changes
 - chunking changes
@@ -46,7 +46,7 @@ Expected behavior:
 
 - Explain the proposed change and why it is needed.
 - Show a plan or minimal diff.
-- Stop and ask for approval before applying the change.
+- Stop and ask for feature-scope approval before applying the change. Once approved, implement, test, commit exact paths, update protected preview when included, and complete automated smoke.
 
 Examples:
 
@@ -110,4 +110,3 @@ For RED tasks, "Human decision needed" must be "yes" before action.
 - Do not add Pedal Steel technique, E9 theory, B+C pedals, copedent, harmonized-scale, tab, private transcript, or licensing evaluations unless those sources are indexed and approved.
 - Do not filter retrieval on copyright or licensing flags until the future review phase is approved.
 - Keep The Turnaround as the user-facing name while preserving `pocketsteel`, `pocket-steel`, and `pocket_steel` as internal technical names for now.
-

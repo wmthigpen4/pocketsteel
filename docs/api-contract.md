@@ -91,6 +91,37 @@ Required fields:
 - `warnings`: response-level warnings
 - `sections`: display sections derived from the answer text
 
+Optional fields include `tab_example`, `fretboard`, `progression_guide`, and
+`melody_exercise`. `melody_exercise` is emitted only when Melody Exercise v0 is
+enabled and the request routes to melody/arrangement teaching. Its events are
+the canonical shared sequence used to derive tab and fretboard output.
+
+An answer request may include an optional `melodyRequest` object:
+
+```json
+{
+  "question": "Teach the opening phrase",
+  "melodyRequest": {
+    "kind": "artist_solo_lesson",
+    "artist": "Artist name",
+    "song": "Song title",
+    "recording": "Album or performance version",
+    "section": "Intro",
+    "sourceUrl": "https://example.com/recording",
+    "renderingMode": "e9_adaptation",
+    "accuracy": "approximate",
+    "key": "G",
+    "tokens": ["G", "A", "B", "D"]
+  }
+}
+```
+
+Supported `kind` values are `original_exercise`, `user_melody`,
+`artist_solo_lesson`, and `song_arrangement_lesson`. Rendering modes are
+`transcription`, `e9_adaptation`, and `teaching_simplification`; accuracy labels
+are `exact`, `approximate`, and `interpretive`. Deterministic placement in v0 is
+limited to E9 in G or C major. Longer material is returned section-by-section.
+
 ## GET /api/search
 
 Request:

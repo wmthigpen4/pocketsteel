@@ -44,19 +44,6 @@ _INTERVAL_SORT = {
     "7": 11,
 }
 
-_BLOCKED_TAB_TERMS = (
-    "full tab",
-    "full modern",
-    "modern copyrighted",
-    "copyrighted song",
-    "transcribe",
-    "youtube",
-    "recording",
-    "whole solo",
-    "full solo",
-)
-
-
 @dataclass(frozen=True)
 class ProgressionEventTemplate:
     function: str
@@ -91,7 +78,7 @@ def progression_guide_for_question(question: str) -> dict[str, Any] | None:
     as "Show me a G to C move" remain owned by the movement/tab route.
     """
 
-    if not question or _looks_like_blocked_song_tab(question):
+    if not question:
         return None
 
     routes = _routes_for_question(question)
@@ -140,11 +127,6 @@ def progression_guide_for_question(question: str) -> dict[str, Any] | None:
         "progression_guide": progression_guide,
         "fretboard": fretboard,
     }
-
-
-def _looks_like_blocked_song_tab(question: str) -> bool:
-    normalized = question.lower()
-    return any(term in normalized for term in _BLOCKED_TAB_TERMS)
 
 
 def _routes_for_question(question: str) -> tuple[RouteTemplate, ...] | None:
@@ -213,7 +195,7 @@ def _looks_like_progression_route_request(normalized: str) -> bool:
 def _looks_like_simple_song_progression_request(normalized: str) -> bool:
     if not re.search(r"\bprogression\b", normalized):
         return False
-    if re.search(r"\b(?:minor|copyright|copyrighted|transcribe|youtube|recording|solo|full\s+tab)\b", normalized):
+    if re.search(r"\bminor\b", normalized):
         return False
     return bool(
         re.search(r"\b(?:simple|beginner|basic|song|practice)\b", normalized)

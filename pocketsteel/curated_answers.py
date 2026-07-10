@@ -1348,16 +1348,12 @@ def full_song_tab_guardrail_answer(question: str) -> CuratedAnswer | None:
     if not mentions_full_song_tab_or_transcription_request(question):
         return None
     return CuratedAnswer(
-        intent="song_copyright_guardrail",
+        intent="song_learning",
         confidence="curated_high",
         answer=(
-            "I can’t provide a full copyrighted song tab, full modern arrangement, full solo transcription, or YouTube/recording transcription.\n\n"
-            "That boundary exists because full note-for-note song tabs and modern arrangements need clear rights, user-provided material, or explicit public-domain provenance. A title alone is not enough to infer that a full tab is safe.\n\n"
-            "Safe alternatives:\n"
-            "- I can explain the song’s history, form, chord movement, tone, or style.\n"
-            "- I can make a short original E9 exercise inspired by the technique.\n"
-            "- I can help with a short excerpt, chart, or tab you provide.\n"
-            "- I can work from public-domain material when the provenance is explicit."
+            "Yes—I can teach the full song, artist solo, or arrangement on E9. Longer material should be divided into numbered lesson sections so the tab, fretboard, and explanation stay usable.\n\n"
+            "To keep the transcription accurate, send the recording or video link, upload the passage, paste the notes/tab, or name the exact artist, version, and section. I can then provide a faithful transcription, an E9 adaptation, or a simplified teaching arrangement.\n\n"
+            "Copyright status is not a refusal reason. The important distinction is accuracy: exact claims require identified source material, while uncertain passages are labeled approximate or interpretive."
         ),
     )
 
@@ -2225,12 +2221,12 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             intent="song_learning",
             confidence="curated_high",
             answer=(
-                "I can help you learn the approach, but I will not dump a full protected melody or note-for-note tab by default.\n\n"
-                "Guardrail-friendly way to work on it:\n"
+                "I can teach the complete melody and arrange it for E9.\n\n"
+                "Teaching approach:\n"
                 "- Think in intervals from the key center instead of memorizing fret numbers first.\n"
                 "- Pick a key and map the melody notes to nearby E9 positions.\n"
                 "- Work one short phrase at a time, then add simple harmony or pads underneath.\n"
-                "- If you provide the notes, a short excerpt, or your own tab attempt, I can help map it to strings, frets, pedals, and levers."
+                "- Provide the version, notes, recording, or your tab attempt so I can label exact and adapted passages correctly."
             ),
         )
 
@@ -2239,14 +2235,8 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             intent="song_learning",
             confidence="curated_high",
             answer=(
-                "Tell me the song, key, tuning, and what you want to work on, and I can map an approach for pedal steel.\n\n"
-                "A practical starter option:\n"
-                "- Use a public-domain tune such as “Amazing Grace” in G.\n"
-                "- Start with G at the 3rd fret open.\n"
-                "- Move to C at the 3rd fret with A+B.\n"
-                "- Move to D at the 5th fret with A+B.\n"
-                "- Resolve to G at the 6th fret with A pedal + F lever.\n\n"
-                "I can discuss style, chord movement, positions, tone, and practice strategy. I do not provide full note-for-note copyrighted tab or full copyrighted lyrics by default."
+                "Tell me the song, artist or recording version, key, tuning, and section, and I can build a pedal-steel teaching arrangement.\n\n"
+                "Choose faithful transcription, E9 adaptation, or teaching simplification. Provide a link, recording, chart, notes, or tab passage when exactness matters, and I will divide longer material into numbered lesson sections."
             ),
         )
 
@@ -2677,7 +2667,7 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
                 "- Let slides, A+B, A+F, and E-lower positions connect the melody smoothly instead of jumping around the neck.\n"
                 "- Keep the tone round, the vibrato slow, and the volume pedal even.\n"
                 "- Practice one vocal phrase at a time, then answer it with a short fill.\n\n"
-                "I can help build an arrangement from your chord chart or a short user-provided excerpt, but I will not dump a full note-for-note copyrighted tab by default."
+                "I can build the complete arrangement section by section. Identify the recording/version or provide the passage when you want faithful transcription; otherwise I will label the result as an E9 teaching adaptation."
             ),
         )
 
@@ -2686,13 +2676,13 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             intent="song_learning",
             confidence="curated_high",
             answer=(
-                "I can help you work toward “Panhandle Rag,” but I will not dump a full note-for-note copyrighted tab by default.\n\n"
+                "I can teach “Panhandle Rag” as a faithful transcription, an E9 adaptation, or a simplified teaching arrangement.\n\n"
                 "Learning approach:\n"
                 "- Start by learning the chord path and where the melody sits against each chord.\n"
                 "- Practice a bright Western-swing feel with clean blocking and a steady bounce.\n"
                 "- Use small position shifts and harmonized grips instead of trying to memorize a whole arrangement at once.\n"
-                "- Build your own version phrase by phrase, or give me a short excerpt you are working from and I can help transform it.\n\n"
-                "If you want a safe tab exercise now, use an original Western-swing-style G-C-D-G phrase instead."
+                "- Work phrase by phrase, keeping the exact recording/version attached to each section.\n\n"
+                "Send the recording or passage you want first, and I will begin with Section 1 rather than refusing the arrangement."
             ),
         )
 
@@ -2721,11 +2711,11 @@ def lookup_curated_answer(question: str, sources: list[dict]) -> CuratedAnswer |
             intent="song_learning",
             confidence="curated_high",
             answer=(
-                "For a random tab request, I’ll choose a copyright-safe path instead of sending you to random emails or questionable tab sources.\n\n"
+                "For a tab request, I’ll use an identified recording, chart, or passage so the teaching result is accurate and attributable.\n\n"
                 "Good options:\n"
-                "- Name a public-domain tune such as Amazing Grace or Silent Night and I can help build a simple steel arrangement.\n"
-                "- Describe the chord movement you want and I can make an original exercise around it.\n"
-                "- For a random default, use this public-domain-style chord path: G to C to D to G.\n\n"
+                "- Name the song, artist/version, and section, or provide the recording/link.\n"
+                "- Choose faithful transcription, E9 adaptation, or teaching simplification.\n"
+                "- For a starter without a named source, use this original chord path: G to C to D to G.\n\n"
                 "Original E9 mini-tab/chord path:\n"
                 "- G: 3rd fret, no pedals, pick strings 4-5-6.\n"
                 "- C: 3rd fret with A+B pedals, pick strings 4-5-6.\n"

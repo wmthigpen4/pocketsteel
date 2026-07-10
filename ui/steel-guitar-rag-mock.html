@@ -1415,10 +1415,166 @@
       display: none;
     }
 
+    .answer-melody[hidden],
+    .melody-tool[hidden] {
+      display: none;
+    }
+
+    .melody-tool {
+      width: min(880px, calc(100% - 32px));
+      margin: 14px auto 0;
+      border: 1px solid rgba(240, 191, 105, 0.2);
+      border-radius: 16px;
+      background: rgba(14, 16, 15, 0.72);
+      padding: 0 16px 16px;
+    }
+
+    .melody-tool summary {
+      cursor: pointer;
+      color: rgba(255, 246, 223, 0.92);
+      font-weight: 800;
+      padding: 14px 0;
+    }
+
+    .melody-tool-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .melody-tool label {
+      display: grid;
+      gap: 6px;
+      color: rgba(244, 234, 214, 0.72);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .melody-tool input,
+    .melody-tool select,
+    .melody-tool textarea {
+      min-width: 0;
+      border: 1px solid rgba(244, 234, 214, 0.16);
+      border-radius: 10px;
+      background: rgba(5, 7, 7, 0.72);
+      color: rgba(255, 246, 223, 0.94);
+      font: inherit;
+      padding: 10px 11px;
+      text-transform: none;
+      letter-spacing: normal;
+    }
+
+    .melody-tool .is-wide {
+      grid-column: 1 / -1;
+    }
+
+    .melody-tool-actions {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .melody-tool-submit {
+      border: 1px solid rgba(240, 191, 105, 0.42);
+      border-radius: 999px;
+      background: rgba(240, 191, 105, 0.13);
+      color: #fff6df;
+      cursor: pointer;
+      font-weight: 850;
+      padding: 10px 14px;
+    }
+
+    .melody-tool-note {
+      margin: 0;
+      color: rgba(244, 234, 214, 0.65);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
     .answer-progression,
-    .answer-tab {
+    .answer-tab,
+    .answer-melody {
       display: grid;
       gap: 12px;
+    }
+
+    .melody-exercise-card {
+      display: grid;
+      gap: 14px;
+      border: 1px solid rgba(240, 191, 105, 0.26);
+      border-radius: 17px;
+      background: linear-gradient(180deg, rgba(33, 31, 26, 0.94), rgba(12, 14, 13, 0.9));
+      box-shadow: 0 22px 54px rgba(0, 0, 0, 0.34);
+      padding: 17px 18px;
+    }
+
+    .melody-exercise-title {
+      margin: 0;
+      color: rgba(255, 246, 223, 0.97);
+      font-family: var(--font-lesson);
+      font-size: 24px;
+      line-height: 1.2;
+    }
+
+    .melody-exercise-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .melody-exercise-chip {
+      border: 1px solid rgba(240, 191, 105, 0.25);
+      border-radius: 999px;
+      color: rgba(255, 246, 223, 0.84);
+      font-size: 12px;
+      font-weight: 800;
+      padding: 7px 9px;
+    }
+
+    .melody-stepper {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+    }
+
+    .melody-step {
+      flex: 0 0 auto;
+      min-width: 90px;
+      border: 1px solid rgba(244, 234, 214, 0.15);
+      border-radius: 11px;
+      background: rgba(7, 9, 9, 0.42);
+      color: rgba(255, 246, 223, 0.86);
+      cursor: pointer;
+      padding: 10px;
+      text-align: left;
+    }
+
+    .melody-step[aria-pressed="true"] {
+      border-color: rgba(240, 191, 105, 0.72);
+      background: rgba(240, 191, 105, 0.14);
+    }
+
+    .melody-step-detail,
+    .melody-exercise-copy {
+      margin: 0;
+      color: rgba(244, 234, 214, 0.78);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    @media (max-width: 620px) {
+      .melody-tool-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .melody-tool .is-wide {
+        grid-column: auto;
+      }
     }
 
     .progression-guide-card {
@@ -2433,6 +2589,52 @@
         </div>
       </section>
 
+      <details class="melody-tool" id="melody-tool" hidden>
+        <summary>Build a melody or arrangement lesson</summary>
+        <div class="melody-tool-grid">
+          <label>
+            Teaching material
+            <select id="melody-kind">
+              <option value="user_melody">My melody</option>
+              <option value="artist_solo_lesson">Artist solo</option>
+              <option value="song_arrangement_lesson">Song arrangement</option>
+              <option value="original_exercise">Original exercise</option>
+            </select>
+          </label>
+          <label>
+            Key
+            <select id="melody-key">
+              <option value="G">G major</option>
+              <option value="C">C major</option>
+            </select>
+          </label>
+          <label>
+            Artist
+            <input id="melody-artist" type="text" placeholder="Artist or player">
+          </label>
+          <label>
+            Song / arrangement
+            <input id="melody-song" type="text" placeholder="Song or solo title">
+          </label>
+          <label>
+            Recording / section
+            <input id="melody-recording" type="text" placeholder="Version, timestamp, intro, solo...">
+          </label>
+          <label>
+            Source link
+            <input id="melody-source-url" type="url" placeholder="https://...">
+          </label>
+          <label class="is-wide">
+            Notes or scale degrees
+            <textarea id="melody-tokens" rows="2" placeholder="Example: 1 2 3 5 or G A B D"></textarea>
+          </label>
+        </div>
+        <div class="melody-tool-actions">
+          <button class="melody-tool-submit" id="melody-submit" type="button">Build Section 1</button>
+          <p class="melody-tool-note">Up to eight events render per section. Longer solos and arrangements continue section by section.</p>
+        </div>
+      </details>
+
       <div class="try-asking" aria-label="Suggested question">
         <div class="try-label-wrap"><p class="try-label">Try asking:</p></div>
         <div class="examples" id="suggested-prompts" aria-label="Example questions"></div>
@@ -2459,6 +2661,10 @@
 
           <div class="answer-detail-grid" id="answer-section-grid"></div>
         </article>
+
+        <section class="answer-melody" id="answer-melody" aria-label="Melody or arrangement lesson" hidden>
+          <div id="answer-melody-content"></div>
+        </section>
 
         <section class="answer-tab" id="answer-tab" aria-label="Pedal steel tab examples" hidden>
           <div id="answer-tab-list"></div>
@@ -2928,7 +3134,7 @@
     </div>
   </div>
 
-  <script src="answer-client.js?v=progression-guide-v0-20260704"></script>
+  <script src="answer-client.js?v=melody-exercise-v0-20260710"></script>
   <script src="pedal-steel-fretboard.js?v=explorer-compare-fix-20260702b"></script>
   <script>
     const question = document.querySelector("#question");
@@ -2937,7 +3143,7 @@
     const topic = document.querySelector("#topic");
     const suggestedPrompts = document.querySelector("#suggested-prompts");
     const page = document.querySelector(".page");
-    const homeSections = Array.from(document.querySelectorAll(".hero, .prompt-shell, .try-asking"));
+    const homeSections = Array.from(document.querySelectorAll(".hero, .prompt-shell, .melody-tool, .try-asking"));
     const brandHome = document.querySelector(".brand-home");
     const stageReturn = document.querySelector(".stage-return");
     const footer = document.querySelector("footer");
@@ -2948,6 +3154,17 @@
     const answerLead = document.querySelector("#answer-lead");
     const answerStatus = document.querySelector("#answer-status");
     const answerSectionGrid = document.querySelector("#answer-section-grid");
+    const melodyTool = document.querySelector("#melody-tool");
+    const melodyKind = document.querySelector("#melody-kind");
+    const melodyKey = document.querySelector("#melody-key");
+    const melodyArtist = document.querySelector("#melody-artist");
+    const melodySong = document.querySelector("#melody-song");
+    const melodyRecording = document.querySelector("#melody-recording");
+    const melodySourceUrl = document.querySelector("#melody-source-url");
+    const melodyTokens = document.querySelector("#melody-tokens");
+    const melodySubmit = document.querySelector("#melody-submit");
+    const answerMelody = document.querySelector("#answer-melody");
+    const answerMelodyContent = document.querySelector("#answer-melody-content");
     const answerProgression = document.querySelector("#answer-progression");
     const answerProgressionList = document.querySelector("#answer-progression-list");
     const answerTab = document.querySelector("#answer-tab");
@@ -3667,6 +3884,135 @@
       return !window.matchMedia || !window.matchMedia("(max-width: 640px)").matches;
     }
 
+    function clearMelodyExercise() {
+      answerMelody.hidden = true;
+      answerMelodyContent.innerHTML = "";
+      delete answerTab.dataset.activeMelodyEvent;
+      delete answerFretboardMount.dataset.activeMelodyEvent;
+    }
+
+    function melodyLabel(value) {
+      return String(value || "")
+        .replace(/_/g, " ")
+        .replace(/\b\w/g, (letter) => letter.toUpperCase());
+    }
+
+    function renderMelodyExercise(exercise) {
+      clearMelodyExercise();
+      if (!exercise) return;
+
+      answerMelody.hidden = false;
+      const card = document.createElement("article");
+      card.className = "melody-exercise-card";
+      card.dataset.melodyExerciseId = exercise.id || "melody-exercise";
+
+      const kicker = document.createElement("p");
+      kicker.className = "answer-section-title";
+      kicker.textContent = exercise.status === "needs_source" ? "Source needed for transcription" : "Melody / arrangement lesson";
+
+      const title = document.createElement("h3");
+      title.className = "melody-exercise-title";
+      title.textContent = exercise.title || "Melody / arrangement lesson";
+
+      const meta = document.createElement("div");
+      meta.className = "melody-exercise-meta";
+      const section = exercise.section || {};
+      const accuracy = exercise.accuracy || {};
+      [
+        melodyLabel(exercise.kind),
+        melodyLabel(exercise.renderingMode),
+        `${melodyLabel(accuracy.label)} · ${melodyLabel(accuracy.confidence)} confidence`,
+        section.total ? `Section ${section.number} of ${section.total}` : section.label
+      ].filter(Boolean).forEach((label) => {
+        const chip = document.createElement("span");
+        chip.className = "melody-exercise-chip";
+        chip.textContent = label;
+        meta.appendChild(chip);
+      });
+
+      const material = exercise.material || {};
+      const identityParts = [material.artist, material.song, material.recording, material.section].filter(Boolean);
+      const identity = document.createElement("p");
+      identity.className = "melody-exercise-copy";
+      identity.textContent = identityParts.length
+        ? `Teaching source: ${identityParts.join(" · ")}`
+        : "Teaching source: user-entered or original melody.";
+
+      const accuracyNote = document.createElement("p");
+      accuracyNote.className = "melody-exercise-copy";
+      accuracyNote.textContent = accuracy.note || "Accuracy is labeled from the available source material.";
+
+      card.append(kicker, title, meta, identity, accuracyNote);
+
+      if (material.sourceUrl) {
+        const sourceLink = document.createElement("a");
+        sourceLink.className = "movement-lesson-card__handoff-link";
+        sourceLink.href = material.sourceUrl;
+        sourceLink.target = "_blank";
+        sourceLink.rel = "noopener noreferrer";
+        sourceLink.textContent = "Open recording / arrangement source";
+        card.appendChild(sourceLink);
+      }
+
+      if (exercise.events?.length) {
+        const stepper = document.createElement("div");
+        stepper.className = "melody-stepper";
+        stepper.setAttribute("aria-label", "Melody lesson steps");
+        const detail = document.createElement("p");
+        detail.className = "melody-step-detail";
+        detail.setAttribute("aria-live", "polite");
+
+        const selectEvent = (selectedEvent, selectedButton) => {
+          stepper.querySelectorAll(".melody-step").forEach((button) => {
+            button.setAttribute("aria-pressed", String(button === selectedButton));
+          });
+          const note = selectedEvent.notes?.[0] || {};
+          const changes = note.changes?.length ? ` · ${note.changes.join("+")}` : " · open controls";
+          detail.textContent = selectedEvent.explanation
+            || `Step ${selectedEvent.step}: ${selectedEvent.resolvedNote || "note"} · string ${note.string} · fret ${note.fret}${changes}`;
+          answerTab.dataset.activeMelodyEvent = selectedEvent.id;
+          answerFretboardMount.dataset.activeMelodyEvent = selectedEvent.id;
+          if (selectedEvent.renderablePositionId) {
+            answerTab.dataset.activeMelodyPosition = selectedEvent.renderablePositionId;
+            answerFretboardMount.dataset.activeMelodyPosition = selectedEvent.renderablePositionId;
+          } else {
+            delete answerTab.dataset.activeMelodyPosition;
+            delete answerFretboardMount.dataset.activeMelodyPosition;
+          }
+        };
+
+        exercise.events.forEach((event, index) => {
+          const note = event.notes?.[0] || {};
+          const button = document.createElement("button");
+          button.className = "melody-step";
+          button.type = "button";
+          button.dataset.melodyEventId = event.id;
+          button.setAttribute("aria-pressed", String(index === 0));
+          button.textContent = `Step ${event.step} · ${event.resolvedNote || event.inputToken} · S${note.string} F${note.fret}`;
+          button.addEventListener("click", () => selectEvent(event, button));
+          stepper.appendChild(button);
+          if (index === 0) selectEvent(event, button);
+        });
+        card.append(stepper, detail);
+      } else {
+        const sourceNeeded = document.createElement("p");
+        sourceNeeded.className = "melody-step-detail";
+        sourceNeeded.textContent = "Add the recording/link or paste the notes for Section 1. No exact tab is shown until the source is identified.";
+        card.appendChild(sourceNeeded);
+      }
+
+      if (section.hasMore) {
+        const continuation = document.createElement("p");
+        continuation.className = "melody-exercise-copy";
+        continuation.textContent = section.nextSection
+          ? `Continue with Section ${section.nextSection} after this section is clean.`
+          : "This arrangement continues in additional numbered sections.";
+        card.appendChild(continuation);
+      }
+
+      answerMelodyContent.appendChild(card);
+    }
+
     function clearTabExamples() {
       answerTab.hidden = true;
       answerTabList.innerHTML = "";
@@ -4107,14 +4453,14 @@
       });
 
       renderProgressionGuide(response.progressionGuide);
+      renderMelodyExercise(response.melodyExercise);
       renderTabExamples(response.tabs);
       renderFretboardVisualization(response.fretboard);
 
-      const isCopyrightTabGuardrail = /^I can’t provide a full copyrighted song tab/i.test(response.answer || "");
       const hideEmptySourceCards = !response.sources?.length && (
         Boolean(response.progressionGuide)
+        || Boolean(response.melodyExercise)
         || Boolean(response.fretboard)
-        || Boolean(isCopyrightTabGuardrail)
         || response.tabs?.some((tab) => shouldRenderMovementLesson(tab))
       );
       sourceSection.hidden = Boolean(hideEmptySourceCards);
@@ -4199,6 +4545,7 @@
       answerSectionGrid.innerHTML = "";
       answerSectionGrid.classList.remove("is-structured-answer");
       clearProgressionGuide();
+      clearMelodyExercise();
       clearTabExamples();
       clearFretboardVisualization();
       sourceSection.hidden = false;
@@ -4219,6 +4566,7 @@
       answerSectionGrid.innerHTML = "";
       answerSectionGrid.classList.remove("is-structured-answer");
       clearProgressionGuide();
+      clearMelodyExercise();
       clearTabExamples();
       clearFretboardVisualization();
       sourceSection.hidden = false;
@@ -4242,6 +4590,7 @@
       const canAskLive = STEEL_RAG_ANSWER_UI.canSubmitLiveQuestion(mockAccessState);
       primarySend.disabled = isBusy || !canAskLive;
       answerSend.disabled = isBusy || !canAskLive;
+      melodySubmit.disabled = isBusy || !canAskLive;
       suggestedPrompts.querySelectorAll(".example").forEach((button) => {
         button.disabled = isBusy;
       });
@@ -4261,7 +4610,7 @@
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
 
-    async function showAnswerWorkspace(rawQuestion) {
+    async function showAnswerWorkspace(rawQuestion, requestPayload = {}) {
       if (answerRequestInFlight) return;
       answerRequestInFlight = true;
       const submittedQuestion = rawQuestion.trim() || HUM_DEMO_QUESTION;
@@ -4271,7 +4620,8 @@
       setAnswerBusy(true);
       try {
         const response = await STEEL_RAG_ANSWER_UI.requestAnswer(submittedQuestion, {
-          accessRole: mockAccessState
+          accessRole: mockAccessState,
+          requestPayload
         });
         answeredQuestion.textContent = response.question || submittedQuestion;
         renderResponse(response);
@@ -4284,14 +4634,48 @@
       }
     }
 
-    function submitQuestion(questionText) {
+    function submitQuestion(questionText, requestPayload = {}) {
       if (!STEEL_RAG_ANSWER_UI.canSubmitLiveQuestion(mockAccessState)) {
         openBackstage({ initialTab: "pass" });
         return false;
       }
       if (answerRequestInFlight || !STEEL_RAG_ANSWER_UI.hasSubmittableQuestion(questionText)) return false;
-      showAnswerWorkspace(questionText);
+      showAnswerWorkspace(questionText, requestPayload);
       return true;
+    }
+
+    function melodyTokenList(value) {
+      return String(value || "").split(/[\s,]+/).map((token) => token.trim()).filter(Boolean);
+    }
+
+    function submitMelodyLesson() {
+      const kind = melodyKind.value;
+      const artist = melodyArtist.value.trim();
+      const song = melodySong.value.trim();
+      const recording = melodyRecording.value.trim();
+      const sourceUrl = melodySourceUrl.value.trim();
+      const tokens = melodyTokenList(melodyTokens.value);
+      const subject = [artist, song].filter(Boolean).join(" — ") || "my melody";
+      const questionText = kind === "artist_solo_lesson"
+        ? `Teach the artist solo from ${subject} on E9.`
+        : kind === "song_arrangement_lesson"
+          ? `Build an E9 teaching arrangement for ${subject}.`
+          : `Build an E9 melody exercise from ${subject}.`;
+      const melodyRequest = {
+        kind,
+        key: melodyKey.value,
+        tuning: "E9",
+        renderingMode: kind === "artist_solo_lesson" ? "transcription" : "e9_adaptation",
+        material: {
+          artist,
+          song,
+          recording,
+          sourceUrl,
+          section: "Section 1"
+        }
+      };
+      if (tokens.length) melodyRequest.melody = tokens;
+      submitQuestion(questionText, { melodyRequest });
     }
 
     function submitHomeQuestion() {
@@ -4317,8 +4701,10 @@
       followupQuestion.value = "";
       answeredQuestion.textContent = HUM_DEMO_QUESTION;
       clearProgressionGuide();
+      clearMelodyExercise();
       clearTabExamples();
       clearFretboardVisualization();
+      melodyTool.hidden = !backendSession.features?.melodyExercise;
       updateHelperState();
       question.focus();
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -4423,6 +4809,7 @@
 
     function applySessionAccess(session) {
       backendSession = session;
+      melodyTool.hidden = !session.features?.melodyExercise;
       const isLocalDevSession = sessionUsesLocalDev(session);
       setDevPreviewAccessEnabled(isLocalDevSession);
 
@@ -4467,7 +4854,10 @@
       return {
         authenticated,
         role: authenticated ? role : STEEL_RAG_ANSWER_UI.ACCESS_ROLES.ANONYMOUS,
-        authProvider: normalizeSessionAuthProvider(payload)
+        authProvider: normalizeSessionAuthProvider(payload),
+        features: {
+          melodyExercise: Boolean(payload?.features?.melodyExercise)
+        }
       };
     }
 
@@ -4590,6 +4980,7 @@
     });
 
     primarySend.addEventListener("click", submitHomeQuestion);
+    melodySubmit.addEventListener("click", submitMelodyLesson);
     brandHome.addEventListener("click", returnToStage);
     stageReturn.addEventListener("click", returnToStage);
 
