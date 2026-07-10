@@ -80,6 +80,7 @@ def test_melody_workbench_has_guided_tasks_feature_state_and_fretboard_first_res
     assert "activateRoute" in script
     assert "Move up one octave" not in html
     assert "Move ${tokenLabel} up one octave" in script
+    assert html.count("?v=melody-arranger-20260710") == 3
     assert html.index('id="studio-fretboard"') < html.index('id="studio-tab"')
     assert 'id="studio-continue"' in html
     assert "does not listen to or extract notes from the link yet" in html
