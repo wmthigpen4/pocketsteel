@@ -14,8 +14,7 @@ import re
 from typing import Any, Mapping
 from urllib.parse import urlparse
 
-from pocketsteel.answer_tab_examples import fretboard_payload_for_tab_example
-from pocketsteel.tab_engine import TabEvent, TabNote, default_e9_copedent_profile, render_tab
+from pocketsteel.melody_arranger import SUPPORTED_CONTOURS, SUPPORTED_TEXTURES, arrange_melody_routes
 
 
 ENABLE_MELODY_EXERCISE_ENV = "STEEL_RAG_ENABLE_MELODY_EXERCISE"
@@ -33,19 +32,7 @@ SUPPORTED_RENDERING_MODES = {
     "teaching_simplification",
 }
 SUPPORTED_ACCURACY = {"exact", "approximate", "interpretive"}
-
-_KEY_PLACEMENTS: dict[str, dict[str, Any]] = {
-    "G": {
-        "notes": ("G", "A", "B", "C", "D", "E", "F#"),
-        "string": 4,
-        "frets": {"G": 3, "A": 5, "B": 7, "C": 8, "D": 10, "E": 12, "F#": 14},
-    },
-    "C": {
-        "notes": ("C", "D", "E", "F", "G", "A", "B"),
-        "string": 5,
-        "frets": {"C": 1, "D": 3, "E": 5, "F": 6, "G": 8, "A": 10, "B": 12},
-    },
-}
+SUPPORTED_KEYS = {"G", "C"}
 
 _TEACHING_REQUEST_RE = re.compile(
     r"\b(?:tab|tablature|transcrib\w*|arrang\w*|teach|learn|play)\b.*"
@@ -88,14 +75,14 @@ def melody_exercise_response(
         return _needs_source_response(question, kind, material, structured)
 
     key = str(structured.get("key") or "G").strip().upper()
-    if key not in _KEY_PLACEMENTS:
+    if key not in SUPPORTED_KEYS:
         raise MelodyExerciseError("Melody Exercise v0 currently supports the keys of G and C.")
     tuning = str(structured.get("tuning") or "E9").strip().upper()
     if tuning != "E9":
         raise MelodyExerciseError("Melody Exercise v0 currently supports E9 tuning only.")
 
     tokens = [_melody_token(item) for item in raw_melody]
-    if any(not token for token in tokens):
+    if any(not token and not (isinstance(item, Mapping) and "string" in item and "fret" in item) for token, item in zip(tokens, raw_melody)):
         raise MelodyExerciseError("Each melody event needs a note name or scale degree from 1 through 7.")
     section_number = _positive_int(structured.get("sectionNumber") or structured.get("section_number"), 1)
     total_sections = max(1, math.ceil(len(tokens) / MAX_EVENTS_PER_SECTION))
@@ -122,60 +109,31 @@ def melody_exercise_response(
             else "Treat this as a teaching interpretation until it is checked against the identified recording."
         )
 
-    events, interval_rows = _events_for_tokens(section_tokens, key)
-    tab_result = render_tab(tuple(event["tabEvent"] for event in events))
-    if not tab_result.ok:
-        raise MelodyExerciseError("The requested phrase did not pass E9 mechanical validation.")
-
-    profile = default_e9_copedent_profile()
     tab_id = f"melody-{key.lower()}-section-{section_number}"
-    event_payloads: list[dict[str, Any]] = []
-    for event in events:
-        payload = event["tabEvent"].normalized(profile).to_dict()
-        payload.update(
-            {
-                "id": event["id"],
-                "step": event["step"],
-                "inputToken": event["inputToken"],
-                "resolvedNote": event["resolvedNote"],
-                "scaleDegree": event["scaleDegree"],
-                "technique": "pick",
-                "explanation": event["explanation"],
-                "renderablePositionId": f"{tab_id}-event-{event['step']}",
-            }
-        )
-        event_payloads.append(payload)
-
     title = _exercise_title(kind, material, key, section_number)
-    tab_example = {
-        "id": tab_id,
-        "title": title,
-        "kind": "melody_exercise",
-        "display_tab": True,
-        "preferred_display": "tab_and_fretboard",
-        "context": {
-            "key": key,
-            "tuning": "E9",
-            "profile": profile.id,
-            "difficulty": str(structured.get("difficulty") or "beginner"),
-            "materialKind": kind,
-            "renderingMode": rendering_mode,
-            "section": section_number,
-        },
-        "rendered_tab": tab_result.tab,
-        "validation": {
-            "ok": True,
-            "issues": [],
-            "profile": profile.id,
-            "eventCount": len(event_payloads),
-        },
-        "explanation": "The tab, step list, and fretboard use the same mechanically validated E9 events.",
-        "intervals": interval_rows,
-        "events": event_payloads,
-    }
-    fretboard = fretboard_payload_for_tab_example(tab_example)
-    if fretboard is None:
-        raise MelodyExerciseError("The requested phrase could not produce a synchronized fretboard payload.")
+    contour_mode = str(structured.get("contourMode") or structured.get("contour_mode") or "closest_playable").strip().lower()
+    if contour_mode not in SUPPORTED_CONTOURS:
+        raise MelodyExerciseError("Contour mode must be closest playable, ascending, descending, or preserve input.")
+    texture = str(structured.get("texture") or "both").strip().lower()
+    if texture not in SUPPORTED_TEXTURES:
+        raise MelodyExerciseError("Unsupported Melody Studio texture.")
+    try:
+        routes, resolved_phrase = arrange_melody_routes(
+            raw_melody,
+            key=key,
+            contour_mode=contour_mode,
+            texture=texture,
+            route_id_prefix=tab_id,
+            title=title,
+            event_start=start,
+            event_end=start + MAX_EVENTS_PER_SECTION,
+        )
+    except ValueError as exc:
+        raise MelodyExerciseError(str(exc)) from exc
+    selected_route = routes[0]
+    event_payloads = selected_route["events"]
+    tab_example = selected_route["tabExample"]
+    fretboard = selected_route["fretboard"]
 
     exercise = {
         "schemaVersion": MELODY_SCHEMA_VERSION,
@@ -197,12 +155,21 @@ def melody_exercise_response(
             "hasMore": section_number < total_sections,
             "nextSection": section_number + 1 if section_number < total_sections else None,
         },
-        "input": {"key": key, "tuning": "E9", "tokens": section_tokens},
+        "input": {
+            "key": key,
+            "tuning": "E9",
+            "tokens": section_tokens,
+            "contourMode": contour_mode,
+            "texture": texture,
+            "resolvedPhrase": resolved_phrase,
+        },
         "events": event_payloads,
+        "routes": routes,
+        "selectedRouteId": selected_route["id"],
         "validation": {
             "ok": True,
             "mechanical": [],
-            "musical": [],
+            "musical": ["Melody contour and harmony routes are octave-aware and pitch validated."],
             "steelPractical": [],
             "accuracy": [accuracy_note],
         },
@@ -259,49 +226,6 @@ def _needs_source_response(
         "sources": _source_cards(material),
         "warnings": [],
     }
-
-
-def _events_for_tokens(tokens: list[str], key: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    placement = _KEY_PLACEMENTS[key]
-    scale_notes = placement["notes"]
-    string_number = int(placement["string"])
-    events: list[dict[str, Any]] = []
-    intervals: list[dict[str, Any]] = []
-    for index, token in enumerate(tokens, start=1):
-        note, degree = _resolve_token(token, scale_notes)
-        fret = int(placement["frets"][note])
-        event_id = f"melody-step-{index}"
-        tab_event = TabEvent(
-            notes=(TabNote(string=string_number, fret=fret),),
-            chord=note,
-            lyric=f"step {index}",
-            comment=f"Scale degree {degree} in {key}",
-        )
-        events.append(
-            {
-                "id": event_id,
-                "step": index,
-                "inputToken": token,
-                "resolvedNote": note,
-                "scaleDegree": degree,
-                "explanation": f"Play {note}, scale degree {degree} in {key}, on string {string_number} at fret {fret}.",
-                "tabEvent": tab_event,
-            }
-        )
-        intervals.append({"eventId": event_id, "chord": note, "byString": {str(string_number): degree}})
-    return events, intervals
-
-
-def _resolve_token(token: str, scale_notes: tuple[str, ...]) -> tuple[str, str]:
-    normalized = token.strip().upper().replace("♯", "#").replace("♭", "B")
-    if normalized.isdigit() and 1 <= int(normalized) <= 7:
-        degree = int(normalized)
-        return scale_notes[degree - 1], str(degree)
-    display = normalized[0] + normalized[1:].replace("B", "b") if normalized else normalized
-    for index, note in enumerate(scale_notes, start=1):
-        if display.upper() == note.upper():
-            return note, str(index)
-    raise MelodyExerciseError(f"{token!r} is not in the selected major scale for Melody Exercise v0.")
 
 
 def _melody_token(item: Any) -> str:

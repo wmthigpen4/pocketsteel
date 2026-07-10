@@ -25,7 +25,9 @@ Supported request fields:
 - `kind`: `original_exercise`, `user_melody`, `artist_solo_lesson`, or `song_arrangement_lesson`.
 - `key`: G or C major in v0.
 - `tuning`: E9.
-- `melody`: note names or scale degrees. Longer lists are divided into sections.
+- `melody`: legacy note-name/scale-degree strings or structured events. Structured events may add `direction`, `octaveShift`, or a literal standard-E9 `string`, `fret`, and `changes` position. Longer lists are divided into sections.
+- `contourMode`: `closest_playable` (default), `ascending`, `descending`, or `preserve_input`.
+- `texture`: `both` (default), `single_note`, `automatic_harmony`, `thirds`, `sixths`, or `chord_melody`.
 - `sectionNumber`: requested section, starting at 1.
 - `renderingMode`: `transcription`, `e9_adaptation`, or `teaching_simplification`.
 - `accuracy`: requested `exact`, `approximate`, or `interpretive` label. Exact artist-material claims are downgraded when no source is identified.
@@ -37,15 +39,19 @@ The answer may add `melody_exercise` with:
 - rendering and accuracy labels;
 - section number, total, continuation state, and next section;
 - mechanically validated musical events;
+- octave/register-resolved input and deterministic movement guidance;
+- route choices for the single-note melody and available validated harmony textures;
 - validation results shared by tab and fretboard rendering.
 
-Ready exercises also return `tab_example` and `fretboard` derived from the same validated events. Source-free original exercises return no source cards. Recording-based lessons preserve a supplied source URL as a recording/arrangement source card.
+Ready exercises add `routes`, `selectedRouteId`, and an input `resolvedPhrase`. Each route owns its synchronized events, tab example, fretboard, harmony label, recommendation, and movement summary. Existing top-level `events`, `tab_example`, and `fretboard` remain populated from the selected single-note route for compatibility. Source-free original exercises return no source cards. Recording-based lessons preserve a supplied source URL as a recording/arrangement source card.
 
 ## Frontend Contract
 
 When the backend advertises `features.melodyExercise=true` through `/api/session`, the home header exposes **Melody Studio** beside Explore Fretboard and Backstage. The technical inline form is not part of the home screen. `/ui/melody-workbench.html` owns the guided phrase-to-E9 workflow.
 
-Melody Studio begins with four learner jobs: artist solo, song arrangement, the learner's melody, and original practice phrase. Recording fields appear only for source-based jobs and must be cleared when the learner switches to a source-free job. The phrase builder accepts notes, scale degrees, or simple one-string E9 tab, provides deterministic presets and a note/degree palette, and states clearly that a source link supplies attribution rather than automatic audio transcription.
+Melody Studio begins with four learner jobs: artist solo, song arrangement, the learner's melody, and original practice phrase. Recording fields appear only for source-based jobs and must be cleared when the learner switches to a source-free job. The phrase builder accepts notes, scale degrees, or literal one-string E9 tab, provides deterministic presets and a note/degree palette, and states clearly that a source link supplies attribution rather than automatic audio transcription. Literal tab retains its string, fret, controls, and register.
+
+Unmarked degrees default to the closest playable pitch path. Players may choose ascending, descending, or preserve-input contour and adjust individual notes up or down by an octave. Sequence chips show the resolved scientific pitch before submission.
 
 The result shows:
 
@@ -54,6 +60,8 @@ The result shows:
 - exact/approximate/interpretive label and confidence;
 - numbered lesson section and continuation state;
 - synchronized event stepper, fixed-width tab, fretboard, and explanation;
+- switchable single-note, recommended harmony, thirds, sixths, and chord-melody routes when mechanically available;
+- resolved pitch/register and bar, string, pedal, and lever movement guidance;
 - no empty source section for source-free deterministic exercises.
 
 The dedicated lesson view is fretboard-first. Previous/next and event-step controls must visibly select the matching `renderablePositionId` in the fretboard component and update the active tab-step label. Long phrases expose a Continue to Section action using the existing `sectionNumber` request field. Mobile layout keeps the tab fixed-width inside its own horizontal scroller.
@@ -72,6 +80,9 @@ The feature is controlled by `STEEL_RAG_ENABLE_MELODY_EXERCISE`, which defaults 
 
 - Artist-solo and full-arrangement requests route to teaching/source clarification, never copyright refusal.
 - Structured G/C phrases produce synchronized validated events, tab, and fretboard.
+- `5 6 1 3 2 1 3` resolves as a continuous octave-aware contour rather than resetting every tonic to one fixed fret.
+- Default ready lessons include a single-note route and, when mechanically available in the resolved register, a recommended harmony route with two or three validated notes per event.
+- Pasted literal tab retains string, fret, controls, and register exactly.
 - Long inputs continue through numbered sections instead of failing.
 - Invalid tuning, key, note, string, fret, or control combinations render no tab/fretboard.
 - Attribution and accuracy labels survive API and frontend normalization.

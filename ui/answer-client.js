@@ -620,6 +620,48 @@ const STEEL_RAG_ANSWER_UI = (() => {
     };
   }
 
+  function normalizeMelodyEvent(event, index = 0) {
+    if (!isObjectRecord(event)) return null;
+    return {
+      id: firstTextValue(event.id, `melody-event-${index + 1}`),
+      renderablePositionId: firstTextValue(event.renderablePositionId, event.positionId),
+      step: event.step ?? index + 1,
+      inputToken: firstTextValue(event.inputToken, event.input_token),
+      resolvedNote: firstTextValue(event.resolvedNote, event.resolved_note, event.chord),
+      resolvedPitch: firstTextValue(event.resolvedPitch, event.resolved_pitch),
+      pitchValue: event.pitchValue ?? event.pitch_value ?? null,
+      scaleDegree: firstTextValue(event.scaleDegree, event.scale_degree),
+      technique: firstTextValue(event.technique, "pick"),
+      movement: firstTextValue(event.movement),
+      explanation: firstTextValue(event.explanation, event.comment),
+      notes: Array.isArray(event.notes)
+        ? event.notes.filter(isObjectRecord).map((note) => ({
+          string: note.string,
+          fret: note.fret,
+          changes: normalizeStringList(note.changes),
+          articulation: firstTextValue(note.articulation)
+        }))
+        : []
+    };
+  }
+
+  function normalizeMelodyRoute(route, index = 0) {
+    if (!isObjectRecord(route)) return null;
+    const events = Array.isArray(route.events) ? route.events.map(normalizeMelodyEvent).filter(Boolean) : [];
+    const tabPayload = route.tabExample || route.tab_example;
+    return {
+      id: firstTextValue(route.id, `melody-route-${index + 1}`),
+      label: firstTextValue(route.label, `Route ${index + 1}`),
+      harmonyType: firstTextValue(route.harmonyType, route.harmony_type, "single_note"),
+      recommended: Boolean(route.recommended),
+      recommendation: firstTextValue(route.recommendation),
+      movementSummary: firstTextValue(route.movementSummary, route.movement_summary),
+      events,
+      tab: normalizeTabPayload(tabPayload, index),
+      fretboard: normalizeFretboard(route.fretboard)
+    };
+  }
+
   function normalizeMelodyExercise(payload) {
     const exercise = payload?.melody_exercise || payload?.melodyExercise;
     if (!isObjectRecord(exercise)) {
@@ -629,26 +671,8 @@ const STEEL_RAG_ANSWER_UI = (() => {
     const accuracy = isObjectRecord(exercise.accuracy) ? exercise.accuracy : {};
     const section = isObjectRecord(exercise.section) ? exercise.section : {};
     const validation = isObjectRecord(exercise.validation) ? exercise.validation : {};
-    const events = Array.isArray(exercise.events)
-      ? exercise.events.filter(isObjectRecord).map((event, index) => ({
-        id: firstTextValue(event.id, `melody-event-${index + 1}`),
-        renderablePositionId: firstTextValue(event.renderablePositionId, event.positionId),
-        step: event.step ?? index + 1,
-        inputToken: firstTextValue(event.inputToken, event.input_token),
-        resolvedNote: firstTextValue(event.resolvedNote, event.resolved_note, event.chord),
-        scaleDegree: firstTextValue(event.scaleDegree, event.scale_degree),
-        technique: firstTextValue(event.technique, "pick"),
-        explanation: firstTextValue(event.explanation, event.comment),
-        notes: Array.isArray(event.notes)
-          ? event.notes.filter(isObjectRecord).map((note) => ({
-            string: note.string,
-            fret: note.fret,
-            changes: normalizeStringList(note.changes),
-            articulation: firstTextValue(note.articulation)
-          }))
-          : []
-      }))
-      : [];
+    const events = Array.isArray(exercise.events) ? exercise.events.map(normalizeMelodyEvent).filter(Boolean) : [];
+    const routes = Array.isArray(exercise.routes) ? exercise.routes.map(normalizeMelodyRoute).filter(Boolean) : [];
     return {
       schemaVersion: firstTextValue(exercise.schemaVersion, exercise.schema_version, "melody_exercise_v0"),
       id: firstTextValue(exercise.id, "melody-exercise"),
@@ -677,6 +701,9 @@ const STEEL_RAG_ANSWER_UI = (() => {
         nextSection: section.nextSection ?? section.next_section ?? null
       },
       events,
+      routes,
+      selectedRouteId: firstTextValue(exercise.selectedRouteId, exercise.selected_route_id, routes[0]?.id),
+      input: isObjectRecord(exercise.input) ? exercise.input : {},
       validation: {
         ok: Boolean(validation.ok),
         accuracy: normalizeStringList(validation.accuracy)

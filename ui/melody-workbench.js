@@ -40,6 +40,13 @@
     1: "F#", 2: "D#", 3: "G#", 4: "E", 5: "B",
     6: "G#", 7: "F#", 8: "E", 9: "D", 10: "B"
   };
+  const E9_OPEN_PITCHES = { 1: 66, 2: 63, 3: 68, 4: 64, 5: 59, 6: 56, 7: 54, 8: 52, 9: 50, 10: 47 };
+  const E9_CHANGE_DELTAS = {
+    A: { 5: 2, 10: 2 }, B: { 3: 1, 6: 1 }, C: { 4: 2, 5: 2 },
+    E: { 4: -1, 8: -1 }, F: { 4: 1, 8: 1 }, V: { 5: -1, 10: -1 },
+    G: { 1: 1, 6: -1 }, D: { 2: -2, 9: -1 }
+  };
+  const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
   const CHROMATIC_SHARPS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
   const PRESETS = {
     "1-2-3-5": ["1", "2", "3", "5"],
@@ -77,6 +84,79 @@
       .filter(Boolean);
   }
 
+  function parseSimpleTabEvents(value) {
+    const compact = Array.from(String(value || "").matchAll(/S(\d{1,2}):(\d{1,2})([A-Za-z](?:\+[A-Za-z])*)?/gi));
+    if (compact.length) {
+      return compact.map((match) => ({
+        token: match[0].toUpperCase(),
+        string: Number(match[1]),
+        fret: Number(match[2]),
+        changes: match[3] ? match[3].split("+").filter(Boolean).map((item) => item.toUpperCase()) : [],
+        direction: "auto",
+        octaveShift: 0
+      }));
+    }
+    const match = String(value || "").match(/(?:^|\n)\s*(?:S|string\s*)\s*(\d{1,2})\s*:\s*([^\n]+)/i);
+    if (!match) return [];
+    const string = Number(match[1]);
+    return (match[2].match(/\d{1,2}(?:[A-Za-z](?:\+[A-Za-z])*)?/g) || []).map((entry) => {
+      const tokenMatch = entry.match(/^(\d{1,2})(.*)$/);
+      const fret = Number(tokenMatch[1]);
+      const changes = tokenMatch[2] ? tokenMatch[2].split("+").filter(Boolean).map((item) => item.toUpperCase()) : [];
+      return { token: `S${string}:${fret}${changes.join("+")}`, string, fret, changes, direction: "auto", octaveShift: 0 };
+    });
+  }
+
+  function phraseItem(value) {
+    if (value && typeof value === "object") return { direction: "auto", octaveShift: 0, ...value };
+    return { token: normalizeToken(value), direction: "auto", octaveShift: 0 };
+  }
+
+  function phraseItemLabel(value) {
+    const item = phraseItem(value);
+    return String(item.token || (item.string ? `S${item.string}:${item.fret}` : ""));
+  }
+
+  function parsePhraseEvents(value) {
+    const literal = parseSimpleTabEvents(value);
+    if (literal.length) return literal;
+    return parsePhraseInput(value).map(phraseItem);
+  }
+
+  function pitchLabel(value) {
+    return `${NOTE_NAMES[((value % 12) + 12) % 12]}${Math.floor(value / 12) - 1}`;
+  }
+
+  function resolvePhrasePreview(items, key, contourMode = "closest_playable") {
+    const notes = KEY_NOTES[key] || [];
+    const anchor = 67;
+    const result = [];
+    let previous = null;
+    (items || []).forEach((raw) => {
+      const item = phraseItem(raw);
+      let pitch;
+      if (Number.isInteger(item.string) && Number.isInteger(item.fret)) {
+        const changeDelta = (item.changes || []).reduce((sum, change) => sum + (E9_CHANGE_DELTAS[String(change).toUpperCase()]?.[item.string] || 0), 0);
+        pitch = (E9_OPEN_PITCHES[item.string] ?? 64) + item.fret + changeDelta;
+      } else {
+        const token = normalizeToken(item.token);
+        const note = /^[1-7]$/.test(token) ? notes[Number(token) - 1] : token;
+        const pitchClass = semitoneForNote(note);
+        const options = Array.from({ length: 48 }, (_, offset) => 47 + offset).filter((value) => value % 12 === pitchClass);
+        if (previous === null) pitch = options.sort((a, b) => Math.abs(a - anchor) - Math.abs(b - anchor) || a - b)[0];
+        else {
+          const direction = item.direction !== "auto" ? item.direction : contourMode === "ascending" ? "up" : contourMode === "descending" ? "down" : "nearest";
+          const directed = options.filter((value) => direction === "up" ? value >= previous : direction === "down" ? value <= previous : true);
+          pitch = (directed.length ? directed : options).sort((a, b) => Math.abs(a - previous) - Math.abs(b - previous) || a - b)[0];
+        }
+        pitch += Number(item.octaveShift || 0) * 12;
+      }
+      result.push({ ...item, pitchValue: pitch, pitch: pitchLabel(pitch) });
+      previous = pitch;
+    });
+    return result;
+  }
+
   function parsePhraseInput(value) {
     const tabNotes = parseSimpleTab(value);
     if (tabNotes.length) return tabNotes;
@@ -92,10 +172,15 @@
 
   function validateTokens(tokens, key) {
     const allowedNotes = new Set(KEY_NOTES[key] || []);
-    const invalid = (tokens || []).filter((token) => !/^[1-7]$/.test(token) && !allowedNotes.has(normalizeToken(token)));
+    const invalid = (tokens || []).filter((raw) => {
+      const item = phraseItem(raw);
+      if (Number.isInteger(item.string) && Number.isInteger(item.fret)) return item.string < 1 || item.string > 10 || item.fret < 0 || item.fret > 24;
+      const token = normalizeToken(item.token);
+      return !/^[1-7]$/.test(token) && !allowedNotes.has(token);
+    });
     if (!tokens?.length) return { ok: false, message: "Add at least one note, scale degree, or simple tab position." };
     if (invalid.length) {
-      return { ok: false, message: `${invalid.join(", ")} ${invalid.length === 1 ? "is" : "are"} outside ${key} major in Melody Studio v0.` };
+      return { ok: false, message: `${invalid.map(phraseItemLabel).join(", ")} ${invalid.length === 1 ? "is" : "are"} outside ${key} major or the supported E9 tab range.` };
     }
     return { ok: true, message: "" };
   }
@@ -115,7 +200,9 @@
       key: state.key,
       tuning: "E9",
       renderingMode: task.renderingMode,
-      sectionNumber: state.sectionNumber || 1
+      sectionNumber: state.sectionNumber || 1,
+      contourMode: state.contourMode || "closest_playable",
+      texture: "both"
     };
     if (state.tokens?.length) request.melody = [...state.tokens];
     if (task.needsMaterial) {
@@ -136,6 +223,7 @@
       key: "G",
       paletteMode: "degrees",
       tokens: [],
+      contourMode: "closest_playable",
       artist: "",
       song: "",
       recording: "",
@@ -155,6 +243,9 @@
     createInitialState,
     parsePhraseInput,
     parseSimpleTab,
+    parseSimpleTabEvents,
+    parsePhraseEvents,
+    resolvePhrasePreview,
     noteAtFret,
     sectionCount,
     validateTokens,
@@ -188,6 +279,7 @@
     section: $("#studio-section"),
     sourceUrl: $("#studio-source-url"),
     key: $("#studio-key"),
+    contour: $("#studio-contour"),
     phraseInput: $("#studio-phrase-input"),
     sequence: $("#studio-sequence"),
     sectionCount: $("#studio-section-count"),
@@ -200,6 +292,8 @@
     resultTitle: $("#studio-result-title"),
     resultMeta: $("#studio-result-meta"),
     resultSource: $("#studio-result-source"),
+    routeTabs: $("#studio-route-tabs"),
+    routeReason: $("#studio-route-reason"),
     sourceNeeded: $("#studio-source-needed"),
     fretboard: $("#studio-fretboard"),
     transport: $("#studio-transport"),
@@ -236,7 +330,14 @@
 
   function syncStateFromFields() {
     state.key = elements.key.value;
-    state.tokens = parsePhraseInput(elements.phraseInput.value);
+    state.contourMode = elements.contour.value;
+    const parsed = parsePhraseEvents(elements.phraseInput.value);
+    const previous = state.tokens;
+    state.tokens = parsed.map((item, index) => ({
+      ...item,
+      direction: previous[index]?.direction || item.direction || "auto",
+      octaveShift: previous[index]?.octaveShift || item.octaveShift || 0
+    }));
     if (currentTask()?.needsMaterial) {
       state.artist = elements.artist.value.trim();
       state.song = elements.song.value.trim();
@@ -249,8 +350,10 @@
   }
 
   function setTokens(tokens) {
-    state.tokens = (tokens || []).map(normalizeToken).filter(Boolean);
-    elements.phraseInput.value = state.tokens.join(" ");
+    state.tokens = (tokens || []).map(phraseItem).filter((item) => phraseItemLabel(item));
+    elements.phraseInput.value = state.tokens.some((item) => Number.isInteger(item.string))
+      ? state.tokens.map(phraseItemLabel).join("\n")
+      : state.tokens.map(phraseItemLabel).join(" ");
     renderPhraseBuilder();
   }
 
@@ -263,7 +366,7 @@
       button.className = "palette-note";
       button.textContent = value;
       button.setAttribute("aria-label", `Add ${value} to phrase`);
-      button.addEventListener("click", () => setTokens([...state.tokens, value]));
+      button.addEventListener("click", () => setTokens([...state.tokens, phraseItem(value)]));
       elements.palette.appendChild(button);
     });
     elements.paletteModeButtons.forEach((button) => {
@@ -281,30 +384,60 @@
       empty.textContent = "Your phrase will appear here as you type or choose notes.";
       elements.sequence.appendChild(empty);
     }
-    state.tokens.forEach((token, index) => {
+    const previews = resolvePhrasePreview(state.tokens, state.key, state.contourMode);
+    state.tokens.forEach((raw, index) => {
+      const token = phraseItem(raw);
+      const tokenLabel = phraseItemLabel(token);
       const chip = doc.createElement("div");
       chip.className = "sequence-chip";
       chip.dataset.sequenceIndex = String(index);
       const label = doc.createElement("strong");
-      label.textContent = token;
+      label.textContent = tokenLabel;
+      const pitch = doc.createElement("span");
+      pitch.className = "sequence-pitch";
+      pitch.textContent = previews[index]?.pitch || "";
       const left = doc.createElement("button");
       left.type = "button";
       left.textContent = "←";
       left.disabled = index === 0;
-      left.setAttribute("aria-label", `Move ${token} earlier`);
+      left.setAttribute("aria-label", `Move ${tokenLabel} earlier`);
       left.addEventListener("click", () => setTokens(reorderToken(state.tokens, index, -1)));
       const right = doc.createElement("button");
       right.type = "button";
       right.textContent = "→";
       right.disabled = index === state.tokens.length - 1;
-      right.setAttribute("aria-label", `Move ${token} later`);
+      right.setAttribute("aria-label", `Move ${tokenLabel} later`);
       right.addEventListener("click", () => setTokens(reorderToken(state.tokens, index, 1)));
       const remove = doc.createElement("button");
       remove.type = "button";
       remove.textContent = "×";
-      remove.setAttribute("aria-label", `Remove ${token}`);
+      remove.setAttribute("aria-label", `Remove ${tokenLabel}`);
       remove.addEventListener("click", () => setTokens(state.tokens.filter((_, tokenIndex) => tokenIndex !== index)));
-      chip.append(label, left, right, remove);
+      const down = doc.createElement("button");
+      down.type = "button";
+      down.textContent = "↓8";
+      down.setAttribute("aria-label", `Move ${tokenLabel} down one octave`);
+      down.addEventListener("click", () => {
+        state.tokens[index] = { ...token, octaveShift: Math.max(-2, Number(token.octaveShift || 0) - 1) };
+        renderPhraseBuilder();
+      });
+      const reset = doc.createElement("button");
+      reset.type = "button";
+      reset.textContent = "Auto";
+      reset.setAttribute("aria-label", `Return ${tokenLabel} to automatic octave`);
+      reset.addEventListener("click", () => {
+        state.tokens[index] = { ...token, direction: "auto", octaveShift: 0 };
+        renderPhraseBuilder();
+      });
+      const up = doc.createElement("button");
+      up.type = "button";
+      up.textContent = "↑8";
+      up.setAttribute("aria-label", `Move ${tokenLabel} up one octave`);
+      up.addEventListener("click", () => {
+        state.tokens[index] = { ...token, octaveShift: Math.min(2, Number(token.octaveShift || 0) + 1) };
+        renderPhraseBuilder();
+      });
+      chip.append(label, pitch, down, reset, up, left, right, remove);
       elements.sequence.appendChild(chip);
     });
     const count = sectionCount(state.tokens);
@@ -361,7 +494,8 @@
       button.setAttribute("aria-pressed", String(selected));
     });
     elements.eventDetail.textContent = event.explanation || `${event.resolvedNote} · string ${note.string} · fret ${note.fret}`;
-    elements.activeTabStep.textContent = `Active step ${event.step}: ${event.resolvedNote} · S${note.string} F${note.fret}`;
+    const grip = (event.notes || []).map((item) => `S${item.string} F${item.fret}${item.changes?.length ? ` ${item.changes.join("+")}` : ""}`).join(" · ");
+    elements.activeTabStep.textContent = `Active step ${event.step}: ${event.resolvedNote}${event.resolvedPitch ? ` (${event.resolvedPitch})` : ""} · ${grip}`;
     elements.previous.disabled = state.activeEventIndex === 0;
     elements.next.disabled = state.activeEventIndex === events.length - 1;
     if (event.renderablePositionId) {
@@ -377,9 +511,54 @@
       button.type = "button";
       button.className = "event-step";
       button.dataset.eventIndex = String(index);
-      button.textContent = `${event.step}. ${event.resolvedNote} · S${note.string} F${note.fret}`;
+      const grip = (event.notes || []).map((item) => `S${item.string}`).join("+");
+      button.textContent = `${event.step}. ${event.resolvedNote}${event.resolvedPitch ? ` ${event.resolvedPitch}` : ""} · ${grip} F${note.fret}`;
       button.addEventListener("click", () => selectEvent(index));
       elements.eventStrip.appendChild(button);
+    });
+  }
+
+  function activateRoute(routeId) {
+    const exercise = state.response?.melodyExercise;
+    const route = (exercise?.routes || []).find((item) => item.id === routeId);
+    if (!route) return;
+    exercise.events = route.events;
+    exercise.selectedRouteId = route.id;
+    state.activeEventIndex = 0;
+    elements.routeTabs.querySelectorAll("[data-route-id]").forEach((button) => {
+      const selected = button.dataset.routeId === route.id;
+      button.classList.toggle("is-selected", selected);
+      button.setAttribute("aria-pressed", String(selected));
+    });
+    elements.routeReason.textContent = route.recommendation || route.movementSummary || "";
+    if (route.fretboard) {
+      global.STEEL_RAG_FRETBOARD.mountPedalSteelFretboard(elements.fretboard, {
+        maxFret: route.fretboard.maxFret,
+        stringCount: route.fretboard.stringCount,
+        tuningLabels: route.fretboard.tuningLabels,
+        positions: route.fretboard.positions,
+        highlights: route.fretboard.highlights || [],
+        legend: route.fretboard.legend,
+        query: route.fretboard.query
+      });
+    }
+    renderEvents(exercise);
+    elements.tabCode.textContent = route.tab?.tabText || "";
+    selectEvent(0);
+  }
+
+  function renderRoutes(exercise) {
+    elements.routeTabs.replaceChildren();
+    const routes = exercise?.routes || [];
+    elements.routeTabs.hidden = routes.length < 2;
+    routes.forEach((route) => {
+      const button = doc.createElement("button");
+      button.type = "button";
+      button.className = "route-tab";
+      button.dataset.routeId = route.id;
+      button.textContent = `${route.recommended ? "Recommended · " : ""}${route.label}`;
+      button.addEventListener("click", () => activateRoute(route.id));
+      elements.routeTabs.appendChild(button);
     });
   }
 
@@ -421,6 +600,8 @@
     elements.transport.hidden = needsSource || !exercise?.events?.length;
     elements.tab.hidden = needsSource || !response.tabs?.length;
     elements.explanation.hidden = needsSource;
+    elements.routeTabs.hidden = needsSource;
+    elements.routeReason.hidden = needsSource;
     if (!needsSource && response.fretboard) {
       global.STEEL_RAG_FRETBOARD.mountPedalSteelFretboard(elements.fretboard, {
         maxFret: response.fretboard.maxFret,
@@ -432,9 +613,12 @@
         query: response.fretboard.query
       });
       renderEvents(exercise);
+      renderRoutes(exercise);
       elements.tabCode.textContent = response.tabs[0]?.tabText || "";
       elements.explanation.textContent = accuracy.note || "Practice one event at a time, then connect the phrase slowly.";
-      selectEvent(0);
+      const selectedRoute = exercise.routes?.find((route) => route.id === exercise.selectedRouteId);
+      if (selectedRoute) activateRoute(selectedRoute.id);
+      else selectEvent(0);
     }
     elements.continueButton.hidden = !section.hasMore;
     elements.continueButton.textContent = section.nextSection ? `Continue to Section ${section.nextSection}` : "Continue";
@@ -484,6 +668,7 @@
     state = createInitialState();
     clearMaterial();
     elements.key.value = "G";
+    elements.contour.value = "closest_playable";
     elements.phraseInput.value = "";
     elements.editor.hidden = true;
     elements.result.hidden = true;
@@ -519,8 +704,12 @@
     renderPalette();
     renderPhraseBuilder();
   });
+  elements.contour.addEventListener("change", () => {
+    state.contourMode = elements.contour.value;
+    renderPhraseBuilder();
+  });
   elements.phraseInput.addEventListener("input", () => {
-    state.tokens = parsePhraseInput(elements.phraseInput.value);
+    state.tokens = parsePhraseEvents(elements.phraseInput.value);
     renderPhraseBuilder();
   });
   elements.paletteModeButtons.forEach((button) => button.addEventListener("click", () => {

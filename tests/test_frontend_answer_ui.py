@@ -215,7 +215,20 @@ let capturedRequest;
               scaleDegree: "1",
               technique: "pick",
               explanation: "Play G on string 4 at fret 3.",
+              resolvedPitch: "G4",
+              movement: "Start at fret 3.",
               notes: [{ string: 4, fret: 3, changes: [] }]
+            }],
+            selectedRouteId: "single-note",
+            routes: [{
+              id: "single-note",
+              label: "Playable single-note melody",
+              harmonyType: "single_note",
+              recommended: false,
+              recommendation: "Learn the melody first.",
+              events: [{ id: "melody-step-1", step: 1, resolvedNote: "G", resolvedPitch: "G4", notes: [{ string: 4, fret: 3, changes: [] }] }],
+              tabExample: { id: "single-tab", title: "Single", rendered_tab: "S4 |--3--|", validation: { ok: true } },
+              fretboard: { type: "pedal-steel-fretboard", positions: [], strings: { count: 10, labels: {} } }
             }]
           }
         })
@@ -229,6 +242,9 @@ let capturedRequest;
   assert.equal(result.melodyExercise.title, "Example Artist — Example Song");
   assert.equal(result.melodyExercise.events[0].resolvedNote, "G");
   assert.equal(result.melodyExercise.events[0].notes[0].fret, 3);
+  assert.equal(result.melodyExercise.events[0].resolvedPitch, "G4");
+  assert.equal(result.melodyExercise.routes[0].harmonyType, "single_note");
+  assert.equal(result.melodyExercise.routes[0].tab.tabText, "S4 |--3--|");
   assert.equal(result.melodyExercise.section.hasMore, true);
 })().catch((error) => {
   console.error(error);

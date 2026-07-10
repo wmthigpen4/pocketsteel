@@ -34,6 +34,9 @@ assert.deepEqual(studio.reorderToken(["1", "2", "3"], 1, -1), ["2", "1", "3"]);
 assert.equal(studio.validateTokens(["1", "2", "3"], "G").ok, true);
 assert.equal(studio.validateTokens(["G", "A", "B", "D"], "G").ok, true);
 assert.equal(studio.validateTokens(["F"], "G").ok, false);
+const literal = studio.parseSimpleTabEvents("S4: 3 5F 7");
+assert.deepEqual(literal.map((event) => [event.string, event.fret, event.changes]), [[4, 3, []], [4, 5, ["F"]], [4, 7, []]]);
+assert.deepEqual(studio.resolvePhrasePreview([{token: "5"}, {token: "6"}, {token: "1"}, {token: "3"}], "G").map((event) => event.pitch), ["D4", "E4", "G4", "B4"]);
 
 const artist = studio.createInitialState("artist_solo_lesson");
 Object.assign(artist, {
@@ -49,6 +52,8 @@ assert.equal(artistPayload.kind, "artist_solo_lesson");
 assert.equal(artistPayload.sectionNumber, 2);
 assert.equal(artistPayload.material.artist, "Example Artist");
 assert.equal(artistPayload.renderingMode, "transcription");
+assert.equal(artistPayload.contourMode, "closest_playable");
+assert.equal(artistPayload.texture, "both");
 
 const original = studio.createInitialState("original_exercise");
 Object.assign(original, { tokens: ["1", "3", "5"], artist: "Stale Artist", sourceUrl: "https://example.test/stale" });
@@ -70,6 +75,11 @@ def test_melody_workbench_has_guided_tasks_feature_state_and_fretboard_first_res
     assert 'id="studio-sequence"' in html
     assert 'data-preset="1-2-3-5"' in html
     assert 'id="studio-fretboard"' in html
+    assert 'id="studio-contour"' in html
+    assert 'id="studio-route-tabs"' in html
+    assert "activateRoute" in script
+    assert "Move up one octave" not in html
+    assert "Move ${tokenLabel} up one octave" in script
     assert html.index('id="studio-fretboard"') < html.index('id="studio-tab"')
     assert 'id="studio-continue"' in html
     assert "does not listen to or extract notes from the link yet" in html

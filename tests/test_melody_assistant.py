@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from pocketsteel.fretboard_examples import absolute_pitch_for_string
 from pocketsteel.melody_assistant import (
     MelodyExerciseError,
     configured_melody_exercise_enabled,
@@ -47,7 +48,8 @@ def test_structured_g_scale_degree_phrase_builds_synced_tab_and_fretboard() -> N
     assert exercise["status"] == "ready"
     assert exercise["accuracy"]["label"] == "exact"
     assert [event["resolvedNote"] for event in exercise["events"]] == ["G", "A", "B", "D"]
-    assert [event["notes"][0]["fret"] for event in exercise["events"]] == [3, 5, 7, 10]
+    assert [event["resolvedPitch"] for event in exercise["events"]] == ["G4", "A4", "B4", "D5"]
+    assert all(0 <= event["notes"][0]["fret"] <= 24 for event in exercise["events"])
     assert tab["validation"]["ok"] is True
     assert tab["validation"]["eventCount"] == 4
     assert len(tab["events"]) == len(fretboard["positions"]) == len(exercise["events"])
@@ -57,7 +59,7 @@ def test_structured_g_scale_degree_phrase_builds_synced_tab_and_fretboard() -> N
     assert result["sources"] == []
 
 
-def test_c_major_note_names_use_valid_string_five_placement() -> None:
+def test_c_major_note_names_use_octave_aware_valid_e9_placement() -> None:
     result = melody_exercise_response(
         "Build my C phrase",
         {"kind": "original_exercise", "key": "C", "melody": ["C", "D", "E", "G"]},
@@ -65,8 +67,63 @@ def test_c_major_note_names_use_valid_string_five_placement() -> None:
 
     assert result is not None
     events = result["melody_exercise"]["events"]
-    assert [event["notes"][0]["string"] for event in events] == [5, 5, 5, 5]
-    assert [event["notes"][0]["fret"] for event in events] == [1, 3, 5, 8]
+    assert [event["resolvedPitch"] for event in events] == ["C5", "D5", "E5", "G5"]
+    assert all(1 <= event["notes"][0]["string"] <= 10 for event in events)
+
+
+def test_closest_ascending_and_descending_contours_resolve_octave_direction() -> None:
+    melody = ["5", "6", "1", "3", "2", "1", "3"]
+    closest = melody_exercise_response("Build", {"key": "G", "melody": melody, "contourMode": "closest_playable"})
+    ascending = melody_exercise_response("Build", {"key": "G", "melody": melody, "contourMode": "ascending"})
+    descending = melody_exercise_response("Build", {"key": "G", "melody": melody, "contourMode": "descending"})
+
+    assert closest is not None and ascending is not None and descending is not None
+    assert [event["resolvedPitch"] for event in closest["melody_exercise"]["events"]] == ["D4", "E4", "G4", "B4", "A4", "G4", "B4"]
+    ascending_values = [event["pitchValue"] for event in ascending["melody_exercise"]["events"]]
+    descending_values = [event["pitchValue"] for event in descending["melody_exercise"]["events"]]
+    assert ascending_values == sorted(ascending_values)
+    assert descending_values == sorted(descending_values, reverse=True)
+
+
+def test_structured_octave_override_and_literal_tab_are_preserved() -> None:
+    shifted = melody_exercise_response(
+        "Build",
+        {"key": "G", "melody": [{"token": "5"}, {"token": "6"}, {"token": "1", "octaveShift": 1}, {"token": "3"}]},
+    )
+    literal = melody_exercise_response(
+        "Build",
+        {"key": "G", "melody": [{"string": 4, "fret": 3}, {"string": 4, "fret": 5}, {"string": 4, "fret": 7}]},
+    )
+
+    assert shifted is not None and literal is not None
+    assert [event["resolvedPitch"] for event in shifted["melody_exercise"]["events"]] == ["D5", "E5", "G5", "B5"]
+    assert [event["notes"][0] for event in literal["melody_exercise"]["events"]] == [
+        {"string": 4, "fret": 3, "changes": []},
+        {"string": 4, "fret": 5, "changes": []},
+        {"string": 4, "fret": 7, "changes": []},
+    ]
+
+
+def test_default_arranger_returns_single_note_and_recommended_harmony_routes() -> None:
+    result = melody_exercise_response("Build", {"key": "G", "melody": ["5", "6", "1", "3", "2", "1", "3"]})
+
+    assert result is not None
+    routes = result["melody_exercise"]["routes"]
+    assert routes[0]["harmonyType"] == "single_note"
+    recommended = next(route for route in routes if route["recommended"])
+    assert recommended["harmonyType"] == "automatic_harmony"
+    assert all(len(event["notes"]) == 2 for event in recommended["events"])
+    assert all(
+        max(
+            absolute_pitch_for_string(note["string"], note["fret"], tuple(note["changes"]))
+            for note in event["notes"]
+        ) == event["pitchValue"]
+        for event in recommended["events"]
+    )
+    assert {route["harmonyType"] for route in routes} >= {"single_note", "automatic_harmony", "thirds", "sixths", "chord_melody"}
+    for route in routes:
+        assert len(route["events"]) == len(route["fretboard"]["positions"])
+        assert [event["renderablePositionId"] for event in route["events"]] == [position["id"] for position in route["fretboard"]["positions"]]
 
 
 def test_original_exercise_suppresses_supplied_recording_identity_and_sources() -> None:
@@ -112,6 +169,17 @@ def test_long_arrangement_is_sectioned_instead_of_blocked() -> None:
     }
     assert len(second["melody_exercise"]["events"]) == 2
     assert second["melody_exercise"]["section"]["hasMore"] is False
+
+
+def test_section_continuation_preserves_full_phrase_octave_contour() -> None:
+    melody = ["5", "6", "1", "3", "2", "1", "3", "5", "6"]
+    second = melody_exercise_response(
+        "Teach the full arrangement",
+        {"kind": "song_arrangement_lesson", "key": "G", "melody": melody, "sectionNumber": 2},
+    )
+
+    assert second is not None
+    assert [event["resolvedPitch"] for event in second["melody_exercise"]["events"]] == ["E5"]
 
 
 def test_exact_artist_claim_downgrades_without_identified_source() -> None:
