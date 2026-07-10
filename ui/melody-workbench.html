@@ -159,11 +159,17 @@
     .sequence-wrap { border: 1px solid rgba(244, 234, 214, 0.12); border-radius: 16px; padding: 14px; background: rgba(5, 7, 7, 0.38); }
     .sequence { min-height: 50px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
     .sequence-empty { margin: 0; color: rgba(244, 234, 214, 0.48); font-size: 14px; }
-    .sequence-chip { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 3px; border: 1px solid rgba(240, 191, 105, 0.3); border-radius: 18px; padding: 5px 6px 5px 12px; background: rgba(240, 191, 105, 0.1); }
+    .sequence-chip { display: inline-flex; align-items: center; gap: 7px; min-height: 42px; border: 1px solid rgba(240, 191, 105, 0.3); border-radius: 999px; padding: 7px 13px; background: rgba(240, 191, 105, 0.08); color: var(--cream); cursor: pointer; }
+    .sequence-chip:hover, .sequence-chip:focus-visible, .sequence-chip.is-selected { border-color: var(--gold); background: rgba(240, 191, 105, 0.18); outline: none; }
     .sequence-chip strong { min-width: 24px; }
-    .sequence-pitch { color: var(--gold); font: 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace; margin-right: 3px; }
-    .sequence-chip button { min-width: 26px; height: 26px; border: 0; border-radius: 999px; padding: 0 6px; background: rgba(0, 0, 0, 0.22); color: var(--muted); cursor: pointer; font-size: 11px; }
-    .sequence-chip button:disabled { opacity: 0.28; cursor: default; }
+    .sequence-pitch { color: var(--gold); font: 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .note-editor { display: grid; gap: 12px; margin-top: 14px; border-top: 1px solid rgba(244, 234, 214, 0.1); padding-top: 14px; }
+    .note-editor-head { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; }
+    .note-editor-head strong { font-family: var(--lesson); font-size: 19px; }
+    .note-editor-head span { color: var(--gold); font: 13px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .note-editor-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .note-editor-actions button { min-height: 38px; border: 1px solid var(--line); border-radius: 999px; background: rgba(5, 7, 7, 0.6); color: var(--cream); cursor: pointer; padding: 0 12px; font-weight: 750; }
+    .note-editor-actions button:disabled { opacity: 0.35; cursor: default; }
     #studio-section-count { margin: 10px 0 0; color: var(--muted); font-size: 13px; }
     #studio-error { margin: 0; border-left: 3px solid #f1a85f; padding: 10px 12px; color: #ffd7af; background: rgba(134, 61, 26, 0.14); }
     .primary-action, .secondary-action {
@@ -185,6 +191,9 @@
     .route-tab { min-height: 40px; border: 1px solid var(--line); border-radius: 999px; background: rgba(5, 7, 7, 0.55); color: var(--muted); cursor: pointer; padding: 0 14px; font-weight: 800; }
     .route-tab.is-selected { border-color: var(--gold); background: rgba(240, 191, 105, 0.14); color: var(--cream); }
     #studio-route-reason { margin: 0 0 16px; color: var(--muted); line-height: 1.5; }
+    .more-routes { margin: -4px 0 14px; }
+    .more-routes summary { width: fit-content; color: var(--gold); cursor: pointer; font-weight: 800; }
+    .more-routes .route-tabs { margin: 10px 0 0; }
     #studio-source-needed { border: 1px solid var(--line); border-radius: 18px; background: rgba(240, 191, 105, 0.07); padding: 20px; }
     #studio-source-needed p { color: var(--muted); line-height: 1.6; }
     #studio-fretboard { margin-top: 18px; }
@@ -218,7 +227,7 @@
       .editor-settings { justify-content: stretch; }
       .key-field, .contour-field { min-width: 0; flex: 1 1 100%; }
       .palette { grid-template-columns: repeat(4, minmax(48px, 1fr)); }
-      .sequence-chip button { width: 30px; height: 30px; }
+      .note-editor-actions button { flex: 1 1 calc(50% - 8px); }
       .tab-block { white-space: pre; overflow-x: auto; }
     }
   </style>
@@ -250,7 +259,7 @@
     </section>
 
     <div id="studio-workflow" hidden>
-      <section class="studio-panel" aria-labelledby="studio-task-heading">
+      <section class="studio-panel" id="studio-task-panel" aria-labelledby="studio-task-heading">
         <p class="studio-step-label">Step 1 of 4</p>
         <h2 id="studio-task-heading">What do you want to learn?</h2>
         <p class="studio-copy">Choose the job that sounds like what you came here to do.</p>
@@ -275,6 +284,7 @@
           <div>
             <p class="studio-step-label">Steps 2 and 3 of 4</p>
             <h2 id="studio-editor-title">Build the phrase</h2>
+            <button class="secondary-action" type="button" id="studio-change-task" style="min-height:36px;margin-top:10px;">Change task</button>
           </div>
           <div class="editor-settings">
             <label class="field key-field">Key
@@ -321,7 +331,20 @@
             <span class="field-help">Use note names, scale degrees 1–7, or literal one-string E9 tab such as “S4: 3 2F 7”. Tab keeps its string, fret, controls, and register.</span>
           </label>
           <div class="sequence-wrap">
+            <p class="field-help" style="margin-bottom:10px;">Select a note below to change its octave, order, or remove it.</p>
             <div class="sequence" id="studio-sequence" aria-label="Current phrase sequence"></div>
+            <div class="note-editor" id="studio-note-editor" hidden>
+              <div class="note-editor-head"><strong id="studio-selected-note">Selected note</strong><span id="studio-selected-pitch"></span></div>
+              <p class="field-help">Octave changes apply to the selected note. Later automatic notes may follow it to keep the melody path smooth.</p>
+              <div class="note-editor-actions" aria-label="Selected note controls">
+                <button type="button" id="studio-octave-down">Move down one octave</button>
+                <button type="button" id="studio-octave-auto">Use automatic octave</button>
+                <button type="button" id="studio-octave-up">Move up one octave</button>
+                <button type="button" id="studio-note-earlier">Move earlier</button>
+                <button type="button" id="studio-note-later">Move later</button>
+                <button type="button" id="studio-note-remove">Remove note</button>
+              </div>
+            </div>
             <p id="studio-section-count"></p>
           </div>
           <p id="studio-error" role="alert" hidden></p>
@@ -339,6 +362,10 @@
           <div id="studio-result-meta"></div>
           <p id="studio-result-source" hidden></p>
           <div class="route-tabs" id="studio-route-tabs" aria-label="Melody arrangement routes" hidden></div>
+          <details class="more-routes" id="studio-more-routes" hidden>
+            <summary>More arrangements</summary>
+            <div class="route-tabs" id="studio-advanced-routes" aria-label="Additional melody arrangement routes"></div>
+          </details>
           <p id="studio-route-reason" hidden></p>
         </div>
 
@@ -374,8 +401,8 @@
     </div>
   </main>
 
-  <script src="answer-client.js?v=melody-arranger-20260710"></script>
-  <script src="pedal-steel-fretboard.js?v=melody-arranger-20260710"></script>
-  <script src="melody-workbench.js?v=melody-arranger-20260710"></script>
+  <script src="answer-client.js?v=melody-studio-calm-20260710"></script>
+  <script src="pedal-steel-fretboard.js?v=melody-studio-calm-20260710"></script>
+  <script src="melody-workbench.js?v=melody-studio-calm-20260710"></script>
 </body>
 </html>

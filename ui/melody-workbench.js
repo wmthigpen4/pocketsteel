@@ -224,6 +224,7 @@
       paletteMode: "degrees",
       tokens: [],
       contourMode: "closest_playable",
+      selectedPhraseIndex: 0,
       artist: "",
       song: "",
       recording: "",
@@ -269,9 +270,11 @@
   const elements = {
     unavailable: $("#studio-unavailable"),
     workflow: $("#studio-workflow"),
+    taskPanel: $("#studio-task-panel"),
     taskCards: Array.from(doc.querySelectorAll("[data-studio-task]")),
     editor: $("#studio-editor"),
     editorTitle: $("#studio-editor-title"),
+    changeTask: $("#studio-change-task"),
     materialFields: $("#studio-material-fields"),
     artist: $("#studio-artist"),
     song: $("#studio-song"),
@@ -282,6 +285,15 @@
     contour: $("#studio-contour"),
     phraseInput: $("#studio-phrase-input"),
     sequence: $("#studio-sequence"),
+    noteEditor: $("#studio-note-editor"),
+    selectedNote: $("#studio-selected-note"),
+    selectedPitch: $("#studio-selected-pitch"),
+    octaveDown: $("#studio-octave-down"),
+    octaveAuto: $("#studio-octave-auto"),
+    octaveUp: $("#studio-octave-up"),
+    noteEarlier: $("#studio-note-earlier"),
+    noteLater: $("#studio-note-later"),
+    noteRemove: $("#studio-note-remove"),
     sectionCount: $("#studio-section-count"),
     palette: $("#studio-palette"),
     paletteModeButtons: Array.from(doc.querySelectorAll("[data-palette-mode]")),
@@ -293,6 +305,8 @@
     resultMeta: $("#studio-result-meta"),
     resultSource: $("#studio-result-source"),
     routeTabs: $("#studio-route-tabs"),
+    moreRoutes: $("#studio-more-routes"),
+    advancedRoutes: $("#studio-advanced-routes"),
     routeReason: $("#studio-route-reason"),
     sourceNeeded: $("#studio-source-needed"),
     fretboard: $("#studio-fretboard"),
@@ -351,6 +365,7 @@
 
   function setTokens(tokens) {
     state.tokens = (tokens || []).map(phraseItem).filter((item) => phraseItemLabel(item));
+    state.selectedPhraseIndex = Math.max(0, Math.min(state.selectedPhraseIndex || 0, state.tokens.length - 1));
     elements.phraseInput.value = state.tokens.some((item) => Number.isInteger(item.string))
       ? state.tokens.map(phraseItemLabel).join("\n")
       : state.tokens.map(phraseItemLabel).join(" ");
@@ -388,58 +403,34 @@
     state.tokens.forEach((raw, index) => {
       const token = phraseItem(raw);
       const tokenLabel = phraseItemLabel(token);
-      const chip = doc.createElement("div");
+      const chip = doc.createElement("button");
+      chip.type = "button";
       chip.className = "sequence-chip";
+      chip.classList.toggle("is-selected", index === state.selectedPhraseIndex);
+      chip.setAttribute("aria-pressed", String(index === state.selectedPhraseIndex));
+      chip.setAttribute("aria-label", `Select ${tokenLabel}, ${previews[index]?.pitch || "unresolved pitch"}`);
       chip.dataset.sequenceIndex = String(index);
       const label = doc.createElement("strong");
       label.textContent = tokenLabel;
       const pitch = doc.createElement("span");
       pitch.className = "sequence-pitch";
       pitch.textContent = previews[index]?.pitch || "";
-      const left = doc.createElement("button");
-      left.type = "button";
-      left.textContent = "←";
-      left.disabled = index === 0;
-      left.setAttribute("aria-label", `Move ${tokenLabel} earlier`);
-      left.addEventListener("click", () => setTokens(reorderToken(state.tokens, index, -1)));
-      const right = doc.createElement("button");
-      right.type = "button";
-      right.textContent = "→";
-      right.disabled = index === state.tokens.length - 1;
-      right.setAttribute("aria-label", `Move ${tokenLabel} later`);
-      right.addEventListener("click", () => setTokens(reorderToken(state.tokens, index, 1)));
-      const remove = doc.createElement("button");
-      remove.type = "button";
-      remove.textContent = "×";
-      remove.setAttribute("aria-label", `Remove ${tokenLabel}`);
-      remove.addEventListener("click", () => setTokens(state.tokens.filter((_, tokenIndex) => tokenIndex !== index)));
-      const down = doc.createElement("button");
-      down.type = "button";
-      down.textContent = "↓8";
-      down.setAttribute("aria-label", `Move ${tokenLabel} down one octave`);
-      down.addEventListener("click", () => {
-        state.tokens[index] = { ...token, octaveShift: Math.max(-2, Number(token.octaveShift || 0) - 1) };
+      chip.addEventListener("click", () => {
+        state.selectedPhraseIndex = index;
         renderPhraseBuilder();
       });
-      const reset = doc.createElement("button");
-      reset.type = "button";
-      reset.textContent = "Auto";
-      reset.setAttribute("aria-label", `Return ${tokenLabel} to automatic octave`);
-      reset.addEventListener("click", () => {
-        state.tokens[index] = { ...token, direction: "auto", octaveShift: 0 };
-        renderPhraseBuilder();
-      });
-      const up = doc.createElement("button");
-      up.type = "button";
-      up.textContent = "↑8";
-      up.setAttribute("aria-label", `Move ${tokenLabel} up one octave`);
-      up.addEventListener("click", () => {
-        state.tokens[index] = { ...token, octaveShift: Math.min(2, Number(token.octaveShift || 0) + 1) };
-        renderPhraseBuilder();
-      });
-      chip.append(label, pitch, down, reset, up, left, right, remove);
+      chip.append(label, pitch);
       elements.sequence.appendChild(chip);
     });
+    const selected = state.tokens[state.selectedPhraseIndex];
+    elements.noteEditor.hidden = !selected;
+    if (selected) {
+      const selectedItem = phraseItem(selected);
+      elements.selectedNote.textContent = `Selected: ${phraseItemLabel(selectedItem)}`;
+      elements.selectedPitch.textContent = previews[state.selectedPhraseIndex]?.pitch || "";
+      elements.noteEarlier.disabled = state.selectedPhraseIndex === 0;
+      elements.noteLater.disabled = state.selectedPhraseIndex === state.tokens.length - 1;
+    }
     const count = sectionCount(state.tokens);
     elements.sectionCount.textContent = state.tokens.length
       ? `${state.tokens.length} notes · ${count} ${count === 1 ? "section" : "sections"}`
@@ -458,6 +449,7 @@
       card.setAttribute("aria-pressed", String(selected));
     });
     elements.editor.hidden = !currentTask();
+    elements.taskPanel.hidden = Boolean(currentTask());
     if (!currentTask()) return;
     elements.editorTitle.textContent = currentTask().title;
     elements.materialFields.hidden = !currentTask().needsMaterial;
@@ -525,7 +517,7 @@
     exercise.events = route.events;
     exercise.selectedRouteId = route.id;
     state.activeEventIndex = 0;
-    elements.routeTabs.querySelectorAll("[data-route-id]").forEach((button) => {
+    [...elements.routeTabs.querySelectorAll("[data-route-id]"), ...elements.advancedRoutes.querySelectorAll("[data-route-id]")].forEach((button) => {
       const selected = button.dataset.routeId === route.id;
       button.classList.toggle("is-selected", selected);
       button.setAttribute("aria-pressed", String(selected));
@@ -549,8 +541,13 @@
 
   function renderRoutes(exercise) {
     elements.routeTabs.replaceChildren();
+    elements.advancedRoutes.replaceChildren();
     const routes = exercise?.routes || [];
-    elements.routeTabs.hidden = routes.length < 2;
+    const primaryRoutes = routes.filter((route) => route.harmonyType === "single_note" || route.recommended);
+    const advancedRoutes = routes.filter((route) => !primaryRoutes.includes(route));
+    elements.routeTabs.hidden = primaryRoutes.length < 2;
+    elements.moreRoutes.hidden = advancedRoutes.length === 0;
+    elements.moreRoutes.open = false;
     routes.forEach((route) => {
       const button = doc.createElement("button");
       button.type = "button";
@@ -558,7 +555,7 @@
       button.dataset.routeId = route.id;
       button.textContent = `${route.recommended ? "Recommended · " : ""}${route.label}`;
       button.addEventListener("click", () => activateRoute(route.id));
-      elements.routeTabs.appendChild(button);
+      (primaryRoutes.includes(route) ? elements.routeTabs : elements.advancedRoutes).appendChild(button);
     });
   }
 
@@ -601,6 +598,7 @@
     elements.tab.hidden = needsSource || !response.tabs?.length;
     elements.explanation.hidden = needsSource;
     elements.routeTabs.hidden = needsSource;
+    elements.moreRoutes.hidden = needsSource;
     elements.routeReason.hidden = needsSource;
     if (!needsSource && response.fretboard) {
       global.STEEL_RAG_FRETBOARD.mountPedalSteelFretboard(elements.fretboard, {
@@ -672,6 +670,7 @@
     elements.phraseInput.value = "";
     elements.editor.hidden = true;
     elements.result.hidden = true;
+    elements.taskPanel.hidden = false;
     elements.taskCards.forEach((card) => {
       card.classList.remove("is-selected");
       card.setAttribute("aria-pressed", "false");
@@ -699,6 +698,43 @@
   }
 
   elements.taskCards.forEach((card) => card.addEventListener("click", () => selectTask(card.dataset.studioTask)));
+  elements.changeTask.addEventListener("click", () => {
+    elements.editor.hidden = true;
+    elements.result.hidden = true;
+    elements.taskPanel.hidden = false;
+    elements.taskPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  elements.octaveDown.addEventListener("click", () => {
+    const index = state.selectedPhraseIndex;
+    state.tokens[index] = { ...phraseItem(state.tokens[index]), octaveShift: Math.max(-2, Number(state.tokens[index]?.octaveShift || 0) - 1) };
+    renderPhraseBuilder();
+  });
+  elements.octaveAuto.addEventListener("click", () => {
+    const index = state.selectedPhraseIndex;
+    state.tokens[index] = { ...phraseItem(state.tokens[index]), direction: "auto", octaveShift: 0 };
+    renderPhraseBuilder();
+  });
+  elements.octaveUp.addEventListener("click", () => {
+    const index = state.selectedPhraseIndex;
+    state.tokens[index] = { ...phraseItem(state.tokens[index]), octaveShift: Math.min(2, Number(state.tokens[index]?.octaveShift || 0) + 1) };
+    renderPhraseBuilder();
+  });
+  elements.noteEarlier.addEventListener("click", () => {
+    const index = state.selectedPhraseIndex;
+    state.selectedPhraseIndex = Math.max(0, index - 1);
+    setTokens(reorderToken(state.tokens, index, -1));
+  });
+  elements.noteLater.addEventListener("click", () => {
+    const index = state.selectedPhraseIndex;
+    state.selectedPhraseIndex = Math.min(state.tokens.length - 1, index + 1);
+    setTokens(reorderToken(state.tokens, index, 1));
+  });
+  elements.noteRemove.addEventListener("click", () => {
+    const index = state.selectedPhraseIndex;
+    state.tokens = state.tokens.filter((_item, itemIndex) => itemIndex !== index);
+    state.selectedPhraseIndex = Math.max(0, Math.min(index, state.tokens.length - 1));
+    setTokens(state.tokens);
+  });
   elements.key.addEventListener("change", () => {
     state.key = elements.key.value;
     renderPalette();
