@@ -196,6 +196,11 @@
     .more-routes .route-tabs { margin: 10px 0 0; }
     #studio-source-needed { border: 1px solid var(--line); border-radius: 18px; background: rgba(240, 191, 105, 0.07); padding: 20px; }
     #studio-source-needed p { color: var(--muted); line-height: 1.6; }
+    .current-note { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; margin-top: 18px; border: 1px solid rgba(240, 191, 105, 0.34); border-radius: 14px; background: rgba(240, 191, 105, 0.08); padding: 13px 15px; }
+    .current-note > span:first-child { color: var(--gold); font-size: 12px; font-weight: 850; letter-spacing: 0.07em; text-transform: uppercase; }
+    .current-note strong { font-family: var(--lesson); font-size: 22px; }
+    #studio-current-position { color: var(--cream); font-weight: 750; }
+    #studio-current-movement { flex-basis: 100%; color: var(--muted); font-size: 13px; }
     #studio-fretboard { margin-top: 18px; }
     #studio-transport { display: grid; gap: 14px; margin-top: 18px; }
     .transport-buttons { display: flex; align-items: center; justify-content: center; gap: 10px; }
@@ -375,6 +380,12 @@
           <button class="primary-action" type="button" data-edit-source>Edit recording and phrase</button>
         </div>
 
+        <div class="current-note" id="studio-current-note" hidden aria-live="polite">
+          <span>Current note</span>
+          <strong id="studio-current-note-name"></strong>
+          <span id="studio-current-position"></span>
+          <span id="studio-current-movement"></span>
+        </div>
         <div id="studio-fretboard" aria-label="Melody Studio fretboard"></div>
 
         <div id="studio-transport" hidden>
@@ -401,8 +412,8 @@
     </div>
   </main>
 
-  <script src="answer-client.js?v=melody-octave-fix-20260710"></script>
-  <script src="pedal-steel-fretboard.js?v=melody-octave-fix-20260710"></script>
-  <script src="melody-workbench.js?v=melody-octave-fix-20260710"></script>
+  <script src="answer-client.js?v=melody-fretboard-cleanup-20260710"></script>
+  <script src="pedal-steel-fretboard.js?v=melody-fretboard-cleanup-20260710"></script>
+  <script src="melody-workbench.js?v=melody-fretboard-cleanup-20260710"></script>
 </body>
 </html>

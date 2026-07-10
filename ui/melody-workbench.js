@@ -309,6 +309,10 @@
     advancedRoutes: $("#studio-advanced-routes"),
     routeReason: $("#studio-route-reason"),
     sourceNeeded: $("#studio-source-needed"),
+    currentNote: $("#studio-current-note"),
+    currentNoteName: $("#studio-current-note-name"),
+    currentPosition: $("#studio-current-position"),
+    currentMovement: $("#studio-current-movement"),
     fretboard: $("#studio-fretboard"),
     transport: $("#studio-transport"),
     previous: $("#studio-previous"),
@@ -484,6 +488,12 @@
     state.activeEventIndex = Math.max(0, Math.min(index, events.length - 1));
     const event = events[state.activeEventIndex];
     const note = event.notes?.[0] || {};
+    const strings = (event.notes || []).map((item) => item.string);
+    const controls = Array.from(new Set((event.notes || []).flatMap((item) => item.changes || [])));
+    elements.currentNote.hidden = false;
+    elements.currentNoteName.textContent = `${event.resolvedNote}${event.resolvedPitch ? ` (${event.resolvedPitch})` : ""}`;
+    elements.currentPosition.textContent = `${strings.length > 1 ? "Strings" : "String"} ${strings.join(" + ")} · Fret ${note.fret} · ${controls.length ? controls.join("+") : "Open"}`;
+    elements.currentMovement.textContent = event.movement || "";
     elements.eventStrip.querySelectorAll("[data-event-index]").forEach((button) => {
       const selected = Number(button.dataset.eventIndex) === state.activeEventIndex;
       button.classList.toggle("is-selected", selected);
@@ -535,7 +545,10 @@
         positions: route.fretboard.positions,
         highlights: route.fretboard.highlights || [],
         legend: route.fretboard.legend,
-        query: route.fretboard.query
+        query: route.fretboard.query,
+        hideFilterControls: true,
+        hidePositionTools: true,
+        hideLegend: true
       });
     }
     renderEvents(exercise);
@@ -601,6 +614,7 @@
     elements.transport.hidden = needsSource || !exercise?.events?.length;
     elements.tab.hidden = needsSource || !response.tabs?.length;
     elements.explanation.hidden = needsSource;
+    elements.currentNote.hidden = needsSource;
     elements.routeTabs.hidden = needsSource;
     elements.moreRoutes.hidden = needsSource;
     elements.routeReason.hidden = needsSource;
@@ -612,7 +626,10 @@
         positions: response.fretboard.positions,
         highlights: response.fretboard.highlights || [],
         legend: response.fretboard.legend,
-        query: response.fretboard.query
+        query: response.fretboard.query,
+        hideFilterControls: true,
+        hidePositionTools: true,
+        hideLegend: true
       });
       renderEvents(exercise);
       renderRoutes(exercise);

@@ -2869,8 +2869,9 @@
       : container?.querySelector?.("[data-component='PedalSteelFretboard']");
     if (!figure || !positionId) return false;
     const selector = figure.querySelector(`[data-position-selector="${escapeSelectorValue(positionId)}"]`);
-    if (!selector) return false;
-    if (selector.hidden) {
+    const highlight = figure.querySelector(`[data-highlight-id="${escapeSelectorValue(positionId)}"]`);
+    if (!selector && !highlight) return false;
+    if (selector?.hidden) {
       showAllRecommendedPositions(figure);
     }
     selectPosition(figure, positionId);

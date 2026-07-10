@@ -76,6 +76,7 @@ def test_melody_workbench_has_guided_tasks_feature_state_and_fretboard_first_res
     assert 'id="studio-sequence"' in html
     assert 'data-preset="1-2-3-5"' in html
     assert 'id="studio-fretboard"' in html
+    assert 'id="studio-current-note" hidden' in html
     assert 'id="studio-contour"' in html
     assert 'id="studio-route-tabs"' in html
     assert 'id="studio-note-editor" hidden' in html
@@ -85,10 +86,13 @@ def test_melody_workbench_has_guided_tasks_feature_state_and_fretboard_first_res
     assert 'id="studio-more-routes" hidden' in html
     assert 'id="studio-change-task"' in html
     assert "activateRoute" in script
+    assert "hideFilterControls: true" in script
+    assert "hidePositionTools: true" in script
+    assert "hideLegend: true" in script
     assert "Select a note below to change its octave" in html
     assert "Only the selected note changes octave" in html
     assert "state.selectedPhraseIndex" in script
-    assert html.count("?v=melody-octave-fix-20260710") == 3
+    assert html.count("?v=melody-fretboard-cleanup-20260710") == 3
     assert html.index('id="studio-fretboard"') < html.index('id="studio-tab"')
     assert 'id="studio-continue"' in html
     assert "does not listen to or extract notes from the link yet" in html

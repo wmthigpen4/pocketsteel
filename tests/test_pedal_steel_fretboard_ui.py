@@ -545,6 +545,48 @@ assert.doesNotMatch(labeledHtml, /\\[object Object\\]/);
     run_node(script)
 
 
+def test_programmatic_selection_works_when_position_tools_are_hidden() -> None:
+    script = component_eval_script(
+        """
+const targetId = "melody-event-2";
+const classNames = new Set();
+const highlight = {
+  hidden: false,
+  style: {},
+  dataset: { filterVisible: "true" },
+  getAttribute(name) {
+    return name === "data-highlight-id" ? targetId : null;
+  },
+  classList: {
+    toggle(name, enabled) {
+      if (enabled) classNames.add(name);
+      else classNames.delete(name);
+    }
+  }
+};
+const figure = {
+  dataset: {},
+  matches(selector) {
+    return selector === "[data-component='PedalSteelFretboard']";
+  },
+  querySelector(selector) {
+    if (selector === `[data-highlight-id="${targetId}"]`) return highlight;
+    return null;
+  },
+  querySelectorAll(selector) {
+    return selector === ".pedal-steel-fretboard__highlight" ? [highlight] : [];
+  }
+};
+assert.equal(fretboard.selectPedalSteelFretboardPosition(figure, targetId), true);
+assert.equal(figure.dataset.selectedPositionId, targetId);
+assert.equal(classNames.has("is-selected"), true);
+assert.equal(fretboard.selectPedalSteelFretboardPosition(figure, "missing"), false);
+"""
+    )
+
+    run_node(script)
+
+
 def test_rendered_svg_uses_decorative_background_underlay() -> None:
     script = component_eval_script(
         """
