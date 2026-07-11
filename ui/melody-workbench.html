@@ -202,13 +202,23 @@
     #studio-current-position { color: var(--cream); font-weight: 750; }
     #studio-current-movement { flex-basis: 100%; color: var(--muted); font-size: 13px; }
     #studio-fretboard { margin-top: 18px; }
+    .octave-guide { max-width: 100%; display: flex; align-items: center; gap: 8px; margin-top: 10px; overflow-x: auto; padding: 5px 2px 7px; color: var(--muted); scrollbar-width: thin; }
+    .octave-guide > strong { flex: 0 0 auto; color: var(--cream); font-size: 12px; letter-spacing: 0.04em; }
+    .octave-guide__item { --octave-color: var(--muted); flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; min-width: 34px; border: 1px solid color-mix(in srgb, var(--octave-color) 48%, transparent); border-radius: 999px; padding: 4px 8px; color: var(--cream); font-size: 12px; font-weight: 800; }
+    .octave-guide__swatch { width: 9px; height: 9px; border-radius: 50%; background: var(--octave-color); box-shadow: 0 0 8px color-mix(in srgb, var(--octave-color) 56%, transparent); }
     #studio-transport { display: grid; gap: 14px; margin-top: 18px; }
     .transport-buttons { display: flex; align-items: center; justify-content: center; gap: 10px; }
     .event-strip { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 8px; }
-    .event-step { flex: 0 0 auto; min-height: 58px; display: grid; gap: 4px; border: 1px solid rgba(244, 234, 214, 0.14); border-radius: 12px; background: rgba(5, 7, 7, 0.52); color: var(--muted); cursor: pointer; padding: 9px 12px; text-align: left; }
+    .event-step { --octave-color: transparent; --octave-tint: rgba(5, 7, 7, 0.52); flex: 0 0 auto; min-height: 58px; display: grid; gap: 4px; border: 1px solid rgba(244, 234, 214, 0.14); border-radius: 12px; background: linear-gradient(var(--octave-tint), var(--octave-tint)), rgba(5, 7, 7, 0.52); box-shadow: inset 4px 0 0 var(--octave-color); color: var(--muted); cursor: pointer; padding: 9px 12px 9px 15px; text-align: left; }
+    [data-scientific-octave="2"] { --octave-color: #b8a3ff; --octave-tint: rgba(184, 163, 255, 0.13); }
+    [data-scientific-octave="3"] { --octave-color: #63b3ff; --octave-tint: rgba(99, 179, 255, 0.13); }
+    [data-scientific-octave="4"] { --octave-color: #58d6bd; --octave-tint: rgba(88, 214, 189, 0.13); }
+    [data-scientific-octave="5"] { --octave-color: #f0bf69; --octave-tint: rgba(240, 191, 105, 0.13); }
+    [data-scientific-octave="6"] { --octave-color: #ff927d; --octave-tint: rgba(255, 146, 125, 0.13); }
     .event-step strong { color: var(--cream); font-size: 14px; }
     .event-step span { font-size: 12px; }
-    .event-step.is-selected { border-color: var(--gold); background: rgba(240, 191, 105, 0.13); color: var(--cream); }
+    .event-step.is-selected { border-color: var(--gold); outline: 2px solid rgba(240, 191, 105, 0.2); background: linear-gradient(var(--octave-tint), var(--octave-tint)), rgba(240, 191, 105, 0.12); color: var(--cream); }
+    .event-step:focus-visible { outline: 3px solid var(--cream); outline-offset: 2px; }
     #studio-event-detail { margin: 0; text-align: center; color: var(--cream); font-size: 16px; }
     #studio-tab { margin-top: 18px; }
     #studio-active-tab-step { margin: 0 0 8px; color: var(--gold); font-size: 14px; font-weight: 800; }
@@ -389,6 +399,14 @@
           <span id="studio-current-movement"></span>
         </div>
         <div id="studio-fretboard" aria-label="Melody Studio fretboard"></div>
+        <div class="octave-guide" id="studio-octave-guide" aria-label="Scientific octave color guide" hidden>
+          <strong>Scientific octave:</strong>
+          <span class="octave-guide__item" data-scientific-octave="2" aria-label="Octave 2 — C2 through B2" title="C2 through B2"><i class="octave-guide__swatch" aria-hidden="true"></i>2</span>
+          <span class="octave-guide__item" data-scientific-octave="3" aria-label="Octave 3 — C3 through B3" title="C3 through B3"><i class="octave-guide__swatch" aria-hidden="true"></i>3</span>
+          <span class="octave-guide__item" data-scientific-octave="4" aria-label="Octave 4 — C4 through B4" title="C4 through B4"><i class="octave-guide__swatch" aria-hidden="true"></i>4</span>
+          <span class="octave-guide__item" data-scientific-octave="5" aria-label="Octave 5 — C5 through B5" title="C5 through B5"><i class="octave-guide__swatch" aria-hidden="true"></i>5</span>
+          <span class="octave-guide__item" data-scientific-octave="6" aria-label="Octave 6 — C6 through B6" title="C6 through B6"><i class="octave-guide__swatch" aria-hidden="true"></i>6</span>
+        </div>
 
         <div id="studio-transport" hidden>
           <div class="transport-buttons">
@@ -414,8 +432,8 @@
     </div>
   </main>
 
-  <script src="answer-client.js?v=melody-lesson-labels-20260710"></script>
-  <script src="pedal-steel-fretboard.js?v=melody-lesson-labels-20260710"></script>
-  <script src="melody-workbench.js?v=melody-lesson-labels-20260710"></script>
+  <script src="answer-client.js?v=melody-octave-guide-20260710"></script>
+  <script src="pedal-steel-fretboard.js?v=melody-octave-guide-20260710"></script>
+  <script src="melody-workbench.js?v=melody-octave-guide-20260710"></script>
 </body>
 </html>

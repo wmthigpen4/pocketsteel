@@ -70,6 +70,15 @@ assert.deepEqual(
   { note: "2. E4", position: "Strings 4 + 6 · Fret 3 · A pedal" }
 );
 assert.equal(studio.routeButtonLabel({ recommended: true, label: "Recommended harmony" }), "Recommended harmony");
+assert.equal(studio.scientificOctaveForEvent({ resolvedPitch: "D4", pitchValue: 62 }), 4);
+assert.equal(studio.scientificOctaveForEvent({ resolvedPitch: "G5", pitchValue: 79 }), 5);
+assert.equal(studio.scientificOctaveForEvent({ pitchValue: 47 }), 2);
+assert.equal(studio.scientificOctaveForEvent({ resolvedPitch: "not-a-pitch", pitchValue: 64 }), 4);
+assert.equal(studio.scientificOctaveForEvent({ resolvedPitch: "C7", pitchValue: 96 }), null);
+assert.equal(studio.scientificOctaveForEvent({ resolvedPitch: "D4", notes: [{ scientificPitch: "B2" }, { scientificPitch: "D4" }] }), 4);
+assert.equal(studio.scientificOctaveForEvent({ resolvedPitch: "", pitchValue: "bad" }), null);
+assert.equal(studio.scientificOctaveLabel(4), "Octave 4 — C4 through B4");
+assert.equal(studio.scientificOctaveLabel(7), "");
 """
     )
 
@@ -85,6 +94,14 @@ def test_melody_workbench_has_guided_tasks_feature_state_and_fretboard_first_res
     assert 'id="studio-sequence"' in html
     assert 'data-preset="1-2-3-5"' in html
     assert 'id="studio-fretboard"' in html
+    assert 'id="studio-octave-guide"' in html
+    assert 'aria-label="Octave 4 — C4 through B4"' in html
+    assert '[data-scientific-octave="2"] { --octave-color: #b8a3ff;' in html
+    assert '[data-scientific-octave="4"] { --octave-color: #58d6bd;' in html
+    assert '[data-scientific-octave="6"] { --octave-color: #ff927d;' in html
+    assert ".octave-guide { max-width: 100%;" in html
+    assert "overflow-x: auto" in html
+    assert ".event-step:focus-visible" in html
     assert 'id="studio-current-note" hidden' in html
     assert 'id="studio-contour"' in html
     assert 'id="studio-route-tabs"' in html
@@ -101,13 +118,15 @@ def test_melody_workbench_has_guided_tasks_feature_state_and_fretboard_first_res
     assert "Select a note below to change its octave" in html
     assert "Only the selected note changes octave" in html
     assert "state.selectedPhraseIndex" in script
-    assert html.count("?v=melody-lesson-labels-20260710") == 3
+    assert html.count("?v=melody-octave-guide-20260710") == 3
     assert html.index('id="studio-fretboard"') < html.index('id="studio-tab"')
     assert 'id="studio-continue"' in html
     assert "does not listen to or extract notes from the link yet" in html
     assert "selectPedalSteelFretboardPosition" in script
     assert "Active tab note" in script
     assert "Active step" not in script
+    assert "button.dataset.scientificOctave" in script
+    assert "elements.octaveGuide.hidden" in script
     assert "requestPayload: { melodyRequest: buildMelodyRequest(state) }" in script
     assert "clearMaterial();" in script
     assert "sectionNumber" in script

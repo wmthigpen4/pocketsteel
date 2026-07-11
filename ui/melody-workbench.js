@@ -260,6 +260,25 @@
     return route?.label || (route?.recommended ? "Recommended harmony" : "Arrangement");
   }
 
+  function supportedScientificOctave(value) {
+    const octave = Number(value);
+    return Number.isInteger(octave) && octave >= 2 && octave <= 6 ? octave : null;
+  }
+
+  function scientificOctaveForEvent(event) {
+    const resolvedPitch = typeof event?.resolvedPitch === "string" ? event.resolvedPitch.trim() : "";
+    const match = resolvedPitch.match(/^[A-Ga-g](?:#|b)?(-?\d+)$/);
+    if (match) return supportedScientificOctave(match[1]);
+    const pitchValue = Number(event?.pitchValue);
+    if (!Number.isFinite(pitchValue)) return null;
+    return supportedScientificOctave(Math.floor(pitchValue / 12) - 1);
+  }
+
+  function scientificOctaveLabel(octave) {
+    const supported = supportedScientificOctave(octave);
+    return supported === null ? "" : `Octave ${supported} — C${supported} through B${supported}`;
+  }
+
   const api = {
     MAX_EVENTS_PER_SECTION,
     TASKS,
@@ -277,7 +296,9 @@
     reorderToken,
     buildMelodyRequest,
     eventStepPresentation,
-    routeButtonLabel
+    routeButtonLabel,
+    scientificOctaveForEvent,
+    scientificOctaveLabel
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = api;
@@ -340,6 +361,7 @@
     currentPosition: $("#studio-current-position"),
     currentMovement: $("#studio-current-movement"),
     fretboard: $("#studio-fretboard"),
+    octaveGuide: $("#studio-octave-guide"),
     transport: $("#studio-transport"),
     previous: $("#studio-previous"),
     next: $("#studio-next"),
@@ -543,6 +565,11 @@
       button.className = "event-step";
       button.dataset.eventIndex = String(index);
       const presentation = eventStepPresentation(event);
+      const scientificOctave = scientificOctaveForEvent(event);
+      if (scientificOctave !== null) {
+        button.dataset.scientificOctave = String(scientificOctave);
+        button.setAttribute("aria-label", `${presentation.note}. ${presentation.position}. ${scientificOctaveLabel(scientificOctave)}.`);
+      }
       const noteLabel = doc.createElement("strong");
       noteLabel.textContent = presentation.note;
       const positionLabel = doc.createElement("span");
@@ -640,6 +667,7 @@
       ? "The recording identity is saved, but Melody Studio does not listen to the link yet. Paste notes, scale degrees, or simple one-string tab—or build the passage with the note palette—to render playable E9 positions."
       : "";
     elements.fretboard.hidden = needsSource || !response.fretboard;
+    elements.octaveGuide.hidden = needsSource || !exercise?.events?.length;
     elements.transport.hidden = needsSource || !exercise?.events?.length;
     elements.tab.hidden = needsSource || !response.tabs?.length;
     elements.explanation.hidden = needsSource;
