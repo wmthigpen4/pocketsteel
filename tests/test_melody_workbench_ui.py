@@ -79,6 +79,21 @@ assert.equal(studio.scientificOctaveForEvent({ resolvedPitch: "D4", notes: [{ sc
 assert.equal(studio.scientificOctaveForEvent({ resolvedPitch: "", pitchValue: "bad" }), null);
 assert.equal(studio.scientificOctaveLabel(4), "Octave 4 — C4 through B4");
 assert.equal(studio.scientificOctaveLabel(7), "");
+assert.equal(studio.scientificOctaveForTabNote({ string: 10, fret: 0, changes: [] }), 2);
+assert.equal(studio.scientificOctaveForTabNote({ string: 5, fret: 3, changes: [] }), 4);
+assert.equal(studio.scientificOctaveForTabNote({ string: 5, fret: 1, changes: ["A"] }), 4);
+const octavePositions = studio.positionsWithScientificOctaves(
+  [{ id: "event-1", strings: [5, 6] }],
+  [{ renderablePositionId: "event-1", notes: [{ string: 5, fret: 3, changes: [] }, { string: 6, fret: 3, changes: [] }] }]
+);
+assert.deepEqual(octavePositions[0].scientificOctavesByString, { 5: 4, 6: 3 });
+const fretboardOptions = studio.melodyFretboardOptions(
+  { maxFret: 24, stringCount: 10, tuningLabels: [], positions: octavePositions, highlights: [], legend: [], query: {} },
+  []
+);
+assert.equal(fretboardOptions.showScientificOctaveOverlay, true);
+assert.equal(fretboardOptions.hidePositionTools, true);
+assert.equal(studio.createInitialState().showOctaveMap, true);
 """
     )
 
@@ -95,13 +110,19 @@ def test_melody_workbench_has_guided_tasks_feature_state_and_fretboard_first_res
     assert 'data-preset="1-2-3-5"' in html
     assert 'id="studio-fretboard"' in html
     assert 'id="studio-octave-guide"' in html
+    assert 'id="studio-octave-toggle" aria-pressed="true"' in html
+    assert 'id="studio-octave-map-controls" hidden' in html
     assert 'aria-label="Octave 4 — C4 through B4"' in html
-    assert '[data-scientific-octave="2"] { --octave-color: #b8a3ff;' in html
-    assert '[data-scientific-octave="4"] { --octave-color: #58d6bd;' in html
-    assert '[data-scientific-octave="6"] { --octave-color: #ff927d;' in html
-    assert ".octave-guide { max-width: 100%;" in html
+    assert 'data-scientific-octave="2"] { --octave-color: #b8a3ff;' in html
+    assert 'data-scientific-octave="4"] { --octave-color: #58d6bd;' in html
+    assert 'data-scientific-octave="6"] { --octave-color: #ff927d;' in html
+    assert ".octave-map-controls { display: grid;" in html
+    assert ".register-stepper { grid-template-columns: 44px minmax(0, 1fr) 44px; }" in html
     assert "overflow-x: auto" in html
     assert ".event-step:focus-visible" in html
+    assert 'id="studio-register-value"' in html
+    assert 'aria-label="Lower selected note one octave"' in html
+    assert 'aria-label="Raise selected note one octave"' in html
     assert 'id="studio-current-note" hidden' in html
     assert 'id="studio-contour"' in html
     assert 'id="studio-route-tabs"' in html
@@ -116,9 +137,9 @@ def test_melody_workbench_has_guided_tasks_feature_state_and_fretboard_first_res
     assert "hidePositionTools: true" in script
     assert "hideLegend: true" in script
     assert "Select a note below to change its octave" in html
-    assert "Only the selected note changes octave" in html
+    assert "Change the register for this note only" in html
     assert "state.selectedPhraseIndex" in script
-    assert html.count("?v=melody-octave-guide-20260710") == 3
+    assert html.count("?v=melody-octave-map-20260711") == 3
     assert html.index('id="studio-fretboard"') < html.index('id="studio-tab"')
     assert 'id="studio-continue"' in html
     assert "does not listen to or extract notes from the link yet" in html
@@ -127,6 +148,9 @@ def test_melody_workbench_has_guided_tasks_feature_state_and_fretboard_first_res
     assert "Active step" not in script
     assert "button.dataset.scientificOctave" in script
     assert "elements.octaveGuide.hidden" in script
+    assert "updateOctaveMapVisibility" in script
+    assert "showScientificOctaveOverlay: true" in script
+    assert "scientificOctavesByString" in script
     assert "requestPayload: { melodyRequest: buildMelodyRequest(state) }" in script
     assert "clearMaterial();" in script
     assert "sectionNumber" in script

@@ -232,6 +232,7 @@
       sourceUrl: "",
       sectionNumber: 1,
       activeEventIndex: 0,
+      showOctaveMap: true,
       response: null
     };
   }
@@ -279,6 +280,48 @@
     return supported === null ? "" : `Octave ${supported} — C${supported} through B${supported}`;
   }
 
+  function scientificOctaveForTabNote(note) {
+    const stringNumber = Number(note?.string);
+    const fret = Number(note?.fret);
+    const openPitch = E9_OPEN_PITCHES[stringNumber];
+    if (!Number.isInteger(stringNumber) || !Number.isInteger(fret) || !Number.isFinite(openPitch)) return null;
+    const changeDelta = (note?.changes || []).reduce(
+      (sum, change) => sum + (E9_CHANGE_DELTAS[String(change).toUpperCase()]?.[stringNumber] || 0),
+      0
+    );
+    return supportedScientificOctave(Math.floor((openPitch + fret + changeDelta) / 12) - 1);
+  }
+
+  function positionsWithScientificOctaves(positions, events) {
+    const eventByPosition = new Map((events || []).map((event) => [event.renderablePositionId, event]));
+    return (positions || []).map((position) => {
+      const event = eventByPosition.get(position.id);
+      if (!event) return position;
+      const scientificOctavesByString = Object.fromEntries((event.notes || []).flatMap((note) => {
+        const octave = scientificOctaveForTabNote(note);
+        return octave === null ? [] : [[String(note.string), octave]];
+      }));
+      return { ...position, scientificOctavesByString };
+    });
+  }
+
+  function melodyFretboardOptions(fretboard, events) {
+    return {
+      maxFret: fretboard.maxFret,
+      stringCount: fretboard.stringCount,
+      tuningLabels: fretboard.tuningLabels,
+      openPitchValues: E9_OPEN_PITCHES,
+      positions: positionsWithScientificOctaves(fretboard.positions, events),
+      highlights: fretboard.highlights || [],
+      legend: fretboard.legend,
+      query: fretboard.query,
+      hideFilterControls: true,
+      hidePositionTools: true,
+      hideLegend: true,
+      showScientificOctaveOverlay: true
+    };
+  }
+
   const api = {
     MAX_EVENTS_PER_SECTION,
     TASKS,
@@ -298,7 +341,10 @@
     eventStepPresentation,
     routeButtonLabel,
     scientificOctaveForEvent,
-    scientificOctaveLabel
+    scientificOctaveLabel,
+    scientificOctaveForTabNote,
+    positionsWithScientificOctaves,
+    melodyFretboardOptions
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = api;
@@ -335,6 +381,7 @@
     noteEditor: $("#studio-note-editor"),
     selectedNote: $("#studio-selected-note"),
     selectedPitch: $("#studio-selected-pitch"),
+    registerValue: $("#studio-register-value"),
     octaveDown: $("#studio-octave-down"),
     octaveAuto: $("#studio-octave-auto"),
     octaveUp: $("#studio-octave-up"),
@@ -361,6 +408,8 @@
     currentPosition: $("#studio-current-position"),
     currentMovement: $("#studio-current-movement"),
     fretboard: $("#studio-fretboard"),
+    octaveMapControls: $("#studio-octave-map-controls"),
+    octaveToggle: $("#studio-octave-toggle"),
     octaveGuide: $("#studio-octave-guide"),
     transport: $("#studio-transport"),
     previous: $("#studio-previous"),
@@ -481,9 +530,18 @@
       elements.selectedNote.textContent = `Selected: ${phraseItemLabel(selectedItem)}`;
       elements.selectedPitch.textContent = previews[state.selectedPhraseIndex]?.pitch || "";
       const literal = Number.isInteger(selectedItem.string) && Number.isInteger(selectedItem.fret);
-      elements.octaveDown.disabled = literal;
-      elements.octaveAuto.disabled = literal;
-      elements.octaveUp.disabled = literal;
+      const preview = previews[state.selectedPhraseIndex];
+      const shift = Number(selectedItem.octaveShift || 0);
+      const octave = scientificOctaveForEvent({ resolvedPitch: preview?.pitch, pitchValue: preview?.pitchValue });
+      const shiftLabel = shift === 0 ? "Automatic" : shift > 0 ? `+${shift} octave${shift === 1 ? "" : "s"}` : `${shift} octave${shift === -1 ? "" : "s"}`;
+      elements.registerValue.textContent = octave === null ? shiftLabel : `Octave ${octave} · ${shiftLabel}`;
+      elements.octaveDown.disabled = literal || shift <= -2;
+      elements.octaveAuto.disabled = literal || shift === 0;
+      elements.octaveUp.disabled = literal || shift >= 2;
+      const lowerPitch = Number.isFinite(preview?.pitchValue) ? pitchLabel(preview.pitchValue - 12) : "a lower octave";
+      const upperPitch = Number.isFinite(preview?.pitchValue) ? pitchLabel(preview.pitchValue + 12) : "a higher octave";
+      elements.octaveDown.setAttribute("aria-label", `Lower selected note from ${preview?.pitch || "its current pitch"} to ${lowerPitch}`);
+      elements.octaveUp.setAttribute("aria-label", `Raise selected note from ${preview?.pitch || "its current pitch"} to ${upperPitch}`);
       elements.noteEarlier.disabled = state.selectedPhraseIndex === 0;
       elements.noteLater.disabled = state.selectedPhraseIndex === state.tokens.length - 1;
     }
@@ -594,18 +652,10 @@
     });
     elements.routeReason.textContent = route.recommendation || route.movementSummary || "";
     if (route.fretboard) {
-      global.STEEL_RAG_FRETBOARD.mountPedalSteelFretboard(elements.fretboard, {
-        maxFret: route.fretboard.maxFret,
-        stringCount: route.fretboard.stringCount,
-        tuningLabels: route.fretboard.tuningLabels,
-        positions: route.fretboard.positions,
-        highlights: route.fretboard.highlights || [],
-        legend: route.fretboard.legend,
-        query: route.fretboard.query,
-        hideFilterControls: true,
-        hidePositionTools: true,
-        hideLegend: true
-      });
+      global.STEEL_RAG_FRETBOARD.mountPedalSteelFretboard(
+        elements.fretboard,
+        melodyFretboardOptions(route.fretboard, route.events)
+      );
     }
     renderEvents(exercise);
     elements.tabCode.textContent = route.tab?.tabText || "";
@@ -630,6 +680,14 @@
       button.addEventListener("click", () => activateRoute(route.id));
       (primaryRoutes.includes(route) ? elements.routeTabs : elements.advancedRoutes).appendChild(button);
     });
+  }
+
+  function updateOctaveMapVisibility() {
+    const visible = Boolean(state.showOctaveMap);
+    elements.result.classList.toggle("is-octave-map-visible", visible);
+    elements.octaveToggle.setAttribute("aria-pressed", String(visible));
+    elements.octaveToggle.textContent = visible ? "Hide octave map" : "Show octave map";
+    elements.octaveGuide.hidden = !visible;
   }
 
   function renderResult(response) {
@@ -667,7 +725,7 @@
       ? "The recording identity is saved, but Melody Studio does not listen to the link yet. Paste notes, scale degrees, or simple one-string tab—or build the passage with the note palette—to render playable E9 positions."
       : "";
     elements.fretboard.hidden = needsSource || !response.fretboard;
-    elements.octaveGuide.hidden = needsSource || !exercise?.events?.length;
+    elements.octaveMapControls.hidden = needsSource || !exercise?.events?.length;
     elements.transport.hidden = needsSource || !exercise?.events?.length;
     elements.tab.hidden = needsSource || !response.tabs?.length;
     elements.explanation.hidden = needsSource;
@@ -675,19 +733,12 @@
     elements.routeTabs.hidden = needsSource;
     elements.moreRoutes.hidden = needsSource;
     elements.routeReason.hidden = needsSource;
+    updateOctaveMapVisibility();
     if (!needsSource && response.fretboard) {
-      global.STEEL_RAG_FRETBOARD.mountPedalSteelFretboard(elements.fretboard, {
-        maxFret: response.fretboard.maxFret,
-        stringCount: response.fretboard.stringCount,
-        tuningLabels: response.fretboard.tuningLabels,
-        positions: response.fretboard.positions,
-        highlights: response.fretboard.highlights || [],
-        legend: response.fretboard.legend,
-        query: response.fretboard.query,
-        hideFilterControls: true,
-        hidePositionTools: true,
-        hideLegend: true
-      });
+      global.STEEL_RAG_FRETBOARD.mountPedalSteelFretboard(
+        elements.fretboard,
+        melodyFretboardOptions(response.fretboard, exercise.events)
+      );
       renderEvents(exercise);
       renderRoutes(exercise);
       elements.tabCode.textContent = response.tabs[0]?.tabText || "";
@@ -834,6 +885,10 @@
   elements.build.addEventListener("click", () => submitLesson(1));
   elements.previous.addEventListener("click", () => selectEvent(state.activeEventIndex - 1));
   elements.next.addEventListener("click", () => selectEvent(state.activeEventIndex + 1));
+  elements.octaveToggle.addEventListener("click", () => {
+    state.showOctaveMap = !state.showOctaveMap;
+    updateOctaveMapVisibility();
+  });
   elements.continueButton.addEventListener("click", () => submitLesson(Number(elements.continueButton.dataset.nextSection) || state.sectionNumber + 1));
   elements.edit.addEventListener("click", editPhrase);
   elements.sourceNeeded.querySelector("[data-edit-source]").addEventListener("click", editPhrase);

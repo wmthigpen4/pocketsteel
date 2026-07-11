@@ -99,6 +99,46 @@ assert.equal(JSON.stringify(model.markers), JSON.stringify([3, 5, 7, 9, 12, 15, 
     run_node(script)
 
 
+def test_scientific_octave_overlay_is_opt_in_string_aware_and_marker_aware() -> None:
+    script = component_eval_script(
+        """
+const position = {
+  id: "melody-event-1",
+  label: "D4",
+  fret: 3,
+  strings: [5, 6],
+  scientificOctavesByString: { 5: 4, 6: 3 }
+};
+const hiddenHtml = fretboard.renderPedalSteelFretboard({ positions: [position] });
+assert.doesNotMatch(hiddenHtml, /data-scientific-octave-overlay/);
+
+const model = fretboard.buildFretboardModel({
+  positions: [position],
+  showScientificOctaveOverlay: true
+});
+assert.equal(model.showScientificOctaveOverlay, true);
+assert.equal(model.allHighlights[0].scientificOctavesByString["5"], 4);
+assert.equal(model.allHighlights[0].scientificOctavesByString["6"], 3);
+const zones = fretboard.scientificOctaveZones(model);
+assert.ok(zones.length > 10);
+assert.ok(zones.some((zone) => zone.string === 10 && zone.octave === 2 && zone.fretStart === 0 && zone.fretEnd === 0));
+assert.ok(zones.some((zone) => zone.string === 4 && zone.octave === 4 && zone.fretStart === 0));
+
+const html = fretboard.renderPedalSteelFretboard({
+  positions: [position],
+  showScientificOctaveOverlay: true
+});
+assert.match(html, /data-scientific-octave-overlay/);
+assert.match(html, /data-scientific-octave-zone[^>]*data-scientific-octave="2"[^>]*data-octave-string="10"/);
+assert.match(html, /data-highlight-dot[^>]*data-highlight-string="5"[^>]*data-scientific-octave="4"/);
+assert.match(html, /data-highlight-dot[^>]*data-highlight-string="6"[^>]*data-scientific-octave="3"/);
+assert.doesNotMatch(html, /\\[object Object\\]/);
+"""
+    )
+
+    run_node(script)
+
+
 def test_every_fret_gap_follows_equal_temperament_ratio() -> None:
     script = component_eval_script(
         """

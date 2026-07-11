@@ -2,6 +2,14 @@
   "use strict";
 
   const DEFAULT_E9_TUNING = ["F#", "D#", "G#", "E", "B", "G#", "F#", "E", "D", "B"];
+  const DEFAULT_E9_OPEN_PITCH_VALUES = [66, 63, 68, 64, 59, 56, 54, 52, 50, 47];
+  const SCIENTIFIC_OCTAVE_COLORS = {
+    2: "#b8a3ff",
+    3: "#63b3ff",
+    4: "#58d6bd",
+    5: "#f0bf69",
+    6: "#ff927d",
+  };
   const COMMON_FRET_MARKERS = [3, 5, 7, 9, 12, 15, 17, 19, 21, 24];
   const DECORATIVE_BACKGROUND_HREF = "/brand/pedal-steel-fretboard-background.svg?v=keyhead-vshape-bce771f";
   const DECORATIVE_BACKGROUND_BOX = {
@@ -809,6 +817,36 @@
     return Array.from(new Set(strings)).sort((a, b) => a - b);
   }
 
+  function supportedScientificOctave(value) {
+    const octave = Number(value);
+    return Number.isInteger(octave) && Object.prototype.hasOwnProperty.call(SCIENTIFIC_OCTAVE_COLORS, octave)
+      ? octave
+      : null;
+  }
+
+  function scientificOctaveForPitchValue(value) {
+    const pitchValue = Number(value);
+    if (!Number.isFinite(pitchValue)) return null;
+    return supportedScientificOctave(Math.floor(pitchValue / 12) - 1);
+  }
+
+  function normalizeOpenPitchValues(value, stringCount) {
+    return Array.from({ length: stringCount }, (_, index) => {
+      const candidate = Array.isArray(value) ? value[index] : value?.[index + 1] ?? value?.[String(index + 1)];
+      const fallback = DEFAULT_E9_OPEN_PITCH_VALUES[index];
+      return Number.isFinite(Number(candidate)) ? Number(candidate) : fallback;
+    });
+  }
+
+  function normalizeScientificOctavesByString(value, strings) {
+    const source = value && typeof value === "object" ? value : {};
+    return Object.fromEntries(strings.flatMap((stringNumber, index) => {
+      const candidate = Array.isArray(source) ? source[index] : source[stringNumber] ?? source[String(stringNumber)];
+      const octave = supportedScientificOctave(candidate);
+      return octave === null ? [] : [[String(stringNumber), octave]];
+    }));
+  }
+
   function normalizeTextList(value) {
     if (!Array.isArray(value)) {
       return [];
@@ -1172,6 +1210,10 @@
     const inversionLabel = normalizeInversionLabel(item, voicingType);
     const validationStatus = normalizeMetadataText(item.validationStatus || item.validation_status);
     const colorRole = normalizeColorRole(item.colorRole || item.color, item);
+    const scientificOctavesByString = normalizeScientificOctavesByString(
+      item.scientificOctavesByString || item.scientific_octaves_by_string,
+      uniqueStrings
+    );
     return {
       id: String(item.id || `${sourceType}-${index + 1}`),
       label,
@@ -1216,6 +1258,7 @@
       isPartialVoicing,
       inversionLabel,
       validationStatus,
+      scientificOctavesByString,
       visibleByDefault: normalizeVisibleByDefault(item.visibleByDefault),
       sortOrder: Number.isFinite(Number(item.sortOrder)) ? Number(item.sortOrder) : index + 1,
       sourceType,
@@ -1739,6 +1782,7 @@
     const maxFret = Math.max(1, Math.floor(Number(options.maxFret) || 24));
     const stringCount = Math.max(1, Math.floor(Number(options.stringCount) || 10));
     const tuningLabels = normalizeTuningLabels(options.tuningLabels, stringCount);
+    const openPitchValues = normalizeOpenPitchValues(options.openPitchValues, stringCount);
     const fretboardWidth = LAYOUT.bridgeX - LAYOUT.nutX;
     const fretboardHeight = SVG_HEIGHT - LAYOUT.top - LAYOUT.bottom;
     const fretPositions = Array.from({ length: maxFret + 1 }, (_, fret) => ({
@@ -1824,6 +1868,7 @@
       maxFret,
       stringCount,
       tuningLabels,
+      openPitchValues,
       fretPositions,
       strings,
       markers: COMMON_FRET_MARKERS.filter((fret) => fret <= maxFret),
@@ -1858,7 +1903,65 @@
       stringActionLabelMode: options.stringActionLabelMode === "selected" ? "selected" : "all",
       hidePositionTools: options.hidePositionTools === true,
       hideLegend: options.hideLegend === true,
+      showScientificOctaveOverlay: options.showScientificOctaveOverlay === true,
     };
+  }
+
+  function scientificOctaveZones(model) {
+    if (!model.showScientificOctaveOverlay) return [];
+    const lastFret = model.fretPositions.length - 1;
+    const cellBounds = (fret) => {
+      const current = model.fretPositions[fret];
+      const prior = model.fretPositions[Math.max(0, fret - 1)];
+      const next = model.fretPositions[Math.min(lastFret, fret + 1)];
+      return {
+        left: fret === 0 ? model.layout.nutX : (prior.x + current.x) / 2,
+        right: fret === lastFret ? model.layout.pickupStartX : (current.x + next.x) / 2,
+      };
+    };
+    return model.strings.flatMap((stringInfo, stringIndex) => {
+      const openPitch = model.openPitchValues[stringIndex];
+      if (!Number.isFinite(openPitch)) return [];
+      const zones = [];
+      for (let fret = 0; fret <= lastFret; fret += 1) {
+        const octave = scientificOctaveForPitchValue(openPitch + fret);
+        if (octave === null) continue;
+        const prior = zones[zones.length - 1];
+        if (prior?.octave === octave && prior.fretEnd === fret - 1) {
+          prior.fretEnd = fret;
+          prior.right = cellBounds(fret).right;
+        } else {
+          const bounds = cellBounds(fret);
+          zones.push({
+            string: stringInfo.number,
+            y: stringInfo.y,
+            octave,
+            fretStart: fret,
+            fretEnd: fret,
+            left: bounds.left,
+            right: bounds.right,
+          });
+        }
+      }
+      return zones;
+    });
+  }
+
+  function renderScientificOctaveOverlay(model) {
+    const zones = scientificOctaveZones(model);
+    if (!zones.length) return "";
+    const stringSpacing = model.strings.length > 1 ? Math.abs(model.strings[1].y - model.strings[0].y) : 18;
+    const laneHeight = Math.max(12, stringSpacing * 0.72);
+    const definitions = zones.map((zone) => {
+      const id = `scientific-octave-s${zone.string}-o${zone.octave}-f${zone.fretStart}`;
+      const color = SCIENTIFIC_OCTAVE_COLORS[zone.octave];
+      return `<linearGradient id="${id}" x1="0%" x2="100%"><stop offset="0%" stop-color="${color}" stop-opacity="0.08"/><stop offset="50%" stop-color="${color}" stop-opacity="0.2"/><stop offset="100%" stop-color="${color}" stop-opacity="0.1"/></linearGradient>`;
+    }).join("");
+    const lanes = zones.map((zone) => {
+      const id = `scientific-octave-s${zone.string}-o${zone.octave}-f${zone.fretStart}`;
+      return `<rect data-scientific-octave-zone data-scientific-octave="${zone.octave}" data-octave-string="${zone.string}" data-fret-start="${zone.fretStart}" data-fret-end="${zone.fretEnd}" x="${zone.left.toFixed(3)}" y="${(zone.y - laneHeight / 2).toFixed(3)}" width="${Math.max(0, zone.right - zone.left).toFixed(3)}" height="${laneHeight.toFixed(3)}" rx="${(laneHeight / 2).toFixed(3)}" fill="url(#${id})"/>`;
+    }).join("");
+    return `<g class="pedal-steel-fretboard__scientific-octave-overlay" data-scientific-octave-overlay aria-hidden="true"><defs>${definitions}</defs>${lanes}</g>`;
   }
 
   function renderFrets(model) {
@@ -1975,7 +2078,9 @@
     const dots = highlight.stringYs
       .map((y, index) => {
         const stringNumber = highlight.strings[index];
-        return `<rect data-highlight-dot ${dataAttrs} data-highlight-string="${stringNumber}" x="${(renderX - dotWidth / 2).toFixed(3)}" y="${(y - dotHeight / 2).toFixed(3)}" width="${dotWidth}" height="${dotHeight}" rx="${dotRx}" fill="${color.dot}" fill-opacity="${isProminent ? "1" : "0.95"}" stroke="#fff6df" stroke-opacity="${isProminent ? "0.72" : "0.38"}" stroke-width="${isProminent ? "1.8" : "1"}" filter="url(#fretboard-glow)" />`;
+        const scientificOctave = highlight.scientificOctavesByString?.[String(stringNumber)];
+        const octaveAttr = scientificOctave ? ` data-scientific-octave="${scientificOctave}"` : "";
+        return `<rect data-highlight-dot ${dataAttrs} data-highlight-string="${stringNumber}"${octaveAttr} x="${(renderX - dotWidth / 2).toFixed(3)}" y="${(y - dotHeight / 2).toFixed(3)}" width="${dotWidth}" height="${dotHeight}" rx="${dotRx}" fill="${color.dot}" fill-opacity="${isProminent ? "1" : "0.95"}" stroke="#fff6df" stroke-opacity="${isProminent ? "0.72" : "0.38"}" stroke-width="${isProminent ? "1.8" : "1"}" filter="url(#fretboard-glow)" />`;
       })
       .join("");
     const stringActionLabelByString = new Map((highlight.stringActionLabels || []).map((entry) => [Number(entry.string), entry.label]));
@@ -2518,6 +2623,7 @@
           </defs>
           <image href="${DECORATIVE_BACKGROUND_HREF}" x="${DECORATIVE_BACKGROUND_BOX.x}" y="${DECORATIVE_BACKGROUND_BOX.y}" width="${DECORATIVE_BACKGROUND_BOX.width}" height="${DECORATIVE_BACKGROUND_BOX.height}" opacity="${DECORATIVE_BACKGROUND_BOX.opacity}" preserveAspectRatio="${DECORATIVE_BACKGROUND_BOX.preserveAspectRatio}" class="pedal-steel-background" pointer-events="none" />
           <rect x="18" y="18" width="${SVG_WIDTH - 36}" height="${SVG_HEIGHT - 54}" rx="26" fill="rgba(9, 10, 10, 0.22)" stroke="rgba(240, 191, 105, 0.28)" />
+          ${renderScientificOctaveOverlay(model)}
           ${renderFrets(model)}
           ${renderMarkers(model)}
           ${renderStrings(model)}
@@ -2954,6 +3060,8 @@
   const api = {
     COMMON_FRET_MARKERS,
     DEFAULT_E9_TUNING,
+    DEFAULT_E9_OPEN_PITCH_VALUES,
+    SCIENTIFIC_OCTAVE_COLORS,
     DEMO_HIGHLIGHTS,
     DEMO_POSITIONS,
     STYLE_TEXT,
@@ -2962,6 +3070,8 @@
     mountPedalSteelFretboard,
     normalizedFretPosition,
     renderPedalSteelFretboard,
+    scientificOctaveForPitchValue,
+    scientificOctaveZones,
     selectPedalSteelFretboardPosition,
   };
 
