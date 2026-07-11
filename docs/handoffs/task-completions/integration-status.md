@@ -1,23 +1,27 @@
 # Integration Status — Current Snapshot
 
-Updated: 2026-07-11 12:46 America/Chicago
+Updated: 2026-07-11 13:21 America/Chicago
 
 ## Repository state
 
 - Branch: `feature/answer-api`
-- Current implementation: `b0944c7 Build Melody Studio multi-input score workflow`
+- Current implementation: `74520ca Expand Melody Studio score practice`
 - Melody API baseline: `f37201a feat: add Melody Exercise teaching workflow`
 - Melody Studio now uses Steel Guitar RAG branding. No broad repository rename is approved.
 
 ## Melody Studio
 
-Status: **PASS — multi-input Melody Studio is committed, full-test green, and verified in the authenticated protected preview. The default-off import/catalog server flag is intentionally not enabled in protected configuration.**
+Status: **PASS — score-practice Melody Studio is committed, 934-test green, and verified in the authenticated protected preview. The default-off import/catalog server flag is intentionally not enabled in protected configuration.**
 
 - The home header now exposes feature-gated actions in this order: Explore Fretboard, Melody Studio, Backstage.
 - The technical inline Melody form was removed from home.
 - `/ui/melody-workbench.html` opens with six equal inputs: Enter notes or intervals, Build a score, Photo or music file, Play or hum it, Use a recording, and Pick a song.
 - The original note/degree/literal-E9 phrase editor remains intact and is the default input.
 - The lead-sheet builder supports one treble melody voice, G/C, 3/4 and 4/4, pickup, supported note/rest durations, ties, accidentals, chord symbols, lyrics/labels, undo/redo, measure actions, duplicate, transpose, browser playback, and local MusicXML download.
+- Melody pitch and chord symbols are separate: melody-only input shows no invented chord labels, while supplied harmony appears only at actual changes.
+- The score is an interactive practice surface with synchronized staff/fretboard/navigator/tab selection, adjustable tempo, count-in, pause/resume, stop, measure and selected-note loops, and optional chord sound.
+- VexFlow renders G/C key signatures, beams, rests, ties, dots, lyrics, and accent/tenuto/staccato; MusicXML and print output preserve the supported notation.
+- Chord symbols guide mechanically validated harmony and chord-melody grip ranking while the resolved melody remains the top voice.
 - All input methods normalize into session-only `score_draft_v1`; no uploaded source or draft is persisted.
 - A pinned local VexFlow 5.0.0 bundle renders the editable and result staffs, with a local SVG fallback.
 - The recording starting point reveals source fields plus faithful-solo versus playable-E9-arrangement treatment; the manual editor keeps practice presets behind its practice-phrase starter.
@@ -68,21 +72,23 @@ Lesson-header protected blocker: `docs/handoffs/task-completions/2026-07-11-0815
 Multi-input implementation handoff: `docs/handoffs/task-completions/2026-07-11-0837-18-melody-studio-multi-input-builder.md`.
 Multi-input protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-0841-12-melody-multi-input-protected-smoke.md`.
 Resumed lesson-header protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-1246-12-melody-header-protected-smoke-resumed.md`.
+Score-practice implementation handoff: `docs/handoffs/task-completions/2026-07-11-1317-05-06-melody-score-practice-arranger.md`.
+Score-practice protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-1321-12-melody-score-practice-protected-smoke.md`.
 
 ## Verification
 
-- Full pytest: `933 passed`.
+- Full pytest: `934 passed`.
 - Core JavaScript syntax: passed for answer client, Melody Studio, and fretboard component.
 - `git diff --check`: passed.
 - Local browser smoke: pass for all six cards, flagged catalog/import, score editing, VexFlow, Amazing Grace catalog, exact E9 route, ornament toggle, and mobile layout.
-- Protected browser smoke: pass at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-header-resume-b0944c7-20260711`.
+- Protected browser smoke: pass at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-score-practice-74520ca-20260711`.
 - Protected browser verified manual phrase and lead-sheet builder lesson generation, six routes, synchronized staff/fretboard/tab, VexFlow renderer, zero page overflow, and no `[object Object]` or console errors.
 - Resumed header smoke verified the removed practice kicker, metadata line, and More arrangements disclosure remain absent on the integrated runtime; all six routes remain together in one horizontally scrollable row and Chord melody selection synchronizes visibly.
 
 ## Protected preview
 
-- Runtime smoke HEAD: `b0944c7`.
-- Loopback `/api/version`: `b0944c7`, `feature/answer-api`, `hybrid_private_first`, `cloudflare_access`, `features.melodyExercise=true`; `melodyImport` remains default off.
+- Runtime smoke HEAD: `74520ca`.
+- Loopback `/api/version`: `74520ca`, `feature/answer-api`, `hybrid_private_first`, `cloudflare_access`, `features.melodyExercise=true`; `melodyImport` remains default off.
 - Preview refresh succeeded without `sudo` by terminating only the user-owned port-8770 listener and allowing the installed LaunchDaemon to restart it.
 - Installed wrapper matches the committed wrapper.
 - Cloudflare Access login and protected manual/score lesson generation succeeded; the prior arranger blocker is closed.
@@ -97,6 +103,6 @@ Resumed lesson-header protected-smoke handoff: `docs/handoffs/task-completions/2
 
 ## Next action
 
-1. Continue user smoke at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-header-resume-b0944c7-20260711`.
+1. Continue user smoke at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-score-practice-74520ca-20260711`.
 2. If protected catalog/upload import should be enabled, explicitly authorize the protected environment flag change and vision-model readiness check; otherwise keep it off.
 3. Keep unrelated corpus, source-inbox, private-data, brand/design, deployment, and environment work parked.
