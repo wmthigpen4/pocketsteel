@@ -126,7 +126,8 @@
     .note-stem { stroke: #1c1914; stroke-width: 2; }
     .score-event { cursor: pointer; outline: none; }
     .score-event.is-selected .note-head, .score-event:focus .note-head { fill: #b96b1d; stroke: #5a2f08; stroke-width: 2; }
-    .score-event.is-selected path, .score-event:focus-visible path { fill: #b96b1d; stroke: #5a2f08; }
+    .score-event.is-selected, .score-event:focus-visible { filter: drop-shadow(0 0 5px rgba(185, 107, 29, 0.75)); }
+    .score-event.is-selected path, .score-event.is-selected ellipse, .score-event:focus-visible path { fill: #b96b1d; stroke: #5a2f08; stroke-width: 2; }
     .duration-label, .lyric-label { fill: #564c3e; font: 11px var(--font); }
     .lyric-label { font-size: 12px; }
     .accidental, .rest-mark { fill: #1c1914; font: 24px Georgia, serif; }
@@ -134,6 +135,10 @@
     .score-keyboard { display: grid; grid-template-columns: repeat(12, minmax(44px, 1fr)); gap: 6px; margin: 14px 0; }
     .score-key { min-height: 44px; border: 1px solid rgba(240, 191, 105, 0.26); border-radius: 10px; background: rgba(240, 191, 105, 0.07); color: var(--cream); cursor: pointer; font-weight: 850; }
     .score-event-editor { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+    .score-selection-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin: 12px 0 0; border: 1px solid rgba(240, 191, 105, 0.4); border-radius: 12px; background: rgba(240, 191, 105, 0.11); padding: 10px 12px; color: var(--cream); }
+    .score-selection-bar__actions { display: flex; gap: 8px; }
+    .audio-preview { width: min(620px, 100%); margin-top: 12px; }
+    .audio-window { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(130px, 180px) auto; align-items: end; gap: 10px; margin-top: 12px; }
     .score-status, .privacy-note { margin: 12px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
     .score-warnings { margin: 10px 0 0; color: #ffd7af; }
     .generated-ornament-note { margin: 8px 4px 0; color: #8a4b13; font-size: 12px; font-weight: 800; }
@@ -364,7 +369,7 @@
             <button class="start-choice is-selected" type="button" data-studio-start="phrase" aria-pressed="true">Enter notes or intervals<small>Notes, 1–7, or E9 positions</small></button>
             <button class="start-choice" type="button" data-studio-start="score" aria-pressed="false">Build a score<small>Melody staff, rhythm, and chords</small></button>
             <button class="start-choice" type="button" data-studio-start="import" aria-pressed="false">Photo or music file<small>Image, MusicXML, MXL, or MIDI</small></button>
-            <button class="start-choice" type="button" data-studio-start="microphone" aria-pressed="false">Record or upload audio<small>Up to 15 seconds, on device</small></button>
+            <button class="start-choice" type="button" data-studio-start="microphone" aria-pressed="false">Record or upload audio<small>Choose a 5–15 second window</small></button>
             <button class="start-choice" type="button" data-studio-start="recording" aria-pressed="false">Use a recording<small>YouTube loop or reference chart</small></button>
             <button class="start-choice" type="button" data-studio-start="catalog" aria-pressed="false">Pick a song<small>Reviewed public-domain catalog</small></button>
           </div>
@@ -428,6 +433,13 @@
           </div>
           <div class="score-keyboard" id="studio-score-keyboard" aria-label="Score note keyboard"></div>
           <div class="score-canvas" id="studio-score-canvas" aria-label="Editable melody staff"></div>
+          <div class="score-selection-bar" id="studio-score-selection" hidden aria-live="polite">
+            <strong id="studio-score-selection-summary">Selected note</strong>
+            <div class="score-selection-bar__actions">
+              <button class="secondary-action" type="button" id="studio-score-previous-note">Previous note</button>
+              <button class="secondary-action" type="button" id="studio-score-next-note">Next note</button>
+            </div>
+          </div>
           <p class="score-status" id="studio-score-status">Choose a pitch to add the first note. Keyboard shortcuts A–G add notes.</p>
           <div class="score-event-editor" id="studio-score-event-editor" hidden>
             <label class="field">Pitch<input id="studio-score-pitch" placeholder="G4"></label>
@@ -449,6 +461,7 @@
             <button class="secondary-action" type="button" id="studio-score-print">Print score</button>
             <button class="primary-action" type="button" id="studio-score-arrange">Arrange for E9</button>
           </div>
+          <p class="score-status" id="studio-score-arrange-status" role="status" aria-live="polite"></p>
           <p class="score-warnings" id="studio-score-warnings" hidden></p>
           <img class="source-preview" id="studio-score-source-image" alt="Uploaded score being reviewed" hidden>
         </section>
@@ -463,7 +476,7 @@
         </section>
 
         <section class="input-panel" id="studio-microphone-panel" data-input-panel="microphone" hidden>
-          <div class="input-panel-head"><div><h3>Record or upload a short melody</h3><p class="field-help">Use one clear note at a time. Melody Studio estimates pitch and rhythm on this device, opens an editable score, then discards the audio.</p></div></div>
+          <div class="input-panel-head"><div><h3>Record or upload a melody</h3><p class="field-help">Use one clear note at a time. For a longer recording, play it here and choose the 5–15 second passage you want. Melody Studio estimates pitch and rhythm on this device, then opens an editable score.</p></div></div>
           <label class="field">Approximate tempo
             <input id="studio-transcription-tempo" type="number" min="40" max="200" step="1" value="80" inputmode="numeric">
             <span class="field-help">This sets the rhythm grid. You can correct every duration in the score.</span>
@@ -471,10 +484,21 @@
           <div class="capture-actions"><button class="primary-action" type="button" id="studio-microphone-start">Start listening</button><button class="secondary-action" type="button" id="studio-microphone-stop" disabled>Stop and review</button></div>
           <label class="field" style="margin-top:14px;">Or choose an audio file
             <input id="studio-audio-file" type="file" accept="audio/*,.wav,.mp3,.m4a,.aac,.ogg">
-            <span class="field-help">WAV, MP3, M4A, AAC, or OGG; 15 seconds or shorter.</span>
+            <span class="field-help">WAV, MP3, M4A, AAC, or OGG. The file may be longer; choose a short window below.</span>
           </label>
-          <button class="secondary-action" type="button" id="studio-audio-analyze">Transcribe file and review</button>
-          <p class="privacy-note">Session-only: audio is decoded in this browser, is not uploaded, and is released after transcription.</p>
+          <audio class="audio-preview" id="studio-audio-preview" controls preload="metadata" hidden></audio>
+          <div class="audio-window">
+            <label class="field">Window start
+              <input id="studio-audio-start" type="text" value="0:00" inputmode="decimal" placeholder="1:32 or 92">
+              <span class="field-help">Use minutes:seconds or total seconds.</span>
+            </label>
+            <label class="field">Window length
+              <select id="studio-audio-length"><option value="5">5 seconds</option><option value="10">10 seconds</option><option value="15" selected>15 seconds</option></select>
+            </label>
+            <button class="secondary-action" type="button" id="studio-audio-use-playhead">Use current playhead</button>
+          </div>
+          <button class="secondary-action" type="button" id="studio-audio-analyze">Transcribe selected window</button>
+          <p class="privacy-note">Session-only: audio is decoded in this browser and is never uploaded. It is released when you choose another file or start over.</p>
           <p class="score-status" id="studio-microphone-status" aria-live="polite">Ready for up to 15 seconds.</p>
         </section>
 
@@ -613,6 +637,6 @@
   <script src="pedal-steel-fretboard.js?v=melody-multi-input-20260711-3"></script>
   <script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>
   <script src="melody-score.js?v=melody-score-practice-20260711-3"></script>
-  <script src="melody-workbench.js?v=melody-audio-transcription-20260711-2"></script>
+  <script src="melody-workbench.js?v=melody-lead-sheet-repair-20260711-1"></script>
 </body>
 </html>

@@ -132,6 +132,13 @@ assert.equal(studio.fileSourceType({name: "page.webp", type: "image/webp"}), "im
 assert.equal(studio.fileSourceType({name: "song.mxl", type: ""}), "mxl");
 assert.equal(studio.frequencyToMidi(440), 69);
 assert.equal(studio.frequencyToMidiFloat(440), 69);
+assert.equal(studio.parseAudioTimecode("1:32.5"), 92.5);
+assert.equal(studio.parseAudioTimecode("92.5"), 92.5);
+assert.equal(studio.parseAudioTimecode("1:72"), null);
+assert.equal(studio.formatAudioTimecode(92.5), "1:32.5");
+assert.deepEqual(studio.audioWindowBounds(240, "1:32", 15), {start: 92, end: 107, duration: 15});
+assert.deepEqual(studio.audioWindowBounds(100, "1:35", 15), {start: 95, end: 100, duration: 5});
+assert.equal(studio.audioWindowBounds(100, "2:00", 15), null);
 assert.equal(studio.quantizeTranscriptionBeats(0.5, 120), 1);
 const audioSamples = [];
 for (let index = 0; index < 10; index += 1) audioSamples.push({time: index * 0.05, midiFloat: 60.04 + (index % 2 ? 0.02 : -0.02)});
@@ -140,11 +147,13 @@ const transcription = studio.transcribePitchSamples(audioSamples, {bpm: 120});
 assert.deepEqual(transcription.events.map((event) => event.rest ? ["rest", event.durationBeats] : [event.pitch, event.durationBeats]), [["C4", 1], ["rest", 1], ["D4", 1]]);
 assert.equal(transcription.confidenceLabel, "medium");
 assert.match(transcription.warnings[0], /confirm every note/i);
-const transcriptionDraft = studio.createAudioTranscriptionDraft(audioSamples, {bpm: 120, key: "G", sourceType: "audio_file", title: "Test melody"});
+const transcriptionDraft = studio.createAudioTranscriptionDraft(audioSamples, {bpm: 120, key: "G", sourceType: "audio_file", title: "Test melody", sourceStartSeconds: 92, sourceEndSeconds: 107});
 assert.equal(transcriptionDraft.schemaVersion, "score_draft_v1");
 assert.equal(transcriptionDraft.source.retained, false);
 assert.equal(transcriptionDraft.review.status, "needs_review");
 assert.equal(transcriptionDraft.transcription.audioRetained, false);
+assert.equal(transcriptionDraft.transcription.sourceStartSeconds, 92);
+assert.equal(transcriptionDraft.score.melody[0].sourceStartSeconds, 92);
 assert.deepEqual(transcriptionDraft.score.melody.map((event) => event.rest ? "rest" : event.pitch), ["C4", "rest", "D4"]);
 const pcm = new Float32Array(4000);
 for (let index = 0; index < pcm.length; index += 1) pcm[index] = 0.4 * Math.sin(2 * Math.PI * 440 * index / 8000);
@@ -276,7 +285,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "state.selectedPhraseIndex" in script
     assert html.count("?v=melody-multi-input-20260711-3") == 2
     assert html.count("?v=melody-score-practice-20260711-3") == 1
-    assert html.count("?v=melody-audio-transcription-20260711-2") == 1
+    assert html.count("?v=melody-lead-sheet-repair-20260711-1") == 1
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in html
     assert "VexFlow" in Path("ui/vendor/VEXFLOW-LICENSE.txt").read_text(encoding="utf-8")
     assert html.index('id="studio-fretboard"') < html.index('id="studio-tab"')
@@ -308,9 +317,21 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'id="studio-microphone-start"' in html
     assert 'id="studio-audio-file"' in html
     assert 'id="studio-audio-analyze"' in html
+    assert 'id="studio-audio-preview"' in html
+    assert 'id="studio-audio-start"' in html
+    assert 'id="studio-audio-length"' in html
+    assert 'id="studio-audio-use-playhead"' in html
     assert 'id="studio-transcription-tempo"' in html
     assert 'id="studio-score-confidence"' in html
+    assert 'id="studio-score-selection" hidden' in html
+    assert 'id="studio-score-selection-summary"' in html
+    assert 'id="studio-score-previous-note"' in html
+    assert 'id="studio-score-next-note"' in html
+    assert 'id="studio-score-arrange-status" role="status"' in html
     assert "audio is decoded in this browser" in html
+    assert "The file may be longer" in html
+    assert "elements.scoreArrange.disabled = !draft.score.melody.some((item) => !item.rest) || unsupportedKey;" in script
+    assert 'statusElement: elements.scoreArrangeStatus' in script
     assert 'id="studio-youtube-frame"' in html
     assert 'id="studio-catalog-grid"' in html
     assert 'id="studio-result-score"' in html

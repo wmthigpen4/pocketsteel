@@ -301,7 +301,10 @@
       const element = typeof note.getSVGElement === "function" ? note.getSVGElement() : null;
       if (!element) return;
       element.classList.add("score-event");
-      if (index === selectedIndex) element.classList.add("is-selected");
+      if (index === selectedIndex) {
+        element.classList.add("is-selected");
+        element.setAttribute("aria-current", "true");
+      }
       element.dataset.origin = event.origin || "source";
       element.setAttribute("role", "button");
       element.setAttribute("tabindex", "0");

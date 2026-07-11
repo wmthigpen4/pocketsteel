@@ -272,6 +272,7 @@
       scoreHistory: [],
       scoreFuture: [],
       sourceImageUrl: "",
+      sourceAudioUrl: "",
       microphoneCapture: null,
       tapTimes: [],
       importParts: [],
@@ -316,6 +317,32 @@
     if (/\.(mid|midi)$/.test(name) || type.includes("midi")) return "midi";
     if (/\.(xml|musicxml)$/.test(name) || type.includes("xml")) return "musicxml";
     return "";
+  }
+
+  function parseAudioTimecode(value) {
+    const text = String(value ?? "").trim();
+    if (!text) return 0;
+    if (/^\d+(?:\.\d+)?$/.test(text)) return Number(text);
+    const parts = text.split(":");
+    if (parts.length !== 2 || !/^\d+$/.test(parts[0]) || !/^\d+(?:\.\d+)?$/.test(parts[1])) return null;
+    const seconds = Number(parts[1]);
+    return seconds < 60 ? Number(parts[0]) * 60 + seconds : null;
+  }
+
+  function formatAudioTimecode(value) {
+    const seconds = Math.max(0, Number(value) || 0);
+    const minutes = Math.floor(seconds / 60);
+    const remainder = seconds - minutes * 60;
+    return `${minutes}:${remainder.toFixed(remainder % 1 ? 1 : 0).padStart(2, "0")}`;
+  }
+
+  function audioWindowBounds(audioDuration, startValue, lengthValue) {
+    const duration = Number(audioDuration);
+    const start = parseAudioTimecode(startValue);
+    const length = Math.max(5, Math.min(15, Number(lengthValue) || 15));
+    if (!Number.isFinite(duration) || duration <= 0 || start === null || start < 0 || start >= duration) return null;
+    const end = Math.min(duration, start + length);
+    return end - start >= 0.25 ? { start, end, duration: end - start } : null;
   }
 
   function frequencyToMidi(frequency) {
@@ -473,6 +500,8 @@
   function createAudioTranscriptionDraft(samples, options = {}) {
     const bpm = Math.max(40, Math.min(200, Number(options.bpm) || 80));
     const transcription = transcribePitchSamples(samples, { bpm });
+    const sourceStartSeconds = Math.max(0, Number(options.sourceStartSeconds) || 0);
+    const sourceEndSeconds = Number.isFinite(Number(options.sourceEndSeconds)) ? Number(options.sourceEndSeconds) : null;
     return {
       schemaVersion: "score_draft_v1",
       source: {
@@ -487,7 +516,11 @@
         arrangementKey: options.key || "G",
         meter: options.meter || "4/4",
         pickupBeats: 0,
-        melody: transcription.events,
+        melody: transcription.events.map((event) => ({
+          ...event,
+          ...(Number.isFinite(Number(event.sourceStartSeconds)) ? { sourceStartSeconds: Number((event.sourceStartSeconds + sourceStartSeconds).toFixed(3)) } : {}),
+          ...(Number.isFinite(Number(event.sourceEndSeconds)) ? { sourceEndSeconds: Number((event.sourceEndSeconds + sourceStartSeconds).toFixed(3)) } : {})
+        })),
         harmony: []
       },
       review: { status: "needs_review", warnings: transcription.warnings },
@@ -497,7 +530,9 @@
         confidence: transcription.confidence,
         confidenceLabel: transcription.confidenceLabel,
         lowConfidenceCount: transcription.lowConfidenceCount || 0,
-        audioRetained: false
+        audioRetained: false,
+        sourceStartSeconds,
+        sourceEndSeconds
       }
     };
   }
@@ -642,6 +677,9 @@
     youtubeVideoId,
     referenceEmbedUrl,
     fileSourceType,
+    parseAudioTimecode,
+    formatAudioTimecode,
+    audioWindowBounds,
     frequencyToMidi,
     frequencyToMidiFloat,
     autoCorrelate,
@@ -729,6 +767,10 @@
     scoreRedo: $("#studio-score-redo"),
     scoreKeyboard: $("#studio-score-keyboard"),
     scoreCanvas: $("#studio-score-canvas"),
+    scoreSelection: $("#studio-score-selection"),
+    scoreSelectionSummary: $("#studio-score-selection-summary"),
+    scorePreviousNote: $("#studio-score-previous-note"),
+    scoreNextNote: $("#studio-score-next-note"),
     scoreStatus: $("#studio-score-status"),
     scoreEventEditor: $("#studio-score-event-editor"),
     scorePitch: $("#studio-score-pitch"),
@@ -747,6 +789,7 @@
     scoreDownload: $("#studio-score-download"),
     scorePrint: $("#studio-score-print"),
     scoreArrange: $("#studio-score-arrange"),
+    scoreArrangeStatus: $("#studio-score-arrange-status"),
     scoreWarnings: $("#studio-score-warnings"),
     scoreSource: $("#studio-score-source"),
     scoreSourceImage: $("#studio-score-source-image"),
@@ -759,6 +802,10 @@
     microphoneStatus: $("#studio-microphone-status"),
     audioFile: $("#studio-audio-file"),
     audioAnalyze: $("#studio-audio-analyze"),
+    audioPreview: $("#studio-audio-preview"),
+    audioStart: $("#studio-audio-start"),
+    audioLength: $("#studio-audio-length"),
+    audioUsePlayhead: $("#studio-audio-use-playhead"),
     transcriptionTempo: $("#studio-transcription-tempo"),
     catalogGrid: $("#studio-catalog-grid"),
     catalogStatus: $("#studio-catalog-status"),
@@ -1014,6 +1061,13 @@
     return state.scoreDraft?.score?.melody?.[state.scoreSelectedIndex] || null;
   }
 
+  function selectScoreEvent(index) {
+    const events = state.scoreDraft?.score?.melody || [];
+    if (!events.length) return;
+    state.scoreSelectedIndex = Math.max(0, Math.min(Number(index) || 0, events.length - 1));
+    renderScoreBuilder();
+  }
+
   function renderScoreKeyboard() {
     if (elements.scoreKeyboard.childElementCount) return;
     [60, 62, 64, 65, 67, 69, 71, 72].forEach((pitchValue) => {
@@ -1031,13 +1085,16 @@
     if (!scoreUi || !elements.scoreCanvas) return;
     const draft = ensureScoreDraft();
     renderScoreKeyboard();
-    scoreUi.render(elements.scoreCanvas, draft, state.scoreSelectedIndex, (index) => {
-      state.scoreSelectedIndex = index;
-      renderScoreBuilder();
-    });
+    scoreUi.render(elements.scoreCanvas, draft, state.scoreSelectedIndex, selectScoreEvent);
     const event = selectedScoreEvent();
     elements.scoreEventEditor.hidden = !event;
+    elements.scoreSelection.hidden = !event;
     if (event) {
+      const selectedNumber = state.scoreSelectedIndex + 1;
+      const eventName = event.rest ? "Rest" : event.pitch;
+      elements.scoreSelectionSummary.textContent = `Selected ${event.rest ? "rest" : "note"} ${selectedNumber} of ${draft.score.melody.length} · ${eventName} · measure ${event.measure}, beat ${event.beat}`;
+      elements.scorePreviousNote.disabled = state.scoreSelectedIndex <= 0;
+      elements.scoreNextNote.disabled = state.scoreSelectedIndex >= draft.score.melody.length - 1;
       elements.scorePitch.value = event.rest ? "Rest" : event.pitch;
       elements.scorePitch.disabled = Boolean(event.rest);
       elements.scoreConfidence.textContent = event.rest
@@ -1050,7 +1107,10 @@
       elements.scoreLyric.value = event.lyric || "";
       elements.scoreTie.value = event.tie || "";
       elements.scoreArticulation.value = event.articulation || "";
-    } else elements.scoreConfidence.textContent = "";
+    } else {
+      elements.scoreConfidence.textContent = "";
+      elements.scoreSelectionSummary.textContent = "";
+    }
     elements.scoreMeter.value = draft.score.meter;
     elements.scorePickup.value = String(draft.score.pickupBeats || 0);
     elements.scoreUndo.disabled = !state.scoreHistory.length;
@@ -1066,14 +1126,14 @@
       }));
     }
     elements.scoreStatus.textContent = draft.score.melody.length
-      ? `${draft.score.melody.length} of 64 events · ${Math.max(...draft.score.melody.map((item) => item.measure), 1)} of 16 measures · click a note to edit it.`
+      ? `${draft.score.melody.length} of 64 events · ${Math.max(...draft.score.melody.map((item) => item.measure), 1)} of 16 measures · the amber note and selection bar show exactly what you are editing.`
       : "Choose a pitch, click the staff, or press A–G to add the first note.";
     const structureWarnings = scoreUi.draftWarnings(draft);
     const warnings = [...(draft.review?.warnings || []), ...structureWarnings];
     const unsupportedKey = !["G", "C"].includes(draft.score.arrangementKey);
     elements.scoreWarnings.textContent = [...warnings, ...(unsupportedKey ? ["Choose G or C as the arrangement key before arranging."] : [])].join(" ");
     elements.scoreWarnings.hidden = !elements.scoreWarnings.textContent;
-    elements.scoreArrange.disabled = !draft.score.melody.some((item) => !item.rest) || unsupportedKey || structureWarnings.length > 0;
+    elements.scoreArrange.disabled = !draft.score.melody.some((item) => !item.rest) || unsupportedKey;
     elements.scoreArrange.textContent = draft.review.status === "confirmed" ? "Arrange for E9" : "Confirm and arrange for E9";
     elements.scoreSource.textContent = draft.source.type === "composed_in_studio" ? "User-created score" : `${draft.source.title || "Imported score"} · ${draft.review.status === "confirmed" ? "confirmed" : "review before arranging"}`;
     elements.scoreSourceImage.hidden = !state.sourceImageUrl;
@@ -1507,7 +1567,9 @@
       bpm: transcriptionTempo(),
       key: state.key,
       sourceType: options.sourceType,
-      title: options.title
+      title: options.title,
+      sourceStartSeconds: options.sourceStartSeconds,
+      sourceEndSeconds: options.sourceEndSeconds
     });
     const notes = draft.score.melody.filter((event) => !event.rest);
     if (!notes.length) {
@@ -1530,8 +1592,8 @@
 
   async function analyzeAudioFile() {
     const file = elements.audioFile.files?.[0];
-    if (!file) return elements.microphoneStatus.textContent = "Choose a short WAV, MP3, M4A, AAC, or OGG file first.";
-    if (file.size > 20 * 1024 * 1024) return elements.microphoneStatus.textContent = "Choose an audio file smaller than 20 MB and 15 seconds or shorter.";
+    if (!file) return elements.microphoneStatus.textContent = "Choose a WAV, MP3, M4A, AAC, or OGG file first.";
+    if (file.size > 75 * 1024 * 1024) return elements.microphoneStatus.textContent = "Choose an audio file smaller than 75 MB.";
     const AudioContext = global.AudioContext || global.webkitAudioContext;
     if (!AudioContext) return elements.microphoneStatus.textContent = "Audio-file transcription is unavailable in this browser.";
     elements.audioAnalyze.disabled = true;
@@ -1540,14 +1602,23 @@
     const context = new AudioContext();
     try {
       const audioBuffer = await context.decodeAudioData(await file.arrayBuffer());
-      if (audioBuffer.duration > 15.25) throw new Error("Choose a clip that is 15 seconds or shorter.");
-      const samples = pitchSamplesFromPcm(monoPcmFromAudioBuffer(audioBuffer), audioBuffer.sampleRate, { maxSeconds: 15 });
-      hydrateAudioTranscription(samples, { sourceType: "audio_file", title: file.name.replace(/\.[^.]+$/, "") || "Uploaded melody" });
+      const windowBounds = audioWindowBounds(audioBuffer.duration, elements.audioStart.value, elements.audioLength.value);
+      if (!windowBounds) throw new Error(`Choose a valid start before ${formatAudioTimecode(audioBuffer.duration)}.`);
+      const mono = monoPcmFromAudioBuffer(audioBuffer);
+      const startFrame = Math.floor(windowBounds.start * audioBuffer.sampleRate);
+      const endFrame = Math.min(mono.length, Math.ceil(windowBounds.end * audioBuffer.sampleRate));
+      const samples = pitchSamplesFromPcm(mono.subarray(startFrame, endFrame), audioBuffer.sampleRate, { maxSeconds: windowBounds.duration });
+      elements.microphoneStatus.textContent = `Analyzing ${formatAudioTimecode(windowBounds.start)}–${formatAudioTimecode(windowBounds.end)} on this device…`;
+      hydrateAudioTranscription(samples, {
+        sourceType: "audio_file",
+        title: file.name.replace(/\.[^.]+$/, "") || "Uploaded melody",
+        sourceStartSeconds: windowBounds.start,
+        sourceEndSeconds: windowBounds.end
+      });
     } catch (error) {
       elements.microphoneStatus.textContent = error.message || "This audio file could not be decoded.";
     } finally {
       await context.close();
-      elements.audioFile.value = "";
       elements.audioAnalyze.disabled = false;
       elements.microphoneStart.disabled = false;
     }
@@ -1606,6 +1677,13 @@
     if (state.microphoneCapture) stopMicrophoneCapture();
     if (state.sourceImageUrl) URL.revokeObjectURL(state.sourceImageUrl);
     state.sourceImageUrl = "";
+    if (state.sourceAudioUrl) URL.revokeObjectURL(state.sourceAudioUrl);
+    state.sourceAudioUrl = "";
+    if (elements.audioPreview) {
+      elements.audioPreview.pause();
+      elements.audioPreview.removeAttribute("src");
+      elements.audioPreview.hidden = true;
+    }
     if (elements.audioFile) elements.audioFile.value = "";
     elements.youtubeFrame.removeAttribute("src");
   }
@@ -1790,17 +1868,22 @@
   }
 
   async function submitLesson(sectionNumber = 1, options = {}) {
+    const fail = (message) => {
+      showError(message);
+      if (options.statusElement) options.statusElement.textContent = message;
+      return false;
+    };
     if (!options.preserveStructuredEvents) syncStateFromFields();
     const task = currentTask();
-    if (!task) return showError("Choose what you want to learn first.");
+    if (!task) return fail("Choose what you want to learn first.");
     const validation = validateTokens(state.tokens, state.key);
-    if (!validation.ok && (!task.needsMaterial || state.tokens.length)) return showError(validation.message);
+    if (!validation.ok && (!task.needsMaterial || state.tokens.length)) return fail(validation.message);
     if (state.sourceUrl) {
       try {
         const url = new URL(state.sourceUrl);
         if (!/^https?:$/.test(url.protocol)) throw new Error("protocol");
       } catch (_error) {
-        return showError("Use a complete http:// or https:// attribution link.");
+        return fail("Use a complete http:// or https:// attribution link.");
       }
     }
     showError("");
@@ -1813,8 +1896,9 @@
         requestPayload: { melodyRequest: buildMelodyRequest(state) }
       });
       renderResult(response);
+      return true;
     } catch (error) {
-      showError(error.message || "Melody Studio could not build this lesson.");
+      return fail(error.message || "Melody Studio could not build this lesson.");
     } finally {
       elements.build.disabled = false;
       elements.build.textContent = "Build my E9 lesson";
@@ -1823,15 +1907,31 @@
 
   async function arrangeScoreDraft() {
     const draft = ensureScoreDraft();
-    if (!["G", "C"].includes(draft.score.arrangementKey)) return showError("Choose G or C as the arrangement key before arranging.");
+    elements.scoreArrangeStatus.textContent = "";
+    if (!["G", "C"].includes(draft.score.arrangementKey)) {
+      elements.scoreArrangeStatus.textContent = "Choose G or C as the arrangement key before arranging.";
+      return false;
+    }
     state.tokens = scoreUi.arrangementEvents(draft);
-    if (!state.tokens.length) return showError("Add at least one note before arranging.");
+    if (!state.tokens.length) {
+      elements.scoreArrangeStatus.textContent = "Add at least one note before arranging.";
+      return false;
+    }
     state.key = draft.score.arrangementKey;
     state.kind = draft.source.type === "catalog" ? "song_arrangement_lesson" : "user_melody";
     state.song = draft.source.title || "";
     state.sourceUrl = draft.source.url || "";
+    const previousReviewStatus = state.scoreDraft.review.status;
     state.scoreDraft.review.status = "confirmed";
-    await submitLesson(1, { preserveStructuredEvents: true });
+    elements.scoreArrange.disabled = true;
+    elements.scoreArrange.textContent = "Arranging for E9…";
+    elements.scoreArrangeStatus.textContent = "Checking the notes and finding playable E9 routes…";
+    const success = await submitLesson(1, { preserveStructuredEvents: true, statusElement: elements.scoreArrangeStatus });
+    if (!success) {
+      state.scoreDraft.review.status = previousReviewStatus;
+      renderScoreBuilder();
+    }
+    return success;
   }
 
   function editPhrase() {
@@ -1848,6 +1948,10 @@
     elements.key.value = "G";
     elements.contour.value = "closest_playable";
     elements.phraseInput.value = "";
+    elements.audioStart.value = "0:00";
+    elements.audioLength.value = "15";
+    elements.microphoneStatus.textContent = "Ready for audio.";
+    elements.scoreArrangeStatus.textContent = "";
     elements.editor.hidden = false;
     elements.result.hidden = true;
     renderStartingPoint();
@@ -1993,6 +2097,8 @@
   elements.scoreDownload.addEventListener("click", downloadScoreDraft);
   elements.scorePrint.addEventListener("click", () => global.print());
   elements.scoreArrange.addEventListener("click", arrangeScoreDraft);
+  elements.scorePreviousNote.addEventListener("click", () => selectScoreEvent(state.scoreSelectedIndex - 1));
+  elements.scoreNextNote.addEventListener("click", () => selectScoreEvent(state.scoreSelectedIndex + 1));
   elements.scoreCanvas.addEventListener("click", (event) => {
     if (event.target.closest?.(".score-event")) return;
     const rect = elements.scoreCanvas.getBoundingClientRect();
@@ -2010,7 +2116,19 @@
   elements.audioAnalyze.addEventListener("click", analyzeAudioFile);
   elements.audioFile.addEventListener("change", () => {
     const file = elements.audioFile.files?.[0];
-    elements.microphoneStatus.textContent = file ? `${file.name} is ready for on-device transcription.` : "Ready for up to 15 seconds.";
+    if (state.sourceAudioUrl) URL.revokeObjectURL(state.sourceAudioUrl);
+    state.sourceAudioUrl = file ? URL.createObjectURL(file) : "";
+    elements.audioPreview.hidden = !state.sourceAudioUrl;
+    if (state.sourceAudioUrl) elements.audioPreview.src = state.sourceAudioUrl;
+    else elements.audioPreview.removeAttribute("src");
+    elements.microphoneStatus.textContent = file ? `${file.name} is ready. Play it, choose a 5–15 second window, then transcribe.` : "Ready for audio.";
+  });
+  elements.audioPreview.addEventListener("loadedmetadata", () => {
+    elements.microphoneStatus.textContent = `Recording length ${formatAudioTimecode(elements.audioPreview.duration)}. Choose the passage you want to transcribe.`;
+  });
+  elements.audioUsePlayhead.addEventListener("click", () => {
+    elements.audioStart.value = formatAudioTimecode(elements.audioPreview.currentTime || 0);
+    elements.microphoneStatus.textContent = `Window will start at ${elements.audioStart.value}.`;
   });
   elements.transcriptionTempo.addEventListener("change", () => {
     elements.transcriptionTempo.value = String(transcriptionTempo());
