@@ -1,11 +1,11 @@
 # Integration Status — Current Snapshot
 
-Updated: 2026-07-11 13:45 America/Chicago
+Updated: 2026-07-11 13:57 America/Chicago
 
 ## Repository state
 
 - Branch: `feature/answer-api`
-- Current implementation: `a7f5ad9 Show active Melody fretboard position`
+- Current implementation: `c850411 Show pedal actions in Melody string labels`
 - Melody API baseline: `f37201a feat: add Melody Exercise teaching workflow`
 - Melody Studio now uses Steel Guitar RAG branding. No broad repository rename is approved.
 
@@ -24,7 +24,7 @@ Status: **PASS — score-practice Melody Studio is committed, 934-test green, an
 - Chord symbols guide mechanically validated harmony and chord-melody grip ranking while the resolved melody remains the top voice.
 - Melody Studio fretboard marker labels use concise resolved top-note pitches (`D4`, `E4`, etc.) instead of repeating the route title; harmony routes retain the melody/top-voice label.
 - Melody Studio renders only the active event's fretboard position. Single-note routes show one location; harmony and chord-melody routes show only the current validated grip, so phrase positions no longer stack on top of one another.
-- Octave colors, active-marker string numbers, and the resolved top-note label are independent compact toggles. String labels default off and note labels default on.
+- Octave colors, active-marker string/action labels, and the resolved top-note label are independent compact toggles. String labels default off and note labels default on. When enabled, string labels include required compact actions (`6B`, `5A`, etc.) while open notes remain plain string numbers.
 - All input methods normalize into session-only `score_draft_v1`; no uploaded source or draft is persisted.
 - A pinned local VexFlow 5.0.0 bundle renders the editable and result staffs, with a local SVG fallback.
 - The recording starting point reveals source fields plus faithful-solo versus playable-E9-arrangement treatment; the manual editor keeps practice presets behind its practice-phrase starter.
@@ -81,6 +81,8 @@ Marker-label implementation handoff: `docs/handoffs/task-completions/2026-07-11-
 Marker-label protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-1329-12-melody-marker-label-protected-smoke.md`.
 Active-fretboard implementation handoff: `docs/handoffs/task-completions/2026-07-11-1342-06-melody-active-fretboard-controls.md`.
 Active-fretboard protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-1345-12-melody-active-fretboard-controls-protected-smoke.md`.
+String/action-label implementation handoff: `docs/handoffs/task-completions/2026-07-11-1355-06-melody-string-action-labels.md`.
+String/action-label protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-1357-12-melody-string-action-labels-protected-smoke.md`.
 
 ## Verification
 
@@ -88,15 +90,16 @@ Active-fretboard protected-smoke handoff: `docs/handoffs/task-completions/2026-0
 - Core JavaScript syntax: passed for answer client, Melody Studio, and fretboard component.
 - `git diff --check`: passed.
 - Local browser smoke: pass for all six cards, flagged catalog/import, score editing, VexFlow, Amazing Grace catalog, exact E9 route, ornament toggle, and mobile layout.
-- Protected browser smoke: pass at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-active-marker-controls-a7f5ad9-20260711`.
+- Protected browser smoke: pass at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-string-action-labels-c850411-20260711`.
 - Protected browser verified manual phrase and lead-sheet builder lesson generation, six routes, synchronized staff/fretboard/tab, VexFlow renderer, zero page overflow, and no `[object Object]` or console errors.
 - Active-fretboard protected smoke verified D4-to-E4 marker replacement, independent string/note/octave controls, and an active chord-melody grip limited to strings 5, 6, and 8 with one D4 top-voice label.
+- String/action-label protected smoke verified a literal `S6:3B` event renders `6B` inside the active marker while Current note reports String 6, fret 3, B pedal.
 - Resumed header smoke verified the removed practice kicker, metadata line, and More arrangements disclosure remain absent on the integrated runtime; all six routes remain together in one horizontally scrollable row and Chord melody selection synchronizes visibly.
 
 ## Protected preview
 
-- Runtime smoke HEAD: `a7f5ad9`.
-- Loopback `/api/version`: `a7f5ad9`, `feature/answer-api`, `hybrid_private_first`, `cloudflare_access`, `features.melodyExercise=true`; `melodyImport` remains default off.
+- Runtime smoke HEAD: `c850411`.
+- Loopback `/api/version`: `c850411`, `feature/answer-api`, `hybrid_private_first`, `cloudflare_access`, `features.melodyExercise=true`; `melodyImport` remains default off.
 - Preview refresh succeeded without `sudo` by terminating only the user-owned port-8770 listener and allowing the installed LaunchDaemon to restart it.
 - Installed wrapper matches the committed wrapper.
 - Cloudflare Access login and protected manual/score lesson generation succeeded; the prior arranger blocker is closed.
@@ -111,6 +114,6 @@ Active-fretboard protected-smoke handoff: `docs/handoffs/task-completions/2026-0
 
 ## Next action
 
-1. Continue user smoke at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-active-marker-controls-a7f5ad9-20260711`.
+1. Confirm the final string/action-label fix at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-string-action-labels-c850411-20260711`; the user reported the rest of Melody Studio passes this smoke slice.
 2. If protected catalog/upload import should be enabled, explicitly authorize the protected environment flag change and vision-model readiness check; otherwise keep it off.
 3. Keep unrelated corpus, source-inbox, private-data, brand/design, deployment, and environment work parked.
