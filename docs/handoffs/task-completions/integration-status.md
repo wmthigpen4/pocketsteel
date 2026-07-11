@@ -1,21 +1,25 @@
 # Integration Status — Current Snapshot
 
-Updated: 2026-07-11 17:57 America/Chicago
+Updated: 2026-07-11 18:57 America/Chicago
 
 ## Repository state
 
 - Branch: `feature/answer-api`
-- Current implementation: `1830881 Improve Melody score editing controls`
+- Current implementation: `2c445e9 Bust Melody Studio workflow cache` (feature implementation `7657554`)
 - Melody API baseline: `f37201a feat: add Melody Exercise teaching workflow`
 - Melody Studio now uses Steel Guitar RAG branding. No broad repository rename is approved.
 
 ## Melody Studio
 
-Status: **SCORE EDIT CONTROLS READY FOR USER SMOKE — selected-note deletion, keyboard deletion, whole-score octave movement, and E9 arrangement are committed, 935-test green, and authenticated-preview verified. The default-off import/catalog server flag is intentionally not enabled in protected configuration.**
+Status: **ADD-A-MELODY UX READY FOR USER SMOKE — the three-path progressive workflow, inline draft replacement safeguard, Review melody transition, and existing E9 output are committed, 935-test green, and authenticated-preview verified.**
 
 - The home header now exposes feature-gated actions in this order: Explore Fretboard, Melody Studio, Backstage.
 - The technical inline Melody form was removed from home.
-- `/ui/melody-workbench.html` opens with six equal inputs: Enter notes or intervals, Build a score, Photo or music file, Play or hum it, Use a recording, and Pick a song.
+- `/ui/melody-workbench.html` opens with one Add a melody workspace and three compact entry paths: Type or tap notes, Record or upload audio, and Import music when enabled.
+- Staff notation, recording attribution, and reviewed example songs are contextual actions rather than equal top-level choices. Unavailable import/catalog controls are hidden by the session feature flag.
+- Quick entry shows notes/scale numbers, one note-button row, the resolved phrase, G/C, and one Arrange for E9 action. Contour, literal-tab help, and practice starters are under Phrase options.
+- A populated draft changes alternate paths to Replace melody and requires an inline Replace melody / Keep editing decision before session content is cleared.
+- Successful audio, import, and catalog adapters open the shared staff in Review melody. Edit melody returns to the correct populated editor; Start over clears the session draft.
 - The original note/degree/literal-E9 phrase editor remains intact and is the default input.
 - The lead-sheet builder supports one treble melody voice, G/C, 3/4 and 4/4, pickup, supported note/rest durations, ties, accidentals, chord symbols, lyrics/labels, undo/redo, measure actions, duplicate, transpose, browser playback, and local MusicXML download.
 - Melody pitch and chord symbols are separate: melody-only input shows no invented chord labels, while supplied harmony appears only at actual changes.
@@ -34,11 +38,10 @@ Status: **SCORE EDIT CONTROLS READY FOR USER SMOKE — selected-note deletion, k
 - Score warnings remain visible but no longer silently disable E9 arrangement. Arrangement progress and failures render in the visible lead-sheet panel.
 - All input methods normalize into session-only `score_draft_v1`; no uploaded source or draft is persisted.
 - A pinned local VexFlow 5.0.0 bundle renders the editable and result staffs, with a local SVG fallback.
-- The recording starting point reveals source fields plus faithful-solo versus playable-E9-arrangement treatment; the manual editor keeps practice presets behind its practice-phrase starter.
-- Recording fields are cleared when switching to either source-free starting point.
+- Optional recording details reveal faithful-solo versus playable-E9-arrangement treatment and state clearly that links identify sources rather than trigger transcription.
 - Phrase entry supports notes, scale degrees, literal one-string E9 tab, note/degree palette buttons, deterministic presets, sequence editing, and section counts.
 - After task selection, the task-card grid collapses so the active editor/result is the page focus.
-- Phrase notes are clean selectable token/pitch chips. The selected note uses a compact `− / Octave / +` register stepper, a separate Return to automatic action, and separate ordering/removal actions.
+- Phrase notes are clean selectable token/pitch chips. Selecting one reveals its pitch plus labeled Lower octave, Automatic, Raise octave, ordering, and removal controls.
 - Unmarked degrees use closest-playable octave contour by default; ascending, descending, preserve-input, and per-note octave controls are available.
 - Per-note octave controls modify only the selected event; they do not re-anchor later automatic notes.
 - Literal tab preserves string, fret, control state, and pitch register.
@@ -97,6 +100,8 @@ Lead-sheet repair implementation handoff: `docs/handoffs/task-completions/2026-0
 Lead-sheet repair protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-1740-12-melody-lead-sheet-repair-protected-smoke.md`.
 Score-edit-controls implementation handoff: `docs/handoffs/task-completions/2026-07-11-1754-06-melody-score-edit-controls.md`.
 Score-edit-controls protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-1757-12-melody-score-edit-controls-protected-smoke.md`.
+Add-a-melody UX implementation handoff: `docs/handoffs/task-completions/2026-07-11-1849-06-melody-add-melody-ux-simplification.md`.
+Add-a-melody UX protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-1857-12-melody-add-melody-ux-protected-smoke.md`.
 
 ## Verification
 
@@ -112,12 +117,13 @@ Score-edit-controls protected-smoke handoff: `docs/handoffs/task-completions/202
 - Audio-transcription protected smoke verified the signed-in recording/upload workspace, tempo and format controls, final controller asset, session-only privacy copy, zero overflow, and no object-string rendering. Real microphone/file selection is the pending user-smoke boundary.
 - Lead-sheet repair protected smoke verified explicit A4/G4 selection navigation, a visible overfull-measure warning that does not disable arrangement, successful advancement to six E9 routes, and longer-file window controls.
 - Score-edit-controls protected smoke verified visible and keyboard deletion of only the selected event, whole-score B4-to-B5 octave movement, successful raised-phrase E9 arrangement, and a clean browser console.
+- Add-a-melody UX protected smoke verified typed-phrase entry, reversible inline replacement, successful E9 arrangement, populated Edit melody return, progressive staff disclosures, clean controller caching, and no browser errors.
 - Resumed header smoke verified the removed practice kicker, metadata line, and More arrangements disclosure remain absent on the integrated runtime; all six routes remain together in one horizontally scrollable row and Chord melody selection synchronizes visibly.
 
 ## Protected preview
 
-- Runtime smoke HEAD: `1830881`.
-- Loopback `/api/version`: `1830881`, `feature/answer-api`, `hybrid_private_first`, `cloudflare_access`, `features.melodyExercise=true`; `melodyImport` remains default off.
+- Runtime smoke HEAD: `2c445e9`.
+- Loopback `/api/version`: `2c445e9`, `feature/answer-api`, `hybrid_private_first`, `cloudflare_access`, `features.melodyExercise=true`; import/catalog visibility remains session-flag controlled.
 - Preview refresh succeeded without `sudo` by terminating only the user-owned port-8770 listener and allowing the installed LaunchDaemon to restart it.
 - Installed wrapper matches the committed wrapper.
 - Cloudflare Access login and protected manual/score lesson generation succeeded; the prior arranger blocker is closed.
@@ -132,6 +138,6 @@ Score-edit-controls protected-smoke handoff: `docs/handoffs/task-completions/202
 
 ## Next action
 
-1. User smoke at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-score-edit-controls-1830881-20260711`: retry the original transcription, delete a selected note from the selection bar or keyboard, move the full score by one octave, and arrange for E9.
+1. User smoke at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-add-melody-ux-2c445e9-20260711`: try the quick phrase path, replacement safeguard, audio entry, optional recording details, and staff editor; advanced controls should stay out of the way until opened.
 2. If protected catalog/score-image import should be enabled later, explicitly authorize the protected environment flag change and vision-model readiness check; otherwise keep it off.
 3. Keep unrelated corpus, source-inbox, private-data, brand/design, deployment, and environment work parked.
