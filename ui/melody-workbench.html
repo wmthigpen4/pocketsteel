@@ -130,12 +130,19 @@
     .duration-label, .lyric-label { fill: #564c3e; font: 11px var(--font); }
     .lyric-label { font-size: 12px; }
     .accidental, .rest-mark { fill: #1c1914; font: 24px Georgia, serif; }
+    .articulation-label { fill: #1c1914; font: 700 18px Georgia, serif; }
     .score-keyboard { display: grid; grid-template-columns: repeat(12, minmax(44px, 1fr)); gap: 6px; margin: 14px 0; }
     .score-key { min-height: 44px; border: 1px solid rgba(240, 191, 105, 0.26); border-radius: 10px; background: rgba(240, 191, 105, 0.07); color: var(--cream); cursor: pointer; font-weight: 850; }
     .score-event-editor { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
     .score-status, .privacy-note { margin: 12px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
     .score-warnings { margin: 10px 0 0; color: #ffd7af; }
     .generated-ornament-note { margin: 8px 4px 0; color: #8a4b13; font-size: 12px; font-weight: 800; }
+    .practice-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 12px 0 18px; border: 1px solid rgba(240, 191, 105, 0.18); border-radius: 14px; background: rgba(240, 191, 105, 0.055); padding: 12px; }
+    .practice-bar .field { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .practice-bar .field input[type="range"] { width: 130px; padding: 0; }
+    .practice-check { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 13px; font-weight: 750; }
+    .practice-check input { accent-color: var(--gold); }
+    .practice-status { color: var(--muted); font-size: 12px; font-weight: 750; }
     .source-preview { max-width: min(520px, 100%); max-height: 360px; display: block; margin: 12px auto; border: 1px solid var(--line); border-radius: 14px; object-fit: contain; }
     .catalog-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
     .catalog-card { display: grid; gap: 6px; border: 1px solid var(--line); border-radius: 16px; background: rgba(240, 191, 105, 0.06); color: var(--cream); padding: 16px; text-align: left; cursor: pointer; }
@@ -305,6 +312,15 @@
       .note-progress { margin-left: 4px; }
       .tab-block { white-space: pre; overflow-x: auto; }
       .score-keyboard { grid-template-columns: repeat(6, minmax(42px, 1fr)); }
+      .practice-bar .field { flex: 1 1 100%; }
+    }
+    @media print {
+      body { background: #fff; color: #111; }
+      .studio-header, .studio-hero, #studio-editor, .route-tabs, #studio-route-reason, #studio-fretboard, #studio-transport, #studio-tab, #studio-explanation, .result-actions, .practice-bar { display: none !important; }
+      main, .studio-shell, #studio-result { width: 100%; max-width: none; margin: 0; padding: 0; border: 0; box-shadow: none; background: #fff; }
+      #studio-result .result-head { display: block; color: #111; }
+      #studio-result-score { display: block !important; overflow: visible; border: 0; padding: 0; }
+      .score-svg { min-width: 0; width: 100%; }
     }
   </style>
 </head>
@@ -419,6 +435,7 @@
             <label class="field">Chord at this beat<input id="studio-score-chord" placeholder="G, D7, Em..."></label>
             <label class="field">Lyric or phrase label<input id="studio-score-lyric" maxlength="80"></label>
             <label class="field">Tie<select id="studio-score-tie"><option value="">None</option><option value="start">Start</option><option value="stop">Stop</option></select></label>
+            <label class="field">Articulation<select id="studio-score-articulation"><option value="">None</option><option value="accent">Accent</option><option value="tenuto">Tenuto</option><option value="staccato">Staccato</option></select></label>
             <button class="secondary-action" type="button" id="studio-score-remove-note">Remove selected event</button>
             <button class="secondary-action" type="button" id="studio-score-clear-measure">Clear selected measure</button>
           </div>
@@ -428,6 +445,7 @@
             <button class="secondary-action" type="button" id="studio-score-transpose-up">Transpose up</button>
             <button class="secondary-action" type="button" id="studio-score-play">Play draft</button>
             <button class="secondary-action" type="button" id="studio-score-download">Download MusicXML</button>
+            <button class="secondary-action" type="button" id="studio-score-print">Print score</button>
             <button class="primary-action" type="button" id="studio-score-arrange">Arrange for E9</button>
           </div>
           <p class="score-warnings" id="studio-score-warnings" hidden></p>
@@ -522,6 +540,20 @@
 
         <div class="score-canvas" id="studio-result-score" aria-label="Lesson melody staff" hidden></div>
 
+        <div class="practice-bar" id="studio-practice" hidden aria-label="Score practice controls">
+          <button class="primary-action" type="button" id="studio-practice-play">Play</button>
+          <button class="secondary-action" type="button" id="studio-practice-stop">Stop</button>
+          <label class="field">Tempo <input id="studio-practice-tempo" type="range" min="40" max="180" step="2" value="80"><output id="studio-practice-tempo-value">80 BPM</output></label>
+          <label class="practice-check"><input id="studio-practice-count-in" type="checkbox" checked>Count in</label>
+          <label class="practice-check"><input id="studio-practice-chords" type="checkbox">Hear chords</label>
+          <button class="secondary-action" type="button" id="studio-practice-loop-measure">Loop measure</button>
+          <button class="secondary-action" type="button" id="studio-practice-loop-start">Set loop start</button>
+          <button class="secondary-action" type="button" id="studio-practice-loop-end">Set loop end</button>
+          <button class="secondary-action" type="button" id="studio-practice-loop-clear">Clear loop</button>
+          <span class="practice-status" id="studio-practice-loop-status" aria-live="polite">Loop off</span>
+          <button class="secondary-action" type="button" id="studio-result-print">Print score</button>
+        </div>
+
         <div id="studio-fretboard" aria-label="Melody Studio fretboard"></div>
 
         <div id="studio-transport" hidden>
@@ -567,7 +599,7 @@
   <script src="answer-client.js?v=melody-multi-input-20260711-3"></script>
   <script src="pedal-steel-fretboard.js?v=melody-multi-input-20260711-3"></script>
   <script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>
-  <script src="melody-score.js?v=melody-multi-input-20260711-3"></script>
-  <script src="melody-workbench.js?v=melody-multi-input-20260711-3"></script>
+  <script src="melody-score.js?v=melody-score-practice-20260711-3"></script>
+  <script src="melody-workbench.js?v=melody-score-practice-20260711-3"></script>
 </body>
 </html>

@@ -67,6 +67,7 @@
       event.durationBeats = duration;
       event.origin = event.origin || (next.source.type === "composed_in_studio" ? "user_edit" : "source");
       event.confidence = Number.isFinite(Number(event.confidence)) ? Number(event.confidence) : 1;
+      event.articulation = ["accent", "tenuto", "staccato"].includes(event.articulation) ? event.articulation : "";
       if (!event.rest && Number.isFinite(Number(event.pitchValue))) {
         event.pitchValue = Number(event.pitchValue);
         event.pitch = pitchLabel(event.pitchValue);
@@ -155,6 +156,12 @@
     return harmony.at(-1)?.symbol || "";
   }
 
+  function chordChangeAtEvent(draft, event) {
+    return (draft?.score?.harmony || []).find((item) =>
+      Number(item.measure) === Number(event.measure) && Number(item.beat) === Number(event.beat)
+    )?.symbol || "";
+  }
+
   function arrangementEvents(draft) {
     return (draft?.score?.melody || []).filter((event) => !event.rest).map((event) => ({
       token: event.pitch,
@@ -166,6 +173,7 @@
       origin: event.origin || "user_edit",
       tie: event.tie || "",
       lyric: event.lyric || "",
+      articulation: event.articulation || "",
       chord: chordForEvent(draft, event)
     }));
   }
@@ -218,7 +226,9 @@
         })();
         const lyric = event.lyric ? `<lyric><text>${escape(event.lyric)}</text></lyric>` : "";
         const tie = event.tie ? `<tie type="${escape(event.tie)}"/>` : "";
-        return `<note>${rest}<duration>${duration}</duration><voice>1</voice><type>${durationName(event.durationBeats).replace("dotted_", "")}</type>${tie}${lyric}</note>`;
+        const dot = [1.5, 3].includes(Number(event.durationBeats)) ? "<dot/>" : "";
+        const articulation = event.articulation ? `<notations><articulations><${escape(event.articulation)}/></articulations></notations>` : "";
+        return `<note>${rest}<duration>${duration}</duration><voice>1</voice><type>${durationName(event.durationBeats).replace("dotted_", "")}</type>${dot}${tie}${articulation}${lyric}</note>`;
       }).join("");
       return `<measure number="${measure}">${attributes}${harmony}${body}</measure>`;
     }).join("");
@@ -250,10 +260,15 @@
     renderer.resize(width, 250);
     const context = renderer.getContext();
     const renderedNotes = [];
+    const beams = [];
     for (let measure = 1; measure <= measureCount; measure += 1) {
       const x = 12 + (measure - 1) * measureWidth;
       const stave = new VF.Stave(x, 62, measureWidth);
-      if (measure === 1) stave.addClef("treble").addTimeSignature(score.meter);
+      if (measure === 1) {
+        stave.addClef("treble");
+        if (typeof stave.addKeySignature === "function") stave.addKeySignature(score.arrangementKey || "C");
+        stave.addTimeSignature(score.meter);
+      }
       stave.setContext(context).draw();
       const sourceEvents = score.melody.map((event, index) => ({ event, index })).filter((item) => Number(item.event.measure) === measure);
       if (!sourceEvents.length) continue;
@@ -264,9 +279,11 @@
         const note = new VF.StaveNote({ clef: "treble", keys: [key], duration: vexDuration(event) });
         if (!event.rest && match?.[2] && VF.Accidental) note.addModifier(new VF.Accidental(match[2]), 0);
         if ([1.5, 3].includes(Number(event.durationBeats)) && VF.Dot?.buildAndAttach) VF.Dot.buildAndAttach([note], { all: true });
-        const chord = chordForEvent(draft, event);
+        const chord = chordChangeAtEvent(draft, event);
         if (chord && VF.Annotation) note.addModifier(new VF.Annotation(chord).setVerticalJustification(VF.Annotation.VerticalJustify.TOP), 0);
         if (event.lyric && VF.Annotation) note.addModifier(new VF.Annotation(event.lyric).setVerticalJustification(VF.Annotation.VerticalJustify.BOTTOM), 0);
+        const articulationCode = { accent: "a>", tenuto: "a-", staccato: "a." }[event.articulation];
+        if (articulationCode && VF.Articulation) note.addModifier(new VF.Articulation(articulationCode), 0);
         renderedNotes.push({ note, event, index });
         return note;
       });
@@ -274,9 +291,11 @@
       const voice = new VF.Voice({ numBeats: capacity, beatValue: 4 });
       if (VF.Voice.Mode?.SOFT !== undefined) voice.setMode(VF.Voice.Mode.SOFT);
       voice.addTickables(notes);
-      new VF.Formatter().joinVoices([voice]).format([voice], measureWidth - (measure === 1 ? 78 : 34));
+      new VF.Formatter().joinVoices([voice]).format([voice], measureWidth - (measure === 1 ? 104 : 34));
       voice.draw(context, stave);
+      if (VF.Beam?.generateBeams) beams.push(...VF.Beam.generateBeams(notes));
     }
+    beams.forEach((beam) => beam.setContext(context).draw());
     renderedNotes.forEach(({ note, event, index }) => {
       const element = typeof note.getSVGElement === "function" ? note.getSVGElement() : null;
       if (!element) return;
@@ -366,6 +385,11 @@
         lyric.textContent = event.lyric;
         group.appendChild(lyric);
       }
+      if (event.articulation) {
+        const articulation = make("text", { x: x - 5, y: 53, class: "articulation-label" });
+        articulation.textContent = ({ accent: ">", tenuto: "—", staccato: "•" })[event.articulation] || "";
+        group.appendChild(articulation);
+      }
       const select = () => typeof onSelect === "function" && onSelect(index);
       group.addEventListener("click", select);
       group.addEventListener("keydown", (eventObject) => {
@@ -404,6 +428,7 @@
     transposeDraft,
     setChordAtEvent,
     chordForEvent,
+    chordChangeAtEvent,
     arrangementEvents,
     draftWarnings,
     durationName,

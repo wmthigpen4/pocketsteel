@@ -260,7 +260,14 @@
       microphoneCapture: null,
       tapTimes: [],
       importParts: [],
-      importSelectedPart: ""
+      importSelectedPart: "",
+      practiceStatus: "stopped",
+      practiceTimers: [],
+      practiceContext: null,
+      practiceRun: 0,
+      loopMode: "off",
+      loopStart: null,
+      loopEnd: null
     };
   }
 
@@ -445,6 +452,7 @@
     fileSourceType,
     frequencyToMidi,
     autoCorrelate,
+    chordPitchValues,
     eventStepPresentation,
     eventStepCompactPresentation,
     routeButtonLabel,
@@ -531,6 +539,7 @@
     scoreChord: $("#studio-score-chord"),
     scoreLyric: $("#studio-score-lyric"),
     scoreTie: $("#studio-score-tie"),
+    scoreArticulation: $("#studio-score-articulation"),
     scoreRemove: $("#studio-score-remove-note"),
     scoreClearMeasure: $("#studio-score-clear-measure"),
     scoreDuplicate: $("#studio-score-duplicate"),
@@ -538,6 +547,7 @@
     scoreTransposeUp: $("#studio-score-transpose-up"),
     scorePlay: $("#studio-score-play"),
     scoreDownload: $("#studio-score-download"),
+    scorePrint: $("#studio-score-print"),
     scoreArrange: $("#studio-score-arrange"),
     scoreWarnings: $("#studio-score-warnings"),
     scoreSource: $("#studio-score-source"),
@@ -555,6 +565,19 @@
     resultTitle: $("#studio-result-title"),
     resultSource: $("#studio-result-source"),
     resultScore: $("#studio-result-score"),
+    practice: $("#studio-practice"),
+    practicePlay: $("#studio-practice-play"),
+    practiceStop: $("#studio-practice-stop"),
+    practiceTempo: $("#studio-practice-tempo"),
+    practiceTempoValue: $("#studio-practice-tempo-value"),
+    practiceCountIn: $("#studio-practice-count-in"),
+    practiceChords: $("#studio-practice-chords"),
+    practiceLoopMeasure: $("#studio-practice-loop-measure"),
+    practiceLoopStart: $("#studio-practice-loop-start"),
+    practiceLoopEnd: $("#studio-practice-loop-end"),
+    practiceLoopClear: $("#studio-practice-loop-clear"),
+    practiceLoopStatus: $("#studio-practice-loop-status"),
+    resultPrint: $("#studio-result-print"),
     routeTabs: $("#studio-route-tabs"),
     routeReason: $("#studio-route-reason"),
     sourceNeeded: $("#studio-source-needed"),
@@ -818,6 +841,7 @@
       elements.scoreChord.value = scoreUi.chordForEvent(draft, event);
       elements.scoreLyric.value = event.lyric || "";
       elements.scoreTie.value = event.tie || "";
+      elements.scoreArticulation.value = event.articulation || "";
     }
     elements.scoreMeter.value = draft.score.meter;
     elements.scorePickup.value = String(draft.score.pickupBeats || 0);
@@ -902,10 +926,16 @@
       pitchValue: event.pitchValue,
       origin: event.origin || "source",
       tie: event.tie || "",
-      lyric: event.lyric || ""
+      lyric: event.lyric || "",
+      articulation: event.articulation || ""
     })).filter((event) => Number.isFinite(Number(event.pitchValue)));
+    let previousChord = "";
     (exercise?.events || []).forEach((event, index) => {
-      if (event.chord) draft.score.harmony.push({ measure: event.measure || 1, beat: event.beat || index + 1, symbol: event.chord, basis: "source", confidence: 1 });
+      const chord = String(event.harmonySymbol || event.chord || "").trim();
+      if (chord && chord !== previousChord) {
+        draft.score.harmony.push({ measure: event.measure || 1, beat: event.beat || index + 1, symbol: chord, basis: "source", confidence: 1 });
+      }
+      if (chord) previousChord = chord;
     });
     return draft;
   }
@@ -924,6 +954,166 @@
       note.textContent = `Generated ornament (optional): ${ornaments.map((item) => item.label).join(" ")} Select Faithful melody to hide it.`;
       elements.resultScore.appendChild(note);
     }
+  }
+
+  function updatePracticeControls() {
+    const status = state.practiceStatus;
+    elements.practicePlay.textContent = status === "playing" ? "Pause" : status === "paused" ? "Resume" : "Play";
+    elements.practicePlay.setAttribute("aria-pressed", String(status === "playing"));
+    elements.practiceTempoValue.textContent = `${elements.practiceTempo.value} BPM`;
+    let loopText = "Loop off";
+    if (state.loopMode === "measure") {
+      const event = state.response?.melodyExercise?.events?.[state.activeEventIndex];
+      loopText = `Looping measure ${event?.measure || 1}`;
+    } else if (state.loopMode === "selection" && state.loopStart !== null && state.loopEnd !== null) {
+      loopText = `Looping notes ${Math.min(state.loopStart, state.loopEnd) + 1}–${Math.max(state.loopStart, state.loopEnd) + 1}`;
+    } else if (state.loopStart !== null) {
+      loopText = `Loop starts at note ${state.loopStart + 1}; choose an end`;
+    }
+    elements.practiceLoopStatus.textContent = loopText;
+    elements.practiceLoopMeasure.classList.toggle("is-selected", state.loopMode === "measure");
+  }
+
+  function clearPracticeAudio() {
+    state.practiceTimers.forEach((timer) => global.clearTimeout(timer));
+    state.practiceTimers = [];
+    if (state.practiceContext) state.practiceContext.close().catch(() => {});
+    state.practiceContext = null;
+    state.practiceRun += 1;
+  }
+
+  function stopPractice() {
+    clearPracticeAudio();
+    state.practiceStatus = "stopped";
+    updatePracticeControls();
+  }
+
+  function pausePractice() {
+    clearPracticeAudio();
+    state.practiceStatus = "paused";
+    updatePracticeControls();
+  }
+
+  function schedulePitch(context, pitchValue, when, duration, gainValue = 0.11, type = "triangle") {
+    if (!Number.isFinite(Number(pitchValue))) return;
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = type;
+    oscillator.frequency.value = 440 * 2 ** ((Number(pitchValue) - 69) / 12);
+    gain.gain.setValueAtTime(0.0001, when);
+    gain.gain.exponentialRampToValueAtTime(gainValue, when + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, Math.max(when + 0.03, when + duration - 0.02));
+    oscillator.connect(gain).connect(context.destination);
+    oscillator.start(when);
+    oscillator.stop(when + duration);
+  }
+
+  function chordPitchValues(symbol) {
+    const match = String(symbol || "").trim().match(/^([A-Ga-g])([#b]?)([^/]*)/);
+    if (!match) return [];
+    const root = semitoneForNote(`${match[1].toUpperCase()}${match[2]}`);
+    const quality = match[3].toLowerCase();
+    let intervals = quality.includes("dim") ? [0, 3, 6] : quality.includes("aug") ? [0, 4, 8] : quality.startsWith("m") && !quality.startsWith("maj") ? [0, 3, 7] : [0, 4, 7];
+    if (quality.includes("maj7")) intervals = [...intervals, 11];
+    else if (quality.includes("7")) intervals = [...intervals, 10];
+    return intervals.map((interval) => 48 + root + interval);
+  }
+
+  function activeChord(events, index) {
+    for (let cursor = index; cursor >= 0; cursor -= 1) {
+      const chord = String(events[cursor]?.harmonySymbol || events[cursor]?.chord || "").trim();
+      if (chord) return chord;
+    }
+    return "";
+  }
+
+  function practiceRange(events) {
+    if (state.loopMode === "measure") {
+      const measure = events[state.activeEventIndex]?.measure || 1;
+      const indexes = events.map((event, index) => Number(event.measure || 1) === Number(measure) ? index : -1).filter((index) => index >= 0);
+      if (indexes.length) return { start: indexes[0], end: indexes.at(-1) };
+    }
+    if (state.loopMode === "selection" && state.loopStart !== null && state.loopEnd !== null) {
+      return { start: Math.min(state.loopStart, state.loopEnd), end: Math.max(state.loopStart, state.loopEnd) };
+    }
+    return { start: state.activeEventIndex, end: events.length - 1 };
+  }
+
+  function runPractice({ countIn = true } = {}) {
+    const events = state.response?.melodyExercise?.events || [];
+    if (!events.length) return;
+    clearPracticeAudio();
+    const AudioContext = global.AudioContext || global.webkitAudioContext;
+    if (!AudioContext) return showError("This browser does not support score playback.");
+    const context = new AudioContext();
+    state.practiceContext = context;
+    state.practiceStatus = "playing";
+    const run = state.practiceRun;
+    const secondsPerBeat = 60 / Number(elements.practiceTempo.value || 80);
+    const range = practiceRange(events);
+    const meterBeats = String(state.scoreDraft?.score?.meter || "4/4").startsWith("3/") ? 3 : 4;
+    const countBeats = countIn && elements.practiceCountIn.checked ? meterBeats : 0;
+    let cursor = context.currentTime + 0.08 + countBeats * secondsPerBeat;
+    for (let beat = 0; beat < countBeats; beat += 1) {
+      schedulePitch(context, beat === countBeats - 1 ? 84 : 79, context.currentTime + 0.08 + beat * secondsPerBeat, 0.055, 0.055, "square");
+    }
+    for (let index = range.start; index <= range.end; index += 1) {
+      const event = events[index];
+      const duration = Math.max(0.08, Number(event.durationBeats || 1) * secondsPerBeat);
+      const delay = Math.max(0, (cursor - context.currentTime) * 1000);
+      state.practiceTimers.push(global.setTimeout(() => {
+        if (run === state.practiceRun) selectEvent(index);
+      }, delay));
+      if (!event.rest) schedulePitch(context, event.pitchValue, cursor, duration);
+      if (elements.practiceChords.checked) {
+        chordPitchValues(activeChord(events, index)).forEach((pitch) => schedulePitch(context, pitch, cursor, duration, 0.025, "sine"));
+      }
+      cursor += duration;
+    }
+    state.practiceTimers.push(global.setTimeout(() => {
+      if (run !== state.practiceRun) return;
+      if (state.loopMode !== "off") {
+        state.activeEventIndex = range.start;
+        runPractice({ countIn: false });
+      } else {
+        clearPracticeAudio();
+        state.practiceStatus = "stopped";
+        updatePracticeControls();
+      }
+    }, Math.max(0, (cursor - context.currentTime + 0.08) * 1000)));
+    updatePracticeControls();
+  }
+
+  function togglePractice() {
+    if (state.practiceStatus === "playing") pausePractice();
+    else runPractice({ countIn: state.practiceStatus !== "paused" });
+  }
+
+  function loopCurrentMeasure() {
+    state.loopMode = state.loopMode === "measure" ? "off" : "measure";
+    state.loopStart = null;
+    state.loopEnd = null;
+    updatePracticeControls();
+  }
+
+  function setLoopBoundary(which) {
+    if (which === "start") {
+      state.loopStart = state.activeEventIndex;
+      state.loopEnd = null;
+      state.loopMode = "off";
+    } else {
+      state.loopStart = state.loopStart === null ? state.activeEventIndex : state.loopStart;
+      state.loopEnd = state.activeEventIndex;
+      state.loopMode = "selection";
+    }
+    updatePracticeControls();
+  }
+
+  function clearLoop() {
+    state.loopMode = "off";
+    state.loopStart = null;
+    state.loopEnd = null;
+    updatePracticeControls();
   }
 
   function playScoreDraft() {
@@ -1165,6 +1355,7 @@
   }
 
   function clearTransientDraft() {
+    stopPractice();
     if (state.microphoneCapture) stopMicrophoneCapture();
     if (state.sourceImageUrl) URL.revokeObjectURL(state.sourceImageUrl);
     state.sourceImageUrl = "";
@@ -1202,6 +1393,7 @@
     }
     const activeRoute = exercise.routes?.find((item) => item.id === exercise.selectedRouteId) || null;
     renderResultScore(exercise, activeRoute);
+    updatePracticeControls();
   }
 
   function renderEvents(exercise) {
@@ -1233,6 +1425,7 @@
     const exercise = state.response?.melodyExercise;
     const route = (exercise?.routes || []).find((item) => item.id === routeId);
     if (!route) return;
+    stopPractice();
     exercise.events = route.events;
     exercise.selectedRouteId = route.id;
     state.activeEventIndex = 0;
@@ -1315,6 +1508,7 @@
     elements.explanation.hidden = needsSource;
     elements.currentNote.hidden = needsSource;
     elements.resultScore.hidden = needsSource;
+    elements.practice.hidden = needsSource || !exercise?.events?.length;
     elements.routeTabs.hidden = needsSource;
     elements.routeReason.hidden = needsSource;
     updateOctaveMapVisibility();
@@ -1331,6 +1525,7 @@
       const selectedRoute = exercise.routes?.find((route) => route.id === exercise.selectedRouteId);
       if (selectedRoute) activateRoute(selectedRoute.id);
       else selectEvent(0);
+      updatePracticeControls();
     }
     elements.continueButton.hidden = !section.hasMore;
     elements.continueButton.textContent = section.nextSection ? `Continue to Section ${section.nextSection}` : "Continue";
@@ -1384,6 +1579,7 @@
   }
 
   function editPhrase() {
+    stopPractice();
     elements.result.hidden = true;
     elements.editor.hidden = false;
     elements.editor.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1527,7 +1723,8 @@
   elements.eventDuration.addEventListener("change", () => updateSelectedScoreEvent({ durationBeats: Number(elements.eventDuration.value) }));
   elements.scoreLyric.addEventListener("change", () => updateSelectedScoreEvent({ lyric: elements.scoreLyric.value.trim() }));
   elements.scoreTie.addEventListener("change", () => updateSelectedScoreEvent({ tie: elements.scoreTie.value }));
-  elements.scoreChord.addEventListener("change", () => commitScoreDraft(scoreUi.setChordAtEvent(state.scoreDraft, state.scoreSelectedIndex, elements.scoreChord.value), state.scoreSelectedIndex));
+  elements.scoreArticulation.addEventListener("change", () => updateSelectedScoreEvent({ articulation: elements.scoreArticulation.value }));
+  elements.scoreChord.addEventListener("input", () => commitScoreDraft(scoreUi.setChordAtEvent(state.scoreDraft, state.scoreSelectedIndex, elements.scoreChord.value), state.scoreSelectedIndex));
   elements.scoreRemove.addEventListener("click", () => commitScoreDraft(scoreUi.removeEvent(state.scoreDraft, state.scoreSelectedIndex), Math.max(0, state.scoreSelectedIndex - 1)));
   elements.scoreClearMeasure.addEventListener("click", () => {
     const event = selectedScoreEvent();
@@ -1538,6 +1735,7 @@
   elements.scoreTransposeUp.addEventListener("click", () => commitScoreDraft(scoreUi.transposeDraft(ensureScoreDraft(), 1)));
   elements.scorePlay.addEventListener("click", playScoreDraft);
   elements.scoreDownload.addEventListener("click", downloadScoreDraft);
+  elements.scorePrint.addEventListener("click", () => global.print());
   elements.scoreArrange.addEventListener("click", arrangeScoreDraft);
   elements.scoreCanvas.addEventListener("click", (event) => {
     if (event.target.closest?.(".score-event")) return;
@@ -1565,6 +1763,14 @@
   elements.build.addEventListener("click", () => submitLesson(1));
   elements.previous.addEventListener("click", () => selectEvent(state.activeEventIndex - 1));
   elements.next.addEventListener("click", () => selectEvent(state.activeEventIndex + 1));
+  elements.practicePlay.addEventListener("click", togglePractice);
+  elements.practiceStop.addEventListener("click", stopPractice);
+  elements.practiceTempo.addEventListener("input", updatePracticeControls);
+  elements.practiceLoopMeasure.addEventListener("click", loopCurrentMeasure);
+  elements.practiceLoopStart.addEventListener("click", () => setLoopBoundary("start"));
+  elements.practiceLoopEnd.addEventListener("click", () => setLoopBoundary("end"));
+  elements.practiceLoopClear.addEventListener("click", clearLoop);
+  elements.resultPrint.addEventListener("click", () => global.print());
   elements.octaveToggle.addEventListener("click", () => {
     state.showOctaveMap = !state.showOctaveMap;
     updateOctaveMapVisibility();

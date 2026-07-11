@@ -49,6 +49,7 @@ class MelodyInput:
     tie: str = ""
     lyric: str = ""
     chord: str = ""
+    articulation: str = ""
 
 
 @dataclass(frozen=True)
@@ -89,7 +90,7 @@ def arrange_melody_routes(
     inputs = all_inputs[event_start:event_end]
     resolved_pitches = all_resolved_pitches[event_start:event_end]
     single_candidates = [single_note_candidates(item, pitch) for item, pitch in zip(inputs, resolved_pitches)]
-    single_path = choose_path(single_candidates)
+    single_path = choose_path(single_candidates, inputs=inputs)
     if not single_path:
         raise ValueError("The melody does not have a mechanically valid standard-E9 path.")
 
@@ -125,7 +126,7 @@ def arrange_melody_routes(
 
     for suffix, harmony_type, label in route_specs[1:]:
         candidate_groups = harmony_candidate_groups(inputs, resolved_pitches, key, harmony_type)
-        path = choose_path(candidate_groups) if candidate_groups and all(candidate_groups) else []
+        path = choose_path(candidate_groups, inputs=inputs) if candidate_groups and all(candidate_groups) else []
         if not path:
             continue
         routes.append(
@@ -166,6 +167,7 @@ def arrange_melody_routes(
             "tie": item.tie,
             "lyric": item.lyric,
             "chord": item.chord,
+            "articulation": item.articulation,
         }
         for item, pitch in zip(inputs, resolved_pitches)
     ]
@@ -175,7 +177,7 @@ def arrange_melody_routes(
 def parse_melody_inputs(raw_events: Sequence[Any], key: str) -> list[MelodyInput]:
     scale = _scale_notes(key)
     parsed: list[MelodyInput] = []
-    for raw in raw_events:
+    for raw_index, raw in enumerate(raw_events):
         record = raw if isinstance(raw, Mapping) else {}
         literal_payload = record.get("position") if isinstance(record.get("position"), Mapping) else record
         literal = _literal_note(literal_payload) if isinstance(raw, Mapping) else None
@@ -213,12 +215,13 @@ def parse_melody_inputs(raw_events: Sequence[Any], key: str) -> list[MelodyInput
                 literal=literal,
                 forced_pitch=forced_pitch,
                 duration_beats=_positive_float(record.get("durationBeats") or record.get("duration"), 1.0),
-                measure=_positive_int(record.get("measure"), 1),
-                beat=_positive_float(record.get("beat"), 1.0),
+                measure=_positive_int(record.get("measure"), raw_index // 4 + 1),
+                beat=_positive_float(record.get("beat"), raw_index % 4 + 1.0),
                 origin=str(record.get("origin") or "user_edit")[:40],
                 tie=str(record.get("tie") or "")[:20],
                 lyric=str(record.get("lyric") or record.get("phraseLabel") or "")[:80],
                 chord=str(record.get("chord") or "")[:24],
+                articulation=str(record.get("articulation") or "")[:20],
             )
         )
     return parsed
@@ -355,17 +358,24 @@ def harmony_candidate_groups(
             if harmony_type == "automatic_harmony" and not ({third_note, sixth_note} & set(other_notes)):
                 continue
             candidates.append(_candidate_for_explorer_row(row))
+        if item.chord and candidates:
+            best_fit = min(_chord_fit_penalty(candidate, item.chord) for candidate in candidates)
+            candidates = [candidate for candidate in candidates if _chord_fit_penalty(candidate, item.chord) == best_fit]
         groups.append(candidates)
     return groups
 
 
-def choose_path(candidate_groups: Sequence[Sequence[PositionCandidate]]) -> list[PositionCandidate]:
+def choose_path(
+    candidate_groups: Sequence[Sequence[PositionCandidate]],
+    *,
+    inputs: Sequence[MelodyInput] | None = None,
+) -> list[PositionCandidate]:
     if not candidate_groups or any(not group for group in candidate_groups):
         return []
     states: list[dict[int, tuple[tuple[int, ...], int | None]]] = []
     first: dict[int, tuple[tuple[int, ...], int | None]] = {}
     for index, candidate in enumerate(candidate_groups[0]):
-        first[index] = ((_start_cost(candidate)), None)
+        first[index] = ((_start_cost(candidate, inputs[0] if inputs else None)), None)
     states.append(first)
     for event_index in range(1, len(candidate_groups)):
         current: dict[int, tuple[tuple[int, ...], int | None]] = {}
@@ -373,7 +383,7 @@ def choose_path(candidate_groups: Sequence[Sequence[PositionCandidate]]) -> list
             choices: list[tuple[tuple[int, ...], int]] = []
             for previous_index, (previous_cost, _parent) in states[-1].items():
                 previous = candidate_groups[event_index - 1][previous_index]
-                transition = _transition_cost(previous, candidate)
+                transition = _transition_cost(previous, candidate, inputs[event_index] if inputs else None)
                 choices.append((_add_cost(previous_cost, transition), previous_index))
             current[current_index] = min(choices, key=lambda item: (item[0], item[1]))
         states.append(current)
@@ -404,14 +414,18 @@ def build_route(
     raw_events: list[TabEvent] = []
     intervals: list[dict[str, Any]] = []
     movements: list[str] = []
+    previous_chord = ""
     for index, (item, candidate) in enumerate(zip(inputs, path), start=1):
+        chord_change = item.chord if item.chord and item.chord != previous_chord else None
         raw_events.append(
             TabEvent(
                 notes=candidate.notes,
-                chord=item.chord or item.note,
+                chord=chord_change,
                 comment=f"{scientific_pitch_for_value(resolved_pitches[index - 1])}; {label}",
             )
         )
+        if item.chord:
+            previous_chord = item.chord
         intervals.append(
             {
                 "eventId": f"{route_id}-step-{index}",
@@ -454,6 +468,8 @@ def build_route(
             payload["lyric"] = item.lyric
         if item.chord:
             payload["harmonySymbol"] = item.chord
+        if item.articulation:
+            payload["articulation"] = item.articulation
         event_payloads.append(payload)
     tab_example = {
         "id": route_id,
@@ -471,12 +487,14 @@ def build_route(
     fretboard = fretboard_payload_for_tab_example(tab_example)
     if fretboard is None:
         raise ValueError("A generated melody route could not produce a synchronized fretboard.")
+    chord_symbols = list(dict.fromkeys(item.chord for item in inputs if item.chord))
     return {
         "id": route_id,
         "label": label,
         "harmonyType": harmony_type,
         "recommended": recommended,
-        "recommendation": recommendation,
+        "recommendation": recommendation + (f" Chord-aware ranking used: {', '.join(chord_symbols)}." if chord_symbols else ""),
+        "chordContext": {"symbols": chord_symbols, "usedForRanking": bool(chord_symbols)},
         "movementSummary": " ".join(movements),
         "events": event_payloads,
         "tabExample": tab_example,
@@ -650,9 +668,9 @@ def _absolute_pitch(string: int, fret: int, controls: tuple[str, ...]) -> int:
     return absolute_pitch_for_string(string, fret, tuple(aliases.get(control, control) for control in controls))
 
 
-def _start_cost(candidate: PositionCandidate) -> tuple[int, ...]:
+def _start_cost(candidate: PositionCandidate, item: MelodyInput | None = None) -> tuple[int, ...]:
     return (
-        0,
+        _chord_fit_penalty(candidate, item.chord) if item else 0,
         0,
         0,
         len(candidate.controls),
@@ -660,15 +678,53 @@ def _start_cost(candidate: PositionCandidate) -> tuple[int, ...]:
     )
 
 
-def _transition_cost(previous: PositionCandidate, current: PositionCandidate) -> tuple[int, ...]:
+def _transition_cost(
+    previous: PositionCandidate,
+    current: PositionCandidate,
+    item: MelodyInput | None = None,
+) -> tuple[int, ...]:
     control_changes = len(set(previous.controls) ^ set(current.controls))
     return (
+        _chord_fit_penalty(current, item.chord) if item else 0,
         abs(current.fret - previous.fret),
         control_changes,
         abs(current.top_string - previous.top_string),
         len(current.controls),
-        0,
     )
+
+
+def _chord_fit_penalty(candidate: PositionCandidate, chord: str) -> int:
+    tones = _chord_pitch_classes(chord)
+    if not tones:
+        return 0
+    return sum(1 for note in candidate.note_names if _pitch_class(note) not in tones)
+
+
+def _chord_pitch_classes(chord: str) -> set[int]:
+    match = re.match(r"^\s*([A-Ga-g])([#b]?)([^/]*)", str(chord or ""))
+    if not match:
+        return set()
+    root = _pitch_class(f"{match.group(1).upper()}{match.group(2)}")
+    quality = match.group(3).lower()
+    if "dim" in quality or "°" in quality:
+        intervals = {0, 3, 6}
+    elif "aug" in quality or "+" in quality:
+        intervals = {0, 4, 8}
+    elif quality.startswith("m") and not quality.startswith("maj"):
+        intervals = {0, 3, 7}
+    elif "sus2" in quality:
+        intervals = {0, 2, 7}
+    elif "sus" in quality:
+        intervals = {0, 5, 7}
+    else:
+        intervals = {0, 4, 7}
+    if "maj7" in quality:
+        intervals.add(11)
+    elif "7" in quality:
+        intervals.add(10)
+    if "6" in quality:
+        intervals.add(9)
+    return {(root + interval) % 12 for interval in intervals}
 
 
 def _add_cost(left: tuple[int, ...], right: tuple[int, ...]) -> tuple[int, ...]:

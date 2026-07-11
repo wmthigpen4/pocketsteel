@@ -58,6 +58,9 @@ def test_structured_g_scale_degree_phrase_builds_synced_tab_and_fretboard() -> N
     assert len(tab["events"]) == len(fretboard["positions"]) == len(exercise["events"])
     assert "Ly |" not in tab["rendered_tab"]
     assert all("lyric" not in event for event in tab["events"])
+    assert all("chord" not in event for event in exercise["events"])
+    assert "Ch |" not in tab["rendered_tab"]
+    assert [(event["measure"], event["beat"]) for event in exercise["events"]] == [(1, 1.0), (1, 2.0), (1, 3.0), (1, 4.0)]
     assert [event["renderablePositionId"] for event in exercise["events"]] == [
         position["id"] for position in fretboard["positions"]
     ]
@@ -104,6 +107,15 @@ def test_amazing_grace_exact_score_events_keep_rhythm_chords_and_e9_route() -> N
         (5, 3, ["A"]),
     ]
     assert [event["durationBeats"] for event in exercise["events"]] == [1, 2, 0.5, 0.5, 2, 1, 2, 1]
+    assert [event["harmonySymbol"] for event in exercise["events"]] == [event["chord"] for event in events]
+    previous_chord = ""
+    expected_changes = []
+    for event in events:
+        expected_changes.append(event["chord"] if event["chord"] != previous_chord else None)
+        previous_chord = event["chord"]
+    assert [event.get("chord") for event in exercise["events"]] == expected_changes
+    assert all(route["chordContext"]["usedForRanking"] for route in exercise["routes"])
+    assert exercise["routes"][0]["chordContext"]["symbols"] == list(dict.fromkeys(event["chord"] for event in events))
     vocal = next(route for route in exercise["routes"] if route["harmonyType"] == "vocal_steel")
     assert vocal["generatedOrnaments"] == [
         {
@@ -201,6 +213,33 @@ def test_default_arranger_returns_single_note_and_recommended_harmony_routes() -
     for route in routes:
         assert len(route["events"]) == len(route["fretboard"]["positions"])
         assert [event["renderablePositionId"] for event in route["events"]] == [position["id"] for position in route["fretboard"]["positions"]]
+
+
+def test_chord_context_is_not_invented_and_ranks_chord_melody_grips() -> None:
+    result = melody_exercise_response(
+        "Build a chord-aware phrase",
+        {
+            "key": "G",
+            "melody": [
+                {"token": "1", "chord": "G"},
+                {"token": "3", "chord": "G"},
+                {"token": "5", "chord": "G"},
+            ],
+        },
+    )
+
+    assert result is not None
+    exercise = result["melody_exercise"]
+    assert [event["harmonySymbol"] for event in exercise["events"]] == ["G", "G", "G"]
+    chord_route = next(route for route in exercise["routes"] if route["harmonyType"] == "chord_melody")
+    assert chord_route["chordContext"] == {"symbols": ["G"], "usedForRanking": True}
+    assert "Chord-aware ranking used: G" in chord_route["recommendation"]
+    for event in chord_route["events"]:
+        pitch_classes = {
+            absolute_pitch_for_string(note["string"], note["fret"], tuple(note["changes"])) % 12
+            for note in event["notes"]
+        }
+        assert pitch_classes <= {2, 7, 11}
 
 
 def test_original_exercise_suppresses_supplied_recording_identity_and_sources() -> None:

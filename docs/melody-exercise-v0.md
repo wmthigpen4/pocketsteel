@@ -25,7 +25,7 @@ Supported request fields:
 - `kind`: `original_exercise`, `user_melody`, `artist_solo_lesson`, or `song_arrangement_lesson`.
 - `key`: G or C major in v0.
 - `tuning`: E9.
-- `melody`: legacy note-name/scale-degree strings or structured events. Structured events may add `direction`, `octaveShift`, or a literal standard-E9 `string`, `fret`, and `changes` position. Longer lists are divided into sections.
+- `melody`: legacy note-name/scale-degree strings or structured events. Structured events may add `direction`, `octaveShift`, literal standard-E9 position, rhythm/measure/beat, tie, lyric, articulation, and an actual harmony symbol. Melody pitches and harmony symbols are distinct fields; a note name must never be promoted into a chord label. Longer lists are divided into sections.
 - `contourMode`: `closest_playable` (default), `ascending`, `descending`, or `preserve_input`.
 - `texture`: `both` (default), `single_note`, `automatic_harmony`, `thirds`, `sixths`, or `chord_melody`.
 - `sectionNumber`: requested section, starting at 1.
@@ -43,7 +43,7 @@ The answer may add `melody_exercise` with:
 - route choices for the single-note melody and available validated harmony textures;
 - validation results shared by tab and fretboard rendering.
 
-Ready exercises add `routes`, `selectedRouteId`, and an input `resolvedPhrase`. Each route owns its synchronized events, tab example, fretboard, harmony label, recommendation, and movement summary. Existing top-level `events`, `tab_example`, and `fretboard` remain populated from the selected single-note route for compatibility. Source-free original exercises return no source cards. Recording-based lessons preserve a supplied source URL as a recording/arrangement source card.
+Ready exercises add `routes`, `selectedRouteId`, and an input `resolvedPhrase`. Each route owns its synchronized events, tab example, fretboard, harmony label, recommendation, movement summary, and chord-context summary. When chord symbols are supplied, the arranger ranks mechanically valid grips against those chord tones while keeping the resolved melody pitch as the top voice. Existing top-level `events`, `tab_example`, and `fretboard` remain populated from the selected single-note route for compatibility. Source-free original exercises return no source cards. Recording-based lessons preserve a supplied source URL as a recording/arrangement source card.
 
 ## Frontend Contract
 
@@ -60,6 +60,8 @@ The result shows:
 - one visible, horizontally scrollable row containing every mechanically available single-note, recommended-harmony, thirds, sixths, and chord-melody route;
 - resolved pitch/register and bar, string, pedal, and lever movement guidance;
 - no empty source section for source-free deterministic exercises.
+
+The score is an interactive practice surface rather than a decorative duplicate. Selecting a staff note selects the same fretboard position, navigator event, and tab step. Playback follows the score with a moving selection and supports tempo, count-in, pause/resume, stop, current-measure loops, selected-note loops, and optional synthesized chord context. Chord symbols render only at real changes. The score supports G/C key signatures, rhythmic beams, rests, ties, lyrics, accents/tenuto/staccato, MusicXML export, and a print-focused layout.
 
 The dedicated lesson view is fretboard-first. Its header contains the lesson title, optional source identity, one visible route row, and the selected route's useful recommendation; it does not display a generic "Practice the lesson" kicker or expose exactness, confidence, and single-section bookkeeping as header metadata. One compact navigator beneath the board combines the Octave colors toggle and legend, note progress, previous/next arrows, concise pitch/position pills, and one current-note readout. It does not repeat the selected note in a separate active-tab sentence or long explanatory event sentence. Previous/next and note-pill controls must visibly select the matching `renderablePositionId` in the fretboard component. Long phrases expose a Continue to Section action using the existing `sectionNumber` request field. Mobile layout keeps route and note rows horizontally scrollable, keeps the arrows beside the pill row, and keeps the fixed-width tab inside its own horizontal scroller.
 
@@ -83,4 +85,6 @@ The feature is controlled by `STEEL_RAG_ENABLE_MELODY_EXERCISE`, which defaults 
 - Long inputs continue through numbered sections instead of failing.
 - Invalid tuning, key, note, string, fret, or control combinations render no tab/fretboard.
 - Attribution and accuracy labels survive API and frontend normalization.
+- Melody-only input displays no invented chord symbols; supplied chord symbols appear only at chord changes and guide route ranking.
+- Score playback keeps the staff, fretboard, note navigator, and tab selection synchronized at adjustable tempo, including loop and count-in behavior.
 - Existing progression, fretboard, voicing, gear, retrieval, auth, and source-card behavior remains green.

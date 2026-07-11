@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+import re
 from pathlib import Path
 
 
@@ -111,6 +112,8 @@ assert.equal(studio.youtubeVideoId("https://ultimate-guitar.com/tab/example"), "
 assert.equal(studio.fileSourceType({name: "page.webp", type: "image/webp"}), "image");
 assert.equal(studio.fileSourceType({name: "song.mxl", type: ""}), "mxl");
 assert.equal(studio.frequencyToMidi(440), 69);
+assert.deepEqual(studio.chordPitchValues("G"), [55, 59, 62]);
+assert.deepEqual(studio.chordPitchValues("Em7"), [52, 55, 59, 62]);
 """
     )
 
@@ -127,11 +130,13 @@ draft = score.addEvent(draft, {pitchValue: 67, durationBeats: 2});
 draft = score.addEvent(draft, {pitchValue: 71, durationBeats: 0.5});
 assert.deepEqual(draft.score.melody.map((event) => [event.measure, event.beat]), [[1, 3], [2, 1], [2, 3]]);
 draft = score.setChordAtEvent(draft, 1, "G");
-draft = score.updateEvent(draft, 1, {lyric: "grace", tie: "start"});
+draft = score.updateEvent(draft, 1, {lyric: "grace", tie: "start", articulation: "accent"});
 assert.equal(score.chordForEvent(draft, draft.score.melody[2]), "G");
+assert.equal(score.chordChangeAtEvent(draft, draft.score.melody[1]), "G");
+assert.equal(score.chordChangeAtEvent(draft, draft.score.melody[2]), "");
 assert.deepEqual(score.arrangementEvents(draft)[1], {
   token: "G4", pitch: "G4", pitchValue: 67, measure: 2, beat: 1,
-  durationBeats: 2, origin: "user_edit", tie: "start", lyric: "grace", chord: "G"
+  durationBeats: 2, origin: "user_edit", tie: "start", lyric: "grace", articulation: "accent", chord: "G"
 });
 const transposed = score.transposeDraft(draft, -5);
 assert.deepEqual(transposed.score.melody.map((event) => event.pitch), ["A3", "D4", "F#4"]);
@@ -140,6 +145,7 @@ assert.match(xml, /<work-title>Amazing Grace sketch<\/work-title>/);
 assert.match(xml, /<time><beats>3<\/beats>/);
 assert.match(xml, /<words>G<\/words>/);
 assert.match(xml, /<lyric><text>grace<\/text><\/lyric>/);
+assert.match(xml, /<articulations><accent\/><\/articulations>/);
 assert.equal(score.removeEvent(draft, 0).score.melody.length, 2);
 assert.equal(score.duplicatePhrase(draft).score.melody.length, 6);
 assert.equal(score.clearMeasure(draft, 2).score.melody.length, 1);
@@ -153,6 +159,8 @@ assert.match(score.draftWarnings(overfull)[0], /Measure 1 has 4 beats but allows
 def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -> None:
     html = Path("ui/melody-workbench.html").read_text(encoding="utf-8")
     script = Path("ui/melody-workbench.js").read_text(encoding="utf-8")
+    ids = re.findall(r'id="([^"]+)"', html)
+    assert len(ids) == len(set(ids))
 
     assert "Turn a phrase into an E9 lesson." in html
     assert "Step 1 of 4" not in html
@@ -216,7 +224,8 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Select a note below to change its octave" in html
     assert "Change the register for this note only" in html
     assert "state.selectedPhraseIndex" in script
-    assert html.count("?v=melody-multi-input-20260711-3") == 4
+    assert html.count("?v=melody-multi-input-20260711-3") == 2
+    assert html.count("?v=melody-score-practice-20260711-3") == 2
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in html
     assert "VexFlow" in Path("ui/vendor/VEXFLOW-LICENSE.txt").read_text(encoding="utf-8")
     assert html.index('id="studio-fretboard"') < html.index('id="studio-tab"')
@@ -249,6 +258,19 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'id="studio-youtube-frame"' in html
     assert 'id="studio-catalog-grid"' in html
     assert 'id="studio-result-score"' in html
+    assert 'id="studio-score-articulation"' in html
+    assert 'id="studio-practice-play"' in html
+    assert 'id="studio-practice-tempo"' in html
+    assert 'id="studio-practice-count-in"' in html
+    assert 'id="studio-practice-chords"' in html
+    assert 'id="studio-practice-loop-measure"' in html
+    assert 'id="studio-practice-loop-start"' in html
+    assert 'id="studio-practice-loop-end"' in html
+    assert 'id="studio-result-print"' in html
+    assert "addKeySignature" in Path("ui/melody-score.js").read_text(encoding="utf-8")
+    assert "generateBeams" in Path("ui/melody-score.js").read_text(encoding="utf-8")
+    assert "togglePractice" in script
+    assert "schedulePitch" in script
     assert "session-only" in html.lower()
 
 
