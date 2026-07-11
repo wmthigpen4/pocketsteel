@@ -1,22 +1,23 @@
 # Integration Status — Current Snapshot
 
-Updated: 2026-07-11 07:42 America/Chicago
+Updated: 2026-07-11 08:04 America/Chicago
 
 ## Repository state
 
 - Branch: `feature/answer-api`
-- Current implementation: `f6868d5 Refresh Melody Studio octave map assets`
+- Current implementation: `62a8a3d Simplify Melody Studio flow and navigator`
 - Melody API baseline: `f37201a feat: add Melody Exercise teaching workflow`
 - Melody Studio now uses Steel Guitar RAG branding. No broad repository rename is approved.
 
 ## Melody Studio
 
-Status: **PASS — octave-aware arranger, lesson-clarity repairs, and the scientific-octave fretboard map are committed, deployed to protected preview, and ready for user smoke**.
+Status: **PASS — direct phrase entry, compact lesson navigation, octave-aware arranging, and the scientific-octave map are committed, deployed to protected preview, and ready for user smoke**.
 
 - The home header now exposes feature-gated actions in this order: Explore Fretboard, Melody Studio, Backstage.
 - The technical inline Melody form was removed from home.
-- `/ui/melody-workbench.html` provides four learner jobs: artist solo, song arrangement, own melody, and original practice phrase.
-- Recording fields appear only for source-based jobs and are cleared when switching to source-free work.
+- `/ui/melody-workbench.html` opens directly into the phrase builder with three compact starting points: Enter my phrase, A song or recording, and Give me an exercise.
+- The recording starting point reveals source fields plus faithful-solo versus playable-E9-arrangement treatment; the exercise starting point reveals practice presets.
+- Recording fields are cleared when switching to either source-free starting point.
 - Phrase entry supports notes, scale degrees, literal one-string E9 tab, note/degree palette buttons, deterministic presets, sequence editing, and section counts.
 - After task selection, the task-card grid collapses so the active editor/result is the page focus.
 - Phrase notes are clean selectable token/pitch chips. The selected note uses a compact `− / Octave / +` register stepper, a separate Return to automatic action, and separate ordering/removal actions.
@@ -26,7 +27,9 @@ Status: **PASS — octave-aware arranger, lesson-clarity repairs, and the scient
 - Source links are labeled as attribution only; Melody Studio does not claim to listen to or transcribe the link.
 - Results are fretboard-first. Single-note, Recommended Harmony, thirds, sixths, and chord-melody routes appear when mechanically available.
 - Only Single Note and Recommended Harmony are shown initially; specialist routes live under More arrangements.
-- Route, Previous/Next, and event controls visibly synchronize the selected fretboard position, active step, fixed-width tab, pedal/lever instructions, and explanation.
+- One compact navigator beneath the fretboard combines Octave colors, legend, note progress, adjacent previous/next arrows, concise steel-player position pills, and one current-note readout.
+- Route, arrow, and pill controls visibly synchronize the selected fretboard position, active pill, fixed-width tab route, pedal/lever instructions, and current-note movement cue.
+- The duplicated active-tab sentence and verbose event-detail sentence have been removed.
 - Melody Studio hides the Explorer-oriented position-card strip, filters, legend, and full technical inspector. A compact Current note readout now states the active note, string(s), fret, controls, and movement cue.
 - Melody tab omits artificial `Ly | step N` rows. Event selectors spell out string, fret, and pedal/lever positions, and the primary harmony route is labeled `Recommended harmony` without duplication.
 - A default-on, user-toggleable scientific-octave map colors accurate octave zones independently along every E9 string; it does not pretend that one fret-wide band represents one octave across all strings.
@@ -53,20 +56,22 @@ Scientific-octave protected-smoke handoff: `docs/handoffs/task-completions/2026-
 Octave-map adjustment handoff: `docs/handoffs/task-completions/2026-07-11-0736-06-melody-scientific-octave-map-adjustment.md`.
 Octave-map cache-bust handoff: `docs/handoffs/task-completions/2026-07-11-0739-06-melody-octave-map-cache-bust.md`.
 Octave-map protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-0742-12-melody-octave-map-protected-smoke.md`.
+Compact-flow implementation handoff: `docs/handoffs/task-completions/2026-07-11-0801-06-melody-compact-flow-navigator.md`.
+Compact-flow protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-0804-12-melody-compact-flow-protected-smoke.md`.
 
 ## Verification
 
 - Full pytest: `922 passed`.
 - Core JavaScript syntax: passed for answer client, Melody Studio, and fretboard component.
 - `git diff --check`: passed.
-- Local browser smoke: pass at `http://127.0.0.1:8898/ui/melody-workbench.html?access=beta_user&v=octave-map-local-20260711`.
-- Protected browser smoke: pass at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-octave-map-f6868d5-20260711`.
-- Browser verified independent per-note register editing, 30 string-aware octave zones, map show/hide behavior, matching legend/marker/step colors, harmony top-voice labeling plus exact supporting-voice marker registers, visible synchronization, and no `[object Object]` or console errors.
+- Local browser smoke: pass at `http://127.0.0.1:8898/ui/melody-workbench.html?access=beta_user&v=compact-flow-local-20260711`.
+- Protected browser smoke: pass at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-compact-flow-62a8a3d-20260711`.
+- Browser verified direct three-choice entry, recording treatment, source clearing, exercise presets, compact pill/arrow placement, zero page overflow, independent register editing, octave show/hide, harmony marker registers, visible synchronization, and no duplicated event copy, `[object Object]`, or console errors.
 
 ## Protected preview
 
-- Runtime smoke HEAD: `f6868d5`.
-- Loopback `/api/version`: `f6868d5`, `feature/answer-api`, `hybrid_private_first`, `cloudflare_access`, `features.melodyExercise=true`.
+- Runtime smoke HEAD: `62a8a3d`.
+- Loopback `/api/version`: `62a8a3d`, `feature/answer-api`, `hybrid_private_first`, `cloudflare_access`, `features.melodyExercise=true`.
 - Preview refresh succeeded without `sudo` by terminating only the user-owned port-8770 listener and allowing the installed LaunchDaemon to restart it.
 - Installed wrapper matches the committed wrapper.
 - Cloudflare Access login succeeded in the in-app browser.
@@ -81,6 +86,6 @@ Octave-map protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-0
 
 ## Next action
 
-1. The user verifies the scientific-octave fretboard map and selected-note register control at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-octave-map-f6868d5-20260711`.
+1. The user verifies direct phrase entry and the compact note navigator at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-compact-flow-62a8a3d-20260711`.
 2. User-reported defects enter the approved end-to-end autopilot repair loop without renewed feature approval.
 3. Keep the user-smoke freeze; do not begin unrelated broad feature work until this smoke closes.
