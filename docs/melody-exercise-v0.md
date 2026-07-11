@@ -49,7 +49,7 @@ Ready exercises add `routes`, `selectedRouteId`, and an input `resolvedPhrase`. 
 
 When the backend advertises `features.melodyExercise=true` through `/api/session`, the home header exposes **Melody Studio** beside Explore Fretboard and Backstage. The technical inline form is not part of the home screen. `/ui/melody-workbench.html` owns the guided phrase-to-E9 workflow.
 
-Melody Studio begins with four learner jobs: artist solo, song arrangement, the learner's melody, and original practice phrase. Recording fields appear only for source-based jobs and must be cleared when the learner switches to a source-free job. The phrase builder accepts notes, scale degrees, or literal one-string E9 tab, provides deterministic presets and a note/degree palette, and states clearly that a source link supplies attribution rather than automatic audio transcription. Literal tab retains its string, fret, controls, and register.
+Melody Studio opens directly into the phrase builder. A compact starting-point control offers **Enter my phrase**, **A song or recording**, and **Give me an exercise**. The song/recording path reveals source fields plus a treatment choice between a faithful solo passage and a playable E9 arrangement; these continue to map to the existing artist-solo and song-arrangement request kinds. Recording fields are cleared when the learner switches to a source-free starting point. Practice presets appear for the exercise starting point. The phrase builder accepts notes, scale degrees, or literal one-string E9 tab and states clearly that a source link supplies attribution rather than automatic audio transcription. Literal tab retains its string, fret, controls, and register.
 
 Unmarked degrees default to the closest playable pitch path. Players may choose ascending, descending, or preserve-input contour and adjust individual notes up or down by an octave. Sequence chips show the resolved scientific pitch before submission.
 
@@ -59,12 +59,12 @@ The result shows:
 - transcription/adaptation/simplification label;
 - exact/approximate/interpretive label and confidence;
 - numbered lesson section and continuation state;
-- synchronized event stepper, fixed-width tab, fretboard, and explanation;
+- compact synchronized note navigator, fixed-width tab, fretboard, and explanation;
 - switchable single-note, recommended harmony, thirds, sixths, and chord-melody routes when mechanically available;
 - resolved pitch/register and bar, string, pedal, and lever movement guidance;
 - no empty source section for source-free deterministic exercises.
 
-The dedicated lesson view is fretboard-first. Previous/next and event-step controls must visibly select the matching `renderablePositionId` in the fretboard component and update the active tab-step label. Long phrases expose a Continue to Section action using the existing `sectionNumber` request field. Mobile layout keeps the tab fixed-width inside its own horizontal scroller.
+The dedicated lesson view is fretboard-first. One compact navigator beneath the board combines the Octave colors toggle and legend, note progress, previous/next arrows, concise pitch/position pills, and one current-note readout. It does not repeat the selected note in a separate active-tab sentence or long explanatory event sentence. Previous/next and note-pill controls must visibly select the matching `renderablePositionId` in the fretboard component. Long phrases expose a Continue to Section action using the existing `sectionNumber` request field. Mobile layout keeps the arrows beside a horizontally scrollable pill row and keeps the fixed-width tab inside its own horizontal scroller.
 
 The feature is controlled by `STEEL_RAG_ENABLE_MELODY_EXERCISE`, which defaults off. Protected preview may explicitly enable it for approved testing.
 

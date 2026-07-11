@@ -87,27 +87,29 @@
     h3 { margin: 0; font-size: 27px; }
     .studio-copy { color: var(--muted); line-height: 1.55; }
 
-    .task-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 26px; }
-    .task-card {
-      min-height: 176px;
-      display: grid;
-      align-content: space-between;
-      gap: 20px;
+    .start-picker { display: grid; gap: 14px; padding-bottom: 22px; border-bottom: 1px solid rgba(244, 234, 214, 0.12); }
+    .start-picker__heading { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px 18px; }
+    .start-picker__heading .studio-copy { margin: 0; }
+    .start-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .start-choice {
+      min-height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
       border: 1px solid rgba(244, 234, 214, 0.14);
-      border-radius: 18px;
+      border-radius: 14px;
       background: rgba(5, 7, 7, 0.52);
-      color: var(--cream);
+      color: var(--muted);
       cursor: pointer;
-      padding: 20px;
-      text-align: left;
+      padding: 10px 14px;
+      font-weight: 800;
+      text-align: center;
     }
-    .task-card:hover, .task-card:focus-visible, .task-card.is-selected { border-color: rgba(240, 191, 105, 0.7); background: rgba(240, 191, 105, 0.09); outline: none; }
-    .task-card strong { font-family: var(--lesson); font-size: 22px; line-height: 1.15; }
-    .task-card span { color: var(--muted); font-size: 14px; line-height: 1.45; }
-    .task-card em { color: var(--gold); font-style: normal; font-size: 13px; font-weight: 800; }
+    .start-choice:hover, .start-choice:focus-visible, .start-choice.is-selected { border-color: var(--gold); background: rgba(240, 191, 105, 0.11); color: var(--cream); outline: none; }
 
-    #studio-editor { margin-top: 24px; scroll-margin-top: 20px; }
-    .editor-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 26px; }
+    #studio-editor { scroll-margin-top: 20px; }
+    .editor-head { display: flex; align-items: flex-start; justify-content: flex-end; gap: 24px; margin: 22px 0 26px; }
     .editor-settings { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 12px; }
     .key-field, .contour-field { min-width: 180px; }
     .field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
@@ -126,6 +128,8 @@
     .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--gold); outline: 2px solid rgba(240, 191, 105, 0.18); }
     .field-help { margin: 0; color: rgba(244, 234, 214, 0.58); font-size: 13px; font-weight: 500; line-height: 1.5; }
     #studio-material-fields { margin-bottom: 24px; }
+    .source-treatment { align-content: start; }
+    .source-treatment .segmented { width: fit-content; }
 
     .phrase-builder { margin-top: 24px; display: grid; gap: 18px; }
     .palette-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
@@ -203,23 +207,27 @@
     .more-routes .route-tabs { margin: 10px 0 0; }
     #studio-source-needed { border: 1px solid var(--line); border-radius: 18px; background: rgba(240, 191, 105, 0.07); padding: 20px; }
     #studio-source-needed p { color: var(--muted); line-height: 1.6; }
-    .current-note { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; margin-top: 18px; border: 1px solid rgba(240, 191, 105, 0.34); border-radius: 14px; background: rgba(240, 191, 105, 0.08); padding: 13px 15px; }
-    .current-note > span:first-child { color: var(--gold); font-size: 12px; font-weight: 850; letter-spacing: 0.07em; text-transform: uppercase; }
-    .current-note strong { font-family: var(--lesson); font-size: 22px; }
-    #studio-current-position { color: var(--cream); font-weight: 750; }
+    .current-note { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px 8px; margin: 0; color: var(--muted); font-size: 14px; }
+    .current-note > span:first-child { color: var(--cream); font-weight: 850; }
+    .current-note strong { color: var(--gold); font-size: 15px; }
+    #studio-current-position { color: var(--cream); }
     #studio-current-movement { flex-basis: 100%; color: var(--muted); font-size: 13px; }
     #studio-fretboard { margin-top: 18px; }
-    .octave-map-controls { display: grid; gap: 6px; margin-top: 10px; }
-    #studio-octave-toggle { width: fit-content; min-height: 36px; border: 1px solid rgba(240, 191, 105, 0.42); border-radius: 999px; background: rgba(240, 191, 105, 0.08); color: var(--cream); cursor: pointer; padding: 0 12px; font-weight: 800; }
-    #studio-octave-toggle[aria-pressed="true"] { border-color: var(--gold); color: var(--gold); }
-    .octave-guide { max-width: 100%; display: flex; align-items: center; gap: 8px; overflow-x: auto; padding: 5px 2px 7px; color: var(--muted); scrollbar-width: thin; }
-    .octave-guide > strong { flex: 0 0 auto; color: var(--cream); font-size: 12px; letter-spacing: 0.04em; }
+    #studio-transport { display: grid; gap: 12px; margin-top: 10px; }
+    .octave-map-controls { min-width: 0; display: flex; align-items: center; gap: 8px; }
+    #studio-octave-toggle { flex: 0 0 auto; min-height: 32px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); cursor: pointer; padding: 0 8px; font-size: 12px; font-weight: 800; }
+    #studio-octave-toggle[aria-pressed="true"] { color: var(--cream); }
+    .octave-toggle-mark { display: inline-block; width: 16px; color: var(--gold); opacity: 0; }
+    #studio-octave-toggle[aria-pressed="true"] .octave-toggle-mark { opacity: 1; }
+    .octave-guide { min-width: 0; display: flex; align-items: center; gap: 6px; overflow-x: auto; padding: 3px 1px; color: var(--muted); scrollbar-width: thin; }
     .octave-guide__item { --octave-color: var(--muted); flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; min-width: 34px; border: 1px solid color-mix(in srgb, var(--octave-color) 48%, transparent); border-radius: 999px; padding: 4px 8px; color: var(--cream); font-size: 12px; font-weight: 800; }
     .octave-guide__swatch { width: 9px; height: 9px; border-radius: 50%; background: var(--octave-color); box-shadow: 0 0 8px color-mix(in srgb, var(--octave-color) 56%, transparent); }
-    #studio-transport { display: grid; gap: 14px; margin-top: 18px; }
-    .transport-buttons { display: flex; align-items: center; justify-content: center; gap: 10px; }
-    .event-strip { display: flex; gap: 8px; overflow-x: auto; padding: 4px 0 8px; }
-    .event-step { --octave-color: transparent; --octave-tint: rgba(5, 7, 7, 0.52); flex: 0 0 auto; min-height: 58px; display: grid; gap: 4px; border: 1px solid rgba(244, 234, 214, 0.14); border-radius: 12px; background: linear-gradient(var(--octave-tint), var(--octave-tint)), rgba(5, 7, 7, 0.52); box-shadow: inset 4px 0 0 var(--octave-color); color: var(--muted); cursor: pointer; padding: 9px 12px 9px 15px; text-align: left; }
+    .note-progress { flex: 0 0 auto; margin-left: 4px; color: var(--muted); font-size: 12px; font-weight: 750; white-space: nowrap; }
+    .note-navigator-row { width: fit-content; max-width: 100%; display: grid; grid-template-columns: 42px minmax(0, max-content) 42px; align-items: center; gap: 8px; }
+    .navigator-arrow { width: 42px; min-height: 42px; border: 1px solid var(--line); border-radius: 50%; background: rgba(5, 7, 7, 0.52); color: var(--cream); cursor: pointer; font-size: 20px; font-weight: 850; }
+    .navigator-arrow:disabled { opacity: 0.28; cursor: default; }
+    .event-strip { min-width: 0; display: flex; gap: 7px; overflow-x: auto; padding: 3px 1px 6px; }
+    .event-step { --octave-color: transparent; --octave-tint: rgba(5, 7, 7, 0.52); flex: 0 0 auto; min-height: 46px; display: flex; align-items: center; gap: 8px; border: 1px solid rgba(244, 234, 214, 0.14); border-radius: 999px; background: linear-gradient(var(--octave-tint), var(--octave-tint)), rgba(5, 7, 7, 0.52); box-shadow: inset 4px 0 0 var(--octave-color); color: var(--muted); cursor: pointer; padding: 8px 13px 8px 16px; text-align: left; }
     .octave-guide__item[data-scientific-octave="2"], #studio-result.is-octave-map-visible .event-step[data-scientific-octave="2"] { --octave-color: #b8a3ff; --octave-tint: rgba(184, 163, 255, 0.13); }
     .octave-guide__item[data-scientific-octave="3"], #studio-result.is-octave-map-visible .event-step[data-scientific-octave="3"] { --octave-color: #63b3ff; --octave-tint: rgba(99, 179, 255, 0.13); }
     .octave-guide__item[data-scientific-octave="4"], #studio-result.is-octave-map-visible .event-step[data-scientific-octave="4"] { --octave-color: #58d6bd; --octave-tint: rgba(88, 214, 189, 0.13); }
@@ -233,29 +241,25 @@
     #studio-result.is-octave-map-visible #studio-fretboard [data-highlight-dot][data-scientific-octave="5"] { fill: #f0bf69; }
     #studio-result.is-octave-map-visible #studio-fretboard [data-highlight-dot][data-scientific-octave="6"] { fill: #ff927d; }
     .event-step strong { color: var(--cream); font-size: 14px; }
-    .event-step span { font-size: 12px; }
+    .event-step span { font-size: 12px; white-space: nowrap; }
     .event-step.is-selected { border-color: var(--gold); outline: 2px solid rgba(240, 191, 105, 0.2); background: linear-gradient(var(--octave-tint), var(--octave-tint)), rgba(240, 191, 105, 0.12); color: var(--cream); }
     .event-step:focus-visible { outline: 3px solid var(--cream); outline-offset: 2px; }
-    #studio-event-detail { margin: 0; text-align: center; color: var(--cream); font-size: 16px; }
     #studio-tab { margin-top: 18px; }
-    #studio-active-tab-step { margin: 0 0 8px; color: var(--gold); font-size: 14px; font-weight: 800; }
     .tab-block { max-width: 100%; margin: 0; overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; background: rgba(4, 6, 6, 0.78); padding: 16px; color: var(--cream); font: 15px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre; }
     .tab-block code { font: inherit; white-space: inherit; }
     #studio-explanation { margin-top: 18px; border-radius: 16px; background: rgba(240, 191, 105, 0.06); padding: 16px; color: var(--muted); line-height: 1.6; }
     .result-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
     .unavailable { max-width: 720px; margin: 0 auto; text-align: center; }
 
-    @media (max-width: 900px) {
-      .task-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    }
     @media (max-width: 640px) {
       .studio-header, main { width: calc(100% - 24px); }
       .studio-header { align-items: flex-start; padding: 14px 0; }
       .studio-brand strong { font-size: 19px; }
       .studio-nav a { min-height: 36px; padding: 0 11px; font-size: 12px; }
       main { padding-top: 34px; }
-      .task-grid, .field-grid { grid-template-columns: 1fr; }
-      .task-card { min-height: 142px; }
+      .start-picker__heading { display: grid; }
+      .start-options, .field-grid { grid-template-columns: 1fr; }
+      .start-choice { justify-content: flex-start; min-height: 44px; }
       .field.is-wide { grid-column: auto; }
       .editor-head, .palette-head { align-items: stretch; flex-direction: column; }
       .editor-settings { justify-content: stretch; }
@@ -264,6 +268,9 @@
       .register-stepper { grid-template-columns: 44px minmax(0, 1fr) 44px; }
       #studio-register-value { font-size: 13px; }
       .note-editor-actions button { flex: 1 1 calc(50% - 8px); }
+      .octave-map-controls { flex-wrap: wrap; }
+      .octave-guide { order: 3; flex-basis: 100%; }
+      .note-progress { margin-left: 4px; }
       .tab-block { white-space: pre; overflow-x: auto; }
     }
   </style>
@@ -295,33 +302,23 @@
     </section>
 
     <div id="studio-workflow" hidden>
-      <section class="studio-panel" id="studio-task-panel" aria-labelledby="studio-task-heading">
-        <p class="studio-step-label">Step 1 of 4</p>
-        <h2 id="studio-task-heading">What do you want to learn?</h2>
-        <p class="studio-copy">Choose the job that sounds like what you came here to do.</p>
-        <div class="task-grid">
-          <button class="task-card" type="button" data-studio-task="artist_solo_lesson" aria-pressed="false">
-            <strong>Learn an artist’s solo</strong><span>Identify the recording, then build or paste the passage you want to practice.</span><em>Choose artist solo →</em>
-          </button>
-          <button class="task-card" type="button" data-studio-task="song_arrangement_lesson" aria-pressed="false">
-            <strong>Build a song arrangement</strong><span>Break a song into manageable E9 teaching sections.</span><em>Choose arrangement →</em>
-          </button>
-          <button class="task-card" type="button" data-studio-task="user_melody" aria-pressed="false">
-            <strong>Map my own melody</strong><span>Enter notes, degrees, or simple one-string tab and see where they live.</span><em>Choose my melody →</em>
-          </button>
-          <button class="task-card" type="button" data-studio-task="original_exercise" aria-pressed="false">
-            <strong>Make a practice phrase</strong><span>Start with a proven note pattern and turn it into an E9 drill.</span><em>Choose practice phrase →</em>
-          </button>
-        </div>
-      </section>
-
-      <section class="studio-panel" id="studio-editor" hidden aria-labelledby="studio-editor-title">
-        <div class="editor-head">
-          <div>
-            <p class="studio-step-label">Steps 2 and 3 of 4</p>
-            <h2 id="studio-editor-title">Build the phrase</h2>
-            <button class="secondary-action" type="button" id="studio-change-task" style="min-height:36px;margin-top:10px;">Change task</button>
+      <section class="studio-panel" id="studio-editor" aria-labelledby="studio-editor-title">
+        <div class="start-picker">
+          <div class="start-picker__heading">
+            <div>
+              <p class="studio-step-label">Start here</p>
+              <h2 id="studio-editor-title">Build your phrase</h2>
+            </div>
+            <p class="studio-copy">What are you starting with?</p>
           </div>
+          <div class="start-options" role="group" aria-label="Choose what you are starting with">
+            <button class="start-choice is-selected" type="button" data-studio-start="phrase" aria-pressed="true">Enter my phrase</button>
+            <button class="start-choice" type="button" data-studio-start="recording" aria-pressed="false">A song or recording</button>
+            <button class="start-choice" type="button" data-studio-start="exercise" aria-pressed="false">Give me an exercise</button>
+          </div>
+        </div>
+
+        <div class="editor-head">
           <div class="editor-settings">
             <label class="field key-field">Key
               <select id="studio-key"><option value="G">G major</option><option value="C">C major</option></select>
@@ -340,6 +337,13 @@
         </div>
 
         <div class="field-grid" id="studio-material-fields" hidden>
+          <div class="field is-wide source-treatment">
+            <span>How should Melody Studio treat it?</span>
+            <div class="segmented" role="group" aria-label="Song or recording treatment">
+              <button type="button" data-source-treatment="artist_solo_lesson" aria-pressed="false">Faithful solo passage</button>
+              <button type="button" data-source-treatment="song_arrangement_lesson" aria-pressed="true">Playable E9 arrangement</button>
+            </div>
+          </div>
           <label class="field">Artist or player<input id="studio-artist" placeholder="Example: Tom Brumley"></label>
           <label class="field">Song or solo<input id="studio-song" placeholder="Song title"></label>
           <label class="field">Recording / version<input id="studio-recording" placeholder="Album, live version, timestamp..."></label>
@@ -356,7 +360,7 @@
             </div>
           </div>
           <div class="palette" id="studio-palette" aria-label="Phrase note palette"></div>
-          <div class="presets" aria-label="Practice phrase presets">
+          <div class="presets" id="studio-presets" aria-label="Practice phrase presets" hidden>
             <span>Quick starts:</span>
             <button class="preset-button" type="button" data-preset="1-2-3-5">1 2 3 5</button>
             <button class="preset-button" type="button" data-preset="1-3-5-3">1 3 5 3</button>
@@ -399,7 +403,7 @@
 
       <section class="studio-panel" id="studio-result" hidden aria-labelledby="studio-result-title">
         <div class="result-head">
-          <p class="studio-step-label">Step 4 of 4 · Practice the lesson</p>
+          <p class="studio-step-label">Practice the lesson</p>
           <h2 id="studio-result-title">Your E9 lesson</h2>
           <div id="studio-result-meta"></div>
           <p id="studio-result-source" hidden></p>
@@ -417,36 +421,35 @@
           <button class="primary-action" type="button" data-edit-source>Edit recording and phrase</button>
         </div>
 
-        <div class="current-note" id="studio-current-note" hidden aria-live="polite">
-          <span>Current note</span>
-          <strong id="studio-current-note-name"></strong>
-          <span id="studio-current-position"></span>
-          <span id="studio-current-movement"></span>
-        </div>
         <div id="studio-fretboard" aria-label="Melody Studio fretboard"></div>
-        <div class="octave-map-controls" id="studio-octave-map-controls" hidden>
-          <button type="button" id="studio-octave-toggle" aria-pressed="true">Hide octave map</button>
-          <div class="octave-guide" id="studio-octave-guide" aria-label="Scientific octave color guide">
-            <strong>Scientific octave:</strong>
-            <span class="octave-guide__item" data-scientific-octave="2" aria-label="Octave 2 — C2 through B2" title="C2 through B2"><i class="octave-guide__swatch" aria-hidden="true"></i>2</span>
-            <span class="octave-guide__item" data-scientific-octave="3" aria-label="Octave 3 — C3 through B3" title="C3 through B3"><i class="octave-guide__swatch" aria-hidden="true"></i>3</span>
-            <span class="octave-guide__item" data-scientific-octave="4" aria-label="Octave 4 — C4 through B4" title="C4 through B4"><i class="octave-guide__swatch" aria-hidden="true"></i>4</span>
-            <span class="octave-guide__item" data-scientific-octave="5" aria-label="Octave 5 — C5 through B5" title="C5 through B5"><i class="octave-guide__swatch" aria-hidden="true"></i>5</span>
-            <span class="octave-guide__item" data-scientific-octave="6" aria-label="Octave 6 — C6 through B6" title="C6 through B6"><i class="octave-guide__swatch" aria-hidden="true"></i>6</span>
-          </div>
-        </div>
 
         <div id="studio-transport" hidden>
-          <div class="transport-buttons">
-            <button class="secondary-action" type="button" id="studio-previous">← Previous note</button>
-            <button class="secondary-action" type="button" id="studio-next">Next note →</button>
+          <div class="octave-map-controls" id="studio-octave-map-controls" hidden>
+            <button type="button" id="studio-octave-toggle" aria-pressed="true"><span class="octave-toggle-mark" aria-hidden="true">✓</span>Octave colors</button>
+            <div class="octave-guide" id="studio-octave-guide" aria-label="Scientific octave color guide">
+              <span class="octave-guide__item" data-scientific-octave="2" aria-label="Octave 2 — C2 through B2" title="C2 through B2"><i class="octave-guide__swatch" aria-hidden="true"></i>2</span>
+              <span class="octave-guide__item" data-scientific-octave="3" aria-label="Octave 3 — C3 through B3" title="C3 through B3"><i class="octave-guide__swatch" aria-hidden="true"></i>3</span>
+              <span class="octave-guide__item" data-scientific-octave="4" aria-label="Octave 4 — C4 through B4" title="C4 through B4"><i class="octave-guide__swatch" aria-hidden="true"></i>4</span>
+              <span class="octave-guide__item" data-scientific-octave="5" aria-label="Octave 5 — C5 through B5" title="C5 through B5"><i class="octave-guide__swatch" aria-hidden="true"></i>5</span>
+              <span class="octave-guide__item" data-scientific-octave="6" aria-label="Octave 6 — C6 through B6" title="C6 through B6"><i class="octave-guide__swatch" aria-hidden="true"></i>6</span>
+            </div>
+            <span class="note-progress" id="studio-note-progress" aria-live="polite"></span>
           </div>
-          <div class="event-strip" id="studio-event-strip" aria-label="Lesson note steps"></div>
-          <p id="studio-event-detail" aria-live="polite"></p>
+          <div class="note-navigator-row">
+            <button class="navigator-arrow" type="button" id="studio-previous" aria-label="Previous note">←</button>
+            <div class="event-strip" id="studio-event-strip" aria-label="Lesson note steps"></div>
+            <button class="navigator-arrow" type="button" id="studio-next" aria-label="Next note">→</button>
+          </div>
+          <div class="current-note" id="studio-current-note" hidden aria-live="polite">
+            <span>Current note:</span>
+            <strong id="studio-current-note-name"></strong>
+            <span aria-hidden="true">—</span>
+            <span id="studio-current-position"></span>
+            <span id="studio-current-movement"></span>
+          </div>
         </div>
 
         <div id="studio-tab" hidden>
-          <p id="studio-active-tab-step"></p>
           <pre class="tab-block" aria-label="Melody Studio tab"><code id="studio-tab-code"></code></pre>
         </div>
         <div id="studio-explanation" hidden></div>
@@ -460,8 +463,8 @@
     </div>
   </main>
 
-  <script src="answer-client.js?v=melody-octave-map-35f36bc-20260711"></script>
-  <script src="pedal-steel-fretboard.js?v=melody-octave-map-35f36bc-20260711"></script>
-  <script src="melody-workbench.js?v=melody-octave-map-35f36bc-20260711"></script>
+  <script src="answer-client.js?v=melody-compact-flow-20260711"></script>
+  <script src="pedal-steel-fretboard.js?v=melody-compact-flow-20260711"></script>
+  <script src="melody-workbench.js?v=melody-compact-flow-20260711"></script>
 </body>
 </html>

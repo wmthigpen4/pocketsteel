@@ -34,6 +34,11 @@ assert.deepEqual(studio.reorderToken(["1", "2", "3"], 1, -1), ["2", "1", "3"]);
 assert.equal(studio.validateTokens(["1", "2", "3"], "G").ok, true);
 assert.equal(studio.validateTokens(["G", "A", "B", "D"], "G").ok, true);
 assert.equal(studio.validateTokens(["F"], "G").ok, false);
+assert.equal(studio.startingPointForKind("user_melody"), "phrase");
+assert.equal(studio.startingPointForKind("artist_solo_lesson"), "recording");
+assert.equal(studio.startingPointForKind("song_arrangement_lesson"), "recording");
+assert.equal(studio.startingPointForKind("original_exercise"), "exercise");
+assert.equal(studio.createInitialState().kind, "user_melody");
 const literal = studio.parseSimpleTabEvents("S4: 3 5F 7");
 assert.deepEqual(literal.map((event) => [event.string, event.fret, event.changes]), [[4, 3, []], [4, 5, ["F"]], [4, 7, []]]);
 assert.deepEqual(studio.resolvePhrasePreview([{token: "5"}, {token: "6"}, {token: "1"}, {token: "3"}], "G").map((event) => event.pitch), ["D4", "E4", "G4", "B4"]);
@@ -69,6 +74,10 @@ assert.deepEqual(
   studio.eventStepPresentation({ step: 2, resolvedPitch: "E4", notes: [{ string: 4, fret: 3, changes: ["A"] }, { string: 6, fret: 3, changes: ["A"] }] }),
   { note: "2. E4", position: "Strings 4 + 6 · Fret 3 · A pedal" }
 );
+assert.deepEqual(
+  studio.eventStepCompactPresentation({ resolvedPitch: "E4", notes: [{ string: 4, fret: 3, changes: ["A"] }, { string: 6, fret: 3, changes: ["A"] }] }),
+  { note: "E4", position: "S4+6 · F3 · A" }
+);
 assert.equal(studio.routeButtonLabel({ recommended: true, label: "Recommended harmony" }), "Recommended harmony");
 assert.equal(studio.scientificOctaveForEvent({ resolvedPitch: "D4", pitchValue: 62 }), 4);
 assert.equal(studio.scientificOctaveForEvent({ resolvedPitch: "G5", pitchValue: 79 }), 5);
@@ -98,13 +107,25 @@ assert.equal(studio.createInitialState().showOctaveMap, true);
     )
 
 
-def test_melody_workbench_has_guided_tasks_feature_state_and_fretboard_first_result() -> None:
+def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -> None:
     html = Path("ui/melody-workbench.html").read_text(encoding="utf-8")
     script = Path("ui/melody-workbench.js").read_text(encoding="utf-8")
 
     assert "Turn a phrase into an E9 lesson." in html
-    assert html.index('data-studio-task="artist_solo_lesson"') < html.index('data-studio-task="original_exercise"')
+    assert "Step 1 of 4" not in html
+    assert 'data-studio-start="phrase"' in html
+    assert 'data-studio-start="recording"' in html
+    assert 'data-studio-start="exercise"' in html
+    assert html.count("data-studio-start=") == 3
+    assert "Enter my phrase" in html
+    assert "A song or recording" in html
+    assert "Give me an exercise" in html
+    assert 'data-source-treatment="artist_solo_lesson"' in html
+    assert 'data-source-treatment="song_arrangement_lesson"' in html
+    assert "Faithful solo passage" in html
+    assert "Playable E9 arrangement" in html
     assert 'id="studio-material-fields" hidden' in html
+    assert 'id="studio-presets" aria-label="Practice phrase presets" hidden' in html
     assert 'id="studio-palette"' in html
     assert 'id="studio-sequence"' in html
     assert 'data-preset="1-2-3-5"' in html
@@ -116,7 +137,7 @@ def test_melody_workbench_has_guided_tasks_feature_state_and_fretboard_first_res
     assert 'data-scientific-octave="2"] { --octave-color: #b8a3ff;' in html
     assert 'data-scientific-octave="4"] { --octave-color: #58d6bd;' in html
     assert 'data-scientific-octave="6"] { --octave-color: #ff927d;' in html
-    assert ".octave-map-controls { display: grid;" in html
+    assert ".octave-map-controls { min-width: 0; display: flex;" in html
     assert ".register-stepper { grid-template-columns: 44px minmax(0, 1fr) 44px; }" in html
     assert "overflow-x: auto" in html
     assert ".event-step:focus-visible" in html
@@ -124,6 +145,11 @@ def test_melody_workbench_has_guided_tasks_feature_state_and_fretboard_first_res
     assert 'aria-label="Lower selected note one octave"' in html
     assert 'aria-label="Raise selected note one octave"' in html
     assert 'id="studio-current-note" hidden' in html
+    assert 'id="studio-note-progress"' in html
+    assert 'class="note-navigator-row"' in html
+    assert 'aria-label="Previous note">←</button>' in html
+    assert 'aria-label="Next note">→</button>' in html
+    assert '<span class="octave-toggle-mark" aria-hidden="true">✓</span>Octave colors</button>' in html
     assert 'id="studio-contour"' in html
     assert 'id="studio-route-tabs"' in html
     assert 'id="studio-note-editor" hidden' in html
@@ -131,7 +157,7 @@ def test_melody_workbench_has_guided_tasks_feature_state_and_fretboard_first_res
     assert 'id="studio-octave-auto"' in html
     assert 'id="studio-octave-up"' in html
     assert 'id="studio-more-routes" hidden' in html
-    assert 'id="studio-change-task"' in html
+    assert 'id="studio-change-task"' not in html
     assert "activateRoute" in script
     assert "hideFilterControls: true" in script
     assert "hidePositionTools: true" in script
@@ -139,13 +165,17 @@ def test_melody_workbench_has_guided_tasks_feature_state_and_fretboard_first_res
     assert "Select a note below to change its octave" in html
     assert "Change the register for this note only" in html
     assert "state.selectedPhraseIndex" in script
-    assert html.count("?v=melody-octave-map-35f36bc-20260711") == 3
+    assert html.count("?v=melody-compact-flow-20260711") == 3
     assert html.index('id="studio-fretboard"') < html.index('id="studio-tab"')
     assert 'id="studio-continue"' in html
     assert "does not listen to or extract notes from the link yet" in html
     assert "selectPedalSteelFretboardPosition" in script
-    assert "Active tab note" in script
+    assert "Active tab note" not in script
+    assert 'id="studio-active-tab-step"' not in html
+    assert 'id="studio-event-detail"' not in html
     assert "Active step" not in script
+    assert "eventStepCompactPresentation" in script
+    assert "Note ${state.activeEventIndex + 1} of ${events.length}" in script
     assert "button.dataset.scientificOctave" in script
     assert "elements.octaveGuide.hidden" in script
     assert "updateOctaveMapVisibility" in script

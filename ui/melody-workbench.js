@@ -32,6 +32,11 @@
       needsMaterial: false
     }
   };
+  const STARTING_POINTS = {
+    phrase: "user_melody",
+    recording: "song_arrangement_lesson",
+    exercise: "original_exercise"
+  };
   const KEY_NOTES = {
     G: ["G", "A", "B", "C", "D", "E", "F#"],
     C: ["C", "D", "E", "F", "G", "A", "B"]
@@ -217,9 +222,15 @@
     return request;
   }
 
-  function createInitialState(kind = "") {
+  function startingPointForKind(kind) {
+    if (kind === "artist_solo_lesson" || kind === "song_arrangement_lesson") return "recording";
+    if (kind === "original_exercise") return "exercise";
+    return "phrase";
+  }
+
+  function createInitialState(kind = "user_melody") {
     return {
-      kind: TASKS[kind] ? kind : "",
+      kind: TASKS[kind] ? kind : "user_melody",
       key: "G",
       paletteMode: "degrees",
       tokens: [],
@@ -254,6 +265,21 @@
     return {
       note: `${event?.step}. ${event?.resolvedPitch || event?.resolvedNote || "Note"}`,
       position: positionParts.join(" · ")
+    };
+  }
+
+  function eventStepCompactPresentation(event) {
+    const notes = event?.notes || [];
+    const strings = notes.map((note) => note.string);
+    const frets = Array.from(new Set(notes.map((note) => note.fret)));
+    const controls = Array.from(new Set(notes.flatMap((note) => note.changes || [])));
+    return {
+      note: event?.resolvedPitch || event?.resolvedNote || "Note",
+      position: [
+        `S${strings.join("+")}`,
+        `F${frets.join("+")}`,
+        controls.length ? controls.join("+") : "Open"
+      ].join(" · ")
     };
   }
 
@@ -325,9 +351,11 @@
   const api = {
     MAX_EVENTS_PER_SECTION,
     TASKS,
+    STARTING_POINTS,
     KEY_NOTES,
     PRESETS,
     createInitialState,
+    startingPointForKind,
     parsePhraseInput,
     parseSimpleTab,
     parseSimpleTabEvents,
@@ -339,6 +367,7 @@
     reorderToken,
     buildMelodyRequest,
     eventStepPresentation,
+    eventStepCompactPresentation,
     routeButtonLabel,
     scientificOctaveForEvent,
     scientificOctaveLabel,
@@ -357,17 +386,15 @@
   const answerUi = typeof STEEL_RAG_ANSWER_UI !== "undefined"
     ? STEEL_RAG_ANSWER_UI
     : global.STEEL_RAG_ANSWER_UI;
-  let state = createInitialState(new URLSearchParams(global.location.search).get("kind") || "");
+  let state = createInitialState(new URLSearchParams(global.location.search).get("kind") || "user_melody");
   let session = null;
 
   const elements = {
     unavailable: $("#studio-unavailable"),
     workflow: $("#studio-workflow"),
-    taskPanel: $("#studio-task-panel"),
-    taskCards: Array.from(doc.querySelectorAll("[data-studio-task]")),
+    startChoices: Array.from(doc.querySelectorAll("[data-studio-start]")),
+    sourceTreatmentButtons: Array.from(doc.querySelectorAll("[data-source-treatment]")),
     editor: $("#studio-editor"),
-    editorTitle: $("#studio-editor-title"),
-    changeTask: $("#studio-change-task"),
     materialFields: $("#studio-material-fields"),
     artist: $("#studio-artist"),
     song: $("#studio-song"),
@@ -390,6 +417,7 @@
     noteRemove: $("#studio-note-remove"),
     sectionCount: $("#studio-section-count"),
     palette: $("#studio-palette"),
+    presets: $("#studio-presets"),
     paletteModeButtons: Array.from(doc.querySelectorAll("[data-palette-mode]")),
     presetButtons: Array.from(doc.querySelectorAll("[data-preset]")),
     error: $("#studio-error"),
@@ -414,11 +442,10 @@
     transport: $("#studio-transport"),
     previous: $("#studio-previous"),
     next: $("#studio-next"),
+    noteProgress: $("#studio-note-progress"),
     eventStrip: $("#studio-event-strip"),
-    eventDetail: $("#studio-event-detail"),
     tab: $("#studio-tab"),
     tabCode: $("#studio-tab-code"),
-    activeTabStep: $("#studio-active-tab-step"),
     explanation: $("#studio-explanation"),
     continueButton: $("#studio-continue"),
     edit: $("#studio-edit"),
@@ -551,26 +578,43 @@
       : "Up to eight notes appear in each lesson section.";
   }
 
-  function selectTask(kind) {
-    const previousNeedsMaterial = currentTask()?.needsMaterial;
-    state.kind = TASKS[kind] ? kind : "";
+  function renderStartingPoint() {
+    const startingPoint = startingPointForKind(state.kind);
+    elements.startChoices.forEach((button) => {
+      const selected = button.dataset.studioStart === startingPoint;
+      button.classList.toggle("is-selected", selected);
+      button.setAttribute("aria-pressed", String(selected));
+    });
+    elements.sourceTreatmentButtons.forEach((button) => {
+      const selected = button.dataset.sourceTreatment === state.kind;
+      button.classList.toggle("is-selected", selected);
+      button.setAttribute("aria-pressed", String(selected));
+    });
+    elements.materialFields.hidden = startingPoint !== "recording";
+    elements.presets.hidden = startingPoint !== "exercise";
+  }
+
+  function selectStartingPoint(startingPoint) {
+    const previousStartingPoint = startingPointForKind(state.kind);
+    const nextKind = STARTING_POINTS[startingPoint] || "user_melody";
+    if (previousStartingPoint === "recording" && startingPoint !== "recording") clearMaterial();
+    state.kind = startingPoint === "recording" && currentTask()?.needsMaterial ? state.kind : nextKind;
     state.sectionNumber = 1;
     state.response = null;
-    if (previousNeedsMaterial || !currentTask()?.needsMaterial) clearMaterial();
-    elements.taskCards.forEach((card) => {
-      const selected = card.dataset.studioTask === state.kind;
-      card.classList.toggle("is-selected", selected);
-      card.setAttribute("aria-pressed", String(selected));
-    });
-    elements.editor.hidden = !currentTask();
-    elements.taskPanel.hidden = Boolean(currentTask());
-    if (!currentTask()) return;
-    elements.editorTitle.textContent = currentTask().title;
-    elements.materialFields.hidden = !currentTask().needsMaterial;
     elements.result.hidden = true;
+    elements.editor.hidden = false;
+    renderStartingPoint();
     renderPalette();
     renderPhraseBuilder();
-    elements.editor.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function selectSourceTreatment(kind) {
+    if (!TASKS[kind]?.needsMaterial) return;
+    state.kind = kind;
+    state.sectionNumber = 1;
+    state.response = null;
+    elements.result.hidden = true;
+    renderStartingPoint();
   }
 
   function questionForState() {
@@ -597,17 +641,16 @@
     const strings = (event.notes || []).map((item) => item.string);
     const controls = Array.from(new Set((event.notes || []).flatMap((item) => item.changes || [])));
     elements.currentNote.hidden = false;
-    elements.currentNoteName.textContent = `${event.resolvedNote}${event.resolvedPitch ? ` (${event.resolvedPitch})` : ""}`;
+    elements.currentNoteName.textContent = event.resolvedPitch || event.resolvedNote || "Note";
     elements.currentPosition.textContent = `${strings.length > 1 ? "Strings" : "String"} ${strings.join(" + ")} · Fret ${note.fret} · ${controls.length ? controls.join("+") : "Open"}`;
     elements.currentMovement.textContent = event.movement || "";
+    elements.currentMovement.hidden = !event.movement;
+    elements.noteProgress.textContent = `Note ${state.activeEventIndex + 1} of ${events.length}`;
     elements.eventStrip.querySelectorAll("[data-event-index]").forEach((button) => {
       const selected = Number(button.dataset.eventIndex) === state.activeEventIndex;
       button.classList.toggle("is-selected", selected);
       button.setAttribute("aria-pressed", String(selected));
     });
-    elements.eventDetail.textContent = event.explanation || `${event.resolvedNote} · string ${note.string} · fret ${note.fret}`;
-    const presentation = eventStepPresentation(event);
-    elements.activeTabStep.textContent = `Active tab note ${event.step}: ${event.resolvedPitch || event.resolvedNote} · ${presentation.position}`;
     elements.previous.disabled = state.activeEventIndex === 0;
     elements.next.disabled = state.activeEventIndex === events.length - 1;
     if (event.renderablePositionId) {
@@ -617,21 +660,23 @@
 
   function renderEvents(exercise) {
     elements.eventStrip.replaceChildren();
-    (exercise.events || []).forEach((event, index) => {
+    const events = exercise.events || [];
+    events.forEach((event, index) => {
       const button = doc.createElement("button");
       button.type = "button";
       button.className = "event-step";
       button.dataset.eventIndex = String(index);
       const presentation = eventStepPresentation(event);
+      const compact = eventStepCompactPresentation(event);
       const scientificOctave = scientificOctaveForEvent(event);
       if (scientificOctave !== null) {
         button.dataset.scientificOctave = String(scientificOctave);
-        button.setAttribute("aria-label", `${presentation.note}. ${presentation.position}. ${scientificOctaveLabel(scientificOctave)}.`);
+        button.setAttribute("aria-label", `Note ${index + 1} of ${events.length}: ${compact.note}. ${presentation.position}. ${scientificOctaveLabel(scientificOctave)}.`);
       }
       const noteLabel = doc.createElement("strong");
-      noteLabel.textContent = presentation.note;
+      noteLabel.textContent = compact.note;
       const positionLabel = doc.createElement("span");
-      positionLabel.textContent = presentation.position;
+      positionLabel.textContent = compact.position;
       button.append(noteLabel, positionLabel);
       button.addEventListener("click", () => selectEvent(index));
       elements.eventStrip.appendChild(button);
@@ -686,7 +731,7 @@
     const visible = Boolean(state.showOctaveMap);
     elements.result.classList.toggle("is-octave-map-visible", visible);
     elements.octaveToggle.setAttribute("aria-pressed", String(visible));
-    elements.octaveToggle.textContent = visible ? "Hide octave map" : "Show octave map";
+    elements.octaveToggle.setAttribute("aria-label", `${visible ? "Hide" : "Show"} octave colors`);
     elements.octaveGuide.hidden = !visible;
   }
 
@@ -797,17 +842,13 @@
     elements.key.value = "G";
     elements.contour.value = "closest_playable";
     elements.phraseInput.value = "";
-    elements.editor.hidden = true;
+    elements.editor.hidden = false;
     elements.result.hidden = true;
-    elements.taskPanel.hidden = false;
-    elements.taskCards.forEach((card) => {
-      card.classList.remove("is-selected");
-      card.setAttribute("aria-pressed", "false");
-    });
+    renderStartingPoint();
     renderPalette();
     renderPhraseBuilder();
     showError("");
-    $("#studio-task-heading")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    elements.editor.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   async function bootstrap() {
@@ -817,7 +858,8 @@
       elements.unavailable.hidden = enabled;
       elements.workflow.hidden = !enabled;
       if (!enabled) return;
-      if (state.kind) selectTask(state.kind);
+      elements.editor.hidden = false;
+      renderStartingPoint();
       renderPalette();
       renderPhraseBuilder();
     } catch (_error) {
@@ -826,13 +868,8 @@
     }
   }
 
-  elements.taskCards.forEach((card) => card.addEventListener("click", () => selectTask(card.dataset.studioTask)));
-  elements.changeTask.addEventListener("click", () => {
-    elements.editor.hidden = true;
-    elements.result.hidden = true;
-    elements.taskPanel.hidden = false;
-    elements.taskPanel.scrollIntoView({ behavior: "smooth", block: "start" });
-  });
+  elements.startChoices.forEach((button) => button.addEventListener("click", () => selectStartingPoint(button.dataset.studioStart)));
+  elements.sourceTreatmentButtons.forEach((button) => button.addEventListener("click", () => selectSourceTreatment(button.dataset.sourceTreatment)));
   elements.octaveDown.addEventListener("click", () => {
     const index = state.selectedPhraseIndex;
     state.tokens[index] = { ...phraseItem(state.tokens[index]), octaveShift: Math.max(-2, Number(state.tokens[index]?.octaveShift || 0) - 1) };
