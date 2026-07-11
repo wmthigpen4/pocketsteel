@@ -1,11 +1,11 @@
 # Integration Status — Current Snapshot
 
-Updated: 2026-07-11 13:21 America/Chicago
+Updated: 2026-07-11 13:29 America/Chicago
 
 ## Repository state
 
 - Branch: `feature/answer-api`
-- Current implementation: `74520ca Expand Melody Studio score practice`
+- Current implementation: `6fe67a3 Fix Melody fretboard marker labels`
 - Melody API baseline: `f37201a feat: add Melody Exercise teaching workflow`
 - Melody Studio now uses Steel Guitar RAG branding. No broad repository rename is approved.
 
@@ -22,6 +22,7 @@ Status: **PASS — score-practice Melody Studio is committed, 934-test green, an
 - The score is an interactive practice surface with synchronized staff/fretboard/navigator/tab selection, adjustable tempo, count-in, pause/resume, stop, measure and selected-note loops, and optional chord sound.
 - VexFlow renders G/C key signatures, beams, rests, ties, dots, lyrics, and accent/tenuto/staccato; MusicXML and print output preserve the supported notation.
 - Chord symbols guide mechanically validated harmony and chord-melody grip ranking while the resolved melody remains the top voice.
+- Melody Studio fretboard marker labels use concise resolved top-note pitches (`D4`, `E4`, etc.) instead of repeating the route title; harmony routes retain the melody/top-voice label.
 - All input methods normalize into session-only `score_draft_v1`; no uploaded source or draft is persisted.
 - A pinned local VexFlow 5.0.0 bundle renders the editable and result staffs, with a local SVG fallback.
 - The recording starting point reveals source fields plus faithful-solo versus playable-E9-arrangement treatment; the manual editor keeps practice presets behind its practice-phrase starter.
@@ -74,6 +75,8 @@ Multi-input protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-
 Resumed lesson-header protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-1246-12-melody-header-protected-smoke-resumed.md`.
 Score-practice implementation handoff: `docs/handoffs/task-completions/2026-07-11-1317-05-06-melody-score-practice-arranger.md`.
 Score-practice protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-1321-12-melody-score-practice-protected-smoke.md`.
+Marker-label implementation handoff: `docs/handoffs/task-completions/2026-07-11-1328-06-melody-fretboard-marker-label-fix.md`.
+Marker-label protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-1329-12-melody-marker-label-protected-smoke.md`.
 
 ## Verification
 
@@ -81,14 +84,14 @@ Score-practice protected-smoke handoff: `docs/handoffs/task-completions/2026-07-
 - Core JavaScript syntax: passed for answer client, Melody Studio, and fretboard component.
 - `git diff --check`: passed.
 - Local browser smoke: pass for all six cards, flagged catalog/import, score editing, VexFlow, Amazing Grace catalog, exact E9 route, ornament toggle, and mobile layout.
-- Protected browser smoke: pass at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-score-practice-74520ca-20260711`.
+- Protected browser smoke: pass at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-marker-labels-6fe67a3-20260711`.
 - Protected browser verified manual phrase and lead-sheet builder lesson generation, six routes, synchronized staff/fretboard/tab, VexFlow renderer, zero page overflow, and no `[object Object]` or console errors.
 - Resumed header smoke verified the removed practice kicker, metadata line, and More arrangements disclosure remain absent on the integrated runtime; all six routes remain together in one horizontally scrollable row and Chord melody selection synchronizes visibly.
 
 ## Protected preview
 
-- Runtime smoke HEAD: `74520ca`.
-- Loopback `/api/version`: `74520ca`, `feature/answer-api`, `hybrid_private_first`, `cloudflare_access`, `features.melodyExercise=true`; `melodyImport` remains default off.
+- Runtime smoke HEAD: `6fe67a3`.
+- Loopback `/api/version`: `6fe67a3`, `feature/answer-api`, `hybrid_private_first`, `cloudflare_access`, `features.melodyExercise=true`; `melodyImport` remains default off.
 - Preview refresh succeeded without `sudo` by terminating only the user-owned port-8770 listener and allowing the installed LaunchDaemon to restart it.
 - Installed wrapper matches the committed wrapper.
 - Cloudflare Access login and protected manual/score lesson generation succeeded; the prior arranger blocker is closed.
@@ -103,6 +106,6 @@ Score-practice protected-smoke handoff: `docs/handoffs/task-completions/2026-07-
 
 ## Next action
 
-1. Continue user smoke at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-score-practice-74520ca-20260711`.
+1. Continue user smoke at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-marker-labels-6fe67a3-20260711`.
 2. If protected catalog/upload import should be enabled, explicitly authorize the protected environment flag change and vision-model readiness check; otherwise keep it off.
 3. Keep unrelated corpus, source-inbox, private-data, brand/design, deployment, and environment work parked.
