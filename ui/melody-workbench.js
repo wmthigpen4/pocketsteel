@@ -408,7 +408,12 @@
         const octave = scientificOctaveForTabNote(note);
         return octave === null ? [] : [[String(note.string), octave]];
       }));
-      return { ...position, scientificOctavesByString };
+      const melodyLabel = String(event.resolvedPitch || event.resolvedNote || "").trim();
+      return {
+        ...position,
+        ...(melodyLabel ? { label: melodyLabel, role: `Melody note ${event.step || ""}`.trim() } : {}),
+        scientificOctavesByString
+      };
     });
   }
 
