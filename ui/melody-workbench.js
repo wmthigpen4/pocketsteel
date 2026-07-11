@@ -251,6 +251,8 @@
       sectionNumber: 1,
       activeEventIndex: 0,
       showOctaveMap: true,
+      showStringLabels: false,
+      showNoteLabels: true,
       response: null,
       scoreDraft: null,
       scoreSelectedIndex: -1,
@@ -417,19 +419,28 @@
     });
   }
 
-  function melodyFretboardOptions(fretboard, events) {
+  function melodyFretboardOptions(fretboard, events, activeEventIndex = 0, displayOptions = {}) {
+    const positioned = positionsWithScientificOctaves(fretboard.positions, events);
+    const activeEvent = (events || [])[Math.max(0, Math.min(Number(activeEventIndex) || 0, Math.max(0, (events || []).length - 1)))];
+    const activePositionId = activeEvent?.renderablePositionId;
+    const activePositions = activePositionId
+      ? positioned.filter((position) => position.id === activePositionId)
+      : positioned.slice(0, 1);
     return {
       maxFret: fretboard.maxFret,
       stringCount: fretboard.stringCount,
       tuningLabels: fretboard.tuningLabels,
       openPitchValues: E9_OPEN_PITCHES,
-      positions: positionsWithScientificOctaves(fretboard.positions, events),
+      positions: activePositions,
       highlights: fretboard.highlights || [],
       legend: fretboard.legend,
       query: fretboard.query,
       hideFilterControls: true,
       hidePositionTools: true,
       hideLegend: true,
+      showHighlightLabels: displayOptions.showNoteLabels !== false,
+      showStringActionLabels: displayOptions.showStringLabels === true,
+      stringActionLabelMode: "all",
       showScientificOctaveOverlay: true
     };
   }
@@ -593,6 +604,8 @@
     fretboard: $("#studio-fretboard"),
     octaveMapControls: $("#studio-octave-map-controls"),
     octaveToggle: $("#studio-octave-toggle"),
+    stringLabelToggle: $("#studio-string-label-toggle"),
+    noteLabelToggle: $("#studio-note-label-toggle"),
     octaveGuide: $("#studio-octave-guide"),
     transport: $("#studio-transport"),
     previous: $("#studio-previous"),
@@ -1371,6 +1384,20 @@
     return [material?.artist, material?.song, material?.recording, material?.section].filter(Boolean).join(" · ");
   }
 
+  function renderActiveFretboard() {
+    const exercise = state.response?.melodyExercise;
+    const activeRoute = exercise?.routes?.find((item) => item.id === exercise.selectedRouteId);
+    const fretboard = activeRoute?.fretboard || state.response?.fretboard;
+    if (!exercise?.events?.length || !fretboard) return;
+    global.STEEL_RAG_FRETBOARD.mountPedalSteelFretboard(
+      elements.fretboard,
+      melodyFretboardOptions(fretboard, exercise.events, state.activeEventIndex, {
+        showNoteLabels: state.showNoteLabels,
+        showStringLabels: state.showStringLabels
+      })
+    );
+  }
+
   function selectEvent(index) {
     const exercise = state.response?.melodyExercise;
     const events = exercise?.events || [];
@@ -1393,9 +1420,7 @@
     });
     elements.previous.disabled = state.activeEventIndex === 0;
     elements.next.disabled = state.activeEventIndex === events.length - 1;
-    if (event.renderablePositionId) {
-      global.STEEL_RAG_FRETBOARD?.selectPedalSteelFretboardPosition?.(elements.fretboard, event.renderablePositionId);
-    }
+    renderActiveFretboard();
     const activeRoute = exercise.routes?.find((item) => item.id === exercise.selectedRouteId) || null;
     renderResultScore(exercise, activeRoute);
     updatePracticeControls();
@@ -1440,12 +1465,6 @@
       button.setAttribute("aria-pressed", String(selected));
     });
     elements.routeReason.textContent = route.recommendation || route.movementSummary || "";
-    if (route.fretboard) {
-      global.STEEL_RAG_FRETBOARD.mountPedalSteelFretboard(
-        elements.fretboard,
-        melodyFretboardOptions(route.fretboard, route.events)
-      );
-    }
     renderEvents(exercise);
     renderResultScore(exercise, route);
     const ornamentTab = (route.generatedOrnaments || []).map((item) => `Generated ornament (optional): ${item.from?.pitch || "approach"}→${item.to?.pitch || "target"} · S${item.from?.string || "?"} ${item.from?.fret ?? "?"}→${item.to?.fret ?? "?"}`).join("\n");
@@ -1474,6 +1493,11 @@
     elements.octaveToggle.setAttribute("aria-pressed", String(visible));
     elements.octaveToggle.setAttribute("aria-label", `${visible ? "Hide" : "Show"} octave colors`);
     elements.octaveGuide.hidden = !visible;
+  }
+
+  function updateFretboardLabelToggles() {
+    elements.stringLabelToggle.setAttribute("aria-pressed", String(state.showStringLabels));
+    elements.noteLabelToggle.setAttribute("aria-pressed", String(state.showNoteLabels));
   }
 
   function renderResult(response) {
@@ -1517,11 +1541,8 @@
     elements.routeTabs.hidden = needsSource;
     elements.routeReason.hidden = needsSource;
     updateOctaveMapVisibility();
+    updateFretboardLabelToggles();
     if (!needsSource && response.fretboard) {
-      global.STEEL_RAG_FRETBOARD.mountPedalSteelFretboard(
-        elements.fretboard,
-        melodyFretboardOptions(response.fretboard, exercise.events)
-      );
       renderEvents(exercise);
       renderResultScore(exercise);
       renderRoutes(exercise);
@@ -1779,6 +1800,16 @@
   elements.octaveToggle.addEventListener("click", () => {
     state.showOctaveMap = !state.showOctaveMap;
     updateOctaveMapVisibility();
+  });
+  elements.stringLabelToggle.addEventListener("click", () => {
+    state.showStringLabels = !state.showStringLabels;
+    updateFretboardLabelToggles();
+    renderActiveFretboard();
+  });
+  elements.noteLabelToggle.addEventListener("click", () => {
+    state.showNoteLabels = !state.showNoteLabels;
+    updateFretboardLabelToggles();
+    renderActiveFretboard();
   });
   elements.continueButton.addEventListener("click", () => submitLesson(Number(elements.continueButton.dataset.nextSection) || state.sectionNumber + 1));
   elements.edit.addEventListener("click", editPhrase);

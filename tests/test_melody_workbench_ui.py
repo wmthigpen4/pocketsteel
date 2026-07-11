@@ -106,7 +106,22 @@ const fretboardOptions = studio.melodyFretboardOptions(
 );
 assert.equal(fretboardOptions.showScientificOctaveOverlay, true);
 assert.equal(fretboardOptions.hidePositionTools, true);
+const activeOnlyOptions = studio.melodyFretboardOptions(
+  { maxFret: 24, stringCount: 10, tuningLabels: [], positions: [{id: "event-1", strings: [5]}, {id: "event-2", strings: [4]}], highlights: [], legend: [], query: {} },
+  [
+    {step: 1, resolvedPitch: "D4", renderablePositionId: "event-1", notes: [{string: 5, fret: 3, changes: []}]},
+    {step: 2, resolvedPitch: "G4", renderablePositionId: "event-2", notes: [{string: 4, fret: 3, changes: []}]}
+  ],
+  1,
+  {showNoteLabels: false, showStringLabels: true}
+);
+assert.deepEqual(activeOnlyOptions.positions.map((position) => position.id), ["event-2"]);
+assert.equal(activeOnlyOptions.showHighlightLabels, false);
+assert.equal(activeOnlyOptions.showStringActionLabels, true);
+assert.equal(activeOnlyOptions.stringActionLabelMode, "all");
 assert.equal(studio.createInitialState().showOctaveMap, true);
+assert.equal(studio.createInitialState().showStringLabels, false);
+assert.equal(studio.createInitialState().showNoteLabels, true);
 assert.equal(studio.createInitialState().inputMethod, "phrase");
 assert.equal(studio.youtubeVideoId("https://youtu.be/abc123?t=9"), "abc123");
 assert.equal(studio.youtubeVideoId("https://www.youtube.com/watch?v=xyz789"), "xyz789");
@@ -192,6 +207,8 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'id="studio-fretboard"' in html
     assert 'id="studio-octave-guide"' in html
     assert 'id="studio-octave-toggle" aria-pressed="true"' in html
+    assert 'id="studio-string-label-toggle" aria-pressed="false"' in html
+    assert 'id="studio-note-label-toggle" aria-pressed="true"' in html
     assert 'id="studio-octave-map-controls" hidden' in html
     assert 'aria-label="Octave 4 — C4 through B4"' in html
     assert 'data-scientific-octave="2"] { --octave-color: #b8a3ff;' in html
@@ -210,6 +227,8 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'aria-label="Previous note">←</button>' in html
     assert 'aria-label="Next note">→</button>' in html
     assert '<span class="octave-toggle-mark" aria-hidden="true">✓</span>Octave colors</button>' in html
+    assert '<span class="octave-toggle-mark" aria-hidden="true">✓</span>String labels</button>' in html
+    assert '<span class="octave-toggle-mark" aria-hidden="true">✓</span>Note labels</button>' in html
     assert 'id="studio-contour"' in html
     assert 'id="studio-route-tabs"' in html
     assert 'id="studio-note-editor" hidden' in html
@@ -229,13 +248,13 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "state.selectedPhraseIndex" in script
     assert html.count("?v=melody-multi-input-20260711-3") == 2
     assert html.count("?v=melody-score-practice-20260711-3") == 1
-    assert html.count("?v=melody-marker-labels-20260711-1") == 1
+    assert html.count("?v=melody-active-marker-controls-20260711-1") == 1
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in html
     assert "VexFlow" in Path("ui/vendor/VEXFLOW-LICENSE.txt").read_text(encoding="utf-8")
     assert html.index('id="studio-fretboard"') < html.index('id="studio-tab"')
     assert 'id="studio-continue"' in html
     assert "Melody Studio never scrapes or copies its tab" in html
-    assert "selectPedalSteelFretboardPosition" in script
+    assert "renderActiveFretboard" in script
     assert "Active tab note" not in script
     assert 'id="studio-active-tab-step"' not in html
     assert 'id="studio-event-detail"' not in html
