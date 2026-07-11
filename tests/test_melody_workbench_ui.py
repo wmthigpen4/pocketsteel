@@ -40,6 +40,9 @@ assert.equal(studio.startingPointForKind("artist_solo_lesson"), "recording");
 assert.equal(studio.startingPointForKind("song_arrangement_lesson"), "recording");
 assert.equal(studio.startingPointForKind("original_exercise"), "exercise");
 assert.equal(studio.createInitialState().kind, "user_melody");
+assert.equal(studio.createInitialState().inputMethod, "phrase");
+assert.equal(studio.createInitialState().workflowPhase, "add");
+assert.equal(studio.createInitialState().pendingReplacement, "");
 const literal = studio.parseSimpleTabEvents("S4: 3 5F 7");
 assert.deepEqual(literal.map((event) => [event.string, event.fret, event.changes]), [[4, 3, []], [4, 5, ["F"]], [4, 7, []]]);
 assert.deepEqual(studio.resolvePhrasePreview([{token: "5"}, {token: "6"}, {token: "1"}, {token: "3"}], "G").map((event) => event.pitch), ["D4", "E4", "G4", "B4"]);
@@ -222,23 +225,22 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Turn a phrase into an E9 lesson." in html
     assert "Step 1 of 4" not in html
     assert 'data-studio-start="phrase"' in html
-    assert 'data-studio-start="score"' in html
     assert 'data-studio-start="import"' in html
     assert 'data-studio-start="microphone"' in html
-    assert 'data-studio-start="recording"' in html
-    assert 'data-studio-start="catalog"' in html
-    assert html.count("data-studio-start=") == 6
-    assert "Enter notes or intervals" in html
-    assert "Build a score" in html
-    assert "Photo or music file" in html
+    assert html.count("data-studio-start=") == 3
+    assert "Add a melody" in html
+    assert "Type or tap notes" in html
+    assert "Import music" in html
     assert "Record or upload audio" in html
-    assert "Use a recording" in html
-    assert "Pick a song" in html
+    assert 'id="studio-open-score"' in html
+    assert 'id="studio-add-recording"' in html
+    assert 'id="studio-try-example"' in html
     assert 'data-source-treatment="artist_solo_lesson"' in html
     assert 'data-source-treatment="song_arrangement_lesson"' in html
     assert "Faithful solo passage" in html
     assert "Playable E9 arrangement" in html
-    assert 'id="studio-material-fields" data-input-panel="recording" hidden' in html
+    assert 'id="studio-material-fields" hidden' in html
+    assert "A link identifies the source; Melody Studio does not automatically transcribe it." in html
     assert 'id="studio-presets" aria-label="Practice phrase presets" hidden' in html
     assert 'id="studio-palette"' in html
     assert 'id="studio-sequence"' in html
@@ -254,12 +256,15 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'data-scientific-octave="4"] { --octave-color: #58d6bd;' in html
     assert 'data-scientific-octave="6"] { --octave-color: #ff927d;' in html
     assert ".octave-map-controls { min-width: 0; display: flex;" in html
-    assert ".register-stepper { grid-template-columns: 44px minmax(0, 1fr) 44px; }" in html
+    assert ".register-stepper { grid-template-columns: 1fr; }" in html
     assert "overflow-x: auto" in html
     assert ".event-step:focus-visible" in html
     assert 'id="studio-register-value"' in html
     assert 'aria-label="Lower selected note one octave"' in html
     assert 'aria-label="Raise selected note one octave"' in html
+    assert '>Lower octave</button>' in html
+    assert '>Automatic</button>' in html
+    assert '>Raise octave</button>' in html
     assert 'id="studio-current-note" hidden' in html
     assert 'id="studio-note-progress"' in html
     assert 'class="note-navigator-row"' in html
@@ -287,7 +292,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "state.selectedPhraseIndex" in script
     assert html.count("?v=melody-multi-input-20260711-3") == 2
     assert html.count("?v=melody-score-practice-20260711-3") == 1
-    assert html.count("?v=melody-score-edit-controls-20260711-1") == 1
+    assert html.count("?v=melody-add-melody-ux-20260711-1") == 1
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in html
     assert "VexFlow" in Path("ui/vendor/VEXFLOW-LICENSE.txt").read_text(encoding="utf-8")
     assert html.index('id="studio-fretboard"') < html.index('id="studio-tab"')
@@ -314,6 +319,9 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "sectionNumber" in script
     assert "[object Object]" not in html
     assert 'id="studio-score-canvas"' in html
+    assert 'id="studio-score-setup"' in html
+    assert 'id="studio-selected-note-details"' in html
+    assert 'id="studio-score-tools"' in html
     assert 'id="studio-score-download"' in html
     assert 'id="studio-import-file"' in html
     assert 'id="studio-microphone-start"' in html
@@ -323,6 +331,8 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'id="studio-audio-start"' in html
     assert 'id="studio-audio-length"' in html
     assert 'id="studio-audio-use-playhead"' in html
+    assert 'id="studio-audio-file-controls" hidden' in html
+    assert 'id="studio-audio-options"' in html
     assert 'id="studio-transcription-tempo"' in html
     assert 'id="studio-score-confidence"' in html
     assert 'id="studio-score-selection" hidden' in html
@@ -339,7 +349,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'transposeWholeScore(12, "Moved every note up one octave.")' in script
     assert 'id="studio-score-arrange-status" role="status"' in html
     assert "audio is decoded in this browser" in html
-    assert "The file may be longer" in html
+    assert "Longer files are fine" in html
     assert "elements.scoreArrange.disabled = !draft.score.melody.some((item) => !item.rest) || unsupportedKey;" in script
     assert 'statusElement: elements.scoreArrangeStatus' in script
     assert 'id="studio-youtube-frame"' in html
@@ -359,6 +369,14 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "togglePractice" in script
     assert "schedulePitch" in script
     assert "session-only" in html.lower()
+    assert 'id="studio-replace-confirmation" role="alert" hidden' in html
+    assert 'id="studio-confirm-replace"' in html
+    assert 'id="studio-keep-melody"' in html
+    assert "state.pendingReplacement = startingPoint;" in script
+    assert 'state.workflowPhase = "review"' in script
+    assert 'state.workflowPhase = "result"' in script
+    assert 'elements.audioFileControls.hidden = !state.sourceAudioUrl;' in script
+    assert 'elements.tryExample.hidden = !importEnabled;' in script
 
 
 def test_melody_workbench_uses_explorer_background_without_turnaround_branding() -> None:

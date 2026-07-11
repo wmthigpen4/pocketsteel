@@ -250,7 +250,10 @@
     const safeKind = TASKS[kind] ? kind : "user_melody";
     return {
       kind: safeKind,
-      inputMethod: startingPointForKind(safeKind),
+      inputMethod: "phrase",
+      workflowPhase: "add",
+      showSourceDetails: safeKind === "artist_solo_lesson" || safeKind === "song_arrangement_lesson",
+      pendingReplacement: "",
       key: "G",
       paletteMode: "degrees",
       tokens: [],
@@ -715,11 +718,18 @@
   const elements = {
     unavailable: $("#studio-unavailable"),
     workflow: $("#studio-workflow"),
+    phaseLabel: $("#studio-phase-label"),
+    entryGuidance: $("#studio-entry-guidance"),
+    replaceConfirmation: $("#studio-replace-confirmation"),
+    replaceMessage: $("#studio-replace-message"),
+    confirmReplace: $("#studio-confirm-replace"),
+    keepMelody: $("#studio-keep-melody"),
     startChoices: Array.from(doc.querySelectorAll("[data-studio-start]")),
     inputPanels: Array.from(doc.querySelectorAll("[data-input-panel]")),
     sourceTreatmentButtons: Array.from(doc.querySelectorAll("[data-source-treatment]")),
     editor: $("#studio-editor"),
     materialFields: $("#studio-material-fields"),
+    closeMaterial: $("#studio-close-material"),
     artist: $("#studio-artist"),
     song: $("#studio-song"),
     recording: $("#studio-recording"),
@@ -751,6 +761,9 @@
     palette: $("#studio-palette"),
     presets: $("#studio-presets"),
     useExercise: $("#studio-use-exercise"),
+    openScore: $("#studio-open-score"),
+    addRecording: $("#studio-add-recording"),
+    tryExample: $("#studio-try-example"),
     paletteModeButtons: Array.from(doc.querySelectorAll("[data-palette-mode]")),
     presetButtons: Array.from(doc.querySelectorAll("[data-preset]")),
     error: $("#studio-error"),
@@ -804,6 +817,7 @@
     microphoneStop: $("#studio-microphone-stop"),
     microphoneStatus: $("#studio-microphone-status"),
     audioFile: $("#studio-audio-file"),
+    audioFileControls: $("#studio-audio-file-controls"),
     audioAnalyze: $("#studio-audio-analyze"),
     audioPreview: $("#studio-audio-preview"),
     audioStart: $("#studio-audio-start"),
@@ -873,6 +887,42 @@
     });
   }
 
+  function entryPathForMethod(method) {
+    return ["microphone", "import"].includes(method) ? method : "phrase";
+  }
+
+  function hasMelodyContent() {
+    return Boolean(
+      state.tokens.length
+      || state.scoreDraft?.score?.melody?.length
+      || state.sourceAudioUrl
+      || elements.importFile?.files?.length
+    );
+  }
+
+  function hasMaterialDetails() {
+    return [elements.artist, elements.song, elements.recording, elements.section, elements.sourceUrl]
+      .some((input) => Boolean(input?.value?.trim()));
+  }
+
+  function clearMelodyDraft() {
+    clearTransientDraft();
+    state.tokens = [];
+    state.selectedPhraseIndex = 0;
+    state.scoreDraft = null;
+    state.scoreSelectedIndex = -1;
+    state.scoreHistory = [];
+    state.scoreFuture = [];
+    state.importParts = [];
+    state.importSelectedPart = "";
+    elements.phraseInput.value = "";
+    elements.importFile.value = "";
+    elements.importStatus.textContent = "";
+    elements.microphoneStatus.textContent = "Ready for up to 15 seconds.";
+    elements.audioFileControls.hidden = true;
+    showError("");
+  }
+
   function syncStateFromFields() {
     state.key = elements.key.value;
     state.contourMode = elements.contour.value;
@@ -901,6 +951,7 @@
       ? state.tokens.map(phraseItemLabel).join("\n")
       : state.tokens.map(phraseItemLabel).join(" ");
     renderPhraseBuilder();
+    renderStartingPoint();
   }
 
   function renderPalette() {
@@ -981,13 +1032,44 @@
       : "Up to eight notes appear in each lesson section.";
   }
 
-  function renderStartingPoint() {
-    const startingPoint = state.inputMethod || startingPointForKind(state.kind);
+  function renderEntryChoices(startingPoint = state.inputMethod || "phrase") {
+    const entryPath = entryPathForMethod(startingPoint);
+    const hasDraft = hasMelodyContent();
     elements.startChoices.forEach((button) => {
-      const selected = button.dataset.studioStart === startingPoint;
+      const target = button.dataset.studioStart;
+      const selected = target === entryPath;
+      const replacing = hasDraft && target !== startingPoint;
+      const strong = button.querySelector("strong");
+      const small = button.querySelector("small");
+      if (strong) strong.textContent = replacing ? "Replace melody" : button.dataset.defaultLabel;
+      if (small && replacing) small.textContent = `Use ${button.dataset.defaultLabel.toLowerCase()}`;
+      else if (small) small.textContent = target === "phrase" ? "Notes or scale numbers" : target === "microphone" ? "Choose a short passage" : "Photo, MusicXML, or MIDI";
       button.classList.toggle("is-selected", selected);
       button.setAttribute("aria-pressed", String(selected));
     });
+    elements.addRecording.textContent = state.showSourceDetails ? "Edit recording details" : "Add recording details";
+    elements.openScore.textContent = hasDraft ? "Replace melody with staff editor" : "Open staff editor";
+    elements.tryExample.textContent = hasDraft ? "Replace melody with example song" : "Try an example song";
+  }
+
+  function renderStartingPoint() {
+    const startingPoint = state.inputMethod || startingPointForKind(state.kind);
+    const entryPath = entryPathForMethod(startingPoint);
+    const phaseLabels = { add: "Add melody", review: "Review melody", result: "E9 arrangement" };
+    elements.phaseLabel.textContent = phaseLabels[state.workflowPhase] || phaseLabels.add;
+    elements.entryGuidance.textContent = state.workflowPhase === "review"
+      ? "Check the melody, make any corrections, then arrange it for E9."
+      : entryPath === "microphone"
+        ? "Record or choose a short, clear melody passage."
+        : entryPath === "import"
+          ? "Import music, then review the notes before arranging."
+          : "Enter a short melody, then arrange it for E9.";
+    renderEntryChoices(startingPoint);
+    const replacementLabels = { phrase: "typed notes", score: "the staff editor", microphone: "recorded or uploaded audio", import: "imported music", catalog: "an example song" };
+    elements.replaceConfirmation.hidden = !state.pendingReplacement;
+    elements.replaceMessage.textContent = state.pendingReplacement
+      ? `Replace the current melody with ${replacementLabels[state.pendingReplacement] || "a different melody"}?`
+      : "";
     elements.sourceTreatmentButtons.forEach((button) => {
       const selected = button.dataset.sourceTreatment === state.kind;
       button.classList.toggle("is-selected", selected);
@@ -997,17 +1079,26 @@
       const methods = String(panel.dataset.inputPanel || "").split(/\s+/).filter(Boolean);
       panel.hidden = !methods.includes(startingPoint);
     });
+    elements.materialFields.hidden = !state.showSourceDetails || !["phrase", "score"].includes(startingPoint);
     elements.presets.hidden = state.kind !== "original_exercise";
     if (startingPoint === "score") renderScoreBuilder();
     if (startingPoint === "catalog" && !elements.catalogGrid.childElementCount) loadCatalog();
   }
 
-  function selectStartingPoint(startingPoint) {
+  function selectStartingPoint(startingPoint, options = {}) {
     const previousStartingPoint = state.inputMethod || startingPointForKind(state.kind);
+    if (!options.confirmed && hasMelodyContent() && startingPoint !== previousStartingPoint) {
+      state.pendingReplacement = startingPoint;
+      renderStartingPoint();
+      elements.replaceConfirmation.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      return;
+    }
+    if (startingPoint !== previousStartingPoint) clearMelodyDraft();
+    state.pendingReplacement = "";
     const nextKind = STARTING_POINTS[startingPoint] || "user_melody";
-    if (previousStartingPoint === "recording" && startingPoint !== "recording") clearMaterial();
     state.inputMethod = startingPoint;
-    state.kind = startingPoint === "recording" && currentTask()?.needsMaterial ? state.kind : nextKind;
+    state.kind = state.showSourceDetails && hasMaterialDetails() && currentTask()?.needsMaterial ? state.kind : nextKind;
+    state.workflowPhase = "add";
     if (startingPoint === "score") ensureScoreDraft();
     state.sectionNumber = 1;
     state.response = null;
@@ -1021,7 +1112,7 @@
   function selectSourceTreatment(kind) {
     if (!TASKS[kind]?.needsMaterial) return;
     state.kind = kind;
-    state.inputMethod = "recording";
+    state.showSourceDetails = true;
     state.sectionNumber = 1;
     state.response = null;
     elements.result.hidden = true;
@@ -1057,6 +1148,12 @@
     state.scoreFuture = [];
     state.scoreDraft = scoreUi.reflowDraft(next);
     state.scoreSelectedIndex = Math.max(-1, Math.min(selectedIndex, state.scoreDraft.score.melody.length - 1));
+    state.workflowPhase = state.scoreDraft.score.melody.length ? "review" : "add";
+    elements.phaseLabel.textContent = state.workflowPhase === "review" ? "Review melody" : "Add melody";
+    elements.entryGuidance.textContent = state.workflowPhase === "review"
+      ? "Check the melody, make any corrections, then arrange it for E9."
+      : "Add notes to the staff, then arrange them for E9.";
+    renderEntryChoices("score");
     renderScoreBuilder();
   }
 
@@ -1185,7 +1282,12 @@
     state.importSelectedPart = String(draft.selectedPartId ?? draft.selectedTrackIndex ?? state.importSelectedPart ?? "");
     state.scoreSelectedIndex = state.scoreDraft.score.melody.length ? 0 : -1;
     state.inputMethod = "score";
-    state.kind = draft.source?.type === "catalog" ? "song_arrangement_lesson" : "user_melody";
+    state.workflowPhase = "review";
+    state.kind = draft.source?.type === "catalog"
+      ? "song_arrangement_lesson"
+      : state.showSourceDetails && hasMaterialDetails() && currentTask()?.needsMaterial
+        ? state.kind
+        : "user_melody";
     state.key = ["G", "C"].includes(draft.score.arrangementKey) ? draft.score.arrangementKey : elements.key.value;
     elements.key.value = state.key;
     if (imageUrl) state.sourceImageUrl = imageUrl;
@@ -1825,6 +1927,7 @@
 
   function renderResult(response) {
     state.response = response;
+    state.workflowPhase = "result";
     state.activeEventIndex = 0;
     const exercise = response.melodyExercise;
     elements.editor.hidden = true;
@@ -1904,7 +2007,7 @@
     showError("");
     state.sectionNumber = sectionNumber;
     elements.build.disabled = true;
-    elements.build.textContent = "Building lesson…";
+    elements.build.textContent = "Arranging for E9…";
     try {
       const response = await answerUi.requestAnswer(questionForState(), {
         accessRole: session?.role || readAccessRole(),
@@ -1916,7 +2019,7 @@
       return fail(error.message || "Melody Studio could not build this lesson.");
     } finally {
       elements.build.disabled = false;
-      elements.build.textContent = "Build my E9 lesson";
+      elements.build.textContent = "Arrange for E9";
     }
   }
 
@@ -1951,8 +2054,10 @@
 
   function editPhrase() {
     stopPractice();
+    state.workflowPhase = hasMelodyContent() ? "review" : "add";
     elements.result.hidden = true;
     elements.editor.hidden = false;
+    renderStartingPoint();
     elements.editor.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -1967,6 +2072,7 @@
     elements.audioLength.value = "15";
     elements.microphoneStatus.textContent = "Ready for audio.";
     elements.scoreArrangeStatus.textContent = "";
+    elements.audioFileControls.hidden = true;
     elements.editor.hidden = false;
     elements.result.hidden = true;
     renderStartingPoint();
@@ -1983,6 +2089,10 @@
       elements.unavailable.hidden = enabled;
       elements.workflow.hidden = !enabled;
       if (!enabled) return;
+      const importEnabled = Boolean(session.features?.melodyImport);
+      const importChoice = elements.startChoices.find((button) => button.dataset.studioStart === "import");
+      if (importChoice) importChoice.hidden = !importEnabled;
+      elements.tryExample.hidden = !importEnabled;
       elements.editor.hidden = false;
       renderStartingPoint();
       renderPalette();
@@ -1994,7 +2104,27 @@
   }
 
   elements.startChoices.forEach((button) => button.addEventListener("click", () => selectStartingPoint(button.dataset.studioStart)));
+  elements.confirmReplace.addEventListener("click", () => {
+    const nextMethod = state.pendingReplacement;
+    if (nextMethod) selectStartingPoint(nextMethod, { confirmed: true });
+  });
+  elements.keepMelody.addEventListener("click", () => {
+    state.pendingReplacement = "";
+    renderStartingPoint();
+  });
   elements.sourceTreatmentButtons.forEach((button) => button.addEventListener("click", () => selectSourceTreatment(button.dataset.sourceTreatment)));
+  elements.openScore.addEventListener("click", () => selectStartingPoint("score"));
+  elements.addRecording.addEventListener("click", () => {
+    state.showSourceDetails = !state.showSourceDetails;
+    if (state.showSourceDetails && !currentTask()?.needsMaterial) state.kind = "song_arrangement_lesson";
+    renderStartingPoint();
+    if (state.showSourceDetails) elements.materialFields.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  });
+  elements.closeMaterial.addEventListener("click", () => {
+    state.showSourceDetails = false;
+    renderStartingPoint();
+  });
+  elements.tryExample.addEventListener("click", () => selectStartingPoint("catalog"));
   elements.octaveDown.addEventListener("click", () => {
     const index = state.selectedPhraseIndex;
     state.tokens[index] = { ...phraseItem(state.tokens[index]), octaveShift: Math.max(-2, Number(state.tokens[index]?.octaveShift || 0) - 1) };
@@ -2049,6 +2179,7 @@
   elements.phraseInput.addEventListener("input", () => {
     state.tokens = parsePhraseEvents(elements.phraseInput.value);
     renderPhraseBuilder();
+    renderStartingPoint();
   });
   elements.paletteModeButtons.forEach((button) => button.addEventListener("click", () => {
     state.paletteMode = button.dataset.paletteMode;
@@ -2056,6 +2187,8 @@
   }));
   elements.presetButtons.forEach((button) => button.addEventListener("click", () => setTokens(PRESETS[button.dataset.preset] || [])));
   elements.useExercise.addEventListener("click", () => {
+    clearMaterial();
+    state.showSourceDetails = false;
     state.kind = "original_exercise";
     state.inputMethod = "phrase";
     setTokens(PRESETS["1-2-3-5"]);
@@ -2128,6 +2261,7 @@
   elements.importFile.addEventListener("change", () => {
     const file = elements.importFile.files?.[0];
     elements.importStatus.textContent = file ? `${file.name} is ready to read.` : "";
+    renderStartingPoint();
   });
   elements.microphoneStart.addEventListener("click", startMicrophoneCapture);
   elements.microphoneStop.addEventListener("click", stopMicrophoneCapture);
@@ -2137,9 +2271,11 @@
     if (state.sourceAudioUrl) URL.revokeObjectURL(state.sourceAudioUrl);
     state.sourceAudioUrl = file ? URL.createObjectURL(file) : "";
     elements.audioPreview.hidden = !state.sourceAudioUrl;
+    elements.audioFileControls.hidden = !state.sourceAudioUrl;
     if (state.sourceAudioUrl) elements.audioPreview.src = state.sourceAudioUrl;
     else elements.audioPreview.removeAttribute("src");
     elements.microphoneStatus.textContent = file ? `${file.name} is ready. Play it, choose a 5–15 second window, then transcribe.` : "Ready for audio.";
+    renderStartingPoint();
   });
   elements.audioPreview.addEventListener("loadedmetadata", () => {
     elements.microphoneStatus.textContent = `Recording length ${formatAudioTimecode(elements.audioPreview.duration)}. Choose the passage you want to transcribe.`;
