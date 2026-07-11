@@ -139,7 +139,7 @@ def test_melody_workbench_has_guided_tasks_feature_state_and_fretboard_first_res
     assert "Select a note below to change its octave" in html
     assert "Change the register for this note only" in html
     assert "state.selectedPhraseIndex" in script
-    assert html.count("?v=melody-octave-map-20260711") == 3
+    assert html.count("?v=melody-octave-map-35f36bc-20260711") == 3
     assert html.index('id="studio-fretboard"') < html.index('id="studio-tab"')
     assert 'id="studio-continue"' in html
     assert "does not listen to or extract notes from the link yet" in html
