@@ -163,6 +163,21 @@ class MelodyExercisePayload(TypedDict):
     validation: dict[str, Any]
 
 
+class ScoreDraftSource(TypedDict):
+    type: str
+    title: str
+    url: str | None
+    rightsLabel: str
+    retained: bool
+
+
+class ScoreDraftPayload(TypedDict):
+    schemaVersion: str
+    source: ScoreDraftSource
+    score: dict[str, Any]
+    review: dict[str, Any]
+
+
 class AnswerResponse(TypedDict):
     answer: str
     mode: AnswerMode

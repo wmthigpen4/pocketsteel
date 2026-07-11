@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import copy
+import re
 from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
 
@@ -39,6 +41,14 @@ class MelodyInput:
     direction: str = "auto"
     octave_shift: int = 0
     literal: TabNote | None = None
+    forced_pitch: int | None = None
+    duration_beats: float = 1.0
+    measure: int = 1
+    beat: float = 1.0
+    origin: str = "user_edit"
+    tie: str = ""
+    lyric: str = ""
+    chord: str = ""
 
 
 @dataclass(frozen=True)
@@ -83,7 +93,7 @@ def arrange_melody_routes(
     if not single_path:
         raise ValueError("The melody does not have a mechanically valid standard-E9 path.")
 
-    route_specs: list[tuple[str, str, str]] = [("single-note", "single_note", "Playable single-note melody")]
+    route_specs: list[tuple[str, str, str]] = [("single-note", "single_note", "Faithful melody")]
     if selected_texture in {"both", "automatic_harmony"}:
         route_specs.append(("recommended-harmony", "automatic_harmony", "Recommended harmony"))
     if selected_texture in {"both", "thirds"}:
@@ -109,6 +119,10 @@ def arrange_melody_routes(
         )
     )
 
+    vocal_route = build_vocal_steel_route(routes[0], inputs, key)
+    if vocal_route is not None:
+        routes.append(vocal_route)
+
     for suffix, harmony_type, label in route_specs[1:]:
         candidate_groups = harmony_candidate_groups(inputs, resolved_pitches, key, harmony_type)
         path = choose_path(candidate_groups) if candidate_groups and all(candidate_groups) else []
@@ -130,8 +144,10 @@ def arrange_melody_routes(
         )
 
     if len(routes) > 1 and not any(route["recommended"] for route in routes):
-        routes[1]["recommended"] = True
-        routes[1]["recommendation"] = "Recommended validated harmony route for this phrase."
+        fallback = next((route for route in routes if route["harmonyType"] not in {"single_note", "vocal_steel"}), None)
+        if fallback is not None:
+            fallback["recommended"] = True
+            fallback["recommendation"] = "Recommended validated harmony route for this phrase."
 
     resolved = [
         {
@@ -143,6 +159,13 @@ def arrange_melody_routes(
             "direction": item.direction,
             "octaveShift": item.octave_shift,
             "literal": item.literal is not None,
+            "durationBeats": item.duration_beats,
+            "measure": item.measure,
+            "beat": item.beat,
+            "origin": item.origin,
+            "tie": item.tie,
+            "lyric": item.lyric,
+            "chord": item.chord,
         }
         for item, pitch in zip(inputs, resolved_pitches)
     ]
@@ -157,12 +180,18 @@ def parse_melody_inputs(raw_events: Sequence[Any], key: str) -> list[MelodyInput
         literal_payload = record.get("position") if isinstance(record.get("position"), Mapping) else record
         literal = _literal_note(literal_payload) if isinstance(raw, Mapping) else None
         token = str(record.get("token") or record.get("note") or record.get("degree") or raw or "").strip()
+        forced_pitch = _forced_pitch(record)
         if literal is not None:
             controls = tuple(literal.changes)
             pitch = _absolute_pitch(literal.string, literal.fret, controls)
             note = note_name_for_pitch(pitch)
             degree = _degree_for_note(note, scale)
             token = token if token and token != str(raw) else f"S{literal.string}:{literal.fret}"
+        elif forced_pitch is not None:
+            note = note_name_for_pitch(forced_pitch)
+            degree = _degree_for_note(note, scale, allow_chromatic=True)
+            token = token or scientific_pitch_for_value(forced_pitch)
+            pitch = forced_pitch
         else:
             note, degree = _resolve_token(token, scale)
             pitch = _pitch_class(note)
@@ -182,6 +211,14 @@ def parse_melody_inputs(raw_events: Sequence[Any], key: str) -> list[MelodyInput
                 direction=direction,
                 octave_shift=octave_shift,
                 literal=literal,
+                forced_pitch=forced_pitch,
+                duration_beats=_positive_float(record.get("durationBeats") or record.get("duration"), 1.0),
+                measure=_positive_int(record.get("measure"), 1),
+                beat=_positive_float(record.get("beat"), 1.0),
+                origin=str(record.get("origin") or "user_edit")[:40],
+                tie=str(record.get("tie") or "")[:20],
+                lyric=str(record.get("lyric") or record.get("phraseLabel") or "")[:80],
+                chord=str(record.get("chord") or "")[:24],
             )
         )
     return parsed
@@ -196,6 +233,8 @@ def resolve_contour(inputs: Sequence[MelodyInput], contour_mode: str) -> list[in
         for index, item in enumerate(inputs):
             if index in forced:
                 options = [forced[index]]
+            elif item.forced_pitch is not None:
+                options = [item.forced_pitch]
             elif item.literal is not None:
                 options = [_absolute_pitch(item.literal.string, item.literal.fret, tuple(item.literal.changes))]
             else:
@@ -299,6 +338,9 @@ def harmony_candidate_groups(
     groups: list[list[PositionCandidate]] = []
     for item, target_pitch in zip(inputs, resolved_pitches):
         candidates: list[PositionCandidate] = []
+        if not 1 <= item.degree <= 7:
+            groups.append(candidates)
+            continue
         third_note = scale[(item.degree - 3) % 7]
         sixth_note = scale[(item.degree + 1) % 7]
         for row in rows:
@@ -366,14 +408,14 @@ def build_route(
         raw_events.append(
             TabEvent(
                 notes=candidate.notes,
-                chord=item.note,
+                chord=item.chord or item.note,
                 comment=f"{scientific_pitch_for_value(resolved_pitches[index - 1])}; {label}",
             )
         )
         intervals.append(
             {
                 "eventId": f"{route_id}-step-{index}",
-                "chord": item.note,
+                "chord": item.chord or item.note,
                 "byString": {
                     str(note.string): interval
                     for note, interval in zip(candidate.notes, candidate.intervals)
@@ -400,8 +442,18 @@ def build_route(
                 "movement": movement,
                 "explanation": _event_explanation(item, candidate, movement, resolved_pitches[index - 1]),
                 "renderablePositionId": f"{route_id}-event-{index}",
+                "durationBeats": item.duration_beats,
+                "measure": item.measure,
+                "beat": item.beat,
+                "origin": item.origin,
             }
         )
+        if item.tie:
+            payload["tie"] = item.tie
+        if item.lyric:
+            payload["lyric"] = item.lyric
+        if item.chord:
+            payload["harmonySymbol"] = item.chord
         event_payloads.append(payload)
     tab_example = {
         "id": route_id,
@@ -430,6 +482,54 @@ def build_route(
         "tabExample": tab_example,
         "fretboard": fretboard,
     }
+
+
+def build_vocal_steel_route(base_route: Mapping[str, Any], inputs: Sequence[MelodyInput], key: str) -> dict[str, Any] | None:
+    """Return a faithful route with one mechanically checked slide-in suggestion.
+
+    The suggested grace note is metadata rather than a source event, so turning
+    this route on never alters or misattributes the imported melody.
+    """
+    scale_pitch_classes = {_pitch_class(note) for note in _scale_notes(key)}
+    events = list(base_route.get("events") or [])
+    suggestion: dict[str, Any] | None = None
+    for index, event in enumerate(events):
+        notes = event.get("notes") or []
+        if len(notes) != 1:
+            continue
+        note = notes[0]
+        try:
+            string = int(note["string"])
+            fret = int(note["fret"])
+            changes = tuple(note.get("changes") or ())
+        except (KeyError, TypeError, ValueError):
+            continue
+        if fret < 1 or changes:
+            continue
+        target_pitch = int(event.get("pitchValue") or 0)
+        approach_pitch = _absolute_pitch(string, fret - 1, ())
+        if approach_pitch != target_pitch - 1 or approach_pitch % 12 not in scale_pitch_classes:
+            continue
+        suggestion = {
+            "kind": "slide_in",
+            "origin": "generated_ornament",
+            "targetEventId": event.get("id"),
+            "targetStep": index + 1,
+            "from": {"string": string, "fret": fret - 1, "changes": [], "pitch": scientific_pitch_for_value(approach_pitch)},
+            "to": {"string": string, "fret": fret, "changes": [], "pitch": scientific_pitch_for_value(target_pitch)},
+            "label": f"Optional slide into {scientific_pitch_for_value(target_pitch)} on string {string}, fret {fret - 1} to {fret}.",
+        }
+        break
+    if suggestion is None:
+        return None
+    route = copy.deepcopy(dict(base_route))
+    route["id"] = str(base_route.get("id") or "melody").replace("-single-note", "-vocal-steel")
+    route["label"] = "Vocal steel"
+    route["harmonyType"] = "vocal_steel"
+    route["recommended"] = False
+    route["generatedOrnaments"] = [suggestion]
+    route["recommendation"] = suggestion["label"] + " The source melody remains unchanged."
+    return route
 
 
 def _literal_note(record: Mapping[str, Any]) -> TabNote | None:
@@ -491,11 +591,43 @@ def _resolve_token(token: str, scale: tuple[str, ...]) -> tuple[str, int]:
     raise ValueError(f"{token!r} is not in the selected major scale.")
 
 
-def _degree_for_note(note: str, scale: tuple[str, ...]) -> int:
+def _degree_for_note(note: str, scale: tuple[str, ...], *, allow_chromatic: bool = False) -> int:
     for index, scale_note in enumerate(scale, start=1):
         if _pitch_class(scale_note) == _pitch_class(note):
             return index
+    if allow_chromatic:
+        return 0
     raise ValueError(f"Literal tab note {note} is outside the selected major scale.")
+
+
+def _forced_pitch(record: Mapping[str, Any]) -> int | None:
+    raw_value = record.get("pitchValue") if "pitchValue" in record else record.get("pitch_value")
+    if raw_value is not None and str(raw_value).strip() != "":
+        try:
+            return int(raw_value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Exact melody pitch values must be numeric.") from exc
+    raw_pitch = str(record.get("pitch") or "").strip()
+    match = re.match(r"^([A-Ga-g])([#b]?)(-?\d+)$", raw_pitch)
+    if not match:
+        return None
+    step, accidental, octave = match.groups()
+    pitch_class = _pitch_class(f"{step.upper()}{accidental}")
+    return (int(octave) + 1) * 12 + pitch_class
+
+
+def _positive_float(value: Any, default: float) -> float:
+    try:
+        return max(0.125, float(value))
+    except (TypeError, ValueError):
+        return default
+
+
+def _positive_int(value: Any, default: int) -> int:
+    try:
+        return max(1, int(value))
+    except (TypeError, ValueError):
+        return default
 
 
 def _pitch_class(note: str) -> int:

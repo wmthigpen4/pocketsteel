@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "score_draft_v1",
+  "source": {
+    "type": "catalog",
+    "catalogId": "amazing-grace-new-britain",
+    "title": "Amazing Grace",
+    "subtitle": "NEW BRITAIN · 1829 setting",
+    "url": "https://library.timelesstruths.org/music/Amazing_Grace/midi/",
+    "attribution": "Words: John Newton, 1779. Tune: NEW BRITAIN, unknown, published 1829.",
+    "rightsLabel": "public_domain",
+    "sourceChecksum": "sha256:4cd985b4dd4993f317269509af06b71ad082c1643dd0f191433fcf0a040459bf",
+    "retained": false
+  },
+  "score": {
+    "sourceKey": "G",
+    "arrangementKey": "G",
+    "meter": "3/4",
+    "pickupBeats": 1,
+    "melody": [
+      {"id": "ag-pickup-d4", "measure": 1, "beat": 3, "durationBeats": 1, "pitch": "D4", "pitchValue": 62, "origin": "source", "confidence": 1},
+      {"id": "ag-m2-g4", "measure": 2, "beat": 1, "durationBeats": 2, "pitch": "G4", "pitchValue": 67, "origin": "source", "confidence": 1},
+      {"id": "ag-m2-b4", "measure": 2, "beat": 3, "durationBeats": 0.5, "pitch": "B4", "pitchValue": 71, "origin": "source", "confidence": 1},
+      {"id": "ag-m2-g4b", "measure": 2, "beat": 3.5, "durationBeats": 0.5, "pitch": "G4", "pitchValue": 67, "origin": "source", "confidence": 1},
+      {"id": "ag-m3-b4", "measure": 3, "beat": 1, "durationBeats": 2, "pitch": "B4", "pitchValue": 71, "origin": "source", "confidence": 1},
+      {"id": "ag-m3-a4", "measure": 3, "beat": 3, "durationBeats": 1, "pitch": "A4", "pitchValue": 69, "origin": "source", "confidence": 1},
+      {"id": "ag-m4-g4", "measure": 4, "beat": 1, "durationBeats": 2, "pitch": "G4", "pitchValue": 67, "origin": "source", "confidence": 1},
+      {"id": "ag-m4-e4", "measure": 4, "beat": 3, "durationBeats": 1, "pitch": "E4", "pitchValue": 64, "origin": "source", "confidence": 1}
+    ],
+    "harmony": [
+      {"measure": 1, "beat": 3, "symbol": "G", "basis": "source_voices", "confidence": 1},
+      {"measure": 2, "beat": 1, "symbol": "G", "basis": "source_voices", "confidence": 1},
+      {"measure": 3, "beat": 1, "symbol": "G", "basis": "source_voices", "confidence": 1},
+      {"measure": 3, "beat": 3, "symbol": "D7", "basis": "source_voices", "confidence": 1},
+      {"measure": 4, "beat": 1, "symbol": "Em", "basis": "source_voices", "confidence": 1},
+      {"measure": 4, "beat": 3, "symbol": "C", "basis": "source_voices", "confidence": 1}
+    ]
+  },
+  "review": {
+    "status": "confirmed",
+    "warnings": []
+  }
+}

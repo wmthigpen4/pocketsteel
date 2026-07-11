@@ -634,6 +634,13 @@ const STEEL_RAG_ANSWER_UI = (() => {
       technique: firstTextValue(event.technique, "pick"),
       movement: firstTextValue(event.movement),
       explanation: firstTextValue(event.explanation, event.comment),
+      durationBeats: Number(event.durationBeats ?? event.duration_beats ?? 1),
+      measure: Number(event.measure ?? 1),
+      beat: Number(event.beat ?? 1),
+      origin: firstTextValue(event.origin, "source"),
+      tie: firstTextValue(event.tie),
+      lyric: firstTextValue(event.lyric),
+      chord: firstTextValue(event.chord, event.harmonySymbol, event.harmony_symbol),
       notes: Array.isArray(event.notes)
         ? event.notes.filter(isObjectRecord).map((note) => ({
           string: note.string,
@@ -656,6 +663,9 @@ const STEEL_RAG_ANSWER_UI = (() => {
       recommended: Boolean(route.recommended),
       recommendation: firstTextValue(route.recommendation),
       movementSummary: firstTextValue(route.movementSummary, route.movement_summary),
+      generatedOrnaments: Array.isArray(route.generatedOrnaments || route.generated_ornaments)
+        ? (route.generatedOrnaments || route.generated_ornaments).filter(isObjectRecord)
+        : [],
       events,
       tab: normalizeTabPayload(tabPayload, index),
       fretboard: normalizeFretboard(route.fretboard)
@@ -807,9 +817,10 @@ const STEEL_RAG_ANSWER_UI = (() => {
       role: authenticated ? role : ACCESS_ROLES.ANONYMOUS,
       authProvider: normalizeAuthProvider(firstValue(payload?.authProvider, "local_dev"))
     };
-    if (payload?.features?.melodyExercise) {
-      normalized.features = { melodyExercise: true };
-    }
+    const features = {};
+    if (payload?.features?.melodyExercise) features.melodyExercise = true;
+    if (payload?.features?.melodyImport) features.melodyImport = true;
+    if (Object.keys(features).length) normalized.features = features;
     return normalized;
   }
 

@@ -84,6 +84,14 @@ from pocketsteel.melody_assistant import (
     configured_melody_exercise_enabled,
     melody_exercise_response,
 )
+from pocketsteel.melody_import import (
+    MAX_IMPORT_BODY_BYTES,
+    MelodyImportError,
+    MelodyImportTooLargeError,
+    configured_melody_import_enabled,
+    import_score_draft,
+    public_song_catalog,
+)
 from pocketsteel.rag_guardrails import sanitize_retrieved_sources
 from pocketsteel.rag_guardrails import is_injection_like
 from pocketsteel.private_source_search import PrivateSourceSearchIndex
@@ -257,6 +265,7 @@ class RetrievalApi:
         retrieval_config: RetrievalModeConfig | None = None,
         curated_guidance_search: Callable[..., list[dict[str, object]]] | None = None,
         melody_exercise_enabled: bool | None = None,
+        melody_import_enabled: bool | None = None,
     ) -> None:
         self.search_index = search_index
         self.private_search_index = private_search_index
@@ -272,6 +281,11 @@ class RetrievalApi:
             configured_melody_exercise_enabled()
             if melody_exercise_enabled is None
             else bool(melody_exercise_enabled)
+        )
+        self.melody_import_enabled = (
+            configured_melody_import_enabled()
+            if melody_import_enabled is None
+            else bool(melody_import_enabled)
         )
         self.git_sha = self._git_value("rev-parse", "--short", "HEAD")
         self.git_branch = self._git_value("branch", "--show-current")
@@ -319,8 +333,13 @@ class RetrievalApi:
                 "role": access.role if access.allowed else "anonymous",
                 "authProvider": auth_provider,
             }
+            features: dict[str, bool] = {}
             if self.melody_exercise_enabled:
-                payload["features"] = {"melodyExercise": True}
+                features["melodyExercise"] = True
+            if self.melody_import_enabled:
+                features["melodyImport"] = True
+            if features:
+                payload["features"] = features
             if params.get("debug") == ["auth"]:
                 payload["accessDebug"] = {
                     "authProvider": auth_provider,
@@ -328,6 +347,63 @@ class RetrievalApi:
                     **access.diagnostics,
                 }
             return self._json_response(start_response, "200 OK", payload)
+
+        if path == "/api/melody/catalog":
+            if method != "GET":
+                return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"}, extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")))
+            if not self.melody_import_enabled:
+                return self._json_response(start_response, "404 Not Found", {"error": "melody import is not enabled"}, extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")))
+            access = authorize_answer_request(
+                environ,
+                self.answer_auth_mode,
+                self.auth_provider,
+                self.cloudflare_verifier,
+            )
+            if not access.allowed:
+                return self._json_response(start_response, access.status, {"error": access.error}, extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")))
+            return self._json_response(
+                start_response,
+                "200 OK",
+                {"schemaVersion": "score_catalog_v1", "songs": public_song_catalog()},
+                extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
+            )
+
+        if path == "/api/melody/import":
+            if method != "POST":
+                return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"}, extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")))
+            if not self.melody_import_enabled:
+                return self._json_response(start_response, "404 Not Found", {"error": "melody import is not enabled"}, extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")))
+            access = authorize_answer_request(
+                environ,
+                self.answer_auth_mode,
+                self.auth_provider,
+                self.cloudflare_verifier,
+            )
+            if not access.allowed:
+                return self._json_response(start_response, access.status, {"error": access.error}, extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")))
+            try:
+                request_payload = self._read_bounded_json_body(environ, MAX_IMPORT_BODY_BYTES)
+                draft = import_score_draft(request_payload)
+            except MelodyImportTooLargeError as exc:
+                return self._json_response(
+                    start_response,
+                    "413 Payload Too Large",
+                    {"error": str(exc)},
+                    extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
+                )
+            except MelodyImportError as exc:
+                return self._json_response(
+                    start_response,
+                    "400 Bad Request",
+                    {"error": str(exc)},
+                    extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
+                )
+            return self._json_response(
+                start_response,
+                "200 OK",
+                draft,
+                extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
+            )
 
         if path == "/api/tab/render":
             if method != "POST":
@@ -896,6 +972,25 @@ class RetrievalApi:
         return payload if isinstance(payload, dict) else {}
 
     @staticmethod
+    def _read_bounded_json_body(environ: dict[str, Any], max_bytes: int) -> dict[str, Any]:
+        try:
+            content_length = int(environ.get("CONTENT_LENGTH") or 0)
+        except ValueError as exc:
+            raise MelodyImportError("The import request has an invalid content length.") from exc
+        if content_length <= 0:
+            raise MelodyImportError("The import request is empty.")
+        if content_length > max_bytes:
+            raise MelodyImportTooLargeError("The import request is larger than the Melody Studio limit.")
+        raw_body = environ["wsgi.input"].read(content_length)
+        try:
+            payload = json.loads(raw_body.decode("utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise MelodyImportError("The import request is not valid JSON.") from exc
+        if not isinstance(payload, dict):
+            raise MelodyImportError("The import request must be a JSON object.")
+        return payload
+
+    @staticmethod
     def _optional_string(value: Any) -> str | None:
         text = str(value or "").strip()
         return text or None
@@ -952,8 +1047,13 @@ class RetrievalApi:
             "retrieval_mode": self.retrieval_config.requested_mode.value,
             "auth_provider": self.auth_provider,
         }
+        features: dict[str, bool] = {}
         if self.melody_exercise_enabled:
-            payload["features"] = {"melodyExercise": True}
+            features["melodyExercise"] = True
+        if self.melody_import_enabled:
+            features["melodyImport"] = True
+        if features:
+            payload["features"] = features
         return payload
 
     @staticmethod
@@ -971,13 +1071,20 @@ class RetrievalApi:
         return result.stdout.strip() or "unknown"
 
     @staticmethod
-    def _json_response(start_response: Any, status: str, payload: dict[str, Any]) -> list[bytes]:
+    def _json_response(
+        start_response: Any,
+        status: str,
+        payload: dict[str, Any],
+        *,
+        extra_headers: tuple[tuple[str, str], ...] = (),
+    ) -> list[bytes]:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         start_response(
             status,
             [
                 ("Content-Type", "application/json; charset=utf-8"),
                 ("Content-Length", str(len(body))),
+                *extra_headers,
             ],
         )
         return [body]
@@ -995,6 +1102,7 @@ def create_app(
     retrieval_config: RetrievalModeConfig | None = None,
     curated_guidance_search: Callable[..., list[dict[str, object]]] | None = None,
     melody_exercise_enabled: bool | None = None,
+    melody_import_enabled: bool | None = None,
 ) -> RetrievalApi:
     retrieval_config = retrieval_config or configured_retrieval_mode_config()
     private_requested = retrieval_config.requested_mode in {
@@ -1018,6 +1126,7 @@ def create_app(
         retrieval_config=retrieval_config,
         curated_guidance_search=curated_guidance_search,
         melody_exercise_enabled=melody_exercise_enabled,
+        melody_import_enabled=melody_import_enabled,
     )
 
 

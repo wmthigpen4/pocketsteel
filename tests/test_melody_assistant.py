@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
 from pocketsteel.fretboard_examples import absolute_pitch_for_string
@@ -59,6 +62,60 @@ def test_structured_g_scale_degree_phrase_builds_synced_tab_and_fretboard() -> N
         position["id"] for position in fretboard["positions"]
     ]
     assert result["sources"] == []
+
+
+def test_amazing_grace_exact_score_events_keep_rhythm_chords_and_e9_route() -> None:
+    draft = json.loads(
+        Path("pocketsteel/resources/public_domain_songs/amazing_grace_new_britain.json").read_text(encoding="utf-8")
+    )
+    harmony = draft["score"]["harmony"]
+    events = []
+    for event in draft["score"]["melody"]:
+        active = [
+            item
+            for item in harmony
+            if (item["measure"], item["beat"]) <= (event["measure"], event["beat"])
+        ]
+        events.append({**event, "token": event["pitch"], "chord": active[-1]["symbol"] if active else ""})
+    result = melody_exercise_response(
+        "Arrange Amazing Grace",
+        {
+            "kind": "song_arrangement_lesson",
+            "key": "G",
+            "melody": events,
+            "material": {
+                "song": "Amazing Grace",
+                "section": "First phrase",
+                "sourceUrl": draft["source"]["url"],
+            },
+        },
+    )
+    assert result is not None
+    exercise = result["melody_exercise"]
+    assert [event["resolvedPitch"] for event in exercise["events"]] == ["D4", "G4", "B4", "G4", "B4", "A4", "G4", "E4"]
+    assert [(event["notes"][0]["string"], event["notes"][0]["fret"], event["notes"][0]["changes"]) for event in exercise["events"]] == [
+        (5, 3, []),
+        (4, 3, []),
+        (3, 3, []),
+        (4, 3, []),
+        (3, 3, []),
+        (1, 3, []),
+        (4, 3, []),
+        (5, 3, ["A"]),
+    ]
+    assert [event["durationBeats"] for event in exercise["events"]] == [1, 2, 0.5, 0.5, 2, 1, 2, 1]
+    vocal = next(route for route in exercise["routes"] if route["harmonyType"] == "vocal_steel")
+    assert vocal["generatedOrnaments"] == [
+        {
+            "kind": "slide_in",
+            "origin": "generated_ornament",
+            "targetEventId": vocal["events"][1]["id"].replace("vocal-steel", "single-note"),
+            "targetStep": 2,
+            "from": {"string": 4, "fret": 2, "changes": [], "pitch": "F#4"},
+            "to": {"string": 4, "fret": 3, "changes": [], "pitch": "G4"},
+            "label": "Optional slide into G4 on string 4, fret 2 to 3.",
+        }
+    ]
 
 
 def test_c_major_note_names_use_octave_aware_valid_e9_placement() -> None:

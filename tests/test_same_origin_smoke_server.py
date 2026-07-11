@@ -72,7 +72,8 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     assert status == "200 OK"
     assert headers["Content-Type"] == "text/html; charset=utf-8"
     assert b"Turn a phrase into an E9 lesson." in studio
-    assert b'<script src="melody-workbench.js?v=melody-route-row-20260711"></script>' in studio
+    assert b'<script src="melody-score.js?v=melody-multi-input-20260711-3"></script>' in studio
+    assert b'<script src="melody-workbench.js?v=melody-multi-input-20260711-3"></script>' in studio
 
     status, headers, studio_script = call_app(smoke_app(), "/ui/melody-workbench.js")
     assert status == "200 OK"
@@ -81,6 +82,22 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
         "application/javascript; charset=utf-8",
     }
     assert b"buildMelodyRequest" in studio_script
+
+    status, headers, score_script = call_app(smoke_app(), "/ui/melody-score.js")
+    assert status == "200 OK"
+    assert headers["Content-Type"] in {
+        "text/javascript; charset=utf-8",
+        "application/javascript; charset=utf-8",
+    }
+    assert b"score_draft_v1" in score_script
+
+    status, headers, vexflow = call_app(smoke_app(), "/ui/vendor/vexflow-5.0.0.js")
+    assert status == "200 OK"
+    assert headers["Content-Type"] in {
+        "text/javascript; charset=utf-8",
+        "application/javascript; charset=utf-8",
+    }
+    assert b"VexFlow 5.0.0" in vexflow[:256]
 
     status, headers, script = call_app(smoke_app(), "/ui/answer-client.js")
     assert status == "200 OK"

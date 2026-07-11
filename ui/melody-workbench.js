@@ -34,7 +34,11 @@
   };
   const STARTING_POINTS = {
     phrase: "user_melody",
+    score: "user_melody",
+    import: "user_melody",
+    microphone: "user_melody",
     recording: "song_arrangement_lesson",
+    catalog: "song_arrangement_lesson",
     exercise: "original_exercise"
   };
   const KEY_NOTES = {
@@ -180,6 +184,7 @@
     const invalid = (tokens || []).filter((raw) => {
       const item = phraseItem(raw);
       if (Number.isInteger(item.string) && Number.isInteger(item.fret)) return item.string < 1 || item.string > 10 || item.fret < 0 || item.fret > 24;
+      if (Number.isFinite(Number(item.pitchValue)) || /^[A-Ga-g](?:#|b)?-?\d+$/.test(String(item.pitch || ""))) return false;
       const token = normalizeToken(item.token);
       return !/^[1-7]$/.test(token) && !allowedNotes.has(token);
     });
@@ -229,8 +234,10 @@
   }
 
   function createInitialState(kind = "user_melody") {
+    const safeKind = TASKS[kind] ? kind : "user_melody";
     return {
-      kind: TASKS[kind] ? kind : "user_melody",
+      kind: safeKind,
+      inputMethod: startingPointForKind(safeKind),
       key: "G",
       paletteMode: "degrees",
       tokens: [],
@@ -244,8 +251,75 @@
       sectionNumber: 1,
       activeEventIndex: 0,
       showOctaveMap: true,
-      response: null
+      response: null,
+      scoreDraft: null,
+      scoreSelectedIndex: -1,
+      scoreHistory: [],
+      scoreFuture: [],
+      sourceImageUrl: "",
+      microphoneCapture: null,
+      tapTimes: [],
+      importParts: [],
+      importSelectedPart: ""
     };
+  }
+
+  function youtubeVideoId(value) {
+    try {
+      const url = new URL(String(value || "").trim());
+      if (url.hostname === "youtu.be") return url.pathname.split("/").filter(Boolean)[0] || "";
+      if (!/(^|\.)youtube\.com$/.test(url.hostname)) return "";
+      if (url.pathname === "/watch") return url.searchParams.get("v") || "";
+      const parts = url.pathname.split("/").filter(Boolean);
+      return ["embed", "shorts", "live"].includes(parts[0]) ? parts[1] || "" : "";
+    } catch (_error) {
+      return "";
+    }
+  }
+
+  function referenceEmbedUrl(value, start = 0, end = 0) {
+    const id = youtubeVideoId(value);
+    if (!id) return "";
+    const query = new URLSearchParams({ rel: "0", playsinline: "1" });
+    if (Number(start) > 0) query.set("start", String(Math.floor(Number(start))));
+    if (Number(end) > Number(start)) query.set("end", String(Math.floor(Number(end))));
+    return `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?${query.toString()}`;
+  }
+
+  function fileSourceType(file) {
+    const name = String(file?.name || "").toLowerCase();
+    const type = String(file?.type || "").toLowerCase();
+    if (type.startsWith("image/") || /\.(jpe?g|png|webp)$/.test(name)) return "image";
+    if (/\.(mxl)$/.test(name)) return "mxl";
+    if (/\.(mid|midi)$/.test(name) || type.includes("midi")) return "midi";
+    if (/\.(xml|musicxml)$/.test(name) || type.includes("xml")) return "musicxml";
+    return "";
+  }
+
+  function frequencyToMidi(frequency) {
+    const value = Number(frequency);
+    return value > 0 ? Math.round(69 + 12 * Math.log2(value / 440)) : null;
+  }
+
+  function autoCorrelate(buffer, sampleRate) {
+    if (!buffer?.length || !sampleRate) return -1;
+    let rms = 0;
+    for (let index = 0; index < buffer.length; index += 1) rms += buffer[index] * buffer[index];
+    rms = Math.sqrt(rms / buffer.length);
+    if (rms < 0.012) return -1;
+    const minOffset = Math.max(2, Math.floor(sampleRate / 1000));
+    const maxOffset = Math.min(buffer.length - 2, Math.floor(sampleRate / 70));
+    let bestOffset = -1;
+    let bestCorrelation = 0;
+    for (let offset = minOffset; offset <= maxOffset; offset += 1) {
+      let correlation = 0;
+      for (let index = 0; index < buffer.length - offset; index += 1) correlation += buffer[index] * buffer[index + offset];
+      if (correlation > bestCorrelation) {
+        bestCorrelation = correlation;
+        bestOffset = offset;
+      }
+    }
+    return bestOffset > 0 ? sampleRate / bestOffset : -1;
   }
 
   function controlLabel(change) {
@@ -366,6 +440,11 @@
     validateTokens,
     reorderToken,
     buildMelodyRequest,
+    youtubeVideoId,
+    referenceEmbedUrl,
+    fileSourceType,
+    frequencyToMidi,
+    autoCorrelate,
     eventStepPresentation,
     eventStepCompactPresentation,
     routeButtonLabel,
@@ -386,6 +465,7 @@
   const answerUi = typeof STEEL_RAG_ANSWER_UI !== "undefined"
     ? STEEL_RAG_ANSWER_UI
     : global.STEEL_RAG_ANSWER_UI;
+  const scoreUi = global.STEEL_RAG_MELODY_SCORE;
   let state = createInitialState(new URLSearchParams(global.location.search).get("kind") || "user_melody");
   let session = null;
 
@@ -393,6 +473,7 @@
     unavailable: $("#studio-unavailable"),
     workflow: $("#studio-workflow"),
     startChoices: Array.from(doc.querySelectorAll("[data-studio-start]")),
+    inputPanels: Array.from(doc.querySelectorAll("[data-input-panel]")),
     sourceTreatmentButtons: Array.from(doc.querySelectorAll("[data-source-treatment]")),
     editor: $("#studio-editor"),
     materialFields: $("#studio-material-fields"),
@@ -401,6 +482,14 @@
     recording: $("#studio-recording"),
     section: $("#studio-section"),
     sourceUrl: $("#studio-source-url"),
+    loopStart: $("#studio-loop-start"),
+    loopEnd: $("#studio-loop-end"),
+    loadReference: $("#studio-load-reference"),
+    repeatReference: $("#studio-repeat-reference"),
+    tapTempo: $("#studio-tap-tempo"),
+    tempo: $("#studio-tempo"),
+    youtubeFrame: $("#studio-youtube-frame"),
+    externalReference: $("#studio-external-reference"),
     key: $("#studio-key"),
     contour: $("#studio-contour"),
     phraseInput: $("#studio-phrase-input"),
@@ -418,13 +507,54 @@
     sectionCount: $("#studio-section-count"),
     palette: $("#studio-palette"),
     presets: $("#studio-presets"),
+    useExercise: $("#studio-use-exercise"),
     paletteModeButtons: Array.from(doc.querySelectorAll("[data-palette-mode]")),
     presetButtons: Array.from(doc.querySelectorAll("[data-preset]")),
     error: $("#studio-error"),
     build: $("#studio-build"),
+    scoreMeter: $("#studio-score-meter"),
+    scorePickup: $("#studio-score-pickup"),
+    scoreDuration: $("#studio-score-duration"),
+    scorePartField: $("#studio-score-part-field"),
+    scorePart: $("#studio-score-part"),
+    insertRest: $("#studio-insert-rest"),
+    addMeasure: $("#studio-add-measure"),
+    removeMeasure: $("#studio-remove-measure"),
+    scoreUndo: $("#studio-score-undo"),
+    scoreRedo: $("#studio-score-redo"),
+    scoreKeyboard: $("#studio-score-keyboard"),
+    scoreCanvas: $("#studio-score-canvas"),
+    scoreStatus: $("#studio-score-status"),
+    scoreEventEditor: $("#studio-score-event-editor"),
+    scorePitch: $("#studio-score-pitch"),
+    eventDuration: $("#studio-event-duration"),
+    scoreChord: $("#studio-score-chord"),
+    scoreLyric: $("#studio-score-lyric"),
+    scoreTie: $("#studio-score-tie"),
+    scoreRemove: $("#studio-score-remove-note"),
+    scoreClearMeasure: $("#studio-score-clear-measure"),
+    scoreDuplicate: $("#studio-score-duplicate"),
+    scoreTransposeDown: $("#studio-score-transpose-down"),
+    scoreTransposeUp: $("#studio-score-transpose-up"),
+    scorePlay: $("#studio-score-play"),
+    scoreDownload: $("#studio-score-download"),
+    scoreArrange: $("#studio-score-arrange"),
+    scoreWarnings: $("#studio-score-warnings"),
+    scoreSource: $("#studio-score-source"),
+    scoreSourceImage: $("#studio-score-source-image"),
+    importFile: $("#studio-import-file"),
+    importButton: $("#studio-import-button"),
+    importStatus: $("#studio-import-status"),
+    importPreview: $("#studio-import-preview"),
+    microphoneStart: $("#studio-microphone-start"),
+    microphoneStop: $("#studio-microphone-stop"),
+    microphoneStatus: $("#studio-microphone-status"),
+    catalogGrid: $("#studio-catalog-grid"),
+    catalogStatus: $("#studio-catalog-status"),
     result: $("#studio-result"),
     resultTitle: $("#studio-result-title"),
     resultSource: $("#studio-result-source"),
+    resultScore: $("#studio-result-score"),
     routeTabs: $("#studio-route-tabs"),
     routeReason: $("#studio-route-reason"),
     sourceNeeded: $("#studio-source-needed"),
@@ -576,7 +706,7 @@
   }
 
   function renderStartingPoint() {
-    const startingPoint = startingPointForKind(state.kind);
+    const startingPoint = state.inputMethod || startingPointForKind(state.kind);
     elements.startChoices.forEach((button) => {
       const selected = button.dataset.studioStart === startingPoint;
       button.classList.toggle("is-selected", selected);
@@ -587,15 +717,22 @@
       button.classList.toggle("is-selected", selected);
       button.setAttribute("aria-pressed", String(selected));
     });
-    elements.materialFields.hidden = startingPoint !== "recording";
-    elements.presets.hidden = startingPoint !== "exercise";
+    elements.inputPanels.forEach((panel) => {
+      const methods = String(panel.dataset.inputPanel || "").split(/\s+/).filter(Boolean);
+      panel.hidden = !methods.includes(startingPoint);
+    });
+    elements.presets.hidden = state.kind !== "original_exercise";
+    if (startingPoint === "score") renderScoreBuilder();
+    if (startingPoint === "catalog" && !elements.catalogGrid.childElementCount) loadCatalog();
   }
 
   function selectStartingPoint(startingPoint) {
-    const previousStartingPoint = startingPointForKind(state.kind);
+    const previousStartingPoint = state.inputMethod || startingPointForKind(state.kind);
     const nextKind = STARTING_POINTS[startingPoint] || "user_melody";
     if (previousStartingPoint === "recording" && startingPoint !== "recording") clearMaterial();
+    state.inputMethod = startingPoint;
     state.kind = startingPoint === "recording" && currentTask()?.needsMaterial ? state.kind : nextKind;
+    if (startingPoint === "score") ensureScoreDraft();
     state.sectionNumber = 1;
     state.response = null;
     elements.result.hidden = true;
@@ -608,6 +745,7 @@
   function selectSourceTreatment(kind) {
     if (!TASKS[kind]?.needsMaterial) return;
     state.kind = kind;
+    state.inputMethod = "recording";
     state.sectionNumber = 1;
     state.response = null;
     elements.result.hidden = true;
@@ -622,6 +760,415 @@
   function showError(message) {
     elements.error.textContent = message || "";
     elements.error.hidden = !message;
+  }
+
+  function accessHeaders(json = false) {
+    const headers = { Accept: "application/json" };
+    if (json) headers["Content-Type"] = "application/json";
+    const role = session?.role || readAccessRole();
+    if (["beta_user", "admin"].includes(role)) headers["X-Steel-Rag-Dev-Access-Role"] = role;
+    return headers;
+  }
+
+  function ensureScoreDraft() {
+    if (!state.scoreDraft) state.scoreDraft = scoreUi.createDraft({ key: state.key, meter: elements.scoreMeter?.value || "4/4" });
+    return state.scoreDraft;
+  }
+
+  function commitScoreDraft(next, selectedIndex = state.scoreSelectedIndex) {
+    if (state.scoreDraft) state.scoreHistory.push(scoreUi.cloneDraft(state.scoreDraft));
+    state.scoreHistory = state.scoreHistory.slice(-50);
+    state.scoreFuture = [];
+    state.scoreDraft = scoreUi.reflowDraft(next);
+    state.scoreSelectedIndex = Math.max(-1, Math.min(selectedIndex, state.scoreDraft.score.melody.length - 1));
+    renderScoreBuilder();
+  }
+
+  function selectedScoreEvent() {
+    return state.scoreDraft?.score?.melody?.[state.scoreSelectedIndex] || null;
+  }
+
+  function renderScoreKeyboard() {
+    if (elements.scoreKeyboard.childElementCount) return;
+    [60, 62, 64, 65, 67, 69, 71, 72].forEach((pitchValue) => {
+      const button = doc.createElement("button");
+      button.type = "button";
+      button.className = "score-key";
+      button.textContent = scoreUi.pitchLabel(pitchValue);
+      button.setAttribute("aria-label", `Add ${scoreUi.pitchLabel(pitchValue)}`);
+      button.addEventListener("click", () => addScoreEvent({ pitchValue, pitch: scoreUi.pitchLabel(pitchValue) }));
+      elements.scoreKeyboard.appendChild(button);
+    });
+  }
+
+  function renderScoreBuilder() {
+    if (!scoreUi || !elements.scoreCanvas) return;
+    const draft = ensureScoreDraft();
+    renderScoreKeyboard();
+    scoreUi.render(elements.scoreCanvas, draft, state.scoreSelectedIndex, (index) => {
+      state.scoreSelectedIndex = index;
+      renderScoreBuilder();
+    });
+    const event = selectedScoreEvent();
+    elements.scoreEventEditor.hidden = !event;
+    if (event) {
+      elements.scorePitch.value = event.rest ? "Rest" : event.pitch;
+      elements.scorePitch.disabled = Boolean(event.rest);
+      elements.eventDuration.value = String(event.durationBeats);
+      elements.scoreChord.value = scoreUi.chordForEvent(draft, event);
+      elements.scoreLyric.value = event.lyric || "";
+      elements.scoreTie.value = event.tie || "";
+    }
+    elements.scoreMeter.value = draft.score.meter;
+    elements.scorePickup.value = String(draft.score.pickupBeats || 0);
+    elements.scoreUndo.disabled = !state.scoreHistory.length;
+    elements.scoreRedo.disabled = !state.scoreFuture.length;
+    elements.scorePartField.hidden = !state.importParts.length;
+    if (state.importParts.length) {
+      elements.scorePart.replaceChildren(...state.importParts.map((part) => {
+        const option = doc.createElement("option");
+        option.value = String(part.id);
+        option.textContent = `${part.name} (${part.eventCount} events)`;
+        option.selected = String(part.id) === String(state.importSelectedPart);
+        return option;
+      }));
+    }
+    elements.scoreStatus.textContent = draft.score.melody.length
+      ? `${draft.score.melody.length} of 64 events · ${Math.max(...draft.score.melody.map((item) => item.measure), 1)} of 16 measures · click a note to edit it.`
+      : "Choose a pitch, click the staff, or press A–G to add the first note.";
+    const structureWarnings = scoreUi.draftWarnings(draft);
+    const warnings = [...(draft.review?.warnings || []), ...structureWarnings];
+    const unsupportedKey = !["G", "C"].includes(draft.score.arrangementKey);
+    elements.scoreWarnings.textContent = [...warnings, ...(unsupportedKey ? ["Choose G or C as the arrangement key before arranging."] : [])].join(" ");
+    elements.scoreWarnings.hidden = !elements.scoreWarnings.textContent;
+    elements.scoreArrange.disabled = !draft.score.melody.some((item) => !item.rest) || unsupportedKey || structureWarnings.length > 0;
+    elements.scoreArrange.textContent = draft.review.status === "confirmed" ? "Arrange for E9" : "Confirm and arrange for E9";
+    elements.scoreSource.textContent = draft.source.type === "composed_in_studio" ? "User-created score" : `${draft.source.title || "Imported score"} · ${draft.review.status === "confirmed" ? "confirmed" : "review before arranging"}`;
+    elements.scoreSourceImage.hidden = !state.sourceImageUrl;
+    if (state.sourceImageUrl) elements.scoreSourceImage.src = state.sourceImageUrl;
+  }
+
+  function addScoreEvent(changes = {}) {
+    const durationBeats = Number(elements.scoreDuration.value || 1);
+    const draft = scoreUi.addEvent(ensureScoreDraft(), { durationBeats, ...changes });
+    commitScoreDraft(draft, draft.score.melody.length - 1);
+  }
+
+  function updateSelectedScoreEvent(changes) {
+    if (!selectedScoreEvent()) return;
+    commitScoreDraft(scoreUi.updateEvent(state.scoreDraft, state.scoreSelectedIndex, changes), state.scoreSelectedIndex);
+  }
+
+  function restoreScoreHistory(direction) {
+    const from = direction < 0 ? state.scoreHistory : state.scoreFuture;
+    const to = direction < 0 ? state.scoreFuture : state.scoreHistory;
+    if (!from.length) return;
+    to.push(scoreUi.cloneDraft(state.scoreDraft));
+    state.scoreDraft = from.pop();
+    state.scoreSelectedIndex = Math.min(state.scoreSelectedIndex, state.scoreDraft.score.melody.length - 1);
+    renderScoreBuilder();
+  }
+
+  function hydrateScoreDraft(draft, imageUrl = "") {
+    if (!draft?.score?.melody) throw new Error("The import did not contain a readable melody.");
+    state.scoreHistory = [];
+    state.scoreFuture = [];
+    state.scoreDraft = scoreUi.reflowDraft(draft);
+    state.importParts = Array.isArray(draft.parts) && draft.parts.length > 1 ? draft.parts : [];
+    state.importSelectedPart = String(draft.selectedPartId ?? draft.selectedTrackIndex ?? state.importSelectedPart ?? "");
+    state.scoreSelectedIndex = state.scoreDraft.score.melody.length ? 0 : -1;
+    state.inputMethod = "score";
+    state.kind = draft.source?.type === "catalog" ? "song_arrangement_lesson" : "user_melody";
+    state.key = ["G", "C"].includes(draft.score.arrangementKey) ? draft.score.arrangementKey : elements.key.value;
+    elements.key.value = state.key;
+    if (imageUrl) state.sourceImageUrl = imageUrl;
+    renderStartingPoint();
+    renderScoreBuilder();
+  }
+
+  function scoreDraftFromExercise(exercise) {
+    const draft = scoreUi.createDraft({
+      key: state.key,
+      title: exercise?.title || "Melody lesson",
+      sourceType: "manual_phrase",
+      rightsLabel: "user_provided"
+    });
+    draft.score.melody = (exercise?.events || []).map((event, index) => ({
+      id: event.id || `result-${index + 1}`,
+      measure: event.measure || Math.floor(index / MAX_EVENTS_PER_SECTION) + 1,
+      beat: event.beat || index % MAX_EVENTS_PER_SECTION + 1,
+      durationBeats: event.durationBeats || 1,
+      pitch: event.resolvedPitch || event.resolvedNote,
+      pitchValue: event.pitchValue,
+      origin: event.origin || "source",
+      tie: event.tie || "",
+      lyric: event.lyric || ""
+    })).filter((event) => Number.isFinite(Number(event.pitchValue)));
+    (exercise?.events || []).forEach((event, index) => {
+      if (event.chord) draft.score.harmony.push({ measure: event.measure || 1, beat: event.beat || index + 1, symbol: event.chord, basis: "source", confidence: 1 });
+    });
+    return draft;
+  }
+
+  function renderResultScore(exercise, route = null) {
+    if (!scoreUi || !exercise?.events?.length) {
+      elements.resultScore.hidden = true;
+      return;
+    }
+    elements.resultScore.hidden = false;
+    scoreUi.render(elements.resultScore, scoreDraftFromExercise(exercise), state.activeEventIndex, selectEvent);
+    const ornaments = route?.generatedOrnaments || [];
+    if (ornaments.length) {
+      const note = doc.createElement("p");
+      note.className = "generated-ornament-note";
+      note.textContent = `Generated ornament (optional): ${ornaments.map((item) => item.label).join(" ")} Select Faithful melody to hide it.`;
+      elements.resultScore.appendChild(note);
+    }
+  }
+
+  function playScoreDraft() {
+    const events = ensureScoreDraft().score.melody;
+    if (!events.length) return;
+    const AudioContext = global.AudioContext || global.webkitAudioContext;
+    if (!AudioContext) return showError("This browser does not support score playback.");
+    const context = new AudioContext();
+    let cursor = context.currentTime + 0.05;
+    const secondsPerBeat = 0.5;
+    events.forEach((event) => {
+      const duration = Math.max(0.08, Number(event.durationBeats || 1) * secondsPerBeat);
+      if (!event.rest) {
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.type = "triangle";
+        oscillator.frequency.value = 440 * 2 ** ((Number(event.pitchValue) - 69) / 12);
+        gain.gain.setValueAtTime(0.0001, cursor);
+        gain.gain.exponentialRampToValueAtTime(0.14, cursor + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, cursor + duration - 0.02);
+        oscillator.connect(gain).connect(context.destination);
+        oscillator.start(cursor);
+        oscillator.stop(cursor + duration);
+      }
+      cursor += duration;
+    });
+    global.setTimeout(() => context.close(), Math.max(500, (cursor - context.currentTime + 0.2) * 1000));
+  }
+
+  function downloadScoreDraft() {
+    const blob = new Blob([scoreUi.musicXmlForDraft(ensureScoreDraft())], { type: "application/vnd.recordare.musicxml+xml" });
+    const url = URL.createObjectURL(blob);
+    const link = doc.createElement("a");
+    link.href = url;
+    link.download = `${String(state.scoreDraft.source.title || "melody-studio-score").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.musicxml`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function importPayload(payload) {
+    if (!session?.features?.melodyImport) throw new Error("Temporary imports are not enabled on this preview.");
+    const response = await global.fetch("/api/melody/import", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: accessHeaders(true),
+      body: JSON.stringify(payload),
+      cache: "no-store"
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || `Import failed with ${response.status}.`);
+    return body.scoreDraft || body.score_draft || body;
+  }
+
+  function readFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ""));
+      reader.onerror = () => reject(new Error("The file could not be read."));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function imageFileDataUrl(file) {
+    if (!global.createImageBitmap) return readFileAsDataUrl(file);
+    const bitmap = await global.createImageBitmap(file);
+    const scale = Math.min(1, 1800 / Math.max(bitmap.width, bitmap.height));
+    const canvas = doc.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    return canvas.toDataURL(file.type === "image/png" ? "image/png" : "image/webp", 0.88);
+  }
+
+  async function importSelectedFile() {
+    const file = elements.importFile.files?.[0];
+    if (!file) return elements.importStatus.textContent = "Choose an image, MusicXML, MXL, or MIDI file first.";
+    const sourceType = fileSourceType(file);
+    if (!sourceType) return elements.importStatus.textContent = "Use JPG, PNG, WebP, MusicXML, MXL, or MIDI. For PDF, upload a screenshot.";
+    if (state.sourceImageUrl) URL.revokeObjectURL(state.sourceImageUrl);
+    state.sourceImageUrl = sourceType === "image" ? URL.createObjectURL(file) : "";
+    elements.importPreview.hidden = !state.sourceImageUrl;
+    if (state.sourceImageUrl) elements.importPreview.src = state.sourceImageUrl;
+    elements.importButton.disabled = true;
+    elements.importStatus.textContent = sourceType === "image" ? "Reading the page locally. You will review every note before arranging…" : "Reading the music file in memory…";
+    try {
+      const dataUrl = sourceType === "image" ? await imageFileDataUrl(file) : await readFileAsDataUrl(file);
+      const request = {
+        sourceType,
+        filename: file.name,
+        mimeType: sourceType === "image" ? dataUrl.slice(5, dataUrl.indexOf(";")) : file.type,
+        contentBase64: dataUrl.split(",")[1] || ""
+      };
+      if (state.importSelectedPart) {
+        if (sourceType === "midi") request.trackIndex = Number(state.importSelectedPart);
+        else request.partId = state.importSelectedPart;
+      }
+      const draft = await importPayload(request);
+      draft.review = draft.review || { status: "needs_review", warnings: [] };
+      draft.review.status = "needs_review";
+      hydrateScoreDraft(draft, state.sourceImageUrl);
+    } catch (error) {
+      elements.importStatus.textContent = error.message || "The score could not be read.";
+    } finally {
+      elements.importButton.disabled = false;
+    }
+  }
+
+  async function loadCatalog() {
+    elements.catalogStatus.textContent = "Loading reviewed songs…";
+    if (!session?.features?.melodyImport) {
+      elements.catalogStatus.textContent = "The public-domain catalog is not enabled on this preview.";
+      return;
+    }
+    try {
+      const response = await global.fetch("/api/melody/catalog", { credentials: "same-origin", headers: accessHeaders(), cache: "no-store" });
+      if (!response.ok) throw new Error(`Catalog failed with ${response.status}.`);
+      const payload = await response.json();
+      const songs = payload.songs || payload.catalog || [];
+      elements.catalogGrid.replaceChildren();
+      songs.forEach((song) => {
+        const card = doc.createElement("article");
+        card.className = "catalog-card";
+        const title = doc.createElement("h4");
+        title.textContent = song.title;
+        const detail = doc.createElement("p");
+        detail.textContent = `${song.tuneName || song.tune || "Public-domain tune"} · ${song.key || "G"} · ${song.meter || "3/4"}`;
+        const button = doc.createElement("button");
+        button.type = "button";
+        button.className = "primary-action";
+        button.textContent = "Open in score builder";
+        button.addEventListener("click", async () => {
+          elements.catalogStatus.textContent = `Opening ${song.title}…`;
+          try {
+            hydrateScoreDraft(await importPayload({ sourceType: "catalog", catalogId: song.id }));
+          } catch (error) {
+            elements.catalogStatus.textContent = error.message;
+          }
+        });
+        card.append(title, detail, button);
+        elements.catalogGrid.appendChild(card);
+      });
+      elements.catalogStatus.textContent = songs.length ? "Catalog sources are reviewed and checksummed; no live scrape is used." : "No catalog songs are available.";
+    } catch (error) {
+      elements.catalogStatus.textContent = error.message;
+    }
+  }
+
+  function loadReference() {
+    const value = elements.sourceUrl.value.trim();
+    const embed = referenceEmbedUrl(value, elements.loopStart.value, elements.loopEnd.value);
+    if (embed) {
+      elements.youtubeFrame.src = embed;
+      elements.youtubeFrame.hidden = false;
+      elements.externalReference.hidden = true;
+      return;
+    }
+    try {
+      const url = new URL(value);
+      if (!/^https?:$/.test(url.protocol)) throw new Error("protocol");
+      elements.youtubeFrame.hidden = true;
+      elements.externalReference.href = url.href;
+      elements.externalReference.hidden = false;
+    } catch (_error) {
+      showError("Use a complete YouTube, Ultimate Guitar, or attribution link.");
+    }
+  }
+
+  function recordTapTempo() {
+    const now = performance.now();
+    state.tapTimes = [...state.tapTimes.filter((time) => now - time < 5000), now].slice(-5);
+    if (state.tapTimes.length < 2) return elements.tempo.value = "Keep tapping…";
+    const intervals = state.tapTimes.slice(1).map((time, index) => time - state.tapTimes[index]);
+    elements.tempo.value = `${Math.round(60000 / (intervals.reduce((sum, item) => sum + item, 0) / intervals.length))} BPM`;
+  }
+
+  async function startMicrophoneCapture() {
+    if (!navigator.mediaDevices?.getUserMedia) return elements.microphoneStatus.textContent = "Microphone capture is unavailable in this browser.";
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+      const AudioContext = global.AudioContext || global.webkitAudioContext;
+      const context = new AudioContext();
+      const analyser = context.createAnalyser();
+      analyser.fftSize = 2048;
+      context.createMediaStreamSource(stream).connect(analyser);
+      const buffer = new Float32Array(analyser.fftSize);
+      const capture = { stream, context, analyser, buffer, samples: [], startedAt: performance.now(), frame: 0, timer: 0 };
+      state.microphoneCapture = capture;
+      const sample = () => {
+        if (state.microphoneCapture !== capture) return;
+        analyser.getFloatTimeDomainData(buffer);
+        const frequency = autoCorrelate(buffer, context.sampleRate);
+        const midi = frequencyToMidi(frequency);
+        if (midi !== null && midi >= 36 && midi <= 96) capture.samples.push({ midi, time: (performance.now() - capture.startedAt) / 1000 });
+        elements.microphoneStatus.textContent = `Listening… ${Math.min(15, Math.ceil((performance.now() - capture.startedAt) / 1000))} seconds`;
+        capture.frame = global.requestAnimationFrame(sample);
+      };
+      sample();
+      capture.timer = global.setTimeout(stopMicrophoneCapture, 15000);
+      elements.microphoneStart.disabled = true;
+      elements.microphoneStop.disabled = false;
+    } catch (_error) {
+      elements.microphoneStatus.textContent = "Microphone permission was not granted.";
+    }
+  }
+
+  async function stopMicrophoneCapture() {
+    const capture = state.microphoneCapture;
+    if (!capture) return;
+    state.microphoneCapture = null;
+    global.cancelAnimationFrame(capture.frame);
+    global.clearTimeout(capture.timer);
+    capture.stream.getTracks().forEach((track) => track.stop());
+    await capture.context.close();
+    const runs = [];
+    capture.samples.forEach((sample) => {
+      const last = runs.at(-1);
+      if (last && last.midi === sample.midi && sample.time - last.lastTime < 0.18) {
+        last.count += 1;
+        last.lastTime = sample.time;
+      } else runs.push({ midi: sample.midi, count: 1, startTime: sample.time, lastTime: sample.time });
+    });
+    const candidates = runs.filter((run) => run.count >= 3).slice(0, 64);
+    elements.microphoneStart.disabled = false;
+    elements.microphoneStop.disabled = true;
+    if (!candidates.length) return elements.microphoneStatus.textContent = "No stable single-note phrase was detected. Try humming one note at a time in a quieter room.";
+    if (runs.length > candidates.length * 3) elements.microphoneStatus.textContent = "The sound may have been polyphonic. Review these candidates carefully.";
+    const draft = scoreUi.createDraft({ sourceType: "microphone", rightsLabel: "user_provided", title: "Played or hummed phrase", reviewStatus: "needs_review", key: state.key });
+    draft.score.melody = candidates.map((run, index) => ({
+      id: `microphone-${index + 1}`,
+      pitchValue: run.midi,
+      pitch: scoreUi.pitchLabel(run.midi),
+      durationBeats: Math.max(0.5, Math.min(4, Math.round((run.lastTime - run.startTime) / 0.25) * 0.5 || 0.5)),
+      origin: "source",
+      confidence: Math.min(0.98, 0.55 + run.count / 40)
+    }));
+    draft.review.warnings.push("Pitch and timing were estimated on this device; confirm every note before arranging.");
+    hydrateScoreDraft(draft);
+  }
+
+  function clearTransientDraft() {
+    if (state.microphoneCapture) stopMicrophoneCapture();
+    if (state.sourceImageUrl) URL.revokeObjectURL(state.sourceImageUrl);
+    state.sourceImageUrl = "";
+    elements.youtubeFrame.removeAttribute("src");
   }
 
   function materialLabel(material) {
@@ -653,6 +1200,8 @@
     if (event.renderablePositionId) {
       global.STEEL_RAG_FRETBOARD?.selectPedalSteelFretboardPosition?.(elements.fretboard, event.renderablePositionId);
     }
+    const activeRoute = exercise.routes?.find((item) => item.id === exercise.selectedRouteId) || null;
+    renderResultScore(exercise, activeRoute);
   }
 
   function renderEvents(exercise) {
@@ -700,7 +1249,9 @@
       );
     }
     renderEvents(exercise);
-    elements.tabCode.textContent = route.tab?.tabText || "";
+    renderResultScore(exercise, route);
+    const ornamentTab = (route.generatedOrnaments || []).map((item) => `Generated ornament (optional): ${item.from?.pitch || "approach"}→${item.to?.pitch || "target"} · S${item.from?.string || "?"} ${item.from?.fret ?? "?"}→${item.to?.fret ?? "?"}`).join("\n");
+    elements.tabCode.textContent = `${ornamentTab}${ornamentTab ? "\n\n" : ""}${route.tab?.tabText || ""}`;
     selectEvent(0);
   }
 
@@ -763,6 +1314,7 @@
     elements.tab.hidden = needsSource || !response.tabs?.length;
     elements.explanation.hidden = needsSource;
     elements.currentNote.hidden = needsSource;
+    elements.resultScore.hidden = needsSource;
     elements.routeTabs.hidden = needsSource;
     elements.routeReason.hidden = needsSource;
     updateOctaveMapVisibility();
@@ -772,6 +1324,7 @@
         melodyFretboardOptions(response.fretboard, exercise.events)
       );
       renderEvents(exercise);
+      renderResultScore(exercise);
       renderRoutes(exercise);
       elements.tabCode.textContent = response.tabs[0]?.tabText || "";
       elements.explanation.textContent = accuracy.note || "Practice one event at a time, then connect the phrase slowly.";
@@ -785,8 +1338,8 @@
     elements.result.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  async function submitLesson(sectionNumber = 1) {
-    syncStateFromFields();
+  async function submitLesson(sectionNumber = 1, options = {}) {
+    if (!options.preserveStructuredEvents) syncStateFromFields();
     const task = currentTask();
     if (!task) return showError("Choose what you want to learn first.");
     const validation = validateTokens(state.tokens, state.key);
@@ -817,6 +1370,19 @@
     }
   }
 
+  async function arrangeScoreDraft() {
+    const draft = ensureScoreDraft();
+    if (!["G", "C"].includes(draft.score.arrangementKey)) return showError("Choose G or C as the arrangement key before arranging.");
+    state.tokens = scoreUi.arrangementEvents(draft);
+    if (!state.tokens.length) return showError("Add at least one note before arranging.");
+    state.key = draft.score.arrangementKey;
+    state.kind = draft.source.type === "catalog" ? "song_arrangement_lesson" : "user_melody";
+    state.song = draft.source.title || "";
+    state.sourceUrl = draft.source.url || "";
+    state.scoreDraft.review.status = "confirmed";
+    await submitLesson(1, { preserveStructuredEvents: true });
+  }
+
   function editPhrase() {
     elements.result.hidden = true;
     elements.editor.hidden = false;
@@ -824,6 +1390,7 @@
   }
 
   function startOver() {
+    clearTransientDraft();
     state = createInitialState();
     clearMaterial();
     elements.key.value = "G";
@@ -889,7 +1456,18 @@
     setTokens(state.tokens);
   });
   elements.key.addEventListener("change", () => {
-    state.key = elements.key.value;
+    const nextKey = elements.key.value;
+    if (state.inputMethod === "score" && state.scoreDraft) {
+      const roots = { C: 0, G: 7, D: 2, A: 9, E: 4, B: 11, F: 5, "F#": 6, Bb: 10, Eb: 3, Ab: 8, Db: 1 };
+      const source = state.scoreDraft.score.arrangementKey || state.scoreDraft.score.sourceKey;
+      let shift = (roots[nextKey] ?? 0) - (roots[source] ?? 0);
+      if (shift > 6) shift -= 12;
+      if (shift < -6) shift += 12;
+      const transposed = scoreUi.transposeDraft(state.scoreDraft, shift);
+      transposed.score.arrangementKey = nextKey;
+      commitScoreDraft(transposed, state.scoreSelectedIndex);
+    }
+    state.key = nextKey;
     renderPalette();
     renderPhraseBuilder();
   });
@@ -906,6 +1484,84 @@
     renderPalette();
   }));
   elements.presetButtons.forEach((button) => button.addEventListener("click", () => setTokens(PRESETS[button.dataset.preset] || [])));
+  elements.useExercise.addEventListener("click", () => {
+    state.kind = "original_exercise";
+    state.inputMethod = "phrase";
+    setTokens(PRESETS["1-2-3-5"]);
+    renderStartingPoint();
+  });
+  elements.scoreMeter.addEventListener("change", () => {
+    const next = scoreUi.cloneDraft(ensureScoreDraft());
+    next.score.meter = elements.scoreMeter.value;
+    commitScoreDraft(next);
+  });
+  elements.scorePickup.addEventListener("change", () => {
+    const next = scoreUi.cloneDraft(ensureScoreDraft());
+    next.score.pickupBeats = Number(elements.scorePickup.value);
+    commitScoreDraft(next);
+  });
+  elements.scorePart.addEventListener("change", () => {
+    state.importSelectedPart = elements.scorePart.value;
+    importSelectedFile();
+  });
+  elements.insertRest.addEventListener("click", () => addScoreEvent({ rest: true, pitch: null, pitchValue: null }));
+  elements.addMeasure.addEventListener("click", () => {
+    const beats = scoreUi.beatsPerMeasure(ensureScoreDraft());
+    addScoreEvent({ rest: true, pitch: null, pitchValue: null, durationBeats: beats });
+  });
+  elements.removeMeasure.addEventListener("click", () => {
+    const draft = ensureScoreDraft();
+    const lastMeasure = Math.max(...draft.score.melody.map((event) => event.measure), 1);
+    commitScoreDraft(scoreUi.clearMeasure(draft, lastMeasure), -1);
+  });
+  elements.scoreUndo.addEventListener("click", () => restoreScoreHistory(-1));
+  elements.scoreRedo.addEventListener("click", () => restoreScoreHistory(1));
+  elements.scorePitch.addEventListener("change", () => {
+    const match = elements.scorePitch.value.trim().replace(/♯/g, "#").replace(/♭/g, "b").match(/^([A-Ga-g])([#b]?)(-?\d)$/);
+    if (!match) return showError("Use a scientific pitch such as G4, F#4, or Bb3.");
+    const note = `${match[1].toUpperCase()}${match[2]}`;
+    const pitchClass = semitoneForNote(note);
+    const pitchValue = (Number(match[3]) + 1) * 12 + pitchClass;
+    updateSelectedScoreEvent({ pitchValue, pitch: scoreUi.pitchLabel(pitchValue) });
+  });
+  elements.eventDuration.addEventListener("change", () => updateSelectedScoreEvent({ durationBeats: Number(elements.eventDuration.value) }));
+  elements.scoreLyric.addEventListener("change", () => updateSelectedScoreEvent({ lyric: elements.scoreLyric.value.trim() }));
+  elements.scoreTie.addEventListener("change", () => updateSelectedScoreEvent({ tie: elements.scoreTie.value }));
+  elements.scoreChord.addEventListener("change", () => commitScoreDraft(scoreUi.setChordAtEvent(state.scoreDraft, state.scoreSelectedIndex, elements.scoreChord.value), state.scoreSelectedIndex));
+  elements.scoreRemove.addEventListener("click", () => commitScoreDraft(scoreUi.removeEvent(state.scoreDraft, state.scoreSelectedIndex), Math.max(0, state.scoreSelectedIndex - 1)));
+  elements.scoreClearMeasure.addEventListener("click", () => {
+    const event = selectedScoreEvent();
+    if (event) commitScoreDraft(scoreUi.clearMeasure(state.scoreDraft, event.measure), -1);
+  });
+  elements.scoreDuplicate.addEventListener("click", () => commitScoreDraft(scoreUi.duplicatePhrase(ensureScoreDraft()), -1));
+  elements.scoreTransposeDown.addEventListener("click", () => commitScoreDraft(scoreUi.transposeDraft(ensureScoreDraft(), -1)));
+  elements.scoreTransposeUp.addEventListener("click", () => commitScoreDraft(scoreUi.transposeDraft(ensureScoreDraft(), 1)));
+  elements.scorePlay.addEventListener("click", playScoreDraft);
+  elements.scoreDownload.addEventListener("click", downloadScoreDraft);
+  elements.scoreArrange.addEventListener("click", arrangeScoreDraft);
+  elements.scoreCanvas.addEventListener("click", (event) => {
+    if (event.target.closest?.(".score-event")) return;
+    const rect = elements.scoreCanvas.getBoundingClientRect();
+    const relative = Math.max(0, Math.min(1, (event.clientY - rect.top) / Math.max(1, rect.height)));
+    const pitchValue = Math.max(48, Math.min(84, Math.round(79 - relative * 24)));
+    addScoreEvent({ pitchValue, pitch: scoreUi.pitchLabel(pitchValue) });
+  });
+  elements.importButton.addEventListener("click", importSelectedFile);
+  elements.importFile.addEventListener("change", () => {
+    const file = elements.importFile.files?.[0];
+    elements.importStatus.textContent = file ? `${file.name} is ready to read.` : "";
+  });
+  elements.microphoneStart.addEventListener("click", startMicrophoneCapture);
+  elements.microphoneStop.addEventListener("click", stopMicrophoneCapture);
+  elements.loadReference.addEventListener("click", loadReference);
+  elements.repeatReference.addEventListener("click", () => {
+    if (!elements.youtubeFrame.hidden) {
+      const source = elements.youtubeFrame.src;
+      elements.youtubeFrame.src = "about:blank";
+      global.setTimeout(() => { elements.youtubeFrame.src = source; }, 0);
+    } else loadReference();
+  });
+  elements.tapTempo.addEventListener("click", recordTapTempo);
   elements.build.addEventListener("click", () => submitLesson(1));
   elements.previous.addEventListener("click", () => selectEvent(state.activeEventIndex - 1));
   elements.next.addEventListener("click", () => selectEvent(state.activeEventIndex + 1));
@@ -917,6 +1573,24 @@
   elements.edit.addEventListener("click", editPhrase);
   elements.sourceNeeded.querySelector("[data-edit-source]").addEventListener("click", editPhrase);
   elements.result.querySelector("[data-start-over]").addEventListener("click", startOver);
+
+  doc.addEventListener("keydown", (event) => {
+    if (state.inputMethod !== "score" || event.metaKey || event.ctrlKey || event.altKey) return;
+    if (["INPUT", "TEXTAREA", "SELECT"].includes(doc.activeElement?.tagName)) return;
+    const durationShortcuts = { "1": "0.5", "2": "1", "3": "1.5", "4": "2", "5": "3", "6": "4" };
+    if (durationShortcuts[event.key]) {
+      event.preventDefault();
+      elements.scoreDuration.value = durationShortcuts[event.key];
+      elements.scoreStatus.textContent = `Note length: ${elements.scoreDuration.options[elements.scoreDuration.selectedIndex].text}. Press A–G to add a pitch.`;
+      return;
+    }
+    const note = event.key.toUpperCase();
+    if (!/^[A-G]$/.test(note)) return;
+    event.preventDefault();
+    const pitchValue = 60 + semitoneForNote(note);
+    addScoreEvent({ pitchValue, pitch: scoreUi.pitchLabel(pitchValue) });
+  });
+  global.addEventListener("pagehide", clearTransientDraft);
 
   bootstrap();
 })(typeof window !== "undefined" ? window : globalThis);

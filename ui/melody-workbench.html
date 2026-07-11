@@ -107,6 +107,42 @@
       text-align: center;
     }
     .start-choice:hover, .start-choice:focus-visible, .start-choice.is-selected { border-color: var(--gold); background: rgba(240, 191, 105, 0.11); color: var(--cream); outline: none; }
+    .start-choice { align-content: center; flex-wrap: wrap; }
+    .start-choice small { flex-basis: 100%; color: rgba(244, 234, 214, 0.54); font-size: 11px; font-weight: 600; }
+    .input-panel { margin-top: 24px; border: 1px solid rgba(244, 234, 214, 0.12); border-radius: 18px; background: rgba(5, 7, 7, 0.3); padding: 18px; }
+    .input-panel > :first-child { margin-top: 0; }
+    .input-panel-head { display: flex; align-items: start; justify-content: space-between; flex-wrap: wrap; gap: 12px 20px; margin-bottom: 16px; }
+    .input-panel-head h3 { font-size: 24px; }
+    .input-panel-head p { max-width: 650px; margin: 5px 0 0; }
+    .score-toolbar, .score-actions, .capture-actions, .recording-tools { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; }
+    .score-toolbar .field { min-width: 120px; }
+    .score-canvas { max-width: 100%; overflow-x: auto; border: 1px solid rgba(244, 234, 214, 0.13); border-radius: 14px; background: #fbf3df; color: #1b1710; padding: 8px; }
+    .score-svg { display: block; min-width: 720px; width: 100%; height: auto; }
+    .staff-line { stroke: #40382c; stroke-width: 1; }
+    .bar-line { stroke: #40382c; stroke-width: 1.5; }
+    .score-clef { fill: #241f18; font-size: 56px; }
+    .chord-symbol { fill: #8a4b13; font: 700 18px Georgia, serif; }
+    .note-head { fill: #1c1914; }
+    .note-stem { stroke: #1c1914; stroke-width: 2; }
+    .score-event { cursor: pointer; outline: none; }
+    .score-event.is-selected .note-head, .score-event:focus .note-head { fill: #b96b1d; stroke: #5a2f08; stroke-width: 2; }
+    .score-event.is-selected path, .score-event:focus-visible path { fill: #b96b1d; stroke: #5a2f08; }
+    .duration-label, .lyric-label { fill: #564c3e; font: 11px var(--font); }
+    .lyric-label { font-size: 12px; }
+    .accidental, .rest-mark { fill: #1c1914; font: 24px Georgia, serif; }
+    .score-keyboard { display: grid; grid-template-columns: repeat(12, minmax(44px, 1fr)); gap: 6px; margin: 14px 0; }
+    .score-key { min-height: 44px; border: 1px solid rgba(240, 191, 105, 0.26); border-radius: 10px; background: rgba(240, 191, 105, 0.07); color: var(--cream); cursor: pointer; font-weight: 850; }
+    .score-event-editor { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+    .score-status, .privacy-note { margin: 12px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .score-warnings { margin: 10px 0 0; color: #ffd7af; }
+    .generated-ornament-note { margin: 8px 4px 0; color: #8a4b13; font-size: 12px; font-weight: 800; }
+    .source-preview { max-width: min(520px, 100%); max-height: 360px; display: block; margin: 12px auto; border: 1px solid var(--line); border-radius: 14px; object-fit: contain; }
+    .catalog-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .catalog-card { display: grid; gap: 6px; border: 1px solid var(--line); border-radius: 16px; background: rgba(240, 191, 105, 0.06); color: var(--cream); padding: 16px; text-align: left; cursor: pointer; }
+    .catalog-card strong { font-family: var(--lesson); font-size: 22px; }
+    .catalog-card span { color: var(--muted); }
+    .youtube-frame { width: min(720px, 100%); aspect-ratio: 16 / 9; display: block; margin-top: 14px; border: 0; border-radius: 14px; background: #000; }
+    .review-badge { display: inline-flex; align-items: center; min-height: 28px; border: 1px solid var(--line); border-radius: 999px; padding: 0 10px; color: var(--gold); font-size: 12px; font-weight: 800; }
 
     #studio-editor { scroll-margin-top: 20px; }
     .editor-head { display: flex; align-items: flex-start; justify-content: flex-end; gap: 24px; margin: 22px 0 26px; }
@@ -254,7 +290,7 @@
       .studio-nav a { min-height: 36px; padding: 0 11px; font-size: 12px; }
       main { padding-top: 34px; }
       .start-picker__heading { display: grid; }
-      .start-options, .field-grid { grid-template-columns: 1fr; }
+      .start-options, .field-grid, .catalog-grid, .score-event-editor { grid-template-columns: 1fr; }
       .start-choice { justify-content: flex-start; min-height: 44px; }
       .field.is-wide { grid-column: auto; }
       .editor-head, .palette-head { align-items: stretch; flex-direction: column; }
@@ -268,6 +304,7 @@
       .octave-guide { order: 3; flex-basis: 100%; }
       .note-progress { margin-left: 4px; }
       .tab-block { white-space: pre; overflow-x: auto; }
+      .score-keyboard { grid-template-columns: repeat(6, minmax(42px, 1fr)); }
     }
   </style>
 </head>
@@ -308,9 +345,12 @@
             <p class="studio-copy">What are you starting with?</p>
           </div>
           <div class="start-options" role="group" aria-label="Choose what you are starting with">
-            <button class="start-choice is-selected" type="button" data-studio-start="phrase" aria-pressed="true">Enter my phrase</button>
-            <button class="start-choice" type="button" data-studio-start="recording" aria-pressed="false">A song or recording</button>
-            <button class="start-choice" type="button" data-studio-start="exercise" aria-pressed="false">Give me an exercise</button>
+            <button class="start-choice is-selected" type="button" data-studio-start="phrase" aria-pressed="true">Enter notes or intervals<small>Notes, 1–7, or E9 positions</small></button>
+            <button class="start-choice" type="button" data-studio-start="score" aria-pressed="false">Build a score<small>Melody staff, rhythm, and chords</small></button>
+            <button class="start-choice" type="button" data-studio-start="import" aria-pressed="false">Photo or music file<small>Image, MusicXML, MXL, or MIDI</small></button>
+            <button class="start-choice" type="button" data-studio-start="microphone" aria-pressed="false">Play or hum it<small>Up to 15 seconds, on device</small></button>
+            <button class="start-choice" type="button" data-studio-start="recording" aria-pressed="false">Use a recording<small>YouTube loop or reference chart</small></button>
+            <button class="start-choice" type="button" data-studio-start="catalog" aria-pressed="false">Pick a song<small>Reviewed public-domain catalog</small></button>
           </div>
         </div>
 
@@ -332,7 +372,7 @@
           </div>
         </div>
 
-        <div class="field-grid" id="studio-material-fields" hidden>
+        <div class="field-grid input-panel" id="studio-material-fields" data-input-panel="recording" hidden>
           <div class="field is-wide source-treatment">
             <span>How should Melody Studio treat it?</span>
             <div class="segmented" role="group" aria-label="Song or recording treatment">
@@ -344,12 +384,80 @@
           <label class="field">Song or solo<input id="studio-song" placeholder="Song title"></label>
           <label class="field">Recording / version<input id="studio-recording" placeholder="Album, live version, timestamp..."></label>
           <label class="field">Section<input id="studio-section" placeholder="Intro, first chorus, solo at 1:32..."></label>
-          <label class="field is-wide">Attribution link<input id="studio-source-url" type="url" placeholder="https://..."><span class="field-help">This identifies the source. Melody Studio does not listen to or extract notes from the link yet.</span></label>
+          <label class="field is-wide">YouTube, Ultimate Guitar, or attribution link<input id="studio-source-url" type="url" placeholder="https://..."><span class="field-help">YouTube opens in the official embedded player. Ultimate Guitar remains a reference link; Melody Studio never scrapes or copies its tab.</span></label>
+          <div class="field is-wide recording-tools">
+            <label class="field">Loop start (seconds)<input id="studio-loop-start" type="number" min="0" step="1" value="0"></label>
+            <label class="field">Loop end (seconds)<input id="studio-loop-end" type="number" min="0" step="1" placeholder="Optional"></label>
+            <button class="secondary-action" type="button" id="studio-load-reference">Open reference</button>
+            <button class="secondary-action" type="button" id="studio-repeat-reference">Repeat loop</button>
+            <button class="secondary-action" type="button" id="studio-tap-tempo">Tap tempo</button>
+            <output id="studio-tempo" class="review-badge" aria-live="polite">Tempo not set</output>
+          </div>
+          <iframe id="studio-youtube-frame" class="youtube-frame" title="YouTube teaching reference" allow="accelerometer; autoplay; encrypted-media; picture-in-picture" allowfullscreen hidden></iframe>
+          <a id="studio-external-reference" class="secondary-action" href="#" target="_blank" rel="noopener noreferrer" hidden style="width:fit-content;display:inline-flex;align-items:center;text-decoration:none;">Open reference beside Melody Studio</a>
         </div>
 
-        <div class="phrase-builder">
+        <section class="input-panel" id="studio-score-panel" data-input-panel="score" hidden>
+          <div class="input-panel-head"><div><h3>Build your lead sheet</h3><p class="field-help">One melody voice with rhythm, chords, rests, ties, and optional lyric syllables.</p></div><span class="review-badge" id="studio-score-source">User-created score</span></div>
+          <div class="score-toolbar">
+            <label class="field">Meter<select id="studio-score-meter"><option value="4/4">4/4</option><option value="3/4">3/4</option></select></label>
+            <label class="field">Pickup beats<select id="studio-score-pickup"><option value="0">None</option><option value="1">1 beat</option><option value="2">2 beats</option></select></label>
+            <label class="field">Note length<select id="studio-score-duration"><option value="1">Quarter</option><option value="0.5">Eighth</option><option value="1.5">Dotted quarter</option><option value="2">Half</option><option value="3">Dotted half</option><option value="4">Whole</option></select></label>
+            <label class="field" id="studio-score-part-field" hidden>Melody part<select id="studio-score-part"></select></label>
+            <button class="secondary-action" type="button" id="studio-insert-rest">Insert rest</button>
+            <button class="secondary-action" type="button" id="studio-add-measure">Add measure</button>
+            <button class="secondary-action" type="button" id="studio-remove-measure">Remove last measure</button>
+            <button class="secondary-action" type="button" id="studio-score-undo">Undo</button>
+            <button class="secondary-action" type="button" id="studio-score-redo">Redo</button>
+          </div>
+          <div class="score-keyboard" id="studio-score-keyboard" aria-label="Score note keyboard"></div>
+          <div class="score-canvas" id="studio-score-canvas" aria-label="Editable melody staff"></div>
+          <p class="score-status" id="studio-score-status">Choose a pitch to add the first note. Keyboard shortcuts A–G add notes.</p>
+          <div class="score-event-editor" id="studio-score-event-editor" hidden>
+            <label class="field">Pitch<input id="studio-score-pitch" placeholder="G4"></label>
+            <label class="field">Duration<select id="studio-event-duration"><option value="0.5">Eighth</option><option value="1">Quarter</option><option value="1.5">Dotted quarter</option><option value="2">Half</option><option value="3">Dotted half</option><option value="4">Whole</option></select></label>
+            <label class="field">Chord at this beat<input id="studio-score-chord" placeholder="G, D7, Em..."></label>
+            <label class="field">Lyric or phrase label<input id="studio-score-lyric" maxlength="80"></label>
+            <label class="field">Tie<select id="studio-score-tie"><option value="">None</option><option value="start">Start</option><option value="stop">Stop</option></select></label>
+            <button class="secondary-action" type="button" id="studio-score-remove-note">Remove selected event</button>
+            <button class="secondary-action" type="button" id="studio-score-clear-measure">Clear selected measure</button>
+          </div>
+          <div class="score-actions" style="margin-top:14px;">
+            <button class="secondary-action" type="button" id="studio-score-duplicate">Duplicate phrase</button>
+            <button class="secondary-action" type="button" id="studio-score-transpose-down">Transpose down</button>
+            <button class="secondary-action" type="button" id="studio-score-transpose-up">Transpose up</button>
+            <button class="secondary-action" type="button" id="studio-score-play">Play draft</button>
+            <button class="secondary-action" type="button" id="studio-score-download">Download MusicXML</button>
+            <button class="primary-action" type="button" id="studio-score-arrange">Arrange for E9</button>
+          </div>
+          <p class="score-warnings" id="studio-score-warnings" hidden></p>
+          <img class="source-preview" id="studio-score-source-image" alt="Uploaded score being reviewed" hidden>
+        </section>
+
+        <section class="input-panel" id="studio-import-panel" data-input-panel="import" hidden>
+          <div class="input-panel-head"><div><h3>Bring a score into this session</h3><p class="field-help">Upload a photo, MusicXML/MXL, or MIDI. Images are interpreted locally and always require review.</p></div></div>
+          <label class="field">Score image or music file<input id="studio-import-file" type="file" accept="image/jpeg,image/png,image/webp,.xml,.musicxml,.mxl,.mid,.midi" capture="environment"></label>
+          <div class="capture-actions" style="margin-top:14px;"><button class="primary-action" type="button" id="studio-import-button">Read this score</button></div>
+          <p class="privacy-note">Session-only: the app does not save the file or draft. For PDF music, upload a page screenshot.</p>
+          <p class="score-status" id="studio-import-status" aria-live="polite"></p>
+          <img class="source-preview" id="studio-import-preview" alt="Selected score preview" hidden>
+        </section>
+
+        <section class="input-panel" id="studio-microphone-panel" data-input-panel="microphone" hidden>
+          <div class="input-panel-head"><div><h3>Play or hum one note at a time</h3><p class="field-help">Melody Studio listens for a short monophonic phrase, keeps note candidates, then discards the audio buffer.</p></div></div>
+          <div class="capture-actions"><button class="primary-action" type="button" id="studio-microphone-start">Start listening</button><button class="secondary-action" type="button" id="studio-microphone-stop" disabled>Stop and review</button></div>
+          <p class="score-status" id="studio-microphone-status" aria-live="polite">Ready for up to 15 seconds.</p>
+        </section>
+
+        <section class="input-panel" id="studio-catalog-panel" data-input-panel="catalog" hidden>
+          <div class="input-panel-head"><div><h3>Choose a reviewed public-domain song</h3><p class="field-help">Start from sourced melody and harmony, then make a new E9 teaching arrangement.</p></div></div>
+          <div class="catalog-grid" id="studio-catalog-grid"></div>
+          <p class="score-status" id="studio-catalog-status" aria-live="polite"></p>
+        </section>
+
+        <div class="phrase-builder" id="studio-phrase-panel" data-input-panel="phrase recording">
           <div class="palette-head">
-            <div><h3>Build the phrase</h3><p class="field-help">Type below or add notes with the palette.</p></div>
+            <div><h3>Enter notes or intervals</h3><p class="field-help">Type below or add notes with the palette. This original input method remains fully supported.</p></div>
             <div class="segmented" aria-label="Phrase palette mode">
               <button type="button" data-palette-mode="degrees" aria-pressed="true">Scale degrees</button>
               <button type="button" data-palette-mode="notes" aria-pressed="false">Note names</button>
@@ -362,6 +470,7 @@
             <button class="preset-button" type="button" data-preset="1-3-5-3">1 3 5 3</button>
             <button class="preset-button" type="button" data-preset="5-6-5-3">5 6 5 3</button>
           </div>
+          <button class="secondary-action" type="button" id="studio-use-exercise" style="width:fit-content;">Use a practice-phrase starter</button>
           <label class="field">Phrase input
             <textarea id="studio-phrase-input" placeholder="Try: 1 2 3 5, G A B D, or simple tab such as S4: 3 5 7 10"></textarea>
             <span class="field-help">Use note names, scale degrees 1–7, or literal one-string E9 tab such as “S4: 3 2F 7”. Tab keeps its string, fret, controls, and register.</span>
@@ -391,7 +500,7 @@
           </div>
           <p id="studio-error" role="alert" hidden></p>
         </div>
-        <div class="editor-actions">
+        <div class="editor-actions" id="studio-phrase-actions" data-input-panel="phrase recording">
           <p class="field-help">Long phrases continue as numbered lessons with up to eight notes per section.</p>
           <button class="primary-action" type="button" id="studio-build">Build my E9 lesson</button>
         </div>
@@ -410,6 +519,8 @@
           <p></p>
           <button class="primary-action" type="button" data-edit-source>Edit recording and phrase</button>
         </div>
+
+        <div class="score-canvas" id="studio-result-score" aria-label="Lesson melody staff" hidden></div>
 
         <div id="studio-fretboard" aria-label="Melody Studio fretboard"></div>
 
@@ -453,8 +564,10 @@
     </div>
   </main>
 
-  <script src="answer-client.js?v=melody-route-row-20260711"></script>
-  <script src="pedal-steel-fretboard.js?v=melody-route-row-20260711"></script>
-  <script src="melody-workbench.js?v=melody-route-row-20260711"></script>
+  <script src="answer-client.js?v=melody-multi-input-20260711-3"></script>
+  <script src="pedal-steel-fretboard.js?v=melody-multi-input-20260711-3"></script>
+  <script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>
+  <script src="melody-score.js?v=melody-multi-input-20260711-3"></script>
+  <script src="melody-workbench.js?v=melody-multi-input-20260711-3"></script>
 </body>
 </html>

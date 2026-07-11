@@ -69,6 +69,7 @@ def call_app(
     retrieval_config: RetrievalModeConfig | None = None,
     curated_guidance_search: Any | None = None,
     melody_exercise_enabled: bool | None = None,
+    melody_import_enabled: bool | None = None,
 ) -> tuple[str, dict[str, str], dict[str, Any]]:
     app = create_app(
         search_index or fake_search_index(),
@@ -80,6 +81,7 @@ def call_app(
         retrieval_config=retrieval_config,
         curated_guidance_search=curated_guidance_search,
         melody_exercise_enabled=melody_exercise_enabled,
+        melody_import_enabled=melody_import_enabled,
     )
     captured: dict[str, Any] = {}
     body = json.dumps(json_body or {}).encode("utf-8") if json_body is not None else b""
@@ -4006,6 +4008,69 @@ def test_api_session_and_version_expose_melody_feature_only_when_enabled() -> No
     status, _, version = call_app("/api/version", method="GET", melody_exercise_enabled=True)
     assert status == "200 OK"
     assert version["features"] == {"melodyExercise": True}
+
+
+def test_melody_import_is_authenticated_flag_gated_and_no_store() -> None:
+    status, _, payload = call_app(
+        "/api/melody/catalog",
+        method="GET",
+        melody_import_enabled=False,
+    )
+    assert status == "404 Not Found"
+    assert payload == {"error": "melody import is not enabled"}
+
+    status, _, payload = call_app(
+        "/api/melody/catalog",
+        method="GET",
+        access_role=None,
+        melody_import_enabled=True,
+    )
+    assert status == "401 Unauthorized"
+
+    status, headers, payload = call_app(
+        "/api/melody/catalog",
+        method="GET",
+        melody_import_enabled=True,
+    )
+    assert status == "200 OK"
+    assert headers["Cache-Control"] == "no-store"
+    assert headers["Pragma"] == "no-cache"
+    assert payload["songs"][0]["id"] == "amazing-grace-new-britain"
+
+
+def test_melody_import_returns_temporary_amazing_grace_draft() -> None:
+    status, headers, payload = call_app(
+        "/api/melody/import",
+        method="POST",
+        json_body={"sourceType": "catalog", "catalogId": "amazing-grace-new-britain"},
+        melody_import_enabled=True,
+    )
+    assert status == "200 OK"
+    assert headers["Cache-Control"] == "no-store"
+    assert payload["source"]["retained"] is False
+    assert [event["pitch"] for event in payload["score"]["melody"]] == [
+        "D4", "G4", "B4", "G4", "B4", "A4", "G4", "E4"
+    ]
+
+
+def test_session_and_version_expose_both_melody_features() -> None:
+    status, _, session = call_app(
+        "/api/session",
+        method="GET",
+        melody_exercise_enabled=True,
+        melody_import_enabled=True,
+    )
+    assert status == "200 OK"
+    assert session["features"] == {"melodyExercise": True, "melodyImport": True}
+
+    status, _, version = call_app(
+        "/api/version",
+        method="GET",
+        melody_exercise_enabled=True,
+        melody_import_enabled=True,
+    )
+    assert status == "200 OK"
+    assert version["features"] == {"melodyExercise": True, "melodyImport": True}
 
 
 def test_steel_guitar_rag_safe_curated_questions_still_work_after_full_tab_guardrail() -> None:

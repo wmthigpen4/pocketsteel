@@ -230,7 +230,7 @@ def _needs_source_response(
 
 def _melody_token(item: Any) -> str:
     if isinstance(item, Mapping):
-        return str(item.get("token") or item.get("note") or item.get("degree") or "").strip()
+        return str(item.get("token") or item.get("note") or item.get("degree") or item.get("pitch") or "").strip()
     return str(item or "").strip()
 
 

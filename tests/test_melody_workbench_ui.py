@@ -103,6 +103,49 @@ const fretboardOptions = studio.melodyFretboardOptions(
 assert.equal(fretboardOptions.showScientificOctaveOverlay, true);
 assert.equal(fretboardOptions.hidePositionTools, true);
 assert.equal(studio.createInitialState().showOctaveMap, true);
+assert.equal(studio.createInitialState().inputMethod, "phrase");
+assert.equal(studio.youtubeVideoId("https://youtu.be/abc123?t=9"), "abc123");
+assert.equal(studio.youtubeVideoId("https://www.youtube.com/watch?v=xyz789"), "xyz789");
+assert.equal(studio.referenceEmbedUrl("https://youtube.com/watch?v=xyz789", 10, 20), "https://www.youtube-nocookie.com/embed/xyz789?rel=0&playsinline=1&start=10&end=20");
+assert.equal(studio.youtubeVideoId("https://ultimate-guitar.com/tab/example"), "");
+assert.equal(studio.fileSourceType({name: "page.webp", type: "image/webp"}), "image");
+assert.equal(studio.fileSourceType({name: "song.mxl", type: ""}), "mxl");
+assert.equal(studio.frequencyToMidi(440), 69);
+"""
+    )
+
+
+def test_score_draft_builder_reflows_edits_transposes_and_exports_musicxml() -> None:
+    run_node(
+        r"""
+const assert = require("node:assert/strict");
+const score = require("./ui/melody-score.js");
+
+let draft = score.createDraft({key: "G", meter: "3/4", pickupBeats: 1, title: "Amazing Grace sketch"});
+draft = score.addEvent(draft, {pitchValue: 62, durationBeats: 1});
+draft = score.addEvent(draft, {pitchValue: 67, durationBeats: 2});
+draft = score.addEvent(draft, {pitchValue: 71, durationBeats: 0.5});
+assert.deepEqual(draft.score.melody.map((event) => [event.measure, event.beat]), [[1, 3], [2, 1], [2, 3]]);
+draft = score.setChordAtEvent(draft, 1, "G");
+draft = score.updateEvent(draft, 1, {lyric: "grace", tie: "start"});
+assert.equal(score.chordForEvent(draft, draft.score.melody[2]), "G");
+assert.deepEqual(score.arrangementEvents(draft)[1], {
+  token: "G4", pitch: "G4", pitchValue: 67, measure: 2, beat: 1,
+  durationBeats: 2, origin: "user_edit", tie: "start", lyric: "grace", chord: "G"
+});
+const transposed = score.transposeDraft(draft, -5);
+assert.deepEqual(transposed.score.melody.map((event) => event.pitch), ["A3", "D4", "F#4"]);
+const xml = score.musicXmlForDraft(draft);
+assert.match(xml, /<work-title>Amazing Grace sketch<\/work-title>/);
+assert.match(xml, /<time><beats>3<\/beats>/);
+assert.match(xml, /<words>G<\/words>/);
+assert.match(xml, /<lyric><text>grace<\/text><\/lyric>/);
+assert.equal(score.removeEvent(draft, 0).score.melody.length, 2);
+assert.equal(score.duplicatePhrase(draft).score.melody.length, 6);
+assert.equal(score.clearMeasure(draft, 2).score.melody.length, 1);
+let overfull = score.createDraft({key: "G", meter: "3/4"});
+overfull = score.addEvent(overfull, {pitchValue: 67, durationBeats: 4});
+assert.match(score.draftWarnings(overfull)[0], /Measure 1 has 4 beats but allows 3/);
 """
     )
 
@@ -114,17 +157,23 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Turn a phrase into an E9 lesson." in html
     assert "Step 1 of 4" not in html
     assert 'data-studio-start="phrase"' in html
+    assert 'data-studio-start="score"' in html
+    assert 'data-studio-start="import"' in html
+    assert 'data-studio-start="microphone"' in html
     assert 'data-studio-start="recording"' in html
-    assert 'data-studio-start="exercise"' in html
-    assert html.count("data-studio-start=") == 3
-    assert "Enter my phrase" in html
-    assert "A song or recording" in html
-    assert "Give me an exercise" in html
+    assert 'data-studio-start="catalog"' in html
+    assert html.count("data-studio-start=") == 6
+    assert "Enter notes or intervals" in html
+    assert "Build a score" in html
+    assert "Photo or music file" in html
+    assert "Play or hum it" in html
+    assert "Use a recording" in html
+    assert "Pick a song" in html
     assert 'data-source-treatment="artist_solo_lesson"' in html
     assert 'data-source-treatment="song_arrangement_lesson"' in html
     assert "Faithful solo passage" in html
     assert "Playable E9 arrangement" in html
-    assert 'id="studio-material-fields" hidden' in html
+    assert 'id="studio-material-fields" data-input-panel="recording" hidden' in html
     assert 'id="studio-presets" aria-label="Practice phrase presets" hidden' in html
     assert 'id="studio-palette"' in html
     assert 'id="studio-sequence"' in html
@@ -167,10 +216,12 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Select a note below to change its octave" in html
     assert "Change the register for this note only" in html
     assert "state.selectedPhraseIndex" in script
-    assert html.count("?v=melody-route-row-20260711") == 3
+    assert html.count("?v=melody-multi-input-20260711-3") == 4
+    assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in html
+    assert "VexFlow" in Path("ui/vendor/VEXFLOW-LICENSE.txt").read_text(encoding="utf-8")
     assert html.index('id="studio-fretboard"') < html.index('id="studio-tab"')
     assert 'id="studio-continue"' in html
-    assert "does not listen to or extract notes from the link yet" in html
+    assert "Melody Studio never scrapes or copies its tab" in html
     assert "selectPedalSteelFretboardPosition" in script
     assert "Active tab note" not in script
     assert 'id="studio-active-tab-step"' not in html
@@ -191,6 +242,14 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "clearMaterial();" in script
     assert "sectionNumber" in script
     assert "[object Object]" not in html
+    assert 'id="studio-score-canvas"' in html
+    assert 'id="studio-score-download"' in html
+    assert 'id="studio-import-file"' in html
+    assert 'id="studio-microphone-start"' in html
+    assert 'id="studio-youtube-frame"' in html
+    assert 'id="studio-catalog-grid"' in html
+    assert 'id="studio-result-score"' in html
+    assert "session-only" in html.lower()
 
 
 def test_melody_workbench_uses_explorer_background_without_turnaround_branding() -> None:
