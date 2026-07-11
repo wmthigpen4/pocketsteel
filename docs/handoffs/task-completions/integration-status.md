@@ -1,6 +1,6 @@
 # Integration Status — Current Snapshot
 
-Updated: 2026-07-11 13:57 America/Chicago
+Updated: 2026-07-11 16:52 America/Chicago
 
 ## Repository state
 
@@ -11,7 +11,7 @@ Updated: 2026-07-11 13:57 America/Chicago
 
 ## Melody Studio
 
-Status: **PASS — score-practice Melody Studio is committed, 934-test green, and verified in the authenticated protected preview. The default-off import/catalog server flag is intentionally not enabled in protected configuration.**
+Status: **USER SMOKE PASS — Melody Studio is committed, 934-test green, authenticated-preview verified, and accepted by the user on 2026-07-11. The default-off import/catalog server flag is intentionally not enabled in protected configuration.**
 
 - The home header now exposes feature-gated actions in this order: Explore Fretboard, Melody Studio, Backstage.
 - The technical inline Melody form was removed from home.
@@ -83,6 +83,7 @@ Active-fretboard implementation handoff: `docs/handoffs/task-completions/2026-07
 Active-fretboard protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-1345-12-melody-active-fretboard-controls-protected-smoke.md`.
 String/action-label implementation handoff: `docs/handoffs/task-completions/2026-07-11-1355-06-melody-string-action-labels.md`.
 String/action-label protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-1357-12-melody-string-action-labels-protected-smoke.md`.
+User-smoke acceptance handoff: `docs/handoffs/task-completions/2026-07-11-1652-01-melody-studio-user-smoke-accepted.md`.
 
 ## Verification
 
@@ -94,6 +95,7 @@ String/action-label protected-smoke handoff: `docs/handoffs/task-completions/202
 - Protected browser verified manual phrase and lead-sheet builder lesson generation, six routes, synchronized staff/fretboard/tab, VexFlow renderer, zero page overflow, and no `[object Object]` or console errors.
 - Active-fretboard protected smoke verified D4-to-E4 marker replacement, independent string/note/octave controls, and an active chord-melody grip limited to strings 5, 6, and 8 with one D4 top-voice label.
 - String/action-label protected smoke verified a literal `S6:3B` event renders `6B` inside the active marker while Current note reports String 6, fret 3, B pedal.
+- User smoke passed on the same `c850411` protected build; the Melody Studio smoke freeze is complete.
 - Resumed header smoke verified the removed practice kicker, metadata line, and More arrangements disclosure remain absent on the integrated runtime; all six routes remain together in one horizontally scrollable row and Chord melody selection synchronizes visibly.
 
 ## Protected preview
@@ -114,6 +116,6 @@ String/action-label protected-smoke handoff: `docs/handoffs/task-completions/202
 
 ## Next action
 
-1. Confirm the final string/action-label fix at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-string-action-labels-c850411-20260711`; the user reported the rest of Melody Studio passes this smoke slice.
+1. Select and approve the next feature scope. Recommended: design real short-phrase audio transcription into the existing `score_draft_v1` path, with honest confidence and manual-correction fallbacks.
 2. If protected catalog/upload import should be enabled, explicitly authorize the protected environment flag change and vision-model readiness check; otherwise keep it off.
 3. Keep unrelated corpus, source-inbox, private-data, brand/design, deployment, and environment work parked.
