@@ -156,7 +156,9 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'id="studio-octave-down"' in html
     assert 'id="studio-octave-auto"' in html
     assert 'id="studio-octave-up"' in html
-    assert 'id="studio-more-routes" hidden' in html
+    assert 'id="studio-more-routes"' not in html
+    assert 'id="studio-result-meta"' not in html
+    assert "Practice the lesson" not in html
     assert 'id="studio-change-task"' not in html
     assert "activateRoute" in script
     assert "hideFilterControls: true" in script
@@ -165,7 +167,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Select a note below to change its octave" in html
     assert "Change the register for this note only" in html
     assert "state.selectedPhraseIndex" in script
-    assert html.count("?v=melody-compact-flow-20260711") == 3
+    assert html.count("?v=melody-route-row-20260711") == 3
     assert html.index('id="studio-fretboard"') < html.index('id="studio-tab"')
     assert 'id="studio-continue"' in html
     assert "does not listen to or extract notes from the link yet" in html
@@ -175,6 +177,10 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'id="studio-event-detail"' not in html
     assert "Active step" not in script
     assert "eventStepCompactPresentation" in script
+    assert "elements.routeTabs.appendChild(button)" in script
+    assert "advancedRoutes" not in script
+    assert "moreRoutes" not in script
+    assert ".route-tabs { max-width: 100%; display: flex; flex-wrap: nowrap;" in html
     assert "Note ${state.activeEventIndex + 1} of ${events.length}" in script
     assert "button.dataset.scientificOctave" in script
     assert "elements.octaveGuide.hidden" in script

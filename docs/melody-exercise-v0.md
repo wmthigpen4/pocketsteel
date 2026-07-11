@@ -56,15 +56,12 @@ Unmarked degrees default to the closest playable pitch path. Players may choose 
 The result shows:
 
 - material identity and source link;
-- transcription/adaptation/simplification label;
-- exact/approximate/interpretive label and confidence;
-- numbered lesson section and continuation state;
 - compact synchronized note navigator, fixed-width tab, fretboard, and explanation;
-- switchable single-note, recommended harmony, thirds, sixths, and chord-melody routes when mechanically available;
+- one visible, horizontally scrollable row containing every mechanically available single-note, recommended-harmony, thirds, sixths, and chord-melody route;
 - resolved pitch/register and bar, string, pedal, and lever movement guidance;
 - no empty source section for source-free deterministic exercises.
 
-The dedicated lesson view is fretboard-first. One compact navigator beneath the board combines the Octave colors toggle and legend, note progress, previous/next arrows, concise pitch/position pills, and one current-note readout. It does not repeat the selected note in a separate active-tab sentence or long explanatory event sentence. Previous/next and note-pill controls must visibly select the matching `renderablePositionId` in the fretboard component. Long phrases expose a Continue to Section action using the existing `sectionNumber` request field. Mobile layout keeps the arrows beside a horizontally scrollable pill row and keeps the fixed-width tab inside its own horizontal scroller.
+The dedicated lesson view is fretboard-first. Its header contains the lesson title, optional source identity, one visible route row, and the selected route's useful recommendation; it does not display a generic "Practice the lesson" kicker or expose exactness, confidence, and single-section bookkeeping as header metadata. One compact navigator beneath the board combines the Octave colors toggle and legend, note progress, previous/next arrows, concise pitch/position pills, and one current-note readout. It does not repeat the selected note in a separate active-tab sentence or long explanatory event sentence. Previous/next and note-pill controls must visibly select the matching `renderablePositionId` in the fretboard component. Long phrases expose a Continue to Section action using the existing `sectionNumber` request field. Mobile layout keeps route and note rows horizontally scrollable, keeps the arrows beside the pill row, and keeps the fixed-width tab inside its own horizontal scroller.
 
 The feature is controlled by `STEEL_RAG_ENABLE_MELODY_EXERCISE`, which defaults off. Protected preview may explicitly enable it for approved testing.
 

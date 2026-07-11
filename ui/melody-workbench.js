@@ -424,11 +424,8 @@
     build: $("#studio-build"),
     result: $("#studio-result"),
     resultTitle: $("#studio-result-title"),
-    resultMeta: $("#studio-result-meta"),
     resultSource: $("#studio-result-source"),
     routeTabs: $("#studio-route-tabs"),
-    moreRoutes: $("#studio-more-routes"),
-    advancedRoutes: $("#studio-advanced-routes"),
     routeReason: $("#studio-route-reason"),
     sourceNeeded: $("#studio-source-needed"),
     currentNote: $("#studio-current-note"),
@@ -690,7 +687,7 @@
     exercise.events = route.events;
     exercise.selectedRouteId = route.id;
     state.activeEventIndex = 0;
-    [...elements.routeTabs.querySelectorAll("[data-route-id]"), ...elements.advancedRoutes.querySelectorAll("[data-route-id]")].forEach((button) => {
+    elements.routeTabs.querySelectorAll("[data-route-id]").forEach((button) => {
       const selected = button.dataset.routeId === route.id;
       button.classList.toggle("is-selected", selected);
       button.setAttribute("aria-pressed", String(selected));
@@ -709,13 +706,8 @@
 
   function renderRoutes(exercise) {
     elements.routeTabs.replaceChildren();
-    elements.advancedRoutes.replaceChildren();
     const routes = exercise?.routes || [];
-    const primaryRoutes = routes.filter((route) => route.harmonyType === "single_note" || route.recommended);
-    const advancedRoutes = routes.filter((route) => !primaryRoutes.includes(route));
-    elements.routeTabs.hidden = primaryRoutes.length < 2;
-    elements.moreRoutes.hidden = advancedRoutes.length === 0;
-    elements.moreRoutes.open = false;
+    elements.routeTabs.hidden = routes.length < 2;
     routes.forEach((route) => {
       const button = doc.createElement("button");
       button.type = "button";
@@ -723,7 +715,7 @@
       button.dataset.routeId = route.id;
       button.textContent = routeButtonLabel(route);
       button.addEventListener("click", () => activateRoute(route.id));
-      (primaryRoutes.includes(route) ? elements.routeTabs : elements.advancedRoutes).appendChild(button);
+      elements.routeTabs.appendChild(button);
     });
   }
 
@@ -744,10 +736,6 @@
     elements.resultTitle.textContent = exercise?.title || "Melody lesson";
     const accuracy = exercise?.accuracy || {};
     const section = exercise?.section || {};
-    elements.resultMeta.textContent = [
-      accuracy.label && `${accuracy.label} · ${accuracy.confidence || ""} confidence`,
-      section.total ? `Section ${section.number} of ${section.total}` : section.label
-    ].filter(Boolean).join(" · ");
     const sourceLabel = materialLabel(exercise?.material);
     elements.resultSource.replaceChildren();
     if (sourceLabel) {
@@ -776,7 +764,6 @@
     elements.explanation.hidden = needsSource;
     elements.currentNote.hidden = needsSource;
     elements.routeTabs.hidden = needsSource;
-    elements.moreRoutes.hidden = needsSource;
     elements.routeReason.hidden = needsSource;
     updateOctaveMapVisibility();
     if (!needsSource && response.fretboard) {
