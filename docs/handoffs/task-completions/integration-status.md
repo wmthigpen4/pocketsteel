@@ -1,22 +1,26 @@
 # Integration Status — Current Snapshot
 
-Updated: 2026-07-11 08:15 America/Chicago
+Updated: 2026-07-11 08:41 America/Chicago
 
 ## Repository state
 
 - Branch: `feature/answer-api`
-- Current implementation: `deac899 Clean up Melody Studio lesson header`
+- Current implementation: `b0944c7 Build Melody Studio multi-input score workflow`
 - Melody API baseline: `f37201a feat: add Melody Exercise teaching workflow`
 - Melody Studio now uses Steel Guitar RAG branding. No broad repository rename is approved.
 
 ## Melody Studio
 
-Status: **BLOCKED — the lesson-header cleanup is committed and green locally, but protected lesson generation is currently blocked by unrelated dirty arranger work that appeared during the restart/smoke window**.
+Status: **PASS — multi-input Melody Studio is committed, full-test green, and verified in the authenticated protected preview. The default-off import/catalog server flag is intentionally not enabled in protected configuration.**
 
 - The home header now exposes feature-gated actions in this order: Explore Fretboard, Melody Studio, Backstage.
 - The technical inline Melody form was removed from home.
-- `/ui/melody-workbench.html` opens directly into the phrase builder with three compact starting points: Enter my phrase, A song or recording, and Give me an exercise.
-- The recording starting point reveals source fields plus faithful-solo versus playable-E9-arrangement treatment; the exercise starting point reveals practice presets.
+- `/ui/melody-workbench.html` opens with six equal inputs: Enter notes or intervals, Build a score, Photo or music file, Play or hum it, Use a recording, and Pick a song.
+- The original note/degree/literal-E9 phrase editor remains intact and is the default input.
+- The lead-sheet builder supports one treble melody voice, G/C, 3/4 and 4/4, pickup, supported note/rest durations, ties, accidentals, chord symbols, lyrics/labels, undo/redo, measure actions, duplicate, transpose, browser playback, and local MusicXML download.
+- All input methods normalize into session-only `score_draft_v1`; no uploaded source or draft is persisted.
+- A pinned local VexFlow 5.0.0 bundle renders the editable and result staffs, with a local SVG fallback.
+- The recording starting point reveals source fields plus faithful-solo versus playable-E9-arrangement treatment; the manual editor keeps practice presets behind its practice-phrase starter.
 - Recording fields are cleared when switching to either source-free starting point.
 - Phrase entry supports notes, scale degrees, literal one-string E9 tab, note/degree palette buttons, deterministic presets, sequence editing, and section counts.
 - After task selection, the task-card grid collapses so the active editor/result is the page focus.
@@ -24,7 +28,8 @@ Status: **BLOCKED — the lesson-header cleanup is committed and green locally, 
 - Unmarked degrees use closest-playable octave contour by default; ascending, descending, preserve-input, and per-note octave controls are available.
 - Per-note octave controls modify only the selected event; they do not re-anchor later automatic notes.
 - Literal tab preserves string, fret, control state, and pitch register.
-- Source links are labeled as attribution only; Melody Studio does not claim to listen to or transcribe the link.
+- YouTube runs only in the official embedded player with loop/tempo companion controls; Ultimate Guitar remains an attributed side reference and is never scraped.
+- Public-domain Amazing Grace / NEW BRITAIN is stored as a reviewed, checksummed catalog draft and was locally verified with exact melody, chords, E9 positions, and optional generated F#4→G4 ornament.
 - Results are fretboard-first. Every mechanically available single-note, Recommended Harmony, thirds, sixths, and chord-melody route appears in one visible, horizontally scrollable row.
 - The lesson header omits the generic Practice the lesson kicker and the non-actionable exactness/confidence/single-section metadata line.
 - One compact navigator beneath the fretboard combines Octave colors, legend, note progress, adjacent previous/next arrows, concise steel-player position pills, and one current-note readout.
@@ -60,26 +65,27 @@ Compact-flow implementation handoff: `docs/handoffs/task-completions/2026-07-11-
 Compact-flow protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-0804-12-melody-compact-flow-protected-smoke.md`.
 Lesson-header implementation handoff: `docs/handoffs/task-completions/2026-07-11-0812-06-melody-lesson-header-cleanup.md`.
 Lesson-header protected blocker: `docs/handoffs/task-completions/2026-07-11-0815-12-melody-header-protected-smoke-blocker.md`.
+Multi-input implementation handoff: `docs/handoffs/task-completions/2026-07-11-0837-18-melody-studio-multi-input-builder.md`.
+Multi-input protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-0841-12-melody-multi-input-protected-smoke.md`.
 
 ## Verification
 
-- Full pytest: `922 passed`.
+- Full pytest: `933 passed`.
 - Core JavaScript syntax: passed for answer client, Melody Studio, and fretboard component.
 - `git diff --check`: passed.
-- Local browser smoke: pass at `http://127.0.0.1:8898/ui/melody-workbench.html?access=beta_user&v=route-row-local-20260711`.
-- Protected browser smoke: failed at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-route-row-deac899-20260711` because lesson generation returned HTTP 500 from a concurrent partial `pocketsteel/melody_arranger.py` edit.
-- Local browser verified five visible route buttons, no practice/meta/disclosure header elements, synchronized Chord melody selection, zero page overflow, and no `[object Object]` or console errors.
+- Local browser smoke: pass for all six cards, flagged catalog/import, score editing, VexFlow, Amazing Grace catalog, exact E9 route, ornament toggle, and mobile layout.
+- Protected browser smoke: pass at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-multi-input-b0944c7-20260711`.
+- Protected browser verified manual phrase and lead-sheet builder lesson generation, six routes, synchronized staff/fretboard/tab, VexFlow renderer, zero page overflow, and no `[object Object]` or console errors.
 
 ## Protected preview
 
-- Runtime smoke HEAD: `deac899`.
-- Loopback `/api/version`: `deac899`, `feature/answer-api`, `hybrid_private_first`, `cloudflare_access`, `features.melodyExercise=true`.
+- Runtime smoke HEAD: `b0944c7`.
+- Loopback `/api/version`: `b0944c7`, `feature/answer-api`, `hybrid_private_first`, `cloudflare_access`, `features.melodyExercise=true`; `melodyImport` remains default off.
 - Preview refresh succeeded without `sudo` by terminating only the user-owned port-8770 listener and allowing the installed LaunchDaemon to restart it.
 - Installed wrapper matches the committed wrapper.
-- Cloudflare Access login succeeded, but the protected lesson request failed HTTP 500 because the running process imported a separately edited arranger module while that edit was incomplete.
-- `pocketsteel/melody_arranger.py` is now dirty with unrelated vocal-steel/structured-import work. Another restart would load that uncommitted behavior, so protected smoke is stopped.
+- Cloudflare Access login and protected manual/score lesson generation succeeded; the prior arranger blocker is closed.
 - Loopback root redirects to `/ui/steel-guitar-rag-mock.html`; home and Melody Studio routes return 200; anonymous answer calls remain 401.
-- A separate protected root tab drops the cache-bust and showed the signed-out/backstage state. Use the exact direct Melody Studio URL for user smoke.
+- The authenticated protected root redirects to the canonical home route; use the exact direct cache-busted Melody Studio URL for user smoke.
 - API fallback is not browser smoke; authenticated browser behavior was verified at the direct Studio URL.
 
 ## Dirty worktree
@@ -89,6 +95,6 @@ Lesson-header protected blocker: `docs/handoffs/task-completions/2026-07-11-0815
 
 ## Next action
 
-1. Finish, commit, or otherwise reconcile the separate `pocketsteel/melody_arranger.py` work without using this task to stage or revert it.
-2. Restart protected preview from the resulting approved stable baseline and repeat the authenticated header smoke.
-3. Do not provide a user-smoke URL until protected lesson generation passes again.
+1. Continue user smoke at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-multi-input-b0944c7-20260711`.
+2. If protected catalog/upload import should be enabled, explicitly authorize the protected environment flag change and vision-model readiness check; otherwise keep it off.
+3. Keep unrelated corpus, source-inbox, private-data, brand/design, deployment, and environment work parked.
