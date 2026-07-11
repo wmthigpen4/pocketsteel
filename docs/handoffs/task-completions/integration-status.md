@@ -1,17 +1,17 @@
 # Integration Status — Current Snapshot
 
-Updated: 2026-07-10 16:32 America/Chicago
+Updated: 2026-07-10 19:03 America/Chicago
 
 ## Repository state
 
 - Branch: `feature/answer-api`
-- Current implementation: `1249201 fix melody lesson labels`
+- Current implementation: `0c12b73 feat melody scientific octave guide`
 - Melody API baseline: `f37201a feat: add Melody Exercise teaching workflow`
 - Melody Studio now uses Steel Guitar RAG branding. No broad repository rename is approved.
 
 ## Melody Studio
 
-Status: **PASS — octave-aware arranger and current lesson-clarity repairs are committed, deployed to protected preview, and ready for user smoke**.
+Status: **PASS — octave-aware arranger, lesson-clarity repairs, and scientific-octave guide are committed, deployed to protected preview, and ready for user smoke**.
 
 - The home header now exposes feature-gated actions in this order: Explore Fretboard, Melody Studio, Backstage.
 - The technical inline Melody form was removed from home.
@@ -29,6 +29,7 @@ Status: **PASS — octave-aware arranger and current lesson-clarity repairs are 
 - Route, Previous/Next, and event controls visibly synchronize the selected fretboard position, active step, fixed-width tab, pedal/lever instructions, and explanation.
 - Melody Studio hides the Explorer-oriented position-card strip, filters, legend, and full technical inspector. A compact Current note readout now states the active note, string(s), fret, controls, and movement cue.
 - Melody tab omits artificial `Ly | step N` rows. Event selectors spell out string, fret, and pedal/lever positions, and the primary harmony route is labeled `Recommended harmony` without duplication.
+- A compact scientific-octave 2–6 legend sits below the fretboard. Event steps use accessible octave colors from their resolved melody pitch; harmonized grips retain the top-voice octave color.
 - Long phrases continue through the existing `sectionNumber` contract.
 - Original exercises suppress recording identity and source UI.
 - Deterministic scope remains E9 in G/C major.
@@ -46,20 +47,22 @@ Fretboard-clarity implementation handoff: `docs/handoffs/task-completions/2026-0
 Fretboard-clarity protected-smoke handoff: `docs/handoffs/task-completions/2026-07-10-1611-12-melody-fretboard-cleanup-protected-smoke.md`.
 Lesson-label implementation handoff: `docs/handoffs/task-completions/2026-07-10-1631-06-melody-lesson-label-cleanup.md`.
 Lesson-label protected-smoke handoff: `docs/handoffs/task-completions/2026-07-10-1632-12-melody-lesson-labels-protected-smoke.md`.
+Scientific-octave implementation handoff: `docs/handoffs/task-completions/2026-07-10-1901-06-melody-scientific-octave-guide.md`.
+Scientific-octave protected-smoke handoff: `docs/handoffs/task-completions/2026-07-10-1903-12-melody-octave-guide-protected-smoke.md`.
 
 ## Verification
 
 - Full pytest: `921 passed`.
 - Core JavaScript syntax: passed for answer client, Melody Studio, and fretboard component.
 - `git diff --check`: passed.
-- Local browser smoke: pass at `http://127.0.0.1:8898/ui/melody-workbench.html?access=beta_user&v=arranger-local-20260710`.
-- Protected browser smoke: pass at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-lesson-labels-1249201-20260710`.
+- Local browser smoke: pass at `http://127.0.0.1:8898/ui/melody-workbench.html?access=beta_user&v=octave-guide-local-20260710`.
+- Protected browser smoke: pass at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-octave-guide-0c12b73-20260710`.
 - Browser verified header ordering/gating, all task cards, stale-state cleanup, presets/sequence UI, original-source suppression, visible event/fretboard/tab synchronization, Section 2 continuation, honest source-needed guidance, fixed-width tab overflow, and no `[object Object]` or console errors.
 
 ## Protected preview
 
-- Runtime smoke HEAD: `1249201`.
-- Loopback `/api/version`: `1249201`, `feature/answer-api`, `hybrid_private_first`, `cloudflare_access`, `features.melodyExercise=true`.
+- Runtime smoke HEAD: `0c12b73`.
+- Loopback `/api/version`: `0c12b73`, `feature/answer-api`, `hybrid_private_first`, `cloudflare_access`, `features.melodyExercise=true`.
 - Preview refresh succeeded without `sudo` by terminating only the user-owned port-8770 listener and allowing the installed LaunchDaemon to restart it.
 - Installed wrapper matches the committed wrapper.
 - Cloudflare Access login succeeded in the in-app browser.
@@ -74,6 +77,6 @@ Lesson-label protected-smoke handoff: `docs/handoffs/task-completions/2026-07-10
 
 ## Next action
 
-1. The user verifies the simplified tab and event labels at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-lesson-labels-1249201-20260710`.
+1. The user verifies the scientific-octave guide at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-octave-guide-0c12b73-20260710`.
 2. User-reported defects enter the approved end-to-end autopilot repair loop without renewed feature approval.
 3. Keep the user-smoke freeze; do not begin unrelated broad feature work until this smoke closes.
