@@ -364,7 +364,7 @@
             <button class="start-choice is-selected" type="button" data-studio-start="phrase" aria-pressed="true">Enter notes or intervals<small>Notes, 1–7, or E9 positions</small></button>
             <button class="start-choice" type="button" data-studio-start="score" aria-pressed="false">Build a score<small>Melody staff, rhythm, and chords</small></button>
             <button class="start-choice" type="button" data-studio-start="import" aria-pressed="false">Photo or music file<small>Image, MusicXML, MXL, or MIDI</small></button>
-            <button class="start-choice" type="button" data-studio-start="microphone" aria-pressed="false">Play or hum it<small>Up to 15 seconds, on device</small></button>
+            <button class="start-choice" type="button" data-studio-start="microphone" aria-pressed="false">Record or upload audio<small>Up to 15 seconds, on device</small></button>
             <button class="start-choice" type="button" data-studio-start="recording" aria-pressed="false">Use a recording<small>YouTube loop or reference chart</small></button>
             <button class="start-choice" type="button" data-studio-start="catalog" aria-pressed="false">Pick a song<small>Reviewed public-domain catalog</small></button>
           </div>
@@ -431,6 +431,7 @@
           <p class="score-status" id="studio-score-status">Choose a pitch to add the first note. Keyboard shortcuts A–G add notes.</p>
           <div class="score-event-editor" id="studio-score-event-editor" hidden>
             <label class="field">Pitch<input id="studio-score-pitch" placeholder="G4"></label>
+            <p class="field-help" id="studio-score-confidence" aria-live="polite"></p>
             <label class="field">Duration<select id="studio-event-duration"><option value="0.5">Eighth</option><option value="1">Quarter</option><option value="1.5">Dotted quarter</option><option value="2">Half</option><option value="3">Dotted half</option><option value="4">Whole</option></select></label>
             <label class="field">Chord at this beat<input id="studio-score-chord" placeholder="G, D7, Em..."></label>
             <label class="field">Lyric or phrase label<input id="studio-score-lyric" maxlength="80"></label>
@@ -462,8 +463,18 @@
         </section>
 
         <section class="input-panel" id="studio-microphone-panel" data-input-panel="microphone" hidden>
-          <div class="input-panel-head"><div><h3>Play or hum one note at a time</h3><p class="field-help">Melody Studio listens for a short monophonic phrase, keeps note candidates, then discards the audio buffer.</p></div></div>
+          <div class="input-panel-head"><div><h3>Record or upload a short melody</h3><p class="field-help">Use one clear note at a time. Melody Studio estimates pitch and rhythm on this device, opens an editable score, then discards the audio.</p></div></div>
+          <label class="field">Approximate tempo
+            <input id="studio-transcription-tempo" type="number" min="40" max="200" step="1" value="80" inputmode="numeric">
+            <span class="field-help">This sets the rhythm grid. You can correct every duration in the score.</span>
+          </label>
           <div class="capture-actions"><button class="primary-action" type="button" id="studio-microphone-start">Start listening</button><button class="secondary-action" type="button" id="studio-microphone-stop" disabled>Stop and review</button></div>
+          <label class="field" style="margin-top:14px;">Or choose an audio file
+            <input id="studio-audio-file" type="file" accept="audio/*,.wav,.mp3,.m4a,.aac,.ogg">
+            <span class="field-help">WAV, MP3, M4A, AAC, or OGG; 15 seconds or shorter.</span>
+          </label>
+          <button class="secondary-action" type="button" id="studio-audio-analyze">Transcribe file and review</button>
+          <p class="privacy-note">Session-only: audio is decoded in this browser, is not uploaded, and is released after transcription.</p>
           <p class="score-status" id="studio-microphone-status" aria-live="polite">Ready for up to 15 seconds.</p>
         </section>
 
@@ -602,6 +613,6 @@
   <script src="pedal-steel-fretboard.js?v=melody-multi-input-20260711-3"></script>
   <script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>
   <script src="melody-score.js?v=melody-score-practice-20260711-3"></script>
-  <script src="melody-workbench.js?v=melody-string-action-labels-20260711-1"></script>
+  <script src="melody-workbench.js?v=melody-audio-transcription-20260711-2"></script>
 </body>
 </html>

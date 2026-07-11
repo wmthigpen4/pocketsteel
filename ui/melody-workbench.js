@@ -215,6 +215,19 @@
       texture: "both"
     };
     if (state.tokens?.length) request.melody = [...state.tokens];
+    const transcription = state.scoreDraft?.transcription;
+    if (transcription) {
+      request.accuracy = "approximate";
+      request.accuracyConfidence = transcription.confidenceLabel || "low";
+      request.accuracyNote = "Pitch and rhythm came from on-device audio estimation and were opened for manual review before E9 arrangement.";
+      request.sourceProvided = true;
+      request.transcription = {
+        engine: transcription.engine,
+        confidence: transcription.confidence,
+        confidenceLabel: transcription.confidenceLabel,
+        audioRetained: false
+      };
+    }
     if (task.needsMaterial) {
       request.material = {
         artist: state.artist || "",
@@ -310,6 +323,11 @@
     return value > 0 ? Math.round(69 + 12 * Math.log2(value / 440)) : null;
   }
 
+  function frequencyToMidiFloat(frequency) {
+    const value = Number(frequency);
+    return value > 0 ? 69 + 12 * Math.log2(value / 440) : null;
+  }
+
   function autoCorrelate(buffer, sampleRate) {
     if (!buffer?.length || !sampleRate) return -1;
     let rms = 0;
@@ -329,6 +347,159 @@
       }
     }
     return bestOffset > 0 ? sampleRate / bestOffset : -1;
+  }
+
+  function median(values) {
+    const sorted = (values || []).filter(Number.isFinite).sort((a, b) => a - b);
+    if (!sorted.length) return null;
+    const middle = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+  }
+
+  function quantizeTranscriptionBeats(seconds, bpm = 80) {
+    const raw = Math.max(0.05, Number(seconds) || 0) * Math.max(40, Math.min(200, Number(bpm) || 80)) / 60;
+    return [0.5, 1, 1.5, 2, 3, 4].sort((a, b) => Math.abs(a - raw) - Math.abs(b - raw) || a - b)[0];
+  }
+
+  function transcribePitchSamples(rawSamples, options = {}) {
+    const bpm = Math.max(40, Math.min(200, Number(options.bpm) || 80));
+    const samples = (rawSamples || []).map((raw) => ({
+      time: Number(raw.time),
+      midiFloat: Number.isFinite(Number(raw.midiFloat)) ? Number(raw.midiFloat) : Number.isFinite(Number(raw.midi)) ? Number(raw.midi) : null
+    })).filter((sample) => Number.isFinite(sample.time)).sort((a, b) => a.time - b.time);
+    if (!samples.length) return { events: [], confidence: 0, confidenceLabel: "low", warnings: ["No usable audio frames were detected."] };
+
+    const smoothed = samples.map((sample, index) => {
+      if (!Number.isFinite(sample.midiFloat)) return { ...sample, midi: null, deviation: null };
+      const neighbors = samples.slice(Math.max(0, index - 2), index + 3)
+        .filter((candidate) => Number.isFinite(candidate.midiFloat) && Math.abs(candidate.time - sample.time) <= 0.14)
+        .map((candidate) => candidate.midiFloat);
+      const stable = median(neighbors) ?? sample.midiFloat;
+      const midi = Math.round(stable);
+      return { ...sample, midi, deviation: Math.abs(stable - midi) };
+    });
+    const voicedTimes = smoothed.filter((sample) => sample.midi !== null).map((sample) => sample.time);
+    const frameSeconds = Math.max(0.02, Math.min(0.12, median(voicedTimes.slice(1).map((time, index) => time - voicedTimes[index])) || 0.05));
+    const preliminary = [];
+    smoothed.forEach((sample) => {
+      if (sample.midi === null || sample.midi < 36 || sample.midi > 96) return;
+      const last = preliminary.at(-1);
+      if (last && last.midi === sample.midi && sample.time - last.lastTime <= Math.max(0.2, frameSeconds * 3)) {
+        last.lastTime = sample.time;
+        last.frames += 1;
+        last.deviations.push(sample.deviation);
+      } else {
+        preliminary.push({ midi: sample.midi, startTime: sample.time, lastTime: sample.time, frames: 1, deviations: [sample.deviation] });
+      }
+    });
+    const stableRuns = preliminary.filter((run) => run.frames >= 2 && run.lastTime - run.startTime + frameSeconds >= 0.11);
+    const merged = [];
+    stableRuns.forEach((run) => {
+      const last = merged.at(-1);
+      if (last && last.midi === run.midi && run.startTime - (last.lastTime + frameSeconds) < 0.18) {
+        last.lastTime = run.lastTime;
+        last.frames += run.frames;
+        last.deviations.push(...run.deviations);
+      } else merged.push({ ...run, deviations: [...run.deviations] });
+    });
+
+    const events = [];
+    let previousEnd = null;
+    merged.slice(0, 64).forEach((run, index) => {
+      const endTime = run.lastTime + frameSeconds;
+      if (previousEnd !== null && run.startTime - previousEnd >= 0.3) {
+        events.push({
+          id: `audio-rest-${index + 1}`,
+          rest: true,
+          pitch: null,
+          pitchValue: null,
+          durationBeats: quantizeTranscriptionBeats(run.startTime - previousEnd, bpm),
+          origin: "audio_estimate",
+          confidence: 0.9
+        });
+      }
+      const durationSeconds = Math.max(frameSeconds, endTime - run.startTime);
+      const averageDeviation = run.deviations.reduce((sum, value) => sum + value, 0) / Math.max(1, run.deviations.length);
+      const confidence = Math.max(0.35, Math.min(0.98,
+        0.48 + Math.min(0.28, run.frames * 0.025) + Math.min(0.16, durationSeconds * 0.12) - Math.min(0.25, averageDeviation * 0.65)
+      ));
+      events.push({
+        id: `audio-note-${index + 1}`,
+        pitchValue: run.midi,
+        pitch: pitchLabel(run.midi),
+        durationBeats: quantizeTranscriptionBeats(durationSeconds, bpm),
+        origin: "audio_estimate",
+        confidence: Number(confidence.toFixed(3)),
+        sourceStartSeconds: Number(run.startTime.toFixed(3)),
+        sourceEndSeconds: Number(endTime.toFixed(3))
+      });
+      previousEnd = endTime;
+    });
+    const notes = events.filter((event) => !event.rest);
+    const confidence = notes.length ? notes.reduce((sum, event) => sum + event.confidence, 0) / notes.length : 0;
+    const confidenceLabel = confidence >= 0.85 ? "high" : confidence >= 0.68 ? "medium" : "low";
+    const lowConfidenceCount = notes.filter((event) => event.confidence < 0.68).length;
+    const warnings = ["Pitch and rhythm were estimated on this device; confirm every note before arranging."];
+    if (lowConfidenceCount) warnings.push(`${lowConfidenceCount} note${lowConfidenceCount === 1 ? "" : "s"} need${lowConfidenceCount === 1 ? "s" : ""} extra review.`);
+    return { events, confidence: Number(confidence.toFixed(3)), confidenceLabel, lowConfidenceCount, warnings };
+  }
+
+  function pitchSamplesFromPcm(channelData, sampleRate, options = {}) {
+    const source = channelData || [];
+    const sourceRate = Number(sampleRate);
+    if (!source.length || !Number.isFinite(sourceRate) || sourceRate <= 0) return [];
+    const targetRate = Math.min(8000, sourceRate);
+    const ratio = sourceRate / targetRate;
+    const downsampled = new Float32Array(Math.max(1, Math.floor(source.length / ratio)));
+    for (let index = 0; index < downsampled.length; index += 1) {
+      const start = Math.floor(index * ratio);
+      const end = Math.max(start + 1, Math.min(source.length, Math.floor((index + 1) * ratio)));
+      let sum = 0;
+      for (let cursor = start; cursor < end; cursor += 1) sum += source[cursor];
+      downsampled[index] = sum / (end - start);
+    }
+    const frameSize = 1024;
+    const hopSize = 512;
+    const limit = Math.min(downsampled.length, Math.floor((Number(options.maxSeconds) || 15) * targetRate));
+    const samples = [];
+    for (let start = 0; start + frameSize <= limit; start += hopSize) {
+      const frame = downsampled.subarray(start, start + frameSize);
+      const frequency = autoCorrelate(frame, targetRate);
+      samples.push({ time: start / targetRate, midiFloat: frequencyToMidiFloat(frequency) });
+    }
+    return samples;
+  }
+
+  function createAudioTranscriptionDraft(samples, options = {}) {
+    const bpm = Math.max(40, Math.min(200, Number(options.bpm) || 80));
+    const transcription = transcribePitchSamples(samples, { bpm });
+    return {
+      schemaVersion: "score_draft_v1",
+      source: {
+        type: options.sourceType || "microphone",
+        title: options.title || "Recorded melody",
+        url: null,
+        rightsLabel: "user_provided",
+        retained: false
+      },
+      score: {
+        sourceKey: options.key || "G",
+        arrangementKey: options.key || "G",
+        meter: options.meter || "4/4",
+        pickupBeats: 0,
+        melody: transcription.events,
+        harmony: []
+      },
+      review: { status: "needs_review", warnings: transcription.warnings },
+      transcription: {
+        engine: "on_device_monophonic_v1",
+        tempoBpm: bpm,
+        confidence: transcription.confidence,
+        confidenceLabel: transcription.confidenceLabel,
+        lowConfidenceCount: transcription.lowConfidenceCount || 0,
+        audioRetained: false
+      }
+    };
   }
 
   function controlLabel(change) {
@@ -472,7 +643,12 @@
     referenceEmbedUrl,
     fileSourceType,
     frequencyToMidi,
+    frequencyToMidiFloat,
     autoCorrelate,
+    quantizeTranscriptionBeats,
+    transcribePitchSamples,
+    pitchSamplesFromPcm,
+    createAudioTranscriptionDraft,
     chordPitchValues,
     eventStepPresentation,
     eventStepCompactPresentation,
@@ -556,6 +732,7 @@
     scoreStatus: $("#studio-score-status"),
     scoreEventEditor: $("#studio-score-event-editor"),
     scorePitch: $("#studio-score-pitch"),
+    scoreConfidence: $("#studio-score-confidence"),
     eventDuration: $("#studio-event-duration"),
     scoreChord: $("#studio-score-chord"),
     scoreLyric: $("#studio-score-lyric"),
@@ -580,6 +757,9 @@
     microphoneStart: $("#studio-microphone-start"),
     microphoneStop: $("#studio-microphone-stop"),
     microphoneStatus: $("#studio-microphone-status"),
+    audioFile: $("#studio-audio-file"),
+    audioAnalyze: $("#studio-audio-analyze"),
+    transcriptionTempo: $("#studio-transcription-tempo"),
     catalogGrid: $("#studio-catalog-grid"),
     catalogStatus: $("#studio-catalog-status"),
     result: $("#studio-result"),
@@ -860,12 +1040,17 @@
     if (event) {
       elements.scorePitch.value = event.rest ? "Rest" : event.pitch;
       elements.scorePitch.disabled = Boolean(event.rest);
+      elements.scoreConfidence.textContent = event.rest
+        ? "Estimated rest — adjust or remove it if the silence was intentional phrasing rather than a rest."
+        : event.origin === "user_edit"
+          ? "Confirmed by your edit."
+          : `Estimated confidence: ${Math.round(Number(event.confidence || 0) * 100)}% — verify this pitch and duration.`;
       elements.eventDuration.value = String(event.durationBeats);
       elements.scoreChord.value = scoreUi.chordForEvent(draft, event);
       elements.scoreLyric.value = event.lyric || "";
       elements.scoreTie.value = event.tie || "";
       elements.scoreArticulation.value = event.articulation || "";
-    }
+    } else elements.scoreConfidence.textContent = "";
     elements.scoreMeter.value = draft.score.meter;
     elements.scorePickup.value = String(draft.score.pickupBeats || 0);
     elements.scoreUndo.disabled = !state.scoreHistory.length;
@@ -1313,6 +1498,61 @@
     elements.tempo.value = `${Math.round(60000 / (intervals.reduce((sum, item) => sum + item, 0) / intervals.length))} BPM`;
   }
 
+  function transcriptionTempo() {
+    return Math.max(40, Math.min(200, Number(elements.transcriptionTempo.value) || 80));
+  }
+
+  function hydrateAudioTranscription(samples, options = {}) {
+    const draft = createAudioTranscriptionDraft(samples, {
+      bpm: transcriptionTempo(),
+      key: state.key,
+      sourceType: options.sourceType,
+      title: options.title
+    });
+    const notes = draft.score.melody.filter((event) => !event.rest);
+    if (!notes.length) {
+      elements.microphoneStatus.textContent = "No stable single-note phrase was detected. Try one note at a time in a quieter recording.";
+      return false;
+    }
+    elements.microphoneStatus.textContent = `${notes.length} note${notes.length === 1 ? "" : "s"} detected · ${draft.transcription.confidenceLabel} confidence · review opened.`;
+    hydrateScoreDraft(draft);
+    return true;
+  }
+
+  function monoPcmFromAudioBuffer(audioBuffer) {
+    const mono = new Float32Array(audioBuffer.length);
+    for (let channel = 0; channel < audioBuffer.numberOfChannels; channel += 1) {
+      const data = audioBuffer.getChannelData(channel);
+      for (let index = 0; index < mono.length; index += 1) mono[index] += data[index] / audioBuffer.numberOfChannels;
+    }
+    return mono;
+  }
+
+  async function analyzeAudioFile() {
+    const file = elements.audioFile.files?.[0];
+    if (!file) return elements.microphoneStatus.textContent = "Choose a short WAV, MP3, M4A, AAC, or OGG file first.";
+    if (file.size > 20 * 1024 * 1024) return elements.microphoneStatus.textContent = "Choose an audio file smaller than 20 MB and 15 seconds or shorter.";
+    const AudioContext = global.AudioContext || global.webkitAudioContext;
+    if (!AudioContext) return elements.microphoneStatus.textContent = "Audio-file transcription is unavailable in this browser.";
+    elements.audioAnalyze.disabled = true;
+    elements.microphoneStart.disabled = true;
+    elements.microphoneStatus.textContent = "Decoding and analyzing on this device…";
+    const context = new AudioContext();
+    try {
+      const audioBuffer = await context.decodeAudioData(await file.arrayBuffer());
+      if (audioBuffer.duration > 15.25) throw new Error("Choose a clip that is 15 seconds or shorter.");
+      const samples = pitchSamplesFromPcm(monoPcmFromAudioBuffer(audioBuffer), audioBuffer.sampleRate, { maxSeconds: 15 });
+      hydrateAudioTranscription(samples, { sourceType: "audio_file", title: file.name.replace(/\.[^.]+$/, "") || "Uploaded melody" });
+    } catch (error) {
+      elements.microphoneStatus.textContent = error.message || "This audio file could not be decoded.";
+    } finally {
+      await context.close();
+      elements.audioFile.value = "";
+      elements.audioAnalyze.disabled = false;
+      elements.microphoneStart.disabled = false;
+    }
+  }
+
   async function startMicrophoneCapture() {
     if (!navigator.mediaDevices?.getUserMedia) return elements.microphoneStatus.textContent = "Microphone capture is unavailable in this browser.";
     try {
@@ -1323,15 +1563,20 @@
       analyser.fftSize = 2048;
       context.createMediaStreamSource(stream).connect(analyser);
       const buffer = new Float32Array(analyser.fftSize);
-      const capture = { stream, context, analyser, buffer, samples: [], startedAt: performance.now(), frame: 0, timer: 0 };
+      const capture = { stream, context, analyser, buffer, samples: [], startedAt: performance.now(), lastAnalyzedAt: 0, frame: 0, timer: 0 };
       state.microphoneCapture = capture;
       const sample = () => {
         if (state.microphoneCapture !== capture) return;
-        analyser.getFloatTimeDomainData(buffer);
-        const frequency = autoCorrelate(buffer, context.sampleRate);
-        const midi = frequencyToMidi(frequency);
-        if (midi !== null && midi >= 36 && midi <= 96) capture.samples.push({ midi, time: (performance.now() - capture.startedAt) / 1000 });
-        elements.microphoneStatus.textContent = `Listening… ${Math.min(15, Math.ceil((performance.now() - capture.startedAt) / 1000))} seconds`;
+        const now = performance.now();
+        if (now - capture.lastAnalyzedAt >= 50) {
+          capture.lastAnalyzedAt = now;
+          analyser.getFloatTimeDomainData(buffer);
+          const frequency = autoCorrelate(buffer, context.sampleRate);
+          const midiFloat = frequencyToMidiFloat(frequency);
+          capture.samples.push({ midiFloat: midiFloat !== null && midiFloat >= 36 && midiFloat <= 96 ? midiFloat : null, time: (now - capture.startedAt) / 1000 });
+          const heard = midiFloat !== null && midiFloat >= 36 && midiFloat <= 96 ? ` · ${pitchLabel(Math.round(midiFloat))}` : "";
+          elements.microphoneStatus.textContent = `Listening… ${Math.min(15, Math.ceil((now - capture.startedAt) / 1000))} seconds${heard}`;
+        }
         capture.frame = global.requestAnimationFrame(sample);
       };
       sample();
@@ -1351,30 +1596,9 @@
     global.clearTimeout(capture.timer);
     capture.stream.getTracks().forEach((track) => track.stop());
     await capture.context.close();
-    const runs = [];
-    capture.samples.forEach((sample) => {
-      const last = runs.at(-1);
-      if (last && last.midi === sample.midi && sample.time - last.lastTime < 0.18) {
-        last.count += 1;
-        last.lastTime = sample.time;
-      } else runs.push({ midi: sample.midi, count: 1, startTime: sample.time, lastTime: sample.time });
-    });
-    const candidates = runs.filter((run) => run.count >= 3).slice(0, 64);
     elements.microphoneStart.disabled = false;
     elements.microphoneStop.disabled = true;
-    if (!candidates.length) return elements.microphoneStatus.textContent = "No stable single-note phrase was detected. Try humming one note at a time in a quieter room.";
-    if (runs.length > candidates.length * 3) elements.microphoneStatus.textContent = "The sound may have been polyphonic. Review these candidates carefully.";
-    const draft = scoreUi.createDraft({ sourceType: "microphone", rightsLabel: "user_provided", title: "Played or hummed phrase", reviewStatus: "needs_review", key: state.key });
-    draft.score.melody = candidates.map((run, index) => ({
-      id: `microphone-${index + 1}`,
-      pitchValue: run.midi,
-      pitch: scoreUi.pitchLabel(run.midi),
-      durationBeats: Math.max(0.5, Math.min(4, Math.round((run.lastTime - run.startTime) / 0.25) * 0.5 || 0.5)),
-      origin: "source",
-      confidence: Math.min(0.98, 0.55 + run.count / 40)
-    }));
-    draft.review.warnings.push("Pitch and timing were estimated on this device; confirm every note before arranging.");
-    hydrateScoreDraft(draft);
+    hydrateAudioTranscription(capture.samples, { sourceType: "microphone", title: "Played or hummed phrase" });
   }
 
   function clearTransientDraft() {
@@ -1382,6 +1606,7 @@
     if (state.microphoneCapture) stopMicrophoneCapture();
     if (state.sourceImageUrl) URL.revokeObjectURL(state.sourceImageUrl);
     state.sourceImageUrl = "";
+    if (elements.audioFile) elements.audioFile.value = "";
     elements.youtubeFrame.removeAttribute("src");
   }
 
@@ -1782,6 +2007,14 @@
   });
   elements.microphoneStart.addEventListener("click", startMicrophoneCapture);
   elements.microphoneStop.addEventListener("click", stopMicrophoneCapture);
+  elements.audioAnalyze.addEventListener("click", analyzeAudioFile);
+  elements.audioFile.addEventListener("change", () => {
+    const file = elements.audioFile.files?.[0];
+    elements.microphoneStatus.textContent = file ? `${file.name} is ready for on-device transcription.` : "Ready for up to 15 seconds.";
+  });
+  elements.transcriptionTempo.addEventListener("change", () => {
+    elements.transcriptionTempo.value = String(transcriptionTempo());
+  });
   elements.loadReference.addEventListener("click", loadReference);
   elements.repeatReference.addEventListener("click", () => {
     if (!elements.youtubeFrame.hidden) {

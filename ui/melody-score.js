@@ -171,6 +171,7 @@
       beat: event.beat,
       durationBeats: event.durationBeats,
       origin: event.origin || "user_edit",
+      confidence: Number.isFinite(Number(event.confidence)) ? Number(event.confidence) : 1,
       tie: event.tie || "",
       lyric: event.lyric || "",
       articulation: event.articulation || "",

@@ -67,6 +67,33 @@ def test_structured_g_scale_degree_phrase_builds_synced_tab_and_fretboard() -> N
     assert result["sources"] == []
 
 
+def test_on_device_audio_transcription_preserves_honest_accuracy_label() -> None:
+    result = melody_exercise_response(
+        "Arrange my recorded phrase",
+        {
+            "kind": "user_melody",
+            "key": "G",
+            "melody": [
+                {"token": "G4", "pitch": "G4", "pitchValue": 67, "durationBeats": 1, "confidence": 0.74},
+                {"token": "A4", "pitch": "A4", "pitchValue": 69, "durationBeats": 0.5, "confidence": 0.7},
+            ],
+            "accuracy": "approximate",
+            "accuracyConfidence": "medium",
+            "accuracyNote": "Pitch and rhythm came from on-device audio estimation and were opened for manual review before E9 arrangement.",
+            "sourceProvided": True,
+        },
+    )
+
+    assert result is not None
+    accuracy = result["melody_exercise"]["accuracy"]
+    assert accuracy == {
+        "label": "approximate",
+        "confidence": "medium",
+        "note": "Pitch and rhythm came from on-device audio estimation and were opened for manual review before E9 arrangement.",
+    }
+    assert [event["durationBeats"] for event in result["melody_exercise"]["events"]] == [1, 0.5]
+
+
 def test_amazing_grace_exact_score_events_keep_rhythm_chords_and_e9_route() -> None:
     draft = json.loads(
         Path("pocketsteel/resources/public_domain_songs/amazing_grace_new_britain.json").read_text(encoding="utf-8")

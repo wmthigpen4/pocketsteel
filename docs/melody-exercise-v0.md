@@ -65,6 +65,14 @@ The score is an interactive practice surface rather than a decorative duplicate.
 
 The dedicated lesson view is fretboard-first. Its header contains the lesson title, optional source identity, one visible route row, and the selected route's useful recommendation; it does not display a generic "Practice the lesson" kicker or expose exactness, confidence, and single-section bookkeeping as header metadata. The fretboard renders only the active event's string locations; navigating or playing replaces that position instead of stacking the whole phrase. Compact display toggles independently control Octave colors, compact string/action labels inside active marker bubbles (`6B`, `5A`, or plain `6` when open), and the resolved top-note label above the active position. One compact navigator beneath the board combines those controls and the octave legend with note progress, previous/next arrows, concise pitch/position pills, and one current-note readout. It does not repeat the selected note in a separate active-tab sentence or long explanatory event sentence. Previous/next and note-pill controls must visibly select the matching `renderablePositionId` in the fretboard component. Long phrases expose a Continue to Section action using the existing `sectionNumber` request field. Mobile layout keeps route and note rows horizontally scrollable, keeps the arrows beside the pill row, and keeps the fixed-width tab inside its own horizontal scroller.
 
+## Short-phrase audio transcription
+
+Melody Studio accepts either a live microphone phrase or a user-selected audio file of 15 seconds or less. Audio decoding, pitch detection, smoothing, note segmentation, silence/rest detection, and tempo-based duration quantization run in the browser. The audio is never submitted to the answer API and is not retained after transcription.
+
+This first transcription slice is explicitly monophonic: the player should hum, sing, or play one clear note at a time. It does not claim to separate chords, bands, or full commercial recordings. YouTube and source links remain attribution/reference inputs and are not automatically listened to.
+
+Transcription creates a session-only `score_draft_v1` with estimated pitch, duration, per-note confidence, overall confidence, and review warnings. The editable score opens before E9 arrangement. Editing a note marks that event as user-confirmed. When the reviewed draft is arranged, the Melody Exercise request remains labeled `approximate` with the transcription confidence and an explicit on-device-estimation note; confirmation never silently converts an audio estimate into an exact transcription.
+
 The feature is controlled by `STEEL_RAG_ENABLE_MELODY_EXERCISE`, which defaults off. Protected preview may explicitly enable it for approved testing.
 
 ## Non-Goals for v0

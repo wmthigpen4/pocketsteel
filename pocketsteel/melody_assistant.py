@@ -32,6 +32,7 @@ SUPPORTED_RENDERING_MODES = {
     "teaching_simplification",
 }
 SUPPORTED_ACCURACY = {"exact", "approximate", "interpretive"}
+SUPPORTED_CONFIDENCE = {"low", "medium", "high"}
 SUPPORTED_KEYS = {"G", "C"}
 
 _TEACHING_REQUEST_RE = re.compile(
@@ -98,6 +99,12 @@ def melody_exercise_response(
     )
     requested_accuracy = _choice(structured.get("accuracy"), SUPPORTED_ACCURACY, "")
     source_identified = bool(material.get("sourceUrl") or material.get("recording") or structured.get("sourceProvided"))
+    requested_confidence = _choice(
+        structured.get("accuracyConfidence") or structured.get("accuracy_confidence"),
+        SUPPORTED_CONFIDENCE,
+        "",
+    )
+    requested_accuracy_note = str(structured.get("accuracyNote") or structured.get("accuracy_note") or "").strip()[:320]
     if requested_accuracy == "exact" and kind in {"artist_solo_lesson", "song_arrangement_lesson"} and not source_identified:
         accuracy = "approximate"
         accuracy_note = "Exact transcription needs an identified recording or user-supplied passage; this placement is an E9 teaching adaptation."
@@ -108,6 +115,8 @@ def melody_exercise_response(
             if accuracy == "exact"
             else "Treat this as a teaching interpretation until it is checked against the identified recording."
         )
+    if requested_accuracy_note and accuracy != "exact":
+        accuracy_note = requested_accuracy_note
 
     tab_id = f"melody-{key.lower()}-section-{section_number}"
     title = _exercise_title(kind, material, key, section_number)
@@ -145,7 +154,7 @@ def melody_exercise_response(
         "renderingMode": rendering_mode,
         "accuracy": {
             "label": accuracy,
-            "confidence": "high" if accuracy == "exact" else "medium",
+            "confidence": requested_confidence or ("high" if accuracy == "exact" else "medium"),
             "note": accuracy_note,
         },
         "section": {
