@@ -411,10 +411,15 @@
         return octave === null ? [] : [[String(note.string), octave]];
       }));
       const melodyLabel = String(event.resolvedPitch || event.resolvedNote || "").trim();
+      const stringActionLabels = (event.notes || []).map((note) => ({
+        string: note.string,
+        label: `${note.string}${Array.from(new Set((note.changes || []).map((change) => String(change).toUpperCase()))).join("")}`
+      }));
       return {
         ...position,
         ...(melodyLabel ? { label: melodyLabel, role: `Melody note ${event.step || ""}`.trim() } : {}),
-        scientificOctavesByString
+        scientificOctavesByString,
+        stringActionLabels
       };
     });
   }

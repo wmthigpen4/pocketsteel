@@ -94,9 +94,10 @@ assert.equal(studio.scientificOctaveForTabNote({ string: 5, fret: 3, changes: []
 assert.equal(studio.scientificOctaveForTabNote({ string: 5, fret: 1, changes: ["A"] }), 4);
 const octavePositions = studio.positionsWithScientificOctaves(
   [{ id: "event-1", label: "Your melody exercise in G — Single-note melody", strings: [5, 6] }],
-  [{ step: 1, resolvedPitch: "D4", renderablePositionId: "event-1", notes: [{ string: 5, fret: 3, changes: [] }, { string: 6, fret: 3, changes: [] }] }]
+  [{ step: 1, resolvedPitch: "D4", renderablePositionId: "event-1", notes: [{ string: 5, fret: 3, changes: ["A"] }, { string: 6, fret: 3, changes: ["B"] }] }]
 );
-assert.deepEqual(octavePositions[0].scientificOctavesByString, { 5: 4, 6: 3 });
+assert.deepEqual(octavePositions[0].scientificOctavesByString, { 5: 4, 6: 4 });
+assert.deepEqual(octavePositions[0].stringActionLabels, [{ string: 5, label: "5A" }, { string: 6, label: "6B" }]);
 assert.equal(octavePositions[0].label, "D4");
 assert.equal(octavePositions[0].role, "Melody note 1");
 assert.doesNotMatch(octavePositions[0].label, /Your melody exercise/);
@@ -248,7 +249,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "state.selectedPhraseIndex" in script
     assert html.count("?v=melody-multi-input-20260711-3") == 2
     assert html.count("?v=melody-score-practice-20260711-3") == 1
-    assert html.count("?v=melody-active-marker-controls-20260711-1") == 1
+    assert html.count("?v=melody-string-action-labels-20260711-1") == 1
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in html
     assert "VexFlow" in Path("ui/vendor/VEXFLOW-LICENSE.txt").read_text(encoding="utf-8")
     assert html.index('id="studio-fretboard"') < html.index('id="studio-tab"')
