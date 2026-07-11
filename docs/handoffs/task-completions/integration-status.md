@@ -1,6 +1,6 @@
 # Integration Status — Current Snapshot
 
-Updated: 2026-07-11 08:41 America/Chicago
+Updated: 2026-07-11 12:46 America/Chicago
 
 ## Repository state
 
@@ -67,6 +67,7 @@ Lesson-header implementation handoff: `docs/handoffs/task-completions/2026-07-11
 Lesson-header protected blocker: `docs/handoffs/task-completions/2026-07-11-0815-12-melody-header-protected-smoke-blocker.md`.
 Multi-input implementation handoff: `docs/handoffs/task-completions/2026-07-11-0837-18-melody-studio-multi-input-builder.md`.
 Multi-input protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-0841-12-melody-multi-input-protected-smoke.md`.
+Resumed lesson-header protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-1246-12-melody-header-protected-smoke-resumed.md`.
 
 ## Verification
 
@@ -74,8 +75,9 @@ Multi-input protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-
 - Core JavaScript syntax: passed for answer client, Melody Studio, and fretboard component.
 - `git diff --check`: passed.
 - Local browser smoke: pass for all six cards, flagged catalog/import, score editing, VexFlow, Amazing Grace catalog, exact E9 route, ornament toggle, and mobile layout.
-- Protected browser smoke: pass at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-multi-input-b0944c7-20260711`.
+- Protected browser smoke: pass at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-header-resume-b0944c7-20260711`.
 - Protected browser verified manual phrase and lead-sheet builder lesson generation, six routes, synchronized staff/fretboard/tab, VexFlow renderer, zero page overflow, and no `[object Object]` or console errors.
+- Resumed header smoke verified the removed practice kicker, metadata line, and More arrangements disclosure remain absent on the integrated runtime; all six routes remain together in one horizontally scrollable row and Chord melody selection synchronizes visibly.
 
 ## Protected preview
 
@@ -95,6 +97,6 @@ Multi-input protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-
 
 ## Next action
 
-1. Continue user smoke at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-multi-input-b0944c7-20260711`.
+1. Continue user smoke at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-header-resume-b0944c7-20260711`.
 2. If protected catalog/upload import should be enabled, explicitly authorize the protected environment flag change and vision-model readiness check; otherwise keep it off.
 3. Keep unrelated corpus, source-inbox, private-data, brand/design, deployment, and environment work parked.
