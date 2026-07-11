@@ -1,17 +1,17 @@
 # Integration Status — Current Snapshot
 
-Updated: 2026-07-11 08:04 America/Chicago
+Updated: 2026-07-11 08:15 America/Chicago
 
 ## Repository state
 
 - Branch: `feature/answer-api`
-- Current implementation: `62a8a3d Simplify Melody Studio flow and navigator`
+- Current implementation: `deac899 Clean up Melody Studio lesson header`
 - Melody API baseline: `f37201a feat: add Melody Exercise teaching workflow`
 - Melody Studio now uses Steel Guitar RAG branding. No broad repository rename is approved.
 
 ## Melody Studio
 
-Status: **PASS — direct phrase entry, compact lesson navigation, octave-aware arranging, and the scientific-octave map are committed, deployed to protected preview, and ready for user smoke**.
+Status: **BLOCKED — the lesson-header cleanup is committed and green locally, but protected lesson generation is currently blocked by unrelated dirty arranger work that appeared during the restart/smoke window**.
 
 - The home header now exposes feature-gated actions in this order: Explore Fretboard, Melody Studio, Backstage.
 - The technical inline Melody form was removed from home.
@@ -25,8 +25,8 @@ Status: **PASS — direct phrase entry, compact lesson navigation, octave-aware 
 - Per-note octave controls modify only the selected event; they do not re-anchor later automatic notes.
 - Literal tab preserves string, fret, control state, and pitch register.
 - Source links are labeled as attribution only; Melody Studio does not claim to listen to or transcribe the link.
-- Results are fretboard-first. Single-note, Recommended Harmony, thirds, sixths, and chord-melody routes appear when mechanically available.
-- Only Single Note and Recommended Harmony are shown initially; specialist routes live under More arrangements.
+- Results are fretboard-first. Every mechanically available single-note, Recommended Harmony, thirds, sixths, and chord-melody route appears in one visible, horizontally scrollable row.
+- The lesson header omits the generic Practice the lesson kicker and the non-actionable exactness/confidence/single-section metadata line.
 - One compact navigator beneath the fretboard combines Octave colors, legend, note progress, adjacent previous/next arrows, concise steel-player position pills, and one current-note readout.
 - Route, arrow, and pill controls visibly synchronize the selected fretboard position, active pill, fixed-width tab route, pedal/lever instructions, and current-note movement cue.
 - The duplicated active-tab sentence and verbose event-detail sentence have been removed.
@@ -58,23 +58,26 @@ Octave-map cache-bust handoff: `docs/handoffs/task-completions/2026-07-11-0739-0
 Octave-map protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-0742-12-melody-octave-map-protected-smoke.md`.
 Compact-flow implementation handoff: `docs/handoffs/task-completions/2026-07-11-0801-06-melody-compact-flow-navigator.md`.
 Compact-flow protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-0804-12-melody-compact-flow-protected-smoke.md`.
+Lesson-header implementation handoff: `docs/handoffs/task-completions/2026-07-11-0812-06-melody-lesson-header-cleanup.md`.
+Lesson-header protected blocker: `docs/handoffs/task-completions/2026-07-11-0815-12-melody-header-protected-smoke-blocker.md`.
 
 ## Verification
 
 - Full pytest: `922 passed`.
 - Core JavaScript syntax: passed for answer client, Melody Studio, and fretboard component.
 - `git diff --check`: passed.
-- Local browser smoke: pass at `http://127.0.0.1:8898/ui/melody-workbench.html?access=beta_user&v=compact-flow-local-20260711`.
-- Protected browser smoke: pass at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-compact-flow-62a8a3d-20260711`.
-- Browser verified direct three-choice entry, recording treatment, source clearing, exercise presets, compact pill/arrow placement, zero page overflow, independent register editing, octave show/hide, harmony marker registers, visible synchronization, and no duplicated event copy, `[object Object]`, or console errors.
+- Local browser smoke: pass at `http://127.0.0.1:8898/ui/melody-workbench.html?access=beta_user&v=route-row-local-20260711`.
+- Protected browser smoke: failed at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-route-row-deac899-20260711` because lesson generation returned HTTP 500 from a concurrent partial `pocketsteel/melody_arranger.py` edit.
+- Local browser verified five visible route buttons, no practice/meta/disclosure header elements, synchronized Chord melody selection, zero page overflow, and no `[object Object]` or console errors.
 
 ## Protected preview
 
-- Runtime smoke HEAD: `62a8a3d`.
-- Loopback `/api/version`: `62a8a3d`, `feature/answer-api`, `hybrid_private_first`, `cloudflare_access`, `features.melodyExercise=true`.
+- Runtime smoke HEAD: `deac899`.
+- Loopback `/api/version`: `deac899`, `feature/answer-api`, `hybrid_private_first`, `cloudflare_access`, `features.melodyExercise=true`.
 - Preview refresh succeeded without `sudo` by terminating only the user-owned port-8770 listener and allowing the installed LaunchDaemon to restart it.
 - Installed wrapper matches the committed wrapper.
-- Cloudflare Access login succeeded in the in-app browser.
+- Cloudflare Access login succeeded, but the protected lesson request failed HTTP 500 because the running process imported a separately edited arranger module while that edit was incomplete.
+- `pocketsteel/melody_arranger.py` is now dirty with unrelated vocal-steel/structured-import work. Another restart would load that uncommitted behavior, so protected smoke is stopped.
 - Loopback root redirects to `/ui/steel-guitar-rag-mock.html`; home and Melody Studio routes return 200; anonymous answer calls remain 401.
 - A separate protected root tab drops the cache-bust and showed the signed-out/backstage state. Use the exact direct Melody Studio URL for user smoke.
 - API fallback is not browser smoke; authenticated browser behavior was verified at the direct Studio URL.
@@ -86,6 +89,6 @@ Compact-flow protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11
 
 ## Next action
 
-1. The user verifies direct phrase entry and the compact note navigator at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-compact-flow-62a8a3d-20260711`.
-2. User-reported defects enter the approved end-to-end autopilot repair loop without renewed feature approval.
-3. Keep the user-smoke freeze; do not begin unrelated broad feature work until this smoke closes.
+1. Finish, commit, or otherwise reconcile the separate `pocketsteel/melody_arranger.py` work without using this task to stage or revert it.
+2. Restart protected preview from the resulting approved stable baseline and repeat the authenticated header smoke.
+3. Do not provide a user-smoke URL until protected lesson generation passes again.
