@@ -769,6 +769,7 @@
     scoreCanvas: $("#studio-score-canvas"),
     scoreSelection: $("#studio-score-selection"),
     scoreSelectionSummary: $("#studio-score-selection-summary"),
+    scoreDeleteSelected: $("#studio-score-delete-selected"),
     scorePreviousNote: $("#studio-score-previous-note"),
     scoreNextNote: $("#studio-score-next-note"),
     scoreStatus: $("#studio-score-status"),
@@ -785,6 +786,8 @@
     scoreDuplicate: $("#studio-score-duplicate"),
     scoreTransposeDown: $("#studio-score-transpose-down"),
     scoreTransposeUp: $("#studio-score-transpose-up"),
+    scoreOctaveDown: $("#studio-score-octave-down"),
+    scoreOctaveUp: $("#studio-score-octave-up"),
     scorePlay: $("#studio-score-play"),
     scoreDownload: $("#studio-score-download"),
     scorePrint: $("#studio-score-print"),
@@ -1068,6 +1071,17 @@
     renderScoreBuilder();
   }
 
+  function removeSelectedScoreEvent() {
+    if (!selectedScoreEvent()) return;
+    const nextSelectedIndex = Math.max(0, state.scoreSelectedIndex - 1);
+    commitScoreDraft(scoreUi.removeEvent(state.scoreDraft, state.scoreSelectedIndex), nextSelectedIndex);
+  }
+
+  function transposeWholeScore(semitones, message) {
+    commitScoreDraft(scoreUi.transposeDraft(ensureScoreDraft(), semitones), state.scoreSelectedIndex);
+    elements.scoreArrangeStatus.textContent = message;
+  }
+
   function renderScoreKeyboard() {
     if (elements.scoreKeyboard.childElementCount) return;
     [60, 62, 64, 65, 67, 69, 71, 72].forEach((pitchValue) => {
@@ -1093,6 +1107,7 @@
       const selectedNumber = state.scoreSelectedIndex + 1;
       const eventName = event.rest ? "Rest" : event.pitch;
       elements.scoreSelectionSummary.textContent = `Selected ${event.rest ? "rest" : "note"} ${selectedNumber} of ${draft.score.melody.length} · ${eventName} · measure ${event.measure}, beat ${event.beat}`;
+      elements.scoreDeleteSelected.textContent = `Delete selected ${event.rest ? "rest" : "note"}`;
       elements.scorePreviousNote.disabled = state.scoreSelectedIndex <= 0;
       elements.scoreNextNote.disabled = state.scoreSelectedIndex >= draft.score.melody.length - 1;
       elements.scorePitch.value = event.rest ? "Rest" : event.pitch;
@@ -2085,14 +2100,17 @@
   elements.scoreTie.addEventListener("change", () => updateSelectedScoreEvent({ tie: elements.scoreTie.value }));
   elements.scoreArticulation.addEventListener("change", () => updateSelectedScoreEvent({ articulation: elements.scoreArticulation.value }));
   elements.scoreChord.addEventListener("input", () => commitScoreDraft(scoreUi.setChordAtEvent(state.scoreDraft, state.scoreSelectedIndex, elements.scoreChord.value), state.scoreSelectedIndex));
-  elements.scoreRemove.addEventListener("click", () => commitScoreDraft(scoreUi.removeEvent(state.scoreDraft, state.scoreSelectedIndex), Math.max(0, state.scoreSelectedIndex - 1)));
+  elements.scoreRemove.addEventListener("click", removeSelectedScoreEvent);
+  elements.scoreDeleteSelected.addEventListener("click", removeSelectedScoreEvent);
   elements.scoreClearMeasure.addEventListener("click", () => {
     const event = selectedScoreEvent();
     if (event) commitScoreDraft(scoreUi.clearMeasure(state.scoreDraft, event.measure), -1);
   });
   elements.scoreDuplicate.addEventListener("click", () => commitScoreDraft(scoreUi.duplicatePhrase(ensureScoreDraft()), -1));
-  elements.scoreTransposeDown.addEventListener("click", () => commitScoreDraft(scoreUi.transposeDraft(ensureScoreDraft(), -1)));
-  elements.scoreTransposeUp.addEventListener("click", () => commitScoreDraft(scoreUi.transposeDraft(ensureScoreDraft(), 1)));
+  elements.scoreTransposeDown.addEventListener("click", () => transposeWholeScore(-1, "Moved every note down one semitone."));
+  elements.scoreTransposeUp.addEventListener("click", () => transposeWholeScore(1, "Moved every note up one semitone."));
+  elements.scoreOctaveDown.addEventListener("click", () => transposeWholeScore(-12, "Moved every note down one octave."));
+  elements.scoreOctaveUp.addEventListener("click", () => transposeWholeScore(12, "Moved every note up one octave."));
   elements.scorePlay.addEventListener("click", playScoreDraft);
   elements.scoreDownload.addEventListener("click", downloadScoreDraft);
   elements.scorePrint.addEventListener("click", () => global.print());
@@ -2175,6 +2193,11 @@
   doc.addEventListener("keydown", (event) => {
     if (state.inputMethod !== "score" || event.metaKey || event.ctrlKey || event.altKey) return;
     if (["INPUT", "TEXTAREA", "SELECT"].includes(doc.activeElement?.tagName)) return;
+    if (["Delete", "Backspace"].includes(event.key)) {
+      event.preventDefault();
+      removeSelectedScoreEvent();
+      return;
+    }
     const durationShortcuts = { "1": "0.5", "2": "1", "3": "1.5", "4": "2", "5": "3", "6": "4" };
     if (durationShortcuts[event.key]) {
       event.preventDefault();

@@ -136,7 +136,7 @@
     .score-key { min-height: 44px; border: 1px solid rgba(240, 191, 105, 0.26); border-radius: 10px; background: rgba(240, 191, 105, 0.07); color: var(--cream); cursor: pointer; font-weight: 850; }
     .score-event-editor { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
     .score-selection-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin: 12px 0 0; border: 1px solid rgba(240, 191, 105, 0.4); border-radius: 12px; background: rgba(240, 191, 105, 0.11); padding: 10px 12px; color: var(--cream); }
-    .score-selection-bar__actions { display: flex; gap: 8px; }
+    .score-selection-bar__actions { display: flex; flex-wrap: wrap; gap: 8px; }
     .audio-preview { width: min(620px, 100%); margin-top: 12px; }
     .audio-window { display: grid; grid-template-columns: minmax(150px, 1fr) minmax(130px, 180px) auto; align-items: end; gap: 10px; margin-top: 12px; }
     .score-status, .privacy-note { margin: 12px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
@@ -436,6 +436,7 @@
           <div class="score-selection-bar" id="studio-score-selection" hidden aria-live="polite">
             <strong id="studio-score-selection-summary">Selected note</strong>
             <div class="score-selection-bar__actions">
+              <button class="secondary-action" type="button" id="studio-score-delete-selected">Delete selected note</button>
               <button class="secondary-action" type="button" id="studio-score-previous-note">Previous note</button>
               <button class="secondary-action" type="button" id="studio-score-next-note">Next note</button>
             </div>
@@ -454,8 +455,10 @@
           </div>
           <div class="score-actions" style="margin-top:14px;">
             <button class="secondary-action" type="button" id="studio-score-duplicate">Duplicate phrase</button>
-            <button class="secondary-action" type="button" id="studio-score-transpose-down">Transpose down</button>
-            <button class="secondary-action" type="button" id="studio-score-transpose-up">Transpose up</button>
+            <button class="secondary-action" type="button" id="studio-score-transpose-down">All notes down 1 semitone</button>
+            <button class="secondary-action" type="button" id="studio-score-transpose-up">All notes up 1 semitone</button>
+            <button class="secondary-action" type="button" id="studio-score-octave-down">All notes down 1 octave</button>
+            <button class="secondary-action" type="button" id="studio-score-octave-up">All notes up 1 octave</button>
             <button class="secondary-action" type="button" id="studio-score-play">Play draft</button>
             <button class="secondary-action" type="button" id="studio-score-download">Download MusicXML</button>
             <button class="secondary-action" type="button" id="studio-score-print">Print score</button>
@@ -637,6 +640,6 @@
   <script src="pedal-steel-fretboard.js?v=melody-multi-input-20260711-3"></script>
   <script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>
   <script src="melody-score.js?v=melody-score-practice-20260711-3"></script>
-  <script src="melody-workbench.js?v=melody-lead-sheet-repair-20260711-1"></script>
+  <script src="melody-workbench.js?v=melody-score-edit-controls-20260711-1"></script>
 </body>
 </html>

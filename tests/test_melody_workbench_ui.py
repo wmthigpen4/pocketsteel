@@ -195,6 +195,8 @@ assert.deepEqual(score.arrangementEvents(draft)[1], {
 });
 const transposed = score.transposeDraft(draft, -5);
 assert.deepEqual(transposed.score.melody.map((event) => event.pitch), ["A3", "D4", "F#4"]);
+const octaveUp = score.transposeDraft(draft, 12);
+assert.deepEqual(octaveUp.score.melody.map((event) => event.pitch), ["D5", "G5", "B5"]);
 const xml = score.musicXmlForDraft(draft);
 assert.match(xml, /<work-title>Amazing Grace sketch<\/work-title>/);
 assert.match(xml, /<time><beats>3<\/beats>/);
@@ -285,7 +287,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "state.selectedPhraseIndex" in script
     assert html.count("?v=melody-multi-input-20260711-3") == 2
     assert html.count("?v=melody-score-practice-20260711-3") == 1
-    assert html.count("?v=melody-lead-sheet-repair-20260711-1") == 1
+    assert html.count("?v=melody-score-edit-controls-20260711-1") == 1
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in html
     assert "VexFlow" in Path("ui/vendor/VEXFLOW-LICENSE.txt").read_text(encoding="utf-8")
     assert html.index('id="studio-fretboard"') < html.index('id="studio-tab"')
@@ -325,8 +327,16 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'id="studio-score-confidence"' in html
     assert 'id="studio-score-selection" hidden' in html
     assert 'id="studio-score-selection-summary"' in html
+    assert 'id="studio-score-delete-selected"' in html
     assert 'id="studio-score-previous-note"' in html
     assert 'id="studio-score-next-note"' in html
+    assert 'id="studio-score-octave-down"' in html
+    assert 'id="studio-score-octave-up"' in html
+    assert 'All notes down 1 semitone' in html
+    assert 'All notes up 1 octave' in html
+    assert '["Delete", "Backspace"].includes(event.key)' in script
+    assert 'removeSelectedScoreEvent();' in script
+    assert 'transposeWholeScore(12, "Moved every note up one octave.")' in script
     assert 'id="studio-score-arrange-status" role="status"' in html
     assert "audio is decoded in this browser" in html
     assert "The file may be longer" in html
