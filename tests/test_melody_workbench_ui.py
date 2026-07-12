@@ -250,16 +250,19 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Turn a phrase into an E9 lesson." in html
     assert "Step 1 of 4" not in html
     assert 'data-studio-start="phrase"' in html
+    assert 'data-studio-start="score"' in html
+    assert 'data-studio-start="catalog"' in html
     assert 'data-studio-start="import"' in html
     assert 'data-studio-start="microphone"' in html
-    assert html.count("data-studio-start=") == 3
+    assert html.count("data-studio-start=") == 5
     assert "Add a melody" in html
     assert "Type or tap notes" in html
     assert "Import music" in html
     assert "Record or upload audio" in html
-    assert 'id="studio-open-score"' in html
+    assert 'id="studio-open-score"' not in html
     assert 'id="studio-add-recording"' in html
-    assert 'id="studio-try-example"' in html
+    assert 'id="studio-try-example"' not in html
+    assert "Choose the easiest way to get the notes in." not in html
     assert 'data-source-treatment="artist_solo_lesson"' in html
     assert 'data-source-treatment="song_arrangement_lesson"' in html
     assert "Faithful solo passage" in html
@@ -317,7 +320,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Change the register for this note only" in html
     assert "state.selectedPhraseIndex" in script
     assert html.count("?v=melody-multi-input-20260711-3") == 1
-    assert html.count("?v=melody-wrapped-score-20260712-1") == 3
+    assert html.count("?v=melody-starting-choices-20260712-1") == 3
     assert 'elements.sectionNavigation.hidden = needsSource || Number(section.total || 0) <= 1;' in script
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in html
     assert "VexFlow" in Path("ui/vendor/VEXFLOW-LICENSE.txt").read_text(encoding="utf-8")
@@ -436,12 +439,12 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'state.workflowPhase = "review"' in script
     assert 'state.workflowPhase = "result"' in script
     assert 'elements.audioFileControls.hidden = !state.sourceAudioUrl;' in script
-    assert 'elements.tryExample.hidden = !catalogEnabled;' in script
+    assert 'if (catalogChoice) catalogChoice.hidden = !catalogEnabled;' in script
     assert 'id="studio-catalog-search"' in html
     assert 'id="studio-catalog-difficulty"' in html
     assert 'id="studio-catalog-meter"' in html
     assert 'id="studio-catalog-feel"' in html
-    assert '>Browse songbook</button>' in html
+    assert '<strong>Browse songbook</strong>' in html
     assert 'session?.features?.melodyCatalog' in script
     assert 'sourceType: "catalog"' in script
     assert 'Source links identify the teaching version; they are not automatically transcribed.' in script

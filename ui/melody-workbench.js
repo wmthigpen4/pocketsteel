@@ -816,9 +816,7 @@
     palette: $("#studio-palette"),
     presets: $("#studio-presets"),
     useExercise: $("#studio-use-exercise"),
-    openScore: $("#studio-open-score"),
     addRecording: $("#studio-add-recording"),
-    tryExample: $("#studio-try-example"),
     paletteModeButtons: Array.from(doc.querySelectorAll("[data-palette-mode]")),
     presetButtons: Array.from(doc.querySelectorAll("[data-preset]")),
     error: $("#studio-error"),
@@ -953,7 +951,7 @@
   }
 
   function entryPathForMethod(method) {
-    return ["microphone", "import"].includes(method) ? method : "phrase";
+    return ["phrase", "score", "microphone", "import", "catalog"].includes(method) ? method : "phrase";
   }
 
   function hasMelodyContent() {
@@ -1108,14 +1106,19 @@
       const small = button.querySelector("small");
       if (strong) strong.textContent = replacing ? "Replace melody" : button.dataset.defaultLabel;
       if (small && replacing) small.textContent = `Use ${button.dataset.defaultLabel.toLowerCase()}`;
-      else if (small) small.textContent = target === "phrase" ? "Notes or scale numbers" : target === "microphone" ? "Choose a short passage" : "Photo, MusicXML, or MIDI";
+      else if (small) small.textContent = target === "phrase"
+        ? "Notes or scale numbers"
+        : target === "microphone"
+          ? "Choose a short passage"
+          : target === "score"
+            ? "Write notes on a staff"
+            : target === "catalog"
+              ? (catalogSongs.length ? `${catalogSongs.length} reviewed songs` : "Reviewed melody examples")
+              : "Photo, MusicXML, or MIDI";
       button.classList.toggle("is-selected", selected);
       button.setAttribute("aria-pressed", String(selected));
     });
     elements.addRecording.textContent = state.showSourceDetails ? "Edit recording details" : "Add recording details";
-    elements.openScore.textContent = hasDraft ? "Replace melody with staff editor" : "Open staff editor";
-    const songbookCount = catalogSongs.length ? ` (${catalogSongs.length})` : "";
-    elements.tryExample.textContent = hasDraft ? "Replace melody with songbook" : `Browse songbook${songbookCount}`;
   }
 
   function renderStartingPoint() {
@@ -2267,8 +2270,9 @@
       const importEnabled = Boolean(session.features?.melodyImport);
       const catalogEnabled = Boolean(session.features?.melodyCatalog);
       const importChoice = elements.startChoices.find((button) => button.dataset.studioStart === "import");
+      const catalogChoice = elements.startChoices.find((button) => button.dataset.studioStart === "catalog");
       if (importChoice) importChoice.hidden = !importEnabled;
-      elements.tryExample.hidden = !catalogEnabled;
+      if (catalogChoice) catalogChoice.hidden = !catalogEnabled;
       elements.editor.hidden = false;
       renderStartingPoint();
       renderPalette();
@@ -2289,7 +2293,6 @@
     renderStartingPoint();
   });
   elements.sourceTreatmentButtons.forEach((button) => button.addEventListener("click", () => selectSourceTreatment(button.dataset.sourceTreatment)));
-  elements.openScore.addEventListener("click", () => selectStartingPoint("score"));
   elements.addRecording.addEventListener("click", () => {
     state.showSourceDetails = !state.showSourceDetails;
     if (state.showSourceDetails && !currentTask()?.needsMaterial) state.kind = "song_arrangement_lesson";
@@ -2300,7 +2303,6 @@
     state.showSourceDetails = false;
     renderStartingPoint();
   });
-  elements.tryExample.addEventListener("click", () => selectStartingPoint("catalog"));
   [elements.catalogSearch, elements.catalogDifficulty, elements.catalogMeter, elements.catalogFeel].forEach((control) => control.addEventListener("input", renderCatalog));
   elements.octaveDown.addEventListener("click", () => {
     const index = state.selectedPhraseIndex;

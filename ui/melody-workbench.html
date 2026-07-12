@@ -93,8 +93,7 @@
 
     .start-picker { display: grid; gap: 14px; padding-bottom: 18px; border-bottom: 1px solid rgba(244, 234, 214, 0.12); }
     .start-picker__heading { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 8px 18px; }
-    .start-picker__heading .studio-copy { margin: 0; }
-    .start-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; max-width: 760px; }
+    .start-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px; width: 100%; }
     .start-choice {
       min-height: 50px;
       display: flex;
@@ -422,11 +421,12 @@
               <p class="phase-label" id="studio-phase-label">Add melody</p>
               <h2 id="studio-editor-title">Add a melody</h2>
             </div>
-            <p class="studio-copy">Choose the easiest way to get the notes in.</p>
           </div>
           <div class="start-options" id="studio-start-options" role="group" aria-label="Choose what you are starting with">
             <button class="start-choice is-selected" type="button" data-studio-start="phrase" data-default-label="Type or tap notes" aria-pressed="true"><strong>Type or tap notes</strong><small>Notes or scale numbers</small></button>
             <button class="start-choice" type="button" data-studio-start="microphone" data-default-label="Record or upload audio" aria-pressed="false"><strong>Record or upload audio</strong><small>Choose a short passage</small></button>
+            <button class="start-choice" type="button" data-studio-start="score" data-default-label="Staff editor" aria-pressed="false"><strong>Staff editor</strong><small>Write notes on a staff</small></button>
+            <button class="start-choice" type="button" data-studio-start="catalog" data-default-label="Browse songbook" aria-pressed="false"><strong>Browse songbook</strong><small>Reviewed melody examples</small></button>
             <button class="start-choice" type="button" data-studio-start="import" data-default-label="Import music" aria-pressed="false"><strong>Import music</strong><small>Photo, MusicXML, or MIDI</small></button>
           </div>
           <div class="replace-confirmation" id="studio-replace-confirmation" role="alert" hidden>
@@ -585,9 +585,7 @@
             <textarea id="studio-phrase-input" aria-label="Notes or scale numbers" placeholder="Try: 1 2 3 5 or G A B D"></textarea>
           </label>
           <div class="context-actions">
-            <button class="secondary-action" type="button" id="studio-open-score">Open staff editor</button>
             <button class="secondary-action" type="button" id="studio-add-recording">Add recording details</button>
-            <button class="secondary-action" type="button" id="studio-try-example">Browse songbook</button>
           </div>
           <details class="progressive-panel" id="studio-phrase-options"><summary>Phrase options</summary><div class="progressive-panel__body">
             <label class="field contour-field">Melody direction<select id="studio-contour"><option value="closest_playable">Closest playable</option><option value="ascending">Ascending</option><option value="descending">Descending</option><option value="preserve_input">Preserve entered pitches</option></select><span class="field-help">Closest playable is the recommended default.</span></label>
@@ -720,10 +718,10 @@
     </div>
   </main>
 
-  <script src="answer-client.js?v=melody-wrapped-score-20260712-1"></script>
+  <script src="answer-client.js?v=melody-starting-choices-20260712-1"></script>
   <script src="pedal-steel-fretboard.js?v=melody-multi-input-20260711-3"></script>
   <script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>
-  <script src="melody-score.js?v=melody-wrapped-score-20260712-1"></script>
-  <script src="melody-workbench.js?v=melody-wrapped-score-20260712-1"></script>
+  <script src="melody-score.js?v=melody-starting-choices-20260712-1"></script>
+  <script src="melody-workbench.js?v=melody-starting-choices-20260712-1"></script>
 </body>
 </html>
