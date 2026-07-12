@@ -313,7 +313,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Change the register for this note only" in html
     assert "state.selectedPhraseIndex" in script
     assert html.count("?v=melody-multi-input-20260711-3") == 1
-    assert html.count("?v=melody-full-song-20260712-1") == 3
+    assert html.count("?v=melody-full-song-9c9d2e5-20260712") == 3
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in html
     assert "VexFlow" in Path("ui/vendor/VEXFLOW-LICENSE.txt").read_text(encoding="utf-8")
     assert html.index('id="studio-fretboard"') < html.index('id="studio-tab"')
