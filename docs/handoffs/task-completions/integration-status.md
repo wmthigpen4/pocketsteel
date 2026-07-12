@@ -1,19 +1,20 @@
 # Integration Status — Current Snapshot
 
-Updated: 2026-07-12 09:03 America/Chicago
+Updated: 2026-07-12 09:10 America/Chicago
 
 ## Repository state
 
 - Branch: `feature/answer-api`
-- Current implementation: `03a372e fix: simplify Melody Studio lesson layout`
+- Current implementation: `63e9719 fix: add Melody Studio header icons`
 - Melody API baseline: `f37201a feat: add Melody Exercise teaching workflow`
 - Melody Studio now uses Steel Guitar RAG branding. No broad repository rename is approved.
 
 ## Melody Studio
 
-Status: **SIMPLIFIED LESSON RESULT READY FOR USER SMOKE — Melody Studio is 936-test green and authenticated-preview verified with the 12-song book plus a compact, fretboard-first result layout.**
+Status: **MELODY STUDIO HEADER CONSISTENCY READY FOR USER SMOKE — Melody Studio is 936-test green and authenticated-preview verified with the 12-song book, compact result layout, and home-consistent header actions.**
 
 - The home header now exposes feature-gated actions in this order: Explore Fretboard, Melody Studio, Backstage.
+- Melody Studio's Explore Fretboard and Back home actions now use matching line icons, accessible labels/titles, full desktop labels, and compact visible `Fretboard` / `Home` labels on narrow screens.
 - The technical inline Melody form was removed from home.
 - `/ui/melody-workbench.html` opens with one Add a melody workspace and three compact entry paths: Type or tap notes, Record or upload audio, and Import music when enabled.
 - Staff notation, recording attribution, and the built-in songbook are contextual actions rather than equal top-level choices. User file/image/MusicXML/MIDI import remains hidden unless its separate session feature is enabled.
@@ -124,6 +125,8 @@ Songbook implementation handoff: `docs/handoffs/task-completions/2026-07-12-0847
 Songbook protected-smoke handoff: `docs/handoffs/task-completions/2026-07-12-0852-12-public-domain-songbook-protected-smoke.md`.
 Result-layout adjustment handoff: `docs/handoffs/task-completions/2026-07-12-0900-06-melody-result-layout-user-smoke-adjustment.md`.
 Result-layout protected-smoke handoff: `docs/handoffs/task-completions/2026-07-12-0903-12-melody-result-layout-protected-smoke.md`.
+Header-icons implementation handoff: `docs/handoffs/task-completions/2026-07-12-0908-06-melody-header-icons-user-smoke-adjustment.md`.
+Header-icons protected-smoke handoff: `docs/handoffs/task-completions/2026-07-12-0910-12-melody-header-icons-protected-smoke.md`.
 
 ## Verification
 
@@ -146,11 +149,12 @@ Result-layout protected-smoke handoff: `docs/handoffs/task-completions/2026-07-1
 - Resumed header smoke verified the removed practice kicker, metadata line, and More arrangements disclosure remain absent on the integrated runtime; all six routes remain together in one horizontally scrollable row and Chord melody selection synchronizes visibly.
 - Songbook protected smoke verified all 12 cards, search/filter metadata, a one-result Shenandoah search, 16-event staff review, authenticated catalog opening, Section 1 E9 arrangement, six routes, source attribution, Print tablature, Continue to Section 2, and zero browser errors.
 - Result-layout protected smoke verified the hidden result hero, top and bottom Edit melody actions, fretboard-adjacent display controls, closed eight-event Loop options, removed route prose, bottom-row Print/Start over placement, synchronized lesson surfaces, and zero browser errors. Local smoke separately verified that a seven-note section omits Loop options entirely.
+- Header-icons protected smoke verified one matching icon per Studio navigation action, unique accessible names/titles, full desktop labels, compact responsive labels, no navigation overflow, and zero browser errors.
 
 ## Protected preview
 
-- Runtime smoke HEAD: `03a372e`.
-- Loopback `/api/version`: `03a372e`, `feature/answer-api`, `hybrid_private_first`, `cloudflare_access`, `features.melodyExercise=true`, `features.melodyCatalog=true`; user uploads/imports remain separately disabled.
+- Runtime smoke HEAD: `63e9719`.
+- Loopback `/api/version`: `63e9719`, `feature/answer-api`, `hybrid_private_first`, `cloudflare_access`, `features.melodyExercise=true`, `features.melodyCatalog=true`; user uploads/imports remain separately disabled.
 - Preview refresh succeeded without `sudo` by terminating only the user-owned port-8770 listener and allowing the installed LaunchDaemon to restart it.
 - Installed wrapper matches the committed wrapper.
 - Cloudflare Access login and protected manual/score lesson generation succeeded; the prior arranger blocker is closed.
@@ -165,6 +169,6 @@ Result-layout protected-smoke handoff: `docs/handoffs/task-completions/2026-07-1
 
 ## Next action
 
-1. User smoke at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-result-layout-03a372e-20260712`: confirm the simplified lesson hierarchy, Edit melody placement, fretboard display controls, loop disclosure behavior, and bottom-row Print action.
+1. User smoke at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-header-icons-63e9719-20260712`: confirm the Explore Fretboard and Back home icons plus the previously simplified lesson hierarchy.
 2. If protected score-image/file import should be enabled later, explicitly authorize the protected environment flag change and vision-model readiness check; otherwise keep it off.
 3. Keep unrelated corpus, source-inbox, private-data, brand/design, deployment, and environment work parked.
