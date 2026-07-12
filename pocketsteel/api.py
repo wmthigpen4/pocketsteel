@@ -336,6 +336,7 @@ class RetrievalApi:
             features: dict[str, bool] = {}
             if self.melody_exercise_enabled:
                 features["melodyExercise"] = True
+                features["melodyCatalog"] = True
             if self.melody_import_enabled:
                 features["melodyImport"] = True
             if features:
@@ -351,8 +352,8 @@ class RetrievalApi:
         if path == "/api/melody/catalog":
             if method != "GET":
                 return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"}, extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")))
-            if not self.melody_import_enabled:
-                return self._json_response(start_response, "404 Not Found", {"error": "melody import is not enabled"}, extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")))
+            if not self.melody_exercise_enabled:
+                return self._json_response(start_response, "404 Not Found", {"error": "melody catalog is not enabled"}, extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")))
             access = authorize_answer_request(
                 environ,
                 self.answer_auth_mode,
@@ -371,8 +372,6 @@ class RetrievalApi:
         if path == "/api/melody/import":
             if method != "POST":
                 return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"}, extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")))
-            if not self.melody_import_enabled:
-                return self._json_response(start_response, "404 Not Found", {"error": "melody import is not enabled"}, extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")))
             access = authorize_answer_request(
                 environ,
                 self.answer_auth_mode,
@@ -383,6 +382,10 @@ class RetrievalApi:
                 return self._json_response(start_response, access.status, {"error": access.error}, extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")))
             try:
                 request_payload = self._read_bounded_json_body(environ, MAX_IMPORT_BODY_BYTES)
+                source_type = str(request_payload.get("sourceType") or request_payload.get("source_type") or "").strip().lower()
+                catalog_allowed = source_type == "catalog" and self.melody_exercise_enabled
+                if not self.melody_import_enabled and not catalog_allowed:
+                    return self._json_response(start_response, "404 Not Found", {"error": "melody import is not enabled"}, extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")))
                 draft = import_score_draft(request_payload)
             except MelodyImportTooLargeError as exc:
                 return self._json_response(
@@ -1050,6 +1053,7 @@ class RetrievalApi:
         features: dict[str, bool] = {}
         if self.melody_exercise_enabled:
             features["melodyExercise"] = True
+            features["melodyCatalog"] = True
         if self.melody_import_enabled:
             features["melodyImport"] = True
         if features:

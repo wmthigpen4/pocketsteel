@@ -9,6 +9,7 @@ body is written to disk or included in application logs.
 from __future__ import annotations
 
 import base64
+import hashlib
 import io
 import json
 import os
@@ -38,9 +39,8 @@ MAX_EVENTS = 64
 SUPPORTED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
 _RESOURCE_ROOT = Path(__file__).resolve().parent / "resources" / "public_domain_songs"
-_CATALOG_FILES = {
-    "amazing-grace-new-britain": _RESOURCE_ROOT / "amazing_grace_new_britain.json",
-}
+_AMAZING_GRACE_PATH = _RESOURCE_ROOT / "amazing_grace_new_britain.json"
+_STARTER_SONGBOOK_PATH = _RESOURCE_ROOT / "starter_songbook_v1.json"
 _NOTE_VALUES = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}
 _PITCH_RE = re.compile(r"^([A-Ga-g])([#b]?)(-?\d+)$")
 
@@ -61,10 +61,10 @@ def configured_melody_import_enabled(env: Mapping[str, str] | None = None) -> bo
 def public_song_catalog() -> list[dict[str, Any]]:
     """Return compact catalog cards without exposing internal score bodies."""
     cards: list[dict[str, Any]] = []
-    for catalog_id, path in _CATALOG_FILES.items():
-        record = _load_catalog_record(path)
+    for catalog_id, record, metadata in _catalog_records():
         source = record["source"]
         score = record["score"]
+        event_count = len([event for event in score["melody"] if not event.get("rest")])
         cards.append(
             {
                 "id": catalog_id,
@@ -74,6 +74,12 @@ def public_song_catalog() -> list[dict[str, Any]]:
                 "key": score["arrangementKey"],
                 "meter": score["meter"],
                 "sourceUrl": source.get("url", ""),
+                "attribution": source.get("attribution", ""),
+                "difficulty": metadata.get("difficulty", "starter"),
+                "feel": metadata.get("feel", "traditional"),
+                "eventCount": event_count,
+                "sectionCount": max(1, (event_count + 7) // 8),
+                "accuracy": source.get("accuracy", "interpretive"),
             }
         )
     return cards
@@ -87,10 +93,10 @@ def import_score_draft(
     source_type = str(payload.get("sourceType") or payload.get("source_type") or "").strip().lower()
     if source_type == "catalog":
         catalog_id = str(payload.get("catalogId") or payload.get("catalog_id") or "").strip()
-        path = _CATALOG_FILES.get(catalog_id)
-        if path is None:
+        record = next((record for item_id, record, _metadata in _catalog_records() if item_id == catalog_id), None)
+        if record is None:
             raise MelodyImportError("That public-domain song is not in the reviewed Melody Studio catalog.")
-        return _load_catalog_record(path)
+        return record
     if source_type in {"musicxml", "mxl"}:
         raw = _decode_file(payload, MAX_SCORE_BYTES)
         return parse_musicxml(raw, compressed=source_type == "mxl", selected_part=payload.get("partId"))
@@ -193,7 +199,18 @@ def normalize_score_draft(
         "rightsLabel": str(raw_source.get("rightsLabel") or "user_provided"),
         "retained": False,
     }
-    for key in ("subtitle", "attribution", "sourceChecksum", "catalogId"):
+    for key in (
+        "subtitle",
+        "attribution",
+        "sourceChecksum",
+        "catalogId",
+        "accuracy",
+        "accuracyConfidence",
+        "accuracyNote",
+        "difficulty",
+        "feel",
+        "sectionLabel",
+    ):
         if raw_source.get(key):
             normalized_source[key] = str(raw_source[key])[:500]
 
@@ -666,3 +683,79 @@ def _load_catalog_record(path: Path) -> dict[str, Any]:
     except (OSError, json.JSONDecodeError) as exc:
         raise MelodyImportError("The reviewed song catalog is unavailable.") from exc
     return normalize_score_draft(payload, review_status="confirmed")
+
+
+def _catalog_records() -> list[tuple[str, dict[str, Any], dict[str, Any]]]:
+    amazing_grace = _load_catalog_record(_AMAZING_GRACE_PATH)
+    records: list[tuple[str, dict[str, Any], dict[str, Any]]] = [
+        (
+            "amazing-grace-new-britain",
+            amazing_grace,
+            {"order": 1, "difficulty": "starter", "feel": "hymn"},
+        )
+    ]
+    try:
+        payload = json.loads(_STARTER_SONGBOOK_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise MelodyImportError("The reviewed song catalog is unavailable.") from exc
+    songs = payload.get("songs") if isinstance(payload, Mapping) else None
+    if not isinstance(songs, Sequence) or isinstance(songs, (str, bytes)):
+        raise MelodyImportError("The reviewed song catalog is unavailable.")
+    for compact in songs:
+        if not isinstance(compact, Mapping):
+            continue
+        expanded = _expand_compact_catalog_record(compact)
+        catalog_id = str(expanded["source"].get("catalogId") or "")
+        metadata = dict(compact.get("catalog") or {})
+        records.append((catalog_id, normalize_score_draft(expanded, review_status="confirmed"), metadata))
+    return sorted(records, key=lambda item: (int(item[2].get("order") or 999), item[1]["source"]["title"]))
+
+
+def _expand_compact_catalog_record(compact: Mapping[str, Any]) -> dict[str, Any]:
+    source = dict(compact.get("source") or {})
+    score = dict(compact.get("score") or {})
+    pattern = score.pop("melodyPattern", [])
+    if not isinstance(pattern, Sequence) or isinstance(pattern, (str, bytes)):
+        pattern = []
+    beats_per_measure = 3 if str(score.get("meter")) == "3/4" else 4
+    cursor = 0.0
+    melody: list[dict[str, Any]] = []
+    for index, item in enumerate(pattern, start=1):
+        if not isinstance(item, Sequence) or isinstance(item, (str, bytes)) or not item:
+            continue
+        pitch = str(item[0])
+        duration = float(item[1]) if len(item) > 1 else 1.0
+        melody.append(
+            {
+                "id": f"{source.get('catalogId', 'song')}-{index}",
+                "measure": int(cursor // beats_per_measure) + 1,
+                "beat": (cursor % beats_per_measure) + 1,
+                "durationBeats": duration,
+                "pitch": pitch,
+                "origin": "reviewed_teaching_version",
+                "confidence": 1,
+            }
+        )
+        cursor += duration
+    harmony: list[dict[str, Any]] = []
+    for item in score.pop("harmonyPattern", []):
+        if not isinstance(item, Sequence) or isinstance(item, (str, bytes)) or len(item) < 2:
+            continue
+        event_index = max(0, min(len(melody) - 1, int(item[0])))
+        if not melody:
+            continue
+        event = melody[event_index]
+        harmony.append(
+            {
+                "measure": event["measure"],
+                "beat": event["beat"],
+                "symbol": str(item[1]),
+                "basis": "reviewed_teaching_version",
+                "confidence": 1,
+            }
+        )
+    checksum_source = json.dumps(compact, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    source.setdefault("sourceChecksum", f"sha256:{hashlib.sha256(checksum_source).hexdigest()}")
+    score["melody"] = melody
+    score["harmony"] = harmony
+    return {"schemaVersion": SCORE_DRAFT_SCHEMA_VERSION, "source": source, "score": score, "review": {"status": "confirmed", "warnings": []}}

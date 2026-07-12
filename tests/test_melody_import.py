@@ -19,17 +19,19 @@ AMAZING_GRACE_PITCHES = ["D4", "G4", "B4", "G4", "B4", "A4", "G4", "E4"]
 
 def test_amazing_grace_catalog_record_is_reviewed_and_checksummed() -> None:
     cards = public_song_catalog()
-    assert cards == [
-        {
-            "id": "amazing-grace-new-britain",
-            "title": "Amazing Grace",
-            "subtitle": "NEW BRITAIN · 1829 setting",
-            "rightsLabel": "public_domain",
-            "key": "G",
-            "meter": "3/4",
-            "sourceUrl": "https://library.timelesstruths.org/music/Amazing_Grace/midi/",
-        }
-    ]
+    assert len(cards) == 12
+    assert cards[0]["id"] == "amazing-grace-new-britain"
+    assert cards[0]["title"] == "Amazing Grace"
+    assert cards[0]["subtitle"] == "NEW BRITAIN · 1829 setting"
+    assert cards[0]["rightsLabel"] == "public_domain"
+    assert cards[0]["key"] == "G"
+    assert cards[0]["meter"] == "3/4"
+    assert cards[0]["sourceUrl"] == "https://library.timelesstruths.org/music/Amazing_Grace/midi/"
+    assert {card["key"] for card in cards} == {"G", "C"}
+    assert {card["difficulty"] for card in cards} == {"starter", "easy"}
+    assert all(card["eventCount"] >= 8 for card in cards)
+    assert all(card["sectionCount"] >= 1 for card in cards)
+    assert all(card["attribution"] for card in cards)
     draft = import_score_draft({"sourceType": "catalog", "catalogId": cards[0]["id"]})
     assert draft["schemaVersion"] == "score_draft_v1"
     assert draft["source"]["retained"] is False
@@ -37,6 +39,25 @@ def test_amazing_grace_catalog_record_is_reviewed_and_checksummed() -> None:
     assert draft["source"]["sourceChecksum"] == "sha256:4cd985b4dd4993f317269509af06b71ad082c1643dd0f191433fcf0a040459bf"
     assert [event["pitch"] for event in draft["score"]["melody"]] == AMAZING_GRACE_PITCHES
     assert [item["symbol"] for item in draft["score"]["harmony"]] == ["G", "G", "G", "D7", "Em", "C"]
+
+
+def test_starter_songbook_drafts_are_reviewed_sourced_and_arranger_ready() -> None:
+    cards = public_song_catalog()
+    expected_ids = {
+        "amazing-grace-new-britain", "oh-susanna", "aura-lee", "buffalo-gals",
+        "skip-to-my-lou", "shell-be-coming-round-the-mountain", "when-the-saints",
+        "red-river-valley", "shenandoah", "my-bonnie", "yankee-doodle", "camptown-races",
+    }
+    assert {card["id"] for card in cards} == expected_ids
+    for card in cards:
+        draft = import_score_draft({"sourceType": "catalog", "catalogId": card["id"]})
+        assert draft["review"]["status"] == "confirmed"
+        assert draft["source"]["rightsLabel"] == "public_domain"
+        assert draft["source"]["sourceChecksum"].startswith("sha256:")
+        assert draft["source"]["url"].startswith("https://")
+        assert draft["score"]["arrangementKey"] in {"G", "C"}
+        assert len(draft["score"]["melody"]) == card["eventCount"]
+        assert draft["score"]["harmony"]
 
 
 def test_musicxml_import_preserves_rhythm_chords_and_selects_melody_part() -> None:

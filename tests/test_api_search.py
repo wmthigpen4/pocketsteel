@@ -4003,11 +4003,11 @@ def test_api_answer_rejects_invalid_melody_without_rendering() -> None:
 def test_api_session_and_version_expose_melody_feature_only_when_enabled() -> None:
     status, _, session = call_app("/api/session", method="GET", melody_exercise_enabled=True)
     assert status == "200 OK"
-    assert session["features"] == {"melodyExercise": True}
+    assert session["features"] == {"melodyExercise": True, "melodyCatalog": True}
 
     status, _, version = call_app("/api/version", method="GET", melody_exercise_enabled=True)
     assert status == "200 OK"
-    assert version["features"] == {"melodyExercise": True}
+    assert version["features"] == {"melodyExercise": True, "melodyCatalog": True}
 
 
 def test_melody_import_is_authenticated_flag_gated_and_no_store() -> None:
@@ -4017,20 +4017,22 @@ def test_melody_import_is_authenticated_flag_gated_and_no_store() -> None:
         melody_import_enabled=False,
     )
     assert status == "404 Not Found"
-    assert payload == {"error": "melody import is not enabled"}
+    assert payload == {"error": "melody catalog is not enabled"}
 
     status, _, payload = call_app(
         "/api/melody/catalog",
         method="GET",
         access_role=None,
-        melody_import_enabled=True,
+        melody_exercise_enabled=True,
+        melody_import_enabled=False,
     )
     assert status == "401 Unauthorized"
 
     status, headers, payload = call_app(
         "/api/melody/catalog",
         method="GET",
-        melody_import_enabled=True,
+        melody_exercise_enabled=True,
+        melody_import_enabled=False,
     )
     assert status == "200 OK"
     assert headers["Cache-Control"] == "no-store"
@@ -4043,7 +4045,8 @@ def test_melody_import_returns_temporary_amazing_grace_draft() -> None:
         "/api/melody/import",
         method="POST",
         json_body={"sourceType": "catalog", "catalogId": "amazing-grace-new-britain"},
-        melody_import_enabled=True,
+        melody_exercise_enabled=True,
+        melody_import_enabled=False,
     )
     assert status == "200 OK"
     assert headers["Cache-Control"] == "no-store"
@@ -4051,6 +4054,16 @@ def test_melody_import_returns_temporary_amazing_grace_draft() -> None:
     assert [event["pitch"] for event in payload["score"]["melody"]] == [
         "D4", "G4", "B4", "G4", "B4", "A4", "G4", "E4"
     ]
+
+    status, _, payload = call_app(
+        "/api/melody/import",
+        method="POST",
+        json_body={"sourceType": "musicxml", "contentBase64": ""},
+        melody_exercise_enabled=True,
+        melody_import_enabled=False,
+    )
+    assert status == "404 Not Found"
+    assert payload == {"error": "melody import is not enabled"}
 
 
 def test_session_and_version_expose_both_melody_features() -> None:
@@ -4061,7 +4074,7 @@ def test_session_and_version_expose_both_melody_features() -> None:
         melody_import_enabled=True,
     )
     assert status == "200 OK"
-    assert session["features"] == {"melodyExercise": True, "melodyImport": True}
+    assert session["features"] == {"melodyExercise": True, "melodyCatalog": True, "melodyImport": True}
 
     status, _, version = call_app(
         "/api/version",
@@ -4070,7 +4083,7 @@ def test_session_and_version_expose_both_melody_features() -> None:
         melody_import_enabled=True,
     )
     assert status == "200 OK"
-    assert version["features"] == {"melodyExercise": True, "melodyImport": True}
+    assert version["features"] == {"melodyExercise": True, "melodyCatalog": True, "melodyImport": True}
 
 
 def test_steel_guitar_rag_safe_curated_questions_still_work_after_full_tab_guardrail() -> None:

@@ -761,6 +761,7 @@
   const scoreUi = global.STEEL_RAG_MELODY_SCORE;
   let state = createInitialState(new URLSearchParams(global.location.search).get("kind") || "user_melody");
   let session = null;
+  let catalogSongs = [];
 
   const elements = {
     unavailable: $("#studio-unavailable"),
@@ -872,6 +873,10 @@
     transcriptionTempo: $("#studio-transcription-tempo"),
     catalogGrid: $("#studio-catalog-grid"),
     catalogStatus: $("#studio-catalog-status"),
+    catalogSearch: $("#studio-catalog-search"),
+    catalogDifficulty: $("#studio-catalog-difficulty"),
+    catalogMeter: $("#studio-catalog-meter"),
+    catalogFeel: $("#studio-catalog-feel"),
     result: $("#studio-result"),
     resultTitle: $("#studio-result-title"),
     resultSource: $("#studio-result-source"),
@@ -1092,7 +1097,8 @@
     });
     elements.addRecording.textContent = state.showSourceDetails ? "Edit recording details" : "Add recording details";
     elements.openScore.textContent = hasDraft ? "Replace melody with staff editor" : "Open staff editor";
-    elements.tryExample.textContent = hasDraft ? "Replace melody with example song" : "Try an example song";
+    const songbookCount = catalogSongs.length ? ` (${catalogSongs.length})` : "";
+    elements.tryExample.textContent = hasDraft ? "Replace melody with songbook" : `Browse songbook${songbookCount}`;
   }
 
   function renderStartingPoint() {
@@ -1583,7 +1589,9 @@
   }
 
   async function importPayload(payload) {
-    if (!session?.features?.melodyImport) throw new Error("Temporary imports are not enabled on this preview.");
+    const isCatalog = String(payload?.sourceType || "").toLowerCase() === "catalog";
+    if (isCatalog && !session?.features?.melodyCatalog) throw new Error("The built-in songbook is not enabled on this preview.");
+    if (!isCatalog && !session?.features?.melodyImport) throw new Error("Temporary imports are not enabled on this preview.");
     const response = await global.fetch("/api/melody/import", {
       method: "POST",
       credentials: "same-origin",
@@ -1651,41 +1659,83 @@
     }
   }
 
+  function populateCatalogFilter(select, values) {
+    const current = select.value;
+    Array.from(select.options).slice(1).forEach((option) => option.remove());
+    [...new Set(values.filter(Boolean))].sort().forEach((value) => {
+      const option = doc.createElement("option");
+      option.value = value;
+      option.textContent = value.replace(/\b\w/g, (letter) => letter.toUpperCase());
+      select.appendChild(option);
+    });
+    select.value = current;
+  }
+
+  function renderCatalog() {
+    const query = elements.catalogSearch.value.trim().toLowerCase();
+    const difficulty = elements.catalogDifficulty.value;
+    const meter = elements.catalogMeter.value;
+    const feel = elements.catalogFeel.value;
+    const visibleSongs = catalogSongs.filter((song) => {
+      const searchable = [song.title, song.subtitle, song.attribution].filter(Boolean).join(" ").toLowerCase();
+      return (!query || searchable.includes(query))
+        && (!difficulty || song.difficulty === difficulty)
+        && (!meter || song.meter === meter)
+        && (!feel || song.feel === feel);
+    });
+    elements.catalogGrid.replaceChildren();
+    visibleSongs.forEach((song) => {
+      const card = doc.createElement("article");
+      card.className = "catalog-card";
+      const title = doc.createElement("h4");
+      title.textContent = song.title;
+      const subtitle = doc.createElement("p");
+      subtitle.textContent = song.subtitle || "Reviewed public-domain teaching version";
+      const facts = doc.createElement("div");
+      facts.className = "catalog-card__facts";
+      [song.key, song.meter, song.difficulty, song.feel, `${song.eventCount} notes`, `${song.sectionCount} ${song.sectionCount === 1 ? "section" : "sections"}`].filter(Boolean).forEach((value) => {
+        const fact = doc.createElement("span");
+        fact.textContent = value;
+        facts.appendChild(fact);
+      });
+      const attribution = doc.createElement("p");
+      attribution.textContent = song.attribution || "Reviewed public-domain source";
+      const button = doc.createElement("button");
+      button.type = "button";
+      button.className = "primary-action";
+      button.textContent = "Review melody";
+      button.addEventListener("click", async () => {
+        elements.catalogStatus.textContent = `Opening ${song.title}…`;
+        try {
+          hydrateScoreDraft(await importPayload({ sourceType: "catalog", catalogId: song.id }));
+        } catch (error) {
+          elements.catalogStatus.textContent = error.message;
+        }
+      });
+      card.append(title, subtitle, facts, attribution, button);
+      elements.catalogGrid.appendChild(card);
+    });
+    elements.catalogStatus.textContent = visibleSongs.length
+      ? `${visibleSongs.length} of ${catalogSongs.length} reviewed songs shown. Source links identify the teaching version; they are not automatically transcribed.`
+      : "No songs match those filters.";
+  }
+
   async function loadCatalog() {
     elements.catalogStatus.textContent = "Loading reviewed songs…";
-    if (!session?.features?.melodyImport) {
-      elements.catalogStatus.textContent = "The public-domain catalog is not enabled on this preview.";
+    if (!session?.features?.melodyCatalog) {
+      elements.catalogStatus.textContent = "The built-in songbook is not enabled on this preview.";
       return;
     }
     try {
       const response = await global.fetch("/api/melody/catalog", { credentials: "same-origin", headers: accessHeaders(), cache: "no-store" });
       if (!response.ok) throw new Error(`Catalog failed with ${response.status}.`);
       const payload = await response.json();
-      const songs = payload.songs || payload.catalog || [];
-      elements.catalogGrid.replaceChildren();
-      songs.forEach((song) => {
-        const card = doc.createElement("article");
-        card.className = "catalog-card";
-        const title = doc.createElement("h4");
-        title.textContent = song.title;
-        const detail = doc.createElement("p");
-        detail.textContent = `${song.tuneName || song.tune || "Public-domain tune"} · ${song.key || "G"} · ${song.meter || "3/4"}`;
-        const button = doc.createElement("button");
-        button.type = "button";
-        button.className = "primary-action";
-        button.textContent = "Open in score builder";
-        button.addEventListener("click", async () => {
-          elements.catalogStatus.textContent = `Opening ${song.title}…`;
-          try {
-            hydrateScoreDraft(await importPayload({ sourceType: "catalog", catalogId: song.id }));
-          } catch (error) {
-            elements.catalogStatus.textContent = error.message;
-          }
-        });
-        card.append(title, detail, button);
-        elements.catalogGrid.appendChild(card);
-      });
-      elements.catalogStatus.textContent = songs.length ? "Catalog sources are reviewed and checksummed; no live scrape is used." : "No catalog songs are available.";
+      catalogSongs = payload.songs || payload.catalog || [];
+      populateCatalogFilter(elements.catalogDifficulty, catalogSongs.map((song) => song.difficulty));
+      populateCatalogFilter(elements.catalogMeter, catalogSongs.map((song) => song.meter));
+      populateCatalogFilter(elements.catalogFeel, catalogSongs.map((song) => song.feel));
+      renderCatalog();
+      renderEntryChoices("catalog");
     } catch (error) {
       elements.catalogStatus.textContent = error.message;
     }
@@ -2123,9 +2173,10 @@
       elements.workflow.hidden = !enabled;
       if (!enabled) return;
       const importEnabled = Boolean(session.features?.melodyImport);
+      const catalogEnabled = Boolean(session.features?.melodyCatalog);
       const importChoice = elements.startChoices.find((button) => button.dataset.studioStart === "import");
       if (importChoice) importChoice.hidden = !importEnabled;
-      elements.tryExample.hidden = !importEnabled;
+      elements.tryExample.hidden = !catalogEnabled;
       elements.editor.hidden = false;
       renderStartingPoint();
       renderPalette();
@@ -2158,6 +2209,7 @@
     renderStartingPoint();
   });
   elements.tryExample.addEventListener("click", () => selectStartingPoint("catalog"));
+  [elements.catalogSearch, elements.catalogDifficulty, elements.catalogMeter, elements.catalogFeel].forEach((control) => control.addEventListener("input", renderCatalog));
   elements.octaveDown.addEventListener("click", () => {
     const index = state.selectedPhraseIndex;
     state.tokens[index] = { ...phraseItem(state.tokens[index]), octaveShift: Math.max(-2, Number(state.tokens[index]?.octaveShift || 0) - 1) };

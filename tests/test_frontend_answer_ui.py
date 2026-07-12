@@ -120,6 +120,12 @@ let capturedRequest;
   assert.equal("email" in beta, false);
 
   assert.equal(JSON.stringify(answerUi.normalizeSessionResponse({
+    authenticated: true,
+    role: "beta_user",
+    features: { melodyExercise: true, melodyCatalog: true, melodyImport: false }
+  }).features), JSON.stringify({ melodyExercise: true, melodyCatalog: true }));
+
+  assert.equal(JSON.stringify(answerUi.normalizeSessionResponse({
     authenticated: false,
     role: "admin",
     email: "admin@example.test",

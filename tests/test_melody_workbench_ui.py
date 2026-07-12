@@ -308,9 +308,9 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Select a note below to change its octave" in html
     assert "Change the register for this note only" in html
     assert "state.selectedPhraseIndex" in script
-    assert html.count("?v=melody-multi-input-20260711-3") == 2
+    assert html.count("?v=melody-multi-input-20260711-3") == 1
+    assert html.count("?v=melody-songbook-20260712-1") == 2
     assert html.count("?v=melody-route-score-20260711-1") == 1
-    assert html.count("?v=melody-print-tab-20260711-1") == 1
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in html
     assert "VexFlow" in Path("ui/vendor/VEXFLOW-LICENSE.txt").read_text(encoding="utf-8")
     assert html.index('id="studio-fretboard"') < html.index('id="studio-tab"')
@@ -408,7 +408,15 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'state.workflowPhase = "review"' in script
     assert 'state.workflowPhase = "result"' in script
     assert 'elements.audioFileControls.hidden = !state.sourceAudioUrl;' in script
-    assert 'elements.tryExample.hidden = !importEnabled;' in script
+    assert 'elements.tryExample.hidden = !catalogEnabled;' in script
+    assert 'id="studio-catalog-search"' in html
+    assert 'id="studio-catalog-difficulty"' in html
+    assert 'id="studio-catalog-meter"' in html
+    assert 'id="studio-catalog-feel"' in html
+    assert '>Browse songbook</button>' in html
+    assert 'session?.features?.melodyCatalog' in script
+    assert 'sourceType: "catalog"' in script
+    assert 'Source links identify the teaching version; they are not automatically transcribed.' in script
 
 
 def test_melody_workbench_uses_explorer_background_without_turnaround_branding() -> None:
