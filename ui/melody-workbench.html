@@ -267,6 +267,7 @@
     #studio-result { margin-top: 24px; scroll-margin-top: 20px; }
     .result-head { display: grid; gap: 9px; margin-bottom: 18px; }
     #studio-result-source { margin: 0; color: var(--muted); }
+    .print-only { display: none; }
     .arrangement-choices { display: grid; gap: 8px; margin: 12px 0 4px; }
     .arrangement-choices > strong { color: var(--muted); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; }
     .route-tabs { max-width: 100%; display: flex; flex-wrap: nowrap; gap: 8px; margin: 0; overflow-x: auto; padding: 2px 0 5px; scrollbar-width: thin; }
@@ -342,12 +343,15 @@
       .practice-bar .field { flex: 1 1 100%; }
     }
     @media print {
+      @page { size: landscape; margin: 0.5in; }
       body { background: #fff; color: #111; }
-      .studio-header, .studio-hero, #studio-editor, .route-tabs, #studio-route-reason, #studio-fretboard, #studio-transport, #studio-tab, .result-actions, .practice-bar { display: none !important; }
+      .studio-header, .studio-hero, #studio-editor, #studio-result-score, .arrangement-choices, #studio-fretboard, #studio-transport, .result-actions, .practice-bar { display: none !important; }
       main, .studio-shell, #studio-result { width: 100%; max-width: none; margin: 0; padding: 0; border: 0; box-shadow: none; background: #fff; }
       #studio-result .result-head { display: block; color: #111; }
-      #studio-result-score { display: block !important; overflow: visible; border: 0; padding: 0; }
-      .score-svg { min-width: 0; width: 100%; }
+      #studio-result-title, #studio-result-source, #studio-print-route { color: #111; }
+      #studio-print-route { display: block !important; margin: 8px 0 16px; font-weight: 800; }
+      #studio-tab { display: block !important; margin: 0; }
+      .tab-block { overflow: visible; border: 1px solid #222; border-radius: 0; background: #fff; padding: 14px; color: #111; font: 10pt/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre; }
     }
   </style>
 </head>
@@ -482,7 +486,6 @@
               <button class="secondary-action" type="button" id="studio-score-octave-down">All notes down 1 octave</button>
               <button class="secondary-action" type="button" id="studio-score-octave-up">All notes up 1 octave</button>
               <button class="secondary-action" type="button" id="studio-score-download">Download MusicXML</button>
-              <button class="secondary-action" type="button" id="studio-score-print">Print score</button>
           </div></details>
           <div class="score-actions" style="margin-top:14px; justify-content:flex-end;">
             <button class="primary-action" type="button" id="studio-score-arrange">Arrange for E9</button>
@@ -587,6 +590,7 @@
         <div class="result-head">
           <h2 id="studio-result-title">Your E9 lesson</h2>
           <p id="studio-result-source" hidden></p>
+          <p class="print-only" id="studio-print-route"></p>
         </div>
 
         <div id="studio-source-needed" hidden>
@@ -608,7 +612,7 @@
           <button class="secondary-action" type="button" id="studio-practice-loop-end">Set loop end</button>
           <button class="secondary-action" type="button" id="studio-practice-loop-clear">Clear loop</button>
           <span class="practice-status" id="studio-practice-loop-status" aria-live="polite">Loop off</span>
-          <button class="secondary-action" type="button" id="studio-result-print">Print score</button>
+          <button class="secondary-action" type="button" id="studio-print-tab">Print tablature</button>
         </div>
 
         <div id="studio-fretboard" aria-label="Melody Studio fretboard"></div>
@@ -659,6 +663,6 @@
   <script src="pedal-steel-fretboard.js?v=melody-multi-input-20260711-3"></script>
   <script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>
   <script src="melody-score.js?v=melody-route-score-20260711-1"></script>
-  <script src="melody-workbench.js?v=melody-route-score-20260711-1"></script>
+  <script src="melody-workbench.js?v=melody-print-tab-20260711-1"></script>
 </body>
 </html>

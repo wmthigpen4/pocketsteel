@@ -309,7 +309,8 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Change the register for this note only" in html
     assert "state.selectedPhraseIndex" in script
     assert html.count("?v=melody-multi-input-20260711-3") == 2
-    assert html.count("?v=melody-route-score-20260711-1") == 2
+    assert html.count("?v=melody-route-score-20260711-1") == 1
+    assert html.count("?v=melody-print-tab-20260711-1") == 1
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in html
     assert "VexFlow" in Path("ui/vendor/VEXFLOW-LICENSE.txt").read_text(encoding="utf-8")
     assert html.index('id="studio-fretboard"') < html.index('id="studio-tab"')
@@ -386,7 +387,15 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'id="studio-practice-loop-measure"' in html
     assert 'id="studio-practice-loop-start"' in html
     assert 'id="studio-practice-loop-end"' in html
-    assert 'id="studio-result-print"' in html
+    assert 'id="studio-print-tab"' in html
+    assert '>Print tablature</button>' in html
+    assert 'id="studio-print-route"' in html
+    assert 'id="studio-score-print"' not in html
+    assert "Print score" not in html
+    assert '#studio-result-score, .arrangement-choices' in html
+    assert '#studio-tab { display: block !important;' in html
+    assert 'elements.printRoute.textContent = `Arrangement: ${routeButtonLabel(route)}`;' in script
+    assert 'elements.printTab.addEventListener("click", () => global.print());' in script
     assert "addKeySignature" in Path("ui/melody-score.js").read_text(encoding="utf-8")
     assert "generateBeams" in Path("ui/melody-score.js").read_text(encoding="utf-8")
     assert "togglePractice" in script

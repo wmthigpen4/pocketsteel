@@ -850,7 +850,6 @@
     scoreOctaveUp: $("#studio-score-octave-up"),
     scorePlay: $("#studio-score-play"),
     scoreDownload: $("#studio-score-download"),
-    scorePrint: $("#studio-score-print"),
     scoreArrange: $("#studio-score-arrange"),
     scoreArrangeStatus: $("#studio-score-arrange-status"),
     scoreWarnings: $("#studio-score-warnings"),
@@ -890,7 +889,8 @@
     practiceLoopEnd: $("#studio-practice-loop-end"),
     practiceLoopClear: $("#studio-practice-loop-clear"),
     practiceLoopStatus: $("#studio-practice-loop-status"),
-    resultPrint: $("#studio-result-print"),
+    printTab: $("#studio-print-tab"),
+    printRoute: $("#studio-print-route"),
     arrangementChoices: $("#studio-arrangement-choices"),
     routeTabs: $("#studio-route-tabs"),
     routeReason: $("#studio-route-reason"),
@@ -1923,6 +1923,7 @@
       button.setAttribute("aria-pressed", String(selected));
     });
     elements.routeReason.textContent = route.recommendation || route.movementSummary || "";
+    elements.printRoute.textContent = `Arrangement: ${routeButtonLabel(route)}`;
     elements.practiceChordOption.hidden = !hasChordContext(exercise.events);
     if (elements.practiceChordOption.hidden) elements.practiceChords.checked = false;
     renderResultScore(exercise, route);
@@ -2278,7 +2279,6 @@
   elements.scoreOctaveUp.addEventListener("click", () => transposeWholeScore(12, "Moved every note up one octave."));
   elements.scorePlay.addEventListener("click", playScoreDraft);
   elements.scoreDownload.addEventListener("click", downloadScoreDraft);
-  elements.scorePrint.addEventListener("click", () => global.print());
   elements.scoreArrange.addEventListener("click", arrangeScoreDraft);
   elements.scorePreviousNote.addEventListener("click", () => selectScoreEvent(state.scoreSelectedIndex - 1));
   elements.scoreNextNote.addEventListener("click", () => selectScoreEvent(state.scoreSelectedIndex + 1));
@@ -2338,7 +2338,7 @@
   elements.practiceLoopStart.addEventListener("click", () => setLoopBoundary("start"));
   elements.practiceLoopEnd.addEventListener("click", () => setLoopBoundary("end"));
   elements.practiceLoopClear.addEventListener("click", clearLoop);
-  elements.resultPrint.addEventListener("click", () => global.print());
+  elements.printTab.addEventListener("click", () => global.print());
   elements.octaveToggle.addEventListener("click", () => {
     state.showOctaveMap = !state.showOctaveMap;
     updateOctaveMapVisibility();
