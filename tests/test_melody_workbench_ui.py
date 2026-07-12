@@ -436,3 +436,13 @@ def test_melody_workbench_uses_explorer_background_without_turnaround_branding()
     assert "steel-guitar-rag-landing-fallback-alpha.png" not in html
     assert "radial-gradient(circle at 52% 0%, rgba(221, 139, 45, 0.28), transparent 35%)" in html
     assert "linear-gradient(180deg, rgba(13, 10, 7, 0.96), #050403 72%)" in html
+    assert 'aria-label="Explore the E9 virtual fretboard"' in html
+    assert '<span class="studio-nav-label-full">Explore Fretboard</span>' in html
+    assert '<span class="studio-nav-label-short">Fretboard</span>' in html
+    assert 'aria-label="Back to Steel Guitar RAG home"' in html
+    assert '<span class="studio-nav-label-full">Back home</span>' in html
+    assert '<span class="studio-nav-label-short">Home</span>' in html
+    assert html.count('<svg viewBox="0 0 24 24" aria-hidden="true">') == 2
+    assert ".studio-nav svg { width: 18px; height: 18px;" in html
+    assert ".studio-nav-label-short { display: none; }" in html
+    assert ".studio-nav-label-short { display: inline; }" in html
