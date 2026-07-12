@@ -1,17 +1,17 @@
 # Integration Status — Current Snapshot
 
-Updated: 2026-07-11 18:57 America/Chicago
+Updated: 2026-07-11 23:18 America/Chicago
 
 ## Repository state
 
 - Branch: `feature/answer-api`
-- Current implementation: `2c445e9 Bust Melody Studio workflow cache` (feature implementation `7657554`)
+- Current implementation: `9600f90 Simplify Melody Studio lesson controls`
 - Melody API baseline: `f37201a feat: add Melody Exercise teaching workflow`
 - Melody Studio now uses Steel Guitar RAG branding. No broad repository rename is approved.
 
 ## Melody Studio
 
-Status: **ADD-A-MELODY UX READY FOR USER SMOKE — the three-path progressive workflow, inline draft replacement safeguard, Review melody transition, and existing E9 output are committed, 935-test green, and authenticated-preview verified.**
+Status: **LESSON-FOCUS ADJUSTMENT READY FOR USER SMOKE — the progressive Add a melody workflow and E9 output are committed, 935-test green, and authenticated-preview verified with the simplified lesson controls.**
 
 - The home header now exposes feature-gated actions in this order: Explore Fretboard, Melody Studio, Backstage.
 - The technical inline Melody form was removed from home.
@@ -23,7 +23,7 @@ Status: **ADD-A-MELODY UX READY FOR USER SMOKE — the three-path progressive wo
 - The original note/degree/literal-E9 phrase editor remains intact and is the default input.
 - The lead-sheet builder supports one treble melody voice, G/C, 3/4 and 4/4, pickup, supported note/rest durations, ties, accidentals, chord symbols, lyrics/labels, undo/redo, measure actions, duplicate, transpose, browser playback, and local MusicXML download.
 - Melody pitch and chord symbols are separate: melody-only input shows no invented chord labels, while supplied harmony appears only at actual changes.
-- The score is an interactive practice surface with synchronized staff/fretboard/navigator/tab selection, adjustable tempo, count-in, pause/resume, stop, measure and selected-note loops, and optional chord sound.
+- The score is an interactive practice surface with synchronized staff/fretboard/navigator/tab selection, adjustable tempo, count-in, pause/resume, stop, measure and selected-note loops, and conditional chord backing when real chord symbols are present.
 - VexFlow renders G/C key signatures, beams, rests, ties, dots, lyrics, and accent/tenuto/staccato; MusicXML and print output preserve the supported notation.
 - Chord symbols guide mechanically validated harmony and chord-melody grip ranking while the resolved melody remains the top voice.
 - Melody Studio fretboard marker labels use concise resolved top-note pitches (`D4`, `E4`, etc.) instead of repeating the route title; harmony routes retain the melody/top-voice label.
@@ -47,15 +47,18 @@ Status: **ADD-A-MELODY UX READY FOR USER SMOKE — the three-path progressive wo
 - Literal tab preserves string, fret, control state, and pitch register.
 - YouTube runs only in the official embedded player with loop/tempo companion controls; Ultimate Guitar remains an attributed side reference and is never scraped.
 - Public-domain Amazing Grace / NEW BRITAIN is stored as a reviewed, checksummed catalog draft and was locally verified with exact melody, chords, E9 positions, and optional generated F#4→G4 ornament.
-- Results are fretboard-first. Every mechanically available single-note, Recommended Harmony, thirds, sixths, and chord-melody route appears in one visible, horizontally scrollable row.
+- Results are fretboard-first. Every mechanically available single-note, Recommended Harmony, thirds, sixths, and chord-melody route appears in one visible, horizontally scrollable row directly below the fretboard.
 - The lesson header omits the generic Practice the lesson kicker and the non-actionable exactness/confidence/single-section metadata line.
-- One compact navigator beneath the fretboard combines Octave colors, legend, note progress, adjacent previous/next arrows, concise steel-player position pills, and one current-note readout.
-- Route, arrow, and pill controls visibly synchronize the selected fretboard position, active pill, fixed-width tab route, pedal/lever instructions, and current-note movement cue.
+- One scalable navigator shows a single active note between Previous/Next arrows with `Note N of M`, resolved pitch, and readable steel position text such as `Strings 5, 6 & 7 · Fret 10 · A+B`; it does not create one technical pill per phrase event.
+- Route and arrow controls visibly synchronize the selected fretboard position, fixed-width tab route, pedal/lever instructions, and movement cue.
 - The duplicated active-tab sentence and verbose event-detail sentence have been removed.
-- Melody Studio hides the Explorer-oriented position-card strip, filters, legend, and full technical inspector. A compact Current note readout now states the active note, string(s), fret, controls, and movement cue.
+- Melody Studio hides the Explorer-oriented position-card strip, filters, legend, and full technical inspector. The single active-note navigator now states the note, string(s), fret, controls, and movement cue without a duplicate Current note block.
 - Melody tab omits artificial `Ly | step N` rows. Event selectors spell out string, fret, and pedal/lever positions, and the primary harmony route is labeled `Recommended harmony` without duplication.
-- A default-on, user-toggleable scientific-octave map colors accurate octave zones independently along every E9 string; it does not pretend that one fret-wide band represents one octave across all strings.
-- The compact octave 2–6 legend, exact fretboard note markers, and event steps share the same palette. Harmony steps retain the top melody voice's octave label while each displayed harmony marker uses its own exact octave.
+- A default-off, user-toggleable scientific-octave map colors accurate octave zones independently along every E9 string; it does not pretend that one fret-wide band represents one octave across all strings.
+- The compact octave 2–6 legend sits directly beside the Octave colors control and remains hidden until enabled. Exact fretboard note markers and the active event share the same palette; harmony retains the top melody voice's octave label while each displayed harmony marker uses its own exact octave.
+- Melody-only results hide chord playback. When real chord symbols are supplied, the practice bar labels the option `Play chord backing`; it is unrelated to the treble-clef display.
+- Note-duration editing remains available for faithful rhythm and playback but is progressive: new-note length is under Score setup and selected-note length is under Selected note details.
+- The redundant deterministic implementation explanation has been removed from the result.
 - Long phrases continue through the existing `sectionNumber` contract.
 - Original exercises suppress recording identity and source UI.
 - Deterministic scope remains E9 in G/C major.
@@ -102,14 +105,16 @@ Score-edit-controls implementation handoff: `docs/handoffs/task-completions/2026
 Score-edit-controls protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-1757-12-melody-score-edit-controls-protected-smoke.md`.
 Add-a-melody UX implementation handoff: `docs/handoffs/task-completions/2026-07-11-1849-06-melody-add-melody-ux-simplification.md`.
 Add-a-melody UX protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-1857-12-melody-add-melody-ux-protected-smoke.md`.
+Lesson-focus implementation handoff: `docs/handoffs/task-completions/2026-07-11-2314-06-melody-lesson-focus-adjustment.md`.
+Lesson-focus protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-2318-12-melody-lesson-focus-protected-smoke.md`.
 
 ## Verification
 
 - Full pytest: `935 passed`.
 - Core JavaScript syntax: passed for answer client, Melody Studio, and fretboard component.
 - `git diff --check`: passed.
-- Local browser smoke: pass for all six cards, flagged catalog/import, score editing, VexFlow, Amazing Grace catalog, exact E9 route, ornament toggle, and mobile layout.
-- Protected browser smoke: pass at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-lead-sheet-repair-2469975-20260711`.
+- Local browser smoke: pass for a twelve-note sectioned phrase, six arrangement routes, one active-note navigator, octave toggle/legend, melody-only chord-backing suppression, mobile containment, and clean browser logs.
+- Protected browser smoke: pass at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-lesson-focus-9600f90-20260711`.
 - Protected browser verified manual phrase and lead-sheet builder lesson generation, six routes, synchronized staff/fretboard/tab, VexFlow renderer, zero page overflow, and no `[object Object]` or console errors.
 - Active-fretboard protected smoke verified D4-to-E4 marker replacement, independent string/note/octave controls, and an active chord-melody grip limited to strings 5, 6, and 8 with one D4 top-voice label.
 - String/action-label protected smoke verified a literal `S6:3B` event renders `6B` inside the active marker while Current note reports String 6, fret 3, B pedal.
@@ -118,12 +123,13 @@ Add-a-melody UX protected-smoke handoff: `docs/handoffs/task-completions/2026-07
 - Lead-sheet repair protected smoke verified explicit A4/G4 selection navigation, a visible overfull-measure warning that does not disable arrangement, successful advancement to six E9 routes, and longer-file window controls.
 - Score-edit-controls protected smoke verified visible and keyboard deletion of only the selected event, whole-score B4-to-B5 octave movement, successful raised-phrase E9 arrangement, and a clean browser console.
 - Add-a-melody UX protected smoke verified typed-phrase entry, reversible inline replacement, successful E9 arrangement, populated Edit melody return, progressive staff disclosures, clean controller caching, and no browser errors.
+- Lesson-focus protected smoke verified a twelve-note sectioned phrase, one readable active-note card, six routes below the fretboard, default-off adjacent octave legend, conditional chord-backing suppression, removed deterministic copy, and clean navigation/browser logs.
 - Resumed header smoke verified the removed practice kicker, metadata line, and More arrangements disclosure remain absent on the integrated runtime; all six routes remain together in one horizontally scrollable row and Chord melody selection synchronizes visibly.
 
 ## Protected preview
 
-- Runtime smoke HEAD: `2c445e9`.
-- Loopback `/api/version`: `2c445e9`, `feature/answer-api`, `hybrid_private_first`, `cloudflare_access`, `features.melodyExercise=true`; import/catalog visibility remains session-flag controlled.
+- Runtime smoke HEAD: `9600f90`.
+- Loopback `/api/version`: `9600f90`, `feature/answer-api`, `hybrid_private_first`, `cloudflare_access`, `features.melodyExercise=true`; import/catalog visibility remains session-flag controlled.
 - Preview refresh succeeded without `sudo` by terminating only the user-owned port-8770 listener and allowing the installed LaunchDaemon to restart it.
 - Installed wrapper matches the committed wrapper.
 - Cloudflare Access login and protected manual/score lesson generation succeeded; the prior arranger blocker is closed.
@@ -138,6 +144,6 @@ Add-a-melody UX protected-smoke handoff: `docs/handoffs/task-completions/2026-07
 
 ## Next action
 
-1. User smoke at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-add-melody-ux-2c445e9-20260711`: try the quick phrase path, replacement safeguard, audio entry, optional recording details, and staff editor; advanced controls should stay out of the way until opened.
+1. User smoke at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-lesson-focus-9600f90-20260711`: verify route placement, the one-card note navigator, the optional octave map, conditional chord backing, and progressive rhythm controls.
 2. If protected catalog/score-image import should be enabled later, explicitly authorize the protected environment flag change and vision-model readiness check; otherwise keep it off.
 3. Keep unrelated corpus, source-inbox, private-data, brand/design, deployment, and environment work parked.
