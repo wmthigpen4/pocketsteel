@@ -1,17 +1,17 @@
 # Integration Status — Current Snapshot
 
-Updated: 2026-07-12 08:52 America/Chicago
+Updated: 2026-07-12 09:03 America/Chicago
 
 ## Repository state
 
 - Branch: `feature/answer-api`
-- Current implementation: `d2dc94d feat: add Melody Studio public-domain songbook`
+- Current implementation: `03a372e fix: simplify Melody Studio lesson layout`
 - Melody API baseline: `f37201a feat: add Melody Exercise teaching workflow`
 - Melody Studio now uses Steel Guitar RAG branding. No broad repository rename is approved.
 
 ## Melody Studio
 
-Status: **PUBLIC-DOMAIN SONGBOOK READY FOR USER SMOKE — Melody Studio is 936-test green and authenticated-preview verified with 12 searchable teaching songs flowing through staff review into synchronized E9 score, fretboard, and tab.**
+Status: **SIMPLIFIED LESSON RESULT READY FOR USER SMOKE — Melody Studio is 936-test green and authenticated-preview verified with the 12-song book plus a compact, fretboard-first result layout.**
 
 - The home header now exposes feature-gated actions in this order: Explore Fretboard, Melody Studio, Backstage.
 - The technical inline Melody form was removed from home.
@@ -64,7 +64,10 @@ Status: **PUBLIC-DOMAIN SONGBOOK READY FOR USER SMOKE — Melody Studio is 936-t
 - Melody-only results hide chord playback. When real chord symbols are supplied, the practice bar labels the option `Play chord backing`; it is unrelated to the treble-clef display.
 - Note-duration editing remains available for faithful rhythm and playback but is progressive: new-note length is under Score setup and selected-note length is under Selected note details.
 - The redundant deterministic implementation explanation has been removed from the result.
-- Print score has been removed. The result offers Print tablature, producing a landscape sheet with title, optional source, selected arrangement, and fixed-width current-route tab while hiding the staff, fretboard, controls, and editor.
+- Print score has been removed. A compact **Print** action now sits beside Start over directly below the tablature and produces a landscape sheet with title, optional source, selected arrangement, and fixed-width current-route tab while hiding the staff, fretboard, controls, and editor.
+- The introductory phrase-to-E9 hero is hidden after a lesson is generated; the compact Melody Studio header remains. Edit melody is prominent beside the lesson title and remains available after the tablature.
+- Octave colors, String labels, and Note labels sit immediately below the fretboard, before arrangement choices. Non-actionable route-recommendation prose is no longer rendered.
+- Loop controls are grouped into one closed, horizontally contained Loop options disclosure for eight-event sections and are omitted for shorter sections.
 - Long phrases continue through the existing `sectionNumber` contract.
 - Original exercises suppress recording identity and source UI.
 - Deterministic scope remains E9 in G/C major.
@@ -119,6 +122,8 @@ Print-tablature implementation handoff: `docs/handoffs/task-completions/2026-07-
 Print-tablature protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-2336-12-melody-print-tablature-protected-smoke.md`.
 Songbook implementation handoff: `docs/handoffs/task-completions/2026-07-12-0847-01-public-domain-songbook-implementation.md`.
 Songbook protected-smoke handoff: `docs/handoffs/task-completions/2026-07-12-0852-12-public-domain-songbook-protected-smoke.md`.
+Result-layout adjustment handoff: `docs/handoffs/task-completions/2026-07-12-0900-06-melody-result-layout-user-smoke-adjustment.md`.
+Result-layout protected-smoke handoff: `docs/handoffs/task-completions/2026-07-12-0903-12-melody-result-layout-protected-smoke.md`.
 
 ## Verification
 
@@ -140,11 +145,12 @@ Songbook protected-smoke handoff: `docs/handoffs/task-completions/2026-07-12-085
 - Print-tablature protected smoke verified the unique Print tablature action, absence of Print score, current Recommended harmony route label/tab, parsed landscape print CSS, score/control suppression, and clean browser logs. Native print preview remains the user-smoke boundary.
 - Resumed header smoke verified the removed practice kicker, metadata line, and More arrangements disclosure remain absent on the integrated runtime; all six routes remain together in one horizontally scrollable row and Chord melody selection synchronizes visibly.
 - Songbook protected smoke verified all 12 cards, search/filter metadata, a one-result Shenandoah search, 16-event staff review, authenticated catalog opening, Section 1 E9 arrangement, six routes, source attribution, Print tablature, Continue to Section 2, and zero browser errors.
+- Result-layout protected smoke verified the hidden result hero, top and bottom Edit melody actions, fretboard-adjacent display controls, closed eight-event Loop options, removed route prose, bottom-row Print/Start over placement, synchronized lesson surfaces, and zero browser errors. Local smoke separately verified that a seven-note section omits Loop options entirely.
 
 ## Protected preview
 
-- Runtime smoke HEAD: `d2dc94d`.
-- Loopback `/api/version`: `d2dc94d`, `feature/answer-api`, `hybrid_private_first`, `cloudflare_access`, `features.melodyExercise=true`, `features.melodyCatalog=true`; user uploads/imports remain separately disabled.
+- Runtime smoke HEAD: `03a372e`.
+- Loopback `/api/version`: `03a372e`, `feature/answer-api`, `hybrid_private_first`, `cloudflare_access`, `features.melodyExercise=true`, `features.melodyCatalog=true`; user uploads/imports remain separately disabled.
 - Preview refresh succeeded without `sudo` by terminating only the user-owned port-8770 listener and allowing the installed LaunchDaemon to restart it.
 - Installed wrapper matches the committed wrapper.
 - Cloudflare Access login and protected manual/score lesson generation succeeded; the prior arranger blocker is closed.
@@ -159,6 +165,6 @@ Songbook protected-smoke handoff: `docs/handoffs/task-completions/2026-07-12-085
 
 ## Next action
 
-1. User smoke at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-songbook-d2dc94d-20260712`: open Browse songbook, search/filter, review a melody, and arrange it for E9.
+1. User smoke at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-result-layout-03a372e-20260712`: confirm the simplified lesson hierarchy, Edit melody placement, fretboard display controls, loop disclosure behavior, and bottom-row Print action.
 2. If protected score-image/file import should be enabled later, explicitly authorize the protected environment flag change and vision-model readiness check; otherwise keep it off.
 3. Keep unrelated corpus, source-inbox, private-data, brand/design, deployment, and environment work parked.
