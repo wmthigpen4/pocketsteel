@@ -8,7 +8,6 @@ Long inputs are divided into small lesson sections instead of being rejected.
 
 from __future__ import annotations
 
-import math
 import os
 import re
 from typing import Any, Mapping
@@ -19,7 +18,7 @@ from pocketsteel.melody_arranger import SUPPORTED_CONTOURS, SUPPORTED_TEXTURES, 
 
 ENABLE_MELODY_EXERCISE_ENV = "STEEL_RAG_ENABLE_MELODY_EXERCISE"
 MELODY_SCHEMA_VERSION = "melody_exercise_v0"
-MAX_EVENTS_PER_SECTION = 8
+MAX_EVENTS_PER_SECTION = 16
 SUPPORTED_KINDS = {
     "original_exercise",
     "user_melody",
@@ -85,12 +84,15 @@ def melody_exercise_response(
     tokens = [_melody_token(item) for item in raw_melody]
     if any(not token and not (isinstance(item, Mapping) and "string" in item and "fret" in item) for token, item in zip(tokens, raw_melody)):
         raise MelodyExerciseError("Each melody event needs a note name or scale degree from 1 through 7.")
+    sections = _section_spans(raw_melody, structured.get("sections"))
     section_number = _positive_int(structured.get("sectionNumber") or structured.get("section_number"), 1)
-    total_sections = max(1, math.ceil(len(tokens) / MAX_EVENTS_PER_SECTION))
+    total_sections = len(sections)
     if section_number > total_sections:
         raise MelodyExerciseError(f"Section {section_number} is outside this {total_sections}-section melody.")
-    start = (section_number - 1) * MAX_EVENTS_PER_SECTION
-    section_tokens = tokens[start : start + MAX_EVENTS_PER_SECTION]
+    section_span = sections[section_number - 1]
+    start = section_span["eventStart"]
+    end = section_span["eventEnd"]
+    section_tokens = tokens[start:end]
 
     rendering_mode = _choice(
         structured.get("renderingMode") or structured.get("rendering_mode"),
@@ -135,7 +137,7 @@ def melody_exercise_response(
             route_id_prefix=tab_id,
             title=title,
             event_start=start,
-            event_end=start + MAX_EVENTS_PER_SECTION,
+            event_end=end,
         )
     except ValueError as exc:
         raise MelodyExerciseError(str(exc)) from exc
@@ -160,9 +162,14 @@ def melody_exercise_response(
         "section": {
             "number": section_number,
             "total": total_sections,
-            "label": str(material.get("section") or f"Section {section_number}"),
+            "label": section_span["label"],
             "hasMore": section_number < total_sections,
+            "previousSection": section_number - 1 if section_number > 1 else None,
             "nextSection": section_number + 1 if section_number < total_sections else None,
+            "eventStart": start,
+            "eventEnd": end,
+            "measureStart": section_span.get("measureStart"),
+            "measureEnd": section_span.get("measureEnd"),
         },
         "input": {
             "key": key,
@@ -241,6 +248,68 @@ def _melody_token(item: Any) -> str:
     if isinstance(item, Mapping):
         return str(item.get("token") or item.get("note") or item.get("degree") or item.get("pitch") or "").strip()
     return str(item or "").strip()
+
+
+def _section_spans(raw_melody: list[Any], requested_sections: Any) -> list[dict[str, Any]]:
+    """Return stable phrase sections, preferring reviewed measure boundaries."""
+
+    measures: list[int | None] = []
+    for item in raw_melody:
+        if isinstance(item, Mapping):
+            try:
+                measures.append(int(item.get("measure")) if item.get("measure") is not None else None)
+            except (TypeError, ValueError):
+                measures.append(None)
+        else:
+            measures.append(None)
+
+    normalized: list[dict[str, Any]] = []
+    if isinstance(requested_sections, list):
+        for index, item in enumerate(requested_sections, start=1):
+            if not isinstance(item, Mapping):
+                continue
+            try:
+                measure_start = int(item.get("startMeasure"))
+                measure_end = int(item.get("endMeasure"))
+            except (TypeError, ValueError):
+                continue
+            indexes = [position for position, measure in enumerate(measures) if measure is not None and measure_start <= measure <= measure_end]
+            if not indexes:
+                continue
+            normalized.append({
+                "label": str(item.get("label") or f"Phrase {index}")[:80],
+                "eventStart": indexes[0],
+                "eventEnd": indexes[-1] + 1,
+                "measureStart": measure_start,
+                "measureEnd": measure_end,
+            })
+    if normalized:
+        return normalized
+
+    present_measures = sorted({measure for measure in measures if measure is not None})
+    if present_measures:
+        for offset in range(0, len(present_measures), 4):
+            group = present_measures[offset : offset + 4]
+            indexes = [position for position, measure in enumerate(measures) if measure in group]
+            normalized.append({
+                "label": f"Measures {group[0]}–{group[-1]}",
+                "eventStart": indexes[0],
+                "eventEnd": indexes[-1] + 1,
+                "measureStart": group[0],
+                "measureEnd": group[-1],
+            })
+        return normalized
+
+    return [
+        {
+            "label": f"Phrase {index // MAX_EVENTS_PER_SECTION + 1}",
+            "eventStart": index,
+            "eventEnd": min(len(raw_melody), index + MAX_EVENTS_PER_SECTION),
+            "measureStart": None,
+            "measureEnd": None,
+        }
+        for index in range(0, len(raw_melody), MAX_EVENTS_PER_SECTION)
+    ]
 
 
 def _material_payload(value: Any, question: str) -> dict[str, str]:

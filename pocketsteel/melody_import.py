@@ -35,7 +35,8 @@ MAX_IMAGE_BYTES = 8 * 1024 * 1024
 MAX_SCORE_BYTES = 2 * 1024 * 1024
 MAX_MIDI_BYTES = 1024 * 1024
 MAX_MXL_EXPANDED_BYTES = 4 * 1024 * 1024
-MAX_EVENTS = 64
+MAX_EVENTS = 128
+MAX_MEASURES = 64
 SUPPORTED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
 
 _RESOURCE_ROOT = Path(__file__).resolve().parent / "resources" / "public_domain_songs"
@@ -65,6 +66,8 @@ def public_song_catalog() -> list[dict[str, Any]]:
         source = record["source"]
         score = record["score"]
         event_count = len([event for event in score["melody"] if not event.get("rest")])
+        measure_count = max((int(event.get("measure") or 1) for event in score["melody"]), default=1)
+        sections = list(score.get("sections") or [])
         cards.append(
             {
                 "id": catalog_id,
@@ -78,7 +81,9 @@ def public_song_catalog() -> list[dict[str, Any]]:
                 "difficulty": metadata.get("difficulty", "starter"),
                 "feel": metadata.get("feel", "traditional"),
                 "eventCount": event_count,
-                "sectionCount": max(1, (event_count + 7) // 8),
+                "measureCount": measure_count,
+                "sectionCount": max(1, len(sections) or (measure_count + 3) // 4),
+                "formLabel": metadata.get("formLabel", "Complete melody"),
                 "accuracy": source.get("accuracy", "interpretive"),
             }
         )
@@ -145,7 +150,7 @@ def normalize_score_draft(
             melody.append(
                 {
                     "id": str(item.get("id") or f"m{index}"),
-                    "measure": _bounded_int(item.get("measure"), 1, 16, 1),
+                    "measure": _bounded_int(item.get("measure"), 1, MAX_MEASURES, 1),
                     "beat": _positive_number(item.get("beat"), 1.0),
                     "durationBeats": _positive_number(item.get("durationBeats") or item.get("duration"), 1.0),
                     "rest": True,
@@ -159,7 +164,7 @@ def normalize_score_draft(
             continue
         event = {
             "id": str(item.get("id") or f"m{index}"),
-            "measure": _bounded_int(item.get("measure"), 1, 16, 1),
+            "measure": _bounded_int(item.get("measure"), 1, MAX_MEASURES, 1),
             "beat": _positive_number(item.get("beat"), 1.0),
             "durationBeats": _positive_number(item.get("durationBeats") or item.get("duration"), 1.0),
             "pitch": _pitch_label(pitch_value),
@@ -183,7 +188,7 @@ def normalize_score_draft(
                 continue
             harmony.append(
                 {
-                    "measure": _bounded_int(item.get("measure"), 1, 16, 1),
+                    "measure": _bounded_int(item.get("measure"), 1, MAX_MEASURES, 1),
                     "beat": _positive_number(item.get("beat"), 1.0),
                     "symbol": str(item.get("symbol"))[:24],
                     "basis": str(item.get("basis") or "user"),
@@ -210,6 +215,7 @@ def normalize_score_draft(
         "difficulty",
         "feel",
         "sectionLabel",
+        "formLabel",
     ):
         if raw_source.get(key):
             normalized_source[key] = str(raw_source[key])[:500]
@@ -219,6 +225,22 @@ def normalize_score_draft(
     warnings = list((value.get("review") or {}).get("warnings") or []) if isinstance(value.get("review"), Mapping) else []
     if arrangement_key not in {"G", "C"}:
         warnings.append("Choose G or C as the E9 arrangement key before arranging this score.")
+    raw_sections = raw_score.get("sections") if isinstance(raw_score, Mapping) else []
+    sections: list[dict[str, Any]] = []
+    if isinstance(raw_sections, Sequence) and not isinstance(raw_sections, (str, bytes)):
+        for index, item in enumerate(raw_sections[:32], start=1):
+            if not isinstance(item, Mapping):
+                continue
+            start_measure = _bounded_int(item.get("startMeasure"), 1, MAX_MEASURES, 1)
+            end_measure = _bounded_int(item.get("endMeasure"), start_measure, MAX_MEASURES, start_measure)
+            sections.append(
+                {
+                    "number": index,
+                    "label": str(item.get("label") or f"Phrase {index}")[:80],
+                    "startMeasure": start_measure,
+                    "endMeasure": end_measure,
+                }
+            )
     return {
         "schemaVersion": SCORE_DRAFT_SCHEMA_VERSION,
         "source": normalized_source,
@@ -229,6 +251,7 @@ def normalize_score_draft(
             "pickupBeats": max(0.0, min(3.0, float(raw_score.get("pickupBeats") or 0))),
             "melody": melody,
             "harmony": harmony,
+            "sections": sections,
         },
         "review": {
             "status": review_status or str((value.get("review") or {}).get("status") or "needs_review"),
@@ -682,6 +705,8 @@ def _load_catalog_record(path: Path) -> dict[str, Any]:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise MelodyImportError("The reviewed song catalog is unavailable.") from exc
+    if isinstance(payload.get("score"), Mapping) and payload["score"].get("melodyMeasures"):
+        payload = _expand_compact_catalog_record(payload)
     return normalize_score_draft(payload, review_status="confirmed")
 
 
@@ -691,7 +716,7 @@ def _catalog_records() -> list[tuple[str, dict[str, Any], dict[str, Any]]]:
         (
             "amazing-grace-new-britain",
             amazing_grace,
-            {"order": 1, "difficulty": "starter", "feel": "hymn"},
+            {"order": 1, "difficulty": "starter", "feel": "hymn", "formLabel": "Complete verse melody"},
         )
     ]
     try:
@@ -714,29 +739,48 @@ def _catalog_records() -> list[tuple[str, dict[str, Any], dict[str, Any]]]:
 def _expand_compact_catalog_record(compact: Mapping[str, Any]) -> dict[str, Any]:
     source = dict(compact.get("source") or {})
     score = dict(compact.get("score") or {})
+    measures_pattern = score.pop("melodyMeasures", [])
     pattern = score.pop("melodyPattern", [])
     if not isinstance(pattern, Sequence) or isinstance(pattern, (str, bytes)):
         pattern = []
     beats_per_measure = 3 if str(score.get("meter")) == "3/4" else 4
-    cursor = 0.0
     melody: list[dict[str, Any]] = []
-    for index, item in enumerate(pattern, start=1):
+    indexed_items: list[tuple[int, float, Sequence[Any]]] = []
+    if isinstance(measures_pattern, Sequence) and not isinstance(measures_pattern, (str, bytes)):
+        for measure_number, measure_items in enumerate(measures_pattern, start=1):
+            if not isinstance(measure_items, Sequence) or isinstance(measure_items, (str, bytes)):
+                continue
+            beat = 1.0
+            for item in measure_items:
+                if not isinstance(item, Sequence) or isinstance(item, (str, bytes)) or not item:
+                    continue
+                indexed_items.append((measure_number, beat, item))
+                beat += float(item[1]) if len(item) > 1 else 1.0
+    else:
+        cursor = 0.0
+        for item in pattern:
+            if not isinstance(item, Sequence) or isinstance(item, (str, bytes)) or not item:
+                continue
+            indexed_items.append((int(cursor // beats_per_measure) + 1, (cursor % beats_per_measure) + 1, item))
+            cursor += float(item[1]) if len(item) > 1 else 1.0
+    for index, (measure_number, beat, item) in enumerate(indexed_items, start=1):
         if not isinstance(item, Sequence) or isinstance(item, (str, bytes)) or not item:
             continue
         pitch = str(item[0])
         duration = float(item[1]) if len(item) > 1 else 1.0
-        melody.append(
-            {
-                "id": f"{source.get('catalogId', 'song')}-{index}",
-                "measure": int(cursor // beats_per_measure) + 1,
-                "beat": (cursor % beats_per_measure) + 1,
-                "durationBeats": duration,
-                "pitch": pitch,
-                "origin": "reviewed_teaching_version",
-                "confidence": 1,
-            }
-        )
-        cursor += duration
+        event = {
+            "id": f"{source.get('catalogId', 'song')}-{index}",
+            "measure": measure_number,
+            "beat": beat,
+            "durationBeats": duration,
+            "origin": "reviewed_teaching_version",
+            "confidence": 1,
+        }
+        if pitch.lower() == "z":
+            event["rest"] = True
+        else:
+            event["pitch"] = pitch
+        melody.append(event)
     harmony: list[dict[str, Any]] = []
     for item in score.pop("harmonyPattern", []):
         if not isinstance(item, Sequence) or isinstance(item, (str, bytes)) or len(item) < 2:
@@ -750,6 +794,18 @@ def _expand_compact_catalog_record(compact: Mapping[str, Any]) -> dict[str, Any]
                 "measure": event["measure"],
                 "beat": event["beat"],
                 "symbol": str(item[1]),
+                "basis": "reviewed_teaching_version",
+                "confidence": 1,
+            }
+        )
+    for item in score.pop("harmonyMeasures", []):
+        if not isinstance(item, Sequence) or isinstance(item, (str, bytes)) or len(item) < 2:
+            continue
+        harmony.append(
+            {
+                "measure": int(item[0]),
+                "beat": float(item[1]) if len(item) > 2 else 1.0,
+                "symbol": str(item[2] if len(item) > 2 else item[1]),
                 "basis": "reviewed_teaching_version",
                 "confidence": 1,
             }

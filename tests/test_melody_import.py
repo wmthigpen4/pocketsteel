@@ -22,23 +22,28 @@ def test_amazing_grace_catalog_record_is_reviewed_and_checksummed() -> None:
     assert len(cards) == 12
     assert cards[0]["id"] == "amazing-grace-new-britain"
     assert cards[0]["title"] == "Amazing Grace"
-    assert cards[0]["subtitle"] == "NEW BRITAIN · 1829 setting"
+    assert cards[0]["subtitle"] == "Complete verse melody · NEW BRITAIN, 1829"
     assert cards[0]["rightsLabel"] == "public_domain"
     assert cards[0]["key"] == "G"
     assert cards[0]["meter"] == "3/4"
     assert cards[0]["sourceUrl"] == "https://library.timelesstruths.org/music/Amazing_Grace/midi/"
     assert {card["key"] for card in cards} == {"G", "C"}
     assert {card["difficulty"] for card in cards} == {"starter", "easy"}
-    assert all(card["eventCount"] >= 8 for card in cards)
-    assert all(card["sectionCount"] >= 1 for card in cards)
+    assert all(card["eventCount"] >= 25 for card in cards)
+    assert all(card["measureCount"] >= 8 for card in cards)
+    assert all(card["sectionCount"] >= 2 for card in cards)
+    assert any(card["sectionCount"] > 4 for card in cards)
+    assert all(card["formLabel"] for card in cards)
     assert all(card["attribution"] for card in cards)
     draft = import_score_draft({"sourceType": "catalog", "catalogId": cards[0]["id"]})
     assert draft["schemaVersion"] == "score_draft_v1"
     assert draft["source"]["retained"] is False
     assert draft["source"]["rightsLabel"] == "public_domain"
-    assert draft["source"]["sourceChecksum"] == "sha256:4cd985b4dd4993f317269509af06b71ad082c1643dd0f191433fcf0a040459bf"
-    assert [event["pitch"] for event in draft["score"]["melody"]] == AMAZING_GRACE_PITCHES
-    assert [item["symbol"] for item in draft["score"]["harmony"]] == ["G", "G", "G", "D7", "Em", "C"]
+    assert draft["source"]["sourceChecksum"].startswith("sha256:")
+    assert [event["pitch"] for event in draft["score"]["melody"][:8]] == AMAZING_GRACE_PITCHES
+    assert len(draft["score"]["melody"]) == 35
+    assert len(draft["score"]["sections"]) == 4
+    assert draft["score"]["sections"][0]["label"] == "Amazing grace"
 
 
 def test_starter_songbook_drafts_are_reviewed_sourced_and_arranger_ready() -> None:
@@ -56,8 +61,9 @@ def test_starter_songbook_drafts_are_reviewed_sourced_and_arranger_ready() -> No
         assert draft["source"]["sourceChecksum"].startswith("sha256:")
         assert draft["source"]["url"].startswith("https://")
         assert draft["score"]["arrangementKey"] in {"G", "C"}
-        assert len(draft["score"]["melody"]) == card["eventCount"]
+        assert len([event for event in draft["score"]["melody"] if not event.get("rest")]) == card["eventCount"]
         assert draft["score"]["harmony"]
+        assert draft["score"]["sections"]
 
 
 def test_musicxml_import_preserves_rhythm_chords_and_selects_melody_part() -> None:

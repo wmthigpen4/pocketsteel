@@ -4,39 +4,29 @@
     "type": "catalog",
     "catalogId": "amazing-grace-new-britain",
     "title": "Amazing Grace",
-    "subtitle": "NEW BRITAIN · 1829 setting",
+    "subtitle": "Complete verse melody · NEW BRITAIN, 1829",
     "url": "https://library.timelesstruths.org/music/Amazing_Grace/midi/",
     "attribution": "Words: John Newton, 1779. Tune: NEW BRITAIN, unknown, published 1829.",
     "rightsLabel": "public_domain",
-    "sourceChecksum": "sha256:4cd985b4dd4993f317269509af06b71ad082c1643dd0f191433fcf0a040459bf",
-    "retained": false
+    "retained": false,
+    "accuracy": "interpretive",
+    "accuracyConfidence": "high",
+    "accuracyNote": "Complete public-domain verse melody from the identified NEW BRITAIN setting.",
+    "formLabel": "Complete verse melody"
   },
   "score": {
     "sourceKey": "G",
     "arrangementKey": "G",
     "meter": "3/4",
     "pickupBeats": 1,
-    "melody": [
-      {"id": "ag-pickup-d4", "measure": 1, "beat": 3, "durationBeats": 1, "pitch": "D4", "pitchValue": 62, "origin": "source", "confidence": 1},
-      {"id": "ag-m2-g4", "measure": 2, "beat": 1, "durationBeats": 2, "pitch": "G4", "pitchValue": 67, "origin": "source", "confidence": 1},
-      {"id": "ag-m2-b4", "measure": 2, "beat": 3, "durationBeats": 0.5, "pitch": "B4", "pitchValue": 71, "origin": "source", "confidence": 1},
-      {"id": "ag-m2-g4b", "measure": 2, "beat": 3.5, "durationBeats": 0.5, "pitch": "G4", "pitchValue": 67, "origin": "source", "confidence": 1},
-      {"id": "ag-m3-b4", "measure": 3, "beat": 1, "durationBeats": 2, "pitch": "B4", "pitchValue": 71, "origin": "source", "confidence": 1},
-      {"id": "ag-m3-a4", "measure": 3, "beat": 3, "durationBeats": 1, "pitch": "A4", "pitchValue": 69, "origin": "source", "confidence": 1},
-      {"id": "ag-m4-g4", "measure": 4, "beat": 1, "durationBeats": 2, "pitch": "G4", "pitchValue": 67, "origin": "source", "confidence": 1},
-      {"id": "ag-m4-e4", "measure": 4, "beat": 3, "durationBeats": 1, "pitch": "E4", "pitchValue": 64, "origin": "source", "confidence": 1}
-    ],
-    "harmony": [
-      {"measure": 1, "beat": 3, "symbol": "G", "basis": "source_voices", "confidence": 1},
-      {"measure": 2, "beat": 1, "symbol": "G", "basis": "source_voices", "confidence": 1},
-      {"measure": 3, "beat": 1, "symbol": "G", "basis": "source_voices", "confidence": 1},
-      {"measure": 3, "beat": 3, "symbol": "D7", "basis": "source_voices", "confidence": 1},
-      {"measure": 4, "beat": 1, "symbol": "Em", "basis": "source_voices", "confidence": 1},
-      {"measure": 4, "beat": 3, "symbol": "C", "basis": "source_voices", "confidence": 1}
+    "melodyMeasures": [[["D4",1]],[["G4",2],["B4",0.5],["G4",0.5]],[["B4",2],["A4",1]],[["G4",2],["E4",1]],[["D4",2],["D4",1]],[["G4",2],["B4",0.5],["G4",0.5]],[["B4",2],["A4",1]],[["D5",2]],[["B4",1]],[["D5",1.5],["B4",0.5],["D5",0.5],["B4",0.5]],[["G4",2],["D4",1]],[["E4",1],["G4",0.5],["G4",0.5],["E4",0.5]],[["D4",2],["D4",1]],[["G4",2],["B4",0.5],["G4",0.5]],[["B4",2],["A4",1]],[["G4",2]]],
+    "harmonyMeasures": [[1,"G"],[3,"D7"],[4,"G"],[5,"G"],[7,"D7"],[8,"G"],[9,"G"],[10,"G"],[11,"G"],[12,"C"],[13,"G"],[15,"D7"],[16,"G"]],
+    "sections": [
+      {"label":"Amazing grace","startMeasure":1,"endMeasure":4},
+      {"label":"How sweet the sound","startMeasure":5,"endMeasure":8},
+      {"label":"I once was lost","startMeasure":9,"endMeasure":12},
+      {"label":"Was blind, but now I see","startMeasure":13,"endMeasure":16}
     ]
   },
-  "review": {
-    "status": "confirmed",
-    "warnings": []
-  }
+  "review": {"status":"confirmed","warnings":[]}
 }

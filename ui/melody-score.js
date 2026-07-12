@@ -10,8 +10,8 @@
     eighth: 0.5
   };
   const PITCH_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-  const MAX_EVENTS = 64;
-  const MAX_MEASURES = 16;
+  const MAX_EVENTS = 128;
+  const MAX_MEASURES = 64;
 
   function pitchLabel(value) {
     const pitch = Number(value);
@@ -52,18 +52,21 @@
     const next = cloneDraft(draft);
     const beats = beatsPerMeasure(next);
     const pickup = Math.max(0, Number(next.score.pickupBeats || 0));
+    const preserveReviewedMeasures = Array.isArray(next.score.sections) && next.score.sections.length > 0;
     let measure = 1;
     let beat = pickup ? beats - pickup + 1 : 1;
     next.score.melody = (next.score.melody || []).slice(0, MAX_EVENTS).map((raw, index) => {
       const event = { ...raw };
       const duration = Math.max(0.5, Number(event.durationBeats || 1));
-      if (beat >= beats + 1 - 0.001) {
+      if (!preserveReviewedMeasures && beat >= beats + 1 - 0.001) {
         measure += 1;
         beat = 1;
       }
       event.id = event.id || `score-event-${index + 1}`;
-      event.measure = Math.min(MAX_MEASURES, measure);
-      event.beat = Number(beat.toFixed(3));
+      event.measure = preserveReviewedMeasures
+        ? Math.max(1, Math.min(MAX_MEASURES, Number(event.measure || 1)))
+        : Math.min(MAX_MEASURES, measure);
+      event.beat = preserveReviewedMeasures ? Math.max(1, Number(event.beat || 1)) : Number(beat.toFixed(3));
       event.durationBeats = duration;
       event.origin = event.origin || (next.source.type === "composed_in_studio" ? "user_edit" : "source");
       event.confidence = Number.isFinite(Number(event.confidence)) ? Number(event.confidence) : 1;
@@ -76,7 +79,7 @@
           event.pitches = Array.from(new Set([...pitches, event.pitchValue])).sort((a, b) => a - b);
         }
       }
-      beat += duration;
+      if (!preserveReviewedMeasures) beat += duration;
       return event;
     });
     next.score.harmony = (next.score.harmony || []).filter((item) => item.symbol).slice(0, 64);

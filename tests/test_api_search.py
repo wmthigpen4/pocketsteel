@@ -4051,9 +4051,11 @@ def test_melody_import_returns_temporary_amazing_grace_draft() -> None:
     assert status == "200 OK"
     assert headers["Cache-Control"] == "no-store"
     assert payload["source"]["retained"] is False
-    assert [event["pitch"] for event in payload["score"]["melody"]] == [
+    assert [event["pitch"] for event in payload["score"]["melody"][:8]] == [
         "D4", "G4", "B4", "G4", "B4", "A4", "G4", "E4"
     ]
+    assert len(payload["score"]["melody"]) == 35
+    assert len(payload["score"]["sections"]) == 4
 
     status, _, payload = call_app(
         "/api/melody/import",

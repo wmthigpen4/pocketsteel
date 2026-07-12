@@ -12,7 +12,7 @@ The accuracy boundary remains strict:
 - E9 adaptations and teaching simplifications must be labeled as adaptations or simplifications.
 - Uncertain passages must be labeled `approximate` or `interpretive`, with confidence and an explanation.
 - Missing source material should produce a useful request for the recording/link, uploaded passage, pasted notes/tab, or exact artist/version/section.
-- Long material is divided into numbered sections of at most eight events per rendered lesson. The app starts with the selected section or Section 1 and exposes continuation state.
+- Long material is divided at reviewed musical phrase boundaries, normally four measures at a time. Manual note lists without measure data use a 16-event fallback. The app starts with the selected phrase or Phrase 1 and exposes previous/next navigation.
 
 Public-domain status and licensing records may be preserved as attribution or provenance, but they are not feature gates. Ordinary song and solo teaching does not require a rights attestation.
 
@@ -29,6 +29,7 @@ Supported request fields:
 - `contourMode`: `closest_playable` (default), `ascending`, `descending`, or `preserve_input`.
 - `texture`: `both` (default), `single_note`, `automatic_harmony`, `thirds`, `sixths`, or `chord_melody`.
 - `sectionNumber`: requested section, starting at 1.
+- `sections`: optional reviewed phrase labels with `startMeasure` and `endMeasure`. Catalog melodies use these boundaries instead of arbitrary event counts.
 - `renderingMode`: `transcription`, `e9_adaptation`, or `teaching_simplification`.
 - `accuracy`: requested `exact`, `approximate`, or `interpretive` label. Exact artist-material claims are downgraded when no source is identified.
 - `material`: artist, song, recording/version, section, source URL, and source reference.
@@ -37,7 +38,7 @@ The answer may add `melody_exercise` with:
 
 - material identity and source reference;
 - rendering and accuracy labels;
-- section number, total, continuation state, and next section;
+- phrase label, section number, total, previous/next continuation state, event range, and measure range;
 - mechanically validated musical events;
 - octave/register-resolved input and deterministic movement guidance;
 - route choices for the single-note melody and available validated harmony textures;
@@ -65,7 +66,7 @@ The result shows:
 
 The score is an interactive practice surface rather than a decorative duplicate. Selecting a staff event selects the same fretboard position, navigator event, and tab step. Route switching updates the notation as well as the fretboard and tab: single-note routes show one note head, dyad routes show two stacked note heads, and chord-melody routes show every validated grip pitch with the resolved melody as the top voice. Playback follows the score with a moving selection and supports tempo, count-in, pause/resume, stop, current-measure loops, selected-note loops, and optional synthesized chord context. Loop controls stay collapsed by default and are omitted for sections shorter than eight events. Chord symbols render only at real changes. The score supports G/C key signatures, rhythmic beams, rests, ties, lyrics, accents/tenuto/staccato, and MusicXML export.
 
-The result action is **Print**, positioned beside Start over immediately below the tablature. It prints the lesson title, optional source identity, selected arrangement name, and the current route's fixed-width tab in a clean landscape sheet. The staff, fretboard, route controls, transport, playback controls, and editor chrome are suppressed in print output.
+The result action is **Print**, positioned beside Start over immediately below the tablature. For a multi-phrase song it prepares every section of the selected arrangement and prints one complete fixed-width tablature document with phrase headings. The staff, fretboard, route controls, transport, playback controls, and editor chrome are suppressed in print output.
 
 Once an E9 lesson is rendered, the introductory hero is hidden so the lesson begins directly beneath the compact Melody Studio header. **Edit melody** is available at the lesson heading and again after the tablature. Fretboard display controls sit immediately below the fretboard, before arrangement choices and note navigation. Route recommendation prose is not displayed.
 
@@ -73,7 +74,9 @@ The dedicated lesson view is fretboard-first. Its header contains only the lesso
 
 The note navigator shows one active event at a time, with `Note N of M`, resolved pitch, and plain steel instructions such as `Strings 5, 6 & 7 · Fret 10 · A+B`. Previous/next controls move through any phrase length without creating a row of one pill per note; the fixed-width tab remains the whole-phrase overview. It does not repeat the selection in a separate current-note block or deterministic implementation explanation. Navigation and playback must visibly select the matching `renderablePositionId` in the fretboard component.
 
-Display toggles independently control Octave colors, compact string/action labels inside active marker bubbles (`6B`, `5A`, or plain `6` when open), and the resolved top-note label above the active position. Octave colors default off. Their legend sits immediately beside the Octave colors control and remains hidden until the control is enabled. Long phrases expose a Continue to Section action using the existing `sectionNumber` request field. Mobile layout keeps route and octave rows horizontally scrollable, retains one readable active-note card between the arrows, and keeps fixed-width tab inside its own horizontal scroller.
+Display toggles independently control Octave colors, compact string/action labels inside active marker bubbles (`6B`, `5A`, or plain `6` when open), and the resolved top-note label above the active position. Octave colors default off. Their legend sits immediately beside the Octave colors control and remains hidden until the control is enabled. Complete songs retain the whole lead sheet and expose persistent Previous phrase / Next phrase navigation using the existing `sectionNumber` request field. Mobile layout keeps route and octave rows horizontally scrollable, retains one readable active-note card between the arrows, and keeps fixed-width tab inside its own horizontal scroller.
+
+The reviewed public-domain songbook stores one complete melodic cycle per title: a verse plus a distinct chorus or refrain when the music changes, or one complete melody when additional lyrical verses reuse the same tune. Catalog cards disclose the form, note count, measure count, and phrase count. Eight-note excerpts are not catalog deliverables.
 
 Rhythm remains part of the score contract because faithful transcription and playback need note lengths, but duration editing is progressive rather than a primary decision: new-note length lives under **Score setup**, and an existing note's duration lives under **Selected note details**. Melody-only results do not show a chord-audio control. When real chord symbols are present, the practice bar may show **Play chord backing**, which adds synthesized chord support during playback; it is independent of whether the melody is displayed on a treble clef.
 
@@ -102,7 +105,8 @@ The feature is controlled by `STEEL_RAG_ENABLE_MELODY_EXERCISE`, which defaults 
 - `5 6 1 3 2 1 3` resolves as a continuous octave-aware contour rather than resetting every tonic to one fixed fret.
 - Default ready lessons include a single-note route and, when mechanically available in the resolved register, a recommended harmony route with two or three validated notes per event.
 - Pasted literal tab retains string, fret, controls, and register exactly.
-- Long inputs continue through numbered sections instead of failing.
+- Long inputs continue through labeled musical phrases instead of failing, and reviewed songbook examples render their complete melodic form.
+- Complete-song printing includes all phrase sections of the selected arrangement route.
 - Invalid tuning, key, note, string, fret, or control combinations render no tab/fretboard.
 - Attribution and accuracy labels survive API and frontend normalization.
 - Melody-only input displays no invented chord symbols; supplied chord symbols appear only at chord changes and guide route ranking.

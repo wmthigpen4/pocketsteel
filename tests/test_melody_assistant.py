@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 import pytest
 
 from pocketsteel.fretboard_examples import absolute_pitch_for_string
@@ -12,6 +9,7 @@ from pocketsteel.melody_assistant import (
     is_melody_teaching_request,
     melody_exercise_response,
 )
+from pocketsteel.melody_import import import_score_draft, public_song_catalog
 
 
 def test_feature_flag_defaults_off() -> None:
@@ -95,9 +93,7 @@ def test_on_device_audio_transcription_preserves_honest_accuracy_label() -> None
 
 
 def test_amazing_grace_exact_score_events_keep_rhythm_chords_and_e9_route() -> None:
-    draft = json.loads(
-        Path("pocketsteel/resources/public_domain_songs/amazing_grace_new_britain.json").read_text(encoding="utf-8")
-    )
+    draft = import_score_draft({"sourceType": "catalog", "catalogId": "amazing-grace-new-britain"})
     harmony = draft["score"]["harmony"]
     events = []
     for event in draft["score"]["melody"]:
@@ -134,15 +130,15 @@ def test_amazing_grace_exact_score_events_keep_rhythm_chords_and_e9_route() -> N
         (5, 3, ["A"]),
     ]
     assert [event["durationBeats"] for event in exercise["events"]] == [1, 2, 0.5, 0.5, 2, 1, 2, 1]
-    assert [event["harmonySymbol"] for event in exercise["events"]] == [event["chord"] for event in events]
+    assert [event["harmonySymbol"] for event in exercise["events"]] == [event["chord"] for event in events[:8]]
     previous_chord = ""
     expected_changes = []
     for event in events:
         expected_changes.append(event["chord"] if event["chord"] != previous_chord else None)
         previous_chord = event["chord"]
-    assert [event.get("chord") for event in exercise["events"]] == expected_changes
+    assert [event.get("chord") for event in exercise["events"]] == expected_changes[:8]
     assert all(route["chordContext"]["usedForRanking"] for route in exercise["routes"])
-    assert exercise["routes"][0]["chordContext"]["symbols"] == list(dict.fromkeys(event["chord"] for event in events))
+    assert exercise["routes"][0]["chordContext"]["symbols"] == list(dict.fromkeys(event["chord"] for event in events[:8]))
     vocal = next(route for route in exercise["routes"] if route["harmonyType"] == "vocal_steel")
     assert vocal["generatedOrnaments"] == [
         {
@@ -291,7 +287,7 @@ def test_original_exercise_suppresses_supplied_recording_identity_and_sources() 
 
 
 def test_long_arrangement_is_sectioned_instead_of_blocked() -> None:
-    melody = ["1", "2", "3", "4", "5", "6", "7", "1", "3", "2"]
+    melody = ["1", "2", "3", "4", "5", "6", "7", "1"] * 2 + ["3", "2", "1", "7"]
     first = melody_exercise_response(
         "Teach the full arrangement",
         {"kind": "song_arrangement_lesson", "key": "G", "melody": melody, "sectionNumber": 1},
@@ -302,27 +298,72 @@ def test_long_arrangement_is_sectioned_instead_of_blocked() -> None:
     )
 
     assert first is not None and second is not None
-    assert len(first["melody_exercise"]["events"]) == 8
-    assert first["melody_exercise"]["section"] == {
-        "number": 1,
-        "total": 2,
-        "label": "Section 1",
-        "hasMore": True,
-        "nextSection": 2,
-    }
-    assert len(second["melody_exercise"]["events"]) == 2
+    assert len(first["melody_exercise"]["events"]) == 16
+    assert first["melody_exercise"]["section"]["label"] == "Phrase 1"
+    assert first["melody_exercise"]["section"]["total"] == 2
+    assert first["melody_exercise"]["section"]["hasMore"] is True
+    assert first["melody_exercise"]["section"]["previousSection"] is None
+    assert first["melody_exercise"]["section"]["nextSection"] == 2
+    assert len(second["melody_exercise"]["events"]) == 4
     assert second["melody_exercise"]["section"]["hasMore"] is False
 
 
 def test_section_continuation_preserves_full_phrase_octave_contour() -> None:
-    melody = ["5", "6", "1", "3", "2", "1", "3", "5", "6"]
+    melody = ["5", "6", "1", "3", "2", "1", "3", "5"] * 2 + ["6"]
     second = melody_exercise_response(
         "Teach the full arrangement",
         {"kind": "song_arrangement_lesson", "key": "G", "melody": melody, "sectionNumber": 2},
     )
 
     assert second is not None
-    assert [event["resolvedPitch"] for event in second["melody_exercise"]["events"]] == ["E5"]
+    assert [event["resolvedPitch"] for event in second["melody_exercise"]["events"]] == ["E6"]
+
+
+def test_reviewed_measure_sections_use_phrase_labels_and_ranges() -> None:
+    melody = [
+        {"pitch": "G4", "measure": 1},
+        {"pitch": "A4", "measure": 2},
+        {"pitch": "B4", "measure": 5},
+        {"pitch": "D5", "measure": 6},
+    ]
+    sections = [
+        {"label": "Opening phrase", "startMeasure": 1, "endMeasure": 4},
+        {"label": "Answer phrase", "startMeasure": 5, "endMeasure": 8},
+    ]
+
+    result = melody_exercise_response(
+        "Teach the complete melody",
+        {"kind": "song_arrangement_lesson", "key": "G", "melody": melody, "sections": sections, "sectionNumber": 2},
+    )
+
+    assert result is not None
+    section = result["melody_exercise"]["section"]
+    assert section["label"] == "Answer phrase"
+    assert section["eventStart"] == 2
+    assert section["eventEnd"] == 4
+    assert section["measureStart"] == 5
+    assert section["measureEnd"] == 8
+    assert section["previousSection"] == 1
+
+
+def test_every_songbook_phrase_reaches_the_arranger() -> None:
+    for card in public_song_catalog():
+        draft = import_score_draft({"sourceType": "catalog", "catalogId": card["id"]})
+        melody = [event for event in draft["score"]["melody"] if not event.get("rest")]
+        for section_number in range(1, len(draft["score"]["sections"]) + 1):
+            result = melody_exercise_response(
+                "Arrange this complete song",
+                {
+                    "kind": "song_arrangement_lesson",
+                    "key": draft["score"]["arrangementKey"],
+                    "melody": melody,
+                    "sections": draft["score"]["sections"],
+                    "sectionNumber": section_number,
+                },
+            )
+            assert result is not None
+            assert result["melody_exercise"]["section"]["number"] == section_number
+            assert result["melody_exercise"]["events"]
 
 
 def test_exact_artist_claim_downgrades_without_identified_source() -> None:

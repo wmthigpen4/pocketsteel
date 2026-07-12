@@ -1,7 +1,7 @@
 (function (global) {
   "use strict";
 
-  const MAX_EVENTS_PER_SECTION = 8;
+  const MAX_EVENTS_PER_SECTION = 16;
   const TASKS = {
     artist_solo_lesson: {
       title: "Learn an artist’s solo",
@@ -215,6 +215,8 @@
       texture: "both"
     };
     if (state.tokens?.length) request.melody = [...state.tokens];
+    const sections = state.scoreDraft?.score?.sections;
+    if (Array.isArray(sections) && sections.length) request.sections = sections.map((section) => ({ ...section }));
     const transcription = state.scoreDraft?.transcription;
     if (transcription) {
       request.accuracy = "approximate";
@@ -229,11 +231,12 @@
       };
     }
     if (task.needsMaterial) {
+      const hasReviewedSections = Array.isArray(sections) && sections.length > 0;
       request.material = {
         artist: state.artist || "",
         song: state.song || "",
         recording: state.recording || "",
-        section: state.section || `Section ${state.sectionNumber || 1}`,
+        section: state.section || (hasReviewedSections ? "" : `Section ${state.sectionNumber || 1}`),
         sourceUrl: state.sourceUrl || ""
       };
     }
@@ -882,6 +885,10 @@
     resultTitle: $("#studio-result-title"),
     resultSource: $("#studio-result-source"),
     resultScore: $("#studio-result-score"),
+    sectionNavigation: $("#studio-section-navigation"),
+    sectionPrevious: $("#studio-section-previous"),
+    sectionStatus: $("#studio-section-status"),
+    sectionNext: $("#studio-section-next"),
     practice: $("#studio-practice"),
     practicePlay: $("#studio-practice-play"),
     practiceStop: $("#studio-practice-stop"),
@@ -913,6 +920,8 @@
     eventStrip: $("#studio-event-strip"),
     tab: $("#studio-tab"),
     tabCode: $("#studio-tab-code"),
+    wholeSongTab: $("#studio-whole-song-tab"),
+    wholeSongTabCode: $("#studio-whole-song-tab-code"),
     continueButton: $("#studio-continue"),
     editTop: $("#studio-edit-top"),
     edit: $("#studio-edit"),
@@ -1079,7 +1088,7 @@
     const count = sectionCount(state.tokens);
     elements.sectionCount.textContent = state.tokens.length
       ? `${state.tokens.length} notes · ${count} ${count === 1 ? "section" : "sections"}`
-      : "Up to eight notes appear in each lesson section.";
+      : "Long melodies are divided at musical phrase boundaries.";
   }
 
   function renderEntryChoices(startingPoint = state.inputMethod || "phrase") {
@@ -1289,7 +1298,7 @@
       }));
     }
     elements.scoreStatus.textContent = draft.score.melody.length
-      ? `${draft.score.melody.length} of 64 events · ${Math.max(...draft.score.melody.map((item) => item.measure), 1)} of 16 measures · the amber note and selection bar show exactly what you are editing.`
+      ? `${draft.score.melody.length} of ${scoreUi.MAX_EVENTS} events · ${Math.max(...draft.score.melody.map((item) => item.measure), 1)} of ${scoreUi.MAX_MEASURES} measures · the amber note and selection bar show exactly what you are editing.`
       : "Choose a pitch, click the staff, or press A–G to add the first note.";
     const structureWarnings = scoreUi.draftWarnings(draft);
     const warnings = [...(draft.review?.warnings || []), ...structureWarnings];
@@ -1383,7 +1392,21 @@
       return;
     }
     elements.resultScore.hidden = false;
-    scoreUi.render(elements.resultScore, scoreDraftFromExercise(exercise), state.activeEventIndex, selectEvent);
+    const eventStart = Number(exercise?.section?.eventStart || 0);
+    const hasWholeScore = (state.scoreDraft?.score?.melody?.length || 0) > (exercise.events?.length || 0);
+    const draft = hasWholeScore ? scoreUi.cloneDraft(state.scoreDraft) : scoreDraftFromExercise(exercise);
+    if (hasWholeScore) {
+      (exercise.events || []).forEach((event, index) => {
+        const target = draft.score.melody[eventStart + index];
+        if (!target) return;
+        target.pitch = event.resolvedPitch || event.resolvedNote || target.pitch;
+        target.pitchValue = event.pitchValue ?? target.pitchValue;
+        target.pitches = scorePitchesForEvent(event);
+      });
+    }
+    scoreUi.render(elements.resultScore, draft, eventStart + state.activeEventIndex, (index) => {
+      if (index >= eventStart && index < eventStart + exercise.events.length) selectEvent(index - eventStart);
+    });
     const ornaments = route?.generatedOrnaments || [];
     if (ornaments.length) {
       const note = doc.createElement("p");
@@ -1695,7 +1718,7 @@
       subtitle.textContent = song.subtitle || "Reviewed public-domain teaching version";
       const facts = doc.createElement("div");
       facts.className = "catalog-card__facts";
-      [song.key, song.meter, song.difficulty, song.feel, `${song.eventCount} notes`, `${song.sectionCount} ${song.sectionCount === 1 ? "section" : "sections"}`].filter(Boolean).forEach((value) => {
+      [song.formLabel, song.key, song.meter, song.difficulty, song.feel, `${song.eventCount} notes`, `${song.measureCount} measures`, `${song.sectionCount} ${song.sectionCount === 1 ? "phrase" : "phrases"}`].filter(Boolean).forEach((value) => {
         const fact = doc.createElement("span");
         fact.textContent = value;
         facts.appendChild(fact);
@@ -1707,7 +1730,7 @@
       button.className = "primary-action";
       button.textContent = "Review melody";
       button.addEventListener("click", async () => {
-        elements.catalogStatus.textContent = `Opening ${song.title}…`;
+        elements.catalogStatus.textContent = `Opening the complete melody for ${song.title}…`;
         try {
           hydrateScoreDraft(await importPayload({ sourceType: "catalog", catalogId: song.id }));
         } catch (error) {
@@ -2021,6 +2044,13 @@
     elements.result.hidden = false;
     elements.resultTitle.textContent = exercise?.title || "Melody lesson";
     const section = exercise?.section || {};
+    const needsSource = exercise?.status === "needs_source";
+    elements.sectionNavigation.hidden = needsSource || !section.total;
+    elements.sectionPrevious.hidden = !section.previousSection;
+    elements.sectionPrevious.dataset.section = String(section.previousSection || "");
+    elements.sectionStatus.textContent = `${section.label || `Phrase ${section.number || 1}`} · ${section.number || 1} of ${section.total || 1}`;
+    elements.sectionNext.hidden = !section.nextSection;
+    elements.sectionNext.dataset.section = String(section.nextSection || "");
     const sourceLabel = materialLabel(exercise?.material);
     elements.resultSource.replaceChildren();
     if (sourceLabel) {
@@ -2037,7 +2067,6 @@
     } else {
       elements.resultSource.hidden = true;
     }
-    const needsSource = exercise?.status === "needs_source";
     elements.sourceNeeded.hidden = !needsSource;
     elements.sourceNeeded.querySelector("p").textContent = needsSource
       ? "The recording identity is saved, but Melody Studio does not listen to the link yet. Paste notes, scale degrees, or simple one-string tab—or build the passage with the note palette—to render playable E9 positions."
@@ -2106,6 +2135,45 @@
     } finally {
       elements.build.disabled = false;
       elements.build.textContent = "Arrange for E9";
+    }
+  }
+
+  function submitSection(sectionNumber) {
+    return submitLesson(sectionNumber, { preserveStructuredEvents: Boolean(state.scoreDraft) });
+  }
+
+  async function printWholeSong() {
+    const exercise = state.response?.melodyExercise;
+    const total = Number(exercise?.section?.total || 1);
+    const selected = exercise?.routes?.find((route) => route.id === exercise.selectedRouteId);
+    const harmonyType = selected?.harmonyType;
+    const originalLabel = elements.printTab.textContent;
+    elements.printTab.disabled = true;
+    elements.printTab.textContent = total > 1 ? "Preparing full song…" : "Preparing…";
+    try {
+      const sections = [];
+      for (let number = 1; number <= total; number += 1) {
+        let response = number === Number(exercise.section.number) ? state.response : null;
+        if (!response) {
+          state.sectionNumber = number;
+          response = await answerUi.requestAnswer(questionForState(), {
+            accessRole: session?.role || readAccessRole(),
+            requestPayload: { melodyRequest: buildMelodyRequest(state) }
+          });
+        }
+        const route = response.melodyExercise?.routes?.find((item) => item.harmonyType === harmonyType)
+          || response.melodyExercise?.routes?.[0];
+        sections.push(`${response.melodyExercise?.section?.label || `Phrase ${number}`}\n${route?.tab?.tabText || response.tabs?.[0]?.tabText || ""}`);
+      }
+      elements.wholeSongTabCode.textContent = sections.join("\n\n");
+      elements.wholeSongTab.hidden = false;
+      global.print();
+    } catch (error) {
+      showError(error.message || "The complete tablature could not be prepared for printing.");
+    } finally {
+      state.sectionNumber = Number(exercise?.section?.number || 1);
+      elements.printTab.disabled = false;
+      elements.printTab.textContent = originalLabel;
     }
   }
 
@@ -2395,7 +2463,7 @@
   elements.practiceLoopStart.addEventListener("click", () => setLoopBoundary("start"));
   elements.practiceLoopEnd.addEventListener("click", () => setLoopBoundary("end"));
   elements.practiceLoopClear.addEventListener("click", clearLoop);
-  elements.printTab.addEventListener("click", () => global.print());
+  elements.printTab.addEventListener("click", printWholeSong);
   elements.octaveToggle.addEventListener("click", () => {
     state.showOctaveMap = !state.showOctaveMap;
     updateOctaveMapVisibility();
@@ -2410,7 +2478,9 @@
     updateFretboardLabelToggles();
     renderActiveFretboard();
   });
-  elements.continueButton.addEventListener("click", () => submitLesson(Number(elements.continueButton.dataset.nextSection) || state.sectionNumber + 1));
+  elements.continueButton.addEventListener("click", () => submitSection(Number(elements.continueButton.dataset.nextSection) || state.sectionNumber + 1));
+  elements.sectionPrevious.addEventListener("click", () => submitSection(Number(elements.sectionPrevious.dataset.section)));
+  elements.sectionNext.addEventListener("click", () => submitSection(Number(elements.sectionNext.dataset.section)));
   elements.editTop.addEventListener("click", editPhrase);
   elements.edit.addEventListener("click", editPhrase);
   elements.sourceNeeded.querySelector("[data-edit-source]").addEventListener("click", editPhrase);

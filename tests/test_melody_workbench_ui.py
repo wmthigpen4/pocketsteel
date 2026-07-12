@@ -30,7 +30,7 @@ assert.deepEqual(studio.parsePhraseInput("g a b d"), ["G", "A", "B", "D"]);
 assert.deepEqual(studio.parsePhraseInput("S4: 3 5 7 10"), ["G", "A", "B", "D"]);
 assert.equal(studio.noteAtFret(4, 3), "G");
 assert.equal(studio.noteAtFret(5, 1), "C");
-assert.equal(studio.sectionCount(["1", "2", "3", "4", "5", "6", "7", "1", "2"]), 2);
+assert.equal(studio.sectionCount(Array.from({ length: 17 }, () => "1")), 2);
 assert.deepEqual(studio.reorderToken(["1", "2", "3"], 1, -1), ["2", "1", "3"]);
 assert.equal(studio.validateTokens(["1", "2", "3"], "G").ok, true);
 assert.equal(studio.validateTokens(["G", "A", "B", "D"], "G").ok, true);
@@ -64,6 +64,8 @@ assert.equal(artistPayload.material.artist, "Example Artist");
 assert.equal(artistPayload.renderingMode, "transcription");
 assert.equal(artistPayload.contourMode, "closest_playable");
 assert.equal(artistPayload.texture, "both");
+artist.scoreDraft = {score: {sections: [{label: "Verse", startMeasure: 1, endMeasure: 4}]}};
+assert.deepEqual(studio.buildMelodyRequest(artist).sections, [{label: "Verse", startMeasure: 1, endMeasure: 4}]);
 
 const original = studio.createInitialState("original_exercise");
 Object.assign(original, { tokens: ["1", "3", "5"], artist: "Stale Artist", sourceUrl: "https://example.test/stale" });
@@ -217,6 +219,8 @@ assert.equal("pitches" in octaveUp.score.melody[0], false);
 const chordEventDraft = score.reflowDraft({...draft, score: {...draft.score, melody: [{pitchValue: 67, pitches: [59, 67], durationBeats: 1}]}});
 assert.deepEqual(chordEventDraft.score.melody[0].pitches, [59, 67]);
 assert.deepEqual(score.transposeDraft(chordEventDraft, 12).score.melody[0].pitches, [71, 79]);
+const reviewed = score.reflowDraft({...draft, score: {...draft.score, sections: [{label: "Phrase 1", startMeasure: 5, endMeasure: 8}], melody: [{pitchValue: 67, pitch: "G4", measure: 5, beat: 2, durationBeats: 1}]}});
+assert.deepEqual(reviewed.score.melody.map((event) => [event.measure, event.beat]), [[5, 2]]);
 const xml = score.musicXmlForDraft(draft);
 assert.match(xml, /<work-title>Amazing Grace sketch<\/work-title>/);
 assert.match(xml, /<time><beats>3<\/beats>/);
@@ -309,9 +313,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Change the register for this note only" in html
     assert "state.selectedPhraseIndex" in script
     assert html.count("?v=melody-multi-input-20260711-3") == 1
-    assert html.count("?v=melody-songbook-20260712-1") == 1
-    assert html.count("?v=melody-result-layout-20260712-1") == 1
-    assert html.count("?v=melody-route-score-20260711-1") == 1
+    assert html.count("?v=melody-full-song-20260712-1") == 3
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in html
     assert "VexFlow" in Path("ui/vendor/VEXFLOW-LICENSE.txt").read_text(encoding="utf-8")
     assert html.index('id="studio-fretboard"') < html.index('id="studio-tab"')
@@ -403,9 +405,16 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'id="studio-score-print"' not in html
     assert "Print score" not in html
     assert '#studio-result-score, .arrangement-choices' in html
-    assert '#studio-tab { display: block !important;' in html
+    assert '#studio-tab { display: none !important;' in html
+    assert '#studio-whole-song-tab { display: block !important;' in html
+    assert 'id="studio-section-navigation"' in html
+    assert 'id="studio-section-previous"' in html
+    assert 'id="studio-section-next"' in html
+    assert 'id="studio-whole-song-tab-code"' in html
+    assert 'state.scoreDraft?.score?.sections' in script
+    assert 'async function printWholeSong()' in script
     assert 'elements.printRoute.textContent = `Arrangement: ${routeButtonLabel(route)}`;' in script
-    assert 'elements.printTab.addEventListener("click", () => global.print());' in script
+    assert 'elements.printTab.addEventListener("click", printWholeSong);' in script
     assert "addKeySignature" in Path("ui/melody-score.js").read_text(encoding="utf-8")
     assert "generateBeams" in Path("ui/melody-score.js").read_text(encoding="utf-8")
     assert "togglePractice" in script

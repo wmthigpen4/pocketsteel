@@ -330,6 +330,8 @@
     .tab-block { max-width: 100%; margin: 0; overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; background: rgba(4, 6, 6, 0.78); padding: 16px; color: var(--cream); font: 15px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre; }
     .tab-block code { font: inherit; white-space: inherit; }
     .result-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
+    .section-navigation { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; margin: 0 0 16px; }
+    .section-navigation strong { text-align: center; color: var(--gold); }
     .unavailable { max-width: 720px; margin: 0 auto; text-align: center; }
 
     @media (max-width: 640px) {
@@ -369,7 +371,8 @@
       #studio-result .result-head { display: block; color: #111; }
       #studio-result-title, #studio-result-source, #studio-print-route { color: #111; }
       #studio-print-route { display: block !important; margin: 8px 0 16px; font-weight: 800; }
-      #studio-tab { display: block !important; margin: 0; }
+      #studio-tab { display: none !important; }
+      #studio-whole-song-tab { display: block !important; margin: 0; }
       .tab-block { overflow: visible; border: 1px solid #222; border-radius: 0; background: #fff; padding: 14px; color: #111; font: 10pt/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre; }
     }
   </style>
@@ -629,6 +632,12 @@
           <p class="print-only" id="studio-print-route"></p>
         </div>
 
+        <nav class="section-navigation" id="studio-section-navigation" aria-label="Song phrases" hidden>
+          <button class="secondary-action" id="studio-section-previous" type="button">← Previous phrase</button>
+          <strong id="studio-section-status" aria-live="polite"></strong>
+          <button class="secondary-action" id="studio-section-next" type="button">Next phrase →</button>
+        </nav>
+
         <div id="studio-source-needed" hidden>
           <h3>Build or paste the passage</h3>
           <p></p>
@@ -692,6 +701,9 @@
         <div id="studio-tab" hidden>
           <pre class="tab-block" aria-label="Melody Studio tab"><code id="studio-tab-code"></code></pre>
         </div>
+        <div class="print-only" id="studio-whole-song-tab" hidden>
+          <pre class="tab-block" aria-label="Complete Melody Studio tablature"><code id="studio-whole-song-tab-code"></code></pre>
+        </div>
         <div class="result-actions">
           <button class="primary-action" id="studio-continue" type="button" hidden>Continue</button>
           <button class="secondary-action" id="studio-edit" type="button">Edit melody</button>
@@ -702,10 +714,10 @@
     </div>
   </main>
 
-  <script src="answer-client.js?v=melody-songbook-20260712-1"></script>
+  <script src="answer-client.js?v=melody-full-song-20260712-1"></script>
   <script src="pedal-steel-fretboard.js?v=melody-multi-input-20260711-3"></script>
   <script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>
-  <script src="melody-score.js?v=melody-route-score-20260711-1"></script>
-  <script src="melody-workbench.js?v=melody-result-layout-20260712-1"></script>
+  <script src="melody-score.js?v=melody-full-song-20260712-1"></script>
+  <script src="melody-workbench.js?v=melody-full-song-20260712-1"></script>
 </body>
 </html>

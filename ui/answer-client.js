@@ -708,7 +708,12 @@ const STEEL_RAG_ANSWER_UI = (() => {
         total: section.total ?? null,
         label: firstTextValue(section.label, `Section ${section.number || 1}`),
         hasMore: Boolean(section.hasMore ?? section.has_more),
-        nextSection: section.nextSection ?? section.next_section ?? null
+        previousSection: section.previousSection ?? section.previous_section ?? null,
+        nextSection: section.nextSection ?? section.next_section ?? null,
+        eventStart: section.eventStart ?? section.event_start ?? 0,
+        eventEnd: section.eventEnd ?? section.event_end ?? events.length,
+        measureStart: section.measureStart ?? section.measure_start ?? null,
+        measureEnd: section.measureEnd ?? section.measure_end ?? null
       },
       events,
       routes,
