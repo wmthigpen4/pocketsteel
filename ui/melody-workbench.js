@@ -764,6 +764,7 @@
   let catalogSongs = [];
 
   const elements = {
+    hero: $(".studio-hero"),
     unavailable: $("#studio-unavailable"),
     workflow: $("#studio-workflow"),
     phaseLabel: $("#studio-phase-label"),
@@ -889,6 +890,7 @@
     practiceCountIn: $("#studio-practice-count-in"),
     practiceChords: $("#studio-practice-chords"),
     practiceChordOption: $("#studio-practice-chord-option"),
+    practiceLoopPanel: $("#studio-practice-loop-panel"),
     practiceLoopMeasure: $("#studio-practice-loop-measure"),
     practiceLoopStart: $("#studio-practice-loop-start"),
     practiceLoopEnd: $("#studio-practice-loop-end"),
@@ -898,7 +900,6 @@
     printRoute: $("#studio-print-route"),
     arrangementChoices: $("#studio-arrangement-choices"),
     routeTabs: $("#studio-route-tabs"),
-    routeReason: $("#studio-route-reason"),
     sourceNeeded: $("#studio-source-needed"),
     fretboard: $("#studio-fretboard"),
     octaveMapControls: $("#studio-octave-map-controls"),
@@ -913,6 +914,7 @@
     tab: $("#studio-tab"),
     tabCode: $("#studio-tab-code"),
     continueButton: $("#studio-continue"),
+    editTop: $("#studio-edit-top"),
     edit: $("#studio-edit"),
   };
 
@@ -1972,7 +1974,6 @@
       button.classList.toggle("is-selected", selected);
       button.setAttribute("aria-pressed", String(selected));
     });
-    elements.routeReason.textContent = route.recommendation || route.movementSummary || "";
     elements.printRoute.textContent = `Arrangement: ${routeButtonLabel(route)}`;
     elements.practiceChordOption.hidden = !hasChordContext(exercise.events);
     if (elements.practiceChordOption.hidden) elements.practiceChords.checked = false;
@@ -2015,6 +2016,7 @@
     state.workflowPhase = "result";
     state.activeEventIndex = 0;
     const exercise = response.melodyExercise;
+    elements.hero.hidden = true;
     elements.editor.hidden = true;
     elements.result.hidden = false;
     elements.resultTitle.textContent = exercise?.title || "Melody lesson";
@@ -2046,8 +2048,9 @@
     elements.tab.hidden = needsSource || !response.tabs?.length;
     elements.resultScore.hidden = needsSource;
     elements.practice.hidden = needsSource || !exercise?.events?.length;
+    elements.practiceLoopPanel.hidden = needsSource || (exercise?.events?.length || 0) < 8;
+    if (elements.practiceLoopPanel.hidden) elements.practiceLoopPanel.open = false;
     elements.arrangementChoices.hidden = needsSource;
-    elements.routeReason.hidden = needsSource;
     elements.practiceChordOption.hidden = needsSource || !hasChordContext(exercise?.events);
     if (elements.practiceChordOption.hidden) elements.practiceChords.checked = false;
     updateOctaveMapVisibility();
@@ -2138,6 +2141,7 @@
   function editPhrase() {
     stopPractice();
     state.workflowPhase = hasMelodyContent() ? "review" : "add";
+    elements.hero.hidden = false;
     elements.result.hidden = true;
     elements.editor.hidden = false;
     renderStartingPoint();
@@ -2158,6 +2162,7 @@
     elements.audioFileControls.hidden = true;
     elements.editor.hidden = false;
     elements.result.hidden = true;
+    elements.hero.hidden = false;
     renderStartingPoint();
     renderPalette();
     renderPhraseBuilder();
@@ -2406,6 +2411,7 @@
     renderActiveFretboard();
   });
   elements.continueButton.addEventListener("click", () => submitLesson(Number(elements.continueButton.dataset.nextSection) || state.sectionNumber + 1));
+  elements.editTop.addEventListener("click", editPhrase);
   elements.edit.addEventListener("click", editPhrase);
   elements.sourceNeeded.querySelector("[data-edit-source]").addEventListener("click", editPhrase);
   elements.result.querySelector("[data-start-over]").addEventListener("click", startOver);

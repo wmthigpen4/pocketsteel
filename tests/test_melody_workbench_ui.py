@@ -309,7 +309,8 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Change the register for this note only" in html
     assert "state.selectedPhraseIndex" in script
     assert html.count("?v=melody-multi-input-20260711-3") == 1
-    assert html.count("?v=melody-songbook-20260712-1") == 2
+    assert html.count("?v=melody-songbook-20260712-1") == 1
+    assert html.count("?v=melody-result-layout-20260712-1") == 1
     assert html.count("?v=melody-route-score-20260711-1") == 1
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in html
     assert "VexFlow" in Path("ui/vendor/VEXFLOW-LICENSE.txt").read_text(encoding="utf-8")
@@ -387,8 +388,17 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'id="studio-practice-loop-measure"' in html
     assert 'id="studio-practice-loop-start"' in html
     assert 'id="studio-practice-loop-end"' in html
+    assert 'id="studio-practice-loop-panel" hidden' in html
+    assert '>Loop options</summary>' in html
     assert 'id="studio-print-tab"' in html
-    assert '>Print tablature</button>' in html
+    assert '>Print</button>' in html
+    assert html.index('id="studio-tab"') < html.index('id="studio-print-tab"')
+    assert html.index('data-start-over') < html.index('id="studio-print-tab"')
+    assert html.index('id="studio-fretboard"') < html.index('id="studio-octave-map-controls"') < html.index('id="studio-arrangement-choices"')
+    assert 'id="studio-route-reason"' not in html
+    assert 'id="studio-edit-top"' in html
+    assert 'elements.hero.hidden = true;' in script
+    assert 'elements.practiceLoopPanel.hidden = needsSource || (exercise?.events?.length || 0) < 8;' in script
     assert 'id="studio-print-route"' in html
     assert 'id="studio-score-print"' not in html
     assert "Print score" not in html

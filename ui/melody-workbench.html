@@ -164,12 +164,20 @@
     .score-status, .privacy-note { margin: 12px 0 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
     .score-warnings { margin: 10px 0 0; color: #ffd7af; }
     .generated-ornament-note { margin: 8px 4px 0; color: #8a4b13; font-size: 12px; font-weight: 800; }
-    .practice-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 12px 0 18px; border: 1px solid rgba(240, 191, 105, 0.18); border-radius: 14px; background: rgba(240, 191, 105, 0.055); padding: 12px; }
+    .practice-bar { display: grid; gap: 10px; margin: 12px 0 18px; border: 1px solid rgba(240, 191, 105, 0.18); border-radius: 14px; background: rgba(240, 191, 105, 0.055); padding: 12px; }
+    .practice-core { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
     .practice-bar .field { display: flex; align-items: center; gap: 8px; min-width: 0; }
     .practice-bar .field input[type="range"] { width: 130px; padding: 0; }
     .practice-check { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 13px; font-weight: 750; }
     .practice-check input { accent-color: var(--gold); }
     .practice-status { color: var(--muted); font-size: 12px; font-weight: 750; }
+    .practice-loop-panel { border-top: 1px solid rgba(244, 234, 214, 0.1); padding-top: 8px; }
+    .practice-loop-panel > summary { width: fit-content; cursor: pointer; color: var(--muted); font-size: 13px; font-weight: 800; list-style: none; }
+    .practice-loop-panel > summary::-webkit-details-marker { display: none; }
+    .practice-loop-panel > summary::before { content: "+"; display: inline-block; width: 18px; color: var(--gold); }
+    .practice-loop-panel[open] > summary::before { content: "−"; }
+    .practice-loop-row { display: flex; align-items: center; gap: 8px; margin-top: 9px; overflow-x: auto; padding-bottom: 2px; }
+    .practice-loop-row > * { flex: 0 0 auto; }
     .source-preview { max-width: min(520px, 100%); max-height: 360px; display: block; margin: 12px auto; border: 1px solid var(--line); border-radius: 14px; object-fit: contain; }
     .catalog-controls { display: grid; grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(130px, 180px)); gap: 10px; margin-bottom: 14px; }
     .catalog-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
@@ -270,6 +278,8 @@
 
     #studio-result { margin-top: 24px; scroll-margin-top: 20px; }
     .result-head { display: grid; gap: 9px; margin-bottom: 18px; }
+    .result-title-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 18px; }
+    .result-title-row .secondary-action { border-color: rgba(240, 191, 105, 0.58); background: rgba(240, 191, 105, 0.11); }
     #studio-result-source { margin: 0; color: var(--muted); }
     .print-only { display: none; }
     .arrangement-choices { display: grid; gap: 8px; margin: 12px 0 4px; }
@@ -277,7 +287,6 @@
     .route-tabs { max-width: 100%; display: flex; flex-wrap: nowrap; gap: 8px; margin: 0; overflow-x: auto; padding: 2px 0 5px; scrollbar-width: thin; }
     .route-tab { min-height: 40px; border: 1px solid var(--line); border-radius: 999px; background: rgba(5, 7, 7, 0.55); color: var(--muted); cursor: pointer; padding: 0 14px; font-weight: 800; }
     .route-tab.is-selected { border-color: var(--gold); background: rgba(240, 191, 105, 0.14); color: var(--cream); }
-    #studio-route-reason { margin: 0; color: var(--muted); line-height: 1.5; }
     #studio-source-needed { border: 1px solid var(--line); border-radius: 18px; background: rgba(240, 191, 105, 0.07); padding: 20px; }
     #studio-source-needed p { color: var(--muted); line-height: 1.6; }
     #studio-fretboard { margin-top: 18px; }
@@ -344,7 +353,7 @@
       .event-step__position { grid-column: 1 / -1; }
       .tab-block { white-space: pre; overflow-x: auto; }
       .score-keyboard { grid-template-columns: repeat(6, minmax(42px, 1fr)); }
-      .practice-bar .field { flex: 1 1 100%; }
+      .practice-core .field { flex: 1 1 100%; }
     }
     @media print {
       @page { size: landscape; margin: 0.5in; }
@@ -598,7 +607,10 @@
 
       <section class="studio-panel" id="studio-result" hidden aria-labelledby="studio-result-title">
         <div class="result-head">
-          <h2 id="studio-result-title">Your E9 lesson</h2>
+          <div class="result-title-row">
+            <h2 id="studio-result-title">Your E9 lesson</h2>
+            <button class="secondary-action" id="studio-edit-top" type="button">Edit melody</button>
+          </div>
           <p id="studio-result-source" hidden></p>
           <p class="print-only" id="studio-print-route"></p>
         </div>
@@ -612,44 +624,50 @@
         <div class="score-canvas" id="studio-result-score" aria-label="Lesson melody staff" hidden></div>
 
         <div class="practice-bar" id="studio-practice" hidden aria-label="Score practice controls">
-          <button class="primary-action" type="button" id="studio-practice-play">Play</button>
-          <button class="secondary-action" type="button" id="studio-practice-stop">Stop</button>
-          <label class="field">Tempo <input id="studio-practice-tempo" type="range" min="40" max="180" step="2" value="80"><output id="studio-practice-tempo-value">80 BPM</output></label>
-          <label class="practice-check"><input id="studio-practice-count-in" type="checkbox" checked>Count in</label>
-          <label class="practice-check" id="studio-practice-chord-option" hidden title="Adds simple backing from chord symbols in the score."><input id="studio-practice-chords" type="checkbox">Play chord backing</label>
-          <button class="secondary-action" type="button" id="studio-practice-loop-measure">Loop measure</button>
-          <button class="secondary-action" type="button" id="studio-practice-loop-start">Set loop start</button>
-          <button class="secondary-action" type="button" id="studio-practice-loop-end">Set loop end</button>
-          <button class="secondary-action" type="button" id="studio-practice-loop-clear">Clear loop</button>
-          <span class="practice-status" id="studio-practice-loop-status" aria-live="polite">Loop off</span>
-          <button class="secondary-action" type="button" id="studio-print-tab">Print tablature</button>
+          <div class="practice-core">
+            <button class="primary-action" type="button" id="studio-practice-play">Play</button>
+            <button class="secondary-action" type="button" id="studio-practice-stop">Stop</button>
+            <label class="field">Tempo <input id="studio-practice-tempo" type="range" min="40" max="180" step="2" value="80"><output id="studio-practice-tempo-value">80 BPM</output></label>
+            <label class="practice-check"><input id="studio-practice-count-in" type="checkbox" checked>Count in</label>
+            <label class="practice-check" id="studio-practice-chord-option" hidden title="Adds simple backing from chord symbols in the score."><input id="studio-practice-chords" type="checkbox">Play chord backing</label>
+          </div>
+          <details class="practice-loop-panel" id="studio-practice-loop-panel" hidden>
+            <summary>Loop options</summary>
+            <div class="practice-loop-row">
+              <button class="secondary-action" type="button" id="studio-practice-loop-measure">Loop measure</button>
+              <button class="secondary-action" type="button" id="studio-practice-loop-start">Set loop start</button>
+              <button class="secondary-action" type="button" id="studio-practice-loop-end">Set loop end</button>
+              <button class="secondary-action" type="button" id="studio-practice-loop-clear">Clear loop</button>
+              <span class="practice-status" id="studio-practice-loop-status" aria-live="polite">Loop off</span>
+            </div>
+          </details>
         </div>
 
         <div id="studio-fretboard" aria-label="Melody Studio fretboard"></div>
 
+        <div class="octave-map-controls" id="studio-octave-map-controls" hidden>
+          <div class="octave-control">
+            <button class="studio-display-toggle" type="button" id="studio-octave-toggle" aria-pressed="false"><span class="octave-toggle-mark" aria-hidden="true">✓</span>Octave colors</button>
+            <div class="octave-guide" id="studio-octave-guide" aria-label="Scientific octave color guide" hidden>
+              <span class="octave-guide__item" data-scientific-octave="2" aria-label="Octave 2 — C2 through B2" title="C2 through B2"><i class="octave-guide__swatch" aria-hidden="true"></i>2</span>
+              <span class="octave-guide__item" data-scientific-octave="3" aria-label="Octave 3 — C3 through B3" title="C3 through B3"><i class="octave-guide__swatch" aria-hidden="true"></i>3</span>
+              <span class="octave-guide__item" data-scientific-octave="4" aria-label="Octave 4 — C4 through B4" title="C4 through B4"><i class="octave-guide__swatch" aria-hidden="true"></i>4</span>
+              <span class="octave-guide__item" data-scientific-octave="5" aria-label="Octave 5 — C5 through B5" title="C5 through B5"><i class="octave-guide__swatch" aria-hidden="true"></i>5</span>
+              <span class="octave-guide__item" data-scientific-octave="6" aria-label="Octave 6 — C6 through B6" title="C6 through B6"><i class="octave-guide__swatch" aria-hidden="true"></i>6</span>
+            </div>
+          </div>
+          <div class="marker-controls">
+            <button class="studio-display-toggle" type="button" id="studio-string-label-toggle" aria-pressed="false"><span class="octave-toggle-mark" aria-hidden="true">✓</span>String labels</button>
+            <button class="studio-display-toggle" type="button" id="studio-note-label-toggle" aria-pressed="true"><span class="octave-toggle-mark" aria-hidden="true">✓</span>Note labels</button>
+          </div>
+        </div>
+
         <div class="arrangement-choices" id="studio-arrangement-choices" hidden>
           <strong>Arrangement</strong>
           <div class="route-tabs" id="studio-route-tabs" aria-label="Melody arrangement routes"></div>
-          <p id="studio-route-reason" hidden></p>
         </div>
 
         <div id="studio-transport" hidden>
-          <div class="octave-map-controls" id="studio-octave-map-controls" hidden>
-            <div class="octave-control">
-              <button class="studio-display-toggle" type="button" id="studio-octave-toggle" aria-pressed="false"><span class="octave-toggle-mark" aria-hidden="true">✓</span>Octave colors</button>
-              <div class="octave-guide" id="studio-octave-guide" aria-label="Scientific octave color guide" hidden>
-                <span class="octave-guide__item" data-scientific-octave="2" aria-label="Octave 2 — C2 through B2" title="C2 through B2"><i class="octave-guide__swatch" aria-hidden="true"></i>2</span>
-                <span class="octave-guide__item" data-scientific-octave="3" aria-label="Octave 3 — C3 through B3" title="C3 through B3"><i class="octave-guide__swatch" aria-hidden="true"></i>3</span>
-                <span class="octave-guide__item" data-scientific-octave="4" aria-label="Octave 4 — C4 through B4" title="C4 through B4"><i class="octave-guide__swatch" aria-hidden="true"></i>4</span>
-                <span class="octave-guide__item" data-scientific-octave="5" aria-label="Octave 5 — C5 through B5" title="C5 through B5"><i class="octave-guide__swatch" aria-hidden="true"></i>5</span>
-                <span class="octave-guide__item" data-scientific-octave="6" aria-label="Octave 6 — C6 through B6" title="C6 through B6"><i class="octave-guide__swatch" aria-hidden="true"></i>6</span>
-              </div>
-            </div>
-            <div class="marker-controls">
-              <button class="studio-display-toggle" type="button" id="studio-string-label-toggle" aria-pressed="false"><span class="octave-toggle-mark" aria-hidden="true">✓</span>String labels</button>
-              <button class="studio-display-toggle" type="button" id="studio-note-label-toggle" aria-pressed="true"><span class="octave-toggle-mark" aria-hidden="true">✓</span>Note labels</button>
-            </div>
-          </div>
           <div class="note-navigator-row">
             <button class="navigator-arrow" type="button" id="studio-previous" aria-label="Previous note">←</button>
             <div class="event-strip" id="studio-event-strip" aria-label="Lesson note steps"></div>
@@ -664,6 +682,7 @@
           <button class="primary-action" id="studio-continue" type="button" hidden>Continue</button>
           <button class="secondary-action" id="studio-edit" type="button">Edit melody</button>
           <button class="secondary-action" type="button" data-start-over>Start over</button>
+          <button class="secondary-action" type="button" id="studio-print-tab">Print</button>
         </div>
       </section>
     </div>
@@ -673,6 +692,6 @@
   <script src="pedal-steel-fretboard.js?v=melody-multi-input-20260711-3"></script>
   <script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>
   <script src="melody-score.js?v=melody-route-score-20260711-1"></script>
-  <script src="melody-workbench.js?v=melody-songbook-20260712-1"></script>
+  <script src="melody-workbench.js?v=melody-result-layout-20260712-1"></script>
 </body>
 </html>
