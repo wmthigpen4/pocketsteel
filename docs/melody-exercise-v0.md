@@ -12,7 +12,7 @@ The accuracy boundary remains strict:
 - E9 adaptations and teaching simplifications must be labeled as adaptations or simplifications.
 - Uncertain passages must be labeled `approximate` or `interpretive`, with confidence and an explanation.
 - Missing source material should produce a useful request for the recording/link, uploaded passage, pasted notes/tab, or exact artist/version/section.
-- Long material is divided at reviewed musical phrase boundaries, normally four measures at a time. Manual note lists without measure data use a 16-event fallback. The app starts with the selected phrase or Phrase 1 and exposes previous/next navigation.
+- Reviewed songbook material is rendered as one continuous complete-song lesson so the full score, tablature, playback, and loop controls share the same timeline. Manual note lists and non-catalog requests may still use labeled sections, with a 16-event fallback when no measure data exists.
 
 Public-domain status and licensing records may be preserved as attribution or provenance, but they are not feature gates. Ordinary song and solo teaching does not require a rights attestation.
 
@@ -29,7 +29,8 @@ Supported request fields:
 - `contourMode`: `closest_playable` (default), `ascending`, `descending`, or `preserve_input`.
 - `texture`: `both` (default), `single_note`, `automatic_harmony`, `thirds`, `sixths`, or `chord_melody`.
 - `sectionNumber`: requested section, starting at 1.
-- `sections`: optional reviewed phrase labels with `startMeasure` and `endMeasure`. Catalog melodies use these boundaries instead of arbitrary event counts.
+- `sections`: optional reviewed phrase labels with `startMeasure` and `endMeasure`, retained as internal form metadata.
+- `wholeSong`: optional boolean. When true, every supplied melody event is arranged in one continuous lesson and the response has one `Complete song` section.
 - `renderingMode`: `transcription`, `e9_adaptation`, or `teaching_simplification`.
 - `accuracy`: requested `exact`, `approximate`, or `interpretive` label. Exact artist-material claims are downgraded when no source is identified.
 - `material`: artist, song, recording/version, section, source URL, and source reference.
@@ -74,9 +75,9 @@ The dedicated lesson view is fretboard-first. Its header contains only the lesso
 
 The note navigator shows one active event at a time, with `Note N of M`, resolved pitch, and plain steel instructions such as `Strings 5, 6 & 7 · Fret 10 · A+B`. Previous/next controls move through any phrase length without creating a row of one pill per note; the fixed-width tab remains the whole-phrase overview. It does not repeat the selection in a separate current-note block or deterministic implementation explanation. Navigation and playback must visibly select the matching `renderablePositionId` in the fretboard component.
 
-Display toggles independently control Octave colors, compact string/action labels inside active marker bubbles (`6B`, `5A`, or plain `6` when open), and the resolved top-note label above the active position. Octave colors default off. Their legend sits immediately beside the Octave colors control and remains hidden until the control is enabled. Complete songs retain the whole lead sheet and expose persistent Previous phrase / Next phrase navigation using the existing `sectionNumber` request field. Mobile layout keeps route and octave rows horizontally scrollable, retains one readable active-note card between the arrows, and keeps fixed-width tab inside its own horizontal scroller.
+Display toggles independently control Octave colors, compact string/action labels inside active marker bubbles (`6B`, `5A`, or plain `6` when open), and the resolved top-note label above the active position. Octave colors default off. Their legend sits immediately beside the Octave colors control and remains hidden until the control is enabled. Reviewed complete songs show the whole lead sheet and whole selected-route tablature at once; note navigation and playback move through that single continuous timeline. Mobile layout keeps route and octave rows horizontally scrollable, retains one readable active-note card between the arrows, and keeps fixed-width tab inside its own horizontal scroller.
 
-The reviewed public-domain songbook stores one complete melodic cycle per title: a verse plus a distinct chorus or refrain when the music changes, or one complete melody when additional lyrical verses reuse the same tune. Catalog cards disclose the form, note count, measure count, and phrase count. Eight-note excerpts are not catalog deliverables.
+The reviewed public-domain songbook stores one complete melodic cycle per title: a verse plus a distinct chorus or refrain when the music changes, or one complete melody when additional lyrical verses reuse the same tune. Catalog cards disclose the form, note count, measure count, and phrase count. Phrase metadata describes the form but does not split the player-facing lesson. Eight-note excerpts are not catalog deliverables.
 
 Rhythm remains part of the score contract because faithful transcription and playback need note lengths, but duration editing is progressive rather than a primary decision: new-note length lives under **Score setup**, and an existing note's duration lives under **Selected note details**. Melody-only results do not show a chord-audio control. When real chord symbols are present, the practice bar may show **Play chord backing**, which adds synthesized chord support during playback; it is independent of whether the melody is displayed on a treble clef.
 
@@ -105,7 +106,7 @@ The feature is controlled by `STEEL_RAG_ENABLE_MELODY_EXERCISE`, which defaults 
 - `5 6 1 3 2 1 3` resolves as a continuous octave-aware contour rather than resetting every tonic to one fixed fret.
 - Default ready lessons include a single-note route and, when mechanically available in the resolved register, a recommended harmony route with two or three validated notes per event.
 - Pasted literal tab retains string, fret, controls, and register exactly.
-- Long inputs continue through labeled musical phrases instead of failing, and reviewed songbook examples render their complete melodic form.
+- Reviewed songbook examples render every event of their complete melodic form in one continuous score and tab; other long inputs may continue through labeled sections instead of failing.
 - Complete-song printing includes all phrase sections of the selected arrangement route.
 - Invalid tuning, key, note, string, fret, or control combinations render no tab/fretboard.
 - Attribution and accuracy labels survive API and frontend normalization.

@@ -84,7 +84,18 @@ def melody_exercise_response(
     tokens = [_melody_token(item) for item in raw_melody]
     if any(not token and not (isinstance(item, Mapping) and "string" in item and "fret" in item) for token, item in zip(tokens, raw_melody)):
         raise MelodyExerciseError("Each melody event needs a note name or scale degree from 1 through 7.")
-    sections = _section_spans(raw_melody, structured.get("sections"))
+    whole_song = bool(structured.get("wholeSong") or structured.get("whole_song"))
+    sections = (
+        [{
+            "label": "Complete song",
+            "eventStart": 0,
+            "eventEnd": len(raw_melody),
+            "measureStart": _first_measure(raw_melody),
+            "measureEnd": _last_measure(raw_melody),
+        }]
+        if whole_song
+        else _section_spans(raw_melody, structured.get("sections"))
+    )
     section_number = _positive_int(structured.get("sectionNumber") or structured.get("section_number"), 1)
     total_sections = len(sections)
     if section_number > total_sections:
@@ -121,7 +132,7 @@ def melody_exercise_response(
         accuracy_note = requested_accuracy_note
 
     tab_id = f"melody-{key.lower()}-section-{section_number}"
-    title = _exercise_title(kind, material, key, section_number)
+    title = _exercise_title(kind, material, key, section_number, whole_song=whole_song)
     contour_mode = str(structured.get("contourMode") or structured.get("contour_mode") or "closest_playable").strip().lower()
     if contour_mode not in SUPPORTED_CONTOURS:
         raise MelodyExerciseError("Contour mode must be closest playable, ascending, descending, or preserve input.")
@@ -312,6 +323,27 @@ def _section_spans(raw_melody: list[Any], requested_sections: Any) -> list[dict[
     ]
 
 
+def _first_measure(raw_melody: list[Any]) -> int | None:
+    measures = [_event_measure(item) for item in raw_melody]
+    present = [measure for measure in measures if measure is not None]
+    return min(present) if present else None
+
+
+def _last_measure(raw_melody: list[Any]) -> int | None:
+    measures = [_event_measure(item) for item in raw_melody]
+    present = [measure for measure in measures if measure is not None]
+    return max(present) if present else None
+
+
+def _event_measure(item: Any) -> int | None:
+    if not isinstance(item, Mapping) or item.get("measure") is None:
+        return None
+    try:
+        return int(item.get("measure"))
+    except (TypeError, ValueError):
+        return None
+
+
 def _material_payload(value: Any, question: str) -> dict[str, str]:
     request = value if isinstance(value, Mapping) else {}
     nested = request.get("material")
@@ -358,10 +390,17 @@ def _kind_for_question(question: str) -> str:
     return "user_melody"
 
 
-def _exercise_title(kind: str, material: Mapping[str, str], key: str, section: int) -> str:
+def _exercise_title(
+    kind: str,
+    material: Mapping[str, str],
+    key: str,
+    section: int,
+    *,
+    whole_song: bool = False,
+) -> str:
     label = _material_label(material)
     if label:
-        return f"{label} — Section {section} E9 lesson"
+        return f"{label} — Complete E9 lesson" if whole_song else f"{label} — Section {section} E9 lesson"
     kind_label = {
         "artist_solo_lesson": "Artist solo lesson",
         "song_arrangement_lesson": "Song arrangement lesson",

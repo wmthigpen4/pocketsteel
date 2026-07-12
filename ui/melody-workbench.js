@@ -216,7 +216,10 @@
     };
     if (state.tokens?.length) request.melody = [...state.tokens];
     const sections = state.scoreDraft?.score?.sections;
-    if (Array.isArray(sections) && sections.length) request.sections = sections.map((section) => ({ ...section }));
+    if (Array.isArray(sections) && sections.length) {
+      request.sections = sections.map((section) => ({ ...section }));
+      request.wholeSong = true;
+    }
     const transcription = state.scoreDraft?.transcription;
     if (transcription) {
       request.accuracy = "approximate";
@@ -1088,7 +1091,7 @@
     const count = sectionCount(state.tokens);
     elements.sectionCount.textContent = state.tokens.length
       ? `${state.tokens.length} notes · ${count} ${count === 1 ? "section" : "sections"}`
-      : "Long melodies are divided at musical phrase boundaries.";
+      : "Complete songbook melodies appear as one continuous score and tab.";
   }
 
   function renderEntryChoices(startingPoint = state.inputMethod || "phrase") {
@@ -2045,7 +2048,7 @@
     elements.resultTitle.textContent = exercise?.title || "Melody lesson";
     const section = exercise?.section || {};
     const needsSource = exercise?.status === "needs_source";
-    elements.sectionNavigation.hidden = needsSource || !section.total;
+    elements.sectionNavigation.hidden = needsSource || Number(section.total || 0) <= 1;
     elements.sectionPrevious.hidden = !section.previousSection;
     elements.sectionPrevious.dataset.section = String(section.previousSection || "");
     elements.sectionStatus.textContent = `${section.label || `Phrase ${section.number || 1}`} · ${section.number || 1} of ${section.total || 1}`;

@@ -346,24 +346,28 @@ def test_reviewed_measure_sections_use_phrase_labels_and_ranges() -> None:
     assert section["previousSection"] == 1
 
 
-def test_every_songbook_phrase_reaches_the_arranger() -> None:
+def test_every_songbook_complete_form_reaches_the_arranger_as_one_lesson() -> None:
     for card in public_song_catalog():
         draft = import_score_draft({"sourceType": "catalog", "catalogId": card["id"]})
         melody = [event for event in draft["score"]["melody"] if not event.get("rest")]
-        for section_number in range(1, len(draft["score"]["sections"]) + 1):
-            result = melody_exercise_response(
-                "Arrange this complete song",
-                {
-                    "kind": "song_arrangement_lesson",
-                    "key": draft["score"]["arrangementKey"],
-                    "melody": melody,
-                    "sections": draft["score"]["sections"],
-                    "sectionNumber": section_number,
-                },
-            )
-            assert result is not None
-            assert result["melody_exercise"]["section"]["number"] == section_number
-            assert result["melody_exercise"]["events"]
+        result = melody_exercise_response(
+            "Arrange this complete song",
+            {
+                "kind": "song_arrangement_lesson",
+                "key": draft["score"]["arrangementKey"],
+                "melody": melody,
+                "sections": draft["score"]["sections"],
+                "wholeSong": True,
+            },
+        )
+        assert result is not None
+        exercise = result["melody_exercise"]
+        assert exercise["section"]["total"] == 1
+        assert exercise["section"]["label"] == "Complete song"
+        assert exercise["section"]["eventStart"] == 0
+        assert exercise["section"]["eventEnd"] == len(melody)
+        assert len(exercise["events"]) == len(melody)
+        assert exercise["title"].endswith("Complete E9 lesson") or exercise["title"] == "Song arrangement lesson in G" or exercise["title"] == "Song arrangement lesson in C"
 
 
 def test_exact_artist_claim_downgrades_without_identified_source() -> None:

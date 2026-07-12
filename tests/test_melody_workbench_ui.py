@@ -66,6 +66,7 @@ assert.equal(artistPayload.contourMode, "closest_playable");
 assert.equal(artistPayload.texture, "both");
 artist.scoreDraft = {score: {sections: [{label: "Verse", startMeasure: 1, endMeasure: 4}]}};
 assert.deepEqual(studio.buildMelodyRequest(artist).sections, [{label: "Verse", startMeasure: 1, endMeasure: 4}]);
+assert.equal(studio.buildMelodyRequest(artist).wholeSong, true);
 
 const original = studio.createInitialState("original_exercise");
 Object.assign(original, { tokens: ["1", "3", "5"], artist: "Stale Artist", sourceUrl: "https://example.test/stale" });
@@ -313,7 +314,8 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Change the register for this note only" in html
     assert "state.selectedPhraseIndex" in script
     assert html.count("?v=melody-multi-input-20260711-3") == 1
-    assert html.count("?v=melody-full-song-9c9d2e5-20260712") == 3
+    assert html.count("?v=melody-continuous-song-20260712-1") == 3
+    assert 'elements.sectionNavigation.hidden = needsSource || Number(section.total || 0) <= 1;' in script
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in html
     assert "VexFlow" in Path("ui/vendor/VEXFLOW-LICENSE.txt").read_text(encoding="utf-8")
     assert html.index('id="studio-fretboard"') < html.index('id="studio-tab"')
