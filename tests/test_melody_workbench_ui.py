@@ -95,6 +95,12 @@ assert.equal(studio.scientificOctaveLabel(7), "");
 assert.equal(studio.scientificOctaveForTabNote({ string: 10, fret: 0, changes: [] }), 2);
 assert.equal(studio.scientificOctaveForTabNote({ string: 5, fret: 3, changes: [] }), 4);
 assert.equal(studio.scientificOctaveForTabNote({ string: 5, fret: 1, changes: ["A"] }), 4);
+assert.equal(studio.pitchValueForTabNote({ string: 6, fret: 10, changes: ["B"] }), 67);
+assert.deepEqual(studio.scorePitchesForEvent({
+  pitchValue: 67,
+  notes: [{string: 6, fret: 10, changes: ["B"]}, {string: 10, fret: 10, changes: ["A"]}]
+}), [59, 67]);
+assert.deepEqual(studio.scorePitchesForEvent({pitchValue: 67, notes: []}), [67]);
 const octavePositions = studio.positionsWithScientificOctaves(
   [{ id: "event-1", label: "Your melody exercise in G — Single-note melody", strings: [5, 6] }],
   [{ step: 1, resolvedPitch: "D4", renderablePositionId: "event-1", notes: [{ string: 5, fret: 3, changes: ["A"] }, { string: 6, fret: 3, changes: ["B"] }] }]
@@ -207,6 +213,10 @@ const transposed = score.transposeDraft(draft, -5);
 assert.deepEqual(transposed.score.melody.map((event) => event.pitch), ["A3", "D4", "F#4"]);
 const octaveUp = score.transposeDraft(draft, 12);
 assert.deepEqual(octaveUp.score.melody.map((event) => event.pitch), ["D5", "G5", "B5"]);
+assert.equal("pitches" in octaveUp.score.melody[0], false);
+const chordEventDraft = score.reflowDraft({...draft, score: {...draft.score, melody: [{pitchValue: 67, pitches: [59, 67], durationBeats: 1}]}});
+assert.deepEqual(chordEventDraft.score.melody[0].pitches, [59, 67]);
+assert.deepEqual(score.transposeDraft(chordEventDraft, 12).score.melody[0].pitches, [71, 79]);
 const xml = score.musicXmlForDraft(draft);
 assert.match(xml, /<work-title>Amazing Grace sketch<\/work-title>/);
 assert.match(xml, /<time><beats>3<\/beats>/);
@@ -299,8 +309,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Change the register for this note only" in html
     assert "state.selectedPhraseIndex" in script
     assert html.count("?v=melody-multi-input-20260711-3") == 2
-    assert html.count("?v=melody-score-practice-20260711-3") == 1
-    assert html.count("?v=melody-lesson-focus-20260711-1") == 1
+    assert html.count("?v=melody-route-score-20260711-1") == 2
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in html
     assert "VexFlow" in Path("ui/vendor/VEXFLOW-LICENSE.txt").read_text(encoding="utf-8")
     assert html.index('id="studio-fretboard"') < html.index('id="studio-tab"')

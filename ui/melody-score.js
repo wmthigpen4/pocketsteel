@@ -71,6 +71,10 @@
       if (!event.rest && Number.isFinite(Number(event.pitchValue))) {
         event.pitchValue = Number(event.pitchValue);
         event.pitch = pitchLabel(event.pitchValue);
+        if (Array.isArray(event.pitches)) {
+          const pitches = event.pitches.map(Number).filter(Number.isFinite);
+          event.pitches = Array.from(new Set([...pitches, event.pitchValue])).sort((a, b) => a - b);
+        }
       }
       beat += duration;
       return event;
@@ -127,6 +131,7 @@
       ...event,
       pitchValue: Number(event.pitchValue) + Number(semitones),
       pitch: pitchLabel(Number(event.pitchValue) + Number(semitones)),
+      ...(Array.isArray(event.pitches) ? {pitches: event.pitches.map((value) => Number(value) + Number(semitones))} : {}),
       origin: "user_edit"
     });
     return reflowDraft(next);
@@ -274,11 +279,15 @@
       const sourceEvents = score.melody.map((event, index) => ({ event, index })).filter((item) => Number(item.event.measure) === measure);
       if (!sourceEvents.length) continue;
       const notes = sourceEvents.map(({ event, index }) => {
-        const pitch = String(event.pitch || "B4");
-        const match = pitch.match(/^([A-G])([#b]?)(-?\d+)$/);
-        const key = event.rest ? "b/4" : `${(match?.[1] || "B").toLowerCase()}/${match?.[3] || "4"}`;
-        const note = new VF.StaveNote({ clef: "treble", keys: [key], duration: vexDuration(event) });
-        if (!event.rest && match?.[2] && VF.Accidental) note.addModifier(new VF.Accidental(match[2]), 0);
+        const pitchValues = event.rest ? [] : (event.pitches?.length ? event.pitches : [event.pitchValue]);
+        const pitchMatches = pitchValues.map((value) => pitchLabel(value).match(/^([A-G])([#b]?)(-?\d+)$/));
+        const keys = event.rest ? ["b/4"] : pitchMatches.map((match) => `${(match?.[1] || "B").toLowerCase()}/${match?.[3] || "4"}`);
+        const note = new VF.StaveNote({ clef: "treble", keys, duration: vexDuration(event) });
+        if (!event.rest && VF.Accidental) {
+          pitchMatches.forEach((match, pitchIndex) => {
+            if (match?.[2]) note.addModifier(new VF.Accidental(match[2]), pitchIndex);
+          });
+        }
         if ([1.5, 3].includes(Number(event.durationBeats)) && VF.Dot?.buildAndAttach) VF.Dot.buildAndAttach([note], { all: true });
         const chord = chordChangeAtEvent(draft, event);
         if (chord && VF.Annotation) note.addModifier(new VF.Annotation(chord).setVerticalJustification(VF.Annotation.VerticalJustify.TOP), 0);
@@ -308,7 +317,8 @@
       element.dataset.origin = event.origin || "source";
       element.setAttribute("role", "button");
       element.setAttribute("tabindex", "0");
-      element.setAttribute("aria-label", event.rest ? `Rest ${index + 1}` : `${event.pitch}, note ${index + 1}`);
+      const pitchNames = (event.pitches?.length ? event.pitches : [event.pitchValue]).map(pitchLabel).join(", ");
+      element.setAttribute("aria-label", event.rest ? `Rest ${index + 1}` : `${pitchNames}, note ${index + 1}`);
       const select = () => typeof onSelect === "function" && onSelect(index);
       element.addEventListener("click", select);
       element.addEventListener("keydown", (keyboardEvent) => {
@@ -372,14 +382,19 @@
         rest.textContent = "𝄽";
         group.appendChild(rest);
       } else {
-        const y = 126 - (staffStep(event.pitchValue) + 2) * 7;
-        group.appendChild(make("ellipse", { cx: x, cy: y, rx: 9, ry: 6.5, transform: `rotate(-18 ${x} ${y})`, class: "note-head" }));
-        if (Number(event.durationBeats) < 4) group.appendChild(make("line", { x1: x + 8, y1: y, x2: x + 8, y2: y - 38, class: "note-stem" }));
-        if (String(event.pitch).includes("#") || String(event.pitch).includes("b")) {
-          const accidental = make("text", { x: x - 24, y: y + 5, class: "accidental" });
-          accidental.textContent = String(event.pitch).includes("#") ? "♯" : "♭";
-          group.appendChild(accidental);
-        }
+        const pitchValues = event.pitches?.length ? event.pitches : [event.pitchValue];
+        const noteYs = pitchValues.map((value) => 126 - (staffStep(value) + 2) * 7);
+        noteYs.forEach((y, pitchIndex) => {
+          group.appendChild(make("ellipse", { cx: x, cy: y, rx: 9, ry: 6.5, transform: `rotate(-18 ${x} ${y})`, class: "note-head" }));
+          const pitch = pitchLabel(pitchValues[pitchIndex]);
+          if (pitch.includes("#") || pitch.includes("b")) {
+            const accidental = make("text", { x: x - 24, y: y + 5, class: "accidental" });
+            accidental.textContent = pitch.includes("#") ? "♯" : "♭";
+            group.appendChild(accidental);
+          }
+        });
+        const stemY = Math.min(...noteYs);
+        if (Number(event.durationBeats) < 4) group.appendChild(make("line", { x1: x + 8, y1: Math.max(...noteYs), x2: x + 8, y2: stemY - 38, class: "note-stem" }));
       }
       const duration = make("text", { x: x - 14, y: 160, class: "duration-label" });
       duration.textContent = durationName(event.durationBeats).replaceAll("_", " ");

@@ -626,6 +626,12 @@
   }
 
   function scientificOctaveForTabNote(note) {
+    const pitchValue = pitchValueForTabNote(note);
+    if (!Number.isFinite(pitchValue)) return null;
+    return supportedScientificOctave(Math.floor(pitchValue / 12) - 1);
+  }
+
+  function pitchValueForTabNote(note) {
     const stringNumber = Number(note?.string);
     const fret = Number(note?.fret);
     const openPitch = E9_OPEN_PITCHES[stringNumber];
@@ -634,7 +640,17 @@
       (sum, change) => sum + (E9_CHANGE_DELTAS[String(change).toUpperCase()]?.[stringNumber] || 0),
       0
     );
-    return supportedScientificOctave(Math.floor((openPitch + fret + changeDelta) / 12) - 1);
+    return openPitch + fret + changeDelta;
+  }
+
+  function scorePitchesForEvent(event) {
+    const mechanicalPitches = (event?.notes || [])
+      .map(pitchValueForTabNote)
+      .filter(Number.isFinite);
+    const melodyPitch = Number(event?.pitchValue);
+    const pitches = mechanicalPitches.length ? mechanicalPitches : (Number.isFinite(melodyPitch) ? [melodyPitch] : []);
+    if (Number.isFinite(melodyPitch) && !pitches.includes(melodyPitch)) pitches.push(melodyPitch);
+    return Array.from(new Set(pitches)).sort((a, b) => a - b);
   }
 
   function positionsWithScientificOctaves(positions, events) {
@@ -726,6 +742,8 @@
     scientificOctaveForEvent,
     scientificOctaveLabel,
     scientificOctaveForTabNote,
+    pitchValueForTabNote,
+    scorePitchesForEvent,
     positionsWithScientificOctaves,
     melodyFretboardOptions
   };
@@ -1334,6 +1352,7 @@
       durationBeats: event.durationBeats || 1,
       pitch: event.resolvedPitch || event.resolvedNote,
       pitchValue: event.pitchValue,
+      pitches: scorePitchesForEvent(event),
       origin: event.origin || "source",
       tie: event.tie || "",
       lyric: event.lyric || "",
