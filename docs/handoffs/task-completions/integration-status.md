@@ -1,22 +1,22 @@
 # Integration Status — Current Snapshot
 
-Updated: 2026-07-11 23:36 America/Chicago
+Updated: 2026-07-12 08:52 America/Chicago
 
 ## Repository state
 
 - Branch: `feature/answer-api`
-- Current implementation: `5007011 Print Melody Studio tablature instead of score`
+- Current implementation: `d2dc94d feat: add Melody Studio public-domain songbook`
 - Melody API baseline: `f37201a feat: add Melody Exercise teaching workflow`
 - Melody Studio now uses Steel Guitar RAG branding. No broad repository rename is approved.
 
 ## Melody Studio
 
-Status: **PRINT-TABLATURE ADJUSTMENT READY FOR USER SMOKE — Melody Studio is 935-test green and authenticated-preview verified with route-synchronized score/tab plus a current-route landscape tablature print sheet.**
+Status: **PUBLIC-DOMAIN SONGBOOK READY FOR USER SMOKE — Melody Studio is 936-test green and authenticated-preview verified with 12 searchable teaching songs flowing through staff review into synchronized E9 score, fretboard, and tab.**
 
 - The home header now exposes feature-gated actions in this order: Explore Fretboard, Melody Studio, Backstage.
 - The technical inline Melody form was removed from home.
 - `/ui/melody-workbench.html` opens with one Add a melody workspace and three compact entry paths: Type or tap notes, Record or upload audio, and Import music when enabled.
-- Staff notation, recording attribution, and reviewed example songs are contextual actions rather than equal top-level choices. Unavailable import/catalog controls are hidden by the session feature flag.
+- Staff notation, recording attribution, and the built-in songbook are contextual actions rather than equal top-level choices. User file/image/MusicXML/MIDI import remains hidden unless its separate session feature is enabled.
 - Quick entry shows notes/scale numbers, one note-button row, the resolved phrase, G/C, and one Arrange for E9 action. Contour, literal-tab help, and practice starters are under Phrase options.
 - A populated draft changes alternate paths to Replace melody and requires an inline Replace melody / Keep editing decision before session content is cleared.
 - Successful audio, import, and catalog adapters open the shared staff in Review melody. Edit melody returns to the correct populated editor; Start over clears the session draft.
@@ -48,6 +48,10 @@ Status: **PRINT-TABLATURE ADJUSTMENT READY FOR USER SMOKE — Melody Studio is 9
 - Literal tab preserves string, fret, control state, and pitch register.
 - YouTube runs only in the official embedded player with loop/tempo companion controls; Ultimate Guitar remains an attributed side reference and is never scraped.
 - Public-domain Amazing Grace / NEW BRITAIN is stored as a reviewed, checksummed catalog draft and was locally verified with exact melody, chords, E9 positions, and optional generated F#4→G4 ornament.
+- The built-in songbook now contains 12 reviewed public-domain teaching phrases: Amazing Grace, Oh! Susanna, Aura Lee, Buffalo Gals, Skip to My Lou, She’ll Be Coming ’Round the Mountain, When the Saints Go Marching In, Red River Valley, Shenandoah, My Bonnie Lies over the Ocean, Yankee Doodle, and Camptown Races.
+- `Browse songbook (12)` opens title/attribution search plus difficulty, meter, and feel filters. Cards show tune/version, G/C key, meter, difficulty, feel, note/section count, and attribution before opening the shared Review melody staff.
+- Built-in songs are advertised through `features.melodyCatalog=true` whenever Melody Exercise is enabled. Catalog listing/opening no longer requires the broader `melodyImport` flag; uploads and file imports remain gated and disabled on the protected preview.
+- Catalog teaching phrases are labeled interpretive and sourced for provenance; they do not claim note-for-note fidelity to a particular commercial or historical performance.
 - Results are fretboard-first. Every mechanically available single-note, Recommended Harmony, thirds, sixths, and chord-melody route appears in one visible, horizontally scrollable row directly below the fretboard.
 - The lesson header omits the generic Practice the lesson kicker and the non-actionable exactness/confidence/single-section metadata line.
 - One scalable navigator shows a single active note between Previous/Next arrows with `Note N of M`, resolved pitch, and readable steel position text such as `Strings 5, 6 & 7 · Fret 10 · A+B`; it does not create one technical pill per phrase event.
@@ -113,10 +117,12 @@ Route-score synchronization implementation handoff: `docs/handoffs/task-completi
 Route-score synchronization protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-2329-12-melody-route-score-sync-protected-smoke.md`.
 Print-tablature implementation handoff: `docs/handoffs/task-completions/2026-07-11-2334-06-melody-print-tablature-adjustment.md`.
 Print-tablature protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-2336-12-melody-print-tablature-protected-smoke.md`.
+Songbook implementation handoff: `docs/handoffs/task-completions/2026-07-12-0847-01-public-domain-songbook-implementation.md`.
+Songbook protected-smoke handoff: `docs/handoffs/task-completions/2026-07-12-0852-12-public-domain-songbook-protected-smoke.md`.
 
 ## Verification
 
-- Full pytest: `935 passed`.
+- Full pytest: `936 passed`.
 - Core JavaScript syntax: passed for answer client, Melody Studio, and fretboard component.
 - `git diff --check`: passed.
 - Local browser smoke: pass for a twelve-note sectioned phrase, six arrangement routes, one active-note navigator, octave toggle/legend, melody-only chord-backing suppression, mobile containment, and clean browser logs.
@@ -133,11 +139,12 @@ Print-tablature protected-smoke handoff: `docs/handoffs/task-completions/2026-07
 - Route-score synchronization protected smoke verified one, two, and three stacked note heads for Faithful melody, Recommended harmony, and Chord melody respectively, with exact pitch labels, preserved top melody voice, synchronized fretboard/tab, and clean browser logs.
 - Print-tablature protected smoke verified the unique Print tablature action, absence of Print score, current Recommended harmony route label/tab, parsed landscape print CSS, score/control suppression, and clean browser logs. Native print preview remains the user-smoke boundary.
 - Resumed header smoke verified the removed practice kicker, metadata line, and More arrangements disclosure remain absent on the integrated runtime; all six routes remain together in one horizontally scrollable row and Chord melody selection synchronizes visibly.
+- Songbook protected smoke verified all 12 cards, search/filter metadata, a one-result Shenandoah search, 16-event staff review, authenticated catalog opening, Section 1 E9 arrangement, six routes, source attribution, Print tablature, Continue to Section 2, and zero browser errors.
 
 ## Protected preview
 
-- Runtime smoke HEAD: `5007011`.
-- Loopback `/api/version`: `5007011`, `feature/answer-api`, `hybrid_private_first`, `cloudflare_access`, `features.melodyExercise=true`; import/catalog visibility remains session-flag controlled.
+- Runtime smoke HEAD: `d2dc94d`.
+- Loopback `/api/version`: `d2dc94d`, `feature/answer-api`, `hybrid_private_first`, `cloudflare_access`, `features.melodyExercise=true`, `features.melodyCatalog=true`; user uploads/imports remain separately disabled.
 - Preview refresh succeeded without `sudo` by terminating only the user-owned port-8770 listener and allowing the installed LaunchDaemon to restart it.
 - Installed wrapper matches the committed wrapper.
 - Cloudflare Access login and protected manual/score lesson generation succeeded; the prior arranger blocker is closed.
@@ -152,6 +159,6 @@ Print-tablature protected-smoke handoff: `docs/handoffs/task-completions/2026-07
 
 ## Next action
 
-1. User smoke at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-print-tab-5007011-20260711`: choose a route, click Print tablature, and confirm the native landscape preview contains title, selected arrangement, and tab without the staff or fretboard.
-2. If protected catalog/score-image import should be enabled later, explicitly authorize the protected environment flag change and vision-model readiness check; otherwise keep it off.
+1. User smoke at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-songbook-d2dc94d-20260712`: open Browse songbook, search/filter, review a melody, and arrange it for E9.
+2. If protected score-image/file import should be enabled later, explicitly authorize the protected environment flag change and vision-model readiness check; otherwise keep it off.
 3. Keep unrelated corpus, source-inbox, private-data, brand/design, deployment, and environment work parked.
