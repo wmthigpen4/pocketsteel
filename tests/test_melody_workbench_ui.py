@@ -85,7 +85,7 @@ assert.deepEqual(
   studio.eventStepCompactPresentation({ resolvedPitch: "E4", notes: [{ string: 4, fret: 3, changes: ["A"] }, { string: 6, fret: 3, changes: ["A"] }] }),
   { note: "E4", position: "S4+6 · F3 · A" }
 );
-assert.equal(studio.routeButtonLabel({ recommended: true, label: "Recommended harmony" }), "Recommended harmony");
+assert.equal(studio.routeButtonLabel({ recommended: true, label: "Recommended arrangement" }), "Recommended arrangement");
 assert.equal(studio.scientificOctaveForEvent({ resolvedPitch: "D4", pitchValue: 62 }), 4);
 assert.equal(studio.scientificOctaveForEvent({ resolvedPitch: "G5", pitchValue: 79 }), 5);
 assert.equal(studio.scientificOctaveForEvent({ pitchValue: 47 }), 2);
@@ -320,7 +320,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Change the register for this note only" in html
     assert "state.selectedPhraseIndex" in script
     assert html.count("?v=melody-multi-input-20260711-3") == 1
-    assert html.count("?v=melody-starting-choices-20260712-1") == 3
+    assert html.count("?v=mixed-arranger-20260712-1") == 3
     assert 'elements.sectionNavigation.hidden = needsSource || Number(section.total || 0) <= 1;' in script
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in html
     assert "VexFlow" in Path("ui/vendor/VEXFLOW-LICENSE.txt").read_text(encoding="utf-8")
@@ -431,6 +431,11 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "generateBeams" in Path("ui/melody-score.js").read_text(encoding="utf-8")
     assert "togglePractice" in script
     assert "schedulePitch" in script
+    assert "glideToPitch" in script
+    assert 'id="studio-transition-key" hidden' in html
+    assert "route.transitions" in script
+    assert "transitionFromPrevious" in Path("ui/melody-score.js").read_text(encoding="utf-8")
+    assert "prefers-reduced-motion: reduce" in script
     assert "session-only" in html.lower()
     assert 'id="studio-replace-confirmation" role="alert" hidden' in html
     assert 'id="studio-confirm-replace"' in html

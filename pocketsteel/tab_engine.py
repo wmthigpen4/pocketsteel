@@ -154,6 +154,7 @@ class TabEvent:
     chord: str | None = None
     lyric: str | None = None
     comment: str | None = None
+    transition: dict[str, Any] | None = None
 
     def normalized(self, profile: CopedentProfile) -> "TabEvent":
         return TabEvent(
@@ -161,6 +162,7 @@ class TabEvent:
             chord=self.chord,
             lyric=self.lyric,
             comment=self.comment,
+            transition=dict(self.transition) if self.transition else None,
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -171,6 +173,8 @@ class TabEvent:
             payload["lyric"] = self.lyric
         if self.comment:
             payload["comment"] = self.comment
+        if self.transition:
+            payload["transition"] = dict(self.transition)
         return payload
 
 
@@ -227,6 +231,7 @@ def tab_event_from_dict(payload: dict[str, Any]) -> TabEvent:
         chord=_optional_text(payload.get("chord")),
         lyric=_optional_text(payload.get("lyric")),
         comment=_optional_text(payload.get("comment")),
+        transition=dict(payload["transition"]) if isinstance(payload.get("transition"), dict) else None,
     )
 
 
@@ -445,6 +450,8 @@ def render_example(name: str) -> TabRenderResult:
 
 def _event_width(event: TabEvent) -> int:
     tokens = [note.render_token() for note in event.notes]
+    if event.transition and isinstance(event.transition.get("tabTokens"), dict):
+        tokens.extend(str(token) for token in event.transition["tabTokens"].values())
     if event.chord:
         tokens.append(event.chord)
     if event.lyric:
@@ -458,6 +465,11 @@ def _render_label_row(label: str, tokens: list[str], widths: list[int]) -> str:
 
 
 def _note_token_for_string(event: TabEvent, string_number: int) -> str:
+    transition_tokens = event.transition.get("tabTokens") if event.transition else None
+    if isinstance(transition_tokens, dict):
+        token = transition_tokens.get(str(string_number))
+        if token:
+            return str(token)
     for note in event.notes:
         if note.string == string_number:
             return note.render_token()

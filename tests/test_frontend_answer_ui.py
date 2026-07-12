@@ -232,7 +232,9 @@ let capturedRequest;
               harmonyType: "single_note",
               recommended: false,
               recommendation: "Learn the melody first.",
-              events: [{ id: "melody-step-1", step: 1, resolvedNote: "G", resolvedPitch: "G4", notes: [{ string: 4, fret: 3, changes: [] }] }],
+              textureSummary: { singleNotes: 1, dyads: 0, triads: 0, barSlides: 1 },
+              transitions: [{ id: "transition-1", kind: "bar_slide", fromEventId: "melody-step-0", toEventId: "melody-step-1" }],
+              events: [{ id: "melody-step-1", step: 1, resolvedNote: "G", resolvedPitch: "G4", texture: "single_note", transitionFromPreviousId: "transition-1", notes: [{ string: 4, fret: 3, changes: [] }] }],
               tabExample: { id: "single-tab", title: "Single", rendered_tab: "S4 |--3--|", validation: { ok: true } },
               fretboard: { type: "pedal-steel-fretboard", positions: [], strings: { count: 10, labels: {} } }
             }]
@@ -250,6 +252,10 @@ let capturedRequest;
   assert.equal(result.melodyExercise.events[0].notes[0].fret, 3);
   assert.equal(result.melodyExercise.events[0].resolvedPitch, "G4");
   assert.equal(result.melodyExercise.routes[0].harmonyType, "single_note");
+  assert.equal(result.melodyExercise.routes[0].events[0].texture, "single_note");
+  assert.equal(result.melodyExercise.routes[0].events[0].transitionFromPreviousId, "transition-1");
+  assert.equal(result.melodyExercise.routes[0].transitions[0].kind, "bar_slide");
+  assert.equal(result.melodyExercise.routes[0].textureSummary.barSlides, 1);
   assert.equal(result.melodyExercise.routes[0].tab.tabText, "S4 |--3--|");
   assert.equal(result.melodyExercise.section.hasMore, true);
 })().catch((error) => {

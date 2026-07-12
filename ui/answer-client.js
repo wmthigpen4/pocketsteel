@@ -632,7 +632,9 @@ const STEEL_RAG_ANSWER_UI = (() => {
       pitchValue: event.pitchValue ?? event.pitch_value ?? null,
       scaleDegree: firstTextValue(event.scaleDegree, event.scale_degree),
       technique: firstTextValue(event.technique, "pick"),
+      texture: firstTextValue(event.texture, "single_note"),
       movement: firstTextValue(event.movement),
+      transitionFromPreviousId: firstTextValue(event.transitionFromPreviousId, event.transition_from_previous_id),
       explanation: firstTextValue(event.explanation, event.comment),
       durationBeats: Number(event.durationBeats ?? event.duration_beats ?? 1),
       measure: Number(event.measure ?? 1),
@@ -663,6 +665,8 @@ const STEEL_RAG_ANSWER_UI = (() => {
       recommended: Boolean(route.recommended),
       recommendation: firstTextValue(route.recommendation),
       movementSummary: firstTextValue(route.movementSummary, route.movement_summary),
+      textureSummary: isObjectRecord(route.textureSummary || route.texture_summary) ? (route.textureSummary || route.texture_summary) : {},
+      transitions: Array.isArray(route.transitions) ? route.transitions.filter(isObjectRecord) : [],
       generatedOrnaments: Array.isArray(route.generatedOrnaments || route.generated_ornaments)
         ? (route.generatedOrnaments || route.generated_ornaments).filter(isObjectRecord)
         : [],

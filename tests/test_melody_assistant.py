@@ -44,6 +44,9 @@ def test_structured_g_scale_degree_phrase_builds_synced_tab_and_fretboard() -> N
 
     assert result is not None
     exercise = result["melody_exercise"]
+    assert [route["harmonyType"] for route in exercise["routes"]] == [
+        "single_note", "mixed_arrangement", "thirds", "sixths"
+    ]
     tab = result["tab_example"]
     fretboard = result["fretboard"]
     assert exercise["status"] == "ready"
@@ -139,18 +142,19 @@ def test_amazing_grace_exact_score_events_keep_rhythm_chords_and_e9_route() -> N
     assert [event.get("chord") for event in exercise["events"]] == expected_changes[:8]
     assert all(route["chordContext"]["usedForRanking"] for route in exercise["routes"])
     assert exercise["routes"][0]["chordContext"]["symbols"] == list(dict.fromkeys(event["chord"] for event in events[:8]))
-    vocal = next(route for route in exercise["routes"] if route["harmonyType"] == "vocal_steel")
-    assert vocal["generatedOrnaments"] == [
-        {
-            "kind": "slide_in",
-            "origin": "generated_ornament",
-            "targetEventId": vocal["events"][1]["id"].replace("vocal-steel", "single-note"),
-            "targetStep": 2,
-            "from": {"string": 4, "fret": 2, "changes": [], "pitch": "F#4"},
-            "to": {"string": 4, "fret": 3, "changes": [], "pitch": "G4"},
-            "label": "Optional slide into G4 on string 4, fret 2 to 3.",
-        }
-    ]
+    mixed = next(route for route in exercise["routes"] if route["harmonyType"] == "mixed_arrangement")
+    assert {len(event["notes"]) for event in mixed["events"]} == {1, 2, 3}
+    assert mixed["textureSummary"] == {
+        "singleNotes": 3,
+        "dyads": 1,
+        "triads": 4,
+        "barSlides": 1,
+        "pedalGlides": 0,
+        "leverGlides": 0,
+    }
+    assert mixed["transitions"][0]["kind"] == "bar_slide"
+    assert mixed["transitions"][0]["scope"] == "melody_voice"
+    assert mixed["transitions"][0]["tabTokens"]
 
 
 def test_c_major_note_names_use_octave_aware_valid_e9_placement() -> None:
@@ -216,15 +220,16 @@ def test_literal_tab_rejects_octave_override_instead_of_moving_other_notes() -> 
         )
 
 
-def test_default_arranger_returns_single_note_and_recommended_harmony_routes() -> None:
+def test_default_arranger_returns_faithful_and_recommended_mixed_routes() -> None:
     result = melody_exercise_response("Build", {"key": "G", "melody": ["5", "6", "1", "3", "2", "1", "3"]})
 
     assert result is not None
     routes = result["melody_exercise"]["routes"]
     assert routes[0]["harmonyType"] == "single_note"
     recommended = next(route for route in routes if route["recommended"])
-    assert recommended["harmonyType"] == "automatic_harmony"
-    assert all(len(event["notes"]) == 2 for event in recommended["events"])
+    assert recommended["harmonyType"] == "mixed_arrangement"
+    assert {len(event["notes"]) for event in recommended["events"]} == {1, 2}
+    assert all(len(event["notes"]) < 3 for event in recommended["events"])
     assert all(
         max(
             absolute_pitch_for_string(note["string"], note["fret"], tuple(note["changes"]))
@@ -232,10 +237,50 @@ def test_default_arranger_returns_single_note_and_recommended_harmony_routes() -
         ) == event["pitchValue"]
         for event in recommended["events"]
     )
-    assert {route["harmonyType"] for route in routes} >= {"single_note", "automatic_harmony", "thirds", "sixths", "chord_melody"}
+    assert [route["harmonyType"] for route in routes] == ["single_note", "mixed_arrangement", "thirds", "sixths"]
     for route in routes:
         assert len(route["events"]) == len(route["fretboard"]["positions"])
         assert [event["renderablePositionId"] for event in route["events"]] == [position["id"] for position in route["fretboard"]["positions"]]
+
+
+@pytest.mark.parametrize(
+    ("tokens", "expected_kind", "expected_marker"),
+    [
+        ("11122", "bar_slide", "/"),
+        ("11233", "pedal_glide", "~"),
+        ("11634", "lever_glide", "~"),
+    ],
+)
+def test_mixed_arrangement_integrates_validated_steel_transitions(tokens: str, expected_kind: str, expected_marker: str) -> None:
+    melody = [
+        {
+            "token": token,
+            "durationBeats": 2 if index in {0, 2, 4} else 1,
+            "beat": 1 if index % 2 == 0 else 2,
+            "chord": "G" if index < 3 else "D7",
+        }
+        for index, token in enumerate(tokens)
+    ]
+    result = melody_exercise_response("Build a moving arrangement", {"key": "G", "melody": melody})
+
+    mixed = next(route for route in result["melody_exercise"]["routes"] if route["harmonyType"] == "mixed_arrangement")
+    transition = next(item for item in mixed["transitions"] if item["kind"] == expected_kind)
+    assert transition["scope"] in {"full_grip", "melody_voice"}
+    assert expected_marker in next(iter(transition["tabTokens"].values()))
+    assert transition["toEventId"] in {event["id"] for event in mixed["events"]}
+    assert transition["id"] in {event.get("transitionFromPreviousId") for event in mixed["events"]}
+
+
+def test_mixed_arrangement_limits_transitions_and_never_places_them_adjacent() -> None:
+    melody = [
+        {"token": token, "durationBeats": 2, "beat": 1, "chord": "G" if index < 8 else "D7"}
+        for index, token in enumerate("1112211233116341")
+    ]
+    result = melody_exercise_response("Build", {"key": "G", "melody": melody, "wholeSong": True})
+    mixed = next(route for route in result["melody_exercise"]["routes"] if route["harmonyType"] == "mixed_arrangement")
+    target_steps = [int(transition["toEventId"].rsplit("-", 1)[-1]) for transition in mixed["transitions"]]
+    assert len(target_steps) <= 2
+    assert all(right - left > 1 for left, right in zip(target_steps, target_steps[1:]))
 
 
 def test_chord_context_is_not_invented_and_ranks_chord_melody_grips() -> None:
@@ -253,6 +298,9 @@ def test_chord_context_is_not_invented_and_ranks_chord_melody_grips() -> None:
 
     assert result is not None
     exercise = result["melody_exercise"]
+    assert [route["harmonyType"] for route in exercise["routes"]] == [
+        "single_note", "mixed_arrangement", "thirds", "sixths", "chord_melody"
+    ]
     assert [event["harmonySymbol"] for event in exercise["events"]] == ["G", "G", "G"]
     chord_route = next(route for route in exercise["routes"] if route["harmonyType"] == "chord_melody")
     assert chord_route["chordContext"] == {"symbols": ["G"], "usedForRanking": True}

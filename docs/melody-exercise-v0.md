@@ -27,7 +27,7 @@ Supported request fields:
 - `tuning`: E9.
 - `melody`: legacy note-name/scale-degree strings or structured events. Structured events may add `direction`, `octaveShift`, literal standard-E9 position, rhythm/measure/beat, tie, lyric, articulation, and an actual harmony symbol. Melody pitches and harmony symbols are distinct fields; a note name must never be promoted into a chord label. Longer lists are divided into sections.
 - `contourMode`: `closest_playable` (default), `ascending`, `descending`, or `preserve_input`.
-- `texture`: `both` (default), `single_note`, `automatic_harmony`, `thirds`, `sixths`, or `chord_melody`.
+- `texture`: `both` (default), `single_note`, `mixed_arrangement`, `automatic_harmony`, `thirds`, `sixths`, or `chord_melody`. The legacy `automatic_harmony` request remains supported, while the default route set uses the mixed arrangement.
 - `sectionNumber`: requested section, starting at 1.
 - `sections`: optional reviewed phrase labels with `startMeasure` and `endMeasure`, retained as internal form metadata.
 - `wholeSong`: optional boolean. When true, every supplied melody event is arranged in one continuous lesson and the response has one `Complete song` section.
@@ -42,7 +42,8 @@ The answer may add `melody_exercise` with:
 - phrase label, section number, total, previous/next continuation state, event range, and measure range;
 - mechanically validated musical events;
 - octave/register-resolved input and deterministic movement guidance;
-- route choices for the single-note melody and available validated harmony textures;
+- route choices for the faithful melody, recommended mixed performance arrangement, and available validated fixed harmony textures;
+- mixed-route texture counts and sparse mechanically validated bar/pedal/lever transitions that do not alter source notes or rhythm;
 - validation results shared by tab and fretboard rendering.
 
 Ready exercises add `routes`, `selectedRouteId`, and an input `resolvedPhrase`. Each route owns its synchronized events, tab example, fretboard, harmony label, recommendation, movement summary, and chord-context summary. When chord symbols are supplied, the arranger ranks mechanically valid grips against those chord tones while keeping the resolved melody pitch as the top voice. Existing top-level `events`, `tab_example`, and `fretboard` remain populated from the selected single-note route for compatibility. Source-free original exercises return no source cards. Recording-based lessons preserve a supplied source URL as a recording/arrangement source card.
@@ -61,11 +62,13 @@ The result shows:
 
 - material identity and source link;
 - one synchronized active-note navigator, fixed-width tab, and fretboard;
-- one visible, horizontally scrollable row containing every mechanically available single-note, recommended-harmony, thirds, sixths, and chord-melody route;
+- one visible, horizontally scrollable row containing Faithful melody, Recommended arrangement, thirds, sixths, and chord melody when mechanically and harmonically available;
 - resolved pitch/register and bar, string, pedal, and lever movement guidance;
 - no empty source section for source-free deterministic exercises.
 
 The score is an interactive practice surface rather than a decorative duplicate. Selecting a staff event selects the same fretboard position, navigator event, and tab step. Route switching updates the notation as well as the fretboard and tab: single-note routes show one note head, dyad routes show two stacked note heads, and chord-melody routes show every validated grip pitch with the resolved melody as the top voice. Playback follows the score with a moving selection and supports tempo, count-in, pause/resume, stop, current-measure loops, selected-note loops, and optional synthesized chord context. Loop controls stay collapsed by default and are omitted for sections shorter than eight events. Chord symbols render only at real changes. The score supports G/C key signatures, rhythmic beams, rests, ties, lyrics, accents/tenuto/staccato, and MusicXML export.
+
+The Recommended arrangement may change texture event by event: short or passing notes favor a single melody voice, sustained or emphasized notes favor validated diatonic pairs, and chord-backed arrivals may use validated three-note grips. Without real chord symbols it never generates triads. Sparse integrated transitions may connect consecutive validated positions with a short bar slide or exact pedal/lever glide. Transitions remain generated performance guidance, preserve the source event count and rhythm, appear in score/tab/fretboard/navigation/playback, and are omitted when the mechanics or musical context are uncertain. The former one-ornament Vocal steel route is not part of the default route set.
 
 The result action is **Print**, positioned beside Start over immediately below the tablature. For a multi-phrase song it prepares every section of the selected arrangement and prints one complete fixed-width tablature document with phrase headings. The staff, fretboard, route controls, transport, playback controls, and editor chrome are suppressed in print output.
 
@@ -104,7 +107,7 @@ The feature is controlled by `STEEL_RAG_ENABLE_MELODY_EXERCISE`, which defaults 
 - Artist-solo and full-arrangement requests route to teaching/source clarification, never copyright refusal.
 - Structured G/C phrases produce synchronized validated events, tab, and fretboard.
 - `5 6 1 3 2 1 3` resolves as a continuous octave-aware contour rather than resetting every tonic to one fixed fret.
-- Default ready lessons include a single-note route and, when mechanically available in the resolved register, a recommended harmony route with two or three validated notes per event.
+- Default ready lessons include Faithful melody and, when materially different, a Recommended arrangement that can mix one-, two-, and chord-backed three-note events while keeping the resolved melody on top.
 - Pasted literal tab retains string, fret, controls, and register exactly.
 - Reviewed songbook examples render every event of their complete melodic form in one continuous score and tab; other long inputs may continue through labeled sections instead of failing.
 - Complete-song printing includes all phrase sections of the selected arrangement route.

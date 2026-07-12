@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import copy
+import math
 import re
 from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
@@ -19,7 +19,7 @@ from pocketsteel.tab_engine import TabEvent, TabNote, default_e9_copedent_profil
 
 
 SUPPORTED_CONTOURS = {"closest_playable", "ascending", "descending", "preserve_input"}
-SUPPORTED_TEXTURES = {"both", "single_note", "automatic_harmony", "thirds", "sixths", "chord_melody"}
+SUPPORTED_TEXTURES = {"both", "single_note", "mixed_arrangement", "automatic_harmony", "thirds", "sixths", "chord_melody"}
 DEFAULT_ANCHOR_PITCH = 67  # G4: a useful middle/upper E9 melody register.
 
 _CONTROL_STATES: tuple[tuple[str, ...], ...] = (
@@ -95,7 +95,9 @@ def arrange_melody_routes(
         raise ValueError("The melody does not have a mechanically valid standard-E9 path.")
 
     route_specs: list[tuple[str, str, str]] = [("single-note", "single_note", "Faithful melody")]
-    if selected_texture in {"both", "automatic_harmony"}:
+    if selected_texture in {"both", "mixed_arrangement"}:
+        route_specs.append(("mixed-arrangement", "mixed_arrangement", "Recommended arrangement"))
+    if selected_texture == "automatic_harmony":
         route_specs.append(("recommended-harmony", "automatic_harmony", "Recommended harmony"))
     if selected_texture in {"both", "thirds"}:
         route_specs.append(("thirds", "thirds", "Diatonic thirds"))
@@ -120,14 +122,18 @@ def arrange_melody_routes(
         )
     )
 
-    vocal_route = build_vocal_steel_route(routes[0], inputs, key)
-    if vocal_route is not None:
-        routes.append(vocal_route)
-
     for suffix, harmony_type, label in route_specs[1:]:
-        candidate_groups = harmony_candidate_groups(inputs, resolved_pitches, key, harmony_type)
-        path = choose_path(candidate_groups, inputs=inputs) if candidate_groups and all(candidate_groups) else []
+        if harmony_type == "chord_melody" and not any(_active_chords(inputs)):
+            continue
+        if harmony_type == "mixed_arrangement":
+            candidate_groups = mixed_candidate_groups(inputs, resolved_pitches, key)
+            path = choose_mixed_path(candidate_groups, inputs=inputs)
+        else:
+            candidate_groups = harmony_candidate_groups(inputs, resolved_pitches, key, harmony_type)
+            path = choose_path(candidate_groups, inputs=inputs) if candidate_groups and all(candidate_groups) else []
         if not path:
+            continue
+        if harmony_type == "mixed_arrangement" and all(len(candidate.notes) == 1 for candidate in path):
             continue
         routes.append(
             build_route(
@@ -140,7 +146,7 @@ def arrange_melody_routes(
                 path=path,
                 key=key,
                 title=f"{title} — {label}",
-                recommended=harmony_type == "automatic_harmony",
+                recommended=harmony_type in {"mixed_arrangement", "automatic_harmony"},
             )
         )
 
@@ -338,8 +344,9 @@ def harmony_candidate_groups(
 ) -> list[list[PositionCandidate]]:
     rows = major_three_string_rows(key) if harmony_type == "chord_melody" else major_two_string_rows(key)
     scale = _scale_notes(key)
+    active_chords = _active_chords(inputs)
     groups: list[list[PositionCandidate]] = []
-    for item, target_pitch in zip(inputs, resolved_pitches):
+    for item, target_pitch, active_chord in zip(inputs, resolved_pitches, active_chords):
         candidates: list[PositionCandidate] = []
         if not 1 <= item.degree <= 7:
             groups.append(candidates)
@@ -358,11 +365,67 @@ def harmony_candidate_groups(
             if harmony_type == "automatic_harmony" and not ({third_note, sixth_note} & set(other_notes)):
                 continue
             candidates.append(_candidate_for_explorer_row(row))
-        if item.chord and candidates:
-            best_fit = min(_chord_fit_penalty(candidate, item.chord) for candidate in candidates)
-            candidates = [candidate for candidate in candidates if _chord_fit_penalty(candidate, item.chord) == best_fit]
+        if active_chord and candidates:
+            best_fit = min(_chord_fit_penalty(candidate, active_chord) for candidate in candidates)
+            candidates = [candidate for candidate in candidates if _chord_fit_penalty(candidate, active_chord) == best_fit]
         groups.append(candidates)
     return groups
+
+
+def mixed_candidate_groups(
+    inputs: Sequence[MelodyInput],
+    resolved_pitches: Sequence[int],
+    key: str,
+) -> list[list[PositionCandidate]]:
+    """Combine validated single, dyad, and chord-backed triad choices per event."""
+
+    dyads = harmony_candidate_groups(inputs, resolved_pitches, key, "automatic_harmony")
+    triads = harmony_candidate_groups(inputs, resolved_pitches, key, "chord_melody")
+    active_chords = _active_chords(inputs)
+    groups: list[list[PositionCandidate]] = []
+    for index, (item, pitch) in enumerate(zip(inputs, resolved_pitches)):
+        singles = single_note_candidates(item, pitch)
+        if item.literal is not None:
+            groups.append(singles)
+            continue
+        candidates = [*singles, *dyads[index]]
+        if active_chords[index] and _desired_texture_size(inputs, index, active_chords) == 3:
+            candidates.extend(triads[index])
+        groups.append(_dedupe_candidates(candidates))
+    return groups
+
+
+def choose_mixed_path(
+    candidate_groups: Sequence[Sequence[PositionCandidate]],
+    *,
+    inputs: Sequence[MelodyInput],
+) -> list[PositionCandidate]:
+    if not candidate_groups or any(not group for group in candidate_groups):
+        return []
+    active_chords = _active_chords(inputs)
+    states: list[dict[int, tuple[tuple[int, ...], int | None]]] = []
+    first: dict[int, tuple[tuple[int, ...], int | None]] = {}
+    for candidate_index, candidate in enumerate(candidate_groups[0]):
+        first[candidate_index] = (_mixed_start_cost(candidate, inputs, 0, active_chords), None)
+    states.append(first)
+    for event_index in range(1, len(candidate_groups)):
+        current: dict[int, tuple[tuple[int, ...], int | None]] = {}
+        for current_index, candidate in enumerate(candidate_groups[event_index]):
+            choices: list[tuple[tuple[int, ...], int]] = []
+            for previous_index, (previous_cost, _parent) in states[-1].items():
+                previous = candidate_groups[event_index - 1][previous_index]
+                transition = _mixed_transition_cost(previous, candidate, inputs, event_index, active_chords)
+                choices.append((_add_cost(previous_cost, transition), previous_index))
+            current[current_index] = min(choices, key=lambda item: (item[0], item[1]))
+        states.append(current)
+    last_index = min(states[-1], key=lambda index: (states[-1][index][0], index))
+    path: list[PositionCandidate] = []
+    for event_index in range(len(states) - 1, -1, -1):
+        path.append(candidate_groups[event_index][last_index])
+        parent = states[event_index][last_index][1]
+        if parent is not None:
+            last_index = parent
+    return list(reversed(path))
 
 
 def choose_path(
@@ -397,6 +460,114 @@ def choose_path(
     return list(reversed(path))
 
 
+def build_expressive_transitions(
+    *,
+    route_id: str,
+    inputs: Sequence[MelodyInput],
+    path: Sequence[PositionCandidate],
+) -> list[dict[str, Any]]:
+    """Choose a sparse, mechanically checked set of audible steel transitions."""
+
+    eligible: list[tuple[tuple[int, ...], int, dict[str, Any]]] = []
+    active_chords = _active_chords(inputs)
+    for target_index in range(1, len(path)):
+        if inputs[target_index - 1].literal is not None or inputs[target_index].literal is not None:
+            continue
+        transition = _transition_between(route_id, target_index, path[target_index - 1], path[target_index])
+        if transition is None:
+            continue
+        chord_change = bool(active_chords[target_index] and active_chords[target_index] != active_chords[target_index - 1])
+        priority = (
+            0 if chord_change else 1,
+            0 if inputs[target_index].duration_beats >= 2 else 1,
+            0 if float(inputs[target_index].beat) == 1 else 1,
+            abs(path[target_index].fret - path[target_index - 1].fret),
+            target_index,
+        )
+        eligible.append((priority, target_index, transition))
+    selected: list[tuple[int, dict[str, Any]]] = []
+    cap = max(1, math.ceil(len(path) / 8))
+    for _priority, target_index, transition in sorted(eligible, key=lambda item: item[0]):
+        if any(abs(target_index - existing_index) <= 1 for existing_index, _item in selected):
+            continue
+        selected.append((target_index, transition))
+        if len(selected) >= cap:
+            break
+    return [transition for _index, transition in sorted(selected, key=lambda item: item[0])]
+
+
+def _transition_between(
+    route_id: str,
+    target_index: int,
+    previous: PositionCandidate,
+    current: PositionCandidate,
+) -> dict[str, Any] | None:
+    previous_top = _note_for_string(previous, previous.top_string)
+    current_top = _note_for_string(current, current.top_string)
+    if previous.top_string != current.top_string or previous_top is None or current_top is None:
+        return None
+    previous_strings = {note.string for note in previous.notes}
+    current_strings = {note.string for note in current.notes}
+    scope = "full_grip" if previous_strings == current_strings and len(previous.notes) == len(current.notes) else "melody_voice"
+    tab_tokens: dict[str, str] = {}
+    kind = ""
+    if previous.controls == current.controls and 1 <= abs(current.fret - previous.fret) <= 4:
+        kind = "bar_slide"
+        connector = "/" if current.fret > previous.fret else "\\"
+        strings = sorted(previous_strings & current_strings) if scope == "full_grip" else [current.top_string]
+        for string in strings:
+            before = _note_for_string(previous, string)
+            after = _note_for_string(current, string)
+            if before and after:
+                tab_tokens[str(string)] = f"{before.render_token()}{connector}{after.render_token()}"
+        label = (
+            f"Slide {'strings ' + ', '.join(str(string) for string in strings) if scope == 'full_grip' else 'string ' + str(current.top_string)} "
+            f"from fret {previous.fret} to fret {current.fret}."
+        )
+    elif previous.fret == current.fret:
+        changed = sorted(set(previous.controls) ^ set(current.controls))
+        if len(changed) != 1:
+            return None
+        control = changed[0]
+        if not control_affects_selected_strings(control, (current.top_string,)):
+            return None
+        if _absolute_pitch(current.top_string, previous.fret, previous.controls) != previous.top_pitch:
+            return None
+        if _absolute_pitch(current.top_string, current.fret, current.controls) != current.top_pitch:
+            return None
+        kind = "pedal_glide" if control in {"A", "B", "C"} else "lever_glide"
+        strings = [current.top_string]
+        tab_tokens[str(current.top_string)] = f"{previous_top.render_token()}~{current_top.render_token()}"
+        action = "press" if control in current.controls else "release"
+        label = f"Hold fret {current.fret} and {action} {control} to glide into this note on string {current.top_string}."
+        scope = "full_grip" if scope == "full_grip" and all(
+            _note_for_string(previous, string) and _note_for_string(current, string)
+            for string in previous_strings
+        ) else "melody_voice"
+    else:
+        return None
+    return {
+        "id": f"{route_id}-transition-{target_index}-{target_index + 1}",
+        "kind": kind,
+        "scope": scope,
+        "fromEventId": f"{route_id}-step-{target_index}",
+        "toEventId": f"{route_id}-step-{target_index + 1}",
+        "strings": strings,
+        "fromFret": previous.fret,
+        "toFret": current.fret,
+        "controlsBefore": list(previous.controls),
+        "controlsAfter": list(current.controls),
+        "direction": "up" if current.top_pitch > previous.top_pitch else "down",
+        "playbackGlideFraction": 0.35,
+        "label": label,
+        "tabTokens": tab_tokens,
+    }
+
+
+def _note_for_string(candidate: PositionCandidate, string: int) -> TabNote | None:
+    return next((note for note in candidate.notes if note.string == string), None)
+
+
 def build_route(
     *,
     route_id: str,
@@ -411,17 +582,22 @@ def build_route(
     recommended: bool,
 ) -> dict[str, Any]:
     profile = default_e9_copedent_profile()
+    transitions = build_expressive_transitions(route_id=route_id, inputs=inputs, path=path) if harmony_type == "mixed_arrangement" else []
+    transitions_by_target = {transition["toEventId"]: transition for transition in transitions}
     raw_events: list[TabEvent] = []
     intervals: list[dict[str, Any]] = []
     movements: list[str] = []
     previous_chord = ""
     for index, (item, candidate) in enumerate(zip(inputs, path), start=1):
         chord_change = item.chord if item.chord and item.chord != previous_chord else None
+        event_id = f"{route_id}-step-{index}"
+        transition = transitions_by_target.get(event_id)
         raw_events.append(
             TabEvent(
                 notes=candidate.notes,
                 chord=chord_change,
                 comment=f"{scientific_pitch_for_value(resolved_pitches[index - 1])}; {label}",
+                transition=transition,
             )
         )
         if item.chord:
@@ -443,9 +619,11 @@ def build_route(
     event_payloads: list[dict[str, Any]] = []
     for index, (event, item, candidate, movement) in enumerate(zip(raw_events, inputs, path, movements), start=1):
         payload = event.normalized(profile).to_dict()
+        event_id = f"{route_id}-step-{index}"
+        transition = transitions_by_target.get(event_id)
         payload.update(
             {
-                "id": f"{route_id}-step-{index}",
+                "id": event_id,
                 "step": index,
                 "inputToken": item.token,
                 "resolvedNote": item.note,
@@ -453,8 +631,9 @@ def build_route(
                 "pitchValue": resolved_pitches[index - 1],
                 "scaleDegree": str(item.degree),
                 "technique": "grip" if len(candidate.notes) > 1 else "pick",
-                "movement": movement,
-                "explanation": _event_explanation(item, candidate, movement, resolved_pitches[index - 1]),
+                "texture": {1: "single_note", 2: "dyad", 3: "triad"}.get(len(candidate.notes), "grip"),
+                "movement": transition["label"] if transition else movement,
+                "explanation": _event_explanation(item, candidate, transition["label"] if transition else movement, resolved_pitches[index - 1]),
                 "renderablePositionId": f"{route_id}-event-{index}",
                 "durationBeats": item.duration_beats,
                 "measure": item.measure,
@@ -462,6 +641,8 @@ def build_route(
                 "origin": item.origin,
             }
         )
+        if transition:
+            payload["transitionFromPreviousId"] = transition["id"]
         if item.tie:
             payload["tie"] = item.tie
         if item.lyric:
@@ -488,6 +669,14 @@ def build_route(
     if fretboard is None:
         raise ValueError("A generated melody route could not produce a synchronized fretboard.")
     chord_symbols = list(dict.fromkeys(item.chord for item in inputs if item.chord))
+    texture_summary = {
+        "singleNotes": sum(1 for candidate in path if len(candidate.notes) == 1),
+        "dyads": sum(1 for candidate in path if len(candidate.notes) == 2),
+        "triads": sum(1 for candidate in path if len(candidate.notes) == 3),
+        "barSlides": sum(1 for transition in transitions if transition["kind"] == "bar_slide"),
+        "pedalGlides": sum(1 for transition in transitions if transition["kind"] == "pedal_glide"),
+        "leverGlides": sum(1 for transition in transitions if transition["kind"] == "lever_glide"),
+    }
     return {
         "id": route_id,
         "label": label,
@@ -495,59 +684,13 @@ def build_route(
         "recommended": recommended,
         "recommendation": recommendation + (f" Chord-aware ranking used: {', '.join(chord_symbols)}." if chord_symbols else ""),
         "chordContext": {"symbols": chord_symbols, "usedForRanking": bool(chord_symbols)},
-        "movementSummary": " ".join(movements),
+        "movementSummary": " ".join(str(event.get("movement") or "") for event in event_payloads).strip(),
+        "textureSummary": texture_summary,
+        "transitions": transitions,
         "events": event_payloads,
         "tabExample": tab_example,
         "fretboard": fretboard,
     }
-
-
-def build_vocal_steel_route(base_route: Mapping[str, Any], inputs: Sequence[MelodyInput], key: str) -> dict[str, Any] | None:
-    """Return a faithful route with one mechanically checked slide-in suggestion.
-
-    The suggested grace note is metadata rather than a source event, so turning
-    this route on never alters or misattributes the imported melody.
-    """
-    scale_pitch_classes = {_pitch_class(note) for note in _scale_notes(key)}
-    events = list(base_route.get("events") or [])
-    suggestion: dict[str, Any] | None = None
-    for index, event in enumerate(events):
-        notes = event.get("notes") or []
-        if len(notes) != 1:
-            continue
-        note = notes[0]
-        try:
-            string = int(note["string"])
-            fret = int(note["fret"])
-            changes = tuple(note.get("changes") or ())
-        except (KeyError, TypeError, ValueError):
-            continue
-        if fret < 1 or changes:
-            continue
-        target_pitch = int(event.get("pitchValue") or 0)
-        approach_pitch = _absolute_pitch(string, fret - 1, ())
-        if approach_pitch != target_pitch - 1 or approach_pitch % 12 not in scale_pitch_classes:
-            continue
-        suggestion = {
-            "kind": "slide_in",
-            "origin": "generated_ornament",
-            "targetEventId": event.get("id"),
-            "targetStep": index + 1,
-            "from": {"string": string, "fret": fret - 1, "changes": [], "pitch": scientific_pitch_for_value(approach_pitch)},
-            "to": {"string": string, "fret": fret, "changes": [], "pitch": scientific_pitch_for_value(target_pitch)},
-            "label": f"Optional slide into {scientific_pitch_for_value(target_pitch)} on string {string}, fret {fret - 1} to {fret}.",
-        }
-        break
-    if suggestion is None:
-        return None
-    route = copy.deepcopy(dict(base_route))
-    route["id"] = str(base_route.get("id") or "melody").replace("-single-note", "-vocal-steel")
-    route["label"] = "Vocal steel"
-    route["harmonyType"] = "vocal_steel"
-    route["recommended"] = False
-    route["generatedOrnaments"] = [suggestion]
-    route["recommendation"] = suggestion["label"] + " The source melody remains unchanged."
-    return route
 
 
 def _literal_note(record: Mapping[str, Any]) -> TabNote | None:
@@ -678,6 +821,88 @@ def _start_cost(candidate: PositionCandidate, item: MelodyInput | None = None) -
     )
 
 
+def _active_chords(inputs: Sequence[MelodyInput]) -> list[str]:
+    active = ""
+    result: list[str] = []
+    for item in inputs:
+        if item.chord:
+            active = item.chord
+        result.append(active)
+    return result
+
+
+def _desired_texture_size(inputs: Sequence[MelodyInput], index: int, active_chords: Sequence[str]) -> int:
+    item = inputs[index]
+    active_chord = active_chords[index]
+    previous_chord = active_chords[index - 1] if index else ""
+    chord_change = bool(active_chord and active_chord != previous_chord)
+    final_event = index == len(inputs) - 1
+    if item.duration_beats <= 0.5 and float(item.beat) != 1 and not final_event:
+        return 1
+    if active_chord and ((chord_change and float(item.beat) == 1) or final_event or item.duration_beats >= 2):
+        return 3
+    if item.duration_beats >= 1.5 or float(item.beat) == 1 or final_event:
+        return 2
+    return 1
+
+
+def _texture_penalty(actual: int, desired: int) -> int:
+    penalties = {
+        1: {1: 0, 2: 3, 3: 8},
+        2: {1: 2, 2: 0, 3: 4},
+        3: {1: 5, 2: 2, 3: 0},
+    }
+    return penalties[desired].get(actual, 9)
+
+
+def _mixed_start_cost(
+    candidate: PositionCandidate,
+    inputs: Sequence[MelodyInput],
+    index: int,
+    active_chords: Sequence[str],
+) -> tuple[int, ...]:
+    desired = _desired_texture_size(inputs, index, active_chords)
+    return (
+        _chord_fit_penalty(candidate, active_chords[index]),
+        _texture_penalty(len(candidate.notes), desired),
+        len(candidate.controls),
+        abs(candidate.fret - 8) + abs(candidate.top_string - 5),
+        len(candidate.notes),
+    )
+
+
+def _mixed_transition_cost(
+    previous: PositionCandidate,
+    current: PositionCandidate,
+    inputs: Sequence[MelodyInput],
+    index: int,
+    active_chords: Sequence[str],
+) -> tuple[int, ...]:
+    desired = _desired_texture_size(inputs, index, active_chords)
+    texture_change = abs(len(current.notes) - len(previous.notes))
+    return (
+        _chord_fit_penalty(current, active_chords[index]),
+        _texture_penalty(len(current.notes), desired),
+        abs(current.fret - previous.fret),
+        len(set(previous.controls) ^ set(current.controls)),
+        abs(current.top_string - previous.top_string),
+        texture_change * 2,
+        len(current.controls),
+    )
+
+
+def _dedupe_candidates(candidates: Sequence[PositionCandidate]) -> list[PositionCandidate]:
+    unique: dict[tuple[Any, ...], PositionCandidate] = {}
+    for candidate in candidates:
+        key = (
+            candidate.fret,
+            tuple((note.string, note.fret, note.changes) for note in candidate.notes),
+            candidate.top_pitch,
+        )
+        unique.setdefault(key, candidate)
+    return list(unique.values())
+
+
 def _transition_cost(
     previous: PositionCandidate,
     current: PositionCandidate,
@@ -754,6 +979,7 @@ def _event_explanation(item: MelodyInput, candidate: PositionCandidate, movement
 
 def _recommendation_for(harmony_type: str) -> str:
     return {
+        "mixed_arrangement": "Recommended: balances single-note motion, diatonic pairs, chord-backed grips, and sparse validated steel movement.",
         "automatic_harmony": "Recommended: mixes validated diatonic thirds and sixths to keep the bar path smooth.",
         "thirds": "Keeps a diatonic third below the melody where a validated E9 grip exists.",
         "sixths": "Keeps a diatonic sixth below the melody where a validated E9 grip exists.",

@@ -53,6 +53,19 @@ def test_simultaneous_notes_align_in_same_event_column() -> None:
     assert _row(result.tab, " 5 |").index("3") == _row(result.tab, " 6 |").index("3")
 
 
+def test_transition_tokens_render_without_changing_event_count() -> None:
+    result = render_tab(
+        (
+            TabEvent(notes=(TabNote(4, 3),)),
+            TabEvent(notes=(TabNote(4, 5),), transition={"kind": "bar_slide", "tabTokens": {"4": "3/5"}}),
+        )
+    )
+
+    assert result.ok
+    assert "3/5" in result.tab
+    assert result.metadata["event_count"] == 2
+
+
 def test_rejects_more_than_three_notes() -> None:
     events = (TabEvent(notes=(TabNote(3, 3), TabNote(4, 3), TabNote(5, 3), TabNote(6, 3))),)
 

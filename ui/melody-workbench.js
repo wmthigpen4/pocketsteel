@@ -924,6 +924,7 @@
     eventStrip: $("#studio-event-strip"),
     tab: $("#studio-tab"),
     tabCode: $("#studio-tab-code"),
+    transitionKey: $("#studio-transition-key"),
     wholeSongTab: $("#studio-whole-song-tab"),
     wholeSongTabCode: $("#studio-whole-song-tab-code"),
     continueButton: $("#studio-continue"),
@@ -1415,6 +1416,11 @@
         target.pitches = scorePitchesForEvent(event);
       });
     }
+    const transitionByTarget = new Map((route?.transitions || []).map((transition) => [transition.toEventId, transition]));
+    (exercise.events || []).forEach((event, index) => {
+      const target = draft.score.melody[eventStart + index];
+      if (target) target.transitionFromPrevious = transitionByTarget.get(event.id) || null;
+    });
     (draft.score.sections || []).forEach((section) => {
       const label = String(section.label || "").trim();
       if (!label) return;
@@ -1429,13 +1435,6 @@
     scoreUi.render(elements.resultScore, draft, eventStart + state.activeEventIndex, (index) => {
       if (index >= eventStart && index < eventStart + exercise.events.length) selectEvent(index - eventStart);
     });
-    const ornaments = route?.generatedOrnaments || [];
-    if (ornaments.length) {
-      const note = doc.createElement("p");
-      note.className = "generated-ornament-note";
-      note.textContent = `Generated ornament (optional): ${ornaments.map((item) => item.label).join(" ")} Select Faithful melody to hide it.`;
-      elements.resultScore.appendChild(note);
-    }
   }
 
   function updatePracticeControls() {
@@ -1476,12 +1475,17 @@
     updatePracticeControls();
   }
 
-  function schedulePitch(context, pitchValue, when, duration, gainValue = 0.11, type = "triangle") {
+  function schedulePitch(context, pitchValue, when, duration, gainValue = 0.11, type = "triangle", glideToPitch = null, glideFraction = 0) {
     if (!Number.isFinite(Number(pitchValue))) return;
     const oscillator = context.createOscillator();
     const gain = context.createGain();
     oscillator.type = type;
     oscillator.frequency.value = 440 * 2 ** ((Number(pitchValue) - 69) / 12);
+    if (Number.isFinite(Number(glideToPitch)) && Number(glideFraction) > 0) {
+      const glideStart = when + duration * Math.max(0.5, 1 - Number(glideFraction));
+      oscillator.frequency.setValueAtTime(oscillator.frequency.value, glideStart);
+      oscillator.frequency.exponentialRampToValueAtTime(440 * 2 ** ((Number(glideToPitch) - 69) / 12), when + duration);
+    }
     gain.gain.setValueAtTime(0.0001, when);
     gain.gain.exponentialRampToValueAtTime(gainValue, when + 0.015);
     gain.gain.exponentialRampToValueAtTime(0.0001, Math.max(when + 0.03, when + duration - 0.02));
@@ -1546,7 +1550,13 @@
       state.practiceTimers.push(global.setTimeout(() => {
         if (run === state.practiceRun) selectEvent(index);
       }, delay));
-      if (!event.rest) schedulePitch(context, event.pitchValue, cursor, duration);
+      const activeRoute = state.response?.melodyExercise?.routes?.find((route) => route.id === state.response?.melodyExercise?.selectedRouteId);
+      const nextEvent = events[index + 1];
+      const transition = (activeRoute?.transitions || []).find((item) => item.fromEventId === event.id && item.toEventId === nextEvent?.id);
+      if (!event.rest) schedulePitch(context, event.pitchValue, cursor, duration, 0.11, "triangle", transition ? nextEvent?.pitchValue : null, transition?.playbackGlideFraction || 0);
+      (event.notes || []).map(pitchValueForTabNote).filter((pitch) => Number.isFinite(pitch) && Number(pitch) !== Number(event.pitchValue)).forEach((pitch) => {
+        schedulePitch(context, pitch, cursor, duration, 0.035, "sine");
+      });
       if (elements.practiceChords.checked) {
         chordPitchValues(activeChord(events, index)).forEach((pitch) => schedulePitch(context, pitch, cursor, duration, 0.025, "sine"));
       }
@@ -1962,6 +1972,17 @@
         showStringLabels: state.showStringLabels
       })
     );
+    const transition = (activeRoute?.transitions || []).find((item) => item.toEventId === exercise.events[state.activeEventIndex]?.id);
+    if (transition && !global.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) {
+      const sourceLine = elements.fretboard.querySelector(`[data-fret-line="${transition.fromFret}"]`);
+      const sourceX = Number(sourceLine?.getAttribute("x1"));
+      elements.fretboard.querySelectorAll("[data-highlight-dot], [data-highlight-band]").forEach((marker) => {
+        const targetX = Number(marker.dataset.highlightRenderX);
+        if (Number.isFinite(sourceX) && Number.isFinite(targetX) && typeof marker.animate === "function") {
+          marker.animate([{ transform: `translateX(${sourceX - targetX}px)`, opacity: 0.45 }, { transform: "translateX(0)", opacity: 1 }], { duration: 320, easing: "ease-out" });
+        }
+      });
+    }
   }
 
   function selectEvent(index) {
@@ -2023,8 +2044,8 @@
     elements.practiceChordOption.hidden = !hasChordContext(exercise.events);
     if (elements.practiceChordOption.hidden) elements.practiceChords.checked = false;
     renderResultScore(exercise, route);
-    const ornamentTab = (route.generatedOrnaments || []).map((item) => `Generated ornament (optional): ${item.from?.pitch || "approach"}→${item.to?.pitch || "target"} · S${item.from?.string || "?"} ${item.from?.fret ?? "?"}→${item.to?.fret ?? "?"}`).join("\n");
-    elements.tabCode.textContent = `${ornamentTab}${ornamentTab ? "\n\n" : ""}${route.tab?.tabText || ""}`;
+    elements.transitionKey.hidden = !(route.transitions || []).length;
+    elements.tabCode.textContent = route.tab?.tabText || "";
     selectEvent(0);
   }
 

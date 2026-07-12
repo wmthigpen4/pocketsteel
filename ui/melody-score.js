@@ -351,6 +351,30 @@
       svg.classList.add("score-svg");
       svg.setAttribute("role", "img");
       svg.setAttribute("aria-label", `${draft.source.title} melody staff`);
+      renderedNotes.forEach((target, index) => {
+        const transition = target.event.transitionFromPrevious;
+        const source = renderedNotes[index - 1];
+        if (!transition || !source) return;
+        const sourceElement = source.note.getSVGElement?.();
+        const targetElement = target.note.getSVGElement?.();
+        if (!sourceElement || !targetElement || typeof sourceElement.getBBox !== "function") return;
+        const sourceBox = sourceElement.getBBox();
+        const targetBox = targetElement.getBBox();
+        const sameSystem = Math.floor((Number(source.event.measure) - 1) / layout.columns) === Math.floor((Number(target.event.measure) - 1) / layout.columns);
+        const overlay = global.document.createElementNS("http://www.w3.org/2000/svg", sameSystem ? "line" : "text");
+        overlay.setAttribute("class", sameSystem ? "score-gliss" : "score-gliss-label");
+        if (sameSystem) {
+          overlay.setAttribute("x1", String(sourceBox.x + sourceBox.width));
+          overlay.setAttribute("y1", String(sourceBox.y + sourceBox.height * 0.42));
+          overlay.setAttribute("x2", String(targetBox.x));
+          overlay.setAttribute("y2", String(targetBox.y + targetBox.height * 0.42));
+        } else {
+          overlay.setAttribute("x", String(targetBox.x));
+          overlay.setAttribute("y", String(Math.max(12, targetBox.y - 5)));
+          overlay.textContent = "gliss.";
+        }
+        svg.appendChild(overlay);
+      });
     }
     container.dataset.scoreRenderer = "vexflow-5.0.0";
     return true;
@@ -399,6 +423,7 @@
       text.textContent = item.symbol;
       svg.appendChild(text);
     });
+    const fallbackPoints = [];
     score.melody.forEach((event, index) => {
       const beats = beatsPerMeasure(draft);
       const measureIndex = Number(event.measure) - 1;
@@ -445,6 +470,18 @@
         if (eventObject.key === "Enter" || eventObject.key === " ") select();
       });
       svg.appendChild(group);
+      fallbackPoints.push({ x, y: event.rest ? 104 + system * layout.systemHeight : 126 + system * layout.systemHeight - (staffStep(event.pitchValue) + 2) * 7, system, event });
+    });
+    fallbackPoints.forEach((target, index) => {
+      const source = fallbackPoints[index - 1];
+      if (!target.event.transitionFromPrevious || !source) return;
+      if (source.system === target.system) {
+        svg.appendChild(make("line", { x1: source.x + 10, y1: source.y, x2: target.x - 10, y2: target.y, class: "score-gliss" }));
+      } else {
+        const label = make("text", { x: target.x - 5, y: target.y - 14, class: "score-gliss-label" });
+        label.textContent = "gliss.";
+        svg.appendChild(label);
+      }
     });
     container.appendChild(svg);
     container.dataset.scoreRenderer = "fallback-svg";
