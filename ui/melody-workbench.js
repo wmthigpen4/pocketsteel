@@ -887,7 +887,10 @@
     result: $("#studio-result"),
     resultTitle: $("#studio-result-title"),
     resultSource: $("#studio-result-source"),
+    resultScoreStage: $("#studio-result-score-stage"),
     resultScore: $("#studio-result-score"),
+    scoreLyricCue: $("#studio-score-lyric-cue"),
+    scoreLyricText: $("#studio-score-lyric-text"),
     sectionNavigation: $("#studio-section-navigation"),
     sectionPrevious: $("#studio-section-previous"),
     sectionStatus: $("#studio-section-status"),
@@ -1391,13 +1394,15 @@
 
   function renderResultScore(exercise, route = null) {
     if (!scoreUi || !exercise?.events?.length) {
-      elements.resultScore.hidden = true;
+      elements.resultScoreStage.hidden = true;
       return;
     }
-    elements.resultScore.hidden = false;
+    elements.resultScoreStage.hidden = false;
     const eventStart = Number(exercise?.section?.eventStart || 0);
     const hasWholeScore = (state.scoreDraft?.score?.melody?.length || 0) > (exercise.events?.length || 0);
     const draft = hasWholeScore ? scoreUi.cloneDraft(state.scoreDraft) : scoreDraftFromExercise(exercise);
+    const reviewedSections = state.scoreDraft?.score?.sections || [];
+    if (!draft.score.sections?.length && reviewedSections.length) draft.score.sections = reviewedSections.map((section) => ({ ...section }));
     if (hasWholeScore) {
       (exercise.events || []).forEach((event, index) => {
         const target = draft.score.melody[eventStart + index];
@@ -1407,6 +1412,17 @@
         target.pitches = scorePitchesForEvent(event);
       });
     }
+    (draft.score.sections || []).forEach((section) => {
+      const label = String(section.label || "").trim();
+      if (!label) return;
+      const firstEvent = draft.score.melody.find((event) => !event.rest && Number(event.measure) >= Number(section.startMeasure) && Number(event.measure) <= Number(section.endMeasure));
+      if (firstEvent && !firstEvent.lyric) firstEvent.lyric = label;
+    });
+    const activeEvent = exercise.events[state.activeEventIndex];
+    const activeMeasure = Number(activeEvent?.measure || 0);
+    const activeSection = (draft.score.sections || []).find((section) => activeMeasure >= Number(section.startMeasure) && activeMeasure <= Number(section.endMeasure));
+    elements.scoreLyricText.textContent = activeSection?.label || "";
+    elements.scoreLyricCue.hidden = !activeSection?.label;
     scoreUi.render(elements.resultScore, draft, eventStart + state.activeEventIndex, (index) => {
       if (index >= eventStart && index < eventStart + exercise.events.length) selectEvent(index - eventStart);
     });
@@ -2078,7 +2094,7 @@
     elements.octaveMapControls.hidden = needsSource || !exercise?.events?.length;
     elements.transport.hidden = needsSource || !exercise?.events?.length;
     elements.tab.hidden = needsSource || !response.tabs?.length;
-    elements.resultScore.hidden = needsSource;
+    elements.resultScoreStage.hidden = needsSource;
     elements.practice.hidden = needsSource || !exercise?.events?.length;
     elements.practiceLoopPanel.hidden = needsSource || (exercise?.events?.length || 0) < 8;
     if (elements.practiceLoopPanel.hidden) elements.practiceLoopPanel.open = false;

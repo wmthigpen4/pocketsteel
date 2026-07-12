@@ -257,26 +257,36 @@
     return `${base}${event.rest ? "r" : ""}`;
   }
 
+  function scoreSystemLayout(measureCount, containerWidth) {
+    const width = Math.max(320, Math.floor(Number(containerWidth) || 760) - 16);
+    const columns = Math.max(2, Math.min(4, Math.floor((width - 24) / 180)));
+    const systems = Math.max(1, Math.ceil(Math.max(1, Number(measureCount) || 1) / columns));
+    return { width, columns, systems, systemHeight: 190, height: systems * 190 + 24 };
+  }
+
   function renderWithVexFlow(container, draft, selectedIndex = -1, onSelect) {
     const VF = global.VexFlow;
     if (!VF?.Renderer || !VF?.Stave || !VF?.StaveNote || !VF?.Voice || !VF?.Formatter) return false;
     container.replaceChildren();
     const score = reflowDraft(draft).score;
     const measureCount = Math.max(1, ...score.melody.map((event) => Number(event.measure) || 1));
-    const measureWidth = 220;
-    const width = Math.max(720, measureCount * measureWidth + 24);
+    const layout = scoreSystemLayout(measureCount, container.clientWidth);
+    const measureWidth = (layout.width - 24) / layout.columns;
     const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
-    renderer.resize(width, 250);
+    renderer.resize(layout.width, layout.height);
     const context = renderer.getContext();
     const renderedNotes = [];
     const beams = [];
     for (let measure = 1; measure <= measureCount; measure += 1) {
-      const x = 12 + (measure - 1) * measureWidth;
-      const stave = new VF.Stave(x, 62, measureWidth);
-      if (measure === 1) {
+      const column = (measure - 1) % layout.columns;
+      const system = Math.floor((measure - 1) / layout.columns);
+      const systemStart = column === 0;
+      const x = 12 + column * measureWidth;
+      const stave = new VF.Stave(x, 42 + system * layout.systemHeight, measureWidth);
+      if (systemStart) {
         stave.addClef("treble");
         if (typeof stave.addKeySignature === "function") stave.addKeySignature(score.arrangementKey || "C");
-        stave.addTimeSignature(score.meter);
+        if (measure === 1) stave.addTimeSignature(score.meter);
       }
       stave.setContext(context).draw();
       const sourceEvents = score.melody.map((event, index) => ({ event, index })).filter((item) => Number(item.event.measure) === measure);
@@ -304,7 +314,7 @@
       const voice = new VF.Voice({ numBeats: capacity, beatValue: 4 });
       if (VF.Voice.Mode?.SOFT !== undefined) voice.setMode(VF.Voice.Mode.SOFT);
       voice.addTickables(notes);
-      new VF.Formatter().joinVoices([voice]).format([voice], measureWidth - (measure === 1 ? 104 : 34));
+      new VF.Formatter().joinVoices([voice]).format([voice], measureWidth - (systemStart ? (measure === 1 ? 104 : 84) : 34));
       voice.draw(context, stave);
       if (VF.Beam?.generateBeams) beams.push(...VF.Beam.generateBeams(notes));
     }
@@ -351,8 +361,10 @@
     container.replaceChildren();
     const score = reflowDraft(draft).score;
     const measures = Math.max(1, ...score.melody.map((event) => Number(event.measure) || 1));
-    const width = Math.max(720, measures * 190);
-    const height = 210;
+    const layout = scoreSystemLayout(measures, container.clientWidth);
+    const measureWidth = (layout.width - 24) / layout.columns;
+    const width = layout.width;
+    const height = layout.height;
     const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
     svg.setAttribute("role", "img");
@@ -363,30 +375,45 @@
       Object.entries(attrs).forEach(([key, value]) => node.setAttribute(key, String(value)));
       return node;
     };
-    for (let line = 0; line < 5; line += 1) svg.appendChild(make("line", { x1: 18, y1: 70 + line * 14, x2: width - 18, y2: 70 + line * 14, class: "staff-line" }));
-    for (let measure = 0; measure <= measures; measure += 1) svg.appendChild(make("line", { x1: 24 + measure * 190, y1: 70, x2: 24 + measure * 190, y2: 126, class: "bar-line" }));
-    const clef = make("text", { x: 34, y: 119, class: "score-clef" });
-    clef.textContent = "𝄞";
-    svg.appendChild(clef);
+    for (let system = 0; system < layout.systems; system += 1) {
+      const y = 70 + system * layout.systemHeight;
+      for (let line = 0; line < 5; line += 1) svg.appendChild(make("line", { x1: 18, y1: y + line * 14, x2: width - 18, y2: y + line * 14, class: "staff-line" }));
+      const clef = make("text", { x: 28, y: y + 49, class: "score-clef" });
+      clef.textContent = "𝄞";
+      svg.appendChild(clef);
+    }
+    for (let measure = 1; measure <= measures; measure += 1) {
+      const column = (measure - 1) % layout.columns;
+      const system = Math.floor((measure - 1) / layout.columns);
+      const y = 70 + system * layout.systemHeight;
+      svg.appendChild(make("line", { x1: 24 + column * measureWidth, y1: y, x2: 24 + column * measureWidth, y2: y + 56, class: "bar-line" }));
+      if (column === layout.columns - 1 || measure === measures) svg.appendChild(make("line", { x1: 24 + (column + 1) * measureWidth, y1: y, x2: 24 + (column + 1) * measureWidth, y2: y + 56, class: "bar-line" }));
+    }
     score.harmony.forEach((item) => {
       const beats = beatsPerMeasure(draft);
-      const x = 55 + (Number(item.measure) - 1) * 190 + ((Number(item.beat) - 1) / beats) * 150;
-      const text = make("text", { x, y: 45, class: "chord-symbol" });
+      const measureIndex = Number(item.measure) - 1;
+      const column = measureIndex % layout.columns;
+      const system = Math.floor(measureIndex / layout.columns);
+      const x = 55 + column * measureWidth + ((Number(item.beat) - 1) / beats) * (measureWidth - 40);
+      const text = make("text", { x, y: 45 + system * layout.systemHeight, class: "chord-symbol" });
       text.textContent = item.symbol;
       svg.appendChild(text);
     });
     score.melody.forEach((event, index) => {
       const beats = beatsPerMeasure(draft);
-      const x = 55 + (Number(event.measure) - 1) * 190 + ((Number(event.beat) - 1) / beats) * 150;
+      const measureIndex = Number(event.measure) - 1;
+      const column = measureIndex % layout.columns;
+      const system = Math.floor(measureIndex / layout.columns);
+      const x = 55 + column * measureWidth + ((Number(event.beat) - 1) / beats) * (measureWidth - 40);
       const group = make("g", { class: `score-event${index === selectedIndex ? " is-selected" : ""}`, tabindex: "0", role: "button", "aria-label": event.rest ? `Rest ${index + 1}` : `${event.pitch}, note ${index + 1}` });
       group.dataset.origin = event.origin || "source";
       if (event.rest) {
-        const rest = make("text", { x: x - 8, y: 104, class: "rest-mark" });
+        const rest = make("text", { x: x - 8, y: 104 + system * layout.systemHeight, class: "rest-mark" });
         rest.textContent = "𝄽";
         group.appendChild(rest);
       } else {
         const pitchValues = event.pitches?.length ? event.pitches : [event.pitchValue];
-        const noteYs = pitchValues.map((value) => 126 - (staffStep(value) + 2) * 7);
+        const noteYs = pitchValues.map((value) => 126 + system * layout.systemHeight - (staffStep(value) + 2) * 7);
         noteYs.forEach((y, pitchIndex) => {
           group.appendChild(make("ellipse", { cx: x, cy: y, rx: 9, ry: 6.5, transform: `rotate(-18 ${x} ${y})`, class: "note-head" }));
           const pitch = pitchLabel(pitchValues[pitchIndex]);
@@ -399,16 +426,16 @@
         const stemY = Math.min(...noteYs);
         if (Number(event.durationBeats) < 4) group.appendChild(make("line", { x1: x + 8, y1: Math.max(...noteYs), x2: x + 8, y2: stemY - 38, class: "note-stem" }));
       }
-      const duration = make("text", { x: x - 14, y: 160, class: "duration-label" });
+      const duration = make("text", { x: x - 14, y: 160 + system * layout.systemHeight, class: "duration-label" });
       duration.textContent = durationName(event.durationBeats).replaceAll("_", " ");
       group.appendChild(duration);
       if (event.lyric) {
-        const lyric = make("text", { x: x - 12, y: 184, class: "lyric-label" });
+        const lyric = make("text", { x: x - 12, y: 180 + system * layout.systemHeight, class: "lyric-label" });
         lyric.textContent = event.lyric;
         group.appendChild(lyric);
       }
       if (event.articulation) {
-        const articulation = make("text", { x: x - 5, y: 53, class: "articulation-label" });
+        const articulation = make("text", { x: x - 5, y: 53 + system * layout.systemHeight, class: "articulation-label" });
         articulation.textContent = ({ accent: ">", tenuto: "—", staccato: "•" })[event.articulation] || "";
         group.appendChild(articulation);
       }
@@ -437,6 +464,7 @@
     DURATIONS,
     MAX_EVENTS,
     MAX_MEASURES,
+    scoreSystemLayout,
     pitchLabel,
     createDraft,
     cloneDraft,

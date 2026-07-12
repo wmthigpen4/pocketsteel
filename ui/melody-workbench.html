@@ -142,8 +142,11 @@
     .input-panel-head p { max-width: 650px; margin: 5px 0 0; }
     .score-toolbar, .score-actions, .capture-actions, .recording-tools { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; }
     .score-toolbar .field { min-width: 120px; }
-    .score-canvas { max-width: 100%; overflow-x: auto; border: 1px solid rgba(244, 234, 214, 0.13); border-radius: 14px; background: #fbf3df; color: #1b1710; padding: 8px; }
-    .score-svg { display: block; min-width: 720px; width: 100%; height: auto; }
+    .score-canvas { max-width: 100%; overflow: hidden; border: 1px solid rgba(244, 234, 214, 0.13); border-radius: 14px; background: #fbf3df; color: #1b1710; padding: 8px; }
+    .score-svg { display: block; min-width: 0; width: 100%; height: auto; }
+    .score-stage { display: grid; gap: 8px; }
+    .score-lyric-cue { position: sticky; top: 8px; z-index: 3; width: fit-content; max-width: calc(100% - 24px); margin: 0 12px -44px auto; border: 1px solid rgba(240, 191, 105, 0.4); border-radius: 999px; background: rgba(18, 15, 10, 0.93); color: var(--cream); padding: 8px 13px; font-size: 13px; font-weight: 800; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28); }
+    .score-lyric-cue span { color: var(--gold); }
     .staff-line { stroke: #40382c; stroke-width: 1; }
     .bar-line { stroke: #40382c; stroke-width: 1.5; }
     .score-clef { fill: #241f18; font-size: 56px; }
@@ -366,7 +369,7 @@
     @media print {
       @page { size: landscape; margin: 0.5in; }
       body { background: #fff; color: #111; }
-      .studio-header, .studio-hero, #studio-editor, #studio-result-score, .arrangement-choices, #studio-fretboard, #studio-transport, .result-actions, .practice-bar { display: none !important; }
+      .studio-header, .studio-hero, #studio-editor, #studio-result-score-stage, .arrangement-choices, #studio-fretboard, #studio-transport, .result-actions, .practice-bar { display: none !important; }
       main, .studio-shell, #studio-result { width: 100%; max-width: none; margin: 0; padding: 0; border: 0; box-shadow: none; background: #fff; }
       #studio-result .result-head { display: block; color: #111; }
       #studio-result-title, #studio-result-source, #studio-print-route { color: #111; }
@@ -644,7 +647,10 @@
           <button class="primary-action" type="button" data-edit-source>Edit recording and phrase</button>
         </div>
 
-        <div class="score-canvas" id="studio-result-score" aria-label="Lesson melody staff" hidden></div>
+        <div class="score-stage" id="studio-result-score-stage" hidden>
+          <p class="score-lyric-cue" id="studio-score-lyric-cue" aria-live="polite" hidden><span>Lyric cue</span> <strong id="studio-score-lyric-text"></strong></p>
+          <div class="score-canvas" id="studio-result-score" aria-label="Lesson melody staff"></div>
+        </div>
 
         <div class="practice-bar" id="studio-practice" hidden aria-label="Score practice controls">
           <div class="practice-core">
@@ -714,10 +720,10 @@
     </div>
   </main>
 
-  <script src="answer-client.js?v=melody-continuous-song-20260712-1"></script>
+  <script src="answer-client.js?v=melody-wrapped-score-20260712-1"></script>
   <script src="pedal-steel-fretboard.js?v=melody-multi-input-20260711-3"></script>
   <script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>
-  <script src="melody-score.js?v=melody-continuous-song-20260712-1"></script>
-  <script src="melody-workbench.js?v=melody-continuous-song-20260712-1"></script>
+  <script src="melody-score.js?v=melody-wrapped-score-20260712-1"></script>
+  <script src="melody-workbench.js?v=melody-wrapped-score-20260712-1"></script>
 </body>
 </html>

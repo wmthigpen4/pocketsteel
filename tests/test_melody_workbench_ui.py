@@ -198,6 +198,9 @@ def test_score_draft_builder_reflows_edits_transposes_and_exports_musicxml() -> 
 const assert = require("node:assert/strict");
 const score = require("./ui/melody-score.js");
 
+assert.deepEqual(score.scoreSystemLayout(16, 800), {width: 784, columns: 4, systems: 4, systemHeight: 190, height: 784});
+assert.deepEqual(score.scoreSystemLayout(33, 360), {width: 344, columns: 2, systems: 17, systemHeight: 190, height: 3254});
+
 let draft = score.createDraft({key: "G", meter: "3/4", pickupBeats: 1, title: "Amazing Grace sketch"});
 draft = score.addEvent(draft, {pitchValue: 62, durationBeats: 1});
 draft = score.addEvent(draft, {pitchValue: 67, durationBeats: 2});
@@ -314,7 +317,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Change the register for this note only" in html
     assert "state.selectedPhraseIndex" in script
     assert html.count("?v=melody-multi-input-20260711-3") == 1
-    assert html.count("?v=melody-continuous-song-20260712-1") == 3
+    assert html.count("?v=melody-wrapped-score-20260712-1") == 3
     assert 'elements.sectionNavigation.hidden = needsSource || Number(section.total || 0) <= 1;' in script
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in html
     assert "VexFlow" in Path("ui/vendor/VEXFLOW-LICENSE.txt").read_text(encoding="utf-8")
@@ -406,7 +409,11 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'id="studio-print-route"' in html
     assert 'id="studio-score-print"' not in html
     assert "Print score" not in html
-    assert '#studio-result-score, .arrangement-choices' in html
+    assert '#studio-result-score-stage, .arrangement-choices' in html
+    assert 'id="studio-result-score-stage" hidden' in html
+    assert 'id="studio-score-lyric-cue" aria-live="polite" hidden' in html
+    assert 'scoreSystemLayout' in Path("ui/melody-score.js").read_text(encoding="utf-8")
+    assert 'elements.scoreLyricText.textContent = activeSection?.label || "";' in script
     assert '#studio-tab { display: none !important;' in html
     assert '#studio-whole-song-tab { display: block !important;' in html
     assert 'id="studio-section-navigation"' in html
