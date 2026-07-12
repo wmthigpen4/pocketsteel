@@ -1,17 +1,17 @@
 # Integration Status — Current Snapshot
 
-Updated: 2026-07-11 23:18 America/Chicago
+Updated: 2026-07-11 23:29 America/Chicago
 
 ## Repository state
 
 - Branch: `feature/answer-api`
-- Current implementation: `9600f90 Simplify Melody Studio lesson controls`
+- Current implementation: `a54e5c5 Sync Melody Studio score with arrangement routes`
 - Melody API baseline: `f37201a feat: add Melody Exercise teaching workflow`
 - Melody Studio now uses Steel Guitar RAG branding. No broad repository rename is approved.
 
 ## Melody Studio
 
-Status: **LESSON-FOCUS ADJUSTMENT READY FOR USER SMOKE — the progressive Add a melody workflow and E9 output are committed, 935-test green, and authenticated-preview verified with the simplified lesson controls.**
+Status: **ROUTE/SCORE SYNCHRONIZATION READY FOR USER SMOKE — the progressive Melody Studio workflow is 935-test green and authenticated-preview verified with staff notation that follows single-note, dyad, and chord-melody route choices.**
 
 - The home header now exposes feature-gated actions in this order: Explore Fretboard, Melody Studio, Backstage.
 - The technical inline Melody form was removed from home.
@@ -24,6 +24,7 @@ Status: **LESSON-FOCUS ADJUSTMENT READY FOR USER SMOKE — the progressive Add a
 - The lead-sheet builder supports one treble melody voice, G/C, 3/4 and 4/4, pickup, supported note/rest durations, ties, accidentals, chord symbols, lyrics/labels, undo/redo, measure actions, duplicate, transpose, browser playback, and local MusicXML download.
 - Melody pitch and chord symbols are separate: melody-only input shows no invented chord labels, while supplied harmony appears only at actual changes.
 - The score is an interactive practice surface with synchronized staff/fretboard/navigator/tab selection, adjustable tempo, count-in, pause/resume, stop, measure and selected-note loops, and conditional chord backing when real chord symbols are present.
+- Arrangement route switching now changes the musical score as well as the fretboard and tab: Faithful melody shows one note head, harmonized routes show two stacked note heads, and Chord melody shows every validated grip pitch while retaining the melody as the top voice.
 - VexFlow renders G/C key signatures, beams, rests, ties, dots, lyrics, and accent/tenuto/staccato; MusicXML and print output preserve the supported notation.
 - Chord symbols guide mechanically validated harmony and chord-melody grip ranking while the resolved melody remains the top voice.
 - Melody Studio fretboard marker labels use concise resolved top-note pitches (`D4`, `E4`, etc.) instead of repeating the route title; harmony routes retain the melody/top-voice label.
@@ -107,6 +108,8 @@ Add-a-melody UX implementation handoff: `docs/handoffs/task-completions/2026-07-
 Add-a-melody UX protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-1857-12-melody-add-melody-ux-protected-smoke.md`.
 Lesson-focus implementation handoff: `docs/handoffs/task-completions/2026-07-11-2314-06-melody-lesson-focus-adjustment.md`.
 Lesson-focus protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-2318-12-melody-lesson-focus-protected-smoke.md`.
+Route-score synchronization implementation handoff: `docs/handoffs/task-completions/2026-07-11-2325-06-melody-route-score-sync-fix.md`.
+Route-score synchronization protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11-2329-12-melody-route-score-sync-protected-smoke.md`.
 
 ## Verification
 
@@ -114,7 +117,7 @@ Lesson-focus protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11
 - Core JavaScript syntax: passed for answer client, Melody Studio, and fretboard component.
 - `git diff --check`: passed.
 - Local browser smoke: pass for a twelve-note sectioned phrase, six arrangement routes, one active-note navigator, octave toggle/legend, melody-only chord-backing suppression, mobile containment, and clean browser logs.
-- Protected browser smoke: pass at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-lesson-focus-9600f90-20260711`.
+- Protected browser smoke: pass at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-route-score-a54e5c5-20260711`.
 - Protected browser verified manual phrase and lead-sheet builder lesson generation, six routes, synchronized staff/fretboard/tab, VexFlow renderer, zero page overflow, and no `[object Object]` or console errors.
 - Active-fretboard protected smoke verified D4-to-E4 marker replacement, independent string/note/octave controls, and an active chord-melody grip limited to strings 5, 6, and 8 with one D4 top-voice label.
 - String/action-label protected smoke verified a literal `S6:3B` event renders `6B` inside the active marker while Current note reports String 6, fret 3, B pedal.
@@ -124,12 +127,13 @@ Lesson-focus protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11
 - Score-edit-controls protected smoke verified visible and keyboard deletion of only the selected event, whole-score B4-to-B5 octave movement, successful raised-phrase E9 arrangement, and a clean browser console.
 - Add-a-melody UX protected smoke verified typed-phrase entry, reversible inline replacement, successful E9 arrangement, populated Edit melody return, progressive staff disclosures, clean controller caching, and no browser errors.
 - Lesson-focus protected smoke verified a twelve-note sectioned phrase, one readable active-note card, six routes below the fretboard, default-off adjacent octave legend, conditional chord-backing suppression, removed deterministic copy, and clean navigation/browser logs.
+- Route-score synchronization protected smoke verified one, two, and three stacked note heads for Faithful melody, Recommended harmony, and Chord melody respectively, with exact pitch labels, preserved top melody voice, synchronized fretboard/tab, and clean browser logs.
 - Resumed header smoke verified the removed practice kicker, metadata line, and More arrangements disclosure remain absent on the integrated runtime; all six routes remain together in one horizontally scrollable row and Chord melody selection synchronizes visibly.
 
 ## Protected preview
 
-- Runtime smoke HEAD: `9600f90`.
-- Loopback `/api/version`: `9600f90`, `feature/answer-api`, `hybrid_private_first`, `cloudflare_access`, `features.melodyExercise=true`; import/catalog visibility remains session-flag controlled.
+- Runtime smoke HEAD: `a54e5c5`.
+- Loopback `/api/version`: `a54e5c5`, `feature/answer-api`, `hybrid_private_first`, `cloudflare_access`, `features.melodyExercise=true`; import/catalog visibility remains session-flag controlled.
 - Preview refresh succeeded without `sudo` by terminating only the user-owned port-8770 listener and allowing the installed LaunchDaemon to restart it.
 - Installed wrapper matches the committed wrapper.
 - Cloudflare Access login and protected manual/score lesson generation succeeded; the prior arranger blocker is closed.
@@ -144,6 +148,6 @@ Lesson-focus protected-smoke handoff: `docs/handoffs/task-completions/2026-07-11
 
 ## Next action
 
-1. User smoke at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-lesson-focus-9600f90-20260711`: verify route placement, the one-card note navigator, the optional octave map, conditional chord backing, and progressive rhythm controls.
+1. User smoke at `https://app.steelguitarrag.com/ui/melody-workbench.html?v=melody-route-score-a54e5c5-20260711`: enter a phrase and verify that Faithful melody, Recommended harmony, and Chord melody update the staff, fretboard, and tab together.
 2. If protected catalog/score-image import should be enabled later, explicitly authorize the protected environment flag change and vision-model readiness check; otherwise keep it off.
 3. Keep unrelated corpus, source-inbox, private-data, brand/design, deployment, and environment work parked.
