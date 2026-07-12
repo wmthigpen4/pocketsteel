@@ -123,7 +123,14 @@ assert.deepEqual(activeOnlyOptions.positions.map((position) => position.id), ["e
 assert.equal(activeOnlyOptions.showHighlightLabels, false);
 assert.equal(activeOnlyOptions.showStringActionLabels, true);
 assert.equal(activeOnlyOptions.stringActionLabelMode, "all");
-assert.equal(studio.createInitialState().showOctaveMap, true);
+assert.equal(studio.createInitialState().showOctaveMap, false);
+assert.equal(studio.readableEventPosition({notes: [
+  {string: 10, fret: 10, changes: ["B"]},
+  {string: 6, fret: 10, changes: ["A"]},
+  {string: 7, fret: 10, changes: ["B"]}
+]}), "Strings 6, 7 & 10 · Fret 10 · A+B");
+assert.equal(studio.hasChordContext([{resolvedPitch: "G4"}]), false);
+assert.equal(studio.hasChordContext([{resolvedPitch: "G4", chord: "G"}]), true);
 assert.equal(studio.createInitialState().showStringLabels, false);
 assert.equal(studio.createInitialState().showNoteLabels, true);
 assert.equal(studio.createInitialState().inputMethod, "phrase");
@@ -247,7 +254,8 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'data-preset="1-2-3-5"' in html
     assert 'id="studio-fretboard"' in html
     assert 'id="studio-octave-guide"' in html
-    assert 'id="studio-octave-toggle" aria-pressed="true"' in html
+    assert 'id="studio-octave-toggle" aria-pressed="false"' in html
+    assert 'id="studio-octave-guide" aria-label="Scientific octave color guide" hidden' in html
     assert 'id="studio-string-label-toggle" aria-pressed="false"' in html
     assert 'id="studio-note-label-toggle" aria-pressed="true"' in html
     assert 'id="studio-octave-map-controls" hidden' in html
@@ -258,15 +266,14 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert ".octave-map-controls { min-width: 0; display: flex;" in html
     assert ".register-stepper { grid-template-columns: 1fr; }" in html
     assert "overflow-x: auto" in html
-    assert ".event-step:focus-visible" in html
     assert 'id="studio-register-value"' in html
     assert 'aria-label="Lower selected note one octave"' in html
     assert 'aria-label="Raise selected note one octave"' in html
     assert '>Lower octave</button>' in html
     assert '>Automatic</button>' in html
     assert '>Raise octave</button>' in html
-    assert 'id="studio-current-note" hidden' in html
-    assert 'id="studio-note-progress"' in html
+    assert 'id="studio-current-note"' not in html
+    assert 'id="studio-note-progress"' not in html
     assert 'class="note-navigator-row"' in html
     assert 'aria-label="Previous note">←</button>' in html
     assert 'aria-label="Next note">→</button>' in html
@@ -275,6 +282,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert '<span class="octave-toggle-mark" aria-hidden="true">✓</span>Note labels</button>' in html
     assert 'id="studio-contour"' in html
     assert 'id="studio-route-tabs"' in html
+    assert html.index('id="studio-fretboard"') < html.index('id="studio-arrangement-choices"') < html.index('id="studio-tab"')
     assert 'id="studio-note-editor" hidden' in html
     assert 'id="studio-octave-down"' in html
     assert 'id="studio-octave-auto"' in html
@@ -292,7 +300,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "state.selectedPhraseIndex" in script
     assert html.count("?v=melody-multi-input-20260711-3") == 2
     assert html.count("?v=melody-score-practice-20260711-3") == 1
-    assert html.count("?v=melody-add-melody-ux-20260711-2") == 1
+    assert html.count("?v=melody-lesson-focus-20260711-1") == 1
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in html
     assert "VexFlow" in Path("ui/vendor/VEXFLOW-LICENSE.txt").read_text(encoding="utf-8")
     assert html.index('id="studio-fretboard"') < html.index('id="studio-tab"')
@@ -303,13 +311,19 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'id="studio-active-tab-step"' not in html
     assert 'id="studio-event-detail"' not in html
     assert "Active step" not in script
-    assert "eventStepCompactPresentation" in script
     assert "elements.routeTabs.appendChild(button)" in script
     assert "advancedRoutes" not in script
     assert "moreRoutes" not in script
     assert ".route-tabs { max-width: 100%; display: flex; flex-wrap: nowrap;" in html
     assert "Note ${state.activeEventIndex + 1} of ${events.length}" in script
-    assert "button.dataset.scientificOctave" in script
+    assert "card.dataset.scientificOctave" in script
+    assert 'card.setAttribute("role", "status")' in script
+    assert "readableEventPosition(event)" in script
+    assert 'id="studio-practice-chord-option" hidden' in html
+    assert "Play chord backing" in html
+    assert "Hear chords" not in html
+    assert "The notes match the structured input; fret and string placement is deterministic" not in html
+    assert 'id="studio-explanation"' not in html
     assert "elements.octaveGuide.hidden" in script
     assert "updateOctaveMapVisibility" in script
     assert "showScientificOctaveOverlay: true" in script

@@ -266,7 +266,7 @@
       sourceUrl: "",
       sectionNumber: 1,
       activeEventIndex: 0,
-      showOctaveMap: true,
+      showOctaveMap: false,
       showStringLabels: false,
       showNoteLabels: true,
       response: null,
@@ -575,6 +575,33 @@
     };
   }
 
+  function humanList(values) {
+    const items = Array.from(new Set(values.filter((value) => value !== null && value !== undefined && value !== "")));
+    if (items.length < 2) return String(items[0] ?? "");
+    if (items.length === 2) return `${items[0]} & ${items[1]}`;
+    return `${items.slice(0, -1).join(", ")} & ${items.at(-1)}`;
+  }
+
+  function readableEventPosition(event) {
+    const notes = event?.notes || [];
+    const strings = notes.map((note) => Number(note.string)).filter(Number.isInteger).sort((a, b) => a - b);
+    const frets = notes.map((note) => Number(note.fret)).filter(Number.isInteger);
+    const controlOrder = ["A", "B", "C", "E", "F", "V", "G", "D"];
+    const controls = Array.from(new Set(notes.flatMap((note) => note.changes || [])))
+      .sort((a, b) => {
+        const aIndex = controlOrder.indexOf(a);
+        const bIndex = controlOrder.indexOf(b);
+        return (aIndex < 0 ? 99 : aIndex) - (bIndex < 0 ? 99 : bIndex) || String(a).localeCompare(String(b));
+      });
+    const stringLabel = `${strings.length === 1 ? "String" : "Strings"} ${humanList(strings)}`;
+    const fretLabel = frets.length ? `Fret ${humanList(Array.from(new Set(frets)))}` : "";
+    return [stringLabel, fretLabel, controls.length ? controls.join("+") : "Open"].filter(Boolean).join(" · ");
+  }
+
+  function hasChordContext(events) {
+    return (events || []).some((event) => String(event?.harmonySymbol || event?.chord || "").trim());
+  }
+
   function routeButtonLabel(route) {
     return route?.label || (route?.recommended ? "Recommended harmony" : "Arrangement");
   }
@@ -693,6 +720,8 @@
     chordPitchValues,
     eventStepPresentation,
     eventStepCompactPresentation,
+    readableEventPosition,
+    hasChordContext,
     routeButtonLabel,
     scientificOctaveForEvent,
     scientificOctaveLabel,
@@ -837,19 +866,17 @@
     practiceTempoValue: $("#studio-practice-tempo-value"),
     practiceCountIn: $("#studio-practice-count-in"),
     practiceChords: $("#studio-practice-chords"),
+    practiceChordOption: $("#studio-practice-chord-option"),
     practiceLoopMeasure: $("#studio-practice-loop-measure"),
     practiceLoopStart: $("#studio-practice-loop-start"),
     practiceLoopEnd: $("#studio-practice-loop-end"),
     practiceLoopClear: $("#studio-practice-loop-clear"),
     practiceLoopStatus: $("#studio-practice-loop-status"),
     resultPrint: $("#studio-result-print"),
+    arrangementChoices: $("#studio-arrangement-choices"),
     routeTabs: $("#studio-route-tabs"),
     routeReason: $("#studio-route-reason"),
     sourceNeeded: $("#studio-source-needed"),
-    currentNote: $("#studio-current-note"),
-    currentNoteName: $("#studio-current-note-name"),
-    currentPosition: $("#studio-current-position"),
-    currentMovement: $("#studio-current-movement"),
     fretboard: $("#studio-fretboard"),
     octaveMapControls: $("#studio-octave-map-controls"),
     octaveToggle: $("#studio-octave-toggle"),
@@ -859,11 +886,9 @@
     transport: $("#studio-transport"),
     previous: $("#studio-previous"),
     next: $("#studio-next"),
-    noteProgress: $("#studio-note-progress"),
     eventStrip: $("#studio-event-strip"),
     tab: $("#studio-tab"),
     tabCode: $("#studio-tab-code"),
-    explanation: $("#studio-explanation"),
     continueButton: $("#studio-continue"),
     edit: $("#studio-edit"),
   };
@@ -1828,21 +1853,7 @@
     const events = exercise?.events || [];
     if (!events.length) return;
     state.activeEventIndex = Math.max(0, Math.min(index, events.length - 1));
-    const event = events[state.activeEventIndex];
-    const note = event.notes?.[0] || {};
-    const strings = (event.notes || []).map((item) => item.string);
-    const controls = Array.from(new Set((event.notes || []).flatMap((item) => item.changes || [])));
-    elements.currentNote.hidden = false;
-    elements.currentNoteName.textContent = event.resolvedPitch || event.resolvedNote || "Note";
-    elements.currentPosition.textContent = `${strings.length > 1 ? "Strings" : "String"} ${strings.join(" + ")} · Fret ${note.fret} · ${controls.length ? controls.join("+") : "Open"}`;
-    elements.currentMovement.textContent = event.movement || "";
-    elements.currentMovement.hidden = !event.movement;
-    elements.noteProgress.textContent = `Note ${state.activeEventIndex + 1} of ${events.length}`;
-    elements.eventStrip.querySelectorAll("[data-event-index]").forEach((button) => {
-      const selected = Number(button.dataset.eventIndex) === state.activeEventIndex;
-      button.classList.toggle("is-selected", selected);
-      button.setAttribute("aria-pressed", String(selected));
-    });
+    renderEvents(exercise);
     elements.previous.disabled = state.activeEventIndex === 0;
     elements.next.disabled = state.activeEventIndex === events.length - 1;
     renderActiveFretboard();
@@ -1854,26 +1865,29 @@
   function renderEvents(exercise) {
     elements.eventStrip.replaceChildren();
     const events = exercise.events || [];
-    events.forEach((event, index) => {
-      const button = doc.createElement("button");
-      button.type = "button";
-      button.className = "event-step";
-      button.dataset.eventIndex = String(index);
-      const presentation = eventStepPresentation(event);
-      const compact = eventStepCompactPresentation(event);
-      const scientificOctave = scientificOctaveForEvent(event);
-      if (scientificOctave !== null) {
-        button.dataset.scientificOctave = String(scientificOctave);
-        button.setAttribute("aria-label", `Note ${index + 1} of ${events.length}: ${compact.note}. ${presentation.position}. ${scientificOctaveLabel(scientificOctave)}.`);
-      }
-      const noteLabel = doc.createElement("strong");
-      noteLabel.textContent = compact.note;
-      const positionLabel = doc.createElement("span");
-      positionLabel.textContent = compact.position;
-      button.append(noteLabel, positionLabel);
-      button.addEventListener("click", () => selectEvent(index));
-      elements.eventStrip.appendChild(button);
-    });
+    const event = events[state.activeEventIndex];
+    if (!event) return;
+    const card = doc.createElement("div");
+    card.className = "event-step";
+    card.setAttribute("role", "status");
+    const scientificOctave = scientificOctaveForEvent(event);
+    if (scientificOctave !== null) card.dataset.scientificOctave = String(scientificOctave);
+    const progress = doc.createElement("span");
+    progress.className = "event-step__progress";
+    progress.textContent = `Note ${state.activeEventIndex + 1} of ${events.length}`;
+    const noteLabel = doc.createElement("strong");
+    noteLabel.textContent = event.resolvedPitch || event.resolvedNote || "Note";
+    const positionLabel = doc.createElement("span");
+    positionLabel.className = "event-step__position";
+    positionLabel.textContent = readableEventPosition(event);
+    card.append(progress, noteLabel, positionLabel);
+    if (event.movement) {
+      const movement = doc.createElement("span");
+      movement.className = "event-step__movement";
+      movement.textContent = event.movement;
+      card.appendChild(movement);
+    }
+    elements.eventStrip.appendChild(card);
   }
 
   function activateRoute(routeId) {
@@ -1890,7 +1904,8 @@
       button.setAttribute("aria-pressed", String(selected));
     });
     elements.routeReason.textContent = route.recommendation || route.movementSummary || "";
-    renderEvents(exercise);
+    elements.practiceChordOption.hidden = !hasChordContext(exercise.events);
+    if (elements.practiceChordOption.hidden) elements.practiceChords.checked = false;
     renderResultScore(exercise, route);
     const ornamentTab = (route.generatedOrnaments || []).map((item) => `Generated ornament (optional): ${item.from?.pitch || "approach"}→${item.to?.pitch || "target"} · S${item.from?.string || "?"} ${item.from?.fret ?? "?"}→${item.to?.fret ?? "?"}`).join("\n");
     elements.tabCode.textContent = `${ornamentTab}${ornamentTab ? "\n\n" : ""}${route.tab?.tabText || ""}`;
@@ -1900,7 +1915,7 @@
   function renderRoutes(exercise) {
     elements.routeTabs.replaceChildren();
     const routes = exercise?.routes || [];
-    elements.routeTabs.hidden = routes.length < 2;
+    elements.arrangementChoices.hidden = routes.length < 2;
     routes.forEach((route) => {
       const button = doc.createElement("button");
       button.type = "button";
@@ -1933,7 +1948,6 @@
     elements.editor.hidden = true;
     elements.result.hidden = false;
     elements.resultTitle.textContent = exercise?.title || "Melody lesson";
-    const accuracy = exercise?.accuracy || {};
     const section = exercise?.section || {};
     const sourceLabel = materialLabel(exercise?.material);
     elements.resultSource.replaceChildren();
@@ -1960,12 +1974,12 @@
     elements.octaveMapControls.hidden = needsSource || !exercise?.events?.length;
     elements.transport.hidden = needsSource || !exercise?.events?.length;
     elements.tab.hidden = needsSource || !response.tabs?.length;
-    elements.explanation.hidden = needsSource;
-    elements.currentNote.hidden = needsSource;
     elements.resultScore.hidden = needsSource;
     elements.practice.hidden = needsSource || !exercise?.events?.length;
-    elements.routeTabs.hidden = needsSource;
+    elements.arrangementChoices.hidden = needsSource;
     elements.routeReason.hidden = needsSource;
+    elements.practiceChordOption.hidden = needsSource || !hasChordContext(exercise?.events);
+    if (elements.practiceChordOption.hidden) elements.practiceChords.checked = false;
     updateOctaveMapVisibility();
     updateFretboardLabelToggles();
     if (!needsSource && response.fretboard) {
@@ -1973,7 +1987,6 @@
       renderResultScore(exercise);
       renderRoutes(exercise);
       elements.tabCode.textContent = response.tabs[0]?.tabText || "";
-      elements.explanation.textContent = accuracy.note || "Practice one event at a time, then connect the phrase slowly.";
       const selectedRoute = exercise.routes?.find((route) => route.id === exercise.selectedRouteId);
       if (selectedRoute) activateRoute(selectedRoute.id);
       else selectEvent(0);

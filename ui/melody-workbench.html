@@ -127,7 +127,7 @@
     .import-dropzone { display: grid; place-items: center; gap: 10px; min-height: 150px; border: 1px dashed rgba(240, 191, 105, 0.48); border-radius: 16px; background: rgba(240, 191, 105, 0.045); padding: 22px; text-align: center; }
     .score-primary-tools { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
     .score-primary-tools .field { min-width: 150px; }
-    .score-quick-edit { display: grid; grid-template-columns: minmax(120px, 1fr) minmax(140px, 1fr); gap: 12px; margin-top: 14px; }
+    .score-quick-edit { max-width: 280px; margin-top: 14px; }
     .audio-choice { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
     .audio-choice > * { border: 1px solid rgba(244, 234, 214, 0.12); border-radius: 14px; background: rgba(5, 7, 7, 0.28); padding: 14px; }
     .audio-file-controls { margin-top: 12px; }
@@ -265,22 +265,21 @@
     .editor-actions .primary-action { min-width: 190px; }
 
     #studio-result { margin-top: 24px; scroll-margin-top: 20px; }
-    .result-head { display: grid; gap: 9px; margin-bottom: 22px; }
+    .result-head { display: grid; gap: 9px; margin-bottom: 18px; }
     #studio-result-source { margin: 0; color: var(--muted); }
-    .route-tabs { max-width: 100%; display: flex; flex-wrap: nowrap; gap: 8px; margin: 4px 0 14px; overflow-x: auto; padding: 2px 0 5px; scrollbar-width: thin; }
+    .arrangement-choices { display: grid; gap: 8px; margin: 12px 0 4px; }
+    .arrangement-choices > strong { color: var(--muted); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; }
+    .route-tabs { max-width: 100%; display: flex; flex-wrap: nowrap; gap: 8px; margin: 0; overflow-x: auto; padding: 2px 0 5px; scrollbar-width: thin; }
     .route-tab { min-height: 40px; border: 1px solid var(--line); border-radius: 999px; background: rgba(5, 7, 7, 0.55); color: var(--muted); cursor: pointer; padding: 0 14px; font-weight: 800; }
     .route-tab.is-selected { border-color: var(--gold); background: rgba(240, 191, 105, 0.14); color: var(--cream); }
-    #studio-route-reason { margin: 0 0 16px; color: var(--muted); line-height: 1.5; }
+    #studio-route-reason { margin: 0; color: var(--muted); line-height: 1.5; }
     #studio-source-needed { border: 1px solid var(--line); border-radius: 18px; background: rgba(240, 191, 105, 0.07); padding: 20px; }
     #studio-source-needed p { color: var(--muted); line-height: 1.6; }
-    .current-note { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px 8px; margin: 0; color: var(--muted); font-size: 14px; }
-    .current-note > span:first-child { color: var(--cream); font-weight: 850; }
-    .current-note strong { color: var(--gold); font-size: 15px; }
-    #studio-current-position { color: var(--cream); }
-    #studio-current-movement { flex-basis: 100%; color: var(--muted); font-size: 13px; }
     #studio-fretboard { margin-top: 18px; }
     #studio-transport { display: grid; gap: 12px; margin-top: 10px; }
-    .octave-map-controls { min-width: 0; display: flex; align-items: center; gap: 8px; }
+    .octave-map-controls { min-width: 0; display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 8px 14px; }
+    .octave-control, .marker-controls { min-width: 0; display: flex; align-items: center; gap: 6px; }
+    .octave-control { max-width: 100%; overflow: hidden; }
     .studio-display-toggle { flex: 0 0 auto; min-height: 32px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); cursor: pointer; padding: 0 8px; font-size: 12px; font-weight: 800; }
     .studio-display-toggle[aria-pressed="true"] { color: var(--cream); }
     .octave-toggle-mark { display: inline-block; width: 16px; color: var(--gold); opacity: 0; }
@@ -288,12 +287,15 @@
     .octave-guide { min-width: 0; display: flex; align-items: center; gap: 6px; overflow-x: auto; padding: 3px 1px; color: var(--muted); scrollbar-width: thin; }
     .octave-guide__item { --octave-color: var(--muted); flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; min-width: 34px; border: 1px solid color-mix(in srgb, var(--octave-color) 48%, transparent); border-radius: 999px; padding: 4px 8px; color: var(--cream); font-size: 12px; font-weight: 800; }
     .octave-guide__swatch { width: 9px; height: 9px; border-radius: 50%; background: var(--octave-color); box-shadow: 0 0 8px color-mix(in srgb, var(--octave-color) 56%, transparent); }
-    .note-progress { flex: 0 0 auto; margin-left: 4px; color: var(--muted); font-size: 12px; font-weight: 750; white-space: nowrap; }
-    .note-navigator-row { width: fit-content; max-width: 100%; display: grid; grid-template-columns: 42px minmax(0, max-content) 42px; align-items: center; gap: 8px; }
+    .note-navigator-row { width: min(620px, 100%); display: grid; grid-template-columns: 42px minmax(0, 1fr) 42px; align-items: stretch; gap: 8px; }
     .navigator-arrow { width: 42px; min-height: 42px; border: 1px solid var(--line); border-radius: 50%; background: rgba(5, 7, 7, 0.52); color: var(--cream); cursor: pointer; font-size: 20px; font-weight: 850; }
     .navigator-arrow:disabled { opacity: 0.28; cursor: default; }
-    .event-strip { min-width: 0; display: flex; gap: 7px; overflow-x: auto; padding: 3px 1px 6px; }
-    .event-step { --octave-color: transparent; --octave-tint: rgba(5, 7, 7, 0.52); flex: 0 0 auto; min-height: 46px; display: flex; align-items: center; gap: 8px; border: 1px solid rgba(244, 234, 214, 0.14); border-radius: 999px; background: linear-gradient(var(--octave-tint), var(--octave-tint)), rgba(5, 7, 7, 0.52); box-shadow: inset 4px 0 0 var(--octave-color); color: var(--muted); cursor: pointer; padding: 8px 13px 8px 16px; text-align: left; }
+    .event-strip { min-width: 0; display: block; }
+    .event-step { --octave-color: transparent; --octave-tint: rgba(5, 7, 7, 0.52); min-height: 54px; display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: 8px 12px; border: 1px solid rgba(244, 234, 214, 0.18); border-radius: 14px; background: linear-gradient(var(--octave-tint), var(--octave-tint)), rgba(5, 7, 7, 0.52); box-shadow: inset 4px 0 0 var(--octave-color); color: var(--muted); padding: 9px 14px 9px 17px; }
+    .event-step__progress { color: var(--muted); font-size: 12px; font-weight: 800; white-space: nowrap; }
+    .event-step strong { color: var(--cream); font-size: 16px; }
+    .event-step__position { min-width: 0; color: var(--cream); font-size: 13px; }
+    .event-step__movement { grid-column: 1 / -1; color: var(--muted); font-size: 12px; }
     .octave-guide__item[data-scientific-octave="2"], #studio-result.is-octave-map-visible .event-step[data-scientific-octave="2"] { --octave-color: #b8a3ff; --octave-tint: rgba(184, 163, 255, 0.13); }
     .octave-guide__item[data-scientific-octave="3"], #studio-result.is-octave-map-visible .event-step[data-scientific-octave="3"] { --octave-color: #63b3ff; --octave-tint: rgba(99, 179, 255, 0.13); }
     .octave-guide__item[data-scientific-octave="4"], #studio-result.is-octave-map-visible .event-step[data-scientific-octave="4"] { --octave-color: #58d6bd; --octave-tint: rgba(88, 214, 189, 0.13); }
@@ -306,14 +308,9 @@
     #studio-result.is-octave-map-visible #studio-fretboard [data-highlight-dot][data-scientific-octave="4"] { fill: #58d6bd; }
     #studio-result.is-octave-map-visible #studio-fretboard [data-highlight-dot][data-scientific-octave="5"] { fill: #f0bf69; }
     #studio-result.is-octave-map-visible #studio-fretboard [data-highlight-dot][data-scientific-octave="6"] { fill: #ff927d; }
-    .event-step strong { color: var(--cream); font-size: 14px; }
-    .event-step span { font-size: 12px; white-space: nowrap; }
-    .event-step.is-selected { border-color: var(--gold); outline: 2px solid rgba(240, 191, 105, 0.2); background: linear-gradient(var(--octave-tint), var(--octave-tint)), rgba(240, 191, 105, 0.12); color: var(--cream); }
-    .event-step:focus-visible { outline: 3px solid var(--cream); outline-offset: 2px; }
     #studio-tab { margin-top: 18px; }
     .tab-block { max-width: 100%; margin: 0; overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; background: rgba(4, 6, 6, 0.78); padding: 16px; color: var(--cream); font: 15px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre; }
     .tab-block code { font: inherit; white-space: inherit; }
-    #studio-explanation { margin-top: 18px; border-radius: 16px; background: rgba(240, 191, 105, 0.06); padding: 16px; color: var(--muted); line-height: 1.6; }
     .result-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
     .unavailable { max-width: 720px; margin: 0 auto; text-align: center; }
 
@@ -335,16 +332,18 @@
       .register-stepper { grid-template-columns: 1fr; }
       #studio-register-value { font-size: 13px; }
       .note-editor-actions button { flex: 1 1 calc(50% - 8px); }
-      .octave-map-controls { flex-wrap: wrap; }
-      .octave-guide { order: 3; flex-basis: 100%; }
-      .note-progress { margin-left: 4px; }
+      .octave-map-controls { align-items: flex-start; flex-direction: column; }
+      .octave-control { width: 100%; }
+      .octave-guide { flex: 1 1 auto; }
+      .event-step { grid-template-columns: auto minmax(0, 1fr); }
+      .event-step__position { grid-column: 1 / -1; }
       .tab-block { white-space: pre; overflow-x: auto; }
       .score-keyboard { grid-template-columns: repeat(6, minmax(42px, 1fr)); }
       .practice-bar .field { flex: 1 1 100%; }
     }
     @media print {
       body { background: #fff; color: #111; }
-      .studio-header, .studio-hero, #studio-editor, .route-tabs, #studio-route-reason, #studio-fretboard, #studio-transport, #studio-tab, #studio-explanation, .result-actions, .practice-bar { display: none !important; }
+      .studio-header, .studio-hero, #studio-editor, .route-tabs, #studio-route-reason, #studio-fretboard, #studio-transport, #studio-tab, .result-actions, .practice-bar { display: none !important; }
       main, .studio-shell, #studio-result { width: 100%; max-width: none; margin: 0; padding: 0; border: 0; box-shadow: none; background: #fff; }
       #studio-result .result-head { display: block; color: #111; }
       #studio-result-score { display: block !important; overflow: visible; border: 0; padding: 0; }
@@ -437,7 +436,6 @@
         <section class="input-panel" id="studio-score-panel" data-input-panel="score" hidden>
           <div class="input-panel-head"><div><h3 id="studio-score-heading">Staff editor</h3><p class="field-help">Add and review one melody voice. Open the details only when you need them.</p></div><span class="review-badge" id="studio-score-source">User-created score</span></div>
           <div class="score-primary-tools">
-            <label class="field">Note length<select id="studio-score-duration"><option value="1">Quarter</option><option value="0.5">Eighth</option><option value="1.5">Dotted quarter</option><option value="2">Half</option><option value="3">Dotted half</option><option value="4">Whole</option></select></label>
             <button class="secondary-action" type="button" id="studio-score-undo">Undo</button>
             <button class="secondary-action" type="button" id="studio-score-redo">Redo</button>
             <button class="secondary-action" type="button" id="studio-score-play">Play</button>
@@ -445,6 +443,7 @@
           <details class="progressive-panel" id="studio-score-setup"><summary>Score setup</summary><div class="progressive-panel__body score-toolbar">
             <label class="field">Meter<select id="studio-score-meter"><option value="4/4">4/4</option><option value="3/4">3/4</option></select></label>
             <label class="field">Pickup beats<select id="studio-score-pickup"><option value="0">None</option><option value="1">1 beat</option><option value="2">2 beats</option></select></label>
+            <label class="field">New note length<select id="studio-score-duration"><option value="1">Quarter</option><option value="0.5">Eighth</option><option value="1.5">Dotted quarter</option><option value="2">Half</option><option value="3">Dotted half</option><option value="4">Whole</option></select></label>
             <label class="field" id="studio-score-part-field" hidden>Melody part<select id="studio-score-part"></select></label>
             <button class="secondary-action" type="button" id="studio-insert-rest">Insert rest</button>
             <button class="secondary-action" type="button" id="studio-add-measure">Add measure</button>
@@ -464,11 +463,11 @@
           <div class="score-event-editor" id="studio-score-event-editor" hidden>
             <div class="score-quick-edit">
               <label class="field">Pitch<input id="studio-score-pitch" placeholder="G4"></label>
-              <label class="field">Duration<select id="studio-event-duration"><option value="0.5">Eighth</option><option value="1">Quarter</option><option value="1.5">Dotted quarter</option><option value="2">Half</option><option value="3">Dotted half</option><option value="4">Whole</option></select></label>
             </div>
             <p class="field-help" id="studio-score-confidence" aria-live="polite"></p>
             <details class="progressive-panel" id="studio-selected-note-details"><summary>Selected note details</summary><div class="progressive-panel__body field-grid">
               <label class="field">Chord at this beat<input id="studio-score-chord" placeholder="G, D7, Em..."></label>
+              <label class="field">Note length<select id="studio-event-duration"><option value="0.5">Eighth</option><option value="1">Quarter</option><option value="1.5">Dotted quarter</option><option value="2">Half</option><option value="3">Dotted half</option><option value="4">Whole</option></select></label>
               <label class="field">Lyric or phrase label<input id="studio-score-lyric" maxlength="80"></label>
               <label class="field">Tie<select id="studio-score-tie"><option value="">None</option><option value="start">Start</option><option value="stop">Stop</option></select></label>
               <label class="field">Articulation<select id="studio-score-articulation"><option value="">None</option><option value="accent">Accent</option><option value="tenuto">Tenuto</option><option value="staccato">Staccato</option></select></label>
@@ -588,8 +587,6 @@
         <div class="result-head">
           <h2 id="studio-result-title">Your E9 lesson</h2>
           <p id="studio-result-source" hidden></p>
-          <div class="route-tabs" id="studio-route-tabs" aria-label="Melody arrangement routes" hidden></div>
-          <p id="studio-route-reason" hidden></p>
         </div>
 
         <div id="studio-source-needed" hidden>
@@ -605,7 +602,7 @@
           <button class="secondary-action" type="button" id="studio-practice-stop">Stop</button>
           <label class="field">Tempo <input id="studio-practice-tempo" type="range" min="40" max="180" step="2" value="80"><output id="studio-practice-tempo-value">80 BPM</output></label>
           <label class="practice-check"><input id="studio-practice-count-in" type="checkbox" checked>Count in</label>
-          <label class="practice-check"><input id="studio-practice-chords" type="checkbox">Hear chords</label>
+          <label class="practice-check" id="studio-practice-chord-option" hidden title="Adds simple backing from chord symbols in the score."><input id="studio-practice-chords" type="checkbox">Play chord backing</label>
           <button class="secondary-action" type="button" id="studio-practice-loop-measure">Loop measure</button>
           <button class="secondary-action" type="button" id="studio-practice-loop-start">Set loop start</button>
           <button class="secondary-action" type="button" id="studio-practice-loop-end">Set loop end</button>
@@ -616,39 +613,39 @@
 
         <div id="studio-fretboard" aria-label="Melody Studio fretboard"></div>
 
+        <div class="arrangement-choices" id="studio-arrangement-choices" hidden>
+          <strong>Arrangement</strong>
+          <div class="route-tabs" id="studio-route-tabs" aria-label="Melody arrangement routes"></div>
+          <p id="studio-route-reason" hidden></p>
+        </div>
+
         <div id="studio-transport" hidden>
           <div class="octave-map-controls" id="studio-octave-map-controls" hidden>
-            <button class="studio-display-toggle" type="button" id="studio-octave-toggle" aria-pressed="true"><span class="octave-toggle-mark" aria-hidden="true">✓</span>Octave colors</button>
-            <button class="studio-display-toggle" type="button" id="studio-string-label-toggle" aria-pressed="false"><span class="octave-toggle-mark" aria-hidden="true">✓</span>String labels</button>
-            <button class="studio-display-toggle" type="button" id="studio-note-label-toggle" aria-pressed="true"><span class="octave-toggle-mark" aria-hidden="true">✓</span>Note labels</button>
-            <div class="octave-guide" id="studio-octave-guide" aria-label="Scientific octave color guide">
-              <span class="octave-guide__item" data-scientific-octave="2" aria-label="Octave 2 — C2 through B2" title="C2 through B2"><i class="octave-guide__swatch" aria-hidden="true"></i>2</span>
-              <span class="octave-guide__item" data-scientific-octave="3" aria-label="Octave 3 — C3 through B3" title="C3 through B3"><i class="octave-guide__swatch" aria-hidden="true"></i>3</span>
-              <span class="octave-guide__item" data-scientific-octave="4" aria-label="Octave 4 — C4 through B4" title="C4 through B4"><i class="octave-guide__swatch" aria-hidden="true"></i>4</span>
-              <span class="octave-guide__item" data-scientific-octave="5" aria-label="Octave 5 — C5 through B5" title="C5 through B5"><i class="octave-guide__swatch" aria-hidden="true"></i>5</span>
-              <span class="octave-guide__item" data-scientific-octave="6" aria-label="Octave 6 — C6 through B6" title="C6 through B6"><i class="octave-guide__swatch" aria-hidden="true"></i>6</span>
+            <div class="octave-control">
+              <button class="studio-display-toggle" type="button" id="studio-octave-toggle" aria-pressed="false"><span class="octave-toggle-mark" aria-hidden="true">✓</span>Octave colors</button>
+              <div class="octave-guide" id="studio-octave-guide" aria-label="Scientific octave color guide" hidden>
+                <span class="octave-guide__item" data-scientific-octave="2" aria-label="Octave 2 — C2 through B2" title="C2 through B2"><i class="octave-guide__swatch" aria-hidden="true"></i>2</span>
+                <span class="octave-guide__item" data-scientific-octave="3" aria-label="Octave 3 — C3 through B3" title="C3 through B3"><i class="octave-guide__swatch" aria-hidden="true"></i>3</span>
+                <span class="octave-guide__item" data-scientific-octave="4" aria-label="Octave 4 — C4 through B4" title="C4 through B4"><i class="octave-guide__swatch" aria-hidden="true"></i>4</span>
+                <span class="octave-guide__item" data-scientific-octave="5" aria-label="Octave 5 — C5 through B5" title="C5 through B5"><i class="octave-guide__swatch" aria-hidden="true"></i>5</span>
+                <span class="octave-guide__item" data-scientific-octave="6" aria-label="Octave 6 — C6 through B6" title="C6 through B6"><i class="octave-guide__swatch" aria-hidden="true"></i>6</span>
+              </div>
             </div>
-            <span class="note-progress" id="studio-note-progress" aria-live="polite"></span>
+            <div class="marker-controls">
+              <button class="studio-display-toggle" type="button" id="studio-string-label-toggle" aria-pressed="false"><span class="octave-toggle-mark" aria-hidden="true">✓</span>String labels</button>
+              <button class="studio-display-toggle" type="button" id="studio-note-label-toggle" aria-pressed="true"><span class="octave-toggle-mark" aria-hidden="true">✓</span>Note labels</button>
+            </div>
           </div>
           <div class="note-navigator-row">
             <button class="navigator-arrow" type="button" id="studio-previous" aria-label="Previous note">←</button>
             <div class="event-strip" id="studio-event-strip" aria-label="Lesson note steps"></div>
             <button class="navigator-arrow" type="button" id="studio-next" aria-label="Next note">→</button>
           </div>
-          <div class="current-note" id="studio-current-note" hidden aria-live="polite">
-            <span>Current note:</span>
-            <strong id="studio-current-note-name"></strong>
-            <span aria-hidden="true">—</span>
-            <span id="studio-current-position"></span>
-            <span id="studio-current-movement"></span>
-          </div>
         </div>
 
         <div id="studio-tab" hidden>
           <pre class="tab-block" aria-label="Melody Studio tab"><code id="studio-tab-code"></code></pre>
         </div>
-        <div id="studio-explanation" hidden></div>
-
         <div class="result-actions">
           <button class="primary-action" id="studio-continue" type="button" hidden>Continue</button>
           <button class="secondary-action" id="studio-edit" type="button">Edit melody</button>
@@ -662,6 +659,6 @@
   <script src="pedal-steel-fretboard.js?v=melody-multi-input-20260711-3"></script>
   <script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>
   <script src="melody-score.js?v=melody-score-practice-20260711-3"></script>
-  <script src="melody-workbench.js?v=melody-add-melody-ux-20260711-2"></script>
+  <script src="melody-workbench.js?v=melody-lesson-focus-20260711-1"></script>
 </body>
 </html>

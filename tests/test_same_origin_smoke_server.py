@@ -73,7 +73,7 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     assert headers["Content-Type"] == "text/html; charset=utf-8"
     assert b"Turn a phrase into an E9 lesson." in studio
     assert b'<script src="melody-score.js?v=melody-score-practice-20260711-3"></script>' in studio
-    assert b'<script src="melody-workbench.js?v=melody-add-melody-ux-20260711-2"></script>' in studio
+    assert b'<script src="melody-workbench.js?v=melody-lesson-focus-20260711-1"></script>' in studio
 
     status, headers, studio_script = call_app(smoke_app(), "/ui/melody-workbench.js")
     assert status == "200 OK"
