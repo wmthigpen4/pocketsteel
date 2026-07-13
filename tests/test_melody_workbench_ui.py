@@ -93,6 +93,12 @@ assert.deepEqual(
   { note: "E4", position: "S4+6 · F3 · A" }
 );
 assert.equal(studio.routeButtonLabel({ recommended: true, label: "Recommended arrangement" }), "Recommended arrangement");
+const recommendedRoute = { id: "mixed", harmonyType: "mixed_arrangement", label: "Recommended arrangement" };
+const faithfulRoute = { id: "faithful", harmonyType: "single_note", label: "Faithful melody" };
+assert.equal(studio.preferredStudioRoute({ selectedRouteId: "faithful", routes: [faithfulRoute, recommendedRoute] }), recommendedRoute);
+assert.equal(studio.preferredStudioRoute({ selectedRouteId: "faithful", routes: [faithfulRoute] }), faithfulRoute);
+assert.equal(studio.preferredStudioRoute({ selectedRouteId: "missing", routes: [faithfulRoute] }), faithfulRoute);
+assert.equal(studio.preferredStudioRoute({ routes: [] }), null);
 assert.equal(studio.scientificOctaveForEvent({ resolvedPitch: "D4", pitchValue: 62 }), 4);
 assert.equal(studio.scientificOctaveForEvent({ resolvedPitch: "G5", pitchValue: 79 }), 5);
 assert.equal(studio.scientificOctaveForEvent({ pitchValue: 47 }), 2);
@@ -403,6 +409,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Practice the lesson" not in html
     assert 'id="studio-change-task"' not in html
     assert "activateRoute" in script
+    assert "const selectedRoute = preferredStudioRoute(exercise);" in script
     assert "hideFilterControls: true" in script
     assert "hidePositionTools: true" in script
     assert "hideLegend: true" in script
@@ -410,7 +417,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Change the register for this note only" in html
     assert "state.selectedPhraseIndex" in script
     assert html.count("?v=melody-multi-input-20260711-3") == 1
-    assert html.count("?v=portrait-print-20260713-1") == 3
+    assert html.count("?v=recommended-default-20260713-1") == 3
     assert 'elements.sectionNavigation.hidden = needsSource || Number(section.total || 0) <= 1;' in script
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in html
     assert "VexFlow" in Path("ui/vendor/VEXFLOW-LICENSE.txt").read_text(encoding="utf-8")

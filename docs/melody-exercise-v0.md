@@ -115,6 +115,7 @@ The feature is controlled by `STEEL_RAG_ENABLE_MELODY_EXERCISE`, which defaults 
 - Structured G/C phrases produce synchronized validated events, tab, and fretboard.
 - `5 6 1 3 2 1 3` resolves as a continuous octave-aware contour rather than resetting every tonic to one fixed fret.
 - Default ready lessons include Faithful melody and, when materially different, a Recommended arrangement that can mix one-, two-, and chord-backed three-note events while keeping the resolved melody on top.
+- Melody Studio opens the Recommended arrangement by default when that route is available. Faithful melody remains available as the first comparison route and is the fallback when no materially different recommendation can be generated. The API's top-level single-note compatibility fields remain unchanged.
 - Pasted literal tab retains string, fret, controls, and register exactly.
 - Reviewed songbook examples render every event of their complete melodic form in one continuous score and tab; other long inputs may continue through labeled sections instead of failing.
 - Complete-song printing includes all phrase sections of the selected arrangement route.

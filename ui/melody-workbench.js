@@ -919,6 +919,14 @@
       .trim() || "E9 tablature";
   }
 
+  function preferredStudioRoute(exercise) {
+    const routes = exercise?.routes || [];
+    return routes.find((route) => route.harmonyType === "mixed_arrangement")
+      || routes.find((route) => route.id === exercise?.selectedRouteId)
+      || routes[0]
+      || null;
+  }
+
   const api = {
     MAX_EVENTS_PER_SECTION,
     TASKS,
@@ -972,7 +980,8 @@
     scorePitchesForEvent,
     positionsWithScientificOctaves,
     melodyFretboardOptions,
-    printableLessonTitle
+    printableLessonTitle,
+    preferredStudioRoute
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = api;
@@ -2447,7 +2456,7 @@
       renderResultScore(exercise);
       renderRoutes(exercise);
       elements.tabCode.textContent = response.tabs[0]?.tabText || "";
-      const selectedRoute = exercise.routes?.find((route) => route.id === exercise.selectedRouteId);
+      const selectedRoute = preferredStudioRoute(exercise);
       if (selectedRoute) activateRoute(selectedRoute.id);
       else selectEvent(0);
       updatePracticeControls();
