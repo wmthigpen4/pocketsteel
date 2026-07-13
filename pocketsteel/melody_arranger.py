@@ -706,10 +706,23 @@ def _transition_instruction(
         movement = f"hold fret {current.fret} and {control_action} on {moving}"
     additions: list[str] = []
     if released:
-        additions.append("release strings " + ", ".join(str(string) for string in released))
+        noun = "string" if len(released) == 1 else "strings"
+        timing = "before the slide" if kind == "bar_slide" else "before the control change"
+        additions.append(f"block {noun} " + ", ".join(str(string) for string in released) + f" {timing}")
     if repicked:
-        verb = "add" if not set(repicked) & {note.string for note in previous.notes} else "repick"
-        additions.append(f"{verb} strings " + ", ".join(str(string) for string in repicked) + " at the arrival")
+        previous_strings = {note.string for note in previous.notes}
+        repicked_strings = sorted(set(repicked) & previous_strings)
+        added_strings = sorted(set(repicked) - previous_strings)
+        if repicked_strings:
+            noun = "string" if len(repicked_strings) == 1 else "strings"
+            additions.append(
+                f"repick {noun} " + ", ".join(str(string) for string in repicked_strings) + " at the arrival"
+            )
+        if added_strings:
+            noun = "string" if len(added_strings) == 1 else "strings"
+            additions.append(
+                f"add {noun} " + ", ".join(str(string) for string in added_strings) + " at the arrival"
+            )
     suffix = ("; " + "; ".join(additions)) if additions else ""
     return f"{before}; {movement}{suffix}."
 

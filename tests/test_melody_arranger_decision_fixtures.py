@@ -1,0 +1,160 @@
+"""Reviewed fixtures for arranger blocking and lever-density decisions."""
+
+from __future__ import annotations
+
+import pytest
+
+from pocketsteel.melody_arranger import (
+    MelodyInput,
+    PositionCandidate,
+    _transition_between,
+    choose_mixed_path,
+    single_note_candidates,
+)
+from pocketsteel.tab_engine import TabNote
+
+
+def _open_grip(fret: int, strings: tuple[int, ...], top_pitch: int) -> PositionCandidate:
+    return PositionCandidate(
+        fret=fret,
+        notes=tuple(TabNote(string, fret) for string in strings),
+        top_pitch=top_pitch,
+        controls=(),
+        family="reviewed_fixture",
+        note_names=tuple("" for _string in strings),
+        intervals=tuple("" for _string in strings),
+        pattern_family="reviewed blocking fixture",
+        canonical_grip=strings,
+    )
+
+
+def _repeated_g_inputs(count: int) -> list[MelodyInput]:
+    return [
+        MelodyInput(
+            "G4",
+            "G",
+            1,
+            7,
+            forced_pitch=67,
+            duration_beats=1,
+            measure=1,
+            beat=index + 1,
+            chord="G",
+        )
+        for index in range(count)
+    ]
+
+
+def _lever_entry_count(path: list[PositionCandidate]) -> int:
+    entries = 0
+    previous: frozenset[str] = frozenset()
+    for candidate in path:
+        current = frozenset(set(candidate.controls) & {"E", "F"})
+        if current and current != previous:
+            entries += 1
+        previous = current
+    return entries
+
+
+def test_blocking_fixture_full_grip_slide_sustains_every_attacked_string() -> None:
+    source = _open_grip(3, (4, 5, 6), 67)
+    target = _open_grip(5, (4, 5, 6), 69)
+
+    transition = _transition_between("blocking", 1, source, target)
+
+    assert transition is not None
+    assert transition["scope"] == "full_grip"
+    assert transition["sustainedStrings"] == [4, 5, 6]
+    assert transition["releasedStrings"] == transition["repickedStrings"] == []
+    assert transition["voiceActions"] == [
+        {"string": 4, "action": "bar_slide"},
+        {"string": 5, "action": "bar_slide"},
+        {"string": 6, "action": "bar_slide"},
+    ]
+    assert all(word not in transition["label"] for word in ("block", "repick", "add string"))
+
+
+def test_blocking_fixture_changed_grip_separates_block_repick_and_add() -> None:
+    source = _open_grip(3, (4, 5, 6), 67)
+    target = _open_grip(5, (4, 5, 7), 69)
+
+    transition = _transition_between("blocking", 1, source, target)
+
+    assert transition is not None
+    assert transition["scope"] == "melody_voice"
+    assert transition["sustainedStrings"] == [4]
+    assert transition["releasedStrings"] == [5, 6]
+    assert transition["repickedStrings"] == [5, 7]
+    assert transition["voiceActions"] == [
+        {"string": 4, "action": "bar_slide"},
+        {"string": 5, "action": "release"},
+        {"string": 6, "action": "release"},
+        {"string": 5, "action": "repick"},
+        {"string": 7, "action": "add"},
+    ]
+    assert "block strings 5, 6 before the slide" in transition["label"]
+    assert "repick string 5 at the arrival" in transition["label"]
+    assert "add string 7 at the arrival" in transition["label"]
+
+
+def test_lever_density_fixture_avoids_unneeded_e_and_f_entries() -> None:
+    candidates = single_note_candidates(_repeated_g_inputs(1)[0], 67)
+    open_position = next(
+        candidate
+        for candidate in candidates
+        if candidate.fret == 3 and candidate.top_string == 4 and not candidate.controls
+    )
+    e_lower = next(
+        candidate
+        for candidate in candidates
+        if candidate.fret == 4 and candidate.top_string == 4 and candidate.controls == ("E",)
+    )
+    f_lever = next(
+        candidate
+        for candidate in candidates
+        if candidate.fret == 2 and candidate.top_string == 4 and candidate.controls == ("F",)
+    )
+
+    path = choose_mixed_path(
+        [[open_position, e_lower, f_lever] for _index in range(4)],
+        inputs=_repeated_g_inputs(4),
+        key="G",
+    )
+
+    assert [(candidate.fret, candidate.controls) for candidate in path] == [(3, ())] * 4
+    assert _lever_entry_count(path) == 0
+
+
+@pytest.mark.parametrize(
+    ("controls", "fret"),
+    [(('E',), 4), (('F',), 2)],
+)
+def test_lever_density_fixture_keeps_one_established_lever_span(
+    controls: tuple[str, ...],
+    fret: int,
+) -> None:
+    candidates = single_note_candidates(_repeated_g_inputs(1)[0], 67)
+    open_position = next(
+        candidate
+        for candidate in candidates
+        if candidate.fret == 3 and candidate.top_string == 4 and not candidate.controls
+    )
+    lever_position = next(
+        candidate
+        for candidate in candidates
+        if candidate.fret == fret and candidate.top_string == 4 and candidate.controls == controls
+    )
+
+    path = choose_mixed_path(
+        [
+            [lever_position],
+            [lever_position, open_position],
+            [lever_position],
+            [lever_position, open_position],
+        ],
+        inputs=_repeated_g_inputs(4),
+        key="G",
+    )
+
+    assert [(candidate.fret, candidate.controls) for candidate in path[:3]] == [(fret, controls)] * 3
+    assert _lever_entry_count(path) == 1

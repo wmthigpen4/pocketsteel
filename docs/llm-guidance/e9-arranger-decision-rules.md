@@ -71,12 +71,14 @@ The arranger chooses a control because it produces the required pitch and harmon
 - An established F-lever or E-lower posture may continue without an artificial lever-category penalty.
 - Single-note and grip candidates now share canonical `E` and `F` control IDs, preventing the same mechanical posture from being counted as a control change solely because one source used a friendly label.
 - Full-grip slides are preferred; one-note-into-three-note generated slides are rejected.
+- Reviewed blocking fixtures require a full-grip slide to sustain every attacked string. A changed-grip exception must separately identify the sustained melody, strings blocked before the move, strings repicked at the destination, and newly added strings.
+- Reviewed lever-density fixtures prefer the no-lever position when E-lower or F-lever offers no musical or mechanical benefit, while retaining one already established E-lower or F-lever span instead of repeatedly entering and leaving it.
 - Tab, fretboard, score, transition instructions, and playback continue to derive from the same event path.
 
 ## Rules Still Requiring Focused Product Tests
 
 - Player-facing blocking guidance for non-transition string-group changes.
-- Phrase-level limits for entering and leaving lever pockets so correct alternatives do not become repetitive mannerisms.
+- Broader phrase-level lever limits beyond the reviewed no-benefit and continuous-span fixtures.
 - Additional reviewed harmonic-scale pathways beyond the current G/C major contract.
 - Difficulty-aware alternatives that show a simpler route without replacing the musically recommended route.
 - Custom-copedent naming and mechanics.
