@@ -370,6 +370,12 @@ The Worker does not delete rows automatically.
 
 ### Successful Send Behavior
 
+Pushover limits each message body to 1,024 UTF-8 characters. The Worker keeps a
+small safety margin and splits a long weekly digest into sequential messages of
+at most 950 characters. Multipart titles are numbered `(1/N)`, `(2/N)`, and so
+on. The complete digest is sent; it no longer ends with an instruction to open
+D1 for truncated content.
+
 After Pushover returns success, every included row receives:
 
 ```text
@@ -378,7 +384,8 @@ notified_at = current scheduled-run timestamp
 
 Included rows move to `status = 'notified'` unless they are already in
 `status = 'review'`. Review rows keep that status so a human can inspect them.
-If Pushover fails, `notified_at` is not updated.
+Rows are marked notified only after every Pushover part succeeds. If any part
+fails, `notified_at` is not updated.
 
 ### Manual Dry Run
 

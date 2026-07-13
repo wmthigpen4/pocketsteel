@@ -1,4 +1,4 @@
-const MAX_DIGEST_LENGTH = 950;
+const MAX_PUSHOVER_MESSAGE_LENGTH = 950;
 const PUSHOVER_ENDPOINT = "https://api.pushover.net/1/messages.json";
 const OBVIOUS_TEST_EMAILS = new Set([
   "test@example.com",
@@ -179,12 +179,48 @@ function formatSubmission(row, index, groupSize) {
   ].join("\n");
 }
 
-function truncateDigest(body) {
-  if (body.length <= MAX_DIGEST_LENGTH) {
-    return body;
+function findReadableSplit(characters, maxLength) {
+  const minimumReadableSplit = Math.floor(maxLength * 0.6);
+
+  for (let index = maxLength; index >= minimumReadableSplit; index -= 1) {
+    if (characters[index - 2] === "\n" && characters[index - 1] === "\n") {
+      return index;
+    }
   }
 
-  return `${body.slice(0, MAX_DIGEST_LENGTH - 80).trimEnd()}\n\n[Digest truncated. View D1 for full messages.]`;
+  for (let index = maxLength; index >= minimumReadableSplit; index -= 1) {
+    if (characters[index - 1] === "\n") {
+      return index;
+    }
+  }
+
+  for (let index = maxLength; index >= minimumReadableSplit; index -= 1) {
+    if (/\s/u.test(characters[index - 1])) {
+      return index;
+    }
+  }
+
+  return maxLength;
+}
+
+function splitDigestMessage(body, maxLength = MAX_PUSHOVER_MESSAGE_LENGTH) {
+  if (!Number.isInteger(maxLength) || maxLength < 1) {
+    throw new Error("Pushover message length must be a positive integer.");
+  }
+
+  const remaining = Array.from(String(body || ""));
+  const messages = [];
+
+  while (remaining.length > maxLength) {
+    const splitAt = findReadableSplit(remaining, maxLength);
+    messages.push(remaining.splice(0, splitAt).join(""));
+  }
+
+  if (remaining.length > 0 || messages.length === 0) {
+    messages.push(remaining.join(""));
+  }
+
+  return messages;
 }
 
 function buildDigestBody(classifiedRows, now = new Date()) {
@@ -194,9 +230,11 @@ function buildDigestBody(classifiedRows, now = new Date()) {
   const reviewCount = classifiedRows.filter((row) => row.include && row.status === "review").length;
 
   if (includedCount === 0) {
+    const message = `No new real interest-list submissions for the weekly digest.\nChecked: ${now.toISOString()}`;
     return {
       title: "Steel Guitar RAG interest list",
-      message: `No new real interest-list submissions for the weekly digest.\nChecked: ${now.toISOString()}`,
+      message,
+      messages: splitDigestMessage(message),
       includedCount,
       skippedCount,
       reviewCount
@@ -222,7 +260,8 @@ function buildDigestBody(classifiedRows, now = new Date()) {
 
   return {
     title: `Steel Guitar RAG: ${includedCount} new interest ${includedCount === 1 ? "submission" : "submissions"}`,
-    message: truncateDigest(message),
+    message,
+    messages: splitDigestMessage(message),
     includedCount,
     skippedCount,
     reviewCount
@@ -301,22 +340,27 @@ async function sendPushoverDigest(env, digest, fetchImpl = fetch) {
     throw new Error("Missing Pushover credentials.");
   }
 
-  const body = new URLSearchParams({
-    token,
-    user,
-    title: digest.title,
-    message: digest.message
-  });
+  const messages = Array.isArray(digest.messages) && digest.messages.length
+    ? digest.messages
+    : splitDigestMessage(digest.message);
 
-  const response = await fetchImpl(PUSHOVER_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body
-  });
+  for (const [index, message] of messages.entries()) {
+    const title = messages.length > 1
+      ? `${digest.title} (${index + 1}/${messages.length})`
+      : digest.title;
+    const body = new URLSearchParams({ token, user, title, message });
+    const response = await fetchImpl(PUSHOVER_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body
+    });
 
-  if (!response.ok) {
-    throw new Error(`Pushover send failed with status ${response.status}.`);
+    if (!response.ok) {
+      throw new Error(`Pushover send failed for part ${index + 1}/${messages.length} with status ${response.status}.`);
+    }
   }
+
+  return messages.length;
 }
 
 async function runInterestDigest({ env, now = new Date(), dryRun = false, fetchImpl = fetch }) {
@@ -352,10 +396,10 @@ async function runInterestDigest({ env, now = new Date(), dryRun = false, fetchI
     return { ok: true, dryRun: false, sent: false, ...digest };
   }
 
-  await sendPushoverDigest(env, digest, fetchImpl);
+  const sentMessageCount = await sendPushoverDigest(env, digest, fetchImpl);
   await markRowsNotified(db, includedRows, now.toISOString());
 
-  return { ok: true, dryRun: false, sent: true, ...digest };
+  return { ok: true, dryRun: false, sent: true, sentMessageCount, ...digest };
 }
 
 async function sha256Hex(value) {
@@ -466,5 +510,6 @@ export const __test = {
   markRowsNotified,
   requestHasAdminToken,
   runInterestDigest,
-  sendPushoverDigest
+  sendPushoverDigest,
+  splitDigestMessage
 };

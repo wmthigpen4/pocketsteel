@@ -635,6 +635,117 @@ assert.match(digest.message, /I want a better practice path\\./);
     assert result.returncode == 0, result.stderr
 
 
+def test_interest_digest_splits_long_body_without_losing_content() -> None:
+    script = _interest_digest_test_script(
+        """
+const rows = mod.__test.classifySubmissions([
+  makeRow({
+    id: "long-1",
+    email: "long-one@steel.example",
+    name: "Long One",
+    message: "First complete message. ".repeat(55)
+  }),
+  makeRow({
+    id: "long-2",
+    email: "long-two@steel.example",
+    name: "Long Two",
+    message: "Second complete message. ".repeat(55)
+  })
+]);
+const digest = mod.__test.buildDigestBody(rows, new Date("2026-05-28T12:00:00.000Z"));
+assert.ok(digest.messages.length > 1);
+assert.equal(digest.messages.join(""), digest.message);
+for (const message of digest.messages) {
+  assert.ok(Array.from(message).length <= 950);
+}
+assert.doesNotMatch(digest.message, /Digest truncated/);
+assert.match(digest.message, /First complete message/);
+assert.match(digest.message, /Second complete message/);
+"""
+    )
+
+    result = subprocess.run(["node", "-e", script], cwd=Path.cwd(), capture_output=True, text=True, check=False)
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_interest_digest_sends_numbered_parts_before_marking_rows_notified() -> None:
+    script = _interest_digest_test_script(
+        """
+const d1 = makeD1([
+  makeRow({
+    id: "multipart-1",
+    email: "multipart@steel.example",
+    name: "Multipart",
+    message: "Keep every word in this long submission. ".repeat(80)
+  })
+]);
+const fetchCalls = [];
+const result = await mod.__test.runInterestDigest({
+  env: {
+    STEEL_RAG_INTEREST_D1: d1,
+    PUSHOVER_APP_TOKEN: "app-token",
+    PUSHOVER_USER_KEY: "user-key"
+  },
+  now: new Date("2026-05-28T12:00:00.000Z"),
+  fetchImpl: async (url, options) => {
+    fetchCalls.push({ url, options });
+    return new Response("{}", { status: 200 });
+  }
+});
+assert.ok(fetchCalls.length > 1);
+assert.equal(result.sentMessageCount, fetchCalls.length);
+for (const [index, call] of fetchCalls.entries()) {
+  const body = new URLSearchParams(call.options.body);
+  assert.ok(body.get("title").endsWith(` (${index + 1}/${fetchCalls.length})`));
+  assert.ok(Array.from(body.get("message")).length <= 950);
+}
+assert.equal(d1.operations.some((op) => /notified_at/.test(op.sql)), true);
+"""
+    )
+
+    result = subprocess.run(["node", "-e", script], cwd=Path.cwd(), capture_output=True, text=True, check=False)
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_interest_digest_partial_multipart_failure_does_not_mark_rows_notified() -> None:
+    script = _interest_digest_test_script(
+        """
+const d1 = makeD1([
+  makeRow({
+    id: "multipart-failure",
+    email: "multipart-failure@steel.example",
+    name: "Multipart Failure",
+    message: "This multipart digest must finish before notification. ".repeat(80)
+  })
+]);
+let fetchCount = 0;
+await assert.rejects(
+  () => mod.__test.runInterestDigest({
+    env: {
+      STEEL_RAG_INTEREST_D1: d1,
+      PUSHOVER_APP_TOKEN: "app-token",
+      PUSHOVER_USER_KEY: "user-key"
+    },
+    now: new Date("2026-05-28T12:00:00.000Z"),
+    fetchImpl: async () => {
+      fetchCount += 1;
+      return new Response(fetchCount === 2 ? "bad" : "{}", { status: fetchCount === 2 ? 500 : 200 });
+    }
+  }),
+  /part 2[/]/
+);
+assert.equal(fetchCount, 2);
+assert.equal(d1.operations.some((op) => /notified_at/.test(op.sql)), false);
+"""
+    )
+
+    result = subprocess.run(["node", "-e", script], cwd=Path.cwd(), capture_output=True, text=True, check=False)
+
+    assert result.returncode == 0, result.stderr
+
+
 def test_interest_digest_missing_pushover_secrets_fails_without_notifying() -> None:
     script = _interest_digest_test_script(
         """
