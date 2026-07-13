@@ -551,7 +551,7 @@ assert.match(digest.message, /Submission 2\\/2/);
     assert result.returncode == 0, result.stderr
 
 
-def test_interest_digest_candidate_query_only_fetches_unnotified_new_review_rows() -> None:
+def test_interest_digest_candidate_query_fetches_unnotified_rows_needed_for_cleanup() -> None:
     script = _interest_digest_test_script(
         """
 let capturedSql = "";
@@ -569,10 +569,38 @@ const d1 = {
 };
 await mod.__test.fetchCandidateRows(d1);
 assert.match(capturedSql, /notified_at is null/);
-assert.match(capturedSql, /lower\\(coalesce\\(status, 'new'\\)\\) in \\('new', 'review'\\)/);
+assert.match(capturedSql, /lower\\(coalesce\\(status, 'new'\\)\\) in \\('new', 'review', 'spam', 'test'\\)/);
 assert.match(capturedSql, /order by created_at asc/);
 assert.doesNotMatch(capturedSql, /created_at >=/);
 assert.deepEqual(bindValues, []);
+"""
+    )
+
+    result = subprocess.run(["node", "-e", script], cwd=Path.cwd(), capture_output=True, text=True, check=False)
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_interest_digest_filters_high_confidence_marketing_and_gibberish_spam() -> None:
+    script = _interest_digest_test_script(
+        """
+const rows = mod.__test.classifySubmissions([
+  makeRow({ id: "seo", name: "SEO Seller", message: "We offer SEO and organic traffic packages." }),
+  makeRow({ id: "search", name: "Search Bot", message: "Register steelguitarrag.com in GoogleSearchIndex now." }),
+  makeRow({ id: "video", name: "Video Seller", message: "Our videos cost $195 for a 30 second video." }),
+  makeRow({ id: "social", name: "Social Seller", message: "We can grow your Instagram followers every month." }),
+  makeRow({ id: "automation", name: "Growth Seller", message: "Our AI automation system improves lead generation. Book a discovery call." }),
+  makeRow({ id: "outreach", name: "Outreach Seller", message: "We introduce services using website contact pages; our platform supports outreach." }),
+  makeRow({ id: "gibberish", name: "lgrqyxpqlq", message: "mdxpzimrtxdqsqloqpelgjempmzhhg" }),
+  makeRow({ id: "real", name: "Real Player", message: "I want help learning E9 grips and getting a cleaner tone." })
+]);
+for (const row of rows.slice(0, 7)) {
+  assert.equal(row.include, false, row.id);
+  assert.equal(row.status, "spam", row.id);
+  assert.equal(row.spam_score, 100, row.id);
+}
+assert.equal(rows[7].include, true);
+assert.equal(rows[7].status, "new");
 """
     )
 
@@ -627,6 +655,148 @@ assert.match(digest.message, /Lloyd/);
 assert.match(digest.message, /player@steel\\.example/);
 assert.match(digest.message, /gear-tone, practice/);
 assert.match(digest.message, /I want a better practice path\\./);
+"""
+    )
+
+    result = subprocess.run(["node", "-e", script], cwd=Path.cwd(), capture_output=True, text=True, check=False)
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_interest_digest_deletes_spam_before_sending_real_rows() -> None:
+    script = _interest_digest_test_script(
+        """
+const d1 = makeD1([
+  makeRow({ id: "real-before-send", name: "Real Player", email: "real@steel.example", message: "Please invite me." }),
+  makeRow({ id: "spam-before-send", name: "SEO Seller", email: "sales@spam.example", message: "We offer SEO and backlink packages." }),
+  makeRow({ id: "test-before-send", name: "Test", email: "test@example.com", status: "test" })
+]);
+let fetchCalled = false;
+const result = await mod.__test.runInterestDigest({
+  env: {
+    STEEL_RAG_INTEREST_D1: d1,
+    PUSHOVER_APP_TOKEN: "app-token",
+    PUSHOVER_USER_KEY: "user-key"
+  },
+  now: new Date("2026-05-28T12:00:00.000Z"),
+  fetchImpl: async () => {
+    fetchCalled = true;
+    const deletes = d1.operations.filter((op) => /delete from interest_submissions/.test(op.sql));
+    assert.equal(deletes.length, 2);
+    assert.deepEqual(deletes.map((op) => op.values[0]), ["spam-before-send", "test-before-send"]);
+    assert.match(deletes[0].sql, /notified_at is null/);
+    assert.equal(d1.operations.some((op) => /notified_at = [?]/.test(op.sql)), false);
+    return new Response("{}", { status: 200 });
+  }
+});
+assert.equal(fetchCalled, true);
+assert.equal(result.deletedSpamCount, 2);
+assert.equal(result.includedCount, 1);
+assert.equal(result.skippedCount, 2);
+assert.doesNotMatch(result.message, /sales@spam[.]example/);
+const notified = d1.operations.filter((op) => /notified_at = [?]/.test(op.sql));
+assert.equal(notified.length, 1);
+assert.equal(notified[0].values[1], "real-before-send");
+"""
+    )
+
+    result = subprocess.run(["node", "-e", script], cwd=Path.cwd(), capture_output=True, text=True, check=False)
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_interest_digest_does_not_notify_when_spam_deletion_fails() -> None:
+    script = _interest_digest_test_script(
+        """
+const rows = [
+  makeRow({ id: "delete-failure", name: "SEO Seller", message: "We offer SEO packages and backlinks." })
+];
+let fetchCalled = false;
+const d1 = {
+  prepare: (sql) => ({
+    bind: (...values) => ({
+      all: async () => ({ results: rows }),
+      run: async () => {
+        if (/delete from interest_submissions/.test(sql)) {
+          throw new Error("delete failed");
+        }
+        return { success: true, meta: { changes: 1 } };
+      }
+    })
+  })
+};
+await assert.rejects(
+  () => mod.__test.runInterestDigest({
+    env: {
+      STEEL_RAG_INTEREST_D1: d1,
+      PUSHOVER_APP_TOKEN: "app-token",
+      PUSHOVER_USER_KEY: "user-key"
+    },
+    fetchImpl: async () => {
+      fetchCalled = true;
+      return new Response("{}", { status: 200 });
+    }
+  }),
+  /delete failed/
+);
+assert.equal(fetchCalled, false);
+"""
+    )
+
+    result = subprocess.run(["node", "-e", script], cwd=Path.cwd(), capture_output=True, text=True, check=False)
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_interest_digest_dry_run_previews_spam_deletion_without_writing() -> None:
+    script = _interest_digest_test_script(
+        """
+const d1 = makeD1([
+  makeRow({ id: "dry-real", name: "Real Player", message: "Please invite me." }),
+  makeRow({ id: "dry-spam", name: "SEO Seller", message: "We offer SEO packages and backlinks." })
+]);
+const result = await mod.__test.runInterestDigest({
+  env: { STEEL_RAG_INTEREST_D1: d1 },
+  now: new Date("2026-05-28T12:00:00.000Z"),
+  dryRun: true
+});
+assert.equal(result.deletedSpamCount, 0);
+assert.equal(result.wouldDeleteCount, 1);
+assert.equal(result.rows.find((row) => row.id === "dry-spam").would_delete, true);
+assert.equal(d1.operations.length, 0);
+"""
+    )
+
+    result = subprocess.run(["node", "-e", script], cwd=Path.cwd(), capture_output=True, text=True, check=False)
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_interest_digest_sends_weekly_summary_when_no_rows_are_pending() -> None:
+    script = _interest_digest_test_script(
+        """
+const d1 = makeD1([]);
+const fetchCalls = [];
+const result = await mod.__test.runInterestDigest({
+  env: {
+    STEEL_RAG_INTEREST_D1: d1,
+    PUSHOVER_APP_TOKEN: "app-token",
+    PUSHOVER_USER_KEY: "user-key"
+  },
+  now: new Date("2026-05-28T12:00:00.000Z"),
+  fetchImpl: async (url, options) => {
+    fetchCalls.push({ url, options });
+    return new Response("{}", { status: 200 });
+  }
+});
+assert.equal(result.sent, true);
+assert.equal(result.sentMessageCount, 1);
+assert.equal(result.deletedSpamCount, 0);
+assert.equal(fetchCalls.length, 1);
+const body = new URLSearchParams(fetchCalls[0].options.body);
+assert.match(body.get("message"), /No new real interest-list submissions/);
+assert.match(body.get("message"), /Filtered as spam[/]test: 0/);
+assert.equal(d1.operations.length, 0);
 """
     )
 
@@ -1085,7 +1255,7 @@ const fs = require("node:fs");
           all: async () => ({{ results: rows }}),
           run: async () => {{
             operations.push({{ sql, values }});
-            return {{ success: true }};
+            return {{ success: true, meta: {{ changes: 1 }} }};
           }}
         }})
       }})

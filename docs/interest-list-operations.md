@@ -106,10 +106,13 @@ npx --yes wrangler@latest d1 execute steel_rag_interest --remote \
 - `new`: real-looking lead ready for weekly notification.
 - `review`: stored, but suspicious enough to inspect before treating as a real
   lead.
-- `test`: stored test/example-domain submission.
-- `spam`: known junk that should be excluded from normal follow-up.
+- `test`: stored test/example-domain submission awaiting scheduled cleanup.
+- `spam`: known junk awaiting scheduled cleanup.
 
-The interest form and digest jobs do not delete rows automatically.
+The interest form never deletes rows. The scheduled digest deletes only
+high-confidence spam/test rows immediately before composing the weekly
+Pushover message. Ambiguous rows remain stored as `review` and are included for
+human inspection.
 
 ### Query By Status
 
@@ -130,7 +133,7 @@ This mirrors the scheduled digest candidate query:
 
 ```bash
 npx --yes wrangler@latest d1 execute steel_rag_interest --remote \
-  --command "select created_at, email, name, player_level, interests, message, status, spam_score, notified_at from interest_submissions where notified_at is null and lower(coalesce(status, 'new')) in ('new', 'review') order by created_at asc;"
+  --command "select created_at, email, name, player_level, interests, message, status, spam_score, notified_at from interest_submissions where notified_at is null and lower(coalesce(status, 'new')) in ('new', 'review', 'spam', 'test') order by created_at asc;"
 ```
 
 ### Count All Submissions
@@ -339,8 +342,8 @@ After deployment:
 
 ### Digest Query
 
-Each run queries D1 for rows that have never been notified and are still in a
-digest-eligible status:
+Each run queries D1 for unnotified rows that either need cleanup or remain
+eligible for the digest:
 
 ```sql
 select id, created_at, name, email, player_level, interests, message,
@@ -349,18 +352,26 @@ select id, created_at, name, email, player_level, interests, message,
        admin_notes, notified_at, coalesce(source, 'landing_page') as source
 from interest_submissions
 where notified_at is null
-  and lower(coalesce(status, 'new')) in ('new', 'review')
+  and lower(coalesce(status, 'new')) in ('new', 'review', 'spam', 'test')
 order by created_at asc;
 ```
 
-Rows already marked `spam`, `test`, or `notified` are excluded by the query.
+Rows already marked `notified` are excluded. Unnotified `spam` and `test` rows
+are fetched so they can be deleted before notification.
 
 ### Filtering Rules
 
-The Worker does not delete rows automatically.
+The Worker deletes only rows classified as high-confidence `spam` or `test`.
+Each delete is constrained by exact row ID and `notified_at is null`.
 
 - Obvious test emails such as `test@example.com` and `ops-smoke@example.com`
-  are skipped, marked `status = 'spam'`, and assigned `spam_score = 100`.
+  are deleted.
+- Existing `spam` or `test` rows are deleted.
+- Deterministic high-confidence patterns are deleted: SEO/search-marketing,
+  backlink/fake search-registration, social-growth, video-production,
+  AI/lead-generation, contact-form outreach, and website-services
+  solicitations.
+- A submission made only of a long gibberish name and message is deleted.
 - Real-looking submissions stay included in the digest.
 - Duplicate emails are grouped together in the Pushover body so one person with
   multiple submissions is easy to review.
@@ -387,10 +398,15 @@ Included rows move to `status = 'notified'` unless they are already in
 Rows are marked notified only after every Pushover part succeeds. If any part
 fails, `notified_at` is not updated.
 
+The weekly Pushover summary is sent even when no real rows are pending. In that
+case it reports that there were no new real submissions and how many rows were
+filtered as spam/test.
+
 ### Manual Dry Run
 
-Dry-run mode returns the digest summary without sending Pushover and without
-marking rows notified.
+Dry-run mode returns the digest summary without sending Pushover, deleting
+spam/test rows, or marking rows notified. It reports `wouldDeleteCount` and a
+per-row `would_delete` flag for review.
 
 With a Worker dev server and `INTEREST_DIGEST_ADMIN_TOKEN` configured:
 
@@ -406,8 +422,9 @@ Only `GET /dry-run` is supported for preview.
 
 ### Manual Run
 
-Manual run mode sends the digest through Pushover and marks included rows
-notified after Pushover returns success. It requires the
+Manual run mode deletes classified spam/test rows, sends the remaining digest
+through Pushover, and marks included rows notified after Pushover returns
+success. It requires the
 `INTEREST_DIGEST_ADMIN_TOKEN` Worker secret.
 
 With a Worker dev server and all required secrets configured:

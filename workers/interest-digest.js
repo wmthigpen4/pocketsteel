@@ -6,6 +6,32 @@ const OBVIOUS_TEST_EMAILS = new Set([
   "smoke-test@example.com",
   "example@example.com"
 ]);
+const OBVIOUS_SPAM_RULES = [
+  {
+    reason: "SEO/search-marketing solicitation",
+    pattern: /\b(?:seo|search engine optimization|backlinks?|googlesearchindex|searchregister|google maps rankings?|organic traffic|online visibility)\b/i
+  },
+  {
+    reason: "social-media growth solicitation",
+    pattern: /\b(?:instagram presence|instagram followers|targeted instagram followers)\b/i
+  },
+  {
+    reason: "video-production solicitation",
+    pattern: /\b(?:our videos cost|30 second video|60 second video)\b/i
+  },
+  {
+    reason: "AI/lead-generation solicitation",
+    pattern: /\b(?:ai automation systems?|competitor clients?|lead generation|discovery call)\b/i
+  },
+  {
+    reason: "contact-form outreach solicitation",
+    pattern: /\b(?:website contact pages?|platform supports outreach)\b/i
+  },
+  {
+    reason: "website-services solicitation",
+    pattern: /\b(?:website audit|proposal and pricing|send (?:you )?(?:a )?(?:quote|price list|pricing|proposal|audit report|screenshot))\b/i
+  }
+];
 
 function jsonResponse(payload, status = 200) {
   return new Response(JSON.stringify(payload, null, 2), {
@@ -77,6 +103,24 @@ function countUrlSignals(text) {
   return matches ? matches.length : 0;
 }
 
+function obviousSpamReason(submission) {
+  const content = `${submission.name}\n${submission.message}`;
+  for (const rule of OBVIOUS_SPAM_RULES) {
+    if (rule.pattern.test(content)) {
+      return rule.reason;
+    }
+  }
+
+  if (
+    /^[a-z]{8,}$/i.test(submission.name) &&
+    /^[a-z]{24,}$/i.test(submission.message)
+  ) {
+    return "gibberish-only submission";
+  }
+
+  return "";
+}
+
 function mergeAdminNotes(existingNotes, newNotes) {
   const existing = cleanString(existingNotes, 2000);
   const additions = newNotes.filter((note) => note && !existing.includes(note));
@@ -103,6 +147,14 @@ function classifySubmission(row, duplicateCount = 1) {
     status = "spam";
     spamScore = Math.max(spamScore, 100);
     reasons.push("obvious test email");
+  } else {
+    const spamReason = obviousSpamReason(submission);
+    if (spamReason) {
+      include = false;
+      status = "spam";
+      spamScore = Math.max(spamScore, 100);
+      reasons.push(spamReason);
+    }
   }
 
   const urlSignals = countUrlSignals(`${submission.name} ${submission.message}`);
@@ -230,7 +282,11 @@ function buildDigestBody(classifiedRows, now = new Date()) {
   const reviewCount = classifiedRows.filter((row) => row.include && row.status === "review").length;
 
   if (includedCount === 0) {
-    const message = `No new real interest-list submissions for the weekly digest.\nChecked: ${now.toISOString()}`;
+    const message = [
+      "No new real interest-list submissions for the weekly digest.",
+      `Filtered as spam/test: ${skippedCount}`,
+      `Checked: ${now.toISOString()}`
+    ].join("\n");
     return {
       title: "Steel Guitar RAG interest list",
       message,
@@ -253,7 +309,7 @@ function buildDigestBody(classifiedRows, now = new Date()) {
     `Weekly interest-list digest for Steel Guitar RAG`,
     `Included: ${includedCount}`,
     `Needs review: ${reviewCount}`,
-    `Skipped as test/spam: ${skippedCount}`,
+    `Filtered as spam/test: ${skippedCount}`,
     "",
     sections.join("\n\n---\n\n")
   ].join("\n");
@@ -284,7 +340,7 @@ async function fetchCandidateRows(db) {
               admin_notes, notified_at, coalesce(source, 'landing_page') as source
          from interest_submissions
         where notified_at is null
-          and lower(coalesce(status, 'new')) in ('new', 'review')
+          and lower(coalesce(status, 'new')) in ('new', 'review', 'spam', 'test')
         order by created_at asc`
     )
     .bind()
@@ -295,7 +351,7 @@ async function fetchCandidateRows(db) {
 
 async function applyModerationUpdates(db, classifiedRows) {
   for (const row of classifiedRows) {
-    if (!row.id || row.review_reasons.length === 0) {
+    if (!row.include || !row.id || row.review_reasons.length === 0) {
       continue;
     }
 
@@ -310,6 +366,27 @@ async function applyModerationUpdates(db, classifiedRows) {
       .bind(row.status, row.spam_score, row.admin_notes, row.id)
       .run();
   }
+}
+
+async function deleteSpamAndTestRows(db, classifiedRows) {
+  let deletedCount = 0;
+  for (const row of classifiedRows) {
+    if (row.include || !row.id || !["spam", "test"].includes(row.status)) {
+      continue;
+    }
+
+    const result = await db
+      .prepare(
+        `delete from interest_submissions
+          where id = ?
+            and notified_at is null`
+      )
+      .bind(row.id)
+      .run();
+    deletedCount += Number(result?.meta?.changes || 0);
+  }
+
+  return deletedCount;
 }
 
 async function markRowsNotified(db, classifiedRows, notifiedAt) {
@@ -369,12 +446,17 @@ async function runInterestDigest({ env, now = new Date(), dryRun = false, fetchI
   const classifiedRows = classifySubmissions(rows);
   const digest = buildDigestBody(classifiedRows, now);
   const includedRows = classifiedRows.filter((row) => row.include);
+  const wouldDeleteCount = classifiedRows.filter(
+    (row) => !row.include && ["spam", "test"].includes(row.status)
+  ).length;
 
   if (dryRun) {
     return {
       ok: true,
       dryRun: true,
       sent: false,
+      deletedSpamCount: 0,
+      wouldDeleteCount,
       ...digest,
       rows: classifiedRows.map((row) => ({
         id: row.id,
@@ -385,21 +467,26 @@ async function runInterestDigest({ env, now = new Date(), dryRun = false, fetchI
         status: row.status,
         spam_score: row.spam_score,
         include: row.include,
+        would_delete: !row.include && ["spam", "test"].includes(row.status),
         review_reasons: row.review_reasons
       }))
     };
   }
 
+  const deletedSpamCount = await deleteSpamAndTestRows(db, classifiedRows);
   await applyModerationUpdates(db, classifiedRows);
-
-  if (includedRows.length === 0) {
-    return { ok: true, dryRun: false, sent: false, ...digest };
-  }
 
   const sentMessageCount = await sendPushoverDigest(env, digest, fetchImpl);
   await markRowsNotified(db, includedRows, now.toISOString());
 
-  return { ok: true, dryRun: false, sent: true, sentMessageCount, ...digest };
+  return {
+    ok: true,
+    dryRun: false,
+    sent: true,
+    sentMessageCount,
+    deletedSpamCount,
+    ...digest
+  };
 }
 
 async function sha256Hex(value) {
@@ -502,12 +589,14 @@ export const __test = {
   classifySubmission,
   classifySubmissions,
   countUrlSignals,
+  deleteSpamAndTestRows,
   fetchCandidateRows,
   groupIncludedSubmissions,
   handleDryRunRequest,
   handleManualRunRequest,
   isObviousTestEmail,
   markRowsNotified,
+  obviousSpamReason,
   requestHasAdminToken,
   runInterestDigest,
   sendPushoverDigest,
