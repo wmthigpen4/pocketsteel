@@ -122,6 +122,7 @@ class CloudflareAccessJwtVerifier:
             raise CloudflareAccessError("access jwt signing key id is required")
 
         jwk = self._find_jwk(header, config)
+        normalized_issuer = config.issuer.rstrip("/")
         try:
             signing_key = jwt.PyJWK.from_dict(jwk, algorithm="RS256")
             payload = jwt.decode(
@@ -129,7 +130,7 @@ class CloudflareAccessJwtVerifier:
                 key=signing_key,
                 algorithms=["RS256"],
                 audience=config.audience,
-                issuer=config.issuer.rstrip("/"),
+                issuer=(normalized_issuer, f"{normalized_issuer}/"),
                 leeway=5,
                 options={"require": ["exp", "iss", "aud"]},
             )
@@ -137,6 +138,14 @@ class CloudflareAccessJwtVerifier:
             raise CloudflareAccessError("expired access jwt") from exc
         except jwt.ImmatureSignatureError as exc:
             raise CloudflareAccessError("access jwt not yet valid") from exc
+        except jwt.InvalidIssuerError as exc:
+            raise CloudflareAccessError("invalid access jwt issuer") from exc
+        except jwt.InvalidAudienceError as exc:
+            raise CloudflareAccessError("invalid access jwt audience") from exc
+        except jwt.MissingRequiredClaimError as exc:
+            raise CloudflareAccessError("access jwt missing required claim") from exc
+        except jwt.InvalidSignatureError as exc:
+            raise CloudflareAccessError("invalid access jwt signature") from exc
         except (jwt.PyJWTError, TypeError, ValueError) as exc:
             raise CloudflareAccessError("invalid access jwt") from exc
 

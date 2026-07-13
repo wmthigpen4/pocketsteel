@@ -73,10 +73,10 @@ def test_access_verifier_validates_signature_issuer_audience_expiry_and_email() 
 @pytest.mark.parametrize(
     ("overrides", "expected_error"),
     [
-        ({"iss": "https://attacker.example"}, "invalid access jwt"),
-        ({"aud": ["wrong-audience"]}, "invalid access jwt"),
+        ({"iss": "https://attacker.example"}, "invalid access jwt issuer"),
+        ({"aud": ["wrong-audience"]}, "invalid access jwt audience"),
         ({"exp": int(time.time()) - 30}, "expired access jwt"),
-        ({"exp": None}, "invalid access jwt"),
+        ({"exp": None}, "access jwt missing required claim"),
     ],
 )
 def test_access_verifier_rejects_invalid_required_claims(
@@ -106,6 +106,15 @@ def test_access_verifier_refreshes_jwks_once_for_rotated_key_and_then_caches() -
     assert verifier.validate(token, _config()).email == "beta@example.test"
     assert verifier.validate(token, _config()).email == "beta@example.test"
     assert len(calls) == 2
+
+
+def test_access_verifier_accepts_cloudflare_issuer_with_trailing_slash() -> None:
+    private_key, public_jwk = _keypair("current")
+    verifier = CloudflareAccessJwtVerifier(jwks={"keys": [public_jwk]})
+
+    claims = verifier.validate(_token(private_key, "current", iss=f"{ISSUER}/"), _config())
+
+    assert claims.issuer == ISSUER
 
 
 def test_access_verifier_rejects_algorithm_outside_fixed_rs256_allowlist() -> None:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass
 from dataclasses import field
@@ -41,6 +42,7 @@ TRUSTED_AUTH_ROLE_HEADER = "X-Steel-Rag-Access-Role"
 DEV_ACCESS_ROLE_HEADER = "X-Steel-Rag-Dev-Access-Role"
 TRUSTED_AUTH_ROLE_ENVIRON = "HTTP_X_STEEL_RAG_ACCESS_ROLE"
 DEV_ACCESS_ROLE_ENVIRON = "HTTP_X_STEEL_RAG_DEV_ACCESS_ROLE"
+LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -149,7 +151,19 @@ def _authorize_with_cloudflare_access(
     verifier = cloudflare_verifier or CloudflareAccessJwtVerifier()
     try:
         claims = verifier.validate(token, config)
-    except CloudflareAccessError:
+    except CloudflareAccessError as exc:
+        validation_error = {
+            "expired access jwt": "expired",
+            "access jwt not yet valid": "not_yet_valid",
+            "invalid access jwt issuer": "issuer",
+            "invalid access jwt audience": "audience",
+            "access jwt missing required claim": "missing_claim",
+            "invalid access jwt signature": "signature",
+            "access jwt signing key not found": "signing_key",
+            "could not load access jwks": "jwks_load",
+            "invalid access jwks": "jwks_format",
+        }.get(str(exc), "token")
+        LOGGER.warning("Cloudflare Access JWT validation failed: %s", validation_error)
         return AnswerAccessDecision(
             allowed=False,
             role=ANONYMOUS,
@@ -158,6 +172,7 @@ def _authorize_with_cloudflare_access(
             diagnostics={
                 **diagnostics,
                 "accessIdentityVerified": False,
+                "accessValidationError": validation_error,
                 "emailPresent": False,
                 "emailAllowlisted": False,
                 "betaAllowed": False,
