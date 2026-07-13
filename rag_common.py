@@ -21,6 +21,8 @@ DEFAULT_FORUM_SLUG = "electronics"
 DEFAULT_EMBEDDING_MODEL = "bge-m3"
 DEFAULT_CHAT_MODEL = "qwen3:14b"
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
+OLLAMA_EMBED_TIMEOUT_ENV = "STEEL_RAG_OLLAMA_EMBED_TIMEOUT_SECONDS"
+DEFAULT_OLLAMA_EMBED_TIMEOUT_SECONDS = 25.0
 APP_DISPLAY_NAME = "The Turnaround"
 LEGACY_ELECTRONICS_DIR = "rag-data/electronics"
 FORUMS_OUTPUT_ROOT = "rag-data/forums"
@@ -178,7 +180,7 @@ def ollama_url() -> str:
     return os.environ.get("OLLAMA_URL", DEFAULT_OLLAMA_URL).rstrip("/")
 
 
-def _post_json(url: str, payload: dict[str, Any], timeout: int = 120) -> dict[str, Any]:
+def _post_json(url: str, payload: dict[str, Any], timeout: float = 120.0) -> dict[str, Any]:
     data = json.dumps(payload).encode("utf-8")
     request = urllib.request.Request(
         url,
@@ -196,14 +198,25 @@ def _post_json(url: str, payload: dict[str, Any], timeout: int = 120) -> dict[st
 def ollama_embed(texts: list[str], model: str | None = None) -> list[list[float]]:
     model = model or os.environ.get("EMBEDDING_MODEL", DEFAULT_EMBEDDING_MODEL)
     payload = {"model": model, "input": texts}
-    response = _post_json(f"{ollama_url()}/api/embed", payload)
+    try:
+        configured_timeout = float(
+            os.environ.get(OLLAMA_EMBED_TIMEOUT_ENV) or DEFAULT_OLLAMA_EMBED_TIMEOUT_SECONDS
+        )
+    except (TypeError, ValueError):
+        configured_timeout = DEFAULT_OLLAMA_EMBED_TIMEOUT_SECONDS
+    timeout = max(5.0, min(configured_timeout, 45.0))
+    response = _post_json(f"{ollama_url()}/api/embed", payload, timeout=timeout)
     embeddings = response.get("embeddings")
     if embeddings is not None:
         return embeddings
 
     single_embeddings: list[list[float]] = []
     for text in texts:
-        legacy = _post_json(f"{ollama_url()}/api/embeddings", {"model": model, "prompt": text})
+        legacy = _post_json(
+            f"{ollama_url()}/api/embeddings",
+            {"model": model, "prompt": text},
+            timeout=timeout,
+        )
         embedding = legacy.get("embedding")
         if embedding is None:
             raise RuntimeError(f"Ollama did not return an embedding for model {model!r}.")

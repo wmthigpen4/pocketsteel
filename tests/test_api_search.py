@@ -185,6 +185,15 @@ class FakeSearchIndex:
         return self.response
 
 
+class UnavailableSearchIndex:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def search(self, query: str, **kwargs: Any) -> Any:
+        self.calls += 1
+        raise RuntimeError("dependency timed out")
+
+
 def retrieval_config(
     mode: str = "sgf_only",
     *,
@@ -650,6 +659,29 @@ def test_content_concurrency_limit_fails_fast(monkeypatch: Any) -> None:
     assert status == "503 Service Unavailable"
     assert payload == {"error": "content service is busy"}
     assert headers["Retry-After"] == "2"
+
+
+def test_retrieval_timeout_returns_deterministic_answer_instead_of_gateway_timeout() -> None:
+    search_index = UnavailableSearchIndex()
+    search_status, _, search_payload = call_app(
+        "/api/search",
+        {"q": "blocking"},
+        search_index=search_index,
+    )
+    status, _, payload = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={"question": "How do I play a G chord on standard E9?"},
+        search_index=search_index,
+    )
+
+    assert search_status == "200 OK"
+    assert search_payload["results"] == []
+    assert "source retrieval temporarily unavailable; using deterministic guidance" in search_payload["warnings"]
+    assert status == "200 OK"
+    assert payload["answer"]
+    assert payload["sources"] == []
+    assert search_index.calls >= 2
 
 
 @pytest.mark.parametrize(

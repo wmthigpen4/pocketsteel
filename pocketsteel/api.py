@@ -1007,27 +1007,37 @@ class RetrievalApi:
         results_by_source: dict[str, list[dict[str, Any]]] = {}
 
         if plan.use_sgf:
-            sgf_response = self._search(
-                query,
-                limit=limit,
-                source_system=source_system,
-                forum_name=forum_name,
-            )
-            results_by_source["sgf_v2"] = sgf_response.results
-            warnings.extend(sgf_response.warnings)
-
-        if plan.use_private:
-            if self.private_search_index is None:
-                warnings.append("private retrieval requested but private search index is not configured")
-            else:
-                private_response = self._search_private(
+            try:
+                sgf_response = self._search(
                     query,
                     limit=limit,
                     source_system=source_system,
                     forum_name=forum_name,
                 )
-                results_by_source["private_sources"] = private_response.results
-                warnings.extend(private_response.warnings)
+            except RuntimeError:
+                LOGGER.warning("sgf_retrieval_unavailable deterministic_fallback=true")
+                warnings.append("source retrieval temporarily unavailable; using deterministic guidance")
+            else:
+                results_by_source["sgf_v2"] = sgf_response.results
+                warnings.extend(sgf_response.warnings)
+
+        if plan.use_private:
+            if self.private_search_index is None:
+                warnings.append("private retrieval requested but private search index is not configured")
+            else:
+                try:
+                    private_response = self._search_private(
+                        query,
+                        limit=limit,
+                        source_system=source_system,
+                        forum_name=forum_name,
+                    )
+                except RuntimeError:
+                    LOGGER.warning("private_retrieval_unavailable deterministic_fallback=true")
+                    warnings.append("private retrieval temporarily unavailable")
+                else:
+                    results_by_source["private_sources"] = private_response.results
+                    warnings.extend(private_response.warnings)
 
         merged: list[dict[str, Any]] = []
         for source_name in plan.source_order:
