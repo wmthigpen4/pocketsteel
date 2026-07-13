@@ -114,6 +114,8 @@ def test_landing_shell_has_responsive_and_accessibility_contract() -> None:
     assert "width: clamp(330px, 24vw, 350px);" in css
     assert "justify-items: start;" in css
     assert "min-height: 44px;" in css
+    assert ".home-explorer-stage [data-string-label]," in css
+    assert ".home-explorer-stage [data-tuning-label] {\n  display: none;\n}" in css
     assert 'role="dialog" aria-modal="true"' in html
     assert 'event.key === "Tab" && !backstage.hidden' in html
     assert "activeBackstageTrigger?.focus();" in html
