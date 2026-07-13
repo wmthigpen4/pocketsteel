@@ -355,6 +355,10 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Type or tap notes" in html
     assert "Import music" in html
     assert "Record or upload audio" in html
+    start_options = re.search(r'id="studio-start-options".*?</div>', html, re.DOTALL).group(0)
+    assert start_options.index('data-studio-start="catalog"') < start_options.index('data-studio-start="phrase"')
+    assert start_options.index('data-studio-start="phrase"') < start_options.index('data-studio-start="microphone"')
+    assert 'data-studio-start="phrase" data-default-label="Type or tap notes" aria-pressed="true"' in start_options
     assert 'id="studio-open-score"' not in html
     assert 'id="studio-add-recording"' in html
     assert 'id="studio-try-example"' not in html
