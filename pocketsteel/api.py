@@ -111,6 +111,7 @@ from pocketsteel.retrieval_modes import (
     retrieval_plan_for_role,
 )
 from pocketsteel.runtime_server import bounded_env_int, serve_runtime
+from pocketsteel.runtime_dependencies import BoundedDependencyRunner, bounded_env_float
 from pocketsteel.tab_engine import render_tab_from_payload
 
 LOGGER = logging.getLogger(__name__)
@@ -128,6 +129,10 @@ MAX_CSP_REPORT_BYTES = 65_536
 MAX_SECURITY_EVENT_LOG = 256
 CONTENT_CONCURRENCY_ENV = "STEEL_RAG_CONTENT_CONCURRENCY"
 DEFAULT_CONTENT_CONCURRENCY = 4
+RETRIEVAL_WALL_TIMEOUT_ENV = "STEEL_RAG_RETRIEVAL_WALL_TIMEOUT_SECONDS"
+ANSWER_WALL_TIMEOUT_ENV = "STEEL_RAG_ANSWER_WALL_TIMEOUT_SECONDS"
+DEFAULT_RETRIEVAL_WALL_TIMEOUT_SECONDS = 20.0
+DEFAULT_ANSWER_WALL_TIMEOUT_SECONDS = 25.0
 CONTENT_BEARING_PATHS = frozenset({"/api/search", "/api/tab", "/api/answer", "/api/melody"})
 SECURITY_RESPONSE_HEADERS: tuple[tuple[str, str], ...] = (
     ("X-Content-Type-Options", "nosniff"),
@@ -329,6 +334,26 @@ class RetrievalApi:
                 minimum=1,
                 maximum=16,
             )
+        )
+        dependency_workers = bounded_env_int(
+            CONTENT_CONCURRENCY_ENV,
+            DEFAULT_CONTENT_CONCURRENCY,
+            minimum=1,
+            maximum=16,
+        )
+        self._retrieval_dependencies = BoundedDependencyRunner(dependency_workers)
+        self._answer_dependencies = BoundedDependencyRunner(dependency_workers)
+        self._retrieval_wall_timeout = bounded_env_float(
+            RETRIEVAL_WALL_TIMEOUT_ENV,
+            DEFAULT_RETRIEVAL_WALL_TIMEOUT_SECONDS,
+            minimum=0.01,
+            maximum=35.0,
+        )
+        self._answer_wall_timeout = bounded_env_float(
+            ANSWER_WALL_TIMEOUT_ENV,
+            DEFAULT_ANSWER_WALL_TIMEOUT_SECONDS,
+            minimum=0.01,
+            maximum=40.0,
         )
 
     def __call__(self, environ: dict[str, Any], start_response: Any) -> Iterable[bytes]:
@@ -852,7 +877,10 @@ class RetrievalApi:
                     warnings.append("no strong source match")
                 else:
                     try:
-                        answer = self.answer_provider.answer(answer_request, strong_sources)
+                        answer = self._answer_dependencies.run(
+                            lambda: self.answer_provider.answer(answer_request, strong_sources),
+                            timeout_seconds=self._answer_wall_timeout,
+                        )
                     except RuntimeError:
                         LOGGER.warning("answer_provider_unavailable deterministic_fallback=true")
                         answer = DeterministicAnswerProvider().answer(answer_request, strong_sources)
@@ -1008,11 +1036,14 @@ class RetrievalApi:
 
         if plan.use_sgf:
             try:
-                sgf_response = self._search(
-                    query,
-                    limit=limit,
-                    source_system=source_system,
-                    forum_name=forum_name,
+                sgf_response = self._retrieval_dependencies.run(
+                    lambda: self._search(
+                        query,
+                        limit=limit,
+                        source_system=source_system,
+                        forum_name=forum_name,
+                    ),
+                    timeout_seconds=self._retrieval_wall_timeout,
                 )
             except RuntimeError:
                 LOGGER.warning("sgf_retrieval_unavailable deterministic_fallback=true")
@@ -1026,11 +1057,14 @@ class RetrievalApi:
                 warnings.append("private retrieval requested but private search index is not configured")
             else:
                 try:
-                    private_response = self._search_private(
-                        query,
-                        limit=limit,
-                        source_system=source_system,
-                        forum_name=forum_name,
+                    private_response = self._retrieval_dependencies.run(
+                        lambda: self._search_private(
+                            query,
+                            limit=limit,
+                            source_system=source_system,
+                            forum_name=forum_name,
+                        ),
+                        timeout_seconds=self._retrieval_wall_timeout,
                     )
                 except RuntimeError:
                     LOGGER.warning("private_retrieval_unavailable deterministic_fallback=true")

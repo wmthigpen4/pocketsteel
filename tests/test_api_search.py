@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import time
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
@@ -192,6 +193,12 @@ class UnavailableSearchIndex:
     def search(self, query: str, **kwargs: Any) -> Any:
         self.calls += 1
         raise RuntimeError("dependency timed out")
+
+
+class SlowSearchIndex:
+    def search(self, query: str, **kwargs: Any) -> Any:
+        time.sleep(0.2)
+        return {"results": [], "warnings": []}
 
 
 def retrieval_config(
@@ -682,6 +689,23 @@ def test_retrieval_timeout_returns_deterministic_answer_instead_of_gateway_timeo
     assert payload["answer"]
     assert payload["sources"] == []
     assert search_index.calls >= 2
+
+
+def test_retrieval_wall_clock_timeout_returns_before_dependency_finishes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("STEEL_RAG_RETRIEVAL_WALL_TIMEOUT_SECONDS", "0.01")
+    started = time.monotonic()
+    status, _, payload = call_app(
+        "/api/search",
+        {"q": "blocking"},
+        search_index=SlowSearchIndex(),
+    )
+
+    assert time.monotonic() - started < 0.15
+    assert status == "200 OK"
+    assert payload["results"] == []
+    assert "source retrieval temporarily unavailable; using deterministic guidance" in payload["warnings"]
 
 
 @pytest.mark.parametrize(
