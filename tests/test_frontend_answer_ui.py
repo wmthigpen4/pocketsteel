@@ -419,6 +419,7 @@ def test_answer_ui_links_to_e9_fretboard_explorer_surface() -> None:
 def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() -> None:
     html = Path("ui/e9-fretboard-explorer.html").read_text(encoding="utf-8")
     script = Path("ui/e9-fretboard-explorer.js").read_text(encoding="utf-8")
+    loader = Path("ui/e9-fretboard-explorer-loader.js").read_text(encoding="utf-8")
     rules = Path("ui/e9-music-rules.js").read_text(encoding="utf-8")
     data = Path("ui/e9-fretboard-explorer-data.js").read_text(encoding="utf-8")
     payloads = json.loads(data.split("window.STEEL_RAG_E9_EXPLORER_PAYLOADS = ", 1)[1].split(";\nwindow.", 1)[0])
@@ -437,9 +438,11 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<script src="e9-fretboard-explorer-data.js?v=single-grip-octave-results-20260628"></script>' not in html
     assert "[hidden] {\n      display: none !important;\n    }" in html
     assert '<script src="e9-music-rules.js?v=voicing-readability-20260704"></script>' in html
-    assert '<script src="e9-fretboard-explorer-loader.js?v=lazy-explorer-data-20260713-3"></script>' in html
-    assert "e9-fretboard-explorer.js?v=lazy-explorer-data-20260713-3" in Path("ui/e9-fretboard-explorer-loader.js").read_text(encoding="utf-8")
-    assert html.index("e9-music-rules.js?v=voicing-readability-20260704") < html.index("e9-fretboard-explorer-loader.js?v=lazy-explorer-data-20260713-3")
+    assert '<script src="e9-fretboard-explorer-loader.js?v=lazy-explorer-data-20260713-4"></script>' in html
+    assert "e9-fretboard-explorer.js?v=lazy-explorer-data-20260713-3" in loader
+    assert "e9-fretboard-explorer-data.js" not in loader
+    assert 'dataset.explorerDataMode = "unavailable"' in loader
+    assert html.index("e9-music-rules.js?v=voicing-readability-20260704") < html.index("e9-fretboard-explorer-loader.js?v=lazy-explorer-data-20260713-4")
     assert "e9-fretboard-explorer.js?v=voicing-identifier-hardening-20260704" not in html
     assert "e9-fretboard-explorer.js?v=explorer-workbench-redesign-20260628" not in html
     assert "e9-fretboard-explorer.js?v=e-lower-pocket-d-major-20260628" not in html
@@ -811,7 +814,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "musicRules.identifyVoicing" in script
     assert "musicRules.parseChordFinderQuery" in script
     assert "musicRules.chordFinderQualityGate" in script
-    assert 'e9-fretboard-explorer-loader.js?v=lazy-explorer-data-20260713-3' in html
+    assert 'e9-fretboard-explorer-loader.js?v=lazy-explorer-data-20260713-4' in html
     assert ".explorer-chord-map-card .explorer-active-result__fields {" in html
     assert ".explorer-chord-map-card .explorer-active-result__fields span {" in html
     assert "grid-template-columns: minmax(72px, 0.48fr) minmax(0, 1fr);" in html

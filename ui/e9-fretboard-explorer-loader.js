@@ -2,7 +2,6 @@
   "use strict";
 
   const MANIFEST_URL = "/ui/explorer-data-v1/manifest.json";
-  const LEGACY_DATA_URL = "e9-fretboard-explorer-data.js?v=single-grip-octave-results-20260628";
   const EXPLORER_SCRIPT_URL = "e9-fretboard-explorer.js?v=lazy-explorer-data-20260713-3";
   const payloadsByKey = window.STEEL_RAG_E9_EXPLORER_PAYLOADS || {};
   const payloadsByCopedent = window.STEEL_RAG_E9_EXPLORER_PAYLOADS_BY_COPEDENT || {};
@@ -130,9 +129,11 @@
     try {
       await loadManifest();
     } catch (error) {
-      document.documentElement.dataset.explorerDataMode = "legacy-fallback";
-      console.warn("Lazy Explorer data failed; loading the compatibility fixture.", error);
-      await loadScript(LEGACY_DATA_URL);
+      document.documentElement.dataset.explorerDataMode = "unavailable";
+      document.documentElement.dataset.explorerDataError = String(error?.message || error || "unknown")
+        .replace(/[^a-z0-9 _/-]/gi, "")
+        .slice(0, 160);
+      console.warn("Lazy Explorer data is unavailable.", error);
     }
     await loadScript(EXPLORER_SCRIPT_URL);
   })();
