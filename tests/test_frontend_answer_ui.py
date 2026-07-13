@@ -234,8 +234,9 @@ let capturedRequest;
               recommendation: "Learn the melody first.",
               textureSummary: { singleNotes: 1, dyads: 0, triads: 0, barSlides: 1 },
               transitions: [{ id: "transition-1", kind: "bar_slide", fromEventId: "melody-step-0", toEventId: "melody-step-1" }],
-              events: [{ id: "melody-step-1", step: 1, resolvedNote: "G", resolvedPitch: "G4", texture: "single_note", transitionFromPreviousId: "transition-1", notes: [{ string: 4, fret: 3, changes: [] }] }],
-              tabExample: { id: "single-tab", title: "Single", rendered_tab: "S4 |--3--|", validation: { ok: true } },
+              pathSummary: { totalBarTravel: 0, harmonicFamilyChanges: 0 },
+              events: [{ id: "melody-step-1", step: 1, resolvedNote: "G", resolvedPitch: "G4", texture: "single_note", arrangementRole: "arrival", performanceControls: ["A", "B"], patternFamily: "middle-pocket", canonicalGrip: "4-5-6", selectionReason: "Keeps the phrase in one pocket.", transitionFromPreviousId: "transition-1", notes: [{ string: 4, fret: 3, changes: [] }] }],
+              tabExample: { id: "single-tab", title: "Single", rendered_tab: "S4 |--3--|", printTabText: "S4 |--3--|", validation: { ok: true } },
               fretboard: { type: "pedal-steel-fretboard", positions: [], strings: { count: 10, labels: {} } }
             }]
           }
@@ -253,10 +254,17 @@ let capturedRequest;
   assert.equal(result.melodyExercise.events[0].resolvedPitch, "G4");
   assert.equal(result.melodyExercise.routes[0].harmonyType, "single_note");
   assert.equal(result.melodyExercise.routes[0].events[0].texture, "single_note");
+  assert.equal(result.melodyExercise.routes[0].events[0].arrangementRole, "arrival");
+  assert.deepEqual(result.melodyExercise.routes[0].events[0].performanceControls, ["A", "B"]);
+  assert.equal(result.melodyExercise.routes[0].events[0].patternFamily, "middle-pocket");
+  assert.equal(result.melodyExercise.routes[0].events[0].canonicalGrip, "4-5-6");
+  assert.equal(result.melodyExercise.routes[0].events[0].selectionReason, "Keeps the phrase in one pocket.");
   assert.equal(result.melodyExercise.routes[0].events[0].transitionFromPreviousId, "transition-1");
   assert.equal(result.melodyExercise.routes[0].transitions[0].kind, "bar_slide");
   assert.equal(result.melodyExercise.routes[0].textureSummary.barSlides, 1);
+  assert.equal(result.melodyExercise.routes[0].pathSummary.harmonicFamilyChanges, 0);
   assert.equal(result.melodyExercise.routes[0].tab.tabText, "S4 |--3--|");
+  assert.equal(result.melodyExercise.routes[0].tab.printTabText, "S4 |--3--|");
   assert.equal(result.melodyExercise.section.hasMore, true);
 })().catch((error) => {
   console.error(error);

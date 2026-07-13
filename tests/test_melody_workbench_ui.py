@@ -67,6 +67,10 @@ assert.equal(artistPayload.texture, "both");
 artist.scoreDraft = {score: {sections: [{label: "Verse", startMeasure: 1, endMeasure: 4}]}};
 assert.deepEqual(studio.buildMelodyRequest(artist).sections, [{label: "Verse", startMeasure: 1, endMeasure: 4}]);
 assert.equal(studio.buildMelodyRequest(artist).wholeSong, true);
+artist.scoreDraft.score.meter = "3/4";
+artist.scoreDraft.score.pickupBeats = 1;
+assert.equal(studio.buildMelodyRequest(artist).meter, "3/4");
+assert.equal(studio.buildMelodyRequest(artist).pickupBeats, 1);
 
 const original = studio.createInitialState("original_exercise");
 Object.assign(original, { tokens: ["1", "3", "5"], artist: "Stale Artist", sourceUrl: "https://example.test/stale" });
@@ -138,8 +142,52 @@ assert.equal(studio.readableEventPosition({notes: [
   {string: 6, fret: 10, changes: ["A"]},
   {string: 7, fret: 10, changes: ["B"]}
 ]}), "Strings 6, 7 & 10 · Fret 10 · A+B");
+assert.equal(studio.readableEventPosition({performanceControls: ["A", "B"], notes: [
+  {string: 4, fret: 5, changes: []}, {string: 5, fret: 5, changes: ["A"]}, {string: 6, fret: 5, changes: ["B"]}
+]}), "Strings 4, 5 & 6 · Fret 5 · A+B");
 assert.equal(studio.hasChordContext([{resolvedPitch: "G4"}]), false);
 assert.equal(studio.hasChordContext([{resolvedPitch: "G4", chord: "G"}]), true);
+const transitionSource = {
+  resolvedPitch: "A4",
+  performanceControls: ["A", "B"],
+  notes: [{string: 4, fret: 5, changes: []}, {string: 5, fret: 5, changes: ["A"]}, {string: 6, fret: 5, changes: ["B"]}]
+};
+const transitionTarget = {
+  resolvedPitch: "G4",
+  selectionReason: "Keeps the melody in the open G pocket.",
+  patternFamily: "open-major",
+  canonicalGrip: "4-5-6",
+  chord: "G",
+  performanceControls: [],
+  notes: [{string: 4, fret: 3, changes: []}, {string: 5, fret: 3, changes: []}, {string: 6, fret: 3, changes: []}]
+};
+const semanticTransition = {
+  kind: "bar_slide", scope: "melody_voice", fromFret: 5, toFret: 3,
+  controlsBefore: ["A", "B"], controlsAfter: [],
+  fromStrings: [4, 5, 6], toStrings: [4, 5, 6], sustainedStrings: [4], repickedStrings: [5, 6], releasedStrings: [],
+  voiceActions: [{string: 4, action: "bar_slide"}, {string: 5, action: "repick"}, {string: 6, action: "repick"}]
+};
+assert.deepEqual(studio.transitionSustainedStrings(semanticTransition), [4]);
+assert.deepEqual(studio.transitionGlidingStrings(semanticTransition), [4]);
+assert.match(studio.transitionChoreography(semanticTransition, transitionSource, transitionTarget), /Pick strings 4, 5 & 6 at fret 5 with A\+B/);
+assert.match(studio.transitionChoreography(semanticTransition, transitionSource, transitionTarget), /slide string 4 from fret 5 to fret 3/);
+assert.match(studio.transitionChoreography(semanticTransition, transitionSource, transitionTarget), /repick strings 5 & 6 at the arrival/);
+assert.deepEqual(studio.transitionScoreVoices(semanticTransition, transitionSource, transitionTarget), [
+  {string: 4, action: "bar_slide", fromPitchValue: 69, toPitchValue: 67}
+]);
+assert.deepEqual(studio.gripRationale(transitionTarget), {
+  reason: "Keeps the melody in the open G pocket.", pocket: "open-major", grip: "4-5-6", chord: "G"
+});
+const pedalTransition = {
+  kind: "pedal_glide", controlsBefore: [], controlsAfter: ["A"], sustainedStrings: [5],
+  voiceActions: [{string: 5, action: "pedal_glide"}]
+};
+assert.equal(studio.transitionControlAnnotation(pedalTransition), "press A");
+assert.deepEqual(studio.transitionScoreVoices(pedalTransition, {
+  notes: [{string: 5, fret: 3, changes: []}]
+}, {
+  notes: [{string: 5, fret: 3, changes: ["A"]}]
+}), []);
 assert.equal(studio.createInitialState().showStringLabels, false);
 assert.equal(studio.createInitialState().showNoteLabels, true);
 assert.equal(studio.createInitialState().inputMethod, "phrase");
@@ -320,7 +368,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Change the register for this note only" in html
     assert "state.selectedPhraseIndex" in script
     assert html.count("?v=melody-multi-input-20260711-3") == 1
-    assert html.count("?v=mixed-arranger-20260712-1") == 3
+    assert html.count("?v=pocket-arranger-20260712-1") == 3
     assert 'elements.sectionNavigation.hidden = needsSource || Number(section.total || 0) <= 1;' in script
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in html
     assert "VexFlow" in Path("ui/vendor/VEXFLOW-LICENSE.txt").read_text(encoding="utf-8")
@@ -433,9 +481,26 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "schedulePitch" in script
     assert "glideToPitch" in script
     assert 'id="studio-transition-key" hidden' in html
+    assert '<code>-----</code> sustained bar slide' in html
+    assert '<code>~~~~~</code> pedal/lever glide' in html
+    assert 'id="studio-grip-rationale" hidden' in html
+    assert '>Why this grip?</summary>' in html
+    assert 'id="studio-grip-reason"' in html
+    assert 'id="studio-grip-facts"' in html
+    assert 'activeRoute?.harmonyType === "mixed_arrangement" ? gripRationale(event) : null' in script
+    assert 'elements.gripRationale.open = false;' in script
+    assert 'transitionChoreography(transition, previousEvent, event)' in script
+    assert 'transitionSustainedStrings(transition)' in script
+    assert 'data-highlight-dot][data-highlight-string]' in script
+    assert 'route?.tab?.printTabText' in script
     assert "route.transitions" in script
     assert "transitionFromPrevious" in Path("ui/melody-score.js").read_text(encoding="utf-8")
     assert "prefers-reduced-motion: reduce" in script
+    assert "scoreVoices: transitionScoreVoices" in script
+    score_script = Path("ui/melody-score.js").read_text(encoding="utf-8")
+    assert 'data-transition-string' in score_script
+    assert 'score-control-annotation' in score_script
+    assert 'transitionScoreVoices(target.event)' in score_script
     assert "session-only" in html.lower()
     assert 'id="studio-replace-confirmation" role="alert" hidden' in html
     assert 'id="studio-confirm-replace"' in html

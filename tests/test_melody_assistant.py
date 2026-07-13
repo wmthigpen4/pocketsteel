@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from pocketsteel.fretboard_examples import absolute_pitch_for_string
+from pocketsteel.melody_arranger import PositionCandidate, _transition_between
 from pocketsteel.melody_assistant import (
     MelodyExerciseError,
     configured_melody_exercise_enabled,
@@ -10,6 +11,7 @@ from pocketsteel.melody_assistant import (
     melody_exercise_response,
 )
 from pocketsteel.melody_import import import_score_draft, public_song_catalog
+from pocketsteel.tab_engine import TabNote
 
 
 def test_feature_flag_defaults_off() -> None:
@@ -44,6 +46,8 @@ def test_structured_g_scale_degree_phrase_builds_synced_tab_and_fretboard() -> N
 
     assert result is not None
     exercise = result["melody_exercise"]
+    assert exercise["input"]["meter"] == "4/4"
+    assert exercise["input"]["pickupBeats"] == 0.0
     assert [route["harmonyType"] for route in exercise["routes"]] == [
         "single_note", "mixed_arrangement", "thirds", "sixths"
     ]
@@ -112,6 +116,9 @@ def test_amazing_grace_exact_score_events_keep_rhythm_chords_and_e9_route() -> N
             "kind": "song_arrangement_lesson",
             "key": "G",
             "melody": events,
+            "meter": draft["score"]["meter"],
+            "pickupBeats": draft["score"]["pickupBeats"],
+            "sections": draft["score"]["sections"],
             "material": {
                 "song": "Amazing Grace",
                 "section": "First phrase",
@@ -121,6 +128,8 @@ def test_amazing_grace_exact_score_events_keep_rhythm_chords_and_e9_route() -> N
     )
     assert result is not None
     exercise = result["melody_exercise"]
+    assert exercise["input"]["meter"] == "3/4"
+    assert exercise["input"]["pickupBeats"] == 1.0
     assert [event["resolvedPitch"] for event in exercise["events"]] == ["D4", "G4", "B4", "G4", "B4", "A4", "G4", "E4"]
     assert [(event["notes"][0]["string"], event["notes"][0]["fret"], event["notes"][0]["changes"]) for event in exercise["events"]] == [
         (5, 3, []),
@@ -144,17 +153,57 @@ def test_amazing_grace_exact_score_events_keep_rhythm_chords_and_e9_route() -> N
     assert exercise["routes"][0]["chordContext"]["symbols"] == list(dict.fromkeys(event["chord"] for event in events[:8]))
     mixed = next(route for route in exercise["routes"] if route["harmonyType"] == "mixed_arrangement")
     assert {len(event["notes"]) for event in mixed["events"]} == {1, 2, 3}
-    assert mixed["textureSummary"] == {
-        "singleNotes": 3,
-        "dyads": 1,
-        "triads": 4,
-        "barSlides": 1,
-        "pedalGlides": 0,
-        "leverGlides": 0,
-    }
-    assert mixed["transitions"][0]["kind"] == "bar_slide"
-    assert mixed["transitions"][0]["scope"] == "melody_voice"
-    assert mixed["transitions"][0]["tabTokens"]
+    opening_g = mixed["events"][1]
+    assert opening_g["performanceControls"] == []
+    assert "A+B at this fret would produce C harmony, not G" in opening_g["selectionReason"]
+    tension = mixed["events"][4]
+    assert tension["arrangementRole"] == "tension"
+    assert len(tension["notes"]) <= 2
+    assert tension["performanceControls"] != ["B", "C"]
+    resolution = mixed["events"][5]
+    assert resolution["arrangementRole"] == "resolution"
+    assert resolution["canonicalGrip"] == "4-5-6"
+    assert resolution["performanceControls"] == ["A", "B"]
+    assert [(note["string"], note["fret"]) for note in resolution["notes"]] == [(4, 5), (5, 5), (6, 5)]
+    assert "release C; press A+B" in resolution["movement"]
+    assert mixed["pathSummary"]["maxBarTravel"] <= 2
+
+
+def test_amazing_grace_c_arrival_stays_in_the_fret_three_ab_pocket() -> None:
+    draft = import_score_draft({"sourceType": "catalog", "catalogId": "amazing-grace-new-britain"})
+    harmony = draft["score"]["harmony"]
+    events = []
+    for event in draft["score"]["melody"]:
+        active = [
+            item for item in harmony
+            if (item["measure"], item["beat"]) <= (event["measure"], event["beat"])
+        ]
+        events.append({**event, "token": event["pitch"], "chord": active[-1]["symbol"] if active else ""})
+    result = melody_exercise_response(
+        "Arrange all of Amazing Grace",
+        {
+            "kind": "song_arrangement_lesson",
+            "key": "G",
+            "melody": events,
+            "meter": draft["score"]["meter"],
+            "pickupBeats": draft["score"]["pickupBeats"],
+            "sections": draft["score"]["sections"],
+            "wholeSong": True,
+        },
+    )
+
+    mixed = next(route for route in result["melody_exercise"]["routes"] if route["harmonyType"] == "mixed_arrangement")
+    c_arrival = mixed["events"][23]
+    assert c_arrival["resolvedPitch"] == "E4"
+    assert c_arrival["harmonySymbol"] == "C"
+    assert c_arrival["arrangementRole"] == "chord_arrival"
+    assert c_arrival["canonicalGrip"] == "5-6-8"
+    assert c_arrival["performanceControls"] == ["A", "B"]
+    assert [(note["string"], note["fret"]) for note in c_arrival["notes"]] == [(5, 3), (6, 3), (8, 3)]
+    print_tab = mixed["tabExample"]["print_tab_text"]
+    assert print_tab.count("Measure") >= 2
+    assert all(len(line) <= 112 for line in print_tab.splitlines() if not line.startswith("Measure"))
+    assert "~~~~~" in print_tab
 
 
 def test_c_major_note_names_use_octave_aware_valid_e9_placement() -> None:
@@ -243,15 +292,8 @@ def test_default_arranger_returns_faithful_and_recommended_mixed_routes() -> Non
         assert [event["renderablePositionId"] for event in route["events"]] == [position["id"] for position in route["fretboard"]["positions"]]
 
 
-@pytest.mark.parametrize(
-    ("tokens", "expected_kind", "expected_marker"),
-    [
-        ("11122", "bar_slide", "/"),
-        ("11233", "pedal_glide", "~"),
-        ("11634", "lever_glide", "~"),
-    ],
-)
-def test_mixed_arrangement_integrates_validated_steel_transitions(tokens: str, expected_kind: str, expected_marker: str) -> None:
+def test_mixed_arrangement_integrates_semantic_pedal_transition() -> None:
+    tokens = "11233"
     melody = [
         {
             "token": token,
@@ -264,11 +306,71 @@ def test_mixed_arrangement_integrates_validated_steel_transitions(tokens: str, e
     result = melody_exercise_response("Build a moving arrangement", {"key": "G", "melody": melody})
 
     mixed = next(route for route in result["melody_exercise"]["routes"] if route["harmonyType"] == "mixed_arrangement")
-    transition = next(item for item in mixed["transitions"] if item["kind"] == expected_kind)
+    transition = next(item for item in mixed["transitions"] if item["kind"] == "pedal_glide")
     assert transition["scope"] in {"full_grip", "melody_voice"}
-    assert expected_marker in next(iter(transition["tabTokens"].values()))
+    assert transition["fromStrings"] == transition["toStrings"] == transition["sustainedStrings"]
+    assert transition["voiceActions"] == [{"string": 4, "action": "pedal_glide"}]
+    assert "tabTokens" not in transition
     assert transition["toEventId"] in {event["id"] for event in mixed["events"]}
     assert transition["id"] in {event.get("transitionFromPreviousId") for event in mixed["events"]}
+
+
+@pytest.mark.parametrize(
+    ("current_controls", "expected_kind"),
+    [((), "bar_slide"), (("F",), "lever_glide")],
+)
+def test_transition_contract_describes_complete_grip_choreography(
+    current_controls: tuple[str, ...],
+    expected_kind: str,
+) -> None:
+    source = PositionCandidate(
+        fret=3,
+        notes=(TabNote(4, 3), TabNote(5, 3), TabNote(6, 3)),
+        top_pitch=67,
+        controls=(),
+        family="open_major",
+        note_names=("G", "D", "B"),
+        intervals=("1", "5", "3"),
+        pattern_family="open_major",
+        canonical_grip=(4, 5, 6),
+    )
+    if expected_kind == "bar_slide":
+        target = PositionCandidate(
+            fret=5,
+            notes=(TabNote(4, 5), TabNote(5, 5), TabNote(6, 5)),
+            top_pitch=69,
+            controls=(),
+            family="open_major",
+            note_names=("A", "E", "C#"),
+            intervals=("2", "6", "#4"),
+            pattern_family="open_major",
+            canonical_grip=(4, 5, 6),
+        )
+    else:
+        target = PositionCandidate(
+            fret=3,
+            notes=(TabNote(4, 3, ("F",)), TabNote(5, 3), TabNote(6, 3)),
+            top_pitch=68,
+            controls=current_controls,
+            family="a_f_major",
+            note_names=("G#", "D", "B"),
+            intervals=("#1", "5", "3"),
+            pattern_family="a_f_major",
+            canonical_grip=(4, 5, 6),
+        )
+    transition = _transition_between("route", 1, source, target)
+
+    assert transition is not None
+    assert transition["kind"] == expected_kind
+    assert transition["scope"] == "full_grip"
+    assert transition["fromStrings"] == transition["toStrings"] == [4, 5, 6]
+    assert transition["sustainedStrings"] == [4, 5, 6]
+    assert transition["repickedStrings"] == transition["releasedStrings"] == []
+    assert "tabTokens" not in transition
+    assert {action["action"] for action in transition["voiceActions"]} <= {
+        expected_kind,
+        "hold",
+    }
 
 
 def test_mixed_arrangement_limits_transitions_and_never_places_them_adjacent() -> None:

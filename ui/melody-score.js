@@ -264,6 +264,32 @@
     return { width, columns, systems, systemHeight: 190, height: systems * 190 + 24 };
   }
 
+  function transitionScoreVoices(event) {
+    const voices = event?.transitionFromPrevious?.scoreVoices;
+    return Array.isArray(voices) ? voices.filter((voice) =>
+      Number.isFinite(Number(voice?.fromPitchValue)) && Number.isFinite(Number(voice?.toPitchValue))) : [];
+  }
+
+  function nearestPitchIndex(event, pitchValue) {
+    const pitches = event?.pitches?.length ? event.pitches : [event?.pitchValue];
+    let bestIndex = 0;
+    let bestDistance = Infinity;
+    pitches.forEach((value, index) => {
+      const distance = Math.abs(Number(value) - Number(pitchValue));
+      if (distance < bestDistance) {
+        bestIndex = index;
+        bestDistance = distance;
+      }
+    });
+    return bestIndex;
+  }
+
+  function vexVoiceY(rendered, pitchValue, box) {
+    const ys = typeof rendered?.note?.getYs === "function" ? rendered.note.getYs() : [];
+    const index = nearestPitchIndex(rendered?.event, pitchValue);
+    return Number.isFinite(Number(ys?.[index])) ? Number(ys[index]) : box.y + box.height * 0.42;
+  }
+
   function renderWithVexFlow(container, draft, selectedIndex = -1, onSelect) {
     const VF = global.VexFlow;
     if (!VF?.Renderer || !VF?.Stave || !VF?.StaveNote || !VF?.Voice || !VF?.Formatter) return false;
@@ -360,20 +386,36 @@
         if (!sourceElement || !targetElement || typeof sourceElement.getBBox !== "function") return;
         const sourceBox = sourceElement.getBBox();
         const targetBox = targetElement.getBBox();
+        const voices = transitionScoreVoices(target.event);
+        if (!voices.length) return;
         const sameSystem = Math.floor((Number(source.event.measure) - 1) / layout.columns) === Math.floor((Number(target.event.measure) - 1) / layout.columns);
-        const overlay = global.document.createElementNS("http://www.w3.org/2000/svg", sameSystem ? "line" : "text");
-        overlay.setAttribute("class", sameSystem ? "score-gliss" : "score-gliss-label");
         if (sameSystem) {
-          overlay.setAttribute("x1", String(sourceBox.x + sourceBox.width));
-          overlay.setAttribute("y1", String(sourceBox.y + sourceBox.height * 0.42));
-          overlay.setAttribute("x2", String(targetBox.x));
-          overlay.setAttribute("y2", String(targetBox.y + targetBox.height * 0.42));
+          voices.forEach((voice) => {
+            const overlay = global.document.createElementNS("http://www.w3.org/2000/svg", "line");
+            overlay.setAttribute("class", "score-gliss");
+            overlay.setAttribute("data-transition-string", String(voice.string || ""));
+            overlay.setAttribute("x1", String(sourceBox.x + sourceBox.width));
+            overlay.setAttribute("y1", String(vexVoiceY(source, voice.fromPitchValue, sourceBox)));
+            overlay.setAttribute("x2", String(targetBox.x));
+            overlay.setAttribute("y2", String(vexVoiceY(target, voice.toPitchValue, targetBox)));
+            svg.appendChild(overlay);
+          });
         } else {
+          const overlay = global.document.createElementNS("http://www.w3.org/2000/svg", "text");
+          overlay.setAttribute("class", "score-gliss-label");
           overlay.setAttribute("x", String(targetBox.x));
           overlay.setAttribute("y", String(Math.max(12, targetBox.y - 5)));
           overlay.textContent = "gliss.";
+          svg.appendChild(overlay);
         }
-        svg.appendChild(overlay);
+        if (transition.controlAnnotation) {
+          const annotation = global.document.createElementNS("http://www.w3.org/2000/svg", "text");
+          annotation.setAttribute("class", "score-control-annotation");
+          annotation.setAttribute("x", String(targetBox.x));
+          annotation.setAttribute("y", String(Math.max(12, targetBox.y - 18)));
+          annotation.textContent = transition.controlAnnotation;
+          svg.appendChild(annotation);
+        }
       });
     }
     container.dataset.scoreRenderer = "vexflow-5.0.0";
@@ -470,17 +512,30 @@
         if (eventObject.key === "Enter" || eventObject.key === " ") select();
       });
       svg.appendChild(group);
-      fallbackPoints.push({ x, y: event.rest ? 104 + system * layout.systemHeight : 126 + system * layout.systemHeight - (staffStep(event.pitchValue) + 2) * 7, system, event });
+      const pitchValues = event.pitches?.length ? event.pitches : [event.pitchValue];
+      const pitchYs = Object.fromEntries(pitchValues.map((value) => [String(value), 126 + system * layout.systemHeight - (staffStep(value) + 2) * 7]));
+      fallbackPoints.push({ x, y: event.rest ? 104 + system * layout.systemHeight : pitchYs[String(event.pitchValue)], pitchYs, system, event });
     });
     fallbackPoints.forEach((target, index) => {
       const source = fallbackPoints[index - 1];
-      if (!target.event.transitionFromPrevious || !source) return;
+      const transition = target.event.transitionFromPrevious;
+      const voices = transitionScoreVoices(target.event);
+      if (!transition || !source || !voices.length) return;
       if (source.system === target.system) {
-        svg.appendChild(make("line", { x1: source.x + 10, y1: source.y, x2: target.x - 10, y2: target.y, class: "score-gliss" }));
+        voices.forEach((voice) => {
+          const fromY = source.pitchYs[String(voice.fromPitchValue)] ?? source.y;
+          const toY = target.pitchYs[String(voice.toPitchValue)] ?? target.y;
+          svg.appendChild(make("line", { x1: source.x + 10, y1: fromY, x2: target.x - 10, y2: toY, class: "score-gliss", "data-transition-string": voice.string || "" }));
+        });
       } else {
         const label = make("text", { x: target.x - 5, y: target.y - 14, class: "score-gliss-label" });
         label.textContent = "gliss.";
         svg.appendChild(label);
+      }
+      if (transition.controlAnnotation) {
+        const annotation = make("text", { x: target.x - 5, y: target.y - 28, class: "score-control-annotation" });
+        annotation.textContent = transition.controlAnnotation;
+        svg.appendChild(annotation);
       }
     });
     container.appendChild(svg);

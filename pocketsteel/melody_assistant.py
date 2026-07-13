@@ -139,6 +139,13 @@ def melody_exercise_response(
     texture = str(structured.get("texture") or "both").strip().lower()
     if texture not in SUPPORTED_TEXTURES:
         raise MelodyExerciseError("Unsupported Melody Studio texture.")
+    meter = str(structured.get("meter") or "4/4").strip()
+    if meter not in {"3/4", "4/4"}:
+        meter = "4/4"
+    try:
+        pickup_beats = max(0.0, min(3.0, float(structured.get("pickupBeats") or structured.get("pickup_beats") or 0)))
+    except (TypeError, ValueError):
+        pickup_beats = 0.0
     try:
         routes, resolved_phrase = arrange_melody_routes(
             raw_melody,
@@ -149,6 +156,9 @@ def melody_exercise_response(
             title=title,
             event_start=start,
             event_end=end,
+            meter=meter,
+            pickup_beats=pickup_beats,
+            sections=structured.get("sections") if isinstance(structured.get("sections"), list) else None,
         )
     except ValueError as exc:
         raise MelodyExerciseError(str(exc)) from exc
@@ -188,6 +198,8 @@ def melody_exercise_response(
             "tokens": section_tokens,
             "contourMode": contour_mode,
             "texture": texture,
+            "meter": meter,
+            "pickupBeats": pickup_beats,
             "resolvedPhrase": resolved_phrase,
         },
         "events": event_payloads,

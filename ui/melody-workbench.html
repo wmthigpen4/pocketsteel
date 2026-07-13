@@ -172,6 +172,7 @@
     .transition-key { margin: 12px 0 6px; color: var(--muted); font-size: 12px; font-weight: 750; }
     .score-gliss { stroke: #9a5a14; stroke-width: 2; stroke-dasharray: 4 3; fill: none; }
     .score-gliss-label { fill: #8a4b13; font-size: 11px; font-weight: 800; }
+    .score-control-annotation { fill: #8a4b13; font-size: 10px; font-weight: 850; }
     .practice-bar { display: grid; gap: 10px; margin: 12px 0 18px; border: 1px solid rgba(240, 191, 105, 0.18); border-radius: 14px; background: rgba(240, 191, 105, 0.055); padding: 12px; }
     .practice-core { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
     .practice-bar .field { display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -318,6 +319,12 @@
     .event-step strong { color: var(--cream); font-size: 16px; }
     .event-step__position { min-width: 0; color: var(--cream); font-size: 13px; }
     .event-step__movement { grid-column: 1 / -1; color: var(--muted); font-size: 12px; }
+    .grip-rationale { width: min(620px, 100%); border: 1px solid rgba(240, 191, 105, 0.18); border-radius: 14px; background: rgba(240, 191, 105, 0.045); }
+    .grip-rationale > summary { cursor: pointer; padding: 10px 14px; color: var(--cream); font-size: 13px; font-weight: 850; }
+    .grip-rationale__body { display: grid; gap: 9px; border-top: 1px solid rgba(244, 234, 214, 0.1); padding: 12px 14px 14px; }
+    .grip-rationale__body p { margin: 0; color: var(--muted); line-height: 1.5; }
+    .grip-rationale__facts { display: flex; flex-wrap: wrap; gap: 7px; margin: 0; }
+    .grip-rationale__facts span { border: 1px solid rgba(244, 234, 214, 0.12); border-radius: 999px; padding: 5px 9px; color: var(--cream); font-size: 12px; }
     .octave-guide__item[data-scientific-octave="2"], #studio-result.is-octave-map-visible .event-step[data-scientific-octave="2"] { --octave-color: #b8a3ff; --octave-tint: rgba(184, 163, 255, 0.13); }
     .octave-guide__item[data-scientific-octave="3"], #studio-result.is-octave-map-visible .event-step[data-scientific-octave="3"] { --octave-color: #63b3ff; --octave-tint: rgba(99, 179, 255, 0.13); }
     .octave-guide__item[data-scientific-octave="4"], #studio-result.is-octave-map-visible .event-step[data-scientific-octave="4"] { --octave-color: #58d6bd; --octave-tint: rgba(88, 214, 189, 0.13); }
@@ -377,7 +384,7 @@
       #studio-print-route { display: block !important; margin: 8px 0 16px; font-weight: 800; }
       #studio-tab { display: none !important; }
       #studio-whole-song-tab { display: block !important; margin: 0; }
-      .tab-block { overflow: visible; border: 1px solid #222; border-radius: 0; background: #fff; padding: 14px; color: #111; font: 10pt/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre; }
+      .tab-block { overflow: visible; break-inside: avoid; page-break-inside: avoid; border: 1px solid #222; border-radius: 0; background: #fff; padding: 14px; color: #111; font: 10pt/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre; }
     }
   </style>
 </head>
@@ -702,10 +709,17 @@
             <div class="event-strip" id="studio-event-strip" aria-label="Lesson note steps"></div>
             <button class="navigator-arrow" type="button" id="studio-next" aria-label="Next note">→</button>
           </div>
+          <details class="grip-rationale" id="studio-grip-rationale" hidden>
+            <summary>Why this grip?</summary>
+            <div class="grip-rationale__body">
+              <p id="studio-grip-reason"></p>
+              <p class="grip-rationale__facts" id="studio-grip-facts"></p>
+            </div>
+          </details>
         </div>
 
         <div id="studio-tab" hidden>
-          <p class="transition-key" id="studio-transition-key" hidden><strong>Movement:</strong> / slide up · \ slide down · ~ pedal/lever glide</p>
+          <p class="transition-key" id="studio-transition-key" hidden><strong>Movement:</strong> <code>-----</code> sustained bar slide · <code>~~~~~</code> pedal/lever glide · blank connector means add or repick at the arrival</p>
           <pre class="tab-block" aria-label="Melody Studio tab"><code id="studio-tab-code"></code></pre>
         </div>
         <div class="print-only" id="studio-whole-song-tab" hidden>
@@ -721,10 +735,10 @@
     </div>
   </main>
 
-  <script src="answer-client.js?v=mixed-arranger-20260712-1"></script>
+  <script src="answer-client.js?v=pocket-arranger-20260712-1"></script>
   <script src="pedal-steel-fretboard.js?v=melody-multi-input-20260711-3"></script>
   <script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>
-  <script src="melody-score.js?v=mixed-arranger-20260712-1"></script>
-  <script src="melody-workbench.js?v=mixed-arranger-20260712-1"></script>
+  <script src="melody-score.js?v=pocket-arranger-20260712-1"></script>
+  <script src="melody-workbench.js?v=pocket-arranger-20260712-1"></script>
 </body>
 </html>

@@ -210,6 +210,18 @@ class TabRenderResult:
         }
 
 
+@dataclass(frozen=True)
+class _TabRenderColumn:
+    """One visual tab column without implying another musical event."""
+
+    event: TabEvent | None = None
+    connector_tokens: dict[int, str] = field(default_factory=dict)
+
+    @property
+    def is_connector(self) -> bool:
+        return self.event is None
+
+
 def tab_note_from_dict(payload: dict[str, Any]) -> TabNote:
     raw_changes = payload.get("changes") or ()
     if isinstance(raw_changes, str):
@@ -361,21 +373,32 @@ def render_tab(
     if issues:
         return TabRenderResult(ok=False, tab="", issues=issues, metadata=metadata)
 
-    event_widths = [_event_width(event) for event in normalized_events]
+    columns = _render_columns(normalized_events)
+    column_widths = [_render_column_width(column) for column in columns]
     has_chords = any(event.chord for event in normalized_events)
     has_lyrics = any(event.lyric for event in normalized_events)
     lines: list[str] = []
 
     if has_chords:
-        lines.append(_render_label_row("Ch |", [_optional_text(event.chord) for event in normalized_events], event_widths))
+        lines.append(
+            _render_label_row(
+                "Ch |",
+                [_optional_text(column.event.chord) if column.event else "" for column in columns],
+                column_widths,
+            )
+        )
     if has_lyrics:
-        lines.append(_render_label_row("Ly |", [_optional_text(event.lyric) for event in normalized_events], event_widths))
+        lines.append(
+            _render_label_row(
+                "Ly |",
+                [_optional_text(column.event.lyric) if column.event else "" for column in columns],
+                column_widths,
+            )
+        )
 
     for string_number in range(1, 11):
-        tokens: list[str] = []
-        for event in normalized_events:
-            tokens.append(_note_token_for_string(event, string_number))
-        lines.append(_render_label_row(f"{string_number:>2} |", tokens, event_widths))
+        tokens = [_render_column_token(column, string_number) for column in columns]
+        lines.append(_render_label_row(f"{string_number:>2} |", tokens, column_widths))
 
     return TabRenderResult(ok=True, tab="\n".join(lines), issues=(), metadata=metadata)
 
@@ -450,7 +473,11 @@ def render_example(name: str) -> TabRenderResult:
 
 def _event_width(event: TabEvent) -> int:
     tokens = [note.render_token() for note in event.notes]
-    if event.transition and isinstance(event.transition.get("tabTokens"), dict):
+    if (
+        event.transition
+        and not _has_semantic_transition(event.transition)
+        and isinstance(event.transition.get("tabTokens"), dict)
+    ):
         tokens.extend(str(token) for token in event.transition["tabTokens"].values())
     if event.chord:
         tokens.append(event.chord)
@@ -465,7 +492,11 @@ def _render_label_row(label: str, tokens: list[str], widths: list[int]) -> str:
 
 
 def _note_token_for_string(event: TabEvent, string_number: int) -> str:
-    transition_tokens = event.transition.get("tabTokens") if event.transition else None
+    transition_tokens = (
+        event.transition.get("tabTokens")
+        if event.transition and not _has_semantic_transition(event.transition)
+        else None
+    )
     if isinstance(transition_tokens, dict):
         token = transition_tokens.get(str(string_number))
         if token:
@@ -474,6 +505,91 @@ def _note_token_for_string(event: TabEvent, string_number: int) -> str:
         if note.string == string_number:
             return note.render_token()
     return ""
+
+
+def _render_columns(events: tuple[TabEvent, ...]) -> list[_TabRenderColumn]:
+    columns: list[_TabRenderColumn] = []
+    for event_index, event in enumerate(events):
+        if event_index > 0 and event.transition and _has_semantic_transition(event.transition):
+            columns.append(
+                _TabRenderColumn(
+                    connector_tokens=_semantic_connector_tokens(event.transition),
+                )
+            )
+        columns.append(_TabRenderColumn(event=event))
+    return columns
+
+
+def _render_column_width(column: _TabRenderColumn) -> int:
+    if column.event is not None:
+        return _event_width(column.event)
+    return max(5, *(len(token) for token in column.connector_tokens.values())) + 2
+
+
+def _render_column_token(column: _TabRenderColumn, string_number: int) -> str:
+    if column.event is not None:
+        return _note_token_for_string(column.event, string_number)
+    return column.connector_tokens.get(string_number, "")
+
+
+def _has_semantic_transition(transition: dict[str, Any]) -> bool:
+    return any(
+        key in transition
+        for key in (
+            "fromStrings",
+            "toStrings",
+            "sustainedStrings",
+            "repickedStrings",
+            "releasedStrings",
+            "voiceActions",
+        )
+    )
+
+
+def _semantic_connector_tokens(transition: dict[str, Any]) -> dict[int, str]:
+    action_by_string = _semantic_voice_actions(transition.get("voiceActions"))
+    sustained_strings = _normalized_string_set(transition.get("sustainedStrings"))
+    kind = _optional_text(transition.get("kind"))
+
+    for string_number in sustained_strings:
+        action_by_string.setdefault(string_number, kind)
+
+    tokens: dict[int, str] = {}
+    for string_number, action in action_by_string.items():
+        if action in {"bar_slide", "hold"}:
+            tokens[string_number] = "-----"
+        elif action in {"pedal_glide", "lever_glide"}:
+            tokens[string_number] = "~~~~~"
+        # add, release, and repick intentionally leave a blank connector.
+    return tokens
+
+
+def _semantic_voice_actions(value: object) -> dict[int, str]:
+    actions: dict[int, str] = {}
+    if isinstance(value, list):
+        records = value
+    elif isinstance(value, dict):
+        records = [
+            {"string": string_number, "action": action}
+            for string_number, action in value.items()
+        ]
+    else:
+        records = []
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        string_number = _coerce_int(record.get("string"), default=0)
+        action = _optional_text(record.get("action"))
+        if 1 <= string_number <= 10 and action:
+            actions[string_number] = action
+    return actions
+
+
+def _normalized_string_set(value: object) -> set[int]:
+    if not isinstance(value, (list, tuple, set)):
+        return set()
+    strings = {_coerce_int(item, default=0) for item in value}
+    return {string_number for string_number in strings if 1 <= string_number <= 10}
 
 
 def _optional_text(value: object) -> str:

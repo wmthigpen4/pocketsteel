@@ -66,6 +66,114 @@ def test_transition_tokens_render_without_changing_event_count() -> None:
     assert result.metadata["event_count"] == 2
 
 
+def test_semantic_bar_slide_renders_complete_grips_around_connector() -> None:
+    result = render_tab(
+        (
+            TabEvent(notes=(TabNote(4, 5), TabNote(5, 5), TabNote(6, 5))),
+            TabEvent(
+                notes=(TabNote(4, 3), TabNote(5, 3), TabNote(6, 3)),
+                transition={
+                    "kind": "bar_slide",
+                    "fromStrings": [4, 5, 6],
+                    "toStrings": [4, 5, 6],
+                    "sustainedStrings": [4, 5, 6],
+                    "repickedStrings": [],
+                    "releasedStrings": [],
+                    "voiceActions": [
+                        {"string": 4, "action": "bar_slide"},
+                        {"string": 5, "action": "bar_slide"},
+                        {"string": 6, "action": "bar_slide"},
+                    ],
+                },
+            ),
+        )
+    )
+
+    assert result.ok
+    for string_number in (4, 5, 6):
+        row = _row(result.tab, f" {string_number} |")
+        assert row.index("5") < row.index("-----") < row.rindex("3")
+    assert result.metadata["event_count"] == 2
+
+
+def test_semantic_pedal_glide_preserves_source_and_destination_tokens() -> None:
+    result = render_tab(
+        (
+            TabEvent(notes=(TabNote(5, 3),)),
+            TabEvent(
+                notes=(TabNote(5, 3, ("A",)),),
+                transition={
+                    "kind": "pedal_glide",
+                    "fromStrings": [5],
+                    "toStrings": [5],
+                    "sustainedStrings": [5],
+                    "voiceActions": [{"string": 5, "action": "pedal_glide"}],
+                    "tabTokens": {"5": "3~3A"},
+                },
+            ),
+        )
+    )
+
+    assert result.ok
+    row = _row(result.tab, " 5 |")
+    assert row.index("3") < row.index("~~~~~") < row.index("3A")
+    assert "3~3A" not in row
+    assert result.metadata["event_count"] == 2
+
+
+def test_semantic_melody_only_slide_leaves_repick_and_add_connectors_blank() -> None:
+    result = render_tab(
+        (
+            TabEvent(notes=(TabNote(4, 5), TabNote(5, 5), TabNote(6, 5))),
+            TabEvent(
+                notes=(TabNote(4, 3), TabNote(5, 3, ("A",)), TabNote(6, 3, ("B",))),
+                transition={
+                    "kind": "bar_slide",
+                    "fromStrings": [4, 5, 6],
+                    "toStrings": [4, 5, 6],
+                    "sustainedStrings": [4],
+                    "repickedStrings": [5],
+                    "releasedStrings": [6],
+                    "voiceActions": [
+                        {"string": 4, "action": "bar_slide"},
+                        {"string": 5, "action": "repick"},
+                        {"string": 6, "action": "add"},
+                    ],
+                },
+            ),
+        )
+    )
+
+    assert result.ok
+    assert "-----" in _row(result.tab, " 4 |")
+    assert "-----" not in _row(result.tab, " 5 |")
+    assert "-----" not in _row(result.tab, " 6 |")
+    assert "3A" in _row(result.tab, " 5 |")
+    assert "3B" in _row(result.tab, " 6 |")
+
+
+def test_semantic_transition_accepts_voice_action_object_map() -> None:
+    result = render_tab(
+        (
+            TabEvent(notes=(TabNote(4, 3),)),
+            TabEvent(
+                notes=(TabNote(4, 3, ("F",)),),
+                transition={
+                    "kind": "lever_glide",
+                    "fromStrings": [4],
+                    "toStrings": [4],
+                    "sustainedStrings": [4],
+                    "voiceActions": {"4": "lever_glide"},
+                },
+            ),
+        )
+    )
+
+    assert result.ok
+    row = _row(result.tab, " 4 |")
+    assert row.index("3") < row.index("~~~~~") < row.index("3F")
+
+
 def test_rejects_more_than_three_notes() -> None:
     events = (TabEvent(notes=(TabNote(3, 3), TabNote(4, 3), TabNote(5, 3), TabNote(6, 3))),)
 

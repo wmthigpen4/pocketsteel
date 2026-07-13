@@ -12,6 +12,7 @@ from pocketsteel.e9_copedents import scientific_pitch_for_value
 from pocketsteel.fretboard_examples import (
     absolute_pitch_for_string,
     control_affects_selected_strings,
+    major_positions,
     note_name_for_pitch,
 )
 from pocketsteel.fretboard_explorer import ExplorerRow, major_three_string_rows, major_two_string_rows
@@ -61,6 +62,9 @@ class PositionCandidate:
     family: str
     note_names: tuple[str, ...]
     intervals: tuple[str, ...]
+    pattern_family: str = ""
+    canonical_grip: tuple[int, ...] = ()
+    difficulty: str = "common"
 
     @property
     def top_string(self) -> int:
@@ -80,6 +84,9 @@ def arrange_melody_routes(
     title: str,
     event_start: int = 0,
     event_end: int | None = None,
+    meter: str = "4/4",
+    pickup_beats: float = 0.0,
+    sections: Sequence[Mapping[str, Any]] | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Return render-ready routes and resolved phrase metadata."""
 
@@ -89,6 +96,7 @@ def arrange_melody_routes(
     all_resolved_pitches = resolve_contour(all_inputs, contour)
     inputs = all_inputs[event_start:event_end]
     resolved_pitches = all_resolved_pitches[event_start:event_end]
+    phrase_starts, phrase_ends = _phrase_boundaries(inputs, sections)
     single_candidates = [single_note_candidates(item, pitch) for item, pitch in zip(inputs, resolved_pitches)]
     single_path = choose_path(single_candidates, inputs=inputs)
     if not single_path:
@@ -119,6 +127,10 @@ def arrange_melody_routes(
             key=key,
             title=f"{title} — Single-note melody",
             recommended=False,
+            meter=meter,
+            pickup_beats=pickup_beats,
+            phrase_starts=phrase_starts,
+            phrase_ends=phrase_ends,
         )
     )
 
@@ -127,7 +139,15 @@ def arrange_melody_routes(
             continue
         if harmony_type == "mixed_arrangement":
             candidate_groups = mixed_candidate_groups(inputs, resolved_pitches, key)
-            path = choose_mixed_path(candidate_groups, inputs=inputs)
+            path = choose_mixed_path(
+                candidate_groups,
+                inputs=inputs,
+                key=key,
+                meter=meter,
+                pickup_beats=pickup_beats,
+                phrase_starts=phrase_starts,
+                phrase_ends=phrase_ends,
+            )
         else:
             candidate_groups = harmony_candidate_groups(inputs, resolved_pitches, key, harmony_type)
             path = choose_path(candidate_groups, inputs=inputs) if candidate_groups and all(candidate_groups) else []
@@ -147,6 +167,10 @@ def arrange_melody_routes(
                 key=key,
                 title=f"{title} — {label}",
                 recommended=harmony_type in {"mixed_arrangement", "automatic_harmony"},
+                meter=meter,
+                pickup_beats=pickup_beats,
+                phrase_starts=phrase_starts,
+                phrase_ends=phrase_ends,
             )
         )
 
@@ -377,7 +401,7 @@ def mixed_candidate_groups(
     resolved_pitches: Sequence[int],
     key: str,
 ) -> list[list[PositionCandidate]]:
-    """Combine validated single, dyad, and chord-backed triad choices per event."""
+    """Combine scale rows with common chord grips and their playable subsets."""
 
     dyads = harmony_candidate_groups(inputs, resolved_pitches, key, "automatic_harmony")
     triads = harmony_candidate_groups(inputs, resolved_pitches, key, "chord_melody")
@@ -388,9 +412,21 @@ def mixed_candidate_groups(
         if item.literal is not None:
             groups.append(singles)
             continue
-        candidates = [*singles, *dyads[index]]
-        if active_chords[index] and _desired_texture_size(inputs, index, active_chords) == 3:
-            candidates.extend(triads[index])
+        active_chord = active_chords[index]
+        scale_dyads = [
+            candidate for candidate in dyads[index]
+            if not active_chord or _supporting_harmony_fits(candidate, active_chord)
+        ]
+        scale_triads = [
+            candidate for candidate in triads[index]
+            if active_chord
+            and _melody_is_chord_tone(pitch, active_chord)
+            and _supporting_harmony_fits(candidate, active_chord)
+        ]
+        chord_grips = _active_chord_candidates(item, pitch, active_chord)
+        candidates = [*singles, *scale_dyads]
+        for grip in (*scale_triads, *chord_grips):
+            candidates.extend(_candidate_subsets(grip))
         groups.append(_dedupe_candidates(candidates))
     return groups
 
@@ -399,14 +435,31 @@ def choose_mixed_path(
     candidate_groups: Sequence[Sequence[PositionCandidate]],
     *,
     inputs: Sequence[MelodyInput],
+    key: str = "G",
+    meter: str = "4/4",
+    pickup_beats: float = 0.0,
+    phrase_starts: set[int] | None = None,
+    phrase_ends: set[int] | None = None,
 ) -> list[PositionCandidate]:
     if not candidate_groups or any(not group for group in candidate_groups):
         return []
     active_chords = _active_chords(inputs)
+    roles = _arrangement_roles(
+        inputs,
+        active_chords,
+        meter=meter,
+        pickup_beats=pickup_beats,
+        phrase_starts=phrase_starts or {0},
+        phrase_ends=phrase_ends or {len(inputs) - 1},
+    )
+    home_fret = 3 if key == "G" else 8
     states: list[dict[int, tuple[tuple[int, ...], int | None]]] = []
     first: dict[int, tuple[tuple[int, ...], int | None]] = {}
     for candidate_index, candidate in enumerate(candidate_groups[0]):
-        first[candidate_index] = (_mixed_start_cost(candidate, inputs, 0, active_chords), None)
+        first[candidate_index] = (
+            _mixed_start_cost(candidate, inputs, 0, active_chords, roles, home_fret=home_fret),
+            None,
+        )
     states.append(first)
     for event_index in range(1, len(candidate_groups)):
         current: dict[int, tuple[tuple[int, ...], int | None]] = {}
@@ -414,7 +467,16 @@ def choose_mixed_path(
             choices: list[tuple[tuple[int, ...], int]] = []
             for previous_index, (previous_cost, _parent) in states[-1].items():
                 previous = candidate_groups[event_index - 1][previous_index]
-                transition = _mixed_transition_cost(previous, candidate, inputs, event_index, active_chords)
+                transition = _mixed_transition_cost(
+                    previous,
+                    candidate,
+                    inputs,
+                    event_index,
+                    active_chords,
+                    roles,
+                    phrase_starts=phrase_starts or {0},
+                    home_fret=home_fret,
+                )
                 choices.append((_add_cost(previous_cost, transition), previous_index))
             current[current_index] = min(choices, key=lambda item: (item[0], item[1]))
         states.append(current)
@@ -509,21 +571,10 @@ def _transition_between(
     previous_strings = {note.string for note in previous.notes}
     current_strings = {note.string for note in current.notes}
     scope = "full_grip" if previous_strings == current_strings and len(previous.notes) == len(current.notes) else "melody_voice"
-    tab_tokens: dict[str, str] = {}
     kind = ""
     if previous.controls == current.controls and 1 <= abs(current.fret - previous.fret) <= 4:
         kind = "bar_slide"
-        connector = "/" if current.fret > previous.fret else "\\"
         strings = sorted(previous_strings & current_strings) if scope == "full_grip" else [current.top_string]
-        for string in strings:
-            before = _note_for_string(previous, string)
-            after = _note_for_string(current, string)
-            if before and after:
-                tab_tokens[str(string)] = f"{before.render_token()}{connector}{after.render_token()}"
-        label = (
-            f"Slide {'strings ' + ', '.join(str(string) for string in strings) if scope == 'full_grip' else 'string ' + str(current.top_string)} "
-            f"from fret {previous.fret} to fret {current.fret}."
-        )
     elif previous.fret == current.fret:
         changed = sorted(set(previous.controls) ^ set(current.controls))
         if len(changed) != 1:
@@ -537,15 +588,40 @@ def _transition_between(
             return None
         kind = "pedal_glide" if control in {"A", "B", "C"} else "lever_glide"
         strings = [current.top_string]
-        tab_tokens[str(current.top_string)] = f"{previous_top.render_token()}~{current_top.render_token()}"
-        action = "press" if control in current.controls else "release"
-        label = f"Hold fret {current.fret} and {action} {control} to glide into this note on string {current.top_string}."
         scope = "full_grip" if scope == "full_grip" and all(
             _note_for_string(previous, string) and _note_for_string(current, string)
             for string in previous_strings
         ) else "melody_voice"
     else:
         return None
+    sustained = sorted(previous_strings & current_strings) if scope == "full_grip" else [current.top_string]
+    released = sorted(previous_strings - set(sustained))
+    repicked = sorted(current_strings - set(sustained))
+    voice_actions: list[dict[str, Any]] = []
+    for string in sustained:
+        if kind == "bar_slide":
+            action = "bar_slide"
+        elif control_affects_selected_strings(control, (string,)):
+            action = kind
+        else:
+            action = "hold"
+        voice_actions.append({"string": string, "action": action})
+    for string in released:
+        voice_actions.append({"string": string, "action": "release"})
+    for string in repicked:
+        voice_actions.append(
+            {"string": string, "action": "add" if string not in previous_strings else "repick"}
+        )
+    label = _transition_instruction(
+        previous,
+        current,
+        kind=kind,
+        scope=scope,
+        sustained=sustained,
+        repicked=repicked,
+        released=released,
+        changed_control=control if kind != "bar_slide" else "",
+    )
     return {
         "id": f"{route_id}-transition-{target_index}-{target_index + 1}",
         "kind": kind,
@@ -560,8 +636,48 @@ def _transition_between(
         "direction": "up" if current.top_pitch > previous.top_pitch else "down",
         "playbackGlideFraction": 0.35,
         "label": label,
-        "tabTokens": tab_tokens,
+        "fromStrings": sorted(previous_strings),
+        "toStrings": sorted(current_strings),
+        "sustainedStrings": sustained,
+        "repickedStrings": repicked,
+        "releasedStrings": released,
+        "voiceActions": voice_actions,
     }
+
+
+def _transition_instruction(
+    previous: PositionCandidate,
+    current: PositionCandidate,
+    *,
+    kind: str,
+    scope: str,
+    sustained: Sequence[int],
+    repicked: Sequence[int],
+    released: Sequence[int],
+    changed_control: str,
+) -> str:
+    before = _pick_instruction(previous)
+    if kind == "bar_slide":
+        moving = "strings " + ", ".join(str(string) for string in sustained)
+        movement = f"slide {moving} to fret {current.fret}"
+    else:
+        action = "press" if changed_control in current.controls else "release"
+        moving = "strings " + ", ".join(str(string) for string in sustained)
+        movement = f"hold fret {current.fret} and {action} {changed_control} on {moving}"
+    additions: list[str] = []
+    if released:
+        additions.append("release strings " + ", ".join(str(string) for string in released))
+    if repicked:
+        verb = "add" if not set(repicked) & {note.string for note in previous.notes} else "repick"
+        additions.append(f"{verb} strings " + ", ".join(str(string) for string in repicked) + " at the arrival")
+    suffix = ("; " + "; ".join(additions)) if additions else ""
+    return f"{before}; {movement}{suffix}."
+
+
+def _pick_instruction(candidate: PositionCandidate) -> str:
+    strings = ", ".join(str(note.string) for note in candidate.notes)
+    controls = "+".join(candidate.controls) if candidate.controls else "open"
+    return f"Pick strings {strings} at fret {candidate.fret} with {controls}"
 
 
 def _note_for_string(candidate: PositionCandidate, string: int) -> TabNote | None:
@@ -580,8 +696,21 @@ def build_route(
     key: str,
     title: str,
     recommended: bool,
+    meter: str = "4/4",
+    pickup_beats: float = 0.0,
+    phrase_starts: set[int] | None = None,
+    phrase_ends: set[int] | None = None,
 ) -> dict[str, Any]:
     profile = default_e9_copedent_profile()
+    active_chords = _active_chords(inputs)
+    roles = _arrangement_roles(
+        inputs,
+        active_chords,
+        meter=meter,
+        pickup_beats=pickup_beats,
+        phrase_starts=phrase_starts or {0},
+        phrase_ends=phrase_ends or ({len(inputs) - 1} if inputs else set()),
+    )
     transitions = build_expressive_transitions(route_id=route_id, inputs=inputs, path=path) if harmony_type == "mixed_arrangement" else []
     transitions_by_target = {transition["toEventId"]: transition for transition in transitions}
     raw_events: list[TabEvent] = []
@@ -617,7 +746,10 @@ def build_route(
     if not rendered.ok:
         raise ValueError("A generated melody route failed standard-E9 tab validation.")
     event_payloads: list[dict[str, Any]] = []
-    for index, (event, item, candidate, movement) in enumerate(zip(raw_events, inputs, path, movements), start=1):
+    for index, (event, item, candidate, movement, role) in enumerate(
+        zip(raw_events, inputs, path, movements, roles),
+        start=1,
+    ):
         payload = event.normalized(profile).to_dict()
         event_id = f"{route_id}-step-{index}"
         transition = transitions_by_target.get(event_id)
@@ -639,6 +771,18 @@ def build_route(
                 "measure": item.measure,
                 "beat": item.beat,
                 "origin": item.origin,
+                "arrangementRole": role,
+                "performanceControls": list(candidate.controls),
+                "patternFamily": candidate.pattern_family,
+                "canonicalGrip": "-".join(
+                    str(string) for string in (candidate.canonical_grip or tuple(note.string for note in candidate.notes))
+                ),
+                "selectionReason": _selection_reason(
+                    item,
+                    candidate,
+                    role=role,
+                    active_chord=active_chords[index - 1],
+                ),
             }
         )
         if transition:
@@ -658,8 +802,16 @@ def build_route(
         "kind": "melody_exercise",
         "display_tab": True,
         "preferred_display": "tab_and_fretboard",
-        "context": {"key": key, "tuning": "E9", "profile": profile.id, "harmonyType": harmony_type},
+        "context": {
+            "key": key,
+            "tuning": "E9",
+            "profile": profile.id,
+            "harmonyType": harmony_type,
+            "meter": meter,
+            "pickupBeats": pickup_beats,
+        },
         "rendered_tab": rendered.tab,
+        "print_tab_text": _render_print_tab(raw_events, inputs),
         "validation": {"ok": True, "issues": [], "profile": profile.id, "eventCount": len(event_payloads)},
         "explanation": "Tab and fretboard share the same validated arranger events.",
         "intervals": intervals,
@@ -677,6 +829,7 @@ def build_route(
         "pedalGlides": sum(1 for transition in transitions if transition["kind"] == "pedal_glide"),
         "leverGlides": sum(1 for transition in transitions if transition["kind"] == "lever_glide"),
     }
+    path_summary = _path_summary(path)
     return {
         "id": route_id,
         "label": label,
@@ -686,11 +839,68 @@ def build_route(
         "chordContext": {"symbols": chord_symbols, "usedForRanking": bool(chord_symbols)},
         "movementSummary": " ".join(str(event.get("movement") or "") for event in event_payloads).strip(),
         "textureSummary": texture_summary,
+        "pathSummary": path_summary,
         "transitions": transitions,
         "events": event_payloads,
         "tabExample": tab_example,
         "fretboard": fretboard,
     }
+
+
+def _render_print_tab(
+    events: Sequence[TabEvent],
+    inputs: Sequence[MelodyInput],
+    *,
+    maximum_width: int = 112,
+) -> str:
+    """Wrap printable tab without splitting a source-transition-destination pair."""
+
+    if not events:
+        return ""
+    semantic_keys = {
+        "fromStrings",
+        "toStrings",
+        "sustainedStrings",
+        "repickedStrings",
+        "releasedStrings",
+        "voiceActions",
+    }
+    units: list[tuple[list[TabEvent], list[MelodyInput]]] = []
+    index = 0
+    while index < len(events):
+        if index + 1 < len(events):
+            transition = events[index + 1].transition or {}
+            if semantic_keys.intersection(transition):
+                units.append(([events[index], events[index + 1]], [inputs[index], inputs[index + 1]]))
+                index += 2
+                continue
+        units.append(([events[index]], [inputs[index]]))
+        index += 1
+
+    systems: list[tuple[list[TabEvent], list[MelodyInput]]] = []
+    current_events: list[TabEvent] = []
+    current_inputs: list[MelodyInput] = []
+    for unit_events, unit_inputs in units:
+        proposed_events = [*current_events, *unit_events]
+        proposed = render_tab(tuple(proposed_events))
+        proposed_width = max((len(line) for line in proposed.tab.splitlines()), default=0)
+        if current_events and proposed_width > maximum_width:
+            systems.append((current_events, current_inputs))
+            current_events = list(unit_events)
+            current_inputs = list(unit_inputs)
+        else:
+            current_events = proposed_events
+            current_inputs.extend(unit_inputs)
+    if current_events:
+        systems.append((current_events, current_inputs))
+
+    rendered_systems: list[str] = []
+    for system_events, system_inputs in systems:
+        measure_start = min(item.measure for item in system_inputs)
+        measure_end = max(item.measure for item in system_inputs)
+        heading = f"Measure {measure_start}" if measure_start == measure_end else f"Measures {measure_start}-{measure_end}"
+        rendered_systems.append(f"{heading}\n{render_tab(tuple(system_events)).tab}")
+    return "\n\n".join(rendered_systems)
 
 
 def _literal_note(record: Mapping[str, Any]) -> TabNote | None:
@@ -733,7 +943,110 @@ def _candidate_for_explorer_row(row: ExplorerRow) -> PositionCandidate:
         family=row.position_family,
         note_names=tuple(note_names),
         intervals=tuple(intervals),
+        pattern_family=_pattern_family_for_grip(row.strings),
+        canonical_grip=tuple(row.strings),
+        difficulty=str(row.difficulty_tier or "common"),
     )
+
+
+def _active_chord_candidates(item: MelodyInput, target_pitch: int, chord: str) -> list[PositionCandidate]:
+    """Return common, pitch-validated major-position grips for the active chord."""
+
+    root = _major_position_root(chord)
+    if not root or not _melody_is_chord_tone(target_pitch, chord):
+        return []
+    candidates: list[PositionCandidate] = []
+    for position in major_positions(root).positions:
+        if not position.is_full_chord or str(position.tier) == "advanced":
+            continue
+        candidate = _candidate_for_fretboard_position(position)
+        if candidate.top_pitch != target_pitch:
+            continue
+        if not _supporting_harmony_fits(candidate, chord):
+            continue
+        candidates.append(candidate)
+    return _dedupe_candidates(candidates)
+
+
+def _candidate_for_fretboard_position(position: Any) -> PositionCandidate:
+    profile = default_e9_copedent_profile()
+    controls = tuple(
+        profile.normalize_change(control)
+        for control in (*tuple(position.pedals), *tuple(position.levers))
+        if profile.normalize_change(control)
+    )
+    notes: list[TabNote] = []
+    note_names: list[str] = []
+    intervals: list[str] = []
+    for string in position.strings:
+        relevant = tuple(control for control in controls if control_affects_selected_strings(control, (string,)))
+        notes.append(TabNote(string=string, fret=position.fret, changes=relevant))
+        note_names.append(str(position.notes.get(str(string), position.notes.get(string))))
+        intervals.append(str(position.intervals.get(str(string), position.intervals.get(string))))
+    pitches = [_absolute_pitch(note.string, position.fret, controls) for note in notes]
+    return PositionCandidate(
+        fret=position.fret,
+        notes=tuple(notes),
+        top_pitch=max(pitches),
+        controls=controls,
+        family=str(position.family),
+        note_names=tuple(note_names),
+        intervals=tuple(intervals),
+        pattern_family=_pattern_family_for_grip(tuple(position.strings)),
+        canonical_grip=tuple(position.strings),
+        difficulty=str(position.tier or "common"),
+    )
+
+
+def _candidate_subsets(candidate: PositionCandidate) -> list[PositionCandidate]:
+    """Keep a full grip's pocket identity on its melody, dyad, and triad forms."""
+
+    top_string = candidate.top_string
+    top_index = next(index for index, note in enumerate(candidate.notes) if note.string == top_string)
+    support_indices = [index for index in range(len(candidate.notes)) if index != top_index]
+    selections: list[tuple[int, ...]] = [(top_index,)]
+    selections.extend(tuple(sorted((top_index, support_index))) for support_index in support_indices)
+    selections.append(tuple(range(len(candidate.notes))))
+    subsets: list[PositionCandidate] = []
+    for selected in selections:
+        subsets.append(
+            PositionCandidate(
+                fret=candidate.fret,
+                notes=tuple(candidate.notes[index] for index in selected),
+                top_pitch=candidate.top_pitch,
+                controls=candidate.controls,
+                family=candidate.family,
+                note_names=tuple(candidate.note_names[index] for index in selected),
+                intervals=tuple(candidate.intervals[index] for index in selected),
+                pattern_family=candidate.pattern_family,
+                canonical_grip=candidate.canonical_grip or tuple(note.string for note in candidate.notes),
+                difficulty=candidate.difficulty,
+            )
+        )
+    return subsets
+
+
+def _pattern_family_for_grip(strings: Sequence[int]) -> str:
+    """Name the transferable string lane independently from its pedal posture."""
+
+    grip = tuple(int(string) for string in strings)
+    canonical = {
+        (5, 6, 7): (5, 6, 8),
+        (6, 7, 10): (6, 8, 10),
+    }.get(grip, grip)
+    return f"{'-'.join(str(string) for string in canonical)} harmonic path"
+
+
+def _major_position_root(chord: str) -> str:
+    match = re.match(r"^\s*([A-Ga-g])([#b]?)([^/]*)", str(chord or ""))
+    if not match:
+        return ""
+    quality = match.group(3).lower()
+    if (quality.startswith("m") and not quality.startswith("maj")) or any(
+        marker in quality for marker in ("dim", "°", "aug", "+", "sus")
+    ):
+        return ""
+    return f"{match.group(1).upper()}{match.group(2)}"
 
 
 def _scale_notes(key: str) -> tuple[str, ...]:
@@ -831,19 +1144,88 @@ def _active_chords(inputs: Sequence[MelodyInput]) -> list[str]:
     return result
 
 
-def _desired_texture_size(inputs: Sequence[MelodyInput], index: int, active_chords: Sequence[str]) -> int:
-    item = inputs[index]
-    active_chord = active_chords[index]
-    previous_chord = active_chords[index - 1] if index else ""
-    chord_change = bool(active_chord and active_chord != previous_chord)
-    final_event = index == len(inputs) - 1
-    if item.duration_beats <= 0.5 and float(item.beat) != 1 and not final_event:
+def _phrase_boundaries(
+    inputs: Sequence[MelodyInput],
+    sections: Sequence[Mapping[str, Any]] | None,
+) -> tuple[set[int], set[int]]:
+    if not inputs:
+        return set(), set()
+    starts = {0}
+    ends = {len(inputs) - 1}
+    for section in sections or ():
+        try:
+            start_measure = int(section.get("startMeasure"))
+            end_measure = int(section.get("endMeasure"))
+        except (TypeError, ValueError):
+            continue
+        start_index = next((index for index, item in enumerate(inputs) if item.measure >= start_measure), None)
+        end_index = next(
+            (index for index in range(len(inputs) - 1, -1, -1) if inputs[index].measure <= end_measure),
+            None,
+        )
+        if start_index is not None:
+            starts.add(start_index)
+        if end_index is not None:
+            ends.add(end_index)
+    return starts, ends
+
+
+def _arrangement_roles(
+    inputs: Sequence[MelodyInput],
+    active_chords: Sequence[str],
+    *,
+    meter: str,
+    pickup_beats: float,
+    phrase_starts: set[int],
+    phrase_ends: set[int],
+) -> list[str]:
+    roles: list[str] = []
+    beats_per_measure = 3 if str(meter).startswith("3/") else 4
+    for index, item in enumerate(inputs):
+        chord = active_chords[index]
+        previous_chord = active_chords[index - 1] if index else ""
+        chord_tones = _chord_pitch_classes(chord)
+        melody_is_chord_tone = not chord_tones or item.pitch_class in chord_tones
+        previous_was_tension = bool(roles and roles[-1] == "tension")
+        first_pickup = index in phrase_starts and (
+            (index == 0 and pickup_beats > 0)
+            or (float(item.beat) > beats_per_measure - max(0.0, pickup_beats) and pickup_beats > 0)
+        )
+        if first_pickup:
+            role = "pickup"
+        elif previous_was_tension and melody_is_chord_tone:
+            role = "resolution"
+        elif chord and not melody_is_chord_tone:
+            role = "tension"
+        elif chord and (index == 0 or chord != previous_chord):
+            role = "chord_arrival"
+        elif index in phrase_ends:
+            role = "cadence"
+        elif item.duration_beats >= 1.5 or float(item.beat) == 1:
+            role = "sustained_note"
+        else:
+            role = "passing_tone"
+        roles.append(role)
+    return roles
+
+
+def _desired_texture_size(
+    inputs: Sequence[MelodyInput],
+    index: int,
+    active_chords: Sequence[str],
+    roles: Sequence[str] | None = None,
+) -> int:
+    role = roles[index] if roles else ""
+    if role in {"pickup", "passing_tone", "tension"}:
         return 1
-    if active_chord and ((chord_change and float(item.beat) == 1) or final_event or item.duration_beats >= 2):
+    if role in {"resolution", "chord_arrival", "cadence"} and active_chords[index]:
         return 3
-    if item.duration_beats >= 1.5 or float(item.beat) == 1 or final_event:
+    if role == "sustained_note":
         return 2
-    return 1
+    item = inputs[index]
+    if item.duration_beats <= 0.5 and float(item.beat) != 1:
+        return 1
+    return 2
 
 
 def _texture_penalty(actual: int, desired: int) -> int:
@@ -860,14 +1242,23 @@ def _mixed_start_cost(
     inputs: Sequence[MelodyInput],
     index: int,
     active_chords: Sequence[str],
+    roles: Sequence[str],
+    *,
+    home_fret: int,
 ) -> tuple[int, ...]:
-    desired = _desired_texture_size(inputs, index, active_chords)
+    desired = _desired_texture_size(inputs, index, active_chords, roles)
     return (
-        _chord_fit_penalty(candidate, active_chords[index]),
-        _texture_penalty(len(candidate.notes), desired),
+        _harmonic_support_penalty(candidate, roles[index], active_chords[index]),
+        _home_pocket_penalty(candidate.fret, home_fret),
+        0,
+        0,
+        0,
         len(candidate.controls),
-        abs(candidate.fret - 8) + abs(candidate.top_string - 5),
-        len(candidate.notes),
+        abs(candidate.fret - home_fret),
+        0,
+        _texture_penalty(len(candidate.notes), desired),
+        _difficulty_penalty(candidate),
+        abs(candidate.top_string - 5) + len(candidate.notes),
     )
 
 
@@ -877,18 +1268,128 @@ def _mixed_transition_cost(
     inputs: Sequence[MelodyInput],
     index: int,
     active_chords: Sequence[str],
+    roles: Sequence[str],
+    *,
+    phrase_starts: set[int],
+    home_fret: int,
 ) -> tuple[int, ...]:
-    desired = _desired_texture_size(inputs, index, active_chords)
+    desired = _desired_texture_size(inputs, index, active_chords, roles)
     texture_change = abs(len(current.notes) - len(previous.notes))
+    phrase_reset = index in phrase_starts
     return (
-        _chord_fit_penalty(current, active_chords[index]),
-        _texture_penalty(len(current.notes), desired),
+        _harmonic_support_penalty(current, roles[index], active_chords[index]),
+        _home_pocket_penalty(current.fret, home_fret) if phrase_reset else _pocket_change_penalty(previous, current),
+        0 if phrase_reset else _family_change_penalty(previous, current),
+        _voice_leading_cost(previous, current),
+        _string_group_change_penalty(previous, current),
+        _control_posture_penalty(previous, current),
         abs(current.fret - previous.fret),
-        len(set(previous.controls) ^ set(current.controls)),
-        abs(current.top_string - previous.top_string),
         texture_change * 2,
+        _texture_penalty(len(current.notes), desired),
+        _difficulty_penalty(current),
         len(current.controls),
     )
+
+
+def _melody_is_chord_tone(pitch: int, chord: str) -> bool:
+    tones = _chord_pitch_classes(chord)
+    return not tones or pitch % 12 in tones
+
+
+def _supporting_harmony_fits(candidate: PositionCandidate, chord: str) -> bool:
+    tones = _chord_pitch_classes(chord)
+    if not tones or len(candidate.notes) == 1:
+        return True
+    top_string = candidate.top_string
+    return all(
+        _pitch_class(note_name) in tones
+        for note, note_name in zip(candidate.notes, candidate.note_names)
+        if note.string != top_string
+    )
+
+
+def _harmonic_support_penalty(candidate: PositionCandidate, role: str, chord: str) -> int:
+    size = len(candidate.notes)
+    if chord and not _supporting_harmony_fits(candidate, chord):
+        return 100
+    if role == "tension":
+        return {1: 0, 2: 0, 3: 8}.get(size, 10)
+    if role in {"resolution", "chord_arrival"} and chord:
+        return {1: 2, 2: 1, 3: 0}.get(size, 4)
+    if role == "cadence":
+        return {1: 1, 2: 0, 3: 0 if chord else 5}.get(size, 4)
+    if role == "sustained_note":
+        return {1: 1, 2: 0, 3: 0}.get(size, 3)
+    return {1: 0, 2: 1, 3: 4}.get(size, 6)
+
+
+def _candidate_voice_pitches(candidate: PositionCandidate) -> tuple[int, ...]:
+    return tuple(sorted(_absolute_pitch(note.string, candidate.fret, candidate.controls) for note in candidate.notes))
+
+
+def _voice_leading_cost(previous: PositionCandidate, current: PositionCandidate) -> int:
+    previous_pitches = _candidate_voice_pitches(previous)
+    current_pitches = _candidate_voice_pitches(current)
+    if not previous_pitches or not current_pitches:
+        return 0
+    return sum(min(abs(pitch - previous_pitch) for previous_pitch in previous_pitches) for pitch in current_pitches)
+
+
+def _pocket_change_penalty(previous: PositionCandidate, current: PositionCandidate) -> int:
+    fret_distance = abs(current.fret - previous.fret)
+    if fret_distance == 0:
+        return 0
+    if fret_distance <= 2:
+        return 1
+    if fret_distance <= 4:
+        return 2
+    return 3
+
+
+def _home_pocket_penalty(fret: int, home_fret: int) -> int:
+    distance = abs(fret - home_fret)
+    if distance == 0:
+        return 0
+    if distance <= 2:
+        return 1
+    if distance <= 4:
+        return 2
+    return 3
+
+
+def _family_change_penalty(previous: PositionCandidate, current: PositionCandidate) -> int:
+    if not previous.pattern_family or not current.pattern_family:
+        return 0
+    if previous.pattern_family == current.pattern_family:
+        return 0
+    return 1
+
+
+def _string_group_change_penalty(previous: PositionCandidate, current: PositionCandidate) -> int:
+    previous_grip = set(previous.canonical_grip or tuple(note.string for note in previous.notes))
+    current_grip = set(current.canonical_grip or tuple(note.string for note in current.notes))
+    return len(previous_grip ^ current_grip)
+
+
+def _control_posture_penalty(previous: PositionCandidate, current: PositionCandidate) -> int:
+    previous_controls = set(previous.controls)
+    current_controls = set(current.controls)
+    penalty = len(previous_controls ^ current_controls)
+    if {"A", "B"} <= previous_controls and {"B", "C"} <= current_controls:
+        penalty += 4
+    if {"B", "C"} <= previous_controls and {"A", "B"} <= current_controls:
+        penalty += 4
+    return penalty
+
+
+def _difficulty_penalty(candidate: PositionCandidate) -> int:
+    return {
+        "beginner": 0,
+        "starter": 0,
+        "common": 1,
+        "alternate": 2,
+        "advanced": 3,
+    }.get(candidate.difficulty, 2)
 
 
 def _dedupe_candidates(candidates: Sequence[PositionCandidate]) -> list[PositionCandidate]:
@@ -963,9 +1464,69 @@ def _movement_text(previous: PositionCandidate | None, current: PositionCandidat
         return f"Start at fret {current.fret} with {controls}."
     delta = current.fret - previous.fret
     bar = "stay at the same fret" if delta == 0 else f"move the bar {'up' if delta > 0 else 'down'} {abs(delta)} fret{'s' if abs(delta) != 1 else ''}"
-    changed = sorted(set(previous.controls) ^ set(current.controls))
-    control_text = f"; change {'+'.join(changed)}" if changed else "; keep the controls steady"
+    previous_controls = set(previous.controls)
+    current_controls = set(current.controls)
+    released = sorted(previous_controls - current_controls)
+    pressed = sorted(current_controls - previous_controls)
+    control_actions: list[str] = []
+    if released:
+        control_actions.append(f"release {'+'.join(released)}")
+    if pressed:
+        control_actions.append(f"press {'+'.join(pressed)}")
+    control_text = f"; {'; '.join(control_actions)}" if control_actions else "; keep the controls steady"
     return f"{bar}{control_text}."
+
+
+def _selection_reason(
+    item: MelodyInput,
+    candidate: PositionCandidate,
+    *,
+    role: str,
+    active_chord: str,
+) -> str:
+    controls = "+".join(candidate.controls) if candidate.controls else "open"
+    grip = "-".join(str(string) for string in (candidate.canonical_grip or tuple(note.string for note in candidate.notes)))
+    root = _major_position_root(active_chord)
+    if root and not candidate.controls and item.pitch_class == _pitch_class(root):
+        four = note_name_for_pitch((_pitch_class(root) + 5) % 12)
+        return (
+            f"Keeps {active_chord} in the open-position pocket at fret {candidate.fret}. "
+            f"A+B at this fret would produce {four} harmony, not {root}."
+        )
+    if role == "tension":
+        return (
+            f"Treats {item.note} as a melodic tension over {active_chord}; supporting voices stay inside the chord "
+            "instead of forcing a temporary triad."
+        )
+    if role == "resolution" and active_chord:
+        return f"Resolves the tension into {active_chord} on grip {grip} at fret {candidate.fret} with {controls}."
+    if role == "chord_arrival" and active_chord:
+        return f"Marks the {active_chord} arrival on grip {grip} at fret {candidate.fret} with {controls}."
+    if role == "cadence" and active_chord:
+        return f"Uses a stable {active_chord} cadence voicing on grip {grip} with {controls}."
+    if role == "pickup":
+        return f"Keeps the pickup light on string {candidate.top_string} before the phrase settles into a harmony pocket."
+    if role == "passing_tone":
+        return f"Keeps this passing note light while preserving the surrounding fretboard pocket."
+    return f"Sustains the melody in the current pocket on grip {grip} with {controls}."
+
+
+def _path_summary(path: Sequence[PositionCandidate]) -> dict[str, int]:
+    fret_moves = [abs(current.fret - previous.fret) for previous, current in zip(path, path[1:])]
+    meaningful_families = [candidate.pattern_family for candidate in path if candidate.pattern_family]
+    family_changes = sum(previous != current for previous, current in zip(meaningful_families, meaningful_families[1:]))
+    meaningful_grips = [candidate.canonical_grip for candidate in path if candidate.canonical_grip]
+    string_changes = sum(previous != current for previous, current in zip(meaningful_grips, meaningful_grips[1:]))
+    pedal_changes = sum(
+        1 for previous, current in zip(path, path[1:]) if previous.controls != current.controls
+    )
+    return {
+        "totalBarTravel": sum(fret_moves),
+        "maxBarTravel": max(fret_moves, default=0),
+        "harmonicFamilyChanges": family_changes,
+        "stringGroupChanges": string_changes,
+        "pedalFamilyChanges": pedal_changes,
+    }
 
 
 def _event_explanation(item: MelodyInput, candidate: PositionCandidate, movement: str, pitch: int) -> str:

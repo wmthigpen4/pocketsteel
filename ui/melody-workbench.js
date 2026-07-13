@@ -216,6 +216,9 @@
     };
     if (state.tokens?.length) request.melody = [...state.tokens];
     const sections = state.scoreDraft?.score?.sections;
+    const score = state.scoreDraft?.score;
+    if (score?.meter) request.meter = score.meter;
+    if (Number.isFinite(Number(score?.pickupBeats))) request.pickupBeats = Number(score.pickupBeats);
     if (Array.isArray(sections) && sections.length) {
       request.sections = sections.map((section) => ({ ...section }));
       request.wholeSong = true;
@@ -592,13 +595,7 @@
     const notes = event?.notes || [];
     const strings = notes.map((note) => Number(note.string)).filter(Number.isInteger).sort((a, b) => a - b);
     const frets = notes.map((note) => Number(note.fret)).filter(Number.isInteger);
-    const controlOrder = ["A", "B", "C", "E", "F", "V", "G", "D"];
-    const controls = Array.from(new Set(notes.flatMap((note) => note.changes || [])))
-      .sort((a, b) => {
-        const aIndex = controlOrder.indexOf(a);
-        const bIndex = controlOrder.indexOf(b);
-        return (aIndex < 0 ? 99 : aIndex) - (bIndex < 0 ? 99 : bIndex) || String(a).localeCompare(String(b));
-      });
+    const controls = eventPerformanceControls(event);
     const stringLabel = `${strings.length === 1 ? "String" : "Strings"} ${humanList(strings)}`;
     const fretLabel = frets.length ? `Fret ${humanList(Array.from(new Set(frets)))}` : "";
     return [stringLabel, fretLabel, controls.length ? controls.join("+") : "Open"].filter(Boolean).join(" · ");
@@ -610,6 +607,164 @@
 
   function routeButtonLabel(route) {
     return route?.label || (route?.recommended ? "Recommended harmony" : "Arrangement");
+  }
+
+  function numberList(value) {
+    return Array.from(new Set((Array.isArray(value) ? value : [])
+      .map(Number)
+      .filter((item) => Number.isInteger(item) && item >= 1 && item <= 10)))
+      .sort((a, b) => a - b);
+  }
+
+  function eventStrings(event) {
+    return numberList((event?.notes || []).map((note) => note.string));
+  }
+
+  function eventFret(event, fallback = null) {
+    const fret = Number(event?.notes?.[0]?.fret ?? fallback);
+    return Number.isInteger(fret) ? fret : null;
+  }
+
+  function eventPerformanceControls(event, fallback = []) {
+    const explicit = Array.isArray(event?.performanceControls) ? event.performanceControls : [];
+    const controls = explicit.length
+      ? explicit
+      : [...fallback, ...(event?.notes || []).flatMap((note) => note.changes || [])];
+    const controlOrder = ["A", "B", "C", "E", "F", "V", "G", "D"];
+    return Array.from(new Set(controls.map((control) => String(control || "").trim().toUpperCase()).filter(Boolean)))
+      .sort((a, b) => {
+        const aIndex = controlOrder.indexOf(a);
+        const bIndex = controlOrder.indexOf(b);
+        return (aIndex < 0 ? 99 : aIndex) - (bIndex < 0 ? 99 : bIndex) || a.localeCompare(b);
+      });
+  }
+
+  function compactGripDescription(event, options = {}) {
+    const strings = numberList(options.strings?.length ? options.strings : eventStrings(event));
+    const fret = eventFret(event, options.fret);
+    const controls = eventPerformanceControls(event, options.controls || []);
+    const stringText = strings.length ? `${strings.length === 1 ? "string" : "strings"} ${humanList(strings)}` : "the shown strings";
+    const fretText = fret === null ? "the shown fret" : `fret ${fret}`;
+    return `${stringText} at ${fretText}${controls.length ? ` with ${controls.join("+")}` : " open"}`;
+  }
+
+  function transitionVoiceActions(transition) {
+    const actions = Array.isArray(transition?.voiceActions) ? transition.voiceActions : [];
+    return actions.flatMap((item) => {
+      const string = Number(item?.string);
+      const action = String(item?.action || "").trim().toLowerCase();
+      return Number.isInteger(string) && action ? [{ string, action }] : [];
+    });
+  }
+
+  function transitionSustainedStrings(transition) {
+    const explicit = numberList(transition?.sustainedStrings);
+    if (explicit.length) return explicit;
+    const sustainedActions = new Set(["bar_slide", "pedal_glide", "lever_glide", "hold"]);
+    const fromActions = numberList(transitionVoiceActions(transition)
+      .filter((item) => sustainedActions.has(item.action))
+      .map((item) => item.string));
+    return fromActions.length ? fromActions : numberList(transition?.strings);
+  }
+
+  function transitionGlidingStrings(transition) {
+    const glidingActions = new Set(["bar_slide", "pedal_glide", "lever_glide"]);
+    const explicit = numberList(transitionVoiceActions(transition)
+      .filter((item) => glidingActions.has(item.action))
+      .map((item) => item.string));
+    if (explicit.length) return explicit;
+    return transitionSustainedStrings(transition);
+  }
+
+  function transitionControlAnnotation(transition) {
+    const kind = String(transition?.kind || "").toLowerCase();
+    if (!kind.includes("pedal") && !kind.includes("lever")) return "";
+    const before = new Set(eventPerformanceControls(null, transition?.controlsBefore || []));
+    const after = new Set(eventPerformanceControls(null, transition?.controlsAfter || []));
+    const pressed = [...after].filter((control) => !before.has(control));
+    const released = [...before].filter((control) => !after.has(control));
+    const parts = [];
+    if (pressed.length) parts.push(`press ${pressed.join("+")}`);
+    if (released.length) parts.push(`release ${released.join("+")}`);
+    return parts.join("; ");
+  }
+
+  function transitionScoreVoices(transition, sourceEvent, targetEvent) {
+    const slidingStrings = numberList(transitionVoiceActions(transition)
+      .filter((item) => item.action === "bar_slide")
+      .map((item) => item.string));
+    const strings = slidingStrings.length
+      ? slidingStrings
+      : (String(transition?.kind || "").toLowerCase() === "bar_slide" ? transitionSustainedStrings(transition) : []);
+    return strings.flatMap((string) => {
+      const sourceNote = (sourceEvent?.notes || []).find((note) => Number(note.string) === string);
+      const targetNote = (targetEvent?.notes || []).find((note) => Number(note.string) === string);
+      const fromPitchValue = pitchValueForTabNote(sourceNote);
+      const toPitchValue = pitchValueForTabNote(targetNote);
+      if (!Number.isFinite(fromPitchValue) || !Number.isFinite(toPitchValue)) return [];
+      const action = transitionVoiceActions(transition).find((item) => item.string === string)?.action || transition?.kind || "bar_slide";
+      return [{ string, action, fromPitchValue, toPitchValue }];
+    });
+  }
+
+  function transitionArrivalInstruction(transition) {
+    const repicked = numberList(transition?.repickedStrings);
+    const released = numberList(transition?.releasedStrings);
+    const fromStrings = numberList(transition?.fromStrings);
+    const toStrings = numberList(transition?.toStrings);
+    const added = toStrings.filter((string) => !fromStrings.includes(string) && !repicked.includes(string));
+    const parts = [];
+    if (released.length) parts.push(`release ${released.length === 1 ? "string" : "strings"} ${humanList(released)}`);
+    if (added.length) parts.push(`add ${added.length === 1 ? "string" : "strings"} ${humanList(added)}`);
+    if (repicked.length) parts.push(`repick ${repicked.length === 1 ? "string" : "strings"} ${humanList(repicked)}`);
+    return parts.length ? `${parts.join("; ")} at the arrival` : "";
+  }
+
+  function transitionChoreography(transition, sourceEvent, targetEvent) {
+    if (!transition) return "";
+    const fromStrings = numberList(transition.fromStrings?.length ? transition.fromStrings : eventStrings(sourceEvent));
+    const toStrings = numberList(transition.toStrings?.length ? transition.toStrings : eventStrings(targetEvent));
+    const source = compactGripDescription(sourceEvent, {
+      strings: fromStrings,
+      fret: transition.fromFret,
+      controls: transition.controlsBefore
+    });
+    const destination = compactGripDescription(targetEvent, {
+      strings: toStrings,
+      fret: transition.toFret,
+      controls: transition.controlsAfter
+    });
+    const sustained = transitionSustainedStrings(transition);
+    const arrival = transitionArrivalInstruction(transition);
+    const kind = String(transition.kind || "").toLowerCase();
+    let movement = "";
+    if (kind === "bar_slide") {
+      const subject = sustained.length ? `${sustained.length === 1 ? "string" : "strings"} ${humanList(sustained)}` : "the melody voice";
+      const fromFret = Number.isInteger(Number(transition.fromFret)) ? Number(transition.fromFret) : eventFret(sourceEvent) ?? "the starting fret";
+      const toFret = Number.isInteger(Number(transition.toFret)) ? Number(transition.toFret) : eventFret(targetEvent) ?? "the destination fret";
+      movement = `slide ${subject} from fret ${fromFret} to fret ${toFret}; land on ${destination}`;
+    } else if (kind === "pedal_glide" || kind === "lever_glide") {
+      const controlAction = transitionControlAnnotation(transition);
+      movement = `hold fret ${Number.isInteger(Number(transition.toFret)) ? Number(transition.toFret) : eventFret(targetEvent) ?? "in place"}${controlAction ? ` and ${controlAction}` : " for the control change"}; land on ${destination}`;
+    } else {
+      movement = `move to ${destination}`;
+    }
+    return `Pick ${source}; ${movement}${arrival ? `; ${arrival}` : ""}.`;
+  }
+
+  function gripRationale(event) {
+    if (!event) return null;
+    const selectionReason = String(event.selectionReason || "").trim();
+    const patternFamily = String(event.patternFamily || "").trim();
+    const canonicalGrip = String(event.canonicalGrip || "").trim();
+    const chord = String(event.harmonySymbol || event.chord || "").trim();
+    if (!selectionReason && !patternFamily && !canonicalGrip) return null;
+    return {
+      reason: selectionReason || "This position keeps the melody in the current harmonic pocket with practical string and control movement.",
+      pocket: patternFamily,
+      grip: canonicalGrip,
+      chord
+    };
   }
 
   function supportedScientificOctave(value) {
@@ -745,6 +900,13 @@
     readableEventPosition,
     hasChordContext,
     routeButtonLabel,
+    eventPerformanceControls,
+    transitionSustainedStrings,
+    transitionGlidingStrings,
+    transitionControlAnnotation,
+    transitionScoreVoices,
+    transitionChoreography,
+    gripRationale,
     scientificOctaveForEvent,
     scientificOctaveLabel,
     scientificOctaveForTabNote,
@@ -922,6 +1084,9 @@
     previous: $("#studio-previous"),
     next: $("#studio-next"),
     eventStrip: $("#studio-event-strip"),
+    gripRationale: $("#studio-grip-rationale"),
+    gripReason: $("#studio-grip-reason"),
+    gripFacts: $("#studio-grip-facts"),
     tab: $("#studio-tab"),
     tabCode: $("#studio-tab-code"),
     transitionKey: $("#studio-transition-key"),
@@ -1419,7 +1584,12 @@
     const transitionByTarget = new Map((route?.transitions || []).map((transition) => [transition.toEventId, transition]));
     (exercise.events || []).forEach((event, index) => {
       const target = draft.score.melody[eventStart + index];
-      if (target) target.transitionFromPrevious = transitionByTarget.get(event.id) || null;
+      const transition = transitionByTarget.get(event.id);
+      if (target) target.transitionFromPrevious = transition ? {
+        ...transition,
+        scoreVoices: transitionScoreVoices(transition, exercise.events[index - 1], event),
+        controlAnnotation: transitionControlAnnotation(transition)
+      } : null;
     });
     (draft.score.sections || []).forEach((section) => {
       const label = String(section.label || "").trim();
@@ -1976,7 +2146,9 @@
     if (transition && !global.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) {
       const sourceLine = elements.fretboard.querySelector(`[data-fret-line="${transition.fromFret}"]`);
       const sourceX = Number(sourceLine?.getAttribute("x1"));
-      elements.fretboard.querySelectorAll("[data-highlight-dot], [data-highlight-band]").forEach((marker) => {
+      const sustainedStrings = new Set(transitionSustainedStrings(transition).map(String));
+      elements.fretboard.querySelectorAll("[data-highlight-dot][data-highlight-string]").forEach((marker) => {
+        if (!sustainedStrings.has(String(marker.dataset.highlightString))) return;
         const targetX = Number(marker.dataset.highlightRenderX);
         if (Number.isFinite(sourceX) && Number.isFinite(targetX) && typeof marker.animate === "function") {
           marker.animate([{ transform: `translateX(${sourceX - targetX}px)`, opacity: 0.45 }, { transform: "translateX(0)", opacity: 1 }], { duration: 320, easing: "ease-out" });
@@ -2004,6 +2176,9 @@
     const events = exercise.events || [];
     const event = events[state.activeEventIndex];
     if (!event) return;
+    const activeRoute = exercise.routes?.find((item) => item.id === exercise.selectedRouteId);
+    const transition = (activeRoute?.transitions || []).find((item) => item.toEventId === event.id);
+    const previousEvent = state.activeEventIndex > 0 ? events[state.activeEventIndex - 1] : null;
     const card = doc.createElement("div");
     card.className = "event-step";
     card.setAttribute("role", "status");
@@ -2018,13 +2193,33 @@
     positionLabel.className = "event-step__position";
     positionLabel.textContent = readableEventPosition(event);
     card.append(progress, noteLabel, positionLabel);
-    if (event.movement) {
+    const movementText = transitionChoreography(transition, previousEvent, event) || event.movement;
+    if (movementText) {
       const movement = doc.createElement("span");
       movement.className = "event-step__movement";
-      movement.textContent = event.movement;
+      movement.textContent = movementText;
       card.appendChild(movement);
     }
     elements.eventStrip.appendChild(card);
+    const rationale = activeRoute?.harmonyType === "mixed_arrangement" ? gripRationale(event) : null;
+    elements.gripRationale.hidden = !rationale;
+    elements.gripRationale.open = false;
+    elements.gripReason.textContent = rationale?.reason || "";
+    elements.gripFacts.replaceChildren();
+    if (rationale) {
+      [
+        rationale.pocket ? `Pocket: ${rationale.pocket}` : "",
+        rationale.grip ? `Grip: ${rationale.grip}` : "",
+        rationale.chord ? `Chord: ${rationale.chord}` : ""
+      ].filter(Boolean).forEach((label) => {
+        const fact = doc.createElement("span");
+        fact.textContent = label;
+        elements.gripFacts.appendChild(fact);
+      });
+      elements.gripFacts.hidden = !elements.gripFacts.childElementCount;
+    } else {
+      elements.gripFacts.hidden = true;
+    }
   }
 
   function activateRoute(routeId) {
@@ -2206,7 +2401,7 @@
         }
         const route = response.melodyExercise?.routes?.find((item) => item.harmonyType === harmonyType)
           || response.melodyExercise?.routes?.[0];
-        sections.push(`${response.melodyExercise?.section?.label || `Phrase ${number}`}\n${route?.tab?.tabText || response.tabs?.[0]?.tabText || ""}`);
+        sections.push(`${response.melodyExercise?.section?.label || `Phrase ${number}`}\n${route?.tab?.printTabText || route?.tab?.tabText || response.tabs?.[0]?.printTabText || response.tabs?.[0]?.tabText || ""}`);
       }
       elements.wholeSongTabCode.textContent = sections.join("\n\n");
       elements.wholeSongTab.hidden = false;
