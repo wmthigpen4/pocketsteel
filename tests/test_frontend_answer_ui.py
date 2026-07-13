@@ -342,14 +342,18 @@ def test_answer_ui_includes_home_hero_hanging_sign_without_changing_answer_logo(
 
     assert 'class="home-sign hero-hanging-sign"' in html
     assert 'class="landing-sign" autoplay muted loop playsinline' in html
-    assert 'poster="brand/steel-guitar-rag-landing-fallback-alpha.png?v=landing-alpha-app-20260618"' in html
-    assert 'src="brand/steel-guitar-rag-landing-alpha.webm?v=landing-alpha-app-20260618"' in html
+    assert 'poster="brand/steel-guitar-rag-hanging-sign-fallback.png?v=light-rag-sign-20260713"' in html
+    assert 'src="brand/steel-guitar-rag-hanging-sign.webm?v=light-rag-sign-20260713"' in html
     assert 'type="video/webm"' in html
     assert 'type="video/mp4"' not in html
-    assert 'class="landing-sign-fallback" src="brand/steel-guitar-rag-landing-fallback-alpha.png?v=landing-alpha-app-20260618"' in html
+    assert 'class="landing-sign-fallback" src="brand/steel-guitar-rag-hanging-sign-fallback.png?v=light-rag-sign-20260713"' in html
     assert ".app-shell-header .home-sign" in shell_css
-    assert "position: relative;" in shell_css
-    assert "width: min(100%, 250px);" in shell_css
+    assert "position: absolute;" in shell_css
+    assert "left: calc((100vw - 100%) / -2 - 12px);" in shell_css
+    assert "width: clamp(330px, 24vw, 350px);" in shell_css
+    assert "width: clamp(300px, 40vw, 340px);" in shell_css
+    assert "width: min(290px, 86vw);" in shell_css
+    assert "@media (max-width: 520px)" in shell_css
     assert "pointer-events: auto;" in shell_css
     assert ".hero-hanging-sign.is-animated .landing-sign" in html
     assert ".hero-hanging-sign.is-animated .landing-sign-fallback" in html
@@ -368,8 +372,8 @@ def test_answer_ui_includes_home_hero_hanging_sign_without_changing_answer_logo(
     assert 'class="answer-brand-fallback" src="brand/steel-guitar-rag-answer-badge-fallback-alpha.png?v=answer-badge-rag-artwork-3c4dedb"' in html
     assert "width: clamp(160px, 18vw, 240px);" in html
     assert "max-height: 86px;" in html
-    assert Path("ui/brand/steel-guitar-rag-landing-alpha.webm").is_file()
-    assert Path("ui/brand/steel-guitar-rag-landing-fallback-alpha.png").is_file()
+    assert Path("ui/brand/steel-guitar-rag-hanging-sign.webm").is_file()
+    assert Path("ui/brand/steel-guitar-rag-hanging-sign-fallback.png").is_file()
     assert Path("ui/brand/steel-guitar-rag-answer-badge-alpha.webm").is_file()
     assert Path("ui/brand/steel-guitar-rag-answer-badge-fallback-alpha.png").is_file()
     assert Path("public/brand/steel-guitar-rag-answer-badge-alpha.webm").is_file()

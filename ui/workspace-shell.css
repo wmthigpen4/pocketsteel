@@ -89,13 +89,19 @@ select:focus-visible,
   padding: 12px 0 4px;
 }
 
+.page:not(.is-answering) .app-shell-header {
+  grid-template-columns: minmax(340px, 370px) minmax(0, 1fr);
+  align-items: start;
+  min-height: 220px;
+}
+
 .app-shell-header .home-sign {
-  position: relative;
-  inset: auto;
-  z-index: auto;
+  position: absolute;
+  top: -14px;
+  left: calc((100vw - 100%) / -2 - 12px);
+  z-index: 2;
   display: block;
-  justify-self: start;
-  width: min(100%, 250px);
+  width: clamp(330px, 24vw, 350px);
   pointer-events: auto;
   transform: none;
   filter: drop-shadow(0 8px 22px rgba(255, 143, 24, 0.22));
@@ -124,6 +130,11 @@ select:focus-visible,
   width: 100%;
   min-width: 0;
   transform: none;
+}
+
+.page:not(.is-answering) .app-shell-header .header-actions {
+  grid-column: 2;
+  margin-top: 12px;
 }
 
 .app-shell-header .header-action-button {
@@ -696,13 +707,24 @@ select:focus-visible,
     padding-top: 8px;
   }
 
+  .page:not(.is-answering) .app-shell-header {
+    min-height: 0;
+    padding-top: 230px;
+  }
+
   .app-shell-header .home-sign {
-    width: 220px;
+    top: -12px;
+    width: clamp(300px, 40vw, 340px);
   }
 
   .app-shell-header .header-actions {
     justify-content: center;
     justify-self: stretch;
+  }
+
+  .page:not(.is-answering) .app-shell-header .header-actions {
+    grid-column: 1;
+    margin-top: 0;
   }
 
   .nav-label-full {
@@ -750,8 +772,13 @@ select:focus-visible,
     gap: 4px;
   }
 
+  .page:not(.is-answering) .app-shell-header {
+    padding-top: 215px;
+  }
+
   .app-shell-header .home-sign {
-    width: min(210px, 64vw);
+    top: -10px;
+    width: min(290px, 86vw);
   }
 
   .app-shell-header .header-actions {
@@ -882,6 +909,18 @@ select:focus-visible,
     transition-duration: 0.01ms !important;
   }
 
+  .app-shell-header .landing-sign,
+  .app-shell-header .hero-hanging-sign.is-animated .landing-sign {
+    display: none;
+  }
+
+  .app-shell-header .landing-sign-fallback,
+  .app-shell-header .hero-hanging-sign.is-animated .landing-sign-fallback {
+    display: block;
+  }
+}
+
+@media (max-width: 520px) {
   .app-shell-header .landing-sign,
   .app-shell-header .hero-hanging-sign.is-animated .landing-sign {
     display: none;

@@ -110,7 +110,8 @@ def test_landing_shell_has_responsive_and_accessibility_contract() -> None:
     assert "@media (max-width: 699px)" in css
     assert "@media (max-width: 360px)" in css
     assert "@media (prefers-reduced-motion: reduce)" in css
-    assert "justify-self: start;" in css
+    assert "left: calc((100vw - 100%) / -2 - 12px);" in css
+    assert "width: clamp(330px, 24vw, 350px);" in css
     assert "justify-items: start;" in css
     assert "min-height: 44px;" in css
     assert 'role="dialog" aria-modal="true"' in html
