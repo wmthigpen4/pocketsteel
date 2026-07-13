@@ -83,7 +83,11 @@ def test_landing_home_restores_source_aware_ai_shimmer_and_claim_boundaries() ->
     assert "Built deep for pedal steel." in html
     assert "Powered by source-aware AI underneath." in html
     assert 'class="footer-trigger footer-shimmer"' in html
-    assert 'data-text="Powered by source-aware AI underneath."' in html
+    assert 'data-text="Powered by source-aware AI underneath."' not in html
+    assert ".footer-shimmer::after" not in html
+    assert ".home-ai-footer .footer-trigger.footer-shimmer {" in html
+    assert "-webkit-background-clip: text;" in html
+    assert "animation: footer-shimmer-sweep 3.2s ease-in-out infinite;" in html
     assert "Open the full Explorer" not in home
     assert "See three ways to play G major across the neck." in home
     assert "E9 · G major · strings 4-5-6" in home

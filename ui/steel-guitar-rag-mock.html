@@ -2080,12 +2080,28 @@
       transform: translateY(-1px);
     }
 
-    .footer-shimmer {
+    .home-ai-footer .footer-trigger.footer-shimmer {
       position: relative;
       display: inline-block;
       white-space: nowrap;
-      color: rgba(244, 234, 214, 0.84);
+      color: transparent;
       font-weight: 400;
+      background-image: linear-gradient(
+        108deg,
+        rgba(244, 234, 214, 0.84) 0%,
+        rgba(244, 234, 214, 0.84) 38%,
+        rgba(255, 250, 235, 1) 46%,
+        rgba(240, 191, 105, 0.95) 50%,
+        rgba(255, 224, 156, 0.84) 54%,
+        rgba(244, 234, 214, 0.84) 62%,
+        rgba(244, 234, 214, 0.84) 100%
+      );
+      background-size: 240% 100%;
+      background-position: 180% 0;
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      animation: footer-shimmer-sweep 3.2s ease-in-out infinite;
     }
 
     .footer-trigger {
@@ -2113,32 +2129,6 @@
       box-shadow: 0 0 0 3px rgba(240, 191, 105, 0.2);
     }
 
-    .footer-shimmer::after {
-      content: attr(data-text);
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      color: transparent;
-      background-image: linear-gradient(
-        108deg,
-        transparent 0%,
-        transparent 27%,
-        rgba(255, 250, 235, 1) 42%,
-        rgba(240, 191, 105, 0.95) 50%,
-        rgba(255, 224, 156, 0.72) 59%,
-        transparent 74%,
-        transparent 100%
-      );
-      background-size: 240% 100%;
-      background-position: 180% 0;
-      background-clip: text;
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      text-shadow: 0 0 12px rgba(240, 191, 105, 0.28);
-      opacity: 1;
-      animation: footer-shimmer-sweep 3.2s ease-in-out infinite;
-    }
-
     @keyframes footer-shimmer-sweep {
       0% {
         background-position: 180% 0;
@@ -2149,9 +2139,9 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .footer-shimmer::after {
-        content: none;
+      .home-ai-footer .footer-trigger.footer-shimmer {
         animation: none;
+        background-position: 0 0;
       }
     }
 
@@ -2778,7 +2768,6 @@
         <button
           class="footer-trigger footer-shimmer"
           type="button"
-          data-text="Powered by source-aware AI underneath."
           aria-expanded="false"
           aria-controls="tech-popover"
         >Powered by source-aware AI underneath.</button>
