@@ -69,7 +69,7 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     assert b'<script src="pedal-steel-fretboard-styles.js?v=module-boundaries-20260713"></script>' in html
     assert b'<script src="pedal-steel-fretboard.js?v=module-boundaries-20260713"></script>' in html
     assert b'<script src="landing-home.js?v=landing-feedback-20260713-2"></script>' in html
-    assert b'<link rel="stylesheet" href="workspace-shell.css?v=landing-neck-labels-20260713-1">' in html
+    assert b'<link rel="stylesheet" href="workspace-shell.css?v=landing-navigation-20260713-1">' in html
 
     status, headers, landing_script = call_app(smoke_app(), "/ui/landing-home.js")
     assert status == "200 OK"

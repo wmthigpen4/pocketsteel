@@ -29,8 +29,8 @@ def test_landing_home_has_product_first_hierarchy_and_copy() -> None:
         "Explore E9 positions. Build and practice melodies. Follow guided lessons. "
         "Get source-backed help from the Steel Guitar Brain."
     ) in home
-    assert "Open Fretboard Explorer" in home
-    assert "Open Melody Studio" in home
+    assert "home-hero-actions" not in home
+    assert "Open Fretboard Explorer" not in home
     assert home.index("home-hero") < home.index("home-explorer-panel")
     assert home.index("home-explorer-panel") < home.index("home-product-grid")
     assert home.index("home-product-grid") < home.index("home-backstage-strip")
@@ -44,18 +44,19 @@ def test_landing_home_exposes_all_four_workspaces_and_neutral_backstage() -> Non
         "/ui/e9-fretboard-explorer.html": "Fretboard Explorer",
         "/ui/melody-workbench.html": "Melody Studio",
         "/ui/lesson-workbench.html": "Lessons",
-        "#ask-the-brain": "Ask the Brain",
     }
     for href, label in expected_links.items():
-        assert f'href="{href}"' in html
-        assert label in html
+        assert home.count(f'href="{href}"') == 1
+        assert label in home
 
+    assert 'id="ask-the-brain"' in home
     assert "Visualize E9 positions, grips, intervals, scales, harmony, and movement across the neck." in home
     assert "Build, edit, play back, and practice melodies while connecting each note to a playable E9 position." in home
     assert "Follow reviewed learning paths or build a focused lesson for the topic, level, and time you have." in home
     assert "Get teacher-first, source-backed help with technique, tone, setup, gear, copedents, theory, and troubleshooting." in home
     assert "Manage your setup, copedent, account, access, feedback, and preferences." in home
     assert "Open Backstage" in home
+    assert home.count('class="home-button home-button-utility backstage-trigger"') == 1
     assert "Last Updated" not in home
     assert "Not connected" not in home
 
@@ -116,6 +117,7 @@ def test_landing_shell_has_responsive_and_accessibility_contract() -> None:
     assert "min-height: 44px;" in css
     assert ".home-explorer-stage [data-string-label]," in css
     assert ".home-explorer-stage [data-tuning-label] {\n  display: none;\n}" in css
+    assert ".page:not(.is-answering) .app-shell-nav {\n  display: none;\n}" in css
     assert 'role="dialog" aria-modal="true"' in html
     assert 'event.key === "Tab" && !backstage.hidden' in html
     assert "activeBackstageTrigger?.focus();" in html
