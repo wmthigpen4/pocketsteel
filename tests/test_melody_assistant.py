@@ -2,8 +2,15 @@ from __future__ import annotations
 
 import pytest
 
-from pocketsteel.fretboard_examples import absolute_pitch_for_string
-from pocketsteel.melody_arranger import PositionCandidate, _transition_between
+from pocketsteel.fretboard_examples import absolute_pitch_for_string, major_positions
+from pocketsteel.melody_arranger import (
+    MelodyInput,
+    PositionCandidate,
+    _candidate_for_fretboard_position,
+    _transition_between,
+    choose_mixed_path,
+    single_note_candidates,
+)
 from pocketsteel.melody_assistant import (
     MelodyExerciseError,
     configured_melody_exercise_enabled,
@@ -463,6 +470,56 @@ def test_minor_chord_can_still_use_validated_bc_grip_when_it_is_the_harmonic_arr
     assert event["canonicalGrip"] == "4-5-6"
     assert event["performanceControls"] == ["B", "C"]
     assert len(event["notes"]) == 3
+
+
+def test_mixed_path_keeps_an_established_f_lever_pocket_instead_of_jumping_to_ab() -> None:
+    """An established lever posture is pocket continuity, not new complexity."""
+
+    candidates = [
+        _candidate_for_fretboard_position(position)
+        for position in major_positions("G").positions
+        if position.is_full_chord
+    ]
+
+    def candidate(family: str, grip: tuple[int, ...], top_pitch: int) -> PositionCandidate:
+        return next(
+            item
+            for item in candidates
+            if item.family == family and item.canonical_grip == grip and item.top_pitch == top_pitch
+        )
+
+    nearby_f_lever = candidate("a_f", (4, 5, 6), 71)
+    farther_ab = candidate("a_b_grip", (5, 6, 8), 71)
+    inputs = [
+        MelodyInput("B4", "B", 3, 11, forced_pitch=71, duration_beats=1, measure=1, beat=1, chord="G"),
+        MelodyInput("B4", "B", 3, 11, forced_pitch=71, duration_beats=1, measure=1, beat=2, chord="G"),
+    ]
+
+    path = choose_mixed_path(
+        [[nearby_f_lever], [nearby_f_lever, farther_ab]],
+        inputs=inputs,
+        key="G",
+    )
+
+    assert path[1].fret == 6
+    assert path[1].controls == ("A", "F")
+    assert path[1].canonical_grip == (4, 5, 6)
+
+
+def test_single_note_candidates_use_the_same_canonical_lever_codes_as_grips() -> None:
+    item = MelodyInput("G4", "G", 1, 7, forced_pitch=67)
+
+    candidates = single_note_candidates(item, 67)
+    f_lever = next(candidate for candidate in candidates if candidate.controls == ("F",))
+    e_lower = next(candidate for candidate in candidates if candidate.controls == ("E",))
+
+    assert f_lever.notes[0].changes == ("F",)
+    assert e_lower.notes[0].changes == ("E",)
+    assert all(
+        "lever" not in control.lower() and "lower" not in control.lower()
+        for candidate in candidates
+        for control in candidate.controls
+    )
 
 
 def test_literal_c_pedal_tab_remains_fixed() -> None:

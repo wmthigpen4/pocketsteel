@@ -28,8 +28,8 @@ _CONTROL_STATES: tuple[tuple[str, ...], ...] = (
     ("A",),
     ("B",),
     ("C",),
-    ("E-lower",),
-    ("F lever",),
+    ("E",),
+    ("F",),
 )
 
 
@@ -1341,7 +1341,7 @@ def _mixed_transition_cost(
     phrase_reset = index in phrase_starts
     return (
         _harmonic_correctness_penalty(current, active_chords[index]),
-        _control_posture_tier(current, active_chords[index]),
+        _control_posture_transition_tier(previous, current, active_chords[index]),
         _slide_affinity_penalty(previous, current, roles[index], active_chords[index], key),
         _harmonic_role_penalty(current, roles[index], active_chords[index]),
         _arrival_home_penalty(current, roles[index], home_fret),
@@ -1393,7 +1393,7 @@ def _harmonic_role_penalty(candidate: PositionCandidate, role: str, chord: str) 
 
 
 def _control_posture_tier(candidate: PositionCandidate, chord: str) -> int:
-    """Prefer the everyday open/A/B/A+B language; keep C as a real exception."""
+    """Prefer the everyday open/A/B language; keep C as a real exception."""
 
     controls = set(candidate.controls)
     if not controls or controls <= {"A", "B"}:
@@ -1403,6 +1403,27 @@ def _control_posture_tier(candidate: PositionCandidate, chord: str) -> int:
     if "C" in controls:
         return 2
     return 1
+
+
+def _control_posture_transition_tier(
+    previous: PositionCandidate,
+    current: PositionCandidate,
+    chord: str,
+) -> int:
+    """Do not force a player out of a validated lever pocket between notes.
+
+    Starting a phrase still favors the familiar open/A/B vocabulary. Once the
+    path is already using an F-lever or E-lower posture, however, retaining that
+    posture is a normal pocket decision rather than a new complexity penalty.
+    C-pedal restrictions remain unchanged.
+    """
+
+    tier = _control_posture_tier(current, chord)
+    if tier != 1:
+        return tier
+    if current.controls == previous.controls:
+        return 0
+    return tier
 
 
 def _is_minor_chord(chord: str) -> bool:
