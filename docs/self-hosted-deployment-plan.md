@@ -1,5 +1,10 @@
 # Self-hosted Deployment Plan
 
+> Historical plan. The deployment described here has been superseded by the
+> current protected-preview architecture and runbook. Use
+> `docs/architecture.md` and `docs/private-preview-operations.md` for current
+> operations. Retained for decision history; do not execute as a runbook.
+
 Task mode: GREEN docs-only planning. This plan must not deploy anything, modify DNS, expose Ollama, run scraping, regenerate embeddings, reset Chroma, or modify vector data.
 
 User-facing app name: The Turnaround. Keep `pocketsteel`, `pocket-steel`, and `pocket_steel` as internal technical names.

@@ -9,6 +9,9 @@ __pycache__/
 .mypy_cache/
 .venv/
 venv/
+node_modules/
+coverage/
+.coverage
 
 # Local environment and credentials
 .env
@@ -29,6 +32,17 @@ credentials/
 logs/
 run-logs/
 .wrangler/
+
+# Local smoke evidence and generated reports
+docs/handoffs/task-completions/assets/
+docs/handoffs/patch-backups/
+docs/handoffs/task-completions/*-smoke-summary.json
+docs/handoffs/task-completions/*-smoke-results.json
+docs/handoffs/task-completions/*-smoke-failures.csv
+docs/handoffs/task-completions/*-browser-smoke.png
+reports/generated/
+smoke-output/
+tmp/
 
 # Local corpus and generated artifacts
 archive/

@@ -1,5 +1,9 @@
 # V2 Private Preview Switch And Rollback Plan
 
+> Historical completed switch record. Use `docs/architecture.md`,
+> `docs/private-preview-operations.md`, and
+> `docs/handoffs/task-completions/integration-status.md` for current state.
+
 Task mode: GREEN docs-only switch plan. This document must not deploy, change
 DNS, modify Chroma, regenerate embeddings, switch app config, run scraping, or
 expose Ollama or Chroma.

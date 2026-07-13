@@ -1,5 +1,9 @@
 # Phase 3D Embed V2 Plan
 
+> Historical plan. The v2 preview switch was completed later; this document is
+> retained for corpus-build decision history and is not a current operating
+> procedure. Corpus/vector work still requires explicit authorization.
+
 Scope: plan a safe corpus-v2 embedding workflow for The Turnaround without running embeddings, creating a vector store, modifying v1 Chroma, changing backend/frontend code, or switching app configuration.
 
 Task mode: GREEN for this planning document only. Any command that creates `corpus-v2` corpus outputs, writes a Chroma store, runs embeddings, or changes retrieval/app configuration requires explicit human approval under `AGENTS.md`.

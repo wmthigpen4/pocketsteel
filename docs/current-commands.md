@@ -2,13 +2,40 @@
 
 This is the current local command reference for The Turnaround. These commands do not perform live scraping. Commands that rebuild corpus outputs or vector indexes should be treated as YELLOW or RED according to `AGENTS.md`.
 
-## Setup
+## Verified Reproducible Baseline
+
+Use Python 3.12 and install a reviewed hash-locked environment before the
+editable project. `.venv/bin/pytest` works without setting `PYTHONPATH`.
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -e ".[rag,test]"
+python3.12 -m venv .venv
+.venv/bin/python -m pip install --require-hashes -r requirements/test.lock
+.venv/bin/python -m pip install --no-deps -e .
+npm ci --ignore-scripts
 ```
+
+Run the complete quality baseline:
+
+```bash
+.venv/bin/pytest -q
+npm run check:js
+npm run lint:js
+npm run test:worker
+npm run check:locks
+npm run check:assets
+.venv/bin/python scripts/check_secret_patterns.py
+.venv/bin/pip-audit -r requirements/runtime.lock
+npm run audit:node
+```
+
+Protected-preview health, restart, and smoke commands live in
+`docs/private-preview-operations.md`. Dependency lock regeneration lives in
+`requirements/README.md`.
+
+## Setup
+
+Use the hash-locked commands in **Verified Reproducible Baseline** above.
+Do not install floating extra dependency graphs for CI or deployment.
 
 ## Safe Checks
 

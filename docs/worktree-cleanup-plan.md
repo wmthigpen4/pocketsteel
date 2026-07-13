@@ -1,5 +1,9 @@
 # Worktree Cleanup Plan
 
+> Historical 2026-05-28 classification. It is retained for lane provenance but
+> is not the current dirty-worktree inventory. Use the latest Repo Steward
+> remediation handoff and `integration-status.md` for current coordination.
+
 Status date: 2026-05-28
 Branch: `feature/answer-api`
 

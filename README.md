@@ -5,6 +5,21 @@ The Turnaround is a local, source-grounded RAG pipeline for Steel Guitar Forum k
 The user-facing app name is The Turnaround. Internal technical names such as
 `pocketsteel`, `pocket-steel`, and `pocket_steel` are intentionally preserved for now.
 
+## Current Application And Operations
+
+The protected application now has four workspaces: Chat, Fretboard Explorer,
+Melody Studio, and Lessons. Start with these canonical documents:
+
+- [Current architecture](docs/architecture.md)
+- [Private preview operations](docs/private-preview-operations.md)
+- [Verified commands](docs/current-commands.md)
+- [Threat model](docs/threat-model.md)
+- [Recovery procedure](docs/recovery-procedure.md)
+- [Current integration snapshot](docs/handoffs/task-completions/integration-status.md)
+
+Use the hash-locked Python 3.12 and Node 24 toolchains for reproducible builds.
+Older phase and deployment plans are retained as historical records.
+
 The personal MVP is intentionally small:
 
 ```text
