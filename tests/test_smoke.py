@@ -227,9 +227,15 @@ def test_app_does_not_expose_raw_source_dumps(monkeypatch: Any) -> None:
 
 def test_mobile_layout_is_usable() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+    shell_css = Path("ui/workspace-shell.css").read_text(encoding="utf-8")
 
     assert '<meta name="viewport" content="width=device-width, initial-scale=1">' in html
-    assert "@media (max-width: 640px)" in html
-    assert ".examples" in html and "grid-template-columns: 1fr;" in html
+    assert "@media (max-width: 699px)" in shell_css
+    assert "grid-template-columns: repeat(2, minmax(0, 1fr));" in shell_css
+    assert ".home-product-grid" in shell_css and "grid-template-columns: 1fr;" in shell_css
+    assert "overflow-x: clip;" in shell_css
+    assert ".home-explorer-stage" in shell_css and "overflow-x: auto;" in shell_css
+    assert "min-height: 44px;" in shell_css
+    assert "background-attachment: scroll;" in shell_css
     assert ".page.is-answering main" in html and "width: calc(100% - 28px);" in html
     assert ".answer-followup-input textarea" in html and "min-height: 92px;" in html

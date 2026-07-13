@@ -71,8 +71,14 @@ def test_four_workspace_navigation_and_explorer_chord_doorway_are_visible() -> N
     explorer = Path("ui/e9-fretboard-explorer.html").read_text(encoding="utf-8")
     melody = Path("ui/melody-workbench.html").read_text(encoding="utf-8")
 
-    for label in (">Ask<", ">Explore<", ">Arrange<", ">Learn<"):
+    for label in (
+        "Fretboard Explorer",
+        "Melody Studio",
+        "Lessons",
+        "Ask the Brain",
+    ):
         assert label in home
+    for label in (">Ask</span>", ">Explore</span>", ">Arrange</span>", ">Learn</span>"):
         assert label in explorer
         assert label in melody
     assert "Find chords and voicings" in explorer

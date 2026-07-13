@@ -2557,10 +2557,18 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="workspace-shell.css?v=product-first-landing-20260713-3">
 </head>
 <body>
   <div class="page">
-    <header>
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    <header class="app-shell-header">
+      <a class="home-sign hero-hanging-sign" href="/ui/steel-guitar-rag-mock.html" aria-label="Steel Guitar RAG home">
+        <video class="landing-sign" autoplay muted loop playsinline poster="brand/steel-guitar-rag-landing-fallback-alpha.png?v=landing-alpha-app-20260618" preload="metadata" aria-hidden="true">
+          <source src="brand/steel-guitar-rag-landing-alpha.webm?v=landing-alpha-app-20260618" type="video/webm">
+        </video>
+        <img class="landing-sign-fallback" src="brand/steel-guitar-rag-landing-fallback-alpha.png?v=landing-alpha-app-20260618" alt="">
+      </a>
       <div class="brand">
         <button class="brand-home" type="button" aria-label="Return to Steel Guitar RAG home">
           <video class="answer-brand-badge" autoplay muted loop playsinline poster="brand/steel-guitar-rag-answer-badge-fallback-alpha.png?v=answer-badge-rag-artwork-3c4dedb" preload="metadata" aria-label="Steel Guitar RAG">
@@ -2569,70 +2577,109 @@
           </video>
         </button>
       </div>
-      <div class="header-actions">
-        <a class="header-action-button ask-header-link" href="/ui/steel-guitar-rag-mock.html" aria-current="page" aria-label="Ask a steel guitar question" title="Ask">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v11H9l-4 3V5Z"/><path d="M8 9h8"/><path d="M8 12h5"/></svg>
-          <span>Ask</span>
-        </a>
+      <nav class="header-actions app-shell-nav" aria-label="Primary navigation">
         <a class="header-action-button explorer-header-link" href="/ui/e9-fretboard-explorer.html" aria-label="Explore the E9 virtual fretboard" title="Explore the E9 virtual fretboard">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/><path d="M8 5v14"/><path d="M16 5v14"/></svg>
-          <span>Explore</span>
+          <span class="nav-label-full">Fretboard Explorer</span><span class="nav-label-short">Explorer</span>
         </a>
-        <a class="header-action-button melody-studio-header-link" id="melody-studio-link" href="/ui/melody-workbench.html" aria-label="Arrange a melody for E9" title="Arrange">
+        <a class="header-action-button melody-studio-header-link" id="melody-studio-link" href="/ui/melody-workbench.html" aria-label="Open Melody Studio" title="Melody Studio">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l10-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg>
-          <span>Arrange</span>
+          <span class="nav-label-full">Melody Studio</span><span class="nav-label-short">Melody</span>
         </a>
-        <a class="header-action-button lessons-header-link" id="lessons-link" href="/ui/lesson-workbench.html" aria-label="Open steel guitar lessons" title="Learn">
+        <a class="header-action-button lessons-header-link" id="lessons-link" href="/ui/lesson-workbench.html" aria-label="Open steel guitar lessons" title="Lessons">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H11v17H7.5A3.5 3.5 0 0 0 4 22V5.5Z"/><path d="M20 5.5A3.5 3.5 0 0 0 16.5 2H13v17h3.5A3.5 3.5 0 0 1 20 22V5.5Z"/></svg>
-          <span>Learn</span>
+          <span class="nav-label-full">Lessons</span><span class="nav-label-short">Lessons</span>
+        </a>
+        <a class="header-action-button ask-header-link" href="#ask-the-brain" aria-label="Ask the Steel Guitar Brain" title="Ask the Brain">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v11H9l-4 3V5Z"/><path d="M8 9h8"/><path d="M8 12h5"/></svg>
+          <span class="nav-label-full">Ask the Brain</span><span class="nav-label-short">Ask</span>
         </a>
         <button class="header-action-button backstage-trigger" type="button" aria-haspopup="dialog" aria-controls="backstage" aria-expanded="false">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5z"/><path d="M8 16h8"/><path d="M9 13l3-5 3 5"/><path d="M12 8v8"/></svg>
-          <span class="header-label-full" id="backstage-cta-label">Get a Backstage Pass</span>
-          <span class="header-label-short" id="backstage-cta-short">Backstage</span>
+          <span class="nav-label-full" id="backstage-cta-label">Backstage</span>
+          <span class="nav-label-short" id="backstage-cta-short">Backstage</span>
         </button>
-      </div>
+      </nav>
     </header>
 
-    <div class="hero-hanging-sign" aria-hidden="true">
-      <video class="landing-sign" autoplay muted loop playsinline poster="brand/steel-guitar-rag-landing-fallback-alpha.png?v=landing-alpha-app-20260618" preload="metadata">
-        <source src="brand/steel-guitar-rag-landing-alpha.webm?v=landing-alpha-app-20260618" type="video/webm">
-      </video>
-      <img class="landing-sign-fallback" src="brand/steel-guitar-rag-landing-fallback-alpha.png?v=landing-alpha-app-20260618" alt="">
-    </div>
-
-    <main>
-      <section class="hero" aria-labelledby="home-title">
-        <h1 id="home-title">Ask the steel guitar brain.</h1>
-        <p class="hero-subtext">Source-backed help with tone, gear, copedents, technique, tab, setup, and troubleshooting.</p>
-      </section>
-
-      <section class="prompt-shell" aria-label="Steel guitar companion prompt">
-        <div class="prompt">
-          <div class="input-area">
-            <textarea id="question" aria-label="Type your steel guitar question" placeholder="Ask a steel guitar question..."></textarea>
-            <div class="prompt-typing-indicator" aria-label="Listening" role="status">
-              <span></span><span></span><span></span>
-            </div>
-            <div class="input-actions">
-              <button class="icon-button" type="button" aria-label="Voice question">
-                <svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></svg>
-              </button>
-              <button class="send" type="button" aria-label="Ask">↑</button>
-            </div>
+    <main id="main-content">
+      <div class="home-overview">
+        <section class="home-hero" aria-labelledby="home-title">
+          <p class="home-eyebrow">A connected pedal-steel learning studio</p>
+          <h1 id="home-title">See the neck. Understand the music. Play with confidence.</h1>
+          <p class="home-hero-copy">Explore E9 positions. Build and practice melodies. Follow guided lessons. Get source-backed help from the Steel Guitar Brain.</p>
+          <div class="home-hero-actions">
+            <a class="home-button home-button-primary" href="/ui/e9-fretboard-explorer.html">Open Fretboard Explorer</a>
+            <a class="home-button home-button-secondary" href="/ui/melody-workbench.html">Open Melody Studio</a>
           </div>
-          <p class="input-helper">Buzz, tone, pedals, knee levers, amp settings, copedents, tab, or how to play a phrase.</p>
-          <p class="access-helper" id="access-helper">Get a Backstage Pass to ask Steel Guitar RAG.</p>
-        </div>
-      </section>
+        </section>
 
-      <div class="try-asking" aria-label="Suggested question">
-        <div class="try-label-wrap"><p class="try-label">Try asking:</p></div>
-        <div class="examples" id="suggested-prompts" aria-label="Example questions"></div>
-        <p class="source-note">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 20 6v6c0 5-3.4 8-8 9-4.6-1-8-4-8-9V6l8-3Z"/><path d="m8.5 12 2.2 2.2 4.9-5"/></svg>
-          <span>Answers draw from forum discussions, manuals, setup notes, copedents, and steel-specific sources.</span>
-        </p>
+        <section class="home-explorer-panel" aria-labelledby="explorer-preview-title">
+          <div class="home-panel-heading">
+            <div>
+              <p class="home-eyebrow">Fretboard Explorer</p>
+              <h2 id="explorer-preview-title">See validated positions before you start exploring.</h2>
+            </div>
+            <a class="home-text-link" href="/ui/e9-fretboard-explorer.html">Open the full Explorer <span aria-hidden="true">→</span></a>
+          </div>
+          <div class="home-explorer-stage" id="home-explorer-preview" aria-label="E9 fretboard preview"></div>
+          <p class="home-explorer-caption">E9 · G major · 4-5-6 grip · validated positions</p>
+        </section>
+
+        <section class="home-workspaces" aria-labelledby="workspaces-title">
+          <div class="home-section-heading">
+            <p class="home-eyebrow">Four connected workspaces</p>
+            <h2 id="workspaces-title">Choose what you want to do.</h2>
+          </div>
+          <div class="home-product-grid">
+            <article class="home-product-card is-featured">
+              <svg class="home-card-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16M8 5v14M16 5v14"/></svg>
+              <h3>Fretboard Explorer</h3>
+              <p>Visualize E9 positions, grips, intervals, scales, harmony, and movement across the neck.</p>
+              <a class="home-card-link" href="/ui/e9-fretboard-explorer.html">Explore the fretboard <span aria-hidden="true">→</span></a>
+            </article>
+            <article class="home-product-card">
+              <svg class="home-card-icon is-melody" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l10-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg>
+              <h3>Melody Studio</h3>
+              <p>Build, edit, play back, and practice melodies while connecting each note to a playable E9 position.</p>
+              <a class="home-card-link" href="/ui/melody-workbench.html">Open Melody Studio <span aria-hidden="true">→</span></a>
+            </article>
+            <article class="home-product-card">
+              <svg class="home-card-icon is-lessons" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H11v17H7.5A3.5 3.5 0 0 0 4 22V5.5ZM20 5.5A3.5 3.5 0 0 0 16.5 2H13v17h3.5A3.5 3.5 0 0 1 20 22V5.5Z"/></svg>
+              <h3>Lessons</h3>
+              <p>Follow reviewed learning paths or build a focused lesson for the topic, level, and time you have.</p>
+              <a class="home-card-link" href="/ui/lesson-workbench.html">Browse lessons <span aria-hidden="true">→</span></a>
+            </article>
+            <article class="home-product-card ask-product-card" id="ask-the-brain">
+              <svg class="home-card-icon is-ask" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v11H9l-4 3V5ZM8 9h8M8 12h5"/></svg>
+              <h3>Ask the Steel Guitar Brain</h3>
+              <p>Get teacher-first, source-backed help with technique, tone, setup, gear, copedents, theory, and troubleshooting.</p>
+              <section class="prompt-shell" aria-label="Ask a steel guitar question">
+                <div class="prompt">
+                  <div class="input-area">
+                    <textarea id="question" aria-label="Type your steel guitar question" placeholder="Ask a steel guitar question..."></textarea>
+                    <div class="prompt-typing-indicator" aria-label="Working" role="status"><span></span><span></span><span></span></div>
+                    <div class="input-actions"><button class="send" type="button">Ask a question</button></div>
+                  </div>
+                  <p class="access-helper" id="access-helper">Get a Backstage Pass to ask Steel Guitar RAG.</p>
+                </div>
+              </section>
+              <div class="try-asking" aria-label="Suggested question">
+                <span class="try-label">Try:</span>
+                <div class="examples" id="suggested-prompts" aria-label="Example question"></div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="home-backstage-strip" aria-labelledby="backstage-strip-title">
+          <svg class="home-card-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 16h8M9 13l3-5 3 5M12 8v8"/></svg>
+          <div>
+            <h2 id="backstage-strip-title">Backstage</h2>
+            <p>Manage your setup, copedent, account, access, feedback, and preferences.</p>
+          </div>
+          <button class="home-button home-button-utility backstage-trigger" type="button" aria-haspopup="dialog" aria-controls="backstage" aria-expanded="false">Open Backstage</button>
+        </section>
       </div>
 
       <section class="answer-workspace" id="answer-workspace" aria-label="Steel Guitar RAG answer workspace" hidden>
@@ -2727,18 +2774,12 @@
       </section>
     </main>
 
-    <footer>
-      <div class="footer-ornament" aria-hidden="true">
-        <span class="footer-ornament-star">☆</span>
+    <footer class="home-trust-footer">
+      <div class="home-trust-items" aria-label="Product trust notes">
+        <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 20 6v6c0 5-3.4 8-8 9-4.6-1-8-4-8-9V6l8-3Zm-3.5 9 2.2 2.2 4.9-5"/></svg>Validated E9 positions</span>
+        <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5ZM8 7h8M8 11h6"/></svg>Source-backed guidance when evidence is available</span>
       </div>
-      Simple on the surface.
-      <button
-        class="footer-trigger footer-shimmer"
-        type="button"
-        data-text="Built deep for pedal steel underneath."
-        aria-expanded="false"
-        aria-controls="tech-popover"
-      >Built deep for pedal steel underneath.</button>
+      <button class="footer-trigger" type="button" aria-expanded="false" aria-controls="tech-popover">How it works</button>
       <aside
         class="tech-popover"
         id="tech-popover"
@@ -3128,6 +3169,7 @@
   <script src="answer-client.js?v=melody-exercise-v0-20260710"></script>
   <script src="pedal-steel-fretboard-styles.js?v=module-boundaries-20260713"></script>
   <script src="pedal-steel-fretboard.js?v=module-boundaries-20260713"></script>
+  <script src="landing-home.js?v=product-first-landing-20260713"></script>
   <script>
     const question = document.querySelector("#question");
     const promptBox = document.querySelector(".prompt");
@@ -3135,11 +3177,11 @@
     const topic = document.querySelector("#topic");
     const suggestedPrompts = document.querySelector("#suggested-prompts");
     const page = document.querySelector(".page");
-    const homeSections = Array.from(document.querySelectorAll(".hero, .prompt-shell, .try-asking"));
+    const homeSections = Array.from(document.querySelectorAll(".home-overview"));
     const brandHome = document.querySelector(".brand-home");
     const stageReturn = document.querySelector(".stage-return");
     const footer = document.querySelector("footer");
-    const primarySend = document.querySelector(".prompt .send");
+    const primarySend = document.querySelector(".ask-product-card .send");
     const answerWorkspace = document.querySelector("#answer-workspace");
     const answeredQuestion = document.querySelector("#answered-question");
     const answerPrimaryTitle = document.querySelector("#answer-primary-title");
@@ -3167,7 +3209,10 @@
     const questionLabel = document.querySelector(".question-label");
     const lessonQuestion = document.querySelector("#lesson-question");
     const helperText = document.querySelector(".helper-text");
-    const backstageTrigger = document.querySelector(".backstage-trigger");
+    const backstageTriggers = Array.from(document.querySelectorAll(".backstage-trigger"));
+    const backstageTrigger = backstageTriggers[0];
+    let activeBackstageTrigger = backstageTrigger;
+    const askHeaderLink = document.querySelector(".ask-header-link");
     const backstageCtaLabel = document.querySelector("#backstage-cta-label");
     const accessHelper = document.querySelector("#access-helper");
     const accessPreview = document.querySelector(".access-preview");
@@ -3206,29 +3251,19 @@
     const initialQuestion = new URLSearchParams(window.location.search).get("question");
     if (initialQuestion) question.value = initialQuestion;
     const TECH_POPOVER_COPY = {
-      title: "What’s underneath?",
+      title: "How the workbench supports you",
       sections: [
         {
-          body: "Steel Guitar RAG is more than a search box."
+          heading: "Fretboard logic",
+          body: "Explorer positions come from deterministic E9 tuning, interval, pedal, and lever rules. The landing preview uses the same validated renderer as the full Explorer."
         },
         {
-          body: "“RAG” stands for retrieval-augmented generation — a newer kind of AI system that searches organized knowledge before responding, instead of simply guessing from memory."
+          heading: "Source-backed guidance",
+          body: "When useful evidence is available, answers can retrieve relevant steel-guitar discussions, manuals, setup notes, and other reviewed sources and show where the guidance came from."
         },
         {
-          body: "Behind the scenes, Steel Guitar RAG searches through steel guitar discussions, lessons, gear conversations, manuals, and player experience gathered from years of real-world steel guitar knowledge."
-        },
-        {
-          body: "The system breaks long discussions into smaller musical ideas, connects related concepts together, and searches by meaning instead of exact wording. That helps it find useful answers even when different players describe the same thing in different ways."
-        },
-        {
-          body: "Modern AI systems then help organize sources, compare ideas, retrieve useful context, and prepare grounded responses tied back to real discussions instead of random guesses."
-        },
-        {
-          body: "Over time, the system can continue learning from new material, organizing fresh information, and improving how steel guitar knowledge connects together."
-        },
-        {
-          heading: "The goal is simple:",
-          body: "A calm, easy-to-use interface backed by decades of steel guitar wisdom and modern AI reasoning."
+          heading: "Clear boundaries",
+          body: "Deterministic instrument logic and retrieved source material are presented as different kinds of support. Source-backed claims are made only when evidence is available."
         }
       ]
     };
@@ -3729,7 +3764,7 @@
 
     function renderSuggestedPrompt() {
       suggestedPrompts.innerHTML = "";
-      const visiblePrompts = Array.from({ length: Math.min(4, promptPool.length) }, (_, offset) => (
+      const visiblePrompts = Array.from({ length: Math.min(1, promptPool.length) }, (_, offset) => (
         promptPool[(activePromptIndex + offset) % promptPool.length]
       ));
       visiblePrompts.forEach((prompt) => {
@@ -4606,6 +4641,7 @@
       }
       answerWorkspace.hidden = false;
       page.classList.add("is-answering");
+      askHeaderLink.setAttribute("aria-current", "page");
       updateHelperState();
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -4657,6 +4693,7 @@
     function returnToStage() {
       answerWorkspace.hidden = true;
       page.classList.remove("is-answering");
+      askHeaderLink.removeAttribute?.("aria-current");
       homeSections.forEach((section) => {
         section.hidden = false;
       });
@@ -4745,9 +4782,10 @@
     function updateMockAccessUi() {
       const accessRole = STEEL_RAG_ANSWER_UI.normalizeAccessRole(mockAccessState);
       const canAskLive = STEEL_RAG_ANSWER_UI.canSubmitLiveQuestion(accessRole);
-      const ctaText = canAskLive ? "Go Backstage" : "Get a Backstage Pass";
-      backstageCtaLabel.textContent = ctaText;
-      backstageTrigger.setAttribute("aria-label", ctaText);
+      backstageCtaLabel.textContent = "Backstage";
+      backstageTriggers.forEach((trigger) => {
+        trigger.setAttribute("aria-label", "Open Backstage");
+      });
       mockCurrentPass.textContent = accessRole === "admin"
         ? "Bandleader Pass preview"
         : canAskLive
@@ -4907,21 +4945,21 @@
       showBackstageTab(initialTab);
       requestAnimationFrame(() => {
         backstage.classList.add("is-open");
-        backstageTrigger.setAttribute("aria-expanded", "true");
+        backstageTriggers.forEach((trigger) => trigger.setAttribute("aria-expanded", "true"));
         backstageClose.focus();
       });
     }
 
     function closeBackstage({ restoreFocus = false } = {}) {
       backstage.classList.remove("is-open");
-      backstageTrigger.setAttribute("aria-expanded", "false");
+      backstageTriggers.forEach((trigger) => trigger.setAttribute("aria-expanded", "false"));
       window.setTimeout(() => {
-        if (backstageTrigger.getAttribute("aria-expanded") === "false") {
+        if (backstageTriggers.every((trigger) => trigger.getAttribute("aria-expanded") === "false")) {
           backstage.hidden = true;
         }
       }, 180);
       if (restoreFocus) {
-        backstageTrigger.focus();
+        activeBackstageTrigger?.focus();
       }
     }
 
@@ -4930,6 +4968,10 @@
 
     renderQuestionLabel();
     initializeHeroHangingSigns();
+    window.STEEL_RAG_LANDING?.mountExplorerPreview(
+      document.querySelector("#home-explorer-preview"),
+      window.STEEL_RAG_FRETBOARD
+    );
     if (helperText) {
       helperText.textContent = INSTRUCTOR_OPENING_LINES[Math.floor(Math.random() * INSTRUCTOR_OPENING_LINES.length)];
     }
@@ -5047,9 +5089,12 @@
       radio.addEventListener("change", () => setMockAccessState(radio.value));
     });
 
-    backstageTrigger.addEventListener("click", (event) => {
-      event.stopPropagation();
-      openBackstageForAccessState();
+    backstageTriggers.forEach((trigger) => {
+      trigger.addEventListener("click", (event) => {
+        event.stopPropagation();
+        activeBackstageTrigger = trigger;
+        openBackstageForAccessState();
+      });
     });
 
     backstageClose.addEventListener("click", () => closeBackstage({ restoreFocus: true }));
@@ -5109,6 +5154,21 @@
     });
 
     document.addEventListener("keydown", (event) => {
+      if (event.key === "Tab" && !backstage.hidden) {
+        const focusable = Array.from(backstagePanel.querySelectorAll(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )).filter((element) => !element.hidden && element.getClientRects().length);
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (first && last && event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (first && last && !event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
+        return;
+      }
       if (event.key === "Escape" && !backstage.hidden) {
         closeBackstage({ restoreFocus: true });
       } else if (event.key === "Escape" && !techPopover.hidden) {

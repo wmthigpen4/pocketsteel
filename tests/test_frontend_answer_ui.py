@@ -302,8 +302,8 @@ def test_answer_ui_links_to_melody_studio_and_keeps_lesson_renderer() -> None:
 
     assert 'id="melody-studio-link"' in html
     assert 'href="/ui/melody-workbench.html"' in html
-    assert 'aria-label="Arrange a melody for E9"' in html
-    assert "<span>Arrange</span>" in html
+    assert 'aria-label="Open Melody Studio"' in html
+    assert '<span class="nav-label-full">Melody Studio</span>' in html
     assert 'id="melody-tool"' not in html
     assert 'id="melody-submit"' not in html
     assert 'id="answer-melody"' in html
@@ -338,36 +338,30 @@ def test_answer_ui_uses_live_answer_client_not_mock_answer_data() -> None:
 
 def test_answer_ui_includes_home_hero_hanging_sign_without_changing_answer_logo() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+    shell_css = Path("ui/workspace-shell.css").read_text(encoding="utf-8")
 
-    assert 'class="hero-hanging-sign"' in html
+    assert 'class="home-sign hero-hanging-sign"' in html
     assert 'class="landing-sign" autoplay muted loop playsinline' in html
     assert 'poster="brand/steel-guitar-rag-landing-fallback-alpha.png?v=landing-alpha-app-20260618"' in html
     assert 'src="brand/steel-guitar-rag-landing-alpha.webm?v=landing-alpha-app-20260618"' in html
     assert 'type="video/webm"' in html
     assert 'type="video/mp4"' not in html
     assert 'class="landing-sign-fallback" src="brand/steel-guitar-rag-landing-fallback-alpha.png?v=landing-alpha-app-20260618"' in html
-    assert "top: clamp(-42px, -3vw, -24px);" in html
-    assert "left: -18px;" in html
-    assert "width: clamp(300px, 23vw, 340px);" in html
-    assert "transform: rotate(-1.5deg);" in html
-    assert "padding: clamp(170px, 14vw, 220px) 0 24px;" in html
-    assert "padding-top: clamp(120px, 20vw, 170px);" in html
-    assert "top: 8px;" in html
-    assert "padding-top: 200px;" in html
-    assert "top: 8px;" in html
-    assert "top: 48px;" not in html
-    assert "left: -18px;" in html
-    assert "width: clamp(190px, 55vw, 240px);" in html
+    assert ".app-shell-header .home-sign" in shell_css
+    assert "position: relative;" in shell_css
+    assert "width: min(100%, 250px);" in shell_css
+    assert "pointer-events: auto;" in shell_css
     assert ".hero-hanging-sign.is-animated .landing-sign" in html
     assert ".hero-hanging-sign.is-animated .landing-sign-fallback" in html
-    assert ".landing-sign-fallback,\n      .hero-hanging-sign.is-animated .landing-sign-fallback {\n        display: block;" in html
+    assert "@media (prefers-reduced-motion: reduce)" in shell_css
+    assert ".app-shell-header .landing-sign-fallback" in shell_css
     assert "object-fit: contain;" in html
     assert "object-position: top left;" in html
     assert "image-rendering: auto;" in html
     assert 'prefers-reduced-motion: reduce' in html
     assert ".brand-home {\n      display: none;" in html
     assert ".page.is-answering .brand-home {\n      display: inline-flex;" in html
-    assert ".page.is-answering .hero-hanging-sign" in html
+    assert ".page.is-answering .home-sign" in shell_css
     assert 'class="answer-brand-badge" autoplay muted loop playsinline' in html
     assert 'poster="brand/steel-guitar-rag-answer-badge-fallback-alpha.png?v=answer-badge-rag-artwork-3c4dedb"' in html
     assert 'src="brand/steel-guitar-rag-answer-badge-alpha.webm?v=answer-badge-rag-artwork-3c4dedb"' in html
@@ -384,27 +378,20 @@ def test_answer_ui_includes_home_hero_hanging_sign_without_changing_answer_logo(
 
 def test_answer_ui_links_to_e9_fretboard_explorer_surface() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+    shell_css = Path("ui/workspace-shell.css").read_text(encoding="utf-8")
 
-    assert "<span>Explore</span>" in html
+    assert '<span class="nav-label-full">Fretboard Explorer</span>' in html
+    assert '<span class="nav-label-short">Explorer</span>' in html
     assert 'href="/ui/e9-fretboard-explorer.html"' in html
     assert 'aria-label="Explore the E9 virtual fretboard"' in html
     assert 'title="Explore the E9 virtual fretboard"' in html
     assert "explorer-header-link" in html
     assert 'class="header-action-button explorer-header-link"' in html
     assert 'class="header-action-button backstage-trigger"' in html
-    assert ".header-action-button {" in html
-    header_action_rule = html.split(".header-action-button {", 1)[1].split("}", 1)[0]
-    assert "font-family:" not in header_action_rule
-    assert "font-size:" not in header_action_rule
-    assert "font-weight:" not in header_action_rule
-    assert "line-height:" not in header_action_rule
-    assert "var(--font-ui)" not in header_action_rule
-    assert "var(--font-lesson)" not in header_action_rule
-    assert "Gill Sans" not in header_action_rule
-    assert "-apple-system, BlinkMacSystemFont" not in header_action_rule
-    assert "letter-spacing: 0;" in html
+    assert ".app-shell-header .header-action-button" in shell_css
+    assert "min-height: 46px;" in shell_css
     assert 'aria-controls="backstage"' in html
-    assert 'id="backstage-cta-label">Get a Backstage Pass</span>' in html
+    assert 'id="backstage-cta-label">Backstage</span>' in html
     assert html.index('class="header-action-button explorer-header-link"') < html.index('class="header-action-button backstage-trigger"')
     assert 'class="header-action-button explorer-header-link" href="/ui/e9-fretboard-explorer.html"' in html
     assert 'class="backstage-trigger" href="/ui/e9-fretboard-explorer.html"' not in html
@@ -412,8 +399,8 @@ def test_answer_ui_links_to_e9_fretboard_explorer_surface() -> None:
     assert "explorer-entry-card" not in html
     assert "not corpus retrieval or RAG-generated fretboard positions" not in html
     assert "[object Object]" not in html
-    assert html.index("<span>Explore</span>") < html.index('id="question"')
-    assert html.index("<span>Explore</span>") < html.index("Get a Backstage Pass")
+    assert html.index('<span class="nav-label-full">Fretboard Explorer</span>') < html.index('id="question"')
+    assert html.index('<span class="nav-label-full">Fretboard Explorer</span>') < html.index('id="backstage-cta-label">Backstage</span>')
     assert ".explorer-header-link,\n    .backstage-trigger" not in html
 
 
@@ -1824,6 +1811,9 @@ function makeElement(selector = "", tagName = "div") {
     getAttribute(name) {
       return this.attributes[name] || "";
     },
+    removeAttribute(name) {
+      delete this.attributes[name];
+    },
     appendChild(child) {
       child.parentNode = this;
       this.children.push(child);
@@ -2388,7 +2378,8 @@ async function runPage(sessionPayload, storedAccess = "anonymous") {
         if (selector === "input[name='mock-access-state']") return radios;
         if (selector === "[data-backstage-tab]") return tabs;
         if (selector === ".backstage-tab-panel") return panels;
-        if (selector === ".hero, .prompt-shell, .try-asking") return [makeElement(), makeElement(), makeElement()];
+        if (selector === ".home-overview") return [makeElement()];
+        if (selector === ".backstage-trigger") return [getElement(".backstage-trigger"), makeElement()];
         return [];
       },
       createElement(tagName) {
@@ -2430,7 +2421,7 @@ async function runPage(sessionPayload, storedAccess = "anonymous") {
   assert.equal(beta.question.disabled, false);
   assert.equal(beta.accessPreview.hidden, true);
   assert.equal(beta.radios.every((radio) => radio.disabled), true);
-  assert.equal(beta.backstageCtaLabel.textContent, "Go Backstage");
+  assert.equal(beta.backstageCtaLabel.textContent, "Backstage");
 
   const admin = await runPage({
     authenticated: true,
@@ -2439,7 +2430,7 @@ async function runPage(sessionPayload, storedAccess = "anonymous") {
     authProvider: "cloudflare_access"
   });
   assert.equal(admin.question.disabled, false);
-  assert.equal(admin.backstageCtaLabel.textContent, "Go Backstage");
+  assert.equal(admin.backstageCtaLabel.textContent, "Backstage");
 
   const anonymous = await runPage({
     authenticated: false,
