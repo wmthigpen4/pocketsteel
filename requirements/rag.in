@@ -1,0 +1,4 @@
+-r runtime.in
+chromadb>=0.5
+sentence-transformers>=3.0
+streamlit>=1.34

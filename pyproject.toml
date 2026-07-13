@@ -20,8 +20,34 @@ rag = [
   "streamlit>=1.34",
 ]
 test = [
-  "pytest>=8.0",
+  "chromadb>=0.5",
+  "mypy>=2.3,<3",
+  "pip-audit>=2.10,<3",
+  "pytest>=9,<10",
+  "PyYAML>=6,<7",
+  "ruff>=0.15,<0.16",
+]
+deployment = [
+  "build>=1.5,<2",
 ]
 
 [tool.setuptools]
 packages = ["pocketsteel"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E9", "F"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true

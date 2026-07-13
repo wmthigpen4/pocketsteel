@@ -1,2 +1,2 @@
-chromadb>=0.5
-streamlit>=1.34
+# Compatibility entry point. The compiled, pinned RAG environment is canonical.
+-r requirements/rag.lock

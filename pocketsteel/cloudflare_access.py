@@ -172,18 +172,21 @@ class CloudflareAccessJwtVerifier:
     def _get_jwks(self, jwks_url: str, *, force_refresh: bool) -> dict[str, Any]:
         now = float(self.now_func())
         with self._jwks_lock:
+            cached_jwks = self._jwks
             cache_fresh = (
-                self._jwks is not None
+                cached_jwks is not None
                 and (self._static_jwks or now - self._jwks_loaded_at < self.jwks_ttl_seconds)
             )
             if cache_fresh and not force_refresh:
-                return self._jwks
+                assert cached_jwks is not None
+                return cached_jwks
             if self._static_jwks:
-                return self._jwks or {"keys": []}
+                return cached_jwks or {"keys": []}
             payload = self._load_jwks(jwks_url)
-            self._jwks = self._validate_jwks(payload)
+            validated_jwks = self._validate_jwks(payload)
+            self._jwks = validated_jwks
             self._jwks_loaded_at = now
-            return self._jwks
+            return validated_jwks
 
     def _load_jwks(self, jwks_url: str) -> dict[str, Any]:
         if not jwks_url:

@@ -1,0 +1,56 @@
+name: quality
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements/test.lock
+      - name: Install locked test environment
+        run: |
+          python -m pip install --require-hashes -r requirements/test.lock
+          python -m pip install --no-deps -e .
+      - name: Full pytest
+        run: pytest -q
+      - name: Python lint
+        run: ruff check pocketsteel/cloudflare_access.py pocketsteel/runtime_dependencies.py scripts/check_asset_size_budget.py scripts/check_secret_patterns.py
+      - name: Python type checks
+        run: mypy pocketsteel/cloudflare_access.py pocketsteel/runtime_dependencies.py
+      - name: Dependency audit
+        run: pip-audit -r requirements/runtime.lock
+      - name: Secret and asset budgets
+        run: |
+          python scripts/check_secret_patterns.py
+          python scripts/check_asset_size_budget.py
+      - name: Verify dependency lock integrity
+        run: python scripts/check_dependency_locks.py
+
+  javascript:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npm run check:js
+      - run: npm run lint:js
+      - run: npm run test:worker
+      - run: npm run audit:node

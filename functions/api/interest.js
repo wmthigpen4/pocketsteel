@@ -215,7 +215,7 @@ async function handleInterestRequest({ request, env = {} }) {
   let input;
   try {
     input = await parseRequestBody(request);
-  } catch (error) {
+  } catch (_error) {
     return jsonResponse({ ok: false, error: "Invalid request body." }, 400);
   }
 
