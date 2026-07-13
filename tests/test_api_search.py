@@ -38,7 +38,7 @@ from pocketsteel.curated_song_references import (
     load_steel_guitar_rag_reference,
 )
 from pocketsteel.fretboard_examples import DEFAULT_PEDAL_LEVER_LABELS
-from pocketsteel.api import MAX_JSON_BODY_BYTES, create_app
+from pocketsteel.api import MAX_JSON_BODY_BYTES, RetrievalApi, create_app
 from pocketsteel.access_control import (
     DEV_ACCESS_ROLE_ENVIRON,
     TRUSTED_AUTH_ROLE_ENVIRON,
@@ -810,6 +810,24 @@ def test_authorized_normal_json_request_over_limit_is_rejected_before_read() -> 
 
     assert captured["status"] == "413 Payload Too Large"
     assert json.loads(response) == {"error": "request body exceeds the 1 MiB JSON limit"}
+
+
+def test_json_reader_does_not_overread_declared_wsgi_body() -> None:
+    body = json.dumps({"question": "How do I play a G chord?"}).encode("utf-8")
+
+    class ExactLengthBody:
+        def read(self, size: int) -> bytes:
+            assert size == len(body), "reading beyond Content-Length blocks a live WSGI socket"
+            return body
+
+    payload = RetrievalApi._read_json_body(
+        {
+            "CONTENT_LENGTH": str(len(body)),
+            "wsgi.input": ExactLengthBody(),
+        }
+    )
+
+    assert payload == {"question": "How do I play a G chord?"}
 
 
 def test_api_responses_include_baseline_security_headers() -> None:

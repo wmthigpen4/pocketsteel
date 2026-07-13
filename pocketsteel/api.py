@@ -1154,9 +1154,7 @@ class RetrievalApi:
         if content_length > max_bytes:
             raise JsonRequestTooLargeError("request body exceeds the 1 MiB JSON limit")
 
-        raw_body = environ["wsgi.input"].read(content_length + 1)
-        if len(raw_body) > max_bytes:
-            raise JsonRequestTooLargeError("request body exceeds the 1 MiB JSON limit")
+        raw_body = environ["wsgi.input"].read(content_length)
         try:
             payload = json.loads(raw_body.decode("utf-8"))
         except (json.JSONDecodeError, UnicodeDecodeError) as exc:
