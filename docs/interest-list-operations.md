@@ -255,14 +255,21 @@ PUSHOVER_APP_TOKEN
 PUSHOVER_USER_KEY
 ```
 
-Optional manual dry-run secret:
+Administrative dry-run and manual-run routes also require these secrets:
 
 ```text
 INTEREST_DIGEST_ADMIN_TOKEN
+INTEREST_DIGEST_ACCESS_ISSUER
+INTEREST_DIGEST_ACCESS_AUD
+INTEREST_DIGEST_ACCESS_JWKS_URL
 ```
 
-Do not put Pushover or admin tokens in source files, docs, issue comments, shell
-history snippets, or screenshots.
+The three Access values must describe the Cloudflare Access application whose
+JWTs are accepted by this Worker. The Worker verifies the JWT algorithm,
+signature, issuer, audience, and expiration against a bounded, rotating JWKS
+cache. An admin request must pass both Access verification and the existing
+digest admin token. Do not put Pushover, Access, or admin values in source
+files, docs, issue comments, shell history snippets, or screenshots.
 
 The Pushover app is named:
 
@@ -302,8 +309,21 @@ Find the row named `steel_rag_interest` and copy its UUID into
 
 ### Deploy The Digest Worker
 
-Do not deploy until the D1 `database_id` placeholder has been replaced and the
+Do not deploy until the configured D1 `database_id` has been verified and the
 operational columns exist on `interest_submissions`.
+
+List and apply the Worker's scoped D1 migrations before deploying it:
+
+```bash
+npx --yes wrangler@latest d1 migrations list STEEL_RAG_INTEREST_D1 \
+  --remote --config wrangler-interest-digest.toml
+npx --yes wrangler@latest d1 migrations apply STEEL_RAG_INTEREST_D1 \
+  --remote --config wrangler-interest-digest.toml
+```
+
+The migration directory is `migrations/interest-digest/`. It creates the
+delivery and delivery-part state used to claim a digest and retry only unsent
+parts.
 
 Deploy command:
 
@@ -321,10 +341,19 @@ npx --yes wrangler@latest secret put PUSHOVER_APP_TOKEN --config wrangler-intere
 npx --yes wrangler@latest secret put PUSHOVER_USER_KEY --config wrangler-interest-digest.toml
 ```
 
-Optional dry-run secret:
+Administrative route secret:
 
 ```bash
 npx --yes wrangler@latest secret put INTEREST_DIGEST_ADMIN_TOKEN --config wrangler-interest-digest.toml
+```
+
+Configure the Access issuer, audience, and JWKS URL through Wrangler secrets as
+well. Wrangler prompts for each value; do not place the values in the command:
+
+```bash
+npx --yes wrangler@latest secret put INTEREST_DIGEST_ACCESS_ISSUER --config wrangler-interest-digest.toml
+npx --yes wrangler@latest secret put INTEREST_DIGEST_ACCESS_AUD --config wrangler-interest-digest.toml
+npx --yes wrangler@latest secret put INTEREST_DIGEST_ACCESS_JWKS_URL --config wrangler-interest-digest.toml
 ```
 
 ### Verify The Worker In Cloudflare
@@ -387,7 +416,10 @@ at most 950 characters. Multipart titles are numbered `(1/N)`, `(2/N)`, and so
 on. The complete digest is sent; it no longer ends with an instruction to open
 D1 for truncated content.
 
-After Pushover returns success, every included row receives:
+Before delivery, the Worker transactionally claims one delivery record for the
+current UTC weekly window and stores every numbered part with its content hash.
+Concurrent runs cannot acquire the same active claim. After Pushover returns
+success, every included row receives:
 
 ```text
 notified_at = current scheduled-run timestamp
@@ -395,8 +427,12 @@ notified_at = current scheduled-run timestamp
 
 Included rows move to `status = 'notified'` unless they are already in
 `status = 'review'`. Review rows keep that status so a human can inspect them.
-Rows are marked notified only after every Pushover part succeeds. If any part
-fails, `notified_at` is not updated.
+Rows are marked notified only after every Pushover part succeeds. If a part
+returns a definite HTTP failure, its state is recorded as `failed`; the next
+run retries that part and any later unsent parts without resending parts already
+recorded as `sent`. A network interruption after dispatch is recorded as
+`ambiguous` and is not retried automatically, because automatic retry could
+send a duplicate. Resolve an ambiguous delivery manually before retrying it.
 
 The weekly Pushover summary is sent even when no real rows are pending. In that
 case it reports that there were no new real submissions and how many rows were
@@ -408,7 +444,10 @@ Dry-run mode returns the digest summary without sending Pushover, deleting
 spam/test rows, or marking rows notified. It reports `wouldDeleteCount` and a
 per-row `would_delete` flag for review.
 
-With a Worker dev server and `INTEREST_DIGEST_ADMIN_TOKEN` configured:
+For loopback-only local development, configure
+`INTEREST_DIGEST_LOCAL_ACCESS_BYPASS=1` together with
+`INTEREST_DIGEST_ADMIN_TOKEN`. The bypass is ignored for non-loopback hosts.
+Then start the Worker dev server:
 
 ```bash
 npx --yes wrangler@latest dev --config wrangler-interest-digest.toml
@@ -420,12 +459,16 @@ curl -sS \
 
 Only `GET /dry-run` is supported for preview.
 
+In a deployed environment, `/dry-run` also requires a valid
+`Cf-Access-Jwt-Assertion` from the configured Access application. The shared
+admin token by itself is rejected.
+
 ### Manual Run
 
 Manual run mode deletes classified spam/test rows, sends the remaining digest
 through Pushover, and marks included rows notified after Pushover returns
-success. It requires the
-`INTEREST_DIGEST_ADMIN_TOKEN` Worker secret.
+success. It requires both a verified Access JWT (including service-token
+identity) and the `INTEREST_DIGEST_ADMIN_TOKEN` Worker secret.
 
 With a Worker dev server and all required secrets configured:
 
@@ -436,8 +479,10 @@ curl -sS \
   "http://localhost:8787/run"
 ```
 
-The endpoint also accepts the token in `x-interest-digest-token` for local
-testing. Prefer the `Authorization: Bearer ...` form for regular use.
+The endpoint also accepts the admin token in `x-interest-digest-token` for
+local testing. Prefer the `Authorization: Bearer ...` form for regular use.
+This header is in addition to, not a replacement for,
+`Cf-Access-Jwt-Assertion` outside local loopback development.
 
 Only use dry run or manual run in a trusted environment. The JSON response can
 include real user emails and messages.
@@ -461,6 +506,10 @@ curl "http://localhost:8787/__scheduled?cron=0+14+*+*+1"
 
 Use a test D1 database or a dry-run path when validating behavior. Do not run
 live scraping or any RAG/backend task as part of digest testing.
+
+Cloudflare Workers Observability is enabled for this Worker. Structured log
+events record delivery IDs, part counts, classifications, and safe error names;
+they never record message bodies, email addresses, tokens, or secret values.
 
 ### Disable The Weekly Job
 

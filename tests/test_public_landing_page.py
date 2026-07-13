@@ -7,6 +7,23 @@ LANDING_PAGE = Path("ui/steel-guitar-rag-landing.html")
 DEPLOY_PAGE = Path("deploy/landing/index.html")
 INTEREST_FUNCTION = Path("functions/api/interest.js")
 INTEREST_DIGEST_WORKER = Path("workers/interest-digest.js")
+INTEREST_DIGEST_CONFIG = Path("wrangler-interest-digest.toml")
+INTEREST_DIGEST_MIGRATION = Path("migrations/interest-digest/0001_delivery_state.sql")
+
+
+def test_interest_digest_config_enables_scoped_migrations_and_observability() -> None:
+    config = INTEREST_DIGEST_CONFIG.read_text(encoding="utf-8")
+    migration = INTEREST_DIGEST_MIGRATION.read_text(encoding="utf-8")
+
+    assert 'migrations_dir = "migrations/interest-digest"' in config
+    assert "[observability]" in config
+    assert "enabled = true" in config
+    assert "head_sampling_rate = 1" in config
+    assert "create table if not exists interest_digest_deliveries" in migration
+    assert "unique (window_start, window_end)" in migration
+    assert "create table if not exists interest_digest_delivery_parts" in migration
+    assert "primary key (delivery_id, part_index)" in migration
+    assert "content_hash text not null" in migration
 
 
 def test_public_landing_page_has_required_beta_copy_and_ctas() -> None:
@@ -916,6 +933,144 @@ assert.equal(d1.operations.some((op) => /notified_at/.test(op.sql)), false);
     assert result.returncode == 0, result.stderr
 
 
+def test_interest_digest_durable_retry_sends_only_unsent_parts() -> None:
+    script = _interest_digest_test_script(
+        """
+const d1 = makeDurableD1([
+  makeRow({
+    id: "durable-retry",
+    email: "durable@steel.example",
+    name: "Durable Retry",
+    message: "Keep each successful digest part exactly once. ".repeat(80)
+  })
+]);
+let firstAttemptCalls = 0;
+await assert.rejects(
+  () => mod.__test.runInterestDigest({
+    env: {
+      STEEL_RAG_INTEREST_D1: d1,
+      PUSHOVER_APP_TOKEN: "app-token",
+      PUSHOVER_USER_KEY: "user-key"
+    },
+    now: new Date("2026-07-13T14:00:00.000Z"),
+    fetchImpl: async () => {
+      firstAttemptCalls += 1;
+      return new Response(firstAttemptCalls === 2 ? "bad" : "{}", {
+        status: firstAttemptCalls === 2 ? 500 : 200
+      });
+    }
+  }),
+  /part 2[/]/
+);
+const afterFailure = [...d1.state.parts.values()].sort((a, b) => a.part_index - b.part_index);
+assert.ok(afterFailure.length > 2);
+assert.equal(afterFailure[0].status, "sent");
+assert.equal(afterFailure[1].status, "failed");
+assert.equal(d1.state.rows[0].notified_at, null);
+const firstPartHash = afterFailure[0].content_hash;
+let retryCalls = 0;
+const retryResult = await mod.__test.runInterestDigest({
+  env: {
+    STEEL_RAG_INTEREST_D1: d1,
+    PUSHOVER_APP_TOKEN: "app-token",
+    PUSHOVER_USER_KEY: "user-key"
+  },
+  now: new Date("2026-07-20T14:05:00.000Z"),
+  fetchImpl: async () => {
+    retryCalls += 1;
+    return new Response("{}", { status: 200 });
+  }
+});
+const completedParts = [...d1.state.parts.values()].sort((a, b) => a.part_index - b.part_index);
+assert.equal(retryCalls, completedParts.length - 1);
+assert.equal(completedParts[0].content_hash, firstPartHash);
+assert.equal(completedParts[0].attempts, 1);
+assert.equal(completedParts[1].attempts, 2);
+assert.ok(completedParts.every((part) => part.status === "sent"));
+assert.equal(retryResult.sentMessageCount, completedParts.length - 1);
+assert.equal(d1.state.rows[0].status, "notified");
+assert.ok(d1.state.rows[0].notified_at);
+assert.ok(d1.state.batchCalls >= 6);
+"""
+    )
+
+    result = subprocess.run(["node", "-e", script], cwd=Path.cwd(), capture_output=True, text=True, check=False)
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_interest_digest_durable_claim_prevents_concurrent_and_ambiguous_retries() -> None:
+    script = _interest_digest_test_script(
+        """
+const concurrentD1 = makeDurableD1([
+  makeRow({ id: "concurrent", email: "concurrent@steel.example", name: "Concurrent" })
+]);
+let releaseSend;
+let markSendStarted;
+const sendGate = new Promise((resolve) => { releaseSend = resolve; });
+const sendStarted = new Promise((resolve) => { markSendStarted = resolve; });
+const env = {
+  STEEL_RAG_INTEREST_D1: concurrentD1,
+  PUSHOVER_APP_TOKEN: "app-token",
+  PUSHOVER_USER_KEY: "user-key"
+};
+const firstRun = mod.__test.runInterestDigest({
+  env,
+  now: new Date("2026-07-13T14:00:00.000Z"),
+  fetchImpl: async () => {
+    markSendStarted();
+    await sendGate;
+    return new Response("{}", { status: 200 });
+  }
+});
+await sendStarted;
+let secondFetchCalled = false;
+const secondRun = await mod.__test.runInterestDigest({
+  env,
+  now: new Date("2026-07-13T14:01:00.000Z"),
+  fetchImpl: async () => {
+    secondFetchCalled = true;
+    return new Response("{}", { status: 200 });
+  }
+});
+assert.equal(secondRun.duplicatePrevented, true);
+assert.equal(secondFetchCalled, false);
+releaseSend();
+await firstRun;
+
+const ambiguousD1 = makeDurableD1([
+  makeRow({ id: "ambiguous", email: "ambiguous@steel.example", name: "Ambiguous" })
+]);
+const ambiguousEnv = { ...env, STEEL_RAG_INTEREST_D1: ambiguousD1 };
+await assert.rejects(
+  () => mod.__test.runInterestDigest({
+    env: ambiguousEnv,
+    now: new Date("2026-07-13T14:00:00.000Z"),
+    fetchImpl: async () => { throw new TypeError("network connection closed"); }
+  }),
+  /network connection closed/
+);
+let ambiguousRetryFetchCalled = false;
+const ambiguousRetry = await mod.__test.runInterestDigest({
+  env: ambiguousEnv,
+  now: new Date("2026-07-13T14:02:00.000Z"),
+  fetchImpl: async () => {
+    ambiguousRetryFetchCalled = true;
+    return new Response("{}", { status: 200 });
+  }
+});
+assert.equal(ambiguousRetry.duplicatePrevented, true);
+assert.equal(ambiguousRetry.deliveryStatus, "ambiguous");
+assert.equal(ambiguousRetryFetchCalled, false);
+assert.equal([...ambiguousD1.state.parts.values()][0].status, "ambiguous");
+"""
+    )
+
+    result = subprocess.run(["node", "-e", script], cwd=Path.cwd(), capture_output=True, text=True, check=False)
+
+    assert result.returncode == 0, result.stderr
+
+
 def test_interest_digest_missing_pushover_secrets_fails_without_notifying() -> None:
     script = _interest_digest_test_script(
         """
@@ -946,13 +1101,14 @@ const d1 = makeD1([
   makeRow({ id: "dry-1", email: "dry@steel.example", name: "Dry Run" })
 ]);
 const response = await mod.default.fetch(
-  new Request("https://steel-rag-interest-digest.example/dry-run", {
+  new Request("http://localhost/dry-run", {
     method: "GET",
     headers: { Authorization: "Bearer admin-token" }
   }),
   {
     STEEL_RAG_INTEREST_D1: d1,
-    INTEREST_DIGEST_ADMIN_TOKEN: "admin-token"
+    INTEREST_DIGEST_ADMIN_TOKEN: "admin-token",
+    INTEREST_DIGEST_LOCAL_ACCESS_BYPASS: "1"
   }
 );
 const payload = await response.json();
@@ -996,6 +1152,81 @@ assert.equal(d1.operations.length, 0);
     assert result.returncode == 0, result.stderr
 
 
+def test_interest_digest_production_dry_run_requires_valid_access_jwt_and_admin_token() -> None:
+    script = _interest_digest_test_script(
+        """
+const identity = await makeAccessIdentity({ issuer: `https://prod-${crypto.randomUUID()}.cloudflareaccess.com` });
+const d1 = makeD1([makeRow({ id: "access-dry-run", email: "access@steel.example" })]);
+const originalFetch = globalThis.fetch;
+globalThis.fetch = async (url) => {
+  assert.equal(String(url), identity.env.INTEREST_DIGEST_ACCESS_JWKS_URL);
+  return new Response(JSON.stringify({ keys: [identity.jwk] }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" }
+  });
+};
+try {
+  const response = await mod.default.fetch(
+    new Request("https://steel-rag-interest-digest.example/dry-run", {
+      method: "GET",
+      headers: {
+        Authorization: "Bearer admin-token",
+        "Cf-Access-Jwt-Assertion": identity.token
+      }
+    }),
+    {
+      STEEL_RAG_INTEREST_D1: d1,
+      INTEREST_DIGEST_ADMIN_TOKEN: "admin-token",
+      ...identity.env
+    }
+  );
+  const payload = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(payload.ok, true);
+  assert.equal(payload.dryRun, true);
+  assert.equal(payload.rows.length, 1);
+} finally {
+  globalThis.fetch = originalFetch;
+}
+"""
+    )
+
+    result = subprocess.run(["node", "-e", script], cwd=Path.cwd(), capture_output=True, text=True, check=False)
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_interest_digest_access_jwt_rejects_expiry_and_refreshes_rotated_key() -> None:
+    script = _interest_digest_test_script(
+        """
+const issuer = `https://rotation-${crypto.randomUUID()}.cloudflareaccess.com`;
+const kid = "rotating-key";
+const first = await makeAccessIdentity({ issuer, kid });
+const second = await makeAccessIdentity({ issuer, kid });
+const expired = await makeAccessIdentity({ issuer, kid: "expired-key", exp: Math.floor(Date.now() / 1000) - 1 });
+let fetchCount = 0;
+const rotatingFetch = async () => {
+  fetchCount += 1;
+  return new Response(JSON.stringify({ keys: [fetchCount === 1 ? first.jwk : second.jwk] }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" }
+  });
+};
+const requestFor = (token) => new Request("https://steel-rag-interest-digest.example/dry-run", {
+  headers: { "Cf-Access-Jwt-Assertion": token }
+});
+assert.equal(await mod.__test.requestHasAccessIdentity(requestFor(first.token), first.env, rotatingFetch), true);
+assert.equal(await mod.__test.requestHasAccessIdentity(requestFor(second.token), second.env, rotatingFetch), true);
+assert.equal(fetchCount, 2);
+assert.equal(await mod.__test.requestHasAccessIdentity(requestFor(expired.token), expired.env, rotatingFetch), false);
+"""
+    )
+
+    result = subprocess.run(["node", "-e", script], cwd=Path.cwd(), capture_output=True, text=True, check=False)
+
+    assert result.returncode == 0, result.stderr
+
+
 def test_interest_digest_manual_run_endpoint_sends_and_notifies() -> None:
     script = _interest_digest_test_script(
         """
@@ -1010,7 +1241,7 @@ globalThis.fetch = async (url, options) => {
 };
 try {
   const response = await mod.default.fetch(
-    new Request("https://steel-rag-interest-digest.example/run", {
+    new Request("http://localhost/run", {
       method: "POST",
       headers: { "x-interest-digest-token": "admin-token" }
     }),
@@ -1018,7 +1249,8 @@ try {
       STEEL_RAG_INTEREST_D1: d1,
       PUSHOVER_APP_TOKEN: "pushover-app-secret",
       PUSHOVER_USER_KEY: "pushover-user-secret",
-      INTEREST_DIGEST_ADMIN_TOKEN: "admin-token"
+      INTEREST_DIGEST_ADMIN_TOKEN: "admin-token",
+      INTEREST_DIGEST_LOCAL_ACCESS_BYPASS: "1"
     }
   );
   const text = await response.text();
@@ -1090,7 +1322,7 @@ const originalFetch = globalThis.fetch;
 globalThis.fetch = async () => new Response("bad", { status: 500 });
 try {
   const response = await mod.default.fetch(
-    new Request("https://steel-rag-interest-digest.example/run", {
+    new Request("http://localhost/run", {
       method: "POST",
       headers: { Authorization: "Bearer admin-token" }
     }),
@@ -1098,7 +1330,8 @@ try {
       STEEL_RAG_INTEREST_D1: d1,
       PUSHOVER_APP_TOKEN: "pushover-app-secret",
       PUSHOVER_USER_KEY: "pushover-user-secret",
-      INTEREST_DIGEST_ADMIN_TOKEN: "admin-token"
+      INTEREST_DIGEST_ADMIN_TOKEN: "admin-token",
+      INTEREST_DIGEST_LOCAL_ACCESS_BYPASS: "1"
     }
   );
   const text = await response.text();
@@ -1259,6 +1492,227 @@ const fs = require("node:fs");
           }}
         }})
       }})
+    }};
+  }}
+
+  function makeDurableD1(inputRows) {{
+    const state = {{
+      rows: inputRows.map((row) => ({{ ...row }})),
+      deliveries: new Map(),
+      parts: new Map(),
+      operations: [],
+      batchCalls: 0
+    }};
+    const result = (changes = 0, results = []) => ({{ success: true, results, meta: {{ changes }} }});
+    const normalizedSql = (sql) => sql.replace(/\\s+/g, " ").trim().toLowerCase();
+    const partsFor = (deliveryId) => [...state.parts.values()]
+      .filter((part) => part.delivery_id === deliveryId)
+      .sort((left, right) => left.part_index - right.part_index);
+    const canComplete = (deliveryId, claimToken) => {{
+      const delivery = state.deliveries.get(deliveryId);
+      return Boolean(
+        delivery && delivery.claim_token === claimToken && delivery.status === "sending" &&
+        partsFor(deliveryId).every((part) => part.status === "sent")
+      );
+    }};
+    const execute = (statement) => {{
+      const {{ sql, values }} = statement;
+      const compact = normalizedSql(sql);
+      state.operations.push({{ sql, values }});
+
+      if (compact.startsWith("select id, created_at") && compact.includes("from interest_submissions")) {{
+        return result(0, state.rows
+          .filter((row) => row.notified_at == null && ["new", "review", "spam", "test"].includes(String(row.status || "new").toLowerCase()))
+          .sort((left, right) => String(left.created_at).localeCompare(String(right.created_at)))
+          .map((row) => ({{ ...row }})));
+      }}
+      if (compact === "select id from interest_digest_deliveries where status != 'sent' order by window_start asc limit 1") {{
+        const delivery = [...state.deliveries.values()]
+          .filter((candidate) => candidate.status !== "sent")
+          .sort((left, right) => left.window_start.localeCompare(right.window_start))[0];
+        return result(0, delivery ? [{{ id: delivery.id }}] : []);
+      }}
+      if (compact.startsWith("select id, window_start") && compact.includes("from interest_digest_deliveries")) {{
+        const delivery = state.deliveries.get(values[0]);
+        return result(0, delivery ? [{{ ...delivery }}] : []);
+      }}
+      if (compact.startsWith("select delivery_id, part_index") && compact.includes("from interest_digest_delivery_parts")) {{
+        return result(0, partsFor(values[0]).map((part) => ({{ ...part }})));
+      }}
+      if (compact.startsWith("insert into interest_digest_deliveries")) {{
+        const [id, windowStart, windowEnd, contentHash, title, includedRowIds, createdAt, updatedAt] = values;
+        const exists = [...state.deliveries.values()].some(
+          (delivery) => delivery.window_start === windowStart && delivery.window_end === windowEnd
+        );
+        if (exists) return result(0);
+        state.deliveries.set(id, {{
+          id, window_start: windowStart, window_end: windowEnd, content_hash: contentHash,
+          title, included_row_ids_json: includedRowIds, status: "pending", claim_token: null,
+          claimed_at: null, lease_expires_at: null, completed_at: null, last_error: null,
+          created_at: createdAt, updated_at: updatedAt
+        }});
+        return result(1);
+      }}
+      if (compact.startsWith("insert into interest_digest_delivery_parts")) {{
+        const [deliveryId, partIndex, partCount, contentHash, title, message, createdAt, updatedAt] = values;
+        const key = `${{deliveryId}}:${{partIndex}}`;
+        if (state.parts.has(key)) return result(0);
+        state.parts.set(key, {{
+          delivery_id: deliveryId, part_index: partIndex, part_count: partCount,
+          content_hash: contentHash, title, message, status: "pending", attempts: 0,
+          attempt_started_at: null, sent_at: null, last_error: null,
+          created_at: createdAt, updated_at: updatedAt
+        }});
+        return result(1);
+      }}
+      if (compact.startsWith("update interest_digest_deliveries") && compact.includes("set status = 'sending'")) {{
+        const [claimToken, claimedAt, leaseExpiresAt, updatedAt, deliveryId, nowIso] = values;
+        const delivery = state.deliveries.get(deliveryId);
+        const blockedPart = partsFor(deliveryId).some((part) => ["sending", "ambiguous"].includes(part.status));
+        const leaseAvailable = !delivery?.claim_token || !delivery?.lease_expires_at || delivery.lease_expires_at <= nowIso;
+        if (!delivery || delivery.status === "sent" || blockedPart || !leaseAvailable) return result(0);
+        Object.assign(delivery, {{
+          status: "sending", claim_token: claimToken, claimed_at: claimedAt,
+          lease_expires_at: leaseExpiresAt, last_error: null, updated_at: updatedAt
+        }});
+        return result(1);
+      }}
+      if (compact.startsWith("delete from interest_submissions")) {{
+        const index = state.rows.findIndex((row) => row.id === values[0] && row.notified_at == null);
+        if (index < 0) return result(0);
+        state.rows.splice(index, 1);
+        return result(1);
+      }}
+      if (compact.startsWith("update interest_submissions") && compact.includes("set status = ?, spam_score")) {{
+        const row = state.rows.find((candidate) => candidate.id === values[3]);
+        if (!row) return result(0);
+        [row.status, row.spam_score, row.admin_notes] = values.slice(0, 3);
+        return result(1);
+      }}
+      if (compact.startsWith("update interest_digest_delivery_parts") && compact.includes("set status = 'sending'")) {{
+        const [attemptAt, updatedAt, deliveryId, partIndex, guardDeliveryId, claimToken] = values;
+        const part = state.parts.get(`${{deliveryId}}:${{partIndex}}`);
+        const delivery = state.deliveries.get(guardDeliveryId);
+        if (!part || !["pending", "failed"].includes(part.status) || delivery?.claim_token !== claimToken || delivery.status !== "sending") return result(0);
+        Object.assign(part, {{
+          status: "sending", attempts: part.attempts + 1, attempt_started_at: attemptAt,
+          last_error: null, updated_at: updatedAt
+        }});
+        return result(1);
+      }}
+      if (compact.startsWith("update interest_digest_delivery_parts") && compact.includes("set status = 'sent'")) {{
+        const [sentAt, updatedAt, deliveryId, partIndex] = values;
+        const part = state.parts.get(`${{deliveryId}}:${{partIndex}}`);
+        if (!part || part.status !== "sending") return result(0);
+        Object.assign(part, {{ status: "sent", sent_at: sentAt, last_error: null, updated_at: updatedAt }});
+        return result(1);
+      }}
+      if (compact.startsWith("update interest_digest_delivery_parts") && compact.includes("set status = ?, last_error")) {{
+        const [status, lastError, updatedAt, deliveryId, partIndex] = values;
+        const part = state.parts.get(`${{deliveryId}}:${{partIndex}}`);
+        if (!part || part.status !== "sending") return result(0);
+        Object.assign(part, {{ status, last_error: lastError, updated_at: updatedAt }});
+        return result(1);
+      }}
+      if (compact.startsWith("update interest_digest_deliveries") && compact.includes("set status = ?, claim_token = null")) {{
+        const [status, lastError, updatedAt, deliveryId, claimToken] = values;
+        const delivery = state.deliveries.get(deliveryId);
+        if (!delivery || delivery.claim_token !== claimToken) return result(0);
+        Object.assign(delivery, {{
+          status, claim_token: null, lease_expires_at: null,
+          last_error: lastError, updated_at: updatedAt
+        }});
+        return result(1);
+      }}
+      if (compact.startsWith("update interest_submissions") && compact.includes("set notified_at = ?")) {{
+        const [notifiedAt, rowId, deliveryId, claimToken] = values;
+        if (!canComplete(deliveryId, claimToken)) return result(0);
+        const row = state.rows.find((candidate) => candidate.id === rowId);
+        if (!row) return result(0);
+        row.notified_at = notifiedAt;
+        if (String(row.status || "new").toLowerCase() !== "review") row.status = "notified";
+        return result(1);
+      }}
+      if (compact.startsWith("update interest_digest_deliveries") && compact.includes("set status = 'sent'")) {{
+        const [completedAt, updatedAt, deliveryId, claimToken] = values;
+        const delivery = state.deliveries.get(deliveryId);
+        if (!canComplete(deliveryId, claimToken)) return result(0);
+        Object.assign(delivery, {{
+          status: "sent", claim_token: null, lease_expires_at: null,
+          completed_at: completedAt, last_error: null, updated_at: updatedAt
+        }});
+        return result(1);
+      }}
+      if (compact.startsWith("update interest_digest_deliveries set updated_at")) {{
+        const [updatedAt, deliveryId, claimToken] = values;
+        const delivery = state.deliveries.get(deliveryId);
+        if (!delivery || delivery.claim_token !== claimToken || delivery.status !== "sending") return result(0);
+        delivery.updated_at = updatedAt;
+        return result(1);
+      }}
+      throw new Error(`Unhandled durable D1 statement: ${{compact}}`);
+    }};
+    const prepare = (sql) => ({{
+      bind: (...values) => {{
+        const statement = {{ sql, values }};
+        statement.all = async () => execute(statement);
+        statement.run = async () => execute(statement);
+        return statement;
+      }}
+    }});
+    return {{
+      state,
+      prepare,
+      batch: async (statements) => {{
+        state.batchCalls += 1;
+        return statements.map(execute);
+      }}
+    }};
+  }}
+
+  function base64Url(value) {{
+    return Buffer.from(value)
+      .toString("base64")
+      .replace(/[+]/g, "-")
+      .replace(/[/]/g, "_")
+      .replace(/=+$/g, "");
+  }}
+
+  async function makeAccessIdentity(overrides = {{}}) {{
+    const issuer = overrides.issuer || "https://steel.cloudflareaccess.com";
+    const audience = overrides.audience || "interest-digest-aud";
+    const kid = overrides.kid || `kid-${{crypto.randomUUID()}}`;
+    const keyPair = overrides.keyPair || await crypto.subtle.generateKey(
+      {{ name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" }},
+      true,
+      ["sign", "verify"]
+    );
+    const header = base64Url(JSON.stringify({{ alg: "RS256", kid, typ: "JWT" }}));
+    const now = Math.floor(Date.now() / 1000);
+    const claims = base64Url(JSON.stringify({{
+      iss: issuer,
+      aud: [audience],
+      exp: overrides.exp ?? now + 300,
+      nbf: overrides.nbf ?? now - 5,
+      sub: "service-token",
+      type: "service_token"
+    }}));
+    const signingInput = `${{header}}.${{claims}}`;
+    const signature = await crypto.subtle.sign(
+      "RSASSA-PKCS1-v1_5",
+      keyPair.privateKey,
+      new TextEncoder().encode(signingInput)
+    );
+    const jwk = await crypto.subtle.exportKey("jwk", keyPair.publicKey);
+    return {{
+      token: `${{signingInput}}.${{base64Url(new Uint8Array(signature))}}`,
+      jwk: {{ ...jwk, kid, alg: "RS256", use: "sig" }},
+      keyPair,
+      env: {{
+        INTEREST_DIGEST_ACCESS_ISSUER: issuer,
+        INTEREST_DIGEST_ACCESS_AUD: audience,
+        INTEREST_DIGEST_ACCESS_JWKS_URL: `${{issuer}}/cdn-cgi/access/certs`
+      }}
     }};
   }}
 
