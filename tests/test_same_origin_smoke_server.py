@@ -84,12 +84,12 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     assert headers["Content-Type"] == "text/css; charset=utf-8"
     assert b".home-product-grid" in shell_css
 
-    status, headers, sign_fallback = call_app(smoke_app(), "/ui/brand/steel-guitar-rag-hanging-sign-fallback.png")
+    status, headers, sign_fallback = call_app(smoke_app(), "/ui/brand/steel-guitar-rag-landing-fallback-alpha.png")
     assert status == "200 OK"
     assert headers["Content-Type"] == "image/png"
     assert sign_fallback.startswith(b"\x89PNG\r\n\x1a\n")
 
-    status, headers, sign_video = call_app(smoke_app(), "/ui/brand/steel-guitar-rag-hanging-sign.webm")
+    status, headers, sign_video = call_app(smoke_app(), "/ui/brand/steel-guitar-rag-landing-alpha.webm")
     assert status == "200 OK"
     assert headers["Content-Type"] == "video/webm"
     assert sign_video.startswith(b"\x1aE\xdf\xa3")
