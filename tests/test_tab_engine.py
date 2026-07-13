@@ -7,6 +7,7 @@ from typing import Any
 import pytest
 
 from pocketsteel.api import create_app
+from pocketsteel.access_control import DEV_ACCESS_ROLE_ENVIRON
 from pocketsteel.answer_tab_examples import (
     answer_body_for_tab_example,
     fretboard_payload_for_tab_example,
@@ -633,6 +634,7 @@ def _call_tab_api(json_body: dict[str, Any]) -> tuple[str, dict[str, Any]]:
                 "QUERY_STRING": "",
                 "CONTENT_LENGTH": str(len(body)),
                 "wsgi.input": io.BytesIO(body),
+                DEV_ACCESS_ROLE_ENVIRON: "beta_user",
             },
             start_response,
         )

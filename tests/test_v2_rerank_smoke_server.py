@@ -171,7 +171,7 @@ def test_v2_production_cloudflare_access_blocks_local_anonymous_answer(monkeypat
     )
 
     assert status == "401 Unauthorized"
-    assert payload == {"error": "/api/answer requires Cloudflare Access identity"}
+    assert payload == {"error": "request requires Cloudflare Access identity"}
 
 
 def test_v2_production_cloudflare_access_ignores_dev_role_headers(monkeypatch: Any) -> None:
@@ -192,7 +192,7 @@ def test_v2_production_cloudflare_access_ignores_dev_role_headers(monkeypatch: A
     )
 
     assert status == "401 Unauthorized"
-    assert payload == {"error": "/api/answer requires Cloudflare Access identity"}
+    assert payload == {"error": "request requires Cloudflare Access identity"}
 
 
 def test_v2_production_cloudflare_access_allows_valid_identity(monkeypatch: Any) -> None:

@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import os
+import threading
 import time
-from collections import defaultdict, deque
+from collections import OrderedDict, deque
 from dataclasses import dataclass
 from typing import Any, Deque
 
@@ -13,9 +14,11 @@ from pocketsteel.access_control import AccessRole
 RATE_LIMIT_ENABLED_ENV = "STEEL_RAG_ANSWER_RATE_LIMIT_ENABLED"
 RATE_LIMIT_MAX_REQUESTS_ENV = "STEEL_RAG_ANSWER_RATE_LIMIT_MAX_REQUESTS"
 RATE_LIMIT_WINDOW_SECONDS_ENV = "STEEL_RAG_ANSWER_RATE_LIMIT_WINDOW_SECONDS"
+RATE_LIMIT_MAX_KEYS_ENV = "STEEL_RAG_ANSWER_RATE_LIMIT_MAX_KEYS"
 
 DEFAULT_RATE_LIMIT_MAX_REQUESTS = 120
 DEFAULT_RATE_LIMIT_WINDOW_SECONDS = 60
+DEFAULT_RATE_LIMIT_MAX_KEYS = 10_000
 
 
 @dataclass(frozen=True)
@@ -70,13 +73,16 @@ class InMemoryAnswerRateLimiter:
         enabled: bool = True,
         max_requests: int = DEFAULT_RATE_LIMIT_MAX_REQUESTS,
         window_seconds: int = DEFAULT_RATE_LIMIT_WINDOW_SECONDS,
+        max_keys: int = DEFAULT_RATE_LIMIT_MAX_KEYS,
         time_func: Any = time.monotonic,
     ) -> None:
         self.enabled = enabled
         self.max_requests = max(1, int(max_requests))
         self.window_seconds = max(1, int(window_seconds))
+        self.max_keys = max(100, int(max_keys))
         self.time_func = time_func
-        self._attempts: dict[str, Deque[float]] = defaultdict(deque)
+        self._attempts: OrderedDict[str, Deque[float]] = OrderedDict()
+        self._lock = threading.Lock()
 
     @classmethod
     def from_env(cls) -> "InMemoryAnswerRateLimiter":
@@ -84,6 +90,7 @@ class InMemoryAnswerRateLimiter:
             enabled=_env_flag(RATE_LIMIT_ENABLED_ENV, True),
             max_requests=_env_positive_int(RATE_LIMIT_MAX_REQUESTS_ENV, DEFAULT_RATE_LIMIT_MAX_REQUESTS),
             window_seconds=_env_positive_int(RATE_LIMIT_WINDOW_SECONDS_ENV, DEFAULT_RATE_LIMIT_WINDOW_SECONDS),
+            max_keys=_env_positive_int(RATE_LIMIT_MAX_KEYS_ENV, DEFAULT_RATE_LIMIT_MAX_KEYS),
         )
 
     def check(self, key: str) -> RateLimitDecision:
@@ -91,20 +98,29 @@ class InMemoryAnswerRateLimiter:
             return RateLimitDecision(True, key=key, limit=self.max_requests, window_seconds=self.window_seconds)
 
         now = float(self.time_func())
-        attempts = self._attempts[key]
-        while attempts and now - attempts[0] >= self.window_seconds:
-            attempts.popleft()
+        with self._lock:
+            attempts = self._attempts.get(key)
+            if attempts is None:
+                while len(self._attempts) >= self.max_keys:
+                    self._attempts.popitem(last=False)
+                attempts = deque()
+                self._attempts[key] = attempts
+            else:
+                self._attempts.move_to_end(key)
 
-        if len(attempts) >= self.max_requests:
-            retry_after = max(1, int(self.window_seconds - (now - attempts[0])))
-            return RateLimitDecision(
-                False,
-                key=key,
-                limit=self.max_requests,
-                window_seconds=self.window_seconds,
-                retry_after_seconds=retry_after,
-                error="/api/answer rate limit exceeded",
-            )
+            while attempts and now - attempts[0] >= self.window_seconds:
+                attempts.popleft()
 
-        attempts.append(now)
-        return RateLimitDecision(True, key=key, limit=self.max_requests, window_seconds=self.window_seconds)
+            if len(attempts) >= self.max_requests:
+                retry_after = max(1, int(self.window_seconds - (now - attempts[0])))
+                return RateLimitDecision(
+                    False,
+                    key=key,
+                    limit=self.max_requests,
+                    window_seconds=self.window_seconds,
+                    retry_after_seconds=retry_after,
+                    error="/api/answer rate limit exceeded",
+                )
+
+            attempts.append(now)
+            return RateLimitDecision(True, key=key, limit=self.max_requests, window_seconds=self.window_seconds)

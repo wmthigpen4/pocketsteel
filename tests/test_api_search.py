@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlencode
 
+import pytest
+
 from pocketsteel import chroma_search
 from pocketsteel.answer_contracts import (
     CONTRACTS,
@@ -35,8 +37,12 @@ from pocketsteel.curated_song_references import (
     load_steel_guitar_rag_reference,
 )
 from pocketsteel.fretboard_examples import DEFAULT_PEDAL_LEVER_LABELS
-from pocketsteel.api import create_app
-from pocketsteel.access_control import DEV_ACCESS_ROLE_ENVIRON, TRUSTED_AUTH_ROLE_ENVIRON
+from pocketsteel.api import MAX_JSON_BODY_BYTES, create_app
+from pocketsteel.access_control import (
+    DEV_ACCESS_ROLE_ENVIRON,
+    TRUSTED_AUTH_ROLE_ENVIRON,
+    AuthConfigurationError,
+)
 from pocketsteel.answer_usage import InMemoryAnswerRateLimiter
 from pocketsteel.cloudflare_access import (
     CLOUDFLARE_ACCESS_AUTHORIZATION_COOKIE,
@@ -509,7 +515,7 @@ def test_api_search_private_mode_falls_back_when_private_env_disabled() -> None:
     assert payload["warnings"] == ["private retrieval disabled or not allowed for role; using sgf_only"]
 
 
-def test_api_search_private_not_exposed_to_anonymous_even_when_enabled() -> None:
+def test_api_search_rejects_anonymous_before_private_retrieval() -> None:
     sgf_index = FakeSearchIndex(
         {
             "results": [{"chunk_id": "sgf-1", "thread_title": "SGF result", "source_system": "sgf_phpbb_current"}],
@@ -532,10 +538,10 @@ def test_api_search_private_not_exposed_to_anonymous_even_when_enabled() -> None
         access_role=None,
     )
 
-    assert status == "200 OK"
-    assert [result["chunk_id"] for result in payload["results"]] == ["sgf-1"]
+    assert status == "401 Unauthorized"
+    assert payload == {"error": "request requires authenticated beta_user or admin access"}
+    assert sgf_index.calls == []
     assert private_index.calls == []
-    assert payload["warnings"] == ["private retrieval disabled or not allowed for role; using sgf_only"]
 
 
 def test_api_session_local_dev_query_access_beta_user() -> None:
@@ -565,12 +571,10 @@ def test_api_version_reports_runtime_identity_without_auth_or_secrets() -> None:
     )
 
     assert status == "200 OK"
+    assert payload["status"] == "ok"
     assert payload["git_sha"]
-    assert payload["git_branch"]
     assert payload["server_started_at"]
-    assert payload["python_module"] == "pocketsteel.api"
-    assert payload["retrieval_mode"] == "hybrid_private_first"
-    assert payload["auth_provider"] == "cloudflare_access"
+    assert set(payload) == {"status", "git_sha", "server_started_at"}
     assert "email" not in payload
     assert "token" not in json.dumps(payload).lower()
     assert "/Users/" not in json.dumps(payload)
@@ -601,7 +605,6 @@ def test_api_version_reports_app_start_identity_consistently() -> None:
     assert first_status == "200 OK"
     assert second_status == "200 OK"
     assert first_payload["git_sha"] == second_payload["git_sha"]
-    assert first_payload["git_branch"] == second_payload["git_branch"]
     assert first_payload["server_started_at"] == second_payload["server_started_at"]
 
 
@@ -616,7 +619,186 @@ def test_api_version_rejects_non_get_method() -> None:
     assert payload == {"error": "method not allowed"}
 
 
-def test_api_search_local_dev_query_access_can_use_private_when_enabled() -> None:
+@pytest.mark.parametrize(
+    ("path", "method", "body", "feature_flags"),
+    [
+        ("/api/search", "GET", None, {}),
+        ("/api/tab/render", "POST", {"events": []}, {}),
+        ("/api/lessons/catalog", "GET", None, {}),
+        ("/api/lessons/build", "POST", {"lessonId": "blocking-foundations"}, {}),
+        ("/api/melody/catalog", "GET", None, {"melody_exercise_enabled": True}),
+        (
+            "/api/melody/import",
+            "POST",
+            {"sourceType": "catalog", "catalogId": "amazing-grace"},
+            {"melody_exercise_enabled": True, "melody_import_enabled": True},
+        ),
+    ],
+)
+def test_content_api_routes_require_identity_before_work(
+    path: str,
+    method: str,
+    body: dict[str, Any] | None,
+    feature_flags: dict[str, bool],
+) -> None:
+    status, _, payload = call_app(
+        path,
+        {"q": "blocking"} if path == "/api/search" else None,
+        method=method,
+        json_body=body,
+        access_role=None,
+        **feature_flags,
+    )
+
+    assert status == "401 Unauthorized"
+    assert payload == {"error": "request requires authenticated beta_user or admin access"}
+
+
+def test_unauthorized_answer_is_rejected_before_request_body_read() -> None:
+    app = create_app(
+        fake_search_index(),
+        answer_provider=FakeAnswerProvider(),
+        answer_auth_mode="local_dev",
+        auth_provider="scaffold",
+    )
+    captured: dict[str, Any] = {}
+
+    class UnreadableBody:
+        def read(self, _size: int) -> bytes:
+            raise AssertionError("authorization must run before body parsing")
+
+    def start_response(status: str, headers: list[tuple[str, str]]) -> None:
+        captured["status"] = status
+        captured["headers"] = dict(headers)
+
+    response = b"".join(
+        app(
+            {
+                "REQUEST_METHOD": "POST",
+                "PATH_INFO": "/api/answer",
+                "QUERY_STRING": "",
+                "CONTENT_LENGTH": str(MAX_JSON_BODY_BYTES + 1),
+                "wsgi.input": UnreadableBody(),
+            },
+            start_response,
+        )
+    )
+
+    assert captured["status"] == "401 Unauthorized"
+    assert json.loads(response) == {"error": "request requires authenticated beta_user or admin access"}
+
+
+def test_authorized_normal_json_request_over_limit_is_rejected_before_read() -> None:
+    app = create_app(
+        fake_search_index(),
+        answer_provider=FakeAnswerProvider(),
+        answer_auth_mode="local_dev",
+        auth_provider="scaffold",
+    )
+    captured: dict[str, Any] = {}
+
+    class UnreadableBody:
+        def read(self, _size: int) -> bytes:
+            raise AssertionError("oversized body must be rejected from Content-Length")
+
+    def start_response(status: str, headers: list[tuple[str, str]]) -> None:
+        captured["status"] = status
+        captured["headers"] = dict(headers)
+
+    response = b"".join(
+        app(
+            {
+                "REQUEST_METHOD": "POST",
+                "PATH_INFO": "/api/answer",
+                "QUERY_STRING": "",
+                "CONTENT_LENGTH": str(MAX_JSON_BODY_BYTES + 1),
+                "wsgi.input": UnreadableBody(),
+                DEV_ACCESS_ROLE_ENVIRON: "beta_user",
+            },
+            start_response,
+        )
+    )
+
+    assert captured["status"] == "413 Payload Too Large"
+    assert json.loads(response) == {"error": "request body exceeds the 1 MiB JSON limit"}
+
+
+def test_api_responses_include_baseline_security_headers() -> None:
+    status, headers, _payload = call_app("/api/version", method="GET", access_role=None)
+
+    assert status == "200 OK"
+    assert headers["X-Content-Type-Options"] == "nosniff"
+    assert headers["Referrer-Policy"] == "no-referrer"
+    assert headers["Permissions-Policy"] == "camera=(), geolocation=(), microphone=()"
+    assert "report-uri /api/security/csp-report" in headers["Content-Security-Policy-Report-Only"]
+
+
+def test_authenticated_csp_report_collection_is_bounded_and_sanitized() -> None:
+    app = create_app(
+        fake_search_index(),
+        answer_provider=FakeAnswerProvider(),
+        answer_auth_mode="local_dev",
+        auth_provider="scaffold",
+    )
+    report = {
+        "csp-report": {
+            "effective-directive": "script-src-elem",
+            "blocked-uri": "https://cdn.example.test/script.js?secret=do-not-log",
+        }
+    }
+    body = json.dumps(report).encode("utf-8")
+    captured: dict[str, Any] = {}
+
+    def start_response(status: str, headers: list[tuple[str, str]]) -> None:
+        captured["status"] = status
+        captured["headers"] = dict(headers)
+
+    response = b"".join(
+        app(
+            {
+                "REQUEST_METHOD": "POST",
+                "PATH_INFO": "/api/security/csp-report",
+                "QUERY_STRING": "",
+                "CONTENT_LENGTH": str(len(body)),
+                "wsgi.input": io.BytesIO(body),
+                DEV_ACCESS_ROLE_ENVIRON: "beta_user",
+            },
+            start_response,
+        )
+    )
+
+    assert captured["status"] == "204 No Content"
+    assert response == b""
+    assert app.csp_report_log[-1] == {
+        "directive": "script-src-elem",
+        "blockedHost": "cdn.example.test",
+    }
+
+
+def test_search_source_links_are_restricted_to_http_and_https() -> None:
+    search_index = FakeSearchIndex(
+        {
+            "results": [
+                {
+                    "score": 0.8,
+                    "excerpt": "Safe text with an unsafe clickable scheme.",
+                    "thread_title": "Unsafe link",
+                    "thread_url": "javascript:alert(1)",
+                    "chunk_id": "unsafe-link",
+                    "post_uid": "p-unsafe",
+                }
+            ],
+            "warnings": [],
+        }
+    )
+
+    status, _, payload = call_app("/api/search", {"q": "blocking"}, search_index=search_index)
+
+    assert status == "200 OK"
+    assert payload["results"][0]["thread_url"] == ""
+
+
+def test_api_search_local_dev_identity_can_use_private_when_enabled() -> None:
     sgf_index = FakeSearchIndex(
         {
             "results": [{"chunk_id": "sgf-1", "thread_title": "SGF result", "source_system": "sgf_phpbb_current"}],
@@ -634,11 +816,11 @@ def test_api_search_local_dev_query_access_can_use_private_when_enabled() -> Non
 
     status, _, payload = call_app(
         "/api/search",
-        {"q": "my common grips", "access": "beta_user"},
+        {"q": "my common grips"},
         search_index=sgf_index,
         private_search_index=private_index,
         retrieval_config=retrieval_config("hybrid_private_first", private_enabled=True),
-        access_role=None,
+        access_role="beta_user",
     )
 
     assert status == "200 OK"
@@ -710,7 +892,7 @@ def test_api_search_debug_metadata_is_admin_only() -> None:
     }
 
 
-def test_api_search_production_cloudflare_ignores_query_and_dev_header_for_private(monkeypatch: Any) -> None:
+def test_api_search_production_cloudflare_rejects_query_and_dev_header_before_retrieval(monkeypatch: Any) -> None:
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
     monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
@@ -740,13 +922,13 @@ def test_api_search_production_cloudflare_ignores_query_and_dev_header_for_priva
         access_header="dev",
     )
 
-    assert status == "200 OK"
-    assert [result["chunk_id"] for result in payload["results"]] == ["sgf-1"]
+    assert status == "401 Unauthorized"
+    assert payload == {"error": "request requires Cloudflare Access identity"}
+    assert sgf_index.calls == []
     assert private_index.calls == []
-    assert payload["warnings"] == ["private retrieval disabled or not allowed for role; using sgf_only"]
 
 
-def test_api_search_production_cloudflare_ignores_trusted_mock_header_for_private(monkeypatch: Any) -> None:
+def test_api_search_production_cloudflare_rejects_trusted_mock_header_before_retrieval(monkeypatch: Any) -> None:
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
     monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
     monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
@@ -776,10 +958,10 @@ def test_api_search_production_cloudflare_ignores_trusted_mock_header_for_privat
         access_header="trusted",
     )
 
-    assert status == "200 OK"
-    assert [result["chunk_id"] for result in payload["results"]] == ["sgf-1"]
+    assert status == "401 Unauthorized"
+    assert payload == {"error": "request requires Cloudflare Access identity"}
+    assert sgf_index.calls == []
     assert private_index.calls == []
-    assert payload["warnings"] == ["private retrieval disabled or not allowed for role; using sgf_only"]
 
 
 def test_api_session_production_cloudflare_ignores_query_access(monkeypatch: Any) -> None:
@@ -901,48 +1083,54 @@ def test_api_answer_returns_frontend_contract() -> None:
     }
 
 
-def test_api_answer_blocks_anonymous_in_production_like_mode() -> None:
+def test_api_production_startup_rejects_scaffold_provider() -> None:
     search_index = FakeSearchIndex({"results": [], "warnings": []})
-    status, _, payload = call_app(
-        "/api/answer",
-        method="POST",
-        json_body={"question": "cabinet drop compensator"},
-        search_index=search_index,
-        answer_auth_mode="production",
-        access_role=None,
-    )
-
-    assert status == "401 Unauthorized"
-    assert payload == {"error": "/api/answer requires authenticated beta_user or admin access"}
+    with pytest.raises(AuthConfigurationError, match="production auth must use cloudflare_access"):
+        call_app(
+            "/api/answer",
+            method="POST",
+            json_body={"question": "cabinet drop compensator"},
+            search_index=search_index,
+            answer_auth_mode="production",
+            access_role=None,
+        )
     assert search_index.calls == []
 
 
-def test_api_answer_allows_beta_user_in_production_like_mode() -> None:
-    status, _, payload = call_app(
-        "/api/answer",
-        method="POST",
-        json_body={"question": "cabinet drop compensator"},
-        answer_auth_mode="production",
-        access_role="beta_user",
-        access_header="trusted",
-    )
+def test_api_production_startup_rejects_missing_provider(monkeypatch: Any) -> None:
+    monkeypatch.delenv("STEEL_RAG_AUTH_PROVIDER", raising=False)
 
-    assert status == "200 OK"
-    assert "source-backed answer" in payload["answer"]
+    with pytest.raises(AuthConfigurationError, match="STEEL_RAG_AUTH_PROVIDER=cloudflare_access"):
+        create_app(
+            fake_search_index(),
+            answer_provider=FakeAnswerProvider(),
+            answer_auth_mode="production",
+            auth_provider=None,
+        )
 
 
-def test_api_answer_allows_admin_in_production_like_mode() -> None:
-    status, _, payload = call_app(
-        "/api/answer",
-        method="POST",
-        json_body={"question": "cabinet drop compensator"},
-        answer_auth_mode="production",
-        access_role="admin",
-        access_header="trusted",
-    )
+def test_api_production_startup_rejects_trusted_beta_header_scaffold() -> None:
+    with pytest.raises(AuthConfigurationError, match="production auth must use cloudflare_access"):
+        call_app(
+            "/api/answer",
+            method="POST",
+            json_body={"question": "cabinet drop compensator"},
+            answer_auth_mode="production",
+            access_role="beta_user",
+            access_header="trusted",
+        )
 
-    assert status == "200 OK"
-    assert "source-backed answer" in payload["answer"]
+
+def test_api_production_startup_rejects_trusted_admin_header_scaffold() -> None:
+    with pytest.raises(AuthConfigurationError, match="production auth must use cloudflare_access"):
+        call_app(
+            "/api/answer",
+            method="POST",
+            json_body={"question": "cabinet drop compensator"},
+            answer_auth_mode="production",
+            access_role="admin",
+            access_header="trusted",
+        )
 
 
 def _enable_curated_guidance_answer_flags(monkeypatch: Any) -> None:
@@ -1061,11 +1249,16 @@ def test_api_answer_curated_guidance_beta_user_blocked_even_when_flags_enabled(m
 
 def test_api_answer_curated_guidance_not_used_for_unauthenticated_public_request(monkeypatch: Any) -> None:
     _enable_curated_guidance_answer_flags(monkeypatch)
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
     curated_guidance = FakeCuratedGuidanceSearch([{"excerpt": "private"}])
     app = create_app(
         fake_search_index(),
         answer_provider=FakeAnswerProvider(),
         answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_verifier=FakeCloudflareVerifier(),
         curated_guidance_search=curated_guidance,
     )
 
@@ -1078,7 +1271,7 @@ def test_api_answer_curated_guidance_not_used_for_unauthenticated_public_request
     )
 
     assert status == "401 Unauthorized"
-    assert payload == {"error": "/api/answer requires authenticated beta_user or admin access"}
+    assert payload == {"error": "request requires Cloudflare Access identity"}
     assert curated_guidance.calls == []
     assert app.answer_request_log[-1]["accessStatus"] == "blocked"
 
@@ -1137,7 +1330,10 @@ def test_api_answer_curated_guidance_missing_corpus_falls_back_without_private_w
     assert event["curatedGuidanceCount"] == 0
 
 
-def test_api_answer_dev_override_only_works_when_explicitly_enabled() -> None:
+def test_api_answer_dev_override_only_works_when_explicitly_enabled(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
     production_search = FakeSearchIndex({"results": [], "warnings": []})
     status, _, payload = call_app(
         "/api/answer",
@@ -1145,12 +1341,14 @@ def test_api_answer_dev_override_only_works_when_explicitly_enabled() -> None:
         json_body={"question": "cabinet drop compensator"},
         search_index=production_search,
         answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_verifier=FakeCloudflareVerifier(),
         access_role="beta_user",
         access_header="dev",
     )
 
     assert status == "401 Unauthorized"
-    assert payload == {"error": "/api/answer requires authenticated beta_user or admin access"}
+    assert payload == {"error": "request requires Cloudflare Access identity"}
     assert production_search.calls == []
 
     dev_search = FakeSearchIndex(
@@ -1210,7 +1408,7 @@ def test_api_answer_ignores_legacy_scaffold_headers() -> None:
     payload = json.loads(b"".join(app(environ, start_response)))
 
     assert captured["status"] == "401 Unauthorized"
-    assert payload == {"error": "/api/answer requires authenticated beta_user or admin access"}
+    assert payload == {"error": "request requires authenticated beta_user or admin access"}
 
 
 def test_api_answer_cloudflare_access_blocks_missing_jwt(monkeypatch: Any) -> None:
@@ -1231,7 +1429,7 @@ def test_api_answer_cloudflare_access_blocks_missing_jwt(monkeypatch: Any) -> No
     )
 
     assert status == "401 Unauthorized"
-    assert payload == {"error": "/api/answer requires Cloudflare Access identity"}
+    assert payload == {"error": "request requires Cloudflare Access identity"}
     assert search_index.calls == []
 
 
@@ -1330,7 +1528,7 @@ def test_api_answer_cloudflare_access_blocks_invalid_jwt(monkeypatch: Any) -> No
     )
 
     assert status == "401 Unauthorized"
-    assert payload == {"error": "/api/answer requires valid Cloudflare Access identity"}
+    assert payload == {"error": "request requires valid Cloudflare Access identity"}
     assert search_index.calls == []
 
 
@@ -1661,7 +1859,7 @@ def test_api_answer_cloudflare_access_blocks_unlisted_valid_email(monkeypatch: A
     )
 
     assert status == "403 Forbidden"
-    assert payload == {"error": "/api/answer requires beta_user or admin access"}
+    assert payload == {"error": "request requires beta_user or admin access"}
     assert search_index.calls == []
 
 
@@ -1739,7 +1937,7 @@ def test_api_answer_cloudflare_access_ignores_dev_mock_header(monkeypatch: Any) 
     )
 
     assert status == "401 Unauthorized"
-    assert payload == {"error": "/api/answer requires Cloudflare Access identity"}
+    assert payload == {"error": "request requires Cloudflare Access identity"}
     assert search_index.calls == []
 
 
@@ -1804,7 +2002,7 @@ def test_api_answer_cloudflare_access_ignores_trusted_mock_header(monkeypatch: A
     )
 
     assert status == "401 Unauthorized"
-    assert payload == {"error": "/api/answer requires Cloudflare Access identity"}
+    assert payload == {"error": "request requires Cloudflare Access identity"}
     assert search_index.calls == []
 
 
@@ -1880,12 +2078,13 @@ def test_api_answer_logs_authorized_success() -> None:
     assert event["errorStatus"] == ""
 
 
-def test_api_answer_logs_anonymous_blocked_attempt() -> None:
+def test_api_answer_logs_anonymous_blocked_attempt_without_parsing_body() -> None:
     search_index = FakeSearchIndex({"results": [], "warnings": []})
     app = create_app(
         search_index,
         answer_provider=FakeAnswerProvider(),
-        answer_auth_mode="production",
+        answer_auth_mode="local_dev",
+        auth_provider="scaffold",
         answer_rate_limiter=InMemoryAnswerRateLimiter(enabled=True, max_requests=10, window_seconds=60),
     )
     status, _, payload = call_existing_app(
@@ -1897,7 +2096,7 @@ def test_api_answer_logs_anonymous_blocked_attempt() -> None:
     )
 
     assert status == "401 Unauthorized"
-    assert payload == {"error": "/api/answer requires authenticated beta_user or admin access"}
+    assert payload == {"error": "request requires authenticated beta_user or admin access"}
     assert search_index.calls == []
     event = app.answer_request_log[-1]
     assert event["role"] == "anonymous"
@@ -1906,11 +2105,33 @@ def test_api_answer_logs_anonymous_blocked_attempt() -> None:
     assert event["accessStatus"] == "blocked"
     assert event["authorized"] is False
     assert event["blocked"] is True
-    assert event["questionLength"] == len("cabinet drop compensator")
-    assert event["mode"] == "gear"
+    assert event["questionLength"] == 0
+    assert event["mode"] == "ask"
     assert event["sourceCount"] is None
     assert event["warningCount"] == 0
     assert event["errorStatus"] == "401 Unauthorized"
+
+
+def test_security_event_logs_and_rate_limit_keys_are_bounded() -> None:
+    app = create_app(
+        fake_search_index(),
+        answer_provider=FakeAnswerProvider(),
+        answer_auth_mode="local_dev",
+        auth_provider="scaffold",
+    )
+    for index in range(300):
+        app._log_answer_attempt(
+            {"question": f"question {index}"},
+            role="beta_user",
+            access_status="authorized",
+            authorized=True,
+        )
+    assert len(app.answer_request_log) == 256
+
+    limiter = InMemoryAnswerRateLimiter(max_requests=2, window_seconds=60, max_keys=100)
+    for index in range(125):
+        assert limiter.check(f"beta_user:{index}").allowed is True
+    assert len(limiter._attempts) == 100
 
 
 def test_api_answer_rate_limit_exceeded_returns_429_and_logs_attempt() -> None:
@@ -2109,7 +2330,7 @@ def test_api_answer_does_not_accept_local_dev_query_access() -> None:
     )
 
     assert status == "401 Unauthorized"
-    assert payload == {"error": "/api/answer requires authenticated beta_user or admin access"}
+    assert payload == {"error": "request requires authenticated beta_user or admin access"}
     assert search_index.calls == []
 
 
@@ -4000,14 +4221,14 @@ def test_api_answer_rejects_invalid_melody_without_rendering() -> None:
     assert "fretboard" not in payload
 
 
-def test_api_session_and_version_expose_melody_feature_only_when_enabled() -> None:
+def test_api_session_exposes_melody_feature_and_version_stays_minimal() -> None:
     status, _, session = call_app("/api/session", method="GET", melody_exercise_enabled=True)
     assert status == "200 OK"
     assert session["features"] == {"melodyExercise": True, "melodyCatalog": True}
 
     status, _, version = call_app("/api/version", method="GET", melody_exercise_enabled=True)
     assert status == "200 OK"
-    assert version["features"] == {"melodyExercise": True, "melodyCatalog": True}
+    assert set(version) == {"status", "git_sha", "server_started_at"}
 
 
 def test_melody_import_is_authenticated_flag_gated_and_no_store() -> None:
@@ -4068,7 +4289,7 @@ def test_melody_import_returns_temporary_amazing_grace_draft() -> None:
     assert payload == {"error": "melody import is not enabled"}
 
 
-def test_session_and_version_expose_both_melody_features() -> None:
+def test_session_exposes_both_melody_features_and_version_stays_minimal() -> None:
     status, _, session = call_app(
         "/api/session",
         method="GET",
@@ -4085,7 +4306,7 @@ def test_session_and_version_expose_both_melody_features() -> None:
         melody_import_enabled=True,
     )
     assert status == "200 OK"
-    assert version["features"] == {"melodyExercise": True, "melodyCatalog": True, "melodyImport": True}
+    assert set(version) == {"status", "git_sha", "server_started_at"}
 
 
 def test_steel_guitar_rag_safe_curated_questions_still_work_after_full_tab_guardrail() -> None:

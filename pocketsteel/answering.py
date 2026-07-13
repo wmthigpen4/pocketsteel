@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import Any, Literal, Protocol, cast
 
 from pocketsteel.api_contract import AnswerMode, SourceCitation
+from pocketsteel.rag_guardrails import safe_http_url
 
 from pocketsteel.basic_chord_answers import basic_chord_theory_answer_for_question, chord_change_answer_for_question
 from pocketsteel.curated_source_registry import answer_contains_unapproved_url, is_approved_curated_url, slide_bar_vendor_bullets
@@ -73,7 +74,7 @@ def source_to_card(source: dict[str, Any]) -> SourceCitation:
     card: dict[str, Any] = {
         "title": source.get("thread_title") or "Source thread",
         "forumName": source.get("forum_name") or "Steel Guitar Forum",
-        "url": source.get("thread_url") or "",
+        "url": safe_http_url(source.get("thread_url")),
         "excerpt": source.get("excerpt") or "",
         "score": float(source.get("score") or 0.0),
         "chunkId": source.get("chunk_id") or "",

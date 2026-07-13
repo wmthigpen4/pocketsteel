@@ -7,6 +7,7 @@ import binascii
 import re
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import urlparse
 
 
 INJECTION_WARNING = "prompt-injection-like text ignored"
@@ -51,6 +52,21 @@ BASE64ISH_RE = re.compile(r"\b[A-Za-z0-9+/]{32,}={0,2}\b")
 class SanitizedSources:
     sources: list[dict[str, Any]]
     warnings: list[str]
+
+
+def safe_http_url(value: Any) -> str:
+    """Return an HTTP(S) URL suitable for a clickable source card."""
+
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    try:
+        parsed = urlparse(text)
+    except ValueError:
+        return ""
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return ""
+    return text[:2048]
 
 
 def is_injection_like(text: str) -> bool:
@@ -119,6 +135,9 @@ def sanitize_retrieved_sources(sources: list[dict[str, Any]]) -> SanitizedSource
             continue
         clean_source = dict(source)
         clean_source["excerpt"] = sanitized_excerpt
+        for url_key in ("thread_url", "source_url", "url"):
+            if url_key in clean_source:
+                clean_source[url_key] = safe_http_url(clean_source.get(url_key))
         sanitized_sources.append(clean_source)
 
     return SanitizedSources(sources=sanitized_sources, warnings=warnings)

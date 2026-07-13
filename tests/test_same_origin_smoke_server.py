@@ -190,7 +190,7 @@ def test_same_origin_server_keeps_production_answer_api_protected() -> None:
 
     assert status == "401 Unauthorized"
     assert headers["Content-Type"] == "application/json; charset=utf-8"
-    assert json.loads(body) == {"error": "/api/answer requires Cloudflare Access identity"}
+    assert json.loads(body) == {"error": "request requires Cloudflare Access identity"}
 
 
 def test_same_origin_server_can_control_no_source_and_error_states() -> None:

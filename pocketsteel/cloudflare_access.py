@@ -1,14 +1,16 @@
-"""Cloudflare Access JWT validation for the Steel Guitar RAG API."""
+"""Cloudflare Access JWT validation for the application API."""
 
 from __future__ import annotations
 
-import base64
-import hashlib
 import json
+import threading
 import time
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import urlparse
 from urllib.request import urlopen
+
+import jwt
 
 
 CLOUDFLARE_ACCESS_JWT_HEADER = "Cf-Access-Jwt-Assertion"
@@ -20,7 +22,9 @@ CLOUDFLARE_ACCESS_JWKS_URL_ENV = "STEEL_RAG_CF_ACCESS_JWKS_URL"
 BETA_USER_EMAILS_ENV = "STEEL_RAG_BETA_USER_EMAILS"
 ADMIN_EMAILS_ENV = "STEEL_RAG_ADMIN_EMAILS"
 
-_SHA256_DIGESTINFO_PREFIX = bytes.fromhex("3031300d060960864801650304020105000420")
+DEFAULT_JWKS_TTL_SECONDS = 300
+MAX_JWKS_BYTES = 1_048_576
+MAX_JWKS_KEYS = 32
 
 
 class CloudflareAccessError(ValueError):
@@ -70,21 +74,6 @@ def parse_email_set(value: object) -> frozenset[str]:
     )
 
 
-def _base64url_decode(value: str) -> bytes:
-    padding = "=" * (-len(value) % 4)
-    return base64.urlsafe_b64decode((value + padding).encode("ascii"))
-
-
-def _load_json_segment(value: str) -> dict[str, Any]:
-    try:
-        payload = json.loads(_base64url_decode(value).decode("utf-8"))
-    except (ValueError, UnicodeDecodeError) as exc:
-        raise CloudflareAccessError("invalid jwt segment") from exc
-    if not isinstance(payload, dict):
-        raise CloudflareAccessError("invalid jwt segment")
-    return payload
-
-
 def _normalize_audience(value: Any) -> tuple[str, ...]:
     if isinstance(value, str):
         return (value,)
@@ -93,86 +82,66 @@ def _normalize_audience(value: Any) -> tuple[str, ...]:
     return ()
 
 
-def _rsa_verify_rs256(signing_input: bytes, signature: bytes, jwk: dict[str, Any]) -> bool:
-    try:
-        n = int.from_bytes(_base64url_decode(str(jwk["n"])), "big")
-        e = int.from_bytes(_base64url_decode(str(jwk["e"])), "big")
-    except (KeyError, ValueError, TypeError):
-        return False
-
-    key_length = (n.bit_length() + 7) // 8
-    if len(signature) != key_length:
-        return False
-
-    digest = hashlib.sha256(signing_input).digest()
-    expected = _SHA256_DIGESTINFO_PREFIX + digest
-    padding_length = key_length - len(expected) - 3
-    if padding_length < 8:
-        return False
-    encoded_expected = b"\x00\x01" + (b"\xff" * padding_length) + b"\x00" + expected
-    encoded_actual = pow(int.from_bytes(signature, "big"), e, n).to_bytes(key_length, "big")
-    return encoded_actual == encoded_expected
-
-
 class CloudflareAccessJwtVerifier:
-    """Verify Cloudflare Access JWTs against Access JWKS with stdlib crypto.
-
-    The verifier intentionally supports only RS256 JWTs with JWK `n`/`e`
-    material. That matches the Access JWKS shape used by Cloudflare docs and
-    keeps the origin-side validation dependency-free.
-    """
+    """Verify Access JWTs with a fixed RS256 allow-list and bounded JWKS cache."""
 
     def __init__(
         self,
         *,
         jwks: dict[str, Any] | None = None,
         http_timeout_seconds: float = 5.0,
-        now_func: Any = time.time,
+        jwks_ttl_seconds: int = DEFAULT_JWKS_TTL_SECONDS,
+        now_func: Any = time.monotonic,
+        jwks_loader: Any = None,
     ) -> None:
-        self._jwks = jwks
-        self.http_timeout_seconds = http_timeout_seconds
+        self._jwks = self._validate_jwks(jwks) if jwks is not None else None
+        self._jwks_loaded_at = float(now_func()) if jwks is not None else 0.0
+        self._static_jwks = jwks is not None and jwks_loader is None
+        self.http_timeout_seconds = max(0.25, min(float(http_timeout_seconds), 15.0))
+        self.jwks_ttl_seconds = max(30, min(int(jwks_ttl_seconds), 3600))
         self.now_func = now_func
+        self.jwks_loader = jwks_loader
+        self._jwks_lock = threading.Lock()
 
     def validate(self, token: str, config: CloudflareAccessConfig) -> CloudflareAccessClaims:
         if not token:
             raise CloudflareAccessError("missing access jwt")
         if not config.issuer or not config.audience:
             raise CloudflareAccessError("cloudflare access issuer and audience are required")
+        issuer_url = urlparse(config.issuer)
+        if issuer_url.scheme != "https" or not issuer_url.netloc:
+            raise CloudflareAccessError("cloudflare access issuer must be an https url")
 
-        parts = token.split(".")
-        if len(parts) != 3:
-            raise CloudflareAccessError("invalid access jwt")
-
-        header = _load_json_segment(parts[0])
-        payload = _load_json_segment(parts[1])
+        try:
+            header = jwt.get_unverified_header(token)
+        except jwt.PyJWTError as exc:
+            raise CloudflareAccessError("invalid access jwt") from exc
         if header.get("alg") != "RS256":
             raise CloudflareAccessError("unsupported access jwt algorithm")
+        if not str(header.get("kid") or "").strip():
+            raise CloudflareAccessError("access jwt signing key id is required")
 
         jwk = self._find_jwk(header, config)
-        signing_input = f"{parts[0]}.{parts[1]}".encode("ascii")
-        signature = _base64url_decode(parts[2])
-        if not _rsa_verify_rs256(signing_input, signature, jwk):
-            raise CloudflareAccessError("invalid access jwt signature")
+        try:
+            signing_key = jwt.PyJWK.from_dict(jwk, algorithm="RS256")
+            payload = jwt.decode(
+                token,
+                key=signing_key,
+                algorithms=["RS256"],
+                audience=config.audience,
+                issuer=config.issuer.rstrip("/"),
+                leeway=5,
+                options={"require": ["exp", "iss", "aud"]},
+            )
+        except jwt.ExpiredSignatureError as exc:
+            raise CloudflareAccessError("expired access jwt") from exc
+        except jwt.ImmatureSignatureError as exc:
+            raise CloudflareAccessError("access jwt not yet valid") from exc
+        except (jwt.PyJWTError, TypeError, ValueError) as exc:
+            raise CloudflareAccessError("invalid access jwt") from exc
 
         issuer = str(payload.get("iss") or "").rstrip("/")
-        if issuer != config.issuer.rstrip("/"):
-            raise CloudflareAccessError("invalid access jwt issuer")
-
         audience = _normalize_audience(payload.get("aud"))
-        if config.audience not in audience:
-            raise CloudflareAccessError("invalid access jwt audience")
-
-        now = float(self.now_func())
-        try:
-            exp = payload.get("exp")
-            if exp is not None and float(exp) < now:
-                raise CloudflareAccessError("expired access jwt")
-            nbf = payload.get("nbf")
-            if nbf is not None and float(nbf) > now:
-                raise CloudflareAccessError("access jwt not yet valid")
-        except (TypeError, ValueError) as exc:
-            raise CloudflareAccessError("invalid access jwt time claims") from exc
-
         email = str(payload.get("email") or payload.get("identity_email") or "").strip().lower()
         if not email:
             raise CloudflareAccessError("access jwt missing email")
@@ -180,28 +149,63 @@ class CloudflareAccessJwtVerifier:
 
     def _find_jwk(self, header: dict[str, Any], config: CloudflareAccessConfig) -> dict[str, Any]:
         kid = str(header.get("kid") or "")
-        jwks = self._jwks or self._fetch_jwks(config.jwks_url)
-        keys = jwks.get("keys") if isinstance(jwks, dict) else None
-        if not isinstance(keys, list):
-            raise CloudflareAccessError("invalid access jwks")
-        for key in keys:
-            if not isinstance(key, dict):
-                continue
-            if kid and key.get("kid") != kid:
-                continue
-            if key.get("kty") == "RSA" and key.get("n") and key.get("e"):
-                return key
+        for force_refresh in (False, True):
+            jwks = self._get_jwks(config.jwks_url, force_refresh=force_refresh)
+            for key in jwks["keys"]:
+                if key.get("kid") != kid:
+                    continue
+                if key.get("kty") == "RSA" and key.get("n") and key.get("e"):
+                    return key
+            if self._static_jwks:
+                break
         raise CloudflareAccessError("access jwt signing key not found")
 
-    def _fetch_jwks(self, jwks_url: str) -> dict[str, Any]:
+    def _get_jwks(self, jwks_url: str, *, force_refresh: bool) -> dict[str, Any]:
+        now = float(self.now_func())
+        with self._jwks_lock:
+            cache_fresh = (
+                self._jwks is not None
+                and (self._static_jwks or now - self._jwks_loaded_at < self.jwks_ttl_seconds)
+            )
+            if cache_fresh and not force_refresh:
+                return self._jwks
+            if self._static_jwks:
+                return self._jwks or {"keys": []}
+            payload = self._load_jwks(jwks_url)
+            self._jwks = self._validate_jwks(payload)
+            self._jwks_loaded_at = now
+            return self._jwks
+
+    def _load_jwks(self, jwks_url: str) -> dict[str, Any]:
         if not jwks_url:
             raise CloudflareAccessError("cloudflare access jwks url is required")
+        parsed_url = urlparse(jwks_url)
+        if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
+            raise CloudflareAccessError("cloudflare access jwks url must use http or https")
+        if self.jwks_loader is not None:
+            try:
+                return self.jwks_loader(jwks_url, self.http_timeout_seconds)
+            except CloudflareAccessError:
+                raise
+            except Exception as exc:
+                raise CloudflareAccessError("could not load access jwks") from exc
         try:
             with urlopen(jwks_url, timeout=self.http_timeout_seconds) as response:
-                payload = json.loads(response.read().decode("utf-8"))
+                raw_payload = response.read(MAX_JWKS_BYTES + 1)
+                if len(raw_payload) > MAX_JWKS_BYTES:
+                    raise CloudflareAccessError("access jwks is too large")
+                payload = json.loads(raw_payload.decode("utf-8"))
+        except CloudflareAccessError:
+            raise
         except (OSError, ValueError, UnicodeDecodeError) as exc:
             raise CloudflareAccessError("could not load access jwks") from exc
-        if not isinstance(payload, dict):
+        return payload
+
+    @staticmethod
+    def _validate_jwks(payload: Any) -> dict[str, Any]:
+        if not isinstance(payload, dict) or not isinstance(payload.get("keys"), list):
             raise CloudflareAccessError("invalid access jwks")
-        self._jwks = payload
+        keys = payload["keys"]
+        if not keys or len(keys) > MAX_JWKS_KEYS or not all(isinstance(key, dict) for key in keys):
+            raise CloudflareAccessError("invalid access jwks")
         return payload

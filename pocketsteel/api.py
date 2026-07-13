@@ -9,11 +9,12 @@ import json
 import os
 import re
 import subprocess
+from collections import deque
 from collections.abc import Iterable
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlsplit
 from wsgiref.simple_server import make_server
 
 from pocketsteel.answering import (
@@ -36,9 +37,8 @@ from pocketsteel.access_control import (
     authorize_answer_request,
     authorize_local_dev_request,
     configured_answer_auth_mode,
-    configured_auth_provider,
     normalize_answer_auth_mode,
-    normalize_auth_provider,
+    resolve_auth_provider,
 )
 from pocketsteel.answer_usage import InMemoryAnswerRateLimiter, answer_rate_limit_key
 from pocketsteel.answer_tab_examples import (
@@ -121,6 +121,28 @@ CURATED_GUIDANCE_FORUM_WISDOM_RE = re.compile(
     r"forum\s+(?:players|wisdom|opinions?)|owner\s+reports?|public\s+forum)\b",
     re.I,
 )
+MAX_JSON_BODY_BYTES = 1_048_576
+MAX_CSP_REPORT_BYTES = 65_536
+MAX_SECURITY_EVENT_LOG = 256
+SECURITY_RESPONSE_HEADERS: tuple[tuple[str, str], ...] = (
+    ("X-Content-Type-Options", "nosniff"),
+    ("Referrer-Policy", "no-referrer"),
+    ("Permissions-Policy", "camera=(), geolocation=(), microphone=()"),
+    ("Cross-Origin-Opener-Policy", "same-origin"),
+    (
+        "Content-Security-Policy-Report-Only",
+        "default-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; "
+        "report-uri /api/security/csp-report",
+    ),
+)
+
+
+class JsonRequestError(ValueError):
+    pass
+
+
+class JsonRequestTooLargeError(JsonRequestError):
+    pass
 
 
 def _question_mentions_slide_bar_item(question: str) -> bool:
@@ -273,10 +295,11 @@ class RetrievalApi:
         self.curated_guidance_search = curated_guidance_search or search_curated_guidance
         self.answer_provider = configured_answer_provider(answer_provider)
         self.answer_auth_mode = normalize_answer_auth_mode(answer_auth_mode or configured_answer_auth_mode())
-        self.auth_provider = normalize_auth_provider(auth_provider or configured_auth_provider())
+        self.auth_provider = resolve_auth_provider(self.answer_auth_mode, auth_provider)
         self.cloudflare_verifier = cloudflare_verifier
         self.answer_rate_limiter = answer_rate_limiter or InMemoryAnswerRateLimiter.from_env()
-        self.answer_request_log: list[dict[str, Any]] = []
+        self.answer_request_log: deque[dict[str, Any]] = deque(maxlen=MAX_SECURITY_EVENT_LOG)
+        self.csp_report_log: deque[dict[str, str]] = deque(maxlen=MAX_SECURITY_EVENT_LOG)
         self.retrieval_config = retrieval_config or configured_retrieval_mode_config()
         self.melody_exercise_enabled = (
             configured_melody_exercise_enabled()
@@ -301,17 +324,37 @@ class RetrievalApi:
                 return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"})
             return self._json_response(start_response, "200 OK", self._version_payload())
 
+        if path == "/api/security/csp-report":
+            if method != "POST":
+                return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"})
+            access = self._authorize_content_request(environ)
+            if not access.allowed:
+                return self._json_response(start_response, access.status, {"error": access.error})
+            try:
+                report_payload = self._read_json_body(environ, max_bytes=MAX_CSP_REPORT_BYTES)
+            except JsonRequestTooLargeError as exc:
+                return self._json_response(start_response, "413 Payload Too Large", {"error": str(exc)})
+            except JsonRequestError as exc:
+                return self._json_response(start_response, "400 Bad Request", {"error": str(exc)})
+            self.csp_report_log.append(self._csp_report_summary(report_payload))
+            return self._empty_response(start_response, "204 No Content")
+
         if path == "/api/search":
             if method != "GET":
                 return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"})
 
+            access = self._authorize_content_request(environ)
+            if not access.allowed:
+                return self._json_response(start_response, access.status, {"error": access.error})
+
             params = parse_qs(environ.get("QUERY_STRING", ""), keep_blank_values=True)
             query = params.get("q", [""])[0]
-            search_response, debug_metadata = self._search_for_api(query, environ)
+            search_response, debug_metadata = self._search_for_api(query, role=access.role)
+            sanitized_search = sanitize_retrieved_sources(search_response.results)
             payload = {
                 "query": query,
-                "results": search_response.results,
-                "warnings": search_response.warnings,
+                "results": sanitized_search.sources,
+                "warnings": [*search_response.warnings, *sanitized_search.warnings],
             }
             if debug_metadata:
                 payload["retrieval"] = debug_metadata
@@ -353,16 +396,11 @@ class RetrievalApi:
         if path == "/api/melody/catalog":
             if method != "GET":
                 return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"}, extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")))
-            if not self.melody_exercise_enabled:
-                return self._json_response(start_response, "404 Not Found", {"error": "melody catalog is not enabled"}, extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")))
-            access = authorize_answer_request(
-                environ,
-                self.answer_auth_mode,
-                self.auth_provider,
-                self.cloudflare_verifier,
-            )
+            access = self._authorize_content_request(environ)
             if not access.allowed:
                 return self._json_response(start_response, access.status, {"error": access.error}, extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")))
+            if not self.melody_exercise_enabled:
+                return self._json_response(start_response, "404 Not Found", {"error": "melody catalog is not enabled"}, extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")))
             return self._json_response(
                 start_response,
                 "200 OK",
@@ -373,12 +411,7 @@ class RetrievalApi:
         if path == "/api/melody/import":
             if method != "POST":
                 return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"}, extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")))
-            access = authorize_answer_request(
-                environ,
-                self.answer_auth_mode,
-                self.auth_provider,
-                self.cloudflare_verifier,
-            )
+            access = self._authorize_content_request(environ)
             if not access.allowed:
                 return self._json_response(start_response, access.status, {"error": access.error}, extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")))
             try:
@@ -412,12 +445,7 @@ class RetrievalApi:
         if path == "/api/lessons/catalog":
             if method != "GET":
                 return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"})
-            access = authorize_answer_request(
-                environ,
-                self.answer_auth_mode,
-                self.auth_provider,
-                self.cloudflare_verifier,
-            )
+            access = self._authorize_content_request(environ)
             if not access.allowed:
                 return self._json_response(start_response, access.status, {"error": access.error})
             return self._json_response(
@@ -430,16 +458,15 @@ class RetrievalApi:
         if path == "/api/lessons/build":
             if method != "POST":
                 return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"})
-            access = authorize_answer_request(
-                environ,
-                self.answer_auth_mode,
-                self.auth_provider,
-                self.cloudflare_verifier,
-            )
+            access = self._authorize_content_request(environ)
             if not access.allowed:
                 return self._json_response(start_response, access.status, {"error": access.error})
             try:
                 lesson = build_lesson(self._read_json_body(environ))
+            except JsonRequestTooLargeError as exc:
+                return self._json_response(start_response, "413 Payload Too Large", {"error": str(exc)})
+            except JsonRequestError as exc:
+                return self._json_response(start_response, "400 Bad Request", {"error": str(exc)})
             except LessonStudioError as exc:
                 return self._json_response(start_response, "400 Bad Request", {"error": str(exc)})
             return self._json_response(
@@ -452,23 +479,25 @@ class RetrievalApi:
         if path == "/api/tab/render":
             if method != "POST":
                 return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"})
-            request_payload = self._read_json_body(environ)
+            access = self._authorize_content_request(environ)
+            if not access.allowed:
+                return self._json_response(start_response, access.status, {"error": access.error})
+            try:
+                request_payload = self._read_json_body(environ)
+            except JsonRequestTooLargeError as exc:
+                return self._json_response(start_response, "413 Payload Too Large", {"error": str(exc)})
+            except JsonRequestError as exc:
+                return self._json_response(start_response, "400 Bad Request", {"error": str(exc)})
             return self._json_response(start_response, "200 OK", render_tab_from_payload(request_payload).to_dict())
 
         if path == "/api/answer":
             if method != "POST":
                 return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"})
 
-            request_payload = self._read_json_body(environ)
-            access = authorize_answer_request(
-                environ,
-                self.answer_auth_mode,
-                self.auth_provider,
-                self.cloudflare_verifier,
-            )
+            access = self._authorize_content_request(environ)
             if not access.allowed:
                 self._log_answer_attempt(
-                    request_payload,
+                    {},
                     role=access.role,
                     identity_email=access.identity_email,
                     access_status="blocked",
@@ -476,6 +505,13 @@ class RetrievalApi:
                     error_status=access.status,
                 )
                 return self._json_response(start_response, access.status, {"error": access.error})
+
+            try:
+                request_payload = self._read_json_body(environ)
+            except JsonRequestTooLargeError as exc:
+                return self._json_response(start_response, "413 Payload Too Large", {"error": str(exc)})
+            except JsonRequestError as exc:
+                return self._json_response(start_response, "400 Bad Request", {"error": str(exc)})
 
             identity_key = self._identity_key(access.identity_email)
             rate_key = answer_rate_limit_key(environ, access.role, identity_key=identity_key)
@@ -866,13 +902,12 @@ class RetrievalApi:
     def _search_for_api(
         self,
         query: str,
-        environ: dict[str, Any],
         *,
+        role: str,
         limit: int = 5,
         source_system: str | None = None,
         forum_name: str | None = None,
     ) -> tuple[SearchResponse, dict[str, Any]]:
-        role = self._search_role(environ)
         search_response, plan = self._search_with_retrieval_plan(
             query,
             role=role,
@@ -986,34 +1021,43 @@ class RetrievalApi:
             return [], "error"
         return list(results), "retrieved" if results else "empty"
 
-    def _search_role(self, environ: dict[str, Any]) -> str:
-        access = authorize_local_dev_request(
+    def _authorize_content_request(self, environ: dict[str, Any]) -> Any:
+        return authorize_answer_request(
             environ,
             self.answer_auth_mode,
             self.auth_provider,
             self.cloudflare_verifier,
         )
-        return access.role if access.allowed else "anonymous"
 
     @staticmethod
     def _may_expose_retrieval_debug(role: str, enabled: bool) -> bool:
         return enabled and role in {"admin", "dev", "developer"}
 
     @staticmethod
-    def _read_json_body(environ: dict[str, Any]) -> dict[str, Any]:
+    def _read_json_body(
+        environ: dict[str, Any],
+        *,
+        max_bytes: int = MAX_JSON_BODY_BYTES,
+    ) -> dict[str, Any]:
         try:
             content_length = int(environ.get("CONTENT_LENGTH") or 0)
-        except ValueError:
-            content_length = 0
+        except (TypeError, ValueError) as exc:
+            raise JsonRequestError("request has an invalid content length") from exc
         if content_length <= 0:
             return {}
+        if content_length > max_bytes:
+            raise JsonRequestTooLargeError("request body exceeds the 1 MiB JSON limit")
 
-        raw_body = environ["wsgi.input"].read(content_length)
+        raw_body = environ["wsgi.input"].read(content_length + 1)
+        if len(raw_body) > max_bytes:
+            raise JsonRequestTooLargeError("request body exceeds the 1 MiB JSON limit")
         try:
             payload = json.loads(raw_body.decode("utf-8"))
-        except (json.JSONDecodeError, UnicodeDecodeError):
-            return {}
-        return payload if isinstance(payload, dict) else {}
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise JsonRequestError("request body is not valid JSON") from exc
+        if not isinstance(payload, dict):
+            raise JsonRequestError("request body must be a JSON object")
+        return payload
 
     @staticmethod
     def _read_bounded_json_body(environ: dict[str, Any], max_bytes: int) -> dict[str, Any]:
@@ -1083,23 +1127,31 @@ class RetrievalApi:
         return f"email_sha256:{digest}"
 
     def _version_payload(self) -> dict[str, Any]:
-        payload = {
+        return {
+            "status": "ok",
             "git_sha": self.git_sha,
-            "git_branch": self.git_branch,
             "server_started_at": self.server_started_at,
-            "python_module": "pocketsteel.api",
-            "retrieval_mode": self.retrieval_config.requested_mode.value,
-            "auth_provider": self.auth_provider,
         }
-        features: dict[str, bool] = {}
-        if self.melody_exercise_enabled:
-            features["melodyExercise"] = True
-            features["melodyCatalog"] = True
-        if self.melody_import_enabled:
-            features["melodyImport"] = True
-        if features:
-            payload["features"] = features
-        return payload
+
+    @staticmethod
+    def _csp_report_summary(payload: dict[str, Any]) -> dict[str, str]:
+        report = payload.get("csp-report") or payload.get("body") or payload
+        if not isinstance(report, dict):
+            return {"directive": "unknown", "blockedHost": ""}
+        blocked_uri = str(report.get("blocked-uri") or report.get("blockedURL") or "")
+        try:
+            blocked_host = urlsplit(blocked_uri).hostname or ""
+        except ValueError:
+            blocked_host = ""
+        return {
+            "directive": str(
+                report.get("effective-directive")
+                or report.get("violated-directive")
+                or report.get("effectiveDirective")
+                or "unknown"
+            )[:160],
+            "blockedHost": blocked_host[:253],
+        }
 
     @staticmethod
     def _git_value(*args: str) -> str:
@@ -1129,10 +1181,22 @@ class RetrievalApi:
             [
                 ("Content-Type", "application/json; charset=utf-8"),
                 ("Content-Length", str(len(body))),
+                *SECURITY_RESPONSE_HEADERS,
                 *extra_headers,
             ],
         )
         return [body]
+
+    @staticmethod
+    def _empty_response(start_response: Any, status: str) -> list[bytes]:
+        start_response(
+            status,
+            [
+                ("Content-Length", "0"),
+                *SECURITY_RESPONSE_HEADERS,
+            ],
+        )
+        return []
 
 
 def create_app(

@@ -201,7 +201,7 @@ def test_anonymous_local_dev_answer_cannot_use_private_sources() -> None:
     )
 
     assert status == "401 Unauthorized"
-    assert payload == {"error": "/api/answer requires authenticated beta_user or admin access"}
+    assert payload == {"error": "request requires authenticated beta_user or admin access"}
     assert sgf_index.calls == []
     assert private_index.calls == []
 
@@ -225,7 +225,7 @@ def test_production_cloudflare_answer_ignores_dev_query_and_mock_headers(monkeyp
     )
 
     assert status == "401 Unauthorized"
-    assert payload == {"error": "/api/answer requires Cloudflare Access identity"}
+    assert payload == {"error": "request requires Cloudflare Access identity"}
     assert sgf_index.calls == []
     assert private_index.calls == []
 

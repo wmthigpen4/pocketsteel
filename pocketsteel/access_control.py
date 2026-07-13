@@ -53,6 +53,10 @@ class AnswerAccessDecision:
     diagnostics: dict[str, object] = field(default_factory=dict)
 
 
+class AuthConfigurationError(RuntimeError):
+    """Raised when a production process is not configured to fail closed."""
+
+
 def normalize_access_role(value: object) -> AccessRole:
     """Return a known access role, preserving old local mock labels."""
 
@@ -92,6 +96,28 @@ def configured_auth_provider() -> AuthProvider:
     return normalize_auth_provider(os.environ.get(AUTH_PROVIDER_ENV))
 
 
+def resolve_auth_provider(auth_mode: object, auth_provider: object = None) -> AuthProvider:
+    """Resolve the provider while refusing scaffold identity in production.
+
+    The scaffold provider and role headers are intentionally limited to an
+    explicitly selected local-development process. Production must name the
+    Cloudflare Access provider either in the constructor or environment.
+    """
+
+    mode = normalize_answer_auth_mode(auth_mode)
+    raw_provider = auth_provider if auth_provider is not None else os.environ.get(AUTH_PROVIDER_ENV)
+    if mode == PRODUCTION_AUTH_MODE:
+        if not str(raw_provider or "").strip():
+            raise AuthConfigurationError(
+                f"{AUTH_PROVIDER_ENV}=cloudflare_access is required in production"
+            )
+        provider = normalize_auth_provider(raw_provider)
+        if provider != CLOUDFLARE_ACCESS_AUTH_PROVIDER:
+            raise AuthConfigurationError("production auth must use cloudflare_access")
+        return provider
+    return normalize_auth_provider(raw_provider or SCAFFOLD_AUTH_PROVIDER)
+
+
 def _authorize_with_cloudflare_access(
     environ: dict[str, object],
     cloudflare_verifier: Any,
@@ -102,7 +128,7 @@ def _authorize_with_cloudflare_access(
             allowed=False,
             role=ANONYMOUS,
             status="401 Unauthorized",
-            error="/api/answer requires Cloudflare Access identity",
+            error="request requires Cloudflare Access identity",
             diagnostics={
                 **diagnostics,
                 "accessIdentityVerified": False,
@@ -128,7 +154,7 @@ def _authorize_with_cloudflare_access(
             allowed=False,
             role=ANONYMOUS,
             status="401 Unauthorized",
-            error="/api/answer requires valid Cloudflare Access identity",
+            error="request requires valid Cloudflare Access identity",
             diagnostics={
                 **diagnostics,
                 "accessIdentityVerified": False,
@@ -169,7 +195,7 @@ def _authorize_with_cloudflare_access(
         allowed=False,
         role=ANONYMOUS,
         status="403 Forbidden",
-        error="/api/answer requires beta_user or admin access",
+        error="request requires beta_user or admin access",
         identity_email=email,
         diagnostics={
             **diagnostics,
@@ -219,11 +245,12 @@ def authorize_answer_request(
     """
 
     mode = normalize_answer_auth_mode(auth_mode or configured_answer_auth_mode())
-    if mode != LOCAL_DEV_AUTH_MODE and normalize_auth_provider(auth_provider or configured_auth_provider()) == CLOUDFLARE_ACCESS_AUTH_PROVIDER:
+    provider = resolve_auth_provider(mode, auth_provider)
+    if mode == PRODUCTION_AUTH_MODE:
         return _authorize_with_cloudflare_access(environ, cloudflare_verifier)
 
     trusted_role_value = environ.get(TRUSTED_AUTH_ROLE_ENVIRON)
-    dev_role_value = environ.get(DEV_ACCESS_ROLE_ENVIRON) if mode == LOCAL_DEV_AUTH_MODE else None
+    dev_role_value = environ.get(DEV_ACCESS_ROLE_ENVIRON)
     raw_role = trusted_role_value or dev_role_value
     role = normalize_access_role(raw_role)
     if can_call_live_answer(role):
@@ -233,13 +260,13 @@ def authorize_answer_request(
             allowed=False,
             role=role,
             status="403 Forbidden",
-            error="/api/answer requires beta_user or admin access",
+            error="request requires beta_user or admin access",
         )
     return AnswerAccessDecision(
         allowed=False,
         role=ANONYMOUS,
         status="401 Unauthorized",
-        error="/api/answer requires authenticated beta_user or admin access",
+        error="request requires authenticated beta_user or admin access",
     )
 
 
@@ -258,8 +285,8 @@ def authorize_local_dev_request(
     """
 
     mode = normalize_answer_auth_mode(auth_mode or configured_answer_auth_mode())
-    provider = normalize_auth_provider(auth_provider or configured_auth_provider())
-    if mode != LOCAL_DEV_AUTH_MODE and provider == CLOUDFLARE_ACCESS_AUTH_PROVIDER:
+    provider = resolve_auth_provider(mode, auth_provider)
+    if mode == PRODUCTION_AUTH_MODE:
         return _authorize_with_cloudflare_access(environ, cloudflare_verifier)
 
     trusted_role_value = environ.get(TRUSTED_AUTH_ROLE_ENVIRON)
