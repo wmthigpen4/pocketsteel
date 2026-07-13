@@ -137,6 +137,53 @@ def test_same_origin_server_redirects_root_to_ui_shell() -> None:
     assert b"Redirecting to /ui/steel-guitar-rag-mock.html" in body
 
 
+def test_same_origin_server_delegates_health_checks() -> None:
+    app = build_app(
+        api_app=create_smoke_api_app(
+            answer_auth_mode="local_dev",
+            auth_provider="scaffold",
+            search_index=object(),
+        ),
+        ui_root=Path("ui"),
+    )
+
+    live_status, live_headers, live_body = call_app(app, "/health/live")
+    ready_status, ready_headers, ready_body = call_app(app, "/health/ready")
+
+    assert live_status == "200 OK"
+    assert json.loads(live_body) == {"status": "live"}
+    assert ready_status == "200 OK"
+    assert json.loads(ready_body) == {"status": "ready"}
+    assert live_headers["X-Content-Type-Options"] == "nosniff"
+    assert ready_headers["X-Content-Type-Options"] == "nosniff"
+
+
+def test_same_origin_static_response_supports_etag_gzip_and_immutable_cache() -> None:
+    app = smoke_app()
+    status, headers, body = call_app(
+        app,
+        "/ui/e9-fretboard-explorer-loader.js",
+        environ_extra={"QUERY_STRING": "v=runtime-test", "HTTP_ACCEPT_ENCODING": "gzip"},
+    )
+
+    assert status == "200 OK"
+    assert headers["Content-Encoding"] == "gzip"
+    assert headers["ETag"].startswith('W/"')
+    assert headers["Last-Modified"]
+    assert headers["Cache-Control"] == "public, max-age=31536000, immutable"
+    assert headers["Content-Security-Policy-Report-Only"]
+    assert body.startswith(b"\x1f\x8b")
+
+    cached_status, cached_headers, cached_body = call_app(
+        app,
+        "/ui/e9-fretboard-explorer-loader.js",
+        environ_extra={"HTTP_IF_NONE_MATCH": headers["ETag"], "HTTP_ACCEPT_ENCODING": "gzip"},
+    )
+    assert cached_status == "304 Not Modified"
+    assert cached_headers["ETag"] == headers["ETag"]
+    assert cached_body == b""
+
+
 def test_same_origin_server_serves_public_fretboard_background() -> None:
     status, headers, body = call_app(smoke_app(), "/brand/pedal-steel-fretboard-background.svg")
 

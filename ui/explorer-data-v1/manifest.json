@@ -1,0 +1,386 @@
+{
+  "copedents": {
+    "custom-e9-lkv": {
+      "chunks": {
+        "A": {
+          "bytes": 575408,
+          "compressedBytes": 27940,
+          "path": "/ui/explorer-data-v1/custom-e9-lkv.a.346067860a53b311.json.gz",
+          "sha256": "346067860a53b31140e2cd7ccd737e11a9123b4a61f52c99e63266bd50377f63"
+        },
+        "A#": {
+          "bytes": 550077,
+          "compressedBytes": 27629,
+          "path": "/ui/explorer-data-v1/custom-e9-lkv.a-sharp.5ef3e0ffdaa46215.json.gz",
+          "sha256": "5ef3e0ffdaa46215a3554c5d4a2fa9b04b232e7efe42c4e6c0f1fb699d2e5631"
+        },
+        "Ab": {
+          "bytes": 589261,
+          "compressedBytes": 28475,
+          "path": "/ui/explorer-data-v1/custom-e9-lkv.ab.8b60cbee242a7715.json.gz",
+          "sha256": "8b60cbee242a771582f9389f13ae7c59b9cfe6762d2df9d09efcbffb7c2738f3"
+        },
+        "B": {
+          "bytes": 547014,
+          "compressedBytes": 27314,
+          "path": "/ui/explorer-data-v1/custom-e9-lkv.b.61fa00e1c6c6de90.json.gz",
+          "sha256": "61fa00e1c6c6de90f4b12e6d382d8182e49673598308e0847b7d0c6be080ba7c"
+        },
+        "Bb": {
+          "bytes": 547095,
+          "compressedBytes": 27531,
+          "path": "/ui/explorer-data-v1/custom-e9-lkv.bb.0c01acab444201b8.json.gz",
+          "sha256": "0c01acab444201b856f699d242d082789b4f6f95e9471bd2c2a07c7ea07f7ed2"
+        },
+        "C": {
+          "bytes": 510932,
+          "compressedBytes": 26616,
+          "path": "/ui/explorer-data-v1/custom-e9-lkv.c.0ff4d4c512ea96bb.json.gz",
+          "sha256": "0ff4d4c512ea96bb8f36e90ae997cead10b632f73789b5eff0c0c068cae3af05"
+        },
+        "C#": {
+          "bytes": 515157,
+          "compressedBytes": 26684,
+          "path": "/ui/explorer-data-v1/custom-e9-lkv.c-sharp.aeba7c5d12d223bb.json.gz",
+          "sha256": "aeba7c5d12d223bbe41cf444a3d56e31570882778b02fc39a0243555d7b7814c"
+        },
+        "D": {
+          "bytes": 585573,
+          "compressedBytes": 28096,
+          "path": "/ui/explorer-data-v1/custom-e9-lkv.d.197acd638a25d3de.json.gz",
+          "sha256": "197acd638a25d3de228a901921934e80f4d5e7bd6605e3b3a3a204efe0178912"
+        },
+        "D#": {
+          "bytes": 590752,
+          "compressedBytes": 28404,
+          "path": "/ui/explorer-data-v1/custom-e9-lkv.d-sharp.d91d2d36b3d5ee15.json.gz",
+          "sha256": "d91d2d36b3d5ee152264e03c501183a3bedcbb82818e0540da685ff391c5842d"
+        },
+        "Db": {
+          "bytes": 514930,
+          "compressedBytes": 27032,
+          "path": "/ui/explorer-data-v1/custom-e9-lkv.db.23ea9e8d7b7d336c.json.gz",
+          "sha256": "23ea9e8d7b7d336c17eded8838e50a4102a9595755aca4c7d11cb54a32d1fd73"
+        },
+        "E": {
+          "bytes": 596972,
+          "compressedBytes": 28639,
+          "path": "/ui/explorer-data-v1/custom-e9-lkv.e.863d3481eaa1b74e.json.gz",
+          "sha256": "863d3481eaa1b74e6e7c131cf59e8ca884ab114ef94cb1dce87e754431d98e4e"
+        },
+        "Eb": {
+          "bytes": 588535,
+          "compressedBytes": 28424,
+          "path": "/ui/explorer-data-v1/custom-e9-lkv.eb.794cd1f02cac2520.json.gz",
+          "sha256": "794cd1f02cac252078553dc427bc4e8c495a7237a8d0a5e9bec5826431fc69ae"
+        },
+        "F": {
+          "bytes": 585776,
+          "compressedBytes": 28309,
+          "path": "/ui/explorer-data-v1/custom-e9-lkv.f.d9e55e896735f9b9.json.gz",
+          "sha256": "d9e55e896735f9b9f3f4cc7f13ccdcaa505796b17e9e99db78e3f9bdf8cf7da8"
+        },
+        "F#": {
+          "bytes": 609152,
+          "compressedBytes": 29988,
+          "path": "/ui/explorer-data-v1/custom-e9-lkv.f-sharp.066ee76fc0a7f065.json.gz",
+          "sha256": "066ee76fc0a7f06533f80ce92e65e462bc5ec6970e10382290a0866bfda44985"
+        },
+        "G": {
+          "bytes": 600708,
+          "compressedBytes": 28951,
+          "path": "/ui/explorer-data-v1/custom-e9-lkv.g.d7997bc5f189904b.json.gz",
+          "sha256": "d7997bc5f189904bb3bf3ebb5b0b6605277388668cf416fc69302b83b740380c"
+        },
+        "G#": {
+          "bytes": 590404,
+          "compressedBytes": 28353,
+          "path": "/ui/explorer-data-v1/custom-e9-lkv.g-sharp.db99b7a63487ec2c.json.gz",
+          "sha256": "db99b7a63487ec2c4b3b79bb98564c2a1722f9ac5fc5506dfba7876238a56505"
+        },
+        "Gb": {
+          "bytes": 610087,
+          "compressedBytes": 30358,
+          "path": "/ui/explorer-data-v1/custom-e9-lkv.gb.3cc7fbff0bc121aa.json.gz",
+          "sha256": "3cc7fbff0bc121aafa142bd3a2870e738ea2d40304be3298ab34f6d6d3fe1fdd"
+        }
+      },
+      "keys": [
+        "A",
+        "A#",
+        "Ab",
+        "B",
+        "Bb",
+        "C",
+        "C#",
+        "D",
+        "D#",
+        "Db",
+        "E",
+        "Eb",
+        "F",
+        "F#",
+        "G",
+        "G#",
+        "Gb"
+      ],
+      "label": "Custom E9 (with LKV)"
+    },
+    "day-e9-basic": {
+      "chunks": {
+        "A": {
+          "bytes": 560374,
+          "compressedBytes": 27055,
+          "path": "/ui/explorer-data-v1/day-e9-basic.a.63fe3be2309fcbbd.json.gz",
+          "sha256": "63fe3be2309fcbbd31bac9b9c34460365af5787bacc7ffde09da62e8fd3f0193"
+        },
+        "A#": {
+          "bytes": 535044,
+          "compressedBytes": 26737,
+          "path": "/ui/explorer-data-v1/day-e9-basic.a-sharp.0fa249739f3f6226.json.gz",
+          "sha256": "0fa249739f3f622642be03083f52442e3f3ccee9685daad53fa068dad6b8536a"
+        },
+        "Ab": {
+          "bytes": 574280,
+          "compressedBytes": 27593,
+          "path": "/ui/explorer-data-v1/day-e9-basic.ab.ac3b672527a0ba01.json.gz",
+          "sha256": "ac3b672527a0ba01e9446e2e7a117ac006c93d4743a483b0f231b47b063c1905"
+        },
+        "B": {
+          "bytes": 532044,
+          "compressedBytes": 26433,
+          "path": "/ui/explorer-data-v1/day-e9-basic.b.3d2f12c72e096557.json.gz",
+          "sha256": "3d2f12c72e0965571515e1547531537b199ad6098c07d5895daea98f6994ddae"
+        },
+        "Bb": {
+          "bytes": 532068,
+          "compressedBytes": 26653,
+          "path": "/ui/explorer-data-v1/day-e9-basic.bb.44548815bafd49e5.json.gz",
+          "sha256": "44548815bafd49e551719f1bcea7be8f38c92e448b0e1b7c354e2a6bfe51843a"
+        },
+        "C": {
+          "bytes": 495896,
+          "compressedBytes": 25732,
+          "path": "/ui/explorer-data-v1/day-e9-basic.c.64537e881d7069eb.json.gz",
+          "sha256": "64537e881d7069eb88a1e874fe84f171547a3f20befd3d7974a2c754897b7149"
+        },
+        "C#": {
+          "bytes": 500136,
+          "compressedBytes": 25805,
+          "path": "/ui/explorer-data-v1/day-e9-basic.c-sharp.9d2e127f891c6d44.json.gz",
+          "sha256": "9d2e127f891c6d44be014ec1d5c1e5fd0ce9a8852686d1ccd85d6c6689cd18d5"
+        },
+        "D": {
+          "bytes": 570537,
+          "compressedBytes": 27186,
+          "path": "/ui/explorer-data-v1/day-e9-basic.d.fc65ba515e615c24.json.gz",
+          "sha256": "fc65ba515e615c246c7d8674593c27ffb2f44fc751be8c08956fedf972e041e5"
+        },
+        "D#": {
+          "bytes": 575755,
+          "compressedBytes": 27501,
+          "path": "/ui/explorer-data-v1/day-e9-basic.d-sharp.16177a880db3af21.json.gz",
+          "sha256": "16177a880db3af21fb97be07926b5203cdbd2abbd08e776a85ab0d6d7c62b100"
+        },
+        "Db": {
+          "bytes": 499907,
+          "compressedBytes": 26157,
+          "path": "/ui/explorer-data-v1/day-e9-basic.db.97e829d2bc61fc1b.json.gz",
+          "sha256": "97e829d2bc61fc1bfa67ca8808db76fac09cec0c7458038c29b79711c23c4df6"
+        },
+        "E": {
+          "bytes": 581950,
+          "compressedBytes": 27757,
+          "path": "/ui/explorer-data-v1/day-e9-basic.e.62858d145c2f7ce3.json.gz",
+          "sha256": "62858d145c2f7ce3e31440888b95d31cd0999fc85b32b2abaa2f470ec7d0f1ac"
+        },
+        "Eb": {
+          "bytes": 573542,
+          "compressedBytes": 27510,
+          "path": "/ui/explorer-data-v1/day-e9-basic.eb.d0aae1ae35638e7c.json.gz",
+          "sha256": "d0aae1ae35638e7c4b52bc5a60d367f4ba647af40ffe961a43d3de8dad60b399"
+        },
+        "F": {
+          "bytes": 570712,
+          "compressedBytes": 27407,
+          "path": "/ui/explorer-data-v1/day-e9-basic.f.5743acefe95d017a.json.gz",
+          "sha256": "5743acefe95d017af7b3af892a1e54fb48fc60248a658141e67b34300b0fe3f4"
+        },
+        "F#": {
+          "bytes": 594169,
+          "compressedBytes": 29106,
+          "path": "/ui/explorer-data-v1/day-e9-basic.f-sharp.6791d595c1be4515.json.gz",
+          "sha256": "6791d595c1be45158c37801cc524677e9a5c22c1a98cbf2fa21cf61aa115752d"
+        },
+        "G": {
+          "bytes": 585676,
+          "compressedBytes": 28070,
+          "path": "/ui/explorer-data-v1/day-e9-basic.g.d1863795747d3a1f.json.gz",
+          "sha256": "d1863795747d3a1fe5a8775b2fe5fb0d3a9fb3dc07ec00f13ca2a7f490bfca24"
+        },
+        "G#": {
+          "bytes": 575421,
+          "compressedBytes": 27471,
+          "path": "/ui/explorer-data-v1/day-e9-basic.g-sharp.b7370a62ce021764.json.gz",
+          "sha256": "b7370a62ce021764247b4744ceffb6a703f74e9c9dc6d5aaa25a9cfea9574cde"
+        },
+        "Gb": {
+          "bytes": 595098,
+          "compressedBytes": 29482,
+          "path": "/ui/explorer-data-v1/day-e9-basic.gb.9e9de64a832e6e32.json.gz",
+          "sha256": "9e9de64a832e6e32866581d4eb87c65be0c8cd7e27682629e78b388c0e24e641"
+        }
+      },
+      "keys": [
+        "A",
+        "A#",
+        "Ab",
+        "B",
+        "Bb",
+        "C",
+        "C#",
+        "D",
+        "D#",
+        "Db",
+        "E",
+        "Eb",
+        "F",
+        "F#",
+        "G",
+        "G#",
+        "Gb"
+      ],
+      "label": "Day E9"
+    },
+    "emmons-e9-basic": {
+      "chunks": {
+        "A": {
+          "bytes": 560426,
+          "compressedBytes": 27082,
+          "path": "/ui/explorer-data-v1/emmons-e9-basic.a.590614d7ec8c8248.json.gz",
+          "sha256": "590614d7ec8c8248903162df5cefbe5323d20e49f8d64a73ecbe8762f15065fc"
+        },
+        "A#": {
+          "bytes": 535096,
+          "compressedBytes": 26763,
+          "path": "/ui/explorer-data-v1/emmons-e9-basic.a-sharp.57d8a9c368e2b5a1.json.gz",
+          "sha256": "57d8a9c368e2b5a1c2d0e82009f46e6a4fbc3169f623f86c21cd72deaa3cda3a"
+        },
+        "Ab": {
+          "bytes": 574332,
+          "compressedBytes": 27622,
+          "path": "/ui/explorer-data-v1/emmons-e9-basic.ab.7fb7db3125cfadce.json.gz",
+          "sha256": "7fb7db3125cfadce053cc253df3f29be8fd3889c70e4b74153601eb5d8669c2c"
+        },
+        "B": {
+          "bytes": 532096,
+          "compressedBytes": 26462,
+          "path": "/ui/explorer-data-v1/emmons-e9-basic.b.48c0b4f960992092.json.gz",
+          "sha256": "48c0b4f9609920926bbd705058693d0097933e35aaa91516bb281f469b5933bb"
+        },
+        "Bb": {
+          "bytes": 532120,
+          "compressedBytes": 26680,
+          "path": "/ui/explorer-data-v1/emmons-e9-basic.bb.bf636638c0eb64ee.json.gz",
+          "sha256": "bf636638c0eb64ee60b74a5d3ba5a46dfce05b3cff891ecd020cd212ce934fcb"
+        },
+        "C": {
+          "bytes": 495948,
+          "compressedBytes": 25759,
+          "path": "/ui/explorer-data-v1/emmons-e9-basic.c.e6eade9ada83ad93.json.gz",
+          "sha256": "e6eade9ada83ad931dc07e38520659fda10d0d43266d47329969fc2b0abdb130"
+        },
+        "C#": {
+          "bytes": 500188,
+          "compressedBytes": 25832,
+          "path": "/ui/explorer-data-v1/emmons-e9-basic.c-sharp.3e04038003a17480.json.gz",
+          "sha256": "3e04038003a17480f0ae9f548b9759605730fef95f549846b509912de6aff815"
+        },
+        "D": {
+          "bytes": 570589,
+          "compressedBytes": 27215,
+          "path": "/ui/explorer-data-v1/emmons-e9-basic.d.f8ccb259a5cb0b3a.json.gz",
+          "sha256": "f8ccb259a5cb0b3aa81c43abd50cb2ba5333b0ff68d719af4ffa91154bd7499b"
+        },
+        "D#": {
+          "bytes": 575807,
+          "compressedBytes": 27533,
+          "path": "/ui/explorer-data-v1/emmons-e9-basic.d-sharp.fe20062bcc4d2b00.json.gz",
+          "sha256": "fe20062bcc4d2b001319fdf525e192c6cceb7db088e3953d949cb9a883173576"
+        },
+        "Db": {
+          "bytes": 499959,
+          "compressedBytes": 26181,
+          "path": "/ui/explorer-data-v1/emmons-e9-basic.db.68602936216645cb.json.gz",
+          "sha256": "68602936216645cbc9675de08fce9a8ab6b01b69bc6a9bb6375d686048ee42c8"
+        },
+        "E": {
+          "bytes": 582002,
+          "compressedBytes": 27787,
+          "path": "/ui/explorer-data-v1/emmons-e9-basic.e.518e8882d79cee37.json.gz",
+          "sha256": "518e8882d79cee37178f8759d67c512d90f4ace358616c1172d7b3a651be9f95"
+        },
+        "Eb": {
+          "bytes": 573594,
+          "compressedBytes": 27538,
+          "path": "/ui/explorer-data-v1/emmons-e9-basic.eb.bc911e2d6f1a55ae.json.gz",
+          "sha256": "bc911e2d6f1a55ae9aad534d8e3bf92d1abca895f16166ff21faa147f087464e"
+        },
+        "F": {
+          "bytes": 570764,
+          "compressedBytes": 27434,
+          "path": "/ui/explorer-data-v1/emmons-e9-basic.f.6ad1c190224828d7.json.gz",
+          "sha256": "6ad1c190224828d7e84a97f99817bace7a50aba55d13131fd7809b599dd054d4"
+        },
+        "F#": {
+          "bytes": 594221,
+          "compressedBytes": 29130,
+          "path": "/ui/explorer-data-v1/emmons-e9-basic.f-sharp.ad481a6888699f68.json.gz",
+          "sha256": "ad481a6888699f68a2924dfc1455141576450863902f320780e76adc8fb23e42"
+        },
+        "G": {
+          "bytes": 585728,
+          "compressedBytes": 28089,
+          "path": "/ui/explorer-data-v1/emmons-e9-basic.g.9adb9f91171730c2.json.gz",
+          "sha256": "9adb9f91171730c24255a3123d03ee9c114e2fd7144ee532bb8551a1836a84ed"
+        },
+        "G#": {
+          "bytes": 575473,
+          "compressedBytes": 27499,
+          "path": "/ui/explorer-data-v1/emmons-e9-basic.g-sharp.f04593fc37482737.json.gz",
+          "sha256": "f04593fc37482737ffcbdcf67f4e1ff298c8cfbb0f8828186b82f349f43fc5d2"
+        },
+        "Gb": {
+          "bytes": 595150,
+          "compressedBytes": 29508,
+          "path": "/ui/explorer-data-v1/emmons-e9-basic.gb.8af2654944bd2e96.json.gz",
+          "sha256": "8af2654944bd2e9669695cfbf1b4805759833978f295e08e06b9b9791c565044"
+        }
+      },
+      "keys": [
+        "A",
+        "A#",
+        "Ab",
+        "B",
+        "Bb",
+        "C",
+        "C#",
+        "D",
+        "D#",
+        "Db",
+        "E",
+        "Eb",
+        "F",
+        "F#",
+        "G",
+        "G#",
+        "Gb"
+      ],
+      "label": "Emmons E9"
+    }
+  },
+  "defaultCopedentId": "emmons-e9-basic",
+  "defaultKey": "G",
+  "schemaVersion": "explorer_static_manifest_v1",
+  "version": "ec80f6c0eeb3a27d"
+}

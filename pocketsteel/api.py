@@ -9,16 +9,17 @@ import json
 import os
 import re
 import subprocess
+import threading
 from collections import deque
 from collections.abc import Iterable
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import parse_qs, urlsplit
-from wsgiref.simple_server import make_server
 
 from pocketsteel.answering import (
     AnswerProvider,
+    DeterministicAnswerProvider,
     answer_is_no_source,
     apply_private_profile_wording,
     bc_pedal_exercise_answer,
@@ -109,6 +110,7 @@ from pocketsteel.retrieval_modes import (
     private_sources_allowed,
     retrieval_plan_for_role,
 )
+from pocketsteel.runtime_server import bounded_env_int, serve_runtime
 from pocketsteel.tab_engine import render_tab_from_payload
 
 LOGGER = logging.getLogger(__name__)
@@ -124,6 +126,9 @@ CURATED_GUIDANCE_FORUM_WISDOM_RE = re.compile(
 MAX_JSON_BODY_BYTES = 1_048_576
 MAX_CSP_REPORT_BYTES = 65_536
 MAX_SECURITY_EVENT_LOG = 256
+CONTENT_CONCURRENCY_ENV = "STEEL_RAG_CONTENT_CONCURRENCY"
+DEFAULT_CONTENT_CONCURRENCY = 4
+CONTENT_BEARING_PATHS = frozenset({"/api/search", "/api/tab", "/api/answer", "/api/melody"})
 SECURITY_RESPONSE_HEADERS: tuple[tuple[str, str], ...] = (
     ("X-Content-Type-Options", "nosniff"),
     ("Referrer-Policy", "no-referrer"),
@@ -131,7 +136,10 @@ SECURITY_RESPONSE_HEADERS: tuple[tuple[str, str], ...] = (
     ("Cross-Origin-Opener-Policy", "same-origin"),
     (
         "Content-Security-Policy-Report-Only",
-        "default-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'; "
+        "default-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'; "
+        "script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self' data:; "
+        "connect-src 'self'; object-src 'none'; "
         "report-uri /api/security/csp-report",
     ),
 )
@@ -314,10 +322,59 @@ class RetrievalApi:
         self.git_sha = self._git_value("rev-parse", "--short", "HEAD")
         self.git_branch = self._git_value("branch", "--show-current")
         self.server_started_at = datetime.now(timezone.utc).isoformat()
+        self._content_slots = threading.BoundedSemaphore(
+            bounded_env_int(
+                CONTENT_CONCURRENCY_ENV,
+                DEFAULT_CONTENT_CONCURRENCY,
+                minimum=1,
+                maximum=16,
+            )
+        )
 
     def __call__(self, environ: dict[str, Any], start_response: Any) -> Iterable[bytes]:
+        path = str(environ.get("PATH_INFO") or "")
+        is_content_work = (
+            path in CONTENT_BEARING_PATHS
+            or path.startswith("/api/melody/")
+            or path.startswith("/api/lessons/")
+        )
+        if not is_content_work:
+            return self._dispatch(environ, start_response)
+        if not self._content_slots.acquire(blocking=False):
+            return self._json_response(
+                start_response,
+                "503 Service Unavailable",
+                {"error": "content service is busy"},
+                extra_headers=(("Retry-After", "2"),),
+            )
+        try:
+            return self._dispatch(environ, start_response)
+        finally:
+            self._content_slots.release()
+
+    def _dispatch(self, environ: dict[str, Any], start_response: Any) -> Iterable[bytes]:
         method = environ.get("REQUEST_METHOD", "GET")
         path = environ.get("PATH_INFO", "")
+
+        if path == "/health/live":
+            if method != "GET":
+                return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"})
+            return self._json_response(
+                start_response,
+                "200 OK",
+                {"status": "live"},
+                extra_headers=(("Cache-Control", "no-store"),),
+            )
+
+        if path == "/health/ready":
+            if method != "GET":
+                return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"})
+            return self._json_response(
+                start_response,
+                "200 OK",
+                {"status": "ready"},
+                extra_headers=(("Cache-Control", "no-store"),),
+            )
 
         if path == "/api/version":
             if method != "GET":
@@ -794,7 +851,12 @@ class RetrievalApi:
                     sources: list[dict[str, Any]] = []
                     warnings.append("no strong source match")
                 else:
-                    answer = self.answer_provider.answer(answer_request, strong_sources)
+                    try:
+                        answer = self.answer_provider.answer(answer_request, strong_sources)
+                    except RuntimeError:
+                        LOGGER.warning("answer_provider_unavailable deterministic_fallback=true")
+                        answer = DeterministicAnswerProvider().answer(answer_request, strong_sources)
+                        warnings.append("live answer provider unavailable; deterministic guidance returned")
                     if answer_is_no_source(answer):
                         sources = []
                         warnings.append("no strong source match")
@@ -1316,9 +1378,9 @@ def main(argv: list[str] | None = None) -> int:
         auth_provider=args.auth_provider,
         retrieval_config=retrieval_config,
     )
-    with make_server(args.host, args.port, app) as server:
+    def on_ready(_server: object) -> None:
         print(f"Serving local retrieval API at http://{args.host}:{args.port}")
-        server.serve_forever()
+    serve_runtime(args.host, args.port, app, on_ready=on_ready)
     return 0
 
 

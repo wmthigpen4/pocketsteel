@@ -619,6 +619,39 @@ def test_api_version_rejects_non_get_method() -> None:
     assert payload == {"error": "method not allowed"}
 
 
+@pytest.mark.parametrize(("path", "expected"), [("/health/live", "live"), ("/health/ready", "ready")])
+def test_health_checks_are_minimal_and_do_not_require_auth(path: str, expected: str) -> None:
+    status, headers, payload = call_app(path, method="GET", access_role=None)
+
+    assert status == "200 OK"
+    assert payload == {"status": expected}
+    assert headers["Cache-Control"] == "no-store"
+
+
+def test_content_concurrency_limit_fails_fast(monkeypatch: Any) -> None:
+    monkeypatch.setenv("STEEL_RAG_CONTENT_CONCURRENCY", "1")
+    app = create_app(
+        fake_search_index(),
+        answer_provider=FakeAnswerProvider(),
+        answer_auth_mode="local_dev",
+        auth_provider="scaffold",
+    )
+    assert app._content_slots.acquire(blocking=False)
+    try:
+        status, headers, payload = call_existing_app(
+            app,
+            "/api/search",
+            method="GET",
+            access_role="beta_user",
+        )
+    finally:
+        app._content_slots.release()
+
+    assert status == "503 Service Unavailable"
+    assert payload == {"error": "content service is busy"}
+    assert headers["Retry-After"] == "2"
+
+
 @pytest.mark.parametrize(
     ("path", "method", "body", "feature_flags"),
     [

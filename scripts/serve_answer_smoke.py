@@ -6,15 +6,15 @@ from __future__ import annotations
 import argparse
 import io
 import json
-import mimetypes
 import os
 from collections.abc import Callable, Iterable
 from pathlib import Path
 from typing import Any
-from wsgiref.simple_server import make_server
 
-from pocketsteel.api import create_app
+from pocketsteel.api import SECURITY_RESPONSE_HEADERS, create_app
 from pocketsteel.access_control import ANSWER_AUTH_MODE_ENV, AUTH_PROVIDER_ENV, LOCAL_DEV_AUTH_MODE
+from pocketsteel.runtime_server import serve_runtime
+from pocketsteel.static_files import static_file_response
 
 
 StartResponse = Callable[[str, list[tuple[str, str]]], None]
@@ -28,6 +28,7 @@ def json_response(start_response: StartResponse, status: str, payload: dict[str,
         [
             ("Content-Type", "application/json; charset=utf-8"),
             ("Content-Length", str(len(body))),
+            *SECURITY_RESPONSE_HEADERS,
         ],
     )
     return [body]
@@ -40,6 +41,7 @@ def text_response(start_response: StartResponse, status: str, body: str) -> list
         [
             ("Content-Type", "text/plain; charset=utf-8"),
             ("Content-Length", str(len(encoded))),
+            *SECURITY_RESPONSE_HEADERS,
         ],
     )
     return [encoded]
@@ -53,6 +55,7 @@ def redirect_response(start_response: StartResponse, location: str) -> list[byte
             ("Location", location),
             ("Content-Type", "text/plain; charset=utf-8"),
             ("Content-Length", str(len(body))),
+            *SECURITY_RESPONSE_HEADERS,
         ],
     )
     return [body]
@@ -117,33 +120,9 @@ def build_app(
     resolved_ui_root = ui_root.resolve()
     resolved_public_root = public_root.resolve()
 
-    def static_file_response(
-        start_response: StartResponse,
-        *,
-        file_path: Path,
-        root: Path,
-    ) -> Iterable[bytes]:
-        try:
-            file_path.relative_to(root)
-        except ValueError:
-            return text_response(start_response, "403 Forbidden", "forbidden")
-        if not file_path.is_file():
-            return text_response(start_response, "404 Not Found", "not found")
-
-        body = file_path.read_bytes()
-        content_type = mimetypes.guess_type(str(file_path))[0] or "application/octet-stream"
-        if content_type.startswith("text/") or content_type in {
-            "application/javascript",
-            "application/json",
-            "image/svg+xml",
-        }:
-            content_type = f"{content_type}; charset=utf-8"
-        start_response("200 OK", [("Content-Type", content_type), ("Content-Length", str(len(body)))])
-        return [body]
-
     def same_origin_app(environ: dict[str, Any], start_response: StartResponse) -> Iterable[bytes]:
         path = environ.get("PATH_INFO", "") or "/"
-        if path.startswith("/api/"):
+        if path.startswith("/api/") or path.startswith("/health/"):
             if controlled_states:
                 raw_body = environ["wsgi.input"].read(int(environ.get("CONTENT_LENGTH") or 0))
                 restore_wsgi_input(environ, raw_body)
@@ -159,12 +138,24 @@ def build_app(
             path = "/ui/steel-guitar-rag-mock.html"
         if path.startswith("/brand/"):
             file_path = (resolved_public_root / path.removeprefix("/")).resolve()
-            return static_file_response(start_response, file_path=file_path, root=resolved_public_root)
+            return static_file_response(
+                environ,
+                start_response,
+                file_path=file_path,
+                root=resolved_public_root,
+                security_headers=SECURITY_RESPONSE_HEADERS,
+            )
         if not path.startswith("/ui/"):
             return text_response(start_response, "404 Not Found", "not found")
 
         file_path = (resolved_ui_root / path.removeprefix("/ui/")).resolve()
-        return static_file_response(start_response, file_path=file_path, root=resolved_ui_root)
+        return static_file_response(
+            environ,
+            start_response,
+            file_path=file_path,
+            root=resolved_ui_root,
+            security_headers=SECURITY_RESPONSE_HEADERS,
+        )
 
     return same_origin_app
 
@@ -226,9 +217,9 @@ def main(argv: list[str] | None = None) -> int:
         controlled_states=args.controlled_states,
     )
     url = f"http://{args.host}:{args.port}/ui/steel-guitar-rag-mock.html"
-    with make_server(args.host, args.port, app) as server:
+    def on_ready(_server: object) -> None:
         print(f"Serving same-origin answer smoke UI at {url}", flush=True)
-        server.serve_forever()
+    serve_runtime(args.host, args.port, app, on_ready=on_ready)
     return 0
 
 

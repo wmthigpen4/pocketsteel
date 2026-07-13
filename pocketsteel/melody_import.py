@@ -27,8 +27,10 @@ from xml.etree import ElementTree as ET
 ENABLE_MELODY_IMPORT_ENV = "STEEL_RAG_ENABLE_MELODY_IMPORT"
 MELODY_VISION_MODEL_ENV = "STEEL_RAG_MELODY_VISION_MODEL"
 OLLAMA_URL_ENV = "OLLAMA_URL"
+MELODY_VISION_TIMEOUT_ENV = "STEEL_RAG_MELODY_VISION_TIMEOUT_SECONDS"
 DEFAULT_VISION_MODEL = "gemma4:12b"
 DEFAULT_OLLAMA_URL = "http://127.0.0.1:11434"
+DEFAULT_MELODY_VISION_TIMEOUT_SECONDS = 45.0
 SCORE_DRAFT_SCHEMA_VERSION = "score_draft_v1"
 MAX_IMPORT_BODY_BYTES = 12 * 1024 * 1024
 MAX_IMAGE_BYTES = 8 * 1024 * 1024
@@ -563,7 +565,14 @@ def _ollama_vision_client(encoded_image: str, mime_type: str) -> Mapping[str, An
         method="POST",
     )
     try:
-        with urllib.request.urlopen(request, timeout=180) as response:
+        timeout_seconds = float(
+            os.environ.get(MELODY_VISION_TIMEOUT_ENV) or DEFAULT_MELODY_VISION_TIMEOUT_SECONDS
+        )
+    except (TypeError, ValueError):
+        timeout_seconds = DEFAULT_MELODY_VISION_TIMEOUT_SECONDS
+    timeout_seconds = max(5.0, min(timeout_seconds, 75.0))
+    try:
+        with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
             body = json.loads(response.read().decode("utf-8"))
     except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
         raise MelodyImportError("The local score reader is unavailable. You can still enter the passage manually.") from exc

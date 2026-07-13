@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import gzip
+import hashlib
 import json
 import re
 import subprocess
@@ -432,11 +434,12 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "pedal-steel-fretboard.js?v=explorer-ui-cleanup-20260623" not in html
     assert "pedal-steel-fretboard.js?v=selected-svg-render-20260623" not in html
     assert "pedal-steel-fretboard.js?v=explorer-compact-copedent-20260625" not in html
-    assert '<script src="e9-fretboard-explorer-data.js?v=single-grip-octave-results-20260628"></script>' in html
+    assert '<script src="e9-fretboard-explorer-data.js?v=single-grip-octave-results-20260628"></script>' not in html
     assert "[hidden] {\n      display: none !important;\n    }" in html
     assert '<script src="e9-music-rules.js?v=voicing-readability-20260704"></script>' in html
-    assert '<script src="e9-fretboard-explorer.js?v=voicing-readability-20260704"></script>' in html
-    assert html.index("e9-music-rules.js?v=voicing-readability-20260704") < html.index("e9-fretboard-explorer.js?v=voicing-readability-20260704")
+    assert '<script src="e9-fretboard-explorer-loader.js?v=lazy-explorer-data-20260713-3"></script>' in html
+    assert "e9-fretboard-explorer.js?v=lazy-explorer-data-20260713-3" in Path("ui/e9-fretboard-explorer-loader.js").read_text(encoding="utf-8")
+    assert html.index("e9-music-rules.js?v=voicing-readability-20260704") < html.index("e9-fretboard-explorer-loader.js?v=lazy-explorer-data-20260713-3")
     assert "e9-fretboard-explorer.js?v=voicing-identifier-hardening-20260704" not in html
     assert "e9-fretboard-explorer.js?v=explorer-workbench-redesign-20260628" not in html
     assert "e9-fretboard-explorer.js?v=e-lower-pocket-d-major-20260628" not in html
@@ -808,7 +811,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "musicRules.identifyVoicing" in script
     assert "musicRules.parseChordFinderQuery" in script
     assert "musicRules.chordFinderQualityGate" in script
-    assert 'e9-fretboard-explorer.js?v=voicing-readability-20260704' in html
+    assert 'e9-fretboard-explorer-loader.js?v=lazy-explorer-data-20260713-3' in html
     assert ".explorer-chord-map-card .explorer-active-result__fields {" in html
     assert ".explorer-chord-map-card .explorer-active-result__fields span {" in html
     assert "grid-template-columns: minmax(72px, 0.48fr) minmax(0, 1fr);" in html
@@ -1080,6 +1083,28 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert any(row.get("warnings") for row in payload["positions"])
     assert all(row["pitch_validated"] is True for row in payload["positions"])
     assert not re.search(r"\\b\\d+\\s+(?:I|ii|iii|iv|v|vi|vii)\\b", script)
+
+
+def test_explorer_static_manifest_is_complete_hashed_and_bounded() -> None:
+    manifest = json.loads(Path("ui/explorer-data-v1/manifest.json").read_text(encoding="utf-8"))
+    records = [
+        record
+        for copedent in manifest["copedents"].values()
+        for record in copedent["chunks"].values()
+    ]
+
+    assert manifest["schemaVersion"] == "explorer_static_manifest_v1"
+    assert manifest["defaultCopedentId"] == "emmons-e9-basic"
+    assert manifest["defaultKey"] == "G"
+    assert len(records) == 51
+    assert sum(record["compressedBytes"] for record in records) < 2 * 1024 * 1024
+    assert max(record["compressedBytes"] for record in records) < 64 * 1024
+
+    default_record = manifest["copedents"]["emmons-e9-basic"]["chunks"]["G"]
+    chunk_path = Path("ui") / Path(default_record["path"]).relative_to("/ui")
+    raw = gzip.decompress(chunk_path.read_bytes())
+    assert hashlib.sha256(raw).hexdigest() == default_record["sha256"]
+    assert json.loads(raw)["query"]["key"] == "G"
 
 
 def test_e9_music_rules_boundary_covers_pitch_notation_and_voicing_contract() -> None:

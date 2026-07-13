@@ -4,6 +4,7 @@
   const payloadsByKey = window.STEEL_RAG_E9_EXPLORER_PAYLOADS || {};
   const payloadsByCopedent = window.STEEL_RAG_E9_EXPLORER_PAYLOADS_BY_COPEDENT || {};
   const fallbackPayload = window.STEEL_RAG_E9_EXPLORER_PAYLOAD;
+  const explorerDataApi = window.STEEL_RAG_E9_EXPLORER_DATA;
   const fretboardApi = window.STEEL_RAG_FRETBOARD;
   const musicRules = window.STEEL_RAG_E9_MUSIC_RULES;
 
@@ -428,6 +429,10 @@
         ? "study-movement-path"
         : defaultTaskCardForMode(mode);
     }
+    const copedentId = String(params.get("copedent") || "").trim();
+    if (copedentId && els.copedent) {
+      safeSelectValue(els.copedent, copedentId);
+    }
     const key = normalizeQueryKey(params.get("key") || params.get("root"));
     if (key) {
       safeSelectValue(els.key, key);
@@ -460,8 +465,9 @@
   }
 
   function availableKeys() {
+    const manifestKeys = explorerDataApi?.keys?.(selectedCopedentId()) || [];
     const sourcePayloads = Object.keys(payloadsByKey).length ? payloadsByKey : payloadsForSelectedCopedent();
-    const keys = Object.keys(sourcePayloads);
+    const keys = manifestKeys.length ? manifestKeys : Object.keys(sourcePayloads);
     if (keys.length) {
       const visible = KEY_OPTIONS.filter((option) => keys.includes(option.value));
       const visibleValues = new Set(visible.map((option) => option.value));
@@ -481,12 +487,68 @@
   }
 
   function payloadsForSelectedCopedent() {
-    return payloadsByCopedent[selectedCopedentId()] || payloadsByKey;
+    const selectedId = selectedCopedentId();
+    if (payloadsByCopedent[selectedId]) {
+      return payloadsByCopedent[selectedId];
+    }
+    if (!explorerDataApi?.load || selectedId === DEFAULT_COPEDENT_ID) {
+      return payloadsByKey;
+    }
+    return {};
   }
 
   function activePayload() {
     const payloads = payloadsForSelectedCopedent();
-    return payloads[els.key.value] || payloadsByKey[els.key.value] || fallbackPayload || null;
+    const exactPayload = payloads[els.key.value]
+      || (selectedCopedentId() === DEFAULT_COPEDENT_ID ? payloadsByKey[els.key.value] : null);
+    if (exactPayload) {
+      return exactPayload;
+    }
+    return (
+      fallbackPayload?.query?.key === els.key.value
+      && (!explorerDataApi?.load || selectedCopedentId() === DEFAULT_COPEDENT_ID)
+    ) ? fallbackPayload : null;
+  }
+
+  function ensureSelectedPayload() {
+    if (activePayload() || !explorerDataApi?.load) {
+      return Boolean(activePayload());
+    }
+    els.key.disabled = true;
+    if (els.copedent) {
+      els.copedent.disabled = true;
+    }
+    els.empty.hidden = false;
+    els.empty.textContent = "Loading validated Explorer data…";
+    return explorerDataApi.load(selectedCopedentId(), els.key.value)
+      .then(() => Boolean(activePayload()))
+      .catch(() => {
+        els.empty.textContent = "Explorer data could not be loaded for this key and copedent.";
+        return false;
+      })
+      .finally(() => {
+        els.key.disabled = false;
+        if (els.copedent) {
+          els.copedent.disabled = false;
+        }
+      });
+  }
+
+  function refreshAfterPayloadChange() {
+    const pending = ensureSelectedPayload();
+    if (pending === true) {
+      updateControls();
+      render();
+      return;
+    }
+    if (pending && typeof pending.then === "function") {
+      pending.then((loaded) => {
+        if (loaded) {
+          updateControls();
+          render();
+        }
+      });
+    }
   }
 
   function activeKey() {
@@ -5367,6 +5429,8 @@
   }
 
   function init() {
+    updateKeyOptions();
+    applyExplorerQueryState();
     if (!activePayload()) {
       els.empty.hidden = false;
       els.empty.textContent = "Explorer data failed to load.";
@@ -5375,12 +5439,8 @@
 
     updateCopedentOptions();
     updateKeyOptions();
-    applyExplorerQueryState();
     if (els.copedent) {
-      els.copedent.addEventListener("change", () => {
-        updateControls();
-        render();
-      });
+      els.copedent.addEventListener("change", refreshAfterPayloadChange);
     }
     if (els.copedentOpen) {
       els.copedentOpen.addEventListener("click", openCopedentDialog);
@@ -5445,10 +5505,7 @@
         render();
       });
     }
-    els.key.addEventListener("change", () => {
-      updateControls();
-      render();
-    });
+    els.key.addEventListener("change", refreshAfterPayloadChange);
     els.scale.addEventListener("change", () => {
       updateControls();
       render();

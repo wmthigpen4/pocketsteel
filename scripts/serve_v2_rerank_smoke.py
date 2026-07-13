@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
-from wsgiref.simple_server import make_server
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
@@ -14,6 +13,7 @@ if str(ROOT) not in sys.path:
 
 from pocketsteel.api import create_app
 from pocketsteel.chroma_search import ChromaSearchIndex
+from pocketsteel.runtime_server import serve_runtime
 from scripts.run_retrieval_ab_eval import RerankConfig
 from scripts.run_v2_rerank_answer_eval import RerankedSearchIndex
 from scripts.serve_answer_smoke import (
@@ -122,7 +122,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     app = build_app(api_app=api_app, ui_root=args.ui_root)
     url = local_preview_url(host=args.host, port=args.port, answer_auth_mode=answer_auth_mode)
-    with make_server(args.host, args.port, app) as server:
+    def on_ready(_server: object) -> None:
         print("Serving loopback-only v2 rerank UI.", flush=True)
         print(f"URL: {url}", flush=True)
         print("V2 Chroma path: configured for local process only", flush=True)
@@ -130,7 +130,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Answer auth mode: {answer_auth_mode}", flush=True)
         print(f"Auth provider: {auth_provider}", flush=True)
         print("This does not change app config, DNS, tunnel routing, or Chroma stores.", flush=True)
-        server.serve_forever()
+    serve_runtime(args.host, args.port, app, on_ready=on_ready)
     return 0
 
 

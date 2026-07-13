@@ -47,7 +47,9 @@ DEFAULT_CHAT_MODEL = "qwen3:8b"
 ANSWER_PROVIDER_ENV = "STEEL_RAG_ANSWER_PROVIDER"
 CHAT_MODEL_ENV = "STEEL_RAG_CHAT_MODEL"
 OLLAMA_URL_ENV = "OLLAMA_URL"
+OLLAMA_TIMEOUT_ENV = "STEEL_RAG_OLLAMA_TIMEOUT_SECONDS"
 DEFAULT_OLLAMA_URL = "http://localhost:11434"
+DEFAULT_OLLAMA_TIMEOUT_SECONDS = 45.0
 
 
 @dataclass(frozen=True)
@@ -2236,9 +2238,23 @@ class DeterministicAnswerProvider:
 
 
 class OllamaAnswerProvider:
-    def __init__(self, model: str | None = None, url: str | None = None) -> None:
+    def __init__(
+        self,
+        model: str | None = None,
+        url: str | None = None,
+        timeout_seconds: float | None = None,
+    ) -> None:
         self.model = model or os.environ.get(CHAT_MODEL_ENV, DEFAULT_CHAT_MODEL)
         self.url = (url or os.environ.get(OLLAMA_URL_ENV, DEFAULT_OLLAMA_URL)).rstrip("/")
+        try:
+            configured_timeout = float(
+                timeout_seconds
+                if timeout_seconds is not None
+                else os.environ.get(OLLAMA_TIMEOUT_ENV) or DEFAULT_OLLAMA_TIMEOUT_SECONDS
+            )
+        except (TypeError, ValueError):
+            configured_timeout = DEFAULT_OLLAMA_TIMEOUT_SECONDS
+        self.timeout_seconds = max(5.0, min(configured_timeout, 75.0))
 
     def answer(self, request: AnswerRequest, sources: list[dict[str, Any]]) -> str:
         messages = [
@@ -2273,7 +2289,7 @@ class OllamaAnswerProvider:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(request_obj, timeout=300) as response:
+            with urllib.request.urlopen(request_obj, timeout=self.timeout_seconds) as response:
                 body = json.loads(response.read().decode("utf-8"))
         except (urllib.error.URLError, TimeoutError) as exc:
             raise RuntimeError(f"Could not reach Ollama answer provider: {exc}") from exc
