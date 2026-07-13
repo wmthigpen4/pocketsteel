@@ -439,8 +439,19 @@ select:focus-visible,
 .home-card-icon {
   width: 22px;
   height: 22px;
-  margin-bottom: 18px;
+  margin: 0;
   color: var(--amber);
+}
+
+.home-card-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 28px;
+}
+
+.home-card-heading .home-card-icon {
+  flex: 0 0 22px;
 }
 
 .home-card-icon.is-melody {
@@ -462,9 +473,150 @@ select:focus-visible,
 }
 
 .home-product-card > p {
-  margin: 12px 0 20px;
+  margin: 12px 0 16px;
   color: #cfc2af;
   font: 400 14px/1.55 var(--font-ui);
+}
+
+.home-card-preview {
+  width: 100%;
+  height: 88px;
+  margin: 0 0 18px;
+  overflow: hidden;
+  border: 1px solid rgba(203, 157, 78, 0.32);
+  border-radius: 13px;
+  background-color: rgba(8, 8, 7, 0.72);
+}
+
+.home-fretboard-mini {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 11px 20px;
+  background-image:
+    repeating-linear-gradient(0deg, transparent 0 9px, rgba(220, 215, 197, 0.26) 9px 10px),
+    repeating-linear-gradient(90deg, transparent 0 22px, rgba(220, 215, 197, 0.2) 22px 23px),
+    linear-gradient(180deg, rgba(18, 18, 15, 0.9), rgba(5, 5, 4, 0.92));
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.55);
+}
+
+.home-fretboard-mini::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 10px;
+  height: 1px;
+  background: rgba(238, 186, 90, 0.28);
+}
+
+.mini-grip {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 2px;
+  filter: drop-shadow(0 0 7px currentColor);
+}
+
+.mini-grip i {
+  display: block;
+  width: 25px;
+  height: 13px;
+  border: 1px solid rgba(255, 249, 222, 0.76);
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.mini-grip.is-amber { color: #f2a83b; }
+.mini-grip.is-blue { color: #57a9ef; }
+.mini-grip.is-pink { color: #df74a8; }
+
+.home-score-preview {
+  display: block;
+  padding: 8px 10px;
+  color: #d9d2c3;
+}
+
+.home-score-preview .score-staff {
+  fill: #d9d2c3;
+  stroke: rgba(217, 210, 195, 0.68);
+  stroke-width: 1.2;
+}
+
+.home-score-preview .score-staff text {
+  stroke: none;
+  font: 700 18px/1 var(--font-display);
+}
+
+.home-score-preview .score-clef {
+  fill: none;
+  stroke: #e6dfd1;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.home-score-preview .score-notes {
+  fill: #e6dfd1;
+  stroke: #e6dfd1;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.home-lesson-mini {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  color: #ddd3c1;
+  font-family: var(--font-ui);
+}
+
+.lesson-mini-levels {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-bottom: 1px solid rgba(203, 157, 78, 0.24);
+}
+
+.lesson-mini-levels span {
+  display: grid;
+  min-width: 0;
+  min-height: 30px;
+  place-items: center;
+  color: #afa491;
+  font-size: 9px;
+}
+
+.lesson-mini-levels .is-active {
+  margin: 3px;
+  min-height: 24px;
+  border: 1px solid rgba(239, 171, 54, 0.62);
+  border-radius: 999px;
+  color: #f1d19a;
+}
+
+.lesson-mini-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.lesson-mini-row span {
+  display: grid;
+  gap: 2px;
+}
+
+.lesson-mini-row strong {
+  color: #f1e8d8;
+  font-size: 9px;
+}
+
+.lesson-mini-row b {
+  color: #efb754;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .home-card-link {
