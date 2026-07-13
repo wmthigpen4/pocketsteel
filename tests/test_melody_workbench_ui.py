@@ -43,6 +43,9 @@ assert.equal(studio.createInitialState().kind, "user_melody");
 assert.equal(studio.createInitialState().inputMethod, "phrase");
 assert.equal(studio.createInitialState().workflowPhase, "add");
 assert.equal(studio.createInitialState().pendingReplacement, "");
+assert.equal(studio.printableLessonTitle({title: "Amazing Grace — Complete E9 lesson", material: {song: "Amazing Grace"}}), "Amazing Grace");
+assert.equal(studio.printableLessonTitle({title: "Example — Section 2 E9 lesson"}), "Example");
+assert.equal(studio.printableLessonTitle({title: "Your melody exercise in G"}), "Your melody exercise in G");
 const literal = studio.parseSimpleTabEvents("S4: 3 5F 7");
 assert.deepEqual(literal.map((event) => [event.string, event.fret, event.changes]), [[4, 3, []], [4, 5, ["F"]], [4, 7, []]]);
 assert.deepEqual(studio.resolvePhrasePreview([{token: "5"}, {token: "6"}, {token: "1"}, {token: "3"}], "G").map((event) => event.pitch), ["D4", "E4", "G4", "B4"]);
@@ -407,7 +410,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Change the register for this note only" in html
     assert "state.selectedPhraseIndex" in script
     assert html.count("?v=melody-multi-input-20260711-3") == 1
-    assert html.count("?v=full-grip-slides-20260713-1") == 3
+    assert html.count("?v=portrait-print-20260713-1") == 3
     assert 'elements.sectionNavigation.hidden = needsSource || Number(section.total || 0) <= 1;' in script
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in html
     assert "VexFlow" in Path("ui/vendor/VEXFLOW-LICENSE.txt").read_text(encoding="utf-8")
@@ -497,14 +500,26 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'elements.hero.hidden = true;' in script
     assert 'elements.practiceLoopPanel.hidden = needsSource || (exercise?.events?.length || 0) < 8;' in script
     assert 'id="studio-print-route"' in html
+    assert 'id="studio-print-sheet"' in html
+    assert 'id="studio-print-title"' in html
+    assert 'class="studio-print-brand">Melody Studio · Steel Guitar RAG</p>' in html
+    assert 'class="studio-print-footer">www.steelguitarrag.com</footer>' in html
     assert 'id="studio-score-print"' not in html
     assert "Print score" not in html
-    assert '#studio-result-score-stage, .arrangement-choices' in html
+    assert '@page { size: letter portrait;' in html
+    assert 'body > :not(#studio-print-sheet) { display: none !important; }' in html
+    assert 'font: 7.5pt/1.15 ui-monospace' in html
+    print_sheet = re.search(r'<aside class="print-only" id="studio-print-sheet".*?</aside>', html, re.DOTALL).group(0)
+    assert "Edit melody" not in print_sheet
+    assert "Octave colors" not in print_sheet
+    assert "String labels" not in print_sheet
+    assert "Note labels" not in print_sheet
+    assert "Open attribution source" not in print_sheet
+    assert "Complete E9 lesson" not in print_sheet
     assert 'id="studio-result-score-stage" hidden' in html
     assert 'id="studio-score-lyric-cue" aria-live="polite" hidden' in html
     assert 'scoreSystemLayout' in Path("ui/melody-score.js").read_text(encoding="utf-8")
     assert 'elements.scoreLyricText.textContent = activeSection?.label || "";' in script
-    assert '#studio-tab { display: none !important;' in html
     assert '#studio-whole-song-tab { display: block !important;' in html
     assert 'id="studio-section-navigation"' in html
     assert 'id="studio-section-previous"' in html
@@ -512,7 +527,9 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'id="studio-whole-song-tab-code"' in html
     assert 'state.scoreDraft?.score?.sections' in script
     assert 'async function printWholeSong()' in script
-    assert 'elements.printRoute.textContent = `Arrangement: ${routeButtonLabel(route)}`;' in script
+    assert 'elements.printRoute.textContent = `E9 tablature · ${routeButtonLabel(route)}`;' in script
+    assert 'elements.printTitle.textContent = printableLessonTitle(exercise);' in script
+    assert 'const sectionLabel = total > 1 ?' in script
     assert 'elements.printTab.addEventListener("click", printWholeSong);' in script
     assert "addKeySignature" in Path("ui/melody-score.js").read_text(encoding="utf-8")
     assert "generateBeams" in Path("ui/melody-score.js").read_text(encoding="utf-8")

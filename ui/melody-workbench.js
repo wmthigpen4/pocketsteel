@@ -910,6 +910,15 @@
     };
   }
 
+  function printableLessonTitle(exercise) {
+    const materialTitle = String(exercise?.material?.song || "").trim();
+    const lessonTitle = String(exercise?.title || "").trim();
+    const title = materialTitle || lessonTitle || "E9 tablature";
+    return title
+      .replace(/\s+[—-]\s+(?:Complete|Section\s+\d+)\s+E9\s+lesson$/i, "")
+      .trim() || "E9 tablature";
+  }
+
   const api = {
     MAX_EVENTS_PER_SECTION,
     TASKS,
@@ -962,7 +971,8 @@
     pitchValueForTabNote,
     scorePitchesForEvent,
     positionsWithScientificOctaves,
-    melodyFretboardOptions
+    melodyFretboardOptions,
+    printableLessonTitle
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = api;
@@ -1119,6 +1129,7 @@
     practiceLoopClear: $("#studio-practice-loop-clear"),
     practiceLoopStatus: $("#studio-practice-loop-status"),
     printTab: $("#studio-print-tab"),
+    printTitle: $("#studio-print-title"),
     printRoute: $("#studio-print-route"),
     arrangementChoices: $("#studio-arrangement-choices"),
     routeTabs: $("#studio-route-tabs"),
@@ -2343,7 +2354,7 @@
       button.classList.toggle("is-selected", selected);
       button.setAttribute("aria-pressed", String(selected));
     });
-    elements.printRoute.textContent = `Arrangement: ${routeButtonLabel(route)}`;
+    elements.printRoute.textContent = `E9 tablature · ${routeButtonLabel(route)}`;
     elements.practiceChordOption.hidden = !hasChordContext(exercise.events);
     if (elements.practiceChordOption.hidden) elements.practiceChords.checked = false;
     renderResultScore(exercise, route);
@@ -2389,6 +2400,7 @@
     elements.editor.hidden = true;
     elements.result.hidden = false;
     elements.resultTitle.textContent = exercise?.title || "Melody lesson";
+    elements.printTitle.textContent = printableLessonTitle(exercise);
     const section = exercise?.section || {};
     const needsSource = exercise?.status === "needs_source";
     elements.sectionNavigation.hidden = needsSource || Number(section.total || 0) <= 1;
@@ -2509,7 +2521,9 @@
         }
         const route = response.melodyExercise?.routes?.find((item) => item.harmonyType === harmonyType)
           || response.melodyExercise?.routes?.[0];
-        sections.push(`${response.melodyExercise?.section?.label || `Phrase ${number}`}\n${route?.tab?.printTabText || route?.tab?.tabText || response.tabs?.[0]?.printTabText || response.tabs?.[0]?.tabText || ""}`);
+        const sectionLabel = total > 1 ? (response.melodyExercise?.section?.label || `Phrase ${number}`) : "";
+        const tabText = route?.tab?.printTabText || route?.tab?.tabText || response.tabs?.[0]?.printTabText || response.tabs?.[0]?.tabText || "";
+        sections.push([sectionLabel, tabText].filter(Boolean).join("\n"));
       }
       elements.wholeSongTabCode.textContent = sections.join("\n\n");
       elements.wholeSongTab.hidden = false;

@@ -375,16 +375,37 @@
       .practice-core .field { flex: 1 1 100%; }
     }
     @media print {
-      @page { size: landscape; margin: 0.5in; }
-      body { background: #fff; color: #111; }
-      .studio-header, .studio-hero, #studio-editor, #studio-result-score-stage, .arrangement-choices, #studio-fretboard, #studio-transport, .result-actions, .practice-bar { display: none !important; }
-      main, .studio-shell, #studio-result { width: 100%; max-width: none; margin: 0; padding: 0; border: 0; box-shadow: none; background: #fff; }
-      #studio-result .result-head { display: block; color: #111; }
-      #studio-result-title, #studio-result-source, #studio-print-route { color: #111; }
-      #studio-print-route { display: block !important; margin: 8px 0 16px; font-weight: 800; }
-      #studio-tab { display: none !important; }
+      @page { size: letter portrait; margin: 0.35in 0.42in 0.3in; }
+      html, body { width: auto; min-height: 0; margin: 0; background: #fff; color: #17120b; }
+      body > :not(#studio-print-sheet) { display: none !important; }
+      #studio-print-sheet {
+        min-height: 9.95in;
+        display: flex !important;
+        flex-direction: column;
+        box-sizing: border-box;
+        border-top: 5px solid #b9822f;
+        background: #fff;
+        color: #17120b;
+        padding: 0.16in 0 0;
+      }
+      .studio-print-brand { margin: 0 0 5px; color: #8a5b1d; font: 800 8pt/1.1 Arial, sans-serif; letter-spacing: 0.16em; text-transform: uppercase; }
+      #studio-print-title { margin: 0; color: #17120b; font: 800 23pt/1.05 Georgia, serif; }
+      #studio-print-route { display: block !important; margin: 6px 0 12px; color: #584d40; font: 700 9pt/1.2 Arial, sans-serif; }
       #studio-whole-song-tab { display: block !important; margin: 0; }
-      .tab-block { overflow: visible; break-inside: avoid; page-break-inside: avoid; border: 1px solid #222; border-radius: 0; background: #fff; padding: 14px; color: #111; font: 10pt/1.35 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre; }
+      #studio-whole-song-tab .tab-block {
+        max-width: none;
+        overflow: hidden;
+        break-inside: avoid;
+        page-break-inside: avoid;
+        border: 1px solid #b9ab96;
+        border-radius: 0;
+        background: #fff;
+        padding: 9px 10px;
+        color: #111;
+        font: 7.5pt/1.15 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        white-space: pre;
+      }
+      .studio-print-footer { margin: auto 0 0; border-top: 1px solid #d8c9b3; padding: 7px 2px 0; color: #6d5b45; font: 700 8pt/1.1 Arial, sans-serif; letter-spacing: 0.035em; text-align: right; }
     }
   </style>
 </head>
@@ -639,7 +660,6 @@
             <button class="secondary-action" id="studio-edit-top" type="button">Edit melody</button>
           </div>
           <p id="studio-result-source" hidden></p>
-          <p class="print-only" id="studio-print-route"></p>
         </div>
 
         <nav class="section-navigation" id="studio-section-navigation" aria-label="Song phrases" hidden>
@@ -722,9 +742,6 @@
           <p class="transition-key" id="studio-transition-key" hidden><strong>Movement:</strong> <code>~~~~~</code> audible slide or control glide · <code>-----</code> held voice · blank connector means block, add, or repick</p>
           <pre class="tab-block" aria-label="Melody Studio tab"><code id="studio-tab-code"></code></pre>
         </div>
-        <div class="print-only" id="studio-whole-song-tab" hidden>
-          <pre class="tab-block" aria-label="Complete Melody Studio tablature"><code id="studio-whole-song-tab-code"></code></pre>
-        </div>
         <div class="result-actions">
           <button class="primary-action" id="studio-continue" type="button" hidden>Continue</button>
           <button class="secondary-action" id="studio-edit" type="button">Edit melody</button>
@@ -735,10 +752,22 @@
     </div>
   </main>
 
-  <script src="answer-client.js?v=full-grip-slides-20260713-1"></script>
+  <aside class="print-only" id="studio-print-sheet" aria-label="Printable Melody Studio tablature">
+    <header>
+      <p class="studio-print-brand">Melody Studio · Steel Guitar RAG</p>
+      <h1 id="studio-print-title">E9 tablature</h1>
+      <p id="studio-print-route"></p>
+    </header>
+    <div id="studio-whole-song-tab" hidden>
+      <pre class="tab-block" aria-label="Melody Studio tablature"><code id="studio-whole-song-tab-code"></code></pre>
+    </div>
+    <footer class="studio-print-footer">www.steelguitarrag.com</footer>
+  </aside>
+
+  <script src="answer-client.js?v=portrait-print-20260713-1"></script>
   <script src="pedal-steel-fretboard.js?v=melody-multi-input-20260711-3"></script>
   <script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>
-  <script src="melody-score.js?v=full-grip-slides-20260713-1"></script>
-  <script src="melody-workbench.js?v=full-grip-slides-20260713-1"></script>
+  <script src="melody-score.js?v=portrait-print-20260713-1"></script>
+  <script src="melody-workbench.js?v=portrait-print-20260713-1"></script>
 </body>
 </html>
