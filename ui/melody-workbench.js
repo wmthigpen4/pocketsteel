@@ -642,7 +642,10 @@
   function compactGripDescription(event, options = {}) {
     const strings = numberList(options.strings?.length ? options.strings : eventStrings(event));
     const fret = eventFret(event, options.fret);
-    const controls = eventPerformanceControls(event, options.controls || []);
+    const hasControlOverride = Object.prototype.hasOwnProperty.call(options, "controls");
+    const controls = hasControlOverride
+      ? eventPerformanceControls(null, options.controls || [])
+      : eventPerformanceControls(event);
     const stringText = strings.length ? `${strings.length === 1 ? "string" : "strings"} ${humanList(strings)}` : "the shown strings";
     const fretText = fret === null ? "the shown fret" : `fret ${fret}`;
     return `${stringText} at ${fretText}${controls.length ? ` with ${controls.join("+")}` : " open"}`;
@@ -677,8 +680,6 @@
   }
 
   function transitionControlAnnotation(transition) {
-    const kind = String(transition?.kind || "").toLowerCase();
-    if (!kind.includes("pedal") && !kind.includes("lever")) return "";
     const before = new Set(eventPerformanceControls(null, transition?.controlsBefore || []));
     const after = new Set(eventPerformanceControls(null, transition?.controlsAfter || []));
     const pressed = [...after].filter((control) => !before.has(control));
@@ -713,11 +714,15 @@
     const fromStrings = numberList(transition?.fromStrings);
     const toStrings = numberList(transition?.toStrings);
     const added = toStrings.filter((string) => !fromStrings.includes(string) && !repicked.includes(string));
+    const melodyOnly = String(transition?.scope || "").toLowerCase() === "melody_voice";
     const parts = [];
-    if (released.length) parts.push(`release ${released.length === 1 ? "string" : "strings"} ${humanList(released)}`);
-    if (added.length) parts.push(`add ${added.length === 1 ? "string" : "strings"} ${humanList(added)}`);
-    if (repicked.length) parts.push(`repick ${repicked.length === 1 ? "string" : "strings"} ${humanList(repicked)}`);
-    return parts.length ? `${parts.join("; ")} at the arrival` : "";
+    if (released.length) {
+      const strings = `${released.length === 1 ? "string" : "strings"} ${humanList(released)}`;
+      parts.push(melodyOnly ? `block and release ${strings} before the slide` : `release ${strings} at the arrival`);
+    }
+    if (added.length) parts.push(`add ${added.length === 1 ? "string" : "strings"} ${humanList(added)} at the arrival`);
+    if (repicked.length) parts.push(`repick ${repicked.length === 1 ? "string" : "strings"} ${humanList(repicked)} at the arrival`);
+    return parts.join("; ");
   }
 
   function transitionChoreography(transition, sourceEvent, targetEvent) {
@@ -737,19 +742,61 @@
     const sustained = transitionSustainedStrings(transition);
     const arrival = transitionArrivalInstruction(transition);
     const kind = String(transition.kind || "").toLowerCase();
+    const scope = String(transition.scope || "").toLowerCase();
+    const controlAction = transitionControlAnnotation(transition);
     let movement = "";
     if (kind === "bar_slide") {
-      const subject = sustained.length ? `${sustained.length === 1 ? "string" : "strings"} ${humanList(sustained)}` : "the melody voice";
       const fromFret = Number.isInteger(Number(transition.fromFret)) ? Number(transition.fromFret) : eventFret(sourceEvent) ?? "the starting fret";
       const toFret = Number.isInteger(Number(transition.toFret)) ? Number(transition.toFret) : eventFret(targetEvent) ?? "the destination fret";
-      movement = `slide ${subject} from fret ${fromFret} to fret ${toFret}; land on ${destination}`;
+      if (scope === "full_grip" && sustained.length >= 2) {
+        const ringing = sustained.length === 2 ? "keep both strings ringing" : `keep all ${sustained.length === 3 ? "three" : sustained.length} strings ringing`;
+        movement = `Attack the full grip: ${source}; ${ringing}; slide the grip from fret ${fromFret} to fret ${toFret}${controlAction ? `; ${controlAction} at the arrival` : ""}; land on ${destination}`;
+      } else {
+        const subject = sustained.length ? `${sustained.length === 1 ? "string" : "strings"} ${humanList(sustained)}` : "the melody voice";
+        movement = `Pick ${source}; slide ${subject} from fret ${fromFret} to fret ${toFret}${controlAction ? `; ${controlAction} at the arrival` : ""}; land on ${destination}`;
+      }
     } else if (kind === "pedal_glide" || kind === "lever_glide") {
-      const controlAction = transitionControlAnnotation(transition);
-      movement = `hold fret ${Number.isInteger(Number(transition.toFret)) ? Number(transition.toFret) : eventFret(targetEvent) ?? "in place"}${controlAction ? ` and ${controlAction}` : " for the control change"}; land on ${destination}`;
+      movement = `Pick ${source}; hold fret ${Number.isInteger(Number(transition.toFret)) ? Number(transition.toFret) : eventFret(targetEvent) ?? "in place"}${controlAction ? ` and ${controlAction}` : " for the control change"}; land on ${destination}`;
     } else {
-      movement = `move to ${destination}`;
+      movement = `Pick ${source}; move to ${destination}`;
     }
-    return `Pick ${source}; ${movement}${arrival ? `; ${arrival}` : ""}.`;
+    return `${movement}${arrival ? `; ${arrival}` : ""}.`;
+  }
+
+  function eventPlaybackVoices(event) {
+    const topPitch = Number(event?.pitchValue);
+    const voices = (event?.notes || []).flatMap((note) => {
+      const string = Number(note?.string);
+      const pitchValue = pitchValueForTabNote(note);
+      if (!Number.isInteger(string) || !Number.isFinite(pitchValue)) return [];
+      return [{ string, pitchValue, topVoice: Number.isFinite(topPitch) && pitchValue === topPitch }];
+    });
+    if (voices.length) return voices;
+    return Number.isFinite(topPitch) ? [{ string: null, pitchValue: topPitch, topVoice: true }] : [];
+  }
+
+  function transitionPlaybackPlan(event, nextEvent, outgoingTransition = null, incomingTransition = null) {
+    const incomingStrings = new Set(transitionSustainedStrings(incomingTransition));
+    const outgoingStrings = new Set(transitionSustainedStrings(outgoingTransition));
+    const targetByString = new Map(eventPlaybackVoices(nextEvent)
+      .filter((voice) => Number.isInteger(voice.string))
+      .map((voice) => [voice.string, voice]));
+    return eventPlaybackVoices(event).map((voice) => {
+      if (Number.isInteger(voice.string) && incomingStrings.has(voice.string)) {
+        return { ...voice, action: "continue" };
+      }
+      const target = Number.isInteger(voice.string) && outgoingStrings.has(voice.string)
+        ? targetByString.get(voice.string)
+        : null;
+      if (target) {
+        return {
+          ...voice,
+          action: target.pitchValue === voice.pitchValue ? "sustain" : "glide",
+          toPitchValue: target.pitchValue
+        };
+      }
+      return { ...voice, action: "attack" };
+    });
   }
 
   function gripRationale(event) {
@@ -906,6 +953,8 @@
     transitionControlAnnotation,
     transitionScoreVoices,
     transitionChoreography,
+    eventPlaybackVoices,
+    transitionPlaybackPlan,
     gripRationale,
     scientificOctaveForEvent,
     scientificOctaveLabel,
@@ -1664,6 +1713,42 @@
     oscillator.stop(when + duration);
   }
 
+  function scheduleSustainedTransitionPitch(
+    context,
+    fromPitchValue,
+    toPitchValue,
+    when,
+    sourceDuration,
+    targetDuration,
+    gainValue = 0.11,
+    type = "triangle",
+    glideFraction = 0.35
+  ) {
+    if (!Number.isFinite(Number(fromPitchValue)) || !Number.isFinite(Number(toPitchValue))) return;
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    const fromFrequency = 440 * 2 ** ((Number(fromPitchValue) - 69) / 12);
+    const toFrequency = 440 * 2 ** ((Number(toPitchValue) - 69) / 12);
+    const sourceLength = Math.max(0.08, Number(sourceDuration) || 0.08);
+    const targetLength = Math.max(0.08, Number(targetDuration) || 0.08);
+    const glideEnd = when + sourceLength;
+    const stopAt = glideEnd + targetLength;
+    oscillator.type = type;
+    oscillator.frequency.value = fromFrequency;
+    if (Math.abs(fromFrequency - toFrequency) > 0.001) {
+      const glideStart = when + sourceLength * Math.max(0.5, 1 - Number(glideFraction || 0.35));
+      oscillator.frequency.setValueAtTime(fromFrequency, glideStart);
+      oscillator.frequency.exponentialRampToValueAtTime(toFrequency, glideEnd);
+    }
+    gain.gain.setValueAtTime(0.0001, when);
+    gain.gain.exponentialRampToValueAtTime(gainValue, when + 0.015);
+    gain.gain.setValueAtTime(gainValue, Math.max(when + 0.016, stopAt - 0.03));
+    gain.gain.exponentialRampToValueAtTime(0.0001, stopAt - 0.005);
+    oscillator.connect(gain).connect(context.destination);
+    oscillator.start(when);
+    oscillator.stop(stopAt);
+  }
+
   function chordPitchValues(symbol) {
     const match = String(symbol || "").trim().match(/^([A-Ga-g])([#b]?)([^/]*)/);
     if (!match) return [];
@@ -1713,6 +1798,7 @@
     for (let beat = 0; beat < countBeats; beat += 1) {
       schedulePitch(context, beat === countBeats - 1 ? 84 : 79, context.currentTime + 0.08 + beat * secondsPerBeat, 0.055, 0.055, "square");
     }
+    const activeRoute = state.response?.melodyExercise?.routes?.find((route) => route.id === state.response?.melodyExercise?.selectedRouteId);
     for (let index = range.start; index <= range.end; index += 1) {
       const event = events[index];
       const duration = Math.max(0.08, Number(event.durationBeats || 1) * secondsPerBeat);
@@ -1720,13 +1806,35 @@
       state.practiceTimers.push(global.setTimeout(() => {
         if (run === state.practiceRun) selectEvent(index);
       }, delay));
-      const activeRoute = state.response?.melodyExercise?.routes?.find((route) => route.id === state.response?.melodyExercise?.selectedRouteId);
-      const nextEvent = events[index + 1];
-      const transition = (activeRoute?.transitions || []).find((item) => item.fromEventId === event.id && item.toEventId === nextEvent?.id);
-      if (!event.rest) schedulePitch(context, event.pitchValue, cursor, duration, 0.11, "triangle", transition ? nextEvent?.pitchValue : null, transition?.playbackGlideFraction || 0);
-      (event.notes || []).map(pitchValueForTabNote).filter((pitch) => Number.isFinite(pitch) && Number(pitch) !== Number(event.pitchValue)).forEach((pitch) => {
-        schedulePitch(context, pitch, cursor, duration, 0.035, "sine");
-      });
+      const nextEvent = index < range.end ? events[index + 1] : null;
+      const previousEvent = index > range.start ? events[index - 1] : null;
+      const outgoingTransition = (activeRoute?.transitions || []).find((item) => item.fromEventId === event.id && item.toEventId === nextEvent?.id);
+      const incomingTransition = (activeRoute?.transitions || []).find((item) => item.fromEventId === previousEvent?.id && item.toEventId === event.id);
+      if (!event.rest) {
+        const targetDuration = nextEvent
+          ? Math.max(0.08, Number(nextEvent.durationBeats || 1) * secondsPerBeat)
+          : 0;
+        transitionPlaybackPlan(event, nextEvent, outgoingTransition, incomingTransition).forEach((voice) => {
+          if (voice.action === "continue") return;
+          const gainValue = voice.topVoice ? 0.11 : 0.035;
+          const type = voice.topVoice ? "triangle" : "sine";
+          if (voice.action === "glide" || voice.action === "sustain") {
+            scheduleSustainedTransitionPitch(
+              context,
+              voice.pitchValue,
+              voice.toPitchValue,
+              cursor,
+              duration,
+              targetDuration,
+              gainValue,
+              type,
+              outgoingTransition?.playbackGlideFraction || 0.35
+            );
+          } else {
+            schedulePitch(context, voice.pitchValue, cursor, duration, gainValue, type);
+          }
+        });
+      }
       if (elements.practiceChords.checked) {
         chordPitchValues(activeChord(events, index)).forEach((pitch) => schedulePitch(context, pitch, cursor, duration, 0.025, "sine"));
       }

@@ -159,13 +159,21 @@ def test_amazing_grace_exact_score_events_keep_rhythm_chords_and_e9_route() -> N
     tension = mixed["events"][4]
     assert tension["arrangementRole"] == "tension"
     assert len(tension["notes"]) <= 2
-    assert tension["performanceControls"] != ["B", "C"]
+    assert "C" not in tension["performanceControls"]
     resolution = mixed["events"][5]
     assert resolution["arrangementRole"] == "resolution"
     assert resolution["canonicalGrip"] == "4-5-6"
     assert resolution["performanceControls"] == ["A", "B"]
     assert [(note["string"], note["fret"]) for note in resolution["notes"]] == [(4, 5), (5, 5), (6, 5)]
-    assert "release C; press A+B" in resolution["movement"]
+    assert "press A+B" in resolution["movement"]
+    assert all("C" not in event["performanceControls"] for event in mixed["events"])
+    d_to_g = next(transition for transition in mixed["transitions"] if transition["toEventId"].endswith("-step-7"))
+    assert d_to_g["kind"] == "bar_slide"
+    assert d_to_g["scope"] == "full_grip"
+    assert d_to_g["fromFret"] == 5 and d_to_g["toFret"] == 3
+    assert d_to_g["controlsBefore"] == ["A", "B"] and d_to_g["controlsAfter"] == []
+    assert d_to_g["sustainedStrings"] == [4, 5, 6]
+    assert d_to_g["repickedStrings"] == d_to_g["releasedStrings"] == []
     assert mixed["pathSummary"]["maxBarTravel"] <= 2
 
 
@@ -200,6 +208,17 @@ def test_amazing_grace_c_arrival_stays_in_the_fret_three_ab_pocket() -> None:
     assert c_arrival["canonicalGrip"] == "5-6-8"
     assert c_arrival["performanceControls"] == ["A", "B"]
     assert [(note["string"], note["fret"]) for note in c_arrival["notes"]] == [(5, 3), (6, 3), (8, 3)]
+    assert all("C" not in event["performanceControls"] for event in mixed["events"])
+    full_grip_targets = {
+        int(transition["toEventId"].rsplit("-", 1)[-1]): transition
+        for transition in mixed["transitions"]
+        if transition["scope"] == "full_grip"
+    }
+    for target in (7, 35):
+        transition = full_grip_targets[target]
+        assert transition["fromFret"] == 5 and transition["toFret"] == 3
+        assert transition["controlsBefore"] == ["A", "B"] and transition["controlsAfter"] == []
+        assert transition["fromStrings"] == transition["toStrings"] == transition["sustainedStrings"] == [4, 5, 6]
     print_tab = mixed["tabExample"]["print_tab_text"]
     assert print_tab.count("Measure") >= 2
     assert all(len(line) <= 112 for line in print_tab.splitlines() if not line.startswith("Measure"))
@@ -292,27 +311,47 @@ def test_default_arranger_returns_faithful_and_recommended_mixed_routes() -> Non
         assert [event["renderablePositionId"] for event in route["events"]] == [position["id"] for position in route["fretboard"]["positions"]]
 
 
-def test_mixed_arrangement_integrates_semantic_pedal_transition() -> None:
-    tokens = "11233"
-    melody = [
+@pytest.mark.parametrize(
+    ("name", "source_pitch", "source_fret"),
+    [("D to G", "A4", 5), ("G to G", "D5", 10)],
+)
+def test_mixed_arrangement_prioritizes_full_grip_ab_to_open_slides(
+    name: str,
+    source_pitch: str,
+    source_fret: int,
+) -> None:
+    result = melody_exercise_response(
+        name,
         {
-            "token": token,
-            "durationBeats": 2 if index in {0, 2, 4} else 1,
-            "beat": 1 if index % 2 == 0 else 2,
-            "chord": "G" if index < 3 else "D7",
-        }
-        for index, token in enumerate(tokens)
-    ]
-    result = melody_exercise_response("Build a moving arrangement", {"key": "G", "melody": melody})
+            "key": "G",
+            "meter": "4/4",
+            "melody": [
+                {"pitch": source_pitch, "durationBeats": 2, "measure": 1, "beat": 1, "chord": "D7" if source_fret == 5 else "G"},
+                {"pitch": "G4", "durationBeats": 2, "measure": 1, "beat": 3, "chord": "G"},
+            ],
+        },
+    )
 
     mixed = next(route for route in result["melody_exercise"]["routes"] if route["harmonyType"] == "mixed_arrangement")
-    transition = next(item for item in mixed["transitions"] if item["kind"] == "pedal_glide")
-    assert transition["scope"] in {"full_grip", "melody_voice"}
-    assert transition["fromStrings"] == transition["toStrings"] == transition["sustainedStrings"]
-    assert transition["voiceActions"] == [{"string": 4, "action": "pedal_glide"}]
+    assert [(event["notes"][0]["fret"], event["canonicalGrip"], event["performanceControls"]) for event in mixed["events"]] == [
+        (source_fret, "4-5-6", ["A", "B"]),
+        (3, "4-5-6", []),
+    ]
+    transition = mixed["transitions"][0]
+    assert transition["kind"] == "bar_slide"
+    assert transition["scope"] == "full_grip"
+    assert transition["fromFret"] == source_fret and transition["toFret"] == 3
+    assert transition["controlsBefore"] == ["A", "B"] and transition["controlsAfter"] == []
+    assert transition["fromStrings"] == transition["toStrings"] == transition["sustainedStrings"] == [4, 5, 6]
+    assert transition["repickedStrings"] == transition["releasedStrings"] == []
+    assert transition["voiceActions"] == [
+        {"string": 4, "action": "bar_slide"},
+        {"string": 5, "action": "bar_slide"},
+        {"string": 6, "action": "bar_slide"},
+    ]
+    assert transition["controlChanges"] == {"pressed": [], "released": ["A", "B"]}
     assert "tabTokens" not in transition
-    assert transition["toEventId"] in {event["id"] for event in mixed["events"]}
-    assert transition["id"] in {event.get("transitionFromPreviousId") for event in mixed["events"]}
+    assert "releasing A+B" in transition["label"]
 
 
 @pytest.mark.parametrize(
@@ -371,6 +410,68 @@ def test_transition_contract_describes_complete_grip_choreography(
         expected_kind,
         "hold",
     }
+
+
+@pytest.mark.parametrize(("source_fret", "source_pitch"), [(5, 69), (10, 74)])
+def test_transition_contract_accepts_familiar_full_grip_ab_release_slides(
+    source_fret: int,
+    source_pitch: int,
+) -> None:
+    source = PositionCandidate(
+        fret=source_fret,
+        notes=(TabNote(4, source_fret), TabNote(5, source_fret, ("A",)), TabNote(6, source_fret, ("B",))),
+        top_pitch=source_pitch,
+        controls=("A", "B"),
+        family="ab_major",
+        note_names=("A", "F#", "D") if source_fret == 5 else ("D", "B", "G"),
+        intervals=("5", "3", "1"),
+        pattern_family="4-5-6 harmonic path",
+        canonical_grip=(4, 5, 6),
+    )
+    target = PositionCandidate(
+        fret=3,
+        notes=(TabNote(4, 3), TabNote(5, 3), TabNote(6, 3)),
+        top_pitch=67,
+        controls=(),
+        family="open_major",
+        note_names=("G", "D", "B"),
+        intervals=("1", "5", "3"),
+        pattern_family="4-5-6 harmonic path",
+        canonical_grip=(4, 5, 6),
+    )
+
+    transition = _transition_between("route", 1, source, target)
+
+    assert transition is not None
+    assert transition["kind"] == "bar_slide"
+    assert transition["scope"] == "full_grip"
+    assert transition["fromFret"] == source_fret and transition["toFret"] == 3
+    assert transition["sustainedStrings"] == [4, 5, 6]
+    assert transition["repickedStrings"] == transition["releasedStrings"] == []
+    assert transition["controlChanges"] == {"pressed": [], "released": ["A", "B"]}
+    assert "releasing A+B" in transition["label"]
+
+
+def test_minor_chord_can_still_use_validated_bc_grip_when_it_is_the_harmonic_arrival() -> None:
+    result = melody_exercise_response(
+        "Arrange an A minor arrival",
+        {"key": "G", "melody": [{"pitch": "A4", "durationBeats": 2, "measure": 1, "beat": 1, "chord": "Am"}]},
+    )
+
+    mixed = next(route for route in result["melody_exercise"]["routes"] if route["harmonyType"] == "mixed_arrangement")
+    event = mixed["events"][0]
+    assert event["canonicalGrip"] == "4-5-6"
+    assert event["performanceControls"] == ["B", "C"]
+    assert len(event["notes"]) == 3
+
+
+def test_literal_c_pedal_tab_remains_fixed() -> None:
+    result = melody_exercise_response(
+        "Keep my literal position",
+        {"key": "G", "melody": [{"string": 4, "fret": 5, "changes": ["C"]}]},
+    )
+
+    assert result["melody_exercise"]["events"][0]["notes"][0] == {"string": 4, "fret": 5, "changes": ["C"]}
 
 
 def test_mixed_arrangement_limits_transitions_and_never_places_them_adjacent() -> None:

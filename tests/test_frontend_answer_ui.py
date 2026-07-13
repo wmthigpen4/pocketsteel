@@ -233,7 +233,14 @@ let capturedRequest;
               recommended: false,
               recommendation: "Learn the melody first.",
               textureSummary: { singleNotes: 1, dyads: 0, triads: 0, barSlides: 1 },
-              transitions: [{ id: "transition-1", kind: "bar_slide", fromEventId: "melody-step-0", toEventId: "melody-step-1" }],
+              transitions: [{
+                id: "transition-1", kind: "bar_slide", scope: "full_grip",
+                fromEventId: "melody-step-0", toEventId: "melody-step-1",
+                controlsBefore: ["A", "B"], controlsAfter: [],
+                fromStrings: [4, 5, 6], toStrings: [4, 5, 6], sustainedStrings: [4, 5, 6],
+                repickedStrings: [], releasedStrings: [],
+                voiceActions: [{string: 4, action: "bar_slide"}, {string: 5, action: "bar_slide"}, {string: 6, action: "bar_slide"}]
+              }],
               pathSummary: { totalBarTravel: 0, harmonicFamilyChanges: 0 },
               events: [{ id: "melody-step-1", step: 1, resolvedNote: "G", resolvedPitch: "G4", texture: "single_note", arrangementRole: "arrival", performanceControls: ["A", "B"], patternFamily: "middle-pocket", canonicalGrip: "4-5-6", selectionReason: "Keeps the phrase in one pocket.", transitionFromPreviousId: "transition-1", notes: [{ string: 4, fret: 3, changes: [] }] }],
               tabExample: { id: "single-tab", title: "Single", rendered_tab: "S4 |--3--|", printTabText: "S4 |--3--|", validation: { ok: true } },
@@ -261,6 +268,10 @@ let capturedRequest;
   assert.equal(result.melodyExercise.routes[0].events[0].selectionReason, "Keeps the phrase in one pocket.");
   assert.equal(result.melodyExercise.routes[0].events[0].transitionFromPreviousId, "transition-1");
   assert.equal(result.melodyExercise.routes[0].transitions[0].kind, "bar_slide");
+  assert.equal(result.melodyExercise.routes[0].transitions[0].scope, "full_grip");
+  assert.deepEqual(result.melodyExercise.routes[0].transitions[0].controlsBefore, ["A", "B"]);
+  assert.deepEqual(result.melodyExercise.routes[0].transitions[0].sustainedStrings, [4, 5, 6]);
+  assert.deepEqual(result.melodyExercise.routes[0].transitions[0].voiceActions.map((item) => item.string), [4, 5, 6]);
   assert.equal(result.melodyExercise.routes[0].textureSummary.barSlides, 1);
   assert.equal(result.melodyExercise.routes[0].pathSummary.harmonicFamilyChanges, 0);
   assert.equal(result.melodyExercise.routes[0].tab.tabText, "S4 |--3--|");

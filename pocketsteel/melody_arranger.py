@@ -476,6 +476,7 @@ def choose_mixed_path(
                     roles,
                     phrase_starts=phrase_starts or {0},
                     home_fret=home_fret,
+                    key=key,
                 )
                 choices.append((_add_cost(previous_cost, transition), previous_index))
             current[current_index] = min(choices, key=lambda item: (item[0], item[1]))
@@ -539,7 +540,19 @@ def build_expressive_transitions(
         if transition is None:
             continue
         chord_change = bool(active_chords[target_index] and active_chords[target_index] != active_chords[target_index - 1])
+        is_full_grip = transition["scope"] == "full_grip" and len(transition["sustainedStrings"]) >= 2
+        if not is_full_grip:
+            # Blocking a grip down to one moving voice is a useful exception, not
+            # the default sound. Never generate the confusing one-note-into-grip
+            # move that prompted this user-smoke correction.
+            if min(len(path[target_index - 1].notes), len(path[target_index].notes)) < 2:
+                continue
+            if not chord_change and not (
+                inputs[target_index].duration_beats >= 2 and float(inputs[target_index].beat) == 1
+            ):
+                continue
         priority = (
+            0 if is_full_grip else 1,
             0 if chord_change else 1,
             0 if inputs[target_index].duration_beats >= 2 else 1,
             0 if float(inputs[target_index].beat) == 1 else 1,
@@ -548,10 +561,15 @@ def build_expressive_transitions(
         )
         eligible.append((priority, target_index, transition))
     selected: list[tuple[int, dict[str, Any]]] = []
+    melody_only_count = 0
     cap = max(1, math.ceil(len(path) / 8))
     for _priority, target_index, transition in sorted(eligible, key=lambda item: item[0]):
         if any(abs(target_index - existing_index) <= 1 for existing_index, _item in selected):
             continue
+        if transition["scope"] != "full_grip":
+            if melody_only_count >= 1:
+                continue
+            melody_only_count += 1
         selected.append((target_index, transition))
         if len(selected) >= cap:
             break
@@ -570,9 +588,26 @@ def _transition_between(
         return None
     previous_strings = {note.string for note in previous.notes}
     current_strings = {note.string for note in current.notes}
-    scope = "full_grip" if previous_strings == current_strings and len(previous.notes) == len(current.notes) else "melody_voice"
+    same_grip = (
+        previous_strings == current_strings
+        and len(previous.notes) == len(current.notes)
+        and 2 <= len(current.notes) <= 3
+        and (not previous.canonical_grip or not current.canonical_grip or previous.canonical_grip == current.canonical_grip)
+    )
+    scope = "full_grip" if same_grip else "melody_voice"
     kind = ""
-    if previous.controls == current.controls and 1 <= abs(current.fret - previous.fret) <= 4:
+    control = ""
+    fret_distance = abs(current.fret - previous.fret)
+    controls_compatible_with_slide = previous.controls == current.controls or _is_open_ab_exchange(
+        previous.controls,
+        current.controls,
+    )
+    max_slide_distance = 7 if scope == "full_grip" else 4
+    if (
+        1 <= fret_distance <= max_slide_distance
+        and controls_compatible_with_slide
+        and (scope == "full_grip" or previous.controls == current.controls)
+    ):
         kind = "bar_slide"
         strings = sorted(previous_strings & current_strings) if scope == "full_grip" else [current.top_string]
     elif previous.fret == current.fret:
@@ -620,7 +655,6 @@ def _transition_between(
         sustained=sustained,
         repicked=repicked,
         released=released,
-        changed_control=control if kind != "bar_slide" else "",
     )
     return {
         "id": f"{route_id}-transition-{target_index}-{target_index + 1}",
@@ -642,6 +676,10 @@ def _transition_between(
         "repickedStrings": repicked,
         "releasedStrings": released,
         "voiceActions": voice_actions,
+        "controlChanges": {
+            "pressed": sorted(set(current.controls) - set(previous.controls)),
+            "released": sorted(set(previous.controls) - set(current.controls)),
+        },
     }
 
 
@@ -654,16 +692,18 @@ def _transition_instruction(
     sustained: Sequence[int],
     repicked: Sequence[int],
     released: Sequence[int],
-    changed_control: str,
 ) -> str:
     before = _pick_instruction(previous)
     if kind == "bar_slide":
         moving = "strings " + ", ".join(str(string) for string in sustained)
         movement = f"slide {moving} to fret {current.fret}"
+        control_action = _control_change_text(previous.controls, current.controls)
+        if control_action:
+            movement += f" while {control_action}"
     else:
-        action = "press" if changed_control in current.controls else "release"
         moving = "strings " + ", ".join(str(string) for string in sustained)
-        movement = f"hold fret {current.fret} and {action} {changed_control} on {moving}"
+        control_action = _control_change_text(previous.controls, current.controls)
+        movement = f"hold fret {current.fret} and {control_action} on {moving}"
     additions: list[str] = []
     if released:
         additions.append("release strings " + ", ".join(str(string) for string in released))
@@ -672,6 +712,24 @@ def _transition_instruction(
         additions.append(f"{verb} strings " + ", ".join(str(string) for string in repicked) + " at the arrival")
     suffix = ("; " + "; ".join(additions)) if additions else ""
     return f"{before}; {movement}{suffix}."
+
+
+def _is_open_ab_exchange(previous_controls: Sequence[str], current_controls: Sequence[str]) -> bool:
+    postures = {frozenset(previous_controls), frozenset(current_controls)}
+    return postures == {frozenset(), frozenset({"A", "B"})}
+
+
+def _control_change_text(previous_controls: Sequence[str], current_controls: Sequence[str]) -> str:
+    previous = set(previous_controls)
+    current = set(current_controls)
+    parts: list[str] = []
+    released = sorted(previous - current)
+    pressed = sorted(current - previous)
+    if released:
+        parts.append("releasing " + "+".join(released))
+    if pressed:
+        parts.append("pressing " + "+".join(pressed))
+    return " and ".join(parts)
 
 
 def _pick_instruction(candidate: PositionCandidate) -> str:
@@ -1248,7 +1306,11 @@ def _mixed_start_cost(
 ) -> tuple[int, ...]:
     desired = _desired_texture_size(inputs, index, active_chords, roles)
     return (
-        _harmonic_support_penalty(candidate, roles[index], active_chords[index]),
+        _harmonic_correctness_penalty(candidate, active_chords[index]),
+        _control_posture_tier(candidate, active_chords[index]),
+        0,
+        _harmonic_role_penalty(candidate, roles[index], active_chords[index]),
+        _arrival_home_penalty(candidate, roles[index], home_fret),
         _home_pocket_penalty(candidate.fret, home_fret),
         0,
         0,
@@ -1272,12 +1334,17 @@ def _mixed_transition_cost(
     *,
     phrase_starts: set[int],
     home_fret: int,
+    key: str,
 ) -> tuple[int, ...]:
     desired = _desired_texture_size(inputs, index, active_chords, roles)
     texture_change = abs(len(current.notes) - len(previous.notes))
     phrase_reset = index in phrase_starts
     return (
-        _harmonic_support_penalty(current, roles[index], active_chords[index]),
+        _harmonic_correctness_penalty(current, active_chords[index]),
+        _control_posture_tier(current, active_chords[index]),
+        _slide_affinity_penalty(previous, current, roles[index], active_chords[index], key),
+        _harmonic_role_penalty(current, roles[index], active_chords[index]),
+        _arrival_home_penalty(current, roles[index], home_fret),
         _home_pocket_penalty(current.fret, home_fret) if phrase_reset else _pocket_change_penalty(previous, current),
         0 if phrase_reset else _family_change_penalty(previous, current),
         _voice_leading_cost(previous, current),
@@ -1308,10 +1375,12 @@ def _supporting_harmony_fits(candidate: PositionCandidate, chord: str) -> bool:
     )
 
 
-def _harmonic_support_penalty(candidate: PositionCandidate, role: str, chord: str) -> int:
+def _harmonic_correctness_penalty(candidate: PositionCandidate, chord: str) -> int:
+    return 100 if chord and not _supporting_harmony_fits(candidate, chord) else 0
+
+
+def _harmonic_role_penalty(candidate: PositionCandidate, role: str, chord: str) -> int:
     size = len(candidate.notes)
-    if chord and not _supporting_harmony_fits(candidate, chord):
-        return 100
     if role == "tension":
         return {1: 0, 2: 0, 3: 8}.get(size, 10)
     if role in {"resolution", "chord_arrival"} and chord:
@@ -1321,6 +1390,57 @@ def _harmonic_support_penalty(candidate: PositionCandidate, role: str, chord: st
     if role == "sustained_note":
         return {1: 1, 2: 0, 3: 0}.get(size, 3)
     return {1: 0, 2: 1, 3: 4}.get(size, 6)
+
+
+def _control_posture_tier(candidate: PositionCandidate, chord: str) -> int:
+    """Prefer the everyday open/A/B/A+B language; keep C as a real exception."""
+
+    controls = set(candidate.controls)
+    if not controls or controls <= {"A", "B"}:
+        return 0
+    if controls == {"B", "C"} and len(candidate.notes) == 3 and _is_minor_chord(chord):
+        return 0
+    if "C" in controls:
+        return 2
+    return 1
+
+
+def _is_minor_chord(chord: str) -> bool:
+    match = re.match(r"^\s*[A-Ga-g][#b]?([^/]*)", str(chord or ""))
+    quality = match.group(1).strip().lower() if match else ""
+    return quality.startswith("m") and not quality.startswith("maj")
+
+
+def _arrival_home_penalty(candidate: PositionCandidate, role: str, home_fret: int) -> int:
+    return _home_pocket_penalty(candidate.fret, home_fret) if role in {"chord_arrival", "cadence"} else 0
+
+
+def _slide_affinity_penalty(
+    previous: PositionCandidate,
+    current: PositionCandidate,
+    role: str,
+    chord: str,
+    key: str,
+) -> int:
+    """Make familiar full-grip arrivals influence the route before ornaments are added."""
+
+    if role not in {"resolution", "chord_arrival", "cadence"}:
+        return 0
+    if _major_position_root(chord).upper() != key.upper():
+        return 0
+    return 0 if _is_familiar_full_grip_slide(previous, current) else 1
+
+
+def _is_familiar_full_grip_slide(previous: PositionCandidate, current: PositionCandidate) -> bool:
+    previous_strings = {note.string for note in previous.notes}
+    current_strings = {note.string for note in current.notes}
+    if previous_strings != current_strings or not 2 <= len(current_strings) <= 3:
+        return False
+    if previous.canonical_grip and current.canonical_grip and previous.canonical_grip != current.canonical_grip:
+        return False
+    if not 1 <= abs(current.fret - previous.fret) <= 7:
+        return False
+    return previous.controls == current.controls or _is_open_ab_exchange(previous.controls, current.controls)
 
 
 def _candidate_voice_pitches(candidate: PositionCandidate) -> tuple[int, ...]:

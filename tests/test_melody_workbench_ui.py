@@ -164,17 +164,56 @@ const transitionTarget = {
 const semanticTransition = {
   kind: "bar_slide", scope: "melody_voice", fromFret: 5, toFret: 3,
   controlsBefore: ["A", "B"], controlsAfter: [],
-  fromStrings: [4, 5, 6], toStrings: [4, 5, 6], sustainedStrings: [4], repickedStrings: [5, 6], releasedStrings: [],
+  fromStrings: [4, 5, 6], toStrings: [4, 5, 6], sustainedStrings: [4], repickedStrings: [5, 6], releasedStrings: [5, 6],
   voiceActions: [{string: 4, action: "bar_slide"}, {string: 5, action: "repick"}, {string: 6, action: "repick"}]
 };
 assert.deepEqual(studio.transitionSustainedStrings(semanticTransition), [4]);
 assert.deepEqual(studio.transitionGlidingStrings(semanticTransition), [4]);
 assert.match(studio.transitionChoreography(semanticTransition, transitionSource, transitionTarget), /Pick strings 4, 5 & 6 at fret 5 with A\+B/);
 assert.match(studio.transitionChoreography(semanticTransition, transitionSource, transitionTarget), /slide string 4 from fret 5 to fret 3/);
+assert.match(studio.transitionChoreography(semanticTransition, transitionSource, transitionTarget), /release A\+B at the arrival/);
+assert.match(studio.transitionChoreography(semanticTransition, transitionSource, transitionTarget), /block and release strings 5 & 6 before the slide/);
 assert.match(studio.transitionChoreography(semanticTransition, transitionSource, transitionTarget), /repick strings 5 & 6 at the arrival/);
 assert.deepEqual(studio.transitionScoreVoices(semanticTransition, transitionSource, transitionTarget), [
   {string: 4, action: "bar_slide", fromPitchValue: 69, toPitchValue: 67}
 ]);
+for (const sourceFret of [5, 10]) {
+  const fullGripSource = {
+    resolvedPitch: sourceFret === 5 ? "A4" : "D5",
+    pitchValue: sourceFret === 5 ? 69 : 74,
+    performanceControls: ["A", "B"],
+    notes: [
+      {string: 4, fret: sourceFret, changes: []},
+      {string: 5, fret: sourceFret, changes: ["A"]},
+      {string: 6, fret: sourceFret, changes: ["B"]}
+    ]
+  };
+  const fullGripTarget = {
+    resolvedPitch: "G4", pitchValue: 67, performanceControls: [],
+    notes: [{string: 4, fret: 3, changes: []}, {string: 5, fret: 3, changes: []}, {string: 6, fret: 3, changes: []}]
+  };
+  const fullGripTransition = {
+    kind: "bar_slide", scope: "full_grip", fromFret: sourceFret, toFret: 3,
+    controlsBefore: ["A", "B"], controlsAfter: [],
+    fromStrings: [4, 5, 6], toStrings: [4, 5, 6], sustainedStrings: [4, 5, 6], repickedStrings: [], releasedStrings: [],
+    voiceActions: [
+      {string: 4, action: "bar_slide"},
+      {string: 5, action: "bar_slide"},
+      {string: 6, action: "bar_slide"}
+    ]
+  };
+  const choreography = studio.transitionChoreography(fullGripTransition, fullGripSource, fullGripTarget);
+  assert.match(choreography, new RegExp(`Attack the full grip: strings 4, 5 & 6 at fret ${sourceFret} with A\\+B`));
+  assert.match(choreography, /keep all three strings ringing/);
+  assert.match(choreography, new RegExp(`slide the grip from fret ${sourceFret} to fret 3`));
+  assert.match(choreography, /release A\+B at the arrival/);
+  assert.doesNotMatch(choreography, /repick/i);
+  assert.deepEqual(studio.transitionSustainedStrings(fullGripTransition), [4, 5, 6]);
+  assert.deepEqual(studio.transitionScoreVoices(fullGripTransition, fullGripSource, fullGripTarget).map((voice) => voice.string), [4, 5, 6]);
+  assert.deepEqual(studio.transitionPlaybackPlan(fullGripSource, fullGripTarget, fullGripTransition).map((voice) => voice.action), ["glide", "glide", "glide"]);
+  assert.deepEqual(studio.transitionPlaybackPlan(fullGripTarget, null, null, fullGripTransition).map((voice) => voice.action), ["continue", "continue", "continue"]);
+}
+assert.equal(studio.transitionControlAnnotation({kind: "bar_slide", controlsBefore: ["A", "B"], controlsAfter: []}), "release A+B");
 assert.deepEqual(studio.gripRationale(transitionTarget), {
   reason: "Keeps the melody in the open G pocket.", pocket: "open-major", grip: "4-5-6", chord: "G"
 });
@@ -368,7 +407,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Change the register for this note only" in html
     assert "state.selectedPhraseIndex" in script
     assert html.count("?v=melody-multi-input-20260711-3") == 1
-    assert html.count("?v=pocket-arranger-20260712-1") == 3
+    assert html.count("?v=full-grip-slides-20260713-1") == 3
     assert 'elements.sectionNavigation.hidden = needsSource || Number(section.total || 0) <= 1;' in script
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in html
     assert "VexFlow" in Path("ui/vendor/VEXFLOW-LICENSE.txt").read_text(encoding="utf-8")
@@ -481,8 +520,8 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "schedulePitch" in script
     assert "glideToPitch" in script
     assert 'id="studio-transition-key" hidden' in html
-    assert '<code>-----</code> sustained bar slide' in html
-    assert '<code>~~~~~</code> pedal/lever glide' in html
+    assert '<code>~~~~~</code> audible slide or control glide' in html
+    assert '<code>-----</code> held voice' in html
     assert 'id="studio-grip-rationale" hidden' in html
     assert '>Why this grip?</summary>' in html
     assert 'id="studio-grip-reason"' in html

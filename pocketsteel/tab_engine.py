@@ -556,10 +556,10 @@ def _semantic_connector_tokens(transition: dict[str, Any]) -> dict[int, str]:
 
     tokens: dict[int, str] = {}
     for string_number, action in action_by_string.items():
-        if action in {"bar_slide", "hold"}:
-            tokens[string_number] = "-----"
-        elif action in {"pedal_glide", "lever_glide"}:
+        if action in {"bar_slide", "pedal_glide", "lever_glide"}:
             tokens[string_number] = "~~~~~"
+        elif action == "hold":
+            tokens[string_number] = "-----"
         # add, release, and repick intentionally leave a blank connector.
     return tokens
 
