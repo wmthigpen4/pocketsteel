@@ -6,7 +6,7 @@
     "audit:node": "npm audit --audit-level=high",
     "check:assets": "python3 scripts/check_asset_size_budget.py",
     "check:locks": "python3 scripts/check_dependency_locks.py",
-    "check:js": "node --check workers/interest-digest.js && node --check functions/api/interest.js && node --check ui/answer-client.js && node --check ui/pedal-steel-fretboard.js && node --check ui/e9-fretboard-explorer.js && node --check ui/melody-workbench.js && node --check ui/melody-score.js && node --check ui/lesson-workbench.js",
+    "check:js": "node --check workers/interest-digest.js && node --check functions/api/interest.js && node --check ui/answer-client.js && node --check ui/pedal-steel-fretboard-styles.js && node --check ui/pedal-steel-fretboard.js && node --check ui/e9-fretboard-explorer-config.js && node --check ui/e9-fretboard-explorer.js && node --check ui/melody-workbench.js && node --check ui/melody-score.js && node --check ui/lesson-workbench.js",
     "lint:js": "eslint workers/interest-digest.js functions/api/interest.js",
     "test:worker": "vitest run --config vitest.config.mjs"
   },

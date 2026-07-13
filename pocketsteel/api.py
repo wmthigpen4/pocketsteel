@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 import hashlib
 import logging
 import json
@@ -13,7 +12,6 @@ import threading
 from collections import deque
 from collections.abc import Iterable
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any, Callable
 from urllib.parse import parse_qs, urlsplit
 
@@ -53,10 +51,6 @@ from pocketsteel.api_contract import AnswerResponse
 from pocketsteel.answer_contracts import enforce_answer_contract, infer_contract_intent
 from pocketsteel.answer_intent_classifier import classify_answer_request
 from pocketsteel.chroma_search import (
-    CHROMA_COLLECTION_ENV,
-    CHROMA_PATH_ENV,
-    DEFAULT_CHROMA_PATH,
-    DEFAULT_COLLECTION_NAME,
     ChromaSearchIndex,
     SearchResponse,
 )
@@ -98,19 +92,13 @@ from pocketsteel.rag_guardrails import sanitize_retrieved_sources
 from pocketsteel.rag_guardrails import is_injection_like
 from pocketsteel.private_source_search import PrivateSourceSearchIndex
 from pocketsteel.retrieval_modes import (
-    ENABLE_PRIVATE_SOURCES_ENV,
-    PRIVATE_CHROMA_PATH_ENV,
-    PRIVATE_COLLECTION_ENV,
-    RETRIEVAL_DEBUG_ENV,
-    RETRIEVAL_MODE_ENV,
     RetrievalMode,
     RetrievalModeConfig,
     configured_retrieval_mode_config,
-    normalize_retrieval_mode,
     private_sources_allowed,
     retrieval_plan_for_role,
 )
-from pocketsteel.runtime_server import bounded_env_int, serve_runtime
+from pocketsteel.runtime_server import bounded_env_int
 from pocketsteel.runtime_dependencies import BoundedDependencyRunner, bounded_env_float
 from pocketsteel.tab_engine import render_tab_from_payload
 
@@ -1343,87 +1331,17 @@ def create_app(
     )
 
 
-def build_arg_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--host", default="127.0.0.1", help="Host for the local API server.")
-    parser.add_argument("--port", type=int, default=8765, help="Port for the local API server.")
-    parser.add_argument(
-        "--chroma",
-        default=None,
-        help=f"Existing Chroma index path. Defaults to ${CHROMA_PATH_ENV} or {DEFAULT_CHROMA_PATH}.",
-    )
-    parser.add_argument(
-        "--collection",
-        default=None,
-        help=f"Existing Chroma collection name. Defaults to ${CHROMA_COLLECTION_ENV} or {DEFAULT_COLLECTION_NAME}.",
-    )
-    parser.add_argument("--model", default=None, help="Local embedding model for query embedding.")
-    parser.add_argument(
-        "--answer-auth-mode",
-        choices=["production", "local-dev", "local_dev"],
-        default=None,
-        help="Auth scaffold mode for /api/answer. Defaults to STEEL_RAG_ANSWER_AUTH_MODE or production.",
-    )
-    parser.add_argument(
-        "--auth-provider",
-        choices=["scaffold", "cloudflare-access", "cloudflare_access"],
-        default=None,
-        help="Auth provider for production /api/answer requests. Defaults to STEEL_RAG_AUTH_PROVIDER or scaffold.",
-    )
-    parser.add_argument(
-        "--retrieval-mode",
-        default=None,
-        help=f"Search retrieval mode. Defaults to ${RETRIEVAL_MODE_ENV} or sgf_only.",
-    )
-    parser.add_argument(
-        "--enable-private-sources",
-        action="store_true",
-        help=f"Allow /api/search private-source modes. Defaults to ${ENABLE_PRIVATE_SOURCES_ENV}=false.",
-    )
-    parser.add_argument(
-        "--private-chroma",
-        default=None,
-        help=f"Private Chroma path. Defaults to ${PRIVATE_CHROMA_PATH_ENV} or corpus-private/vector-stores/chroma.",
-    )
-    parser.add_argument(
-        "--private-collection",
-        default=None,
-        help=f"Private Chroma collection. Defaults to ${PRIVATE_COLLECTION_ENV} or steel_guitar_private_sources_v1.",
-    )
-    parser.add_argument(
-        "--retrieval-debug",
-        action="store_true",
-        help=f"Expose /api/search retrieval metadata to admin/dev roles. Defaults to ${RETRIEVAL_DEBUG_ENV}=false.",
-    )
-    return parser
+def build_arg_parser() -> Any:
+    """Compatibility wrapper for callers that import the parser from this module."""
+    from pocketsteel.api_cli import build_arg_parser as cli_build_arg_parser
+
+    return cli_build_arg_parser()
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_arg_parser().parse_args(argv)
-    env_config = configured_retrieval_mode_config()
-    retrieval_config = RetrievalModeConfig(
-        requested_mode=env_config.requested_mode if args.retrieval_mode is None else normalize_retrieval_mode(args.retrieval_mode),
-        private_sources_enabled=args.enable_private_sources or env_config.private_sources_enabled,
-        sgf_chroma_path=env_config.sgf_chroma_path,
-        sgf_collection=env_config.sgf_collection,
-        private_chroma_path=env_config.private_chroma_path if args.private_chroma is None else Path(args.private_chroma),
-        private_collection=args.private_collection or env_config.private_collection,
-        expose_debug_metadata=args.retrieval_debug or env_config.expose_debug_metadata,
-    )
-    app = create_app(
-        ChromaSearchIndex.from_chroma(
-            chroma_path=args.chroma,
-            collection_name=args.collection,
-            model=args.model,
-        ),
-        answer_auth_mode=args.answer_auth_mode,
-        auth_provider=args.auth_provider,
-        retrieval_config=retrieval_config,
-    )
-    def on_ready(_server: object) -> None:
-        print(f"Serving local retrieval API at http://{args.host}:{args.port}")
-    serve_runtime(args.host, args.port, app, on_ready=on_ready)
-    return 0
+    from pocketsteel.api_cli import main as cli_main
+
+    return cli_main(argv)
 
 
 if __name__ == "__main__":

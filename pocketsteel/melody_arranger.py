@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import math
 import re
-from dataclasses import dataclass
 from typing import Any, Mapping, Sequence
 
 from pocketsteel.answer_tab_examples import fretboard_payload_for_tab_example
@@ -16,12 +15,15 @@ from pocketsteel.fretboard_examples import (
     note_name_for_pitch,
 )
 from pocketsteel.fretboard_explorer import ExplorerRow, major_three_string_rows, major_two_string_rows
+from pocketsteel.melody_models import (
+    DEFAULT_ANCHOR_PITCH,
+    SUPPORTED_CONTOURS,
+    SUPPORTED_TEXTURES,
+    MelodyInput,
+    PositionCandidate,
+)
 from pocketsteel.tab_engine import TabEvent, TabNote, default_e9_copedent_profile, render_tab
 
-
-SUPPORTED_CONTOURS = {"closest_playable", "ascending", "descending", "preserve_input"}
-SUPPORTED_TEXTURES = {"both", "single_note", "mixed_arrangement", "automatic_harmony", "thirds", "sixths", "chord_melody"}
-DEFAULT_ANCHOR_PITCH = 67  # G4: a useful middle/upper E9 melody register.
 
 _CONTROL_STATES: tuple[tuple[str, ...], ...] = (
     (),
@@ -31,47 +33,6 @@ _CONTROL_STATES: tuple[tuple[str, ...], ...] = (
     ("E",),
     ("F",),
 )
-
-
-@dataclass(frozen=True)
-class MelodyInput:
-    token: str
-    note: str
-    degree: int
-    pitch_class: int
-    direction: str = "auto"
-    octave_shift: int = 0
-    literal: TabNote | None = None
-    forced_pitch: int | None = None
-    duration_beats: float = 1.0
-    measure: int = 1
-    beat: float = 1.0
-    origin: str = "user_edit"
-    tie: str = ""
-    lyric: str = ""
-    chord: str = ""
-    articulation: str = ""
-
-
-@dataclass(frozen=True)
-class PositionCandidate:
-    fret: int
-    notes: tuple[TabNote, ...]
-    top_pitch: int
-    controls: tuple[str, ...]
-    family: str
-    note_names: tuple[str, ...]
-    intervals: tuple[str, ...]
-    pattern_family: str = ""
-    canonical_grip: tuple[int, ...] = ()
-    difficulty: str = "common"
-
-    @property
-    def top_string(self) -> int:
-        return max(
-            (note.string for note in self.notes),
-            key=lambda string: _absolute_pitch(string, self.fret, self.controls),
-        )
 
 
 def arrange_melody_routes(
@@ -1661,7 +1622,7 @@ def _selection_reason(
     if role == "pickup":
         return f"Keeps the pickup light on string {candidate.top_string} before the phrase settles into a harmony pocket."
     if role == "passing_tone":
-        return f"Keeps this passing note light while preserving the surrounding fretboard pocket."
+        return "Keeps this passing note light while preserving the surrounding fretboard pocket."
     return f"Sustains the melody in the current pocket on grip {grip} with {controls}."
 
 

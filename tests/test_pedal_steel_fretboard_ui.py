@@ -8,6 +8,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 COMPONENT = Path("ui/pedal-steel-fretboard.js")
+STYLES = Path("ui/pedal-steel-fretboard-styles.js")
 DEMO = Path("ui/pedal-steel-fretboard-demo.html")
 
 
@@ -29,9 +30,10 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const vm = require("node:vm");
 
-const code = fs.readFileSync("{COMPONENT}", "utf8");
 const sandbox = {{ window: {{}} }};
 vm.createContext(sandbox);
+vm.runInContext(fs.readFileSync("{STYLES}", "utf8"), sandbox);
+const code = fs.readFileSync("{COMPONENT}", "utf8");
 vm.runInContext(code, sandbox);
 const fretboard = vm.runInContext("window.STEEL_RAG_FRETBOARD", sandbox);
 
@@ -1488,7 +1490,7 @@ def test_filter_interaction_source_resets_hidden_selection_to_first_visible() ->
     assert 'const firstVisible = figure.querySelector("[data-position-selector]:not([hidden])");' in source
     assert "selectPosition(figure, firstVisible.getAttribute(\"data-position-selector\"));" in source
     assert "if (selector?.hidden) return;" in source
-    assert ".pedal-steel-fretboard__selector[hidden]" in source
+    assert ".pedal-steel-fretboard__selector[hidden]" in (REPO_ROOT / STYLES).read_text(encoding="utf-8")
     assert "data-position-empty" in source
     assert "function positionElementMatchesTab(element, tabMode)" not in source
     assert "function positionElementMatchesVoicing(element, voicingFilter)" in source
@@ -2217,12 +2219,13 @@ def test_demo_page_mounts_the_component_without_touching_landing_pages() -> None
 
 def test_component_source_contains_no_eyeballed_fret_spacing_formula() -> None:
     source = (REPO_ROOT / COMPONENT).read_text(encoding="utf-8")
+    styles = (REPO_ROOT / STYLES).read_text(encoding="utf-8")
 
     assert 'const DECORATIVE_BACKGROUND_HREF = "/brand/pedal-steel-fretboard-background.svg?v=keyhead-vshape-bce771f";' in source
     assert "Decorative underlay only." in source
-    assert ".answer-fretboard-mount" in source
-    assert "grid-template-columns: minmax(0, 1fr);" in source
-    assert "overflow-x: auto;" in source
+    assert ".answer-fretboard-mount" in styles
+    assert "grid-template-columns: minmax(0, 1fr);" in styles
+    assert "overflow-x: auto;" in styles
     assert "1 - Math.pow(2, -safeFret / 12)" in source
     assert "rawMax" not in source
     assert "safeFret / safeMax" not in source

@@ -66,7 +66,8 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     assert status == "200 OK"
     assert headers["Content-Type"] == "text/html; charset=utf-8"
     assert b'<script src="answer-client.js?v=melody-exercise-v0-20260710"></script>' in html
-    assert b'<script src="pedal-steel-fretboard.js?v=melody-studio-ux-20260710"></script>' in html
+    assert b'<script src="pedal-steel-fretboard-styles.js?v=module-boundaries-20260713"></script>' in html
+    assert b'<script src="pedal-steel-fretboard.js?v=module-boundaries-20260713"></script>' in html
 
     status, headers, studio = call_app(smoke_app(), "/ui/melody-workbench.html")
     assert status == "200 OK"
