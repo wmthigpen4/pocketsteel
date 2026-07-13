@@ -92,6 +92,7 @@ from pocketsteel.melody_import import (
     import_score_draft,
     public_song_catalog,
 )
+from pocketsteel.lesson_studio import LessonStudioError, build_lesson, lesson_catalog
 from pocketsteel.rag_guardrails import sanitize_retrieved_sources
 from pocketsteel.rag_guardrails import is_injection_like
 from pocketsteel.private_source_search import PrivateSourceSearchIndex
@@ -405,6 +406,46 @@ class RetrievalApi:
                 start_response,
                 "200 OK",
                 draft,
+                extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
+            )
+
+        if path == "/api/lessons/catalog":
+            if method != "GET":
+                return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"})
+            access = authorize_answer_request(
+                environ,
+                self.answer_auth_mode,
+                self.auth_provider,
+                self.cloudflare_verifier,
+            )
+            if not access.allowed:
+                return self._json_response(start_response, access.status, {"error": access.error})
+            return self._json_response(
+                start_response,
+                "200 OK",
+                lesson_catalog(),
+                extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
+            )
+
+        if path == "/api/lessons/build":
+            if method != "POST":
+                return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"})
+            access = authorize_answer_request(
+                environ,
+                self.answer_auth_mode,
+                self.auth_provider,
+                self.cloudflare_verifier,
+            )
+            if not access.allowed:
+                return self._json_response(start_response, access.status, {"error": access.error})
+            try:
+                lesson = build_lesson(self._read_json_body(environ))
+            except LessonStudioError as exc:
+                return self._json_response(start_response, "400 Bad Request", {"error": str(exc)})
+            return self._json_response(
+                start_response,
+                "200 OK",
+                {"lesson": lesson},
                 extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
             )
 

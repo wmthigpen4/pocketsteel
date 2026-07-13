@@ -97,7 +97,8 @@
     }
 
     .explorer-back:hover,
-    .explorer-back:focus-visible {
+    .explorer-back:focus-visible,
+    .explorer-back[aria-current="page"] {
       color: var(--cream);
       border-color: rgba(246, 190, 88, 0.62);
       background: rgba(240, 191, 105, 0.075);
@@ -2455,6 +2456,10 @@
         <p class="explorer-lede">Choose a key, scale, harmony type, and string group to see E9 positions that have been checked against tuning and pedal/lever changes.</p>
       </div>
       <div class="explorer-header-actions" aria-label="Explorer actions">
+        <a class="explorer-back" href="/ui/steel-guitar-rag-mock.html"><span>Ask</span></a>
+        <a class="explorer-back" href="/ui/e9-fretboard-explorer.html" aria-current="page"><span>Explore</span></a>
+        <a class="explorer-back" href="/ui/melody-workbench.html"><span>Arrange</span></a>
+        <a class="explorer-back" href="/ui/lesson-workbench.html"><span>Learn</span></a>
         <button class="explorer-back" id="explorer-glossary-open" type="button" aria-haspopup="dialog" aria-controls="explorer-glossary-dialog">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v14H5z"/><path d="M8 9h8"/><path d="M8 13h5"/></svg>
           <span>Glossary</span>
@@ -2463,10 +2468,6 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/><path d="M8 5v14"/><path d="M16 5v14"/></svg>
           <span>Copedent</span>
         </button>
-        <a class="explorer-back" href="steel-guitar-rag-mock.html">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6 4 12l6 6"/><path d="M4 12h16"/></svg>
-          <span>Back to app</span>
-        </a>
       </div>
     </header>
 
@@ -2478,7 +2479,7 @@
       <div class="explorer-task-home__grid">
         <button class="explorer-task-card" type="button" data-explorer-task-card="find-chord" data-explorer-task-mode="chord" aria-pressed="false">
           <span class="explorer-task-card__eyebrow">Chord search</span>
-          <strong>Find a chord</strong>
+          <strong>Find chords and voicings</strong>
           <p>Search practical E9 pockets for a chord or color.</p>
           <span class="explorer-task-card__example">Example: G major or D7 in G</span>
           <span class="explorer-task-card__action">Open chord finder</span>

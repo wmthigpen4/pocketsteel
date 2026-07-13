@@ -83,6 +83,19 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     }
     assert b"buildMelodyRequest" in studio_script
 
+    status, headers, lessons = call_app(smoke_app(), "/ui/lesson-workbench.html")
+    assert status == "200 OK"
+    assert headers["Content-Type"] == "text/html; charset=utf-8"
+    assert b"Choose a reviewed path or build a focused lesson" in lessons
+
+    status, headers, lesson_script = call_app(smoke_app(), "/ui/lesson-workbench.js")
+    assert status == "200 OK"
+    assert headers["Content-Type"] in {
+        "text/javascript; charset=utf-8",
+        "application/javascript; charset=utf-8",
+    }
+    assert b"renderLesson" in lesson_script
+
     status, headers, score_script = call_app(smoke_app(), "/ui/melody-score.js")
     assert status == "200 OK"
     assert headers["Content-Type"] in {
@@ -270,6 +283,34 @@ def test_smoke_api_defaults_to_local_dev_when_auth_env_missing(monkeypatch: Any)
         "role": "beta_user",
         "authProvider": "local_dev",
     }
+
+
+def test_smoke_api_serves_reviewed_and_custom_lessons(monkeypatch: Any) -> None:
+    monkeypatch.delenv("STEEL_RAG_AUTH_PROVIDER", raising=False)
+    monkeypatch.delenv("STEEL_RAG_ANSWER_AUTH_MODE", raising=False)
+    app = create_smoke_api_app(search_index=object())
+    auth = {DEV_ACCESS_ROLE_ENVIRON: "beta_user"}
+
+    status, headers, body = call_app(app, "/api/lessons/catalog", environ_extra=auth)
+    catalog = json.loads(body)
+    assert status == "200 OK"
+    assert headers["Cache-Control"] == "no-store"
+    assert catalog["schemaVersion"] == "lesson_catalog_v1"
+    assert len(catalog["paths"]) == 5
+
+    status, headers, body = call_app(
+        app,
+        "/api/lessons/build",
+        method="POST",
+        json_body={"topic": "clean blocking", "level": "intermediate", "duration": "5_min"},
+        environ_extra=auth,
+    )
+    lesson = json.loads(body)["lesson"]
+    assert status == "200 OK"
+    assert headers["Cache-Control"] == "no-store"
+    assert lesson["schemaVersion"] == "lesson_v1"
+    assert lesson["origin"] == "custom"
+    assert len(lesson["exercises"]) == 2
 
 
 def test_smoke_api_ignores_local_dev_mock_in_production_env(monkeypatch: Any) -> None:

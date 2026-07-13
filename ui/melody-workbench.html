@@ -67,7 +67,7 @@
       font-size: 14px;
       font-weight: 750;
     }
-    .studio-nav a:hover, .studio-nav a:focus-visible { border-color: rgba(240, 191, 105, 0.62); background: rgba(240, 191, 105, 0.075); outline: none; }
+    .studio-nav a:hover, .studio-nav a:focus-visible, .studio-nav a[aria-current="page"] { border-color: rgba(240, 191, 105, 0.62); background: rgba(240, 191, 105, 0.075); outline: none; }
     .studio-nav svg { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
     .studio-nav-label-short { display: none; }
 
@@ -416,16 +416,13 @@
       <strong>Melody Studio</strong>
     </a>
     <nav class="studio-nav" aria-label="Studio navigation">
-      <a href="/ui/e9-fretboard-explorer.html" aria-label="Explore the E9 virtual fretboard" title="Explore the E9 virtual fretboard">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/><path d="M8 5v14"/><path d="M16 5v14"/></svg>
-        <span class="studio-nav-label-full">Explore Fretboard</span>
-        <span class="studio-nav-label-short">Fretboard</span>
-      </a>
       <a href="/ui/steel-guitar-rag-mock.html" aria-label="Back to Steel Guitar RAG home" title="Back to Steel Guitar RAG home">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/><path d="M9.5 20v-6h5v6"/></svg>
-        <span class="studio-nav-label-full">Back home</span>
-        <span class="studio-nav-label-short">Home</span>
+        <span>Ask</span>
       </a>
+      <a href="/ui/e9-fretboard-explorer.html" aria-label="Explore the E9 virtual fretboard" title="Explore"><span>Explore</span></a>
+      <a href="/ui/melody-workbench.html" aria-current="page"><span>Arrange</span></a>
+      <a href="/ui/lesson-workbench.html"><span>Learn</span></a>
     </nav>
   </header>
 

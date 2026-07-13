@@ -178,6 +178,35 @@ class ScoreDraftPayload(TypedDict):
     review: dict[str, Any]
 
 
+class LessonExercise(TypedDict):
+    title: str
+    timebox: str
+    steps: list[str]
+    listenFor: str
+
+
+class LessonPayload(TypedDict):
+    schemaVersion: str
+    id: str
+    origin: str
+    pathId: str | None
+    title: str
+    topic: str
+    level: str
+    duration: str
+    durationLabel: str
+    goal: str
+    explanation: str
+    exercises: list[LessonExercise]
+    whatToListenFor: list[str]
+    commonMistakes: list[str]
+    practiceChecklist: list[str]
+    nextStep: str
+    links: list[dict[str, str]]
+    assumptions: list[str]
+    progressPersistence: bool
+
+
 class AnswerResponse(TypedDict):
     answer: str
     mode: AnswerMode

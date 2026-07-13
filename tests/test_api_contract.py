@@ -20,6 +20,7 @@ from pocketsteel.answer_usage import (
     RATE_LIMIT_WINDOW_SECONDS_ENV,
 )
 from pocketsteel.answering import VALID_MODES
+from pocketsteel.lesson_studio import build_lesson
 from pocketsteel.cloudflare_access import (
     BETA_USER_EMAILS_ENV,
     ADMIN_EMAILS_ENV,
@@ -67,6 +68,33 @@ def test_api_contract_fixture_matches_required_shapes() -> None:
     assert "fretboard" not in answer
     assert set(answer["sources"][0]) == {"title", "forumName", "url", "excerpt", "score", "chunkId", "postUid"}
     assert set(answer["sections"][0]) == {"title", "style", "body"}
+
+
+def test_lesson_v1_contract_shape() -> None:
+    lesson = build_lesson({"lessonId": "fundamentals-major-pocket"})
+
+    assert lesson["schemaVersion"] == "lesson_v1"
+    assert {
+        "id",
+        "origin",
+        "pathId",
+        "title",
+        "topic",
+        "level",
+        "duration",
+        "durationLabel",
+        "goal",
+        "explanation",
+        "exercises",
+        "whatToListenFor",
+        "commonMistakes",
+        "practiceChecklist",
+        "nextStep",
+        "links",
+        "assumptions",
+        "progressPersistence",
+    }.issubset(lesson)
+    assert {"title", "timebox", "steps", "listenFor"} == set(lesson["exercises"][0])
 
 
 def test_optional_fretboard_payload_contract_shape() -> None:

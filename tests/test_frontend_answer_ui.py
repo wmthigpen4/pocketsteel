@@ -300,9 +300,8 @@ def test_answer_ui_links_to_melody_studio_and_keeps_lesson_renderer() -> None:
 
     assert 'id="melody-studio-link"' in html
     assert 'href="/ui/melody-workbench.html"' in html
-    assert 'aria-label="Open Melody Studio"' in html
-    assert '<span class="header-label-full">Melody Studio</span>' in html
-    assert '<span class="header-label-short">Melody</span>' in html
+    assert 'aria-label="Arrange a melody for E9"' in html
+    assert "<span>Arrange</span>" in html
     assert 'id="melody-tool"' not in html
     assert 'id="melody-submit"' not in html
     assert 'id="answer-melody"' in html
@@ -383,8 +382,7 @@ def test_answer_ui_includes_home_hero_hanging_sign_without_changing_answer_logo(
 def test_answer_ui_links_to_e9_fretboard_explorer_surface() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
 
-    assert '<span class="header-label-full">Explore Fretboard</span>' in html
-    assert '<span class="header-label-short">Fretboard</span>' in html
+    assert "<span>Explore</span>" in html
     assert 'href="/ui/e9-fretboard-explorer.html"' in html
     assert 'aria-label="Explore the E9 virtual fretboard"' in html
     assert 'title="Explore the E9 virtual fretboard"' in html
@@ -411,8 +409,8 @@ def test_answer_ui_links_to_e9_fretboard_explorer_surface() -> None:
     assert "explorer-entry-card" not in html
     assert "not corpus retrieval or RAG-generated fretboard positions" not in html
     assert "[object Object]" not in html
-    assert html.index('<span class="header-label-full">Explore Fretboard</span>') < html.index('id="question"')
-    assert html.index('<span class="header-label-full">Explore Fretboard</span>') < html.index("Get a Backstage Pass")
+    assert html.index("<span>Explore</span>") < html.index('id="question"')
+    assert html.index("<span>Explore</span>") < html.index("Get a Backstage Pass")
     assert ".explorer-header-link,\n    .backstage-trigger" not in html
 
 
@@ -504,7 +502,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "Choose what you want to learn" in task_home_markup
     assert "These start the existing Explorer modes; the full controls stay available below." in task_home_markup
     for task_id, mode_id, label, action in [
-        ("find-chord", "chord", "Find a chord", "Open chord finder"),
+        ("find-chord", "chord", "Find chords and voicings", "Open chord finder"),
         ("find-note", "note", "Find a note", "Open note finder"),
         ("explore-grip", "single", "Explore a grip", "Open single grip"),
         ("walk-harmonized-scale", "path", "Walk a harmonized scale", "Open scale path"),
@@ -612,8 +610,10 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<button class="explorer-back" id="explorer-copedent-open" type="button" aria-haspopup="dialog" aria-controls="explorer-copedent-dialog">' in html
     assert "<span>Copedent</span>" in html
     assert "<span>View chart</span>" not in html
-    assert '<a class="explorer-back" href="steel-guitar-rag-mock.html">' in html
-    assert "<span>Back to app</span>" in html
+    assert '<a class="explorer-back" href="/ui/steel-guitar-rag-mock.html"><span>Ask</span></a>' in html
+    assert '<a class="explorer-back" href="/ui/e9-fretboard-explorer.html" aria-current="page"><span>Explore</span></a>' in html
+    assert '<a class="explorer-back" href="/ui/melody-workbench.html"><span>Arrange</span></a>' in html
+    assert '<a class="explorer-back" href="/ui/lesson-workbench.html"><span>Learn</span></a>' in html
     assert ".explorer-back {" in html
     explorer_back_rule = html.split(".explorer-back {", 1)[1].split("}", 1)[0]
     for expected_style in [
@@ -649,7 +649,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
         "stroke-linejoin: round;",
     ]:
         assert expected_style in explorer_back_svg_rule
-    explorer_hover_rule = html.split(".explorer-back:hover,\n    .explorer-back:focus-visible {", 1)[1].split("}", 1)[0]
+    explorer_hover_rule = html.split('.explorer-back:hover,\n    .explorer-back:focus-visible,\n    .explorer-back[aria-current="page"] {', 1)[1].split("}", 1)[0]
     assert "color: var(--cream);" in explorer_hover_rule
     assert "border-color: rgba(246, 190, 88, 0.62);" in explorer_hover_rule
     assert "background: rgba(240, 191, 105, 0.075);" in explorer_hover_rule

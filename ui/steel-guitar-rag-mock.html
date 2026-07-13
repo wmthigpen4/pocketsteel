@@ -217,6 +217,12 @@
       outline: none;
     }
 
+    .header-action-button[aria-current="page"] {
+      color: var(--cream);
+      border-color: rgba(240, 191, 105, 0.66);
+      background: rgba(240, 191, 105, 0.11);
+    }
+
     .backstage-overlay {
       position: fixed;
       inset: 0;
@@ -2564,15 +2570,21 @@
         </button>
       </div>
       <div class="header-actions">
+        <a class="header-action-button ask-header-link" href="/ui/steel-guitar-rag-mock.html" aria-current="page" aria-label="Ask a steel guitar question" title="Ask">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v11H9l-4 3V5Z"/><path d="M8 9h8"/><path d="M8 12h5"/></svg>
+          <span>Ask</span>
+        </a>
         <a class="header-action-button explorer-header-link" href="/ui/e9-fretboard-explorer.html" aria-label="Explore the E9 virtual fretboard" title="Explore the E9 virtual fretboard">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h16"/><path d="M8 5v14"/><path d="M16 5v14"/></svg>
-          <span class="header-label-full">Explore Fretboard</span>
-          <span class="header-label-short">Fretboard</span>
+          <span>Explore</span>
         </a>
-        <a class="header-action-button melody-studio-header-link" id="melody-studio-link" href="/ui/melody-workbench.html" aria-label="Open Melody Studio" title="Open Melody Studio" hidden>
+        <a class="header-action-button melody-studio-header-link" id="melody-studio-link" href="/ui/melody-workbench.html" aria-label="Arrange a melody for E9" title="Arrange">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18V5l10-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="16" cy="16" r="3"/></svg>
-          <span class="header-label-full">Melody Studio</span>
-          <span class="header-label-short">Melody</span>
+          <span>Arrange</span>
+        </a>
+        <a class="header-action-button lessons-header-link" id="lessons-link" href="/ui/lesson-workbench.html" aria-label="Open steel guitar lessons" title="Learn">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H11v17H7.5A3.5 3.5 0 0 0 4 22V5.5Z"/><path d="M20 5.5A3.5 3.5 0 0 0 16.5 2H13v17h3.5A3.5 3.5 0 0 1 20 22V5.5Z"/></svg>
+          <span>Learn</span>
         </a>
         <button class="header-action-button backstage-trigger" type="button" aria-haspopup="dialog" aria-controls="backstage" aria-expanded="false">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5z"/><path d="M8 16h8"/><path d="M9 13l3-5 3 5"/><path d="M12 8v8"/></svg>
@@ -3134,6 +3146,7 @@
     const answerStatus = document.querySelector("#answer-status");
     const answerSectionGrid = document.querySelector("#answer-section-grid");
     const melodyStudioLink = document.querySelector("#melody-studio-link");
+    const lessonsLink = document.querySelector("#lessons-link");
     const answerMelody = document.querySelector("#answer-melody");
     const answerMelodyContent = document.querySelector("#answer-melody-content");
     const answerProgression = document.querySelector("#answer-progression");
@@ -3189,6 +3202,8 @@
     const techPopoverTitle = document.querySelector("#tech-popover-title");
     const techPopoverContent = document.querySelector("#tech-popover-content");
     const techPopoverClose = document.querySelector(".tech-popover-close");
+    const initialQuestion = new URLSearchParams(window.location.search).get("question");
+    if (initialQuestion) question.value = initialQuestion;
     const TECH_POPOVER_COPY = {
       title: "What’s underneath?",
       sections: [
@@ -4759,11 +4774,13 @@
 
     function applySessionAccess(session) {
       backendSession = session;
-      melodyStudioLink.hidden = !session.features?.melodyExercise;
       const isLocalDevSession = sessionUsesLocalDev(session);
       melodyStudioLink.href = isLocalDevSession && sessionGrantsLiveAccess(session)
         ? `/ui/melody-workbench.html?access=${encodeURIComponent(session.role)}`
         : "/ui/melody-workbench.html";
+      lessonsLink.href = isLocalDevSession && sessionGrantsLiveAccess(session)
+        ? `/ui/lesson-workbench.html?access=${encodeURIComponent(session.role)}`
+        : "/ui/lesson-workbench.html";
       setDevPreviewAccessEnabled(isLocalDevSession);
 
       if (!isLocalDevSession) {

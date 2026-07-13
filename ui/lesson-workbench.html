@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lessons · Steel Guitar RAG</title>
+  <style>
+    :root { --bg:#0b0d0d; --panel:#151817; --panel2:#1b1f1e; --cream:#f4ead6; --muted:#b9ad98; --gold:#f0bf69; --line:rgba(244,234,214,.13); --green:#76c7a0; color-scheme:dark; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; background:radial-gradient(circle at 12% 0%,rgba(240,191,105,.1),transparent 28rem),linear-gradient(#0c0e0e,#080909); color:var(--cream); font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    a { color:inherit; }
+    button,input,select { font:inherit; }
+    .lesson-header { width:min(1180px,calc(100% - 32px)); margin:0 auto; min-height:76px; display:flex; align-items:center; justify-content:space-between; gap:18px; border-bottom:1px solid var(--line); }
+    .lesson-brand { display:grid; gap:2px; text-decoration:none; }
+    .lesson-brand span { color:var(--muted); font-size:11px; letter-spacing:.12em; text-transform:uppercase; }
+    .lesson-brand strong { font-family:Georgia,serif; color:var(--gold); font-size:22px; }
+    .workspace-nav { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:7px; }
+    .workspace-nav a { min-height:38px; display:inline-flex; align-items:center; border:1px solid var(--line); border-radius:999px; padding:0 13px; color:var(--muted); text-decoration:none; font-size:13px; font-weight:750; }
+    .workspace-nav a:hover,.workspace-nav a:focus-visible,.workspace-nav a[aria-current="page"] { border-color:rgba(240,191,105,.62); background:rgba(240,191,105,.09); color:var(--cream); outline:none; }
+    main { width:min(1080px,calc(100% - 32px)); margin:0 auto; padding:56px 0 80px; }
+    .lesson-hero { max-width:780px; margin-bottom:34px; }
+    .lesson-eyebrow { margin:0 0 8px; color:var(--gold); font-size:11px; line-height:1.2; font-weight:850; letter-spacing:.12em; text-transform:uppercase; }
+    h1,h2,h3,p { margin-top:0; }
+    h1 { margin-bottom:14px; font:700 clamp(36px,6vw,64px)/.98 Georgia,serif; letter-spacing:-.035em; }
+    h2 { margin-bottom:12px; font:700 22px/1.15 Georgia,serif; }
+    h3 { margin-bottom:8px; font-size:17px; line-height:1.25; }
+    p,li { color:rgba(244,234,214,.76); line-height:1.55; }
+    .lesson-hero > p:last-child { max-width:700px; font-size:18px; }
+    .lesson-chooser { display:grid; gap:28px; }
+    .chooser-grid { display:grid; grid-template-columns:minmax(0,1.25fr) minmax(280px,.75fr); gap:22px; align-items:start; }
+    .chooser-panel,.custom-panel,.lesson-section,.lesson-callout,.lesson-next,.lesson-assumptions { border:1px solid var(--line); border-radius:18px; background:rgba(21,24,23,.86); box-shadow:0 18px 48px rgba(0,0,0,.18); }
+    .chooser-panel,.custom-panel { padding:22px; }
+    .panel-heading { margin-bottom:18px; }
+    .panel-heading p { margin-bottom:0; }
+    .catalog-status,.form-status,.lesson-note { min-height:20px; margin:10px 0 0; color:var(--muted); font-size:12px; }
+    .lesson-path { border-top:1px solid var(--line); }
+    .lesson-path:last-child { border-bottom:1px solid var(--line); }
+    .lesson-path > summary { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 2px; cursor:pointer; }
+    .lesson-path > summary span { color:var(--muted); font-size:12px; }
+    .lesson-cards { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; padding:0 0 16px; }
+    .lesson-card { display:grid; align-content:start; min-height:220px; padding:17px; border:1px solid rgba(244,234,214,.1); border-radius:14px; background:rgba(5,7,7,.36); }
+    .lesson-card p:not(.lesson-eyebrow) { font-size:14px; }
+    .lesson-card .secondary-action { margin-top:auto; }
+    .custom-form { display:grid; gap:14px; }
+    label.field { display:grid; gap:6px; color:var(--muted); font-size:12px; font-weight:750; }
+    input,select { width:100%; min-height:44px; border:1px solid var(--line); border-radius:10px; background:#0d1010; color:var(--cream); padding:10px 12px; outline:none; }
+    input:focus,select:focus { border-color:rgba(240,191,105,.68); box-shadow:0 0 0 3px rgba(240,191,105,.08); }
+    .primary-action,.secondary-action { width:fit-content; min-height:40px; display:inline-flex; align-items:center; justify-content:center; border:1px solid rgba(240,191,105,.5); border-radius:999px; padding:0 15px; background:rgba(240,191,105,.14); color:var(--cream); cursor:pointer; font-weight:800; text-decoration:none; }
+    .secondary-action { border-color:var(--line); background:rgba(244,234,214,.045); color:rgba(244,234,214,.82); }
+    .primary-action:hover,.primary-action:focus-visible,.secondary-action:hover,.secondary-action:focus-visible { border-color:var(--gold); outline:none; }
+    .unavailable { max-width:680px; margin:36px auto; padding:24px; border:1px solid rgba(240,191,105,.25); border-radius:18px; background:rgba(240,191,105,.05); text-align:center; }
+    .lesson-result { display:grid; gap:18px; }
+    .lesson-result__toolbar { margin-bottom:8px; }
+    .lesson-result__heading { display:flex; justify-content:space-between; gap:22px; align-items:flex-start; }
+    .lesson-result__heading h1 { max-width:760px; font-size:clamp(34px,5vw,56px); }
+    .lesson-meta { display:flex; gap:7px; flex-wrap:wrap; justify-content:flex-end; }
+    .lesson-meta span { border:1px solid var(--line); border-radius:999px; padding:6px 10px; color:var(--muted); font-size:12px; font-weight:800; }
+    .lesson-callout,.lesson-section,.lesson-next,.lesson-assumptions { padding:22px; }
+    .lesson-callout { border-color:rgba(240,191,105,.32); background:linear-gradient(120deg,rgba(240,191,105,.1),rgba(21,24,23,.88)); }
+    .lesson-callout > p:last-child,.lesson-next > p:nth-child(2) { margin:0; color:var(--cream); font-size:18px; }
+    .exercise-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:12px; }
+    .exercise-card { padding:17px; border:1px solid var(--line); border-radius:14px; background:rgba(5,7,7,.32); }
+    .exercise-card__top { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+    .exercise-card__top span { color:var(--gold); font-size:12px; white-space:nowrap; }
+    .exercise-steps,.lesson-list { margin:0; padding-left:20px; }
+    .exercise-listen { margin:15px 0 0; padding-top:13px; border-top:1px solid var(--line); font-size:13px; }
+    .exercise-listen strong { color:var(--cream); }
+    .lesson-review-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px; }
+    .lesson-section.compact { min-height:100%; }
+    .practice-checklist { display:grid; gap:9px; }
+    .practice-checklist label { display:flex; align-items:flex-start; gap:10px; padding:10px 12px; border:1px solid rgba(244,234,214,.09); border-radius:10px; color:rgba(244,234,214,.8); }
+    .practice-checklist input { width:18px; min-height:18px; margin-top:2px; accent-color:var(--green); }
+    .lesson-actions { display:flex; flex-wrap:wrap; gap:9px; margin-top:16px; }
+    .lesson-assumptions summary { cursor:pointer; font-weight:800; }
+    .lesson-assumptions ul { margin-top:14px; }
+    [hidden] { display:none !important; }
+    @media (max-width:800px) { .lesson-header { align-items:flex-start; padding:14px 0; } .workspace-nav { max-width:310px; } .chooser-grid,.lesson-review-grid { grid-template-columns:1fr; } .lesson-result__heading { display:grid; } .lesson-meta { justify-content:flex-start; } }
+    @media (max-width:560px) { main { width:min(100% - 22px,1080px); padding-top:34px; } .lesson-header { width:calc(100% - 22px); display:grid; } .workspace-nav { justify-content:flex-start; max-width:none; overflow-x:auto; flex-wrap:nowrap; padding-bottom:4px; } .workspace-nav a { white-space:nowrap; } .lesson-cards { grid-template-columns:1fr; } .chooser-panel,.custom-panel,.lesson-section,.lesson-callout,.lesson-next,.lesson-assumptions { padding:17px; border-radius:14px; } }
+  </style>
+</head>
+<body>
+  <header class="lesson-header">
+    <a class="lesson-brand" href="/ui/steel-guitar-rag-mock.html"><span>Steel Guitar RAG</span><strong>Lessons</strong></a>
+    <nav class="workspace-nav" aria-label="Workspaces">
+      <a href="/ui/steel-guitar-rag-mock.html">Ask</a>
+      <a href="/ui/e9-fretboard-explorer.html">Explore</a>
+      <a href="/ui/melody-workbench.html">Arrange</a>
+      <a href="/ui/lesson-workbench.html" aria-current="page">Learn</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="lesson-hero" aria-labelledby="lesson-title">
+      <p class="lesson-eyebrow">Lessons</p>
+      <h1 id="lesson-title">Practice with a clear purpose.</h1>
+      <p>Choose a reviewed path or build a focused lesson around the skill you want to improve. Lessons connect to the existing Explorer and Melody Studio instead of duplicating them.</p>
+    </section>
+
+    <section class="unavailable" id="lesson-unavailable" hidden>
+      <h2>Lessons are unavailable here.</h2>
+      <p>Lessons require an active Backstage session.</p>
+      <a class="primary-action" href="/ui/steel-guitar-rag-mock.html">Return to Ask</a>
+    </section>
+
+    <section class="lesson-chooser" id="lesson-chooser">
+      <div class="chooser-grid">
+        <section class="chooser-panel" aria-labelledby="reviewed-title">
+          <div class="panel-heading">
+            <p class="lesson-eyebrow">Reviewed paths</p>
+            <h2 id="reviewed-title">Start with a focused sequence</h2>
+            <p>Each path begins simply and opens more detail as the work becomes useful.</p>
+          </div>
+          <div id="lesson-catalog" aria-live="polite"></div>
+          <p class="catalog-status" id="lesson-catalog-status" role="status">Loading reviewed paths…</p>
+        </section>
+
+        <aside class="custom-panel" aria-labelledby="custom-title">
+          <div class="panel-heading">
+            <p class="lesson-eyebrow">Custom lesson</p>
+            <h2 id="custom-title">Build today’s practice</h2>
+            <p>Choose one topic, a comfortable level, and the time you have.</p>
+          </div>
+          <form class="custom-form" id="custom-lesson-form">
+            <label class="field">What do you want to work on?
+              <input id="lesson-topic" name="topic" required minlength="3" maxlength="160" placeholder="F lever, blocking, I-IV movement…">
+            </label>
+            <label class="field">Starting level
+              <select id="lesson-level" name="level"><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select>
+            </label>
+            <label class="field">Lesson length
+              <select id="lesson-duration" name="duration"><option value="5_min">5 minutes</option><option value="15_min" selected>15 minutes</option><option value="deep_dive">Deep dive</option></select>
+            </label>
+            <button class="primary-action" type="submit">Build lesson</button>
+          </form>
+          <p class="form-status" id="custom-lesson-status" role="status"></p>
+        </aside>
+      </div>
+    </section>
+
+    <section class="lesson-result" id="lesson-result" hidden aria-live="polite">
+      <div class="lesson-result__toolbar"><button class="secondary-action" id="lesson-back" type="button">← All lessons</button></div>
+      <div id="lesson-result-mount"></div>
+    </section>
+  </main>
+
+  <script src="answer-client.js?v=melody-exercise-v0-20260710"></script>
+  <script src="lesson-workbench.js?v=lesson-workbench-v1-20260713"></script>
+</body>
+</html>
