@@ -2557,7 +2557,7 @@
       }
     }
   </style>
-  <link rel="stylesheet" href="workspace-shell.css?v=product-first-landing-20260713-3">
+  <link rel="stylesheet" href="workspace-shell.css?v=landing-feedback-20260713-2">
 </head>
 <body>
   <div class="page">
@@ -2618,12 +2618,11 @@
           <div class="home-panel-heading">
             <div>
               <p class="home-eyebrow">Fretboard Explorer</p>
-              <h2 id="explorer-preview-title">See validated positions before you start exploring.</h2>
+              <h2 id="explorer-preview-title">See three ways to play G major across the neck.</h2>
             </div>
-            <a class="home-text-link" href="/ui/e9-fretboard-explorer.html">Open the full Explorer <span aria-hidden="true">→</span></a>
           </div>
           <div class="home-explorer-stage" id="home-explorer-preview" aria-label="E9 fretboard preview"></div>
-          <p class="home-explorer-caption">E9 · G major · 4-5-6 grip · validated positions</p>
+          <p class="home-explorer-caption">E9 · G major · strings 4-5-6</p>
         </section>
 
         <section class="home-workspaces" aria-labelledby="workspaces-title">
@@ -2774,12 +2773,20 @@
       </section>
     </main>
 
-    <footer class="home-trust-footer">
-      <div class="home-trust-items" aria-label="Product trust notes">
-        <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 20 6v6c0 5-3.4 8-8 9-4.6-1-8-4-8-9V6l8-3Zm-3.5 9 2.2 2.2 4.9-5"/></svg>Validated E9 positions</span>
-        <span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5ZM8 7h8M8 11h6"/></svg>Source-backed guidance when evidence is available</span>
+    <footer class="home-trust-footer home-ai-footer">
+      <div class="footer-ornament" aria-hidden="true">
+        <span class="footer-ornament-star">☆</span>
       </div>
-      <button class="footer-trigger" type="button" aria-expanded="false" aria-controls="tech-popover">How it works</button>
+      <p class="home-ai-message">
+        Built deep for pedal steel.
+        <button
+          class="footer-trigger footer-shimmer"
+          type="button"
+          data-text="Powered by source-aware AI underneath."
+          aria-expanded="false"
+          aria-controls="tech-popover"
+        >Powered by source-aware AI underneath.</button>
+      </p>
       <aside
         class="tech-popover"
         id="tech-popover"
@@ -3169,7 +3176,7 @@
   <script src="answer-client.js?v=melody-exercise-v0-20260710"></script>
   <script src="pedal-steel-fretboard-styles.js?v=module-boundaries-20260713"></script>
   <script src="pedal-steel-fretboard.js?v=module-boundaries-20260713"></script>
-  <script src="landing-home.js?v=product-first-landing-20260713"></script>
+  <script src="landing-home.js?v=landing-feedback-20260713-2"></script>
   <script>
     const question = document.querySelector("#question");
     const promptBox = document.querySelector(".prompt");
@@ -3255,7 +3262,7 @@
       sections: [
         {
           heading: "Fretboard logic",
-          body: "Explorer positions come from deterministic E9 tuning, interval, pedal, and lever rules. The landing preview uses the same validated renderer as the full Explorer."
+          body: "Explorer positions come from deterministic E9 tuning, interval, pedal, and lever rules. The landing preview uses the same fretboard renderer as the full Explorer."
         },
         {
           heading: "Source-backed guidance",

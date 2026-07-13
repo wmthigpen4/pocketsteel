@@ -370,6 +370,20 @@ select:focus-visible,
   border-radius: 0;
 }
 
+.home-explorer-stage [data-string-label],
+.home-explorer-stage [data-tuning-label] {
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.home-explorer-stage [data-string-label] {
+  fill: rgba(255, 246, 223, 0.94);
+}
+
+.home-explorer-stage [data-tuning-label] {
+  fill: rgba(255, 198, 96, 0.98);
+}
+
 .home-explorer-caption {
   margin: 12px 2px 0;
   color: #cfc2af;
@@ -648,6 +662,32 @@ select:focus-visible,
   white-space: nowrap;
 }
 
+.home-ai-footer {
+  display: block;
+  padding-top: 12px;
+  text-align: center;
+}
+
+.home-ai-footer .footer-ornament {
+  margin-bottom: 4px;
+}
+
+.home-ai-message {
+  margin: 0;
+  color: rgba(244, 234, 214, 0.78);
+  font: 500 14px/1.5 var(--font-ui);
+}
+
+.home-ai-footer .footer-trigger {
+  display: inline-block;
+  min-height: 44px;
+  margin-left: 3px;
+  padding: 11px 2px;
+  color: rgba(244, 234, 214, 0.86);
+  font: 500 14px/1.5 var(--font-ui);
+  text-decoration-color: transparent;
+}
+
 @media (max-width: 1099px) {
   .app-shell-header {
     grid-template-columns: 1fr;
@@ -810,8 +850,8 @@ select:focus-visible,
     flex-direction: column;
   }
 
-  .home-trust-footer .footer-trigger {
-    margin-left: -12px;
+  .home-ai-footer .footer-trigger {
+    margin-left: 3px;
   }
 }
 

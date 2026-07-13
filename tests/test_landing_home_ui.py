@@ -73,13 +73,20 @@ def test_landing_home_uses_compact_functional_ask_card_without_voice_control() -
     )
 
 
-def test_landing_home_trust_copy_and_claim_boundaries() -> None:
+def test_landing_home_restores_source_aware_ai_shimmer_and_claim_boundaries() -> None:
     html = HTML_PATH.read_text(encoding="utf-8")
     home = _home_markup()
 
-    assert "Validated E9 positions" in html
-    assert "Source-backed guidance when evidence is available" in html
-    assert ">How it works</button>" in html
+    assert "Validated E9 positions" not in html
+    assert "Source-backed guidance when evidence is available" not in html
+    assert "Built deep for pedal steel." in html
+    assert "Powered by source-aware AI underneath." in html
+    assert 'class="footer-trigger footer-shimmer"' in html
+    assert 'data-text="Powered by source-aware AI underneath."' in html
+    assert "Open the full Explorer" not in home
+    assert "See three ways to play G major across the neck." in home
+    assert "E9 · G major · strings 4-5-6" in home
+    assert "validated positions" not in home.casefold()
     prohibited = (
         "YouTube transcription",
         "audio transcription",
@@ -124,7 +131,7 @@ const container = {
   querySelectorAll() { return interactive; }
 };
 const api = {
-  DEMO_POSITIONS: [{ id: "g-3" }, { id: "g-6" }, { id: "g-10" }],
+  DEMO_POSITIONS: [{ id: "g-3", fret: 3 }, { id: "g-6", fret: 6 }, { id: "g-10", fret: 10 }],
   mountPedalSteelFretboard(target, options) {
     assert.equal(target, container);
     receivedOptions = options;
@@ -132,11 +139,20 @@ const api = {
   }
 };
 assert.equal(landing.mountExplorerPreview(container, api), figure);
-assert.equal(receivedOptions.positions, api.DEMO_POSITIONS);
+assert.notEqual(receivedOptions.positions, api.DEMO_POSITIONS);
+assert.deepEqual(receivedOptions.positions.map((position) => position.label), [
+  "No pedals",
+  "A + F lever",
+  "A + B pedals"
+]);
+assert.deepEqual(receivedOptions.positions[0].stringActionLabels, {4: "4", 5: "5", 6: "6"});
+assert.deepEqual(receivedOptions.positions[1].stringActionLabels, {4: "4F", 5: "5A", 6: "6"});
+assert.deepEqual(receivedOptions.positions[2].stringActionLabels, {4: "4", 5: "5A", 6: "6B"});
 assert.equal(receivedOptions.hideFilterControls, true);
 assert.equal(receivedOptions.hidePositionTools, true);
 assert.equal(receivedOptions.hideLegend, true);
 assert.equal(receivedOptions.showHighlightLabels, true);
+assert.equal(receivedOptions.showStringActionLabels, true);
 assert.equal(receivedOptions.emphasizeVisibleHighlights, true);
 assert.deepEqual(interactive.map((item) => item.tabIndex), [-1, -1]);
 """
