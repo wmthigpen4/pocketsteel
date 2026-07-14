@@ -22,6 +22,7 @@ def test_landing_home_has_product_first_hierarchy_and_copy() -> None:
 
     assert '<a class="skip-link" href="#main-content">Skip to main content</a>' in html
     assert '<nav class="header-actions app-shell-nav" aria-label="Primary navigation">' in html
+    assert 'href="workspace-shell.css?v=landing-backstage-20260713-1"' in html
     assert '<main id="main-content">' in html
     assert "A connected pedal-steel learning studio" in home
     assert "See the neck. Understand the music. Play with confidence." in home
