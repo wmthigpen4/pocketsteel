@@ -58,7 +58,7 @@ def test_lesson_workbench_has_reviewed_custom_and_complete_lesson_surfaces() -> 
     assert 'id="lesson-level"' in html
     assert 'id="lesson-duration"' in html
     assert 'id="lesson-result" hidden' in html
-    assert 'lesson-workbench.js?v=copedent-library-v2-20260714-2' in html
+    assert 'lesson-workbench.js?v=account-copedents-20260714-1' in html
     assert 'id="lesson-key"' in html
     assert 'id="lesson-focus"' in html
     assert 'id="lesson-clarification" hidden' in html

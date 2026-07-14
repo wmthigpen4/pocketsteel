@@ -92,7 +92,7 @@ def test_extra_target_effect_is_safe_only_off_sounding_and_sustained_strings() -
     )
 
     assert safe_d.exact is True
-    assert safe_d.target_controls == ("D",)
+    assert safe_d.target_controls == ("D-lower",)
     assert safe_d.extra_effect_strings == (9,)
     assert unsafe_d.exact is False
 
@@ -143,6 +143,48 @@ def test_differently_named_target_control_maps_by_effect_not_label() -> None:
     assert string_one.target_controls == ("right-knee-custom",)
     assert string_one.extra_effect_strings == (6,)
     assert string_seven.exact is False
+
+
+def test_transfer_uses_stable_ids_when_player_g_label_collides_with_arranger_code() -> None:
+    target = custom_e9_profile_from_payload(
+        saved_profile_payload(
+            controls=[
+                {
+                    "id": "RKL-half",
+                    "label": "G",
+                    "type": "lever",
+                    "physicalPosition": "RKL",
+                    "travel": "half-stop",
+                    "changes": [
+                        {"stringNumber": 1, "fromNote": "F#", "toNote": "G"},
+                        {"stringNumber": 6, "fromNote": "G#", "toNote": "G"},
+                    ],
+                },
+                {
+                    "id": "G-lower",
+                    "label": "GG",
+                    "type": "lever",
+                    "physicalPosition": "RKL",
+                    "travel": "full-stop",
+                    "changes": [
+                        {"stringNumber": 1, "fromNote": "F#", "toNote": "G#"},
+                        {"stringNumber": 6, "fromNote": "G#", "toNote": "F#"},
+                    ],
+                },
+            ]
+        )
+    )
+
+    transfer = transfer_controls(
+        EMMONS_E9,
+        ("G",),
+        target,
+        sounding_strings=(6,),
+    )
+
+    assert transfer.exact is True
+    assert transfer.target_controls == ("G-lower",)
+    assert resolve_control(target, transfer.target_controls[0]).label == "GG"
 
 
 def test_answer_fretboard_and_tab_are_retargeted_with_user_labels() -> None:

@@ -52,6 +52,9 @@ class AnswerAccessDecision:
     status: str = "200 OK"
     error: str = ""
     identity_email: str = ""
+    identity_subject: str = ""
+    identity_issuer: str = ""
+    identity_provider: str = ""
     diagnostics: dict[str, object] = field(default_factory=dict)
 
 
@@ -158,6 +161,7 @@ def _authorize_with_cloudflare_access(
             "invalid access jwt issuer": "issuer",
             "invalid access jwt audience": "audience",
             "access jwt missing required claim": "missing_claim",
+            "access jwt missing subject": "missing_subject",
             "invalid access jwt signature": "signature",
             "access jwt signing key not found": "signing_key",
             "could not load access jwks": "jwks_load",
@@ -180,11 +184,33 @@ def _authorize_with_cloudflare_access(
         )
 
     email = claims.email.strip().lower()
+    subject = str(claims.subject or claims.raw.get("sub") or "").strip()
+    if not subject:
+        return AnswerAccessDecision(
+            allowed=False,
+            role=ANONYMOUS,
+            status="401 Unauthorized",
+            error="request requires valid Cloudflare Access identity",
+            diagnostics={
+                **diagnostics,
+                "accessIdentityVerified": False,
+                "accessValidationError": "missing_subject",
+                "emailPresent": True,
+                "emailAllowlisted": False,
+                "betaAllowed": False,
+            },
+        )
+    identity_fields = {
+        "identity_email": email,
+        "identity_subject": subject,
+        "identity_issuer": claims.issuer,
+        "identity_provider": CLOUDFLARE_ACCESS_AUTH_PROVIDER,
+    }
     if email in config.admin_emails:
         return AnswerAccessDecision(
             allowed=True,
             role=ADMIN,
-            identity_email=email,
+            **identity_fields,
             diagnostics={
                 **diagnostics,
                 "accessIdentityVerified": True,
@@ -197,7 +223,7 @@ def _authorize_with_cloudflare_access(
         return AnswerAccessDecision(
             allowed=True,
             role=BETA_USER,
-            identity_email=email,
+            **identity_fields,
             diagnostics={
                 **diagnostics,
                 "accessIdentityVerified": True,
@@ -211,7 +237,7 @@ def _authorize_with_cloudflare_access(
         role=ANONYMOUS,
         status="403 Forbidden",
         error="request requires beta_user or admin access",
-        identity_email=email,
+        **identity_fields,
         diagnostics={
             **diagnostics,
             "accessIdentityVerified": True,
@@ -260,7 +286,7 @@ def authorize_answer_request(
     """
 
     mode = normalize_answer_auth_mode(auth_mode or configured_answer_auth_mode())
-    provider = resolve_auth_provider(mode, auth_provider)
+    resolve_auth_provider(mode, auth_provider)
     if mode == PRODUCTION_AUTH_MODE:
         return _authorize_with_cloudflare_access(environ, cloudflare_verifier)
 
@@ -269,7 +295,13 @@ def authorize_answer_request(
     raw_role = trusted_role_value or dev_role_value
     role = normalize_access_role(raw_role)
     if can_call_live_answer(role):
-        return AnswerAccessDecision(allowed=True, role=role)
+        return AnswerAccessDecision(
+            allowed=True,
+            role=role,
+            identity_subject=f"local-dev:{role}",
+            identity_issuer="local_dev",
+            identity_provider="local_dev",
+        )
     if raw_role:
         return AnswerAccessDecision(
             allowed=False,
@@ -300,7 +332,7 @@ def authorize_local_dev_request(
     """
 
     mode = normalize_answer_auth_mode(auth_mode or configured_answer_auth_mode())
-    provider = resolve_auth_provider(mode, auth_provider)
+    resolve_auth_provider(mode, auth_provider)
     if mode == PRODUCTION_AUTH_MODE:
         return _authorize_with_cloudflare_access(environ, cloudflare_verifier)
 
@@ -314,7 +346,13 @@ def authorize_local_dev_request(
     raw_role = trusted_role_value or dev_role_value or query_role_value
     role = normalize_access_role(raw_role)
     if can_call_live_answer(role):
-        return AnswerAccessDecision(allowed=True, role=role)
+        return AnswerAccessDecision(
+            allowed=True,
+            role=role,
+            identity_subject=f"local-dev:{role}",
+            identity_issuer="local_dev",
+            identity_provider="local_dev",
+        )
     if raw_role:
         return AnswerAccessDecision(
             allowed=False,

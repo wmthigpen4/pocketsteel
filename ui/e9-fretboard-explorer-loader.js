@@ -74,7 +74,7 @@
     if (active?.blocked && active.profileId === copedentId) {
       throw new Error("The active copedent needs review in Backstage before Explorer can use it.");
     }
-    if (active?.profileSnapshot && active.profileId === copedentId) {
+    if ((active?.profileSnapshot || active?.accountBacked) && active.profileId === copedentId) {
       const accessRole = new URLSearchParams(window.location.search || "").get("access") || "";
       const response = await fetch("/api/explorer/e9", {
         method: "POST",
@@ -130,7 +130,7 @@
     window.STEEL_RAG_E9_EXPLORER_MANIFEST = manifest;
     const selection = startupSelection();
     if (selection.context?.blocked) throw new Error("The active copedent needs review in Backstage.");
-    const copedentId = (manifest.copedents[selection.copedentId] || selection.context?.profileSnapshot)
+    const copedentId = (manifest.copedents[selection.copedentId] || selection.context?.profileSnapshot || selection.context?.accountBacked)
       ? selection.copedentId
       : manifest.defaultCopedentId;
     const keys = manifestKeys(copedentId);
@@ -149,6 +149,13 @@
   window.STEEL_RAG_E9_EXPLORER_DATA = dataApi;
 
   window.STEEL_RAG_E9_EXPLORER_READY = (async () => {
+    try {
+      const accessRole = new URLSearchParams(window.location.search || "").get("access") || "";
+      const session = await window.STEEL_RAG_ANSWER_UI?.requestSession?.({ accessRole });
+      if (session) await window.STEEL_RAG_COPEDENTS?.configureAccount?.(session, { accessRole });
+    } catch (_error) {
+      // Account-backed custom personalization fails closed to the common default.
+    }
     window.STEEL_RAG_COPEDENTS?.renderStatus?.(document.querySelector("[data-active-copedent]"));
     try {
       await loadManifest();

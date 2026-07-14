@@ -2686,6 +2686,8 @@
 
   async function bootstrap() {
     try {
+      session = await answerUi.requestSession({ accessRole: readAccessRole() });
+      await global.STEEL_RAG_COPEDENTS?.configureAccount?.(session, { accessRole: readAccessRole() });
       global.STEEL_RAG_COPEDENTS?.renderStatus?.(elements.hero?.querySelector?.("[data-active-copedent]"));
       const profileState = global.STEEL_RAG_COPEDENTS?.activeContext?.();
       if (profileState?.blocked) {
@@ -2695,7 +2697,6 @@
         elements.workflow.hidden = true;
         return;
       }
-      session = await answerUi.requestSession({ accessRole: readAccessRole() });
       const enabled = Boolean(session.features?.melodyExercise);
       elements.unavailable.hidden = enabled;
       elements.workflow.hidden = !enabled;

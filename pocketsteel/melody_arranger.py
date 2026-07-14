@@ -10,6 +10,7 @@ from typing import Any, Mapping, Sequence
 from pocketsteel.answer_tab_examples import fretboard_payload_for_tab_example
 from pocketsteel.copedent_transfer import (
     absolute_pitch_for_profile,
+    arranger_code,
     candidate_control_states,
     control_affects_string,
     control_display_label,
@@ -1138,11 +1139,11 @@ def build_route(
                     control_display_label(target_profile, control) for control in candidate.controls
                 ],
                 "pedalControls": [
-                    control for control in candidate.controls
+                    arranger_code(resolve_control(target_profile, control)) for control in candidate.controls
                     if resolve_control(target_profile, control).control_type == "pedal"
                 ],
                 "leverControls": [
-                    control for control in candidate.controls
+                    arranger_code(resolve_control(target_profile, control)) for control in candidate.controls
                     if resolve_control(target_profile, control).control_type == "lever"
                 ],
                 "controlLayout": {
@@ -2168,8 +2169,11 @@ def _add_cost(left: tuple[int, ...], right: tuple[int, ...]) -> tuple[int, ...]:
 
 
 def _display_control_code(profile: E9CopedentProfile | None, control: str) -> str:
-    if profile is not None and profile.id.startswith("saved:"):
-        return resolve_control(profile, control).label
+    if profile is not None:
+        resolved = resolve_control(profile, control)
+        if profile.id.startswith("saved:"):
+            return resolved.label
+        return arranger_code(resolved)
     return control
 
 

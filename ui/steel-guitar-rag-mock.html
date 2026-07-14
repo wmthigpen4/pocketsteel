@@ -3277,9 +3277,9 @@
           <article class="backstage-card">
             <div class="backstage-card-header">
               <h3>Pass &amp; Usage</h3>
-              <span class="coming-soon">Draft</span>
+              <span class="coming-soon" id="backstage-overview-pass-badge">Account access</span>
             </div>
-            <p>Standing Room is the current mock pass. AI usage and pass upgrades are not connected yet.</p>
+            <p id="backstage-overview-pass-summary">Your verified account controls account-backed features. Checkout and billing management are not available in this beta yet.</p>
             <button class="backstage-button" type="button" data-backstage-jump="pass">View passes</button>
           </article>
 
@@ -3295,9 +3295,9 @@
           <article class="backstage-card">
             <div class="backstage-card-header">
               <h3>Account</h3>
-              <span class="coming-soon">Auth later</span>
+              <span class="coming-soon" id="backstage-overview-account-badge">Verified login</span>
             </div>
-            <p>Email, password, login provider, and account controls will live here after authentication is added.</p>
+            <p id="backstage-overview-account-summary">Your login keeps included setup selection and entitled custom copedents synchronized across devices.</p>
             <button class="backstage-button" type="button" data-backstage-jump="account">View account</button>
           </article>
 
@@ -3310,9 +3310,27 @@
                 <h3>My Setup / Copedent</h3>
                 <p>The chart below is your guitar: open strings run down the left, and pedals and knee levers run across the top.</p>
               </div>
-              <span class="coming-soon" id="copedent-active-badge">Local-first</span>
+              <span class="coming-soon" id="copedent-active-badge">Using Emmons</span>
             </div>
-            <p class="backstage-note">The active profile is used by Ask, Explorer, Lessons, and Melody Studio. Custom profiles save in this browser for now.</p>
+            <p class="backstage-note">The active setup follows your account and is used by Ask, Explorer, Lessons, and Melody Studio. Emmons and Day are included; Session Pass unlocks custom setups.</p>
+
+            <section class="copedent-section" id="copedent-account-status" aria-labelledby="copedent-account-title">
+              <div class="backstage-card-header">
+                <div>
+                  <h4 id="copedent-account-title">Account setup</h4>
+                  <p id="copedent-sync-copy">Checking copedent access and account sync…</p>
+                </div>
+                <span class="coming-soon" id="copedent-pass-label">Checking access</span>
+              </div>
+              <div id="copedent-local-import" hidden>
+                <p class="backstage-note">Setups found in this browser are not uploaded automatically. Review and choose exactly which ones to import.</p>
+                <div id="copedent-local-import-list"></div>
+                <div class="backstage-actions">
+                  <button class="backstage-button" id="copedent-import-selected" type="button">Import selected setups</button>
+                  <span class="backstage-status" id="copedent-import-status" role="status"></span>
+                </div>
+              </div>
+            </section>
 
             <section class="copedent-section" aria-labelledby="copedent-library-title">
               <div class="backstage-card-header">
@@ -3332,6 +3350,7 @@
                     <summary class="backstage-button" aria-label="More copedent actions">More</summary>
                     <div class="copedent-more__menu">
                       <button id="duplicate-copedent" type="button">Duplicate setup</button>
+                      <button id="export-copedent" type="button">Export custom setup</button>
                       <button id="delete-copedent" type="button">Delete custom setup</button>
                       <button id="compare-copedent" type="button">Compare with starter</button>
                       <button id="add-copedent-from-starter" type="button">Add missing starter state</button>
@@ -3406,7 +3425,7 @@
 
             <details class="copedent-details">
               <summary>Other tunings</summary>
-              <p>C6, Universal, Extended E9, and account-synced profiles are not personalized in this 10-string E9 editor yet. Save a request without treating an unsupported setup as E9.</p>
+              <p>C6, Universal, and Extended E9 are not personalized in this 10-string E9 editor yet. Save a request without treating an unsupported setup as E9.</p>
               <div class="backstage-grid">
                 <div class="backstage-field">
                   <label for="copedent-request">Tuning/setup request</label>
@@ -3511,12 +3530,12 @@
           <article class="backstage-card is-wide">
             <div class="backstage-card-header">
               <h3>Subscription Level</h3>
-              <span class="coming-soon">Draft</span>
+              <span class="coming-soon">Access</span>
             </div>
-            <p>Future pass and access level will appear here. This is a draft access model only; billing, production auth, and limits are not connected.</p>
+            <p>Your verified account determines available features. Emmons and Day are included. Session Pass or higher unlocks account-synced custom copedents. Checkout and billing management are not available in this beta yet.</p>
             <div class="backstage-metrics">
               <div class="backstage-metric">
-                <span>Mock current pass</span>
+                <span>Current access</span>
                 <strong id="mock-current-pass">Standing Room</strong>
               </div>
             </div>
@@ -3537,7 +3556,7 @@
                   <strong>Dance Hall Pass</strong>
                   <span>Free</span>
                 </div>
-                <p class="pass-copy">Free account for curious players getting started. Draft access: limited AI answers and basic saved preferences.</p>
+                <p class="pass-copy">Free account with synchronized selection of the included Emmons or Day E9 setups.</p>
                 <div class="pass-actions">
                   <span class="coming-soon">Draft</span>
                   <button class="backstage-button" type="button" disabled>Upgrade · coming soon</button>
@@ -3548,7 +3567,7 @@
                   <strong>Session Pass</strong>
                   <span>Paid</span>
                 </div>
-                <p class="pass-copy">Paid access for regular players. Draft access: higher answer limits, deeper source retrieval, and saved learning history.</p>
+                <p class="pass-copy">Create, import, edit, save, activate, and use custom copedents across personalized workspaces.</p>
                 <div class="pass-actions">
                   <span class="coming-soon">Draft</span>
                   <button class="backstage-button" type="button" disabled>Upgrade · coming soon</button>
@@ -3577,7 +3596,7 @@
                 </div>
               </section>
             </div>
-            <p class="backstage-note">The local preview gates live answer submission in the browser only. Production API authentication is not connected yet.</p>
+            <p class="backstage-note">Custom-copedent access is enforced by the server. Upgrade buttons remain unavailable until the separate checkout and billing work is complete.</p>
           </article>
 
           <article class="backstage-card">
@@ -3631,22 +3650,22 @@
         <div class="backstage-content backstage-tab-panel" id="backstage-panel-account" role="tabpanel" aria-labelledby="backstage-tab-account" hidden>
           <article class="backstage-card">
             <div class="backstage-card-header">
-              <h3>Password &amp; Account</h3>
-              <span class="coming-soon">Auth later</span>
+              <h3>Login &amp; Account</h3>
+              <span class="coming-soon" id="backstage-account-status-badge">Checking</span>
             </div>
-            <p>Account security and login controls will live here after authentication is added.</p>
+            <p id="backstage-account-status-copy">Checking your verified account and synchronized setup access.</p>
             <div class="account-list">
               <div class="account-item">
-                <span>Email</span>
-                <strong>Not connected</strong>
+                <span>Login</span>
+                <strong id="backstage-account-login">Checking</strong>
               </div>
               <div class="account-item">
-                <span>Change password</span>
-                <strong>Coming soon</strong>
+                <span>Copedent synchronization</span>
+                <strong id="backstage-account-sync">Checking</strong>
               </div>
               <div class="account-item">
-                <span>Connected login provider</span>
-                <strong>Coming soon</strong>
+                <span>Account ID</span>
+                <strong id="backstage-account-id">Checking</strong>
               </div>
               <div class="account-item">
                 <span>Delete account</span>
@@ -3661,9 +3680,9 @@
     </div>
   </div>
 
-  <script src="copedent-store.js?v=copedent-library-v2-20260714-2"></script>
+  <script src="copedent-store.js?v=account-copedents-20260714-1"></script>
   <script src="copedent-grid-model.js?v=table-first-copedent-20260714-1"></script>
-  <script src="answer-client.js?v=copedent-library-v2-20260714-2"></script>
+  <script src="answer-client.js?v=account-copedents-20260714-1"></script>
   <script src="pedal-steel-fretboard-styles.js?v=module-boundaries-20260713"></script>
   <script src="pedal-steel-fretboard.js?v=landing-bubble-labels-20260713"></script>
   <script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>
@@ -3716,6 +3735,15 @@
     const accessPreview = document.querySelector(".access-preview");
     const accessStateRadios = Array.from(document.querySelectorAll("input[name='mock-access-state']"));
     const mockCurrentPass = document.querySelector("#mock-current-pass");
+    const backstageOverviewPassBadge = document.querySelector("#backstage-overview-pass-badge");
+    const backstageOverviewPassSummary = document.querySelector("#backstage-overview-pass-summary");
+    const backstageOverviewAccountBadge = document.querySelector("#backstage-overview-account-badge");
+    const backstageOverviewAccountSummary = document.querySelector("#backstage-overview-account-summary");
+    const backstageAccountStatusBadge = document.querySelector("#backstage-account-status-badge");
+    const backstageAccountStatusCopy = document.querySelector("#backstage-account-status-copy");
+    const backstageAccountLogin = document.querySelector("#backstage-account-login");
+    const backstageAccountSync = document.querySelector("#backstage-account-sync");
+    const backstageAccountId = document.querySelector("#backstage-account-id");
     const backstage = document.querySelector("#backstage");
     const backstagePanel = document.querySelector(".backstage-panel");
     const backstageClose = document.querySelector(".backstage-close");
@@ -5306,11 +5334,30 @@
       backstageTriggers.forEach((trigger) => {
         trigger.setAttribute("aria-label", "Open Backstage");
       });
-      mockCurrentPass.textContent = accessRole === "admin"
+      mockCurrentPass.textContent = backendSession?.account?.passLabel
+        ? `${backendSession.account.passLabel}${backendSession.account.billingManaged ? "" : ""}`
+        : accessRole === "admin"
         ? "Bandleader Pass preview"
         : canAskLive
           ? "Dance Hall Pass preview"
           : "Standing Room";
+      const account = backendSession?.account || null;
+      const verifiedAccount = Boolean(account?.accountId);
+      const accountFeatureEnabled = Boolean(backendSession?.features?.accountCopedents);
+      const passLabel = account?.passLabel || mockCurrentPass.textContent;
+      backstageOverviewPassBadge.textContent = passLabel;
+      backstageOverviewPassSummary.textContent = `${passLabel} controls account-backed features. Checkout and billing management are not available in this beta yet.`;
+      backstageOverviewAccountBadge.textContent = verifiedAccount ? "Verified login" : "Local preview";
+      backstageOverviewAccountSummary.textContent = verifiedAccount
+        ? "Your verified login keeps included setup selection and entitled custom copedents synchronized across devices."
+        : "Sign in through the protected app to synchronize included setup selection and entitled custom copedents.";
+      backstageAccountStatusBadge.textContent = verifiedAccount ? "Verified" : "Local preview";
+      backstageAccountStatusCopy.textContent = verifiedAccount
+        ? `Your ${passLabel} access and copedent ownership are verified by the server. Password and billing controls remain with the login and future billing providers.`
+        : "This local preview does not represent a verified production account.";
+      backstageAccountLogin.textContent = verifiedAccount ? "Verified by the access provider" : "Local development preview";
+      backstageAccountSync.textContent = accountFeatureEnabled && verifiedAccount ? "Account-backed" : "Not enabled here";
+      backstageAccountId.textContent = verifiedAccount ? account.accountId : "Not assigned";
       accessStateRadios.forEach((radio) => {
         radio.checked = radio.value === accessRole;
       });
@@ -5401,19 +5448,27 @@
     async function bootstrapSessionAccess() {
       try {
         const session = await requestBackendSession();
+        await window.STEEL_RAG_COPEDENTS?.configureAccount?.(session, { accessRole: mockAccessState });
         applySessionAccess(session);
+        document.querySelectorAll("[data-active-copedent]").forEach((element) => window.STEEL_RAG_COPEDENTS?.renderStatus?.(element));
       } catch (_error) {
         updateMockAccessUi();
       }
     }
 
-    function setMockAccessState(state) {
+    async function setMockAccessState(state) {
       if (!devPreviewAccessEnabled || !sessionUsesLocalDev(backendSession)) {
         return;
       }
       mockAccessState = STEEL_RAG_ANSWER_UI.normalizeAccessRole(state);
       saveMockAccessState(mockAccessState);
-      updateMockAccessUi();
+      try {
+        const session = await requestBackendSession();
+        await window.STEEL_RAG_COPEDENTS?.configureAccount?.(session, { accessRole: mockAccessState });
+        applySessionAccess(session);
+      } catch (_error) {
+        updateMockAccessUi();
+      }
     }
 
     function openBackstageForAccessState() {
@@ -5638,12 +5693,16 @@
       }
     });
 
-    if (window.location.hash === "#backstage") {
+    if (window.location.hash === "#backstage" || window.location.hash === "#backstage-pass") {
       activeBackstageTrigger = backstageTriggers[0] || null;
-      openBackstageForAccessState();
+      if (window.location.hash === "#backstage-pass") {
+        openBackstage({ initialTab: "pass" });
+      } else {
+        openBackstageForAccessState();
+      }
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
     }
   </script>
-  <script src="backstage-copedent-manager.js?v=table-first-copedent-20260714-1"></script>
+  <script src="backstage-copedent-manager.js?v=account-copedents-20260714-1"></script>
 </body>
 </html>

@@ -64,6 +64,7 @@ class CloudflareAccessClaims:
     issuer: str
     audience: tuple[str, ...]
     raw: dict[str, Any]
+    subject: str = ""
 
 
 def parse_email_set(value: object) -> frozenset[str]:
@@ -154,7 +155,16 @@ class CloudflareAccessJwtVerifier:
         email = str(payload.get("email") or payload.get("identity_email") or "").strip().lower()
         if not email:
             raise CloudflareAccessError("access jwt missing email")
-        return CloudflareAccessClaims(email=email, issuer=issuer, audience=audience, raw=payload)
+        subject = str(payload.get("sub") or "").strip()
+        if not subject:
+            raise CloudflareAccessError("access jwt missing subject")
+        return CloudflareAccessClaims(
+            email=email,
+            issuer=issuer,
+            audience=audience,
+            raw=payload,
+            subject=subject,
+        )
 
     def _find_jwk(self, header: dict[str, Any], config: CloudflareAccessConfig) -> dict[str, Any]:
         kid = str(header.get("kid") or "")

@@ -394,6 +394,8 @@
 
     async function bootstrap() {
       try {
+        session = await answerUi.requestSession({ accessRole: readAccessRole() });
+        await globalThis.STEEL_RAG_COPEDENTS?.configureAccount?.(session, { accessRole: readAccessRole() });
         globalThis.STEEL_RAG_COPEDENTS?.renderStatus?.(doc.querySelector("[data-active-copedent]"));
         if (globalThis.STEEL_RAG_COPEDENTS?.activeContext?.()?.blocked) {
           elements.unavailable.hidden = false;
@@ -402,7 +404,6 @@
           elements.unavailable.querySelector("p").textContent = "Backstage preserved the setup without guessing at missing controls. Review and validate it before building a personalized lesson.";
           return;
         }
-        session = await answerUi.requestSession({ accessRole: readAccessRole() });
         if (!session?.authenticated) throw new Error("Lessons require an active Backstage session.");
         const payload = await requestJson(CATALOG_ENDPOINT, { headers: authHeaders(answerUi, session) });
         const paths = normalizeCatalog(payload);

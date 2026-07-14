@@ -13,7 +13,7 @@ from collections import deque
 from collections.abc import Iterable
 from datetime import datetime, timezone
 from typing import Any, Callable
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 from pocketsteel.answering import (
     AnswerProvider,
@@ -40,6 +40,17 @@ from pocketsteel.access_control import (
     resolve_auth_provider,
 )
 from pocketsteel.answer_usage import InMemoryAnswerRateLimiter, answer_rate_limit_key
+from pocketsteel.account_copedents import (
+    AccountCopedentError,
+    AccountCopedentRepository,
+    AccountConfigurationError,
+    AccountProfileConflictError,
+    AccountProfileNotFoundError,
+    EntitlementRequiredError,
+    account_access_for_decision,
+    configured_account_copedents_enabled,
+    configured_account_copedents_path,
+)
 from pocketsteel.answer_tab_examples import (
     answer_body_for_tab_example,
     fretboard_payload_for_tab_example,
@@ -329,6 +340,8 @@ class RetrievalApi:
         curated_guidance_search: Callable[..., list[dict[str, object]]] | None = None,
         melody_exercise_enabled: bool | None = None,
         melody_import_enabled: bool | None = None,
+        account_copedents_enabled: bool | None = None,
+        account_copedent_repository: AccountCopedentRepository | None = None,
     ) -> None:
         self.search_index = search_index
         self.private_search_index = private_search_index
@@ -351,6 +364,17 @@ class RetrievalApi:
             if melody_import_enabled is None
             else bool(melody_import_enabled)
         )
+        self.account_copedents_enabled = (
+            configured_account_copedents_enabled()
+            if account_copedents_enabled is None
+            else bool(account_copedents_enabled)
+        )
+        if self.account_copedents_enabled:
+            self.account_copedent_repository = account_copedent_repository or AccountCopedentRepository(
+                configured_account_copedents_path()
+            )
+        else:
+            self.account_copedent_repository = None
         self.git_sha = self._git_value("rev-parse", "--short", "HEAD")
         self.git_branch = self._git_value("branch", "--show-current")
         self.server_started_at = datetime.now(timezone.utc).isoformat()
@@ -492,8 +516,21 @@ class RetrievalApi:
                 features["melodyCatalog"] = True
             if self.melody_import_enabled:
                 features["melodyImport"] = True
+            if self.account_copedents_enabled:
+                features["accountCopedents"] = True
             if features:
                 payload["features"] = features
+            if self.account_copedents_enabled and access.allowed:
+                account_access = account_access_for_decision(access)
+                if account_access is None or self.account_copedent_repository is None:
+                    return self._json_response(
+                        start_response,
+                        "503 Service Unavailable",
+                        {"error": "account copedent service is unavailable"},
+                    )
+                bundle = self.account_copedent_repository.account_bundle(account_access)
+                payload["account"] = bundle["account"]
+                payload["entitlements"] = bundle["entitlements"]
             if params.get("debug") == ["auth"]:
                 payload["accessDebug"] = {
                     "authProvider": auth_provider,
@@ -501,6 +538,127 @@ class RetrievalApi:
                     **access.diagnostics,
                 }
             return self._json_response(start_response, "200 OK", payload)
+
+        if path == "/api/account/copedents" or path == "/api/account/copedents/import":
+            access = self._authorize_content_request(environ)
+            if not access.allowed:
+                return self._json_response(start_response, access.status, {"error": access.error})
+            account_access = account_access_for_decision(access)
+            if not self.account_copedents_enabled or account_access is None or self.account_copedent_repository is None:
+                return self._json_response(start_response, "404 Not Found", {"error": "account copedents are not enabled"})
+            if method == "GET" and path == "/api/account/copedents":
+                return self._json_response(
+                    start_response,
+                    "200 OK",
+                    self.account_copedent_repository.account_bundle(account_access),
+                    extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
+                )
+            if method != "POST":
+                return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"})
+            try:
+                request_payload = self._read_json_body(environ)
+                snapshot = request_payload.get("profile") or request_payload.get("profileSnapshot")
+                if not isinstance(snapshot, dict):
+                    raise ValueError("profile must be an object")
+                profile = self.account_copedent_repository.create_profile(account_access, snapshot)
+            except EntitlementRequiredError as exc:
+                return self._entitlement_response(start_response, exc)
+            except JsonRequestTooLargeError as exc:
+                return self._json_response(start_response, "413 Payload Too Large", {"error": str(exc)})
+            except (JsonRequestError, ValueError, TypeError) as exc:
+                return self._json_response(start_response, "400 Bad Request", {"error": str(exc)})
+            return self._json_response(
+                start_response,
+                "201 Created",
+                {
+                    "profile": profile,
+                    "accountCopedents": self.account_copedent_repository.account_bundle(account_access),
+                    "imported": path.endswith("/import"),
+                },
+                extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
+            )
+
+        if path == "/api/account/copedents/active":
+            access = self._authorize_content_request(environ)
+            if not access.allowed:
+                return self._json_response(start_response, access.status, {"error": access.error})
+            account_access = account_access_for_decision(access)
+            if not self.account_copedents_enabled or account_access is None or self.account_copedent_repository is None:
+                return self._json_response(start_response, "404 Not Found", {"error": "account copedents are not enabled"})
+            if method != "PUT":
+                return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"})
+            try:
+                request_payload = self._read_json_body(environ)
+                bundle = self.account_copedent_repository.set_active(
+                    account_access,
+                    str(request_payload.get("profileId") or request_payload.get("profile_id") or ""),
+                )
+            except EntitlementRequiredError as exc:
+                return self._entitlement_response(start_response, exc)
+            except AccountProfileNotFoundError as exc:
+                return self._json_response(start_response, "404 Not Found", {"error": str(exc)})
+            except (JsonRequestError, AccountCopedentError, ValueError, TypeError) as exc:
+                return self._json_response(start_response, "400 Bad Request", {"error": str(exc)})
+            return self._json_response(
+                start_response,
+                "200 OK",
+                bundle,
+                extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
+            )
+
+        if path.startswith("/api/account/copedents/"):
+            access = self._authorize_content_request(environ)
+            if not access.allowed:
+                return self._json_response(start_response, access.status, {"error": access.error})
+            account_access = account_access_for_decision(access)
+            if not self.account_copedents_enabled or account_access is None or self.account_copedent_repository is None:
+                return self._json_response(start_response, "404 Not Found", {"error": "account copedents are not enabled"})
+            profile_id = unquote(path.removeprefix("/api/account/copedents/"))
+            try:
+                if method == "PUT":
+                    request_payload = self._read_json_body(environ)
+                    snapshot = request_payload.get("profile") or request_payload.get("profileSnapshot")
+                    if not isinstance(snapshot, dict):
+                        raise ValueError("profile must be an object")
+                    expected_revision = int(
+                        request_payload.get("expectedRevision")
+                        or request_payload.get("expected_revision")
+                        or 0
+                    )
+                    profile = self.account_copedent_repository.update_profile(
+                        account_access,
+                        profile_id,
+                        snapshot,
+                        expected_revision=expected_revision,
+                    )
+                    return self._json_response(
+                        start_response,
+                        "200 OK",
+                        {
+                            "profile": profile,
+                            "accountCopedents": self.account_copedent_repository.account_bundle(account_access),
+                        },
+                        extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
+                    )
+                if method == "DELETE":
+                    self.account_copedent_repository.delete_profile(account_access, profile_id)
+                    return self._json_response(
+                        start_response,
+                        "200 OK",
+                        self.account_copedent_repository.account_bundle(account_access),
+                        extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
+                    )
+            except EntitlementRequiredError as exc:
+                return self._entitlement_response(start_response, exc)
+            except AccountProfileConflictError as exc:
+                return self._json_response(start_response, "409 Conflict", {"error": str(exc), "code": "revision_conflict"})
+            except AccountProfileNotFoundError as exc:
+                return self._json_response(start_response, "404 Not Found", {"error": str(exc)})
+            except JsonRequestTooLargeError as exc:
+                return self._json_response(start_response, "413 Payload Too Large", {"error": str(exc)})
+            except (JsonRequestError, AccountCopedentError, ValueError, TypeError) as exc:
+                return self._json_response(start_response, "400 Bad Request", {"error": str(exc)})
+            return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"})
 
         if path == "/api/copedents/e9":
             if method != "GET":
@@ -525,6 +683,13 @@ class RetrievalApi:
             access = self._authorize_content_request(environ)
             if not access.allowed:
                 return self._json_response(start_response, access.status, {"error": access.error})
+            if self.account_copedents_enabled:
+                account_access = account_access_for_decision(access)
+                if account_access is None or not account_access.allows("copedent.custom.manage"):
+                    return self._entitlement_response(
+                        start_response,
+                        EntitlementRequiredError("Session Pass is required to validate a custom copedent."),
+                    )
             try:
                 request_payload = self._read_json_body(environ)
                 snapshot = request_payload.get("profileSnapshot") or request_payload.get("profile") or request_payload
@@ -561,9 +726,15 @@ class RetrievalApi:
                 context = request_payload.get("copedentContext") or request_payload.get("copedent_context")
                 if context is not None and not isinstance(context, dict):
                     raise ValueError("copedentContext must be an object")
-                profile, revision = resolve_copedent_context(context)
+                profile, revision = self._resolve_request_copedent(access, context)
                 explorer = build_explorer_payload_for_profile(str(request_payload.get("key") or "G"), profile)
                 explorer.update(copedent_context_metadata(profile, revision))
+            except EntitlementRequiredError as exc:
+                return self._entitlement_response(start_response, exc)
+            except AccountProfileNotFoundError as exc:
+                return self._json_response(start_response, "404 Not Found", {"error": str(exc)})
+            except AccountConfigurationError:
+                return self._json_response(start_response, "503 Service Unavailable", {"error": "account copedent service is unavailable"})
             except (JsonRequestError, ValueError, TypeError) as exc:
                 status = "413 Payload Too Large" if isinstance(exc, JsonRequestTooLargeError) else "400 Bad Request"
                 return self._json_response(start_response, status, {"error": str(exc)})
@@ -647,7 +818,7 @@ class RetrievalApi:
                 context = lesson_request.get("copedentContext") or lesson_request.get("copedent_context")
                 if context is not None and not isinstance(context, dict):
                     raise LessonStudioError("copedentContext must be an object")
-                lesson_profile, lesson_revision = resolve_copedent_context(context)
+                lesson_profile, lesson_revision = self._resolve_request_copedent(access, context)
                 result = build_lesson_response(
                     lesson_request,
                     copedent_profile=lesson_profile,
@@ -676,6 +847,12 @@ class RetrievalApi:
                 return self._json_response(start_response, "413 Payload Too Large", {"error": str(exc)})
             except JsonRequestError as exc:
                 return self._json_response(start_response, "400 Bad Request", {"error": str(exc)})
+            except EntitlementRequiredError as exc:
+                return self._entitlement_response(start_response, exc)
+            except AccountProfileNotFoundError as exc:
+                return self._json_response(start_response, "404 Not Found", {"error": str(exc)})
+            except AccountConfigurationError:
+                return self._json_response(start_response, "503 Service Unavailable", {"error": "account copedent service is unavailable"})
             except LessonStudioError as exc:
                 return self._json_response(start_response, "400 Bad Request", {"error": str(exc)})
             return self._json_response(
@@ -756,13 +933,23 @@ class RetrievalApi:
             if copedent_context is not None and not isinstance(copedent_context, dict):
                 return self._json_response(start_response, "400 Bad Request", {"error": "copedentContext must be an object"})
             try:
-                target_profile, target_revision = resolve_copedent_context(copedent_context)
+                target_profile, target_revision = self._resolve_request_copedent(access, copedent_context)
+            except EntitlementRequiredError as exc:
+                return self._entitlement_response(start_response, exc)
+            except AccountProfileNotFoundError as exc:
+                return self._json_response(start_response, "404 Not Found", {"error": str(exc)})
+            except AccountConfigurationError:
+                return self._json_response(start_response, "503 Service Unavailable", {"error": "account copedent service is unavailable"})
             except (ValueError, TypeError) as exc:
                 return self._json_response(start_response, "400 Bad Request", {"error": str(exc)})
 
+            profile_personalization_requested = bool(
+                copedent_context is not None or self.account_copedents_enabled
+            )
+
             direct_profile_answer = (
                 profile_control_answer(answer_request.question, target_profile)
-                if copedent_context
+                if profile_personalization_requested
                 else None
             )
             if direct_profile_answer is not None:
@@ -788,10 +975,12 @@ class RetrievalApi:
                     "400 Bad Request",
                     {"error": "melodyRequest must be an object"},
                 )
-            if melody_request is not None and copedent_context:
+            if melody_request is not None and profile_personalization_requested:
                 melody_request = dict(melody_request)
                 if not melody_request.get("targetCopedent") and not melody_request.get("target_copedent"):
-                    snapshot = copedent_context.get("profileSnapshot") or copedent_context.get("profile_snapshot")
+                    snapshot = (copedent_context or {}).get("profileSnapshot") or (copedent_context or {}).get("profile_snapshot")
+                    if not snapshot:
+                        snapshot = self._account_snapshot_for_profile(access, target_profile)
                     if snapshot:
                         melody_request["targetCopedent"] = snapshot
                 if not melody_request.get("targetCopedentId") and not melody_request.get("target_copedent_id"):
@@ -1098,7 +1287,7 @@ class RetrievalApi:
                 answer_request.question,
                 answer_intent_decision=answer_intent_decision,
             )
-            if copedent_context is not None:
+            if profile_personalization_requested:
                 _personalize_answer_payload(payload, target_profile, target_revision)
             self._log_answer_attempt(
                 request_payload,
@@ -1306,6 +1495,66 @@ class RetrievalApi:
             self.cloudflare_verifier,
         )
 
+    def _resolve_request_copedent(
+        self,
+        access_decision: Any,
+        context: dict[str, Any] | None,
+    ) -> tuple[E9CopedentProfile, int]:
+        if not self.account_copedents_enabled:
+            return resolve_copedent_context(context)
+        account_access = account_access_for_decision(access_decision)
+        repository = self.account_copedent_repository
+        if account_access is None or repository is None:
+            raise AccountConfigurationError("account copedent identity is unavailable")
+        snapshot = (context or {}).get("profileSnapshot") or (context or {}).get("profile_snapshot")
+        if snapshot is not None:
+            if self.answer_auth_mode != "local_dev":
+                raise AccountCopedentError(
+                    "Import this custom copedent into the account before using it for personalized results."
+                )
+            if not account_access.allows("copedent.custom.use"):
+                raise EntitlementRequiredError(
+                    "Session Pass is required to use a custom copedent.",
+                    "copedent.custom.use",
+                )
+            return resolve_copedent_context(context)
+        profile_id = str(
+            (context or {}).get("profileId")
+            or (context or {}).get("profile_id")
+            or repository.effective_active_profile(account_access)
+        ).strip()
+        if profile_id in {DEFAULT_COPEDENT_ID, "day-e9-basic"}:
+            return resolve_copedent_context({"profileId": profile_id})
+        stored = repository.owned_profile(account_access, profile_id)
+        profile = custom_e9_profile_from_payload(stored)
+        return profile, int(stored.get("revision") or profile.revision)
+
+    def _account_snapshot_for_profile(
+        self,
+        access_decision: Any,
+        profile: E9CopedentProfile,
+    ) -> dict[str, object] | None:
+        if not self.account_copedents_enabled or not profile.id.startswith("saved:"):
+            return None
+        account_access = account_access_for_decision(access_decision)
+        if account_access is None or self.account_copedent_repository is None:
+            return None
+        return self.account_copedent_repository.owned_profile(account_access, profile.id)
+
+    @staticmethod
+    def _entitlement_response(start_response: Any, error: EntitlementRequiredError) -> list[bytes]:
+        return RetrievalApi._json_response(
+            start_response,
+            "403 Forbidden",
+            {
+                "error": str(error),
+                "code": "entitlement_required",
+                "requiredEntitlement": error.required_entitlement,
+                "upgradePath": "/ui/steel-guitar-rag-mock.html#backstage-pass",
+            },
+            extra_headers=(("Cache-Control", "no-store"),),
+        )
+
     @staticmethod
     def _may_expose_retrieval_debug(role: str, enabled: bool) -> bool:
         return enabled and role in {"admin", "dev", "developer"}
@@ -1487,6 +1736,8 @@ def create_app(
     curated_guidance_search: Callable[..., list[dict[str, object]]] | None = None,
     melody_exercise_enabled: bool | None = None,
     melody_import_enabled: bool | None = None,
+    account_copedents_enabled: bool | None = None,
+    account_copedent_repository: AccountCopedentRepository | None = None,
 ) -> RetrievalApi:
     retrieval_config = retrieval_config or configured_retrieval_mode_config()
     private_requested = retrieval_config.requested_mode in {
@@ -1511,6 +1762,8 @@ def create_app(
         curated_guidance_search=curated_guidance_search,
         melody_exercise_enabled=melody_exercise_enabled,
         melody_import_enabled=melody_import_enabled,
+        account_copedents_enabled=account_copedents_enabled,
+        account_copedent_repository=account_copedent_repository,
     )
 
 

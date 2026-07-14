@@ -52,6 +52,7 @@ def _token(private_key: Any, kid: str, **overrides: Any) -> str:
         "iss": ISSUER,
         "aud": [AUDIENCE],
         "email": "Beta@Example.Test",
+        "sub": "access-user-123",
         "iat": int(time.time()) - 5,
         "exp": int(time.time()) + 300,
         **overrides,
@@ -68,6 +69,7 @@ def test_access_verifier_validates_signature_issuer_audience_expiry_and_email() 
     assert claims.email == "beta@example.test"
     assert claims.issuer == ISSUER
     assert claims.audience == (AUDIENCE,)
+    assert claims.subject == "access-user-123"
 
 
 @pytest.mark.parametrize(
@@ -77,6 +79,7 @@ def test_access_verifier_validates_signature_issuer_audience_expiry_and_email() 
         ({"aud": ["wrong-audience"]}, "invalid access jwt audience"),
         ({"exp": int(time.time()) - 30}, "expired access jwt"),
         ({"exp": None}, "access jwt missing required claim"),
+        ({"sub": ""}, "access jwt missing subject"),
     ],
 )
 def test_access_verifier_rejects_invalid_required_claims(

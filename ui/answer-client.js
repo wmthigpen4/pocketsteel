@@ -888,7 +888,20 @@ const STEEL_RAG_ANSWER_UI = (() => {
     if (payload?.features?.melodyExercise) features.melodyExercise = true;
     if (payload?.features?.melodyCatalog) features.melodyCatalog = true;
     if (payload?.features?.melodyImport) features.melodyImport = true;
+    if (payload?.features?.accountCopedents) features.accountCopedents = true;
     if (Object.keys(features).length) normalized.features = features;
+    if (payload?.account && typeof payload.account === "object") {
+      normalized.account = {
+        id: firstTextValue(payload.account.id),
+        passId: firstTextValue(payload.account.passId),
+        passLabel: firstTextValue(payload.account.passLabel),
+        entitlementSource: firstTextValue(payload.account.entitlementSource),
+        billingManaged: Boolean(payload.account.billingManaged)
+      };
+    }
+    if (Array.isArray(payload?.entitlements)) {
+      normalized.entitlements = Array.from(new Set(payload.entitlements.map(String).filter(Boolean)));
+    }
     return normalized;
   }
 

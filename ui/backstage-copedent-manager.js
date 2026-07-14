@@ -31,6 +31,7 @@
     clone: $("#clone-copedent"),
     create: $("#new-copedent"),
     duplicate: $("#duplicate-copedent"),
+    exportProfile: $("#export-copedent"),
     remove: $("#delete-copedent"),
     more: $("#copedent-more"),
     status: $("#copedent-save-status"),
@@ -63,7 +64,14 @@
     stringOctave: $("#copedent-string-octave"),
     stringGauge: $("#copedent-string-gauge"),
     stringNotes: $("#copedent-string-notes"),
-    stringApply: $("#copedent-string-apply")
+    stringApply: $("#copedent-string-apply"),
+    accountStatus: $("#copedent-account-status"),
+    passLabel: $("#copedent-pass-label"),
+    syncCopy: $("#copedent-sync-copy"),
+    localImport: $("#copedent-local-import"),
+    localImportList: $("#copedent-local-import-list"),
+    importSelected: $("#copedent-import-selected"),
+    importStatus: $("#copedent-import-status")
   };
 
   if (!elements.library || !elements.grid) return;
@@ -152,19 +160,72 @@
     };
   }
 
+  function accountState() {
+    return store.accountStatus?.() || { enabled: false, verified: true, canManageCustom: true, canUseCustom: true, passLabel: "Local preview" };
+  }
+
+  function customEditingLocked() {
+    const account = accountState();
+    return Boolean(account.enabled && !account.canManageCustom);
+  }
+
+  function showSubscription(message = "Session Pass is required to create and use a custom copedent. Checkout is not available in this beta yet.") {
+    elements.status.textContent = message;
+    doc.querySelector("#backstage-tab-pass")?.click();
+  }
+
+  function exportLocalProfile(profile) {
+    const blob = new Blob([JSON.stringify(store.profileSnapshot(profile), null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = doc.createElement("a");
+    link.href = url;
+    link.download = `${String(profile.name || "e9-copedent").replace(/[^a-z0-9_-]+/gi, "-").toLowerCase()}.json`;
+    link.click();
+    global.setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+
+  function renderAccountStatus() {
+    const account = accountState();
+    if (!elements.accountStatus) return;
+    elements.passLabel.textContent = account.passLabel;
+    if (!account.enabled) {
+      elements.syncCopy.textContent = "Account copedent sync is off in this environment. The existing local editor remains available.";
+    } else if (!account.verified) {
+      elements.syncCopy.textContent = "Account verification failed. Personalized custom setups are unavailable; Emmons remains available.";
+    } else if (account.passId === "creator") {
+      elements.syncCopy.textContent = "Creator Access: custom setups synchronize to your verified account with no upgrade or payment prompt.";
+    } else if (account.canManageCustom) {
+      elements.syncCopy.textContent = "Custom setups synchronize to your verified account and follow you to another signed-in device.";
+    } else {
+      elements.syncCopy.textContent = "Emmons and Day synchronize with your account. Session Pass is required to create, import, edit, activate, or use custom setups.";
+    }
+    const localProfiles = store.localProfilesForImport?.() || [];
+    elements.localImport.hidden = !account.enabled || !localProfiles.length;
+    if (!account.enabled || !localProfiles.length) return;
+    elements.localImportList.innerHTML = localProfiles.map((profile) => `
+      <div class="backstage-note" data-local-profile="${escapeHtml(profile.id)}">
+        <label><input type="checkbox" value="${escapeHtml(profile.id)}" ${profile.alreadyImported || !account.canManageCustom ? "disabled" : ""}> <strong>${escapeHtml(profile.name)}</strong>${profile.alreadyImported ? " · already imported" : " · saved only in this browser"}</label>
+        <button class="backstage-button" type="button" data-export-local="${escapeHtml(profile.id)}">Export</button>
+        <button class="backstage-button" type="button" data-delete-local="${escapeHtml(profile.id)}">Delete local copy</button>
+      </div>
+    `).join("");
+    elements.importSelected.disabled = Boolean(account.canManageCustom && localProfiles.every((profile) => profile.alreadyImported));
+    elements.importSelected.textContent = account.canManageCustom ? "Import selected setups" : "🔒 Session Pass required to import";
+  }
+
   function markDraft(message) {
     if (!currentProfile?.immutable && currentProfile.validationStatus !== "needs_review") currentProfile.validationStatus = "draft";
     if (message) elements.status.textContent = message;
   }
 
   function refreshLibrary() {
-    const state = store.loadState();
     const profiles = store.listProfiles();
     const common = profiles.filter((profile) => profile.immutable);
     const custom = profiles.filter((profile) => !profile.immutable);
+    const activeId = store.activeProfile().id;
     elements.library.innerHTML = [
-      `<optgroup label="Common setups">${common.map((profile) => option(profile.id, `${profile.label}${state.activeProfileId === profile.id ? " · Active" : ""}`, selectedId)).join("")}</optgroup>`,
-      `<optgroup label="My custom setups">${custom.length ? custom.map((profile) => option(profile.id, `${profile.name}${state.activeProfileId === profile.id ? " · Active" : ""}`, selectedId)).join("") : '<option value="" disabled>No custom setups yet</option>'}</optgroup>`
+      `<optgroup label="Included setups">${common.map((profile) => option(profile.id, `${profile.label} · Included${activeId === profile.id ? " · Active" : ""}`, selectedId)).join("")}</optgroup>`,
+      `<optgroup label="My custom setups">${custom.length ? custom.map((profile) => option(profile.id, `${profile.name}${activeId === profile.id ? " · Active" : ""}${customEditingLocked() ? " · Locked" : ""}`, selectedId)).join("") : '<option value="" disabled>No account-synced custom setups yet</option>'}</optgroup>`
     ].join("");
     elements.library.value = selectedId;
     const active = store.activeProfile();
@@ -176,6 +237,7 @@
       ? new Date(active.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
       : "Built-in profile";
     doc.querySelectorAll("[data-active-copedent]").forEach((element) => store.renderStatus(element));
+    renderAccountStatus();
   }
 
   function profileFromEditor() {
@@ -228,7 +290,7 @@
         <button class="copedent-cell-button ${cell ? `is-${cell.direction}` : "is-empty"}" type="button"
           data-cell-control="${escapeHtml(state.id)}" data-cell-string="${Number(string.stringNumber)}"
           aria-label="${escapeHtml(state.label)}, string ${Number(string.stringNumber)}: ${sounding}"
-          ${currentProfile.immutable ? "disabled" : ""}>${escapeHtml(label)}</button>
+          ${currentProfile.immutable || customEditingLocked() ? "disabled" : ""}>${escapeHtml(label)}</button>
       </td>
     `;
   }
@@ -308,16 +370,23 @@
 
   function setEditorState() {
     const immutable = Boolean(currentProfile?.immutable);
+    const locked = customEditingLocked();
+    const readOnly = immutable || locked;
     [elements.name, elements.guitar, elements.notes, elements.addControl, elements.save]
-      .forEach((element) => { if (element) element.disabled = immutable; });
+      .forEach((element) => { if (element) element.disabled = readOnly; });
     elements.clone.hidden = !immutable;
-    elements.duplicate.disabled = immutable;
+    elements.clone.textContent = locked ? "🔒 Copy and edit" : "Copy and edit";
+    elements.create.textContent = locked ? "🔒 New custom setup" : "New custom setup";
+    elements.duplicate.disabled = immutable || locked;
+    elements.exportProfile.disabled = immutable;
     elements.remove.disabled = immutable;
-    elements.addFromStarter.disabled = immutable;
-    elements.reset.disabled = immutable;
+    elements.addFromStarter.disabled = immutable || locked;
+    elements.reset.disabled = readOnly;
     elements.activateEdited.textContent = immutable ? "Use this setup" : "Validate and use";
-    elements.activate.textContent = store.loadState().activeProfileId === selectedId ? "Active" : "Use this setup";
-    elements.activate.disabled = store.loadState().activeProfileId === selectedId;
+    const activeId = store.activeProfile().id;
+    elements.activate.textContent = activeId === selectedId ? "Active" : (!immutable && locked ? "🔒 Session Pass required" : "Use this setup");
+    elements.activate.disabled = activeId === selectedId;
+    elements.activateEdited.disabled = Boolean(!immutable && locked);
   }
 
   function renderSelected(message = "") {
@@ -337,7 +406,7 @@
       ? `<strong>Review required.</strong><ul>${issues.map((issue) => `<li>${escapeHtml(issue)}</li>`).join("")}</ul>`
       : currentProfile.immutable
         ? "This starter is read-only. Its chart includes RKL and RKR. Choose Copy and edit to match your guitar."
-        : `Saved locally · revision ${Number(currentProfile.revision || 1)} · ${escapeHtml(currentProfile.validationStatus || "draft")}`;
+        : `${accountState().enabled ? "Saved to your account" : "Saved locally"} · revision ${Number(currentProfile.revision || 1)} · ${escapeHtml(currentProfile.validationStatus || "draft")}`;
     renderGrid();
     setEditorState();
     elements.status.textContent = message || (issues[0]
@@ -375,9 +444,10 @@
   async function saveDraft() {
     try {
       if (currentProfile.immutable) throw new Error("Choose Copy and edit before changing this starter.");
-      currentProfile = store.saveProfile(profileFromEditor());
+      if (customEditingLocked()) return showSubscription();
+      currentProfile = await store.saveManagedProfile(profileFromEditor());
       selectedId = currentProfile.id;
-      renderSelected("Draft saved locally. Validate it before using it throughout the app.");
+      renderSelected(`${accountState().enabled ? "Draft synchronized to your account" : "Draft saved locally"}. Validate it before using it throughout the app.`);
     } catch (error) {
       elements.status.textContent = error.message;
     }
@@ -386,13 +456,16 @@
   async function validateAndActivate() {
     try {
       if (currentProfile.immutable) {
-        store.setActive(currentProfile.id);
+        await store.activateProfile(currentProfile.id);
       } else {
-        currentProfile = store.saveProfile(profileFromEditor());
+        if (customEditingLocked()) return showSubscription();
+        const candidate = profileFromEditor();
         elements.status.textContent = "Validating every open pitch, cell, and control state…";
-        await validateProfile(currentProfile);
-        currentProfile = store.markValidated(currentProfile.id);
-        store.setActive(currentProfile.id);
+        await validateProfile(candidate);
+        candidate.validationStatus = "valid";
+        candidate.reviewIssues = [];
+        currentProfile = await store.saveManagedProfile(candidate);
+        await store.activateProfile(currentProfile.id);
       }
       selectedId = currentProfile.id;
       renderSelected(`Using ${currentProfile.name || currentProfile.label} throughout the app.`);
@@ -445,47 +518,61 @@
     elements.more.open = false;
   }
 
-  function cloneSelected() {
-    const source = store.profileById(selectedId);
-    let copy;
-    if (source.immutable) {
-      const payload = catalog.get(source.id) || fallbackProfile(source.id, source.id === "day-e9-basic");
-      copy = store.editableFromBuiltIn(payload, `${source.label.replace(/ starter$/i, "")} custom`);
-    } else {
-      const blank = store.blankProfile(`${source.name} copy`);
-      copy = store.normalizeProfile({
-        ...store.clone(source),
-        id: blank.id,
-        name: blank.name,
-        label: blank.name,
-        origin: `clone:${source.id}`,
-        revision: 1,
-        validationStatus: "draft"
-      });
+  async function cloneSelected() {
+    try {
+      if (customEditingLocked()) return showSubscription();
+      const source = store.profileById(selectedId);
+      let copy;
+      if (source.immutable) {
+        const payload = catalog.get(source.id) || fallbackProfile(source.id, source.id === "day-e9-basic");
+        copy = store.editableFromBuiltIn(payload, `${source.label.replace(/ starter$/i, "")} custom`);
+      } else {
+        const blank = store.blankProfile(`${source.name} copy`);
+        copy = store.normalizeProfile({
+          ...store.clone(source),
+          id: blank.id,
+          name: blank.name,
+          label: blank.name,
+          origin: `clone:${source.id}`,
+          revision: 1,
+          validationStatus: "draft"
+        });
+      }
+      copy = await store.saveManagedProfile(copy);
+      selectedId = copy.id;
+      renderSelected("Editable copy created. Change the chart, then validate it when it matches your guitar.");
+      elements.more.open = false;
+    } catch (error) {
+      elements.status.textContent = error.message;
     }
-    copy = store.saveProfile(copy);
-    selectedId = copy.id;
-    renderSelected("Editable copy created. Change the chart, then validate it when it matches your guitar.");
-    elements.more.open = false;
   }
 
-  function createCustom() {
-    const profile = store.saveProfile(store.blankProfile());
-    selectedId = profile.id;
-    renderSelected("Blank 10-string E9 setup created. Add the controls that are actually on this guitar.");
+  async function createCustom() {
+    try {
+      if (customEditingLocked()) return showSubscription();
+      const profile = await store.saveManagedProfile(store.blankProfile());
+      selectedId = profile.id;
+      renderSelected("Blank 10-string E9 setup created. Add the controls that are actually on this guitar.");
+    } catch (error) {
+      elements.status.textContent = error.message;
+    }
   }
 
-  function deleteCustom() {
-    if (currentProfile.immutable) return;
-    if (!global.confirm(`Delete ${currentProfile.name}? This removes only this local custom setup.`)) return;
-    store.deleteProfile(currentProfile.id);
-    selectedId = store.loadState().activeProfileId;
-    renderSelected("Custom setup deleted. Your other setups were not changed.");
-    elements.more.open = false;
+  async function deleteCustom() {
+    try {
+      if (currentProfile.immutable) return;
+      if (!global.confirm(`Delete ${currentProfile.name}? This removes this account-synced custom setup but does not delete any browser-local import copy.`)) return;
+      await store.deleteManagedProfile(currentProfile.id);
+      selectedId = store.activeProfile().id;
+      renderSelected("Custom setup deleted. Your other setups were not changed.");
+      elements.more.open = false;
+    } catch (error) {
+      elements.status.textContent = error.message;
+    }
   }
 
   function addControlState() {
-    if (currentProfile.immutable) return;
+    if (currentProfile.immutable || customEditingLocked()) return;
     const id = `control-${Date.now()}`;
     currentProfile.controls.push({
       id,
@@ -525,7 +612,7 @@
   }
 
   function openCellDialog(controlId, stringNumber, trigger) {
-    if (currentProfile.immutable) return;
+    if (currentProfile.immutable || customEditingLocked()) return;
     const control = currentProfile.controls.find((item) => String(item.id) === String(controlId));
     const string = currentProfile.strings.find((item) => Number(item.stringNumber) === Number(stringNumber));
     if (!control || !string) return;
@@ -573,9 +660,9 @@
     elements.controlType.value = control.type || "lever";
     elements.controlTravel.value = control.travel || (control.type === "pedal" ? "pedal" : "full");
     elements.controlAliases.value = (control.aliases || []).join(", ");
-    setControlDialogDisabled(Boolean(currentProfile.immutable));
-    elements.controlPrevious.disabled = Boolean(currentProfile.immutable || control.type !== "pedal" || currentProfile.pedalOrder.indexOf(control.id) <= 0);
-    elements.controlNext.disabled = Boolean(currentProfile.immutable || control.type !== "pedal" || currentProfile.pedalOrder.indexOf(control.id) >= currentProfile.pedalOrder.length - 1);
+    setControlDialogDisabled(Boolean(currentProfile.immutable || customEditingLocked()));
+    elements.controlPrevious.disabled = Boolean(currentProfile.immutable || customEditingLocked() || control.type !== "pedal" || currentProfile.pedalOrder.indexOf(control.id) <= 0);
+    elements.controlNext.disabled = Boolean(currentProfile.immutable || customEditingLocked() || control.type !== "pedal" || currentProfile.pedalOrder.indexOf(control.id) >= currentProfile.pedalOrder.length - 1);
     elements.controlDialog.showModal();
   }
 
@@ -659,7 +746,7 @@
     elements.stringGauge.value = string.gauge || "";
     elements.stringNotes.value = string.notes || "";
     [elements.stringNote, elements.stringOctave, elements.stringGauge, elements.stringNotes, elements.stringApply]
-      .forEach((element) => { element.disabled = Boolean(currentProfile.immutable); });
+      .forEach((element) => { element.disabled = Boolean(currentProfile.immutable || customEditingLocked()); });
     elements.stringDialog.showModal();
   }
 
@@ -713,6 +800,30 @@
     renderSelected();
   }
 
+  async function importSelectedLocalProfiles() {
+    const account = accountState();
+    if (!account.canManageCustom) return showSubscription("Your browser-local setups are still preserved. Session Pass is required to import them into your account; checkout is not available in this beta yet.");
+    const localProfiles = store.localProfilesForImport?.() || [];
+    const selected = new Set(Array.from(elements.localImportList.querySelectorAll('input[type="checkbox"]:checked')).map((input) => input.value));
+    if (!selected.size) {
+      elements.importStatus.textContent = "Choose at least one browser-local setup to import.";
+      return;
+    }
+    elements.importSelected.disabled = true;
+    try {
+      let imported = null;
+      for (const profile of localProfiles.filter((item) => selected.has(item.id) && !item.alreadyImported)) {
+        imported = await store.importLocalProfile(profile);
+      }
+      if (imported) selectedId = imported.id;
+      renderSelected(`${selected.size} browser-local setup${selected.size === 1 ? "" : "s"} imported. The original local copy was kept.`);
+    } catch (error) {
+      elements.importStatus.textContent = error.message;
+    } finally {
+      elements.importSelected.disabled = false;
+    }
+  }
+
   elements.library.addEventListener("change", () => {
     selectedId = elements.library.value;
     renderSelected();
@@ -721,6 +832,13 @@
   elements.activateEdited.addEventListener("click", validateAndActivate);
   elements.clone.addEventListener("click", cloneSelected);
   elements.duplicate.addEventListener("click", cloneSelected);
+  elements.exportProfile.addEventListener("click", () => {
+    if (!currentProfile?.immutable) {
+      exportLocalProfile(currentProfile);
+      elements.status.textContent = `${currentProfile.name} exported. No account data was deleted.`;
+    }
+    elements.more.open = false;
+  });
   elements.create.addEventListener("click", createCustom);
   elements.remove.addEventListener("click", deleteCustom);
   elements.save.addEventListener("click", saveDraft);
@@ -762,6 +880,25 @@
   elements.controlAddState.addEventListener("click", addTravelState);
   elements.controlRemove.addEventListener("click", removeControlState);
   elements.stringApply.addEventListener("click", applyStringDetails);
+  elements.importSelected?.addEventListener("click", importSelectedLocalProfiles);
+  elements.localImportList?.addEventListener("click", (event) => {
+    const exportButton = event.target.closest("[data-export-local]");
+    const deleteButton = event.target.closest("[data-delete-local]");
+    const profileId = exportButton?.dataset.exportLocal || deleteButton?.dataset.deleteLocal;
+    if (!profileId) return;
+    const profile = store.localProfilesForImport().find((item) => item.id === profileId);
+    if (!profile) return;
+    if (exportButton) {
+      exportLocalProfile(profile);
+      elements.importStatus.textContent = `${profile.name} exported from this browser.`;
+      return;
+    }
+    if (global.confirm(`Delete the browser-local copy of ${profile.name}? This does not delete an imported account copy.`)) {
+      store.deleteProfile(profile.id);
+      renderAccountStatus();
+      elements.importStatus.textContent = `${profile.name} removed from this browser.`;
+    }
+  });
   elements.mobileGroup.addEventListener("change", () => { selectedMobileGroup = elements.mobileGroup.value; applyMobileGroup(); });
   elements.mobilePrevious.addEventListener("click", () => stepMobileGroup(-1));
   elements.mobileNext.addEventListener("click", () => stepMobileGroup(1));
@@ -777,5 +914,8 @@
   refreshLibrary();
   renderSelected();
   loadCatalog();
-  store.subscribe(() => refreshLibrary());
+  store.subscribe(() => {
+    if (!store.profileById(selectedId)) selectedId = store.activeProfile().id;
+    renderSelected();
+  });
 })(globalThis);

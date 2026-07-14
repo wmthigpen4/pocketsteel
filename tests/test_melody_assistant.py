@@ -502,7 +502,7 @@ def test_mixed_path_keeps_an_established_f_lever_pocket_instead_of_jumping_to_ab
     )
 
     assert path[1].fret == 6
-    assert path[1].controls == ("A", "F")
+    assert path[1].controls == ("A", "E-raise")
     assert path[1].canonical_grip == (4, 5, 6)
 
 

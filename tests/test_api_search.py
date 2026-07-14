@@ -77,6 +77,8 @@ def call_app(
     curated_guidance_search: Any | None = None,
     melody_exercise_enabled: bool | None = None,
     melody_import_enabled: bool | None = None,
+    account_copedents_enabled: bool | None = None,
+    account_copedent_repository: Any | None = None,
 ) -> tuple[str, dict[str, str], dict[str, Any]]:
     app = create_app(
         search_index or fake_search_index(),
@@ -89,6 +91,8 @@ def call_app(
         curated_guidance_search=curated_guidance_search,
         melody_exercise_enabled=melody_exercise_enabled,
         melody_import_enabled=melody_import_enabled,
+        account_copedents_enabled=account_copedents_enabled,
+        account_copedent_repository=account_copedent_repository,
     )
     captured: dict[str, Any] = {}
     body = json.dumps(json_body or {}).encode("utf-8") if json_body is not None else b""
@@ -260,7 +264,8 @@ class FakeCloudflareVerifier:
             email=email,
             issuer=config.issuer,
             audience=(config.audience,),
-            raw={"email": email, "iss": config.issuer, "aud": config.audience},
+            raw={"email": email, "iss": config.issuer, "aud": config.audience, "sub": f"subject:{email}"},
+            subject=f"subject:{email}",
         )
 
 

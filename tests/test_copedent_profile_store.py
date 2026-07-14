@@ -65,6 +65,82 @@ assert.deepEqual(context.profileSnapshot.controls.map((control) => control.trave
     assert result.returncode == 0, result.stderr
 
 
+def test_account_profile_store_fails_closed_and_sends_only_server_profile_references() -> None:
+    script = r"""
+const assert = require("node:assert/strict");
+const store = require("./ui/copedent-store.js");
+
+function memory() {
+  const rows = new Map();
+  return { getItem: (key) => rows.get(key) || null, setItem: (key, value) => rows.set(key, value), removeItem: (key) => rows.delete(key) };
+}
+function response(payload, status = 200) {
+  return { ok: status >= 200 && status < 300, status, json: async () => payload };
+}
+
+(async () => {
+  const storage = memory();
+  const local = store.blankProfile("Browser guitar");
+  local.validationStatus = "valid";
+  store.saveProfile(local, storage);
+
+  const freeBundle = {
+    schemaVersion: "account_copedents_v1",
+    account: {id: "acct_free", passId: "dance_hall", passLabel: "Dance Hall Pass"},
+    entitlements: ["copedent.common.use"], activeProfileId: "day-e9-basic",
+    requestedActiveProfileId: "day-e9-basic", lastCommonProfileId: "day-e9-basic",
+    lockedActiveProfileId: null, profiles: []
+  };
+  await store.configureAccount({authenticated: true, features: {accountCopedents: true}}, {
+    storage, fetchImpl: async (path) => {
+      assert.equal(path, "/api/account/copedents");
+      return response(freeBundle);
+    }
+  });
+  assert.equal(store.accountStatus().canManageCustom, false);
+  assert.equal(store.activeProfile().id, "day-e9-basic");
+  assert.deepEqual(store.requestContext(), {profileId: "day-e9-basic", profileRevision: 1});
+  assert.equal(store.localProfilesForImport(storage).length, 1);
+
+  const custom = {...local, id: "saved:account-e9-owned", revision: 7, origin: "account_custom", localMigrationSourceId: local.id};
+  const creatorBundle = {
+    schemaVersion: "account_copedents_v1",
+    account: {id: "acct_creator", passId: "creator", passLabel: "Creator Access"},
+    entitlements: ["copedent.common.use", "copedent.custom.manage", "copedent.custom.use"],
+    activeProfileId: custom.id, requestedActiveProfileId: custom.id,
+    lastCommonProfileId: "emmons-e9-basic", lockedActiveProfileId: null, profiles: [custom]
+  };
+  await store.configureAccount({authenticated: true, features: {accountCopedents: true}}, {
+    storage, accessRole: "admin", fetchImpl: async (path, options) => {
+      assert.equal(path, "/api/account/copedents");
+      assert.equal(options.headers["X-Steel-Rag-Dev-Access-Role"], "admin");
+      return response(creatorBundle);
+    }
+  });
+  assert.equal(store.accountStatus().passLabel, "Creator Access");
+  assert.deepEqual(store.requestContext(), {profileId: custom.id, profileRevision: 7});
+  assert.equal(Object.hasOwn(store.requestContext(), "profileSnapshot"), false);
+  assert.equal(store.localProfilesForImport(storage)[0].alreadyImported, true);
+
+  await store.configureAccount({authenticated: true, features: {accountCopedents: true}}, {
+    storage, fetchImpl: async () => { throw new Error("offline"); }
+  });
+  assert.equal(store.accountStatus().verified, false);
+  assert.equal(store.accountStatus().canUseCustom, false);
+  assert.equal(store.activeProfile().id, "emmons-e9-basic");
+  assert.deepEqual(store.requestContext(), {profileId: "emmons-e9-basic", profileRevision: 1});
+})().catch((error) => { console.error(error); process.exit(1); });
+"""
+    result = subprocess.run(
+        ["node", "-e", script],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+
+
 def test_backstage_exposes_common_profiles_and_mechanical_editor_fields() -> None:
     html = (REPO_ROOT / "ui" / "steel-guitar-rag-mock.html").read_text(encoding="utf-8")
     manager = (REPO_ROOT / "ui" / "backstage-copedent-manager.js").read_text(encoding="utf-8")

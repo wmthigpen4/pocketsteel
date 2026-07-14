@@ -5316,9 +5316,10 @@
     window.STEEL_RAG_COPEDENTS?.renderStatus?.(document.querySelector("[data-active-copedent]"));
     updateKeyOptions();
     if (els.copedent) {
-      els.copedent.addEventListener("change", () => {
+      els.copedent.addEventListener("change", async () => {
         try {
-          window.STEEL_RAG_COPEDENTS?.setActive?.(els.copedent.value);
+          const activation = window.STEEL_RAG_COPEDENTS?.activateProfile?.(els.copedent.value);
+          if (activation?.then) await activation;
           window.STEEL_RAG_COPEDENTS?.renderStatus?.(document.querySelector("[data-active-copedent]"));
           refreshAfterPayloadChange();
         } catch (error) {

@@ -167,13 +167,17 @@ def candidate_control_states(profile: E9CopedentProfile) -> tuple[tuple[str, ...
 
     controls = tuple(profile.ordered_controls())
     states: list[tuple[str, ...]] = [()]
-    states.extend((arranger_code(control),) for control in controls)
+    # Keep stable control-state IDs throughout deterministic mechanics. Compact
+    # tab codes are a rendering concern and may collide with a player's label
+    # (for example, an RKL half-stop labeled G beside a full state labeled GG
+    # whose canonical arranger code is also G).
+    states.extend((control.id,) for control in controls)
     for left, right in combinations(controls, 2):
         if left.physical_position and left.physical_position == right.physical_position:
             continue
         if set(left.affected_strings).intersection(right.affected_strings):
             continue
-        states.append((arranger_code(left), arranger_code(right)))
+        states.append((left.id, right.id))
     return tuple(dict.fromkeys(states))
 
 

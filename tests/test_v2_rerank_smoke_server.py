@@ -92,7 +92,8 @@ class FakeCloudflareVerifier:
             email="beta@example.test",
             issuer=config.issuer,
             audience=(config.audience,),
-            raw={"email": "beta@example.test", "iss": config.issuer, "aud": config.audience},
+            raw={"email": "beta@example.test", "iss": config.issuer, "aud": config.audience, "sub": "subject:beta"},
+            subject="subject:beta",
         )
 
 
