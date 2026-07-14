@@ -98,16 +98,22 @@ def test_landing_workspace_cards_include_compact_tool_previews() -> None:
         "const api =", 1
     )[0]
     assert "home-real-score-canvas" in preview_renderer
-    assert "VF.Renderer.Backends.CANVAS" in preview_renderer
-    assert "VF.Renderer.Backends.SVG" not in preview_renderer
+    assert "VexFlow" not in preview_renderer
+    assert "getContext(\"2d\")" in preview_renderer
+    assert "context.bezierCurveTo" in preview_renderer
+    assert "drawPreviewNote(context, note)" in preview_renderer
+    assert "drawPreviewBeam(context, notes[1], notes[2])" in preview_renderer
+    assert "drawPreviewBeam(context, notes[4], notes[5])" in preview_renderer
     assert "const width = 300;" in score_script
     assert "const height = 86;" in preview_renderer
-    assert "renderer.resize(width, height);" in preview_renderer
-    assert "context.scale(" not in preview_renderer
+    assert "canvas.width = Math.round(width * pixelRatio);" in preview_renderer
+    assert "canvas.height = Math.round(height * pixelRatio);" in preview_renderer
+    assert "context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);" in preview_renderer
     assert 'canvas.style.width = "100%";' not in preview_renderer
     assert 'canvas.style.height = "86px";' not in preview_renderer
     assert 'canvas.setAttribute("aria-hidden", "true")' in preview_renderer
-    assert 'container.dataset.scoreRenderer = "vexflow-canvas-preview"' in preview_renderer
+    assert 'canvas.dataset.previewKind = "simple-musical-score"' in preview_renderer
+    assert 'container.dataset.scoreRenderer = "simple-canvas-preview"' in preview_renderer
     assert "aspect-ratio: 150 / 43;" in css
     assert "width: 300px;" in css
     assert "max-width: 100%;" in css
@@ -115,7 +121,7 @@ def test_landing_workspace_cards_include_compact_tool_previews() -> None:
     assert "overflow: hidden;" in css
     assert "mountMelodyPreview" in SCRIPT_PATH.read_text(encoding="utf-8")
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in HTML_PATH.read_text(encoding="utf-8")
-    assert 'src="melody-score.js?v=landing-preview-canvas-20260714-1"' in HTML_PATH.read_text(encoding="utf-8")
+    assert 'src="melody-score.js?v=simple-score-canvas-20260714-1"' in HTML_PATH.read_text(encoding="utf-8")
     assert ".home-fretboard-mini" in css
     assert "grid-template-columns: repeat(12, minmax(0, 1fr));" in css
     assert ".mini-string-line" in css
@@ -278,6 +284,65 @@ container.textContent = "";
 assert.equal(landing.mountMelodyPreview(container, {renderPreview() { return false; }}), false);
 assert.equal(container.textContent, landing.SCORE_UNAVAILABLE_MESSAGE);
 assert.deepEqual(classes, ["is-unavailable"]);
+"""
+    result = subprocess.run(
+        ["node", "-e", script],
+        cwd=Path(__file__).resolve().parents[1],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_simple_score_preview_draws_on_one_scaled_canvas_without_vexflow() -> None:
+    script = r"""
+const assert = require("node:assert/strict");
+global.devicePixelRatio = 2;
+const calls = [];
+const context = new Proxy({}, {
+  get(target, property) {
+    if (property in target) return target[property];
+    return (...args) => calls.push([property, ...args]);
+  },
+  set(target, property, value) {
+    target[property] = value;
+    calls.push([`set:${property}`, value]);
+    return true;
+  }
+});
+const canvas = {
+  width: 0,
+  height: 0,
+  dataset: {},
+  classList: { values: [], add(...names) { this.values.push(...names); } },
+  attributes: {},
+  setAttribute(name, value) { this.attributes[name] = value; },
+  getContext(kind) { assert.equal(kind, "2d"); return context; }
+};
+global.document = { createElement(tag) { assert.equal(tag, "canvas"); return canvas; } };
+const score = require("./ui/melody-score.js");
+const container = {
+  children: [],
+  dataset: {},
+  replaceChildren() { this.children = []; },
+  appendChild(child) { this.children.push(child); }
+};
+assert.equal(score.renderPreview(container), true);
+assert.deepEqual(container.children, [canvas]);
+assert.equal(canvas.width, 600);
+assert.equal(canvas.height, 172);
+assert.equal(canvas.dataset.logicalWidth, "300");
+assert.equal(canvas.dataset.logicalHeight, "86");
+assert.equal(canvas.dataset.pixelRatio, "2");
+assert.equal(canvas.dataset.previewKind, "simple-musical-score");
+assert.equal(container.dataset.scoreRenderer, "simple-canvas-preview");
+assert.equal(canvas.attributes["aria-hidden"], "true");
+assert.ok(calls.some((call) => call[0] === "setTransform" && call[1] === 2 && call[4] === 2));
+assert.equal(calls.filter((call) => call[0] === "ellipse").length, 6);
+assert.ok(calls.filter((call) => call[0] === "bezierCurveTo").length >= 6);
+assert.ok(calls.filter((call) => call[0] === "fillText" && call[1] === "4").length === 2);
+assert.ok(calls.filter((call) => call[0] === "lineTo").length >= 15);
 """
     result = subprocess.run(
         ["node", "-e", script],
