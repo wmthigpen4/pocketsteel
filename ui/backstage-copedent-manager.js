@@ -53,10 +53,7 @@
     controlType: $("#copedent-control-type"),
     controlTravel: $("#copedent-control-travel"),
     controlAliases: $("#copedent-control-aliases"),
-    controlPrevious: $("#copedent-control-previous"),
-    controlNext: $("#copedent-control-next"),
-    controlAddState: $("#copedent-control-add-state"),
-    controlRemove: $("#copedent-control-remove"),
+    controlReset: $("#copedent-control-reset"),
     controlApply: $("#copedent-control-apply"),
     stringDialog: $("#copedent-string-dialog"),
     stringTitle: $("#copedent-string-title"),
@@ -105,15 +102,15 @@
       strings: STANDARD_STRINGS.map(([string, open_note, open_pitch_value]) => ({ string, open_note, open_pitch_value })),
       pedal_order: day ? ["C", "B", "A"] : ["A", "B", "C"],
       controls: [
-        control("A", "A pedal", "pedal", pedalPosition.A, "pedal", [[5, "B", "C#"], [10, "B", "C#"]]),
-        control("B", "B pedal", "pedal", pedalPosition.B, "pedal", [[3, "G#", "A"], [6, "G#", "A"]]),
-        control("C", "C pedal", "pedal", pedalPosition.C, "pedal", [[4, "E", "F#"], [5, "B", "C#"]]),
-        control("E-raise", "E raise (F lever)", "lever", "LKL", "full", [[4, "E", "F"], [8, "E", "F"]]),
-        control("E-lower", "E-lower lever", "lever", "LKR", "full", [[4, "E", "Eb"], [8, "E", "Eb"]]),
-        control("D-lower", "D lower half-stop", "lever", "RKR", "half-stop", [[2, "D#", "D"], [9, "D", "C#"]]),
-        control("RKR-full", "D lower full-stop", "lever", "RKR", "full-stop", [[2, "D#", "C#"], [9, "D", "C#"]]),
-        control("RKL-half", "RKL half-stop", "lever", "RKL", "half-stop", [[1, "F#", "G"], [6, "G#", "G"]]),
-        control("G-lower", "RKL full-stop / G lower", "lever", "RKL", "full-stop", [[1, "F#", "G"], [6, "G#", "F#"]])
+        control("A", "A", "pedal", pedalPosition.A, "pedal", [[5, "B", "C#"], [10, "B", "C#"]]),
+        control("B", "B", "pedal", pedalPosition.B, "pedal", [[3, "G#", "A"], [6, "G#", "A"]]),
+        control("C", "C", "pedal", pedalPosition.C, "pedal", [[4, "E", "F#"], [5, "B", "C#"]]),
+        control("E-raise", "F", "lever", "LKL", "full", [[4, "E", "F"], [8, "E", "F"]]),
+        control("E-lower", "E", "lever", "LKR", "full", [[4, "E", "Eb"], [8, "E", "Eb"]]),
+        control("D-lower", "D", "lever", "RKR", "half-stop", [[2, "D#", "D"], [9, "D", "C#"]]),
+        control("RKR-full", "DD", "lever", "RKR", "full-stop", [[2, "D#", "C#"], [9, "D", "C#"]]),
+        control("RKL-half", "G", "lever", "RKL", "half-stop", [[1, "F#", "G"], [6, "G#", "G"]]),
+        control("G-lower", "GG", "lever", "RKL", "full-stop", [[1, "F#", "G"], [6, "G#", "F#"]])
       ],
       notes: "Starter profile. Knee locations vary; copy it and edit the exact mechanics on your guitar."
     };
@@ -659,8 +656,18 @@
 
   function setControlDialogDisabled(disabled) {
     [elements.controlLabel, elements.controlPosition, elements.controlType, elements.controlTravel, elements.controlAliases,
-      elements.controlPrevious, elements.controlNext, elements.controlAddState, elements.controlRemove, elements.controlApply]
+      elements.controlReset, elements.controlApply]
       .forEach((element) => { element.disabled = disabled; });
+  }
+
+  function resetControlFields() {
+    const control = controlById();
+    if (!control) return;
+    elements.controlLabel.value = control.label || "";
+    elements.controlPosition.value = control.physicalPosition || "";
+    elements.controlType.value = control.type || "lever";
+    elements.controlTravel.value = control.travel || (control.type === "pedal" ? "pedal" : "full");
+    elements.controlAliases.value = (control.aliases || []).join(", ");
   }
 
   function openControlDialog(controlId, trigger) {
@@ -669,18 +676,12 @@
     activeControlId = String(control.id);
     returnFocus = trigger;
     elements.controlTitle.textContent = `${control.physicalPosition || control.label} details`;
-    elements.controlLabel.value = control.label || "";
-    elements.controlPosition.value = control.physicalPosition || "";
-    elements.controlType.value = control.type || "lever";
-    elements.controlTravel.value = control.travel || (control.type === "pedal" ? "pedal" : "full");
-    elements.controlAliases.value = (control.aliases || []).join(", ");
+    resetControlFields();
     setControlDialogDisabled(Boolean(currentProfile.immutable || customEditingLocked()));
-    elements.controlPrevious.disabled = Boolean(currentProfile.immutable || customEditingLocked() || control.type !== "pedal" || currentProfile.pedalOrder.indexOf(control.id) <= 0);
-    elements.controlNext.disabled = Boolean(currentProfile.immutable || customEditingLocked() || control.type !== "pedal" || currentProfile.pedalOrder.indexOf(control.id) >= currentProfile.pedalOrder.length - 1);
     elements.controlDialog.showModal();
   }
 
-  function applyControlFields({ close = true } = {}) {
+  function applyControlFields() {
     const control = controlById();
     if (!control || currentProfile.immutable) return null;
     const wasPedal = control.type === "pedal";
@@ -693,59 +694,15 @@
     if (wasPedal && control.type !== "pedal") currentProfile.pedalOrder = currentProfile.pedalOrder.filter((id) => id !== control.id);
     currentProfile = store.normalizeProfile(currentProfile);
     markDraft(`Updated ${control.label}. Its stable control identity and string actions were preserved.`);
-    if (close) {
-      elements.controlDialog.close("applied");
-      renderGrid();
-      global.setTimeout(() => elements.grid.querySelector(`[data-control-id="${escapeSelector(control.id)}"]`)?.focus(), 0);
-    }
+    elements.controlDialog.close("applied");
+    renderGrid();
+    global.setTimeout(() => elements.grid.querySelector(`[data-control-id="${escapeSelector(control.id)}"]`)?.focus(), 0);
     return control;
   }
 
-  function movePedal(direction) {
-    const control = applyControlFields({ close: false });
-    if (!control || control.type !== "pedal") return;
-    const index = currentProfile.pedalOrder.indexOf(control.id);
-    const target = index + Number(direction);
-    if (index < 0 || target < 0 || target >= currentProfile.pedalOrder.length) return;
-    [currentProfile.pedalOrder[index], currentProfile.pedalOrder[target]] = [currentProfile.pedalOrder[target], currentProfile.pedalOrder[index]];
-    markDraft(`Moved ${control.label} ${direction < 0 ? "left" : "right"} in the pedal order.`);
-    elements.controlDialog.close("applied");
-    renderGrid();
-  }
-
-  function addTravelState() {
-    const source = applyControlFields({ close: false });
-    if (!source) return;
-    const id = `${source.id}-${Date.now()}`;
-    const nextTravel = /half/i.test(source.travel) ? "full-stop" : "half-stop";
-    const state = {
-      ...store.clone(source),
-      id,
-      label: `${source.physicalPosition} ${nextTravel === "half-stop" ? "half" : "full"}`,
-      travel: source.type === "pedal" ? "pedal" : nextTravel,
-      changes: store.clone(source.changes || [])
-    };
-    currentProfile.controls.push(state);
-    if (state.type === "pedal") {
-      const sourceIndex = currentProfile.pedalOrder.indexOf(source.id);
-      currentProfile.pedalOrder.splice(sourceIndex + 1, 0, state.id);
-    }
-    activeControlId = id;
-    markDraft(`Added a separate ${state.travel} state for ${state.physicalPosition}. Review its cells.`);
-    elements.controlDialog.close("applied");
-    renderGrid();
-    global.setTimeout(() => openControlDialog(id, elements.grid.querySelector(`[data-control-id="${escapeSelector(id)}"]`)), 0);
-  }
-
-  function removeControlState() {
-    const control = controlById();
-    if (!control || currentProfile.immutable) return;
-    if (!global.confirm(`Remove the ${control.label} state and all of its changed cells?`)) return;
-    currentProfile.controls = currentProfile.controls.filter((item) => item.id !== control.id);
-    currentProfile.pedalOrder = currentProfile.pedalOrder.filter((id) => id !== control.id);
-    markDraft(`${control.label} was removed from this draft.`);
-    elements.controlDialog.close("removed");
-    renderGrid();
+  async function saveControlFields() {
+    if (!applyControlFields()) return;
+    await saveDraft();
   }
 
   function openStringDialog(stringNumber, trigger) {
@@ -892,11 +849,8 @@
     updateCellPreview();
   });
   elements.cellApply.addEventListener("click", applyCellChange);
-  elements.controlApply.addEventListener("click", () => applyControlFields());
-  elements.controlPrevious.addEventListener("click", () => movePedal(-1));
-  elements.controlNext.addEventListener("click", () => movePedal(1));
-  elements.controlAddState.addEventListener("click", addTravelState);
-  elements.controlRemove.addEventListener("click", removeControlState);
+  elements.controlApply.addEventListener("click", saveControlFields);
+  elements.controlReset.addEventListener("click", resetControlFields);
   elements.stringApply.addEventListener("click", applyStringDetails);
   elements.importSelected?.addEventListener("click", importSelectedLocalProfiles);
   elements.localImportList?.addEventListener("click", (event) => {

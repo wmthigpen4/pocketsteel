@@ -170,6 +170,14 @@ def test_backstage_exposes_common_profiles_and_mechanical_editor_fields() -> Non
     assert "renderTabLabelHeaders" in manager
     assert "renderTravelHeaders" in manager
     assert 'for="copedent-control-label">Tab label</label>' in html
+    assert 'id="copedent-control-reset" type="button">Reset</button>' in html
+    assert 'id="copedent-control-apply" type="button">Save</button>' in html
+    assert "async function saveControlFields()" in manager
+    assert 'elements.controlApply.addEventListener("click", saveControlFields);' in manager
+    assert "Move left" not in setup_markup
+    assert "Move right" not in setup_markup
+    assert "Add travel state" not in setup_markup
+    assert "Remove state" not in setup_markup
     assert "let selectedId = store.activeProfile().id;" in manager
     assert "let selectionWasExplicit = false;" in manager
     assert "if (!selectionWasExplicit || !store.profileById(selectedId)) selectedId = activeId;" in manager
@@ -216,6 +224,19 @@ assert.equal(projected.cells["5:A"].label, "C# ↑2");
 assert.equal(projected.cells["2:rkr-half"].label, "D ↓1");
 assert.equal(grid.formatCell({fromNote: "C", toNote: "F#", changeType: "lower"}).label, "F# ↓6");
 assert.equal(grid.formatCell({fromNote: "C", toNote: "F#", changeType: "raise"}).label, "F# ↑6");
+
+const starterCopy = store.editableFromBuiltIn({
+  id: "emmons-e9-basic",
+  label: "Emmons E9 starter",
+  strings: [],
+  pedal_order: ["A"],
+  controls: [{
+    id: "A", label: "A pedal", control_type: "pedal", physical_position: "P1", travel: "pedal",
+    player_shorthand: ["A"], compatibility_aliases: ["P1"], changes: []
+  }]
+});
+assert.equal(starterCopy.controls[0].label, "A");
+assert.deepEqual(starterCopy.controls[0].aliases, ["A", "P1"]);
 
 const day = profile(true);
 assert.deepEqual(grid.project(day).pedalGroups.map((group) => group.states[0].id), ["C", "B", "A"]);

@@ -239,7 +239,7 @@
       pedalOrder: payload?.pedal_order,
       controls: (payload?.controls || []).map((control) => ({
         id: control.id,
-        label: control.label,
+        label: control.player_shorthand?.[0] || control.label,
         type: control.control_type,
         physicalPosition: control.physical_position,
         travel: control.travel,
