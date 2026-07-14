@@ -5,11 +5,35 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from pocketsteel.lesson_curriculum import (
+    CURRICULUM_VERSION,
+    catalog_paths,
+    clarification_for_topic,
+    concept_by_id,
+    curriculum_count,
+    mechanics_for,
+    normalized_key,
+    resolve_concept,
+)
+
 
 LESSON_SCHEMA_VERSION = "lesson_v1"
 LESSON_CATALOG_SCHEMA_VERSION = "lesson_catalog_v1"
 VALID_LEVELS = {"beginner", "intermediate", "advanced"}
 VALID_DURATIONS = {"5_min", "15_min", "deep_dive"}
+
+LEGACY_LESSON_IDS = {
+    "fundamentals-major-pocket": "major-pocket",
+    "fundamentals-chord-tones": "chord-tones",
+    "controls-ab-pedals": "ab-pedals",
+    "controls-f-lever": "f-lever",
+    "chords-i-iv-same-fret": "i-iv-same-fret",
+    "chords-three-major-positions": "major-position-families",
+    "technique-clean-blocking": "blocking-choice",
+    "technique-bar-intonation": "bar-intonation",
+    "applied-fill-shape": "tasteful-fill",
+    "applied-melody-route": "phrase-routing",
+}
 
 
 class LessonStudioError(ValueError):
@@ -299,28 +323,11 @@ TOPIC_LESSONS: tuple[dict[str, Any], ...] = (
 
 def lesson_catalog() -> dict[str, Any]:
     """Return reviewed lesson paths without implying saved progress."""
-    paths: list[dict[str, Any]] = []
-    for lesson in REVIEWED_LESSONS:
-        path = next((item for item in paths if item["id"] == lesson["pathId"]), None)
-        if path is None:
-            path = {
-                "id": lesson["pathId"],
-                "title": lesson["pathTitle"],
-                "lessons": [],
-            }
-            paths.append(path)
-        path["lessons"].append(
-            {
-                "id": lesson["id"],
-                "title": lesson["title"],
-                "summary": lesson["summary"],
-                "level": lesson["level"],
-                "duration": lesson["duration"],
-            }
-        )
     return {
-        "schemaVersion": LESSON_CATALOG_SCHEMA_VERSION,
-        "paths": paths,
+        "schemaVersion": "lesson_catalog_v2",
+        "curriculumVersion": CURRICULUM_VERSION,
+        "conceptCount": curriculum_count(),
+        "paths": catalog_paths(),
         "progressPersistence": False,
     }
 
@@ -431,33 +438,250 @@ def _lesson_payload(spec: dict[str, str], *, origin: str) -> dict[str, Any]:
 
 
 def build_lesson(request: dict[str, Any] | None) -> dict[str, Any]:
-    """Build a reviewed lesson by ID or a deterministic custom lesson."""
-    if not isinstance(request, dict):
-        raise LessonStudioError("lesson request must be an object")
+    """Compatibility helper returning only ready lesson payloads."""
+    response = build_lesson_response(request)
+    if response.get("status") == "ready":
+        return response["lesson"]
+    if response.get("status") == "needs_clarification":
+        raise LessonStudioError("lesson topic needs clarification")
+    raise LessonStudioError(str(response.get("message") or "lesson is unavailable"))
 
-    lesson_id = str(request.get("lessonId") or request.get("lesson_id") or "").strip()
-    if lesson_id:
-        reviewed = next((item for item in REVIEWED_LESSONS if item["id"] == lesson_id), None)
-        if reviewed is None:
-            raise LessonStudioError("unknown reviewed lesson")
-        return _lesson_payload(dict(reviewed), origin="reviewed")
 
-    topic = " ".join(str(request.get("topic") or "").split())
-    if len(topic) < 3:
-        raise LessonStudioError("topic must contain at least 3 characters")
-    if len(topic) > 160:
-        raise LessonStudioError("topic must contain at most 160 characters")
-    level = _normalized_level(request.get("level"))
-    duration = _normalized_duration(request.get("duration"))
-    category = _category_for_topic(topic)
-    slug = re.sub(r"[^a-z0-9]+", "-", topic.lower()).strip("-")[:48] or "custom"
-    spec = {
-        "id": f"custom-{slug}",
-        "title": f"Practice {topic}",
-        "summary": "",
-        "topic": topic,
+def _safe_teaching_sources(results: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    safe: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for result in results or []:
+        try:
+            score = float(result.get("score", 1.0))
+        except (TypeError, ValueError):
+            score = 0.0
+        if score < 0.45:
+            continue
+        url = str(result.get("thread_url") or "").strip()
+        if not re.match(r"^https?://", url) or url in seen:
+            continue
+        title = str(result.get("thread_title") or "Steel Guitar Forum discussion").strip()
+        forum = str(result.get("forum_name") or "Steel Guitar Forum").strip()
+        safe.append({"type": "forum", "title": title, "publisher": forum, "url": url})
+        seen.add(url)
+        if len(safe) == 3:
+            break
+    return safe
+
+
+def _worked_examples(mechanics: list[dict[str, Any]], action: str) -> list[dict[str, Any]]:
+    if not mechanics:
+        return [{"title": "Concrete demonstration", "explanation": action, "mechanics": []}]
+    examples: list[dict[str, Any]] = []
+    for item in mechanics:
+        controls = [*item["pedals"], *item["levers"]]
+        control_text = "+".join(controls) if controls else "no pedals or levers"
+        note_text = ", ".join(f"string {string}: {note}" for string, note in item["notes"].items())
+        examples.append(
+            {
+                "title": item["label"],
+                "explanation": (
+                    f"At fret {item['fret']} on strings {'-'.join(str(value) for value in item['strings'])} "
+                    f"with {control_text}, the notes are {note_text}."
+                ),
+                "mechanics": [item],
+            }
+        )
+    return examples
+
+
+def _exercise_steps(concept: Any, mechanics: list[dict[str, Any]], level: str, focus: str) -> tuple[dict[str, Any], ...]:
+    first_mechanic = mechanics[0] if mechanics else None
+    locate = concept.action
+    if first_mechanic:
+        locate = (
+            f"Set fret {first_mechanic['fret']}, strings {'-'.join(str(value) for value in first_mechanic['strings'])}, "
+            f"and {'+'.join([*first_mechanic['pedals'], *first_mechanic['levers']]) or 'no controls'}. "
+            "Name the notes before playing."
+        )
+    level_step = {
+        "beginner": "Stop after every repetition and say what changed in plain language.",
+        "intermediate": "Repeat in one nearby position or musical context and compare the voice movement.",
+        "advanced": "Preserve the concept while changing register, rhythm, or inversion; explain why the result still works.",
+    }[level]
+    focus_step = {
+        "balanced": f"Put the idea into a two- or four-beat phrase. Its job is: {concept.purpose}",
+        "concept": f"Name the musical function before every repetition and explain why it matters: {concept.purpose}",
+        "technique": "Repeat below performance tempo while monitoring attack, pitch center, control timing, and release separately.",
+        "application": f"Use the idea as part of a real chord change, melody, or fill. Its job is: {concept.purpose}",
+    }[focus]
+    return (
+        {
+            "title": "Locate and explain it",
+            "steps": [locate, f"Explain the idea: {concept.definition}"],
+            "listenFor": "The named musical result, not merely successful physical motion",
+        },
+        {
+            "title": "Make the move deliberately",
+            "steps": [concept.action, level_step],
+            "listenFor": "A clean attack, stable pitch, and an intentional release",
+        },
+        {
+            "title": "Use it in music",
+            "steps": [focus_step, "Leave equal space, then repeat once with a clearer destination."],
+            "listenFor": "The musical function remaining audible inside the phrase",
+        },
+        {
+            "title": "Transfer the idea",
+            "steps": ["Change only one variable: key, register, string group, rhythm, or destination chord.", "State what remained invariant before playing the transferred version."],
+            "listenFor": "The same concept surviving the change of context",
+        },
+    )
+
+
+def _listen_and_mistakes(concept: Any, mechanics: list[dict[str, Any]]) -> tuple[list[str], list[str]]:
+    if concept.path_id == "pedals-levers":
+        return (
+            ["The direction and size of every moving voice", "Even control timing with a stationary bar", "The destination pitch settling before release"],
+            ["Treating the control label as a chord name", "Claiming the control affects a string it does not change", "Letting knee or foot motion pull the bar off center"],
+        )
+    if concept.path_id == "chords-movement":
+        return (
+            ["The chord quality before the fret number", "Common tones and resolving voices", "A clear harmonic destination"],
+            ["Naming an incomplete grip as a complete chord", "Moving before the destination is heard internally", "Learning a shape without its chord function"],
+        )
+    if concept.path_id == "technique":
+        return (
+            ["A deliberate attack, sustain, and ending", "Stable pitch and time", "Less unintended noise on each repetition"],
+            ["Using speed to hide the symptom", "Changing several variables at once", "Judging while playing without listening back"],
+        )
+    if concept.path_id == "applied-playing":
+        return (
+            ["The melody or musical job staying obvious", "Rhythmic shape and deliberate space", "A resolution that supports the song"],
+            ["Adding harmony before the melody is secure", "Filling every available gap", "Letting mechanics erase the rhythm"],
+        )
+    return (
+        ["The concept before speed", "Balanced notes and centered pitch", "A repeatable musical result"],
+        ["Adding too many positions at once", "Memorizing labels without hearing their function", "Continuing after the target becomes unclear"],
+    )
+
+
+def _lesson_v2(
+    concept: Any,
+    *,
+    origin: str,
+    level: str,
+    duration: str,
+    key: str,
+    focus: str,
+    sources: list[dict[str, Any]] | None,
+) -> dict[str, Any]:
+    mechanics = mechanics_for(concept, key)
+    exercises = list(_exercise_steps(concept, mechanics, level, focus))[: _exercise_count(duration)]
+    timeboxes = _timeboxes(duration)
+    for index, exercise in enumerate(exercises):
+        exercise["timebox"] = timeboxes[index]
+    listen, mistakes = _listen_and_mistakes(concept, mechanics)
+    query = concept.explorer_query.format(key=key) if concept.explorer_query else "mode=note&key=" + key
+    payload = {
+        "schemaVersion": "lesson_v2",
+        "curriculumVersion": CURRICULUM_VERSION,
+        "conceptId": concept.id,
+        "id": f"{origin}-{concept.id}-{key.lower()}-{level}-{duration}",
+        "origin": origin,
+        "generationMode": origin,
+        "pathId": concept.path_id,
+        "title": concept.title,
+        "topic": concept.title,
         "level": level,
         "duration": duration,
-        "category": category,
+        "durationLabel": {"5_min": "5-minute lesson", "15_min": "15-minute lesson", "deep_dive": "Deep dive"}[duration],
+        "key": key,
+        "focus": focus,
+        "goal": f"Understand {concept.title.lower()}, perform one concrete example, and use it in a musical context.",
+        "whyItMatters": concept.purpose,
+        "explanation": concept.definition,
+        "workedExamples": _worked_examples(mechanics, concept.action),
+        "mechanics": mechanics,
+        "exercises": exercises,
+        "whatToListenFor": listen,
+        "commonMistakes": mistakes,
+        "practiceChecklist": [
+            "I can explain the concept without referring only to a fret number or shape.",
+            "I can perform the worked example and name what each relevant voice does.",
+            "I can use the idea once in a musical phrase or chord movement.",
+        ],
+        "nextStep": "Open the connected workspace and test the same idea in another musical context.",
+        "links": [{"type": "explorer", "label": "Open this idea in Explorer", "url": f"/ui/e9-fretboard-explorer.html?{query}&source=lesson"}],
+        "teachingSources": _safe_teaching_sources(sources),
+        "reviewState": "mechanics_validated" if mechanics else "curriculum_reviewed",
+        "assumptions": ["Standard 10-string E9 mechanics.", f"Key context: {key}."],
+        "progressPersistence": False,
     }
-    return _lesson_payload(spec, origin="custom")
+    validate_lesson_quality(payload)
+    return payload
+
+
+def validate_lesson_quality(lesson: dict[str, Any]) -> None:
+    serialized = " ".join(str(value) for value in lesson.values())
+    forbidden = (
+        "controlled, musical practice loop",
+        "Begin with one small, repeatable piece of the neck",
+        "Compare two practical choices, but keep one as the reference position",
+        "corpus-private/",
+        "/Users/",
+        "WEBVTT",
+    )
+    if any(value in serialized for value in forbidden):
+        raise LessonStudioError("lesson quality gate rejected generic or private-source text")
+    if not lesson.get("explanation") or not lesson.get("whyItMatters") or not lesson.get("workedExamples"):
+        raise LessonStudioError("lesson quality gate requires teaching before practice")
+    if len(lesson.get("exercises") or []) < 2:
+        raise LessonStudioError("lesson quality gate requires graduated exercises")
+    for mechanic in lesson.get("mechanics") or []:
+        if not mechanic.get("validated") or not mechanic.get("notes"):
+            raise LessonStudioError("lesson quality gate rejected unvalidated mechanics")
+    for source in lesson.get("teachingSources") or []:
+        if not re.match(r"^https?://", str(source.get("url") or "")):
+            raise LessonStudioError("lesson quality gate rejected unsafe source attribution")
+
+
+def build_lesson_response(
+    request: dict[str, Any] | None,
+    *,
+    source_results: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """Build a reviewed/custom lesson or return a truthful non-ready state."""
+    if not isinstance(request, dict):
+        raise LessonStudioError("lesson request must be an object")
+    lesson_id = str(request.get("lessonId") or request.get("lesson_id") or "").strip()
+    origin = "reviewed" if lesson_id else "custom"
+    answers = request.get("clarificationAnswers") if isinstance(request.get("clarificationAnswers"), dict) else {}
+    if lesson_id:
+        concept = concept_by_id(LEGACY_LESSON_IDS.get(lesson_id, lesson_id))
+        if concept is None:
+            raise LessonStudioError("unknown reviewed lesson")
+        topic = concept.title
+    else:
+        topic = " ".join(str(request.get("topic") or "").split())
+        if len(topic) < 3:
+            raise LessonStudioError("topic must contain at least 3 characters")
+        if len(topic) > 160:
+            raise LessonStudioError("topic must contain at most 160 characters")
+        level = _normalized_level(request.get("level"))
+        duration = _normalized_duration(request.get("duration"))
+        clarification = clarification_for_topic(topic, answers)
+        if clarification:
+            return {"status": "needs_clarification", "clarification": clarification}
+        concept = resolve_concept(topic, answers)
+        if concept is None:
+            return {
+                "status": "unavailable",
+                "message": "A reviewed, mechanically trustworthy lesson is not available for that topic yet.",
+                "suggestedTopics": ["F lever", "I-IV movement", "pick blocking", "dominant seventh", "tasteful fills"],
+            }
+    level = _normalized_level(request.get("level") or (concept.level if origin == "reviewed" else None))
+    duration = _normalized_duration(request.get("duration"))
+    key = normalized_key(request.get("key"))
+    focus = str(request.get("focus") or "balanced").strip().lower()
+    if focus not in {"balanced", "concept", "technique", "application"}:
+        focus = "balanced"
+    return {
+        "status": "ready",
+        "lesson": _lesson_v2(concept, origin=origin, level=level, duration=duration, key=key, focus=focus, sources=source_results),
+    }

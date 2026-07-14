@@ -70,10 +70,10 @@ def test_api_contract_fixture_matches_required_shapes() -> None:
     assert set(answer["sections"][0]) == {"title", "style", "body"}
 
 
-def test_lesson_v1_contract_shape() -> None:
+def test_lesson_v2_contract_shape() -> None:
     lesson = build_lesson({"lessonId": "fundamentals-major-pocket"})
 
-    assert lesson["schemaVersion"] == "lesson_v1"
+    assert lesson["schemaVersion"] == "lesson_v2"
     assert {
         "id",
         "origin",
@@ -93,6 +93,14 @@ def test_lesson_v1_contract_shape() -> None:
         "links",
         "assumptions",
         "progressPersistence",
+        "curriculumVersion",
+        "conceptId",
+        "generationMode",
+        "whyItMatters",
+        "workedExamples",
+        "mechanics",
+        "teachingSources",
+        "reviewState",
     }.issubset(lesson)
     assert {"title", "timebox", "steps", "listenFor"} == set(lesson["exercises"][0])
 

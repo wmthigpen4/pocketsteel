@@ -42,6 +42,15 @@
     .lesson-card p:not(.lesson-eyebrow) { font-size:14px; }
     .lesson-card .secondary-action { margin-top:auto; }
     .custom-form { display:grid; gap:14px; }
+    .lesson-options { border:1px solid var(--line); border-radius:12px; padding:12px; }
+    .lesson-options summary { cursor:pointer; color:var(--muted); font-size:12px; font-weight:800; }
+    .lesson-options__grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px; }
+    .lesson-clarification { display:grid; gap:10px; margin-top:14px; padding:15px; border:1px solid rgba(240,191,105,.35); border-radius:12px; background:rgba(240,191,105,.06); }
+    .clarification-option { width:100%; justify-content:flex-start; min-height:44px; text-align:left; }
+    .worked-example { margin-top:12px; padding:16px; border:1px solid var(--line); border-radius:14px; background:rgba(5,7,7,.32); }
+    .mechanics-row { display:flex; flex-wrap:wrap; gap:7px; margin-top:10px; }
+    .mechanics-row span { border:1px solid rgba(244,234,214,.12); border-radius:999px; padding:5px 8px; color:var(--muted); font-size:11px; }
+    .teaching-sources a { color:var(--gold); }
     label.field { display:grid; gap:6px; color:var(--muted); font-size:12px; font-weight:750; }
     input,select { width:100%; min-height:44px; border:1px solid var(--line); border-radius:10px; background:#0d1010; color:var(--cream); padding:10px 12px; outline:none; }
     input:focus,select:focus { border-color:rgba(240,191,105,.68); box-shadow:0 0 0 3px rgba(240,191,105,.08); }
@@ -75,7 +84,7 @@
     .lesson-assumptions ul { margin-top:14px; }
     [hidden] { display:none !important; }
     @media (max-width:800px) { .lesson-header { align-items:flex-start; padding:14px 0; } .workspace-nav { max-width:310px; } .chooser-grid,.lesson-review-grid { grid-template-columns:1fr; } .lesson-result__heading { display:grid; } .lesson-meta { justify-content:flex-start; } }
-    @media (max-width:560px) { main { width:min(100% - 22px,1080px); padding-top:34px; } .lesson-header { width:calc(100% - 22px); display:grid; } .workspace-nav { justify-content:flex-start; max-width:none; overflow-x:auto; flex-wrap:nowrap; padding-bottom:4px; } .workspace-nav a { white-space:nowrap; } .lesson-cards { grid-template-columns:1fr; } .chooser-panel,.custom-panel,.lesson-section,.lesson-callout,.lesson-next,.lesson-assumptions { padding:17px; border-radius:14px; } }
+    @media (max-width:560px) { main { width:min(100% - 22px,1080px); padding-top:34px; } .lesson-header { width:calc(100% - 22px); display:grid; } .workspace-nav { justify-content:flex-start; max-width:none; overflow-x:auto; flex-wrap:nowrap; padding-bottom:4px; } .workspace-nav a { white-space:nowrap; } .lesson-cards { grid-template-columns:1fr; } .lesson-options__grid { grid-template-columns:1fr; } .chooser-panel,.custom-panel,.lesson-section,.lesson-callout,.lesson-next,.lesson-assumptions { padding:17px; border-radius:14px; } }
   </style>
 </head>
 <body>
@@ -130,8 +139,20 @@
             <label class="field">Lesson length
               <select id="lesson-duration" name="duration"><option value="5_min">5 minutes</option><option value="15_min" selected>15 minutes</option><option value="deep_dive">Deep dive</option></select>
             </label>
+            <details class="lesson-options">
+              <summary>Optional lesson choices</summary>
+              <div class="lesson-options__grid">
+                <label class="field">Key
+                  <select id="lesson-key" name="key"><option>G</option><option>C</option><option>D</option><option>A</option><option>E</option><option>F</option><option>Bb</option><option>Eb</option></select>
+                </label>
+                <label class="field">Focus
+                  <select id="lesson-focus" name="focus"><option value="balanced">Balanced</option><option value="concept">Concept</option><option value="technique">Technique</option><option value="application">Application</option></select>
+                </label>
+              </div>
+            </details>
             <button class="primary-action" type="submit">Build lesson</button>
           </form>
+          <div class="lesson-clarification" id="lesson-clarification" hidden></div>
           <p class="form-status" id="custom-lesson-status" role="status"></p>
         </aside>
       </div>
@@ -144,6 +165,6 @@
   </main>
 
   <script src="answer-client.js?v=melody-exercise-v0-20260710"></script>
-  <script src="lesson-workbench.js?v=lesson-teaching-58be204"></script>
+  <script src="lesson-workbench.js?v=lesson-composer-v2-20260713"></script>
 </body>
 </html>

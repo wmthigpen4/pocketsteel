@@ -20,11 +20,19 @@
 
   function buildLessonRequest(values) {
     if (values?.lessonId) return { lessonId: String(values.lessonId).trim() };
-    return {
+    const request = {
       topic: String(values?.topic || "").trim(),
       level: normalizeLevel(values?.level),
-      duration: normalizeDuration(values?.duration)
+      duration: normalizeDuration(values?.duration),
+      key: String(values?.key || "G").trim() || "G",
+      focus: ["balanced", "concept", "technique", "application"].includes(String(values?.focus || "balanced"))
+        ? String(values?.focus || "balanced")
+        : "balanced"
     };
+    if (values?.clarificationAnswers && typeof values.clarificationAnswers === "object") {
+      request.clarificationAnswers = { ...values.clarificationAnswers };
+    }
+    return request;
   }
 
   function normalizeCatalog(payload) {
@@ -65,13 +73,20 @@
       level: levelLabel(lesson?.level),
       duration: String(lesson?.durationLabel || durationLabel(lesson?.duration)),
       goal: String(lesson?.goal || ""),
+      why: String(lesson?.whyItMatters || ""),
       explanation: String(lesson?.explanation || ""),
+      examples: Array.isArray(lesson?.workedExamples) ? lesson.workedExamples : [],
       exercises: Array.isArray(lesson?.exercises) ? lesson.exercises : [],
       listen: Array.isArray(lesson?.whatToListenFor) ? lesson.whatToListenFor.map(String) : [],
       mistakes: Array.isArray(lesson?.commonMistakes) ? lesson.commonMistakes.map(String) : [],
       checklist: Array.isArray(lesson?.practiceChecklist) ? lesson.practiceChecklist.map(String) : [],
       nextStep: String(lesson?.nextStep || ""),
       links: (Array.isArray(lesson?.links) ? lesson.links : []).map(safeLessonLink).filter(Boolean),
+      sources: (Array.isArray(lesson?.teachingSources) ? lesson.teachingSources : []).map((source) => ({
+        title: String(source?.title || "Teaching source"),
+        publisher: String(source?.publisher || ""),
+        url: String(source?.url || "")
+      })).filter((source) => /^https?:\/\//.test(source.url)),
       assumptions: Array.isArray(lesson?.assumptions) ? lesson.assumptions.map(String) : []
     };
   }
@@ -110,10 +125,39 @@
     goal.appendChild(createElement(doc, "p", "", model.goal));
     mount.appendChild(goal);
 
+    if (model.why) {
+      const why = createElement(doc, "section", "lesson-section");
+      why.appendChild(createElement(doc, "h2", "", "Why it matters"));
+      why.appendChild(createElement(doc, "p", "", model.why));
+      mount.appendChild(why);
+    }
+
     const concept = createElement(doc, "section", "lesson-section");
     concept.appendChild(createElement(doc, "h2", "", "Learn the concept and the move"));
     concept.appendChild(createElement(doc, "p", "", model.explanation));
     mount.appendChild(concept);
+
+    if (model.examples.length) {
+      const examples = createElement(doc, "section", "lesson-section");
+      examples.appendChild(createElement(doc, "h2", "", "Worked example"));
+      model.examples.forEach((example) => {
+        const card = createElement(doc, "article", "worked-example");
+        card.appendChild(createElement(doc, "h3", "", String(example?.title || "Example")));
+        card.appendChild(createElement(doc, "p", "", String(example?.explanation || "")));
+        const mechanics = Array.isArray(example?.mechanics) ? example.mechanics : [];
+        mechanics.forEach((mechanic) => {
+          const row = createElement(doc, "div", "mechanics-row");
+          row.appendChild(createElement(doc, "span", "", `Fret ${mechanic?.fret}`));
+          row.appendChild(createElement(doc, "span", "", `Strings ${(mechanic?.strings || []).join("-")}`));
+          const controls = [...(mechanic?.pedals || []), ...(mechanic?.levers || [])];
+          row.appendChild(createElement(doc, "span", "", controls.length ? controls.join("+") : "No controls"));
+          row.appendChild(createElement(doc, "span", "", `Notes ${Object.values(mechanic?.notes || {}).join("-")}`));
+          card.appendChild(row);
+        });
+        examples.appendChild(card);
+      });
+      mount.appendChild(examples);
+    }
 
     const exerciseSection = createElement(doc, "section", "lesson-section");
     exerciseSection.appendChild(createElement(doc, "h2", "", "Practice"));
@@ -180,6 +224,23 @@
       appendList(doc, assumptions, model.assumptions, "lesson-list");
       mount.appendChild(assumptions);
     }
+    if (model.sources.length) {
+      const sources = createElement(doc, "details", "lesson-assumptions teaching-sources");
+      sources.appendChild(createElement(doc, "summary", "", "Teaching sources"));
+      const list = createElement(doc, "ul", "lesson-list");
+      model.sources.forEach((source) => {
+        const item = createElement(doc, "li");
+        const anchor = createElement(doc, "a", "", source.title);
+        anchor.href = source.url;
+        anchor.target = "_blank";
+        anchor.rel = "noopener noreferrer";
+        item.appendChild(anchor);
+        if (source.publisher) item.appendChild(doc.createTextNode(` — ${source.publisher}`));
+        list.appendChild(item);
+      });
+      sources.appendChild(list);
+      mount.appendChild(sources);
+    }
     return model;
   }
 
@@ -205,6 +266,9 @@
       topic: doc.querySelector("#lesson-topic"),
       level: doc.querySelector("#lesson-level"),
       duration: doc.querySelector("#lesson-duration"),
+      key: doc.querySelector("#lesson-key"),
+      focus: doc.querySelector("#lesson-focus"),
+      clarification: doc.querySelector("#lesson-clarification"),
       customStatus: doc.querySelector("#custom-lesson-status"),
       chooser: doc.querySelector("#lesson-chooser"),
       result: doc.querySelector("#lesson-result"),
@@ -230,14 +294,61 @@
       elements.chooser.scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
+    function clearClarification() {
+      elements.clarification.hidden = true;
+      elements.clarification.innerHTML = "";
+    }
+
+    function renderClarification(request, clarification) {
+      clearClarification();
+      elements.clarification.appendChild(createElement(doc, "strong", "", String(clarification?.question || "Choose a lesson direction")));
+      (Array.isArray(clarification?.options) ? clarification.options : []).forEach((option) => {
+        const button = createElement(doc, "button", "secondary-action clarification-option", String(option?.label || option?.value || "Choose"));
+        button.type = "button";
+        button.title = String(option?.description || "");
+        button.addEventListener("click", () => openLesson({
+          ...request,
+          clarificationAnswers: { ...(request.clarificationAnswers || {}), [clarification.id]: option.value }
+        }));
+        elements.clarification.appendChild(button);
+      });
+      elements.clarification.hidden = false;
+    }
+
+    function renderUnavailable(payload) {
+      clearClarification();
+      elements.clarification.appendChild(createElement(doc, "strong", "", "A complete lesson is not available yet"));
+      elements.clarification.appendChild(createElement(doc, "p", "", String(payload?.message || "Try a more specific pedal-steel topic.")));
+      (Array.isArray(payload?.suggestedTopics) ? payload.suggestedTopics : []).forEach((topic) => {
+        const button = createElement(doc, "button", "secondary-action clarification-option", String(topic));
+        button.type = "button";
+        button.addEventListener("click", () => { elements.topic.value = String(topic); clearClarification(); elements.topic.focus(); });
+        elements.clarification.appendChild(button);
+      });
+      elements.clarification.hidden = false;
+    }
+
     async function openLesson(request) {
-      elements.customStatus.textContent = "Building lesson…";
+      elements.customStatus.textContent = "Building and checking your lesson…";
       try {
+        const normalizedRequest = buildLessonRequest(request);
         const payload = await requestJson(BUILD_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json", ...authHeaders(answerUi, session) },
-          body: JSON.stringify(buildLessonRequest(request))
+          body: JSON.stringify(normalizedRequest)
         });
+        if (payload.status === "needs_clarification") {
+          renderClarification(normalizedRequest, payload.clarification);
+          elements.customStatus.textContent = "Choose one direction to continue.";
+          return;
+        }
+        if (payload.status === "unavailable") {
+          renderUnavailable(payload);
+          elements.customStatus.textContent = "No generic lesson was substituted.";
+          return;
+        }
+        if (payload.status !== "ready" || !payload.lesson) throw new Error("The lesson service returned an incomplete result.");
+        clearClarification();
         renderLesson(doc, elements.resultMount, payload.lesson);
         elements.chooser.hidden = true;
         elements.result.hidden = false;
@@ -288,6 +399,8 @@
           elements.topic.value = params.get("topic");
           elements.level.value = normalizeLevel(params.get("level"));
           elements.duration.value = normalizeDuration(params.get("duration"));
+          if (params.get("key")) elements.key.value = params.get("key");
+          if (params.get("focus")) elements.focus.value = params.get("focus");
         }
         if (params.get("lesson")) await openLesson({ lessonId: params.get("lesson") });
       } catch (error) {
@@ -299,7 +412,7 @@
 
     elements.customForm.addEventListener("submit", (event) => {
       event.preventDefault();
-      openLesson({ topic: elements.topic.value, level: elements.level.value, duration: elements.duration.value });
+      openLesson({ topic: elements.topic.value, level: elements.level.value, duration: elements.duration.value, key: elements.key.value, focus: elements.focus.value });
     });
     elements.back.addEventListener("click", showChooser);
     bootstrap();

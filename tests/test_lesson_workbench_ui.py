@@ -17,7 +17,7 @@ const lessons = require("./ui/lesson-workbench.js");
 
 assert.deepEqual(lessons.buildLessonRequest({lessonId: " reviewed-one "}), {lessonId: "reviewed-one"});
 assert.deepEqual(lessons.buildLessonRequest({topic: "  blocking ", level: "INTERMEDIATE", duration: "deep_dive"}), {
-  topic: "blocking", level: "intermediate", duration: "deep_dive"
+  topic: "blocking", level: "intermediate", duration: "deep_dive", key: "G", focus: "balanced"
 });
 assert.equal(lessons.normalizeLevel("expert"), "beginner");
 assert.equal(lessons.normalizeDuration("hour"), "15_min");
@@ -30,12 +30,17 @@ const paths = lessons.normalizeCatalog({paths: [{id: "fundamentals", title: "Fun
 assert.equal(paths[0].lessons[0].title, "One");
 const view = lessons.lessonViewModel({
   origin: "reviewed", title: "Test", level: "advanced", duration: "deep_dive",
+  whyItMatters: "Musical purpose", workedExamples: [{title: "Example"}],
+  teachingSources: [{title: "Forum source", publisher: "SGF", url: "https://example.test/thread"}],
   links: [{type: "melody", label: "Continue", url: "/ui/melody-workbench.html"}], progressPersistence: false
 });
 assert.equal(view.origin, "Reviewed lesson");
 assert.equal(view.level, "Advanced");
 assert.equal(view.duration, "Deep dive");
 assert.equal(view.links[0].type, "melody");
+assert.equal(view.why, "Musical purpose");
+assert.equal(view.examples[0].title, "Example");
+assert.equal(view.sources[0].publisher, "SGF");
 """
     )
 
@@ -53,8 +58,16 @@ def test_lesson_workbench_has_reviewed_custom_and_complete_lesson_surfaces() -> 
     assert 'id="lesson-level"' in html
     assert 'id="lesson-duration"' in html
     assert 'id="lesson-result" hidden' in html
-    assert 'lesson-workbench.js?v=lesson-teaching-58be204' in html
+    assert 'lesson-workbench.js?v=lesson-composer-v2-20260713' in html
+    assert 'id="lesson-key"' in html
+    assert 'id="lesson-focus"' in html
+    assert 'id="lesson-clarification" hidden' in html
     assert '"Learn the concept and the move"' in script
+    assert '"Why it matters"' in script
+    assert '"Worked example"' in script
+    assert '"Teaching sources"' in script
+    assert 'payload.status === "needs_clarification"' in script
+    assert 'payload.status === "unavailable"' in script
     assert "Beginner" in html and "Intermediate" in html and "Advanced" in html
     assert "5 minutes" in html and "15 minutes" in html and "Deep dive" in html
     assert "progress is not saved yet" in script

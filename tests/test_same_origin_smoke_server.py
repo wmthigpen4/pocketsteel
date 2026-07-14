@@ -375,22 +375,48 @@ def test_smoke_api_serves_reviewed_and_custom_lessons(monkeypatch: Any) -> None:
     catalog = json.loads(body)
     assert status == "200 OK"
     assert headers["Cache-Control"] == "no-store"
-    assert catalog["schemaVersion"] == "lesson_catalog_v1"
+    assert catalog["schemaVersion"] == "lesson_catalog_v2"
+    assert catalog["conceptCount"] >= 60
     assert len(catalog["paths"]) == 5
 
     status, headers, body = call_app(
         app,
         "/api/lessons/build",
         method="POST",
-        json_body={"topic": "clean blocking", "level": "intermediate", "duration": "5_min"},
+        json_body={"topic": "pick blocking", "level": "intermediate", "duration": "5_min"},
         environ_extra=auth,
     )
-    lesson = json.loads(body)["lesson"]
+    payload = json.loads(body)
+    assert payload["status"] == "ready"
+    lesson = payload["lesson"]
     assert status == "200 OK"
     assert headers["Cache-Control"] == "no-store"
-    assert lesson["schemaVersion"] == "lesson_v1"
+    assert lesson["schemaVersion"] == "lesson_v2"
     assert lesson["origin"] == "custom"
     assert len(lesson["exercises"]) == 2
+
+    status, _, body = call_app(
+        app,
+        "/api/lessons/build",
+        method="POST",
+        json_body={"topic": "sevenths", "level": "intermediate", "duration": "15_min"},
+        environ_extra=auth,
+    )
+    clarification = json.loads(body)
+    assert status == "200 OK"
+    assert clarification["status"] == "needs_clarification"
+    assert clarification["clarification"]["id"] == "seventh-quality"
+
+    status, _, body = call_app(
+        app,
+        "/api/lessons/build",
+        method="POST",
+        json_body={"topic": "teleportation theory", "level": "beginner", "duration": "15_min"},
+        environ_extra=auth,
+    )
+    unavailable = json.loads(body)
+    assert status == "200 OK"
+    assert unavailable["status"] == "unavailable"
 
 
 def test_smoke_api_ignores_local_dev_mock_in_production_env(monkeypatch: Any) -> None:

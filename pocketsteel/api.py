@@ -87,7 +87,7 @@ from pocketsteel.melody_import import (
     import_score_draft,
     public_song_catalog,
 )
-from pocketsteel.lesson_studio import LessonStudioError, build_lesson, lesson_catalog
+from pocketsteel.lesson_studio import LessonStudioError, build_lesson_response, lesson_catalog
 from pocketsteel.rag_guardrails import sanitize_retrieved_sources
 from pocketsteel.rag_guardrails import is_injection_like
 from pocketsteel.private_source_search import PrivateSourceSearchIndex
@@ -532,7 +532,22 @@ class RetrievalApi:
             if not access.allowed:
                 return self._json_response(start_response, access.status, {"error": access.error})
             try:
-                lesson = build_lesson(self._read_json_body(environ))
+                lesson_request = self._read_json_body(environ)
+                result = build_lesson_response(lesson_request)
+                if result.get("status") == "ready":
+                    source_results: list[dict[str, Any]] = []
+                    query = str((result.get("lesson") or {}).get("topic") or lesson_request.get("topic") or "")
+                    if query and callable(getattr(self.search_index, "search", None)):
+                        try:
+                            public_sources = self._retrieval_dependencies.run(
+                                lambda: self._search(query, limit=3),
+                                timeout_seconds=self._retrieval_wall_timeout,
+                            )
+                        except RuntimeError:
+                            LOGGER.warning("lesson_source_retrieval_unavailable deterministic_curriculum=true")
+                        else:
+                            source_results = public_sources.results
+                    result = build_lesson_response(lesson_request, source_results=source_results)
             except JsonRequestTooLargeError as exc:
                 return self._json_response(start_response, "413 Payload Too Large", {"error": str(exc)})
             except JsonRequestError as exc:
@@ -542,7 +557,7 @@ class RetrievalApi:
             return self._json_response(
                 start_response,
                 "200 OK",
-                {"lesson": lesson},
+                result,
                 extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
             )
 

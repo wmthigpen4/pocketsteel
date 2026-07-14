@@ -205,6 +205,31 @@ class LessonPayload(TypedDict):
     links: list[dict[str, str]]
     assumptions: list[str]
     progressPersistence: bool
+    curriculumVersion: NotRequired[str]
+    conceptId: NotRequired[str]
+    generationMode: NotRequired[str]
+    key: NotRequired[str]
+    focus: NotRequired[str]
+    whyItMatters: NotRequired[str]
+    workedExamples: NotRequired[list[dict[str, Any]]]
+    mechanics: NotRequired[list[dict[str, Any]]]
+    teachingSources: NotRequired[list[dict[str, Any]]]
+    reviewState: NotRequired[str]
+
+
+class LessonTeachingSource(TypedDict):
+    type: str
+    title: str
+    publisher: str
+    url: str
+
+
+class LessonBuildResponse(TypedDict):
+    status: Literal["ready", "needs_clarification", "unavailable"]
+    lesson: NotRequired[LessonPayload]
+    clarification: NotRequired[dict[str, Any]]
+    message: NotRequired[str]
+    suggestedTopics: NotRequired[list[str]]
 
 
 class AnswerResponse(TypedDict):
