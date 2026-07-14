@@ -336,17 +336,17 @@ def test_answer_ui_uses_live_answer_client_not_mock_answer_data() -> None:
     assert "clearProgressionGuide()" in html
 
 
-def test_answer_ui_includes_home_hero_hanging_sign_without_changing_answer_logo() -> None:
+def test_answer_ui_uses_safari_safe_transparent_home_and_answer_logos() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
     shell_css = Path("ui/workspace-shell.css").read_text(encoding="utf-8")
 
     assert 'class="home-sign hero-hanging-sign"' in html
     assert 'class="landing-sign" autoplay muted loop playsinline' in html
-    assert 'poster="brand/steel-guitar-rag-landing-fallback-alpha.png?v=landing-alpha-return-20260713"' in html
+    assert 'poster="brand/steel-guitar-rag-hanging-sign-cloudflare-login.png?v=mobile-logo-safari-20260713-1"' in html
     assert 'src="brand/steel-guitar-rag-landing-alpha.webm?v=landing-alpha-return-20260713"' in html
     assert 'type="video/webm"' in html
     assert 'type="video/mp4"' not in html
-    assert 'class="landing-sign-fallback" src="brand/steel-guitar-rag-landing-fallback-alpha.png?v=landing-alpha-return-20260713"' in html
+    assert 'class="landing-sign-fallback" src="brand/steel-guitar-rag-hanging-sign-cloudflare-login.png?v=mobile-logo-safari-20260713-1"' in html
     assert ".app-shell-header .home-sign" in shell_css
     assert "position: absolute;" in shell_css
     assert "left: calc((100vw - 100%) / -2 - 12px);" in shell_css
@@ -354,6 +354,7 @@ def test_answer_ui_includes_home_hero_hanging_sign_without_changing_answer_logo(
     assert "width: clamp(300px, 40vw, 340px);" in shell_css
     assert "width: min(290px, 86vw);" in shell_css
     assert "@media (max-width: 520px)" in shell_css
+    assert "@media (hover: none) and (pointer: coarse)" in shell_css
     assert "pointer-events: auto;" in shell_css
     assert ".hero-hanging-sign.is-animated .landing-sign" in html
     assert ".hero-hanging-sign.is-animated .landing-sign-fallback" in html
@@ -366,14 +367,13 @@ def test_answer_ui_includes_home_hero_hanging_sign_without_changing_answer_logo(
     assert ".brand-home {\n      display: none;" in html
     assert ".page.is-answering .brand-home {\n      display: inline-flex;" in html
     assert ".page.is-answering .home-sign" in shell_css
-    assert 'class="answer-brand-badge" autoplay muted loop playsinline' in html
-    assert 'poster="brand/steel-guitar-rag-answer-badge-fallback-alpha.png?v=answer-badge-rag-artwork-3c4dedb"' in html
-    assert 'src="brand/steel-guitar-rag-answer-badge-alpha.webm?v=answer-badge-rag-artwork-3c4dedb"' in html
-    assert 'class="answer-brand-fallback" src="brand/steel-guitar-rag-answer-badge-fallback-alpha.png?v=answer-badge-rag-artwork-3c4dedb"' in html
+    assert 'class="answer-brand-badge" src="brand/steel-guitar-rag-answer-badge-fallback-alpha.png?v=mobile-logo-safari-20260713-1"' in html
+    assert '<video class="answer-brand-badge"' not in html
     assert "width: clamp(160px, 18vw, 240px);" in html
     assert "max-height: 86px;" in html
     assert Path("ui/brand/steel-guitar-rag-landing-alpha.webm").is_file()
     assert Path("ui/brand/steel-guitar-rag-landing-fallback-alpha.png").is_file()
+    assert Path("ui/brand/steel-guitar-rag-hanging-sign-cloudflare-login.png").is_file()
     assert Path("ui/brand/steel-guitar-rag-answer-badge-alpha.webm").is_file()
     assert Path("ui/brand/steel-guitar-rag-answer-badge-fallback-alpha.png").is_file()
     assert Path("public/brand/steel-guitar-rag-answer-badge-alpha.webm").is_file()

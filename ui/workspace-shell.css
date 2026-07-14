@@ -1067,6 +1067,19 @@ select:focus-visible,
   }
 }
 
+/* Safari on touch devices can expose the RGB matte in alpha WebM video. */
+@media (hover: none) and (pointer: coarse) {
+  .app-shell-header .landing-sign,
+  .app-shell-header .hero-hanging-sign.is-animated .landing-sign {
+    display: none;
+  }
+
+  .app-shell-header .landing-sign-fallback,
+  .app-shell-header .hero-hanging-sign.is-animated .landing-sign-fallback {
+    display: block;
+  }
+}
+
 @media (max-width: 520px) {
   .app-shell-header .landing-sign,
   .app-shell-header .hero-hanging-sign.is-animated .landing-sign {
