@@ -14,7 +14,14 @@ from typing import Any, Mapping
 from urllib.parse import urlparse
 
 from pocketsteel.melody_arranger import SUPPORTED_CONTOURS, SUPPORTED_TEXTURES, arrange_melody_routes
-from pocketsteel.melody_decision_rules import normalize_style_family, rule_contract_payload
+from pocketsteel.melody_decision_rules import (
+    MODEL_STATUS,
+    MODEL_VERSION,
+    normalize_style_family,
+    rule_contract_payload,
+    style_catalog_payload,
+    style_descriptor,
+)
 
 
 ENABLE_MELODY_EXERCISE_ENV = "STEEL_RAG_ENABLE_MELODY_EXERCISE"
@@ -183,6 +190,7 @@ def melody_exercise_response(
     except ValueError as exc:
         raise MelodyExerciseError(str(exc)) from exc
     selected_route = routes[0]
+    selected_style = style_descriptor(style_family)
     event_payloads = selected_route["events"]
     tab_example = selected_route["tabExample"]
     fretboard = selected_route["fretboard"]
@@ -200,6 +208,11 @@ def melody_exercise_response(
         "targetCopedentLabel": selected_route["arrangedFor"],
         "arrangedFor": selected_route["arrangedFor"],
         "styleFamily": style_family,
+        "styleLabel": selected_style["label"],
+        "styleReason": selected_style["reason"],
+        "styleCatalog": style_catalog_payload(),
+        "decisionModelVersion": MODEL_VERSION,
+        "decisionModelStatus": MODEL_STATUS,
         "decisionRules": rule_contract_payload(style_family),
         "accuracy": {
             "label": accuracy,

@@ -7,6 +7,7 @@ from typing import Literal
 
 
 MODEL_VERSION = "melody-decision-ranker-v1"
+MODEL_STATUS = "seed"
 SUPPORTED_STYLE_FAMILIES = {
     "auto",
     "vocal_steel",
@@ -16,6 +17,51 @@ SUPPORTED_STYLE_FAMILIES = {
     "lever_driven",
     "fixed_pocket",
 }
+
+STYLE_CATALOG: tuple[dict[str, object], ...] = (
+    {
+        "id": "auto",
+        "label": "Best Fit",
+        "description": "Balances phrase role, texture, movement, and the active copedent.",
+        "reason": "Balances light motion with fuller arrivals and chooses the most coherent playable path.",
+    },
+    {
+        "id": "vocal_steel",
+        "label": "Singing Steel",
+        "description": "Favors vocal phrasing, supported melody notes, and smooth releases.",
+        "reason": "Uses singing support through sustained notes while keeping passing motion clear.",
+    },
+    {
+        "id": "lever_driven",
+        "label": "Pedal & Lever Motion",
+        "description": "Favors expressive pitch movement under a steady bar.",
+        "reason": "Looks for playable pedal and lever motion before adding unnecessary bar travel.",
+    },
+    {
+        "id": "fixed_pocket",
+        "label": "Pocket Playing",
+        "description": "Favors one coherent fret and grip neighborhood.",
+        "reason": "Keeps the phrase in a compact pocket unless a boundary or arrival justifies moving.",
+    },
+    {
+        "id": "harmonized",
+        "label": "Smooth Harmony",
+        "description": "Favors consistent two-voice support and connected voice leading.",
+        "reason": "Keeps harmony connected around the melody with a strong preference for smooth dyads.",
+    },
+    {
+        "id": "single_note_run",
+        "label": "Fast & Clean",
+        "description": "Favors uncluttered single-note motion and economical picking paths.",
+        "reason": "Keeps moving notes light and direct so the line stays clean at faster tempos.",
+    },
+    {
+        "id": "chord_melody",
+        "label": "Full Harmony",
+        "description": "Favors rich voicings at sustained notes, arrivals, and cadences.",
+        "reason": "Adds fuller harmony where the phrase is stable while preserving the melody on top.",
+    },
+)
 
 RuleKind = Literal["hard_constraint", "soft_preference"]
 
@@ -182,11 +228,25 @@ def style_policy(value: object) -> StylePolicy:
     return STYLE_POLICIES[normalize_style_family(value)]
 
 
+def style_descriptor(value: object) -> dict[str, object]:
+    style = normalize_style_family(value)
+    return next(dict(item) for item in STYLE_CATALOG if item["id"] == style)
+
+
+def style_catalog_payload() -> list[dict[str, object]]:
+    return [dict(item) for item in STYLE_CATALOG]
+
+
 def rule_contract_payload(style_family: object = "auto") -> dict[str, object]:
     style = normalize_style_family(style_family)
+    descriptor = style_descriptor(style)
     return {
         "modelVersion": MODEL_VERSION,
+        "modelStatus": MODEL_STATUS,
         "styleFamily": style,
+        "styleLabel": descriptor["label"],
+        "styleReason": descriptor["reason"],
+        "styleCatalog": style_catalog_payload(),
         "rules": [rule.to_dict() for rule in DECISION_RULES],
         "fallbackOrder": [
             "equivalent_pitch_and_harmonic_function_other_position",

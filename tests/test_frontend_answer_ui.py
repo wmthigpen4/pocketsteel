@@ -385,6 +385,11 @@ let capturedRequest;
             targetCopedentLabel: "Road E9",
             arrangedFor: "Road E9",
             styleFamily: "vocal_steel",
+            styleLabel: "Singing Steel",
+            styleReason: "Uses singing support.",
+            styleCatalog: [{ id: "auto", label: "Best Fit", description: "Balanced." }, { id: "vocal_steel", label: "Singing Steel", description: "Vocal." }],
+            decisionModelVersion: "melody-decision-ranker-v1",
+            decisionModelStatus: "seed",
             decisionRules: { modelVersion: "melody-decision-ranker-v1" },
             material: { artist: "Example Artist", song: "Example Song" },
             renderingMode: "e9_adaptation",
@@ -421,7 +426,10 @@ let capturedRequest;
               sourceCopedentId: "source-e9-abc-defg-v1",
               targetCopedentId: "saved:road-e9",
               styleFamily: "vocal_steel",
+              styleLabel: "Singing Steel",
+              styleReason: "Uses singing support.",
               decisionModelVersion: "melody-decision-ranker-v1",
+              decisionModelStatus: "seed",
               recommended: false,
               recommendation: "Learn the melody first.",
               textureSummary: { singleNotes: 1, dyads: 0, triads: 0, barSlides: 1 },
@@ -458,6 +466,11 @@ let capturedRequest;
   assert.equal(result.melodyExercise.targetCopedentId, "saved:road-e9");
   assert.equal(result.melodyExercise.arrangedFor, "Road E9");
   assert.equal(result.melodyExercise.styleFamily, "vocal_steel");
+  assert.equal(result.melodyExercise.styleLabel, "Singing Steel");
+  assert.equal(result.melodyExercise.styleReason, "Uses singing support.");
+  assert.deepEqual(result.melodyExercise.styleCatalog.map((item) => item.label), ["Best Fit", "Singing Steel"]);
+  assert.equal(result.melodyExercise.decisionModelVersion, "melody-decision-ranker-v1");
+  assert.equal(result.melodyExercise.decisionModelStatus, "seed");
   assert.equal(result.melodyExercise.decisionRules.modelVersion, "melody-decision-ranker-v1");
   assert.equal(result.melodyExercise.events[0].resolvedNote, "G");
   assert.equal(result.melodyExercise.events[0].notes[0].fret, 3);
@@ -469,6 +482,8 @@ let capturedRequest;
   assert.equal(result.melodyExercise.routes[0].arrangedFor, "Road E9");
   assert.equal(result.melodyExercise.routes[0].targetCopedentId, "saved:road-e9");
   assert.equal(result.melodyExercise.routes[0].decisionModelVersion, "melody-decision-ranker-v1");
+  assert.equal(result.melodyExercise.routes[0].decisionModelStatus, "seed");
+  assert.equal(result.melodyExercise.routes[0].styleLabel, "Singing Steel");
   assert.equal(result.melodyExercise.routes[0].events[0].patternFamily, "middle-pocket");
   assert.equal(result.melodyExercise.routes[0].events[0].canonicalGrip, "4-5-6");
   assert.equal(result.melodyExercise.routes[0].events[0].selectionReason, "Keeps the phrase in one pocket.");

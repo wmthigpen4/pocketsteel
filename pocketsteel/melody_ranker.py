@@ -73,7 +73,7 @@ def train_pairwise_ranker(
     Lower scores rank better at runtime.
     """
 
-    examples: list[tuple[str, Mapping[str, object], Sequence[Mapping[str, object]]]] = []
+    examples: list[tuple[str, Mapping[str, object], Sequence[Mapping[str, object]], float]] = []
     for record in records:
         style = normalize_style_family(record.get("styleFamily") or "auto")
         chosen = record.get("chosen")
@@ -83,13 +83,16 @@ def train_pairwise_ranker(
         clean_alternatives = [candidate for candidate in alternatives if isinstance(candidate, Mapping)]
         if not clean_alternatives:
             raise ValueError("Each reviewed decision needs at least one mechanically valid alternative.")
-        examples.append((style, chosen, clean_alternatives))
+        evidence_weight = float(record.get("evidenceWeight") or 1.0)
+        if evidence_weight <= 0:
+            raise ValueError("Evidence weight must be positive.")
+        examples.append((style, chosen, clean_alternatives, evidence_weight))
 
     weights_by_style: dict[str, dict[str, float]] = {}
-    for style, _chosen, _alternatives in examples:
+    for style, _chosen, _alternatives, _evidence_weight in examples:
         weights_by_style.setdefault(style, {name: 0.0 for name in FEATURE_NAMES})
     for _epoch in range(max(1, int(epochs))):
-        for style, chosen, alternatives in examples:
+        for style, chosen, alternatives, evidence_weight in examples:
             weights = weights_by_style[style]
             chosen_features = feature_vector(chosen)
             for alternative in alternatives:
@@ -99,7 +102,7 @@ def train_pairwise_ranker(
                 for name in FEATURE_NAMES:
                     # Lower scores are better, so move the chosen vector down
                     # and the rejected vector up.
-                    weights[name] += learning_rate * (
+                    weights[name] += learning_rate * evidence_weight * (
                         alternative_features[name] - chosen_features[name]
                     )
     return RankerModel(

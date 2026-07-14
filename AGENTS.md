@@ -29,6 +29,7 @@ Coordinate work by lane. If a task spans lanes, 01 Repo Steward should split or 
 - `15 QA / Answer Eval`: answer eval, red-team matrices, smoke scripts, browser smoke reports, regression buckets.
 - `18 Product / Architecture`: product decisions, API/component contracts, answer/fretboard architecture docs.
 - `19 Visual Design / Assets`: logos, brand assets, visual systems, generated images, motion/design source files.
+- `20 Amazing Tablature Training`: private score/tab batch intake, copedent-neutral annotation, exception review, challenger training, evaluation, and exact-model promotion readiness.
 
 ## Lane Operating Model
 
@@ -42,6 +43,7 @@ Use these lane defaults when the user gives a short workflow command. Task-speci
 - `15 QA / Answer Eval`: owns answer evals, red-team matrices, smoke scripts, regression buckets, browser smoke reports, and QA design review. Lane 15 verifies behavior and writes QA handoffs; it does not implement product/code changes unless explicitly asked.
 - `18 Product / Architecture`: owns product decisions, API/component contracts, answer/fretboard architecture docs, routing policy design, and cross-lane implementation recommendations. Lane 18 should not implement runtime behavior unless explicitly instructed.
 - `19 Visual Design / Assets`: owns brand assets, visual systems, generated images, motion/design source files, and visual design directions. Do not touch `ui/brand/`, `Neon Sign/`, raw design assets, or generated visual artifacts unless the task explicitly names them.
+- `20 Amazing Tablature Training`: owns the ignored private score/tab training registry, source-copedent decoding, abstract decision annotations, exception/audit queues, deterministic challenger training, held-out evaluation, and promotion-readiness reports. It must not expose literal source passages, train from an unknown source copedent, activate a model without exact-model approval, or take over Lane 05 runtime integration, Lane 06 player UI, Lane 15 independent QA, Lane 01 commits, or Lane 12 preview operations.
 
 ## Standing Safety Rules
 
@@ -137,6 +139,7 @@ Lane ownership during autopilot:
 - Lane 01 owns exact-path staging, commit hygiene, dirty-worktree protection, and integration refresh.
 - Lane 12 owns protected-preview restart and smoke after committed runtime changes.
 - Lane 18 owns product, API, source, and copyright architecture when product judgment or contract design is needed.
+- Lane 20 owns private Amazing Tablature evidence processing and challenger preparation; approved runtime integration still transfers to Lanes 05, 15, 01, and 12.
 
 Autopilot lifecycle:
 
@@ -210,6 +213,22 @@ Every handoff must include:
 ## Named Workflows
 
 Short workflow commands should rely on these standing rules plus the referenced handoff or user prompt for task-specific details.
+
+### AmazingTablatureTraining
+
+Lane ownership: `20 Amazing Tablature Training`.
+
+Standing rules:
+
+- Read `docs/amazing-tablature-training.md`, the private training registry, and the latest Lane 20 handoff before operating a batch.
+- A user command naming an exact local collection and source copedent authorizes private intake for that collection only. Do not infer authority for other private folders.
+- Use `scripts/amazing_tablature.py`; do not invent a parallel JSONL layout or one-off trainer.
+- Source files, annotations, exception queues, evaluations, reports, and challenger artifacts remain beneath ignored `corpus-private/melody-decisions/` and must not be staged.
+- Unknown source copedents are quarantined. Hard pitch, register, harmony, and mechanical validation cannot be weakened by learned weights.
+- Normal training stops after a challenger report. Beta or stable promotion requires explicit approval of the exact model ID.
+- Stable promotion additionally requires an independent Lane 15 handoff. Runtime wiring then transfers to Lane 05, exact-path commit to Lane 01, and protected-preview verification to Lane 12.
+- Do not run scraping, embeddings, Chroma, RAG ingestion, auth, billing, DNS, Tunnel, or deployment-policy work in Lane 20.
+- Lane 20 handoffs use filename lane number `20` and contain counts, IDs, hashes, and metrics only—never source images or literal passages.
 
 ### ProtectedPreviewSmoke
 
@@ -287,6 +306,10 @@ Standing rules:
 - `Lane 01: Run ExactPathCommit using docs/handoffs/task-completions/<qa-file>.md.`
 - `Lane 15: Run Lane15Smoke using docs/handoffs/task-completions/<smoke-plan>.md.`
 - `Lane 18: Update the product contract using docs/handoffs/task-completions/<design-input>.md.`
+- `Lane 20: Process the tablature examples in ~/Downloads/New Tabs using source copedent <profile-id>.`
+- `Lane 20: Show the current Amazing Tablature training status.`
+- `Lane 20: Build and evaluate a challenger, then stop at the approval report.`
+- `Lane 20: Approve challenger <exact-model-id> for beta.`
 
 ## Repo Steward Auto-Approval Rule
 

@@ -291,8 +291,13 @@
     .result-title-row .secondary-action { border-color: rgba(240, 191, 105, 0.58); background: rgba(240, 191, 105, 0.11); }
     #studio-result-source { margin: 0; color: var(--muted); }
     .print-only { display: none; }
-    .arrangement-choices { display: grid; gap: 8px; margin: 12px 0 4px; }
+    .arrangement-choices { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); gap: 12px 20px; align-items: end; margin: 12px 0 4px; }
     .arrangement-choices > strong { color: var(--muted); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; }
+    .arrangement-route-group { min-width: 0; display: grid; gap: 8px; }
+    .arrangement-route-group > strong { color: var(--muted); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; }
+    .style-choice { display: grid; gap: 6px; color: var(--muted); font-size: 12px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; }
+    .style-choice select { width: 100%; min-height: 44px; border: 1px solid rgba(240, 191, 105, 0.34); border-radius: 12px; background: rgba(5, 7, 7, 0.72); color: var(--cream); padding: 9px 36px 9px 11px; font-weight: 750; letter-spacing: normal; text-transform: none; }
+    .style-choice small { min-height: 34px; color: rgba(244, 234, 214, 0.62); font-size: 12px; font-weight: 500; letter-spacing: normal; line-height: 1.4; text-transform: none; }
     .route-tabs { max-width: 100%; display: flex; flex-wrap: nowrap; gap: 8px; margin: 0; overflow-x: auto; padding: 2px 0 5px; scrollbar-width: thin; }
     .route-tab { min-height: 40px; border: 1px solid var(--line); border-radius: 999px; background: rgba(5, 7, 7, 0.55); color: var(--muted); cursor: pointer; padding: 0 14px; font-weight: 800; }
     .route-tab.is-selected { border-color: var(--gold); background: rgba(240, 191, 105, 0.14); color: var(--cream); }
@@ -355,6 +360,7 @@
       .start-picker__heading { display: grid; }
       .start-options, .field-grid, .catalog-grid, .score-event-editor, .catalog-controls { grid-template-columns: 1fr; }
       .audio-choice, .score-quick-edit { grid-template-columns: 1fr; }
+      .arrangement-choices { grid-template-columns: 1fr; }
       .start-choice { justify-content: flex-start; min-height: 44px; }
       .field.is-wide { grid-column: auto; }
       .editor-head, .palette-head { align-items: stretch; flex-direction: column; }
@@ -717,8 +723,14 @@
         </div>
 
         <div class="arrangement-choices" id="studio-arrangement-choices" hidden>
-          <strong>Arrangement</strong>
-          <div class="route-tabs" id="studio-route-tabs" aria-label="Melody arrangement routes"></div>
+          <div class="arrangement-route-group">
+            <strong>Arrangement</strong>
+            <div class="route-tabs" id="studio-route-tabs" aria-label="Melody arrangement routes"></div>
+          </div>
+          <label class="style-choice">Playing style
+            <select id="studio-playing-style" aria-describedby="studio-style-reason"></select>
+            <small id="studio-style-reason"></small>
+          </label>
         </div>
 
         <div id="studio-transport" hidden>

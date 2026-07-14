@@ -709,7 +709,10 @@ const STEEL_RAG_ANSWER_UI = (() => {
       sourceCopedentId: firstTextValue(route.sourceCopedentId, route.source_copedent_id),
       targetCopedentId: firstTextValue(route.targetCopedentId, route.target_copedent_id),
       styleFamily: firstTextValue(route.styleFamily, route.style_family),
+      styleLabel: firstTextValue(route.styleLabel, route.style_label),
+      styleReason: firstTextValue(route.styleReason, route.style_reason),
       decisionModelVersion: firstTextValue(route.decisionModelVersion, route.decision_model_version),
+      decisionModelStatus: firstTextValue(route.decisionModelStatus, route.decision_model_status),
       fallbacks: Array.isArray(route.fallbacks) ? route.fallbacks.filter(isObjectRecord) : [],
       movementSummary: firstTextValue(route.movementSummary, route.movement_summary),
       pathSummary: isObjectRecord(route.pathSummary || route.path_summary) ? (route.pathSummary || route.path_summary) : {},
@@ -746,6 +749,18 @@ const STEEL_RAG_ANSWER_UI = (() => {
       targetCopedentLabel: firstTextValue(exercise.targetCopedentLabel, exercise.target_copedent_label),
       arrangedFor: firstTextValue(exercise.arrangedFor, exercise.arranged_for),
       styleFamily: firstTextValue(exercise.styleFamily, exercise.style_family),
+      styleLabel: firstTextValue(exercise.styleLabel, exercise.style_label),
+      styleReason: firstTextValue(exercise.styleReason, exercise.style_reason),
+      styleCatalog: Array.isArray(exercise.styleCatalog || exercise.style_catalog)
+        ? (exercise.styleCatalog || exercise.style_catalog).filter(isObjectRecord).map((style) => ({
+          id: firstTextValue(style.id),
+          label: firstTextValue(style.label),
+          description: firstTextValue(style.description),
+          reason: firstTextValue(style.reason)
+        })).filter((style) => style.id && style.label)
+        : [],
+      decisionModelVersion: firstTextValue(exercise.decisionModelVersion, exercise.decision_model_version),
+      decisionModelStatus: firstTextValue(exercise.decisionModelStatus, exercise.decision_model_status),
       decisionRules: isObjectRecord(exercise.decisionRules || exercise.decision_rules)
         ? (exercise.decisionRules || exercise.decision_rules)
         : {},

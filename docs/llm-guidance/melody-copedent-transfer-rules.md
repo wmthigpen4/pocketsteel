@@ -67,7 +67,9 @@ These are soft preferences. Exact melody and mechanical validity always win.
 
 The versioned ranker supports `auto`, `vocal_steel`, `chord_melody`, `harmonized`, `single_note_run`, `lever_driven`, and `fixed_pocket`. Style changes candidate ranking, not pitch validity or copedent mechanics.
 
-The runtime's checked-in seed policy is `melody-decision-ranker-v1`. Reviewed private annotations can train updated copedent-neutral weights through `scripts/train_melody_decision_ranker.py`. Training features exclude source control letters, literal tab, copyrighted passage text, and profile-specific fret identities.
+Player-facing labels are descriptive rather than player-attributed: Best Fit, Singing Steel, Full Harmony, Smooth Harmony, Fast & Clean, Pedal & Lever Motion, and Pocket Playing. Melody Studio presents arrangement type and playing style as separate choices. Arrangement controls the harmonic contract; style controls ranking and performance realization within that contract.
+
+The runtime's checked-in seed policy is `melody-decision-ranker-v1`. Lane 20 operates the durable private workflow through `scripts/amazing_tablature.py`; `scripts/train_melody_decision_ranker.py` remains a compatibility entry point for the original one-shot trainer. Training features exclude source control letters, literal tab, copyrighted passage text, and profile-specific fret identities. An approved challenger transfers to Lane 05 for runtime integration only after exact-model approval and the required independent evaluation.
 
 ## Rule record fields
 

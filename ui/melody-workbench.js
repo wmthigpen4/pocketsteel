@@ -313,6 +313,7 @@
       tokens: [],
       contourMode: "closest_playable",
       styleFamily: "auto",
+      selectedHarmonyType: "mixed_arrangement",
       sourceCopedentId: "",
       targetCopedentId: "emmons-e9-basic",
       targetCopedent: null,
@@ -981,9 +982,10 @@
       .trim() || "E9 tablature";
   }
 
-  function preferredStudioRoute(exercise) {
+  function preferredStudioRoute(exercise, preferredHarmonyType = "") {
     const routes = exercise?.routes || [];
-    return routes.find((route) => route.harmonyType === "mixed_arrangement")
+    return routes.find((route) => route.harmonyType === preferredHarmonyType)
+      || routes.find((route) => route.harmonyType === "mixed_arrangement")
       || routes.find((route) => route.id === exercise?.selectedRouteId)
       || routes[0]
       || null;
@@ -1212,6 +1214,8 @@
     printRoute: $("#studio-print-route"),
     arrangementChoices: $("#studio-arrangement-choices"),
     routeTabs: $("#studio-route-tabs"),
+    playingStyle: $("#studio-playing-style"),
+    styleReason: $("#studio-style-reason"),
     sourceNeeded: $("#studio-source-needed"),
     fretboard: $("#studio-fretboard"),
     octaveMapControls: $("#studio-octave-map-controls"),
@@ -2434,6 +2438,7 @@
     stopPractice();
     exercise.events = route.events;
     exercise.selectedRouteId = route.id;
+    state.selectedHarmonyType = route.harmonyType;
     state.activeEventIndex = 0;
     elements.routeTabs.querySelectorAll("[data-route-id]").forEach((button) => {
       const selected = button.dataset.routeId === route.id;
@@ -2452,7 +2457,8 @@
   function renderRoutes(exercise) {
     elements.routeTabs.replaceChildren();
     const routes = exercise?.routes || [];
-    elements.arrangementChoices.hidden = routes.length < 2;
+    const styles = exercise?.styleCatalog || [];
+    elements.arrangementChoices.hidden = routes.length < 2 && styles.length < 2;
     routes.forEach((route) => {
       const button = doc.createElement("button");
       button.type = "button";
@@ -2462,6 +2468,18 @@
       button.addEventListener("click", () => activateRoute(route.id));
       elements.routeTabs.appendChild(button);
     });
+    elements.playingStyle.replaceChildren();
+    styles.forEach((style) => {
+      const option = doc.createElement("option");
+      option.value = style.id;
+      option.textContent = style.label;
+      option.title = style.description || "";
+      elements.playingStyle.appendChild(option);
+    });
+    elements.playingStyle.value = exercise?.styleFamily || state.styleFamily || "auto";
+    elements.playingStyle.hidden = styles.length < 2;
+    elements.styleReason.textContent = exercise?.styleReason || "";
+    elements.styleReason.hidden = !elements.styleReason.textContent;
   }
 
   function updateOctaveMapVisibility() {
@@ -2536,7 +2554,7 @@
       renderResultScore(exercise);
       renderRoutes(exercise);
       elements.tabCode.textContent = response.tabs[0]?.tabText || "";
-      const selectedRoute = preferredStudioRoute(exercise);
+      const selectedRoute = preferredStudioRoute(exercise, state.selectedHarmonyType);
       if (selectedRoute) activateRoute(selectedRoute.id);
       else selectEvent(0);
       updatePracticeControls();
@@ -2806,6 +2824,19 @@
   elements.contour.addEventListener("change", () => {
     state.contourMode = elements.contour.value;
     renderPhraseBuilder();
+  });
+  elements.playingStyle.addEventListener("change", async () => {
+    const previous = state.styleFamily;
+    state.styleFamily = elements.playingStyle.value || "auto";
+    elements.playingStyle.disabled = true;
+    elements.styleReason.textContent = "Rebuilding this arrangement in the selected style…";
+    const sectionNumber = Number(state.response?.melodyExercise?.section?.number || state.sectionNumber || 1);
+    const success = await submitSection(sectionNumber);
+    if (!success) {
+      state.styleFamily = previous;
+      elements.playingStyle.value = previous;
+    }
+    elements.playingStyle.disabled = false;
   });
   elements.phraseInput.addEventListener("input", () => {
     state.tokens = parsePhraseEvents(elements.phraseInput.value);

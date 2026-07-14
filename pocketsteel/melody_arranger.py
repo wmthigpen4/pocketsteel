@@ -41,8 +41,10 @@ from pocketsteel.melody_models import (
     PositionCandidate,
 )
 from pocketsteel.melody_decision_rules import (
+    MODEL_STATUS,
     MODEL_VERSION,
     normalize_style_family,
+    style_descriptor,
     style_policy,
 )
 from pocketsteel.tab_engine import TabEvent, TabNote, render_tab
@@ -1255,6 +1257,7 @@ def build_route(
         "leverGlides": sum(1 for transition in transitions if transition["kind"] == "lever_glide"),
     }
     path_summary = _path_summary(path)
+    style = style_descriptor(style_family)
     return {
         "id": route_id,
         "label": label,
@@ -1265,7 +1268,10 @@ def build_route(
         "sourceCopedentId": source_profile.id,
         "targetCopedentId": target_profile.id,
         "styleFamily": style_family,
+        "styleLabel": style["label"],
+        "styleReason": style["reason"],
         "decisionModelVersion": MODEL_VERSION,
+        "decisionModelStatus": MODEL_STATUS,
         "fallbacks": [
             {"eventId": event["id"], **event["textureFallback"]}
             for event in event_payloads

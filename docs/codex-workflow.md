@@ -4,6 +4,16 @@ The Turnaround uses a human-in-the-loop operating model for Codex work. The goal
 
 Codex should classify each request into one of three modes before acting. When the mode is ambiguous, choose the more cautious mode.
 
+## Lane 20 — Amazing Tablature Training
+
+Lane 20 is the permanent Codex operating home for private great-player score/tab learning. It is command-driven, not a frontend model trainer. A natural request such as `Process the tablature examples in ~/Downloads/New Tabs` is sufficient; Codex reads the durable private registry and invokes `scripts/amazing_tablature.py` rather than depending on conversation memory or a memorized prompt.
+
+The resumable workflow is:
+
+`ingest → annotate → validate → review-exceptions → train → evaluate → report → promote`
+
+New batches require an exact source folder and a known source copedent. Source files and all derived private records remain ignored. Training may create challengers, but Codex stops at the comparison report until the user approves an exact model ID. Stable promotion also requires independent Lane 15 QA before Lane 05 runtime integration, Lane 01 exact-path commit, and Lane 12 protected-preview verification. Full commands, state contracts, and privacy boundaries live in `docs/amazing-tablature-training.md`.
+
 For a new feature, the user approves the scope once. That approval covers the normal end-to-end loop: implementation, focused and full tests, local smoke, exact-path commits, protected-preview update, automated protected smoke, and then user smoke. Codex asks again only for scope expansion, a new product decision, or an unapproved RED action.
 
 ## GREEN - Codex Can Proceed

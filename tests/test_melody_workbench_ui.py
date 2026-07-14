@@ -43,6 +43,8 @@ assert.equal(studio.createInitialState().kind, "user_melody");
 assert.equal(studio.createInitialState().inputMethod, "phrase");
 assert.equal(studio.createInitialState().workflowPhase, "add");
 assert.equal(studio.createInitialState().pendingReplacement, "");
+assert.equal(studio.createInitialState().styleFamily, "auto");
+assert.equal(studio.createInitialState().selectedHarmonyType, "mixed_arrangement");
 assert.equal(studio.printableLessonTitle({title: "Amazing Grace — Complete E9 lesson", material: {song: "Amazing Grace"}}), "Amazing Grace");
 assert.equal(studio.printableLessonTitle({title: "Example — Section 2 E9 lesson"}), "Example");
 assert.equal(studio.printableLessonTitle({title: "Your melody exercise in G"}), "Your melody exercise in G");
@@ -112,6 +114,7 @@ assert.equal(studio.routeButtonLabel({ recommended: true, label: "Recommended ar
 const recommendedRoute = { id: "mixed", harmonyType: "mixed_arrangement", label: "Recommended arrangement" };
 const faithfulRoute = { id: "faithful", harmonyType: "single_note", label: "Faithful melody" };
 assert.equal(studio.preferredStudioRoute({ selectedRouteId: "faithful", routes: [faithfulRoute, recommendedRoute] }), recommendedRoute);
+assert.equal(studio.preferredStudioRoute({ selectedRouteId: "mixed", routes: [faithfulRoute, recommendedRoute] }, "single_note"), faithfulRoute);
 assert.equal(studio.preferredStudioRoute({ selectedRouteId: "faithful", routes: [faithfulRoute] }), faithfulRoute);
 assert.equal(studio.preferredStudioRoute({ selectedRouteId: "missing", routes: [faithfulRoute] }), faithfulRoute);
 assert.equal(studio.preferredStudioRoute({ routes: [] }), null);
@@ -419,6 +422,8 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert '<span class="octave-toggle-mark" aria-hidden="true">✓</span>Note labels</button>' in html
     assert 'id="studio-contour"' in html
     assert 'id="studio-route-tabs"' in html
+    assert 'id="studio-playing-style"' in html
+    assert '>Playing style' in html
     assert html.index('id="studio-fretboard"') < html.index('id="studio-arrangement-choices"') < html.index('id="studio-tab"')
     assert 'id="studio-note-editor" hidden' in html
     assert 'id="studio-octave-down"' in html
@@ -429,7 +434,8 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Practice the lesson" not in html
     assert 'id="studio-change-task"' not in html
     assert "activateRoute" in script
-    assert "const selectedRoute = preferredStudioRoute(exercise);" in script
+    assert "const selectedRoute = preferredStudioRoute(exercise, state.selectedHarmonyType);" in script
+    assert 'state.styleFamily = elements.playingStyle.value || "auto";' in script
     assert "hideFilterControls: true" in script
     assert "hidePositionTools: true" in script
     assert "hideLegend: true" in script
