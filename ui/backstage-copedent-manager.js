@@ -923,9 +923,11 @@
   refreshLibrary();
   renderSelected();
   loadCatalog();
-  store.subscribe(() => {
+  function syncSelectedProfile() {
     const activeId = store.activeProfile().id;
     if (!selectionWasExplicit || !store.profileById(selectedId)) selectedId = activeId;
     renderSelected();
-  });
+  }
+  store.subscribe(syncSelectedProfile);
+  syncSelectedProfile();
 })(globalThis);
