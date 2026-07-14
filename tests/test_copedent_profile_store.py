@@ -156,7 +156,7 @@ def test_backstage_exposes_common_profiles_and_mechanical_editor_fields() -> Non
     assert 'id="copedent-control-dialog"' in html
     assert 'id="copedent-string-dialog"' in html
     assert 'id="copedent-mobile-group"' in html
-    assert "Use this setup" in html
+    assert "Use selected setup" in html
     assert "Copy and edit" in html
     assert "Validate and use" in html
     assert "data-control-group" in manager

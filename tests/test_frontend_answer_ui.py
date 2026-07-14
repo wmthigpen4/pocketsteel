@@ -425,6 +425,72 @@ def test_backstage_account_credential_asset_is_rgba_png_with_stable_dimensions()
     assert payload[25] == 6  # PNG color type RGBA; the checkerboard is not baked into the asset.
 
 
+def test_backstage_my_setup_uses_live_three_stage_rig_locker_structure() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+    manager = Path("ui/backstage-copedent-manager.js").read_text(encoding="utf-8")
+    setup_panel = html.split('id="backstage-panel-setup"', 1)[1].split('id="backstage-panel-pass"', 1)[0]
+
+    active_index = setup_panel.index('class="setup-stage setup-active-stage"')
+    library_index = setup_panel.index('class="setup-stage setup-library-stage"')
+    workbench_index = setup_panel.index('class="setup-stage setup-workbench-stage"')
+    assert active_index < library_index < workbench_index
+    assert "Your Active Setup" in setup_panel
+    assert "Setup Library" in setup_panel
+    assert "Copedent Workbench" in setup_panel
+    assert 'src="assets/backstage/setup-nameplate.png?v=rig-locker-20260714-1"' in setup_panel
+    assert 'backstage-copedent-manager.js?v=rig-locker-20260714-4' in html
+    assert 'elements.activeBadge.textContent = validationLabel(currentProfile);' in manager
+    assert 'alt="" width="2022" height="778"' in setup_panel
+    assert 'id="setup-active-heading">Loading active setup…</h3>' in setup_panel
+    assert 'id="setup-nameplate-name">Loading active setup…</span>' in setup_panel
+    assert "Cory’s E9th" not in setup_panel
+    assert "Cory's E9th" not in setup_panel
+    assert "object-fit: contain;" in html
+    assert "aspect-ratio: 2022 / 778;" in html
+    assert "-webkit-line-clamp: 2;" in html
+    assert 'id="copedent-library-groups"' in setup_panel
+    assert 'id="copedent-local-import"' in setup_panel
+    assert 'id="copedent-profile-library" hidden aria-hidden="true" tabindex="-1"' in setup_panel
+    assert 'data-setup-profile="${escapeHtml(profile.id)}"' in manager
+    assert 'aria-pressed="${String(selected)}"' in manager
+    assert 'renderProfileGroup("Active setup"' in manager
+    assert 'renderProfileGroup("Included setups"' in manager
+    assert 'renderProfileGroup("Custom setups"' in manager
+    assert "No browser-local setups are waiting to be imported." in manager
+    assert 'input[type="checkbox"]:checked' in manager
+    assert "importSelectedLocalProfiles" in manager
+    assert "localProfilesForImport" in manager
+    assert "profileName(active)" in manager
+    assert 'elements.plateName.textContent = name;' in manager
+    assert 'elements.workbenchTitle.textContent = profileName(currentProfile);' in manager
+    assert 'id="copedent-grid"' in setup_panel
+    assert 'id="save-copedent"' in setup_panel
+    assert 'id="activate-edited-copedent"' in setup_panel
+    assert 'id="add-copedent-change"' in setup_panel
+    assert 'id="copedent-profile-details"' in setup_panel
+    assert 'id="copedent-mobile-group"' in setup_panel
+
+
+def test_backstage_setup_nameplate_is_rgba_without_opaque_checkerboard() -> None:
+    asset = Path("ui/assets/backstage/setup-nameplate.png")
+    payload = asset.read_bytes()
+
+    assert payload.startswith(b"\x89PNG\r\n\x1a\n")
+    assert int.from_bytes(payload[16:20], "big") == 2022
+    assert int.from_bytes(payload[20:24], "big") == 778
+    assert payload[25] == 6
+
+    from PIL import Image
+
+    with Image.open(asset) as image:
+        assert image.mode == "RGBA"
+        alpha = image.getchannel("A")
+        assert alpha.getpixel((0, 0)) == 0
+        assert alpha.getpixel((image.width - 1, image.height - 1)) == 0
+        assert alpha.getpixel((image.width // 2, image.height // 2)) == 255
+        assert alpha.getbbox() is not None
+
+
 def test_account_activity_client_is_bounded_and_deduplicated() -> None:
     script = r"""
 const assert = require("node:assert/strict");

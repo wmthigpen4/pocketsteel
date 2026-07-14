@@ -637,8 +637,419 @@
       gap: 7px;
     }
 
+    .setup-workspace {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+      padding: 10px 18px 22px;
+    }
+
+    .setup-stage {
+      display: grid;
+      grid-template-columns: 138px minmax(0, 1fr);
+      min-width: 0;
+      border: 1px solid rgba(190, 132, 42, 0.48);
+      border-radius: 14px;
+      background:
+        radial-gradient(circle at 58% 0%, rgba(240, 191, 105, 0.08), transparent 42%),
+        linear-gradient(145deg, rgba(26, 29, 29, 0.98), rgba(17, 20, 20, 0.98));
+      box-shadow: inset 0 1px rgba(255, 244, 218, 0.04), 0 14px 30px rgba(0, 0, 0, 0.18);
+      overflow: clip;
+    }
+
+    .setup-stage-rail {
+      display: grid;
+      align-content: start;
+      gap: 10px;
+      padding: 19px 16px;
+      border-right: 1px solid rgba(240, 191, 105, 0.14);
+      background: linear-gradient(180deg, rgba(240, 191, 105, 0.045), transparent 80%);
+      color: rgba(240, 191, 105, 0.9);
+    }
+
+    .setup-stage-rail > span {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 38px;
+      line-height: 0.9;
+    }
+
+    .setup-stage-rail > strong {
+      font-size: 12px;
+      line-height: 1.35;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .setup-stage-rail > p {
+      margin: 0;
+      color: rgba(244, 234, 214, 0.66);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .setup-active-panel {
+      display: grid;
+      grid-template-columns: minmax(260px, 0.82fr) minmax(300px, 1.45fr) minmax(170px, 0.48fr);
+      gap: 22px;
+      align-items: center;
+      min-width: 0;
+      padding: 16px 20px;
+    }
+
+    .setup-nameplate {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 2022 / 778;
+      min-width: 0;
+      filter: drop-shadow(0 10px 14px rgba(0, 0, 0, 0.36));
+    }
+
+    .setup-nameplate img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .setup-nameplate-name {
+      position: absolute;
+      inset: 25% 13% 24%;
+      display: -webkit-box;
+      align-content: center;
+      overflow: hidden;
+      color: rgba(35, 22, 9, 0.92);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(14px, 1.45vw, 24px);
+      line-height: 1.02;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      text-align: center;
+      text-shadow: 0 1px rgba(255, 217, 133, 0.42), 0 -1px rgba(35, 18, 5, 0.38);
+      text-wrap: balance;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+
+    .setup-active-copy,
+    .setup-section-heading > div,
+    .copedent-workbench-header > div:first-child {
+      min-width: 0;
+    }
+
+    .setup-eyebrow {
+      margin: 0 0 5px;
+      color: rgba(240, 191, 105, 0.9) !important;
+      font-size: 11px !important;
+      line-height: 1.3 !important;
+      font-weight: 750;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .setup-active-copy h3,
+    .setup-section-heading h3,
+    .copedent-workbench-header h3 {
+      margin: 0;
+      color: var(--cream);
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(23px, 2.4vw, 36px);
+      line-height: 1.04;
+      font-weight: 600;
+      overflow-wrap: anywhere;
+      text-wrap: balance;
+    }
+
+    .setup-active-copy > p:last-child,
+    .setup-section-heading p,
+    .copedent-workbench-header p {
+      margin: 8px 0 0;
+      color: rgba(244, 234, 214, 0.7);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .setup-status-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 11px;
+    }
+
+    .setup-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 26px;
+      border: 1px solid rgba(240, 191, 105, 0.34);
+      border-radius: 999px;
+      padding: 3px 10px;
+      background: rgba(240, 191, 105, 0.07);
+      color: rgba(240, 191, 105, 0.9);
+      font-size: 11px;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+
+    .setup-status[hidden] {
+      display: none;
+    }
+
+    .setup-status svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .setup-status.is-active {
+      border-color: rgba(140, 190, 75, 0.42);
+      background: rgba(118, 171, 61, 0.1);
+      color: rgba(176, 221, 112, 0.94);
+    }
+
+    .setup-status.is-synced {
+      border-color: rgba(95, 163, 224, 0.46);
+      background: rgba(65, 139, 205, 0.1);
+      color: rgba(136, 198, 248, 0.94);
+    }
+
+    .setup-status.is-custom {
+      border-color: rgba(156, 107, 224, 0.46);
+      background: rgba(126, 75, 202, 0.1);
+      color: rgba(197, 157, 248, 0.94);
+    }
+
+    .setup-status.is-neutral {
+      border-color: rgba(244, 234, 214, 0.14);
+      background: rgba(244, 234, 214, 0.035);
+      color: rgba(244, 234, 214, 0.62);
+    }
+
+    .setup-active-actions {
+      display: grid;
+      gap: 10px;
+    }
+
+    .setup-active-actions .backstage-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      justify-content: center;
+      width: 100%;
+      min-height: 42px;
+    }
+
+    .setup-primary-action {
+      border-color: rgba(240, 191, 105, 0.62);
+      background: linear-gradient(180deg, rgba(240, 191, 105, 0.2), rgba(153, 101, 31, 0.12));
+      color: var(--cream);
+      box-shadow: 0 0 18px rgba(221, 154, 43, 0.08);
+    }
+
+    .setup-secondary-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    .setup-active-actions svg,
+    .setup-library-entry svg,
+    .copedent-workbench-tools svg {
+      width: 17px;
+      height: 17px;
+    }
+
+    .setup-library-panel {
+      display: grid;
+      gap: 14px;
+      min-width: 0;
+      padding: 16px;
+    }
+
+    .setup-section-heading,
+    .copedent-workbench-header,
+    .setup-library-footer {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .setup-section-heading h3,
+    .copedent-workbench-header h3 {
+      font-size: clamp(21px, 2vw, 29px);
+    }
+
+    .setup-library-groups {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      min-width: 0;
+      border: 1px solid rgba(244, 234, 214, 0.09);
+      border-radius: 10px;
+      background: rgba(9, 12, 12, 0.25);
+      overflow: hidden;
+    }
+
+    #copedent-library-groups {
+      display: contents;
+    }
+
+    .setup-library-group {
+      display: grid;
+      align-content: start;
+      gap: 8px;
+      min-width: 0;
+      padding: 12px;
+      border-right: 1px solid rgba(244, 234, 214, 0.08);
+    }
+
+    .setup-library-group:last-child {
+      border-right: 0;
+    }
+
+    .setup-library-group h4 {
+      margin: 0;
+      color: rgba(240, 191, 105, 0.82);
+      font-size: 11px;
+      line-height: 1.3;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+    }
+
+    .setup-library-group h4 span {
+      color: rgba(244, 234, 214, 0.48);
+      font-size: 9px;
+    }
+
+    .setup-library-list,
+    .setup-local-list {
+      display: grid;
+      gap: 7px;
+    }
+
+    .setup-library-entry {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 6px 10px;
+      width: 100%;
+      min-height: 62px;
+      border: 1px solid rgba(244, 234, 214, 0.1);
+      border-radius: 8px;
+      padding: 10px;
+      background: rgba(244, 234, 214, 0.025);
+      color: rgba(244, 234, 214, 0.76);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .setup-library-entry:hover,
+    .setup-library-entry:focus-visible,
+    .setup-library-entry[aria-pressed="true"] {
+      border-color: rgba(240, 191, 105, 0.48);
+      background: linear-gradient(135deg, rgba(240, 191, 105, 0.1), rgba(240, 191, 105, 0.025));
+      color: var(--cream);
+      outline: none;
+      box-shadow: inset 0 0 0 1px rgba(240, 191, 105, 0.08);
+    }
+
+    .setup-library-entry:focus-visible {
+      outline: 2px solid rgba(246, 205, 126, 0.9);
+      outline-offset: 2px;
+    }
+
+    .setup-library-entry-name {
+      min-width: 0;
+      font-size: 13px;
+      line-height: 1.3;
+      font-weight: 650;
+      overflow-wrap: anywhere;
+    }
+
+    .setup-library-entry-meta {
+      grid-column: 1 / -1;
+      color: rgba(244, 234, 214, 0.5);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .setup-library-entry-badge {
+      align-self: start;
+      border: 1px solid rgba(244, 234, 214, 0.13);
+      border-radius: 999px;
+      padding: 2px 6px;
+      color: rgba(244, 234, 214, 0.64);
+      font-size: 9px;
+      white-space: nowrap;
+    }
+
+    .setup-library-entry-badge.is-active {
+      border-color: rgba(240, 191, 105, 0.42);
+      color: rgba(240, 191, 105, 0.94);
+    }
+
+    .setup-library-entry-badge.is-custom {
+      border-color: rgba(156, 107, 224, 0.46);
+      color: rgba(197, 157, 248, 0.94);
+    }
+
+    .setup-library-empty,
+    .setup-library-help {
+      margin: 0;
+      color: rgba(244, 234, 214, 0.5);
+      font-size: 11px;
+      line-height: 1.42;
+    }
+
+    .setup-local-entry {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 7px;
+      padding: 9px;
+      border: 1px solid rgba(244, 234, 214, 0.09);
+      border-radius: 8px;
+      background: rgba(244, 234, 214, 0.025);
+    }
+
+    .setup-local-entry label {
+      display: flex;
+      gap: 7px;
+      align-items: flex-start;
+      min-width: 0;
+      color: rgba(244, 234, 214, 0.72);
+      font-size: 12px;
+      line-height: 1.35;
+      cursor: pointer;
+    }
+
+    .setup-local-entry input {
+      margin-top: 2px;
+      accent-color: var(--brass);
+    }
+
+    .setup-local-entry small {
+      color: rgba(244, 234, 214, 0.48);
+      font-size: 10px;
+    }
+
+    .setup-local-entry-actions {
+      display: flex;
+      gap: 4px;
+    }
+
+    .setup-local-entry-actions .backstage-button {
+      min-height: 30px;
+      padding: 0 8px;
+      font-size: 10px;
+    }
+
+    .setup-library-footer {
+      align-items: center;
+      padding-top: 2px;
+    }
+
     .copedent-editor {
-      gap: 18px;
+      display: grid;
+      gap: 16px;
+      min-width: 0;
+      padding: 14px 14px 0;
     }
 
     .copedent-editor h4 {
@@ -653,6 +1064,18 @@
       display: grid;
       gap: 10px;
       padding-top: 2px;
+    }
+
+    .copedent-workbench-header {
+      align-items: center;
+      padding: 0 3px 2px;
+    }
+
+    .copedent-workbench-tools {
+      display: flex;
+      flex: 0 0 auto;
+      align-items: center;
+      gap: 8px;
     }
 
     .copedent-library-bar {
@@ -1031,7 +1454,162 @@
       gap: 8px;
     }
 
+    @media (max-width: 1120px) {
+      .setup-active-panel {
+        grid-template-columns: minmax(250px, 0.85fr) minmax(300px, 1.15fr);
+      }
+
+      .setup-active-actions {
+        grid-column: 1 / -1;
+        grid-template-columns: minmax(180px, 0.6fr) minmax(260px, 1fr);
+      }
+
+      .setup-library-groups {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .setup-library-group:nth-child(2) {
+        border-right: 0;
+      }
+
+      .setup-library-group:nth-child(-n + 2) {
+        border-bottom: 1px solid rgba(244, 234, 214, 0.08);
+      }
+    }
+
     @media (max-width: 760px) {
+      .setup-workspace {
+        gap: 12px;
+        padding: 12px;
+      }
+
+      .setup-stage {
+        grid-template-columns: minmax(0, 1fr);
+        overflow: visible;
+      }
+
+      .setup-stage-rail {
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 6px 11px;
+        align-items: center;
+        padding: 13px 15px;
+        border-right: 0;
+        border-bottom: 1px solid rgba(240, 191, 105, 0.14);
+      }
+
+      .setup-stage-rail > span {
+        grid-row: 1 / span 2;
+        font-size: 31px;
+      }
+
+      .setup-stage-rail > p {
+        font-size: 11px;
+      }
+
+      .setup-active-panel {
+        grid-template-columns: 1fr;
+        gap: 15px;
+        padding: 15px;
+      }
+
+      .setup-nameplate {
+        width: min(100%, 430px);
+        margin: 0 auto;
+      }
+
+      .setup-nameplate-name {
+        font-size: clamp(13px, 4.4vw, 20px);
+      }
+
+      .setup-active-actions {
+        grid-column: auto;
+        grid-template-columns: 1fr;
+      }
+
+      .setup-active-actions .backstage-button,
+      .setup-library-footer .backstage-button {
+        min-height: 44px;
+      }
+
+      .setup-library-panel {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        padding: 14px;
+      }
+
+      .setup-library-panel > *,
+      #copedent-account-status {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+      }
+
+      .setup-section-heading,
+      .setup-section-heading > div,
+      .setup-library-groups,
+      .setup-library-group,
+      .setup-library-list,
+      .setup-local-list {
+        max-width: 100%;
+        min-width: 0;
+      }
+
+      .setup-section-heading,
+      .setup-library-footer,
+      .copedent-workbench-header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .setup-library-groups {
+        grid-template-columns: 1fr;
+      }
+
+      .setup-library-group,
+      .setup-library-group:nth-child(2) {
+        border-right: 0;
+        border-bottom: 1px solid rgba(244, 234, 214, 0.08);
+      }
+
+      .setup-library-group:last-child {
+        border-bottom: 0;
+      }
+
+      .setup-library-entry {
+        min-height: 66px;
+      }
+
+      .setup-library-footer .copedent-library-actions,
+      .setup-library-footer .copedent-library-actions .backstage-button {
+        width: 100%;
+      }
+
+      #copedent-library-active {
+        width: 100%;
+        max-width: 100%;
+        white-space: normal;
+        overflow-wrap: anywhere;
+      }
+
+      .setup-secondary-actions,
+      .setup-library-footer .copedent-library-actions {
+        grid-template-columns: 1fr;
+      }
+
+      .setup-library-footer .copedent-library-actions {
+        display: grid;
+      }
+
+      .copedent-editor {
+        padding: 14px 10px 0;
+      }
+
+      .copedent-workbench-tools {
+        width: 100%;
+        justify-content: space-between;
+      }
+
       .copedent-library-bar {
         grid-template-columns: 1fr;
       }
@@ -3933,6 +4511,10 @@
         padding: 14px 16px 18px;
       }
 
+      .backstage-content.setup-workspace {
+        padding: 12px;
+      }
+
       .backstage-tabs {
         top: 96px;
         padding: 10px 16px;
@@ -4663,49 +5245,83 @@
 
         </div>
 
-        <div class="backstage-content backstage-tab-panel" id="backstage-panel-setup" role="tabpanel" aria-labelledby="backstage-tab-setup" hidden>
-          <article class="backstage-card is-wide copedent-editor">
-            <div class="backstage-card-header">
-              <div>
-                <h3>My Setup / Copedent</h3>
-                <p>The chart below is your guitar: open strings run down the left, and pedals and knee levers run across the top.</p>
+        <div class="backstage-content backstage-tab-panel setup-workspace" id="backstage-panel-setup" role="tabpanel" aria-labelledby="backstage-tab-setup" hidden>
+          <section class="setup-stage setup-active-stage" aria-labelledby="setup-active-heading">
+            <div class="setup-stage-rail" aria-hidden="true"><span>1</span><strong>Your Active Setup</strong></div>
+            <div class="setup-active-panel">
+              <div class="setup-nameplate" aria-hidden="true">
+                <img src="assets/backstage/setup-nameplate.png?v=rig-locker-20260714-1" alt="" width="2022" height="778">
+                <span class="setup-nameplate-name" id="setup-nameplate-name">Loading active setup…</span>
               </div>
-              <span class="coming-soon" id="copedent-active-badge">Using Emmons</span>
+              <div class="setup-active-copy">
+                <p class="setup-eyebrow">Active setup</p>
+                <h3 id="setup-active-heading">Loading active setup…</h3>
+                <div class="setup-status-list" aria-label="Active setup status">
+                  <span class="setup-status is-active" id="setup-active-status"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12 4 4 8-9"/></svg>Active</span>
+                  <span class="setup-status is-synced" id="setup-active-sync"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18h10a4 4 0 0 0 .7-7.9A6 6 0 0 0 6.3 8.5 4.5 4.5 0 0 0 7 18Z"/></svg>Account-synced</span>
+                  <span class="setup-status" id="setup-active-validation">Validated</span>
+                  <span class="setup-status is-neutral" id="setup-active-revision">Revision 1</span>
+                </div>
+                <p>This setup drives Ask, Explorer, Lessons, and Melody Studio.</p>
+              </div>
+              <div class="setup-active-actions" aria-label="Active setup actions">
+                <button class="backstage-button setup-primary-action" id="copedent-edit-active" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4.5-1 10-10-3.5-3.5-10 10L4 20Z"/><path d="m13.5 7 3.5 3.5"/></svg><span>Edit setup</span></button>
+                <div class="setup-secondary-actions">
+                  <button class="backstage-button" id="copedent-duplicate-active" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg><span>Duplicate</span></button>
+                  <button class="backstage-button" id="copedent-export-active" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M5 13v7h14v-7"/></svg><span>Export</span></button>
+                </div>
+              </div>
             </div>
-            <p class="backstage-note">The active setup follows your account and is used by Ask, Explorer, Lessons, and Melody Studio. Emmons and Day are included; Session Pass unlocks custom setups.</p>
+          </section>
 
-            <section class="copedent-section" id="copedent-account-status" aria-labelledby="copedent-account-title">
-              <div class="backstage-card-header">
+          <section class="setup-stage setup-library-stage" aria-labelledby="copedent-library-title">
+            <div class="setup-stage-rail" aria-hidden="true"><span>2</span><strong>Setup Library</strong><p>Manage included, account-backed, and browser-local setups.</p></div>
+            <div class="setup-library-panel">
+              <header class="setup-section-heading">
                 <div>
-                  <h4 id="copedent-account-title">Account setup</h4>
+                  <p class="setup-eyebrow">Rig locker</p>
+                  <h3 id="copedent-library-title">Setup Library</h3>
                   <p id="copedent-sync-copy">Checking copedent access and account sync…</p>
                 </div>
-                <span class="coming-soon" id="copedent-pass-label">Checking access</span>
-              </div>
-              <div id="copedent-local-import" hidden>
-                <p class="backstage-note">Setups found in this browser are not uploaded automatically. Review and choose exactly which ones to import.</p>
-                <div id="copedent-local-import-list"></div>
-                <div class="backstage-actions">
-                  <button class="backstage-button" id="copedent-import-selected" type="button">Import selected setups</button>
-                  <span class="backstage-status" id="copedent-import-status" role="status"></span>
+                <span class="setup-status is-neutral" id="copedent-pass-label">Checking access</span>
+              </header>
+              <section class="copedent-section" id="copedent-account-status" aria-label="Setup access and synchronization">
+                <div class="setup-library-groups">
+                  <div id="copedent-library-groups"></div>
+                  <section class="setup-library-group" id="copedent-local-import" aria-labelledby="copedent-local-title">
+                    <h4 id="copedent-local-title">Local setups <span>(awaiting import)</span></h4>
+                    <p class="setup-library-empty" id="copedent-local-empty">Checking this browser…</p>
+                    <div class="setup-local-list" id="copedent-local-import-list"></div>
+                    <p class="setup-library-help">Local setups stay on this browser until you explicitly select and import them.</p>
+                    <button class="backstage-button" id="copedent-import-selected" type="button">Import selected setups</button>
+                    <span class="backstage-status" id="copedent-import-status" role="status"></span>
+                  </section>
                 </div>
-              </div>
-            </section>
-
-            <section class="copedent-section" aria-labelledby="copedent-library-title">
-              <div class="backstage-card-header">
-                <h4 id="copedent-library-title">Choose a setup</h4>
-                <span class="coming-soon" id="copedent-library-active">Active</span>
-              </div>
-              <div class="copedent-library-bar">
-                <div class="backstage-field">
-                  <label for="copedent-profile-library">Common and custom setups</label>
-                  <select id="copedent-profile-library"></select>
-                </div>
+              </section>
+              <select id="copedent-profile-library" hidden aria-hidden="true" tabindex="-1"></select>
+              <footer class="setup-library-footer">
+                <span class="setup-status is-active" id="copedent-library-active">Active</span>
                 <div class="copedent-library-actions">
-                  <button class="backstage-button is-primary" id="activate-copedent" type="button">Use this setup</button>
+                  <button class="backstage-button is-primary" id="activate-copedent" type="button">Use selected setup</button>
                   <button class="backstage-button" id="clone-copedent" type="button">Copy and edit</button>
                   <button class="backstage-button" id="new-copedent" type="button">New custom setup</button>
+                </div>
+              </footer>
+              <div class="backstage-note" id="copedent-review-issues" role="status"></div>
+            </div>
+          </section>
+
+          <section class="setup-stage setup-workbench-stage" aria-labelledby="copedent-workbench-title">
+            <div class="setup-stage-rail" aria-hidden="true"><span>3</span><strong>Copedent Workbench</strong><p>Edit this setup’s chart, then validate before using changes across features.</p></div>
+            <article class="copedent-editor">
+              <header class="copedent-workbench-header">
+                <div>
+                  <p class="setup-eyebrow" id="copedent-workbench-meta">Selected setup</p>
+                  <h3 id="copedent-workbench-title">Loading setup…</h3>
+                  <p>The chart below is your guitar: open strings run down the left, and pedals and knee levers run across the top.</p>
+                </div>
+                <div class="copedent-workbench-tools">
+                  <span class="setup-status" id="copedent-active-badge">Loading</span>
                   <details class="copedent-more" id="copedent-more">
                     <summary class="backstage-button" aria-label="More copedent actions">More</summary>
                     <div class="copedent-more__menu">
@@ -4718,9 +5334,7 @@
                     </div>
                   </details>
                 </div>
-              </div>
-              <div class="backstage-note" id="copedent-review-issues" role="status"></div>
-            </section>
+              </header>
 
             <details class="copedent-details" id="copedent-profile-details">
               <summary>Profile details</summary>
@@ -4880,6 +5494,7 @@
               </form>
             </dialog>
           </article>
+          </section>
 
         </div>
 
@@ -7488,6 +8103,6 @@
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
     }
   </script>
-  <script src="backstage-copedent-manager.js?v=simple-control-dialog-20260714-2"></script>
+  <script src="backstage-copedent-manager.js?v=rig-locker-20260714-4"></script>
 </body>
 </html>

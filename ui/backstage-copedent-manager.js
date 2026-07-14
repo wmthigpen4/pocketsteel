@@ -10,6 +10,7 @@
   const $ = (selector) => doc.querySelector(selector);
   const elements = {
     library: $("#copedent-profile-library"),
+    libraryGroups: $("#copedent-library-groups"),
     activeBadge: $("#copedent-active-badge"),
     libraryActive: $("#copedent-library-active"),
     reviewIssues: $("#copedent-review-issues"),
@@ -68,7 +69,19 @@
     localImport: $("#copedent-local-import"),
     localImportList: $("#copedent-local-import-list"),
     importSelected: $("#copedent-import-selected"),
-    importStatus: $("#copedent-import-status")
+    importStatus: $("#copedent-import-status"),
+    localEmpty: $("#copedent-local-empty"),
+    activeName: $("#setup-active-heading"),
+    plateName: $("#setup-nameplate-name"),
+    activeStatus: $("#setup-active-status"),
+    activeSync: $("#setup-active-sync"),
+    activeValidation: $("#setup-active-validation"),
+    activeRevision: $("#setup-active-revision"),
+    editActive: $("#copedent-edit-active"),
+    duplicateActive: $("#copedent-duplicate-active"),
+    exportActive: $("#copedent-export-active"),
+    workbenchTitle: $("#copedent-workbench-title"),
+    workbenchMeta: $("#copedent-workbench-meta")
   };
 
   if (!elements.library || !elements.grid) return;
@@ -143,6 +156,63 @@
     return `<option value="${escapeHtml(value)}"${value === selected ? " selected" : ""}>${escapeHtml(label)}</option>`;
   }
 
+  function profileName(profile) {
+    return String(profile?.name || profile?.label || "Unnamed E9 setup");
+  }
+
+  function validationLabel(profile) {
+    if (profile?.validationStatus === "needs_review") return "Needs review";
+    if (profile?.validationStatus === "valid" || profile?.immutable) return "Validated";
+    return "Draft";
+  }
+
+  function renderProfileEntry(profile, group, activeId) {
+    const name = profileName(profile);
+    const active = profile.id === activeId;
+    const selected = profile.id === selectedId;
+    const custom = !profile.immutable;
+    const badge = active ? "Active" : (custom ? "Custom" : "Included");
+    const meta = [
+      `Revision ${Number(profile.revision || 1)}`,
+      custom && accountState().enabled ? "Account-synced" : (custom ? "Saved on this device" : "Included setup"),
+      validationLabel(profile)
+    ].join(" · ");
+    return `
+      <button class="setup-library-entry" type="button" data-setup-profile="${escapeHtml(profile.id)}"
+        aria-pressed="${String(selected)}" aria-label="Select ${escapeHtml(name)} from ${escapeHtml(group)}">
+        <span class="setup-library-entry-name">${escapeHtml(name)}</span>
+        <span class="setup-library-entry-badge${active ? " is-active" : (custom ? " is-custom" : "")}">${badge}</span>
+        <span class="setup-library-entry-meta">${escapeHtml(meta)}</span>
+      </button>`;
+  }
+
+  function renderProfileGroup(title, profiles, group, activeId, emptyCopy) {
+    return `
+      <section class="setup-library-group" aria-label="${escapeHtml(title)}">
+        <h4>${escapeHtml(title)}</h4>
+        <div class="setup-library-list">
+          ${profiles.length ? profiles.map((profile) => renderProfileEntry(profile, group, activeId)).join("") : `<p class="setup-library-empty">${escapeHtml(emptyCopy)}</p>`}
+        </div>
+      </section>`;
+  }
+
+  function renderActiveSetup(active) {
+    const account = accountState();
+    const name = profileName(active);
+    const validated = validationLabel(active);
+    elements.activeName.textContent = name;
+    elements.plateName.textContent = name;
+    elements.activeStatus.textContent = "Active";
+    elements.activeValidation.textContent = validated;
+    elements.activeValidation.classList.toggle("is-active", validated === "Validated");
+    elements.activeRevision.textContent = `Revision ${Number(active.revision || 1)}`;
+    elements.activeSync.hidden = !account.enabled || !account.verified;
+    elements.activeSync.textContent = active.immutable ? "Account-selected" : "Account-synced";
+    elements.editActive.querySelector("span").textContent = active.immutable ? "Copy and edit" : "Edit setup";
+    elements.duplicateActive.disabled = Boolean(!account.canManageCustom && account.enabled);
+    elements.exportActive.disabled = Boolean(active.immutable);
+  }
+
   function editableProfile(profile) {
     if (!profile?.immutable) return store.normalizeProfile(profile);
     const payload = catalog.get(profile.id) || fallbackProfile(profile.id, profile.id === "day-e9-basic");
@@ -185,7 +255,7 @@
   function renderAccountStatus() {
     const account = accountState();
     if (!elements.accountStatus) return;
-    elements.passLabel.textContent = account.passLabel;
+    elements.passLabel.textContent = account.enabled ? account.passLabel : "Local preview";
     if (!account.enabled) {
       elements.syncCopy.textContent = "Account copedent sync is off in this environment. The existing local editor remains available.";
     } else if (!account.verified) {
@@ -197,22 +267,38 @@
     } else {
       elements.syncCopy.textContent = "Emmons and Day synchronize with your account. Session Pass is required to create, import, edit, activate, or use custom setups.";
     }
-    const localProfiles = store.localProfilesForImport?.() || [];
-    elements.localImport.hidden = !account.enabled || !localProfiles.length;
-    if (!account.enabled || !localProfiles.length) return;
+    const localProfiles = account.enabled ? (store.localProfilesForImport?.() || []) : [];
+    elements.localImport.hidden = false;
+    elements.localEmpty.hidden = Boolean(localProfiles.length);
+    elements.localEmpty.textContent = localProfiles.length
+      ? ""
+      : (account.enabled ? "No browser-local setups are waiting to be imported." : "Account sync is unavailable here; local setups remain safely listed under Custom setups.");
+    elements.localImportList.hidden = !localProfiles.length;
+    if (!localProfiles.length) {
+      elements.localImportList.innerHTML = "";
+      elements.importSelected.disabled = true;
+      elements.importSelected.textContent = account.enabled ? "Nothing to import" : "Account sync unavailable";
+      return;
+    }
     elements.localImportList.innerHTML = localProfiles.map((profile) => `
-      <div class="backstage-note" data-local-profile="${escapeHtml(profile.id)}">
-        <label><input type="checkbox" value="${escapeHtml(profile.id)}" ${profile.alreadyImported || !account.canManageCustom ? "disabled" : ""}> <strong>${escapeHtml(profile.name)}</strong>${profile.alreadyImported ? " · already imported" : " · saved only in this browser"}</label>
-        <button class="backstage-button" type="button" data-export-local="${escapeHtml(profile.id)}">Export</button>
-        <button class="backstage-button" type="button" data-delete-local="${escapeHtml(profile.id)}">Delete local copy</button>
+      <div class="setup-local-entry" data-local-profile="${escapeHtml(profile.id)}">
+        <label><input type="checkbox" value="${escapeHtml(profile.id)}" ${profile.alreadyImported || !account.canManageCustom ? "disabled" : ""}> <span><strong>${escapeHtml(profile.name)}</strong><br><small>${profile.alreadyImported ? "Already imported" : "Local only · on this browser"}</small></span></label>
+        <span class="setup-local-entry-actions">
+          <button class="backstage-button" type="button" data-export-local="${escapeHtml(profile.id)}">Export</button>
+          <button class="backstage-button" type="button" data-delete-local="${escapeHtml(profile.id)}" aria-label="Delete local copy of ${escapeHtml(profile.name)}">Delete</button>
+        </span>
       </div>
     `).join("");
-    elements.importSelected.disabled = Boolean(account.canManageCustom && localProfiles.every((profile) => profile.alreadyImported));
-    elements.importSelected.textContent = account.canManageCustom ? "Import selected setups" : "🔒 Session Pass required to import";
+    elements.importSelected.disabled = Boolean(!account.enabled || !account.canManageCustom || localProfiles.every((profile) => profile.alreadyImported));
+    elements.importSelected.textContent = account.canManageCustom ? "Import selected setups" : "Session Pass required to import";
   }
 
   function markDraft(message) {
     if (!currentProfile?.immutable && currentProfile.validationStatus !== "needs_review") currentProfile.validationStatus = "draft";
+    if (currentProfile && !currentProfile.immutable) {
+      elements.activeBadge.textContent = validationLabel(currentProfile);
+      elements.activeBadge.classList.remove("is-active");
+    }
     if (message) elements.status.textContent = message;
   }
 
@@ -228,8 +314,15 @@
     elements.library.value = selectedId;
     const active = store.activeProfile();
     const label = active.name || active.label;
+    const activeProfiles = profiles.filter((profile) => profile.id === activeId);
+    elements.libraryGroups.innerHTML = [
+      renderProfileGroup("Active setup", activeProfiles, "active setups", activeId, "The active setup is unavailable."),
+      renderProfileGroup("Included setups", common.filter((profile) => profile.id !== activeId), "included setups", activeId, "No other included setups are available."),
+      renderProfileGroup("Custom setups", custom.filter((profile) => profile.id !== activeId), "custom setups", activeId, "No account-backed custom setups yet.")
+    ].join("");
+    renderActiveSetup(active);
     elements.libraryActive.textContent = `Active: ${label}`;
-    elements.activeBadge.textContent = active.validationStatus === "needs_review" ? "Needs review" : `Using ${label}`;
+    elements.activeBadge.textContent = validationLabel(currentProfile || active);
     elements.overview.textContent = active.validationStatus === "needs_review" ? `${label} needs review` : `Using ${label}`;
     elements.overviewUpdated.textContent = active.updatedAt
       ? new Date(active.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
@@ -382,8 +475,8 @@
     [elements.name, elements.guitar, elements.notes, elements.addControl, elements.save]
       .forEach((element) => { if (element) element.disabled = readOnly; });
     elements.clone.hidden = !immutable;
-    elements.clone.textContent = locked ? "🔒 Copy and edit" : "Copy and edit";
-    elements.create.textContent = locked ? "🔒 New custom setup" : "New custom setup";
+    elements.clone.textContent = locked ? "Session Pass required" : "Copy and edit";
+    elements.create.textContent = locked ? "Session Pass required" : "New custom setup";
     elements.duplicate.disabled = immutable || locked;
     elements.exportProfile.disabled = immutable;
     elements.remove.disabled = immutable;
@@ -391,7 +484,7 @@
     elements.reset.disabled = readOnly;
     elements.activateEdited.textContent = immutable ? "Use this setup" : "Validate and use";
     const activeId = store.activeProfile().id;
-    elements.activate.textContent = activeId === selectedId ? "Active" : (!immutable && locked ? "🔒 Session Pass required" : "Use this setup");
+    elements.activate.textContent = activeId === selectedId ? "Active" : (!immutable && locked ? "Session Pass required" : "Use selected setup");
     elements.activate.disabled = activeId === selectedId;
     elements.activateEdited.disabled = Boolean(!immutable && locked);
   }
@@ -406,6 +499,10 @@
     elements.stringCount.value = "10";
     elements.guitar.value = currentProfile.guitar || "";
     elements.notes.value = currentProfile.notes || "";
+    elements.workbenchTitle.textContent = profileName(currentProfile);
+    elements.workbenchMeta.textContent = `${currentProfile.id === store.activeProfile().id ? "Active setup" : "Selected setup"} · Revision ${Number(currentProfile.revision || 1)}`;
+    elements.activeBadge.textContent = validationLabel(currentProfile);
+    elements.activeBadge.classList.toggle("is-active", validationLabel(currentProfile) === "Validated");
     const originId = String(currentProfile.origin || "").replace(/^clone:/, "");
     elements.template.value = catalog.has(currentProfile.id) ? currentProfile.id : (catalog.has(originId) ? originId : "emmons-e9-basic");
     const issues = currentProfile.reviewIssues || [];
@@ -798,6 +895,39 @@
     }
   }
 
+  function selectProfile(profileId, { explicit = true, message = "" } = {}) {
+    const profile = store.profileById(profileId);
+    if (!profile) return false;
+    selectedId = profile.id;
+    selectionWasExplicit = explicit;
+    renderSelected(message);
+    return true;
+  }
+
+  async function editActiveSetup() {
+    const active = store.activeProfile();
+    if (!selectProfile(active.id, { explicit: true })) return;
+    if (active.immutable) {
+      await cloneSelected();
+    } else {
+      doc.querySelector(".setup-workbench-stage")?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+      global.setTimeout(() => elements.grid.querySelector("button:not(:disabled)")?.focus(), 0);
+    }
+  }
+
+  async function duplicateActiveSetup() {
+    const active = store.activeProfile();
+    if (!selectProfile(active.id, { explicit: true })) return;
+    await cloneSelected();
+  }
+
+  function exportActiveSetup() {
+    const active = store.activeProfile();
+    if (active?.immutable) return;
+    exportLocalProfile(active);
+    elements.status.textContent = `${profileName(active)} exported. No account data was deleted.`;
+  }
+
   elements.library.addEventListener("change", () => {
     selectedId = elements.library.value;
     selectionWasExplicit = true;
@@ -853,6 +983,13 @@
   elements.controlReset.addEventListener("click", resetControlFields);
   elements.stringApply.addEventListener("click", applyStringDetails);
   elements.importSelected?.addEventListener("click", importSelectedLocalProfiles);
+  elements.libraryGroups?.addEventListener("click", (event) => {
+    const entry = event.target.closest("[data-setup-profile]");
+    if (entry) selectProfile(entry.dataset.setupProfile, { explicit: true, message: `${entry.querySelector(".setup-library-entry-name")?.textContent || "Setup"} selected for review.` });
+  });
+  elements.editActive?.addEventListener("click", editActiveSetup);
+  elements.duplicateActive?.addEventListener("click", duplicateActiveSetup);
+  elements.exportActive?.addEventListener("click", exportActiveSetup);
   elements.localImportList?.addEventListener("click", (event) => {
     const exportButton = event.target.closest("[data-export-local]");
     const deleteButton = event.target.closest("[data-delete-local]");
