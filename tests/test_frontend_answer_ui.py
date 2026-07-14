@@ -336,6 +336,10 @@ def test_backstage_account_masks_identifier_and_copies_only_authorized_runtime_v
 
     assert 'let currentAuthorizedAccountId = "";' in html
     assert "function maskAccountId(value)" in html
+    assert "function copyAccountIdWithSelection(accountId)" in html
+    assert 'copyField.setAttribute("aria-hidden", "true")' in html
+    assert 'document.execCommand("copy")' in html
+    assert "copyField.remove();" in html
     assert "backstageAccountId.textContent = maskAccountId(currentAuthorizedAccountId);" in html
     assert "navigator.clipboard.writeText(currentAuthorizedAccountId)" in html
     assert "backstageCopyAccountId.disabled = !currentAuthorizedAccountId;" in html

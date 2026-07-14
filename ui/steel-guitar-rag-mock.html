@@ -6413,9 +6413,34 @@
       return `${accountId.slice(0, 5)}••••••${accountId.slice(-4)}`;
     }
 
+    function copyAccountIdWithSelection(accountId) {
+      if (!document.execCommand) return false;
+      const copyField = document.createElement("textarea");
+      copyField.value = accountId;
+      copyField.readOnly = true;
+      copyField.setAttribute("aria-hidden", "true");
+      copyField.style.position = "fixed";
+      copyField.style.left = "-9999px";
+      copyField.style.opacity = "0";
+      document.body.appendChild(copyField);
+      copyField.select();
+      let copied = false;
+      try {
+        copied = document.execCommand("copy");
+      } finally {
+        copyField.remove();
+      }
+      return copied;
+    }
+
     async function copyAuthorizedAccountId() {
       if (!currentAuthorizedAccountId) {
         backstageAccountCopyStatus.textContent = "No verified Account ID is available to copy.";
+        return;
+      }
+      backstageAccountCopyStatus.textContent = "Copying Account ID…";
+      if (copyAccountIdWithSelection(currentAuthorizedAccountId)) {
+        backstageAccountCopyStatus.textContent = "Account ID copied.";
         return;
       }
       if (!navigator.clipboard?.writeText) {
