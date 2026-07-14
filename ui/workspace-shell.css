@@ -556,16 +556,17 @@ select:focus-visible,
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 6px;
+  padding: 8px 10px;
   color: #d9d2c3;
 }
 
-.home-score-preview .score-canvas {
+.home-score-preview .home-melody-score-image {
   display: block;
-  width: 300px;
+  width: 210px;
   max-width: 100%;
-  height: auto !important;
-  aspect-ratio: 150 / 43;
+  height: auto;
+  aspect-ratio: 3 / 1;
+  object-fit: contain;
 }
 
 .home-score-preview.is-unavailable {

@@ -552,107 +552,21 @@
     renderFallback(container, draft, selectedIndex, onSelect);
   }
 
-  function drawPreviewNote(context, note) {
-    const stemX = note.x + 5;
-    context.beginPath();
-    context.ellipse(note.x, note.y, 6.5, 4, -0.28, 0, Math.PI * 2);
-    context.fill();
-    context.beginPath();
-    context.moveTo(stemX, note.y - 1);
-    context.lineTo(stemX, note.stemTop);
-    context.stroke();
-  }
-
-  function drawPreviewBeam(context, first, second) {
-    const firstX = first.x + 5;
-    const secondX = second.x + 5;
-    context.beginPath();
-    context.moveTo(firstX, first.stemTop);
-    context.lineTo(secondX, second.stemTop);
-    context.lineTo(secondX, second.stemTop + 5);
-    context.lineTo(firstX, first.stemTop + 5);
-    context.closePath();
-    context.fill();
-  }
-
   function renderPreview(container) {
     if (!container || !global.document?.createElement) return false;
     try {
       container.replaceChildren();
-      const width = 300;
-      const height = 86;
-      const pixelRatio = Math.max(1, Number(global.devicePixelRatio) || 1);
-      const canvas = global.document.createElement("canvas");
-      canvas.width = Math.round(width * pixelRatio);
-      canvas.height = Math.round(height * pixelRatio);
-      container.appendChild(canvas);
-      const context = canvas.getContext("2d");
-      if (!context) throw new Error("Canvas 2D context unavailable");
-      context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-      context.clearRect(0, 0, width, height);
-      context.fillStyle = "#e6dfd1";
-      context.strokeStyle = "rgba(230, 223, 209, 0.84)";
-      context.lineWidth = 1.25;
-      context.lineCap = "round";
-      context.lineJoin = "round";
-
-      [20, 28, 36, 44, 52].forEach((y) => {
-        context.beginPath();
-        context.moveTo(12, y);
-        context.lineTo(286, y);
-        context.stroke();
-      });
-
-      // A compact, hand-drawn treble clef avoids relying on a music font.
-      context.save();
-      context.lineWidth = 2;
-      context.beginPath();
-      context.moveTo(31, 61);
-      context.bezierCurveTo(25, 55, 28, 44, 34, 35);
-      context.bezierCurveTo(40, 26, 37, 17, 32, 20);
-      context.bezierCurveTo(27, 23, 27, 33, 32, 39);
-      context.bezierCurveTo(38, 45, 38, 53, 32, 57);
-      context.bezierCurveTo(27, 61, 21, 58, 22, 52);
-      context.bezierCurveTo(23, 47, 30, 45, 35, 49);
-      context.stroke();
-      context.restore();
-
-      context.save();
-      context.font = "700 13px Georgia, serif";
-      context.textAlign = "center";
-      context.textBaseline = "middle";
-      context.fillText("4", 52, 28);
-      context.fillText("4", 52, 44);
-      context.restore();
-
-      const notes = [
-        { x: 82, y: 45, stemTop: 23 },
-        { x: 112, y: 41, stemTop: 20 },
-        { x: 136, y: 37, stemTop: 17 },
-        { x: 174, y: 33, stemTop: 12 },
-        { x: 216, y: 37, stemTop: 17 },
-        { x: 240, y: 41, stemTop: 21 }
-      ];
-      context.lineWidth = 1.75;
-      notes.forEach((note) => drawPreviewNote(context, note));
-      drawPreviewBeam(context, notes[1], notes[2]);
-      drawPreviewBeam(context, notes[4], notes[5]);
-
-      context.lineWidth = 1.25;
-      context.beginPath();
-      context.moveTo(278, 20);
-      context.lineTo(278, 52);
-      context.moveTo(282, 20);
-      context.lineTo(282, 52);
-      context.stroke();
-
-      canvas.classList.add("score-canvas", "home-real-score-canvas");
-      canvas.setAttribute("aria-hidden", "true");
-      canvas.dataset.logicalWidth = String(width);
-      canvas.dataset.logicalHeight = String(height);
-      canvas.dataset.pixelRatio = String(pixelRatio);
-      canvas.dataset.previewKind = "simple-musical-score";
-      container.dataset.scoreRenderer = "simple-canvas-preview";
+      const image = global.document.createElement("img");
+      image.classList.add("home-melody-score-image");
+      image.src = "assets/landing/melody-score.png";
+      image.alt = "";
+      image.width = 2172;
+      image.height = 724;
+      image.decoding = "async";
+      image.draggable = false;
+      image.dataset.previewKind = "approved-melody-score-png";
+      container.appendChild(image);
+      container.dataset.scoreRenderer = "static-png-preview";
       return true;
     } catch (_error) {
       container.replaceChildren();
