@@ -101,25 +101,6 @@ assert.equal(JSON.stringify(model.markers), JSON.stringify([3, 5, 7, 9, 12, 15, 
     run_node(script)
 
 
-def test_left_keyhead_crop_is_opt_in_for_landing_preview_only() -> None:
-    script = component_eval_script(
-        """
-const explorerHtml = fretboard.renderPedalSteelFretboard({ positions: fretboard.DEMO_POSITIONS });
-assert.match(explorerHtml, /viewBox="0 0 1200 360"/);
-assert.match(explorerHtml, /data-crop-left-at-nut="false"/);
-
-const landingHtml = fretboard.renderPedalSteelFretboard({
-  positions: fretboard.DEMO_POSITIONS,
-  cropLeftAtNut: true
-});
-assert.match(landingHtml, /viewBox="104 0 1096 360"/);
-assert.match(landingHtml, /data-crop-left-at-nut="true"/);
-"""
-    )
-
-    run_node(script)
-
-
 def test_scientific_octave_overlay_is_opt_in_string_aware_and_marker_aware() -> None:
     script = component_eval_script(
         """

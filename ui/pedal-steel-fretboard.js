@@ -2013,15 +2013,12 @@
   function renderPedalSteelFretboard(options = {}) {
     const model = buildFretboardModel(options);
     const selectedPositionId = model.selectedPositionId;
-    const cropLeftAtNut = options.cropLeftAtNut === true;
-    const viewBoxX = cropLeftAtNut ? LAYOUT.nutX : 0;
-    const viewBoxWidth = SVG_WIDTH - viewBoxX;
     // Decorative underlay only. Functional strings, frets, fret markers, labels,
     // and interaction targets are drawn by SVG geometry below/above this layer.
     const html = `<figure class="pedal-steel-fretboard" data-component="PedalSteelFretboard" data-max-fret="${model.maxFret}" data-string-count="${model.stringCount}" data-spacing="equal-temperament" data-has-voicing-filters="${model.hasVoicingControls ? "true" : "false"}" data-has-grip-filters="${model.hasGripControls ? "true" : "false"}" data-has-pedal-lever-filters="${model.hasPedalLeverControls ? "true" : "false"}" data-active-grip-filters="${escapeHtml(model.gripFilters.join(","))}" data-active-pedal-lever-filters="${escapeHtml(model.pedalLeverFilters.join(","))}" data-recommended-limited="${model.hasRecommendedLimit ? "true" : "false"}" data-recommended-cap-available="${model.hasRecommendedCapAvailable ? "true" : "false"}" data-selected-position-id="${escapeHtml(selectedPositionId)}">
       ${renderFretboardFilterControls(model)}
       <div class="pedal-steel-fretboard__stage">
-        <svg class="pedal-steel-fretboard__svg" viewBox="${viewBoxX} 0 ${viewBoxWidth} ${SVG_HEIGHT}" data-crop-left-at-nut="${cropLeftAtNut ? "true" : "false"}" role="img" aria-label="10-string E9 pedal steel fretboard with highlighted positions" xmlns="http://www.w3.org/2000/svg">
+        <svg class="pedal-steel-fretboard__svg" viewBox="0 0 ${SVG_WIDTH} ${SVG_HEIGHT}" role="img" aria-label="10-string E9 pedal steel fretboard with highlighted positions" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <filter id="fretboard-glow" x="-80%" y="-80%" width="260%" height="260%">
               <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#f0bf69" flood-opacity="0.58" />

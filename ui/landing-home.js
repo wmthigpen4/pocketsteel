@@ -43,9 +43,8 @@
       hidePositionTools: true,
       hideLegend: true,
       showHighlightLabels: true,
-      showStringActionLabels: true,
+      showStringActionLabels: false,
       emphasizeVisibleHighlights: true,
-      cropLeftAtNut: true,
     });
 
     figure?.classList.add("home-explorer-figure");
