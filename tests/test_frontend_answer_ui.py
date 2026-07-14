@@ -226,13 +226,13 @@ let capturedRequest;
   assert.equal(capturedRequest.options.method, "GET");
   assert.equal(capturedRequest.options.credentials, "same-origin");
   assert.equal(capturedRequest.options.headers["X-Steel-Rag-Dev-Access-Role"], "beta_user");
-  assert.equal(JSON.stringify(usage), JSON.stringify({
-    schemaVersion: "account_usage_v1",
-    startsAt: "2026-07-01T00:00:00+00:00",
-    resetsAt: "2026-08-01T00:00:00+00:00",
-    successfulAnswers: 42,
-    updatedAt: "2026-07-14T16:30:00+00:00"
-  }));
+  assert.equal(usage.schemaVersion, "account_usage_v1");
+  assert.equal(usage.startsAt, "2026-07-01T00:00:00+00:00");
+  assert.equal(usage.resetsAt, "2026-08-01T00:00:00+00:00");
+  assert.equal(usage.successfulAnswers, 42);
+  assert.equal(usage.activity.explorer.ideasExplored, 0);
+  assert.equal(usage.activity.aiAssisted.actions, 0);
+  assert.equal(usage.updatedAt, "2026-07-14T16:30:00+00:00");
 
   assert.equal(JSON.stringify(answerUi.normalizeSessionResponse({
     authenticated: true,
@@ -261,24 +261,86 @@ let capturedRequest;
     assert result.returncode == 0, result.stderr
 
 
-def test_backstage_monthly_usage_has_honest_states_without_limits_or_costs() -> None:
+def test_backstage_plan_and_activity_has_honest_states_without_mock_counts() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
 
-    assert "Monthly Ask Usage" in html
-    assert "Checking this month’s usage…" in html
-    assert "Monthly usage is available for verified accounts." in html
-    assert "Usage tracking is temporarily unavailable." in html
-    assert "Counts successful answers and follow-ups. Failed or blocked requests do not count." in html
+    assert "Plan &amp; Activity" in html
+    assert "Your activity this month" in html
+    assert "Checking this month’s activity…" in html
+    assert "Monthly activity is available for verified accounts." in html
+    assert "Activity tracking is temporarily unavailable." in html
     assert 'id="usage-answer-count"' in html
-    assert 'id="usage-period-range"' in html
     assert 'id="usage-reset-date"' in html
+    assert 'id="activity-explorer-ideas">0</strong>' in html
+    assert 'id="activity-ai-actions">0 this month</strong>' in html
+    assert "No monthly limit is enforced." in html
     assert "function refreshMonthlyUsage()" in html
     assert 'tabName === "overview" || tabName === "pass"' in html
     assert "STEEL_RAG_ANSWER_UI.requestAccountUsage" in html
+    assert "Standing Room" not in html
+    assert "Bandleader Pass" not in html
+    assert "Monthly Ask Usage" not in html
     assert "Premium responses remaining" not in html
     assert "Estimated monthly usage" not in html
     assert "Questions used this period" not in html
     assert "AI Usage" not in html
+
+
+def test_backstage_plan_and_activity_uses_all_approved_assets() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+    for name in (
+        "pass-ticket.png",
+        "fretboard-activity.png",
+        "melody-activity.png",
+        "lessons-activity.png",
+        "brain-activity.png",
+        "connected-learning.png",
+        "ai-assisted.png",
+    ):
+        path = Path("ui/assets/backstage") / name
+        assert path.is_file()
+        assert f'src="assets/backstage/{name}" alt=""' in html
+        assert path.read_bytes().startswith(b"\x89PNG")
+
+
+def test_account_activity_client_is_bounded_and_deduplicated() -> None:
+    script = r"""
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const vm = require("node:vm");
+const code = fs.readFileSync("ui/account-activity.js", "utf8");
+const sandbox = {
+  URLSearchParams,
+  Date,
+  Math,
+  globalThis: null,
+  location: { search: "" },
+  crypto: { randomUUID: () => "00000000-0000-4000-8000-000000000001" }
+};
+sandbox.globalThis = sandbox;
+vm.createContext(sandbox);
+vm.runInContext(code, sandbox);
+const tracker = vm.runInContext("STEEL_RAG_ACCOUNT_ACTIVITY", sandbox);
+let calls = 0;
+const fetchImpl = async () => ({ ok: true, json: async () => ({ recorded: true }) });
+(async () => {
+  const first = await tracker.track("lesson.started", { dedupeKey: "lesson-one", fetchImpl: async (...args) => { calls += 1; return fetchImpl(...args); } });
+  const duplicate = await tracker.track("lesson.started", { dedupeKey: "lesson-one", fetchImpl: async (...args) => { calls += 1; return fetchImpl(...args); } });
+  const spoofed = await tracker.track("ask.ai_assisted", { dedupeKey: "fake", fetchImpl });
+  assert.equal(first, true);
+  assert.equal(duplicate, false);
+  assert.equal(spoofed, false);
+  assert.equal(calls, 1);
+})().catch((error) => { console.error(error); process.exit(1); });
+"""
+    result = subprocess.run(
+        ["node", "-e", script],
+        cwd=Path(__file__).resolve().parents[1],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 def test_frontend_answer_client_posts_and_normalizes_melody_exercise() -> None:
@@ -467,7 +529,8 @@ def test_answer_ui_keeps_melody_lesson_renderer_without_cross_feature_header_lin
 def test_answer_ui_uses_live_answer_client_not_mock_answer_data() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
 
-    assert '<script src="answer-client.js?v=monthly-ask-usage-20260714-1"></script>' in html
+    assert '<script src="answer-client.js?v=plan-activity-20260714-1"></script>' in html
+    assert '<script src="account-activity.js?v=plan-activity-20260714-1"></script>' in html
     assert '<script src="answer-client.js?v=e9-explorer-home-entry-20260623"></script>' not in html
     assert '<script src="pedal-steel-fretboard-styles.js?v=module-boundaries-20260713"></script>' in html
     assert '<script src="pedal-steel-fretboard.js?v=landing-bubble-labels-20260713"></script>' in html

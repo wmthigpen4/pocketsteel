@@ -260,7 +260,9 @@
     const answerUi = typeof STEEL_RAG_ANSWER_UI !== "undefined"
       ? STEEL_RAG_ANSWER_UI
       : globalThis.STEEL_RAG_ANSWER_UI;
+    const accountActivity = globalThis.STEEL_RAG_ACCOUNT_ACTIVITY;
     let session = null;
+    let activeLessonActivityKey = "lesson";
     const elements = {
       catalog: doc.querySelector("#lesson-catalog"),
       catalogStatus: doc.querySelector("#lesson-catalog-status"),
@@ -356,6 +358,8 @@
         if (payload.status !== "ready" || !payload.lesson) throw new Error("The lesson service returned an incomplete result.");
         clearClarification();
         renderLesson(doc, elements.resultMount, payload.lesson);
+        activeLessonActivityKey = String(payload.lesson.id || normalizedRequest.lessonId || normalizedRequest.topic || "lesson");
+        accountActivity?.track("lesson.started", { dedupeKey: activeLessonActivityKey });
         elements.chooser.hidden = true;
         elements.result.hidden = false;
         elements.customStatus.textContent = "";
@@ -430,6 +434,30 @@
       openLesson({ topic: elements.topic.value, level: elements.level.value, duration: elements.duration.value, key: elements.key.value, focus: elements.focus.value });
     });
     elements.back.addEventListener("click", showChooser);
+    elements.resultMount.addEventListener("change", (event) => {
+      const checkbox = event.target.closest?.('.practice-checklist input[type="checkbox"]');
+      if (!checkbox || !checkbox.checked) return;
+      const checkboxes = Array.from(elements.resultMount.querySelectorAll('.practice-checklist input[type="checkbox"]'));
+      const index = checkboxes.indexOf(checkbox);
+      accountActivity?.track("lesson.exercise_completed", {
+        dedupeKey: `${activeLessonActivityKey}:check:${index}`
+      });
+      if (checkboxes.length && checkboxes.every((item) => item.checked)) {
+        accountActivity?.track("lesson.section_completed", {
+          dedupeKey: `${activeLessonActivityKey}:session-checklist`
+        });
+      }
+    });
+    elements.resultMount.addEventListener("click", (event) => {
+      const link = event.target.closest?.("[data-lesson-handoff]");
+      if (!link) return;
+      const type = link.dataset.lessonHandoff === "melody"
+        ? "connected.lesson_to_melody"
+        : link.dataset.lessonHandoff === "explorer"
+          ? "connected.lesson_to_explorer"
+          : "";
+      if (type) accountActivity?.track(type, { dedupeKey: `${activeLessonActivityKey}:${type}` });
+    });
     bootstrap();
   }
 

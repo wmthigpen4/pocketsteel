@@ -228,6 +228,8 @@ def retrieval_config(
 
 
 class FakeAnswerProvider:
+    is_ai_backed = True
+
     def __init__(self) -> None:
         self.calls: list[dict[str, Any]] = []
 
@@ -9065,7 +9067,8 @@ def test_monthly_usage_counts_successful_deterministic_and_generated_answers(
     assert headers["Cache-Control"] == "no-store"
     assert headers["Pragma"] == "no-cache"
     assert initial["schemaVersion"] == "account_usage_v1"
-    assert initial["usage"] == {"successfulAnswers": 0}
+    assert initial["usage"]["successfulAnswers"] == 0
+    assert initial["usage"]["aiAssistedActions"] == 0
     assert initial["updatedAt"] is None
 
     deterministic_status, _, _ = call_existing_app(
@@ -9115,7 +9118,8 @@ def test_monthly_usage_counts_successful_deterministic_and_generated_answers(
         cloudflare_token="valid-beta",
     )
     assert status == "200 OK"
-    assert current["usage"] == {"successfulAnswers": 2}
+    assert current["usage"]["successfulAnswers"] == 2
+    assert current["usage"]["aiAssistedActions"] == 1
     assert current["period"]["startsAt"].endswith("T00:00:00+00:00")
     assert current["period"]["resetsAt"].endswith("T00:00:00+00:00")
     assert current["updatedAt"]
@@ -9165,7 +9169,8 @@ def test_monthly_usage_excludes_unauthorized_and_rate_limited_requests(
         access_role=None,
         cloudflare_token="valid-beta",
     )
-    assert current["usage"] == {"successfulAnswers": 1}
+    assert current["usage"]["successfulAnswers"] == 1
+    assert current["usage"]["aiAssistedActions"] == 0
 
 
 def test_usage_write_failure_does_not_block_a_successful_answer(monkeypatch: Any) -> None:
@@ -9222,3 +9227,107 @@ def test_usage_endpoint_reports_unavailable_or_unverified_without_a_false_zero(
     assert failed_status == "503 Service Unavailable"
     assert failed_headers["Cache-Control"] == "no-store"
     assert failed_payload == {"error": "account usage is temporarily unavailable"}
+
+
+def test_account_activity_endpoint_whitelists_deduplicates_and_updates_summary(
+    monkeypatch: Any,
+    tmp_path: Path,
+) -> None:
+    repository = AccountUsageRepository(tmp_path / "usage.sqlite3")
+    app = configured_usage_app(monkeypatch, repository)
+    body = {
+        "eventType": "connected.answer_to_explorer",
+        "eventId": "event-answer-explorer-0001",
+        "dedupeKey": "answer:g-major:explorer",
+    }
+
+    first_status, first_headers, first = call_existing_app(
+        app,
+        "/api/account/activity",
+        method="POST",
+        json_body=body,
+        access_role=None,
+        cloudflare_token="valid-beta",
+    )
+    duplicate_status, _, duplicate = call_existing_app(
+        app,
+        "/api/account/activity",
+        method="POST",
+        json_body=body,
+        access_role=None,
+        cloudflare_token="valid-beta",
+    )
+    spoofed_status, _, spoofed = call_existing_app(
+        app,
+        "/api/account/activity",
+        method="POST",
+        json_body={
+            "eventType": "ask.ai_assisted",
+            "eventId": "event-spoofed-ai-0001",
+            "dedupeKey": "spoofed",
+        },
+        access_role=None,
+        cloudflare_token="valid-beta",
+    )
+
+    assert first_status == "200 OK"
+    assert first_headers["Cache-Control"] == "no-store"
+    assert first["recorded"] is True
+    assert duplicate_status == "200 OK"
+    assert duplicate["recorded"] is False
+    assert spoofed_status == "400 Bad Request"
+    assert spoofed == {"error": "unsupported account activity event"}
+
+    _, _, usage = call_existing_app(
+        app,
+        "/api/account/usage",
+        access_role=None,
+        cloudflare_token="valid-beta",
+    )
+    assert usage["usage"]["activity"]["ask"]["answersOpenedInExplorer"] == 1
+    assert usage["usage"]["activity"]["connectedLearning"]["transitions"] == 1
+    assert usage["usage"]["aiAssistedActions"] == 0
+
+
+def test_account_activity_endpoint_requires_verified_identity(monkeypatch: Any, tmp_path: Path) -> None:
+    repository = AccountUsageRepository(tmp_path / "usage.sqlite3")
+    app = configured_usage_app(monkeypatch, repository)
+    status, _, payload = call_existing_app(
+        app,
+        "/api/account/activity",
+        method="POST",
+        json_body={
+            "eventType": "lesson.started",
+            "eventId": "event-lesson-start-0001",
+            "dedupeKey": "lesson:f-lever",
+        },
+        access_role=None,
+    )
+    assert status == "401 Unauthorized"
+    assert "error" in payload
+
+
+def test_successful_followup_is_counted_without_becoming_ai_when_deterministic(
+    monkeypatch: Any,
+    tmp_path: Path,
+) -> None:
+    repository = AccountUsageRepository(tmp_path / "usage.sqlite3")
+    app = configured_usage_app(monkeypatch, repository, answer_provider=FakeAnswerProvider())
+    status, _, _ = call_existing_app(
+        app,
+        "/api/answer",
+        method="POST",
+        json_body={"question": "How do I play G major?", "isFollowup": True},
+        access_role=None,
+        cloudflare_token="valid-beta",
+    )
+    assert status == "200 OK"
+    _, _, usage = call_existing_app(
+        app,
+        "/api/account/usage",
+        access_role=None,
+        cloudflare_token="valid-beta",
+    )
+    assert usage["usage"]["successfulAnswers"] == 1
+    assert usage["usage"]["activity"]["ask"]["followUps"] == 1
+    assert usage["usage"]["aiAssistedActions"] == 0

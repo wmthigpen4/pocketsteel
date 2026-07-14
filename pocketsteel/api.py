@@ -43,6 +43,7 @@ from pocketsteel.answer_usage import InMemoryAnswerRateLimiter, answer_rate_limi
 from pocketsteel.account_usage import (
     AccountUsageRepository,
     AccountUsageUnavailableError,
+    PUBLIC_ACTIVITY_EVENT_TYPES,
     configured_account_usage_enabled,
     configured_account_usage_path,
 )
@@ -608,6 +609,104 @@ class RetrievalApi:
                 extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
             )
 
+        if path == "/api/account/activity":
+            no_store_headers = (("Cache-Control", "no-store"), ("Pragma", "no-cache"))
+            if method != "POST":
+                return self._json_response(
+                    start_response,
+                    "405 Method Not Allowed",
+                    {"error": "method not allowed"},
+                    extra_headers=no_store_headers,
+                )
+            access = self._authorize_content_request(environ)
+            if not access.allowed:
+                return self._json_response(
+                    start_response,
+                    access.status,
+                    {"error": access.error},
+                    extra_headers=no_store_headers,
+                )
+            if not self.account_usage_enabled or self.account_usage_repository is None:
+                return self._json_response(
+                    start_response,
+                    "503 Service Unavailable",
+                    {"error": "account activity is unavailable"},
+                    extra_headers=no_store_headers,
+                )
+            account_access = None if self.answer_auth_mode == "local_dev" else account_access_for_decision(access)
+            if account_access is None:
+                return self._json_response(
+                    start_response,
+                    "401 Unauthorized",
+                    {"error": "verified account identity is required"},
+                    extra_headers=no_store_headers,
+                )
+            try:
+                activity_payload = self._read_json_body(environ, max_bytes=2048)
+            except JsonRequestTooLargeError as exc:
+                return self._json_response(
+                    start_response,
+                    "413 Payload Too Large",
+                    {"error": str(exc)},
+                    extra_headers=no_store_headers,
+                )
+            except JsonRequestError as exc:
+                return self._json_response(
+                    start_response,
+                    "400 Bad Request",
+                    {"error": str(exc)},
+                    extra_headers=no_store_headers,
+                )
+            event_type = str(activity_payload.get("eventType") or "").strip()
+            event_id = str(activity_payload.get("eventId") or "").strip()
+            dedupe_key = str(activity_payload.get("dedupeKey") or event_type).strip()
+            if event_type not in PUBLIC_ACTIVITY_EVENT_TYPES:
+                return self._json_response(
+                    start_response,
+                    "400 Bad Request",
+                    {"error": "unsupported account activity event"},
+                    extra_headers=no_store_headers,
+                )
+            if not (8 <= len(event_id) <= 100) or not re.fullmatch(r"[A-Za-z0-9._:-]+", event_id):
+                return self._json_response(
+                    start_response,
+                    "400 Bad Request",
+                    {"error": "eventId is invalid"},
+                    extra_headers=no_store_headers,
+                )
+            if not (1 <= len(dedupe_key) <= 160) or any(ord(char) < 32 for char in dedupe_key):
+                return self._json_response(
+                    start_response,
+                    "400 Bad Request",
+                    {"error": "dedupeKey is invalid"},
+                    extra_headers=no_store_headers,
+                )
+            try:
+                result = self.account_usage_repository.record_activity(
+                    account_access.identity,
+                    event_type=event_type,
+                    event_id=event_id,
+                    dedupe_key=dedupe_key,
+                )
+            except AccountUsageUnavailableError:
+                LOGGER.exception("account activity write failed")
+                return self._json_response(
+                    start_response,
+                    "503 Service Unavailable",
+                    {"error": "account activity is temporarily unavailable"},
+                    extra_headers=no_store_headers,
+                )
+            return self._json_response(
+                start_response,
+                "200 OK",
+                {
+                    "schemaVersion": "account_activity_event_v1",
+                    "eventType": result.event_type,
+                    "recorded": result.recorded,
+                },
+                extra_headers=no_store_headers,
+            )
+
         if path == "/api/account/copedents" or path == "/api/account/copedents/import":
             access = self._authorize_content_request(environ)
             if not access.allowed:
@@ -1031,7 +1130,9 @@ class RetrievalApi:
                     "sections": build_sections(direct_profile_answer),
                 }
                 payload.update(copedent_context_metadata(target_profile, target_revision))
-                return self._answer_success_response(start_response, payload, access)
+                return self._answer_success_response(
+                    start_response, payload, access, request_payload=request_payload
+                )
 
             answer_intent_decision = classify_answer_request(answer_request.question, answer_request.mode)
             curated_guidance_status: str | None = None
@@ -1093,7 +1194,9 @@ class RetrievalApi:
                     source_count=len(payload["sources"]),
                     warning_count=len(payload["warnings"]),
                 )
-                return self._answer_success_response(start_response, payload, access)
+                return self._answer_success_response(
+                    start_response, payload, access, request_payload=request_payload
+                )
 
             progression_guide_answer = progression_guide_for_question(answer_request.question)
             if (
@@ -1126,7 +1229,9 @@ class RetrievalApi:
                     source_count=0,
                     warning_count=0,
                 )
-                return self._answer_success_response(start_response, payload, access)
+                return self._answer_success_response(
+                    start_response, payload, access, request_payload=request_payload
+                )
 
             deterministic_chord_answer = visual_fretboard_curated_answer(answer_request.question)
             if deterministic_chord_answer is None:
@@ -1166,7 +1271,9 @@ class RetrievalApi:
                     source_count=len(curated_sources),
                     warning_count=0,
                 )
-                return self._answer_success_response(start_response, payload, access)
+                return self._answer_success_response(
+                    start_response, payload, access, request_payload=request_payload
+                )
 
             if _should_gate_answer_intent(answer_intent_decision):
                 final_answer = _answer_intent_guardrail_answer(answer_intent_decision["domain"])
@@ -1231,10 +1338,13 @@ class RetrievalApi:
                     curated_guidance_count=curated_guidance_count,
                     curated_guidance_status=curated_guidance_status,
                 )
-                return self._answer_success_response(start_response, payload, access)
+                return self._answer_success_response(
+                    start_response, payload, access, request_payload=request_payload
+                )
 
             source_system = self._optional_string(request_payload.get("sourceSystem") or request_payload.get("source_system"))
             forum_name = self._optional_string(request_payload.get("forumName") or request_payload.get("forum_name"))
+            ai_assisted = False
             search_response = self._search_for_answer(
                 answer_request.question,
                 role=access.role,
@@ -1309,6 +1419,7 @@ class RetrievalApi:
                             lambda: self.answer_provider.answer(answer_request, strong_sources),
                             timeout_seconds=self._answer_wall_timeout,
                         )
+                        ai_assisted = bool(getattr(self.answer_provider, "is_ai_backed", False))
                     except RuntimeError:
                         LOGGER.warning("answer_provider_unavailable deterministic_fallback=true")
                         answer = DeterministicAnswerProvider().answer(answer_request, strong_sources)
@@ -1370,7 +1481,13 @@ class RetrievalApi:
                 curated_guidance_count=curated_guidance_count,
                 curated_guidance_status=curated_guidance_status,
             )
-            return self._answer_success_response(start_response, payload, access)
+            return self._answer_success_response(
+                start_response,
+                payload,
+                access,
+                request_payload=request_payload,
+                ai_assisted=ai_assisted,
+            )
 
         else:
             return self._json_response(start_response, "404 Not Found", {"error": "not found"})
@@ -1682,6 +1799,9 @@ class RetrievalApi:
         start_response: Any,
         payload: AnswerResponse,
         access_decision: Any,
+        *,
+        request_payload: dict[str, Any] | None = None,
+        ai_assisted: bool = False,
     ) -> list[bytes]:
         """Record one successful Ask response without making usage a response dependency."""
 
@@ -1693,7 +1813,11 @@ class RetrievalApi:
             account_access = account_access_for_decision(access_decision)
             if account_access is not None:
                 try:
-                    self.account_usage_repository.record_success(account_access.identity)
+                    self.account_usage_repository.record_success(
+                        account_access.identity,
+                        is_followup=bool((request_payload or {}).get("isFollowup")),
+                        ai_assisted=ai_assisted,
+                    )
                 except Exception:
                     LOGGER.exception("account usage write failed")
         return self._json_response(start_response, "200 OK", payload)

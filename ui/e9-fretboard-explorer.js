@@ -5454,6 +5454,29 @@
       render();
     });
 
+    const recordExplorerActivity = (event) => {
+      const target = event.target.closest?.(
+        "[data-path-step], [data-note-grip-card], [data-explorer-row], [data-control-impact-control], .explorer-control-impact-tab"
+      );
+      if (!target || !window.STEEL_RAG_ACCOUNT_ACTIVITY) return;
+      if (target.hasAttribute("data-control-impact-clear")) return;
+      let eventType = "explorer.position_selected";
+      if (target.matches("[data-path-step]")) eventType = "explorer.scale_path_selected";
+      else if (target.matches("[data-note-grip-card]")) eventType = "explorer.chord_grip_selected";
+      else if (target.matches("[data-control-impact-control], .explorer-control-impact-tab")) eventType = "explorer.movement_compared";
+      const key = [
+        target.getAttribute("data-path-step"),
+        target.getAttribute("data-note-grip-card"),
+        target.getAttribute("data-explorer-row"),
+        target.getAttribute("data-control-impact-control"),
+        target.textContent
+      ].find(Boolean);
+      window.STEEL_RAG_ACCOUNT_ACTIVITY.track(eventType, { dedupeKey: key || eventType });
+    };
+    [els.activeResults, els.rowList, els.controlPreview, els.noteFinder]
+      .filter(Boolean)
+      .forEach((container) => container.addEventListener("click", recordExplorerActivity));
+
     updateControls();
     updateExploreModeTabs();
     updateTaskCards();

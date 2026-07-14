@@ -1,6 +1,8 @@
 (function (global) {
   "use strict";
 
+  const accountActivity = global.STEEL_RAG_ACCOUNT_ACTIVITY;
+
   const MAX_EVENTS_PER_SECTION = 16;
   const TASKS = {
     artist_solo_lesson: {
@@ -1527,6 +1529,7 @@
       : "Add notes to the staff, then arrange them for E9.";
     renderEntryChoices("score");
     renderScoreBuilder();
+    accountActivity?.track("melody.edited", { dedupeKey: `score:${state.kind || "melody"}` });
   }
 
   function selectedScoreEvent() {
@@ -1934,6 +1937,9 @@
         state.activeEventIndex = range.start;
         runPractice({ countIn: false });
       } else {
+        accountActivity?.track("melody.playback_completed", {
+          dedupeKey: `practice:${state.kind || "melody"}:${state.sectionNumber || 1}`
+        });
         clearPracticeAudio();
         state.practiceStatus = "stopped";
         updatePracticeControls();
@@ -1998,7 +2004,10 @@
       }
       cursor += duration;
     });
-    global.setTimeout(() => context.close(), Math.max(500, (cursor - context.currentTime + 0.2) * 1000));
+    global.setTimeout(() => {
+      context.close();
+      accountActivity?.track("melody.playback_completed", { dedupeKey: "score-playback" });
+    }, Math.max(500, (cursor - context.currentTime + 0.2) * 1000));
   }
 
   function downloadScoreDraft() {
@@ -2570,6 +2579,9 @@
         }
       });
       renderResult(response);
+      accountActivity?.track("melody.session_started", {
+        dedupeKey: `${state.kind || "melody"}:section:${sectionNumber}`
+      });
       return true;
     } catch (error) {
       return fail(error.message || "Melody Studio could not build this lesson.");

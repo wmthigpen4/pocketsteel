@@ -65,7 +65,8 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     status, headers, html = call_app(smoke_app(), "/ui/steel-guitar-rag-mock.html")
     assert status == "200 OK"
     assert headers["Content-Type"] == "text/html; charset=utf-8"
-    assert b'<script src="answer-client.js?v=monthly-ask-usage-20260714-1"></script>' in html
+    assert b'<script src="answer-client.js?v=plan-activity-20260714-1"></script>' in html
+    assert b'<script src="account-activity.js?v=plan-activity-20260714-1"></script>' in html
     assert b'<script src="pedal-steel-fretboard-styles.js?v=module-boundaries-20260713"></script>' in html
     assert b'<script src="pedal-steel-fretboard.js?v=landing-bubble-labels-20260713"></script>' in html
     assert b'<script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>' in html
@@ -85,6 +86,28 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
         "application/javascript; charset=utf-8",
     }
     assert b"mountExplorerPreview" in landing_script
+
+    status, headers, activity_script = call_app(smoke_app(), "/ui/account-activity.js")
+    assert status == "200 OK"
+    assert headers["Content-Type"] in {
+        "text/javascript; charset=utf-8",
+        "application/javascript; charset=utf-8",
+    }
+    assert b"/api/account/activity" in activity_script
+
+    for asset_name in (
+        "pass-ticket.png",
+        "fretboard-activity.png",
+        "melody-activity.png",
+        "lessons-activity.png",
+        "brain-activity.png",
+        "connected-learning.png",
+        "ai-assisted.png",
+    ):
+        status, headers, asset = call_app(smoke_app(), f"/ui/assets/backstage/{asset_name}")
+        assert status == "200 OK"
+        assert headers["Content-Type"] == "image/png"
+        assert asset.startswith(b"\x89PNG\r\n\x1a\n")
 
     status, headers, shell_css = call_app(smoke_app(), "/ui/workspace-shell.css")
     assert status == "200 OK"

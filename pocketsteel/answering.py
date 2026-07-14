@@ -1523,6 +1523,8 @@ def is_useful_entity_context(text: str) -> bool:
 class DeterministicAnswerProvider:
     """Offline provider used when no live LLM provider is configured."""
 
+    is_ai_backed = False
+
     def answer(self, request: AnswerRequest, sources: list[dict[str, Any]]) -> str:
         if not sources:
             return "No strong source match found for that question."
@@ -2238,6 +2240,8 @@ class DeterministicAnswerProvider:
 
 
 class OllamaAnswerProvider:
+    is_ai_backed = True
+
     def __init__(
         self,
         model: str | None = None,

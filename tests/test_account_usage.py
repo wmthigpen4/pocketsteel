@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import sqlite3
 
@@ -101,3 +101,161 @@ def test_usage_store_contains_only_aggregate_and_pseudonymous_fields(tmp_path: P
     assert "question" not in persisted.lower()
     assert "answer text" not in persisted.lower()
     assert "127.0.0.1" not in persisted
+
+
+def test_meaningful_activity_is_deduplicated_and_summarized(tmp_path: Path) -> None:
+    path = tmp_path / "usage.sqlite3"
+    repository = AccountUsageRepository(path)
+    now = datetime(2026, 7, 14, 12, 0, tzinfo=timezone.utc)
+
+    first = repository.record_activity(
+        IDENTITY,
+        event_type="explorer.chord_grip_selected",
+        event_id="event-grip-0001",
+        dedupe_key="g-major-fret-3",
+        at=now,
+    )
+    duplicate_id = repository.record_activity(
+        IDENTITY,
+        event_type="explorer.chord_grip_selected",
+        event_id="event-grip-0001",
+        dedupe_key="g-major-fret-3",
+        at=now,
+    )
+    rapid_duplicate = repository.record_activity(
+        IDENTITY,
+        event_type="explorer.chord_grip_selected",
+        event_id="event-grip-0002",
+        dedupe_key="g-major-fret-3",
+        at=now,
+    )
+
+    usage = repository.current_usage(IDENTITY, at=now)
+    assert first.recorded is True
+    assert duplicate_id.recorded is False
+    assert rapid_duplicate.recorded is False
+    assert usage.activity["explorer"] == {
+        "ideasExplored": 1,
+        "chordGrips": 1,
+        "scalePaths": 0,
+        "movementComparisons": 0,
+    }
+
+    with sqlite3.connect(path) as connection:
+        persisted = " ".join(
+            map(
+                str,
+                [
+                    *connection.execute("select * from monthly_activity_totals").fetchall(),
+                    *connection.execute("select * from activity_event_dedupe").fetchall(),
+                ],
+            )
+        )
+    assert "g-major-fret-3" not in persisted
+    assert "event-grip-0001" not in persisted
+    assert "player@example.test" not in persisted
+
+
+def test_activity_replay_rows_are_pruned_after_the_short_dedupe_window(tmp_path: Path) -> None:
+    path = tmp_path / "usage.sqlite3"
+    repository = AccountUsageRepository(path)
+    now = datetime(2026, 7, 14, 12, 0, tzinfo=timezone.utc)
+    repository.record_activity(
+        IDENTITY,
+        event_type="explorer.position_selected",
+        event_id="event-position-0001",
+        dedupe_key="position-one",
+        at=now,
+    )
+    repository.record_activity(
+        IDENTITY,
+        event_type="explorer.position_selected",
+        event_id="event-position-0002",
+        dedupe_key="position-two",
+        at=now + timedelta(seconds=90),
+    )
+
+    with sqlite3.connect(path) as connection:
+        replay_row_count = connection.execute(
+            "select count(*) from activity_event_dedupe"
+        ).fetchone()[0]
+    assert replay_row_count == 1
+
+
+def test_ai_and_followup_counts_are_server_owned_and_separate(tmp_path: Path) -> None:
+    repository = AccountUsageRepository(tmp_path / "usage.sqlite3")
+    now = datetime(2026, 7, 14, 12, 0, tzinfo=timezone.utc)
+
+    repository.record_success(IDENTITY, at=now)
+    repository.record_success(IDENTITY, at=now, is_followup=True, ai_assisted=True)
+    usage = repository.current_usage(IDENTITY, at=now)
+
+    assert usage.successful_answers == 2
+    assert usage.activity["ask"]["followUps"] == 1
+    assert usage.activity["aiAssisted"]["actions"] == 1
+
+    with pytest.raises(ValueError, match="unsupported"):
+        repository.record_activity(
+            IDENTITY,
+            event_type="ask.ai_assisted",
+            event_id="spoofed-ai-event",
+            dedupe_key="spoofed",
+            at=now,
+        )
+
+
+def test_connected_learning_requires_a_whitelisted_transition(tmp_path: Path) -> None:
+    repository = AccountUsageRepository(tmp_path / "usage.sqlite3")
+    now = datetime(2026, 7, 14, 12, 0, tzinfo=timezone.utc)
+
+    repository.record_activity(
+        IDENTITY,
+        event_type="connected.lesson_to_explorer",
+        event_id="lesson-link-event",
+        dedupe_key="lesson:f-lever:explorer",
+        at=now,
+    )
+    usage = repository.current_usage(IDENTITY, at=now)
+    assert usage.activity["connectedLearning"]["transitions"] == 1
+    assert usage.activity["connectedLearning"]["lessonsContinued"] == 1
+
+
+def test_schema_one_usage_database_migrates_without_losing_answer_counts(tmp_path: Path) -> None:
+    path = tmp_path / "usage.sqlite3"
+    account_key = pseudonymous_account_key(IDENTITY)
+    with sqlite3.connect(path) as connection:
+        connection.executescript(
+            """
+            create table account_usage_schema (version integer not null);
+            insert into account_usage_schema(version) values (1);
+            create table monthly_answer_usage (
+                account_key text not null,
+                period_start text not null,
+                successful_answers integer not null,
+                first_answer_at text not null,
+                last_answer_at text not null,
+                primary key(account_key, period_start)
+            );
+            """
+        )
+        connection.execute(
+            "insert into monthly_answer_usage values (?, ?, 7, ?, ?)",
+            (
+                account_key,
+                "2026-07-01T00:00:00+00:00",
+                "2026-07-02T00:00:00+00:00",
+                "2026-07-03T00:00:00+00:00",
+            ),
+        )
+
+    repository = AccountUsageRepository(path)
+    usage = repository.current_usage(
+        IDENTITY,
+        at=datetime(2026, 7, 14, 12, 0, tzinfo=timezone.utc),
+    )
+    assert usage.successful_answers == 7
+    assert usage.activity["aiAssisted"]["actions"] == 0
+
+    with sqlite3.connect(path) as connection:
+        version = connection.execute("select version from account_usage_schema").fetchone()[0]
+    assert version == 2

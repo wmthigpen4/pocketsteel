@@ -1127,6 +1127,314 @@
       line-height: 1.45;
     }
 
+    .backstage-panel {
+      width: min(1180px, 100%);
+      max-height: min(92vh, 940px);
+    }
+
+    .backstage-plan {
+      display: grid;
+      gap: 18px;
+      grid-column: 1 / -1;
+      min-width: 0;
+    }
+
+    .plan-pass-card,
+    .activity-card,
+    .connected-learning-card,
+    .ai-activity-card {
+      border: 1px solid rgba(240, 191, 105, 0.25);
+      border-radius: 14px;
+      background:
+        radial-gradient(circle at 16% 18%, rgba(240, 191, 105, 0.055), transparent 32%),
+        rgba(18, 22, 22, 0.74);
+      box-shadow: 0 16px 38px rgba(0, 0, 0, 0.18);
+    }
+
+    .plan-pass-card {
+      display: grid;
+      grid-template-columns: minmax(150px, 0.58fr) minmax(260px, 1.25fr) minmax(240px, 1fr);
+      align-items: center;
+      gap: 26px;
+      padding: 22px 26px;
+    }
+
+    .plan-artwork,
+    .activity-artwork,
+    .connected-artwork,
+    .ai-artwork {
+      display: block;
+      width: 100%;
+      height: auto;
+      object-fit: contain;
+    }
+
+    .plan-artwork {
+      max-width: 190px;
+      max-height: 190px;
+      margin: 0 auto;
+      filter: drop-shadow(0 18px 18px rgba(0, 0, 0, 0.42));
+    }
+
+    .plan-pass-copy,
+    .plan-next-step {
+      display: grid;
+      align-content: center;
+      gap: 9px;
+      min-width: 0;
+    }
+
+    .plan-next-step {
+      align-self: stretch;
+      padding-left: 26px;
+      border-left: 1px solid rgba(240, 191, 105, 0.18);
+    }
+
+    .plan-label,
+    .plan-section-title {
+      margin: 0;
+      color: rgba(240, 191, 105, 0.82);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .plan-pass-copy h3,
+    .plan-next-step h4,
+    .activity-card h4 {
+      margin: 0;
+      color: var(--cream);
+      font-family: var(--font-lesson);
+      font-weight: 500;
+      line-height: 1.05;
+    }
+
+    .plan-pass-copy h3 {
+      font-size: clamp(30px, 4vw, 44px);
+    }
+
+    .plan-next-step h4,
+    .activity-card h4 {
+      font-size: 24px;
+    }
+
+    .plan-status {
+      width: fit-content;
+      border: 1px solid rgba(240, 191, 105, 0.34);
+      border-radius: 999px;
+      padding: 4px 12px;
+      color: rgba(240, 191, 105, 0.92);
+      font-size: 13px;
+    }
+
+    .plan-description,
+    .plan-future-note,
+    .activity-empty-copy,
+    .connected-copy,
+    .ai-activity-copy {
+      margin: 0;
+      color: rgba(244, 234, 214, 0.72);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .plan-upgrade-button {
+      width: 100%;
+      min-height: 40px;
+      border: 1px solid rgba(240, 191, 105, 0.45);
+      border-radius: 999px;
+      background: rgba(240, 191, 105, 0.06);
+      color: rgba(240, 191, 105, 0.9);
+      font: inherit;
+    }
+
+    .plan-upgrade-button:disabled {
+      opacity: 0.78;
+      cursor: not-allowed;
+    }
+
+    .plan-activity-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 0 2px;
+    }
+
+    .plan-activity-heading h3 {
+      margin: 0;
+      color: rgba(240, 191, 105, 0.84);
+      font-size: 13px;
+      letter-spacing: 0.11em;
+      text-transform: uppercase;
+    }
+
+    .plan-period-label {
+      color: rgba(244, 234, 214, 0.52);
+      font-size: 12px;
+    }
+
+    .activity-card-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .activity-card-grid[hidden],
+    .learning-summary-grid[hidden] {
+      display: none;
+    }
+
+    .activity-card {
+      display: grid;
+      grid-template-columns: 112px minmax(0, 1fr);
+      align-items: center;
+      gap: 16px;
+      min-width: 0;
+      padding: 14px 18px;
+    }
+
+    .activity-artwork {
+      width: 106px;
+      height: 106px;
+      filter: drop-shadow(0 12px 12px rgba(0, 0, 0, 0.38));
+    }
+
+    .activity-card-body {
+      display: grid;
+      gap: 13px;
+      min-width: 0;
+    }
+
+    .activity-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0;
+    }
+
+    .activity-metrics.is-four {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .activity-metric {
+      min-width: 0;
+      padding: 0 12px;
+      border-left: 1px solid rgba(240, 191, 105, 0.17);
+    }
+
+    .activity-metric:first-child {
+      padding-left: 0;
+      border-left: 0;
+    }
+
+    .activity-metric strong,
+    .activity-metric span {
+      display: block;
+    }
+
+    .activity-metric strong {
+      color: var(--cream);
+      font-family: var(--font-lesson);
+      font-size: 26px;
+      font-weight: 500;
+      line-height: 1;
+    }
+
+    .activity-metric span {
+      margin-top: 5px;
+      color: rgba(244, 234, 214, 0.66);
+      font-size: 12px;
+      line-height: 1.25;
+    }
+
+    .learning-summary-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.95fr);
+      gap: 14px;
+    }
+
+    .connected-learning-card,
+    .ai-activity-card {
+      display: grid;
+      align-items: center;
+      gap: 16px;
+      min-width: 0;
+      padding: 16px 20px;
+    }
+
+    .connected-learning-card {
+      grid-template-columns: 116px minmax(0, 1fr);
+    }
+
+    .ai-activity-card {
+      grid-template-columns: 104px minmax(0, 1fr);
+    }
+
+    .connected-artwork,
+    .ai-artwork {
+      width: 104px;
+      height: 104px;
+      filter: drop-shadow(0 10px 10px rgba(0, 0, 0, 0.36));
+    }
+
+    .connected-body,
+    .ai-activity-body {
+      display: grid;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .connected-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0;
+    }
+
+    .ai-usage-total {
+      color: var(--cream);
+      font-family: var(--font-lesson);
+      font-size: 24px;
+      line-height: 1.1;
+    }
+
+    .ai-period {
+      color: rgba(244, 234, 214, 0.58);
+      font-size: 12px;
+    }
+
+    @media (max-width: 900px) {
+      .plan-pass-card {
+        grid-template-columns: 150px minmax(0, 1fr);
+      }
+
+      .plan-next-step {
+        grid-column: 1 / -1;
+        padding: 18px 0 0;
+        border-top: 1px solid rgba(240, 191, 105, 0.18);
+        border-left: 0;
+      }
+
+      .activity-card {
+        grid-template-columns: 88px minmax(0, 1fr);
+      }
+
+      .activity-artwork {
+        width: 82px;
+        height: 82px;
+      }
+
+      .activity-metrics.is-four {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        row-gap: 14px;
+      }
+
+      .activity-metrics.is-four .activity-metric:nth-child(3) {
+        padding-left: 0;
+        border-left: 0;
+      }
+    }
+
     main {
       width: min(1040px, calc(100% - 32px));
       margin: 0 auto;
@@ -2809,6 +3117,80 @@
         align-items: flex-start;
       }
 
+      .backstage-plan {
+        gap: 14px;
+      }
+
+      .plan-pass-card {
+        grid-template-columns: 1fr;
+        gap: 16px;
+        padding: 18px;
+      }
+
+      .plan-artwork {
+        width: 150px;
+        height: 150px;
+        margin: -8px auto;
+      }
+
+      .plan-next-step {
+        grid-column: auto;
+      }
+
+      .activity-card-grid,
+      .learning-summary-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .activity-card {
+        grid-template-columns: 76px minmax(0, 1fr);
+        gap: 12px;
+        padding: 14px;
+      }
+
+      .activity-artwork {
+        width: 72px;
+        height: 72px;
+      }
+
+      .activity-card h4 {
+        font-size: 21px;
+      }
+
+      .activity-metrics,
+      .activity-metrics.is-four {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        row-gap: 14px;
+      }
+
+      .activity-metrics .activity-metric:nth-child(3),
+      .activity-metrics.is-four .activity-metric:nth-child(3) {
+        padding-left: 0;
+        border-left: 0;
+      }
+
+      .connected-learning-card,
+      .ai-activity-card {
+        grid-template-columns: 76px minmax(0, 1fr);
+        padding: 14px;
+      }
+
+      .connected-artwork,
+      .ai-artwork {
+        width: 72px;
+        height: 72px;
+      }
+
+      .connected-metrics {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      .connected-metrics .activity-metric {
+        padding: 0;
+        border-left: 0;
+      }
+
       main {
         width: calc(100% - 28px);
         padding-top: clamp(120px, 20vw, 170px);
@@ -3293,7 +3675,7 @@
         <nav class="backstage-tabs" role="tablist" aria-label="Backstage sections">
           <button class="backstage-tab" id="backstage-tab-overview" type="button" role="tab" aria-selected="true" aria-controls="backstage-panel-overview" data-backstage-tab="overview">Overview</button>
           <button class="backstage-tab" id="backstage-tab-setup" type="button" role="tab" aria-selected="false" aria-controls="backstage-panel-setup" data-backstage-tab="setup" tabindex="-1">My Setup</button>
-          <button class="backstage-tab" id="backstage-tab-pass" type="button" role="tab" aria-selected="false" aria-controls="backstage-panel-pass" data-backstage-tab="pass" tabindex="-1">Pass &amp; Usage</button>
+          <button class="backstage-tab" id="backstage-tab-pass" type="button" role="tab" aria-selected="false" aria-controls="backstage-panel-pass" data-backstage-tab="pass" tabindex="-1">Plan &amp; Activity</button>
           <button class="backstage-tab" id="backstage-tab-feedback" type="button" role="tab" aria-selected="false" aria-controls="backstage-panel-feedback" data-backstage-tab="feedback" tabindex="-1">Feedback</button>
           <button class="backstage-tab" id="backstage-tab-account" type="button" role="tab" aria-selected="false" aria-controls="backstage-panel-account" data-backstage-tab="account" tabindex="-1">Account</button>
         </nav>
@@ -3320,11 +3702,11 @@
 
           <article class="backstage-card">
             <div class="backstage-card-header">
-              <h3>Pass &amp; Usage</h3>
+              <h3>Plan &amp; Activity</h3>
               <span class="coming-soon" id="backstage-overview-pass-badge">Account access</span>
             </div>
             <p id="backstage-overview-pass-summary" aria-live="polite">Checking this month’s usage…</p>
-            <button class="backstage-button" type="button" data-backstage-jump="pass">View usage</button>
+            <button class="backstage-button" type="button" data-backstage-jump="pass">View activity</button>
           </article>
 
           <article class="backstage-card">
@@ -3568,100 +3950,106 @@
         </div>
 
         <div class="backstage-content backstage-tab-panel" id="backstage-panel-pass" role="tabpanel" aria-labelledby="backstage-tab-pass" hidden>
-          <article class="backstage-card is-wide">
-            <div class="backstage-card-header">
-              <h3>Subscription Level</h3>
-              <span class="coming-soon">Access</span>
-            </div>
-            <p>Your verified account determines available features. Emmons and Day are included. Session Pass or higher unlocks account-synced custom copedents. Checkout and billing management are not available in this beta yet.</p>
-            <div class="backstage-metrics">
-              <div class="backstage-metric">
-                <span>Current access</span>
-                <strong id="mock-current-pass">Standing Room</strong>
+          <div class="backstage-plan">
+            <article class="plan-pass-card" aria-labelledby="plan-pass-title">
+              <img class="plan-artwork" src="assets/backstage/pass-ticket.png" alt="">
+              <div class="plan-pass-copy">
+                <p class="plan-label">Your pass</p>
+                <h3 id="plan-pass-title"><span id="mock-current-pass">Dance Hall Pass</span></h3>
+                <span class="plan-status" id="mock-current-pass-status">Free</span>
+                <p class="plan-description" id="plan-pass-description">Includes the core learning workspaces, Emmons and Day setup access, and account-linked preferences.</p>
               </div>
-            </div>
-            <div class="pass-list" aria-label="Draft pass tiers">
-              <section class="pass-tier is-current">
-                <div class="pass-name">
-                  <strong>Standing Room</strong>
-                  <span>Anonymous</span>
-                </div>
-                <p class="pass-copy">Anonymous access for visitors looking around. Draft access: browse public pages and see examples.</p>
-                <div class="pass-actions">
-                  <span class="coming-soon">Current draft</span>
-                  <button class="backstage-button" type="button" disabled>Manage pass · coming soon</button>
-                </div>
-              </section>
-              <section class="pass-tier">
-                <div class="pass-name">
-                  <strong>Dance Hall Pass</strong>
-                  <span>Free</span>
-                </div>
-                <p class="pass-copy">Free account with synchronized selection of the included Emmons or Day E9 setups.</p>
-                <div class="pass-actions">
-                  <span class="coming-soon">Draft</span>
-                  <button class="backstage-button" type="button" disabled>Upgrade · coming soon</button>
-                </div>
-              </section>
-              <section class="pass-tier">
-                <div class="pass-name">
-                  <strong>Session Pass</strong>
-                  <span>Paid</span>
-                </div>
-                <p class="pass-copy">Create, import, edit, save, activate, and use custom copedents across personalized workspaces.</p>
-                <div class="pass-actions">
-                  <span class="coming-soon">Draft</span>
-                  <button class="backstage-button" type="button" disabled>Upgrade · coming soon</button>
-                </div>
-              </section>
-              <section class="pass-tier">
-                <div class="pass-name">
-                  <strong>Headliner Pass</strong>
-                  <span>Premium</span>
-                </div>
-                <p class="pass-copy">Premium access for serious learners. Draft access: expanded AI usage, custom practice paths, deeper corpus search, and advanced personalization.</p>
-                <div class="pass-actions">
-                  <span class="coming-soon">Draft</span>
-                  <button class="backstage-button" type="button" disabled>Upgrade · coming soon</button>
-                </div>
-              </section>
-              <section class="pass-tier">
-                <div class="pass-name">
-                  <strong>Bandleader Pass</strong>
-                  <span>Power/admin</span>
-                </div>
-                <p class="pass-copy">Power/admin access. Draft access: corpus review, usage oversight, source management, testing tools, and admin controls.</p>
-                <div class="pass-actions">
-                  <span class="coming-soon">Draft</span>
-                  <button class="backstage-button" type="button" disabled>Manage pass · coming soon</button>
-                </div>
-              </section>
-            </div>
-            <p class="backstage-note">Custom-copedent access is enforced by the server. Upgrade buttons remain unavailable until the separate checkout and billing work is complete.</p>
-          </article>
+              <div class="plan-next-step" id="plan-next-step">
+                <p class="plan-label">Next step</p>
+                <h4 id="plan-next-pass">Session Pass</h4>
+                <p class="plan-description" id="plan-next-description">Unlock custom copedents, saved custom setups, and more personalized workspaces.</p>
+                <button class="plan-upgrade-button" type="button" disabled aria-describedby="plan-upgrade-note">Upgrade · coming soon</button>
+                <p class="plan-future-note" id="plan-upgrade-note">Checkout is not available yet. Headliner remains a future premium direction.</p>
+              </div>
+            </article>
 
-          <article class="backstage-card" id="monthly-ask-usage-card">
-            <div class="backstage-card-header">
-              <h3>Monthly Ask Usage</h3>
-              <span class="coming-soon" id="usage-period-label">This month</span>
+            <div class="plan-activity-heading">
+              <h3>Your activity this month</h3>
+              <span class="plan-period-label" id="usage-period-label">This month</span>
             </div>
-            <p id="usage-status-copy" role="status" aria-live="polite">Checking this month’s usage…</p>
-            <div class="backstage-metrics" id="usage-monthly-details" hidden>
-              <div class="backstage-metric">
-                <span>Answers this month</span>
-                <strong id="usage-answer-count">—</strong>
-              </div>
-              <div class="backstage-metric">
-                <span>Period</span>
-                <strong id="usage-period-range">—</strong>
-              </div>
-              <div class="backstage-metric">
-                <span>Resets</span>
-                <strong id="usage-reset-date">—</strong>
-              </div>
+            <p class="activity-empty-copy" id="usage-status-copy" role="status" aria-live="polite">Checking this month’s activity…</p>
+
+            <div class="activity-card-grid" id="usage-monthly-details" hidden>
+              <article class="activity-card">
+                <img class="activity-artwork" src="assets/backstage/fretboard-activity.png" alt="">
+                <div class="activity-card-body">
+                  <h4>Fretboard Explorer</h4>
+                  <div class="activity-metrics is-four">
+                    <div class="activity-metric"><strong id="activity-explorer-ideas">0</strong><span>ideas explored</span></div>
+                    <div class="activity-metric"><strong id="activity-explorer-grips">0</strong><span>chord grips</span></div>
+                    <div class="activity-metric"><strong id="activity-explorer-paths">0</strong><span>scale paths</span></div>
+                    <div class="activity-metric"><strong id="activity-explorer-movements">0</strong><span>movement comparisons</span></div>
+                  </div>
+                </div>
+              </article>
+
+              <article class="activity-card">
+                <img class="activity-artwork" src="assets/backstage/melody-activity.png" alt="">
+                <div class="activity-card-body">
+                  <h4>Melody Studio</h4>
+                  <div class="activity-metrics">
+                    <div class="activity-metric"><strong id="activity-melody-sessions">0</strong><span>melody sessions</span></div>
+                    <div class="activity-metric"><strong id="activity-melody-edits">0</strong><span>melodies edited</span></div>
+                    <div class="activity-metric"><strong id="activity-melody-playbacks">0</strong><span>playbacks completed</span></div>
+                  </div>
+                </div>
+              </article>
+
+              <article class="activity-card">
+                <img class="activity-artwork" src="assets/backstage/lessons-activity.png" alt="">
+                <div class="activity-card-body">
+                  <h4>Lessons</h4>
+                  <div class="activity-metrics">
+                    <div class="activity-metric"><strong id="activity-lessons-practiced">0</strong><span>lessons practiced</span></div>
+                    <div class="activity-metric"><strong id="activity-lessons-completed">0</strong><span>sections completed</span></div>
+                    <div class="activity-metric"><strong id="activity-lessons-exercises">0</strong><span>exercises explored</span></div>
+                  </div>
+                </div>
+              </article>
+
+              <article class="activity-card">
+                <img class="activity-artwork" src="assets/backstage/brain-activity.png" alt="">
+                <div class="activity-card-body">
+                  <h4>Ask the Brain</h4>
+                  <div class="activity-metrics">
+                    <div class="activity-metric"><strong id="usage-answer-count">0</strong><span>answers received</span></div>
+                    <div class="activity-metric"><strong id="activity-ask-followups">0</strong><span>follow-ups</span></div>
+                    <div class="activity-metric"><strong id="activity-ask-explorer">0</strong><span>opened in Explorer</span></div>
+                  </div>
+                </div>
+              </article>
             </div>
-            <p class="backstage-note">Counts successful answers and follow-ups. Failed or blocked requests do not count.</p>
-          </article>
+
+            <div class="learning-summary-grid" id="activity-summary-details" hidden>
+              <article class="connected-learning-card">
+                <img class="connected-artwork" src="assets/backstage/connected-learning.png" alt="">
+                <div class="connected-body">
+                  <p class="plan-section-title">Connected learning</p>
+                  <div class="connected-metrics">
+                    <div class="activity-metric"><strong id="activity-connected-total">0</strong><span>ideas carried into another tool</span></div>
+                    <div class="activity-metric"><strong id="activity-connected-answers">0</strong><span>answers opened in Explorer</span></div>
+                    <div class="activity-metric"><strong id="activity-connected-lessons">0</strong><span>lessons continued elsewhere</span></div>
+                  </div>
+                  <p class="connected-copy">Your learning can flow across tools—ask, explore, arrange, and practice.</p>
+                </div>
+              </article>
+
+              <article class="ai-activity-card">
+                <img class="ai-artwork" src="assets/backstage/ai-assisted.png" alt="">
+                <div class="ai-activity-body">
+                  <p class="plan-section-title">AI-assisted actions</p>
+                  <strong class="ai-usage-total" id="activity-ai-actions">0 this month</strong>
+                  <span class="ai-period" id="usage-reset-date">Resets next month</span>
+                  <p class="ai-activity-copy">Counts only actions that used the configured AI answer service. No monthly limit is enforced.</p>
+                </div>
+              </article>
+            </div>
+          </div>
 
         </div>
 
@@ -3724,7 +4112,8 @@
 
   <script src="copedent-store.js?v=simple-control-dialog-20260714-1"></script>
   <script src="copedent-grid-model.js?v=editable-tab-labels-20260714-1"></script>
-  <script src="answer-client.js?v=monthly-ask-usage-20260714-1"></script>
+  <script src="answer-client.js?v=plan-activity-20260714-1"></script>
+  <script src="account-activity.js?v=plan-activity-20260714-1"></script>
   <script src="pedal-steel-fretboard-styles.js?v=module-boundaries-20260713"></script>
   <script src="pedal-steel-fretboard.js?v=landing-bubble-labels-20260713"></script>
   <script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>
@@ -3777,6 +4166,13 @@
     const accessPreview = document.querySelector(".access-preview");
     const accessStateRadios = Array.from(document.querySelectorAll("input[name='mock-access-state']"));
     const mockCurrentPass = document.querySelector("#mock-current-pass");
+    const mockCurrentPassStatus = document.querySelector("#mock-current-pass-status");
+    const planPassDescription = document.querySelector("#plan-pass-description");
+    const planNextStep = document.querySelector("#plan-next-step");
+    const planNextPass = document.querySelector("#plan-next-pass");
+    const planNextDescription = document.querySelector("#plan-next-description");
+    const planUpgradeButton = document.querySelector(".plan-upgrade-button");
+    const planUpgradeNote = document.querySelector("#plan-upgrade-note");
     const backstageOverviewPassBadge = document.querySelector("#backstage-overview-pass-badge");
     const backstageOverviewPassSummary = document.querySelector("#backstage-overview-pass-summary");
     const backstageOverviewAccountBadge = document.querySelector("#backstage-overview-account-badge");
@@ -3784,9 +4180,25 @@
     const usagePeriodLabel = document.querySelector("#usage-period-label");
     const usageStatusCopy = document.querySelector("#usage-status-copy");
     const usageMonthlyDetails = document.querySelector("#usage-monthly-details");
+    const activitySummaryDetails = document.querySelector("#activity-summary-details");
     const usageAnswerCount = document.querySelector("#usage-answer-count");
-    const usagePeriodRange = document.querySelector("#usage-period-range");
     const usageResetDate = document.querySelector("#usage-reset-date");
+    const activityExplorerIdeas = document.querySelector("#activity-explorer-ideas");
+    const activityExplorerGrips = document.querySelector("#activity-explorer-grips");
+    const activityExplorerPaths = document.querySelector("#activity-explorer-paths");
+    const activityExplorerMovements = document.querySelector("#activity-explorer-movements");
+    const activityMelodySessions = document.querySelector("#activity-melody-sessions");
+    const activityMelodyEdits = document.querySelector("#activity-melody-edits");
+    const activityMelodyPlaybacks = document.querySelector("#activity-melody-playbacks");
+    const activityLessonsPracticed = document.querySelector("#activity-lessons-practiced");
+    const activityLessonsCompleted = document.querySelector("#activity-lessons-completed");
+    const activityLessonsExercises = document.querySelector("#activity-lessons-exercises");
+    const activityAskFollowups = document.querySelector("#activity-ask-followups");
+    const activityAskExplorer = document.querySelector("#activity-ask-explorer");
+    const activityConnectedTotal = document.querySelector("#activity-connected-total");
+    const activityConnectedAnswers = document.querySelector("#activity-connected-answers");
+    const activityConnectedLessons = document.querySelector("#activity-connected-lessons");
+    const activityAiActions = document.querySelector("#activity-ai-actions");
     const backstageAccountStatusBadge = document.querySelector("#backstage-account-status-badge");
     const backstageAccountStatusCopy = document.querySelector("#backstage-account-status-copy");
     const backstageAccountLogin = document.querySelector("#backstage-account-login");
@@ -4833,6 +5245,11 @@
         link.dataset.explorerHandoff = "movement";
         link.href = handoffUrl;
         link.textContent = "Explore related path";
+        link.addEventListener("click", () => {
+          window.STEEL_RAG_ACCOUNT_ACTIVITY?.track("connected.answer_to_explorer", {
+            dedupeKey: handoffUrl
+          });
+        });
         handoff.appendChild(link);
       card.appendChild(handoff);
       }
@@ -5279,7 +5696,7 @@
     }
 
     function submitFollowupQuestion() {
-      if (submitQuestion(followupQuestion.value)) {
+      if (submitQuestion(followupQuestion.value, { isFollowup: true })) {
         followupQuestion.value = "";
       }
     }
@@ -5377,6 +5794,48 @@
       }
     }
 
+    function renderPassPresentation({ passId, passLabel, verifiedAccount }) {
+      const normalizedPass = String(passId || "dance_hall").toLowerCase();
+      const descriptions = {
+        dance_hall: "Includes the core learning workspaces, Emmons and Day setup access, and account-linked preferences.",
+        session: "Includes custom copedents, saved custom setups, and personalized mechanics across the learning workspaces.",
+        headliner: "Includes the currently defined premium learning and personalization access for this account.",
+        creator: "This account has managed product access, including custom setup and personalized workspace capabilities.",
+        bandleader: "This account has managed internal access in addition to the customer learning workspaces.",
+        unverified: "Sign in through the protected app to view an account pass and synchronized preferences."
+      };
+      mockCurrentPass.textContent = passLabel;
+      mockCurrentPassStatus.textContent = normalizedPass === "dance_hall"
+        ? "Free"
+        : normalizedPass === "unverified"
+          ? "Sign in required"
+          : ["creator", "bandleader"].includes(normalizedPass)
+            ? "Managed access"
+            : "Account access";
+      planPassDescription.textContent = descriptions[normalizedPass] || descriptions.dance_hall;
+
+      const hasCustomerUpgrade = normalizedPass === "dance_hall";
+      const hasFuturePremium = normalizedPass === "session";
+      planNextPass.textContent = hasCustomerUpgrade
+        ? "Session Pass"
+        : hasFuturePremium
+          ? "Headliner Pass"
+          : verifiedAccount
+            ? "Your access is managed"
+            : "Verify your account";
+      planNextDescription.textContent = hasCustomerUpgrade
+        ? "Unlock custom copedents, saved custom setups, and more personalized workspaces."
+        : hasFuturePremium
+          ? "Headliner is a future premium direction; no checkout or pricing is available yet."
+          : verifiedAccount
+            ? "There is no customer upgrade action attached to this account state."
+            : "Open Backstage after signing in to see the pass assigned to your account.";
+      planUpgradeButton.hidden = !hasCustomerUpgrade;
+      planUpgradeNote.textContent = hasCustomerUpgrade
+        ? "Checkout is not available yet. Headliner remains a future premium direction."
+        : "No billing or plan-management action is available here.";
+    }
+
     function updateMockAccessUi() {
       const accessRole = STEEL_RAG_ANSWER_UI.normalizeAccessRole(mockAccessState);
       const canAskLive = STEEL_RAG_ANSWER_UI.canSubmitLiveQuestion(accessRole);
@@ -5384,17 +5843,13 @@
       backstageTriggers.forEach((trigger) => {
         trigger.setAttribute("aria-label", "Open Backstage");
       });
-      mockCurrentPass.textContent = backendSession?.account?.passLabel
-        ? `${backendSession.account.passLabel}${backendSession.account.billingManaged ? "" : ""}`
-        : accessRole === "admin"
-        ? "Bandleader Pass preview"
-        : canAskLive
-          ? "Dance Hall Pass preview"
-          : "Standing Room";
       const account = backendSession?.account || null;
-      const verifiedAccount = Boolean(account?.accountId);
+      const verifiedAccount = Boolean(account?.id || account?.accountId);
       const accountFeatureEnabled = Boolean(backendSession?.features?.accountCopedents);
-      const passLabel = account?.passLabel || mockCurrentPass.textContent;
+      const passId = String(account?.passId || (canAskLive ? "dance_hall" : "unverified"));
+      const passLabel = account?.passLabel || (canAskLive ? "Dance Hall Pass" : "Verified account required");
+      mockCurrentPass.textContent = passLabel;
+      renderPassPresentation({ passId, passLabel, verifiedAccount });
       backstageOverviewPassBadge.textContent = passLabel;
       renderUsageOverview(passLabel);
       backstageOverviewAccountBadge.textContent = verifiedAccount ? "Verified login" : "Local preview";
@@ -5407,7 +5862,7 @@
         : "This local preview does not represent a verified production account.";
       backstageAccountLogin.textContent = verifiedAccount ? "Verified by the access provider" : "Local development preview";
       backstageAccountSync.textContent = accountFeatureEnabled && verifiedAccount ? "Account-backed" : "Not enabled here";
-      backstageAccountId.textContent = verifiedAccount ? account.accountId : "Not assigned";
+      backstageAccountId.textContent = verifiedAccount ? (account.id || account.accountId) : "Not assigned";
       accessStateRadios.forEach((radio) => {
         radio.checked = radio.value === accessRole;
       });
@@ -5499,11 +5954,11 @@
       if (monthlyUsageState.status === "ready") {
         backstageOverviewPassSummary.textContent = `${passLabel} · ${usageCountLabel(monthlyUsageState.usage.successfulAnswers)}.`;
       } else if (monthlyUsageState.status === "unverified") {
-        backstageOverviewPassSummary.textContent = "Monthly usage is available for verified accounts.";
+        backstageOverviewPassSummary.textContent = "Monthly activity is available for verified accounts.";
       } else if (monthlyUsageState.status === "unavailable") {
-        backstageOverviewPassSummary.textContent = "Usage tracking is temporarily unavailable.";
+        backstageOverviewPassSummary.textContent = "Activity tracking is temporarily unavailable.";
       } else {
-        backstageOverviewPassSummary.textContent = "Checking this month’s usage…";
+        backstageOverviewPassSummary.textContent = "Checking this month’s activity…";
       }
     }
 
@@ -5512,30 +5967,46 @@
       renderUsageOverview(passLabel);
       if (monthlyUsageState.status === "ready") {
         const usage = monthlyUsageState.usage;
-        const periodEnd = new Date(new Date(usage.resetsAt).getTime() - 86400000);
-        const periodStart = new Date(usage.startsAt);
-        const sameUtcMonth = periodStart.getUTCFullYear() === periodEnd.getUTCFullYear()
-          && periodStart.getUTCMonth() === periodEnd.getUTCMonth();
-        const periodStartLabel = formatUsageDate(usage.startsAt, { month: "long", day: "numeric" });
-        const periodEndLabel = periodEnd.toLocaleDateString(undefined, {
-          ...(sameUtcMonth ? { day: "numeric" } : { month: "long", day: "numeric" }),
-          timeZone: "UTC"
-        });
-        usageStatusCopy.textContent = usageCountLabel(usage.successfulAnswers);
+        const activity = usage.activity;
+        const allActivityCounts = [
+          usage.successfulAnswers,
+          ...Object.values(activity || {}).flatMap((section) => Object.values(section || {}))
+        ];
+        usageStatusCopy.textContent = allActivityCounts.some((count) => Number(count) > 0)
+          ? "Meaningful actions completed across your learning workspaces."
+          : "No activity recorded yet this month.";
         usageAnswerCount.textContent = usage.successfulAnswers.toLocaleString();
-        usagePeriodRange.textContent = `${periodStartLabel}–${periodEndLabel}`;
-        usageResetDate.textContent = formatUsageDate(usage.resetsAt, { month: "long", day: "numeric" });
+        activityExplorerIdeas.textContent = activity.explorer.ideasExplored.toLocaleString();
+        activityExplorerGrips.textContent = activity.explorer.chordGrips.toLocaleString();
+        activityExplorerPaths.textContent = activity.explorer.scalePaths.toLocaleString();
+        activityExplorerMovements.textContent = activity.explorer.movementComparisons.toLocaleString();
+        activityMelodySessions.textContent = activity.melodyStudio.sessions.toLocaleString();
+        activityMelodyEdits.textContent = activity.melodyStudio.melodiesEdited.toLocaleString();
+        activityMelodyPlaybacks.textContent = activity.melodyStudio.playbacksCompleted.toLocaleString();
+        activityLessonsPracticed.textContent = activity.lessons.lessonsPracticed.toLocaleString();
+        activityLessonsCompleted.textContent = activity.lessons.sectionsCompleted.toLocaleString();
+        activityLessonsExercises.textContent = activity.lessons.exercisesExplored.toLocaleString();
+        activityAskFollowups.textContent = activity.ask.followUps.toLocaleString();
+        activityAskExplorer.textContent = activity.ask.answersOpenedInExplorer.toLocaleString();
+        activityConnectedTotal.textContent = activity.connectedLearning.transitions.toLocaleString();
+        activityConnectedAnswers.textContent = activity.connectedLearning.answersOpenedInExplorer.toLocaleString();
+        activityConnectedLessons.textContent = activity.connectedLearning.lessonsContinued.toLocaleString();
+        const aiActions = activity.aiAssisted.actions;
+        activityAiActions.textContent = `${aiActions.toLocaleString()} ${aiActions === 1 ? "action" : "actions"} this month`;
+        usageResetDate.textContent = `Resets ${formatUsageDate(usage.resetsAt, { month: "long", day: "numeric" })}`;
         usagePeriodLabel.textContent = formatUsageDate(usage.startsAt, { month: "long" });
         usageMonthlyDetails.hidden = false;
+        activitySummaryDetails.hidden = false;
         return;
       }
       usageMonthlyDetails.hidden = true;
+      activitySummaryDetails.hidden = true;
       usagePeriodLabel.textContent = "This month";
       usageStatusCopy.textContent = monthlyUsageState.status === "unverified"
-        ? "Monthly usage is available for verified accounts."
+        ? "Monthly activity is available for verified accounts."
         : monthlyUsageState.status === "unavailable"
-          ? "Usage tracking is temporarily unavailable."
-          : "Checking this month’s usage…";
+          ? "Activity tracking is temporarily unavailable."
+          : "Checking this month’s activity…";
     }
 
     async function refreshMonthlyUsage() {

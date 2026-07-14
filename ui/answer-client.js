@@ -914,11 +914,44 @@ const STEEL_RAG_ANSWER_UI = (() => {
     if (!startsAt || !resetsAt || !Number.isInteger(successfulAnswers) || successfulAnswers < 0) {
       throw new Error("Account usage response is invalid");
     }
+    const count = (value) => Number.isInteger(Number(value)) && Number(value) >= 0 ? Number(value) : 0;
+    const activity = payload?.usage?.activity || {};
     return {
       schemaVersion: firstTextValue(payload?.schemaVersion, "account_usage_v1"),
       startsAt,
       resetsAt,
       successfulAnswers,
+      activity: {
+        explorer: {
+          ideasExplored: count(activity?.explorer?.ideasExplored),
+          chordGrips: count(activity?.explorer?.chordGrips),
+          scalePaths: count(activity?.explorer?.scalePaths),
+          movementComparisons: count(activity?.explorer?.movementComparisons)
+        },
+        melodyStudio: {
+          sessions: count(activity?.melodyStudio?.sessions),
+          melodiesEdited: count(activity?.melodyStudio?.melodiesEdited),
+          playbacksCompleted: count(activity?.melodyStudio?.playbacksCompleted)
+        },
+        lessons: {
+          lessonsPracticed: count(activity?.lessons?.lessonsPracticed),
+          sectionsCompleted: count(activity?.lessons?.sectionsCompleted),
+          exercisesExplored: count(activity?.lessons?.exercisesExplored)
+        },
+        ask: {
+          followUps: count(activity?.ask?.followUps),
+          answersOpenedInExplorer: count(activity?.ask?.answersOpenedInExplorer)
+        },
+        connectedLearning: {
+          transitions: count(activity?.connectedLearning?.transitions),
+          answersOpenedInExplorer: count(activity?.connectedLearning?.answersOpenedInExplorer),
+          lessonsContinued: count(activity?.connectedLearning?.lessonsContinued),
+          ideasCarriedToMelody: count(activity?.connectedLearning?.ideasCarriedToMelody)
+        },
+        aiAssisted: {
+          actions: count(activity?.aiAssisted?.actions ?? payload?.usage?.aiAssistedActions)
+        }
+      },
       updatedAt: firstTextValue(payload?.updatedAt)
     };
   }
