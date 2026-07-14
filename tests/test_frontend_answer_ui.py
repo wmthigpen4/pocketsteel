@@ -460,6 +460,17 @@ def test_answer_ui_header_only_exposes_home_ask_and_backstage() -> None:
     assert "question.focus();" in html
 
 
+def test_backstage_more_action_pill_centers_summary_text() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+    rule = html.split(".copedent-more summary {", 1)[1].split("}", 1)[0]
+
+    assert '<summary class="backstage-button" aria-label="More copedent actions">More</summary>' in html
+    assert "display: inline-flex;" in rule
+    assert "align-items: center;" in rule
+    assert "justify-content: center;" in rule
+    assert "box-sizing: border-box;" in rule
+
+
 def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() -> None:
     html = Path("ui/e9-fretboard-explorer.html").read_text(encoding="utf-8")
     config = Path("ui/e9-fretboard-explorer-config.js").read_text(encoding="utf-8")
