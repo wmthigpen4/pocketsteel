@@ -100,10 +100,10 @@ def test_landing_workspace_cards_include_compact_tool_previews() -> None:
         "const api =", 1
     )[0]
     assert "home-melody-score-image" in preview_renderer
-    assert 'image.src = "assets/landing/melody-score.png"' in preview_renderer
+    assert 'image.src = "assets/landing/melody-score.png?v=focused-four-note-crop-20260714-1"' in preview_renderer
     assert 'image.alt = ""' in preview_renderer
-    assert "image.width = 2172" in preview_renderer
-    assert "image.height = 724" in preview_renderer
+    assert "image.width = 1200" in preview_renderer
+    assert "image.height = 400" in preview_renderer
     assert 'image.dataset.previewKind = "approved-melody-score-png"' in preview_renderer
     assert 'container.dataset.scoreRenderer = "static-png-preview"' in preview_renderer
     assert "VexFlow" not in preview_renderer
@@ -118,7 +118,7 @@ def test_landing_workspace_cards_include_compact_tool_previews() -> None:
     assert "overflow: hidden;" in css
     assert "mountMelodyPreview" in SCRIPT_PATH.read_text(encoding="utf-8")
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in HTML_PATH.read_text(encoding="utf-8")
-    assert 'src="melody-score.js?v=landing-melody-png-20260714-1"' in HTML_PATH.read_text(encoding="utf-8")
+    assert 'src="melody-score.js?v=landing-melody-png-crop-20260714-1"' in HTML_PATH.read_text(encoding="utf-8")
     assert ".home-fretboard-mini" in css
     assert "grid-template-columns: repeat(12, minmax(0, 1fr));" in css
     assert ".mini-string-line" in css
@@ -295,9 +295,12 @@ assert.deepEqual(classes, ["is-unavailable"]);
 def test_landing_score_preview_uses_approved_transparent_png() -> None:
     asset_path = Path("ui/assets/landing/melody-score.png")
     with Image.open(asset_path) as asset:
-        assert asset.size == (2172, 724)
+        assert asset.size == (1200, 400)
         assert asset.mode == "RGBA"
         assert asset.getchannel("A").getextrema() == (0, 255)
+        content_bounds = asset.getchannel("A").getbbox()
+        assert content_bounds is not None
+        assert content_bounds[3] - content_bounds[1] >= asset.height * 0.8
 
     script = r"""
 const assert = require("node:assert/strict");
@@ -322,10 +325,10 @@ const container = {
 assert.equal(score.renderPreview(container), true);
 assert.deepEqual(container.children, [image]);
 assert.deepEqual(image.classList.values, ["home-melody-score-image"]);
-assert.equal(image.src, "assets/landing/melody-score.png");
+assert.equal(image.src, "assets/landing/melody-score.png?v=focused-four-note-crop-20260714-1");
 assert.equal(image.alt, "");
-assert.equal(image.width, 2172);
-assert.equal(image.height, 724);
+assert.equal(image.width, 1200);
+assert.equal(image.height, 400);
 assert.equal(image.decoding, "async");
 assert.equal(image.draggable, false);
 assert.equal(image.dataset.previewKind, "approved-melody-score-png");
