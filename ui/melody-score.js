@@ -558,10 +558,10 @@
       container.replaceChildren();
       const image = global.document.createElement("img");
       image.classList.add("home-melody-score-image");
-      image.src = "assets/landing/melody-score.png?v=focused-four-note-crop-20260714-1";
+      image.src = "assets/landing/melody-score.png?v=updated-score-artwork-20260714-1";
       image.alt = "";
-      image.width = 1200;
-      image.height = 400;
+      image.width = 1452;
+      image.height = 484;
       image.decoding = "async";
       image.draggable = false;
       image.dataset.previewKind = "approved-melody-score-png";
