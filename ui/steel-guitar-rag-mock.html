@@ -2646,7 +2646,7 @@
       }
     }
   </style>
-  <link rel="stylesheet" href="workspace-shell.css?v=mini-fret-grid-20260713-3">
+  <link rel="stylesheet" href="workspace-shell.css?v=mini-fret-grid-20260713-4">
 </head>
 <body>
   <div class="page">
@@ -2719,14 +2719,19 @@
                 <h3>Fretboard Explorer</h3>
               </div>
               <p>Visualize E9 positions, grips, intervals, scales, harmony, and movement across the neck.</p>
-              <div class="home-card-preview home-fretboard-mini" role="img" aria-label="Three colorful E9 grips across a miniature fretboard">
-                <span class="mini-string-line" aria-hidden="true"></span>
-                <span class="mini-string-line" aria-hidden="true"></span>
-                <span class="mini-string-line" aria-hidden="true"></span>
-                <span class="mini-grip is-amber"><i></i><i></i><i></i></span>
-                <span class="mini-grip is-blue"><i></i><i></i><i></i></span>
-                <span class="mini-grip is-pink"><i></i><i></i><i></i></span>
-              </div>
+              <svg class="home-card-preview home-fretboard-mini" viewBox="0 0 300 88" preserveAspectRatio="none" role="img" aria-label="Three colorful E9 grips across a ten-string miniature fretboard">
+                <path class="mini-fret-grid" vector-effect="non-scaling-stroke" d="M25 0V88M50 0V88M75 0V88M100 0V88M125 0V88M150 0V88M175 0V88M200 0V88M225 0V88M250 0V88M275 0V88"/>
+                <path class="mini-string-grid" vector-effect="non-scaling-stroke" d="M0 8H300M0 16H300M0 24H300M0 32H300M0 40H300M0 48H300M0 56H300M0 64H300M0 72H300M0 80H300"/>
+                <g class="mini-svg-grip is-amber">
+                  <rect x="43" y="28.5" width="34" height="7" rx="3.5"/><rect x="43" y="36.5" width="34" height="7" rx="3.5"/><rect x="43" y="44.5" width="34" height="7" rx="3.5"/>
+                </g>
+                <g class="mini-svg-grip is-blue">
+                  <rect x="133" y="28.5" width="34" height="7" rx="3.5"/><rect x="133" y="36.5" width="34" height="7" rx="3.5"/><rect x="133" y="44.5" width="34" height="7" rx="3.5"/>
+                </g>
+                <g class="mini-svg-grip is-pink">
+                  <rect x="223" y="28.5" width="34" height="7" rx="3.5"/><rect x="223" y="36.5" width="34" height="7" rx="3.5"/><rect x="223" y="44.5" width="34" height="7" rx="3.5"/>
+                </g>
+              </svg>
               <a class="home-card-link" href="/ui/e9-fretboard-explorer.html">Explore now <span aria-hidden="true">→</span></a>
             </article>
             <article class="home-product-card">

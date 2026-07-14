@@ -22,7 +22,7 @@ def test_landing_home_has_product_first_hierarchy_and_copy() -> None:
 
     assert '<a class="skip-link" href="#main-content">Skip to main content</a>' in html
     assert '<nav class="header-actions app-shell-nav" aria-label="Primary navigation">' in html
-    assert 'href="workspace-shell.css?v=mini-fret-grid-20260713-3"' in html
+    assert 'href="workspace-shell.css?v=mini-fret-grid-20260713-4"' in html
     assert '<main id="main-content">' in html
     assert "A connected pedal-steel learning studio" in home
     assert "See the neck. Understand the music. Play with confidence." in home
@@ -71,9 +71,14 @@ def test_landing_workspace_cards_include_compact_tool_previews() -> None:
     home = _home_markup()
     css = CSS_PATH.read_text(encoding="utf-8")
 
-    assert 'class="home-card-preview home-fretboard-mini"' in home
-    assert home.count('class="mini-string-line"') == 3
-    assert home.count('class="mini-grip') == 3
+    assert 'class="home-card-preview home-fretboard-mini" viewBox="0 0 300 88" preserveAspectRatio="none"' in home
+    assert 'class="mini-fret-grid"' in home
+    assert 'class="mini-string-grid"' in home
+    assert home.count('class="mini-svg-grip') == 3
+    assert "M0 8H300M0 16H300M0 24H300M0 32H300M0 40H300M0 48H300M0 56H300M0 64H300M0 72H300M0 80H300" in home
+    assert home.count('y="28.5" width="34" height="7"') == 3
+    assert home.count('y="36.5" width="34" height="7"') == 3
+    assert home.count('y="44.5" width="34" height="7"') == 3
     assert 'class="home-card-preview home-score-preview" id="home-melody-preview"' in home
     assert 'aria-label="A short melody written in standard notation"' in home
     assert "<ellipse" not in home
@@ -86,14 +91,9 @@ def test_landing_workspace_cards_include_compact_tool_previews() -> None:
     assert "mountMelodyPreview" in SCRIPT_PATH.read_text(encoding="utf-8")
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in HTML_PATH.read_text(encoding="utf-8")
     assert ".home-fretboard-mini" in css
-    assert "grid-template-rows: repeat(3, 15px)" in css
-    assert ".mini-string-line:nth-child(1) { grid-row: 1; }" in css
-    assert ".mini-grip i:nth-child(1) { grid-row: 1; }" in css
-    assert ".mini-grip.is-amber i { grid-column: 1; }" in css
-    assert ".mini-grip.is-blue i { grid-column: 2; }" in css
-    assert ".mini-grip.is-pink i { grid-column: 3; }" in css
-    assert ".home-fretboard-mini::before" not in css
-    assert ".home-fretboard-mini::after" not in css
+    assert ".mini-fret-grid," in css
+    assert ".mini-string-grid" in css
+    assert ".mini-svg-grip rect" in css
     assert ".home-lesson-mini" in css
 
 
