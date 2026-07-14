@@ -29,7 +29,6 @@ from pocketsteel.e9_copedents import (
     CUSTOM_LKV_COPEDENT_ID,
     DAY_COPEDENT_ID,
     DEFAULT_COPEDENT_ID,
-    MY_COPEDENT_ID,
     available_e9_copedents,
     scientific_pitch_for_value,
     selected_copedent_payload,
@@ -87,7 +86,7 @@ def test_g_explorer_payload_shape_and_row_model() -> None:
     assert payload["type"] == "e9-fretboard-explorer"
     assert payload["copedent_profile"]["id"] == DEFAULT_COPEDENT_ID
     assert payload["selected_copedent"]["id"] == DEFAULT_COPEDENT_ID
-    assert payload["selected_copedent"]["label"] == "Emmons E9"
+    assert payload["selected_copedent"]["label"] == "Emmons E9 starter"
     assert payload["query"]["key"] == "G"
     assert payload["positions"]
     assert payload["control_impact_preview"]["type"] == "e9-pedal-lever-impact-preview"
@@ -196,7 +195,9 @@ def test_control_impact_preview_contract_describes_standard_e9_changes_in_key_co
     assert preview["key_context"]["natural_minor_scale"] == ["G", "A", "Bb", "C", "D", "Eb", "F"]
 
     controls = {control["id"]: control for control in preview["controls"]}
-    assert set(controls) == {"A", "B", "C", "E-raise", "E-lower", "D-lower", "G-lower"}
+    assert set(controls) == {
+        "A", "B", "C", "E-raise", "E-lower", "D-lower", "RKR-full", "RKL-half", "G-lower"
+    }
     assert "B-to-Bb" not in controls
 
     a_pedal = controls["A"]
@@ -230,7 +231,7 @@ def test_control_impact_preview_contract_describes_standard_e9_changes_in_key_co
     assert e_lower_string_4["interval_effect"] == "lowers 1 semitone"
     assert e_lower_string_4["after_key_context"]["natural_minor"]["scale_degree_label"] == "6"
     assert e_lower_string_4["after_key_context"]["natural_minor"]["display_note"] == "Eb"
-    assert "deterministic Emmons E9 10-string E9 pitch logic" in preview["notes"][0]
+    assert "deterministic Emmons E9 starter 10-string E9 pitch logic" in preview["notes"][0]
 
     d_lower = controls["D-lower"]
     assert d_lower["label"] == "D lower half-stop"
@@ -247,29 +248,30 @@ def test_control_impact_preview_contract_describes_standard_e9_changes_in_key_co
     assert d_lower_string_9["interval_effect"] == "lowers 1 semitone"
 
     g_control = controls["G-lower"]
-    assert g_control["label"] == "RKL G raise/lower"
+    assert g_control["label"] == "RKL full-stop / G lower"
+    assert g_control["travel"] == "full-stop"
     assert g_control["mechanical_name"] == "string 1 F#-to-G raise plus string 6 G#-to-F# lower"
     assert g_control["change_type"] == "mixed"
     assert g_control["affected_strings"] == [1, 6]
     assert g_control["string_actions"][0]["description"] == "String 1: raises F# to G (1 semitone)."
     assert g_control["string_actions"][1]["description"] == "String 6: lowers G# to F# (2 semitones)."
 
+    assert controls["RKL-half"]["physical_position"] == g_control["physical_position"] == "RKL"
+    assert controls["RKL-half"]["travel"] == "half-stop"
+    assert controls["RKL-half"]["string_actions"][1]["description"] == "String 6: lowers G# to G (1 semitone)."
+    assert controls["RKR-full"]["physical_position"] == d_lower["physical_position"] == "RKR"
+    assert controls["RKR-full"]["travel"] == "full-stop"
 
-def test_e9_copedent_selector_data_exposes_emmons_day_custom_and_disabled_my_copedent() -> None:
+
+def test_e9_copedent_selector_data_exposes_only_immutable_common_starters() -> None:
     options = [profile.selector_option() for profile in available_e9_copedents()]
 
     assert [option["id"] for option in options] == [
         DEFAULT_COPEDENT_ID,
         DAY_COPEDENT_ID,
-        CUSTOM_LKV_COPEDENT_ID,
-        MY_COPEDENT_ID,
     ]
-    assert options[0] == {"id": DEFAULT_COPEDENT_ID, "label": "Emmons E9", "status": "enabled"}
-    assert options[1] == {"id": DAY_COPEDENT_ID, "label": "Day E9", "status": "enabled"}
-    assert options[2] == {"id": CUSTOM_LKV_COPEDENT_ID, "label": "Custom E9 (with LKV)", "status": "enabled"}
-    assert options[3]["label"] == "My Copedent (E9)"
-    assert options[3]["status"] == "disabled"
-    assert options[3]["disabled_reason"] == "Coming soon in Backstage"
+    assert options[0] == {"id": DEFAULT_COPEDENT_ID, "label": "Emmons E9 starter", "status": "enabled"}
+    assert options[1] == {"id": DAY_COPEDENT_ID, "label": "Day E9 starter", "status": "enabled"}
     assert not any("C6" in option["label"] for option in options)
 
 
@@ -381,7 +383,7 @@ def test_day_e9_changes_physical_pedal_order_but_not_named_pedal_changes() -> No
 
     selected = payload["selected_copedent"]
     assert selected["id"] == DAY_COPEDENT_ID
-    assert selected["label"] == "Day E9"
+    assert selected["label"] == "Day E9 starter"
     assert selected["pedal_order"] == ["C", "B", "A"]
     assert [column["id"] for column in selected["chart"]["columns"]][:3] == ["C", "B", "A"]
 

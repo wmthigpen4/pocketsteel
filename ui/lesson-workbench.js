@@ -87,7 +87,8 @@
         publisher: String(source?.publisher || ""),
         url: String(source?.url || "")
       })).filter((source) => /^https?:\/\//.test(source.url)),
-      assumptions: Array.isArray(lesson?.assumptions) ? lesson.assumptions.map(String) : []
+      assumptions: Array.isArray(lesson?.assumptions) ? lesson.assumptions.map(String) : [],
+      targetCopedentLabel: String(lesson?.targetCopedentLabel || lesson?.arrangedFor || "")
     };
   }
 
@@ -113,6 +114,7 @@
     const titleWrap = createElement(doc, "div");
     titleWrap.appendChild(createElement(doc, "p", "lesson-eyebrow", model.origin));
     titleWrap.appendChild(createElement(doc, "h1", "", model.title));
+    if (model.targetCopedentLabel) titleWrap.appendChild(createElement(doc, "p", "lesson-note", `Arranged for ${model.targetCopedentLabel}`));
     heading.appendChild(titleWrap);
     const meta = createElement(doc, "div", "lesson-meta");
     meta.appendChild(createElement(doc, "span", "", model.level));
@@ -332,6 +334,10 @@
       elements.customStatus.textContent = "Building and checking your lesson…";
       try {
         const normalizedRequest = buildLessonRequest(request);
+        const profileState = globalThis.STEEL_RAG_COPEDENTS?.activeContext?.();
+        if (profileState?.blocked) throw new Error("Review and validate the active copedent in Backstage before building a personalized lesson.");
+        const copedentContext = globalThis.STEEL_RAG_COPEDENTS?.requestContext?.();
+        if (copedentContext) normalizedRequest.copedentContext = copedentContext;
         const payload = await requestJson(BUILD_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json", ...authHeaders(answerUi, session) },
@@ -388,6 +394,14 @@
 
     async function bootstrap() {
       try {
+        globalThis.STEEL_RAG_COPEDENTS?.renderStatus?.(doc.querySelector("[data-active-copedent]"));
+        if (globalThis.STEEL_RAG_COPEDENTS?.activeContext?.()?.blocked) {
+          elements.unavailable.hidden = false;
+          elements.chooser.hidden = true;
+          elements.unavailable.querySelector("h2").textContent = "Your copedent needs review.";
+          elements.unavailable.querySelector("p").textContent = "Backstage preserved the setup without guessing at missing controls. Review and validate it before building a personalized lesson.";
+          return;
+        }
         session = await answerUi.requestSession({ accessRole: readAccessRole() });
         if (!session?.authenticated) throw new Error("Lessons require an active Backstage session.");
         const payload = await requestJson(CATALOG_ENDPOINT, { headers: authHeaders(answerUi, session) });

@@ -2,7 +2,7 @@
   "use strict";
 
   const MANIFEST_URL = "/ui/explorer-data-v1/manifest.json";
-  const EXPLORER_SCRIPT_URL = "e9-fretboard-explorer.js?v=lazy-explorer-data-20260713-3";
+  const EXPLORER_SCRIPT_URL = "e9-fretboard-explorer.js?v=copedent-library-v2-20260714-4";
   const payloadsByKey = window.STEEL_RAG_E9_EXPLORER_PAYLOADS || {};
   const payloadsByCopedent = window.STEEL_RAG_E9_EXPLORER_PAYLOADS_BY_COPEDENT || {};
   const pendingLoads = new Map();
@@ -19,9 +19,11 @@
 
   function startupSelection() {
     const params = new URLSearchParams(window.location.search || "");
+    const active = window.STEEL_RAG_COPEDENTS?.activeContext?.();
     return {
       key: normalizeKey(params.get("key") || params.get("root") || "G"),
-      copedentId: String(params.get("copedent") || "emmons-e9-basic"),
+      copedentId: String(active?.profileId || params.get("copedent") || "emmons-e9-basic"),
+      context: active,
     };
   }
 
@@ -68,6 +70,26 @@
     if (existing) {
       return existing;
     }
+    const active = window.STEEL_RAG_COPEDENTS?.activeContext?.();
+    if (active?.blocked && active.profileId === copedentId) {
+      throw new Error("The active copedent needs review in Backstage before Explorer can use it.");
+    }
+    if (active?.profileSnapshot && active.profileId === copedentId) {
+      const accessRole = new URLSearchParams(window.location.search || "").get("access") || "";
+      const response = await fetch("/api/explorer/e9", {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessRole ? { "X-Steel-Rag-Dev-Access-Role": accessRole } : {})
+        },
+        body: JSON.stringify({ key, copedentContext: window.STEEL_RAG_COPEDENTS.requestContext() })
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || `Explorer profile request returned ${response.status}`);
+      return assignPayload(copedentId, key, payload);
+    }
     const record = chunkRecord(copedentId, key);
     if (!record) {
       throw new Error(`Explorer data is unavailable for ${copedentId}/${key}`);
@@ -92,7 +114,7 @@
   }
 
   function manifestKeys(copedentId) {
-    return Array.from(manifest?.copedents?.[copedentId]?.keys || []);
+    return Array.from(manifest?.copedents?.[copedentId]?.keys || manifest?.copedents?.[manifest?.defaultCopedentId]?.keys || []);
   }
 
   async function loadManifest() {
@@ -107,7 +129,8 @@
     manifest = loaded;
     window.STEEL_RAG_E9_EXPLORER_MANIFEST = manifest;
     const selection = startupSelection();
-    const copedentId = manifest.copedents[selection.copedentId]
+    if (selection.context?.blocked) throw new Error("The active copedent needs review in Backstage.");
+    const copedentId = (manifest.copedents[selection.copedentId] || selection.context?.profileSnapshot)
       ? selection.copedentId
       : manifest.defaultCopedentId;
     const keys = manifestKeys(copedentId);
@@ -126,6 +149,7 @@
   window.STEEL_RAG_E9_EXPLORER_DATA = dataApi;
 
   window.STEEL_RAG_E9_EXPLORER_READY = (async () => {
+    window.STEEL_RAG_COPEDENTS?.renderStatus?.(document.querySelector("[data-active-copedent]"));
     try {
       await loadManifest();
     } catch (error) {

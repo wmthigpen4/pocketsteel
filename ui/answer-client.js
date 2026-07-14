@@ -817,7 +817,10 @@ const STEEL_RAG_ANSWER_UI = (() => {
       sections,
       sources,
       searched_domains: searchedDomains,
-      followups: Array.isArray(payload?.followups) ? payload.followups : []
+      followups: Array.isArray(payload?.followups) ? payload.followups : [],
+      targetCopedentId: firstTextValue(payload?.targetCopedentId, payload?.target_copedent_id),
+      targetCopedentRevision: Number(payload?.targetCopedentRevision || payload?.target_copedent_revision || 0) || null,
+      targetCopedentLabel: firstTextValue(payload?.targetCopedentLabel, payload?.target_copedent_label)
     };
     const tabs = normalizeTabPayloads(payload);
     const progressionGuide = normalizeProgressionGuide(payload);
@@ -914,6 +917,7 @@ const STEEL_RAG_ANSWER_UI = (() => {
     hasSubmittableQuestion,
     shouldSubmitQuestionKey,
     normalizeAccessRole,
+    devAccessHeaders,
     canSubmitLiveQuestion,
     sessionUsesLocalDev,
     sessionGrantsLiveAccess,

@@ -3,6 +3,8 @@ from __future__ import annotations
 from pocketsteel.copedent_transfer import (
     absolute_pitch_for_profile,
     custom_e9_profile_from_payload,
+    retarget_fretboard_payload,
+    retarget_tab_example_payload,
     resolve_control,
     tab_profile_for_e9,
     transfer_controls,
@@ -18,6 +20,8 @@ from pocketsteel.e9_copedents import (
 from pocketsteel.melody_assistant import melody_exercise_response
 from pocketsteel.melody_decision_rules import MODEL_VERSION, rule_contract_payload
 from pocketsteel.melody_ranker import score_candidate, train_pairwise_ranker
+from pocketsteel.answer_tab_examples import tab_example_payload_for_question
+from pocketsteel.fretboard_examples import fretboard_payload_for_question
 from pocketsteel.tab_engine import TabEvent, TabNote, render_tab
 
 
@@ -141,6 +145,74 @@ def test_differently_named_target_control_maps_by_effect_not_label() -> None:
     assert string_seven.exact is False
 
 
+def test_answer_fretboard_and_tab_are_retargeted_with_user_labels() -> None:
+    target = custom_e9_profile_from_payload(
+        saved_profile_payload(
+            name="Road setup",
+            controls=[
+                {
+                    "id": "road-a",
+                    "label": "Inside raise",
+                    "type": "pedal",
+                    "physicalPosition": "P3",
+                    "changes": [
+                        {"stringNumber": 5, "fromNote": "B", "toNote": "C#"},
+                        {"stringNumber": 10, "fromNote": "B", "toNote": "C#"},
+                    ],
+                },
+                {
+                    "id": "road-b",
+                    "label": "Middle raise",
+                    "type": "pedal",
+                    "physicalPosition": "P2",
+                    "changes": [
+                        {"stringNumber": 3, "fromNote": "G#", "toNote": "A"},
+                        {"stringNumber": 6, "fromNote": "G#", "toNote": "A"},
+                    ],
+                },
+                {
+                    "id": "E-raise",
+                    "label": "Road F",
+                    "type": "lever",
+                    "physicalPosition": "LKV",
+                    "changes": [
+                        {"stringNumber": 4, "fromNote": "E", "toNote": "F"},
+                        {"stringNumber": 8, "fromNote": "E", "toNote": "F"},
+                    ],
+                },
+            ],
+        )
+    )
+    fretboard = retarget_fretboard_payload(fretboard_payload_for_question("How do I play a G chord on E9?"), target)
+    tab = retarget_tab_example_payload(tab_example_payload_for_question("Show me a G to C move"), target)
+
+    assert fretboard is not None
+    assert fretboard["copedent"]["id"] == "saved:test-player-e9"
+    assert all(position["targetCopedentId"] == "saved:test-player-e9" for position in fretboard["positions"])
+    assert any("Inside raise (P3)" in position["pedals"] for position in fretboard["positions"])
+    assert any("Road F (LKV)" in position["levers"] for position in fretboard["positions"])
+    assert tab is not None
+    assert tab["validation"]["profile"] == "saved:test-player-e9"
+    assert "Inside raise (P3)" in tab["rendered_tab"]
+    assert "Middle raise (P2)" in tab["rendered_tab"]
+    assert tab["events"][1]["controlStates"][0]["physicalPosition"] == "P3"
+
+
+def test_retarget_rejects_a_same_note_in_the_wrong_register() -> None:
+    payload = saved_profile_payload()
+    payload["strings"] = [
+        {**row, **({"openPitchValue": 76} if row["stringNumber"] == 4 else {})}
+        for row in payload["strings"]
+    ]
+    target = custom_e9_profile_from_payload(payload)
+    fretboard = {
+        "positions": [{"id": "open-e", "fret": 0, "strings": [4], "pedals": [], "levers": []}],
+        "highlights": [{"id": "open-e", "fret": 0, "strings": [4], "pedals": [], "levers": []}],
+    }
+
+    assert retarget_fretboard_payload(fretboard, target) is None
+
+
 def test_source_literal_is_decoded_then_rearranged_for_day_target() -> None:
     result = melody_exercise_response(
         "Transfer this reviewed source note",
@@ -157,7 +229,7 @@ def test_source_literal_is_decoded_then_rearranged_for_day_target() -> None:
     event = exercise["events"][0]
     assert exercise["sourceCopedentId"] == SOURCE_ABC_DEFG_COPEDENT_ID
     assert exercise["targetCopedentId"] == DAY_E9.id
-    assert exercise["arrangedFor"] == "Day E9"
+    assert exercise["arrangedFor"] == "Day E9 starter"
     assert event["pitchValue"] == 55
     assert event["sourceAction"]["string"] == 7
     assert event["sourceAction"]["semitoneChange"] == 1

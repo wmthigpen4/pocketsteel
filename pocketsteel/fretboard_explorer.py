@@ -21,6 +21,7 @@ from pocketsteel.fretboard_examples import (
 from pocketsteel.e9_copedents import (
     DEFAULT_COPEDENT_ID,
     E9_OPEN_STRING_PITCH_VALUES,
+    E9CopedentProfile,
     control_changes_for_profile,
     control_labels_for_profile,
     control_order_for_profile,
@@ -31,6 +32,7 @@ from pocketsteel.e9_copedents import (
     get_e9_copedent_profile,
     selected_copedent_payload,
 )
+from pocketsteel.copedent_transfer import absolute_pitch_for_profile, resolve_control, transfer_controls
 from pocketsteel.music_text import normalize_spelled_accidentals
 
 
@@ -1563,6 +1565,210 @@ def build_explorer_payload(key: str = "G", copedent_id: str | None = None) -> di
     }
 
 
+def _profile_per_string_changes(
+    profile: E9CopedentProfile,
+    strings: tuple[int, ...],
+    controls: tuple[str, ...],
+) -> dict[str, dict[str, str]]:
+    by_id = profile.controls_by_id()
+    open_notes = profile.open_notes_by_string()
+    changes: dict[str, dict[str, str]] = {}
+    for string in strings:
+        applied: list[str] = []
+        destination = open_notes[string]
+        for control_id in controls:
+            control = by_id[control_id]
+            change = next((item for item in control.changes if item.string == string), None)
+            if change is None:
+                continue
+            applied.append(control_id)
+            destination = change.to_note
+        if applied:
+            changes[str(string)] = {
+                "from": open_notes[string],
+                "to": destination,
+                "controls": "+".join(applied),
+            }
+    return changes
+
+
+def _profile_row_control_impacts(
+    profile: E9CopedentProfile,
+    strings: tuple[int, ...],
+    controls: tuple[str, ...],
+) -> list[dict[str, object]]:
+    by_id = profile.controls_by_id()
+    impacts: list[dict[str, object]] = []
+    for control_id in controls:
+        control = by_id[control_id]
+        string_impacts = [
+            {
+                "string": change.string,
+                "before_open_note": change.from_note,
+                "after_open_note": change.to_note,
+                "semitone_delta": change.semitones,
+                "interval_effect": interval_effect_label(change.semitones),
+            }
+            for change in control.changes
+            if change.string in strings
+        ]
+        if string_impacts:
+            impacts.append(
+                {
+                    "id": control.id,
+                    "label": control.label,
+                    "control_type": control.control_type,
+                    "physical_position": control.physical_position,
+                    "travel": control.travel,
+                    "affected_strings": [item["string"] for item in string_impacts],
+                    "string_impacts": string_impacts,
+                    "validation_status": "target_copedent_effect_transfer",
+                }
+            )
+    return impacts
+
+
+def build_control_impact_preview_for_profile(
+    key: str,
+    profile: E9CopedentProfile,
+) -> dict[str, object]:
+    controls: list[dict[str, object]] = []
+    for control in profile.ordered_controls():
+        string_impacts: list[dict[str, object]] = []
+        for change in control.changes:
+            before_pitch = profile.open_pitch_values_by_string()[change.string]
+            after_pitch = before_pitch + change.semitones
+            string_impacts.append(
+                {
+                    "string": change.string,
+                    "before_note": change.from_note,
+                    "after_note": change.to_note,
+                    "before_register": {
+                        "pitch_value": before_pitch,
+                        "scientific_pitch": scientific_pitch_for_value(before_pitch),
+                        "octave_band": octave_band_for_value(before_pitch),
+                    },
+                    "after_register": {
+                        "pitch_value": after_pitch,
+                        "scientific_pitch": scientific_pitch_for_value(after_pitch),
+                        "octave_band": octave_band_for_value(after_pitch),
+                    },
+                    "semitone_delta": change.semitones,
+                    "interval_effect": interval_effect_label(change.semitones),
+                    "before_key_context": key_context_for_note(key, change.from_note),
+                    "after_key_context": key_context_for_note(key, change.to_note),
+                }
+            )
+        control_payload = control.to_dict()
+        control_payload.update(
+            {
+                "affected_strings": [change.string for change in control.changes],
+                "string_impacts": string_impacts,
+                "summary": f"{control.label} ({control.physical_position}, {control.travel or 'full'}) affects strings "
+                + ", ".join(str(change.string) for change in control.changes)
+                + ".",
+                "validation_status": "deterministic_target_e9",
+            }
+        )
+        controls.append(control_payload)
+    return {
+        "type": "e9-pedal-lever-impact-preview",
+        "version": "2.0",
+        "instrument": "E9",
+        "copedent_profile": {"id": profile.id, "status": profile.status, "label": profile.label},
+        "selected_copedent_id": profile.id,
+        "key_context": {
+            "key": key,
+            "major_scale": list(scale_notes_for_key(key, "major")),
+            "natural_minor_scale": list(scale_notes_for_key(key, "natural_minor")),
+        },
+        "controls": controls,
+        "notes": [f"Generated from the active {profile.label} profile."],
+        "warnings": [],
+    }
+
+
+def build_explorer_payload_for_profile(key: str, profile: E9CopedentProfile) -> dict[str, object]:
+    """Transfer standard Explorer decisions onto a validated target copedent."""
+
+    key = normalize_explorer_key(key)
+    if not profile.id.startswith("saved:"):
+        return build_explorer_payload(key, profile.id)
+    source_profile = get_e9_copedent_profile(DEFAULT_COPEDENT_ID)
+    positions: list[dict[str, object]] = []
+    for row in explorer_rows(key):
+        source_controls = (*row.pedals, *row.levers)
+        transfer = transfer_controls(
+            source_profile,
+            source_controls,
+            profile,
+            sounding_strings=row.strings,
+        )
+        if not transfer.exact:
+            continue
+        target_controls = transfer.target_controls
+        if any(
+            absolute_pitch_for_profile(source_profile, string, row.fret, source_controls)
+            != absolute_pitch_for_profile(profile, string, row.fret, target_controls)
+            for string in row.strings
+        ):
+            continue
+        resolved_target_controls = tuple(resolve_control(profile, control).id for control in target_controls)
+        by_id = profile.controls_by_id()
+        payload = row.to_dict()
+        payload["pedals"] = [
+            control for control in resolved_target_controls if by_id[control].control_type == "pedal"
+        ]
+        payload["levers"] = [
+            control for control in resolved_target_controls if by_id[control].control_type == "lever"
+        ]
+        payload["per_string_changes"] = _profile_per_string_changes(profile, row.strings, resolved_target_controls)
+        payload["control_impacts"] = _profile_row_control_impacts(profile, row.strings, resolved_target_controls)
+        payload["copedent_profile"] = profile.id
+        if transfer.extra_effect_strings:
+            payload["warnings"] = [*payload.get("warnings", []), transfer.reason]
+        positions.append(payload)
+    selected = profile.to_dict(include_options=True)
+    return {
+        "type": "e9-fretboard-explorer",
+        "version": "2.0",
+        "instrument": "E9",
+        "copedent_profile": {"id": profile.id, "status": profile.status, "label": profile.label},
+        "selected_copedent": selected,
+        "query": {
+            "key": key,
+            "scale_types": ["major", "natural_minor"],
+            "display_scale_notes": {
+                "major": list(scale_notes_for_key(key, "major")),
+                "natural_minor": list(scale_notes_for_key(key, "natural_minor")),
+            },
+            "harmony_types": ["two_string_harmonized", "three_string_diatonic", "five_eight_branch", "advanced_pocket"],
+            "string_groups": list(SUPPORTED_GRIPS),
+        },
+        "grip_vocabulary": {
+            "version": "1.0",
+            "policy": "Calculate broadly, teach narrowly, rank honestly.",
+            "three_string_entries": grip_vocabulary_payload(),
+            "three_string_audit": grip_vocabulary_audit(),
+        },
+        "control_impact_preview": build_control_impact_preview_for_profile(key, profile),
+        "positions": positions,
+        "filters": {
+            "available_keys": list(SUPPORTED_EXPLORER_KEYS),
+            "available_scale_types": ["major", "natural_minor"],
+            "available_harmony_types": ["two_string_harmonized", "three_string_diatonic", "five_eight_branch", "advanced_pocket"],
+            "available_string_groups": list(SUPPORTED_GRIPS),
+            "available_copedents": selected["available_options"],
+        },
+        "legend": [
+            {"id": "starter", "label": "Starter"},
+            {"id": "common", "label": "Common"},
+            {"id": "advanced", "label": "Advanced"},
+        ],
+        "warnings": list(selected["warnings"]),
+    }
+
+
 def build_control_impact_preview(key: str = "G", copedent_id: str | None = None) -> dict[str, object]:
     key = normalize_explorer_key(key)
     profile = get_e9_copedent_profile(copedent_id)
@@ -1674,7 +1880,7 @@ def validate_explorer_payload(payload: dict[str, object]) -> None:
     for column in chart["columns"]:
         if not isinstance(column, dict):
             raise ValueError("Explorer selected_copedent chart columns must be dicts")
-        for field in (
+        for required_field in (
             "id",
             "stable_id",
             "display_label",
@@ -1684,13 +1890,11 @@ def validate_explorer_payload(payload: dict[str, object]) -> None:
             "affected_strings",
             "string_actions",
         ):
-            if field not in column:
-                raise ValueError(f"Explorer selected_copedent chart column missing {field}")
+            if required_field not in column:
+                raise ValueError(f"Explorer selected_copedent chart column missing {required_field}")
     options = selected_copedent.get("available_options")
     if not isinstance(options, list) or not options:
         raise ValueError("Explorer selected_copedent requires available_options")
-    if any(option.get("id") == "my-copedent-e9" and option.get("status") != "disabled" for option in options if isinstance(option, dict)):
-        raise ValueError("My Copedent option must be disabled in this slice")
     positions = payload.get("positions")
     if not isinstance(positions, list) or not positions:
         raise ValueError("Explorer payload requires positions")
@@ -1729,7 +1933,7 @@ def validate_explorer_payload(payload: dict[str, object]) -> None:
     for control in controls:
         if not isinstance(control, dict):
             raise ValueError("Explorer control_impact_preview controls must be dicts")
-        for field in (
+        for required_field in (
             "id",
             "stable_id",
             "display_label",
@@ -1739,8 +1943,8 @@ def validate_explorer_payload(payload: dict[str, object]) -> None:
             "string_actions",
             "string_impacts",
         ):
-            if field not in control:
-                raise ValueError(f"Explorer control_impact_preview control missing {field}")
+            if required_field not in control:
+                raise ValueError(f"Explorer control_impact_preview control missing {required_field}")
     ids: set[str] = set()
     for position in positions:
         if not isinstance(position, dict):
@@ -1769,7 +1973,7 @@ def validate_explorer_payload(payload: dict[str, object]) -> None:
         for entry in note_registers.values():
             if not isinstance(entry, dict):
                 raise ValueError("Explorer row note_registers entries must be dicts")
-            for field in (
+            for required_field in (
                 "pitch_class",
                 "scientific_pitch",
                 "pitch_value",
@@ -1779,8 +1983,8 @@ def validate_explorer_payload(payload: dict[str, object]) -> None:
                 "active_controls",
                 "voice_role",
             ):
-                if field not in entry:
-                    raise ValueError(f"Explorer row note_register missing {field}")
+                if required_field not in entry:
+                    raise ValueError(f"Explorer row note_register missing {required_field}")
         notes_with_register = position.get("notes_with_register")
         if not isinstance(notes_with_register, list) or len(notes_with_register) != len(strings):
             raise ValueError("Explorer row notes_with_register must match played strings")

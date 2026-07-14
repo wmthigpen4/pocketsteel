@@ -5,6 +5,9 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from pocketsteel.copedent_transfer import absolute_pitch_for_profile, resolve_control, transfer_controls
+from pocketsteel.e9_copedents import DEFAULT_COPEDENT_ID, E9CopedentProfile, get_e9_copedent_profile
+
 from pocketsteel.lesson_curriculum import (
     CURRICULUM_VERSION,
     catalog_paths,
@@ -617,6 +620,84 @@ def _lesson_v2(
     return payload
 
 
+def _personalize_lesson(
+    lesson: dict[str, Any],
+    profile: E9CopedentProfile,
+    revision: int,
+) -> tuple[dict[str, Any] | None, str | None]:
+    source_profile = get_e9_copedent_profile(DEFAULT_COPEDENT_ID)
+    personalized_mechanics: list[dict[str, Any]] = []
+    for mechanic in lesson.get("mechanics") or []:
+        source_controls = tuple([*(mechanic.get("pedals") or []), *(mechanic.get("levers") or [])])
+        transfer = transfer_controls(
+            source_profile,
+            source_controls,
+            profile,
+            sounding_strings=tuple(int(value) for value in mechanic.get("strings") or []),
+        )
+        if not transfer.exact:
+            return None, (
+                f"{lesson.get('title') or 'This lesson'} needs a pedal or lever effect that is not available "
+                f"on {profile.label}. {transfer.reason}"
+            )
+        if any(
+            absolute_pitch_for_profile(source_profile, int(string), int(mechanic.get("fret") or 0), source_controls)
+            != absolute_pitch_for_profile(
+                profile,
+                int(string),
+                int(mechanic.get("fret") or 0),
+                transfer.target_controls,
+            )
+            for string in mechanic.get("strings") or []
+        ):
+            return None, (
+                f"{lesson.get('title') or 'This lesson'} cannot preserve the written pitches and register "
+                f"at this position on {profile.label}."
+            )
+        target_controls = [resolve_control(profile, control_value) for control_value in transfer.target_controls]
+        personalized_mechanics.append(
+            {
+                **mechanic,
+                "pedals": [control.label for control in target_controls if control.control_type == "pedal"],
+                "levers": [control.label for control in target_controls if control.control_type == "lever"],
+                "controlIds": [control.id for control in target_controls],
+                "controlStates": [
+                    {
+                        "id": control.id,
+                        "label": control.label,
+                        "physicalPosition": control.physical_position,
+                        "travel": control.travel,
+                    }
+                    for control in target_controls
+                ],
+                "targetCopedentId": profile.id,
+                "validated": True,
+            }
+        )
+    lesson = {
+        **lesson,
+        "mechanics": personalized_mechanics,
+        "targetCopedentId": profile.id,
+        "targetCopedentRevision": revision,
+        "targetCopedentLabel": profile.label,
+        "arrangedFor": profile.label,
+        "assumptions": [
+            f"Mechanics validated against {profile.label}.",
+            *[
+                value
+                for value in lesson.get("assumptions") or []
+                if "Standard 10-string E9 mechanics" not in str(value)
+            ],
+        ],
+    }
+    lesson["workedExamples"] = _worked_examples(
+        personalized_mechanics,
+        str(lesson.get("explanation") or "Use the validated mechanic."),
+    )
+    validate_lesson_quality(lesson)
+    return lesson, None
+
+
 def validate_lesson_quality(lesson: dict[str, Any]) -> None:
     serialized = " ".join(str(value) for value in lesson.values())
     forbidden = (
@@ -645,6 +726,8 @@ def build_lesson_response(
     request: dict[str, Any] | None,
     *,
     source_results: list[dict[str, Any]] | None = None,
+    copedent_profile: E9CopedentProfile | None = None,
+    copedent_revision: int | None = None,
 ) -> dict[str, Any]:
     """Build a reviewed/custom lesson or return a truthful non-ready state."""
     if not isinstance(request, dict):
@@ -681,7 +764,20 @@ def build_lesson_response(
     focus = str(request.get("focus") or "balanced").strip().lower()
     if focus not in {"balanced", "concept", "technique", "application"}:
         focus = "balanced"
-    return {
-        "status": "ready",
-        "lesson": _lesson_v2(concept, origin=origin, level=level, duration=duration, key=key, focus=focus, sources=source_results),
-    }
+    lesson = _lesson_v2(concept, origin=origin, level=level, duration=duration, key=key, focus=focus, sources=source_results)
+    if copedent_profile is not None:
+        lesson, unavailable_reason = _personalize_lesson(
+            lesson,
+            copedent_profile,
+            int(copedent_revision or copedent_profile.revision),
+        )
+        if lesson is None:
+            return {
+                "status": "unavailable",
+                "message": unavailable_reason,
+                "targetCopedentId": copedent_profile.id,
+                "targetCopedentRevision": int(copedent_revision or copedent_profile.revision),
+                "targetCopedentLabel": copedent_profile.label,
+                "suggestedTopics": ["copedent reading", "pick blocking", "bar intonation"],
+            }
+    return {"status": "ready", "lesson": lesson}

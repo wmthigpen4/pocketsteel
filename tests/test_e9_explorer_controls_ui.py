@@ -250,9 +250,7 @@ const elements = {
   ]),
   "explorer-copedent": new FakeSelect("explorer-copedent", "emmons-e9-basic", [
     { value: "emmons-e9-basic", text: "Emmons E9" },
-    { value: "day-e9-basic", text: "Day E9" },
-    { value: "custom-e9-lkv", text: "Custom E9 (with LKV)" },
-    { value: "my-copedent-e9", text: "My Copedent (E9) - Coming soon in Backstage" }
+    { value: "day-e9-basic", text: "Day E9" }
   ]),
   "explorer-explore-mode": new FakeSelect("explorer-explore-mode", "single", [
     { value: "single", text: "Single grip" },
@@ -402,9 +400,8 @@ assert.match(elements["explorer-key"].innerHTML, /C# \(or D♭\)/);
 assert.match(elements["explorer-key"].innerHTML, /A# \(or B♭\)/);
 assert.match(elements["explorer-copedent"].innerHTML, /Emmons E9/);
 assert.match(elements["explorer-copedent"].innerHTML, /Day E9/);
-assert.match(elements["explorer-copedent"].innerHTML, /Custom E9 \(with LKV\)/);
-assert.match(elements["explorer-copedent"].innerHTML, /My Copedent \(E9\) - Coming soon in Backstage/);
-assert.match(elements["explorer-copedent"].innerHTML, /value="my-copedent-e9"[^>]*disabled/);
+assert.doesNotMatch(elements["explorer-copedent"].innerHTML, /Custom E9 \(with LKV\)/);
+assert.doesNotMatch(elements["explorer-copedent"].innerHTML, /My Copedent/);
 assert.equal(elements["explorer-copedent"].value, "emmons-e9-basic");
 assert.match(elements["explorer-string-group"].innerHTML, /All core grips/);
 assert.match(elements["explorer-string-group"].innerHTML, /Core grips/);
@@ -1200,12 +1197,6 @@ assert.match(elements["explorer-control-impact-preview"].innerHTML, /data-contro
 assert.match(elements["explorer-control-impact-preview"].innerHTML, /data-control-impact-tab="A"[^>]*>A<\/button>/);
 assert.doesNotMatch(elements["explorer-copedent-chart"].textContent, /\[object Object\]/);
 assert.doesNotMatch(elements["explorer-control-impact-preview"].textContent, /\[object Object\]/);
-elements["explorer-copedent"].value = "custom-e9-lkv";
-elements["explorer-copedent"].dispatchChange();
-assert.match(elements["explorer-copedent-chart"].textContent, /Custom E9 \(with LKV\)/);
-assert.match(elements["explorer-copedent-chart"].textContent, /B-to-Bb vertical/);
-assert.doesNotMatch(elements["explorer-control-impact-preview"].textContent, /Custom E9 \(with LKV\)/);
-assert.match(elements["explorer-control-impact-preview"].textContent, /B-to-Bb vertical/);
 elements["explorer-copedent"].value = "emmons-e9-basic";
 elements["explorer-copedent"].dispatchChange();
 assert.match(elements["explorer-copedent-chart"].textContent, /Emmons E9/);

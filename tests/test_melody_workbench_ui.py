@@ -437,7 +437,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Change the register for this note only" in html
     assert "state.selectedPhraseIndex" in script
     assert html.count("?v=module-boundaries-20260713") == 2
-    assert html.count("?v=copedent-transfer-20260713-1") == 3
+    assert html.count("?v=copedent-library-v2-20260714-2") == 3
     assert 'elements.sectionNavigation.hidden = needsSource || Number(section.total || 0) <= 1;' in script
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in html
     assert "VexFlow" in Path("ui/vendor/VEXFLOW-LICENSE.txt").read_text(encoding="utf-8")
@@ -466,7 +466,8 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "updateOctaveMapVisibility" in script
     assert "showScientificOctaveOverlay: true" in script
     assert "scientificOctavesByString" in script
-    assert "requestPayload: { melodyRequest: buildMelodyRequest(state) }" in script
+    assert "melodyRequest: buildMelodyRequest(state)" in script
+    assert "copedentContext: global.STEEL_RAG_COPEDENTS.requestContext()" in script
     assert "clearMaterial();" in script
     assert "sectionNumber" in script
     assert "[object Object]" not in html
@@ -615,12 +616,14 @@ def test_melody_workbench_uses_explorer_background_without_turnaround_branding()
     assert 'aria-label="Back to Steel Guitar RAG home"' in html
     assert '<nav class="studio-nav" aria-label="Page navigation">' in html
     assert '<span>Home</span>' in html
-    assert '<a href="/ui/steel-guitar-rag-mock.html?v=feature-nav-20260713-1#backstage"><span>Go Backstage</span></a>' in html
+    assert '<span>Go Backstage</span>' in html
     assert '<span>Explore</span>' not in html
     assert '<span>Arrange</span>' not in html
     assert '<span>Learn</span>' not in html
-    assert html.count('<svg viewBox="0 0 24 24" aria-hidden="true">') == 1
+    assert html.count('<svg viewBox="0 0 24 24" aria-hidden="true">') == 2
     assert ".studio-nav svg { width: 18px; height: 18px;" in html
+    assert 'font-family: "Gill Sans", "Gill Sans MT", "Avenir Next"' in html
+    assert "font-weight: 600;" in html
     assert ".studio-nav a { min-height: 44px; padding: 0 11px; font-size: 12px; }" in html
 
 

@@ -359,7 +359,7 @@ def test_answer_ui_keeps_melody_lesson_renderer_without_cross_feature_header_lin
 def test_answer_ui_uses_live_answer_client_not_mock_answer_data() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
 
-    assert '<script src="answer-client.js?v=melody-exercise-v0-20260710"></script>' in html
+    assert '<script src="answer-client.js?v=copedent-library-v2-20260714-2"></script>' in html
     assert '<script src="answer-client.js?v=e9-explorer-home-entry-20260623"></script>' not in html
     assert '<script src="pedal-steel-fretboard-styles.js?v=module-boundaries-20260713"></script>' in html
     assert '<script src="pedal-steel-fretboard.js?v=landing-bubble-labels-20260713"></script>' in html
@@ -469,11 +469,11 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<script src="e9-fretboard-explorer-data.js?v=single-grip-octave-results-20260628"></script>' not in html
     assert "[hidden] {\n      display: none !important;\n    }" in html
     assert '<script src="e9-music-rules.js?v=voicing-readability-20260704"></script>' in html
-    assert '<script src="e9-fretboard-explorer-loader.js?v=lazy-explorer-data-20260713-4"></script>' in html
-    assert "e9-fretboard-explorer.js?v=lazy-explorer-data-20260713-3" in loader
+    assert '<script src="e9-fretboard-explorer-loader.js?v=copedent-library-v2-20260714-4"></script>' in html
+    assert "e9-fretboard-explorer.js?v=copedent-library-v2-20260714-4" in loader
     assert "e9-fretboard-explorer-data.js" not in loader
     assert 'dataset.explorerDataMode = "unavailable"' in loader
-    assert html.index("e9-music-rules.js?v=voicing-readability-20260704") < html.index("e9-fretboard-explorer-loader.js?v=lazy-explorer-data-20260713-4")
+    assert html.index("e9-music-rules.js?v=voicing-readability-20260704") < html.index("e9-fretboard-explorer-loader.js?v=copedent-library-v2-20260714-4")
     assert "e9-fretboard-explorer.js?v=voicing-identifier-hardening-20260704" not in html
     assert "e9-fretboard-explorer.js?v=explorer-workbench-redesign-20260628" not in html
     assert "e9-fretboard-explorer.js?v=e-lower-pocket-d-major-20260628" not in html
@@ -520,10 +520,10 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<label for="explorer-copedent">Copedent</label>' in html
     assert '<label for="explorer-copedent">E9 setup</label>' not in html
     assert '<select id="explorer-copedent"' in html
-    assert '<option value="emmons-e9-basic" selected>Emmons E9</option>' in html
-    assert '<option value="day-e9-basic">Day E9</option>' in html
-    assert '<option value="custom-e9-lkv">Custom E9 (with LKV)</option>' in html
-    assert '<option value="my-copedent-e9" disabled>My Copedent (E9) - Coming soon in Backstage</option>' in html
+    assert '<option value="emmons-e9-basic" selected>Emmons E9 starter</option>' in html
+    assert '<option value="day-e9-basic">Day E9 starter</option>' in html
+    assert '<option value="custom-e9-lkv">' not in html
+    assert '<option value="my-copedent-e9"' not in html
     assert '<div class="explorer-copedent-control-row">' not in html
     task_home_markup = html.split('<section class="explorer-task-home" aria-label="Explorer task shortcuts">', 1)[1].split('<section class="explorer-mode-panel explorer-mode-panel--state-only" aria-label="Explorer mode">', 1)[0]
     mode_markup = html.split('<section class="explorer-mode-panel explorer-mode-panel--state-only" aria-label="Explorer mode">', 1)[1].split("</section>", 1)[0]
@@ -565,9 +565,9 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert 'id="explorer-copedent-open"' not in controls_markup
     assert '<dialog class="explorer-copedent-dialog" id="explorer-copedent-dialog"' in html
     assert '<button class="explorer-inline-button" id="explorer-copedent-close" type="button">Close</button>' in html
-    assert "Choose the copedent that matches your guitar" in html
+    assert "This is the global active profile. Manage common and custom setups in Backstage." in html
     assert "Choose the E9 setup that matches your guitar" not in html
-    assert "My Copedent (E9) is coming soon in Backstage" in html
+    assert "My Copedent (E9) is coming soon in Backstage" not in html
     assert ".explorer-control--copedent {\n      grid-column: span 1;" in html
     assert "C6" not in html
     root_fret_classes = {
@@ -647,8 +647,9 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<button class="explorer-back" id="explorer-copedent-open" type="button" aria-haspopup="dialog" aria-controls="explorer-copedent-dialog">' in html
     assert "<span>Copedent</span>" in html
     assert "<span>View chart</span>" not in html
-    assert '<a class="explorer-back" href="/ui/steel-guitar-rag-mock.html?v=feature-nav-20260713-1"><span>Home</span></a>' in html
-    assert '<a class="explorer-back" href="/ui/steel-guitar-rag-mock.html?v=feature-nav-20260713-1#backstage"><span>Go Backstage</span></a>' in html
+    assert "<span>Home</span>" in html
+    assert "<span>Go Backstage</span>" in html
+    assert html.count('<svg viewBox="0 0 24 24" aria-hidden="true">') >= 4
     assert '<span>Ask</span>' not in html
     assert '<a class="explorer-back" href="/ui/melody-workbench.html"><span>Arrange</span></a>' not in html
     assert '<a class="explorer-back" href="/ui/lesson-workbench.html"><span>Learn</span></a>' not in html
@@ -666,8 +667,8 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
         "color: rgba(244, 234, 214, 0.88);",
         "cursor: pointer;",
         'font-family: "Gill Sans", "Gill Sans MT", "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;',
-        "font-size: 1rem;",
-        "font-weight: 400;",
+        "font-size: 14px;",
+        "font-weight: 600;",
         "letter-spacing: normal;",
         "text-decoration: none;",
         "box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.26), 0 18px 48px rgba(0, 0, 0, 0.24);",
@@ -846,7 +847,7 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert "musicRules.identifyVoicing" in script
     assert "musicRules.parseChordFinderQuery" in script
     assert "musicRules.chordFinderQualityGate" in script
-    assert 'e9-fretboard-explorer-loader.js?v=lazy-explorer-data-20260713-4' in html
+    assert 'e9-fretboard-explorer-loader.js?v=copedent-library-v2-20260714-4' in html
     assert ".explorer-chord-map-card .explorer-active-result__fields {" in html
     assert ".explorer-chord-map-card .explorer-active-result__fields span {" in html
     assert "grid-template-columns: minmax(72px, 0.48fr) minmax(0, 1fr);" in html

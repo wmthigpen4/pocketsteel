@@ -58,7 +58,7 @@ def test_lesson_workbench_has_reviewed_custom_and_complete_lesson_surfaces() -> 
     assert 'id="lesson-level"' in html
     assert 'id="lesson-duration"' in html
     assert 'id="lesson-result" hidden' in html
-    assert 'lesson-workbench.js?v=lesson-composer-v2-20260713' in html
+    assert 'lesson-workbench.js?v=copedent-library-v2-20260714-2' in html
     assert 'id="lesson-key"' in html
     assert 'id="lesson-focus"' in html
     assert 'id="lesson-clarification" hidden' in html
@@ -75,8 +75,11 @@ def test_lesson_workbench_has_reviewed_custom_and_complete_lesson_surfaces() -> 
     assert "Common mistakes" in script
     assert "Session checklist" in script
     assert '<nav class="workspace-nav" aria-label="Page navigation">' in html
-    assert 'href="/ui/steel-guitar-rag-mock.html?v=feature-nav-20260713-1">Home</a>' in html
-    assert 'href="/ui/steel-guitar-rag-mock.html?v=feature-nav-20260713-1#backstage">Go Backstage</a>' in html
+    assert '<span>Home</span>' in html
+    assert '<span>Go Backstage</span>' in html
+    assert html.count('<svg viewBox="0 0 24 24" aria-hidden="true">') == 2
+    assert '.workspace-nav svg { width:18px; height:18px;' in html
+    assert 'font-size:14px; font-weight:600;' in html
     assert 'href="/ui/e9-fretboard-explorer.html">Explore</a>' not in html
     assert 'href="/ui/melody-workbench.html">Arrange</a>' not in html
     assert 'href="/ui/lesson-workbench.html" aria-current="page">Learn</a>' not in html

@@ -236,6 +236,9 @@ class E9CopedentProfile:
     notes: str = ""
     open_notes: tuple[tuple[int, str], ...] = ()
     open_pitch_values: tuple[tuple[int, int], ...] = ()
+    revision: int = 1
+    origin: str = "built_in"
+    validation_status: str = "valid"
 
     @property
     def instrument(self) -> str:
@@ -332,6 +335,9 @@ class E9CopedentProfile:
         payload: dict[str, object] = {
             "id": self.id,
             "label": self.label,
+            "revision": self.revision,
+            "origin": self.origin,
+            "validation_status": self.validation_status,
             "instrument": self.instrument,
             "status": self.status,
             "pedal_order": list(self.pedal_order),
@@ -461,7 +467,7 @@ def standard_e9_controls_for_positions(physical_positions: dict[str, str]) -> tu
             physical_position="RKR",
             mechanical_name="D#-to-D half-stop on string 2 plus D-to-C# lower on string 9",
             player_shorthand=("D-", "D half-stop"),
-            compatibility_aliases=("D-lower", "RKR"),
+            compatibility_aliases=("D-lower", "RKR", "RKR-half"),
             travel="half-stop",
             change_type="lower",
             changes=(
@@ -470,14 +476,46 @@ def standard_e9_controls_for_positions(physical_positions: dict[str, str]) -> tu
             ),
         ),
         E9CopedentControl(
+            id="RKR-full",
+            label="D lower full-stop",
+            control_type="lever",
+            physical_position="RKR",
+            mechanical_name="D#-to-C# full-stop on string 2 plus D-to-C# lower on string 9",
+            player_shorthand=("D--", "RKRR"),
+            compatibility_aliases=("RKR-full", "RKR.full", "RKRR"),
+            travel="full-stop",
+            change_type="lower",
+            changes=(
+                E9CopedentChange(2, "D#", "C#"),
+                E9CopedentChange(9, "D", "C#"),
+            ),
+            notes="Full-stop state of the same physical RKR used by the D half-stop.",
+        ),
+        E9CopedentControl(
+            id="RKL-half",
+            label="RKL half-stop",
+            control_type="lever",
+            physical_position="RKL",
+            mechanical_name="string 1 F#-to-G raise plus string 6 G#-to-G lower",
+            player_shorthand=("G+", "RKL"),
+            compatibility_aliases=("RKL", "RKL-half"),
+            travel="half-stop",
+            change_type="mixed",
+            changes=(
+                E9CopedentChange(1, "F#", "G"),
+                E9CopedentChange(6, "G#", "G"),
+            ),
+            notes="Half-stop state of the same physical RKL used by the full-stop G lower.",
+        ),
+        E9CopedentControl(
             id="G-lower",
-            label="RKL G raise/lower",
+            label="RKL full-stop / G lower",
             control_type="lever",
             physical_position="RKL",
             mechanical_name="string 1 F#-to-G raise plus string 6 G#-to-F# lower",
             player_shorthand=("G+", "G-", "RKL"),
-            compatibility_aliases=("G-lower", "RKL"),
-            travel="full",
+            compatibility_aliases=("G-lower", "RKL", "RKL.full", "RKLL"),
+            travel="full-stop",
             change_type="mixed",
             changes=(
                 E9CopedentChange(1, "F#", "G"),
@@ -557,7 +595,7 @@ def custom_lkv_controls() -> tuple[E9CopedentControl, ...]:
 
 EMMONS_E9 = E9CopedentProfile(
     id=DEFAULT_COPEDENT_ID,
-    label="Emmons E9",
+    label="Emmons E9 starter",
     status="app-default",
     pedal_order=("A", "B", "C"),
     controls=standard_e9_controls_for_positions({"A": "P1", "B": "P2", "C": "P3"}),
@@ -566,7 +604,7 @@ EMMONS_E9 = E9CopedentProfile(
 
 DAY_E9 = E9CopedentProfile(
     id=DAY_COPEDENT_ID,
-    label="Day E9",
+    label="Day E9 starter",
     status="enabled",
     pedal_order=("C", "B", "A"),
     controls=standard_e9_controls_for_positions({"C": "P1", "B": "P2", "A": "P3"}),
@@ -659,17 +697,20 @@ SOURCE_ABC_DEFG_E9 = E9CopedentProfile(
         "Reviewed source profile from the supplied floor-pedal and knee-lever chart. "
         "It is decoding evidence only and is never selected as the app default."
     ),
+    origin="source",
 )
 
 
 def available_e9_copedents() -> tuple[E9CopedentProfile, ...]:
-    return (EMMONS_E9, DAY_E9, CUSTOM_LKV_E9, MY_COPEDENT_E9)
+    """Return immutable common profiles shown in the player-facing library."""
+
+    return (EMMONS_E9, DAY_E9)
 
 
 def known_e9_copedents() -> tuple[E9CopedentProfile, ...]:
     """Return app profiles plus source-only decoding profiles."""
 
-    return (*available_e9_copedents(), SOURCE_ABC_DEFG_E9)
+    return (*available_e9_copedents(), CUSTOM_LKV_E9, MY_COPEDENT_E9, SOURCE_ABC_DEFG_E9)
 
 
 def selectable_e9_copedents() -> tuple[E9CopedentProfile, ...]:

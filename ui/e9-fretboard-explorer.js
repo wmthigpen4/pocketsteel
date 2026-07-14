@@ -2456,7 +2456,19 @@
   function availableCopedents() {
     const payload = activePayload() || fallbackPayload;
     const options = payload?.selected_copedent?.available_options || payload?.filters?.available_copedents;
-    return Array.isArray(options) ? options : [];
+    const retiredCommonIds = new Set(["custom-e9-lkv", "my-copedent-e9"]);
+    const combined = new Map((Array.isArray(options) ? options : [])
+      .filter((item) => !retiredCommonIds.has(item.id))
+      .map((item) => [item.id, item]));
+    (window.STEEL_RAG_COPEDENTS?.listProfiles?.() || []).forEach((profile) => {
+      combined.set(profile.id, {
+        id: profile.id,
+        label: profile.name || profile.label,
+        status: profile.immutable || profile.validationStatus === "valid" ? "enabled" : "disabled",
+        disabled_reason: profile.validationStatus === "needs_review" ? "Needs review in Backstage" : "Validate in Backstage"
+      });
+    });
+    return Array.from(combined.values());
   }
 
   function updateCopedentOptions() {
@@ -2467,7 +2479,11 @@
     if (!options.length) {
       return;
     }
-    const currentValue = els.copedent.value || DEFAULT_COPEDENT_ID;
+    const payloadProfileId = String((activePayload() || fallbackPayload)?.selected_copedent?.id || "")
+      .trim()
+      .replace(/^saved:/, "");
+    const activeProfileId = String(window.STEEL_RAG_COPEDENTS?.activeContext?.()?.profileId || "").trim();
+    const currentValue = activeProfileId || payloadProfileId || els.copedent.value || DEFAULT_COPEDENT_ID;
     const enabledValues = new Set(options.filter((item) => item.status !== "disabled").map((item) => item.id));
     const selectedValue = enabledValues.has(currentValue) ? currentValue : DEFAULT_COPEDENT_ID;
     els.copedent.innerHTML = options.map((item) => copedentOption(item, selectedValue)).join("");
@@ -5297,9 +5313,20 @@
     }
 
     updateCopedentOptions();
+    window.STEEL_RAG_COPEDENTS?.renderStatus?.(document.querySelector("[data-active-copedent]"));
     updateKeyOptions();
     if (els.copedent) {
-      els.copedent.addEventListener("change", refreshAfterPayloadChange);
+      els.copedent.addEventListener("change", () => {
+        try {
+          window.STEEL_RAG_COPEDENTS?.setActive?.(els.copedent.value);
+          window.STEEL_RAG_COPEDENTS?.renderStatus?.(document.querySelector("[data-active-copedent]"));
+          refreshAfterPayloadChange();
+        } catch (error) {
+          els.empty.hidden = false;
+          els.empty.textContent = error?.message || "Review this copedent in Backstage before using it.";
+          updateCopedentOptions();
+        }
+      });
     }
     if (els.copedentOpen) {
       els.copedentOpen.addEventListener("click", openCopedentDialog);

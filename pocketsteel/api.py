@@ -74,6 +74,16 @@ from pocketsteel.curated_guidance_retriever import (
 from pocketsteel.curated_source_registry import slide_bar_vendor_source_cards
 from pocketsteel.fretboard_examples import fretboard_payload_for_question
 from pocketsteel.progression_guide import progression_guide_for_question
+from pocketsteel.copedent_transfer import (
+    copedent_context_metadata,
+    custom_e9_profile_from_payload,
+    profile_control_answer,
+    retarget_fretboard_payload,
+    retarget_tab_example_payload,
+    resolve_copedent_context,
+)
+from pocketsteel.e9_copedents import DEFAULT_COPEDENT_ID, E9CopedentProfile, available_e9_copedents
+from pocketsteel.fretboard_explorer import build_explorer_payload_for_profile
 from pocketsteel.melody_assistant import (
     MelodyExerciseError,
     configured_melody_exercise_enabled,
@@ -227,6 +237,35 @@ def _attach_tab_example_if_available(
             if replacement:
                 payload["answer"] = replacement
                 payload["sections"] = build_sections(replacement)
+
+
+def _personalize_answer_payload(
+    payload: AnswerResponse,
+    profile: E9CopedentProfile,
+    revision: int,
+) -> None:
+    """Retarget deterministic answer visuals and attach explicit profile identity."""
+
+    metadata = copedent_context_metadata(profile, revision)
+    payload.update(metadata)
+    warnings = list(payload.get("warnings") or [])
+    if payload.get("fretboard") is not None:
+        fretboard = retarget_fretboard_payload(payload.get("fretboard"), profile)
+        if fretboard is None:
+            payload.pop("fretboard", None)
+            warnings.append(f"No mechanically equivalent fretboard position was available on {profile.label}.")
+        else:
+            fretboard.update(metadata)
+            payload["fretboard"] = fretboard
+    if payload.get("tab_example") is not None:
+        tab_example = retarget_tab_example_payload(payload.get("tab_example"), profile)
+        if tab_example is None:
+            payload.pop("tab_example", None)
+            warnings.append(f"The tab example could not be reproduced exactly on {profile.label}.")
+        else:
+            tab_example.update(metadata)
+            payload["tab_example"] = tab_example
+    payload["warnings"] = list(dict.fromkeys(warnings))
 
 
 def _answer_is_generic_tab_fallback(answer: str) -> bool:
@@ -463,6 +502,78 @@ class RetrievalApi:
                 }
             return self._json_response(start_response, "200 OK", payload)
 
+        if path == "/api/copedents/e9":
+            if method != "GET":
+                return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"})
+            access = self._authorize_content_request(environ)
+            if not access.allowed:
+                return self._json_response(start_response, access.status, {"error": access.error})
+            return self._json_response(
+                start_response,
+                "200 OK",
+                {
+                    "schemaVersion": "e9_copedent_library_v2",
+                    "defaultProfileId": DEFAULT_COPEDENT_ID,
+                    "profiles": [profile.to_dict(include_options=False) for profile in available_e9_copedents()],
+                },
+                extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
+            )
+
+        if path == "/api/copedents/validate":
+            if method != "POST":
+                return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"})
+            access = self._authorize_content_request(environ)
+            if not access.allowed:
+                return self._json_response(start_response, access.status, {"error": access.error})
+            try:
+                request_payload = self._read_json_body(environ)
+                snapshot = request_payload.get("profileSnapshot") or request_payload.get("profile") or request_payload
+                if not isinstance(snapshot, dict):
+                    raise ValueError("profile must be an object")
+                profile = custom_e9_profile_from_payload(snapshot)
+            except (JsonRequestError, ValueError, TypeError) as exc:
+                status = "413 Payload Too Large" if isinstance(exc, JsonRequestTooLargeError) else "400 Bad Request"
+                return self._json_response(start_response, status, {"error": str(exc)})
+            return self._json_response(
+                start_response,
+                "200 OK",
+                {
+                    "schemaVersion": "e9_copedent_validation_v2",
+                    "valid": True,
+                    "profile": profile.to_dict(include_options=False),
+                    "copedentContext": {
+                        "profileId": profile.id,
+                        "profileRevision": profile.revision,
+                        "profileSnapshot": snapshot,
+                    },
+                },
+                extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
+            )
+
+        if path == "/api/explorer/e9":
+            if method != "POST":
+                return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"})
+            access = self._authorize_content_request(environ)
+            if not access.allowed:
+                return self._json_response(start_response, access.status, {"error": access.error})
+            try:
+                request_payload = self._read_json_body(environ)
+                context = request_payload.get("copedentContext") or request_payload.get("copedent_context")
+                if context is not None and not isinstance(context, dict):
+                    raise ValueError("copedentContext must be an object")
+                profile, revision = resolve_copedent_context(context)
+                explorer = build_explorer_payload_for_profile(str(request_payload.get("key") or "G"), profile)
+                explorer.update(copedent_context_metadata(profile, revision))
+            except (JsonRequestError, ValueError, TypeError) as exc:
+                status = "413 Payload Too Large" if isinstance(exc, JsonRequestTooLargeError) else "400 Bad Request"
+                return self._json_response(start_response, status, {"error": str(exc)})
+            return self._json_response(
+                start_response,
+                "200 OK",
+                explorer,
+                extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
+            )
+
         if path == "/api/melody/catalog":
             if method != "GET":
                 return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"}, extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")))
@@ -533,7 +644,15 @@ class RetrievalApi:
                 return self._json_response(start_response, access.status, {"error": access.error})
             try:
                 lesson_request = self._read_json_body(environ)
-                result = build_lesson_response(lesson_request)
+                context = lesson_request.get("copedentContext") or lesson_request.get("copedent_context")
+                if context is not None and not isinstance(context, dict):
+                    raise LessonStudioError("copedentContext must be an object")
+                lesson_profile, lesson_revision = resolve_copedent_context(context)
+                result = build_lesson_response(
+                    lesson_request,
+                    copedent_profile=lesson_profile,
+                    copedent_revision=lesson_revision,
+                )
                 if result.get("status") == "ready":
                     source_results: list[dict[str, Any]] = []
                     query = str((result.get("lesson") or {}).get("topic") or lesson_request.get("topic") or "")
@@ -547,7 +666,12 @@ class RetrievalApi:
                             LOGGER.warning("lesson_source_retrieval_unavailable deterministic_curriculum=true")
                         else:
                             source_results = public_sources.results
-                    result = build_lesson_response(lesson_request, source_results=source_results)
+                    result = build_lesson_response(
+                        lesson_request,
+                        source_results=source_results,
+                        copedent_profile=lesson_profile,
+                        copedent_revision=lesson_revision,
+                    )
             except JsonRequestTooLargeError as exc:
                 return self._json_response(start_response, "413 Payload Too Large", {"error": str(exc)})
             except JsonRequestError as exc:
@@ -628,6 +752,31 @@ class RetrievalApi:
                 )
                 return self._json_response(start_response, "400 Bad Request", {"error": error or "invalid request"})
 
+            copedent_context = request_payload.get("copedentContext") or request_payload.get("copedent_context")
+            if copedent_context is not None and not isinstance(copedent_context, dict):
+                return self._json_response(start_response, "400 Bad Request", {"error": "copedentContext must be an object"})
+            try:
+                target_profile, target_revision = resolve_copedent_context(copedent_context)
+            except (ValueError, TypeError) as exc:
+                return self._json_response(start_response, "400 Bad Request", {"error": str(exc)})
+
+            direct_profile_answer = (
+                profile_control_answer(answer_request.question, target_profile)
+                if copedent_context
+                else None
+            )
+            if direct_profile_answer is not None:
+                direct_profile_answer = normalize_answer_list_markers(direct_profile_answer)
+                payload: AnswerResponse = {
+                    "answer": direct_profile_answer,
+                    "mode": answer_request.mode,
+                    "sources": [],
+                    "warnings": [],
+                    "sections": build_sections(direct_profile_answer),
+                }
+                payload.update(copedent_context_metadata(target_profile, target_revision))
+                return self._json_response(start_response, "200 OK", payload)
+
             answer_intent_decision = classify_answer_request(answer_request.question, answer_request.mode)
             curated_guidance_status: str | None = None
             curated_guidance_count: int | None = None
@@ -639,6 +788,14 @@ class RetrievalApi:
                     "400 Bad Request",
                     {"error": "melodyRequest must be an object"},
                 )
+            if melody_request is not None and copedent_context:
+                melody_request = dict(melody_request)
+                if not melody_request.get("targetCopedent") and not melody_request.get("target_copedent"):
+                    snapshot = copedent_context.get("profileSnapshot") or copedent_context.get("profile_snapshot")
+                    if snapshot:
+                        melody_request["targetCopedent"] = snapshot
+                if not melody_request.get("targetCopedentId") and not melody_request.get("target_copedent_id"):
+                    melody_request["targetCopedentId"] = target_profile.id
             if self.melody_exercise_enabled:
                 try:
                     melody_result = melody_exercise_response(answer_request.question, melody_request)
@@ -668,6 +825,7 @@ class RetrievalApi:
                     payload["tab_example"] = melody_result["tab_example"]
                 if melody_result.get("fretboard") is not None:
                     payload["fretboard"] = melody_result["fretboard"]
+                payload.update(copedent_context_metadata(target_profile, target_revision))
                 self._log_answer_attempt(
                     request_payload,
                     role=access.role,
@@ -699,6 +857,8 @@ class RetrievalApi:
                     "progression_guide": progression_guide_answer["progression_guide"],
                     "fretboard": progression_guide_answer["fretboard"],
                 }
+                if copedent_context is not None:
+                    _personalize_answer_payload(payload, target_profile, target_revision)
                 self._log_answer_attempt(
                     request_payload,
                     role=access.role,
@@ -737,6 +897,8 @@ class RetrievalApi:
                     answer_request.question,
                     answer_intent_decision=answer_intent_decision,
                 )
+                if copedent_context is not None:
+                    _personalize_answer_payload(payload, target_profile, target_revision)
                 self._log_answer_attempt(
                     request_payload,
                     role=access.role,
@@ -758,6 +920,8 @@ class RetrievalApi:
                     "warnings": [],
                     "sections": build_sections(final_answer),
                 }
+                if copedent_context is not None:
+                    _personalize_answer_payload(payload, target_profile, target_revision)
                 self._log_answer_attempt(
                     request_payload,
                     role=access.role,
@@ -795,6 +959,8 @@ class RetrievalApi:
                     answer_request.question,
                     answer_intent_decision=answer_intent_decision,
                 )
+                if copedent_context is not None:
+                    _personalize_answer_payload(payload, target_profile, target_revision)
                 self._log_answer_attempt(
                     request_payload,
                     role=access.role,
@@ -932,6 +1098,8 @@ class RetrievalApi:
                 answer_request.question,
                 answer_intent_decision=answer_intent_decision,
             )
+            if copedent_context is not None:
+                _personalize_answer_payload(payload, target_profile, target_revision)
             self._log_answer_attempt(
                 request_payload,
                 role=access.role,

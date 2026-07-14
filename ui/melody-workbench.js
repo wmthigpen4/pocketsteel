@@ -65,6 +65,10 @@
   };
 
   function savedE9TargetCopedent(storage = global.localStorage) {
+    const active = global.STEEL_RAG_COPEDENTS?.activeContext?.(storage);
+    if (active && !active.blocked) {
+      return active.profileSnapshot || null;
+    }
     try {
       const profile = JSON.parse(storage?.getItem?.(COPEDENT_STORAGE_KEY) || "null");
       if (!profile || String(profile.tuningFamily || "").toUpperCase() !== "E9") return null;
@@ -1054,9 +1058,10 @@
   const scoreUi = global.STEEL_RAG_MELODY_SCORE;
   const studioParams = new URLSearchParams(global.location.search);
   let state = createInitialState(studioParams.get("kind") || "user_melody");
-  state.targetCopedentId = studioParams.get("copedent") || state.targetCopedentId;
+  const activeCopedentContext = global.STEEL_RAG_COPEDENTS?.activeContext?.();
+  state.targetCopedentId = studioParams.get("copedent") || activeCopedentContext?.profileId || state.targetCopedentId;
   state.styleFamily = studioParams.get("style") || state.styleFamily;
-  state.targetCopedent = studioParams.get("copedent") ? null : savedE9TargetCopedent();
+  state.targetCopedent = studioParams.get("copedent") ? null : (activeCopedentContext?.profileSnapshot || savedE9TargetCopedent());
   let session = null;
   let catalogSongs = [];
 
@@ -2559,7 +2564,10 @@
     try {
       const response = await answerUi.requestAnswer(questionForState(), {
         accessRole: session?.role || readAccessRole(),
-        requestPayload: { melodyRequest: buildMelodyRequest(state) }
+        requestPayload: {
+          melodyRequest: buildMelodyRequest(state),
+          ...(global.STEEL_RAG_COPEDENTS?.requestContext?.() ? { copedentContext: global.STEEL_RAG_COPEDENTS.requestContext() } : {})
+        }
       });
       renderResult(response);
       return true;
@@ -2591,7 +2599,10 @@
           state.sectionNumber = number;
           response = await answerUi.requestAnswer(questionForState(), {
             accessRole: session?.role || readAccessRole(),
-            requestPayload: { melodyRequest: buildMelodyRequest(state) }
+            requestPayload: {
+              melodyRequest: buildMelodyRequest(state),
+              ...(global.STEEL_RAG_COPEDENTS?.requestContext?.() ? { copedentContext: global.STEEL_RAG_COPEDENTS.requestContext() } : {})
+            }
           });
         }
         const route = response.melodyExercise?.routes?.find((item) => item.harmonyType === harmonyType)
@@ -2675,6 +2686,15 @@
 
   async function bootstrap() {
     try {
+      global.STEEL_RAG_COPEDENTS?.renderStatus?.(elements.hero?.querySelector?.("[data-active-copedent]"));
+      const profileState = global.STEEL_RAG_COPEDENTS?.activeContext?.();
+      if (profileState?.blocked) {
+        elements.unavailableTitle.textContent = "Your copedent needs review.";
+        elements.unavailableCopy.textContent = "Backstage preserved the older setup without guessing at missing RKL or travel states. Review and validate it before arranging.";
+        elements.unavailable.hidden = false;
+        elements.workflow.hidden = true;
+        return;
+      }
       session = await answerUi.requestSession({ accessRole: readAccessRole() });
       const enabled = Boolean(session.features?.melodyExercise);
       elements.unavailable.hidden = enabled;

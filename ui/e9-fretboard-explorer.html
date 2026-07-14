@@ -78,8 +78,8 @@
       color: rgba(244, 234, 214, 0.88);
       cursor: pointer;
       font-family: "Gill Sans", "Gill Sans MT", "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
-      font-size: 1rem;
-      font-weight: 400;
+      font-size: 14px;
+      font-weight: 600;
       letter-spacing: normal;
       text-decoration: none;
       box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.26), 0 18px 48px rgba(0, 0, 0, 0.24);
@@ -2454,10 +2454,17 @@
         <p class="explorer-kicker">Validated Explorer data</p>
         <h1>E9 Fretboard Explorer</h1>
         <p class="explorer-lede">Choose a key, scale, harmony type, and string group to see E9 positions that have been checked against tuning and pedal/lever changes.</p>
+        <p class="explorer-control-help" id="explorer-active-copedent" data-active-copedent></p>
       </div>
       <div class="explorer-header-actions" aria-label="Explorer actions">
-        <a class="explorer-back" href="/ui/steel-guitar-rag-mock.html?v=feature-nav-20260713-1"><span>Home</span></a>
-        <a class="explorer-back" href="/ui/steel-guitar-rag-mock.html?v=feature-nav-20260713-1#backstage"><span>Go Backstage</span></a>
+        <a class="explorer-back" href="/ui/steel-guitar-rag-mock.html?v=feature-nav-20260713-1">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg>
+          <span>Home</span>
+        </a>
+        <a class="explorer-back" href="/ui/steel-guitar-rag-mock.html?v=feature-nav-20260713-1#backstage">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5z"/><path d="M8 16h8"/><path d="M9 13l3-5 3 5"/><path d="M12 8v8"/></svg>
+          <span>Go Backstage</span>
+        </a>
         <button class="explorer-back" id="explorer-glossary-open" type="button" aria-haspopup="dialog" aria-controls="explorer-glossary-dialog">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v14H5z"/><path d="M8 9h8"/><path d="M8 13h5"/></svg>
           <span>Glossary</span>
@@ -2568,12 +2575,10 @@
       <div class="explorer-control explorer-control--copedent">
         <label for="explorer-copedent">Copedent</label>
         <select id="explorer-copedent" aria-describedby="explorer-copedent-help">
-          <option value="emmons-e9-basic" selected>Emmons E9</option>
-          <option value="day-e9-basic">Day E9</option>
-          <option value="custom-e9-lkv">Custom E9 (with LKV)</option>
-          <option value="my-copedent-e9" disabled>My Copedent (E9) - Coming soon in Backstage</option>
+          <option value="emmons-e9-basic" selected>Emmons E9 starter</option>
+          <option value="day-e9-basic">Day E9 starter</option>
         </select>
-        <p class="explorer-control-help" id="explorer-copedent-help">Choose the copedent that matches your guitar. My Copedent (E9) is coming soon in Backstage.</p>
+        <p class="explorer-control-help" id="explorer-copedent-help">This is the global active profile. Manage common and custom setups in Backstage.</p>
       </div>
       <div class="explorer-control" id="explorer-grip-vocabulary-control">
         <label for="explorer-grip-vocabulary">Grip vocabulary</label>
@@ -2760,10 +2765,11 @@
     </section>
   </main>
 
+  <script src="copedent-store.js?v=copedent-library-v2-20260714-2"></script>
   <script src="pedal-steel-fretboard-styles.js?v=module-boundaries-20260713"></script>
   <script src="pedal-steel-fretboard.js?v=module-boundaries-20260713"></script>
   <script src="e9-music-rules.js?v=voicing-readability-20260704"></script>
   <script src="e9-fretboard-explorer-config.js?v=module-boundaries-20260713"></script>
-  <script src="e9-fretboard-explorer-loader.js?v=lazy-explorer-data-20260713-4"></script>
+  <script src="e9-fretboard-explorer-loader.js?v=copedent-library-v2-20260714-4"></script>
 </body>
 </html>

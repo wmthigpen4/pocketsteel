@@ -2761,6 +2761,7 @@
                     <div class="input-actions"><button class="send" type="button">Ask a question</button></div>
                   </div>
                   <p class="access-helper" id="access-helper">Get a Backstage Pass to ask Steel Guitar RAG.</p>
+                  <p class="backstage-note" data-active-copedent></p>
                 </div>
               </section>
               <div class="try-asking" aria-label="Suggested question">
@@ -2778,6 +2779,7 @@
         <article class="question-card">
           <p class="answer-kicker">Your question</p>
           <h2 class="answered-question" id="answered-question">Why does touching the changer reduce hum?</h2>
+          <p class="backstage-note" data-active-copedent></p>
         </article>
 
         <article class="answer-card">
@@ -2944,9 +2946,9 @@
           <article class="backstage-card">
             <div class="backstage-card-header">
               <h3>My Setup</h3>
-              <span class="coming-soon">Local draft</span>
+              <span class="coming-soon">Active copedent</span>
             </div>
-            <p>Keep your guitar details nearby without making Backstage feel like a giant form.</p>
+            <p>Select a common E9 setup or make a custom version. The active copedent now drives personalized mechanics throughout the app.</p>
             <div class="backstage-metrics">
               <div class="backstage-metric">
                 <span>Saved setup</span>
@@ -2993,10 +2995,38 @@
           <article class="backstage-card is-wide copedent-editor">
             <div class="backstage-card-header">
               <h3>My Setup / Copedent</h3>
-              <span class="coming-soon">Local draft</span>
+              <span class="coming-soon" id="copedent-active-badge">Local-first</span>
             </div>
-            <p>Keep your tuning, pedals, knees, and guitar setup here so answers can eventually be tailored to your instrument.</p>
-            <p class="backstage-note">This draft saves in this browser only. Account storage and RAG personalization are planned, but not connected yet.</p>
+            <p>Choose a common setup or save the exact pedals, levers, travel states, and string changes on your guitar.</p>
+            <p class="backstage-note">The active profile is used by Ask, Explorer, Lessons, and Melody Studio. Custom profiles save in this browser for now.</p>
+
+            <div class="copedent-section" aria-labelledby="copedent-library-title">
+              <div class="backstage-card-header">
+                <div>
+                  <h4 id="copedent-library-title">Copedent library</h4>
+                  <p class="copedent-template-note">Emmons and Day are immutable starters. Clone either one before changing it.</p>
+                </div>
+                <span class="coming-soon" id="copedent-library-active">Active</span>
+              </div>
+              <div class="backstage-grid">
+                <div class="backstage-field">
+                  <label for="copedent-profile-library">Common and custom profiles</label>
+                  <select id="copedent-profile-library"></select>
+                </div>
+                <div class="backstage-field">
+                  <label>Profile actions</label>
+                  <div class="backstage-actions">
+                    <button class="backstage-button" id="activate-copedent" type="button">Make active</button>
+                    <button class="backstage-button" id="clone-copedent" type="button">Clone to customize</button>
+                    <button class="backstage-button" id="new-copedent" type="button">New blank E9</button>
+                    <button class="backstage-button" id="duplicate-copedent" type="button">Duplicate</button>
+                    <button class="backstage-button" id="delete-copedent" type="button">Delete</button>
+                  </div>
+                </div>
+              </div>
+              <div class="backstage-note" id="copedent-review-issues" role="status"></div>
+            </div>
+
             <div class="backstage-fields">
               <div class="backstage-grid">
                 <div class="backstage-field">
@@ -3006,30 +3036,20 @@
                 <div class="backstage-field">
                   <label for="copedent-template">Starter setup</label>
                   <select id="copedent-template">
-                    <option value="e9-10">E9 10-string</option>
-                    <option value="c6-10">C6 10-string</option>
-                    <option value="universal-12">12-string Universal</option>
-                    <option value="extended-e9-12">12-string Extended E9</option>
-                    <option value="extended-c6-12">12-string Extended C6</option>
-                    <option value="custom">Other / Custom</option>
+                    <option value="emmons-e9-basic">Emmons E9 starter</option>
+                    <option value="day-e9-basic">Day E9 starter</option>
                   </select>
                 </div>
                 <div class="backstage-field">
                   <label for="copedent-family">Tuning family</label>
                   <select id="copedent-family">
                     <option value="E9">E9</option>
-                    <option value="C6">C6</option>
-                    <option value="Universal">Universal</option>
-                    <option value="Extended">Extended</option>
-                    <option value="Other">Other</option>
                   </select>
                 </div>
                 <div class="backstage-field">
                   <label for="copedent-string-count">String count</label>
                   <select id="copedent-string-count">
                     <option value="10">10</option>
-                    <option value="12">12</option>
-                    <option value="custom">Custom</option>
                   </select>
                 </div>
                 <div class="backstage-field">
@@ -3037,21 +3057,23 @@
                   <input id="copedent-guitar" type="text" placeholder="Zum, Emmons, MSA, Sho-Bud...">
                 </div>
                 <div class="backstage-field">
-                  <label for="copedent-custom-count">Custom string count</label>
-                  <input id="copedent-custom-count" type="number" min="1" max="20" placeholder="Only if custom">
+                  <label for="copedent-pedal-order">Physical pedal order</label>
+                  <input id="copedent-pedal-order" type="text" placeholder="A, B, C or C, B, A">
+                  <input id="copedent-custom-count" type="hidden" value="10">
                 </div>
               </div>
             </div>
 
             <div class="copedent-section">
               <h4>Open tuning</h4>
-              <p class="copedent-template-note">Start with a familiar setup, then change any note or gauge. Custom and 12-string setups are welcome here.</p>
+              <p class="copedent-template-note">This recovery slice supports 10-string E9. Register is stored as a MIDI pitch value so score, tab, fretboard, and playback agree.</p>
               <div class="copedent-table-wrap">
                 <table class="copedent-table" aria-label="Open tuning table">
                   <thead>
                     <tr>
                       <th class="small-cell">String #</th>
                       <th class="medium-cell">Open note</th>
+                      <th class="medium-cell">Register</th>
                       <th class="medium-cell">Gauge</th>
                       <th>Notes</th>
                     </tr>
@@ -3064,21 +3086,23 @@
             <div class="copedent-section">
               <div class="backstage-card-header">
                 <h4>Pedals and knee levers</h4>
-                <button class="backstage-button" id="add-copedent-change" type="button">Add change</button>
+                <button class="backstage-button" id="add-copedent-change" type="button">Add control state</button>
               </div>
-              <p class="copedent-template-note">Each row is one string change. Use the same control label on multiple rows when a pedal or lever moves more than one string.</p>
+              <p class="copedent-template-note">A player-facing name is separate from physical position and travel. RKL and RKLL can therefore be half/full states of the same physical RKL.</p>
               <div class="copedent-table-wrap">
                 <table class="copedent-table" aria-label="Pedal and lever changes">
                   <thead>
                     <tr>
                       <th class="medium-cell">Control</th>
                       <th class="medium-cell">Type</th>
+                      <th class="medium-cell">Physical</th>
+                      <th class="medium-cell">Travel</th>
                       <th class="small-cell">String #</th>
                       <th class="medium-cell">From</th>
                       <th class="medium-cell">To</th>
                       <th class="medium-cell">Change type</th>
                       <th>Notes</th>
-                      <th class="small-cell">Remove</th>
+                      <th class="small-cell">Actions</th>
                     </tr>
                   </thead>
                   <tbody id="copedent-changes"></tbody>
@@ -3092,15 +3116,18 @@
                 <textarea id="copedent-notes" placeholder="Add copedent details, string gauges, pickup notes, setup quirks, or changes you are still deciding on."></textarea>
               </div>
               <div class="backstage-actions">
-                <button class="backstage-button" id="save-copedent" type="button">Save local profile</button>
-                <button class="backstage-button" id="reset-copedent" type="button">Reset from starter</button>
+                <button class="backstage-button" id="save-copedent" type="button">Save draft</button>
+                <button class="backstage-button" id="activate-edited-copedent" type="button">Validate and make active</button>
+                <button class="backstage-button" id="compare-copedent" type="button">Compare with starter</button>
+                <button class="backstage-button" id="add-copedent-from-starter" type="button">Add missing states from starter</button>
+                <button class="backstage-button" id="reset-copedent" type="button">Discard unsaved edits</button>
                 <span class="backstage-status" id="copedent-save-status" role="status"></span>
               </div>
             </div>
 
             <div class="copedent-section">
-              <h4>Don’t see your setup?</h4>
-              <p>Tell us what tuning or setup you use. This saves as a local request draft until account feedback is connected.</p>
+              <h4>Need another tuning family?</h4>
+              <p>C6, Universal, Extended E9, and account-synced profiles are not personalized in this recovery slice. Save a request without treating an unsupported setup as E9.</p>
               <div class="backstage-grid">
                 <div class="backstage-field">
                   <label for="copedent-request">Tuning/setup request</label>
@@ -3274,7 +3301,8 @@
     </div>
   </div>
 
-  <script src="answer-client.js?v=melody-exercise-v0-20260710"></script>
+  <script src="copedent-store.js?v=copedent-library-v2-20260714-2"></script>
+  <script src="answer-client.js?v=copedent-library-v2-20260714-2"></script>
   <script src="pedal-steel-fretboard-styles.js?v=module-boundaries-20260713"></script>
   <script src="pedal-steel-fretboard.js?v=landing-bubble-labels-20260713"></script>
   <script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>
@@ -4795,7 +4823,15 @@
         return false;
       }
       if (answerRequestInFlight || !STEEL_RAG_ANSWER_UI.hasSubmittableQuestion(questionText)) return false;
-      showAnswerWorkspace(questionText, requestPayload);
+      const profileState = window.STEEL_RAG_COPEDENTS?.activeContext?.();
+      const needsProfile = /\b(?:my|active|this)\s+(?:copedent|setup|guitar|pedals?|levers?|rkl|rkr|lkl|lkr|lkv)\b/i.test(String(questionText || ""));
+      if (needsProfile && profileState?.blocked) {
+        openBackstage({ initialTab: "setup" });
+        copedentSaveStatus.textContent = "Review and validate the active copedent before asking for setup-specific mechanics.";
+        return false;
+      }
+      const copedentContext = window.STEEL_RAG_COPEDENTS?.requestContext?.();
+      showAnswerWorkspace(questionText, copedentContext ? { ...requestPayload, copedentContext } : requestPayload);
       return true;
     }
 
@@ -5310,5 +5346,6 @@
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
     }
   </script>
+  <script src="backstage-copedent-manager.js?v=copedent-library-v2-20260714-3"></script>
 </body>
 </html>

@@ -9,6 +9,7 @@ sustained string.
 
 from __future__ import annotations
 
+from copy import deepcopy
 from dataclasses import dataclass
 from itertools import combinations
 import re
@@ -16,6 +17,7 @@ from typing import Any, Mapping, Sequence
 
 from pocketsteel.e9_copedents import (
     CANONICAL_NOTES,
+    CUSTOM_LKV_COPEDENT_ID,
     DEFAULT_COPEDENT_ID,
     E9_OPEN_STRING_PITCH_VALUES,
     E9CopedentChange,
@@ -24,7 +26,7 @@ from pocketsteel.e9_copedents import (
     NOTE_TO_SEMITONE,
     get_e9_copedent_profile,
 )
-from pocketsteel.tab_engine import CopedentProfile, PedalLeverEffect
+from pocketsteel.tab_engine import CopedentProfile, PedalLeverEffect, TabEvent, TabNote, render_tab
 
 
 _CANONICAL_ARRANGER_CODES = {
@@ -273,6 +275,229 @@ def transfer_controls(
     )
 
 
+def _same_sounding_pitches(
+    source_profile: E9CopedentProfile,
+    source_controls: Sequence[object],
+    target_profile: E9CopedentProfile,
+    target_controls: Sequence[object],
+    *,
+    strings: Sequence[int],
+    fret: int,
+) -> bool:
+    return all(
+        absolute_pitch_for_profile(source_profile, string, fret, source_controls)
+        == absolute_pitch_for_profile(target_profile, string, fret, target_controls)
+        for string in strings
+    )
+
+
+def retarget_fretboard_payload(
+    payload: Mapping[str, Any] | None,
+    target_profile: E9CopedentProfile,
+    *,
+    source_profile: E9CopedentProfile | None = None,
+) -> dict[str, Any] | None:
+    """Revalidate a deterministic fretboard payload against the active profile."""
+
+    if not isinstance(payload, Mapping):
+        return None
+    source = source_profile or get_e9_copedent_profile(CUSTOM_LKV_COPEDENT_ID)
+    result = deepcopy(dict(payload))
+    positions: list[dict[str, Any]] = []
+    by_position_id: dict[str, dict[str, Any]] = {}
+    for raw_position in result.get("positions") or []:
+        if not isinstance(raw_position, Mapping):
+            continue
+        position = deepcopy(dict(raw_position))
+        strings = tuple(int(value) for value in position.get("strings") or [])
+        fret = int(position.get("fret") or 0)
+        source_controls = tuple([*(position.get("pedals") or []), *(position.get("levers") or [])])
+        try:
+            transfer = transfer_controls(source, source_controls, target_profile, sounding_strings=strings)
+        except ValueError:
+            continue
+        if not transfer.exact or not _same_sounding_pitches(
+            source,
+            source_controls,
+            target_profile,
+            transfer.target_controls,
+            strings=strings,
+            fret=fret,
+        ):
+            continue
+        controls = [resolve_control(target_profile, control_value) for control_value in transfer.target_controls]
+        position["pedals"] = [
+            control_display_label(target_profile, control.id)
+            for control in controls
+            if control.control_type == "pedal"
+        ]
+        position["levers"] = [
+            control_display_label(target_profile, control.id)
+            for control in controls
+            if control.control_type == "lever"
+        ]
+        position["controlIds"] = [control.id for control in controls]
+        position["controlStates"] = [
+            {
+                "id": control.id,
+                "label": control.label,
+                "physicalPosition": control.physical_position,
+                "travel": control.travel,
+            }
+            for control in controls
+        ]
+        position["targetCopedentId"] = target_profile.id
+        position["validationStatus"] = "target_copedent_pitch_validated"
+        if transfer.extra_effect_strings:
+            position["caveats"] = [*(position.get("caveats") or []), transfer.reason]
+        positions.append(position)
+        by_position_id[str(position.get("id") or "")] = position
+    if not positions:
+        return None
+    result["positions"] = positions
+    if isinstance(result.get("highlights"), list):
+        highlights: list[dict[str, Any]] = []
+        for raw_highlight in result["highlights"]:
+            if not isinstance(raw_highlight, Mapping):
+                continue
+            position = by_position_id.get(str(raw_highlight.get("id") or ""))
+            if position is None:
+                continue
+            highlight = deepcopy(dict(raw_highlight))
+            highlight["pedals"] = list(position.get("pedals") or [])
+            highlight["levers"] = list(position.get("levers") or [])
+            highlight["controlIds"] = list(position.get("controlIds") or [])
+            highlights.append(highlight)
+        result["highlights"] = highlights
+    result["strings"] = {
+        "count": 10,
+        "labels": {str(string): note for string, note in target_profile.open_notes_by_string().items()},
+    }
+    result["copedent"] = {
+        "id": target_profile.id,
+        "label": target_profile.label,
+        "status": target_profile.validation_status,
+    }
+    result["targetCopedentId"] = target_profile.id
+    result["targetCopedentRevision"] = target_profile.revision
+    result["targetCopedentLabel"] = target_profile.label
+    result["arrangedFor"] = target_profile.label
+    return result
+
+
+def retarget_tab_example_payload(
+    payload: Mapping[str, Any] | None,
+    target_profile: E9CopedentProfile,
+    *,
+    source_profile: E9CopedentProfile | None = None,
+) -> dict[str, Any] | None:
+    """Transfer structured tab events by effect and render with target labels."""
+
+    if not isinstance(payload, Mapping):
+        return None
+    source = source_profile or get_e9_copedent_profile(CUSTOM_LKV_COPEDENT_ID)
+    result = deepcopy(dict(payload))
+    render_events: list[TabEvent] = []
+    transferred_events: list[dict[str, Any]] = []
+    for raw_event in result.get("events") or []:
+        if not isinstance(raw_event, Mapping):
+            return None
+        event = deepcopy(dict(raw_event))
+        raw_notes = event.get("notes") or []
+        strings = tuple(int(note.get("string") or 0) for note in raw_notes if isinstance(note, Mapping))
+        if not strings:
+            return None
+        source_controls = tuple(
+            dict.fromkeys(
+                change
+                for note in raw_notes
+                if isinstance(note, Mapping)
+                for change in (note.get("changes") or [])
+            )
+        )
+        try:
+            transfer = transfer_controls(source, source_controls, target_profile, sounding_strings=strings)
+        except ValueError:
+            return None
+        fret_values = {int(note.get("fret") or 0) for note in raw_notes if isinstance(note, Mapping)}
+        if not transfer.exact or len(fret_values) != 1 or not _same_sounding_pitches(
+            source,
+            source_controls,
+            target_profile,
+            transfer.target_controls,
+            strings=strings,
+            fret=next(iter(fret_values)),
+        ):
+            return None
+        controls = [resolve_control(target_profile, control_value) for control_value in transfer.target_controls]
+        notes: list[dict[str, Any]] = []
+        render_notes: list[TabNote] = []
+        for raw_note in raw_notes:
+            note = deepcopy(dict(raw_note))
+            string = int(note.get("string") or 0)
+            active_controls = [control for control in controls if control_affects_string(target_profile, control.id, string)]
+            codes = tuple(arranger_code(control) for control in active_controls)
+            labels = tuple(control_display_label(target_profile, control.id) for control in active_controls)
+            note["changes"] = list(codes)
+            note["changeLabels"] = list(labels)
+            note["mechanicalAction"] = normalized_mechanical_action(
+                target_profile,
+                string=string,
+                fret=int(note.get("fret") or 0),
+                controls=[control.id for control in active_controls],
+            )
+            notes.append(note)
+            render_notes.append(
+                TabNote(
+                    string=string,
+                    fret=int(note.get("fret") or 0),
+                    changes=codes,
+                    articulation=note.get("articulation"),
+                    display_changes=labels,
+                )
+            )
+        event["notes"] = notes
+        event["controlStates"] = [
+            {
+                "id": control.id,
+                "label": control.label,
+                "physicalPosition": control.physical_position,
+                "travel": control.travel,
+            }
+            for control in controls
+        ]
+        event["targetCopedentId"] = target_profile.id
+        transferred_events.append(event)
+        render_events.append(
+            TabEvent(
+                notes=tuple(render_notes),
+                chord=event.get("chord"),
+                lyric=event.get("lyric"),
+                comment=event.get("comment"),
+                transition=event.get("transition"),
+            )
+        )
+    rendered = render_tab(render_events, profile=tab_profile_for_e9(target_profile))
+    if not rendered.ok:
+        return None
+    result["events"] = transferred_events
+    result["rendered_tab"] = rendered.tab
+    result["validation"] = {
+        "ok": True,
+        "issues": [],
+        "profile": target_profile.id,
+        "eventCount": len(transferred_events),
+    }
+    context = dict(result.get("context") or {})
+    context.update({"profile": target_profile.id, "profileLabel": target_profile.label})
+    result["context"] = context
+    result["targetCopedentId"] = target_profile.id
+    result["targetCopedentRevision"] = target_profile.revision
+    result["targetCopedentLabel"] = target_profile.label
+    result["arrangedFor"] = target_profile.label
+    return result
+
+
 def _note_pc(note: object) -> int:
     root = str(note or "").split("/", 1)[0].strip().replace("♯", "#").replace("♭", "b")
     if root not in NOTE_TO_SEMITONE:
@@ -289,7 +514,13 @@ def _open_pitch_near_standard(string: int, note: str) -> int:
 def custom_e9_profile_from_payload(payload: Mapping[str, Any]) -> E9CopedentProfile:
     """Validate the locally saved Backstage E9 profile for deterministic use."""
 
-    family = str(payload.get("tuningFamily") or payload.get("tuning_family") or "").strip().upper()
+    family = str(
+        payload.get("tuningFamily")
+        or payload.get("tuning_family")
+        or payload.get("instrument")
+        or payload.get("tuning")
+        or ""
+    ).strip().upper()
     if family != "E9":
         raise ValueError("Melody Studio can use a saved profile only when its tuning family is E9.")
     raw_strings = payload.get("strings")
@@ -306,15 +537,24 @@ def custom_e9_profile_from_payload(payload: Mapping[str, Any]) -> E9CopedentProf
         note = str(raw.get("openNote") or raw.get("open_note") or "").strip()
         _note_pc(note)
         open_notes[string] = note
-        open_pitches[string] = _open_pitch_near_standard(string, note)
+        raw_pitch = raw.get("openPitchValue")
+        if raw_pitch is None:
+            raw_pitch = raw.get("open_pitch_value")
+        if raw_pitch is None:
+            open_pitches[string] = _open_pitch_near_standard(string, note)
+        else:
+            pitch_value = int(raw_pitch)
+            if not 24 <= pitch_value <= 96 or pitch_value % 12 != _note_pc(note):
+                raise ValueError(f"Saved E9 string {string} has an inconsistent pitch register.")
+            open_pitches[string] = pitch_value
     if set(open_notes) != set(range(1, 11)):
         raise ValueError("Saved E9 strings must include every string from 1 through 10.")
 
     raw_controls = payload.get("controls") or []
     if not isinstance(raw_controls, list):
         raise ValueError("Saved copedent controls must be a list.")
-    if len(raw_controls) > 16:
-        raise ValueError("Saved E9 profiles support at most 16 controls in Melody Studio.")
+    if len(raw_controls) > 24:
+        raise ValueError("Saved E9 profiles support at most 24 pedal or lever states.")
     controls: list[E9CopedentControl] = []
     used_ids: set[str] = set()
     for index, raw_control in enumerate(raw_controls):
@@ -325,8 +565,19 @@ def custom_e9_profile_from_payload(payload: Mapping[str, Any]) -> E9CopedentProf
         if not control_id or control_id in used_ids:
             raise ValueError("Saved copedent control IDs must be non-empty and unique.")
         used_ids.add(control_id)
-        raw_type = str(raw_control.get("type") or "lever").lower()
+        raw_type = str(
+            raw_control.get("type")
+            or raw_control.get("controlType")
+            or raw_control.get("control_type")
+            or "lever"
+        ).lower()
         control_type = "pedal" if raw_type == "pedal" else "lever"
+        physical_position = str(
+            raw_control.get("physicalPosition")
+            or raw_control.get("physical_position")
+            or label
+        ).strip()[:48]
+        travel = str(raw_control.get("travel") or ("pedal" if control_type == "pedal" else "full")).strip()[:48]
         raw_changes = raw_control.get("changes") or []
         if not isinstance(raw_changes, list) or not raw_changes:
             continue
@@ -343,6 +594,8 @@ def custom_e9_profile_from_payload(payload: Mapping[str, Any]) -> E9CopedentProf
             to_note = str(raw_change.get("toNote") or "").strip()
             _note_pc(from_note)
             _note_pc(to_note)
+            if _note_pc(from_note) != _note_pc(open_notes[string]):
+                raise ValueError(f"Saved control {label} starts string {string} from the wrong open pitch.")
             changes.append(
                 E9CopedentChange(
                     string,
@@ -356,25 +609,139 @@ def custom_e9_profile_from_payload(payload: Mapping[str, Any]) -> E9CopedentProf
                 id=control_id,
                 label=label,
                 control_type=control_type,
-                physical_position=label,
+                physical_position=physical_position,
                 changes=tuple(changes),
                 mechanical_name="; ".join(
                     f"string {change.string} {change.from_note}-to-{change.to_note}" for change in changes
                 ),
-                compatibility_aliases=(label,),
+                player_shorthand=tuple(
+                    str(value).strip()[:48]
+                    for value in (raw_control.get("aliases") or raw_control.get("playerShorthand") or [])
+                    if str(value).strip()
+                ),
+                compatibility_aliases=tuple(
+                    dict.fromkeys(
+                        value
+                        for value in (
+                            label,
+                            physical_position,
+                            *(
+                                str(alias).strip()[:48]
+                                for alias in (raw_control.get("compatibilityAliases") or [])
+                                if str(alias).strip()
+                            ),
+                        )
+                        if value
+                    )
+                ),
+                travel=travel,
+                notes=str(raw_control.get("notes") or "")[:240],
             )
         )
     profile_id = str(payload.get("id") or "saved-user-e9").strip()[:80] or "saved-user-e9"
     label = str(payload.get("name") or payload.get("label") or "My saved E9").strip()[:80]
+    requested_pedal_order = payload.get("pedalOrder") or payload.get("pedal_order") or []
+    pedal_ids = [control.id for control in controls if control.control_type == "pedal"]
+    pedal_order = tuple(
+        [str(value) for value in requested_pedal_order if str(value) in pedal_ids]
+        + [control_id for control_id in pedal_ids if control_id not in requested_pedal_order]
+    )
+    revision = max(1, int(payload.get("revision") or 1))
+    runtime_id = profile_id if profile_id.startswith("saved:") else f"saved:{profile_id}"
     return E9CopedentProfile(
-        id=f"saved:{profile_id}",
+        id=runtime_id,
         label=label,
         status="enabled",
-        pedal_order=tuple(arranger_code(control) for control in controls if control.control_type == "pedal"),
+        pedal_order=pedal_order,
         controls=tuple(controls),
         notes="Validated from the user's locally saved Backstage E9 profile.",
         open_notes=tuple(sorted(open_notes.items())),
         open_pitch_values=tuple(sorted(open_pitches.items())),
+        revision=revision,
+        origin="custom",
+        validation_status="valid",
+    )
+
+
+def resolve_copedent_context(context: Mapping[str, Any] | None) -> tuple[E9CopedentProfile, int]:
+    """Resolve a built-in ID or validate a local custom profile snapshot."""
+
+    if not context:
+        profile = get_e9_copedent_profile(DEFAULT_COPEDENT_ID)
+        return profile, profile.revision
+    snapshot = context.get("profileSnapshot") or context.get("profile_snapshot")
+    profile_id = str(context.get("profileId") or context.get("profile_id") or DEFAULT_COPEDENT_ID).strip()
+    if snapshot is not None:
+        if not isinstance(snapshot, Mapping):
+            raise ValueError("copedentContext.profileSnapshot must be an object")
+        profile = custom_e9_profile_from_payload(snapshot)
+        expected = profile_id.removeprefix("saved:")
+        actual = profile.id.removeprefix("saved:")
+        if expected and expected != actual:
+            raise ValueError("copedentContext profile ID does not match its custom snapshot")
+    else:
+        profile = get_e9_copedent_profile(profile_id)
+        if profile.origin == "source":
+            raise ValueError("Source-only copedents cannot be selected as a target profile")
+    revision = max(1, int(context.get("profileRevision") or context.get("profile_revision") or profile.revision))
+    return profile, revision
+
+
+def copedent_context_metadata(profile: E9CopedentProfile, revision: int | None = None) -> dict[str, object]:
+    return {
+        "targetCopedentId": profile.id,
+        "targetCopedentRevision": int(revision or profile.revision),
+        "targetCopedentLabel": profile.label,
+    }
+
+
+def profile_control_answer(question: str, profile: E9CopedentProfile) -> str | None:
+    """Answer direct questions about a control from the selected profile only."""
+
+    lowered = str(question or "").lower()
+    if not re.search(r"\b(?:my|active|this)\b", lowered):
+        return None
+    requested_match = re.search(r"\b(?:lkl|lkr|lkv|rkl|rkr|rkll|rkrr|p[1-9])\b", lowered)
+    pedal_match = re.search(r"\b([abc])(?:\s+pedal)\b|\bpedal\s+([abc])\b", lowered)
+    requested = (
+        requested_match.group(0).upper()
+        if requested_match
+        else next((value.upper() for value in (pedal_match.groups() if pedal_match else ()) if value), "")
+    )
+    if not requested and "copedent" not in lowered and "setup" not in lowered:
+        return None
+    if requested:
+        matching = [
+            control
+            for control in profile.controls
+            if requested in {
+                control.id.upper(),
+                control.label.upper(),
+                control.physical_position.upper(),
+                *(alias.upper() for alias in control.player_shorthand),
+                *(alias.upper() for alias in control.compatibility_aliases),
+            }
+            or (requested == "RKLL" and control.physical_position.upper() == "RKL" and "full" in control.travel.lower())
+            or (requested == "RKRR" and control.physical_position.upper() == "RKR" and "full" in control.travel.lower())
+        ]
+        if not matching:
+            return (
+                f"Using {profile.label}, no {requested} state is recorded. "
+                "Open Backstage to add it or confirm that your guitar does not have that movement."
+            )
+        lines = [f"Using {profile.label}, {requested} is recorded as:"]
+        for control in matching:
+            change_text = "; ".join(
+                f"string {change.string} {change.from_note} to {change.to_note} ({change.direction} {abs(change.semitones)} semitone{'s' if abs(change.semitones) != 1 else ''})"
+                for change in control.changes
+            )
+            state_label = f"{control.label} — {control.physical_position}, {control.travel or 'full'} travel"
+            lines.append(f"- {state_label}: {change_text}.")
+        lines.append("These mechanics come from the active profile, not from the lever name alone.")
+        return "\n".join(lines)
+    return (
+        f"The active setup is {profile.label}. It has {len(profile.controls)} recorded pedal/lever states. "
+        "Ask about a physical control such as RKL or open Backstage to review the complete chart."
     )
 
 

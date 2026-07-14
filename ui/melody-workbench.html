@@ -64,8 +64,9 @@
       background: rgba(8, 10, 9, 0.68);
       color: var(--cream);
       text-decoration: none;
+      font-family: "Gill Sans", "Gill Sans MT", "Avenir Next", "Segoe UI", system-ui, -apple-system, sans-serif;
       font-size: 14px;
-      font-weight: 750;
+      font-weight: 600;
     }
     .studio-nav a:hover, .studio-nav a:focus-visible, .studio-nav a[aria-current="page"] { border-color: rgba(240, 191, 105, 0.62); background: rgba(240, 191, 105, 0.075); outline: none; }
     .studio-nav svg { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
@@ -418,7 +419,10 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/><path d="M9.5 20v-6h5v6"/></svg>
         <span>Home</span>
       </a>
-      <a href="/ui/steel-guitar-rag-mock.html?v=feature-nav-20260713-1#backstage"><span>Go Backstage</span></a>
+      <a href="/ui/steel-guitar-rag-mock.html?v=feature-nav-20260713-1#backstage">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5z"/><path d="M8 16h8"/><path d="M9 13l3-5 3 5"/><path d="M12 8v8"/></svg>
+        <span>Go Backstage</span>
+      </a>
     </nav>
   </header>
 
@@ -427,6 +431,7 @@
       <p class="studio-kicker">A phrase-to-E9 teaching workspace</p>
       <h1 id="studio-title">Turn a phrase into an E9 lesson.</h1>
       <p>Bring a short melody, solo passage, or song section. Melody Studio maps the notes into synchronized fretboard positions, tab, and practice steps.</p>
+      <p class="studio-copy" id="studio-copedent-status" data-active-copedent></p>
     </section>
 
     <section class="studio-panel unavailable" id="studio-unavailable" hidden>
@@ -757,11 +762,12 @@
     <footer class="studio-print-footer">www.steelguitarrag.com</footer>
   </aside>
 
-  <script src="answer-client.js?v=copedent-transfer-20260713-1"></script>
+  <script src="copedent-store.js?v=copedent-library-v2-20260714-2"></script>
+  <script src="answer-client.js?v=copedent-library-v2-20260714-2"></script>
   <script src="pedal-steel-fretboard-styles.js?v=module-boundaries-20260713"></script>
   <script src="pedal-steel-fretboard.js?v=module-boundaries-20260713"></script>
   <script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>
   <script src="melody-score.js?v=copedent-transfer-20260713-1"></script>
-  <script src="melody-workbench.js?v=copedent-transfer-20260713-1"></script>
+  <script src="melody-workbench.js?v=copedent-library-v2-20260714-2"></script>
 </body>
 </html>

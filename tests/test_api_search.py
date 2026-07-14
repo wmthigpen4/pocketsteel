@@ -4382,6 +4382,183 @@ def test_api_answer_rejects_invalid_melody_without_rendering() -> None:
     assert "fretboard" not in payload
 
 
+def _custom_profile_context_for_tests() -> dict[str, object]:
+    strings = [
+        (1, "F#", 66), (2, "D#", 63), (3, "G#", 68), (4, "E", 64), (5, "B", 59),
+        (6, "G#", 56), (7, "F#", 54), (8, "E", 52), (9, "D", 50), (10, "B", 47),
+    ]
+    profile = {
+        "id": "test-half-full-e9",
+        "name": "Test half/full E9",
+        "revision": 7,
+        "tuningFamily": "E9",
+        "stringCount": 10,
+        "strings": [
+            {"stringNumber": string, "openNote": note, "openPitchValue": pitch}
+            for string, note, pitch in strings
+        ],
+        "controls": [
+            {
+                "id": "road-a",
+                "label": "My A raise",
+                "type": "pedal",
+                "physicalPosition": "P3",
+                "travel": "pedal",
+                "changes": [
+                    {"stringNumber": 5, "fromNote": "B", "toNote": "C#"},
+                    {"stringNumber": 10, "fromNote": "B", "toNote": "C#"},
+                ],
+            },
+            {
+                "id": "road-b",
+                "label": "My B raise",
+                "type": "pedal",
+                "physicalPosition": "P2",
+                "travel": "pedal",
+                "changes": [
+                    {"stringNumber": 3, "fromNote": "G#", "toNote": "A"},
+                    {"stringNumber": 6, "fromNote": "G#", "toNote": "A"},
+                ],
+            },
+            {
+                "id": "E-lower",
+                "label": "My E lower",
+                "type": "lever",
+                "physicalPosition": "LKR",
+                "travel": "full",
+                "changes": [
+                    {"stringNumber": 4, "fromNote": "E", "toNote": "Eb"},
+                    {"stringNumber": 8, "fromNote": "E", "toNote": "Eb"},
+                ],
+            },
+            {
+                "id": "rkl-half",
+                "label": "RKL",
+                "type": "lever",
+                "physicalPosition": "RKL",
+                "travel": "half-stop",
+                "changes": [
+                    {"stringNumber": 1, "fromNote": "F#", "toNote": "G"},
+                    {"stringNumber": 6, "fromNote": "G#", "toNote": "G"},
+                ],
+            },
+            {
+                "id": "rkl-full",
+                "label": "RKLL",
+                "type": "lever",
+                "physicalPosition": "RKL",
+                "travel": "full-stop",
+                "changes": [
+                    {"stringNumber": 1, "fromNote": "F#", "toNote": "G"},
+                    {"stringNumber": 6, "fromNote": "G#", "toNote": "F#"},
+                ],
+            },
+        ],
+    }
+    return {
+        "profileId": profile["id"],
+        "profileRevision": profile["revision"],
+        "profileSnapshot": profile,
+    }
+
+
+def test_copedent_library_validation_and_profile_specific_answer_contract() -> None:
+    status, _, library = call_app("/api/copedents/e9", method="GET")
+    assert status == "200 OK"
+    assert [profile["id"] for profile in library["profiles"]] == ["emmons-e9-basic", "day-e9-basic"]
+    assert [profile["label"] for profile in library["profiles"]] == ["Emmons E9 starter", "Day E9 starter"]
+    for profile in library["profiles"]:
+        rkl_states = [control for control in profile["controls"] if control["physical_position"] == "RKL"]
+        rkr_states = [control for control in profile["controls"] if control["physical_position"] == "RKR"]
+        assert [(control["id"], control["travel"]) for control in rkl_states] == [
+            ("RKL-half", "half-stop"),
+            ("G-lower", "full-stop"),
+        ]
+        assert [(control["id"], control["travel"]) for control in rkr_states] == [
+            ("D-lower", "half-stop"),
+            ("RKR-full", "full-stop"),
+        ]
+    assert all(profile["id"] != "source-e9-abc-defg-v1" for profile in library["profiles"])
+
+    context = _custom_profile_context_for_tests()
+    status, _, validated = call_app(
+        "/api/copedents/validate",
+        method="POST",
+        json_body={"profile": context["profileSnapshot"]},
+    )
+    assert status == "200 OK"
+    assert validated["valid"] is True
+    controls = validated["profile"]["controls"]
+    assert [(control["physical_position"], control["travel"]) for control in controls if control["physical_position"] == "RKL"] == [
+        ("RKL", "half-stop"),
+        ("RKL", "full-stop"),
+    ]
+
+    status, _, answer = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={"question": "What does my RKL do?", "copedentContext": context},
+    )
+    assert status == "200 OK"
+    assert answer["targetCopedentId"] == "saved:test-half-full-e9"
+    assert answer["targetCopedentRevision"] == 7
+    assert answer["targetCopedentLabel"] == "Test half/full E9"
+    assert "RKL, half-stop travel" in answer["answer"]
+    assert "RKLL — RKL, full-stop travel" in answer["answer"]
+    assert answer["sources"] == []
+
+    status, _, chord_answer = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={"question": "How do I play a G chord on E9?", "copedentContext": context},
+    )
+    assert status == "200 OK"
+    assert chord_answer["targetCopedentId"] == "saved:test-half-full-e9"
+    assert chord_answer["fretboard"]["copedent"]["id"] == "saved:test-half-full-e9"
+    assert all(
+        position["targetCopedentId"] == "saved:test-half-full-e9"
+        for position in chord_answer["fretboard"]["positions"]
+    )
+    assert any(
+        "My A raise (P3)" in position["pedals"]
+        for position in chord_answer["fretboard"]["positions"]
+    )
+    assert "user-emmons-lashley-legrande-e9" not in str(chord_answer["fretboard"])
+
+    status, _, movement = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={"question": "Show me a G to C pedal steel move", "copedentContext": context},
+    )
+    assert status == "200 OK"
+    assert movement["tab_example"]["validation"]["profile"] == "saved:test-half-full-e9"
+    assert "My A raise (P3)" in movement["tab_example"]["rendered_tab"]
+
+
+def test_custom_copedent_drives_explorer_and_blocks_incompatible_lesson_mechanics() -> None:
+    context = _custom_profile_context_for_tests()
+    status, _, explorer = call_app(
+        "/api/explorer/e9",
+        method="POST",
+        json_body={"key": "G", "copedentContext": context},
+    )
+    assert status == "200 OK"
+    assert explorer["targetCopedentId"] == "saved:test-half-full-e9"
+    assert explorer["selected_copedent"]["id"] == "saved:test-half-full-e9"
+    assert explorer["positions"]
+    assert all(row["copedent_profile"] == "saved:test-half-full-e9" for row in explorer["positions"])
+
+    status, _, lesson = call_app(
+        "/api/lessons/build",
+        method="POST",
+        json_body={"lessonId": "f-lever", "copedentContext": context},
+    )
+    assert status == "200 OK"
+    assert lesson["status"] == "unavailable"
+    assert lesson["targetCopedentId"] == "saved:test-half-full-e9"
+    assert "not available" in lesson["message"]
+
+
 def test_api_session_exposes_melody_feature_and_version_stays_minimal() -> None:
     status, _, session = call_app("/api/session", method="GET", melody_exercise_enabled=True)
     assert status == "200 OK"

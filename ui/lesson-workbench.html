@@ -15,7 +15,8 @@
     .lesson-brand span { color:var(--muted); font-size:11px; letter-spacing:.12em; text-transform:uppercase; }
     .lesson-brand strong { font-family:Georgia,serif; color:var(--gold); font-size:22px; }
     .workspace-nav { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:7px; }
-    .workspace-nav a { min-height:44px; display:inline-flex; align-items:center; border:1px solid var(--line); border-radius:999px; padding:0 15px; color:var(--muted); text-decoration:none; font-size:13px; font-weight:750; }
+    .workspace-nav a { min-height:44px; display:inline-flex; align-items:center; gap:9px; border:1px solid var(--line); border-radius:999px; padding:0 15px; color:var(--muted); text-decoration:none; font-family:"Gill Sans","Gill Sans MT","Avenir Next","Segoe UI",system-ui,-apple-system,sans-serif; font-size:14px; font-weight:600; }
+    .workspace-nav svg { width:18px; height:18px; flex:0 0 auto; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
     .workspace-nav a:hover,.workspace-nav a:focus-visible,.workspace-nav a[aria-current="page"] { border-color:rgba(240,191,105,.62); background:rgba(240,191,105,.09); color:var(--cream); outline:none; }
     main { width:min(1080px,calc(100% - 32px)); margin:0 auto; padding:56px 0 80px; }
     .lesson-hero { max-width:780px; margin-bottom:34px; }
@@ -91,8 +92,14 @@
   <header class="lesson-header">
     <a class="lesson-brand" href="/ui/steel-guitar-rag-mock.html"><span>Steel Guitar RAG</span><strong>Lessons</strong></a>
     <nav class="workspace-nav" aria-label="Page navigation">
-      <a href="/ui/steel-guitar-rag-mock.html?v=feature-nav-20260713-1">Home</a>
-      <a href="/ui/steel-guitar-rag-mock.html?v=feature-nav-20260713-1#backstage">Go Backstage</a>
+      <a href="/ui/steel-guitar-rag-mock.html?v=feature-nav-20260713-1">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg>
+        <span>Home</span>
+      </a>
+      <a href="/ui/steel-guitar-rag-mock.html?v=feature-nav-20260713-1#backstage">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5z"/><path d="M8 16h8"/><path d="M9 13l3-5 3 5"/><path d="M12 8v8"/></svg>
+        <span>Go Backstage</span>
+      </a>
     </nav>
   </header>
 
@@ -101,6 +108,7 @@
       <p class="lesson-eyebrow">Lessons</p>
       <h1 id="lesson-title">Practice with a clear purpose.</h1>
       <p>Choose a reviewed path or build a focused lesson around the skill you want to improve. Lessons connect to the existing Explorer and Melody Studio instead of duplicating them.</p>
+      <p class="lesson-note" id="lesson-copedent-status" data-active-copedent></p>
     </section>
 
     <section class="unavailable" id="lesson-unavailable" hidden>
@@ -162,7 +170,8 @@
     </section>
   </main>
 
-  <script src="answer-client.js?v=melody-exercise-v0-20260710"></script>
-  <script src="lesson-workbench.js?v=lesson-composer-v2-20260713"></script>
+  <script src="copedent-store.js?v=copedent-library-v2-20260714-2"></script>
+  <script src="answer-client.js?v=copedent-library-v2-20260714-2"></script>
+  <script src="lesson-workbench.js?v=copedent-library-v2-20260714-2"></script>
 </body>
 </html>
