@@ -33,7 +33,7 @@ def test_landing_home_has_product_first_hierarchy_and_copy() -> None:
     assert "Open Fretboard Explorer" not in home
     assert home.index("home-hero") < home.index("home-explorer-panel")
     assert home.index("home-explorer-panel") < home.index("home-product-grid")
-    assert home.index("home-product-grid") < home.index("home-backstage-strip")
+    assert "home-backstage-strip" not in home
 
 
 def test_landing_home_exposes_all_four_workspaces_and_neutral_backstage() -> None:
@@ -54,9 +54,11 @@ def test_landing_home_exposes_all_four_workspaces_and_neutral_backstage() -> Non
     assert "Build, edit, play back, and practice melodies while connecting each note to a playable E9 position." in home
     assert "Follow reviewed learning paths or build a focused lesson for the topic, level, and time you have." in home
     assert "Get teacher-first, source-backed help with technique, tone, setup, gear, copedents, theory, and troubleshooting." in home
-    assert "Manage your setup, copedent, account, access, feedback, and preferences." in home
-    assert "Open Backstage" in home
-    assert home.count('class="home-button home-button-utility backstage-trigger"') == 1
+    assert "Manage your setup, copedent, account, access, feedback, and preferences." not in home
+    assert "Open Backstage" not in home
+    assert "Go Backstage" in html
+    assert home.count("backstage-trigger") == 0
+    assert html.count('class="header-action-button backstage-trigger"') == 1
     assert "Last Updated" not in home
     assert "Not connected" not in home
 
@@ -109,6 +111,8 @@ def test_landing_home_restores_source_aware_ai_shimmer_and_claim_boundaries() ->
     assert ".home-ai-footer .footer-trigger.footer-shimmer {" in html
     assert "-webkit-background-clip: text;" in html
     assert "animation: footer-shimmer-sweep 3.2s ease-in-out infinite;" in html
+    assert ".home-ai-footer .footer-trigger.footer-shimmer:hover," in html
+    assert html.count("text-decoration: none;") >= 2
     assert "How the workbench supports you" not in html
     assert 'title: "What’s underneath?"' in html
     assert '“RAG” stands for retrieval-augmented generation' in html
@@ -120,7 +124,7 @@ def test_landing_home_restores_source_aware_ai_shimmer_and_claim_boundaries() ->
     assert 'aria-modal="true"' in html
     assert "techPopoverClose.focus();" in html
     assert "Open the full Explorer" not in home
-    assert "See three ways to play G major across the neck." in home
+    assert "One chord. Three positions. A whole neck opens up." in home
     assert "E9 · G major · strings 4-5-6" in home
     assert "validated positions" not in home.casefold()
     prohibited = (
@@ -152,7 +156,11 @@ def test_landing_shell_has_responsive_and_accessibility_contract() -> None:
     assert "min-height: 44px;" in css
     assert ".home-explorer-stage [data-string-label]," in css
     assert ".home-explorer-stage [data-tuning-label] {\n  display: none;\n}" in css
-    assert ".page:not(.is-answering) .app-shell-nav {\n  display: none;\n}" in css
+    assert ".page:not(.is-answering) .app-shell-nav {" in css
+    assert "position: absolute;\n  top: 18px;\n  right: 0;" in css
+    assert ".page:not(.is-answering) .app-shell-nav > :not(.backstage-trigger)" in css
+    assert ".page:not(.is-answering) .app-shell-header .app-shell-nav {" in css
+    assert "position: static;" in css
     assert 'role="dialog" aria-modal="true"' in html
     assert 'event.key === "Tab" && !backstage.hidden' in html
     assert "activeBackstageTrigger?.focus();" in html

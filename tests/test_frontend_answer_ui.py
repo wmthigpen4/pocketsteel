@@ -395,7 +395,7 @@ def test_answer_ui_links_to_e9_fretboard_explorer_surface() -> None:
     assert ".app-shell-header .header-action-button" in shell_css
     assert "min-height: 46px;" in shell_css
     assert 'aria-controls="backstage"' in html
-    assert 'id="backstage-cta-label">Backstage</span>' in html
+    assert 'id="backstage-cta-label">Go Backstage</span>' in html
     assert html.index('class="header-action-button explorer-header-link"') < html.index('class="header-action-button backstage-trigger"')
     assert 'class="header-action-button explorer-header-link" href="/ui/e9-fretboard-explorer.html"' in html
     assert 'class="backstage-trigger" href="/ui/e9-fretboard-explorer.html"' not in html
@@ -404,7 +404,7 @@ def test_answer_ui_links_to_e9_fretboard_explorer_surface() -> None:
     assert "not corpus retrieval or RAG-generated fretboard positions" not in html
     assert "[object Object]" not in html
     assert html.index('<span class="nav-label-full">Fretboard Explorer</span>') < html.index('id="question"')
-    assert html.index('<span class="nav-label-full">Fretboard Explorer</span>') < html.index('id="backstage-cta-label">Backstage</span>')
+    assert html.index('<span class="nav-label-full">Fretboard Explorer</span>') < html.index('id="backstage-cta-label">Go Backstage</span>')
     assert ".explorer-header-link,\n    .backstage-trigger" not in html
 
 
@@ -2425,7 +2425,7 @@ async function runPage(sessionPayload, storedAccess = "anonymous") {
   assert.equal(beta.question.disabled, false);
   assert.equal(beta.accessPreview.hidden, true);
   assert.equal(beta.radios.every((radio) => radio.disabled), true);
-  assert.equal(beta.backstageCtaLabel.textContent, "Backstage");
+  assert.equal(beta.backstageCtaLabel.textContent, "Go Backstage");
 
   const admin = await runPage({
     authenticated: true,
@@ -2434,7 +2434,7 @@ async function runPage(sessionPayload, storedAccess = "anonymous") {
     authProvider: "cloudflare_access"
   });
   assert.equal(admin.question.disabled, false);
-  assert.equal(admin.backstageCtaLabel.textContent, "Backstage");
+  assert.equal(admin.backstageCtaLabel.textContent, "Go Backstage");
 
   const anonymous = await runPage({
     authenticated: false,

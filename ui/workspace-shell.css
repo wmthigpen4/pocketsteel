@@ -138,7 +138,22 @@ select:focus-visible,
 }
 
 .page:not(.is-answering) .app-shell-nav {
+  position: absolute;
+  top: 18px;
+  right: 0;
+  display: flex;
+  justify-content: flex-end;
+  width: auto;
+}
+
+.page:not(.is-answering) .app-shell-nav > :not(.backstage-trigger) {
   display: none;
+}
+
+.page:not(.is-answering) .app-shell-nav .backstage-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .app-shell-header .header-action-button {
@@ -944,6 +959,18 @@ select:focus-visible,
     min-height: 44px;
     border-color: rgba(183, 137, 62, 0.3);
     color: #c8b998;
+  }
+
+  .page:not(.is-answering) .app-shell-header .app-shell-nav {
+    position: static;
+    display: flex;
+    justify-content: flex-end;
+    justify-self: stretch;
+    width: 100%;
+  }
+
+  .page:not(.is-answering) .app-shell-nav .backstage-trigger {
+    grid-column: auto;
   }
 
   .page:not(.is-answering) main {

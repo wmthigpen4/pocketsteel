@@ -2101,7 +2101,16 @@
       background-clip: text;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
+      text-decoration: none;
+      text-decoration-color: transparent;
       animation: footer-shimmer-sweep 3.2s ease-in-out infinite;
+    }
+
+    .home-ai-footer .footer-trigger.footer-shimmer:hover,
+    .home-ai-footer .footer-trigger.footer-shimmer:focus-visible,
+    .home-ai-footer .footer-trigger.footer-shimmer[aria-expanded="true"] {
+      text-decoration: none;
+      text-decoration-color: transparent;
     }
 
     .footer-trigger {
@@ -2673,8 +2682,8 @@
         </a>
         <button class="header-action-button backstage-trigger" type="button" aria-haspopup="dialog" aria-controls="backstage" aria-expanded="false">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5z"/><path d="M8 16h8"/><path d="M9 13l3-5 3 5"/><path d="M12 8v8"/></svg>
-          <span class="nav-label-full" id="backstage-cta-label">Backstage</span>
-          <span class="nav-label-short" id="backstage-cta-short">Backstage</span>
+          <span class="nav-label-full" id="backstage-cta-label">Go Backstage</span>
+          <span class="nav-label-short" id="backstage-cta-short">Go Backstage</span>
         </button>
       </nav>
     </header>
@@ -2691,7 +2700,7 @@
           <div class="home-panel-heading">
             <div>
               <p class="home-eyebrow">Fretboard Explorer</p>
-              <h2 id="explorer-preview-title">See three ways to play G major across the neck.</h2>
+              <h2 id="explorer-preview-title">One chord. Three positions. A whole neck opens up.</h2>
             </div>
           </div>
           <div class="home-explorer-stage" id="home-explorer-preview" aria-label="E9 fretboard preview"></div>
@@ -2762,14 +2771,6 @@
           </div>
         </section>
 
-        <section class="home-backstage-strip" aria-labelledby="backstage-strip-title">
-          <svg class="home-card-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 16h8M9 13l3-5 3 5M12 8v8"/></svg>
-          <div>
-            <h2 id="backstage-strip-title">Backstage</h2>
-            <p>Manage your setup, copedent, account, access, feedback, and preferences.</p>
-          </div>
-          <button class="home-button home-button-utility backstage-trigger" type="button" aria-haspopup="dialog" aria-controls="backstage" aria-expanded="false">Open Backstage</button>
-        </section>
       </div>
 
       <section class="answer-workspace" id="answer-workspace" aria-label="Steel Guitar RAG answer workspace" hidden>
@@ -4902,7 +4903,7 @@
     function updateMockAccessUi() {
       const accessRole = STEEL_RAG_ANSWER_UI.normalizeAccessRole(mockAccessState);
       const canAskLive = STEEL_RAG_ANSWER_UI.canSubmitLiveQuestion(accessRole);
-      backstageCtaLabel.textContent = "Backstage";
+      backstageCtaLabel.textContent = "Go Backstage";
       backstageTriggers.forEach((trigger) => {
         trigger.setAttribute("aria-label", "Open Backstage");
       });
