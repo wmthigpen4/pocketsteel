@@ -548,9 +548,9 @@ select:focus-visible,
 
 .home-score-preview .score-svg {
   display: block;
-  width: 100%;
-  height: 86px;
-  overflow: visible;
+  width: 100% !important;
+  height: 86px !important;
+  overflow: hidden;
   fill: #e6dfd1 !important;
   stroke: rgba(230, 223, 209, 0.78) !important;
 }

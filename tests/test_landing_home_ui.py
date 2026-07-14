@@ -22,7 +22,7 @@ def test_landing_home_has_product_first_hierarchy_and_copy() -> None:
 
     assert '<a class="skip-link" href="#main-content">Skip to main content</a>' in html
     assert '<nav class="header-actions app-shell-nav" aria-label="Primary navigation">' in html
-    assert 'href="workspace-shell.css?v=answer-nav-20260713-1"' in html
+    assert 'href="workspace-shell.css?v=landing-score-fit-20260714-1"' in html
     assert '<main id="main-content">' in html
     assert "A connected pedal-steel learning studio" in home
     assert "See the neck. Understand the music. Play with confidence." in home
@@ -87,9 +87,19 @@ def test_landing_workspace_cards_include_compact_tool_previews() -> None:
     assert "saved lesson progress" not in home.casefold()
     assert "Start composing" in home
     assert ".home-score-preview .score-svg" in css
-    assert "home-real-score-svg" in Path("ui/melody-score.js").read_text(encoding="utf-8")
+    score_script = Path("ui/melody-score.js").read_text(encoding="utf-8")
+    assert "home-real-score-svg" in score_script
+    assert "const width = 300;" in score_script
+    assert 'svg.setAttribute("viewBox", `0 0 ${width} ${height}`);' in score_script
+    assert 'svg.setAttribute("preserveAspectRatio", "xMidYMid meet");' in score_script
+    assert 'svg.style.width = "100%";' in score_script
+    assert 'svg.style.height = "86px";' in score_script
+    assert "width: 100% !important;" in css
+    assert "height: 86px !important;" in css
+    assert "overflow: hidden;" in css
     assert "mountMelodyPreview" in SCRIPT_PATH.read_text(encoding="utf-8")
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in HTML_PATH.read_text(encoding="utf-8")
+    assert 'src="melody-score.js?v=landing-score-fit-20260714-1"' in HTML_PATH.read_text(encoding="utf-8")
     assert ".home-fretboard-mini" in css
     assert ".mini-fret-grid," in css
     assert ".mini-string-grid" in css

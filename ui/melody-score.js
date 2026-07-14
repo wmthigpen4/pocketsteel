@@ -556,7 +556,7 @@
     const VF = global.VexFlow;
     if (!container || !VF?.Renderer || !VF?.Stave || !VF?.StaveNote || !VF?.Voice || !VF?.Formatter) return false;
     container.replaceChildren();
-    const width = Math.max(240, Math.floor(Number(container.clientWidth) || 280) - 12);
+    const width = 300;
     const height = 94;
     const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
     renderer.resize(width, height);
@@ -578,6 +578,10 @@
     const svg = container.querySelector("svg");
     if (!svg) return false;
     svg.classList.add("score-svg", "home-real-score-svg");
+    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+    svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    svg.style.width = "100%";
+    svg.style.height = "86px";
     svg.setAttribute("role", "img");
     svg.setAttribute("aria-label", "Six-note melody in four-four time");
     container.dataset.scoreRenderer = "vexflow-preview";
