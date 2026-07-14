@@ -3,6 +3,7 @@
 
   const MANIFEST_URL = "/ui/explorer-data-v1/manifest.json";
   const EXPLORER_SCRIPT_URL = "e9-fretboard-explorer.js?v=table-first-copedent-20260714-2";
+  const answerUi = typeof STEEL_RAG_ANSWER_UI !== "undefined" ? STEEL_RAG_ANSWER_UI : window.STEEL_RAG_ANSWER_UI;
   const payloadsByKey = window.STEEL_RAG_E9_EXPLORER_PAYLOADS || {};
   const payloadsByCopedent = window.STEEL_RAG_E9_EXPLORER_PAYLOADS_BY_COPEDENT || {};
   const pendingLoads = new Map();
@@ -151,7 +152,7 @@
   window.STEEL_RAG_E9_EXPLORER_READY = (async () => {
     try {
       const accessRole = new URLSearchParams(window.location.search || "").get("access") || "";
-      const session = await window.STEEL_RAG_ANSWER_UI?.requestSession?.({ accessRole });
+      const session = await answerUi?.requestSession?.({ accessRole });
       if (session) await window.STEEL_RAG_COPEDENTS?.configureAccount?.(session, { accessRole });
     } catch (_error) {
       // Account-backed custom personalization fails closed to the common default.
