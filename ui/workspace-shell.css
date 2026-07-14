@@ -505,63 +505,67 @@ select:focus-visible,
 }
 
 .home-fretboard-mini {
-  display: block;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   padding: 0;
   background: linear-gradient(180deg, rgba(18, 18, 15, 0.9), rgba(5, 5, 4, 0.92));
   box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.55);
 }
 
-.mini-fret-grid,
-.mini-string-grid {
-  fill: none;
-  stroke-linecap: square;
+.mini-string-line {
+  position: absolute;
+  z-index: 1;
+  top: var(--string-y);
+  right: 0;
+  left: 0;
+  height: 1px;
+  background: rgba(220, 215, 197, 0.34);
 }
 
-.mini-fret-grid {
-  stroke: rgba(220, 215, 197, 0.2);
-  stroke-width: 1;
+.mini-fret-anchor {
+  position: relative;
+  z-index: 2;
+  grid-column: var(--fret-line);
+  grid-row: 1;
+  align-self: stretch;
+  justify-self: start;
+  width: 1px;
+  min-height: 0;
+  background: rgba(220, 215, 197, 0.2);
+  transform: translateX(-0.5px);
 }
 
-.mini-string-grid {
-  stroke: rgba(220, 215, 197, 0.34);
-  stroke-width: 1;
+.mini-grip-dot {
+  position: absolute;
+  top: var(--string-y);
+  left: 50%;
+  width: 22px;
+  height: 12px;
+  border-radius: 999px;
+  background: currentColor;
+  box-shadow: 0 0 7px currentColor;
+  transform: translate(-50%, -50%);
 }
 
-.mini-svg-grip line {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 12;
-  stroke-linecap: round;
-  vector-effect: non-scaling-stroke;
-  filter: drop-shadow(0 0 7px currentColor);
-}
-
-.mini-svg-grip.is-amber { color: #f2a83b; }
-.mini-svg-grip.is-blue { color: #57a9ef; }
-.mini-svg-grip.is-pink { color: #df74a8; }
+.mini-fret-anchor.is-amber { color: #f2a83b; }
+.mini-fret-anchor.is-blue { color: #57a9ef; }
+.mini-fret-anchor.is-pink { color: #df74a8; }
 
 .home-score-preview {
   display: flex;
   align-items: center;
+  justify-content: center;
   padding: 0 6px;
   color: #d9d2c3;
 }
 
-.home-score-preview .score-svg {
+.home-score-preview .score-canvas {
   display: block;
-  width: 100% !important;
-  height: 86px !important;
-  overflow: hidden;
-  fill: #e6dfd1 !important;
-  stroke: rgba(230, 223, 209, 0.78) !important;
-}
-
-.home-score-preview .score-svg [fill]:not([fill="none"]) {
-  fill: #e6dfd1 !important;
-}
-
-.home-score-preview .score-svg [stroke]:not([stroke="none"]) {
-  stroke: rgba(230, 223, 209, 0.78) !important;
+  width: 300px;
+  max-width: 100%;
+  height: auto !important;
+  aspect-ratio: 150 / 43;
 }
 
 .home-score-preview.is-unavailable {

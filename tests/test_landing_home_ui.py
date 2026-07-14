@@ -22,7 +22,7 @@ def test_landing_home_has_product_first_hierarchy_and_copy() -> None:
 
     assert '<a class="skip-link" href="#main-content">Skip to main content</a>' in html
     assert '<nav class="header-actions app-shell-nav" aria-label="Primary navigation">' in html
-    assert 'href="workspace-shell.css?v=shell-nav-type-20260714-1"' in html
+    assert 'href="workspace-shell.css?v=landing-preview-canvas-20260714-1"' in html
     assert '<main id="main-content">' in html
     assert "A connected pedal-steel learning studio" in home
     assert "See the neck. Understand the music. Play with confidence." in home
@@ -71,41 +71,59 @@ def test_landing_workspace_cards_include_compact_tool_previews() -> None:
     home = _home_markup()
     css = CSS_PATH.read_text(encoding="utf-8")
 
-    assert 'class="home-card-preview home-fretboard-mini" viewBox="0 0 300 88" preserveAspectRatio="none"' in home
-    assert 'class="mini-fret-grid"' in home
-    assert 'class="mini-string-grid"' in home
-    assert home.count('class="mini-svg-grip') == 3
-    assert "M0 7H300M0 22H300M0 37H300M0 52H300M0 67H300M0 82H300" in home
-    assert home.count('y1="22"') == 3
-    assert home.count('y1="37"') == 3
-    assert home.count('y1="52"') == 3
+    fretboard_preview = home.split(
+        '<div class="home-card-preview home-fretboard-mini"', 1
+    )[1].split('<a class="home-card-link"', 1)[0]
+    assert fretboard_preview.count('class="mini-string-line"') == 6
+    assert fretboard_preview.count('class="mini-fret-anchor') == 11
+    assert fretboard_preview.count('class="mini-grip-dot"') == 9
+    assert fretboard_preview.count('mini-fret-anchor is-amber') == 1
+    assert fretboard_preview.count('mini-fret-anchor is-blue') == 1
+    assert fretboard_preview.count('mini-fret-anchor is-pink') == 1
+    assert "<svg" not in fretboard_preview
+    assert "preserveAspectRatio" not in fretboard_preview
     assert 'class="home-card-preview home-score-preview" id="home-melody-preview"' in home
     assert 'aria-label="A short melody written in standard notation"' in home
-    assert "<ellipse" not in home
+    score_preview = home.split(
+        '<div class="home-card-preview home-score-preview"', 1
+    )[1].split('<a class="home-card-link"', 1)[0]
+    assert "<svg" not in score_preview
     assert 'class="home-card-preview home-lesson-mini"' in home
     assert "Finding the I–IV–V in G" in home
     assert "saved lesson progress" not in home.casefold()
     assert "Start composing" in home
-    assert ".home-score-preview .score-svg" in css
+    assert ".home-score-preview .score-canvas" in css
     score_script = Path("ui/melody-score.js").read_text(encoding="utf-8")
-    assert "home-real-score-svg" in score_script
+    preview_renderer = score_script.split("function renderPreview(container)", 1)[1].split(
+        "const api =", 1
+    )[0]
+    assert "home-real-score-canvas" in preview_renderer
+    assert "VF.Renderer.Backends.CANVAS" in preview_renderer
+    assert "VF.Renderer.Backends.SVG" not in preview_renderer
     assert "const width = 300;" in score_script
-    assert 'svg.setAttribute("viewBox", `0 0 ${width} ${height}`);' in score_script
-    assert 'svg.setAttribute("preserveAspectRatio", "xMidYMid meet");' in score_script
-    assert 'svg.style.width = "100%";' in score_script
-    assert 'svg.style.height = "86px";' in score_script
-    assert "width: 100% !important;" in css
-    assert "height: 86px !important;" in css
+    assert "const height = 86;" in preview_renderer
+    assert "renderer.resize(width, height);" in preview_renderer
+    assert "context.scale(" not in preview_renderer
+    assert 'canvas.style.width = "100%";' not in preview_renderer
+    assert 'canvas.style.height = "86px";' not in preview_renderer
+    assert 'canvas.setAttribute("aria-hidden", "true")' in preview_renderer
+    assert 'container.dataset.scoreRenderer = "vexflow-canvas-preview"' in preview_renderer
+    assert "aspect-ratio: 150 / 43;" in css
+    assert "width: 300px;" in css
+    assert "max-width: 100%;" in css
+    assert "height: auto !important;" in css
     assert "overflow: hidden;" in css
     assert "mountMelodyPreview" in SCRIPT_PATH.read_text(encoding="utf-8")
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in HTML_PATH.read_text(encoding="utf-8")
-    assert 'src="melody-score.js?v=landing-score-fit-20260714-1"' in HTML_PATH.read_text(encoding="utf-8")
+    assert 'src="melody-score.js?v=landing-preview-canvas-20260714-1"' in HTML_PATH.read_text(encoding="utf-8")
     assert ".home-fretboard-mini" in css
-    assert ".mini-fret-grid," in css
-    assert ".mini-string-grid" in css
-    assert ".mini-svg-grip line" in css
-    assert "stroke-width: 12" in css
-    assert "vector-effect: non-scaling-stroke" in css
+    assert "grid-template-columns: repeat(12, minmax(0, 1fr));" in css
+    assert ".mini-string-line" in css
+    assert ".mini-fret-anchor" in css
+    assert "grid-column: var(--fret-line);" in css
+    assert ".mini-grip-dot" in css
+    assert "left: 50%;" in css
+    assert "transform: translate(-50%, -50%);" in css
     assert ".home-lesson-mini" in css
 
 
@@ -253,6 +271,12 @@ const container = {
 };
 assert.equal(landing.mountExplorerPreview(container, null), null);
 assert.equal(container.textContent, landing.UNAVAILABLE_MESSAGE);
+assert.deepEqual(classes, ["is-unavailable"]);
+
+classes.length = 0;
+container.textContent = "";
+assert.equal(landing.mountMelodyPreview(container, {renderPreview() { return false; }}), false);
+assert.equal(container.textContent, landing.SCORE_UNAVAILABLE_MESSAGE);
 assert.deepEqual(classes, ["is-unavailable"]);
 """
     result = subprocess.run(

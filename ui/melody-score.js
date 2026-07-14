@@ -555,37 +555,44 @@
   function renderPreview(container) {
     const VF = global.VexFlow;
     if (!container || !VF?.Renderer || !VF?.Stave || !VF?.StaveNote || !VF?.Voice || !VF?.Formatter) return false;
-    container.replaceChildren();
-    const width = 300;
-    const height = 94;
-    const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
-    renderer.resize(width, height);
-    const context = renderer.getContext();
-    const stave = new VF.Stave(2, -5, width - 4).addClef("treble").addTimeSignature("4/4");
-    stave.setContext(context).draw();
-    const notes = [
-      ["e/4", "q"],
-      ["g/4", "8"],
-      ["b/4", "8"],
-      ["d/5", "q"],
-      ["b/4", "8"],
-      ["g/4", "8"]
-    ].map(([key, duration]) => new VF.StaveNote({ clef: "treble", keys: [key], duration }));
-    const voice = new VF.Voice({ numBeats: 4, beatValue: 4 }).addTickables(notes);
-    new VF.Formatter().joinVoices([voice]).format([voice], width - 92);
-    voice.draw(context, stave);
-    if (VF.Beam?.generateBeams) VF.Beam.generateBeams(notes).forEach((beam) => beam.setContext(context).draw());
-    const svg = container.querySelector("svg");
-    if (!svg) return false;
-    svg.classList.add("score-svg", "home-real-score-svg");
-    svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-    svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
-    svg.style.width = "100%";
-    svg.style.height = "86px";
-    svg.setAttribute("role", "img");
-    svg.setAttribute("aria-label", "Six-note melody in four-four time");
-    container.dataset.scoreRenderer = "vexflow-preview";
-    return true;
+    try {
+      container.replaceChildren();
+      const width = 300;
+      const height = 86;
+      const pixelRatio = Number(global.devicePixelRatio) || 1;
+      const canvas = global.document.createElement("canvas");
+      container.appendChild(canvas);
+      const renderer = new VF.Renderer(canvas, VF.Renderer.Backends.CANVAS);
+      renderer.resize(width, height);
+      const context = renderer.getContext();
+      context.setFillStyle("#e6dfd1");
+      context.setStrokeStyle("rgba(230, 223, 209, 0.78)");
+      const stave = new VF.Stave(2, -8, width - 4).addClef("treble").addTimeSignature("4/4");
+      stave.setContext(context).draw();
+      const notes = [
+        ["e/4", "q"],
+        ["g/4", "8"],
+        ["b/4", "8"],
+        ["d/5", "q"],
+        ["b/4", "8"],
+        ["g/4", "8"]
+      ].map(([key, duration]) => new VF.StaveNote({ clef: "treble", keys: [key], duration }));
+      const voice = new VF.Voice({ numBeats: 4, beatValue: 4 }).addTickables(notes);
+      new VF.Formatter().joinVoices([voice]).format([voice], width - 92);
+      voice.draw(context, stave);
+      if (VF.Beam?.generateBeams) VF.Beam.generateBeams(notes).forEach((beam) => beam.setContext(context).draw());
+      canvas.classList.add("score-canvas", "home-real-score-canvas");
+      canvas.setAttribute("aria-hidden", "true");
+      canvas.dataset.logicalWidth = String(width);
+      canvas.dataset.logicalHeight = String(height);
+      canvas.dataset.pixelRatio = String(pixelRatio);
+      container.dataset.scoreRenderer = "vexflow-canvas-preview";
+      return true;
+    } catch (_error) {
+      container.replaceChildren();
+      delete container.dataset.scoreRenderer;
+      return false;
+    }
   }
 
   const api = {
