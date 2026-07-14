@@ -1403,6 +1403,407 @@
       font-size: 12px;
     }
 
+    .feedback-talkback {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(290px, 0.42fr);
+      gap: 14px;
+      grid-column: 1 / -1;
+      min-width: 0;
+    }
+
+    .feedback-main-panel,
+    .feedback-impact-panel,
+    .feedback-submit-panel {
+      border: 1px solid rgba(240, 191, 105, 0.28);
+      border-radius: 14px;
+      background:
+        radial-gradient(circle at 18% 16%, rgba(240, 191, 105, 0.06), transparent 31%),
+        linear-gradient(135deg, rgba(28, 32, 32, 0.96), rgba(16, 20, 20, 0.94));
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.2);
+    }
+
+    .feedback-main-panel {
+      display: grid;
+      align-content: start;
+      gap: 22px;
+      min-width: 0;
+      padding: 25px 26px;
+    }
+
+    .feedback-heading {
+      display: grid;
+      gap: 7px;
+    }
+
+    .feedback-heading h3 {
+      margin: 0;
+      color: var(--cream);
+      font-family: var(--font-lesson);
+      font-size: clamp(30px, 3.5vw, 40px);
+      font-weight: 500;
+      line-height: 1.05;
+    }
+
+    .feedback-heading p,
+    .feedback-field-help,
+    .feedback-submit-panel p {
+      margin: 0;
+      color: rgba(244, 234, 214, 0.69);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .feedback-fieldset {
+      min-width: 0;
+      margin: 0;
+      padding: 0;
+      border: 0;
+    }
+
+    .feedback-legend,
+    .feedback-message-label,
+    .feedback-section-title {
+      display: block;
+      margin: 0 0 12px;
+      color: rgba(240, 191, 105, 0.88);
+      font-size: 12px;
+      font-weight: 750;
+      letter-spacing: 0.12em;
+      line-height: 1.35;
+      text-transform: uppercase;
+    }
+
+    .feedback-category-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .feedback-choice {
+      position: relative;
+      display: block;
+      min-width: 0;
+      cursor: pointer;
+    }
+
+    .feedback-choice > input,
+    .feedback-impact-choice > input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    .feedback-choice-content {
+      position: relative;
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      align-content: start;
+      gap: 11px;
+      min-height: 154px;
+      padding: 16px 13px;
+      border: 1px solid rgba(244, 234, 214, 0.15);
+      border-radius: 12px;
+      background: rgba(244, 234, 214, 0.025);
+      color: var(--cream);
+    }
+
+    .feedback-choice-icon,
+    .feedback-impact-icon,
+    .feedback-context-icon {
+      display: grid;
+      place-items: center;
+      flex: 0 0 auto;
+      color: rgba(240, 191, 105, 0.82);
+    }
+
+    .feedback-choice-icon {
+      width: 34px;
+      height: 34px;
+      border: 1px solid rgba(240, 191, 105, 0.2);
+      border-radius: 10px;
+      background: rgba(240, 191, 105, 0.055);
+    }
+
+    .feedback-choice-icon svg,
+    .feedback-impact-icon svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    .feedback-choice-copy {
+      display: grid;
+      align-content: start;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .feedback-choice-copy strong,
+    .feedback-impact-copy strong {
+      color: var(--cream);
+      font-family: var(--font-lesson);
+      font-size: 17px;
+      font-weight: 500;
+      line-height: 1.1;
+    }
+
+    .feedback-choice-copy span,
+    .feedback-impact-copy span,
+    .feedback-context-copy span {
+      color: rgba(244, 234, 214, 0.66);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .feedback-selected-mark {
+      position: absolute;
+      top: 9px;
+      right: 9px;
+      display: none;
+      place-items: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      background: var(--brass);
+      color: #17120a;
+    }
+
+    .feedback-selected-mark svg {
+      width: 14px;
+      height: 14px;
+      stroke-width: 2.5;
+    }
+
+    .feedback-choice > input:checked + .feedback-choice-content {
+      border-color: rgba(255, 181, 56, 0.86);
+      background: linear-gradient(145deg, rgba(240, 191, 105, 0.12), rgba(244, 234, 214, 0.035));
+      box-shadow: 0 0 0 1px rgba(255, 181, 56, 0.12), 0 12px 24px rgba(0, 0, 0, 0.2);
+    }
+
+    .feedback-choice > input:checked + .feedback-choice-content .feedback-selected-mark {
+      display: grid;
+    }
+
+    .feedback-choice > input:focus-visible + .feedback-choice-content,
+    .feedback-impact-choice > input:focus-visible + .feedback-impact-row,
+    .feedback-context-choice input:focus-visible + .feedback-context-indicator {
+      outline: 2px solid #ffd178;
+      outline-offset: 3px;
+    }
+
+    .feedback-message-block {
+      display: grid;
+      min-width: 0;
+    }
+
+    .feedback-message {
+      width: 100%;
+      min-height: 168px;
+      resize: vertical;
+      border: 1px solid rgba(244, 234, 214, 0.16);
+      border-radius: 10px;
+      padding: 14px;
+      background: rgba(8, 11, 11, 0.5);
+      color: var(--cream);
+      font: inherit;
+      font-size: 14px;
+      line-height: 1.5;
+      outline: none;
+    }
+
+    .feedback-message::placeholder {
+      color: rgba(185, 173, 152, 0.48);
+    }
+
+    .feedback-message:focus-visible {
+      border-color: rgba(255, 181, 56, 0.78);
+      outline: 2px solid rgba(255, 209, 120, 0.86);
+      outline-offset: 2px;
+    }
+
+    .feedback-message-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      margin-top: 8px;
+    }
+
+    .feedback-character-count {
+      flex: 0 0 auto;
+      color: rgba(244, 234, 214, 0.62);
+      font-size: 12px;
+    }
+
+    .feedback-context-fieldset {
+      padding-top: 20px;
+      border-top: 1px solid rgba(240, 191, 105, 0.2);
+    }
+
+    .feedback-context-list {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .feedback-context-choice {
+      position: relative;
+      display: grid;
+      grid-template-columns: 22px 25px minmax(0, 1fr);
+      gap: 9px;
+      align-items: start;
+      min-height: 62px;
+      padding: 10px;
+      border: 1px solid rgba(244, 234, 214, 0.1);
+      border-radius: 10px;
+      background: rgba(244, 234, 214, 0.025);
+      cursor: pointer;
+    }
+
+    .feedback-context-choice > input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .feedback-context-indicator {
+      display: grid;
+      place-items: center;
+      width: 22px;
+      height: 22px;
+      border: 1px solid rgba(244, 234, 214, 0.32);
+      border-radius: 5px;
+      color: transparent;
+      background: rgba(8, 11, 11, 0.46);
+    }
+
+    .feedback-context-indicator svg {
+      width: 14px;
+      height: 14px;
+      stroke-width: 2.5;
+    }
+
+    .feedback-context-choice > input:checked + .feedback-context-indicator {
+      border-color: rgba(255, 181, 56, 0.88);
+      background: var(--brass);
+      color: #17120a;
+    }
+
+    .feedback-context-copy {
+      display: grid;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .feedback-context-copy strong {
+      color: rgba(244, 234, 214, 0.88);
+      font-size: 13px;
+      font-weight: 650;
+      line-height: 1.3;
+    }
+
+    .feedback-side {
+      display: grid;
+      align-content: start;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .feedback-impact-panel,
+    .feedback-submit-panel {
+      padding: 22px;
+    }
+
+    .feedback-impact-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .feedback-impact-choice {
+      position: relative;
+      display: block;
+      cursor: pointer;
+    }
+
+    .feedback-impact-row {
+      display: grid;
+      grid-template-columns: 25px 32px minmax(0, 1fr);
+      gap: 11px;
+      align-items: center;
+      min-height: 76px;
+      padding: 11px 13px;
+      border: 1px solid rgba(244, 234, 214, 0.15);
+      border-radius: 12px;
+      background: rgba(244, 234, 214, 0.025);
+    }
+
+    .feedback-impact-indicator {
+      display: grid;
+      place-items: center;
+      width: 25px;
+      height: 25px;
+      border: 1px solid rgba(244, 234, 214, 0.34);
+      border-radius: 999px;
+    }
+
+    .feedback-impact-indicator::after {
+      width: 11px;
+      height: 11px;
+      border-radius: inherit;
+      background: var(--brass);
+      content: "";
+      opacity: 0;
+    }
+
+    .feedback-impact-copy {
+      display: grid;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .feedback-impact-choice > input:checked + .feedback-impact-row {
+      border-color: rgba(255, 181, 56, 0.78);
+      background: linear-gradient(145deg, rgba(240, 191, 105, 0.11), rgba(244, 234, 214, 0.035));
+    }
+
+    .feedback-impact-choice > input:checked + .feedback-impact-row .feedback-impact-indicator {
+      border-color: rgba(255, 209, 120, 0.92);
+    }
+
+    .feedback-impact-choice > input:checked + .feedback-impact-row .feedback-impact-indicator::after {
+      opacity: 1;
+    }
+
+    .feedback-submit-panel {
+      display: grid;
+      gap: 13px;
+      border-color: rgba(240, 191, 105, 0.19);
+    }
+
+    .feedback-submit-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      min-height: 48px;
+      border: 1px solid rgba(244, 234, 214, 0.12);
+      border-radius: 12px;
+      padding: 0 14px;
+      background: rgba(185, 173, 152, 0.16);
+      color: rgba(244, 234, 214, 0.46);
+      font: inherit;
+      cursor: not-allowed;
+    }
+
+    .feedback-submit-button svg {
+      width: 19px;
+      height: 19px;
+    }
+
     .account-credentials {
       display: grid;
       gap: 14px;
@@ -1801,6 +2202,18 @@
     }
 
     @media (max-width: 900px) {
+      .feedback-talkback {
+        grid-template-columns: 1fr;
+      }
+
+      .feedback-category-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .feedback-choice-content {
+        min-height: 132px;
+      }
+
       .plan-pass-card {
         grid-template-columns: 150px minmax(0, 1fr);
       }
@@ -3530,6 +3943,38 @@
         grid-template-columns: 1fr;
       }
 
+      .feedback-talkback,
+      .feedback-category-grid,
+      .feedback-context-list {
+        grid-template-columns: 1fr;
+      }
+
+      .feedback-main-panel,
+      .feedback-impact-panel,
+      .feedback-submit-panel {
+        padding: 18px;
+      }
+
+      .feedback-choice-content {
+        min-height: 0;
+        padding: 14px;
+      }
+
+      .feedback-message {
+        min-height: 180px;
+      }
+
+      .feedback-message-meta {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 5px;
+      }
+
+      .feedback-impact-row,
+      .feedback-context-choice {
+        min-height: 64px;
+      }
+
       .pass-tier {
         grid-template-columns: 1fr;
       }
@@ -4201,7 +4646,7 @@
           <article class="backstage-card">
             <div class="backstage-card-header">
               <h3>Feedback</h3>
-              <span class="coming-soon">Mock only</span>
+              <span class="coming-soon">Coming soon</span>
             </div>
             <p>Share what helped, what missed, or where the steel-guitar reasoning needs more work.</p>
             <button class="backstage-button" type="button" data-backstage-jump="feedback">Open feedback</button>
@@ -4543,26 +4988,114 @@
         </div>
 
         <div class="backstage-content backstage-tab-panel" id="backstage-panel-feedback" role="tabpanel" aria-labelledby="backstage-tab-feedback" hidden>
-          <article class="backstage-card">
-            <div class="backstage-card-header">
-              <h3>Feedback</h3>
-              <span class="coming-soon">Mock only</span>
-            </div>
-            <p>Tell us when an answer helped, missed the mark, or needs better steel-guitar reasoning.</p>
-            <div class="backstage-fields">
-              <div class="backstage-field">
-                <label for="backstage-feedback-category">Category</label>
-                <select id="backstage-feedback-category" disabled>
-                  <option>Answer quality / Missing source / Wrong steel logic / UX issue / Other</option>
-                </select>
+          <div class="feedback-talkback">
+            <section class="feedback-main-panel" aria-labelledby="feedback-talkback-heading">
+              <div class="feedback-heading">
+                <h3 id="feedback-talkback-heading">Talk to the crew</h3>
+                <p>Tell us what helped, what missed, or where the steel-guitar reasoning needs more work.</p>
               </div>
-              <div class="backstage-field">
-                <label for="backstage-feedback">Feedback</label>
-                <textarea id="backstage-feedback" placeholder="What should Steel Guitar RAG learn from this?" disabled></textarea>
+
+              <fieldset class="feedback-fieldset">
+                <legend class="feedback-legend">What best describes your feedback?</legend>
+                <div class="feedback-category-grid">
+                  <label class="feedback-choice">
+                    <input type="radio" name="feedback-category" value="answer-quality" checked>
+                    <span class="feedback-choice-content">
+                      <span class="feedback-choice-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4V5Z"/><path d="M8 9h8M8 12h5"/></svg></span>
+                      <span class="feedback-choice-copy"><strong>Answer quality</strong><span>The answer was inaccurate, incomplete, unclear, or did not address the question.</span></span>
+                      <span class="feedback-selected-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m6 12 4 4 8-9"/></svg></span>
+                    </span>
+                  </label>
+
+                  <label class="feedback-choice">
+                    <input type="radio" name="feedback-category" value="missing-source">
+                    <span class="feedback-choice-content">
+                      <span class="feedback-choice-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v4h4M9 11h6M9 15h6"/></svg></span>
+                      <span class="feedback-choice-copy"><strong>Missing or weak source</strong><span>An important reference was missing, unsupported, or not clearly connected to the answer.</span></span>
+                      <span class="feedback-selected-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m6 12 4 4 8-9"/></svg></span>
+                    </span>
+                  </label>
+
+                  <label class="feedback-choice">
+                    <input type="radio" name="feedback-category" value="wrong-steel-logic">
+                    <span class="feedback-choice-content">
+                      <span class="feedback-choice-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 4a3 3 0 0 0-5 2v2a3 3 0 0 0 0 6v2a3 3 0 0 0 5 2M15 4a3 3 0 0 1 5 2v2a3 3 0 0 1 0 6v2a3 3 0 0 1-5 2M9 4v16M15 4v16M9 8h6M9 16h6"/></svg></span>
+                      <span class="feedback-choice-copy"><strong>Wrong steel logic</strong><span>The steel-guitar theory, copedent mechanics, notation, position, or technique felt incorrect.</span></span>
+                      <span class="feedback-selected-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m6 12 4 4 8-9"/></svg></span>
+                    </span>
+                  </label>
+
+                  <label class="feedback-choice">
+                    <input type="radio" name="feedback-category" value="ux-product-issue">
+                    <span class="feedback-choice-content">
+                      <span class="feedback-choice-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6v.2h-4V21a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3 14H2.8v-4H3a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1a1.7 1.7 0 0 0 1.9.3A1.7 1.7 0 0 0 10 3V2.8h4V3a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.6 1h.2v4H21a1.7 1.7 0 0 0-1.6 1Z"/></svg></span>
+                      <span class="feedback-choice-copy"><strong>UX or product issue</strong><span>Something in the interface, workflow, rendering, or product behavior was confusing or failed.</span></span>
+                      <span class="feedback-selected-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m6 12 4 4 8-9"/></svg></span>
+                    </span>
+                  </label>
+                </div>
+              </fieldset>
+
+              <div class="feedback-message-block">
+                <label class="feedback-message-label" for="backstage-feedback-message">What should Steel Guitar RAG learn from this?</label>
+                <textarea class="feedback-message" id="backstage-feedback-message" maxlength="2000" aria-describedby="backstage-feedback-help backstage-feedback-count" placeholder="Share details, give examples, and tell us what a better answer or experience would look like…"></textarea>
+                <div class="feedback-message-meta">
+                  <p class="feedback-field-help" id="backstage-feedback-help">The more context you share, the better we can tune the reasoning.</p>
+                  <output class="feedback-character-count" id="backstage-feedback-count" for="backstage-feedback-message" aria-live="polite">0 / 2000</output>
+                </div>
               </div>
-            </div>
-            <button class="backstage-button" type="button" disabled>Submit feedback · coming soon</button>
-          </article>
+
+              <fieldset class="feedback-fieldset feedback-context-fieldset">
+                <legend class="feedback-legend">Include context (optional)</legend>
+                <div class="feedback-context-list">
+                  <label class="feedback-context-choice">
+                    <input type="checkbox" id="backstage-feedback-current-page" value="current-page">
+                    <span class="feedback-context-indicator" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m6 12 4 4 8-9"/></svg></span>
+                    <span class="feedback-context-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M15 3v4h4"/></svg></span>
+                    <span class="feedback-context-copy"><strong>Include current page</strong><span>Adds only the current workspace and page path.</span></span>
+                  </label>
+                  <label class="feedback-context-choice">
+                    <input type="checkbox" id="backstage-feedback-browser" value="browser-details">
+                    <span class="feedback-context-indicator" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m6 12 4 4 8-9"/></svg></span>
+                    <span class="feedback-context-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg></span>
+                    <span class="feedback-context-copy"><strong>Include browser details</strong><span>Adds browser family and viewport category only—never cookies, tokens, or a full user-agent.</span></span>
+                  </label>
+                </div>
+              </fieldset>
+            </section>
+
+            <aside class="feedback-side" aria-label="Feedback details and submission">
+              <section class="feedback-impact-panel">
+                <fieldset class="feedback-fieldset">
+                  <legend class="feedback-section-title">How did this affect your session?</legend>
+                  <div class="feedback-impact-list">
+                    <label class="feedback-impact-choice">
+                      <input type="radio" name="feedback-impact" value="helped">
+                      <span class="feedback-impact-row"><span class="feedback-impact-indicator" aria-hidden="true"></span><span class="feedback-impact-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 10v11H3V10h4ZM7 19h10.5a2 2 0 0 0 2-1.6l1.2-6A2 2 0 0 0 18.7 9H15l.8-3.2A2.3 2.3 0 0 0 13.6 3L9 10H7"/></svg></span><span class="feedback-impact-copy"><strong>Helped</strong><span>This improved my understanding or workflow.</span></span></span>
+                    </label>
+                    <label class="feedback-impact-choice">
+                      <input type="radio" name="feedback-impact" value="slowed-down">
+                      <span class="feedback-impact-row"><span class="feedback-impact-indicator" aria-hidden="true"></span><span class="feedback-impact-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M6 3h12M6 21h12M8 3c0 5 2 6 4 9-2 3-4 4-4 9M16 3c0 5-2 6-4 9 2 3 4 4 4 9"/></svg></span><span class="feedback-impact-copy"><strong>Slowed me down</strong><span>It added friction or required extra effort.</span></span></span>
+                    </label>
+                    <label class="feedback-impact-choice">
+                      <input type="radio" name="feedback-impact" value="blocked">
+                      <span class="feedback-impact-row"><span class="feedback-impact-indicator" aria-hidden="true"></span><span class="feedback-impact-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 3 9 5v8l-9 5-9-5V8l9-5Z"/><path d="M12 8v5M12 17h.01"/></svg></span><span class="feedback-impact-copy"><strong>Blocked me</strong><span>I could not continue or get the answer I needed.</span></span></span>
+                    </label>
+                    <label class="feedback-impact-choice">
+                      <input type="radio" name="feedback-impact" value="idea">
+                      <span class="feedback-impact-row"><span class="feedback-impact-indicator" aria-hidden="true"></span><span class="feedback-impact-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 18h6M10 22h4M8.5 15.5A7 7 0 1 1 15.5 15.5c-1 1-1.5 1.5-1.5 2.5h-4c0-1-.5-1.5-1.5-2.5Z"/></svg></span><span class="feedback-impact-copy"><strong>Just an idea</strong><span>This is a suggestion that could improve the product.</span></span></span>
+                    </label>
+                  </div>
+                </fieldset>
+              </section>
+
+              <section class="feedback-submit-panel" aria-labelledby="feedback-submit-heading">
+                <h4 class="feedback-section-title" id="feedback-submit-heading">Send feedback</h4>
+                <button class="feedback-submit-button" type="button" disabled aria-describedby="feedback-submit-explanation"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>Send feedback · coming soon</button>
+                <p id="feedback-submit-explanation">Feedback submission is not connected yet. When enabled, your message and only the context you select will be sent securely to help improve Steel Guitar RAG.</p>
+              </section>
+            </aside>
+          </div>
 
         </div>
 
@@ -4772,6 +5305,8 @@
     const backstageCopyAccountId = document.querySelector("#backstage-copy-account-id");
     const backstageCopyAccountRow = document.querySelector("#backstage-copy-account-row");
     const backstageAccountCopyStatus = document.querySelector("#backstage-account-copy-status");
+    const backstageFeedbackMessage = document.querySelector("#backstage-feedback-message");
+    const backstageFeedbackCount = document.querySelector("#backstage-feedback-count");
     const backstage = document.querySelector("#backstage");
     const backstagePanel = document.querySelector(".backstage-panel");
     const backstageClose = document.querySelector(".backstage-close");
@@ -6716,6 +7251,10 @@
       });
     }
 
+    function updateBackstageFeedbackCount() {
+      backstageFeedbackCount.textContent = `${backstageFeedbackMessage.value.length} / ${backstageFeedbackMessage.maxLength}`;
+    }
+
     function showBackstageTab(tabName) {
       backstageTabs.forEach((tab) => {
         const isSelected = tab.dataset.backstageTab === tabName;
@@ -6841,6 +7380,7 @@
 
     backstageCopyAccountId.addEventListener("click", copyAuthorizedAccountId);
     backstageCopyAccountRow.addEventListener("click", copyAuthorizedAccountId);
+    backstageFeedbackMessage.addEventListener("input", updateBackstageFeedbackCount);
 
     accessStateRadios.forEach((radio) => {
       radio.addEventListener("change", () => setMockAccessState(radio.value));

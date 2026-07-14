@@ -303,6 +303,73 @@ def test_backstage_plan_and_activity_uses_all_approved_assets() -> None:
         assert path.read_bytes().startswith(b"\x89PNG")
 
 
+def test_backstage_feedback_is_an_accessible_talkback_workspace() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+    feedback_match = re.search(
+        r'id="backstage-panel-feedback".*?hidden>(.*?)\n\s*</div>\n\n\s*</div>\n\n\s*<div class="backstage-content backstage-tab-panel" id="backstage-panel-account"',
+        html,
+        re.DOTALL,
+    )
+    assert feedback_match is not None
+    feedback_panel = feedback_match.group(1)
+
+    assert "Talk to the crew" in feedback_panel
+    assert "Tell us what helped, what missed, or where the steel-guitar reasoning needs more work." in feedback_panel
+    assert feedback_panel.count('name="feedback-category"') == 4
+    assert 'value="answer-quality" checked' in feedback_panel
+    assert 'value="missing-source"' in feedback_panel
+    assert 'value="wrong-steel-logic"' in feedback_panel
+    assert 'value="ux-product-issue"' in feedback_panel
+    assert "Answer quality" in feedback_panel
+    assert "Missing or weak source" in feedback_panel
+    assert "Wrong steel logic" in feedback_panel
+    assert "UX or product issue" in feedback_panel
+
+    assert 'for="backstage-feedback-message"' in feedback_panel
+    assert 'id="backstage-feedback-message" maxlength="2000"' in feedback_panel
+    assert 'aria-describedby="backstage-feedback-help backstage-feedback-count"' in feedback_panel
+    assert 'id="backstage-feedback-count"' in feedback_panel
+    assert "0 / 2000" in feedback_panel
+    assert "function updateBackstageFeedbackCount()" in html
+    assert 'backstageFeedbackMessage.addEventListener("input", updateBackstageFeedbackCount)' in html
+
+    assert 'id="backstage-feedback-current-page"' in feedback_panel
+    assert 'id="backstage-feedback-browser"' in feedback_panel
+    assert "Include recent answer reference" not in feedback_panel
+    assert "full user-agent" in feedback_panel
+    for sensitive_term in ("cookie value", "authentication header", "account identifier", "access token"):
+        assert sensitive_term not in feedback_panel.lower()
+
+    assert feedback_panel.count('name="feedback-impact"') == 4
+    for impact in ("Helped", "Slowed me down", "Blocked me", "Just an idea"):
+        assert impact in feedback_panel
+    assert 'class="feedback-submit-button" type="button" disabled' in feedback_panel
+    assert "Send feedback · coming soon" in feedback_panel
+    assert "Feedback submission is not connected yet." in feedback_panel
+    assert "Mock only" not in feedback_panel
+    assert "claim success" not in feedback_panel
+    assert "<img" not in feedback_panel
+    assert feedback_panel.count("<svg") >= 13
+
+
+def test_backstage_feedback_uses_native_single_selection_and_session_only_draft_state() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+
+    assert 'type="radio" name="feedback-category"' in html
+    assert 'type="radio" name="feedback-impact"' in html
+    assert '.feedback-choice > input:focus-visible + .feedback-choice-content' in html
+    assert '.feedback-impact-choice > input:focus-visible + .feedback-impact-row' in html
+    assert '.feedback-choice > input:checked + .feedback-choice-content' in html
+    assert '.feedback-impact-choice > input:checked + .feedback-impact-row' in html
+    assert "localStorage.setItem(\"backstage-feedback" not in html
+    assert "sessionStorage.setItem(\"backstage-feedback" not in html
+    assert "backstageFeedbackMessage.value =" not in html
+    assert "backstageFeedbackMessage.value.length" in html
+    assert 'grid-template-columns: minmax(0, 1fr) minmax(290px, 0.42fr)' in html
+    assert ".feedback-talkback," in html
+    assert ".feedback-category-grid," in html
+
+
 def test_backstage_account_uses_verified_credential_ui_without_fabricated_controls() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
     account_match = re.search(
