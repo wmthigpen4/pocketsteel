@@ -210,6 +210,12 @@ let capturedRequest;
             status: "ready",
             kind: "artist_solo_lesson",
             title: "Example Artist — Example Song",
+            sourceCopedentId: "source-e9-abc-defg-v1",
+            targetCopedentId: "saved:road-e9",
+            targetCopedentLabel: "Road E9",
+            arrangedFor: "Road E9",
+            styleFamily: "vocal_steel",
+            decisionRules: { modelVersion: "melody-decision-ranker-v1" },
             material: { artist: "Example Artist", song: "Example Song" },
             renderingMode: "e9_adaptation",
             accuracy: { label: "approximate", confidence: "medium", note: "Checked against the supplied phrase." },
@@ -225,13 +231,27 @@ let capturedRequest;
               explanation: "Play G on string 4 at fret 3.",
               resolvedPitch: "G4",
               movement: "Start at fret 3.",
-              notes: [{ string: 4, fret: 3, changes: [] }]
+              performanceControls: ["road-e-raise"],
+              performanceControlLabels: ["My E raise"],
+              pedalControls: [],
+              leverControls: ["road-e-raise"],
+              controlLayout: { "road-e-raise": "RKL" },
+              mechanicalNotesByString: { "4": "G" },
+              mechanicalPitchesByString: { "4": 67 },
+              mechanicalActions: [{ string: 4, startingPitch: "E", destinationPitch: "F", semitoneChange: 1 }],
+              targetCopedentId: "saved:road-e9",
+              notes: [{ string: 4, fret: 3, changes: ["road-e-raise"], changeLabels: ["My E raise"] }]
             }],
             selectedRouteId: "single-note",
             routes: [{
               id: "single-note",
               label: "Playable single-note melody",
               harmonyType: "single_note",
+              arrangedFor: "Road E9",
+              sourceCopedentId: "source-e9-abc-defg-v1",
+              targetCopedentId: "saved:road-e9",
+              styleFamily: "vocal_steel",
+              decisionModelVersion: "melody-decision-ranker-v1",
               recommended: false,
               recommendation: "Learn the melody first.",
               textureSummary: { singleNotes: 1, dyads: 0, triads: 0, barSlides: 1 },
@@ -246,7 +266,13 @@ let capturedRequest;
               pathSummary: { totalBarTravel: 0, harmonicFamilyChanges: 0 },
               events: [{ id: "melody-step-1", step: 1, resolvedNote: "G", resolvedPitch: "G4", texture: "single_note", arrangementRole: "arrival", performanceControls: ["A", "B"], patternFamily: "middle-pocket", canonicalGrip: "4-5-6", selectionReason: "Keeps the phrase in one pocket.", transitionFromPreviousId: "transition-1", notes: [{ string: 4, fret: 3, changes: [] }] }],
               tabExample: { id: "single-tab", title: "Single", rendered_tab: "S4 |--3--|", printTabText: "S4 |--3--|", validation: { ok: true } },
-              fretboard: { type: "pedal-steel-fretboard", positions: [], strings: { count: 10, labels: {} } }
+              fretboard: {
+                type: "pedal-steel-fretboard",
+                positions: [{ id: "melody-step-1", fret: 3, strings: [4] }],
+                strings: { count: 10, labels: { "4": "E" } },
+                copedent: { id: "saved:road-e9", label: "Road E9" },
+                openPitchValues: { "4": 52 }
+              }
             }]
           }
         })
@@ -258,6 +284,11 @@ let capturedRequest;
   assert.equal(body.question, "Teach this solo");
   assert.equal(body.melodyRequest.kind, "artist_solo_lesson");
   assert.equal(result.melodyExercise.title, "Example Artist — Example Song");
+  assert.equal(result.melodyExercise.sourceCopedentId, "source-e9-abc-defg-v1");
+  assert.equal(result.melodyExercise.targetCopedentId, "saved:road-e9");
+  assert.equal(result.melodyExercise.arrangedFor, "Road E9");
+  assert.equal(result.melodyExercise.styleFamily, "vocal_steel");
+  assert.equal(result.melodyExercise.decisionRules.modelVersion, "melody-decision-ranker-v1");
   assert.equal(result.melodyExercise.events[0].resolvedNote, "G");
   assert.equal(result.melodyExercise.events[0].notes[0].fret, 3);
   assert.equal(result.melodyExercise.events[0].resolvedPitch, "G4");
@@ -265,6 +296,9 @@ let capturedRequest;
   assert.equal(result.melodyExercise.routes[0].events[0].texture, "single_note");
   assert.equal(result.melodyExercise.routes[0].events[0].arrangementRole, "arrival");
   assert.deepEqual(result.melodyExercise.routes[0].events[0].performanceControls, ["A", "B"]);
+  assert.equal(result.melodyExercise.routes[0].arrangedFor, "Road E9");
+  assert.equal(result.melodyExercise.routes[0].targetCopedentId, "saved:road-e9");
+  assert.equal(result.melodyExercise.routes[0].decisionModelVersion, "melody-decision-ranker-v1");
   assert.equal(result.melodyExercise.routes[0].events[0].patternFamily, "middle-pocket");
   assert.equal(result.melodyExercise.routes[0].events[0].canonicalGrip, "4-5-6");
   assert.equal(result.melodyExercise.routes[0].events[0].selectionReason, "Keeps the phrase in one pocket.");
@@ -278,6 +312,11 @@ let capturedRequest;
   assert.equal(result.melodyExercise.routes[0].pathSummary.harmonicFamilyChanges, 0);
   assert.equal(result.melodyExercise.routes[0].tab.tabText, "S4 |--3--|");
   assert.equal(result.melodyExercise.routes[0].tab.printTabText, "S4 |--3--|");
+  assert.deepEqual(result.melodyExercise.events[0].performanceControlLabels, ["My E raise"]);
+  assert.deepEqual(result.melodyExercise.events[0].mechanicalPitchesByString, { "4": 67 });
+  assert.deepEqual(result.melodyExercise.events[0].notes[0].changeLabels, ["My E raise"]);
+  assert.equal(result.melodyExercise.routes[0].fretboard.copedent.id, "saved:road-e9");
+  assert.equal(result.melodyExercise.routes[0].fretboard.openPitchValues["4"], 52);
   assert.equal(result.melodyExercise.section.hasMore, true);
 })().catch((error) => {
   console.error(error);

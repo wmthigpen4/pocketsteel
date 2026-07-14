@@ -8,6 +8,7 @@ pedal/lever markings as if they were valid pedal-steel tab.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import re
 from typing import Any
 
 
@@ -46,6 +47,7 @@ class CopedentProfile:
     open_strings: dict[int, str]
     changes: dict[str, PedalLeverEffect]
     control_labels: dict[str, str]
+    aliases: dict[str, str] = field(default_factory=dict)
 
     def normalize_change(self, change: str) -> str:
         normalized = str(change or "").strip()
@@ -79,7 +81,16 @@ class CopedentProfile:
             "d lever": "D",
             "2/9-lower": "D",
         }
-        return aliases.get(lowered, normalized.upper())
+        configured = {
+            re.sub(r"[^a-z0-9#+-]+", "", str(alias).strip().lower()): code
+            for alias, code in self.aliases.items()
+        }
+        compact = re.sub(r"[^a-z0-9#+-]+", "", lowered)
+        candidate = configured.get(compact, aliases.get(lowered, normalized))
+        for code in self.changes:
+            if code.lower() == str(candidate).lower():
+                return code
+        return str(candidate).upper()
 
 
 def default_e9_copedent_profile() -> CopedentProfile:
@@ -116,6 +127,7 @@ class TabNote:
     fret: int
     changes: tuple[str, ...] = ()
     articulation: str | None = None
+    display_changes: tuple[str, ...] = ()
 
     def normalized(self, profile: CopedentProfile) -> "TabNote":
         changes = tuple(
@@ -132,9 +144,12 @@ class TabNote:
             fret=int(self.fret),
             changes=changes,
             articulation=self.articulation,
+            display_changes=self.display_changes,
         )
 
     def render_token(self) -> str:
+        if self.display_changes:
+            return f"{self.fret}{'+'.join(self.display_changes)}"
         return f"{self.fret}{''.join(self.changes)}"
 
     def to_dict(self) -> dict[str, Any]:
@@ -145,6 +160,8 @@ class TabNote:
         }
         if self.articulation:
             payload["articulation"] = self.articulation
+        if self.display_changes:
+            payload["changeLabels"] = list(self.display_changes)
         return payload
 
 
@@ -226,11 +243,15 @@ def tab_note_from_dict(payload: dict[str, Any]) -> TabNote:
     raw_changes = payload.get("changes") or ()
     if isinstance(raw_changes, str):
         raw_changes = (raw_changes,)
+    raw_display_changes = payload.get("changeLabels") or ()
+    if isinstance(raw_display_changes, str):
+        raw_display_changes = (raw_display_changes,)
     return TabNote(
         string=_coerce_int(payload.get("string"), default=0),
         fret=_coerce_int(payload.get("fret"), default=-1),
         changes=tuple(raw_changes),
         articulation=payload.get("articulation"),
+        display_changes=tuple(str(change) for change in raw_display_changes),
     )
 
 

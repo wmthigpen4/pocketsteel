@@ -350,6 +350,15 @@ const STEEL_RAG_ANSWER_UI = (() => {
     if (Array.isArray(fretboard.tuningLabels)) {
       normalized.tuningLabels = fretboard.tuningLabels;
     }
+    if (isObjectRecord(fretboard.openPitchValues)) {
+      normalized.openPitchValues = fretboard.openPitchValues;
+    }
+    if (isObjectRecord(fretboard.copedent)) {
+      normalized.copedent = fretboard.copedent;
+    }
+    if (isObjectRecord(fretboard.strings)) {
+      normalized.strings = fretboard.strings;
+    }
     if (Array.isArray(fretboard.legend)) {
       normalized.legend = fretboard.legend;
     }
@@ -636,6 +645,30 @@ const STEEL_RAG_ANSWER_UI = (() => {
       texture: firstTextValue(event.texture, "single_note"),
       arrangementRole: firstTextValue(event.arrangementRole, event.arrangement_role),
       performanceControls: normalizeStringList(event.performanceControls || event.performance_controls),
+      performanceControlLabels: normalizeStringList(
+        event.performanceControlLabels || event.performance_control_labels
+      ),
+      pedalControls: normalizeStringList(event.pedalControls || event.pedal_controls),
+      leverControls: normalizeStringList(event.leverControls || event.lever_controls),
+      controlLayout: isObjectRecord(event.controlLayout || event.control_layout)
+        ? (event.controlLayout || event.control_layout)
+        : {},
+      mechanicalNotesByString: isObjectRecord(event.mechanicalNotesByString || event.mechanical_notes_by_string)
+        ? (event.mechanicalNotesByString || event.mechanical_notes_by_string)
+        : {},
+      mechanicalPitchesByString: isObjectRecord(event.mechanicalPitchesByString || event.mechanical_pitches_by_string)
+        ? (event.mechanicalPitchesByString || event.mechanical_pitches_by_string)
+        : {},
+      mechanicalActions: Array.isArray(event.mechanicalActions || event.mechanical_actions)
+        ? (event.mechanicalActions || event.mechanical_actions).filter(isObjectRecord)
+        : [],
+      targetCopedentId: firstTextValue(event.targetCopedentId, event.target_copedent_id),
+      sourceAction: isObjectRecord(event.sourceAction || event.source_action)
+        ? (event.sourceAction || event.source_action)
+        : null,
+      textureFallback: isObjectRecord(event.textureFallback || event.texture_fallback)
+        ? (event.textureFallback || event.texture_fallback)
+        : null,
       patternFamily: firstTextValue(event.patternFamily, event.pattern_family),
       canonicalGrip: firstTextValue(event.canonicalGrip, event.canonical_grip),
       selectionReason: firstTextValue(event.selectionReason, event.selection_reason),
@@ -654,6 +687,7 @@ const STEEL_RAG_ANSWER_UI = (() => {
           string: note.string,
           fret: note.fret,
           changes: normalizeStringList(note.changes),
+          changeLabels: normalizeStringList(note.changeLabels || note.change_labels),
           articulation: firstTextValue(note.articulation)
         }))
         : []
@@ -670,6 +704,12 @@ const STEEL_RAG_ANSWER_UI = (() => {
       harmonyType: firstTextValue(route.harmonyType, route.harmony_type, "single_note"),
       recommended: Boolean(route.recommended),
       recommendation: firstTextValue(route.recommendation),
+      arrangedFor: firstTextValue(route.arrangedFor, route.arranged_for),
+      sourceCopedentId: firstTextValue(route.sourceCopedentId, route.source_copedent_id),
+      targetCopedentId: firstTextValue(route.targetCopedentId, route.target_copedent_id),
+      styleFamily: firstTextValue(route.styleFamily, route.style_family),
+      decisionModelVersion: firstTextValue(route.decisionModelVersion, route.decision_model_version),
+      fallbacks: Array.isArray(route.fallbacks) ? route.fallbacks.filter(isObjectRecord) : [],
       movementSummary: firstTextValue(route.movementSummary, route.movement_summary),
       pathSummary: isObjectRecord(route.pathSummary || route.path_summary) ? (route.pathSummary || route.path_summary) : {},
       textureSummary: isObjectRecord(route.textureSummary || route.texture_summary) ? (route.textureSummary || route.texture_summary) : {},
@@ -700,6 +740,14 @@ const STEEL_RAG_ANSWER_UI = (() => {
       status: firstTextValue(exercise.status, events.length ? "ready" : "needs_source"),
       kind: firstTextValue(exercise.kind, "user_melody"),
       title: firstTextValue(exercise.title, "Melody / arrangement lesson"),
+      sourceCopedentId: firstTextValue(exercise.sourceCopedentId, exercise.source_copedent_id),
+      targetCopedentId: firstTextValue(exercise.targetCopedentId, exercise.target_copedent_id),
+      targetCopedentLabel: firstTextValue(exercise.targetCopedentLabel, exercise.target_copedent_label),
+      arrangedFor: firstTextValue(exercise.arrangedFor, exercise.arranged_for),
+      styleFamily: firstTextValue(exercise.styleFamily, exercise.style_family),
+      decisionRules: isObjectRecord(exercise.decisionRules || exercise.decision_rules)
+        ? (exercise.decisionRules || exercise.decision_rules)
+        : {},
       material: {
         artist: firstTextValue(material.artist),
         song: firstTextValue(material.song, material.title),

@@ -39,6 +39,7 @@ class MelodyInput:
     lyric: str = ""
     chord: str = ""
     articulation: str = ""
+    source_action: dict[str, object] | None = None
 
 
 @dataclass(frozen=True)
@@ -53,9 +54,12 @@ class PositionCandidate:
     pattern_family: str = ""
     canonical_grip: tuple[int, ...] = ()
     difficulty: str = "common"
+    voice_pitches: tuple[int, ...] = ()
 
     @property
     def top_string(self) -> int:
+        if self.voice_pitches and len(self.voice_pitches) == len(self.notes):
+            return self.notes[max(range(len(self.notes)), key=lambda index: self.voice_pitches[index])].string
         aliases = {
             "E": "E-lower",
             "F": "F lever",

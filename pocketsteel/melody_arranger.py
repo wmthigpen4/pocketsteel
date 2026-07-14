@@ -4,13 +4,30 @@ from __future__ import annotations
 
 import math
 import re
+from itertools import combinations
 from typing import Any, Mapping, Sequence
 
 from pocketsteel.answer_tab_examples import fretboard_payload_for_tab_example
-from pocketsteel.e9_copedents import scientific_pitch_for_value
+from pocketsteel.copedent_transfer import (
+    absolute_pitch_for_profile,
+    candidate_control_states,
+    control_affects_string,
+    control_display_label,
+    normalized_mechanical_action,
+    resolve_control,
+    resolve_target_profile,
+    tab_profile_for_e9,
+    transfer_controls,
+)
+from pocketsteel.e9_copedents import (
+    DEFAULT_COPEDENT_ID,
+    EMMONS_E9,
+    E9CopedentProfile,
+    get_e9_copedent_profile,
+    scientific_pitch_for_value,
+)
 from pocketsteel.fretboard_examples import (
     absolute_pitch_for_string,
-    control_affects_selected_strings,
     major_positions,
     note_name_for_pitch,
 )
@@ -22,7 +39,12 @@ from pocketsteel.melody_models import (
     MelodyInput,
     PositionCandidate,
 )
-from pocketsteel.tab_engine import TabEvent, TabNote, default_e9_copedent_profile, render_tab
+from pocketsteel.melody_decision_rules import (
+    MODEL_VERSION,
+    normalize_style_family,
+    style_policy,
+)
+from pocketsteel.tab_engine import TabEvent, TabNote, render_tab
 
 
 _CONTROL_STATES: tuple[tuple[str, ...], ...] = (
@@ -48,17 +70,32 @@ def arrange_melody_routes(
     meter: str = "4/4",
     pickup_beats: float = 0.0,
     sections: Sequence[Mapping[str, Any]] | None = None,
+    source_copedent_id: str | None = None,
+    target_copedent_id: str | None = None,
+    target_copedent: Mapping[str, Any] | None = None,
+    style_family: str = "auto",
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Return render-ready routes and resolved phrase metadata."""
 
     contour = contour_mode if contour_mode in SUPPORTED_CONTOURS else "closest_playable"
     selected_texture = texture if texture in SUPPORTED_TEXTURES else "both"
-    all_inputs = parse_melody_inputs(raw_events, key)
-    all_resolved_pitches = resolve_contour(all_inputs, contour)
+    target_profile = resolve_target_profile(target_copedent_id, target_copedent)
+    source_profile = get_e9_copedent_profile(source_copedent_id) if source_copedent_id else target_profile
+    selected_style = normalize_style_family(style_family)
+    all_inputs = parse_melody_inputs(
+        raw_events,
+        key,
+        source_profile=source_profile,
+        target_profile=target_profile,
+    )
+    all_resolved_pitches = resolve_contour(all_inputs, contour, profile=target_profile)
     inputs = all_inputs[event_start:event_end]
     resolved_pitches = all_resolved_pitches[event_start:event_end]
     phrase_starts, phrase_ends = _phrase_boundaries(inputs, sections)
-    single_candidates = [single_note_candidates(item, pitch) for item, pitch in zip(inputs, resolved_pitches)]
+    single_candidates = [
+        single_note_candidates(item, pitch, profile=target_profile)
+        for item, pitch in zip(inputs, resolved_pitches)
+    ]
     single_path = choose_path(single_candidates, inputs=inputs)
     if not single_path:
         raise ValueError("The melody does not have a mechanically valid standard-E9 path.")
@@ -92,6 +129,9 @@ def arrange_melody_routes(
             pickup_beats=pickup_beats,
             phrase_starts=phrase_starts,
             phrase_ends=phrase_ends,
+            target_profile=target_profile,
+            source_profile=source_profile,
+            style_family=selected_style,
         )
     )
 
@@ -99,7 +139,7 @@ def arrange_melody_routes(
         if harmony_type == "chord_melody" and not any(_active_chords(inputs)):
             continue
         if harmony_type == "mixed_arrangement":
-            candidate_groups = mixed_candidate_groups(inputs, resolved_pitches, key)
+            candidate_groups = mixed_candidate_groups(inputs, resolved_pitches, key, profile=target_profile)
             path = choose_mixed_path(
                 candidate_groups,
                 inputs=inputs,
@@ -108,13 +148,25 @@ def arrange_melody_routes(
                 pickup_beats=pickup_beats,
                 phrase_starts=phrase_starts,
                 phrase_ends=phrase_ends,
+                style_family=selected_style,
             )
         else:
-            candidate_groups = harmony_candidate_groups(inputs, resolved_pitches, key, harmony_type)
+            candidate_groups = harmony_candidate_groups(
+                inputs,
+                resolved_pitches,
+                key,
+                harmony_type,
+                profile=target_profile,
+            )
             path = choose_path(candidate_groups, inputs=inputs) if candidate_groups and all(candidate_groups) else []
         if not path:
             continue
-        if harmony_type == "mixed_arrangement" and all(len(candidate.notes) == 1 for candidate in path):
+        if (
+            harmony_type == "mixed_arrangement"
+            and target_profile.id == DEFAULT_COPEDENT_ID
+            and selected_style == "auto"
+            and all(len(candidate.notes) == 1 for candidate in path)
+        ):
             continue
         routes.append(
             build_route(
@@ -132,6 +184,9 @@ def arrange_melody_routes(
                 pickup_beats=pickup_beats,
                 phrase_starts=phrase_starts,
                 phrase_ends=phrase_ends,
+                target_profile=target_profile,
+                source_profile=source_profile,
+                style_family=selected_style,
             )
         )
 
@@ -159,27 +214,47 @@ def arrange_melody_routes(
             "lyric": item.lyric,
             "chord": item.chord,
             "articulation": item.articulation,
+            **({"sourceAction": item.source_action} if item.source_action else {}),
         }
         for item, pitch in zip(inputs, resolved_pitches)
     ]
     return routes, resolved
 
 
-def parse_melody_inputs(raw_events: Sequence[Any], key: str) -> list[MelodyInput]:
+def parse_melody_inputs(
+    raw_events: Sequence[Any],
+    key: str,
+    *,
+    source_profile: E9CopedentProfile | None = None,
+    target_profile: E9CopedentProfile | None = None,
+) -> list[MelodyInput]:
+    source_profile = source_profile or EMMONS_E9
+    target_profile = target_profile or source_profile
     scale = _scale_notes(key)
     parsed: list[MelodyInput] = []
     for raw_index, raw in enumerate(raw_events):
         record = raw if isinstance(raw, Mapping) else {}
         literal_payload = record.get("position") if isinstance(record.get("position"), Mapping) else record
-        literal = _literal_note(literal_payload) if isinstance(raw, Mapping) else None
+        source_literal = _literal_note(literal_payload, profile=source_profile) if isinstance(raw, Mapping) else None
+        literal = source_literal
+        source_action: dict[str, object] | None = None
         token = str(record.get("token") or record.get("note") or record.get("degree") or raw or "").strip()
         forced_pitch = _forced_pitch(record)
-        if literal is not None:
-            controls = tuple(literal.changes)
-            pitch = _absolute_pitch(literal.string, literal.fret, controls)
+        if source_literal is not None:
+            controls = tuple(source_literal.changes)
+            pitch = _absolute_pitch(source_literal.string, source_literal.fret, controls, profile=source_profile)
+            source_action = normalized_mechanical_action(
+                source_profile,
+                string=source_literal.string,
+                fret=source_literal.fret,
+                controls=controls,
+            )
+            if source_profile.id != target_profile.id:
+                literal = None
+                forced_pitch = pitch
             note = note_name_for_pitch(pitch)
             degree = _degree_for_note(note, scale)
-            token = token if token and token != str(raw) else f"S{literal.string}:{literal.fret}"
+            token = token if token and token != str(raw) else f"S{source_literal.string}:{source_literal.fret}"
         elif forced_pitch is not None:
             note = note_name_for_pitch(forced_pitch)
             degree = _degree_for_note(note, scale, allow_chromatic=True)
@@ -213,12 +288,19 @@ def parse_melody_inputs(raw_events: Sequence[Any], key: str) -> list[MelodyInput
                 lyric=str(record.get("lyric") or record.get("phraseLabel") or "")[:80],
                 chord=str(record.get("chord") or "")[:24],
                 articulation=str(record.get("articulation") or "")[:20],
+                source_action=source_action,
             )
         )
     return parsed
 
 
-def resolve_contour(inputs: Sequence[MelodyInput], contour_mode: str) -> list[int]:
+def resolve_contour(
+    inputs: Sequence[MelodyInput],
+    contour_mode: str,
+    *,
+    profile: E9CopedentProfile | None = None,
+) -> list[int]:
+    profile = profile or EMMONS_E9
     if not inputs:
         return []
     def solve(forced: Mapping[int, int] | None = None) -> list[int]:
@@ -230,7 +312,14 @@ def resolve_contour(inputs: Sequence[MelodyInput], contour_mode: str) -> list[in
             elif item.forced_pitch is not None:
                 options = [item.forced_pitch]
             elif item.literal is not None:
-                options = [_absolute_pitch(item.literal.string, item.literal.fret, tuple(item.literal.changes))]
+                options = [
+                    _absolute_pitch(
+                        item.literal.string,
+                        item.literal.fret,
+                        tuple(item.literal.changes),
+                        profile=profile,
+                    )
+                ]
             else:
                 options = _pitch_options(item.pitch_class)
             options = [pitch for pitch in options if 47 <= pitch <= 94]
@@ -281,10 +370,17 @@ def resolve_contour(inputs: Sequence[MelodyInput], contour_mode: str) -> list[in
     return adjusted
 
 
-def single_note_candidates(item: MelodyInput, target_pitch: int) -> list[PositionCandidate]:
+def single_note_candidates(
+    item: MelodyInput,
+    target_pitch: int,
+    *,
+    profile: E9CopedentProfile | None = None,
+) -> list[PositionCandidate]:
+    profile = profile or EMMONS_E9
+    tab_profile = tab_profile_for_e9(profile)
     if item.literal is not None:
         controls = tuple(item.literal.changes)
-        if _absolute_pitch(item.literal.string, item.literal.fret, controls) != target_pitch:
+        if _absolute_pitch(item.literal.string, item.literal.fret, controls, profile=profile) != target_pitch:
             return []
         return [
             PositionCandidate(
@@ -295,27 +391,36 @@ def single_note_candidates(item: MelodyInput, target_pitch: int) -> list[Positio
                 family="literal_tab",
                 note_names=(item.note,),
                 intervals=(str(item.degree),),
+                voice_pitches=(target_pitch,),
             )
         ]
     candidates: list[PositionCandidate] = []
-    profile = default_e9_copedent_profile()
-    for controls in _CONTROL_STATES:
+    states = _CONTROL_STATES if profile.id == DEFAULT_COPEDENT_ID else candidate_control_states(profile)
+    for controls in states:
         for string in range(1, 11):
-            if controls and not all(control_affects_selected_strings(control, (string,)) for control in controls):
+            if controls and not any(control_affects_string(profile, control, string) for control in controls):
                 continue
             for fret in range(25):
-                pitch = _absolute_pitch(string, fret, controls)
+                pitch = _absolute_pitch(string, fret, controls, profile=profile)
                 if pitch != target_pitch:
                     continue
+                relevant = tuple(control for control in controls if control_affects_string(profile, control, string))
                 candidates.append(
                     PositionCandidate(
                         fret=fret,
-                        notes=(TabNote(string=string, fret=fret, changes=tuple(profile.normalize_change(control) for control in controls)),),
+                        notes=(
+                            TabNote(
+                                string=string,
+                                fret=fret,
+                                changes=tuple(tab_profile.normalize_change(control) for control in relevant),
+                            ),
+                        ),
                         top_pitch=pitch,
                         controls=controls,
                         family="single_note",
                         note_names=(item.note,),
                         intervals=(str(item.degree),),
+                        voice_pitches=(pitch,),
                     )
                 )
     return candidates
@@ -326,7 +431,10 @@ def harmony_candidate_groups(
     resolved_pitches: Sequence[int],
     key: str,
     harmony_type: str,
+    *,
+    profile: E9CopedentProfile | None = None,
 ) -> list[list[PositionCandidate]]:
+    profile = profile or EMMONS_E9
     rows = major_three_string_rows(key) if harmony_type == "chord_melody" else major_two_string_rows(key)
     scale = _scale_notes(key)
     active_chords = _active_chords(inputs)
@@ -349,7 +457,26 @@ def harmony_candidate_groups(
                 continue
             if harmony_type == "automatic_harmony" and not ({third_note, sixth_note} & set(other_notes)):
                 continue
-            candidates.append(_candidate_for_explorer_row(row))
+            try:
+                candidate = _candidate_for_explorer_row(row, profile=profile)
+            except ValueError:
+                continue
+            if candidate.top_pitch != target_pitch:
+                continue
+            if harmony_type == "chord_melody" and len({_pitch_class(note) for note in candidate.note_names}) < 3:
+                continue
+            candidates.append(candidate)
+        if profile.id.startswith("saved:"):
+            candidates.extend(
+                _generic_harmony_candidates(
+                    item,
+                    target_pitch,
+                    key,
+                    harmony_type,
+                    profile=profile,
+                )
+            )
+            candidates = _dedupe_candidates(candidates)
         if active_chord and candidates:
             best_fit = min(_chord_fit_penalty(candidate, active_chord) for candidate in candidates)
             candidates = [candidate for candidate in candidates if _chord_fit_penalty(candidate, active_chord) == best_fit]
@@ -357,19 +484,129 @@ def harmony_candidate_groups(
     return groups
 
 
+_GENERIC_TRIAD_GRIPS: tuple[tuple[int, ...], ...] = (
+    (3, 4, 5),
+    (4, 5, 6),
+    (5, 6, 8),
+    (6, 8, 10),
+    (5, 6, 7),
+    (6, 7, 10),
+    (4, 6, 10),
+    (3, 5, 8),
+    (5, 6, 9),
+    (4, 6, 9),
+    (3, 5, 6),
+    (4, 5, 8),
+    (5, 8, 10),
+)
+
+
+def _generic_harmony_candidates(
+    item: MelodyInput,
+    target_pitch: int,
+    key: str,
+    harmony_type: str,
+    *,
+    profile: E9CopedentProfile,
+) -> list[PositionCandidate]:
+    """Enumerate target-profile grips when no named source shape is required."""
+
+    if not 1 <= item.degree <= 7:
+        return []
+    scale = _scale_notes(key)
+    third_note = scale[(item.degree - 3) % 7]
+    sixth_note = scale[(item.degree + 1) % 7]
+    tab_profile = tab_profile_for_e9(profile)
+    if harmony_type == "chord_melody":
+        grips = _GENERIC_TRIAD_GRIPS
+    else:
+        grips = tuple(
+            dict.fromkeys(
+                pair
+                for grip in _GENERIC_TRIAD_GRIPS
+                for pair in combinations(grip, 2)
+            )
+        )
+    candidates: list[PositionCandidate] = []
+    scale_pitch_classes = {_pitch_class(note) for note in scale}
+    for controls in candidate_control_states(profile):
+        for grip in grips:
+            if controls and not any(
+                control_affects_string(profile, control, string)
+                for control in controls
+                for string in grip
+            ):
+                continue
+            for fret in range(25):
+                pitches = tuple(_absolute_pitch(string, fret, controls, profile=profile) for string in grip)
+                if max(pitches) != target_pitch:
+                    continue
+                top_index = max(range(len(grip)), key=lambda index: pitches[index])
+                if pitches[top_index] != target_pitch:
+                    continue
+                note_names = tuple(note_name_for_pitch(pitch) for pitch in pitches)
+                support_notes = [note for index, note in enumerate(note_names) if index != top_index]
+                if harmony_type == "thirds" and third_note not in support_notes:
+                    continue
+                if harmony_type == "sixths" and sixth_note not in support_notes:
+                    continue
+                if harmony_type == "automatic_harmony" and not ({third_note, sixth_note} & set(support_notes)):
+                    continue
+                if harmony_type == "chord_melody" and not all(
+                    _pitch_class(note) in scale_pitch_classes for note in note_names
+                ):
+                    continue
+                if harmony_type == "chord_melody" and len({_pitch_class(note) for note in note_names}) < 3:
+                    continue
+                notes = tuple(
+                    TabNote(
+                        string=string,
+                        fret=fret,
+                        changes=tuple(
+                            tab_profile.normalize_change(control)
+                            for control in controls
+                            if control_affects_string(profile, control, string)
+                        ),
+                    )
+                    for string in grip
+                )
+                candidates.append(
+                    PositionCandidate(
+                        fret=fret,
+                        notes=notes,
+                        top_pitch=target_pitch,
+                        controls=controls,
+                        family="target_copedent_enumeration",
+                        note_names=note_names,
+                        intervals=tuple(
+                            str(next((index for index, scale_note in enumerate(scale, 1) if _pitch_class(scale_note) == _pitch_class(note)), "color"))
+                            for note in note_names
+                        ),
+                        pattern_family=_pattern_family_for_grip(grip),
+                        canonical_grip=grip,
+                        difficulty="alternate",
+                        voice_pitches=pitches,
+                    )
+                )
+    return _dedupe_candidates(candidates)
+
+
 def mixed_candidate_groups(
     inputs: Sequence[MelodyInput],
     resolved_pitches: Sequence[int],
     key: str,
+    *,
+    profile: E9CopedentProfile | None = None,
 ) -> list[list[PositionCandidate]]:
     """Combine scale rows with common chord grips and their playable subsets."""
 
-    dyads = harmony_candidate_groups(inputs, resolved_pitches, key, "automatic_harmony")
-    triads = harmony_candidate_groups(inputs, resolved_pitches, key, "chord_melody")
+    profile = profile or EMMONS_E9
+    dyads = harmony_candidate_groups(inputs, resolved_pitches, key, "automatic_harmony", profile=profile)
+    triads = harmony_candidate_groups(inputs, resolved_pitches, key, "chord_melody", profile=profile)
     active_chords = _active_chords(inputs)
     groups: list[list[PositionCandidate]] = []
     for index, (item, pitch) in enumerate(zip(inputs, resolved_pitches)):
-        singles = single_note_candidates(item, pitch)
+        singles = single_note_candidates(item, pitch, profile=profile)
         if item.literal is not None:
             groups.append(singles)
             continue
@@ -384,7 +621,7 @@ def mixed_candidate_groups(
             and _melody_is_chord_tone(pitch, active_chord)
             and _supporting_harmony_fits(candidate, active_chord)
         ]
-        chord_grips = _active_chord_candidates(item, pitch, active_chord)
+        chord_grips = _active_chord_candidates(item, pitch, active_chord, profile=profile)
         candidates = [*singles, *scale_dyads]
         for grip in (*scale_triads, *chord_grips):
             candidates.extend(_candidate_subsets(grip))
@@ -401,6 +638,7 @@ def choose_mixed_path(
     pickup_beats: float = 0.0,
     phrase_starts: set[int] | None = None,
     phrase_ends: set[int] | None = None,
+    style_family: str = "auto",
 ) -> list[PositionCandidate]:
     if not candidate_groups or any(not group for group in candidate_groups):
         return []
@@ -414,11 +652,20 @@ def choose_mixed_path(
         phrase_ends=phrase_ends or {len(inputs) - 1},
     )
     home_fret = 3 if key == "G" else 8
+    selected_style = normalize_style_family(style_family)
     states: list[dict[int, tuple[tuple[int, ...], int | None]]] = []
     first: dict[int, tuple[tuple[int, ...], int | None]] = {}
     for candidate_index, candidate in enumerate(candidate_groups[0]):
         first[candidate_index] = (
-            _mixed_start_cost(candidate, inputs, 0, active_chords, roles, home_fret=home_fret),
+            _mixed_start_cost(
+                candidate,
+                inputs,
+                0,
+                active_chords,
+                roles,
+                home_fret=home_fret,
+                style_family=selected_style,
+            ),
             None,
         )
     states.append(first)
@@ -438,6 +685,7 @@ def choose_mixed_path(
                     phrase_starts=phrase_starts or {0},
                     home_fret=home_fret,
                     key=key,
+                    style_family=selected_style,
                 )
                 choices.append((_add_cost(previous_cost, transition), previous_index))
             current[current_index] = min(choices, key=lambda item: (item[0], item[1]))
@@ -489,6 +737,7 @@ def build_expressive_transitions(
     route_id: str,
     inputs: Sequence[MelodyInput],
     path: Sequence[PositionCandidate],
+    profile: E9CopedentProfile | None = None,
 ) -> list[dict[str, Any]]:
     """Choose a sparse, mechanically checked set of audible steel transitions."""
 
@@ -497,7 +746,13 @@ def build_expressive_transitions(
     for target_index in range(1, len(path)):
         if inputs[target_index - 1].literal is not None or inputs[target_index].literal is not None:
             continue
-        transition = _transition_between(route_id, target_index, path[target_index - 1], path[target_index])
+        transition = _transition_between(
+            route_id,
+            target_index,
+            path[target_index - 1],
+            path[target_index],
+            profile=profile,
+        )
         if transition is None:
             continue
         chord_change = bool(active_chords[target_index] and active_chords[target_index] != active_chords[target_index - 1])
@@ -542,7 +797,10 @@ def _transition_between(
     target_index: int,
     previous: PositionCandidate,
     current: PositionCandidate,
+    *,
+    profile: E9CopedentProfile | None = None,
 ) -> dict[str, Any] | None:
+    profile = profile or EMMONS_E9
     previous_top = _note_for_string(previous, previous.top_string)
     current_top = _note_for_string(current, current.top_string)
     if previous.top_string != current.top_string or previous_top is None or current_top is None:
@@ -576,13 +834,13 @@ def _transition_between(
         if len(changed) != 1:
             return None
         control = changed[0]
-        if not control_affects_selected_strings(control, (current.top_string,)):
+        if not control_affects_string(profile, control, current.top_string):
             return None
-        if _absolute_pitch(current.top_string, previous.fret, previous.controls) != previous.top_pitch:
+        if _absolute_pitch(current.top_string, previous.fret, previous.controls, profile=profile) != previous.top_pitch:
             return None
-        if _absolute_pitch(current.top_string, current.fret, current.controls) != current.top_pitch:
+        if _absolute_pitch(current.top_string, current.fret, current.controls, profile=profile) != current.top_pitch:
             return None
-        kind = "pedal_glide" if control in {"A", "B", "C"} else "lever_glide"
+        kind = "pedal_glide" if resolve_control(profile, control).control_type == "pedal" else "lever_glide"
         strings = [current.top_string]
         scope = "full_grip" if scope == "full_grip" and all(
             _note_for_string(previous, string) and _note_for_string(current, string)
@@ -597,7 +855,7 @@ def _transition_between(
     for string in sustained:
         if kind == "bar_slide":
             action = "bar_slide"
-        elif control_affects_selected_strings(control, (string,)):
+        elif control_affects_string(profile, control, string):
             action = kind
         else:
             action = "hold"
@@ -616,6 +874,7 @@ def _transition_between(
         sustained=sustained,
         repicked=repicked,
         released=released,
+        profile=profile,
     )
     return {
         "id": f"{route_id}-transition-{target_index}-{target_index + 1}",
@@ -628,6 +887,8 @@ def _transition_between(
         "toFret": current.fret,
         "controlsBefore": list(previous.controls),
         "controlsAfter": list(current.controls),
+        "controlLabelsBefore": [_display_control_code(profile, control) for control in previous.controls],
+        "controlLabelsAfter": [_display_control_code(profile, control) for control in current.controls],
         "direction": "up" if current.top_pitch > previous.top_pitch else "down",
         "playbackGlideFraction": 0.35,
         "label": label,
@@ -653,17 +914,18 @@ def _transition_instruction(
     sustained: Sequence[int],
     repicked: Sequence[int],
     released: Sequence[int],
+    profile: E9CopedentProfile | None = None,
 ) -> str:
-    before = _pick_instruction(previous)
+    before = _pick_instruction(previous, profile=profile)
     if kind == "bar_slide":
         moving = "strings " + ", ".join(str(string) for string in sustained)
         movement = f"slide {moving} to fret {current.fret}"
-        control_action = _control_change_text(previous.controls, current.controls)
+        control_action = _control_change_text(previous.controls, current.controls, profile=profile)
         if control_action:
             movement += f" while {control_action}"
     else:
         moving = "strings " + ", ".join(str(string) for string in sustained)
-        control_action = _control_change_text(previous.controls, current.controls)
+        control_action = _control_change_text(previous.controls, current.controls, profile=profile)
         movement = f"hold fret {current.fret} and {control_action} on {moving}"
     additions: list[str] = []
     if released:
@@ -693,22 +955,35 @@ def _is_open_ab_exchange(previous_controls: Sequence[str], current_controls: Seq
     return postures == {frozenset(), frozenset({"A", "B"})}
 
 
-def _control_change_text(previous_controls: Sequence[str], current_controls: Sequence[str]) -> str:
+def _control_change_text(
+    previous_controls: Sequence[str],
+    current_controls: Sequence[str],
+    *,
+    profile: E9CopedentProfile | None = None,
+) -> str:
     previous = set(previous_controls)
     current = set(current_controls)
     parts: list[str] = []
     released = sorted(previous - current)
     pressed = sorted(current - previous)
     if released:
-        parts.append("releasing " + "+".join(released))
+        parts.append("releasing " + "+".join(_display_control_code(profile, control) for control in released))
     if pressed:
-        parts.append("pressing " + "+".join(pressed))
+        parts.append("pressing " + "+".join(_display_control_code(profile, control) for control in pressed))
     return " and ".join(parts)
 
 
-def _pick_instruction(candidate: PositionCandidate) -> str:
+def _pick_instruction(
+    candidate: PositionCandidate,
+    *,
+    profile: E9CopedentProfile | None = None,
+) -> str:
     strings = ", ".join(str(note.string) for note in candidate.notes)
-    controls = "+".join(candidate.controls) if candidate.controls else "open"
+    controls = (
+        "+".join(_display_control_code(profile, control) for control in candidate.controls)
+        if candidate.controls
+        else "open"
+    )
     return f"Pick strings {strings} at fret {candidate.fret} with {controls}"
 
 
@@ -732,8 +1007,13 @@ def build_route(
     pickup_beats: float = 0.0,
     phrase_starts: set[int] | None = None,
     phrase_ends: set[int] | None = None,
+    target_profile: E9CopedentProfile | None = None,
+    source_profile: E9CopedentProfile | None = None,
+    style_family: str = "auto",
 ) -> dict[str, Any]:
-    profile = default_e9_copedent_profile()
+    target_profile = target_profile or EMMONS_E9
+    source_profile = source_profile or target_profile
+    profile = tab_profile_for_e9(target_profile)
     active_chords = _active_chords(inputs)
     roles = _arrangement_roles(
         inputs,
@@ -743,7 +1023,16 @@ def build_route(
         phrase_starts=phrase_starts or {0},
         phrase_ends=phrase_ends or ({len(inputs) - 1} if inputs else set()),
     )
-    transitions = build_expressive_transitions(route_id=route_id, inputs=inputs, path=path) if harmony_type == "mixed_arrangement" else []
+    transitions = (
+        build_expressive_transitions(
+            route_id=route_id,
+            inputs=inputs,
+            path=path,
+            profile=target_profile,
+        )
+        if harmony_type == "mixed_arrangement"
+        else []
+    )
     transitions_by_target = {transition["toEventId"]: transition for transition in transitions}
     raw_events: list[TabEvent] = []
     intervals: list[dict[str, Any]] = []
@@ -753,9 +1042,23 @@ def build_route(
         chord_change = item.chord if item.chord and item.chord != previous_chord else None
         event_id = f"{route_id}-step-{index}"
         transition = transitions_by_target.get(event_id)
+        rendered_notes = tuple(
+            TabNote(
+                string=note.string,
+                fret=note.fret,
+                changes=note.changes,
+                articulation=note.articulation,
+                display_changes=(
+                    tuple(_display_control_code(target_profile, change) for change in note.changes)
+                    if target_profile.id.startswith("saved:")
+                    else ()
+                ),
+            )
+            for note in candidate.notes
+        )
         raw_events.append(
             TabEvent(
-                notes=candidate.notes,
+                notes=rendered_notes,
                 chord=chord_change,
                 comment=f"{scientific_pitch_for_value(resolved_pitches[index - 1])}; {label}",
                 transition=transition,
@@ -773,8 +1076,14 @@ def build_route(
                 },
             }
         )
-        movements.append(_movement_text(path[index - 2] if index > 1 else None, candidate))
-    rendered = render_tab(tuple(raw_events))
+        movements.append(
+            _movement_text(
+                path[index - 2] if index > 1 else None,
+                candidate,
+                profile=target_profile,
+            )
+        )
+    rendered = render_tab(tuple(raw_events), profile=profile)
     if not rendered.ok:
         raise ValueError("A generated melody route failed standard-E9 tab validation.")
     event_payloads: list[dict[str, Any]] = []
@@ -783,8 +1092,21 @@ def build_route(
         start=1,
     ):
         payload = event.normalized(profile).to_dict()
+        mechanical_notes: dict[str, str] = {}
+        mechanical_pitches: dict[str, int] = {}
+        for note in candidate.notes:
+            pitch_value = _absolute_pitch(note.string, candidate.fret, candidate.controls, profile=target_profile)
+            mechanical_notes[str(note.string)] = note_name_for_pitch(pitch_value)
+            mechanical_pitches[str(note.string)] = pitch_value
         event_id = f"{route_id}-step-{index}"
         transition = transitions_by_target.get(event_id)
+        desired_texture_size = _desired_texture_size(
+            inputs,
+            index - 1,
+            active_chords,
+            roles,
+            style_family,
+        )
         payload.update(
             {
                 "id": event_id,
@@ -796,8 +1118,15 @@ def build_route(
                 "scaleDegree": str(item.degree),
                 "technique": "grip" if len(candidate.notes) > 1 else "pick",
                 "texture": {1: "single_note", 2: "dyad", 3: "triad"}.get(len(candidate.notes), "grip"),
+                "desiredTextureSize": desired_texture_size,
                 "movement": transition["label"] if transition else movement,
-                "explanation": _event_explanation(item, candidate, transition["label"] if transition else movement, resolved_pitches[index - 1]),
+                "explanation": _event_explanation(
+                    item,
+                    candidate,
+                    transition["label"] if transition else movement,
+                    resolved_pitches[index - 1],
+                    profile=target_profile,
+                ),
                 "renderablePositionId": f"{route_id}-event-{index}",
                 "durationBeats": item.duration_beats,
                 "measure": item.measure,
@@ -805,6 +1134,37 @@ def build_route(
                 "origin": item.origin,
                 "arrangementRole": role,
                 "performanceControls": list(candidate.controls),
+                "performanceControlLabels": [
+                    control_display_label(target_profile, control) for control in candidate.controls
+                ],
+                "pedalControls": [
+                    control for control in candidate.controls
+                    if resolve_control(target_profile, control).control_type == "pedal"
+                ],
+                "leverControls": [
+                    control for control in candidate.controls
+                    if resolve_control(target_profile, control).control_type == "lever"
+                ],
+                "controlLayout": {
+                    control: resolve_control(target_profile, control).physical_position
+                    for control in candidate.controls
+                },
+                "mechanicalNotesByString": mechanical_notes,
+                "mechanicalPitchesByString": mechanical_pitches,
+                "mechanicalActions": [
+                    normalized_mechanical_action(
+                        target_profile,
+                        string=note.string,
+                        fret=candidate.fret,
+                        controls=tuple(
+                            control
+                            for control in candidate.controls
+                            if control_affects_string(target_profile, control, note.string)
+                        ),
+                    )
+                    for note in candidate.notes
+                ],
+                "targetCopedentId": target_profile.id,
                 "patternFamily": candidate.pattern_family,
                 "canonicalGrip": "-".join(
                     str(string) for string in (candidate.canonical_grip or tuple(note.string for note in candidate.notes))
@@ -814,6 +1174,7 @@ def build_route(
                     candidate,
                     role=role,
                     active_chord=active_chords[index - 1],
+                    profile=target_profile,
                 ),
             }
         )
@@ -827,6 +1188,14 @@ def build_route(
             payload["harmonySymbol"] = item.chord
         if item.articulation:
             payload["articulation"] = item.articulation
+        if item.source_action:
+            payload["sourceAction"] = item.source_action
+        if harmony_type == "mixed_arrangement" and len(candidate.notes) < desired_texture_size:
+            payload["textureFallback"] = {
+                "requestedVoices": desired_texture_size,
+                "realizedVoices": len(candidate.notes),
+                "reason": "The target copedent had no higher-texture candidate that passed melody, harmony, and mechanical validation.",
+            }
         event_payloads.append(payload)
     tab_example = {
         "id": route_id,
@@ -837,21 +1206,44 @@ def build_route(
         "context": {
             "key": key,
             "tuning": "E9",
-            "profile": profile.id,
+            "profile": target_profile.id,
+            "profileLabel": target_profile.label,
+            "sourceCopedentId": source_profile.id,
+            "targetCopedentId": target_profile.id,
             "harmonyType": harmony_type,
             "meter": meter,
             "pickupBeats": pickup_beats,
+            "styleFamily": style_family,
+            "decisionModelVersion": MODEL_VERSION,
         },
         "rendered_tab": rendered.tab,
-        "print_tab_text": _render_print_tab(raw_events, inputs),
-        "validation": {"ok": True, "issues": [], "profile": profile.id, "eventCount": len(event_payloads)},
+        "print_tab_text": _render_print_tab(raw_events, inputs, profile=profile),
+        "validation": {"ok": True, "issues": [], "profile": target_profile.id, "eventCount": len(event_payloads)},
         "explanation": "Tab and fretboard share the same validated arranger events.",
         "intervals": intervals,
         "events": event_payloads,
     }
-    fretboard = fretboard_payload_for_tab_example(tab_example)
+    fretboard = (
+        _fretboard_payload_for_target_profile(tab_example, target_profile)
+        if target_profile.id.startswith("saved:")
+        else fretboard_payload_for_tab_example(tab_example)
+    )
     if fretboard is None:
         raise ValueError("A generated melody route could not produce a synchronized fretboard.")
+    fretboard["copedent"] = {
+        "id": target_profile.id,
+        "label": target_profile.label,
+        "status": "target_profile",
+    }
+    fretboard["strings"] = {
+        "count": len(target_profile.open_notes_by_string()),
+        "labels": {
+            str(string): note for string, note in target_profile.open_notes_by_string().items()
+        },
+    }
+    fretboard["openPitchValues"] = {
+        str(string): pitch for string, pitch in target_profile.open_pitch_values_by_string().items()
+    }
     chord_symbols = list(dict.fromkeys(item.chord for item in inputs if item.chord))
     texture_summary = {
         "singleNotes": sum(1 for candidate in path if len(candidate.notes) == 1),
@@ -868,6 +1260,16 @@ def build_route(
         "harmonyType": harmony_type,
         "recommended": recommended,
         "recommendation": recommendation + (f" Chord-aware ranking used: {', '.join(chord_symbols)}." if chord_symbols else ""),
+        "arrangedFor": target_profile.label,
+        "sourceCopedentId": source_profile.id,
+        "targetCopedentId": target_profile.id,
+        "styleFamily": style_family,
+        "decisionModelVersion": MODEL_VERSION,
+        "fallbacks": [
+            {"eventId": event["id"], **event["textureFallback"]}
+            for event in event_payloads
+            if "textureFallback" in event
+        ],
         "chordContext": {"symbols": chord_symbols, "usedForRanking": bool(chord_symbols)},
         "movementSummary": " ".join(str(event.get("movement") or "") for event in event_payloads).strip(),
         "textureSummary": texture_summary,
@@ -879,11 +1281,105 @@ def build_route(
     }
 
 
+def _fretboard_payload_for_target_profile(
+    tab_example: Mapping[str, Any],
+    profile: E9CopedentProfile,
+) -> dict[str, Any]:
+    """Build synchronized cards without applying the app-default copedent again."""
+
+    positions: list[dict[str, Any]] = []
+    highlights: list[dict[str, Any]] = []
+    for index, event in enumerate(tab_example.get("events") or (), start=1):
+        notes = event.get("notes") or []
+        strings = [int(note["string"]) for note in notes]
+        fret = int(notes[0]["fret"])
+        note_names = {
+            str(string): str(event.get("mechanicalNotesByString", {}).get(str(string), ""))
+            for string in strings
+        }
+        intervals = next(
+            (
+                dict(row.get("byString") or {})
+                for row in tab_example.get("intervals") or ()
+                if row.get("eventId") == event.get("id")
+            ),
+            {str(string): "color" for string in strings},
+        )
+        pedals = list(event.get("pedalControls") or [])
+        levers = list(event.get("leverControls") or [])
+        label = str(event.get("harmonySymbol") or event.get("resolvedPitch") or f"Event {index}")
+        explanation = (
+            f"Event {index}: strings {'-'.join(str(string) for string in strings)} at fret {fret}; "
+            f"calculated from {profile.label}."
+        )
+        position = {
+            "id": str(event.get("renderablePositionId") or f"{tab_example['id']}-event-{index}"),
+            "label": label,
+            "root": str(tab_example.get("context", {}).get("key") or "G"),
+            "quality": "color",
+            "positionKind": "target_copedent_event",
+            "fret": fret,
+            "strings": strings,
+            "grip": "-".join(str(string) for string in strings),
+            "pedals": pedals,
+            "levers": levers,
+            "color": "primary" if index == 1 else "secondary",
+            "role": f"Tab event {index}",
+            "function": label,
+            "keyContext": str(tab_example.get("context", {}).get("key") or "G"),
+            "family": "target_copedent",
+            "tier": "validated",
+            "colorRole": "primary" if index == 1 else "secondary",
+            "visibleByDefault": True,
+            "sortOrder": index * 10,
+            "notes": note_names,
+            "intervals": {str(string): str(intervals.get(str(string), "color")) for string in strings},
+            "explanation": explanation,
+            "explanationShort": explanation,
+            "explanationLong": explanation,
+            "validationStatus": "pitch_validated",
+        }
+        positions.append(position)
+        highlights.append(
+            {
+                "id": position["id"],
+                "label": label,
+                "fret": fret,
+                "strings": strings,
+                "pedals": pedals,
+                "levers": levers,
+                "role": position["role"],
+            }
+        )
+    return {
+        "type": "e9-fretboard-diagram",
+        "title": f"{tab_example['title']} fretboard view",
+        "subtitle": f"Deterministic states arranged for {profile.label}.",
+        "description": "The fretboard cards use the same target-copedent pitches as tab, score, and playback.",
+        "tuning": "E9",
+        "copedent": {"id": profile.id, "label": profile.label, "status": "target_profile"},
+        "key": str(tab_example.get("context", {}).get("key") or "G"),
+        "strings": {
+            "count": len(profile.open_notes_by_string()),
+            "labels": {str(string): note for string, note in profile.open_notes_by_string().items()},
+        },
+        "positions": positions,
+        "highlights": highlights,
+        "legend": [],
+        "notes": ["Derived from mechanically validated target-copedent events."],
+        "warnings": [],
+        "sourceContext": [
+            {"kind": "rule", "label": "Target copedent realization", "sourceId": "pocketsteel.copedent_transfer"}
+        ],
+    }
+
+
 def _render_print_tab(
     events: Sequence[TabEvent],
     inputs: Sequence[MelodyInput],
     *,
     maximum_width: int = 112,
+    profile: Any | None = None,
 ) -> str:
     """Wrap printable tab without splitting a source-transition-destination pair."""
 
@@ -914,7 +1410,7 @@ def _render_print_tab(
     current_inputs: list[MelodyInput] = []
     for unit_events, unit_inputs in units:
         proposed_events = [*current_events, *unit_events]
-        proposed = render_tab(tuple(proposed_events))
+        proposed = render_tab(tuple(proposed_events), profile=profile)
         proposed_width = max((len(line) for line in proposed.tab.splitlines()), default=0)
         if current_events and proposed_width > maximum_width:
             systems.append((current_events, current_inputs))
@@ -931,11 +1427,16 @@ def _render_print_tab(
         measure_start = min(item.measure for item in system_inputs)
         measure_end = max(item.measure for item in system_inputs)
         heading = f"Measure {measure_start}" if measure_start == measure_end else f"Measures {measure_start}-{measure_end}"
-        rendered_systems.append(f"{heading}\n{render_tab(tuple(system_events)).tab}")
+        rendered_systems.append(f"{heading}\n{render_tab(tuple(system_events), profile=profile).tab}")
     return "\n\n".join(rendered_systems)
 
 
-def _literal_note(record: Mapping[str, Any]) -> TabNote | None:
+def _literal_note(
+    record: Mapping[str, Any],
+    *,
+    profile: E9CopedentProfile | None = None,
+) -> TabNote | None:
+    profile = profile or EMMONS_E9
     if "string" not in record or "fret" not in record:
         return None
     try:
@@ -946,31 +1447,55 @@ def _literal_note(record: Mapping[str, Any]) -> TabNote | None:
     raw_changes = record.get("changes") or ()
     if isinstance(raw_changes, str):
         raw_changes = [raw_changes]
-    profile = default_e9_copedent_profile()
-    changes = tuple(profile.normalize_change(change) for change in raw_changes if profile.normalize_change(change))
-    note = TabNote(string=string, fret=fret, changes=changes).normalized(profile)
-    validation = render_tab((TabEvent(notes=(note,)),))
+    tab_profile = tab_profile_for_e9(profile)
+    changes = tuple(
+        tab_profile.normalize_change(change)
+        for change in raw_changes
+        if tab_profile.normalize_change(change)
+    )
+    note = TabNote(string=string, fret=fret, changes=changes).normalized(tab_profile)
+    validation = render_tab((TabEvent(notes=(note,)),), profile=tab_profile)
     if not validation.ok:
         raise ValueError(validation.issues[0].message)
     return note
 
 
-def _candidate_for_explorer_row(row: ExplorerRow) -> PositionCandidate:
-    profile = default_e9_copedent_profile()
-    controls = tuple(profile.normalize_change(control) for control in (*row.pedals, *row.levers))
+def _candidate_for_explorer_row(
+    row: ExplorerRow,
+    *,
+    profile: E9CopedentProfile | None = None,
+) -> PositionCandidate:
+    profile = profile or EMMONS_E9
+    source_controls = tuple((*row.pedals, *row.levers))
+    transfer = transfer_controls(
+        EMMONS_E9,
+        source_controls,
+        profile,
+        sounding_strings=row.strings,
+    )
+    if not transfer.exact:
+        raise ValueError(transfer.reason)
+    controls = transfer.target_controls
+    tab_profile = tab_profile_for_e9(profile)
     notes: list[TabNote] = []
     note_names: list[str] = []
     intervals: list[str] = []
     for string in row.strings:
-        relevant = tuple(control for control in controls if control_affects_selected_strings(control, (string,)))
-        notes.append(TabNote(string=string, fret=row.fret, changes=relevant))
-        note_names.append(row.notes[str(string)])
+        relevant = tuple(control for control in controls if control_affects_string(profile, control, string))
+        notes.append(
+            TabNote(
+                string=string,
+                fret=row.fret,
+                changes=tuple(tab_profile.normalize_change(control) for control in relevant),
+            )
+        )
+        note_names.append(note_name_for_pitch(_absolute_pitch(string, row.fret, controls, profile=profile)))
         intervals.append(row.intervals[str(string)])
-    top_register = row.note_registers[str(row.top_voice["string"])]
+    pitches = tuple(_absolute_pitch(note.string, row.fret, controls, profile=profile) for note in notes)
     return PositionCandidate(
         fret=row.fret,
         notes=tuple(notes),
-        top_pitch=int(top_register["pitch_value"]),
+        top_pitch=max(pitches),
         controls=controls,
         family=row.position_family,
         note_names=tuple(note_names),
@@ -978,10 +1503,17 @@ def _candidate_for_explorer_row(row: ExplorerRow) -> PositionCandidate:
         pattern_family=_pattern_family_for_grip(row.strings),
         canonical_grip=tuple(row.strings),
         difficulty=str(row.difficulty_tier or "common"),
+        voice_pitches=pitches,
     )
 
 
-def _active_chord_candidates(item: MelodyInput, target_pitch: int, chord: str) -> list[PositionCandidate]:
+def _active_chord_candidates(
+    item: MelodyInput,
+    target_pitch: int,
+    chord: str,
+    *,
+    profile: E9CopedentProfile | None = None,
+) -> list[PositionCandidate]:
     """Return common, pitch-validated major-position grips for the active chord."""
 
     root = _major_position_root(chord)
@@ -991,7 +1523,10 @@ def _active_chord_candidates(item: MelodyInput, target_pitch: int, chord: str) -
     for position in major_positions(root).positions:
         if not position.is_full_chord or str(position.tier) == "advanced":
             continue
-        candidate = _candidate_for_fretboard_position(position)
+        try:
+            candidate = _candidate_for_fretboard_position(position, profile=profile)
+        except ValueError:
+            continue
         if candidate.top_pitch != target_pitch:
             continue
         if not _supporting_harmony_fits(candidate, chord):
@@ -1000,22 +1535,38 @@ def _active_chord_candidates(item: MelodyInput, target_pitch: int, chord: str) -
     return _dedupe_candidates(candidates)
 
 
-def _candidate_for_fretboard_position(position: Any) -> PositionCandidate:
-    profile = default_e9_copedent_profile()
-    controls = tuple(
-        profile.normalize_change(control)
-        for control in (*tuple(position.pedals), *tuple(position.levers))
-        if profile.normalize_change(control)
+def _candidate_for_fretboard_position(
+    position: Any,
+    *,
+    profile: E9CopedentProfile | None = None,
+) -> PositionCandidate:
+    profile = profile or EMMONS_E9
+    source_controls = tuple((*tuple(position.pedals), *tuple(position.levers)))
+    transfer = transfer_controls(
+        EMMONS_E9,
+        source_controls,
+        profile,
+        sounding_strings=tuple(position.strings),
     )
+    if not transfer.exact:
+        raise ValueError(transfer.reason)
+    controls = transfer.target_controls
+    tab_profile = tab_profile_for_e9(profile)
     notes: list[TabNote] = []
     note_names: list[str] = []
     intervals: list[str] = []
     for string in position.strings:
-        relevant = tuple(control for control in controls if control_affects_selected_strings(control, (string,)))
-        notes.append(TabNote(string=string, fret=position.fret, changes=relevant))
-        note_names.append(str(position.notes.get(str(string), position.notes.get(string))))
+        relevant = tuple(control for control in controls if control_affects_string(profile, control, string))
+        notes.append(
+            TabNote(
+                string=string,
+                fret=position.fret,
+                changes=tuple(tab_profile.normalize_change(control) for control in relevant),
+            )
+        )
+        note_names.append(note_name_for_pitch(_absolute_pitch(string, position.fret, controls, profile=profile)))
         intervals.append(str(position.intervals.get(str(string), position.intervals.get(string))))
-    pitches = [_absolute_pitch(note.string, position.fret, controls) for note in notes]
+    pitches = tuple(_absolute_pitch(note.string, position.fret, controls, profile=profile) for note in notes)
     return PositionCandidate(
         fret=position.fret,
         notes=tuple(notes),
@@ -1027,6 +1578,7 @@ def _candidate_for_fretboard_position(position: Any) -> PositionCandidate:
         pattern_family=_pattern_family_for_grip(tuple(position.strings)),
         canonical_grip=tuple(position.strings),
         difficulty=str(position.tier or "common"),
+        voice_pitches=pitches,
     )
 
 
@@ -1041,18 +1593,25 @@ def _candidate_subsets(candidate: PositionCandidate) -> list[PositionCandidate]:
     selections.append(tuple(range(len(candidate.notes))))
     subsets: list[PositionCandidate] = []
     for selected in selections:
+        selected_notes = tuple(candidate.notes[index] for index in selected)
+        selected_controls = tuple(
+            control
+            for control in candidate.controls
+            if any(control in note.changes for note in selected_notes)
+        )
         subsets.append(
             PositionCandidate(
                 fret=candidate.fret,
-                notes=tuple(candidate.notes[index] for index in selected),
+                notes=selected_notes,
                 top_pitch=candidate.top_pitch,
-                controls=candidate.controls,
+                controls=selected_controls,
                 family=candidate.family,
                 note_names=tuple(candidate.note_names[index] for index in selected),
                 intervals=tuple(candidate.intervals[index] for index in selected),
                 pattern_family=candidate.pattern_family,
                 canonical_grip=candidate.canonical_grip or tuple(note.string for note in candidate.notes),
                 difficulty=candidate.difficulty,
+                voice_pitches=tuple(candidate.voice_pitches[index] for index in selected) if candidate.voice_pitches else (),
             )
         )
     return subsets
@@ -1145,7 +1704,15 @@ def _pitch_options(pitch_class: int) -> list[int]:
     return [value for value in range(47, 95) if value % 12 == pitch_class]
 
 
-def _absolute_pitch(string: int, fret: int, controls: tuple[str, ...]) -> int:
+def _absolute_pitch(
+    string: int,
+    fret: int,
+    controls: tuple[str, ...],
+    *,
+    profile: E9CopedentProfile | None = None,
+) -> int:
+    if profile is not None:
+        return absolute_pitch_for_profile(profile, string, fret, controls)
     aliases = {
         "E": "E-lower",
         "F": "F lever",
@@ -1246,18 +1813,19 @@ def _desired_texture_size(
     index: int,
     active_chords: Sequence[str],
     roles: Sequence[str] | None = None,
+    style_family: str = "auto",
 ) -> int:
     role = roles[index] if roles else ""
     if role in {"pickup", "passing_tone", "tension"}:
-        return 1
+        return style_policy(style_family).texture_for_role(role, 1)
     if role in {"resolution", "chord_arrival", "cadence"} and active_chords[index]:
-        return 3
+        return style_policy(style_family).texture_for_role(role, 3)
     if role == "sustained_note":
-        return 2
+        return style_policy(style_family).texture_for_role(role, 2)
     item = inputs[index]
     if item.duration_beats <= 0.5 and float(item.beat) != 1:
-        return 1
-    return 2
+        return style_policy(style_family).texture_for_role(role, 1)
+    return style_policy(style_family).texture_for_role(role, 2)
 
 
 def _texture_penalty(actual: int, desired: int) -> int:
@@ -1277,12 +1845,13 @@ def _mixed_start_cost(
     roles: Sequence[str],
     *,
     home_fret: int,
+    style_family: str = "auto",
 ) -> tuple[int, ...]:
-    desired = _desired_texture_size(inputs, index, active_chords, roles)
+    desired = _desired_texture_size(inputs, index, active_chords, roles, style_family)
     return (
         _harmonic_correctness_penalty(candidate, active_chords[index]),
         _control_posture_tier(candidate, active_chords[index]),
-        0,
+        _style_candidate_penalty(candidate, style_family),
         _harmonic_role_penalty(candidate, roles[index], active_chords[index]),
         _arrival_home_penalty(candidate, roles[index], home_fret),
         _home_pocket_penalty(candidate.fret, home_fret),
@@ -1309,8 +1878,9 @@ def _mixed_transition_cost(
     phrase_starts: set[int],
     home_fret: int,
     key: str,
+    style_family: str = "auto",
 ) -> tuple[int, ...]:
-    desired = _desired_texture_size(inputs, index, active_chords, roles)
+    desired = _desired_texture_size(inputs, index, active_chords, roles, style_family)
     texture_change = abs(len(current.notes) - len(previous.notes))
     phrase_reset = index in phrase_starts
     return (
@@ -1325,11 +1895,30 @@ def _mixed_transition_cost(
         _string_group_change_penalty(previous, current),
         _control_posture_penalty(previous, current),
         abs(current.fret - previous.fret),
-        texture_change * 2,
+        texture_change * 2 + _style_transition_penalty(previous, current, style_family),
         _texture_penalty(len(current.notes), desired),
         _difficulty_penalty(current),
         len(current.controls),
     )
+
+
+def _style_candidate_penalty(candidate: PositionCandidate, style_family: str) -> int:
+    policy = style_policy(style_family)
+    return policy.texture_bias(len(candidate.notes)) + (policy.control_bias if candidate.controls else 0)
+
+
+def _style_transition_penalty(
+    previous: PositionCandidate,
+    current: PositionCandidate,
+    style_family: str,
+) -> int:
+    if style_family == "auto":
+        return 0
+    policy = style_policy(style_family)
+    bar = abs(current.fret - previous.fret) * max(0, policy.bar_move_weight - 1)
+    controls = len(set(previous.controls) ^ set(current.controls)) * max(0, policy.control_change_weight - 1)
+    pocket = _pocket_change_penalty(previous, current) * max(0, policy.pocket_change_weight - 1)
+    return bar + controls + pocket + _style_candidate_penalty(current, style_family)
 
 
 def _melody_is_chord_tone(pitch: int, chord: str) -> bool:
@@ -1341,6 +1930,9 @@ def _supporting_harmony_fits(candidate: PositionCandidate, chord: str) -> bool:
     tones = _chord_pitch_classes(chord)
     if not tones or len(candidate.notes) == 1:
         return True
+    candidate_pitch_classes = {_pitch_class(note_name) for note_name in candidate.note_names}
+    if len(candidate.notes) >= 3 and len(candidate_pitch_classes) < 3:
+        return False
     top_string = candidate.top_string
     return all(
         _pitch_class(note_name) in tones
@@ -1439,6 +2031,8 @@ def _is_familiar_full_grip_slide(previous: PositionCandidate, current: PositionC
 
 
 def _candidate_voice_pitches(candidate: PositionCandidate) -> tuple[int, ...]:
+    if candidate.voice_pitches:
+        return tuple(sorted(candidate.voice_pitches))
     return tuple(sorted(_absolute_pitch(note.string, candidate.fret, candidate.controls) for note in candidate.notes))
 
 
@@ -1573,8 +2167,23 @@ def _add_cost(left: tuple[int, ...], right: tuple[int, ...]) -> tuple[int, ...]:
     return tuple((left[index] if index < len(left) else 0) + (right[index] if index < len(right) else 0) for index in range(width))
 
 
-def _movement_text(previous: PositionCandidate | None, current: PositionCandidate) -> str:
-    controls = "+".join(current.controls) if current.controls else "no pedals/levers"
+def _display_control_code(profile: E9CopedentProfile | None, control: str) -> str:
+    if profile is not None and profile.id.startswith("saved:"):
+        return resolve_control(profile, control).label
+    return control
+
+
+def _movement_text(
+    previous: PositionCandidate | None,
+    current: PositionCandidate,
+    *,
+    profile: E9CopedentProfile | None = None,
+) -> str:
+    controls = (
+        "+".join(_display_control_code(profile, control) for control in current.controls)
+        if current.controls
+        else "no pedals/levers"
+    )
     if previous is None:
         return f"Start at fret {current.fret} with {controls}."
     delta = current.fret - previous.fret
@@ -1585,9 +2194,13 @@ def _movement_text(previous: PositionCandidate | None, current: PositionCandidat
     pressed = sorted(current_controls - previous_controls)
     control_actions: list[str] = []
     if released:
-        control_actions.append(f"release {'+'.join(released)}")
+        control_actions.append(
+            f"release {'+'.join(_display_control_code(profile, control) for control in released)}"
+        )
     if pressed:
-        control_actions.append(f"press {'+'.join(pressed)}")
+        control_actions.append(
+            f"press {'+'.join(_display_control_code(profile, control) for control in pressed)}"
+        )
     control_text = f"; {'; '.join(control_actions)}" if control_actions else "; keep the controls steady"
     return f"{bar}{control_text}."
 
@@ -1598,15 +2211,31 @@ def _selection_reason(
     *,
     role: str,
     active_chord: str,
+    profile: E9CopedentProfile | None = None,
 ) -> str:
-    controls = "+".join(candidate.controls) if candidate.controls else "open"
+    controls = (
+        "+".join(_display_control_code(profile, control) for control in candidate.controls)
+        if candidate.controls
+        else "open"
+    )
     grip = "-".join(str(string) for string in (candidate.canonical_grip or tuple(note.string for note in candidate.notes)))
     root = _major_position_root(active_chord)
     if root and not candidate.controls and item.pitch_class == _pitch_class(root):
         four = note_name_for_pitch((_pitch_class(root) + 5) % 12)
+        ab_label = "A+B"
+        if profile is not None and profile.id.startswith("saved:"):
+            transfer = transfer_controls(
+                EMMONS_E9,
+                ("A", "B"),
+                profile,
+                sounding_strings=tuple(note.string for note in candidate.notes),
+            )
+            if not transfer.exact:
+                return f"Keeps {active_chord} in the open-position pocket at fret {candidate.fret}."
+            ab_label = "+".join(_display_control_code(profile, control) for control in transfer.target_controls)
         return (
             f"Keeps {active_chord} in the open-position pocket at fret {candidate.fret}. "
-            f"A+B at this fret would produce {four} harmony, not {root}."
+            f"{ab_label} at this fret would produce {four} harmony, not {root}."
         )
     if role == "tension":
         return (
@@ -1644,9 +2273,20 @@ def _path_summary(path: Sequence[PositionCandidate]) -> dict[str, int]:
     }
 
 
-def _event_explanation(item: MelodyInput, candidate: PositionCandidate, movement: str, pitch: int) -> str:
+def _event_explanation(
+    item: MelodyInput,
+    candidate: PositionCandidate,
+    movement: str,
+    pitch: int,
+    *,
+    profile: E9CopedentProfile | None = None,
+) -> str:
     grip = "-".join(str(note.string) for note in candidate.notes)
-    controls = "+".join(candidate.controls) if candidate.controls else "no pedals or levers"
+    controls = (
+        "+".join(_display_control_code(profile, control) for control in candidate.controls)
+        if candidate.controls
+        else "no pedals or levers"
+    )
     return (
         f"{item.note} ({scientific_pitch_for_value(pitch)}), scale degree {item.degree}: "
         f"fret {candidate.fret}, strings {grip}, {controls}. {movement}"

@@ -80,6 +80,22 @@ Object.assign(original, { tokens: ["1", "3", "5"], artist: "Stale Artist", sourc
 const originalPayload = studio.buildMelodyRequest(original);
 assert.equal("material" in originalPayload, false);
 assert.deepEqual(originalPayload.melody, ["1", "3", "5"]);
+const savedTarget = studio.savedE9TargetCopedent({getItem: () => JSON.stringify({
+  id: "local-e9", name: "My road guitar", tuningFamily: "E9", stringCount: 10,
+  strings: ["F#", "D#", "G#", "E", "B", "G#", "F#", "E", "D", "B"].map((openNote, index) => ({stringNumber: index + 1, openNote, gauge: "private"})),
+  controls: [{id: "my-a", label: "My A", type: "pedal", changes: [{stringNumber: 5, fromNote: "B", toNote: "C#", notes: "private"}]}],
+  guitar: "private", notes: "private"
+})});
+assert.equal(savedTarget.name, "My road guitar");
+assert.equal(savedTarget.guitar, undefined);
+assert.equal(savedTarget.strings[0].gauge, undefined);
+assert.equal(savedTarget.controls[0].changes[0].notes, undefined);
+const personalized = studio.createInitialState("user_melody");
+personalized.tokens = ["1"];
+personalized.targetCopedent = savedTarget;
+const personalizedPayload = studio.buildMelodyRequest(personalized);
+assert.equal(personalizedPayload.targetCopedentId, "saved:local-e9");
+assert.equal(personalizedPayload.targetCopedent.name, "My road guitar");
 assert.deepEqual(
   studio.eventStepPresentation({ step: 1, resolvedNote: "D", resolvedPitch: "D4", notes: [{ string: 5, fret: 3, changes: [] }] }),
   { note: "1. D4", position: "String 5 · Fret 3 · Open" }
@@ -421,7 +437,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Change the register for this note only" in html
     assert "state.selectedPhraseIndex" in script
     assert html.count("?v=module-boundaries-20260713") == 2
-    assert html.count("?v=recommended-default-20260713-1") == 3
+    assert html.count("?v=copedent-transfer-20260713-1") == 3
     assert 'elements.sectionNavigation.hidden = needsSource || Number(section.total || 0) <= 1;' in script
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in html
     assert "VexFlow" in Path("ui/vendor/VEXFLOW-LICENSE.txt").read_text(encoding="utf-8")
@@ -538,7 +554,9 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'id="studio-whole-song-tab-code"' in html
     assert 'state.scoreDraft?.score?.sections' in script
     assert 'async function printWholeSong()' in script
-    assert 'elements.printRoute.textContent = `E9 tablature · ${routeButtonLabel(route)}`;' in script
+    assert 'elements.printRoute.textContent = `E9 tablature · ${routeButtonLabel(route)} · Arranged for ${route.arrangedFor || exercise.arrangedFor || "E9"}`;' in script
+    assert "savedE9TargetCopedent" in script
+    assert "Arranged for ${arrangedFor}" in script
     assert 'elements.printTitle.textContent = printableLessonTitle(exercise);' in script
     assert 'const sectionLabel = total > 1 ?' in script
     assert 'elements.printTab.addEventListener("click", printWholeSong);' in script

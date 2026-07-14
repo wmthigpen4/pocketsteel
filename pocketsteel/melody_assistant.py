@@ -14,6 +14,7 @@ from typing import Any, Mapping
 from urllib.parse import urlparse
 
 from pocketsteel.melody_arranger import SUPPORTED_CONTOURS, SUPPORTED_TEXTURES, arrange_melody_routes
+from pocketsteel.melody_decision_rules import normalize_style_family, rule_contract_payload
 
 
 ENABLE_MELODY_EXERCISE_ENV = "STEEL_RAG_ENABLE_MELODY_EXERCISE"
@@ -146,6 +147,21 @@ def melody_exercise_response(
         pickup_beats = max(0.0, min(3.0, float(structured.get("pickupBeats") or structured.get("pickup_beats") or 0)))
     except (TypeError, ValueError):
         pickup_beats = 0.0
+    source_copedent_id = str(
+        structured.get("sourceCopedentId") or structured.get("source_copedent_id") or ""
+    ).strip() or None
+    target_copedent_id = str(
+        structured.get("targetCopedentId") or structured.get("target_copedent_id") or ""
+    ).strip() or None
+    target_copedent = structured.get("targetCopedent") or structured.get("target_copedent")
+    if target_copedent is not None and not isinstance(target_copedent, Mapping):
+        raise MelodyExerciseError("A saved target copedent must be a structured profile.")
+    try:
+        style_family = normalize_style_family(
+            structured.get("styleFamily") or structured.get("style_family") or "auto"
+        )
+    except ValueError as exc:
+        raise MelodyExerciseError(str(exc)) from exc
     try:
         routes, resolved_phrase = arrange_melody_routes(
             raw_melody,
@@ -159,6 +175,10 @@ def melody_exercise_response(
             meter=meter,
             pickup_beats=pickup_beats,
             sections=structured.get("sections") if isinstance(structured.get("sections"), list) else None,
+            source_copedent_id=source_copedent_id,
+            target_copedent_id=target_copedent_id,
+            target_copedent=target_copedent,
+            style_family=style_family,
         )
     except ValueError as exc:
         raise MelodyExerciseError(str(exc)) from exc
@@ -175,6 +195,12 @@ def melody_exercise_response(
         "title": title,
         "material": material,
         "renderingMode": rendering_mode,
+        "sourceCopedentId": selected_route["sourceCopedentId"],
+        "targetCopedentId": selected_route["targetCopedentId"],
+        "targetCopedentLabel": selected_route["arrangedFor"],
+        "arrangedFor": selected_route["arrangedFor"],
+        "styleFamily": style_family,
+        "decisionRules": rule_contract_payload(style_family),
         "accuracy": {
             "label": accuracy,
             "confidence": requested_confidence or ("high" if accuracy == "exact" else "medium"),
@@ -201,6 +227,9 @@ def melody_exercise_response(
             "meter": meter,
             "pickupBeats": pickup_beats,
             "resolvedPhrase": resolved_phrase,
+            "sourceCopedentId": selected_route["sourceCopedentId"],
+            "targetCopedentId": selected_route["targetCopedentId"],
+            "styleFamily": style_family,
         },
         "events": event_payloads,
         "routes": routes,
@@ -441,7 +470,8 @@ def _ready_answer(exercise: Mapping[str, Any]) -> str:
         else ""
     )
     return (
-        f"Here is {exercise['title']}. The tab, event steps, and fretboard all use the same validated E9 notes.\n\n"
+        f"Here is {exercise['title']}, arranged for {exercise.get('arrangedFor', 'the selected E9 copedent')}. "
+        "The tab, event steps, fretboard, score, and playback all use the same validated pitches.\n\n"
         f"Accuracy: {str(accuracy['label']).title()} ({accuracy['confidence']} confidence). {accuracy['note']}\n\n"
         "Practice one event at a time, keep the bar centered, and connect the notes only after each pitch is clean."
         f"{continuation}"

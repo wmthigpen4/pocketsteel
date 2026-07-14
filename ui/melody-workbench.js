@@ -55,6 +55,7 @@
     E: { 4: -1, 8: -1 }, F: { 4: 1, 8: 1 }, V: { 5: -1, 10: -1 },
     G: { 1: 1, 6: -1 }, D: { 2: -2, 9: -1 }
   };
+  const COPEDENT_STORAGE_KEY = "steel-guitar-rag.copedentProfile.v1";
   const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
   const CHROMATIC_SHARPS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
   const PRESETS = {
@@ -62,6 +63,36 @@
     "1-3-5-3": ["1", "3", "5", "3"],
     "5-6-5-3": ["5", "6", "5", "3"]
   };
+
+  function savedE9TargetCopedent(storage = global.localStorage) {
+    try {
+      const profile = JSON.parse(storage?.getItem?.(COPEDENT_STORAGE_KEY) || "null");
+      if (!profile || String(profile.tuningFamily || "").toUpperCase() !== "E9") return null;
+      if (Number(profile.stringCount || profile.strings?.length) !== 10 || !Array.isArray(profile.strings)) return null;
+      return {
+        id: profile.id || "saved-user-e9",
+        name: profile.name || "My saved E9",
+        tuningFamily: "E9",
+        stringCount: 10,
+        strings: profile.strings.map((item) => ({
+          stringNumber: Number(item.stringNumber),
+          openNote: String(item.openNote || "")
+        })),
+        controls: (profile.controls || []).map((control) => ({
+          id: String(control.id || control.label || ""),
+          label: String(control.label || control.id || ""),
+          type: String(control.type || "lever"),
+          changes: (control.changes || []).map((change) => ({
+            stringNumber: Number(change.stringNumber),
+            fromNote: String(change.fromNote || ""),
+            toNote: String(change.toNote || "")
+          }))
+        }))
+      };
+    } catch (_error) {
+      return null;
+    }
+  }
 
   function normalizeToken(value) {
     const raw = String(value || "").trim().replace(/♯/g, "#").replace(/♭/g, "b");
@@ -212,8 +243,16 @@
       renderingMode: task.renderingMode,
       sectionNumber: state.sectionNumber || 1,
       contourMode: state.contourMode || "closest_playable",
-      texture: "both"
+      texture: "both",
+      styleFamily: state.styleFamily || "auto"
     };
+    if (state.targetCopedent) {
+      request.targetCopedent = state.targetCopedent;
+      request.targetCopedentId = `saved:${state.targetCopedent.id || "saved-user-e9"}`;
+    } else if (state.targetCopedentId) {
+      request.targetCopedentId = state.targetCopedentId;
+    }
+    if (state.sourceCopedentId) request.sourceCopedentId = state.sourceCopedentId;
     if (state.tokens?.length) request.melody = [...state.tokens];
     const sections = state.scoreDraft?.score?.sections;
     const score = state.scoreDraft?.score;
@@ -267,6 +306,10 @@
       paletteMode: "degrees",
       tokens: [],
       contourMode: "closest_playable",
+      styleFamily: "auto",
+      sourceCopedentId: "",
+      targetCopedentId: "emmons-e9-basic",
+      targetCopedent: null,
       selectedPhraseIndex: 0,
       artist: "",
       song: "",
@@ -557,7 +600,9 @@
     const notes = event?.notes || [];
     const strings = notes.map((note) => note.string);
     const frets = Array.from(new Set(notes.map((note) => note.fret)));
-    const controls = Array.from(new Set(notes.flatMap((note) => note.changes || []))).map(controlLabel);
+    const controls = Array.isArray(event?.performanceControlLabels) && event.performanceControlLabels.length
+      ? event.performanceControlLabels
+      : Array.from(new Set(notes.flatMap((note) => note.changes || []))).map(controlLabel);
     const positionParts = [
       `${strings.length === 1 ? "String" : "Strings"} ${strings.join(" + ")}`,
       `${frets.length === 1 ? "Fret" : "Frets"} ${frets.join(" + ")}`,
@@ -595,7 +640,7 @@
     const notes = event?.notes || [];
     const strings = notes.map((note) => Number(note.string)).filter(Number.isInteger).sort((a, b) => a - b);
     const frets = notes.map((note) => Number(note.fret)).filter(Number.isInteger);
-    const controls = eventPerformanceControls(event);
+    const controls = eventPerformanceControlLabels(event);
     const stringLabel = `${strings.length === 1 ? "String" : "Strings"} ${humanList(strings)}`;
     const fretLabel = frets.length ? `Fret ${humanList(Array.from(new Set(frets)))}` : "";
     return [stringLabel, fretLabel, controls.length ? controls.join("+") : "Open"].filter(Boolean).join(" · ");
@@ -639,13 +684,18 @@
       });
   }
 
+  function eventPerformanceControlLabels(event) {
+    const explicit = Array.isArray(event?.performanceControlLabels) ? event.performanceControlLabels : [];
+    return explicit.length ? explicit.map(String) : eventPerformanceControls(event);
+  }
+
   function compactGripDescription(event, options = {}) {
     const strings = numberList(options.strings?.length ? options.strings : eventStrings(event));
     const fret = eventFret(event, options.fret);
     const hasControlOverride = Object.prototype.hasOwnProperty.call(options, "controls");
     const controls = hasControlOverride
-      ? eventPerformanceControls(null, options.controls || [])
-      : eventPerformanceControls(event);
+      ? Array.from(new Set((options.controls || []).map(String).filter(Boolean)))
+      : eventPerformanceControlLabels(event);
     const stringText = strings.length ? `${strings.length === 1 ? "string" : "strings"} ${humanList(strings)}` : "the shown strings";
     const fretText = fret === null ? "the shown fret" : `fret ${fret}`;
     return `${stringText} at ${fretText}${controls.length ? ` with ${controls.join("+")}` : " open"}`;
@@ -680,8 +730,8 @@
   }
 
   function transitionControlAnnotation(transition) {
-    const before = new Set(eventPerformanceControls(null, transition?.controlsBefore || []));
-    const after = new Set(eventPerformanceControls(null, transition?.controlsAfter || []));
+    const before = new Set(transition?.controlLabelsBefore || transition?.controlsBefore || []);
+    const after = new Set(transition?.controlLabelsAfter || transition?.controlsAfter || []);
     const pressed = [...after].filter((control) => !before.has(control));
     const released = [...before].filter((control) => !after.has(control));
     const parts = [];
@@ -700,8 +750,8 @@
     return strings.flatMap((string) => {
       const sourceNote = (sourceEvent?.notes || []).find((note) => Number(note.string) === string);
       const targetNote = (targetEvent?.notes || []).find((note) => Number(note.string) === string);
-      const fromPitchValue = pitchValueForTabNote(sourceNote);
-      const toPitchValue = pitchValueForTabNote(targetNote);
+      const fromPitchValue = mechanicalPitchForString(sourceEvent, string, sourceNote);
+      const toPitchValue = mechanicalPitchForString(targetEvent, string, targetNote);
       if (!Number.isFinite(fromPitchValue) || !Number.isFinite(toPitchValue)) return [];
       const action = transitionVoiceActions(transition).find((item) => item.string === string)?.action || transition?.kind || "bar_slide";
       return [{ string, action, fromPitchValue, toPitchValue }];
@@ -732,12 +782,12 @@
     const source = compactGripDescription(sourceEvent, {
       strings: fromStrings,
       fret: transition.fromFret,
-      controls: transition.controlsBefore
+      controls: transition.controlLabelsBefore || transition.controlsBefore
     });
     const destination = compactGripDescription(targetEvent, {
       strings: toStrings,
       fret: transition.toFret,
-      controls: transition.controlsAfter
+      controls: transition.controlLabelsAfter || transition.controlsAfter
     });
     const sustained = transitionSustainedStrings(transition);
     const arrival = transitionArrivalInstruction(transition);
@@ -767,7 +817,7 @@
     const topPitch = Number(event?.pitchValue);
     const voices = (event?.notes || []).flatMap((note) => {
       const string = Number(note?.string);
-      const pitchValue = pitchValueForTabNote(note);
+      const pitchValue = mechanicalPitchForString(event, string, note);
       if (!Number.isInteger(string) || !Number.isFinite(pitchValue)) return [];
       return [{ string, pitchValue, topVoice: Number.isFinite(topPitch) && pitchValue === topPitch }];
     });
@@ -851,9 +901,14 @@
     return openPitch + fret + changeDelta;
   }
 
+  function mechanicalPitchForString(event, stringNumber, fallbackNote = null) {
+    const explicit = Number(event?.mechanicalPitchesByString?.[String(stringNumber)]);
+    return Number.isFinite(explicit) ? explicit : pitchValueForTabNote(fallbackNote);
+  }
+
   function scorePitchesForEvent(event) {
     const mechanicalPitches = (event?.notes || [])
-      .map(pitchValueForTabNote)
+      .map((note) => mechanicalPitchForString(event, Number(note.string), note))
       .filter(Number.isFinite);
     const melodyPitch = Number(event?.pitchValue);
     const pitches = mechanicalPitches.length ? mechanicalPitches : (Number.isFinite(melodyPitch) ? [melodyPitch] : []);
@@ -867,13 +922,14 @@
       const event = eventByPosition.get(position.id);
       if (!event) return position;
       const scientificOctavesByString = Object.fromEntries((event.notes || []).flatMap((note) => {
-        const octave = scientificOctaveForTabNote(note);
+        const pitchValue = mechanicalPitchForString(event, Number(note.string), note);
+        const octave = Number.isFinite(pitchValue) ? supportedScientificOctave(Math.floor(pitchValue / 12) - 1) : null;
         return octave === null ? [] : [[String(note.string), octave]];
       }));
       const melodyLabel = String(event.resolvedPitch || event.resolvedNote || "").trim();
       const stringActionLabels = (event.notes || []).map((note) => ({
         string: note.string,
-        label: `${note.string}${Array.from(new Set((note.changes || []).map((change) => String(change).toUpperCase()))).join("")}`
+        label: `${note.string}${Array.from(new Set((note.changeLabels || note.changes || []).map(String))).join("+")}`
       }));
       return {
         ...position,
@@ -895,7 +951,7 @@
       maxFret: fretboard.maxFret,
       stringCount: fretboard.stringCount,
       tuningLabels: fretboard.tuningLabels,
-      openPitchValues: E9_OPEN_PITCHES,
+      openPitchValues: fretboard.openPitchValues || E9_OPEN_PITCHES,
       positions: activePositions,
       highlights: fretboard.highlights || [],
       legend: fretboard.legend,
@@ -933,6 +989,7 @@
     STARTING_POINTS,
     KEY_NOTES,
     PRESETS,
+    savedE9TargetCopedent,
     createInitialState,
     startingPointForKind,
     parsePhraseInput,
@@ -995,7 +1052,11 @@
     ? STEEL_RAG_ANSWER_UI
     : global.STEEL_RAG_ANSWER_UI;
   const scoreUi = global.STEEL_RAG_MELODY_SCORE;
-  let state = createInitialState(new URLSearchParams(global.location.search).get("kind") || "user_melody");
+  const studioParams = new URLSearchParams(global.location.search);
+  let state = createInitialState(studioParams.get("kind") || "user_melody");
+  state.targetCopedentId = studioParams.get("copedent") || state.targetCopedentId;
+  state.styleFamily = studioParams.get("style") || state.styleFamily;
+  state.targetCopedent = studioParams.get("copedent") ? null : savedE9TargetCopedent();
   let session = null;
   let catalogSongs = [];
 
@@ -2365,7 +2426,7 @@
       button.classList.toggle("is-selected", selected);
       button.setAttribute("aria-pressed", String(selected));
     });
-    elements.printRoute.textContent = `E9 tablature · ${routeButtonLabel(route)}`;
+    elements.printRoute.textContent = `E9 tablature · ${routeButtonLabel(route)} · Arranged for ${route.arrangedFor || exercise.arrangedFor || "E9"}`;
     elements.practiceChordOption.hidden = !hasChordContext(exercise.events);
     if (elements.practiceChordOption.hidden) elements.practiceChords.checked = false;
     renderResultScore(exercise, route);
@@ -2421,8 +2482,11 @@
     elements.sectionNext.hidden = !section.nextSection;
     elements.sectionNext.dataset.section = String(section.nextSection || "");
     const sourceLabel = materialLabel(exercise?.material);
+    const arrangedFor = String(exercise?.arrangedFor || exercise?.targetCopedentLabel || "").trim();
     elements.resultSource.replaceChildren();
+    if (arrangedFor) elements.resultSource.append(doc.createTextNode(`Arranged for ${arrangedFor}`));
     if (sourceLabel) {
+      if (arrangedFor) elements.resultSource.append(" · ");
       elements.resultSource.append(doc.createTextNode(sourceLabel));
       if (exercise.material.sourceUrl) {
         const link = doc.createElement("a");
@@ -2434,7 +2498,7 @@
       }
       elements.resultSource.hidden = false;
     } else {
-      elements.resultSource.hidden = true;
+      elements.resultSource.hidden = !arrangedFor;
     }
     elements.sourceNeeded.hidden = !needsSource;
     elements.sourceNeeded.querySelector("p").textContent = needsSource

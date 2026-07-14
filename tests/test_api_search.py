@@ -4310,6 +4310,60 @@ def test_api_answer_preserves_recording_attribution_for_melody_lesson() -> None:
     assert payload["sources"][0]["forumName"] == "Recording / arrangement reference"
 
 
+def test_api_answer_arranges_for_validated_saved_copedent_without_source_labels() -> None:
+    open_notes = ["F#", "D#", "G#", "E", "B", "G#", "F#", "E", "D", "B"]
+    target = {
+        "id": "api-road-e9",
+        "name": "API road E9",
+        "tuningFamily": "E9",
+        "stringCount": 10,
+        "strings": [
+            {"stringNumber": index, "openNote": note}
+            for index, note in enumerate(open_notes, start=1)
+        ],
+        "controls": [
+            {
+                "id": "player-first-pedal",
+                "label": "Player P1",
+                "type": "pedal",
+                "changes": [
+                    {"stringNumber": 5, "fromNote": "B", "toNote": "C#"},
+                    {"stringNumber": 10, "fromNote": "B", "toNote": "C#"},
+                ],
+            }
+        ],
+    }
+    status, _, payload = call_app(
+        "/api/answer",
+        method="POST",
+        json_body={
+            "question": "Arrange this for my saved E9.",
+            "mode": "tab",
+            "melodyRequest": {
+                "kind": "user_melody",
+                "key": "G",
+                "melody": [{"pitch": "E4", "pitchValue": 64, "chord": "C"}],
+                "targetCopedent": target,
+            },
+        },
+        search_index=FakeSearchIndex({"results": [], "warnings": []}),
+        answer_provider=DeterministicAnswerProvider(),
+        melody_exercise_enabled=True,
+    )
+
+    assert status == "200 OK"
+    exercise = payload["melody_exercise"]
+    assert exercise["targetCopedentId"] == "saved:api-road-e9"
+    assert exercise["arrangedFor"] == "API road E9"
+    assert payload["fretboard"]["copedent"]["id"] == "saved:api-road-e9"
+    assert all(route["targetCopedentId"] == "saved:api-road-e9" for route in exercise["routes"])
+    assert all(
+        event["pitchValue"] == max(event["mechanicalPitchesByString"].values())
+        for route in exercise["routes"]
+        for event in route["events"]
+    )
+
+
 def test_api_answer_rejects_invalid_melody_without_rendering() -> None:
     status, _, payload = call_app(
         "/api/answer",

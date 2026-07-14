@@ -721,14 +721,28 @@ def _position_for_tab_event(
 
     fret = next(iter(frets))
     strings_tuple = tuple(strings)
-    pedals_tuple = tuple(label for label in ("A", "B", "C") if label in pedals)
-    levers_tuple = tuple(label for label in ("F", "E", "G+", "G-", "D-", "D--", "V") if label in levers)
+    explicit_pedals = event.get("pedalControls")
+    explicit_levers = event.get("leverControls")
+    pedals_tuple = (
+        tuple(str(label) for label in explicit_pedals)
+        if isinstance(explicit_pedals, list)
+        else tuple(label for label in ("A", "B", "C") if label in pedals)
+    )
+    levers_tuple = (
+        tuple(str(label) for label in explicit_levers)
+        if isinstance(explicit_levers, list)
+        else tuple(label for label in ("F", "E", "G+", "G-", "D-", "D--", "V") if label in levers)
+    )
     controls = pedals_tuple + levers_tuple
-    changed_open_notes = notes_for_controls(controls)
-    note_names = {
-        str(string): note_at_fret(changed_open_notes[string], fret)
-        for string in strings_tuple
-    }
+    mechanical_notes = event.get("mechanicalNotesByString")
+    if isinstance(mechanical_notes, dict) and all(str(string) in mechanical_notes for string in strings_tuple):
+        note_names = {str(string): str(mechanical_notes[str(string)]) for string in strings_tuple}
+    else:
+        changed_open_notes = notes_for_controls(controls)
+        note_names = {
+            str(string): note_at_fret(changed_open_notes[string], fret)
+            for string in strings_tuple
+        }
     intervals = _intervals_for_tab_event(interval_rows, index, strings_tuple)
     chord = str(event.get("chord") or tab_example.get("title") or "Tab event")
     root, quality = _root_quality_for_event(tab_example, chord)
@@ -776,8 +790,8 @@ def _position_for_tab_event(
         forum_evidence_status="not_searched",
         explanation_short=explanation,
         explanation_long=(
-            f"This fretboard card is generated from the validated tab event rather than from retrieved text. "
-            f"It therefore matches the tab's strings, fret, and controls exactly."
+            "This fretboard card is generated from the validated tab event rather than from retrieved text. "
+            "It therefore matches the tab's strings, fret, and controls exactly."
         ),
     )
 
