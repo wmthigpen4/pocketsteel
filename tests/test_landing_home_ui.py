@@ -109,6 +109,16 @@ def test_landing_home_restores_source_aware_ai_shimmer_and_claim_boundaries() ->
     assert ".home-ai-footer .footer-trigger.footer-shimmer {" in html
     assert "-webkit-background-clip: text;" in html
     assert "animation: footer-shimmer-sweep 3.2s ease-in-out infinite;" in html
+    assert "How the workbench supports you" not in html
+    assert 'title: "What’s underneath?"' in html
+    assert '“RAG” stands for retrieval-augmented generation' in html
+    assert "searches organized knowledge before responding" in html
+    assert "searches by meaning instead of exact wording" in html
+    assert "grounded responses tied back to real discussions" in html
+    assert 'class="tech-popover-rag-flow"' in html
+    assert "Retrieve" in html and "Augment" in html and "Generate" in html
+    assert 'aria-modal="true"' in html
+    assert "techPopoverClose.focus();" in html
     assert "Open the full Explorer" not in home
     assert "See three ways to play G major across the neck." in home
     assert "E9 · G major · strings 4-5-6" in home
