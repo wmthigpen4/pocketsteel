@@ -166,6 +166,10 @@ def test_backstage_exposes_common_profiles_and_mechanical_editor_fields() -> Non
     setup_markup = html.split('id="backstage-panel-setup"', 1)[1].split('id="backstage-panel-pass"', 1)[0]
     assert "Pedals" in manager
     assert "Knee levers" in manager
+    assert "Tab label" in manager
+    assert "renderTabLabelHeaders" in manager
+    assert "renderTravelHeaders" in manager
+    assert 'for="copedent-control-label">Tab label</label>' in html
     assert "let selectedId = store.activeProfile().id;" in manager
     assert "let selectionWasExplicit = false;" in manager
     assert "if (!selectionWasExplicit || !store.profileById(selectedId)) selectedId = activeId;" in manager
@@ -205,6 +209,8 @@ assert.deepEqual(projected.pedalGroups.map((group) => group.states[0].id), ["A",
 assert.deepEqual(projected.leverGroups.map((group) => group.physicalPosition), ["RKL", "RKR"]);
 assert.deepEqual(projected.leverGroups[0].states.map((state) => state.headerLabel), ["½", "Full"]);
 assert.deepEqual(projected.leverGroups[1].states.map((state) => state.headerLabel), ["½", "Full"]);
+assert.deepEqual(projected.pedalGroups.map((group) => group.states[0].tabLabel), ["A pedal", "B pedal", "C pedal"]);
+assert.deepEqual(projected.leverGroups[0].states.map((state) => state.tabLabel), ["RKL", "RKLL"]);
 assert.deepEqual(projected.profile, emmons);
 assert.equal(projected.cells["5:A"].label, "C# ↑2");
 assert.equal(projected.cells["2:rkr-half"].label, "D ↓1");
@@ -240,6 +246,7 @@ edited.controls.find((control) => control.id === "rkl-half").label = "My G half"
 edited.controls.find((control) => control.id === "rkl-half").physicalPosition = "LKV";
 const moved = grid.project(edited);
 assert.equal(moved.states.find((state) => state.id === "rkl-half").label, "My G half");
+assert.equal(moved.states.find((state) => state.id === "rkl-half").tabLabel, "My G half");
 assert.equal(moved.states.find((state) => state.id === "rkl-half").physicalPosition, "LKV");
 assert.equal(moved.states.find((state) => state.id === "rkl-half").id, "rkl-half");
 

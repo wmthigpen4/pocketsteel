@@ -81,14 +81,14 @@
     return Object.prototype.hasOwnProperty.call(TRAVEL_ORDER, key) ? TRAVEL_ORDER[key] : 9;
   }
 
-  function travelLabel(control, groupSize) {
-    if (normalizedType(control) === "pedal") return String(control.id || control.label || normalizedPosition(control));
+  function travelLabel(control) {
+    if (normalizedType(control) === "pedal") return "Pedal";
     const travel = String(control.travel || "full").toLowerCase();
     if (travel === "half" || travel === "half-stop" || travel === "half_stop") return "½";
-    if (travel === "full" || travel === "full-stop" || travel === "full_stop") return groupSize > 1 ? "Full" : String(control.label || "Full");
+    if (travel === "full" || travel === "full-stop" || travel === "full_stop") return "Full";
     if (travel === "vertical") return "Vertical";
     if (travel === "split") return "Split";
-    return String(control.label || control.travel || "State");
+    return String(control.travel || "State");
   }
 
   function project(profile) {
@@ -120,10 +120,11 @@
         states: group.controls.map((control) => ({
           id: String(control.id),
           label: String(control.label || control.id),
+          tabLabel: String(control.label || control.id),
           type: normalizedType(control),
           physicalPosition: group.physicalPosition,
           travel: String(control.travel || (group.type === "pedal" ? "pedal" : "full")),
-          headerLabel: travelLabel(control, group.controls.length),
+          headerLabel: travelLabel(control),
           aliases: clone(control.aliases || []),
           notes: String(control.notes || "")
         }))

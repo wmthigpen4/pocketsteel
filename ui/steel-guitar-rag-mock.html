@@ -794,6 +794,34 @@
       background: rgb(24, 27, 27);
     }
 
+    .copedent-table .copedent-row-label {
+      position: sticky;
+      left: 0;
+      z-index: 7;
+      min-width: 136px;
+      padding-left: 10px;
+      background: rgb(31, 34, 34);
+      color: rgba(185, 173, 152, 0.72);
+      text-align: left;
+      text-transform: uppercase;
+    }
+
+    .copedent-table .copedent-row-label.is-tab-label,
+    .copedent-table .copedent-tab-label-head {
+      background: rgb(28, 31, 31);
+      color: var(--brass);
+    }
+
+    .copedent-table .copedent-tab-label-button {
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .copedent-table .copedent-travel-head {
+      color: rgba(185, 173, 152, 0.62);
+      font-size: 10px;
+    }
+
     .copedent-header-button,
     .copedent-string-button,
     .copedent-cell-button {
@@ -3413,7 +3441,7 @@
               <div class="backstage-card-header">
                 <div>
                   <h4 id="copedent-matrix-title">E9 copedent chart</h4>
-                  <p class="copedent-template-note">Blank means no change. Select any changed or empty cell to edit it. Select a string or control heading for its details.</p>
+                  <p class="copedent-template-note">Blank means no change. Select a cell to edit its pitch movement. Select a Tab label to rename the symbol shown in tablature.</p>
                 </div>
                 <button class="backstage-button" id="add-copedent-change" type="button">Add control</button>
               </div>
@@ -3487,12 +3515,12 @@
             <dialog class="copedent-dialog" id="copedent-control-dialog" aria-labelledby="copedent-control-title">
               <form class="copedent-dialog__content" method="dialog">
                 <div class="copedent-dialog__header">
-                  <div><h4 id="copedent-control-title">Control details</h4><p>Names are yours; physical position and travel describe the mechanics.</p></div>
+                  <div><h4 id="copedent-control-title">Control details</h4><p>The Tab label is yours; physical position and travel describe the mechanics.</p></div>
                   <button class="backstage-button" value="cancel" type="submit" aria-label="Close control details">Close</button>
                 </div>
                 <div class="backstage-grid">
-                  <div class="backstage-field"><label for="copedent-control-label">Player-facing name</label><input id="copedent-control-label" type="text"></div>
-                  <div class="backstage-field"><label for="copedent-control-position">Physical position</label><input id="copedent-control-position" type="text" list="copedent-position-options"><datalist id="copedent-position-options"><option value="LKL"><option value="LKV"><option value="LKR"><option value="RKL"><option value="RKR"><option value="P1"><option value="P2"><option value="P3"></datalist></div>
+                  <div class="backstage-field"><label for="copedent-control-label">Tab label</label><input id="copedent-control-label" type="text" aria-describedby="copedent-control-label-help"><span class="backstage-note" id="copedent-control-label-help">Shown on strings and in generated tablature.</span></div>
+                  <div class="backstage-field"><label for="copedent-control-position">Physical position</label><input id="copedent-control-position" type="text" list="copedent-position-options"><datalist id="copedent-position-options"><option value="LKL"><option value="LKV"><option value="LKR"><option value="RKL"><option value="RKR"><option value="P1"><option value="P2"><option value="P3"><option value="P4"></datalist></div>
                   <div class="backstage-field"><label for="copedent-control-type">Type</label><select id="copedent-control-type"><option value="pedal">Pedal</option><option value="lever">Knee lever</option></select></div>
                   <div class="backstage-field"><label for="copedent-control-travel">Travel</label><select id="copedent-control-travel"><option value="pedal">Pedal</option><option value="half-stop">Half stop</option><option value="full">Full</option><option value="full-stop">Full stop</option><option value="vertical">Vertical</option><option value="split">Split</option></select></div>
                   <div class="backstage-field" style="grid-column: 1 / -1;"><label for="copedent-control-aliases">Aliases</label><input id="copedent-control-aliases" type="text" placeholder="F lever, RKLL"></div>
@@ -3685,7 +3713,7 @@
   </div>
 
   <script src="copedent-store.js?v=account-copedents-20260714-1"></script>
-  <script src="copedent-grid-model.js?v=physical-control-order-20260714-1"></script>
+  <script src="copedent-grid-model.js?v=editable-tab-labels-20260714-1"></script>
   <script src="answer-client.js?v=account-copedents-20260714-1"></script>
   <script src="pedal-steel-fretboard-styles.js?v=module-boundaries-20260713"></script>
   <script src="pedal-steel-fretboard.js?v=landing-bubble-labels-20260713"></script>
@@ -5707,6 +5735,6 @@
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
     }
   </script>
-  <script src="backstage-copedent-manager.js?v=active-control-order-20260714-1"></script>
+  <script src="backstage-copedent-manager.js?v=editable-tab-labels-20260714-1"></script>
 </body>
 </html>

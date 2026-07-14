@@ -272,10 +272,19 @@
     `).join("");
   }
 
-  function renderStateHeaders(groups) {
+  function renderTabLabelHeaders(groups) {
     return groups.flatMap((group) => group.states.map((state) => `
-      <th class="copedent-state-head" data-control-group="${escapeHtml(group.key)}">
-        <button class="copedent-header-button" type="button" data-control-id="${escapeHtml(state.id)}" title="${escapeHtml(controlAria(state))}" aria-label="Edit ${escapeHtml(controlAria(state))}">${escapeHtml(state.headerLabel)}</button>
+      <th class="copedent-tab-label-head" data-control-group="${escapeHtml(group.key)}">
+        <button class="copedent-header-button copedent-tab-label-button" type="button" data-control-id="${escapeHtml(state.id)}"
+          title="${escapeHtml(controlAria(state))}" aria-label="Edit tab label ${escapeHtml(state.tabLabel)} for ${escapeHtml(state.physicalPosition)}">${escapeHtml(state.tabLabel)}</button>
+      </th>
+    `)).join("");
+  }
+
+  function renderTravelHeaders(groups) {
+    return groups.flatMap((group) => group.states.map((state) => `
+      <th class="copedent-state-head copedent-travel-head" data-control-group="${escapeHtml(group.key)}">
+        <button class="copedent-header-button" type="button" data-control-id="${escapeHtml(state.id)}" title="${escapeHtml(controlAria(state))}" aria-label="Edit ${escapeHtml(state.physicalPosition)} ${escapeHtml(state.headerLabel)} travel details">${escapeHtml(state.headerLabel)}</button>
       </th>
     `)).join("");
   }
@@ -315,12 +324,12 @@
       <table class="copedent-table" aria-label="Editable E9 copedent chart">
         <thead>
           <tr>
-            <th class="copedent-sticky-string" rowspan="3">String</th>
-            <th class="copedent-sticky-open" rowspan="3">Open</th>
+            <th class="copedent-row-label" colspan="2">Control family</th>
             ${superHeaders}
           </tr>
-          <tr>${renderGroupHeaders(groups)}</tr>
-          <tr>${renderStateHeaders(groups)}</tr>
+          <tr><th class="copedent-row-label" colspan="2">Physical control</th>${renderGroupHeaders(groups)}</tr>
+          <tr><th class="copedent-row-label is-tab-label" colspan="2">Tab label</th>${renderTabLabelHeaders(groups)}</tr>
+          <tr><th class="copedent-sticky-string">String</th><th class="copedent-sticky-open">Open</th>${renderTravelHeaders(groups)}</tr>
         </thead>
         <tbody>
           ${currentView.strings.map((string) => `
