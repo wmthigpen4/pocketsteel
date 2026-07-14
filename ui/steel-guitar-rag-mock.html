@@ -3311,8 +3311,8 @@
               <h3>Pass &amp; Usage</h3>
               <span class="coming-soon" id="backstage-overview-pass-badge">Account access</span>
             </div>
-            <p id="backstage-overview-pass-summary">Your verified account controls account-backed features. Checkout and billing management are not available in this beta yet.</p>
-            <button class="backstage-button" type="button" data-backstage-jump="pass">View passes</button>
+            <p id="backstage-overview-pass-summary" aria-live="polite">Checking this month’s usage…</p>
+            <button class="backstage-button" type="button" data-backstage-jump="pass">View usage</button>
           </article>
 
           <article class="backstage-card">
@@ -3628,26 +3628,27 @@
             <p class="backstage-note">Custom-copedent access is enforced by the server. Upgrade buttons remain unavailable until the separate checkout and billing work is complete.</p>
           </article>
 
-          <article class="backstage-card">
+          <article class="backstage-card" id="monthly-ask-usage-card">
             <div class="backstage-card-header">
-              <h3>AI Usage</h3>
-              <span class="coming-soon">Coming soon</span>
+              <h3>Monthly Ask Usage</h3>
+              <span class="coming-soon" id="usage-period-label">This month</span>
             </div>
-            <p>Track answer usage, premium responses, and monthly limits here once account features are connected.</p>
-            <div class="backstage-metrics">
+            <p id="usage-status-copy" role="status" aria-live="polite">Checking this month’s usage…</p>
+            <div class="backstage-metrics" id="usage-monthly-details" hidden>
               <div class="backstage-metric">
-                <span>Questions used this period</span>
-                <strong>Not connected</strong>
+                <span>Answers this month</span>
+                <strong id="usage-answer-count">—</strong>
               </div>
               <div class="backstage-metric">
-                <span>Premium responses remaining</span>
-                <strong>Coming soon</strong>
+                <span>Period</span>
+                <strong id="usage-period-range">—</strong>
               </div>
               <div class="backstage-metric">
-                <span>Estimated monthly usage</span>
-                <strong>Coming soon</strong>
+                <span>Resets</span>
+                <strong id="usage-reset-date">—</strong>
               </div>
             </div>
+            <p class="backstage-note">Counts successful answers and follow-ups. Failed or blocked requests do not count.</p>
           </article>
 
         </div>
@@ -3768,6 +3769,12 @@
     const backstageOverviewPassSummary = document.querySelector("#backstage-overview-pass-summary");
     const backstageOverviewAccountBadge = document.querySelector("#backstage-overview-account-badge");
     const backstageOverviewAccountSummary = document.querySelector("#backstage-overview-account-summary");
+    const usagePeriodLabel = document.querySelector("#usage-period-label");
+    const usageStatusCopy = document.querySelector("#usage-status-copy");
+    const usageMonthlyDetails = document.querySelector("#usage-monthly-details");
+    const usageAnswerCount = document.querySelector("#usage-answer-count");
+    const usagePeriodRange = document.querySelector("#usage-period-range");
+    const usageResetDate = document.querySelector("#usage-reset-date");
     const backstageAccountStatusBadge = document.querySelector("#backstage-account-status-badge");
     const backstageAccountStatusCopy = document.querySelector("#backstage-account-status-copy");
     const backstageAccountLogin = document.querySelector("#backstage-account-login");
@@ -3804,6 +3811,8 @@
     const techPopoverContent = document.querySelector("#tech-popover-content");
     const techPopoverClose = document.querySelector(".tech-popover-close");
     const initialQuestion = new URLSearchParams(window.location.search).get("question");
+    let monthlyUsageState = { status: "idle", usage: null };
+    let monthlyUsageRequest = null;
     if (initialQuestion) question.value = initialQuestion;
     const TECH_POPOVER_COPY = {
       title: "What’s underneath?",
@@ -5375,7 +5384,7 @@
       const accountFeatureEnabled = Boolean(backendSession?.features?.accountCopedents);
       const passLabel = account?.passLabel || mockCurrentPass.textContent;
       backstageOverviewPassBadge.textContent = passLabel;
-      backstageOverviewPassSummary.textContent = `${passLabel} controls account-backed features. Checkout and billing management are not available in this beta yet.`;
+      renderUsageOverview(passLabel);
       backstageOverviewAccountBadge.textContent = verifiedAccount ? "Verified login" : "Local preview";
       backstageOverviewAccountSummary.textContent = verifiedAccount
         ? "Your verified login keeps included setup selection and entitled custom copedents synchronized across devices."
@@ -5409,6 +5418,7 @@
 
     function applySessionAccess(session) {
       backendSession = session;
+      monthlyUsageState = { status: "idle", usage: null };
       const isLocalDevSession = sessionUsesLocalDev(session);
       setDevPreviewAccessEnabled(isLocalDevSession);
 
@@ -5417,6 +5427,7 @@
           ? STEEL_RAG_ANSWER_UI.normalizeAccessRole(session.role)
           : STEEL_RAG_ANSWER_UI.ACCESS_ROLES.ANONYMOUS;
         updateMockAccessUi();
+        if (!backstage.hidden) refreshMonthlyUsage();
         return;
       }
 
@@ -5424,6 +5435,7 @@
         mockAccessState = STEEL_RAG_ANSWER_UI.normalizeAccessRole(session.role);
         updateMockAccessUi();
       }
+      if (!backstage.hidden) refreshMonthlyUsage();
     }
 
     function normalizeSessionAuthProvider(session) {
@@ -5455,9 +5467,93 @@
         role: authenticated ? role : STEEL_RAG_ANSWER_UI.ACCESS_ROLES.ANONYMOUS,
         authProvider: normalizeSessionAuthProvider(payload),
         features: {
-          melodyExercise: Boolean(payload?.features?.melodyExercise)
+          melodyExercise: Boolean(payload?.features?.melodyExercise),
+          accountUsage: Boolean(payload?.features?.accountUsage)
         }
       };
+    }
+
+    function usageCountLabel(count) {
+      return `${count.toLocaleString()} ${count === 1 ? "answer" : "answers"} this month`;
+    }
+
+    function formatUsageDate(value, options) {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "—";
+      return date.toLocaleDateString(undefined, { ...options, timeZone: "UTC" });
+    }
+
+    function renderUsageOverview(passLabel = mockCurrentPass.textContent) {
+      if (monthlyUsageState.status === "ready") {
+        backstageOverviewPassSummary.textContent = `${passLabel} · ${usageCountLabel(monthlyUsageState.usage.successfulAnswers)}.`;
+      } else if (monthlyUsageState.status === "unverified") {
+        backstageOverviewPassSummary.textContent = "Monthly usage is available for verified accounts.";
+      } else if (monthlyUsageState.status === "unavailable") {
+        backstageOverviewPassSummary.textContent = "Usage tracking is temporarily unavailable.";
+      } else {
+        backstageOverviewPassSummary.textContent = "Checking this month’s usage…";
+      }
+    }
+
+    function renderUsageState() {
+      const passLabel = backendSession?.account?.passLabel || mockCurrentPass.textContent;
+      renderUsageOverview(passLabel);
+      if (monthlyUsageState.status === "ready") {
+        const usage = monthlyUsageState.usage;
+        const periodEnd = new Date(new Date(usage.resetsAt).getTime() - 86400000);
+        const periodStart = new Date(usage.startsAt);
+        const sameUtcMonth = periodStart.getUTCFullYear() === periodEnd.getUTCFullYear()
+          && periodStart.getUTCMonth() === periodEnd.getUTCMonth();
+        const periodStartLabel = formatUsageDate(usage.startsAt, { month: "long", day: "numeric" });
+        const periodEndLabel = periodEnd.toLocaleDateString(undefined, {
+          ...(sameUtcMonth ? { day: "numeric" } : { month: "long", day: "numeric" }),
+          timeZone: "UTC"
+        });
+        usageStatusCopy.textContent = usageCountLabel(usage.successfulAnswers);
+        usageAnswerCount.textContent = usage.successfulAnswers.toLocaleString();
+        usagePeriodRange.textContent = `${periodStartLabel}–${periodEndLabel}`;
+        usageResetDate.textContent = formatUsageDate(usage.resetsAt, { month: "long", day: "numeric" });
+        usagePeriodLabel.textContent = formatUsageDate(usage.startsAt, { month: "long" });
+        usageMonthlyDetails.hidden = false;
+        return;
+      }
+      usageMonthlyDetails.hidden = true;
+      usagePeriodLabel.textContent = "This month";
+      usageStatusCopy.textContent = monthlyUsageState.status === "unverified"
+        ? "Monthly usage is available for verified accounts."
+        : monthlyUsageState.status === "unavailable"
+          ? "Usage tracking is temporarily unavailable."
+          : "Checking this month’s usage…";
+    }
+
+    async function refreshMonthlyUsage() {
+      if (monthlyUsageRequest) return monthlyUsageRequest;
+      monthlyUsageState = { status: "loading", usage: null };
+      renderUsageState();
+      if (!backendSession?.authenticated || sessionUsesLocalDev(backendSession)) {
+        monthlyUsageState = { status: "unverified", usage: null };
+        renderUsageState();
+        return null;
+      }
+      if (!backendSession?.features?.accountUsage) {
+        monthlyUsageState = { status: "unavailable", usage: null };
+        renderUsageState();
+        return null;
+      }
+      monthlyUsageRequest = STEEL_RAG_ANSWER_UI.requestAccountUsage({ accessRole: mockAccessState })
+        .then((usage) => {
+          monthlyUsageState = { status: "ready", usage };
+          return usage;
+        })
+        .catch((error) => {
+          monthlyUsageState = { status: error?.status === 401 ? "unverified" : "unavailable", usage: null };
+          return null;
+        })
+        .finally(() => {
+          monthlyUsageRequest = null;
+          renderUsageState();
+        });
+      return monthlyUsageRequest;
     }
 
     async function requestBackendSession() {
@@ -5516,6 +5612,9 @@
         panel.hidden = panel.id !== `backstage-panel-${tabName}`;
       });
       backstagePanel.scrollTop = 0;
+      if (tabName === "overview" || tabName === "pass") {
+        refreshMonthlyUsage();
+      }
     }
 
     function formatDraftDate(value) {

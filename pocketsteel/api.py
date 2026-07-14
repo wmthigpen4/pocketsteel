@@ -40,6 +40,12 @@ from pocketsteel.access_control import (
     resolve_auth_provider,
 )
 from pocketsteel.answer_usage import InMemoryAnswerRateLimiter, answer_rate_limit_key
+from pocketsteel.account_usage import (
+    AccountUsageRepository,
+    AccountUsageUnavailableError,
+    configured_account_usage_enabled,
+    configured_account_usage_path,
+)
 from pocketsteel.account_copedents import (
     AccountCopedentError,
     AccountCopedentRepository,
@@ -342,6 +348,8 @@ class RetrievalApi:
         melody_import_enabled: bool | None = None,
         account_copedents_enabled: bool | None = None,
         account_copedent_repository: AccountCopedentRepository | None = None,
+        account_usage_enabled: bool | None = None,
+        account_usage_repository: AccountUsageRepository | None = None,
     ) -> None:
         self.search_index = search_index
         self.private_search_index = private_search_index
@@ -375,6 +383,17 @@ class RetrievalApi:
             )
         else:
             self.account_copedent_repository = None
+        self.account_usage_enabled = (
+            configured_account_usage_enabled()
+            if account_usage_enabled is None
+            else bool(account_usage_enabled)
+        )
+        if self.account_usage_enabled:
+            self.account_usage_repository = account_usage_repository or AccountUsageRepository(
+                configured_account_usage_path()
+            )
+        else:
+            self.account_usage_repository = None
         self.git_sha = self._git_value("rev-parse", "--short", "HEAD")
         self.git_branch = self._git_value("branch", "--show-current")
         self.server_started_at = datetime.now(timezone.utc).isoformat()
@@ -518,6 +537,8 @@ class RetrievalApi:
                 features["melodyImport"] = True
             if self.account_copedents_enabled:
                 features["accountCopedents"] = True
+            if self.account_usage_enabled:
+                features["accountUsage"] = True
             if features:
                 payload["features"] = features
             if self.account_copedents_enabled and access.allowed:
@@ -538,6 +559,54 @@ class RetrievalApi:
                     **access.diagnostics,
                 }
             return self._json_response(start_response, "200 OK", payload)
+
+        if path == "/api/account/usage":
+            if method != "GET":
+                return self._json_response(
+                    start_response,
+                    "405 Method Not Allowed",
+                    {"error": "method not allowed"},
+                    extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
+                )
+            access = self._authorize_content_request(environ)
+            if not access.allowed:
+                return self._json_response(
+                    start_response,
+                    access.status,
+                    {"error": access.error},
+                    extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
+                )
+            if not self.account_usage_enabled or self.account_usage_repository is None:
+                return self._json_response(
+                    start_response,
+                    "503 Service Unavailable",
+                    {"error": "account usage is unavailable"},
+                    extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
+                )
+            account_access = None if self.answer_auth_mode == "local_dev" else account_access_for_decision(access)
+            if account_access is None:
+                return self._json_response(
+                    start_response,
+                    "401 Unauthorized",
+                    {"error": "verified account identity is required"},
+                    extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
+                )
+            try:
+                usage = self.account_usage_repository.current_usage(account_access.identity)
+            except AccountUsageUnavailableError:
+                LOGGER.exception("account usage read failed")
+                return self._json_response(
+                    start_response,
+                    "503 Service Unavailable",
+                    {"error": "account usage is temporarily unavailable"},
+                    extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
+                )
+            return self._json_response(
+                start_response,
+                "200 OK",
+                usage.to_dict(),
+                extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
+            )
 
         if path == "/api/account/copedents" or path == "/api/account/copedents/import":
             access = self._authorize_content_request(environ)
@@ -962,7 +1031,7 @@ class RetrievalApi:
                     "sections": build_sections(direct_profile_answer),
                 }
                 payload.update(copedent_context_metadata(target_profile, target_revision))
-                return self._json_response(start_response, "200 OK", payload)
+                return self._answer_success_response(start_response, payload, access)
 
             answer_intent_decision = classify_answer_request(answer_request.question, answer_request.mode)
             curated_guidance_status: str | None = None
@@ -1024,7 +1093,7 @@ class RetrievalApi:
                     source_count=len(payload["sources"]),
                     warning_count=len(payload["warnings"]),
                 )
-                return self._json_response(start_response, "200 OK", payload)
+                return self._answer_success_response(start_response, payload, access)
 
             progression_guide_answer = progression_guide_for_question(answer_request.question)
             if (
@@ -1057,7 +1126,7 @@ class RetrievalApi:
                     source_count=0,
                     warning_count=0,
                 )
-                return self._json_response(start_response, "200 OK", payload)
+                return self._answer_success_response(start_response, payload, access)
 
             deterministic_chord_answer = visual_fretboard_curated_answer(answer_request.question)
             if deterministic_chord_answer is None:
@@ -1097,7 +1166,7 @@ class RetrievalApi:
                     source_count=len(curated_sources),
                     warning_count=0,
                 )
-                return self._json_response(start_response, "200 OK", payload)
+                return self._answer_success_response(start_response, payload, access)
 
             if _should_gate_answer_intent(answer_intent_decision):
                 final_answer = _answer_intent_guardrail_answer(answer_intent_decision["domain"])
@@ -1120,6 +1189,7 @@ class RetrievalApi:
                     source_count=0,
                     warning_count=0,
                 )
+                # Scope/copyright guardrails are blocked requests, not successful Ask usage.
                 return self._json_response(start_response, "200 OK", payload)
 
             curated_guidance_results, curated_guidance_status = self._curated_guidance_for_answer(
@@ -1161,7 +1231,7 @@ class RetrievalApi:
                     curated_guidance_count=curated_guidance_count,
                     curated_guidance_status=curated_guidance_status,
                 )
-                return self._json_response(start_response, "200 OK", payload)
+                return self._answer_success_response(start_response, payload, access)
 
             source_system = self._optional_string(request_payload.get("sourceSystem") or request_payload.get("source_system"))
             forum_name = self._optional_string(request_payload.get("forumName") or request_payload.get("forum_name"))
@@ -1300,7 +1370,7 @@ class RetrievalApi:
                 curated_guidance_count=curated_guidance_count,
                 curated_guidance_status=curated_guidance_status,
             )
-            return self._json_response(start_response, "200 OK", payload)
+            return self._answer_success_response(start_response, payload, access)
 
         else:
             return self._json_response(start_response, "404 Not Found", {"error": "not found"})
@@ -1607,6 +1677,27 @@ class RetrievalApi:
         text = str(value or "").strip()
         return text or None
 
+    def _answer_success_response(
+        self,
+        start_response: Any,
+        payload: AnswerResponse,
+        access_decision: Any,
+    ) -> list[bytes]:
+        """Record one successful Ask response without making usage a response dependency."""
+
+        if (
+            self.answer_auth_mode != "local_dev"
+            and self.account_usage_enabled
+            and self.account_usage_repository is not None
+        ):
+            account_access = account_access_for_decision(access_decision)
+            if account_access is not None:
+                try:
+                    self.account_usage_repository.record_success(account_access.identity)
+                except Exception:
+                    LOGGER.exception("account usage write failed")
+        return self._json_response(start_response, "200 OK", payload)
+
     def _log_answer_attempt(
         self,
         request_payload: dict[str, Any],
@@ -1738,6 +1829,8 @@ def create_app(
     melody_import_enabled: bool | None = None,
     account_copedents_enabled: bool | None = None,
     account_copedent_repository: AccountCopedentRepository | None = None,
+    account_usage_enabled: bool | None = None,
+    account_usage_repository: AccountUsageRepository | None = None,
 ) -> RetrievalApi:
     retrieval_config = retrieval_config or configured_retrieval_mode_config()
     private_requested = retrieval_config.requested_mode in {
@@ -1764,6 +1857,8 @@ def create_app(
         melody_import_enabled=melody_import_enabled,
         account_copedents_enabled=account_copedents_enabled,
         account_copedent_repository=account_copedent_repository,
+        account_usage_enabled=account_usage_enabled,
+        account_usage_repository=account_usage_repository,
     )
 
 

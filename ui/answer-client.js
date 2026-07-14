@@ -1,6 +1,7 @@
 const STEEL_RAG_ANSWER_UI = (() => {
   const ANSWER_ENDPOINT = "/api/answer";
   const SESSION_ENDPOINT = "/api/session";
+  const ACCOUNT_USAGE_ENDPOINT = "/api/account/usage";
   const ACCESS_ROLES = Object.freeze({
     ANONYMOUS: "anonymous",
     BETA_USER: "beta_user",
@@ -889,6 +890,7 @@ const STEEL_RAG_ANSWER_UI = (() => {
     if (payload?.features?.melodyCatalog) features.melodyCatalog = true;
     if (payload?.features?.melodyImport) features.melodyImport = true;
     if (payload?.features?.accountCopedents) features.accountCopedents = true;
+    if (payload?.features?.accountUsage) features.accountUsage = true;
     if (Object.keys(features).length) normalized.features = features;
     if (payload?.account && typeof payload.account === "object") {
       normalized.account = {
@@ -903,6 +905,39 @@ const STEEL_RAG_ANSWER_UI = (() => {
       normalized.entitlements = Array.from(new Set(payload.entitlements.map(String).filter(Boolean)));
     }
     return normalized;
+  }
+
+  function normalizeAccountUsageResponse(payload) {
+    const startsAt = firstTextValue(payload?.period?.startsAt);
+    const resetsAt = firstTextValue(payload?.period?.resetsAt);
+    const successfulAnswers = Number(payload?.usage?.successfulAnswers);
+    if (!startsAt || !resetsAt || !Number.isInteger(successfulAnswers) || successfulAnswers < 0) {
+      throw new Error("Account usage response is invalid");
+    }
+    return {
+      schemaVersion: firstTextValue(payload?.schemaVersion, "account_usage_v1"),
+      startsAt,
+      resetsAt,
+      successfulAnswers,
+      updatedAt: firstTextValue(payload?.updatedAt)
+    };
+  }
+
+  async function requestAccountUsage({ fetchImpl = window.fetch, accessRole = ACCESS_ROLES.ANONYMOUS } = {}) {
+    const response = await fetchImpl(ACCOUNT_USAGE_ENDPOINT, {
+      method: "GET",
+      credentials: "same-origin",
+      headers: {
+        Accept: "application/json",
+        ...devAccessHeaders(accessRole)
+      }
+    });
+    if (!response.ok) {
+      const error = new Error(`Account usage request failed with ${response.status}`);
+      error.status = response.status;
+      throw error;
+    }
+    return normalizeAccountUsageResponse(await response.json());
   }
 
   async function requestSession({ fetchImpl = window.fetch, accessRole = ACCESS_ROLES.ANONYMOUS } = {}) {
@@ -926,6 +961,7 @@ const STEEL_RAG_ANSWER_UI = (() => {
   return {
     ANSWER_ENDPOINT,
     SESSION_ENDPOINT,
+    ACCOUNT_USAGE_ENDPOINT,
     ACCESS_ROLES,
     hasSubmittableQuestion,
     shouldSubmitQuestionKey,
@@ -944,6 +980,8 @@ const STEEL_RAG_ANSWER_UI = (() => {
     normalizeSections,
     normalizeAnswerResponse,
     requestSession,
-    requestAnswer
+    requestAnswer,
+    normalizeAccountUsageResponse,
+    requestAccountUsage
   };
 })();

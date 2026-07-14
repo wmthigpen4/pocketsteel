@@ -45,6 +45,7 @@ from pocketsteel.access_control import (
     AuthConfigurationError,
 )
 from pocketsteel.answer_usage import InMemoryAnswerRateLimiter
+from pocketsteel.account_usage import AccountUsageRepository, AccountUsageUnavailableError
 from pocketsteel.cloudflare_access import (
     CLOUDFLARE_ACCESS_AUTHORIZATION_COOKIE,
     CLOUDFLARE_ACCESS_JWT_ENVIRON,
@@ -79,6 +80,8 @@ def call_app(
     melody_import_enabled: bool | None = None,
     account_copedents_enabled: bool | None = None,
     account_copedent_repository: Any | None = None,
+    account_usage_enabled: bool | None = None,
+    account_usage_repository: Any | None = None,
 ) -> tuple[str, dict[str, str], dict[str, Any]]:
     app = create_app(
         search_index or fake_search_index(),
@@ -93,6 +96,8 @@ def call_app(
         melody_import_enabled=melody_import_enabled,
         account_copedents_enabled=account_copedents_enabled,
         account_copedent_repository=account_copedent_repository,
+        account_usage_enabled=account_usage_enabled,
+        account_usage_repository=account_usage_repository,
     )
     captured: dict[str, Any] = {}
     body = json.dumps(json_body or {}).encode("utf-8") if json_body is not None else b""
@@ -287,6 +292,28 @@ def fake_search_index(collection: FakeCollection | None = None) -> ChromaSearchI
         collection=collection or FakeCollection(),
         embedder=lambda texts, model=None: [[0.1, 0.2, 0.3] for _ in texts],
         model="test-embed",
+    )
+
+
+def configured_usage_app(
+    monkeypatch: Any,
+    repository: Any,
+    *,
+    answer_provider: Any | None = None,
+    rate_limiter: InMemoryAnswerRateLimiter | None = None,
+) -> RetrievalApi:
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_ISSUER", "https://steel.cloudflareaccess.com")
+    monkeypatch.setenv("STEEL_RAG_CF_ACCESS_AUD", "aud-tag")
+    monkeypatch.setenv("STEEL_RAG_BETA_USER_EMAILS", "beta@example.test")
+    return create_app(
+        fake_search_index(),
+        answer_provider=answer_provider or FakeAnswerProvider(),
+        answer_auth_mode="production",
+        auth_provider="cloudflare_access",
+        cloudflare_verifier=FakeCloudflareVerifier(),
+        answer_rate_limiter=rate_limiter,
+        account_usage_enabled=True,
+        account_usage_repository=repository,
     )
 
 
@@ -9018,3 +9045,180 @@ def test_api_rejects_unknown_paths() -> None:
 
     assert status == "404 Not Found"
     assert payload == {"error": "not found"}
+
+
+def test_monthly_usage_counts_successful_deterministic_and_generated_answers(
+    monkeypatch: Any,
+    tmp_path: Path,
+) -> None:
+    repository = AccountUsageRepository(tmp_path / "usage.sqlite3")
+    provider = FakeAnswerProvider()
+    app = configured_usage_app(monkeypatch, repository, answer_provider=provider)
+
+    status, headers, initial = call_existing_app(
+        app,
+        "/api/account/usage",
+        access_role=None,
+        cloudflare_token="valid-beta",
+    )
+    assert status == "200 OK"
+    assert headers["Cache-Control"] == "no-store"
+    assert headers["Pragma"] == "no-cache"
+    assert initial["schemaVersion"] == "account_usage_v1"
+    assert initial["usage"] == {"successfulAnswers": 0}
+    assert initial["updatedAt"] is None
+
+    deterministic_status, _, _ = call_existing_app(
+        app,
+        "/api/answer",
+        method="POST",
+        json_body={"question": "How do I play G major?"},
+        access_role=None,
+        cloudflare_token="valid-beta",
+    )
+    generated_status, _, _ = call_existing_app(
+        app,
+        "/api/answer",
+        method="POST",
+        json_body={"question": "Summarize the retrieved discussion about blocking."},
+        access_role=None,
+        cloudflare_token="valid-beta",
+    )
+    invalid_status, _, _ = call_existing_app(
+        app,
+        "/api/answer",
+        method="POST",
+        json_body={},
+        access_role=None,
+        cloudflare_token="valid-beta",
+    )
+    blocked_status, _, blocked_payload = call_existing_app(
+        app,
+        "/api/answer",
+        method="POST",
+        json_body={"question": "Tell me the weather in Dallas."},
+        access_role=None,
+        cloudflare_token="valid-beta",
+    )
+
+    assert deterministic_status == "200 OK"
+    assert generated_status == "200 OK"
+    assert invalid_status == "400 Bad Request"
+    assert blocked_status == "200 OK"
+    assert "outside" in blocked_payload["answer"].lower()
+    assert provider.calls
+
+    status, _, current = call_existing_app(
+        app,
+        "/api/account/usage",
+        access_role=None,
+        cloudflare_token="valid-beta",
+    )
+    assert status == "200 OK"
+    assert current["usage"] == {"successfulAnswers": 2}
+    assert current["period"]["startsAt"].endswith("T00:00:00+00:00")
+    assert current["period"]["resetsAt"].endswith("T00:00:00+00:00")
+    assert current["updatedAt"]
+
+
+def test_monthly_usage_excludes_unauthorized_and_rate_limited_requests(
+    monkeypatch: Any,
+    tmp_path: Path,
+) -> None:
+    repository = AccountUsageRepository(tmp_path / "usage.sqlite3")
+    app = configured_usage_app(
+        monkeypatch,
+        repository,
+        rate_limiter=InMemoryAnswerRateLimiter(max_requests=1, window_seconds=60),
+    )
+
+    unauthorized_status, _, _ = call_existing_app(
+        app,
+        "/api/answer",
+        method="POST",
+        json_body={"question": "How do I play G major?"},
+        access_role=None,
+    )
+    first_status, _, _ = call_existing_app(
+        app,
+        "/api/answer",
+        method="POST",
+        json_body={"question": "How do I play G major?"},
+        access_role=None,
+        cloudflare_token="valid-beta",
+    )
+    limited_status, _, _ = call_existing_app(
+        app,
+        "/api/answer",
+        method="POST",
+        json_body={"question": "How do I play C major?"},
+        access_role=None,
+        cloudflare_token="valid-beta",
+    )
+
+    assert unauthorized_status == "401 Unauthorized"
+    assert first_status == "200 OK"
+    assert limited_status == "429 Too Many Requests"
+    _, _, current = call_existing_app(
+        app,
+        "/api/account/usage",
+        access_role=None,
+        cloudflare_token="valid-beta",
+    )
+    assert current["usage"] == {"successfulAnswers": 1}
+
+
+def test_usage_write_failure_does_not_block_a_successful_answer(monkeypatch: Any) -> None:
+    class FailingUsageRepository:
+        def record_success(self, identity: Any) -> None:
+            raise AccountUsageUnavailableError("unavailable")
+
+    app = configured_usage_app(monkeypatch, FailingUsageRepository())
+
+    status, _, payload = call_existing_app(
+        app,
+        "/api/answer",
+        method="POST",
+        json_body={"question": "How do I play G major?"},
+        access_role=None,
+        cloudflare_token="valid-beta",
+    )
+
+    assert status == "200 OK"
+    assert "answer" in payload
+
+
+def test_usage_endpoint_reports_unavailable_or_unverified_without_a_false_zero(
+    monkeypatch: Any,
+    tmp_path: Path,
+) -> None:
+    disabled = create_app(fake_search_index(), answer_auth_mode="local_dev", account_usage_enabled=False)
+    disabled_status, _, disabled_payload = call_existing_app(disabled, "/api/account/usage")
+    assert disabled_status == "503 Service Unavailable"
+    assert disabled_payload == {"error": "account usage is unavailable"}
+
+    repository = AccountUsageRepository(tmp_path / "usage.sqlite3")
+    local = create_app(
+        fake_search_index(),
+        answer_auth_mode="local_dev",
+        account_usage_enabled=True,
+        account_usage_repository=repository,
+    )
+    local_status, _, local_payload = call_existing_app(local, "/api/account/usage")
+    assert local_status == "401 Unauthorized"
+    assert local_payload == {"error": "verified account identity is required"}
+
+    class FailingReadRepository:
+        def current_usage(self, identity: Any) -> None:
+            raise AccountUsageUnavailableError("unavailable")
+
+    failed = configured_usage_app(monkeypatch, FailingReadRepository())
+    failed_status, failed_headers, failed_payload = call_existing_app(
+        failed,
+        "/api/account/usage",
+        access_role=None,
+        cloudflare_token="valid-beta",
+    )
+    assert failed_status == "503 Service Unavailable"
+    assert failed_headers["Cache-Control"] == "no-store"
+    assert failed_payload == {"error": "account usage is temporarily unavailable"}

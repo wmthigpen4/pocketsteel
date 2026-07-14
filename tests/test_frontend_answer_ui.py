@@ -188,6 +188,99 @@ let capturedRequest;
     assert result.returncode == 0, result.stderr
 
 
+def test_frontend_answer_client_fetches_and_validates_monthly_usage() -> None:
+    script = r"""
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const vm = require("node:vm");
+
+const code = fs.readFileSync("ui/answer-client.js", "utf8");
+const sandbox = { window: {} };
+vm.createContext(sandbox);
+vm.runInContext(code, sandbox);
+const answerUi = vm.runInContext("STEEL_RAG_ANSWER_UI", sandbox);
+
+let capturedRequest;
+(async () => {
+  const usage = await answerUi.requestAccountUsage({
+    accessRole: "beta_user",
+    fetchImpl: async (url, options) => {
+      capturedRequest = { url, options };
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          schemaVersion: "account_usage_v1",
+          period: {
+            startsAt: "2026-07-01T00:00:00+00:00",
+            resetsAt: "2026-08-01T00:00:00+00:00"
+          },
+          usage: { successfulAnswers: 42 },
+          updatedAt: "2026-07-14T16:30:00+00:00"
+        })
+      };
+    }
+  });
+
+  assert.equal(capturedRequest.url, "/api/account/usage");
+  assert.equal(capturedRequest.options.method, "GET");
+  assert.equal(capturedRequest.options.credentials, "same-origin");
+  assert.equal(capturedRequest.options.headers["X-Steel-Rag-Dev-Access-Role"], "beta_user");
+  assert.equal(JSON.stringify(usage), JSON.stringify({
+    schemaVersion: "account_usage_v1",
+    startsAt: "2026-07-01T00:00:00+00:00",
+    resetsAt: "2026-08-01T00:00:00+00:00",
+    successfulAnswers: 42,
+    updatedAt: "2026-07-14T16:30:00+00:00"
+  }));
+
+  assert.equal(JSON.stringify(answerUi.normalizeSessionResponse({
+    authenticated: true,
+    role: "beta_user",
+    features: { accountUsage: true }
+  }).features), JSON.stringify({ accountUsage: true }));
+
+  assert.throws(() => answerUi.normalizeAccountUsageResponse({
+    period: { startsAt: "2026-07-01T00:00:00+00:00" },
+    usage: { successfulAnswers: 42 }
+  }), /invalid/);
+})().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
+"""
+
+    result = subprocess.run(
+        ["node", "-e", script],
+        cwd=Path(__file__).resolve().parents[1],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_backstage_monthly_usage_has_honest_states_without_limits_or_costs() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+
+    assert "Monthly Ask Usage" in html
+    assert "Checking this month’s usage…" in html
+    assert "Monthly usage is available for verified accounts." in html
+    assert "Usage tracking is temporarily unavailable." in html
+    assert "Counts successful answers and follow-ups. Failed or blocked requests do not count." in html
+    assert 'id="usage-answer-count"' in html
+    assert 'id="usage-period-range"' in html
+    assert 'id="usage-reset-date"' in html
+    assert "function refreshMonthlyUsage()" in html
+    assert 'tabName === "overview" || tabName === "pass"' in html
+    assert "STEEL_RAG_ANSWER_UI.requestAccountUsage" in html
+    assert "Premium responses remaining" not in html
+    assert "Estimated monthly usage" not in html
+    assert "Questions used this period" not in html
+    assert "AI Usage" not in html
+
+
 def test_frontend_answer_client_posts_and_normalizes_melody_exercise() -> None:
     script = r"""
 const assert = require("node:assert/strict");
