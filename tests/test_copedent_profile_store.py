@@ -166,6 +166,9 @@ def test_backstage_exposes_common_profiles_and_mechanical_editor_fields() -> Non
     setup_markup = html.split('id="backstage-panel-setup"', 1)[1].split('id="backstage-panel-pass"', 1)[0]
     assert "Pedals" in manager
     assert "Knee levers" in manager
+    assert "let selectedId = store.activeProfile().id;" in manager
+    assert "let selectionWasExplicit = false;" in manager
+    assert "if (!selectionWasExplicit || !store.profileById(selectedId)) selectedId = activeId;" in manager
     assert "String #</th>" not in setup_markup
     assert "Change type</th>" not in setup_markup
     assert "Open tuning table" not in setup_markup

@@ -123,7 +123,8 @@
     ["emmons-e9-basic", fallbackProfile("emmons-e9-basic", false)],
     ["day-e9-basic", fallbackProfile("day-e9-basic", true)]
   ]);
-  let selectedId = store.loadState().activeProfileId;
+  let selectedId = store.activeProfile().id;
+  let selectionWasExplicit = false;
   let currentProfile = null;
   let currentView = null;
   let selectedMobileGroup = "";
@@ -468,6 +469,7 @@
         await store.activateProfile(currentProfile.id);
       }
       selectedId = currentProfile.id;
+      selectionWasExplicit = false;
       renderSelected(`Using ${currentProfile.name || currentProfile.label} throughout the app.`);
     } catch (error) {
       elements.status.textContent = error.message;
@@ -540,6 +542,7 @@
       }
       copy = await store.saveManagedProfile(copy);
       selectedId = copy.id;
+      selectionWasExplicit = true;
       renderSelected("Editable copy created. Change the chart, then validate it when it matches your guitar.");
       elements.more.open = false;
     } catch (error) {
@@ -552,6 +555,7 @@
       if (customEditingLocked()) return showSubscription();
       const profile = await store.saveManagedProfile(store.blankProfile());
       selectedId = profile.id;
+      selectionWasExplicit = true;
       renderSelected("Blank 10-string E9 setup created. Add the controls that are actually on this guitar.");
     } catch (error) {
       elements.status.textContent = error.message;
@@ -564,6 +568,7 @@
       if (!global.confirm(`Delete ${currentProfile.name}? This removes this account-synced custom setup but does not delete any browser-local import copy.`)) return;
       await store.deleteManagedProfile(currentProfile.id);
       selectedId = store.activeProfile().id;
+      selectionWasExplicit = false;
       renderSelected("Custom setup deleted. Your other setups were not changed.");
       elements.more.open = false;
     } catch (error) {
@@ -815,7 +820,10 @@
       for (const profile of localProfiles.filter((item) => selected.has(item.id) && !item.alreadyImported)) {
         imported = await store.importLocalProfile(profile);
       }
-      if (imported) selectedId = imported.id;
+      if (imported) {
+        selectedId = imported.id;
+        selectionWasExplicit = true;
+      }
       renderSelected(`${selected.size} browser-local setup${selected.size === 1 ? "" : "s"} imported. The original local copy was kept.`);
     } catch (error) {
       elements.importStatus.textContent = error.message;
@@ -826,6 +834,7 @@
 
   elements.library.addEventListener("change", () => {
     selectedId = elements.library.value;
+    selectionWasExplicit = true;
     renderSelected();
   });
   elements.activate.addEventListener("click", validateAndActivate);
@@ -915,7 +924,8 @@
   renderSelected();
   loadCatalog();
   store.subscribe(() => {
-    if (!store.profileById(selectedId)) selectedId = store.activeProfile().id;
+    const activeId = store.activeProfile().id;
+    if (!selectionWasExplicit || !store.profileById(selectedId)) selectedId = activeId;
     renderSelected();
   });
 })(globalThis);
