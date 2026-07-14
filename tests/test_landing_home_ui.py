@@ -22,7 +22,7 @@ def test_landing_home_has_product_first_hierarchy_and_copy() -> None:
 
     assert '<a class="skip-link" href="#main-content">Skip to main content</a>' in html
     assert '<nav class="header-actions app-shell-nav" aria-label="Primary navigation">' in html
-    assert 'href="workspace-shell.css?v=landing-score-fit-20260714-1"' in html
+    assert 'href="workspace-shell.css?v=shell-nav-type-20260714-1"' in html
     assert '<main id="main-content">' in html
     assert "A connected pedal-steel learning studio" in home
     assert "See the neck. Understand the music. Play with confidence." in home
@@ -184,6 +184,8 @@ def test_landing_shell_has_responsive_and_accessibility_contract() -> None:
     assert ".page:not(.is-answering) .app-shell-nav {" in css
     assert "position: absolute;\n  top: 18px;\n  right: 0;" in css
     assert ".page:not(.is-answering) .app-shell-nav > :not(.backstage-trigger)" in css
+    assert '--font-nav: "Gill Sans", "Gill Sans MT", "Avenir Next"' in css
+    assert "font: 600 14px/1.15 var(--font-nav);" in css
     assert ".page:not(.is-answering) .app-shell-header .app-shell-nav {" in css
     assert "position: static;" in css
     assert 'role="dialog" aria-modal="true"' in html
