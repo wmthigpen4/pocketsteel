@@ -11,6 +11,7 @@
   });
   const SHARP_NOTES = Object.freeze(["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]);
   const LEVER_ORDER = Object.freeze(["LKL", "LKV", "LKR", "RKL", "RKR"]);
+  const POSITION_DISPLAY_ALIASES = Object.freeze({ LKL1: "LKL" });
   const TRAVEL_ORDER = Object.freeze({
     "half": 0, "half-stop": 0, "half_stop": 0,
     "full": 1, "full-stop": 1, "full_stop": 1,
@@ -64,7 +65,11 @@
   }
 
   function normalizedPosition(control) {
-    return String(control?.physicalPosition || control?.physical_position || control?.label || control?.id || "Unplaced").trim() || "Unplaced";
+    const position = String(control?.physicalPosition || control?.physical_position || control?.label || control?.id || "Unplaced").trim() || "Unplaced";
+    const normalized = position.toUpperCase();
+    if (Object.prototype.hasOwnProperty.call(POSITION_DISPLAY_ALIASES, normalized)) return POSITION_DISPLAY_ALIASES[normalized];
+    if (LEVER_ORDER.includes(normalized) || /^P[1-9]\d*$/.test(normalized)) return normalized;
+    return position;
   }
 
   function normalizedType(control) {

@@ -212,6 +212,19 @@ assert.equal(grid.formatCell({fromNote: "C", toNote: "F#", changeType: "raise"})
 const day = profile(true);
 assert.deepEqual(grid.project(day).pedalGroups.map((group) => group.states[0].id), ["C", "B", "A"]);
 
+const physicalOrder = JSON.parse(JSON.stringify(emmons));
+physicalOrder.controls.push(
+  {id: "P4", label: "Fourth pedal", type: "pedal", physicalPosition: "P4", travel: "pedal", aliases: [], changes: []},
+  {id: "left-knee-left", label: "F", type: "lever", physicalPosition: "LKL1", travel: "full", aliases: [], changes: []},
+  {id: "left-vertical", label: "V", type: "lever", physicalPosition: "LKV", travel: "vertical", aliases: [], changes: []},
+  {id: "left-knee-right", label: "E", type: "lever", physicalPosition: "LKR", travel: "full", aliases: [], changes: []}
+);
+physicalOrder.pedalOrder.push("P4");
+const physicalView = grid.project(physicalOrder);
+assert.deepEqual(physicalView.pedalGroups.map((group) => group.physicalPosition), ["P1", "P2", "P3", "P4"]);
+assert.deepEqual(physicalView.leverGroups.map((group) => group.physicalPosition), ["LKL", "LKV", "LKR", "RKL", "RKR"]);
+assert.equal(physicalView.profile.controls.find((control) => control.id === "left-knee-left").physicalPosition, "LKL1");
+
 let edited = grid.setCell(emmons, "A", 6, -2);
 let change = edited.controls.find((control) => control.id === "A").changes.find((item) => item.stringNumber === 6);
 assert.deepEqual(change, {stringNumber: 6, fromNote: "G#", toNote: "F#", changeType: "lower", notes: ""});
