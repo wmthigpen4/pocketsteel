@@ -1002,6 +1002,8 @@
   const elements = {
     hero: $(".studio-hero"),
     unavailable: $("#studio-unavailable"),
+    unavailableTitle: $("#studio-unavailable-title"),
+    unavailableCopy: $("#studio-unavailable-copy"),
     workflow: $("#studio-workflow"),
     phaseLabel: $("#studio-phase-label"),
     entryGuidance: $("#studio-entry-guidance"),
@@ -2613,7 +2615,11 @@
       const enabled = Boolean(session.features?.melodyExercise);
       elements.unavailable.hidden = enabled;
       elements.workflow.hidden = !enabled;
-      if (!enabled) return;
+      if (!enabled) {
+        elements.unavailableTitle.textContent = "Melody Studio is temporarily unavailable.";
+        elements.unavailableCopy.textContent = "This preview did not enable Melody Studio. This is not a mobile limitation: Melody Studio supports phones, tablets, and desktop browsers. Return home, then try again after the preview is updated.";
+        return;
+      }
       const importEnabled = Boolean(session.features?.melodyImport);
       const catalogEnabled = Boolean(session.features?.melodyCatalog);
       const importChoice = elements.startChoices.find((button) => button.dataset.studioStart === "import");
@@ -2625,6 +2631,8 @@
       renderPalette();
       renderPhraseBuilder();
     } catch (_error) {
+      elements.unavailableTitle.textContent = "Melody Studio could not verify access.";
+      elements.unavailableCopy.textContent = "The availability check did not complete. This is not a mobile limitation. Check the connection, reload the page, or return home and try again.";
       elements.unavailable.hidden = false;
       elements.workflow.hidden = true;
     }

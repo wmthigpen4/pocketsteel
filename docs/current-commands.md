@@ -73,6 +73,7 @@ source ~/.steel-rag/env/private-preview.env
 set +a
 
 PYTHONPATH=. \
+STEEL_RAG_ENABLE_MELODY_EXERCISE=true \
 .venv/bin/python scripts/serve_answer_smoke.py \
   --host 127.0.0.1 \
   --port 8770 \

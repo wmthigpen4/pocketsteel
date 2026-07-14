@@ -603,3 +603,17 @@ def test_melody_workbench_uses_explorer_background_without_turnaround_branding()
     assert ".studio-nav svg { width: 18px; height: 18px;" in html
     assert ".studio-nav-label-short { display: none; }" in html
     assert ".studio-nav-label-short { display: inline; }" in html
+
+
+def test_melody_unavailable_state_explains_that_mobile_is_supported() -> None:
+    html = Path("ui/melody-workbench.html").read_text(encoding="utf-8")
+    script = Path("ui/melody-workbench.js").read_text(encoding="utf-8")
+
+    assert 'id="studio-unavailable-title"' in html
+    assert 'id="studio-unavailable-copy"' in html
+    assert "This is not a mobile limitation" in html
+    assert "supports phones, tablets, and desktop browsers" in html
+    assert 'elements.unavailableTitle.textContent = "Melody Studio is temporarily unavailable.";' in script
+    assert "This preview did not enable Melody Studio" in script
+    assert 'elements.unavailableTitle.textContent = "Melody Studio could not verify access.";' in script
+    assert "The availability check did not complete" in script
