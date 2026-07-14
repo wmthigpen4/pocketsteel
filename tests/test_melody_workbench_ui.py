@@ -594,15 +594,16 @@ def test_melody_workbench_uses_explorer_background_without_turnaround_branding()
     assert "steel-guitar-rag-landing-fallback-alpha.png" not in html
     assert "radial-gradient(circle at 52% 0%, rgba(221, 139, 45, 0.28), transparent 35%)" in html
     assert "linear-gradient(180deg, rgba(13, 10, 7, 0.96), #050403 72%)" in html
-    assert 'aria-label="Explore the E9 virtual fretboard"' in html
-    assert '<a href="/ui/e9-fretboard-explorer.html" aria-label="Explore the E9 virtual fretboard" title="Explore"><span>Explore</span></a>' in html
     assert 'aria-label="Back to Steel Guitar RAG home"' in html
-    assert '<a href="/ui/melody-workbench.html" aria-current="page"><span>Arrange</span></a>' in html
-    assert '<a href="/ui/lesson-workbench.html"><span>Learn</span></a>' in html
+    assert '<nav class="studio-nav" aria-label="Page navigation">' in html
+    assert '<span>Home</span>' in html
+    assert '<a href="/ui/steel-guitar-rag-mock.html?v=feature-nav-20260713-1#backstage"><span>Go Backstage</span></a>' in html
+    assert '<span>Explore</span>' not in html
+    assert '<span>Arrange</span>' not in html
+    assert '<span>Learn</span>' not in html
     assert html.count('<svg viewBox="0 0 24 24" aria-hidden="true">') == 1
     assert ".studio-nav svg { width: 18px; height: 18px;" in html
-    assert ".studio-nav-label-short { display: none; }" in html
-    assert ".studio-nav-label-short { display: inline; }" in html
+    assert ".studio-nav a { min-height: 44px; padding: 0 11px; font-size: 12px; }" in html
 
 
 def test_melody_unavailable_state_explains_that_mobile_is_supported() -> None:

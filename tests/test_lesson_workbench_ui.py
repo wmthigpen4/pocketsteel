@@ -74,10 +74,12 @@ def test_lesson_workbench_has_reviewed_custom_and_complete_lesson_surfaces() -> 
     assert "What to listen for" in script
     assert "Common mistakes" in script
     assert "Session checklist" in script
-    assert 'href="/ui/steel-guitar-rag-mock.html">Ask</a>' in html
-    assert 'href="/ui/e9-fretboard-explorer.html">Explore</a>' in html
-    assert 'href="/ui/melody-workbench.html">Arrange</a>' in html
-    assert 'href="/ui/lesson-workbench.html" aria-current="page">Learn</a>' in html
+    assert '<nav class="workspace-nav" aria-label="Page navigation">' in html
+    assert 'href="/ui/steel-guitar-rag-mock.html?v=feature-nav-20260713-1">Home</a>' in html
+    assert 'href="/ui/steel-guitar-rag-mock.html?v=feature-nav-20260713-1#backstage">Go Backstage</a>' in html
+    assert 'href="/ui/e9-fretboard-explorer.html">Explore</a>' not in html
+    assert 'href="/ui/melody-workbench.html">Arrange</a>' not in html
+    assert 'href="/ui/lesson-workbench.html" aria-current="page">Learn</a>' not in html
     assert "[object Object]" not in html
 
 
@@ -93,8 +95,10 @@ def test_four_workspace_navigation_and_explorer_chord_doorway_are_visible() -> N
         "Ask the Brain",
     ):
         assert label in home
-    for label in (">Ask</span>", ">Explore</span>", ">Arrange</span>", ">Learn</span>"):
-        assert label in explorer
-        assert label in melody
+    for page in (explorer, melody):
+        assert ">Home</span>" in page
+        assert ">Go Backstage</span>" in page
+        for label in (">Ask</span>", ">Explore</span>", ">Arrange</span>", ">Learn</span>"):
+            assert label not in page
     assert "Find chords and voicings" in explorer
     assert "Chord Studio" not in home + explorer + melody

@@ -5305,6 +5305,12 @@
         closeTechPopover({ restoreFocus: true });
       }
     });
+
+    if (window.location.hash === "#backstage") {
+      activeBackstageTrigger = backstageTriggers[0] || null;
+      openBackstageForAccessState();
+      window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    }
   </script>
 </body>
 </html>

@@ -60,6 +60,9 @@ def test_landing_home_exposes_all_four_workspaces_and_neutral_backstage() -> Non
     assert "Go Backstage" in html
     assert home.count("backstage-trigger") == 0
     assert html.count('class="header-action-button backstage-trigger"') == 1
+    assert 'window.location.hash === "#backstage"' in html
+    assert "activeBackstageTrigger = backstageTriggers[0] || null;" in html
+    assert "openBackstageForAccessState();" in html
     assert "Last Updated" not in home
     assert "Not connected" not in home
 

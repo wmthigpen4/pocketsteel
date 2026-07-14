@@ -15,7 +15,7 @@
     .lesson-brand span { color:var(--muted); font-size:11px; letter-spacing:.12em; text-transform:uppercase; }
     .lesson-brand strong { font-family:Georgia,serif; color:var(--gold); font-size:22px; }
     .workspace-nav { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:7px; }
-    .workspace-nav a { min-height:38px; display:inline-flex; align-items:center; border:1px solid var(--line); border-radius:999px; padding:0 13px; color:var(--muted); text-decoration:none; font-size:13px; font-weight:750; }
+    .workspace-nav a { min-height:44px; display:inline-flex; align-items:center; border:1px solid var(--line); border-radius:999px; padding:0 15px; color:var(--muted); text-decoration:none; font-size:13px; font-weight:750; }
     .workspace-nav a:hover,.workspace-nav a:focus-visible,.workspace-nav a[aria-current="page"] { border-color:rgba(240,191,105,.62); background:rgba(240,191,105,.09); color:var(--cream); outline:none; }
     main { width:min(1080px,calc(100% - 32px)); margin:0 auto; padding:56px 0 80px; }
     .lesson-hero { max-width:780px; margin-bottom:34px; }
@@ -90,11 +90,9 @@
 <body>
   <header class="lesson-header">
     <a class="lesson-brand" href="/ui/steel-guitar-rag-mock.html"><span>Steel Guitar RAG</span><strong>Lessons</strong></a>
-    <nav class="workspace-nav" aria-label="Workspaces">
-      <a href="/ui/steel-guitar-rag-mock.html">Ask</a>
-      <a href="/ui/e9-fretboard-explorer.html">Explore</a>
-      <a href="/ui/melody-workbench.html">Arrange</a>
-      <a href="/ui/lesson-workbench.html" aria-current="page">Learn</a>
+    <nav class="workspace-nav" aria-label="Page navigation">
+      <a href="/ui/steel-guitar-rag-mock.html?v=feature-nav-20260713-1">Home</a>
+      <a href="/ui/steel-guitar-rag-mock.html?v=feature-nav-20260713-1#backstage">Go Backstage</a>
     </nav>
   </header>
 

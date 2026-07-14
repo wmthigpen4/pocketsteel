@@ -610,17 +610,18 @@ def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() 
     assert '<button class="explorer-back" id="explorer-copedent-open" type="button" aria-haspopup="dialog" aria-controls="explorer-copedent-dialog">' in html
     assert "<span>Copedent</span>" in html
     assert "<span>View chart</span>" not in html
-    assert '<a class="explorer-back" href="/ui/steel-guitar-rag-mock.html"><span>Ask</span></a>' in html
-    assert '<a class="explorer-back" href="/ui/e9-fretboard-explorer.html" aria-current="page"><span>Explore</span></a>' in html
-    assert '<a class="explorer-back" href="/ui/melody-workbench.html"><span>Arrange</span></a>' in html
-    assert '<a class="explorer-back" href="/ui/lesson-workbench.html"><span>Learn</span></a>' in html
+    assert '<a class="explorer-back" href="/ui/steel-guitar-rag-mock.html?v=feature-nav-20260713-1"><span>Home</span></a>' in html
+    assert '<a class="explorer-back" href="/ui/steel-guitar-rag-mock.html?v=feature-nav-20260713-1#backstage"><span>Go Backstage</span></a>' in html
+    assert '<span>Ask</span>' not in html
+    assert '<a class="explorer-back" href="/ui/melody-workbench.html"><span>Arrange</span></a>' not in html
+    assert '<a class="explorer-back" href="/ui/lesson-workbench.html"><span>Learn</span></a>' not in html
     assert ".explorer-back {" in html
     explorer_back_rule = html.split(".explorer-back {", 1)[1].split("}", 1)[0]
     for expected_style in [
         "display: inline-flex;",
         "align-items: center;",
         "gap: 9px;",
-        "min-height: 42px;",
+        "min-height: 44px;",
         "padding: 0 16px;",
         "border-radius: 999px;",
         "border: 1px solid rgba(240, 191, 105, 0.34);",
