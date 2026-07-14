@@ -303,6 +303,57 @@ def test_backstage_plan_and_activity_uses_all_approved_assets() -> None:
         assert path.read_bytes().startswith(b"\x89PNG")
 
 
+def test_backstage_account_uses_verified_credential_ui_without_fabricated_controls() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+    account_match = re.search(
+        r'id="backstage-panel-account".*?hidden>(.*?)\n        </div>\n\n      </section>',
+        html,
+        re.DOTALL,
+    )
+    assert account_match is not None
+    account_panel = account_match.group(1)
+
+    assert 'src="assets/backstage/artist-credentials.png?v=artist-credentials-20260714-1"' in account_panel
+    assert 'alt="" width="1122" height="1402"' in account_panel
+    assert "object-fit: contain" in html
+    assert "Verified player access" in account_panel
+    assert "Connected services &amp; synchronization" in account_panel
+    assert "Access provider" in account_panel
+    assert "Not available" in account_panel
+    assert "This browser" in account_panel
+    assert "Data &amp; privacy summary" in account_panel
+    assert "Delete account · coming soon" in account_panel
+    assert 'class="account-control-button is-destructive" type="button" disabled' in account_panel
+    assert "Password and billing controls remain with the login or future billing provider." in account_panel
+    assert "Sign out" not in account_panel
+    assert "Manage password" not in account_panel
+    assert "Payment" not in account_panel
+    assert "Bandleader" not in account_panel
+
+
+def test_backstage_account_masks_identifier_and_copies_only_authorized_runtime_value() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+
+    assert 'let currentAuthorizedAccountId = "";' in html
+    assert "function maskAccountId(value)" in html
+    assert "backstageAccountId.textContent = maskAccountId(currentAuthorizedAccountId);" in html
+    assert "navigator.clipboard.writeText(currentAuthorizedAccountId)" in html
+    assert "backstageCopyAccountId.disabled = !currentAuthorizedAccountId;" in html
+    assert "backstageCopyAccountRow.disabled = !currentAuthorizedAccountId;" in html
+    assert 'role="status" aria-live="polite"' in html
+    assert "backstageAccountId.textContent = verifiedAccount ? (account.id || account.accountId)" not in html
+
+
+def test_backstage_account_credential_asset_is_rgba_png_with_stable_dimensions() -> None:
+    asset = Path("ui/assets/backstage/artist-credentials.png")
+    payload = asset.read_bytes()
+
+    assert payload.startswith(b"\x89PNG\r\n\x1a\n")
+    assert int.from_bytes(payload[16:20], "big") == 1122
+    assert int.from_bytes(payload[20:24], "big") == 1402
+    assert payload[25] == 6  # PNG color type RGBA; the checkerboard is not baked into the asset.
+
+
 def test_account_activity_client_is_bounded_and_deduplicated() -> None:
     script = r"""
 const assert = require("node:assert/strict");

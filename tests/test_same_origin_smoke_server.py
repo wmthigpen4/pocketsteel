@@ -103,6 +103,7 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
         "brain-activity.png",
         "connected-learning.png",
         "ai-assisted.png",
+        "artist-credentials.png",
     ):
         status, headers, asset = call_app(smoke_app(), f"/ui/assets/backstage/{asset_name}")
         assert status == "200 OK"

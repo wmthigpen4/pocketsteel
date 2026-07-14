@@ -1403,6 +1403,403 @@
       font-size: 12px;
     }
 
+    .account-credentials {
+      display: grid;
+      gap: 14px;
+      grid-column: 1 / -1;
+      min-width: 0;
+    }
+
+    .account-credential-card,
+    .account-support-card,
+    .account-info-footer {
+      border: 1px solid rgba(240, 191, 105, 0.28);
+      border-radius: 14px;
+      background:
+        radial-gradient(circle at 17% 18%, rgba(240, 191, 105, 0.07), transparent 29%),
+        linear-gradient(135deg, rgba(28, 32, 32, 0.96), rgba(16, 20, 20, 0.94));
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.2);
+    }
+
+    .account-credential-card {
+      display: grid;
+      grid-template-columns: minmax(170px, 0.62fr) minmax(330px, 1.45fr) minmax(250px, 0.95fr);
+      align-items: center;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    .account-credential-artwork-wrap {
+      align-self: stretch;
+      display: grid;
+      place-items: center;
+      min-height: 260px;
+      padding: 18px 10px 14px 18px;
+      background:
+        radial-gradient(circle at 50% 68%, rgba(240, 191, 105, 0.17), transparent 42%),
+        linear-gradient(90deg, rgba(7, 9, 9, 0.55), transparent);
+    }
+
+    .account-credential-artwork {
+      display: block;
+      width: min(100%, 210px);
+      height: 244px;
+      object-fit: contain;
+      filter: drop-shadow(0 18px 18px rgba(0, 0, 0, 0.55));
+    }
+
+    .account-credential-copy {
+      display: grid;
+      align-content: center;
+      gap: 10px;
+      min-width: 0;
+      padding: 26px 28px;
+    }
+
+    .account-eyebrow,
+    .account-support-title,
+    .account-technical-label {
+      margin: 0;
+      color: rgba(240, 191, 105, 0.84);
+      font-size: 12px;
+      font-weight: 750;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .account-credential-copy h3 {
+      margin: 0;
+      color: var(--cream);
+      font-family: var(--font-lesson);
+      font-size: clamp(32px, 4vw, 46px);
+      font-weight: 500;
+      line-height: 1.02;
+    }
+
+    .account-verification-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      width: fit-content;
+      min-height: 30px;
+      border: 1px solid rgba(240, 191, 105, 0.4);
+      border-radius: 999px;
+      padding: 0 12px;
+      background: rgba(240, 191, 105, 0.07);
+      color: rgba(240, 191, 105, 0.92);
+      font-size: 12px;
+      font-weight: 750;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .account-verification-badge svg {
+      width: 16px;
+      height: 16px;
+      color: #9cb64b;
+    }
+
+    .account-credential-description {
+      margin: 0;
+      color: rgba(244, 234, 214, 0.72);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .account-credential-statuses {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      margin-top: 6px;
+    }
+
+    .account-credential-status {
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr);
+      gap: 9px;
+      align-items: center;
+      min-width: 0;
+      padding: 0 13px;
+      border-left: 1px solid rgba(240, 191, 105, 0.15);
+    }
+
+    .account-credential-status:first-child {
+      padding-left: 0;
+      border-left: 0;
+    }
+
+    .account-status-icon,
+    .account-row-icon,
+    .account-footer-icon {
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(240, 191, 105, 0.22);
+      border-radius: 10px;
+      background: rgba(240, 191, 105, 0.055);
+      color: rgba(240, 191, 105, 0.86);
+    }
+
+    .account-status-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+    }
+
+    .account-credential-status span,
+    .account-credential-status strong {
+      display: block;
+      min-width: 0;
+    }
+
+    .account-credential-status span {
+      color: rgba(240, 191, 105, 0.78);
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      line-height: 1.25;
+      text-transform: uppercase;
+    }
+
+    .account-credential-status strong {
+      margin-top: 3px;
+      color: var(--cream);
+      font-family: var(--font-lesson);
+      font-size: 15px;
+      font-weight: 500;
+      line-height: 1.2;
+    }
+
+    .account-technical {
+      align-self: stretch;
+      display: grid;
+      align-content: center;
+      gap: 10px;
+      min-width: 0;
+      margin: 24px 0;
+      padding: 20px 26px;
+      border-left: 1px solid rgba(240, 191, 105, 0.18);
+    }
+
+    .account-id-display {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-width: 0;
+      min-height: 44px;
+      border: 1px solid rgba(240, 191, 105, 0.22);
+      border-radius: 9px;
+      padding: 0 8px 0 13px;
+      background: rgba(8, 11, 11, 0.42);
+    }
+
+    .account-id-display code {
+      min-width: 0;
+      overflow: hidden;
+      color: rgba(244, 234, 214, 0.84);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 13px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .account-copy-icon-button {
+      flex: 0 0 auto;
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: rgba(244, 234, 214, 0.68);
+      cursor: pointer;
+    }
+
+    .account-copy-icon-button:hover:not(:disabled),
+    .account-copy-icon-button:focus-visible:not(:disabled) {
+      background: rgba(240, 191, 105, 0.1);
+      color: var(--cream);
+      outline: 2px solid rgba(240, 191, 105, 0.48);
+      outline-offset: 1px;
+    }
+
+    .account-copy-icon-button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .account-technical-help,
+    .account-copy-status {
+      margin: 0;
+      color: rgba(244, 234, 214, 0.58);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .account-copy-status {
+      min-height: 18px;
+      color: rgba(156, 182, 75, 0.9);
+    }
+
+    .account-support-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.98fr);
+      gap: 14px;
+    }
+
+    .account-support-card {
+      display: grid;
+      align-content: start;
+      min-width: 0;
+      padding: 18px 20px;
+    }
+
+    .account-support-title {
+      margin-bottom: 6px;
+    }
+
+    .account-service-row,
+    .account-control-button,
+    .account-privacy-summary {
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: center;
+      min-width: 0;
+      min-height: 58px;
+      border-bottom: 1px solid rgba(244, 234, 214, 0.08);
+    }
+
+    .account-service-row:last-child,
+    .account-control-button:last-child {
+      border-bottom: 0;
+    }
+
+    .account-row-icon {
+      width: 42px;
+      height: 42px;
+    }
+
+    .account-row-copy {
+      min-width: 0;
+    }
+
+    .account-row-copy strong,
+    .account-row-copy span {
+      display: block;
+    }
+
+    .account-row-copy strong {
+      color: var(--cream);
+      font-size: 14px;
+      line-height: 1.3;
+    }
+
+    .account-row-copy span {
+      margin-top: 2px;
+      color: rgba(244, 234, 214, 0.56);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .account-row-value {
+      color: rgba(244, 234, 214, 0.76);
+      font-size: 13px;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .account-row-value.is-positive::before {
+      content: "";
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      margin-right: 7px;
+      border-radius: 999px;
+      background: #9cb64b;
+    }
+
+    .account-control-button,
+    .account-privacy-summary {
+      width: 100%;
+      border-top: 0;
+      border-right: 0;
+      border-left: 0;
+      padding: 0;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      text-align: left;
+    }
+
+    .account-control-button:not(:disabled),
+    .account-privacy-summary {
+      cursor: pointer;
+    }
+
+    .account-control-button:hover:not(:disabled),
+    .account-control-button:focus-visible:not(:disabled),
+    .account-privacy-summary:hover,
+    .account-privacy-summary:focus-visible {
+      background: rgba(240, 191, 105, 0.055);
+      outline: 2px solid rgba(240, 191, 105, 0.42);
+      outline-offset: -2px;
+    }
+
+    .account-privacy-details summary {
+      list-style: none;
+    }
+
+    .account-privacy-details summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .account-privacy-copy {
+      margin: 0;
+      padding: 12px 8px 14px 54px;
+      color: rgba(244, 234, 214, 0.64);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .account-control-button.is-destructive {
+      margin-top: 10px;
+      border: 1px solid rgba(196, 79, 54, 0.22);
+      border-radius: 8px;
+      padding: 0 10px;
+      background: rgba(196, 79, 54, 0.07);
+    }
+
+    .account-control-button.is-destructive .account-row-icon,
+    .account-control-button.is-destructive .account-row-copy strong {
+      color: rgba(224, 106, 79, 0.82);
+    }
+
+    .account-control-button:disabled {
+      cursor: not-allowed;
+    }
+
+    .account-info-footer {
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr);
+      gap: 13px;
+      align-items: center;
+      padding: 14px 18px;
+    }
+
+    .account-footer-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 999px;
+    }
+
+    .account-info-footer p {
+      margin: 0;
+      color: rgba(244, 234, 214, 0.68);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
     @media (max-width: 900px) {
       .plan-pass-card {
         grid-template-columns: 150px minmax(0, 1fr);
@@ -1432,6 +1829,30 @@
       .activity-metrics.is-four .activity-metric:nth-child(3) {
         padding-left: 0;
         border-left: 0;
+      }
+
+      .account-credential-card {
+        grid-template-columns: 170px minmax(0, 1fr);
+      }
+
+      .account-credential-artwork-wrap {
+        min-height: 230px;
+      }
+
+      .account-credential-artwork {
+        height: 218px;
+      }
+
+      .account-technical {
+        grid-column: 1 / -1;
+        margin: 0 22px 22px;
+        padding: 18px 0 0;
+        border-top: 1px solid rgba(240, 191, 105, 0.18);
+        border-left: 0;
+      }
+
+      .account-support-grid {
+        grid-template-columns: 1fr;
       }
     }
 
@@ -3181,6 +3602,74 @@
         height: 72px;
       }
 
+      .account-credentials {
+        gap: 12px;
+      }
+
+      .account-credential-card {
+        grid-template-columns: 1fr;
+      }
+
+      .account-credential-artwork-wrap {
+        min-height: 0;
+        padding: 14px 14px 0;
+        background: radial-gradient(circle at 50% 72%, rgba(240, 191, 105, 0.15), transparent 45%);
+      }
+
+      .account-credential-artwork {
+        width: 156px;
+        height: 196px;
+      }
+
+      .account-credential-copy {
+        padding: 18px;
+      }
+
+      .account-credential-copy h3 {
+        font-size: 34px;
+      }
+
+      .account-credential-statuses {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      .account-credential-status,
+      .account-credential-status:first-child {
+        padding: 10px 0 0;
+        border-top: 1px solid rgba(240, 191, 105, 0.12);
+        border-left: 0;
+      }
+
+      .account-technical {
+        grid-column: auto;
+        margin: 0 18px 18px;
+      }
+
+      .account-support-card {
+        padding: 16px;
+      }
+
+      .account-service-row,
+      .account-control-button,
+      .account-privacy-summary {
+        grid-template-columns: 40px minmax(0, 1fr);
+        padding: 8px 0;
+      }
+
+      .account-row-value {
+        grid-column: 2;
+        text-align: left;
+      }
+
+      .account-privacy-copy {
+        padding-left: 52px;
+      }
+
+      .account-info-footer {
+        padding: 13px 15px;
+      }
+
       .connected-metrics {
         grid-template-columns: 1fr;
         gap: 10px;
@@ -4078,32 +4567,102 @@
         </div>
 
         <div class="backstage-content backstage-tab-panel" id="backstage-panel-account" role="tabpanel" aria-labelledby="backstage-tab-account" hidden>
-          <article class="backstage-card">
-            <div class="backstage-card-header">
-              <h3>Login &amp; Account</h3>
-              <span class="coming-soon" id="backstage-account-status-badge">Checking</span>
-            </div>
-            <p id="backstage-account-status-copy">Checking your verified account and synchronized setup access.</p>
-            <div class="account-list">
-              <div class="account-item">
-                <span>Login</span>
-                <strong id="backstage-account-login">Checking</strong>
+          <div class="account-credentials">
+            <article class="account-credential-card" aria-labelledby="backstage-account-heading">
+              <div class="account-credential-artwork-wrap" aria-hidden="true">
+                <img class="account-credential-artwork" src="assets/backstage/artist-credentials.png?v=artist-credentials-20260714-1" alt="" width="1122" height="1402">
               </div>
-              <div class="account-item">
-                <span>Copedent synchronization</span>
-                <strong id="backstage-account-sync">Checking</strong>
-              </div>
-              <div class="account-item">
-                <span>Account ID</span>
-                <strong id="backstage-account-id">Checking</strong>
-              </div>
-              <div class="account-item">
-                <span>Delete account</span>
-                <strong>Coming soon</strong>
-              </div>
-            </div>
-          </article>
 
+              <div class="account-credential-copy">
+                <p class="account-eyebrow">Verified player access</p>
+                <h3 id="backstage-account-heading">Checking access</h3>
+                <span class="account-verification-badge" id="backstage-account-status-badge">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 12 3 3 7-7"/><circle cx="12" cy="12" r="9"/></svg>
+                  <span id="backstage-account-status-label">Checking</span>
+                </span>
+                <p class="account-credential-description" id="backstage-account-status-copy">Checking your verified account and synchronized setup access.</p>
+
+                <div class="account-credential-statuses" aria-label="Account access status">
+                  <div class="account-credential-status">
+                    <span class="account-status-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg></span>
+                    <div><span>Login verification</span><strong id="backstage-account-login">Checking</strong></div>
+                  </div>
+                  <div class="account-credential-status">
+                    <span class="account-status-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 7h10v10H7z"/><path d="m4 12 3-3m13 3-3-3M12 4l-3 3m3 13-3-3"/></svg></span>
+                    <div><span>Copedent sync</span><strong id="backstage-account-sync">Checking</strong></div>
+                  </div>
+                  <div class="account-credential-status">
+                    <span class="account-status-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg></span>
+                    <div><span>Account-backed</span><strong id="backstage-account-backed">Checking</strong></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="account-technical">
+                <p class="account-technical-label">Account ID</p>
+                <div class="account-id-display">
+                  <code id="backstage-account-id">Checking</code>
+                  <button class="account-copy-icon-button" id="backstage-copy-account-id" type="button" aria-label="Copy Account ID" aria-describedby="backstage-account-copy-status" disabled>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>
+                  </button>
+                </div>
+                <p class="account-technical-help">Technical account identifier used for access and setup ownership. Keep it private.</p>
+                <p class="account-copy-status" id="backstage-account-copy-status" role="status" aria-live="polite"></p>
+              </div>
+            </article>
+
+            <div class="account-support-grid">
+              <section class="account-support-card" aria-labelledby="account-services-title">
+                <h3 class="account-support-title" id="account-services-title">Connected services &amp; synchronization</h3>
+                <div class="account-service-row">
+                  <span class="account-row-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 18h14a4 4 0 0 0 0-8 7 7 0 0 0-13-2A5 5 0 0 0 5 18Z"/></svg></span>
+                  <div class="account-row-copy"><strong>Access provider</strong><span>Manages your verified login and access.</span></div>
+                  <span class="account-row-value" id="backstage-provider-status">Checking</span>
+                </div>
+                <div class="account-service-row">
+                  <span class="account-row-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h10M4 17h16M10 12h10"/><circle cx="17" cy="7" r="2"/><circle cx="7" cy="12" r="2"/></svg></span>
+                  <div class="account-row-copy"><strong>Copedent synchronization</strong><span>Keeps entitled setup selections connected to your account.</span></div>
+                  <span class="account-row-value" id="backstage-sync-status">Checking</span>
+                </div>
+                <div class="account-service-row">
+                  <span class="account-row-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></span>
+                  <div class="account-row-copy"><strong>Last synchronization</strong><span>Most recent successful setup synchronization.</span></div>
+                  <span class="account-row-value" id="backstage-last-sync">Not available</span>
+                </div>
+                <div class="account-service-row">
+                  <span class="account-row-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4"/></svg></span>
+                  <div class="account-row-copy"><strong>Active device</strong><span>The current session only; no device fingerprinting.</span></div>
+                  <span class="account-row-value">This browser</span>
+                </div>
+              </section>
+
+              <section class="account-support-card" aria-labelledby="account-controls-title">
+                <h3 class="account-support-title" id="account-controls-title">Account controls</h3>
+                <button class="account-control-button" id="backstage-copy-account-row" type="button" disabled>
+                  <span class="account-row-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></span>
+                  <span class="account-row-copy"><strong>Copy Account ID</strong><span>Copy your technical account identifier.</span></span>
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+                <details class="account-privacy-details">
+                  <summary class="account-privacy-summary">
+                    <span class="account-row-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6l-7-3Z"/><path d="M9 12h6"/></svg></span>
+                    <span class="account-row-copy"><strong>Data &amp; privacy summary</strong><span>How account information is used here.</span></span>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+                  </summary>
+                  <p class="account-privacy-copy">The app uses your verified account identifier to connect access, setup ownership, synchronized copedents, and monthly Ask totals. It does not display your full identifier by default or use passive device fingerprinting.</p>
+                </details>
+                <button class="account-control-button is-destructive" type="button" disabled aria-disabled="true">
+                  <span class="account-row-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3m3 0-1 14H7L6 7m4 4v6m4-6v6"/></svg></span>
+                  <span class="account-row-copy"><strong>Delete account · coming soon</strong><span>This action is not available.</span></span>
+                </button>
+              </section>
+            </div>
+
+            <aside class="account-info-footer">
+              <span class="account-footer-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10h.01"/></svg></span>
+              <p>Password and billing controls remain with the login or future billing provider.</p>
+            </aside>
+          </div>
         </div>
 
       </section>
@@ -4200,10 +4759,19 @@
     const activityConnectedLessons = document.querySelector("#activity-connected-lessons");
     const activityAiActions = document.querySelector("#activity-ai-actions");
     const backstageAccountStatusBadge = document.querySelector("#backstage-account-status-badge");
+    const backstageAccountStatusLabel = document.querySelector("#backstage-account-status-label");
+    const backstageAccountHeading = document.querySelector("#backstage-account-heading");
     const backstageAccountStatusCopy = document.querySelector("#backstage-account-status-copy");
     const backstageAccountLogin = document.querySelector("#backstage-account-login");
     const backstageAccountSync = document.querySelector("#backstage-account-sync");
+    const backstageAccountBacked = document.querySelector("#backstage-account-backed");
     const backstageAccountId = document.querySelector("#backstage-account-id");
+    const backstageProviderStatus = document.querySelector("#backstage-provider-status");
+    const backstageSyncStatus = document.querySelector("#backstage-sync-status");
+    const backstageLastSync = document.querySelector("#backstage-last-sync");
+    const backstageCopyAccountId = document.querySelector("#backstage-copy-account-id");
+    const backstageCopyAccountRow = document.querySelector("#backstage-copy-account-row");
+    const backstageAccountCopyStatus = document.querySelector("#backstage-account-copy-status");
     const backstage = document.querySelector("#backstage");
     const backstagePanel = document.querySelector(".backstage-panel");
     const backstageClose = document.querySelector(".backstage-close");
@@ -5836,6 +6404,32 @@
         : "No billing or plan-management action is available here.";
     }
 
+    let currentAuthorizedAccountId = "";
+
+    function maskAccountId(value) {
+      const accountId = String(value || "").trim();
+      if (!accountId) return "Not assigned";
+      if (accountId.length <= 8) return `${accountId.slice(0, 2)}••••${accountId.slice(-2)}`;
+      return `${accountId.slice(0, 5)}••••••${accountId.slice(-4)}`;
+    }
+
+    async function copyAuthorizedAccountId() {
+      if (!currentAuthorizedAccountId) {
+        backstageAccountCopyStatus.textContent = "No verified Account ID is available to copy.";
+        return;
+      }
+      if (!navigator.clipboard?.writeText) {
+        backstageAccountCopyStatus.textContent = "Copying is unavailable in this browser.";
+        return;
+      }
+      try {
+        await navigator.clipboard.writeText(currentAuthorizedAccountId);
+        backstageAccountCopyStatus.textContent = "Account ID copied.";
+      } catch (error) {
+        backstageAccountCopyStatus.textContent = "Account ID could not be copied.";
+      }
+    }
+
     function updateMockAccessUi() {
       const accessRole = STEEL_RAG_ANSWER_UI.normalizeAccessRole(mockAccessState);
       const canAskLive = STEEL_RAG_ANSWER_UI.canSubmitLiveQuestion(accessRole);
@@ -5856,13 +6450,25 @@
       backstageOverviewAccountSummary.textContent = verifiedAccount
         ? "Your verified login keeps included setup selection and entitled custom copedents synchronized across devices."
         : "Sign in through the protected app to synchronize included setup selection and entitled custom copedents.";
-      backstageAccountStatusBadge.textContent = verifiedAccount ? "Verified" : "Local preview";
+      currentAuthorizedAccountId = verifiedAccount ? String(account.id || account.accountId || "") : "";
+      backstageAccountHeading.textContent = verifiedAccount ? "Access verified" : "Verification required";
+      backstageAccountStatusLabel.textContent = verifiedAccount ? "Verified" : "Local preview";
+      backstageAccountStatusBadge.classList.toggle("is-verified", verifiedAccount);
       backstageAccountStatusCopy.textContent = verifiedAccount
-        ? `Your ${passLabel} access and copedent ownership are verified by the server. Password and billing controls remain with the login and future billing providers.`
-        : "This local preview does not represent a verified production account.";
-      backstageAccountLogin.textContent = verifiedAccount ? "Verified by the access provider" : "Local development preview";
+        ? "Your login and setup ownership are verified by the access provider."
+        : "This local preview does not represent a verified account.";
+      backstageAccountLogin.textContent = verifiedAccount ? "Verified" : "Local preview";
       backstageAccountSync.textContent = accountFeatureEnabled && verifiedAccount ? "Account-backed" : "Not enabled here";
-      backstageAccountId.textContent = verifiedAccount ? (account.id || account.accountId) : "Not assigned";
+      backstageAccountBacked.textContent = verifiedAccount ? "Yes" : "No";
+      backstageAccountId.textContent = maskAccountId(currentAuthorizedAccountId);
+      backstageProviderStatus.textContent = verifiedAccount ? "Connected" : "Local preview";
+      backstageProviderStatus.classList.toggle("is-positive", verifiedAccount);
+      backstageSyncStatus.textContent = accountFeatureEnabled && verifiedAccount ? "Account-backed" : "Not enabled";
+      backstageSyncStatus.classList.toggle("is-positive", accountFeatureEnabled && verifiedAccount);
+      backstageLastSync.textContent = "Not available";
+      backstageCopyAccountId.disabled = !currentAuthorizedAccountId;
+      backstageCopyAccountRow.disabled = !currentAuthorizedAccountId;
+      backstageAccountCopyStatus.textContent = "";
       accessStateRadios.forEach((radio) => {
         radio.checked = radio.value === accessRole;
       });
@@ -6207,6 +6813,9 @@
     backstageJumpButtons.forEach((button) => {
       button.addEventListener("click", () => showBackstageTab(button.dataset.backstageJump));
     });
+
+    backstageCopyAccountId.addEventListener("click", copyAuthorizedAccountId);
+    backstageCopyAccountRow.addEventListener("click", copyAuthorizedAccountId);
 
     accessStateRadios.forEach((radio) => {
       radio.addEventListener("change", () => setMockAccessState(radio.value));
