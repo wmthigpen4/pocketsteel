@@ -45,6 +45,7 @@
       showHighlightLabels: true,
       showStringActionLabels: true,
       emphasizeVisibleHighlights: true,
+      cropLeftAtNut: true,
     });
 
     figure?.classList.add("home-explorer-figure");

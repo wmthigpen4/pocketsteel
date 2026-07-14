@@ -184,6 +184,7 @@ assert.equal(receivedOptions.hideLegend, true);
 assert.equal(receivedOptions.showHighlightLabels, true);
 assert.equal(receivedOptions.showStringActionLabels, true);
 assert.equal(receivedOptions.emphasizeVisibleHighlights, true);
+assert.equal(receivedOptions.cropLeftAtNut, true);
 assert.deepEqual(interactive.map((item) => item.tabIndex), [-1, -1]);
 """
     result = subprocess.run(
