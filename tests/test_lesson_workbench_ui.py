@@ -92,7 +92,7 @@ def test_four_workspace_navigation_and_explorer_chord_doorway_are_visible() -> N
         "Fretboard Explorer",
         "Melody Studio",
         "Lessons",
-        "Ask the Brain",
+        "Ask the Steel Guitar Brain",
     ):
         assert label in home
     for page in (explorer, melody):

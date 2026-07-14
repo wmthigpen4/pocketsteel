@@ -335,14 +335,12 @@ let capturedRequest;
     assert result.returncode == 0, result.stderr
 
 
-def test_answer_ui_links_to_melody_studio_and_keeps_lesson_renderer() -> None:
+def test_answer_ui_keeps_melody_lesson_renderer_without_cross_feature_header_link() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
     client = Path("ui/answer-client.js").read_text(encoding="utf-8")
 
-    assert 'id="melody-studio-link"' in html
-    assert 'href="/ui/melody-workbench.html"' in html
-    assert 'aria-label="Open Melody Studio"' in html
-    assert '<span class="nav-label-full">Melody Studio</span>' in html
+    assert 'id="melody-studio-link"' not in html
+    assert 'class="header-action-button melody-studio-header-link"' not in html
     assert 'id="melody-tool"' not in html
     assert 'id="melody-submit"' not in html
     assert 'id="answer-melody"' in html
@@ -419,32 +417,32 @@ def test_answer_ui_uses_safari_safe_transparent_home_and_answer_logos() -> None:
     assert Path("public/brand/steel-guitar-rag-answer-badge-fallback-alpha.png").is_file()
 
 
-def test_answer_ui_links_to_e9_fretboard_explorer_surface() -> None:
+def test_answer_ui_header_only_exposes_home_ask_and_backstage() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
     shell_css = Path("ui/workspace-shell.css").read_text(encoding="utf-8")
 
-    assert '<span class="nav-label-full">Fretboard Explorer</span>' in html
-    assert '<span class="nav-label-short">Explorer</span>' in html
-    assert 'href="/ui/e9-fretboard-explorer.html"' in html
-    assert 'aria-label="Explore the E9 virtual fretboard"' in html
-    assert 'title="Explore the E9 virtual fretboard"' in html
-    assert "explorer-header-link" in html
-    assert 'class="header-action-button explorer-header-link"' in html
+    assert 'class="header-action-button home-header-link"' in html
+    assert 'aria-label="Return home"' in html
+    assert 'class="header-action-button ask-header-link"' in html
+    assert 'aria-label="Ask another steel guitar question"' in html
     assert 'class="header-action-button backstage-trigger"' in html
     assert ".app-shell-header .header-action-button" in shell_css
     assert "min-height: 46px;" in shell_css
     assert 'aria-controls="backstage"' in html
     assert 'id="backstage-cta-label">Go Backstage</span>' in html
-    assert html.index('class="header-action-button explorer-header-link"') < html.index('class="header-action-button backstage-trigger"')
-    assert 'class="header-action-button explorer-header-link" href="/ui/e9-fretboard-explorer.html"' in html
-    assert 'class="backstage-trigger" href="/ui/e9-fretboard-explorer.html"' not in html
+    assert html.index('class="header-action-button home-header-link"') < html.index('class="header-action-button ask-header-link"')
+    assert html.index('class="header-action-button ask-header-link"') < html.index('class="header-action-button backstage-trigger"')
+    assert "explorer-header-link" not in html
+    assert "melody-studio-header-link" not in html
+    assert "lessons-header-link" not in html
     assert ">Go Backstage</a>" not in html
     assert "explorer-entry-card" not in html
     assert "not corpus retrieval or RAG-generated fretboard positions" not in html
     assert "[object Object]" not in html
-    assert html.index('<span class="nav-label-full">Fretboard Explorer</span>') < html.index('id="question"')
-    assert html.index('<span class="nav-label-full">Fretboard Explorer</span>') < html.index('id="backstage-cta-label">Go Backstage</span>')
-    assert ".explorer-header-link,\n    .backstage-trigger" not in html
+    assert 'homeHeaderLink.addEventListener("click", () => returnToStage({ focusTarget: "home" }));' in html
+    assert 'askHeaderLink.addEventListener("click", () => returnToStage({ focusTarget: "question" }));' in html
+    assert 'document.querySelector(".home-sign")?.focus();' in html
+    assert "question.focus();" in html
 
 
 def test_e9_fretboard_explorer_surface_uses_display_fields_and_validated_data() -> None:
