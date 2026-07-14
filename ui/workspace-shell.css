@@ -526,10 +526,11 @@ select:focus-visible,
   stroke-width: 1;
 }
 
-.mini-svg-grip rect {
-  fill: currentColor;
-  stroke: rgba(255, 249, 222, 0.82);
-  stroke-width: 1;
+.mini-svg-grip line {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 12;
+  stroke-linecap: round;
   vector-effect: non-scaling-stroke;
   filter: drop-shadow(0 0 7px currentColor);
 }

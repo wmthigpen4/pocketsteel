@@ -22,7 +22,7 @@ def test_landing_home_has_product_first_hierarchy_and_copy() -> None:
 
     assert '<a class="skip-link" href="#main-content">Skip to main content</a>' in html
     assert '<nav class="header-actions app-shell-nav" aria-label="Primary navigation">' in html
-    assert 'href="workspace-shell.css?v=mini-fret-grid-20260713-4"' in html
+    assert 'href="workspace-shell.css?v=mini-fret-grid-20260713-5"' in html
     assert '<main id="main-content">' in html
     assert "A connected pedal-steel learning studio" in home
     assert "See the neck. Understand the music. Play with confidence." in home
@@ -75,10 +75,10 @@ def test_landing_workspace_cards_include_compact_tool_previews() -> None:
     assert 'class="mini-fret-grid"' in home
     assert 'class="mini-string-grid"' in home
     assert home.count('class="mini-svg-grip') == 3
-    assert "M0 8H300M0 16H300M0 24H300M0 32H300M0 40H300M0 48H300M0 56H300M0 64H300M0 72H300M0 80H300" in home
-    assert home.count('y="28.5" width="34" height="7"') == 3
-    assert home.count('y="36.5" width="34" height="7"') == 3
-    assert home.count('y="44.5" width="34" height="7"') == 3
+    assert "M0 7H300M0 22H300M0 37H300M0 52H300M0 67H300M0 82H300" in home
+    assert home.count('y1="22"') == 3
+    assert home.count('y1="37"') == 3
+    assert home.count('y1="52"') == 3
     assert 'class="home-card-preview home-score-preview" id="home-melody-preview"' in home
     assert 'aria-label="A short melody written in standard notation"' in home
     assert "<ellipse" not in home
@@ -93,7 +93,9 @@ def test_landing_workspace_cards_include_compact_tool_previews() -> None:
     assert ".home-fretboard-mini" in css
     assert ".mini-fret-grid," in css
     assert ".mini-string-grid" in css
-    assert ".mini-svg-grip rect" in css
+    assert ".mini-svg-grip line" in css
+    assert "stroke-width: 12" in css
+    assert "vector-effect: non-scaling-stroke" in css
     assert ".home-lesson-mini" in css
 
 
