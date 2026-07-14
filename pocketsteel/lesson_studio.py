@@ -199,6 +199,104 @@ CATEGORY_CONTENT: dict[str, dict[str, Any]] = {
 }
 
 
+TOPIC_LESSONS: tuple[dict[str, Any], ...] = (
+    {
+        "pattern": re.compile(r"\b(?:f\s*lever|a\s*\+\s*f|a\s+and\s+f)\b", re.IGNORECASE),
+        "category": "controls",
+        "title": "Learn the F lever through a G-major inversion",
+        "goal": "Play G major at fret 3 with no pedals, then find the same chord at fret 6 with the A pedal and F lever.",
+        "explanation": (
+            "On standard E9, the F lever raises strings 4 and 8 from E to F; the A pedal raises strings 5 and 10 "
+            "from B to C#. At fret 6 on strings 4-5-6, A+F produces B-G-D: the third, root, and fifth of G major. "
+            "That is the same G chord found at fret 3 with no pedals, but in a different inversion. The point of the "
+            "lever is the controlled half-step rise on string 4 and the smooth route it creates between chord positions."
+        ),
+        "steps": (
+            (
+                "At fret 3, play strings 4-5-6 with no pedals. Hear and name G-D-B (root, fifth, third).",
+                "Block cleanly, then move the bar to fret 6 without engaging a control yet.",
+            ),
+            (
+                "At fret 6, engage the A pedal and F lever, then play strings 4-5-6. Name B-G-D (third, root, fifth).",
+                "Release F while sustaining string 4, then engage it again so you can hear its Bb-to-B half-step at this fret.",
+            ),
+            (
+                "Alternate fret 3/no pedals and fret 6/A+F for four slow G-major repetitions.",
+                "Engage A+F before the pick attack at fret 6; release the controls only after you have blocked the strings.",
+            ),
+            (
+                "Create a two-beat phrase: fret 3/no pedals, slide to fret 6, engage A+F, then return and resolve.",
+                "Keep G as the audible destination even though the note order changes between the two grips.",
+            ),
+        ),
+        "listen": (
+            "The same G-major identity in two inversions",
+            "A clean half-step rise on string 4 when the F lever engages",
+            "A coordinated A-pedal/F-lever arrival with no pitch scoop",
+        ),
+        "mistakes": (
+            "Calling F a full-step raise; it raises the E strings by one half step",
+            "Using the F lever without the A pedal for this 4-5-6 major grip",
+            "Moving the bar sharp when the knee engages",
+        ),
+        "checklist": (
+            "I can name the F-lever changes: strings 4 and 8, E to F.",
+            "I can play G at fret 3/no pedals and fret 6/A+F without searching.",
+            "I can hear both grips as G major and name their three notes.",
+        ),
+        "next": "Compare the no-pedals, A+F, and A+B G-major positions in Explorer.",
+        "links": (("explorer", "Compare the three G-major positions", "/ui/e9-fretboard-explorer.html?mode=chord&root=G&quality=major&source=lesson"),),
+    },
+    {
+        "pattern": re.compile(r"\b(?:seventh|sevenths|7th|dominant\s*7|dom7)\b", re.IGNORECASE),
+        "category": "chords",
+        "title": "Build and resolve a G7 chord",
+        "goal": "Build G7 at fret 3, identify its flat seventh, and resolve it to C without moving the bar.",
+        "explanation": (
+            "A dominant seventh is a major triad plus a flat seventh. At fret 3 with no pedals, strings 5-6-8-9 "
+            "give D-B-G-F: the fifth, third, root, and flat seventh of G7. The F on string 9 is the note that changes "
+            "plain G major into G7 and creates a strong pull toward C. At the same fret, A+B on strings 5-6-8 gives "
+            "E-C-G, a C-major inversion, so the V7-to-I resolution can happen with the bar held still."
+        ),
+        "steps": (
+            (
+                "At fret 3 with no pedals, pick strings 8, 6, 5, and 9 separately. Name G, B, D, and F.",
+                "Play strings 5-6-8-9 together and identify F on string 9 as the flat seventh.",
+            ),
+            (
+                "Play the fret-3 G7 grip with no pedals, block string 9, then engage A+B and play strings 5-6-8.",
+                "Name the destination notes E-C-G and hear them as C major.",
+            ),
+            (
+                "Loop G7 for two beats and C for two beats at fret 3, four times, without moving the bar.",
+                "Let the dissonance of F in G7 create tension; make the C-major arrival quieter and settled.",
+            ),
+            (
+                "Turn the move into a four-bar cadence: C, G7, C, then one bar of silence.",
+                "Keep the chord function clear: G7 is V7 and C is I in the key of C.",
+            ),
+        ),
+        "listen": (
+            "The F on string 9 changing G major into G7",
+            "The tension of G7 relaxing when C major arrives",
+            "A clean string-9 block before the A+B destination grip",
+        ),
+        "mistakes": (
+            "Calling any four-note chord a seventh without locating the flat seventh",
+            "Leaving string 9 ringing over the C-major destination",
+            "Moving the bar when the same-fret A+B resolution is the lesson target",
+        ),
+        "checklist": (
+            "I can spell G7 as G-B-D-F.",
+            "I can find G7 at fret 3 on strings 5-6-8-9 with no pedals.",
+            "I can resolve G7 to C at fret 3 with A+B on strings 5-6-8.",
+        ),
+        "next": "Use Explorer to compare this complete G7 grip with other dominant-seventh voicings.",
+        "links": (("explorer", "Find G7 voicings", "/ui/e9-fretboard-explorer.html?mode=chord&root=G&quality=dominant7&source=lesson"),),
+    },
+)
+
+
 def lesson_catalog() -> dict[str, Any]:
     """Return reviewed lesson paths without implying saved progress."""
     paths: list[dict[str, Any]] = []
@@ -247,7 +345,7 @@ def _category_for_topic(topic: str) -> str:
     lowered = topic.lower()
     if re.search(r"\b(?:pedal|lever|knee|a\+b|a\+f|lower|raise|copedent)\b", lowered):
         return "controls"
-    if re.search(r"\b(?:chord|voicing|grip|progression|i[- ]?iv|major|minor|dominant|harmony)\b", lowered):
+    if re.search(r"\b(?:chord|voicing|grip|progression|i[- ]?iv|major|minor|dominant|seventh|sevenths|7th|harmony)\b", lowered):
         return "chords"
     if re.search(r"\b(?:block|blocking|bar|intonation|pick|picking|volume pedal|right hand|left hand)\b", lowered):
         return "technique"
@@ -276,9 +374,14 @@ def _level_guidance(level: str) -> str:
     }[level]
 
 
+def _topic_lesson(topic: str) -> dict[str, Any] | None:
+    return next((lesson for lesson in TOPIC_LESSONS if lesson["pattern"].search(topic)), None)
+
+
 def _lesson_payload(spec: dict[str, str], *, origin: str) -> dict[str, Any]:
-    category = spec["category"]
-    content = CATEGORY_CONTENT[category]
+    blueprint = _topic_lesson(spec["topic"])
+    category = blueprint["category"] if blueprint else spec["category"]
+    content = blueprint or CATEGORY_CONTENT[category]
     duration = spec["duration"]
     level = spec["level"]
     topic = spec["topic"]
@@ -291,7 +394,7 @@ def _lesson_payload(spec: dict[str, str], *, origin: str) -> dict[str, Any]:
             {
                 "title": f"Exercise {index + 1}",
                 "timebox": timeboxes[index],
-                "steps": [steps[index], _level_guidance(level)],
+                "steps": list(steps[index]) if blueprint else [steps[index], _level_guidance(level)],
                 "listenFor": content["listen"][min(index, len(content["listen"]) - 1)],
             }
         )
@@ -302,17 +405,17 @@ def _lesson_payload(spec: dict[str, str], *, origin: str) -> dict[str, Any]:
         "id": spec["id"],
         "origin": origin,
         "pathId": spec.get("pathId"),
-        "title": spec["title"],
+        "title": blueprint["title"] if blueprint else spec["title"],
         "topic": topic,
         "level": level,
         "duration": duration,
         "durationLabel": label,
-        "goal": f"Use {topic} in one controlled, musical practice loop.",
+        "goal": blueprint["goal"] if blueprint else f"Use {topic} in one controlled, musical practice loop.",
         "explanation": content["explanation"],
         "exercises": exercises,
         "whatToListenFor": list(content["listen"]),
         "commonMistakes": list(content["mistakes"]),
-        "practiceChecklist": [
+        "practiceChecklist": list(blueprint["checklist"]) if blueprint else [
             "I can describe the physical move before I play it.",
             "I can hear the target sound at a slow tempo.",
             "I recorded or repeated one clean pass without adding a new variable.",

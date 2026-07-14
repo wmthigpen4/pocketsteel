@@ -111,7 +111,7 @@
     mount.appendChild(goal);
 
     const concept = createElement(doc, "section", "lesson-section");
-    concept.appendChild(createElement(doc, "h2", "", "Understand the idea"));
+    concept.appendChild(createElement(doc, "h2", "", "Learn the concept and the move"));
     concept.appendChild(createElement(doc, "p", "", model.explanation));
     mount.appendChild(concept);
 

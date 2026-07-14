@@ -50,6 +50,30 @@ def test_custom_lesson_classifies_topic_and_respects_level_and_duration() -> Non
     assert "control-impact" in lesson["nextStep"].lower()
 
 
+def test_custom_f_lever_lesson_teaches_the_actual_e9_move() -> None:
+    lesson = build_lesson({"topic": "F lever", "level": "intermediate", "duration": "15_min"})
+
+    assert lesson["title"] == "Learn the F lever through a G-major inversion"
+    assert "strings 4 and 8 from E to F" in lesson["explanation"]
+    assert "fret 6 on strings 4-5-6" in lesson["explanation"]
+    assert "B-G-D" in lesson["explanation"]
+    assert any("fret 3" in step and "G-D-B" in step for step in lesson["exercises"][0]["steps"])
+    assert any("F lever without the A pedal" in item for item in lesson["commonMistakes"])
+    assert "controlled, musical practice loop" not in lesson["goal"]
+
+
+def test_custom_sevenths_lesson_teaches_a_complete_g7_and_resolution() -> None:
+    lesson = build_lesson({"topic": "Sevenths", "level": "advanced", "duration": "15_min"})
+
+    assert lesson["title"] == "Build and resolve a G7 chord"
+    assert "strings 5-6-8-9" in lesson["explanation"]
+    assert "D-B-G-F" in lesson["explanation"]
+    assert "A+B on strings 5-6-8" in lesson["explanation"]
+    assert lesson["practiceChecklist"][0] == "I can spell G7 as G-B-D-F."
+    assert lesson["links"][0]["url"].endswith("quality=dominant7&source=lesson")
+    assert all("Compare two practical choices" not in step for exercise in lesson["exercises"] for step in exercise["steps"])
+
+
 @pytest.mark.parametrize(
     ("payload", "message"),
     [
