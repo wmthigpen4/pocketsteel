@@ -2547,7 +2547,7 @@
       }
     }
   </style>
-  <link rel="stylesheet" href="workspace-shell.css?v=mobile-logo-safari-20260713-1">
+  <link rel="stylesheet" href="workspace-shell.css?v=real-score-preview-20260713-1">
 </head>
 <body>
   <div class="page">
@@ -2633,22 +2633,7 @@
                 <h3>Melody Studio</h3>
               </div>
               <p>Build, edit, play back, and practice melodies while connecting each note to a playable E9 position.</p>
-              <svg class="home-card-preview home-score-preview" viewBox="0 0 240 88" role="img" aria-label="A short melody written on a musical staff">
-                <title>A short melody written on a musical staff</title>
-                <g class="score-staff">
-                  <path d="M12 23H228M12 33H228M12 43H228M12 53H228M12 63H228"/>
-                  <path class="score-clef" d="M27 65c-10-8-7-21 3-23 10-2 14 11 5 16-7 4-14-4-9-12 8-12 17-4 16 6-1 9-15 7-16-5-1-10 12-20 13-30 1-8-8-11-13-5-7 8 2 22 8 31 7 10 11 23 5 31"/>
-                  <text x="47" y="41">4</text><text x="47" y="60">4</text>
-                </g>
-                <g class="score-notes">
-                  <ellipse cx="72" cy="57" rx="5" ry="3.7" transform="rotate(-18 72 57)"/><path d="M76 56V35"/>
-                  <ellipse cx="94" cy="49" rx="5" ry="3.7" transform="rotate(-18 94 49)"/><path d="M98 48V27"/>
-                  <ellipse cx="118" cy="43" rx="5" ry="3.7" transform="rotate(-18 118 43)"/><path d="M122 42V21"/>
-                  <ellipse cx="144" cy="51" rx="5" ry="3.7" transform="rotate(-18 144 51)"/><path d="M148 50V29"/>
-                  <ellipse cx="171" cy="38" rx="5" ry="3.7" transform="rotate(-18 171 38)"/><path d="M175 37V17"/>
-                  <ellipse cx="202" cy="46" rx="5" ry="3.7" transform="rotate(-18 202 46)"/><path d="M206 45V24"/>
-                </g>
-              </svg>
+              <div class="home-card-preview home-score-preview" id="home-melody-preview" role="img" aria-label="A short melody written in standard notation"></div>
               <a class="home-card-link" href="/ui/melody-workbench.html">Start composing <span aria-hidden="true">→</span></a>
             </article>
             <article class="home-product-card">
@@ -3191,7 +3176,9 @@
   <script src="answer-client.js?v=melody-exercise-v0-20260710"></script>
   <script src="pedal-steel-fretboard-styles.js?v=module-boundaries-20260713"></script>
   <script src="pedal-steel-fretboard.js?v=module-boundaries-20260713"></script>
-  <script src="landing-home.js?v=landing-feedback-20260713-2"></script>
+  <script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>
+  <script src="melody-score.js?v=landing-score-preview-20260713-2"></script>
+  <script src="landing-home.js?v=landing-score-preview-20260713-2"></script>
   <script>
     const question = document.querySelector("#question");
     const promptBox = document.querySelector(".prompt");
@@ -4993,6 +4980,10 @@
     window.STEEL_RAG_LANDING?.mountExplorerPreview(
       document.querySelector("#home-explorer-preview"),
       window.STEEL_RAG_FRETBOARD
+    );
+    window.STEEL_RAG_LANDING?.mountMelodyPreview(
+      document.querySelector("#home-melody-preview"),
+      window.STEEL_RAG_MELODY_SCORE
     );
     if (helperText) {
       helperText.textContent = INSTRUCTOR_OPENING_LINES[Math.floor(Math.random() * INSTRUCTOR_OPENING_LINES.length)];

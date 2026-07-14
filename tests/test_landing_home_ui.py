@@ -67,14 +67,17 @@ def test_landing_workspace_cards_include_compact_tool_previews() -> None:
 
     assert 'class="home-card-preview home-fretboard-mini"' in home
     assert home.count('class="mini-grip') == 3
-    assert 'class="home-card-preview home-score-preview"' in home
-    assert 'aria-label="A short melody written on a musical staff"' in home
-    assert home.count("<ellipse") == 6
+    assert 'class="home-card-preview home-score-preview" id="home-melody-preview"' in home
+    assert 'aria-label="A short melody written in standard notation"' in home
+    assert "<ellipse" not in home
     assert 'class="home-card-preview home-lesson-mini"' in home
     assert "Finding the I–IV–V in G" in home
     assert "saved lesson progress" not in home.casefold()
     assert "Start composing" in home
-    assert ".home-score-preview .score-notes" in css
+    assert ".home-score-preview .score-svg" in css
+    assert "home-real-score-svg" in Path("ui/melody-score.js").read_text(encoding="utf-8")
+    assert "mountMelodyPreview" in SCRIPT_PATH.read_text(encoding="utf-8")
+    assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in HTML_PATH.read_text(encoding="utf-8")
     assert ".home-fretboard-mini" in css
     assert ".home-lesson-mini" in css
 

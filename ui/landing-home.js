@@ -2,6 +2,7 @@
   "use strict";
 
   const UNAVAILABLE_MESSAGE = "Fretboard preview is unavailable. Open Explorer to continue.";
+  const SCORE_UNAVAILABLE_MESSAGE = "Music preview is unavailable. Open Melody Studio to continue.";
 
   function landingPosition(position) {
     if (Number(position.fret) === 6) {
@@ -53,7 +54,21 @@
     return figure;
   }
 
-  const api = { UNAVAILABLE_MESSAGE, landingPosition, mountExplorerPreview };
+  function mountMelodyPreview(container, scoreApi = globalScope.STEEL_RAG_MELODY_SCORE) {
+    if (!container) return false;
+    if (!scoreApi?.renderPreview || !scoreApi.renderPreview(container)) {
+      container.classList.add("is-unavailable");
+      container.textContent = SCORE_UNAVAILABLE_MESSAGE;
+      return false;
+    }
+    container.classList.remove("is-unavailable");
+    container.querySelectorAll("a, button, input, select, textarea, [tabindex]").forEach((element) => {
+      element.tabIndex = -1;
+    });
+    return true;
+  }
+
+  const api = { UNAVAILABLE_MESSAGE, SCORE_UNAVAILABLE_MESSAGE, landingPosition, mountExplorerPreview, mountMelodyPreview };
   globalScope.STEEL_RAG_LANDING = api;
   if (typeof module !== "undefined" && module.exports) {
     module.exports = api;

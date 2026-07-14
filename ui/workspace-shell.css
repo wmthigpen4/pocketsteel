@@ -531,35 +531,34 @@ select:focus-visible,
 .mini-grip.is-pink { color: #df74a8; }
 
 .home-score-preview {
-  display: block;
-  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
   color: #d9d2c3;
 }
 
-.home-score-preview .score-staff {
-  fill: #d9d2c3;
-  stroke: rgba(217, 210, 195, 0.68);
-  stroke-width: 1.2;
+.home-score-preview .score-svg {
+  display: block;
+  width: 100%;
+  height: 86px;
+  overflow: visible;
+  fill: #e6dfd1 !important;
+  stroke: rgba(230, 223, 209, 0.78) !important;
 }
 
-.home-score-preview .score-staff text {
-  stroke: none;
-  font: 700 18px/1 var(--font-display);
+.home-score-preview .score-svg [fill]:not([fill="none"]) {
+  fill: #e6dfd1 !important;
 }
 
-.home-score-preview .score-clef {
-  fill: none;
-  stroke: #e6dfd1;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.home-score-preview .score-svg [stroke]:not([stroke="none"]) {
+  stroke: rgba(230, 223, 209, 0.78) !important;
 }
 
-.home-score-preview .score-notes {
-  fill: #e6dfd1;
-  stroke: #e6dfd1;
-  stroke-width: 1.6;
-  stroke-linecap: round;
+.home-score-preview.is-unavailable {
+  justify-content: center;
+  color: #cfc2af;
+  font: 600 12px/1.4 var(--font-ui);
+  text-align: center;
 }
 
 .home-lesson-mini {

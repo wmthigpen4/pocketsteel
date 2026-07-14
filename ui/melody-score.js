@@ -552,6 +552,38 @@
     renderFallback(container, draft, selectedIndex, onSelect);
   }
 
+  function renderPreview(container) {
+    const VF = global.VexFlow;
+    if (!container || !VF?.Renderer || !VF?.Stave || !VF?.StaveNote || !VF?.Voice || !VF?.Formatter) return false;
+    container.replaceChildren();
+    const width = Math.max(240, Math.floor(Number(container.clientWidth) || 280) - 12);
+    const height = 94;
+    const renderer = new VF.Renderer(container, VF.Renderer.Backends.SVG);
+    renderer.resize(width, height);
+    const context = renderer.getContext();
+    const stave = new VF.Stave(2, -5, width - 4).addClef("treble").addTimeSignature("4/4");
+    stave.setContext(context).draw();
+    const notes = [
+      ["e/4", "q"],
+      ["g/4", "8"],
+      ["b/4", "8"],
+      ["d/5", "q"],
+      ["b/4", "8"],
+      ["g/4", "8"]
+    ].map(([key, duration]) => new VF.StaveNote({ clef: "treble", keys: [key], duration }));
+    const voice = new VF.Voice({ numBeats: 4, beatValue: 4 }).addTickables(notes);
+    new VF.Formatter().joinVoices([voice]).format([voice], width - 92);
+    voice.draw(context, stave);
+    if (VF.Beam?.generateBeams) VF.Beam.generateBeams(notes).forEach((beam) => beam.setContext(context).draw());
+    const svg = container.querySelector("svg");
+    if (!svg) return false;
+    svg.classList.add("score-svg", "home-real-score-svg");
+    svg.setAttribute("role", "img");
+    svg.setAttribute("aria-label", "Six-note melody in four-four time");
+    container.dataset.scoreRenderer = "vexflow-preview";
+    return true;
+  }
+
   const api = {
     DURATIONS,
     MAX_EVENTS,
@@ -575,7 +607,8 @@
     draftWarnings,
     durationName,
     musicXmlForDraft,
-    render
+    render,
+    renderPreview
   };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   global.STEEL_RAG_MELODY_SCORE = api;
