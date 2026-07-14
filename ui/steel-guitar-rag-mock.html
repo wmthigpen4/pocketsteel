@@ -655,7 +655,89 @@
       padding-top: 2px;
     }
 
+    .copedent-library-bar {
+      display: grid;
+      grid-template-columns: minmax(240px, 1fr) auto;
+      gap: 12px;
+      align-items: end;
+    }
+
+    .copedent-library-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .copedent-library-actions .is-primary,
+    .copedent-sticky-footer .is-primary {
+      border-color: rgba(240, 191, 105, 0.58);
+      background: rgba(240, 191, 105, 0.16);
+      color: var(--cream);
+    }
+
+    .copedent-more {
+      position: relative;
+    }
+
+    .copedent-more summary {
+      list-style: none;
+    }
+
+    .copedent-more summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .copedent-more__menu {
+      position: absolute;
+      right: 0;
+      z-index: 12;
+      display: grid;
+      min-width: 218px;
+      margin-top: 7px;
+      padding: 7px;
+      border: 1px solid rgba(244, 234, 214, 0.12);
+      border-radius: 9px;
+      background: rgb(28, 31, 31);
+      box-shadow: 0 16px 38px rgba(0, 0, 0, 0.32);
+    }
+
+    .copedent-more__menu button {
+      width: 100%;
+      border: 0;
+      border-radius: 7px;
+      padding: 9px 10px;
+      background: transparent;
+      color: rgba(244, 234, 214, 0.76);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .copedent-more__menu button:hover:not(:disabled),
+    .copedent-more__menu button:focus-visible:not(:disabled) {
+      background: rgba(240, 191, 105, 0.1);
+      color: var(--cream);
+      outline: none;
+    }
+
+    .copedent-details {
+      border-top: 1px solid rgba(244, 234, 214, 0.08);
+      padding-top: 10px;
+    }
+
+    .copedent-details > summary {
+      color: rgba(240, 191, 105, 0.86);
+      font-size: 13px;
+      font-weight: 650;
+      cursor: pointer;
+    }
+
+    .copedent-details[open] > summary {
+      margin-bottom: 12px;
+    }
+
     .copedent-table-wrap {
+      position: relative;
       overflow-x: auto;
       border: 1px solid rgba(244, 234, 214, 0.08);
       border-radius: 8px;
@@ -663,64 +745,171 @@
     }
 
     .copedent-table {
-      width: 100%;
-      min-width: 620px;
-      border-collapse: collapse;
+      width: max-content;
+      min-width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
     }
 
     .copedent-table th,
     .copedent-table td {
+      min-width: 84px;
+      border-right: 1px solid rgba(244, 234, 214, 0.06);
       border-bottom: 1px solid rgba(244, 234, 214, 0.07);
-      padding: 7px;
-      text-align: left;
-      vertical-align: top;
+      padding: 0;
+      text-align: center;
+      vertical-align: middle;
     }
 
     .copedent-table th {
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      padding: 7px 6px;
+      background: rgb(31, 34, 34);
       color: rgba(185, 173, 152, 0.76);
       font-size: 11px;
       line-height: 1.25;
       letter-spacing: 0.04em;
-      text-transform: uppercase;
       font-weight: 650;
     }
 
-    .copedent-table input,
-    .copedent-table select {
-      width: 100%;
-      min-height: 34px;
-      border: 1px solid rgba(244, 234, 214, 0.1);
-      border-radius: 7px;
-      background: rgba(15, 17, 17, 0.42);
-      color: rgba(244, 234, 214, 0.84);
-      padding: 7px 8px;
-      outline: 0;
+    .copedent-table .copedent-superhead {
+      color: rgba(240, 191, 105, 0.84);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
     }
 
-    .copedent-table .small-cell {
-      width: 78px;
-    }
-
-    .copedent-table .medium-cell {
-      width: 132px;
-    }
-
-    .copedent-row-action {
-      width: 30px;
-      height: 30px;
-      border: 1px solid rgba(244, 234, 214, 0.1);
-      border-radius: 999px;
-      background: rgba(244, 234, 214, 0.04);
-      color: var(--muted);
-      cursor: pointer;
-      line-height: 1;
-    }
-
-    .copedent-row-action:hover,
-    .copedent-row-action:focus-visible {
-      border-color: rgba(240, 191, 105, 0.42);
+    .copedent-table .copedent-physical-head {
+      background: rgb(27, 30, 30);
       color: var(--cream);
-      outline: none;
+    }
+
+    .copedent-table .copedent-state-head {
+      top: 0;
+      background: rgb(24, 27, 27);
+    }
+
+    .copedent-header-button,
+    .copedent-string-button,
+    .copedent-cell-button {
+      width: 100%;
+      min-height: 42px;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+    }
+
+    .copedent-header-button {
+      min-height: 28px;
+      font: inherit;
+    }
+
+    .copedent-header-button:hover:not(:disabled),
+    .copedent-header-button:focus-visible:not(:disabled),
+    .copedent-string-button:hover:not(:disabled),
+    .copedent-string-button:focus-visible:not(:disabled),
+    .copedent-cell-button:hover:not(:disabled),
+    .copedent-cell-button:focus-visible:not(:disabled) {
+      background: rgba(240, 191, 105, 0.1);
+      color: var(--cream);
+      outline: 2px solid rgba(240, 191, 105, 0.42);
+      outline-offset: -2px;
+    }
+
+    .copedent-cell-button.is-raise {
+      color: rgba(240, 191, 105, 0.96);
+      background: rgba(240, 191, 105, 0.06);
+    }
+
+    .copedent-cell-button.is-lower {
+      color: rgba(135, 206, 178, 0.96);
+      background: rgba(89, 178, 143, 0.06);
+    }
+
+    .copedent-cell-button.is-empty {
+      color: rgba(185, 173, 152, 0.22);
+    }
+
+    .copedent-cell-button.is-empty::after {
+      content: "·";
+    }
+
+    .copedent-cell-button:disabled,
+    .copedent-header-button:disabled,
+    .copedent-string-button:disabled {
+      cursor: default;
+    }
+
+    .copedent-table .copedent-sticky-string,
+    .copedent-table .copedent-sticky-open {
+      position: sticky;
+      z-index: 6;
+      min-width: 64px;
+      background: rgb(31, 34, 34);
+    }
+
+    .copedent-table .copedent-sticky-string {
+      left: 0;
+    }
+
+    .copedent-table .copedent-sticky-open {
+      left: 64px;
+      min-width: 72px;
+      box-shadow: 7px 0 12px rgba(0, 0, 0, 0.18);
+    }
+
+    .copedent-table tbody .copedent-sticky-string,
+    .copedent-table tbody .copedent-sticky-open {
+      z-index: 2;
+      background: rgb(25, 28, 28);
+    }
+
+    .copedent-table tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .copedent-grid-empty {
+      padding: 24px;
+      color: rgba(244, 234, 214, 0.66);
+      text-align: center;
+    }
+
+    .copedent-mobile-nav {
+      display: none;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      gap: 7px;
+      align-items: center;
+    }
+
+    .copedent-mobile-nav select {
+      width: 100%;
+      min-height: 36px;
+      border: 1px solid rgba(244, 234, 214, 0.1);
+      border-radius: 8px;
+      padding: 0 9px;
+      background: rgba(21, 24, 24, 0.72);
+      color: var(--cream);
+    }
+
+    .copedent-sticky-footer {
+      position: sticky;
+      bottom: -1px;
+      z-index: 10;
+      display: grid;
+      grid-template-columns: auto minmax(180px, 1fr);
+      gap: 10px 16px;
+      align-items: center;
+      margin: 4px -17px -17px;
+      padding: 12px 17px;
+      border-top: 1px solid rgba(244, 234, 214, 0.12);
+      background: rgba(29, 32, 33, 0.96);
+      backdrop-filter: blur(12px);
+    }
+
+    .copedent-sticky-footer .backstage-status {
+      text-align: right;
     }
 
     .copedent-template-note {
@@ -729,6 +918,129 @@
       color: rgba(244, 234, 214, 0.68);
       font-size: 13px;
       line-height: 1.45;
+    }
+
+    .copedent-dialog {
+      width: min(520px, calc(100vw - 28px));
+      max-height: min(82vh, 680px);
+      overflow: auto;
+      border: 1px solid rgba(244, 234, 214, 0.16);
+      border-radius: 12px;
+      padding: 0;
+      background: rgb(29, 32, 33);
+      color: var(--cream);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.56);
+    }
+
+    .copedent-dialog::backdrop {
+      background: rgba(5, 8, 8, 0.72);
+      backdrop-filter: blur(3px);
+    }
+
+    .copedent-dialog__content {
+      display: grid;
+      gap: 15px;
+      padding: 18px;
+    }
+
+    .copedent-dialog__header {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .copedent-dialog__header h4,
+    .copedent-dialog__header p {
+      margin: 0;
+    }
+
+    .copedent-dialog__header p {
+      margin-top: 4px;
+      color: rgba(244, 234, 214, 0.64);
+      font-size: 13px;
+    }
+
+    .copedent-delta-picker {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .copedent-delta-picker button {
+      min-height: 42px;
+      border: 1px solid rgba(244, 234, 214, 0.1);
+      border-radius: 8px;
+      background: rgba(244, 234, 214, 0.035);
+      color: rgba(244, 234, 214, 0.76);
+      cursor: pointer;
+    }
+
+    .copedent-delta-picker button[aria-pressed="true"] {
+      border-color: rgba(240, 191, 105, 0.56);
+      background: rgba(240, 191, 105, 0.12);
+      color: var(--cream);
+    }
+
+    .copedent-change-preview {
+      min-height: 44px;
+      border-left: 2px solid rgba(240, 191, 105, 0.48);
+      padding: 7px 10px;
+      background: rgba(240, 191, 105, 0.05);
+      color: rgba(244, 234, 214, 0.8);
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .copedent-dialog__actions {
+      display: flex;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    @media (max-width: 760px) {
+      .copedent-library-bar {
+        grid-template-columns: 1fr;
+      }
+
+      .copedent-library-actions {
+        justify-content: flex-start;
+      }
+
+      .copedent-mobile-nav {
+        display: grid;
+      }
+
+      .copedent-table [data-control-group][hidden] {
+        display: none;
+      }
+
+      .copedent-table-wrap {
+        overflow-x: hidden;
+      }
+
+      .copedent-table th,
+      .copedent-table td {
+        min-width: 96px;
+      }
+
+      .copedent-table .copedent-sticky-string,
+      .copedent-table .copedent-sticky-open {
+        min-width: 58px;
+      }
+
+      .copedent-table .copedent-sticky-open {
+        left: 58px;
+      }
+
+      .copedent-sticky-footer {
+        grid-template-columns: 1fr;
+      }
+
+      .copedent-sticky-footer .backstage-status {
+        text-align: left;
+      }
     }
 
     .backstage-metrics,
@@ -2994,140 +3306,107 @@
         <div class="backstage-content backstage-tab-panel" id="backstage-panel-setup" role="tabpanel" aria-labelledby="backstage-tab-setup" hidden>
           <article class="backstage-card is-wide copedent-editor">
             <div class="backstage-card-header">
-              <h3>My Setup / Copedent</h3>
+              <div>
+                <h3>My Setup / Copedent</h3>
+                <p>The chart below is your guitar: open strings run down the left, and pedals and knee levers run across the top.</p>
+              </div>
               <span class="coming-soon" id="copedent-active-badge">Local-first</span>
             </div>
-            <p>Choose a common setup or save the exact pedals, levers, travel states, and string changes on your guitar.</p>
             <p class="backstage-note">The active profile is used by Ask, Explorer, Lessons, and Melody Studio. Custom profiles save in this browser for now.</p>
 
-            <div class="copedent-section" aria-labelledby="copedent-library-title">
+            <section class="copedent-section" aria-labelledby="copedent-library-title">
               <div class="backstage-card-header">
-                <div>
-                  <h4 id="copedent-library-title">Copedent library</h4>
-                  <p class="copedent-template-note">Emmons and Day are immutable starters. Clone either one before changing it.</p>
-                </div>
+                <h4 id="copedent-library-title">Choose a setup</h4>
                 <span class="coming-soon" id="copedent-library-active">Active</span>
               </div>
-              <div class="backstage-grid">
+              <div class="copedent-library-bar">
                 <div class="backstage-field">
-                  <label for="copedent-profile-library">Common and custom profiles</label>
+                  <label for="copedent-profile-library">Common and custom setups</label>
                   <select id="copedent-profile-library"></select>
                 </div>
-                <div class="backstage-field">
-                  <label>Profile actions</label>
-                  <div class="backstage-actions">
-                    <button class="backstage-button" id="activate-copedent" type="button">Make active</button>
-                    <button class="backstage-button" id="clone-copedent" type="button">Clone to customize</button>
-                    <button class="backstage-button" id="new-copedent" type="button">New blank E9</button>
-                    <button class="backstage-button" id="duplicate-copedent" type="button">Duplicate</button>
-                    <button class="backstage-button" id="delete-copedent" type="button">Delete</button>
-                  </div>
+                <div class="copedent-library-actions">
+                  <button class="backstage-button is-primary" id="activate-copedent" type="button">Use this setup</button>
+                  <button class="backstage-button" id="clone-copedent" type="button">Copy and edit</button>
+                  <button class="backstage-button" id="new-copedent" type="button">New custom setup</button>
+                  <details class="copedent-more" id="copedent-more">
+                    <summary class="backstage-button" aria-label="More copedent actions">More</summary>
+                    <div class="copedent-more__menu">
+                      <button id="duplicate-copedent" type="button">Duplicate setup</button>
+                      <button id="delete-copedent" type="button">Delete custom setup</button>
+                      <button id="compare-copedent" type="button">Compare with starter</button>
+                      <button id="add-copedent-from-starter" type="button">Add missing starter state</button>
+                      <button id="reset-copedent" type="button">Discard unsaved edits</button>
+                    </div>
+                  </details>
                 </div>
               </div>
               <div class="backstage-note" id="copedent-review-issues" role="status"></div>
-            </div>
+            </section>
 
-            <div class="backstage-fields">
+            <details class="copedent-details" id="copedent-profile-details">
+              <summary>Profile details</summary>
               <div class="backstage-grid">
                 <div class="backstage-field">
                   <label for="copedent-name">Setup name</label>
                   <input id="copedent-name" type="text" placeholder="My main E9">
                 </div>
                 <div class="backstage-field">
-                  <label for="copedent-template">Starter setup</label>
+                  <label for="copedent-guitar">Guitar</label>
+                  <input id="copedent-guitar" type="text" placeholder="Zum, Emmons, MSA, Sho-Bud...">
+                </div>
+                <div class="backstage-field">
+                  <label for="copedent-template">Compare with</label>
                   <select id="copedent-template">
                     <option value="emmons-e9-basic">Emmons E9 starter</option>
                     <option value="day-e9-basic">Day E9 starter</option>
                   </select>
                 </div>
                 <div class="backstage-field">
+                  <label for="copedent-pedal-order">Pedal order</label>
+                  <input id="copedent-pedal-order" type="text" readonly aria-describedby="copedent-pedal-order-help">
+                  <span class="backstage-status" id="copedent-pedal-order-help">Move pedal headers to change their order.</span>
+                </div>
+                <div class="backstage-field">
                   <label for="copedent-family">Tuning family</label>
-                  <select id="copedent-family">
+                  <select id="copedent-family" disabled>
                     <option value="E9">E9</option>
                   </select>
                 </div>
                 <div class="backstage-field">
                   <label for="copedent-string-count">String count</label>
-                  <select id="copedent-string-count">
+                  <select id="copedent-string-count" disabled>
                     <option value="10">10</option>
                   </select>
-                </div>
-                <div class="backstage-field">
-                  <label for="copedent-guitar">Guitar</label>
-                  <input id="copedent-guitar" type="text" placeholder="Zum, Emmons, MSA, Sho-Bud...">
-                </div>
-                <div class="backstage-field">
-                  <label for="copedent-pedal-order">Physical pedal order</label>
-                  <input id="copedent-pedal-order" type="text" placeholder="A, B, C or C, B, A">
                   <input id="copedent-custom-count" type="hidden" value="10">
                 </div>
+                <div class="backstage-field" style="grid-column: 1 / -1;">
+                  <label for="copedent-notes">Notes</label>
+                  <textarea id="copedent-notes" placeholder="Setup quirks, changes you are deciding on, or guitar notes."></textarea>
+                </div>
               </div>
-            </div>
+            </details>
 
-            <div class="copedent-section">
-              <h4>Open tuning</h4>
-              <p class="copedent-template-note">This recovery slice supports 10-string E9. Register is stored as a MIDI pitch value so score, tab, fretboard, and playback agree.</p>
-              <div class="copedent-table-wrap">
-                <table class="copedent-table" aria-label="Open tuning table">
-                  <thead>
-                    <tr>
-                      <th class="small-cell">String #</th>
-                      <th class="medium-cell">Open note</th>
-                      <th class="medium-cell">Register</th>
-                      <th class="medium-cell">Gauge</th>
-                      <th>Notes</th>
-                    </tr>
-                  </thead>
-                  <tbody id="copedent-strings"></tbody>
-                </table>
-              </div>
-            </div>
-
-            <div class="copedent-section">
+            <section class="copedent-section" aria-labelledby="copedent-matrix-title">
               <div class="backstage-card-header">
-                <h4>Pedals and knee levers</h4>
-                <button class="backstage-button" id="add-copedent-change" type="button">Add control state</button>
+                <div>
+                  <h4 id="copedent-matrix-title">E9 copedent chart</h4>
+                  <p class="copedent-template-note">Blank means no change. Select any changed or empty cell to edit it. Select a string or control heading for its details.</p>
+                </div>
+                <button class="backstage-button" id="add-copedent-change" type="button">Add control</button>
               </div>
-              <p class="copedent-template-note">A player-facing name is separate from physical position and travel. RKL and RKLL can therefore be half/full states of the same physical RKL.</p>
-              <div class="copedent-table-wrap">
-                <table class="copedent-table" aria-label="Pedal and lever changes">
-                  <thead>
-                    <tr>
-                      <th class="medium-cell">Control</th>
-                      <th class="medium-cell">Type</th>
-                      <th class="medium-cell">Physical</th>
-                      <th class="medium-cell">Travel</th>
-                      <th class="small-cell">String #</th>
-                      <th class="medium-cell">From</th>
-                      <th class="medium-cell">To</th>
-                      <th class="medium-cell">Change type</th>
-                      <th>Notes</th>
-                      <th class="small-cell">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody id="copedent-changes"></tbody>
-                </table>
+              <div class="copedent-mobile-nav" id="copedent-mobile-controls" aria-label="Choose the control shown on a narrow screen">
+                <button class="backstage-button" id="copedent-mobile-previous" type="button" aria-label="Previous control">←</button>
+                <select id="copedent-mobile-group" aria-label="Visible physical control"></select>
+                <button class="backstage-button" id="copedent-mobile-next" type="button" aria-label="Next control">→</button>
               </div>
-            </div>
+              <div class="copedent-table-wrap" id="copedent-grid-wrap">
+                <div id="copedent-grid"></div>
+              </div>
+            </section>
 
-            <div class="backstage-fields">
-              <div class="backstage-field">
-                <label for="copedent-notes">Notes</label>
-                <textarea id="copedent-notes" placeholder="Add copedent details, string gauges, pickup notes, setup quirks, or changes you are still deciding on."></textarea>
-              </div>
-              <div class="backstage-actions">
-                <button class="backstage-button" id="save-copedent" type="button">Save draft</button>
-                <button class="backstage-button" id="activate-edited-copedent" type="button">Validate and make active</button>
-                <button class="backstage-button" id="compare-copedent" type="button">Compare with starter</button>
-                <button class="backstage-button" id="add-copedent-from-starter" type="button">Add missing states from starter</button>
-                <button class="backstage-button" id="reset-copedent" type="button">Discard unsaved edits</button>
-                <span class="backstage-status" id="copedent-save-status" role="status"></span>
-              </div>
-            </div>
-
-            <div class="copedent-section">
-              <h4>Need another tuning family?</h4>
-              <p>C6, Universal, Extended E9, and account-synced profiles are not personalized in this recovery slice. Save a request without treating an unsupported setup as E9.</p>
+            <details class="copedent-details">
+              <summary>Other tunings</summary>
+              <p>C6, Universal, Extended E9, and account-synced profiles are not personalized in this 10-string E9 editor yet. Save a request without treating an unsupported setup as E9.</p>
               <div class="backstage-grid">
                 <div class="backstage-field">
                   <label for="copedent-request">Tuning/setup request</label>
@@ -3142,7 +3421,88 @@
                 <button class="backstage-button" id="save-copedent-request" type="button">Save request locally</button>
                 <span class="backstage-status" id="copedent-request-status" role="status"></span>
               </div>
-            </div>
+            </details>
+
+            <footer class="copedent-sticky-footer">
+              <div class="backstage-actions">
+                <button class="backstage-button" id="save-copedent" type="button">Save draft</button>
+                <button class="backstage-button is-primary" id="activate-edited-copedent" type="button">Validate and use</button>
+              </div>
+              <span class="backstage-status" id="copedent-save-status" role="status">Choose a setup to view its chart.</span>
+            </footer>
+
+            <dialog class="copedent-dialog" id="copedent-cell-dialog" aria-labelledby="copedent-cell-title">
+              <form class="copedent-dialog__content" method="dialog">
+                <div class="copedent-dialog__header">
+                  <div>
+                    <h4 id="copedent-cell-title">Edit string change</h4>
+                    <p id="copedent-cell-context"></p>
+                  </div>
+                  <button class="backstage-button" value="cancel" type="submit" aria-label="Close change editor">Close</button>
+                </div>
+                <div class="copedent-delta-picker" id="copedent-delta-picker" aria-label="Pitch movement">
+                  <button type="button" data-cell-delta="0">No change</button>
+                  <button type="button" data-cell-delta="1">Raise ½ step</button>
+                  <button type="button" data-cell-delta="2">Raise 1 step</button>
+                  <button type="button" data-cell-delta="3">Raise 1½ steps</button>
+                  <button type="button" data-cell-delta="-1">Lower ½ step</button>
+                  <button type="button" data-cell-delta="-2">Lower 1 step</button>
+                  <button type="button" data-cell-delta="-3">Lower 1½ steps</button>
+                </div>
+                <div class="backstage-field">
+                  <label for="copedent-custom-delta">Custom semitones</label>
+                  <input id="copedent-custom-delta" type="number" min="-6" max="6" step="1" placeholder="Example: 4 or -4">
+                </div>
+                <div class="copedent-change-preview" id="copedent-cell-preview" aria-live="polite"></div>
+                <div class="copedent-dialog__actions">
+                  <button class="backstage-button" value="cancel" type="submit">Cancel</button>
+                  <button class="backstage-button is-primary" id="copedent-cell-apply" value="default" type="button">Apply change</button>
+                </div>
+              </form>
+            </dialog>
+
+            <dialog class="copedent-dialog" id="copedent-control-dialog" aria-labelledby="copedent-control-title">
+              <form class="copedent-dialog__content" method="dialog">
+                <div class="copedent-dialog__header">
+                  <div><h4 id="copedent-control-title">Control details</h4><p>Names are yours; physical position and travel describe the mechanics.</p></div>
+                  <button class="backstage-button" value="cancel" type="submit" aria-label="Close control details">Close</button>
+                </div>
+                <div class="backstage-grid">
+                  <div class="backstage-field"><label for="copedent-control-label">Player-facing name</label><input id="copedent-control-label" type="text"></div>
+                  <div class="backstage-field"><label for="copedent-control-position">Physical position</label><input id="copedent-control-position" type="text" list="copedent-position-options"><datalist id="copedent-position-options"><option value="LKL"><option value="LKV"><option value="LKR"><option value="RKL"><option value="RKR"><option value="P1"><option value="P2"><option value="P3"></datalist></div>
+                  <div class="backstage-field"><label for="copedent-control-type">Type</label><select id="copedent-control-type"><option value="pedal">Pedal</option><option value="lever">Knee lever</option></select></div>
+                  <div class="backstage-field"><label for="copedent-control-travel">Travel</label><select id="copedent-control-travel"><option value="pedal">Pedal</option><option value="half-stop">Half stop</option><option value="full">Full</option><option value="full-stop">Full stop</option><option value="vertical">Vertical</option><option value="split">Split</option></select></div>
+                  <div class="backstage-field" style="grid-column: 1 / -1;"><label for="copedent-control-aliases">Aliases</label><input id="copedent-control-aliases" type="text" placeholder="F lever, RKLL"></div>
+                </div>
+                <div class="copedent-dialog__actions">
+                  <button class="backstage-button" id="copedent-control-previous" type="button">Move left</button>
+                  <button class="backstage-button" id="copedent-control-next" type="button">Move right</button>
+                  <button class="backstage-button" id="copedent-control-add-state" type="button">Add travel state</button>
+                  <button class="backstage-button" id="copedent-control-remove" type="button">Remove state</button>
+                  <button class="backstage-button is-primary" id="copedent-control-apply" type="button">Apply details</button>
+                </div>
+              </form>
+            </dialog>
+
+            <dialog class="copedent-dialog" id="copedent-string-dialog" aria-labelledby="copedent-string-title">
+              <form class="copedent-dialog__content" method="dialog">
+                <div class="copedent-dialog__header">
+                  <div><h4 id="copedent-string-title">String details</h4><p>Open pitch and register drive score, tab, fretboard, and playback.</p></div>
+                  <button class="backstage-button" value="cancel" type="submit" aria-label="Close string details">Close</button>
+                </div>
+                <div class="backstage-grid">
+                  <div class="backstage-field"><label for="copedent-string-note">Open note</label><input id="copedent-string-note" type="text" placeholder="F#"></div>
+                  <div class="backstage-field"><label for="copedent-string-octave">Octave / register</label><input id="copedent-string-octave" type="number" min="0" max="8"></div>
+                  <div class="backstage-field"><label for="copedent-string-gauge">Gauge</label><input id="copedent-string-gauge" type="text" placeholder=".011"></div>
+                  <div class="backstage-field"><label for="copedent-string-notes">Notes</label><input id="copedent-string-notes" type="text" placeholder="Optional"></div>
+                </div>
+                <div class="copedent-change-preview" id="copedent-string-impact">Changing an open note also updates the starting pitch of this string’s pedal and lever actions.</div>
+                <div class="copedent-dialog__actions">
+                  <button class="backstage-button" value="cancel" type="submit">Cancel</button>
+                  <button class="backstage-button is-primary" id="copedent-string-apply" type="button">Apply string details</button>
+                </div>
+              </form>
+            </dialog>
           </article>
 
         </div>
@@ -3302,6 +3662,7 @@
   </div>
 
   <script src="copedent-store.js?v=copedent-library-v2-20260714-2"></script>
+  <script src="copedent-grid-model.js?v=table-first-copedent-20260714-1"></script>
   <script src="answer-client.js?v=copedent-library-v2-20260714-2"></script>
   <script src="pedal-steel-fretboard-styles.js?v=module-boundaries-20260713"></script>
   <script src="pedal-steel-fretboard.js?v=landing-bubble-labels-20260713"></script>
@@ -5116,7 +5477,6 @@
       }
     }
 
-    let activeCopedentProfile = loadCopedentProfile();
     let mockAccessState = loadMockAccessState();
 
     renderQuestionLabel();
@@ -5134,7 +5494,6 @@
     }
     renderSuggestedPrompt();
     renderTechPopover();
-    renderCopedentProfile(activeCopedentProfile);
     updateMockAccessUi();
     bootstrapSessionAccess();
     updateHelperState();
@@ -5154,67 +5513,6 @@
     stageReturn.addEventListener("click", () => returnToStage({ focusTarget: "home" }));
     homeHeaderLink.addEventListener("click", () => returnToStage({ focusTarget: "home" }));
     askHeaderLink.addEventListener("click", () => returnToStage({ focusTarget: "question" }));
-
-    copedentTemplate.addEventListener("change", () => {
-      activeCopedentProfile = starterToProfile(copedentTemplate.value);
-      renderCopedentProfile(activeCopedentProfile);
-      copedentSaveStatus.textContent = "Starter loaded. Save when it matches your guitar.";
-    });
-
-    copedentStringCount.addEventListener("change", rebuildCopedentStringRows);
-    copedentCustomCount.addEventListener("input", () => {
-      if (copedentStringCount.value === "custom") {
-        rebuildCopedentStringRows();
-      }
-    });
-
-    addCopedentChange.addEventListener("click", () => {
-      activeCopedentProfile = collectCopedentProfile(activeCopedentProfile);
-      activeCopedentProfile.controls.push({
-        id: `custom-control-${Date.now()}`,
-        label: "",
-        type: "pedal",
-        changes: [
-          {
-            stringNumber: 0,
-            fromNote: "",
-            toNote: "",
-            direction: "raise",
-            amount: "",
-            isHalfStop: false,
-            isSplit: false,
-            changeType: "raise",
-            notes: ""
-          }
-        ]
-      });
-      renderCopedentChanges(activeCopedentProfile);
-      copedentSaveStatus.textContent = "New change row added.";
-    });
-
-    copedentChanges.addEventListener("click", (event) => {
-      const removeButton = event.target.closest("[data-remove-change]");
-      if (!removeButton) return;
-      activeCopedentProfile = collectCopedentProfile(activeCopedentProfile);
-      const rows = flattenCopedentChanges(activeCopedentProfile);
-      rows.splice(Number(removeButton.dataset.removeChange), 1);
-      activeCopedentProfile.controls = controlsFromFlatChanges(rows);
-      renderCopedentChanges(activeCopedentProfile);
-      copedentSaveStatus.textContent = "Change removed.";
-    });
-
-    saveCopedent.addEventListener("click", () => {
-      activeCopedentProfile = collectCopedentProfile(activeCopedentProfile);
-      saveCopedentProfile(activeCopedentProfile);
-      updateCopedentOverview(activeCopedentProfile);
-      copedentSaveStatus.textContent = "Saved locally in this browser.";
-    });
-
-    resetCopedent.addEventListener("click", () => {
-      activeCopedentProfile = starterToProfile(copedentTemplate.value);
-      renderCopedentProfile(activeCopedentProfile);
-      copedentSaveStatus.textContent = "Reset from starter. Save to keep it.";
-    });
 
     saveCopedentRequest.addEventListener("click", () => {
       const requestDraft = {
@@ -5346,6 +5644,6 @@
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
     }
   </script>
-  <script src="backstage-copedent-manager.js?v=copedent-library-v2-20260714-3"></script>
+  <script src="backstage-copedent-manager.js?v=table-first-copedent-20260714-1"></script>
 </body>
 </html>

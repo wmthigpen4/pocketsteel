@@ -68,16 +68,96 @@ assert.deepEqual(context.profileSnapshot.controls.map((control) => control.trave
 def test_backstage_exposes_common_profiles_and_mechanical_editor_fields() -> None:
     html = (REPO_ROOT / "ui" / "steel-guitar-rag-mock.html").read_text(encoding="utf-8")
     manager = (REPO_ROOT / "ui" / "backstage-copedent-manager.js").read_text(encoding="utf-8")
+    grid_model = (REPO_ROOT / "ui" / "copedent-grid-model.js").read_text(encoding="utf-8")
     answer_client = (REPO_ROOT / "ui" / "answer-client.js").read_text(encoding="utf-8")
 
     assert "Emmons E9 starter" in html
     assert "Day E9 starter" in html
     assert 'id="copedent-profile-library"' in html
     assert 'id="activate-edited-copedent"' in html
-    assert 'data-field="physicalPosition"' in manager
-    assert 'data-field="travel"' in manager
-    assert "changeDirection(from, to)" in manager
+    assert 'id="copedent-grid"' in html
+    assert 'id="copedent-cell-dialog"' in html
+    assert 'id="copedent-control-dialog"' in html
+    assert 'id="copedent-string-dialog"' in html
+    assert 'id="copedent-mobile-group"' in html
+    assert "Use this setup" in html
+    assert "Copy and edit" in html
+    assert "Validate and use" in html
+    assert "data-control-group" in manager
+    assert "grid.setCell" in manager
+    assert "groupMap" in grid_model
     assert "devAccessHeaders," in answer_client
-    assert "RKL and RKLL can therefore be half/full states" in html
+    setup_markup = html.split('id="backstage-panel-setup"', 1)[1].split('id="backstage-panel-pass"', 1)[0]
+    assert "Pedals" in manager
+    assert "Knee levers" in manager
+    assert "String #</th>" not in setup_markup
+    assert "Change type</th>" not in setup_markup
+    assert "Open tuning table" not in setup_markup
     assert "eventually be tailored" not in html
     assert "RAG personalization are planned, but not connected yet" not in html
+
+
+def test_table_grid_adapter_orders_groups_round_trips_and_edits_mechanics() -> None:
+    script = r"""
+const assert = require("node:assert/strict");
+const store = require("./ui/copedent-store.js");
+const grid = require("./ui/copedent-grid-model.js");
+
+function profile(day = false) {
+  const result = store.blankProfile(day ? "Day test" : "Emmons test");
+  result.controls = [
+    {id: "A", label: "A pedal", type: "pedal", physicalPosition: day ? "P3" : "P1", travel: "pedal", aliases: ["A"], changes: [{stringNumber: 5, fromNote: "B", toNote: "C#", changeType: "raise", notes: "keep"}]},
+    {id: "B", label: "B pedal", type: "pedal", physicalPosition: "P2", travel: "pedal", aliases: [], changes: [{stringNumber: 3, fromNote: "G#", toNote: "A", changeType: "raise", notes: ""}]},
+    {id: "C", label: "C pedal", type: "pedal", physicalPosition: day ? "P1" : "P3", travel: "pedal", aliases: [], changes: [{stringNumber: 4, fromNote: "E", toNote: "F#", changeType: "raise", notes: ""}]},
+    {id: "rkl-half", label: "RKL", type: "lever", physicalPosition: "RKL", travel: "half-stop", aliases: ["G lever"], changes: [{stringNumber: 1, fromNote: "F#", toNote: "G", changeType: "raise", notes: ""}]},
+    {id: "rkl-full", label: "RKLL", type: "lever", physicalPosition: "RKL", travel: "full-stop", aliases: [], changes: [{stringNumber: 1, fromNote: "F#", toNote: "G#", changeType: "raise", notes: ""}]},
+    {id: "rkr-half", label: "RKR", type: "lever", physicalPosition: "RKR", travel: "half-stop", aliases: [], changes: [{stringNumber: 2, fromNote: "D#", toNote: "D", changeType: "lower", notes: ""}]},
+    {id: "rkr-full", label: "RKRR", type: "lever", physicalPosition: "RKR", travel: "full-stop", aliases: [], changes: [{stringNumber: 2, fromNote: "D#", toNote: "C#", changeType: "lower", notes: ""}]}
+  ];
+  result.pedalOrder = day ? ["C", "B", "A"] : ["A", "B", "C"];
+  return store.normalizeProfile(result);
+}
+
+const emmons = profile(false);
+const projected = grid.project(emmons);
+assert.deepEqual(projected.pedalGroups.map((group) => group.states[0].id), ["A", "B", "C"]);
+assert.deepEqual(projected.leverGroups.map((group) => group.physicalPosition), ["RKL", "RKR"]);
+assert.deepEqual(projected.leverGroups[0].states.map((state) => state.headerLabel), ["½", "Full"]);
+assert.deepEqual(projected.leverGroups[1].states.map((state) => state.headerLabel), ["½", "Full"]);
+assert.deepEqual(projected.profile, emmons);
+assert.equal(projected.cells["5:A"].label, "C# ↑2");
+assert.equal(projected.cells["2:rkr-half"].label, "D ↓1");
+assert.equal(grid.formatCell({fromNote: "C", toNote: "F#", changeType: "lower"}).label, "F# ↓6");
+assert.equal(grid.formatCell({fromNote: "C", toNote: "F#", changeType: "raise"}).label, "F# ↑6");
+
+const day = profile(true);
+assert.deepEqual(grid.project(day).pedalGroups.map((group) => group.states[0].id), ["C", "B", "A"]);
+
+let edited = grid.setCell(emmons, "A", 6, -2);
+let change = edited.controls.find((control) => control.id === "A").changes.find((item) => item.stringNumber === 6);
+assert.deepEqual(change, {stringNumber: 6, fromNote: "G#", toNote: "F#", changeType: "lower", notes: ""});
+edited = grid.setCell(edited, "A", 6, 1);
+change = edited.controls.find((control) => control.id === "A").changes.find((item) => item.stringNumber === 6);
+assert.equal(change.toNote, "A");
+edited = grid.setCell(edited, "A", 6, 0);
+assert.equal(edited.controls.find((control) => control.id === "A").changes.some((item) => item.stringNumber === 6), false);
+
+edited.controls.find((control) => control.id === "rkl-half").label = "My G half";
+edited.controls.find((control) => control.id === "rkl-half").physicalPosition = "LKV";
+const moved = grid.project(edited);
+assert.equal(moved.states.find((state) => state.id === "rkl-half").label, "My G half");
+assert.equal(moved.states.find((state) => state.id === "rkl-half").physicalPosition, "LKV");
+assert.equal(moved.states.find((state) => state.id === "rkl-half").id, "rkl-half");
+
+const legacy = store.migrateLegacyProfile({name: "No right knee", strings: emmons.strings, controls: emmons.controls.filter((control) => !control.physicalPosition.startsWith("RK"))});
+assert.equal(grid.project(legacy).leverGroups.some((group) => group.physicalPosition === "RKL"), false);
+assert.match(legacy.reviewIssues.join(" "), /No RKL state is currently recorded/);
+"""
+    result = subprocess.run(
+        ["node", "-e", script],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
