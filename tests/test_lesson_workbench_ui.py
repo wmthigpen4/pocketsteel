@@ -53,6 +53,7 @@ def test_lesson_workbench_has_reviewed_custom_and_complete_lesson_surfaces() -> 
     assert 'id="lesson-level"' in html
     assert 'id="lesson-duration"' in html
     assert 'id="lesson-result" hidden' in html
+    assert 'lesson-workbench.js?v=lesson-teaching-58be204' in html
     assert '"Learn the concept and the move"' in script
     assert "Beginner" in html and "Intermediate" in html and "Advanced" in html
     assert "5 minutes" in html and "15 minutes" in html and "Deep dive" in html
