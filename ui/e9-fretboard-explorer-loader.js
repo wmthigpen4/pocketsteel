@@ -2,7 +2,7 @@
   "use strict";
 
   const MANIFEST_URL = "/ui/explorer-data-v1/manifest.json";
-  const EXPLORER_SCRIPT_URL = "e9-fretboard-explorer.js?v=copedent-library-v2-20260714-5";
+  const EXPLORER_SCRIPT_URL = "e9-fretboard-explorer.js?v=table-first-copedent-20260714-2";
   const payloadsByKey = window.STEEL_RAG_E9_EXPLORER_PAYLOADS || {};
   const payloadsByCopedent = window.STEEL_RAG_E9_EXPLORER_PAYLOADS_BY_COPEDENT || {};
   const pendingLoads = new Map();
