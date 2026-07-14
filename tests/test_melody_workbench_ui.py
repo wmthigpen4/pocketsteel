@@ -424,6 +424,8 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'id="studio-route-tabs"' in html
     assert 'id="studio-playing-style"' in html
     assert '>Playing style' in html
+    assert 'answer-client.js?v=amazing-tablature-20260714-1' in html
+    assert 'melody-workbench.js?v=amazing-tablature-20260714-1' in html
     assert html.index('id="studio-fretboard"') < html.index('id="studio-arrangement-choices"') < html.index('id="studio-tab"')
     assert 'id="studio-note-editor" hidden' in html
     assert 'id="studio-octave-down"' in html
@@ -443,7 +445,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Change the register for this note only" in html
     assert "state.selectedPhraseIndex" in script
     assert html.count("?v=module-boundaries-20260713") == 2
-    assert html.count("?v=account-copedents-20260714-1") == 3
+    assert html.count("?v=account-copedents-20260714-1") == 1
     assert 'elements.sectionNavigation.hidden = needsSource || Number(section.total || 0) <= 1;' in script
     assert 'src="vendor/vexflow-5.0.0.js?v=5.0.0"' in html
     assert "VexFlow" in Path("ui/vendor/VEXFLOW-LICENSE.txt").read_text(encoding="utf-8")
