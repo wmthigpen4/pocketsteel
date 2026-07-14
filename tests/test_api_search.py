@@ -4990,6 +4990,25 @@ def test_natural_language_major_chord_position_prompts_normalize_before_retrieva
         assert payload["warnings"] == []
 
 
+def test_major_without_chord_noun_routes_deterministically_across_keys() -> None:
+    cases = (
+        ("How do I play a G major?", "G major positions on E9", "G major is G-B-D"),
+        ("How can I play C# major?", "C# major positions on E9", "C# major is C#-E#-G#"),
+        ("How should I play B-flat major on E9?", "Bb major positions on E9", "Bb major is Bb-D-F"),
+        ("Show me how to play Eb major.", "Eb major positions on E9", "Eb major is Eb-G-Bb"),
+    )
+
+    for question, title, spelling in cases:
+        payload = answer_for_question(question, noisy_practical_sources())
+
+        assert spelling in payload["answer"]
+        assert "I need a more specific steel-guitar question" not in payload["answer"]
+        assert payload["fretboard"]["title"] == title
+        assert payload["fretboard"]["positions"]
+        assert payload["sources"] == []
+        assert payload["warnings"] == []
+
+
 def test_natural_language_minor_chord_position_prompts_normalize_before_retrieval() -> None:
     cases = (
         (

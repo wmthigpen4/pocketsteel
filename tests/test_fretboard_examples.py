@@ -1220,6 +1220,39 @@ def test_valid_chord_symbols_are_not_blocked_by_guardrail() -> None:
     assert fretboard_payload_for_question("how do I play a G/F chord?") is None
 
 
+def test_natural_language_major_requests_route_for_every_chromatic_root() -> None:
+    roots = ("C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B")
+
+    for root in roots:
+        question = f"How do I play a {root} major?"
+        request = major_chord_location_request_for_question(question)
+        payload = fretboard_payload_for_question(question)
+
+        assert request is not None, question
+        assert request.requested_root == root
+        assert payload is not None, question
+        assert payload["positions"], question
+
+
+def test_natural_language_major_requests_accept_common_question_forms() -> None:
+    questions = (
+        "How do I play G major?",
+        "How can I play a B-flat major?",
+        "How should I play F-sharp major on E9?",
+        "How would you play an Eb major chord on pedal steel?",
+        "Show me how to play A major.",
+        "What's the best way to play a C# major chord?",
+    )
+
+    for question in questions:
+        request = major_chord_location_request_for_question(question)
+        payload = fretboard_payload_for_question(question)
+
+        assert request is not None, question
+        assert payload is not None, question
+        assert payload["positions"], question
+
+
 def test_b_flat_minor_preserves_flat_spelling_in_answer_and_payload() -> None:
     answer = minor_chord_answer_for_question("What does Bb minor look like?")
     payload = fretboard_payload_for_question("What does Bb minor look like?")

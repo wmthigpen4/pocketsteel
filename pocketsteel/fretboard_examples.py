@@ -2598,7 +2598,11 @@ def major_chord_location_request_for_question(question: str) -> MajorChordLocati
         return None
     e9_context = chord_context_pattern()
     optional_context = rf"(?:\s+{e9_context})?"
+    major_target = r"([a-g](?:##|bb|#|b)?)(?:\s+(?:major(?:\s+chord)?|chord))?"
     patterns = (
+        rf"^how (?:do|can|should|would) (?:i|you) play (?:a|an)?\s*{major_target}{optional_context}$",
+        rf"^show me how to play (?:a|an)?\s*{major_target}{optional_context}$",
+        rf"^what(?:'s| is) the best way to play (?:a|an)?\s*{major_target}{optional_context}$",
         rf"^where are (?:some )?places to play (?:a|an)?\s*([a-g](?:##|bb|#|b)?)(?:\s+(?:major|major chords?|chords?))?{optional_context}$",
         rf"^where are (?:some\s+)?([a-g](?:##|bb|#|b)?)(?:\s+(?:major|major chords?|chords?))?{optional_context}$",
         rf"^where(?: all)? can i play (?:a|an)?\s*([a-g](?:##|bb|#|b)?)(?:\s+(?:major|major chords?|chords?))?{optional_context}$",
