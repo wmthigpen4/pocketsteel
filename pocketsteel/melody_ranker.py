@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable, Mapping, Sequence
 
-from pocketsteel.melody_decision_rules import MODEL_VERSION, normalize_style_family
+from pocketsteel.melody_decision_rules import RANKER_CONTRACT_VERSION, normalize_style_family
 
 
 FEATURE_NAMES = (
@@ -106,7 +106,7 @@ def train_pairwise_ranker(
                         alternative_features[name] - chosen_features[name]
                     )
     return RankerModel(
-        model_version=MODEL_VERSION,
+        model_version=RANKER_CONTRACT_VERSION,
         feature_names=FEATURE_NAMES,
         weights_by_style=weights_by_style,
         example_count=len(examples),

@@ -5,9 +5,15 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Literal
 
+from pocketsteel.amazing_tablature_model import (
+    MODEL_ID as APPROVED_MODEL_ID,
+    MODEL_STATUS as APPROVED_MODEL_STATUS,
+    model_metadata_payload,
+)
 
-MODEL_VERSION = "melody-decision-ranker-v1"
-MODEL_STATUS = "seed"
+RANKER_CONTRACT_VERSION = "melody-decision-ranker-v1"
+MODEL_VERSION = APPROVED_MODEL_ID
+MODEL_STATUS = APPROVED_MODEL_STATUS
 SUPPORTED_STYLE_FAMILIES = {
     "auto",
     "vocal_steel",
@@ -243,6 +249,7 @@ def rule_contract_payload(style_family: object = "auto") -> dict[str, object]:
     return {
         "modelVersion": MODEL_VERSION,
         "modelStatus": MODEL_STATUS,
+        "modelMetadata": model_metadata_payload(),
         "styleFamily": style,
         "styleLabel": descriptor["label"],
         "styleReason": descriptor["reason"],

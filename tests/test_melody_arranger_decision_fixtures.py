@@ -7,6 +7,7 @@ import pytest
 from pocketsteel.melody_arranger import (
     MelodyInput,
     PositionCandidate,
+    _learned_start_penalty,
     _transition_between,
     choose_mixed_path,
     single_note_candidates,
@@ -54,6 +55,32 @@ def _lever_entry_count(path: list[PositionCandidate]) -> int:
             entries += 1
         previous = current
     return entries
+
+
+def test_approved_beta_learned_score_prefers_reviewed_chord_texture() -> None:
+    single = _open_grip(3, (4,), 67)
+    triad = _open_grip(3, (4, 5, 6), 67)
+
+    single_penalty = _learned_start_penalty(single, "chord_arrival", 3, "chord_melody")
+    triad_penalty = _learned_start_penalty(triad, "chord_arrival", 3, "chord_melody")
+    auto_penalty = _learned_start_penalty(triad, "chord_arrival", 3, "auto")
+
+    assert triad_penalty < single_penalty
+    assert auto_penalty == triad_penalty
+
+
+def test_approved_beta_learned_score_prefers_reviewed_harmonized_dyad() -> None:
+    single = _open_grip(3, (4,), 67)
+    dyad = _open_grip(3, (4, 5), 67)
+    triad = _open_grip(3, (4, 5, 6), 67)
+
+    penalties = {
+        len(candidate.notes): _learned_start_penalty(candidate, "sustained_note", 3, "harmonized")
+        for candidate in (single, dyad, triad)
+    }
+
+    assert penalties[2] < penalties[1]
+    assert penalties[2] < penalties[3]
 
 
 def test_blocking_fixture_full_grip_slide_sustains_every_attacked_string() -> None:

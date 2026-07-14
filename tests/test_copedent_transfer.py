@@ -371,6 +371,10 @@ def test_rule_contract_is_versioned_and_documents_ordered_texture_fallback() -> 
     contract = rule_contract_payload("vocal_steel")
 
     assert contract["modelVersion"] == MODEL_VERSION
+    assert contract["modelVersion"] == "at-44c59f08724d501e"
+    assert contract["modelStatus"] == "approved_beta"
+    assert contract["modelMetadata"]["exampleCount"] == 45
+    assert contract["modelMetadata"]["copedentNeutral"] is True
     assert contract["styleFamily"] == "vocal_steel"
     assert contract["fallbackOrder"][2] == "reduce_triad_to_dyad_to_single_melody"
     assert all(

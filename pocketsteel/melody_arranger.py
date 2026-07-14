@@ -7,6 +7,7 @@ import re
 from itertools import combinations
 from typing import Any, Mapping, Sequence
 
+from pocketsteel.amazing_tablature_model import WEIGHTS_BY_STYLE
 from pocketsteel.answer_tab_examples import fretboard_payload_for_tab_example
 from pocketsteel.copedent_transfer import (
     absolute_pitch_for_profile,
@@ -40,6 +41,7 @@ from pocketsteel.melody_models import (
     MelodyInput,
     PositionCandidate,
 )
+from pocketsteel.melody_ranker import score_candidate
 from pocketsteel.melody_decision_rules import (
     MODEL_STATUS,
     MODEL_VERSION,
@@ -1865,10 +1867,11 @@ def _mixed_start_cost(
         0,
         0,
         0,
+        _texture_penalty(len(candidate.notes), desired),
+        _learned_start_penalty(candidate, roles[index], home_fret, style_family),
         len(candidate.controls),
         abs(candidate.fret - home_fret),
         0,
-        _texture_penalty(len(candidate.notes), desired),
         _difficulty_penalty(candidate),
         abs(candidate.top_string - 5) + len(candidate.notes),
     )
@@ -1900,10 +1903,11 @@ def _mixed_transition_cost(
         0 if phrase_reset else _family_change_penalty(previous, current),
         _voice_leading_cost(previous, current),
         _string_group_change_penalty(previous, current),
+        _texture_penalty(len(current.notes), desired),
+        _learned_transition_penalty(previous, current, roles[index], style_family),
         _control_posture_penalty(previous, current),
         abs(current.fret - previous.fret),
         texture_change * 2 + _style_transition_penalty(previous, current, style_family),
-        _texture_penalty(len(current.notes), desired),
         _difficulty_penalty(current),
         len(current.controls),
     )
@@ -1912,6 +1916,87 @@ def _mixed_transition_cost(
 def _style_candidate_penalty(candidate: PositionCandidate, style_family: str) -> int:
     policy = style_policy(style_family)
     return policy.texture_bias(len(candidate.notes)) + (policy.control_bias if candidate.controls else 0)
+
+
+def _learned_style_for_role(style_family: str, role: str) -> str:
+    """Resolve Best Fit through existing phrase-role semantics.
+
+    The approved artifact contains reviewed style-family weights but no
+    separately trained ``auto`` row. Best Fit therefore selects an approved
+    learned family using the same role contract that already drives its seed
+    texture policy; it never synthesizes or averages unapproved weights.
+    """
+
+    selected = normalize_style_family(style_family)
+    if selected != "auto":
+        return selected
+    if role in {"pickup", "passing_tone", "tension"}:
+        return "single_note_run"
+    if role == "sustained_note":
+        return "vocal_steel"
+    return "chord_melody"
+
+
+def _learned_candidate_penalty(
+    candidate: PositionCandidate,
+    *,
+    role: str,
+    style_family: str,
+    bar_travel: int,
+    control_changes: int,
+    pocket_changes: int,
+    voice_leading: int,
+) -> int:
+    learned_style = _learned_style_for_role(style_family, role)
+    weights = WEIGHTS_BY_STYLE[learned_style]
+    features = {
+        "textureSize": len(candidate.notes),
+        "barTravel": bar_travel,
+        "controlChanges": control_changes,
+        "pocketChanges": pocket_changes,
+        "voiceLeading": voice_leading,
+        "sustainedVoices": 0,
+        "repickedVoices": 0,
+        "phraseRole": role,
+    }
+    return round(score_candidate(features, weights) * 1000)
+
+
+def _learned_start_penalty(
+    candidate: PositionCandidate,
+    role: str,
+    home_fret: int,
+    style_family: str,
+) -> int:
+    return _learned_candidate_penalty(
+        candidate,
+        role=role,
+        style_family=style_family,
+        bar_travel=abs(candidate.fret - home_fret),
+        control_changes=len(candidate.controls),
+        pocket_changes=int(candidate.fret != home_fret),
+        voice_leading=0,
+    )
+
+
+def _learned_transition_penalty(
+    previous: PositionCandidate,
+    current: PositionCandidate,
+    role: str,
+    style_family: str,
+) -> int:
+    return _learned_candidate_penalty(
+        current,
+        role=role,
+        style_family=style_family,
+        bar_travel=abs(current.fret - previous.fret),
+        control_changes=len(set(previous.controls) ^ set(current.controls)),
+        pocket_changes=int(
+            current.fret != previous.fret
+            or current.pattern_family != previous.pattern_family
+        ),
+        voice_leading=_voice_leading_cost(previous, current),
+    )
 
 
 def _style_transition_penalty(
