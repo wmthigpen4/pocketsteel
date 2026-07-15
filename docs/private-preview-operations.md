@@ -46,28 +46,72 @@ deploy/macos/install-private-preview-launchdaemon.sh load
 
 Do not put secret values in the rendered plist.
 
-## Restart After A Committed Runtime Change
+## Activate An Exact Release
 
-Prefer the documented wrapper when an interactive administrator session is
-available:
+The subscriber-facing origin must run from a clean detached release checkout,
+not the primary development worktree. Keep shared local data in the primary
+data directory and pass it separately; activation never copies or mutates the
+corpus or vector stores.
 
 ```bash
+release="$HOME/.steel-rag/releases/<short-sha>"
+mkdir -p "$release"
+git -C "$release" init
+git -C "$release" fetch --depth=1 "file://$(pwd)" <full-sha>
+git -C "$release" checkout --detach FETCH_HEAD
+ln -s "$(pwd)/.venv" "$release/.venv"
+
+STEEL_RAG_REPO_DIR="$release" \
+STEEL_RAG_DATA_DIR="$(pwd)" \
+STEEL_RAG_EXPECTED_GIT_SHA=<full-sha> \
+deploy/macos/install-private-preview-launchdaemon.sh activate
+```
+
+`activate` requires administrator authorization, installs the hardened wrapper
+and plist, loads the exact release, and refuses success unless live, ready, and
+version checks pass. If activation fails after replacing a loaded definition,
+the installer restores the previous plist and bootstraps it again.
+
+Run the same release validation without changing system state first:
+
+```bash
+STEEL_RAG_REPO_DIR="$release" \
+STEEL_RAG_DATA_DIR="$(pwd)" \
+STEEL_RAG_EXPECTED_GIT_SHA=<full-sha> \
+deploy/macos/install-private-preview-launchdaemon.sh preflight
+```
+
+For a restart of the already configured exact release, pass the same release
+directory and SHA:
+
+```bash
+STEEL_RAG_REPO_DIR="$release" \
+STEEL_RAG_DATA_DIR="$(pwd)" \
+STEEL_RAG_EXPECTED_GIT_SHA=<full-sha> \
 deploy/macos/install-private-preview-launchdaemon.sh restart
 ```
 
-If automation already has permission to manage the loaded service, first allow
-the old process to exit fully, then start the service. A rapid stop/start can
-leave launchd without a listener. Verify readiness rather than assuming the
-restart succeeded.
+Never terminate the port-8770 listener as a deployment mechanism. Graceful
+SIGTERM exits successfully, and old `KeepAlive.SuccessfulExit=false` installs
+can leave the site stopped. Do not run `kill`, `pkill`, or
+`lsof -tiTCP:8770 | xargs kill` in an automated preview refresh.
+
+`STEEL_RAG_REPLACE_PID` exists only for an incident handover from a known
+temporary origin. `activate` verifies that the exact PID owns port 8770, sends
+it graceful TERM only after the new plist is installed, then requires the
+launchd-supervised PID to own the listener before reporting success. Do not use
+this option for normal deployments.
+
+Read-only verification does not require administrator authorization:
 
 ```bash
-curl --fail --silent --show-error http://127.0.0.1:8770/health/live
-curl --fail --silent --show-error http://127.0.0.1:8770/health/ready
-curl --fail --silent --show-error http://127.0.0.1:8770/api/version
+STEEL_RAG_EXPECTED_GIT_SHA=<full-sha> \
+deploy/macos/install-private-preview-launchdaemon.sh verify
 ```
 
-Expected health result is `{"status":"live"}` or `{"status":"ready"}`.
-`/api/version` must report the short form of the intended current Git HEAD.
+The verification command checks `/health/live`, `/health/ready`, and
+`/api/version`; the version must report the short form of the intended exact
+release.
 
 ## Protected Browser Smoke
 

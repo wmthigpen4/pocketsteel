@@ -39,7 +39,10 @@ commit, run its focused tests plus the full suite, then restart:
 git revert <bad-commit>
 .venv/bin/pytest -q
 npm run check:js
-deploy/macos/install-private-preview-launchdaemon.sh restart
+STEEL_RAG_REPO_DIR="$HOME/.steel-rag/releases/<short-sha>" \
+STEEL_RAG_DATA_DIR="$HOME/Documents/Pocket Steel" \
+STEEL_RAG_EXPECTED_GIT_SHA=<full-sha> \
+deploy/macos/install-private-preview-launchdaemon.sh activate
 ```
 
 Do not use `git reset --hard`, `git checkout --`, `git clean`, or delete dirty

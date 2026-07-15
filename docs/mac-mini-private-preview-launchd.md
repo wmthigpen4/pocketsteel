@@ -74,11 +74,34 @@ Load it:
 deploy/macos/install-private-preview-launchdaemon.sh load
 ```
 
-Restart it after repo or env updates:
+Activate a clean detached release after reviewed code changes:
 
 ```bash
+STEEL_RAG_REPO_DIR="$HOME/.steel-rag/releases/<short-sha>" \
+STEEL_RAG_DATA_DIR="$HOME/Documents/Pocket Steel" \
+STEEL_RAG_EXPECTED_GIT_SHA=<full-sha> \
+deploy/macos/install-private-preview-launchdaemon.sh activate
+```
+
+The dedicated release contains code only. `STEEL_RAG_DATA_DIR` points the
+wrapper at existing local corpus/vector paths without copying or modifying
+them. Activation rejects a branch checkout, tracked modifications, or a SHA
+mismatch.
+
+Restart the same installed release only with the exact release and SHA:
+
+```bash
+STEEL_RAG_REPO_DIR="$HOME/.steel-rag/releases/<short-sha>" \
+STEEL_RAG_DATA_DIR="$HOME/Documents/Pocket Steel" \
+STEEL_RAG_EXPECTED_GIT_SHA=<full-sha> \
 deploy/macos/install-private-preview-launchdaemon.sh restart
 ```
+
+Do not kill the port listener to refresh the service. The runtime handles
+SIGTERM gracefully, and a successful exit is not a safe implicit restart
+contract. The hardened LaunchDaemon uses `KeepAlive=true`, while the installer
+uses explicit launchctl operations followed by live, ready, and exact-version
+verification.
 
 Unload it for rollback:
 
@@ -125,7 +148,9 @@ Expected shape:
 {"git_sha":"<current-head>","git_branch":"feature/answer-api","python_module":"pocketsteel.api","auth_provider":"cloudflare_access"}
 ```
 
-If `/api/version` does not report the expected commit, restart the LaunchDaemon after confirming the repo checkout is at the intended HEAD.
+If `/api/version` does not report the expected commit, do not terminate the
+listener. Confirm the configured detached release, then run the exact-SHA
+`restart` command above.
 
 ## Cloudflare Tunnel Status
 

@@ -87,11 +87,10 @@ Open:
 http://127.0.0.1:8770/ui/steel-guitar-rag-mock.html
 ```
 
-Kill the server before restarting it:
-
-```bash
-lsof -tiTCP:8770 -sTCP:LISTEN | xargs kill
-```
+For a disposable local development server on a non-production port, stop the
+specific process from the terminal that started it. Never use listener-kill
+commands against protected-preview port `8770`; protected-preview activation
+and restart are health-gated in `docs/private-preview-operations.md`.
 
 Run the answer eval against the local server:
 

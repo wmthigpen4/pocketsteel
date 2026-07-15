@@ -28,6 +28,8 @@
     <string>1</string>
     <key>STEEL_RAG_REPO_DIR</key>
     <string>__STEEL_RAG_REPO_DIR__</string>
+    <key>STEEL_RAG_DATA_DIR</key>
+    <string>__STEEL_RAG_DATA_DIR__</string>
     <key>STEEL_RAG_ENV_FILE</key>
     <string>__STEEL_RAG_ENV_FILE__</string>
     <key>STEEL_RAG_LOG_DIR</key>
@@ -42,10 +44,7 @@
   <true/>
 
   <key>KeepAlive</key>
-  <dict>
-    <key>SuccessfulExit</key>
-    <false/>
-  </dict>
+  <true/>
 
   <key>StandardOutPath</key>
   <string>__STEEL_RAG_LOG_DIR__/app.out.log</string>
