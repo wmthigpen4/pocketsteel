@@ -364,6 +364,7 @@
       showStringLabels: false,
       showNoteLabels: true,
       response: null,
+      exploredTabEventIndex: null,
       scoreDraft: null,
       scoreEditingEnabled: true,
       scoreSelectedIndex: -1,
@@ -1275,6 +1276,12 @@
     gripFacts: $("#studio-grip-facts"),
     tab: $("#studio-tab"),
     tabCode: $("#studio-tab-code"),
+    tabAlternatives: $("#studio-tab-alternatives"),
+    tabAlternativesHeading: $("#studio-tab-alternatives-heading"),
+    tabAlternativesSummary: $("#studio-tab-alternatives-summary"),
+    tabAlternativesList: $("#studio-tab-alternatives-list"),
+    tabAlternativesNote: $("#studio-tab-alternatives-note"),
+    tabAlternativesClose: $("#studio-tab-alternatives-close"),
     transitionKey: $("#studio-transition-key"),
     wholeSongTab: $("#studio-whole-song-tab"),
     wholeSongTabCode: $("#studio-whole-song-tab-code"),
@@ -2485,6 +2492,138 @@
     }
   }
 
+  function tabNoteToken(note) {
+    const labels = (note?.changeLabels || []).map(String).filter(Boolean);
+    const changes = (note?.changes || []).map(String).filter(Boolean);
+    return `${Number(note?.fret)}${labels.length ? labels.join("+") : changes.join("")}`;
+  }
+
+  function tabConnectorTokens(transition) {
+    if (!transition) return {};
+    const tokens = {};
+    (transition.voiceActions || []).forEach((item) => {
+      const string = Number(item?.string);
+      const action = String(item?.action || "");
+      if (!Number.isInteger(string)) return;
+      if (["bar_slide", "pedal_glide", "lever_glide"].includes(action)) tokens[string] = "~~~~~";
+      else if (action === "hold") tokens[string] = "-----";
+    });
+    (transition.sustainedStrings || []).forEach((value) => {
+      const string = Number(value);
+      if (!Number.isInteger(string) || tokens[string]) return;
+      if (["bar_slide", "pedal_glide", "lever_glide"].includes(String(transition.kind || ""))) tokens[string] = "~~~~~";
+      else if (String(transition.kind || "") === "hold") tokens[string] = "-----";
+    });
+    return tokens;
+  }
+
+  function interactiveTabColumns(route) {
+    const transitions = new Map((route?.transitions || []).map((item) => [item.toEventId, item]));
+    let previousChord = "";
+    return (route?.events || []).flatMap((event, eventIndex) => {
+      const columns = [];
+      const transition = eventIndex > 0 ? transitions.get(event.id) : null;
+      if (transition) {
+        const tokens = tabConnectorTokens(transition);
+        const width = Math.max(5, ...Object.values(tokens).map((token) => String(token).length)) + 2;
+        columns.push({ kind: "connector", tokens, width });
+      }
+      const chord = event.chord && event.chord !== previousChord ? event.chord : "";
+      if (event.chord) previousChord = event.chord;
+      const tokens = (event.notes || []).map(tabNoteToken);
+      const width = Math.max(4, chord.length, ...tokens.map((token) => token.length)) + 2;
+      columns.push({ kind: "event", event, eventIndex, chord, width });
+      return columns;
+    });
+  }
+
+  function highlightTabPosition(eventIndex = state.exploredTabEventIndex) {
+    elements.tabCode.querySelectorAll("[data-tab-event-index]").forEach((button) => {
+      button.classList.toggle("is-related", eventIndex !== null && Number(button.dataset.tabEventIndex) === Number(eventIndex));
+    });
+  }
+
+  function renderTabAlternatives(route, eventIndex) {
+    const event = route?.events?.[eventIndex];
+    if (!event) return;
+    state.exploredTabEventIndex = eventIndex;
+    selectEvent(eventIndex);
+    highlightTabPosition(eventIndex);
+    const pitchLabels = scorePitchesForEvent(event).map((pitch) => scoreUi.pitchLabel(pitch));
+    elements.tabAlternativesHeading.textContent = pitchLabels.length
+      ? `Other ways to play ${pitchLabels.join(" + ")}`
+      : "Other ways to play this position";
+    elements.tabAlternativesSummary.textContent = `Selected position: ${compactGripDescription(event)}.`;
+    elements.tabAlternativesList.replaceChildren();
+    const alternatives = event.alternatePositions || [];
+    alternatives.forEach((position, index) => {
+      const card = doc.createElement("article");
+      card.className = "tab-alternative";
+      const title = doc.createElement("strong");
+      title.textContent = `Option ${index + 1}`;
+      const positionText = doc.createElement("span");
+      positionText.textContent = compactGripDescription(event, {
+        strings: position.strings,
+        fret: position.fret,
+        controls: position.controlLabels
+      });
+      const pitches = doc.createElement("span");
+      pitches.textContent = `Same pitches: ${(position.pitchLabels || pitchLabels).join(" + ")}`;
+      card.append(title, positionText, pitches);
+      elements.tabAlternativesList.appendChild(card);
+    });
+    elements.tabAlternativesNote.textContent = alternatives.length
+      ? `${event.selectionReason || "The arrangement chose the highlighted grip for its fit with the surrounding notes."} Every option shown passes the active copedent's pitch and mechanical checks.`
+      : "No other exact-pitch grip passed the active copedent's pitch and mechanical checks. Compare another Arrangement choice to hear a different texture.";
+    elements.tabAlternatives.hidden = false;
+    elements.tabAlternativesHeading.focus({ preventScroll: true });
+  }
+
+  function renderInteractiveTab(route) {
+    elements.tabCode.replaceChildren();
+    state.exploredTabEventIndex = null;
+    elements.tabAlternatives.hidden = true;
+    const columns = interactiveTabColumns(route);
+    if (!columns.length) {
+      elements.tabCode.textContent = route?.tab?.tabText || "";
+      return;
+    }
+    const rows = [
+      ...(columns.some((column) => column.kind === "event" && column.chord) ? [{ label: "Ch |", string: null }] : []),
+      ...Array.from({ length: 10 }, (_, index) => ({ label: `${String(index + 1).padStart(2, " ")} |`, string: index + 1 }))
+    ];
+    rows.forEach((row, rowIndex) => {
+      elements.tabCode.append(doc.createTextNode(row.label));
+      columns.forEach((column) => {
+        let token = "";
+        if (column.kind === "connector") token = row.string === null ? "" : String(column.tokens[row.string] || "");
+        else if (row.string === null) token = column.chord;
+        else {
+          const note = (column.event.notes || []).find((item) => Number(item.string) === row.string);
+          token = note ? tabNoteToken(note) : "";
+          if (token) {
+            const button = doc.createElement("button");
+            button.type = "button";
+            button.className = "tab-position";
+            button.dataset.tabEventIndex = String(column.eventIndex);
+            button.textContent = token;
+            button.setAttribute("aria-label", `Explore note ${column.eventIndex + 1}, string ${row.string}, ${token}`);
+            button.addEventListener("mouseenter", () => highlightTabPosition(column.eventIndex));
+            button.addEventListener("mouseleave", () => highlightTabPosition());
+            button.addEventListener("focus", () => highlightTabPosition(column.eventIndex));
+            button.addEventListener("click", () => renderTabAlternatives(route, column.eventIndex));
+            elements.tabCode.appendChild(button);
+          }
+        }
+        if (!(column.kind === "event" && row.string !== null && token)) {
+          elements.tabCode.append(doc.createTextNode(token));
+        }
+        elements.tabCode.append(doc.createTextNode(" ".repeat(Math.max(0, column.width - token.length))));
+      });
+      if (rowIndex < rows.length - 1) elements.tabCode.append(doc.createTextNode("\n"));
+    });
+  }
+
   function activateRoute(routeId) {
     const exercise = state.response?.melodyExercise;
     const route = (exercise?.routes || []).find((item) => item.id === routeId);
@@ -2504,7 +2643,7 @@
     if (elements.practiceChordOption.hidden) elements.practiceChords.checked = false;
     renderResultScore(exercise, route);
     elements.transitionKey.hidden = !(route.transitions || []).length;
-    elements.tabCode.textContent = route.tab?.tabText || "";
+    renderInteractiveTab(route);
     selectEvent(0);
   }
 
@@ -3033,6 +3172,13 @@
   elements.practiceLoopEnd.addEventListener("click", () => setLoopBoundary("end"));
   elements.practiceLoopClear.addEventListener("click", clearLoop);
   elements.printTab.addEventListener("click", printWholeSong);
+  elements.tabAlternativesClose.addEventListener("click", () => {
+    const eventIndex = state.exploredTabEventIndex;
+    state.exploredTabEventIndex = null;
+    elements.tabAlternatives.hidden = true;
+    highlightTabPosition();
+    elements.tabCode.querySelector(`[data-tab-event-index="${eventIndex}"]`)?.focus();
+  });
   elements.octaveToggle.addEventListener("click", () => {
     state.showOctaveMap = !state.showOctaveMap;
     updateOctaveMapVisibility();

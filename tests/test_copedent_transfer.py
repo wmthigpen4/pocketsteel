@@ -103,6 +103,28 @@ def test_saved_copedent_position_catalog_is_enumerated_once_per_grip_size(monkey
 
     assert result is not None
     assert calls == [False, True]
+    alternate_events = [
+        event
+        for route in result["melody_exercise"]["routes"]
+        for event in route["events"]
+        if event.get("alternatePositions")
+    ]
+    assert alternate_events
+    for event in alternate_events:
+        selected_pitches = sorted(event["mechanicalPitchesByString"].values())
+        selected_position = (
+            event["notes"][0]["fret"],
+            sorted(note["string"] for note in event["notes"]),
+            sorted(event["performanceControls"]),
+        )
+        for alternative in event["alternatePositions"]:
+            assert alternative["pitchValues"] == selected_pitches
+            assert (
+                alternative["fret"],
+                alternative["strings"],
+                sorted(alternative["controls"]),
+            ) != selected_position
+            assert len(alternative["pitchLabels"]) == len(selected_pitches)
 
 
 def test_photographed_source_profile_preserves_exact_d_and_g_mechanics() -> None:

@@ -136,6 +136,7 @@ def arrange_melody_routes(
             inputs=inputs,
             resolved_pitches=resolved_pitches,
             path=single_path,
+            candidate_groups=single_candidates,
             key=key,
             title=f"{title} — Single-note melody",
             recommended=False,
@@ -210,6 +211,7 @@ def arrange_melody_routes(
                 inputs=inputs,
                 resolved_pitches=resolved_pitches,
                 path=path,
+                candidate_groups=candidate_groups,
                 key=key,
                 title=f"{title} — {label}",
                 recommended=harmony_type in {"mixed_arrangement", "automatic_harmony"},
@@ -1069,6 +1071,73 @@ def _note_for_string(candidate: PositionCandidate, string: int) -> TabNote | Non
     return next((note for note in candidate.notes if note.string == string), None)
 
 
+def _candidate_pitch_values(
+    candidate: PositionCandidate,
+    *,
+    profile: E9CopedentProfile,
+) -> tuple[int, ...]:
+    return tuple(
+        sorted(
+            _absolute_pitch(note.string, candidate.fret, candidate.controls, profile=profile)
+            for note in candidate.notes
+        )
+    )
+
+
+def _candidate_position_key(candidate: PositionCandidate) -> tuple[Any, ...]:
+    return (
+        candidate.fret,
+        tuple(sorted((note.string, note.fret, tuple(note.changes)) for note in candidate.notes)),
+        tuple(candidate.controls),
+    )
+
+
+def _alternate_position_payloads(
+    selected: PositionCandidate,
+    candidates: Sequence[PositionCandidate],
+    *,
+    profile: E9CopedentProfile,
+    limit: int = 6,
+) -> list[dict[str, Any]]:
+    """Return already-validated positions that produce the exact selected pitches."""
+
+    selected_key = _candidate_position_key(selected)
+    selected_pitches = _candidate_pitch_values(selected, profile=profile)
+    alternatives = [
+        candidate
+        for candidate in candidates
+        if _candidate_position_key(candidate) != selected_key
+        and _candidate_pitch_values(candidate, profile=profile) == selected_pitches
+    ]
+    alternatives.sort(
+        key=lambda candidate: (
+            abs(candidate.fret - selected.fret),
+            len(set(candidate.controls) ^ set(selected.controls)),
+            candidate.fret,
+            tuple(note.string for note in candidate.notes),
+            tuple(candidate.controls),
+        )
+    )
+    unique: dict[tuple[Any, ...], PositionCandidate] = {}
+    for candidate in alternatives:
+        unique.setdefault(_candidate_position_key(candidate), candidate)
+
+    return [
+        {
+            "fret": candidate.fret,
+            "strings": sorted(note.string for note in candidate.notes),
+            "controls": list(candidate.controls),
+            "controlLabels": [control_tab_label(profile, control) for control in candidate.controls],
+            "pitchValues": list(_candidate_pitch_values(candidate, profile=profile)),
+            "pitchLabels": [
+                scientific_pitch_for_value(pitch)
+                for pitch in _candidate_pitch_values(candidate, profile=profile)
+            ],
+        }
+        for candidate in list(unique.values())[:limit]
+    ]
+
+
 def build_route(
     *,
     route_id: str,
@@ -1078,6 +1147,7 @@ def build_route(
     inputs: Sequence[MelodyInput],
     resolved_pitches: Sequence[int],
     path: Sequence[PositionCandidate],
+    candidate_groups: Sequence[Sequence[PositionCandidate]] | None = None,
     key: str,
     title: str,
     recommended: bool,
@@ -1256,6 +1326,13 @@ def build_route(
                 ),
             }
         )
+        alternatives = _alternate_position_payloads(
+            candidate,
+            candidate_groups[index - 1] if candidate_groups and index <= len(candidate_groups) else (),
+            profile=target_profile,
+        )
+        if alternatives:
+            payload["alternatePositions"] = alternatives
         if transition:
             payload["transitionFromPreviousId"] = transition["id"]
         if item.tie:

@@ -354,8 +354,18 @@
     #studio-result.is-octave-map-visible #studio-fretboard [data-highlight-dot][data-scientific-octave="5"] { fill: #f0bf69; }
     #studio-result.is-octave-map-visible #studio-fretboard [data-highlight-dot][data-scientific-octave="6"] { fill: #ff927d; }
     #studio-tab { margin-top: 18px; }
-    .tab-block { max-width: 100%; margin: 0; overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; background: rgba(4, 6, 6, 0.78); padding: 16px; color: var(--cream); font: 15px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre; }
-    .tab-block code { font: inherit; white-space: inherit; }
+    .tab-block { max-width: 100%; margin: 0; overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; background: repeating-linear-gradient(to bottom, transparent 0, transparent calc(1.55em - 1px), rgba(198, 204, 205, 0.13) calc(1.55em - 1px), rgba(198, 204, 205, 0.13) 1.55em), rgba(4, 6, 6, 0.78); background-position: 0 16px; padding: 16px; color: var(--cream); font: 15px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: pre; }
+    .tab-block code { display: block; min-width: max-content; font: inherit; white-space: inherit; }
+    .tab-position { appearance: none; display: inline; border: 0; border-bottom: 1px dotted rgba(240, 191, 105, 0.62); border-radius: 3px; background: transparent; padding: 0; color: #ffe0a2; font: inherit; line-height: inherit; cursor: pointer; }
+    .tab-position:hover, .tab-position:focus-visible, .tab-position.is-related { outline: none; background: rgba(240, 191, 105, 0.2); color: #fff4d7; box-shadow: 0 0 0 2px rgba(240, 191, 105, 0.2); }
+    .tab-alternatives { margin-top: 12px; border: 1px solid rgba(240, 191, 105, 0.34); border-radius: 14px; background: rgba(240, 191, 105, 0.07); padding: 14px; }
+    .tab-alternatives__head { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
+    .tab-alternatives__head h3 { margin: 2px 0 0; font-size: 20px; }
+    .tab-alternatives__eyebrow { margin: 0; color: var(--gold); font-size: 11px; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; }
+    .tab-alternatives__summary, .tab-alternatives__note { margin: 10px 0 0; color: var(--muted); line-height: 1.5; }
+    .tab-alternatives__list { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px; margin-top: 12px; }
+    .tab-alternative { display: grid; gap: 4px; border: 1px solid rgba(244, 234, 214, 0.14); border-radius: 11px; background: rgba(5, 7, 7, 0.34); padding: 10px 12px; }
+    .tab-alternative span { color: var(--muted); font-size: 12px; line-height: 1.45; }
     .result-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
     .section-navigation { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; margin: 0 0 16px; }
     .section-navigation strong { text-align: center; color: var(--gold); }
@@ -766,6 +776,15 @@
         <div id="studio-tab" hidden>
           <p class="transition-key" id="studio-transition-key" hidden><strong>Movement:</strong> <code>~~~~~</code> audible slide or control glide · <code>-----</code> held voice · blank connector means block, add, or repick</p>
           <pre class="tab-block" aria-label="Melody Studio tab"><code id="studio-tab-code"></code></pre>
+          <section class="tab-alternatives" id="studio-tab-alternatives" aria-labelledby="studio-tab-alternatives-heading" hidden>
+            <div class="tab-alternatives__head">
+              <div><p class="tab-alternatives__eyebrow">Same sounding notes</p><h3 id="studio-tab-alternatives-heading" tabindex="-1">Other ways to play this position</h3></div>
+              <button class="secondary-action" type="button" id="studio-tab-alternatives-close">Close</button>
+            </div>
+            <p class="tab-alternatives__summary" id="studio-tab-alternatives-summary"></p>
+            <div class="tab-alternatives__list" id="studio-tab-alternatives-list"></div>
+            <p class="tab-alternatives__note" id="studio-tab-alternatives-note"></p>
+          </section>
         </div>
         <div class="result-actions">
           <button class="primary-action" id="studio-continue" type="button" hidden>Continue</button>
@@ -790,12 +809,12 @@
   </aside>
 
   <script src="copedent-store.js?v=account-copedents-20260714-1"></script>
-  <script src="answer-client.js?v=ambiguous-control-fix-20260714-1"></script>
+  <script src="answer-client.js?v=tab-learning-20260714-1"></script>
   <script src="account-activity.js?v=plan-activity-20260714-1"></script>
   <script src="pedal-steel-fretboard-styles.js?v=module-boundaries-20260713"></script>
   <script src="pedal-steel-fretboard.js?v=module-boundaries-20260713"></script>
   <script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>
   <script src="melody-score.js?v=copedent-transfer-20260713-1"></script>
-  <script src="melody-workbench.js?v=arrange-speed-review-20260714-1"></script>
+  <script src="melody-workbench.js?v=tab-learning-20260714-1"></script>
 </body>
 </html>

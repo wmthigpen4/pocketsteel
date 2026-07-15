@@ -670,6 +670,16 @@ const STEEL_RAG_ANSWER_UI = (() => {
       textureFallback: isObjectRecord(event.textureFallback || event.texture_fallback)
         ? (event.textureFallback || event.texture_fallback)
         : null,
+      alternatePositions: Array.isArray(event.alternatePositions || event.alternate_positions)
+        ? (event.alternatePositions || event.alternate_positions).filter(isObjectRecord).map((position) => ({
+          fret: Number(position.fret),
+          strings: (position.strings || []).map(Number).filter(Number.isFinite),
+          controls: normalizeStringList(position.controls),
+          controlLabels: normalizeStringList(position.controlLabels || position.control_labels),
+          pitchValues: (position.pitchValues || position.pitch_values || []).map(Number).filter(Number.isFinite),
+          pitchLabels: normalizeStringList(position.pitchLabels || position.pitch_labels)
+        }))
+        : [],
       patternFamily: firstTextValue(event.patternFamily, event.pattern_family),
       canonicalGrip: firstTextValue(event.canonicalGrip, event.canonical_grip),
       selectionReason: firstTextValue(event.selectionReason, event.selection_reason),
