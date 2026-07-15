@@ -57,6 +57,17 @@ assert.deepEqual(studio.entryChoicePresentation("song", {replacing: true}), {lab
 assert.equal(studio.printableLessonTitle({title: "Amazing Grace — Complete E9 lesson", material: {song: "Amazing Grace"}}), "Amazing Grace");
 assert.equal(studio.printableLessonTitle({title: "Example — Section 2 E9 lesson"}), "Example");
 assert.equal(studio.printableLessonTitle({title: "Your melody exercise in G"}), "Your melody exercise in G");
+const previousStyleRoute = {events: [
+  {notes: [{string: 4, fret: 3, changes: []}]},
+  {notes: [{string: 5, fret: 3, changes: ["A"]}]}
+]};
+const changedStyleRoute = {events: [
+  {notes: [{string: 4, fret: 3, changes: []}]},
+  {notes: [{string: 5, fret: 5, changes: ["A", "B"]}]}
+]};
+assert.deepEqual(studio.changedTabPositionCount(previousStyleRoute, changedStyleRoute), {changed: 1, total: 2});
+assert.equal(studio.styleImpactSummary(previousStyleRoute, previousStyleRoute, "Pocket Playing"), "Pocket Playing uses the same Recommended tab for this melody.");
+assert.equal(studio.styleImpactSummary(previousStyleRoute, changedStyleRoute, "Singing Steel"), "Singing Steel changed 1 of 2 Recommended tab positions.");
 const literal = studio.parseSimpleTabEvents("S4: 3 5F 7");
 assert.deepEqual(literal.map((event) => [event.string, event.fret, event.changes]), [[4, 3, []], [4, 5, ["F"]], [4, 7, []]]);
 assert.deepEqual(studio.resolvePhrasePreview([{token: "5"}, {token: "6"}, {token: "1"}, {token: "3"}], "G").map((event) => event.pitch), ["D4", "E4", "G4", "B4"]);
@@ -433,7 +444,8 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'id="studio-contour"' in html
     assert 'id="studio-route-tabs"' in html
     assert 'id="studio-playing-style"' in html
-    assert '>Playing style' in html
+    assert "Style for Recommended" in html
+    assert '>Style for Recommended' in html
     assert 'answer-client.js?v=chord-karaoke-20260715-1' in html
     assert 'song-projects.js?v=chord-karaoke-learner-20260715-1' in html
     assert 'melody-workbench.js?v=chord-karaoke-20260715-3' in html
@@ -453,6 +465,9 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "event.alternatePositions || []" in script
     assert "const selectedRoute = preferredStudioRoute(exercise, state.selectedHarmonyType);" in script
     assert 'state.styleFamily = elements.playingStyle.value || "auto";' in script
+    assert 'state.selectedHarmonyType = "mixed_arrangement";' in script
+    assert "uses the same Recommended tab for this melody" in script
+    assert "Recommended tab positions" in script
     assert "hideFilterControls: true" in script
     assert "hidePositionTools: true" in script
     assert "hideLegend: true" in script

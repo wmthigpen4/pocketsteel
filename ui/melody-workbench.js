@@ -1034,6 +1034,33 @@
       || null;
   }
 
+  function tabPositionSignature(event = {}) {
+    if (event.rest) return "rest";
+    return JSON.stringify((event.notes || []).map((note) => [
+      Number(note.string),
+      Number(note.fret),
+      [...(note.changes || [])].map(String).sort()
+    ]));
+  }
+
+  function changedTabPositionCount(previousRoute, nextRoute) {
+    const previous = previousRoute?.events || [];
+    const next = nextRoute?.events || [];
+    const total = Math.max(previous.length, next.length);
+    let changed = 0;
+    for (let index = 0; index < total; index += 1) {
+      if (tabPositionSignature(previous[index]) !== tabPositionSignature(next[index])) changed += 1;
+    }
+    return { changed, total };
+  }
+
+  function styleImpactSummary(previousRoute, nextRoute, styleLabel = "This style") {
+    const { changed, total } = changedTabPositionCount(previousRoute, nextRoute);
+    if (!total) return "";
+    if (!changed) return `${styleLabel} uses the same Recommended tab for this melody.`;
+    return `${styleLabel} changed ${changed} of ${total} Recommended tab positions.`;
+  }
+
   const api = {
     MAX_EVENTS_PER_SECTION,
     TASKS,
@@ -1090,7 +1117,10 @@
     positionsWithScientificOctaves,
     melodyFretboardOptions,
     printableLessonTitle,
-    preferredStudioRoute
+    preferredStudioRoute,
+    tabPositionSignature,
+    changedTabPositionCount,
+    styleImpactSummary
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = api;
@@ -3060,14 +3090,23 @@
   });
   elements.playingStyle.addEventListener("change", async () => {
     const previous = state.styleFamily;
+    const previousHarmonyType = state.selectedHarmonyType;
+    const previousRecommended = preferredStudioRoute(state.response?.melodyExercise, "mixed_arrangement");
     state.styleFamily = elements.playingStyle.value || "auto";
+    state.selectedHarmonyType = "mixed_arrangement";
     elements.playingStyle.disabled = true;
-    elements.styleReason.textContent = "Rebuilding this arrangement in the selected style…";
+    elements.styleReason.textContent = "Rebuilding the Recommended arrangement in this style…";
     const sectionNumber = Number(state.response?.melodyExercise?.section?.number || state.sectionNumber || 1);
     const success = await submitSection(sectionNumber);
     if (!success) {
       state.styleFamily = previous;
+      state.selectedHarmonyType = previousHarmonyType;
       elements.playingStyle.value = previous;
+    } else {
+      const exercise = state.response?.melodyExercise;
+      const nextRecommended = preferredStudioRoute(exercise, "mixed_arrangement");
+      const impact = styleImpactSummary(previousRecommended, nextRecommended, exercise?.styleLabel || "This style");
+      elements.styleReason.textContent = [exercise?.styleReason, impact].filter(Boolean).join(" ");
     }
     elements.playingStyle.disabled = false;
   });
