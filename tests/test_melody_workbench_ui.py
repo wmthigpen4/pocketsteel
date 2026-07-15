@@ -532,6 +532,8 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Longer files are fine" in html
     assert "elements.scoreArrange.disabled = !draft.score.melody.some((item) => !item.rest) || unsupportedKey;" in script
     assert 'statusElement: elements.scoreArrangeStatus' in script
+    assert 'retryTransientOnce: true' in script
+    assert 'elements.scoreArrangeStatus.textContent = "";' in script
     assert 'id="studio-youtube-frame"' in html
     assert 'id="studio-catalog-grid"' in html
     assert 'id="studio-result-score"' in html

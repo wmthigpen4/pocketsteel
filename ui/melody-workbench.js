@@ -2796,6 +2796,7 @@
     try {
       const response = await answerUi.requestAnswer(questionForState(), {
         accessRole: session?.role || readAccessRole(),
+        retryTransientOnce: Boolean(options.retryTransientOnce),
         requestPayload: {
           melodyRequest: buildMelodyRequest(state),
           ...(global.STEEL_RAG_COPEDENTS?.requestContext?.() ? { copedentContext: global.STEEL_RAG_COPEDENTS.requestContext() } : {})
@@ -2884,9 +2885,15 @@
       const elapsed = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
       elements.scoreArrangeStatus.textContent = `Finding the best playable E9 route… ${elapsed}s`;
     }, 1000);
-    const success = await submitLesson(1, { preserveStructuredEvents: true, statusElement: elements.scoreArrangeStatus });
+    const success = await submitLesson(1, {
+      preserveStructuredEvents: true,
+      retryTransientOnce: true,
+      statusElement: elements.scoreArrangeStatus
+    });
     global.clearInterval(progressTimer);
-    if (!success) {
+    if (success) {
+      elements.scoreArrangeStatus.textContent = "";
+    } else {
       state.scoreDraft.review.status = previousReviewStatus;
       renderScoreBuilder();
     }

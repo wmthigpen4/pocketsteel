@@ -664,7 +664,8 @@ def test_backstage_my_setup_uses_live_three_stage_rig_locker_structure() -> None
     assert 'backstage-copedent-manager.js?v=backstage-cleanup-20260715-1' in html
     assert 'elements.activeBadge.textContent = validationLabel(currentProfile);' in manager
     assert 'alt="" width="2022" height="778"' in setup_panel
-    assert 'id="setup-active-heading">Loading active setup…</h3>' in setup_panel
+    assert 'aria-label="Current setup"' in setup_panel
+    assert 'id="setup-active-heading"' not in setup_panel
     assert 'id="setup-nameplate-name">Loading active setup…</span>' in setup_panel
     assert "Cory’s E9th" not in setup_panel
     assert "Cory's E9th" not in setup_panel
@@ -676,10 +677,15 @@ def test_backstage_my_setup_uses_live_three_stage_rig_locker_structure() -> None
     assert 'id="copedent-profile-library" hidden aria-hidden="true" tabindex="-1"' in setup_panel
     assert 'data-setup-profile="${escapeHtml(profile.id)}"' in manager
     assert 'aria-pressed="${String(selected)}"' in manager
-    assert 'renderProfileGroup("Active setup"' in manager
+    assert 'renderProfileGroup("Active setup"' not in manager
     assert 'renderProfileGroup("Included setups"' in manager
     assert 'renderProfileGroup("Custom setups"' in manager
-    assert "No browser-local setups are waiting to be imported." in manager
+    assert 'id="copedent-library-active"' not in setup_panel
+    assert "elements.libraryActive" not in manager
+    assert "Browser copies to import" in setup_panel
+    assert ".filter((profile) => !profile.alreadyImported)" in manager
+    assert 'elements.localImport.hidden = !localProfiles.length;' in manager
+    assert '${profile.alreadyImported ? "Already imported"' not in manager
     assert 'input[type="checkbox"]:checked' in manager
     assert "importSelectedLocalProfiles" in manager
     assert "localProfilesForImport" in manager
@@ -969,6 +975,86 @@ const answerUi = vm.runInContext("STEEL_RAG_ANSWER_UI", sandbox);
     }),
     /This copedent action needs a unique control\./
   );
+})().catch((error) => { console.error(error); process.exit(1); });
+"""
+    result = subprocess.run(
+        ["node", "-e", script],
+        cwd=Path(__file__).resolve().parents[1],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_frontend_answer_client_retries_one_opted_in_transient_gateway_failure() -> None:
+    script = r"""
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const vm = require("node:vm");
+
+const code = fs.readFileSync("ui/answer-client.js", "utf8");
+const sandbox = { window: {} };
+vm.createContext(sandbox);
+vm.runInContext(code, sandbox);
+const answerUi = vm.runInContext("STEEL_RAG_ANSWER_UI", sandbox);
+
+let calls = 0;
+(async () => {
+  const result = await answerUi.requestAnswer("Arrange this staff", {
+    retryTransientOnce: true,
+    transientRetryDelayMs: 0,
+    fetchImpl: async () => {
+      calls += 1;
+      if (calls === 1) {
+        return { ok: false, status: 502, json: async () => ({}) };
+      }
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ answer: "Playable route ready.", sources: [] })
+      };
+    }
+  });
+
+  assert.equal(calls, 2);
+  assert.equal(result.answer, "Playable route ready.");
+})().catch((error) => { console.error(error); process.exit(1); });
+"""
+    result = subprocess.run(
+        ["node", "-e", script],
+        cwd=Path(__file__).resolve().parents[1],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_frontend_answer_client_does_not_retry_transient_failure_by_default() -> None:
+    script = r"""
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const vm = require("node:vm");
+
+const code = fs.readFileSync("ui/answer-client.js", "utf8");
+const sandbox = { window: {} };
+vm.createContext(sandbox);
+vm.runInContext(code, sandbox);
+const answerUi = vm.runInContext("STEEL_RAG_ANSWER_UI", sandbox);
+
+let calls = 0;
+(async () => {
+  await assert.rejects(
+    answerUi.requestAnswer("Do not replay this request", {
+      fetchImpl: async () => {
+        calls += 1;
+        return { ok: false, status: 502, json: async () => ({}) };
+      }
+    }),
+    /Answer request failed with 502/
+  );
+  assert.equal(calls, 1);
 })().catch((error) => { console.error(error); process.exit(1); });
 """
     result = subprocess.run(

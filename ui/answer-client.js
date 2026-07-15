@@ -879,7 +879,9 @@ const STEEL_RAG_ANSWER_UI = (() => {
   async function requestAnswer(question, {
     fetchImpl = window.fetch,
     accessRole = ACCESS_ROLES.ANONYMOUS,
-    requestPayload = {}
+    requestPayload = {},
+    retryTransientOnce = false,
+    transientRetryDelayMs = 500
   } = {}) {
     const headers = {
       "Content-Type": "application/json",
@@ -887,12 +889,20 @@ const STEEL_RAG_ANSWER_UI = (() => {
       ...devAccessHeaders(accessRole)
     };
 
-    const response = await fetchImpl(ANSWER_ENDPOINT, {
+    const requestOptions = {
       method: "POST",
       credentials: "same-origin",
       headers,
       body: JSON.stringify({ ...requestPayload, question })
-    });
+    };
+    let response = await fetchImpl(ANSWER_ENDPOINT, requestOptions);
+    if (retryTransientOnce && [502, 503, 504].includes(response.status)) {
+      const delayMs = Math.max(0, Number(transientRetryDelayMs) || 0);
+      if (delayMs) {
+        await new Promise((resolve) => window.setTimeout(resolve, delayMs));
+      }
+      response = await fetchImpl(ANSWER_ENDPOINT, requestOptions);
+    }
 
     if (!response.ok) {
       let message = "";
