@@ -671,17 +671,6 @@ select:focus-visible,
   box-shadow: inset 0 0 28px rgba(0, 0, 0, 0.18);
 }
 
-.ask-launch-example::after {
-  content: "Open question →";
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  color: rgba(255, 226, 171, 0.88);
-  font: 700 10px/1 var(--font-ui);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
 .ask-launch-example:hover {
   border-color: rgba(255, 192, 75, 0.76);
   transform: translateY(-1px);

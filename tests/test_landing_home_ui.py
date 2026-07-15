@@ -24,7 +24,7 @@ def test_landing_home_has_product_first_hierarchy_and_copy() -> None:
 
     assert '<a class="skip-link" href="#main-content">Skip to main content</a>' in html
     assert '<nav class="header-actions app-shell-nav" aria-label="Primary navigation">' in html
-    assert 'href="workspace-shell.css?v=spotlight-ask-launch-20260715-1"' in html
+    assert 'href="workspace-shell.css?v=spotlight-ask-launch-20260715-2"' in html
     assert '<main id="main-content">' in html
     assert "A connected pedal-steel learning studio" in home
     assert "See the neck. Understand the music. Play with confidence." in home
@@ -145,6 +145,8 @@ def test_landing_home_uses_launch_only_ask_card_with_spotlight_artwork() -> None
     assert "assets/landing/spotlight.png?v=ask-spotlight-launch-20260715" in css
     assert "background-position: center, center, right top;" in css
     assert "background-size: cover, cover, cover;" in css
+    assert "Open question →" not in css
+    assert ".ask-launch-example::after" not in css
     assert "mockup_search_card.png" not in html
     assert "mockup_search_card.png" not in css
     assert "<textarea" not in home
