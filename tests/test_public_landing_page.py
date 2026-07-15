@@ -9,6 +9,16 @@ INTEREST_FUNCTION = Path("functions/api/interest.js")
 INTEREST_DIGEST_WORKER = Path("workers/interest-digest.js")
 INTEREST_DIGEST_CONFIG = Path("wrangler-interest-digest.toml")
 INTEREST_DIGEST_MIGRATION = Path("migrations/interest-digest/0001_delivery_state.sql")
+PUBLIC_PREVIEW_SCRIPTS = (
+    "pedal-steel-fretboard-styles.js",
+    "melody-score.js",
+    "landing-home.js",
+)
+PUBLIC_PREVIEW_ASSETS = (
+    "assets/landing/melody-score.png",
+    "assets/landing/spotlight.png",
+    "brand/pedal-steel-fretboard-background.svg",
+)
 
 
 def test_interest_digest_config_enables_scoped_migrations_and_observability() -> None:
@@ -31,7 +41,7 @@ def test_public_landing_page_has_conversion_focused_copy_and_ctas() -> None:
 
     assert "Built for pedal steel" in html
     assert "See the neck. Understand the music. Play with confidence." in html
-    assert "Explore E9 positions, build and practice melodies, follow guided lessons, and get source-aware steel-guitar answers" in html
+    assert "Explore E9 positions. Build and practice melodies. Follow guided lessons. Get source-aware help from the Steel Guitar Brain." in html
     assert html.count("Get launch invite") >= 3
     assert "No app access yet. We’ll email you when launch invites open." in html
     assert "You’re on the list. We’ll email you when launch invites open." in html
@@ -45,13 +55,40 @@ def test_public_landing_page_has_conversion_focused_copy_and_ctas() -> None:
 def test_public_landing_page_uses_dark_product_led_visual_direction() -> None:
     html = LANDING_PAGE.read_text(encoding="utf-8")
 
-    assert "--amber: #ffc45e;" in html
+    assert "--amber: #ffb12b;" in html
     assert 'url("assets/steel_on_stage2.png")' in html
     assert 'src="brand/steel-guitar-rag-landing-fallback-alpha.png"' in html
-    assert 'class="product-window"' in html
-    assert 'class="workspace-grid"' in html
-    assert 'class="proof-grid"' in html
-    assert "background: linear-gradient(150deg" in html
+    assert 'class="app-shell-header"' in html
+    assert 'class="home-explorer-panel"' in html
+    assert 'id="home-explorer-preview"' in html
+    assert 'class="home-product-grid"' in html
+    assert 'class="trust-section"' in html
+    assert 'src="pedal-steel-fretboard.js?v=locked-public-app-home-20260715"' in html
+    assert 'src="landing-home.js?v=locked-public-app-home-20260715"' in html
+
+
+def test_public_landing_page_reuses_the_real_app_home_previews() -> None:
+    html = LANDING_PAGE.read_text(encoding="utf-8")
+    app_home = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+
+    shared_copy = (
+        "One chord. Three positions. A whole neck opens up.",
+        "Visualize E9 positions, grips, intervals, scales, harmony, and movement across the neck.",
+        "Build, edit, play back, and practice melodies while connecting each note to a playable E9 position.",
+        "Follow reviewed learning paths or build a focused lesson for the topic, level, and time you have.",
+        "Get practical, teacher-first pedal-steel help grounded in trusted sources and your setup.",
+        "Uses your active E9 setup",
+    )
+    for value in shared_copy:
+        assert value in html
+        assert value in app_home
+
+    assert 'window.STEEL_RAG_LANDING?.mountExplorerPreview' in html
+    assert 'window.STEEL_RAG_LANDING?.mountMelodyPreview' in html
+    assert 'class="home-card-preview home-fretboard-mini"' in html
+    assert 'class="home-card-preview home-score-preview"' in html
+    assert 'class="home-card-preview home-lesson-mini"' in html
+    assert 'class="ask-launch-example" role="img"' in html
 
 
 def test_public_landing_page_describes_four_locked_workspaces() -> None:
@@ -65,10 +102,10 @@ def test_public_landing_page_describes_four_locked_workspaces() -> None:
     ]
     for workspace in expected_workspaces:
         assert workspace in html
-    assert html.count('class="workspace-card"') == 4
+    assert html.count('data-locked-workspace="') == 4
     assert html.count("Coming at launch") == 4
-    assert "Everything stays locked until launch. Here’s what’s coming." in html
-    assert "These are static previews of the product in development." in html
+    assert "See what you’ll be able to do." in html
+    assert "They are shown here as static previews and do not open the app." in html
     assert "Validated E9 logic" in html
     assert "Real copedents" in html
     assert "Source-aware answers" in html
@@ -98,6 +135,11 @@ def test_public_landing_page_is_static_email_only_and_accessible() -> None:
     assert "bb.steelguitarforum.com" not in html.lower()
     assert "stripe" not in html.lower()
     assert "Pocket Steel" not in html
+    assert html.count('<button class="invite-button"') == 1
+    assert '<article class="home-product-card' in html
+    assert '<button class="ask-launch-example"' not in html
+    assert '<a class="home-card-link"' not in html
+    assert 'href="/ui/' not in html
 
 
 def test_cloudflare_pages_static_output_matches_landing_source() -> None:
@@ -109,6 +151,16 @@ def test_cloudflare_pages_static_output_matches_landing_source() -> None:
     assert Path("deploy/landing/assets/steel_on_stage2.png").is_file()
     assert Path("deploy/landing/brand/steel-guitar-rag-landing-alpha.webm").is_file()
     assert Path("deploy/landing/brand/steel-guitar-rag-landing-fallback-alpha.png").is_file()
+    for relative_path in PUBLIC_PREVIEW_SCRIPTS:
+        deploy_script = Path("deploy/landing") / relative_path
+        source_script = Path("ui") / relative_path
+        assert deploy_script.read_bytes() == source_script.read_bytes()
+    public_fretboard = Path("deploy/landing/pedal-steel-fretboard.js").read_text(encoding="utf-8")
+    assert "mountPedalSteelFretboard" in public_fretboard
+    assert 'function explorerUrl(params) {\n    return "";\n  }' in public_fretboard
+    assert "/ui/" not in public_fretboard
+    for relative_path in PUBLIC_PREVIEW_ASSETS:
+        assert (Path("deploy/landing") / relative_path).is_file()
 
 
 def test_cloudflare_pages_static_output_does_not_expose_private_app_or_rag() -> None:

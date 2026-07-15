@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 420" role="img" aria-label="Decorative single-neck pedal steel guitar background">
+  <defs>
+    <linearGradient id="cabinet-top" x1="58" y1="72" x2="1542" y2="348" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#28241e"/>
+      <stop offset="0.32" stop-color="#151411"/>
+      <stop offset="0.7" stop-color="#11110f"/>
+      <stop offset="1" stop-color="#2e2419"/>
+    </linearGradient>
+    <linearGradient id="cabinet-side" x1="80" y1="292" x2="1520" y2="378" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0c0b0a"/>
+      <stop offset="0.5" stop-color="#19150f"/>
+      <stop offset="1" stop-color="#0b0b0a"/>
+    </linearGradient>
+    <linearGradient id="endplate" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f2eadb"/>
+      <stop offset="0.18" stop-color="#8c9090"/>
+      <stop offset="0.44" stop-color="#2c3034"/>
+      <stop offset="0.68" stop-color="#d1cbc0"/>
+      <stop offset="1" stop-color="#5b6062"/>
+    </linearGradient>
+    <linearGradient id="dark-chrome" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#949895"/>
+      <stop offset="0.42" stop-color="#2d3133"/>
+      <stop offset="0.7" stop-color="#101214"/>
+      <stop offset="1" stop-color="#bec0b9"/>
+    </linearGradient>
+    <linearGradient id="fretboard-panel" x1="260" y1="115" x2="1268" y2="305" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#090a0b"/>
+      <stop offset="0.5" stop-color="#141412"/>
+      <stop offset="1" stop-color="#070808"/>
+    </linearGradient>
+    <radialGradient id="hardware-glint" cx="35%" cy="22%" r="75%">
+      <stop offset="0" stop-color="#fff3dc" stop-opacity="0.9"/>
+      <stop offset="0.28" stop-color="#c8c5bb" stop-opacity="0.55"/>
+      <stop offset="0.72" stop-color="#565b5e" stop-opacity="0.7"/>
+      <stop offset="1" stop-color="#151719" stop-opacity="0.95"/>
+    </radialGradient>
+    <filter id="soft-metal-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="12" stdDeviation="12" flood-color="#000000" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <g data-layer="body-shell" filter="url(#soft-metal-shadow)">
+    <rect x="58" y="78" width="1484" height="244" rx="18" fill="url(#cabinet-top)" stroke="#8a6a37" stroke-width="3"/>
+    <path d="M76 322 H1524 L1494 366 H106 L76 322 Z" fill="url(#cabinet-side)" stroke="#4e3920" stroke-width="3"/>
+    <rect x="78" y="98" width="1444" height="204" rx="10" fill="none" stroke="rgba(240,191,105,0.2)" stroke-width="2"/>
+    <rect x="84" y="86" width="116" height="228" rx="14" fill="url(#endplate)" stroke="#d6c8a8" stroke-width="2"/>
+    <rect x="1416" y="86" width="104" height="228" rx="14" fill="url(#endplate)" stroke="#d6c8a8" stroke-width="2"/>
+    <path d="M92 106 H1508 V114 H92 Z" fill="rgba(234,222,196,0.22)"/>
+    <path d="M94 294 H1506 V302 H94 Z" fill="rgba(34,28,19,0.62)"/>
+  </g>
+
+  <g data-layer="headstock-keyhead-shell">
+    <path d="M42 132 H92 V122 H136 V112 H180 V102 H224 V92 H252 V84 H276 V336 H252 V328 H224 V318 H180 V308 H136 V298 H92 V288 H42 Z" fill="url(#dark-chrome)" stroke="#d8cfbd" stroke-width="3.2"/>
+    <path d="M68 158 H108 V148 H148 V138 H186 V128 H222 V118 H246 V108 V312 H222 V302 H186 V292 H148 V282 H108 V272 H68 Z" fill="#090d0f" stroke="rgba(244,236,218,0.38)" stroke-width="2.4"/>
+    <path d="M58 142 H104 V132 H144 V122 H184 V112 H224 V102 H250 V94 H262 V114 H236 V120 H204 V128 H170 V136 H136 V144 H98 V154 H58 Z" fill="rgba(235,229,212,0.16)" stroke="rgba(244,236,218,0.22)" stroke-width="1.8"/>
+    <path d="M58 278 H104 V288 H144 V298 H184 V308 H224 V318 H250 V326 H262 V306 H236 V300 H204 V292 H170 V284 H136 V276 H98 V266 H58 Z" fill="rgba(235,229,212,0.13)" stroke="rgba(244,236,218,0.2)" stroke-width="1.8"/>
+    <path d="M66 174 H108 V162 H148 V151 H186 V140 H224 V129 H258 V118 H258 V136 H222 V148 H186 V160 H148 V171 H108 V183 H66 Z" fill="url(#endplate)" opacity="0.9"/>
+    <path d="M66 246 H108 V258 H148 V269 H186 V280 H224 V291 H258 V302 H258 V284 H222 V272 H186 V260 H148 V249 H108 V237 H66 Z" fill="url(#endplate)" opacity="0.84"/>
+    <path d="M248 100 H276 V320 H248 Z" fill="url(#endplate)" stroke="#e2d6be" stroke-width="2"/>
+  </g>
+
+  <g data-layer="10-tuning-keys">
+    <path d="M70 166 H108 V156 H148 V146 H186 V136 H224 V126 H254 V116 H254 V134 H220 V144 H186 V154 H148 V164 H108 V174 H70 Z" fill="url(#dark-chrome)" stroke="rgba(232,225,210,0.35)" stroke-width="1.6"/>
+    <path d="M70 254 H108 V264 H148 V274 H186 V284 H224 V294 H254 V304 H254 V286 H220 V276 H186 V266 H148 V256 H108 V246 H70 Z" fill="url(#dark-chrome)" stroke="rgba(232,225,210,0.32)" stroke-width="1.6"/>
+    <g data-role="tuner" data-side="top" data-index="1"><rect x="88" y="135" width="16" height="14" fill="url(#endplate)" stroke="#eee3cb" stroke-width="1.2"/><rect x="92" y="118" width="8" height="17" fill="url(#hardware-glint)"/><rect x="77" y="104" width="34" height="15" fill="url(#hardware-glint)" stroke="#ded6c6" stroke-width="1.2"/></g>
+    <g data-role="tuner" data-side="top" data-index="2"><rect x="124" y="125" width="16" height="14" fill="url(#endplate)" stroke="#eee3cb" stroke-width="1.2"/><rect x="128" y="108" width="8" height="17" fill="url(#hardware-glint)"/><rect x="113" y="94" width="34" height="15" fill="url(#hardware-glint)" stroke="#ded6c6" stroke-width="1.2"/></g>
+    <g data-role="tuner" data-side="top" data-index="3"><rect x="160" y="115" width="16" height="14" fill="url(#endplate)" stroke="#eee3cb" stroke-width="1.2"/><rect x="164" y="98" width="8" height="17" fill="url(#hardware-glint)"/><rect x="149" y="84" width="34" height="15" fill="url(#hardware-glint)" stroke="#ded6c6" stroke-width="1.2"/></g>
+    <g data-role="tuner" data-side="top" data-index="4"><rect x="196" y="105" width="16" height="14" fill="url(#endplate)" stroke="#eee3cb" stroke-width="1.2"/><rect x="200" y="88" width="8" height="17" fill="url(#hardware-glint)"/><rect x="185" y="74" width="34" height="15" fill="url(#hardware-glint)" stroke="#ded6c6" stroke-width="1.2"/></g>
+    <g data-role="tuner" data-side="top" data-index="5"><rect x="232" y="95" width="16" height="14" fill="url(#endplate)" stroke="#eee3cb" stroke-width="1.2"/><rect x="236" y="78" width="8" height="17" fill="url(#hardware-glint)"/><rect x="221" y="64" width="34" height="15" fill="url(#hardware-glint)" stroke="#ded6c6" stroke-width="1.2"/></g>
+    <g data-role="tuner" data-side="bottom" data-index="6"><rect x="88" y="271" width="16" height="14" fill="url(#endplate)" stroke="#eee3cb" stroke-width="1.2"/><rect x="92" y="285" width="8" height="17" fill="url(#hardware-glint)"/><rect x="77" y="302" width="34" height="15" fill="url(#hardware-glint)" stroke="#ded6c6" stroke-width="1.2"/></g>
+    <g data-role="tuner" data-side="bottom" data-index="7"><rect x="124" y="281" width="16" height="14" fill="url(#endplate)" stroke="#eee3cb" stroke-width="1.2"/><rect x="128" y="295" width="8" height="17" fill="url(#hardware-glint)"/><rect x="113" y="312" width="34" height="15" fill="url(#hardware-glint)" stroke="#ded6c6" stroke-width="1.2"/></g>
+    <g data-role="tuner" data-side="bottom" data-index="8"><rect x="160" y="291" width="16" height="14" fill="url(#endplate)" stroke="#eee3cb" stroke-width="1.2"/><rect x="164" y="305" width="8" height="17" fill="url(#hardware-glint)"/><rect x="149" y="322" width="34" height="15" fill="url(#hardware-glint)" stroke="#ded6c6" stroke-width="1.2"/></g>
+    <g data-role="tuner" data-side="bottom" data-index="9"><rect x="196" y="301" width="16" height="14" fill="url(#endplate)" stroke="#eee3cb" stroke-width="1.2"/><rect x="200" y="315" width="8" height="17" fill="url(#hardware-glint)"/><rect x="185" y="332" width="34" height="15" fill="url(#hardware-glint)" stroke="#ded6c6" stroke-width="1.2"/></g>
+    <g data-role="tuner" data-side="bottom" data-index="10"><rect x="232" y="311" width="16" height="14" fill="url(#endplate)" stroke="#eee3cb" stroke-width="1.2"/><rect x="236" y="325" width="8" height="17" fill="url(#hardware-glint)"/><rect x="221" y="342" width="34" height="15" fill="url(#hardware-glint)" stroke="#ded6c6" stroke-width="1.2"/></g>
+  </g>
+
+  <g data-layer="blank-fretboard-panel">
+    <rect x="260" y="92" width="1008" height="236" rx="8" fill="#090909" stroke="#151515" stroke-width="8"/>
+    <rect x="260" y="92" width="1008" height="236" rx="8" fill="url(#fretboard-panel)" stroke="#7a5d32" stroke-width="2.5"/>
+    <rect x="278" y="112" width="972" height="196" rx="4" fill="rgba(0,0,0,0.32)" stroke="rgba(240,191,105,0.1)" stroke-width="2"/>
+  </g>
+
+  <g data-layer="10-roller-nuts">
+    <rect x="248" y="100" width="28" height="220" rx="7" fill="url(#endplate)" stroke="#eee0c6" stroke-width="2"/>
+    <rect x="254" y="108" width="12" height="204" rx="5" fill="#1d2022" opacity="0.75"/>
+    <circle data-role="roller" data-index="1" cx="260" cy="115" r="6.5" fill="url(#hardware-glint)" stroke="#f0eadb" stroke-width="1.3"/>
+    <circle data-role="roller" data-index="2" cx="260" cy="136.111" r="6.5" fill="url(#hardware-glint)" stroke="#f0eadb" stroke-width="1.3"/>
+    <circle data-role="roller" data-index="3" cx="260" cy="157.222" r="6.5" fill="url(#hardware-glint)" stroke="#f0eadb" stroke-width="1.3"/>
+    <circle data-role="roller" data-index="4" cx="260" cy="178.333" r="6.5" fill="url(#hardware-glint)" stroke="#f0eadb" stroke-width="1.3"/>
+    <circle data-role="roller" data-index="5" cx="260" cy="199.444" r="6.5" fill="url(#hardware-glint)" stroke="#f0eadb" stroke-width="1.3"/>
+    <circle data-role="roller" data-index="6" cx="260" cy="220.556" r="6.5" fill="url(#hardware-glint)" stroke="#f0eadb" stroke-width="1.3"/>
+    <circle data-role="roller" data-index="7" cx="260" cy="241.667" r="6.5" fill="url(#hardware-glint)" stroke="#f0eadb" stroke-width="1.3"/>
+    <circle data-role="roller" data-index="8" cx="260" cy="262.778" r="6.5" fill="url(#hardware-glint)" stroke="#f0eadb" stroke-width="1.3"/>
+    <circle data-role="roller" data-index="9" cx="260" cy="283.889" r="6.5" fill="url(#hardware-glint)" stroke="#f0eadb" stroke-width="1.3"/>
+    <circle data-role="roller" data-index="10" cx="260" cy="305" r="6.5" fill="url(#hardware-glint)" stroke="#f0eadb" stroke-width="1.3"/>
+  </g>
+
+  <g data-layer="pickup-shell">
+    <rect x="1280" y="92" width="86" height="236" rx="8" fill="#080808" stroke="#b78a4b" stroke-width="2.5"/>
+    <rect x="1294" y="108" width="58" height="204" rx="7" fill="#151515" stroke="#3a2d1d" stroke-width="2"/>
+    <rect x="1307" y="120" width="32" height="180" rx="5" fill="#070707" stroke="rgba(240,191,105,0.18)" stroke-width="1.5"/>
+  </g>
+
+  <g data-layer="10-pickup-pole-pieces">
+    <circle data-role="pickup-pole" data-index="1" cx="1329" cy="115" r="4.6" fill="#b8afa0" opacity="0.72"/>
+    <circle data-role="pickup-pole" data-index="2" cx="1329" cy="136.111" r="4.6" fill="#b8afa0" opacity="0.72"/>
+    <circle data-role="pickup-pole" data-index="3" cx="1329" cy="157.222" r="4.6" fill="#b8afa0" opacity="0.72"/>
+    <circle data-role="pickup-pole" data-index="4" cx="1329" cy="178.333" r="4.6" fill="#b8afa0" opacity="0.72"/>
+    <circle data-role="pickup-pole" data-index="5" cx="1329" cy="199.444" r="4.6" fill="#b8afa0" opacity="0.72"/>
+    <circle data-role="pickup-pole" data-index="6" cx="1329" cy="220.556" r="4.6" fill="#b8afa0" opacity="0.72"/>
+    <circle data-role="pickup-pole" data-index="7" cx="1329" cy="241.667" r="4.6" fill="#b8afa0" opacity="0.72"/>
+    <circle data-role="pickup-pole" data-index="8" cx="1329" cy="262.778" r="4.6" fill="#b8afa0" opacity="0.72"/>
+    <circle data-role="pickup-pole" data-index="9" cx="1329" cy="283.889" r="4.6" fill="#b8afa0" opacity="0.72"/>
+    <circle data-role="pickup-pole" data-index="10" cx="1329" cy="305" r="4.6" fill="#b8afa0" opacity="0.72"/>
+  </g>
+
+  <g data-layer="10-changer-fingers">
+    <rect x="1372" y="86" width="120" height="248" rx="10" fill="url(#endplate)" stroke="#dbcaa8" stroke-width="2.5"/>
+    <rect x="1384" y="100" width="88" height="220" rx="7" fill="#17191b" stroke="rgba(255,255,255,0.18)" stroke-width="1.5"/>
+    <rect data-role="changer-finger" data-index="1" x="1390" y="108" width="66" height="14" rx="4" fill="url(#hardware-glint)" stroke="#d7d0bf" stroke-width="0.8"/>
+    <rect data-role="changer-finger" data-index="2" x="1390" y="129.111" width="66" height="14" rx="4" fill="url(#hardware-glint)" stroke="#d7d0bf" stroke-width="0.8"/>
+    <rect data-role="changer-finger" data-index="3" x="1390" y="150.222" width="66" height="14" rx="4" fill="url(#hardware-glint)" stroke="#d7d0bf" stroke-width="0.8"/>
+    <rect data-role="changer-finger" data-index="4" x="1390" y="171.333" width="66" height="14" rx="4" fill="url(#hardware-glint)" stroke="#d7d0bf" stroke-width="0.8"/>
+    <rect data-role="changer-finger" data-index="5" x="1390" y="192.444" width="66" height="14" rx="4" fill="url(#hardware-glint)" stroke="#d7d0bf" stroke-width="0.8"/>
+    <rect data-role="changer-finger" data-index="6" x="1390" y="213.556" width="66" height="14" rx="4" fill="url(#hardware-glint)" stroke="#d7d0bf" stroke-width="0.8"/>
+    <rect data-role="changer-finger" data-index="7" x="1390" y="234.667" width="66" height="14" rx="4" fill="url(#hardware-glint)" stroke="#d7d0bf" stroke-width="0.8"/>
+    <rect data-role="changer-finger" data-index="8" x="1390" y="255.778" width="66" height="14" rx="4" fill="url(#hardware-glint)" stroke="#d7d0bf" stroke-width="0.8"/>
+    <rect data-role="changer-finger" data-index="9" x="1390" y="276.889" width="66" height="14" rx="4" fill="url(#hardware-glint)" stroke="#d7d0bf" stroke-width="0.8"/>
+    <rect data-role="changer-finger" data-index="10" x="1390" y="298" width="66" height="14" rx="4" fill="url(#hardware-glint)" stroke="#d7d0bf" stroke-width="0.8"/>
+  </g>
+</svg>
