@@ -56,7 +56,7 @@ def test_landing_home_exposes_all_four_workspaces_and_neutral_backstage() -> Non
     assert "Visualize E9 positions, grips, intervals, scales, harmony, and movement across the neck." in home
     assert "Build, edit, play back, and practice melodies while connecting each note to a playable E9 position." in home
     assert "Follow reviewed learning paths or build a focused lesson for the topic, level, and time you have." in home
-    assert "Get a practical, teacher-first answer grounded in steel-guitar sources and your setup." in home
+    assert "Get practical, teacher-first pedal-steel help grounded in trusted sources and your setup." in home
     assert "Manage your setup, copedent, account, access, feedback, and preferences." not in home
     assert "Open Backstage" not in home
     assert "Go Backstage" in html
@@ -136,11 +136,19 @@ def test_landing_home_uses_launch_only_ask_card_with_spotlight_artwork() -> None
     css = CSS_PATH.read_text(encoding="utf-8")
 
     assert 'id="ask-the-brain"' in home
+    ask_card = home.split('<article class="home-product-card ask-product-card"', 1)[1].split(
+        "</article>", 1
+    )[0]
+    assert "Steel Guitar Q&amp;A" in ask_card
+    assert '<button class="ask-launch-cta" type="button">Open Q&amp;A' in ask_card
+    assert "Ask the Steel Guitar Brain" not in ask_card
+    assert "Open Ask the Brain" not in ask_card
+    assert "Ask the Brain" not in ask_card
     assert '<button class="ask-launch-example" type="button"' in home
     assert 'data-prefill-question="Show me a classic country move."' in home
     assert "Example question" in home
     assert "Show me a classic country move." in home
-    assert '<button class="ask-launch-cta" type="button">Open Ask the Brain' in home
+    assert '<button class="ask-launch-cta" type="button">Open Q&amp;A' in home
     assert "Uses your active E9 setup" in home
     assert "assets/landing/spotlight.png?v=ask-spotlight-launch-20260715" in css
     assert "background-position: center, center, right top;" in css
