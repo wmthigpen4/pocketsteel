@@ -451,15 +451,26 @@ def test_backstage_account_uses_verified_credential_ui_without_fabricated_contro
     assert 'src="assets/backstage/artist-credentials.png?v=artist-credentials-20260714-1"' in account_panel
     assert 'alt="" width="1122" height="1402"' in account_panel
     assert "object-fit: contain" in html
-    assert "Verified player access" in account_panel
-    assert "Connected services &amp; synchronization" in account_panel
+    assert "Player account" in account_panel
+    assert "Connected account services" in account_panel
     assert "Access provider" in account_panel
-    assert "Not available" in account_panel
-    assert "This browser" in account_panel
+    assert "Saved copedents" in account_panel
+    assert "Last synchronization" not in account_panel
+    assert "Active device" not in account_panel
+    assert "Login verification" not in account_panel
+    assert "Setup ownership" in account_panel
     assert "Data &amp; privacy summary" in account_panel
     assert "Delete account · coming soon" in account_panel
     assert 'class="account-control-button is-destructive" type="button" disabled' in account_panel
-    assert "Password and billing controls remain with the login or future billing provider." in account_panel
+    assert 'id="backstage-copy-account-row"' not in account_panel
+    assert "Password and billing controls remain with the login or future billing provider." not in account_panel
+    assert 'class="account-info-footer"' not in account_panel
+    assert 'backstageAccountHeading.textContent = verifiedAccount ? "Account connected" : "Sign in required";' in html
+    assert 'backstageAccountStatusLabel.textContent = verifiedAccount ? "Verified access" : "Not connected";' in html
+    assert 'backstageAccountLogin.textContent = verifiedAccount ? "Connected" : "Not connected";' in html
+    assert 'backstageAccountBacked.textContent = verifiedAccount ? "Confirmed" : "Unavailable";' in html
+    assert re.search(r"\.account-status-icon svg\s*\{[^}]*display: block;[^}]*margin: auto;", html, re.DOTALL)
+    assert re.search(r"\.account-control-button\.is-destructive\s*\{[^}]*margin: 0;[^}]*border: 0;[^}]*padding: 0;", html, re.DOTALL)
     assert "Sign out" not in account_panel
     assert "Manage password" not in account_panel
     assert "Payment" not in account_panel
@@ -478,7 +489,7 @@ def test_backstage_account_masks_identifier_and_copies_only_authorized_runtime_v
     assert "backstageAccountId.textContent = maskAccountId(currentAuthorizedAccountId);" in html
     assert "navigator.clipboard.writeText(currentAuthorizedAccountId)" in html
     assert "backstageCopyAccountId.disabled = !currentAuthorizedAccountId;" in html
-    assert "backstageCopyAccountRow.disabled = !currentAuthorizedAccountId;" in html
+    assert "backstageCopyAccountRow" not in html
     assert 'role="status" aria-live="polite"' in html
     assert "backstageAccountId.textContent = verifiedAccount ? (account.id || account.accountId)" not in html
 

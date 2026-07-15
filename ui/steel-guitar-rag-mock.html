@@ -2443,8 +2443,7 @@
     }
 
     .account-credential-card,
-    .account-support-card,
-    .account-info-footer {
+    .account-support-card {
       border: 1px solid rgba(240, 191, 105, 0.28);
       border-radius: 14px;
       background:
@@ -2560,8 +2559,7 @@
     }
 
     .account-status-icon,
-    .account-row-icon,
-    .account-footer-icon {
+    .account-row-icon {
       display: grid;
       place-items: center;
       border: 1px solid rgba(240, 191, 105, 0.22);
@@ -2576,13 +2574,20 @@
       border-radius: 999px;
     }
 
-    .account-credential-status span,
-    .account-credential-status strong {
+    .account-status-icon svg {
+      display: block;
+      width: 20px;
+      height: 20px;
+      margin: auto;
+    }
+
+    .account-credential-status > div > span,
+    .account-credential-status > div > strong {
       display: block;
       min-width: 0;
     }
 
-    .account-credential-status span {
+    .account-credential-status > div > span {
       color: rgba(240, 191, 105, 0.78);
       font-size: 10px;
       font-weight: 700;
@@ -2591,7 +2596,7 @@
       text-transform: uppercase;
     }
 
-    .account-credential-status strong {
+    .account-credential-status > div > strong {
       margin-top: 3px;
       color: var(--cream);
       font-family: var(--font-lesson);
@@ -2795,11 +2800,11 @@
     }
 
     .account-control-button.is-destructive {
-      margin-top: 10px;
-      border: 1px solid rgba(196, 79, 54, 0.22);
-      border-radius: 8px;
-      padding: 0 10px;
-      background: rgba(196, 79, 54, 0.07);
+      margin: 0;
+      border: 0;
+      border-radius: 0;
+      padding: 0;
+      background: transparent;
     }
 
     .account-control-button.is-destructive .account-row-icon,
@@ -2809,27 +2814,6 @@
 
     .account-control-button:disabled {
       cursor: not-allowed;
-    }
-
-    .account-info-footer {
-      display: grid;
-      grid-template-columns: 44px minmax(0, 1fr);
-      gap: 13px;
-      align-items: center;
-      padding: 14px 18px;
-    }
-
-    .account-footer-icon {
-      width: 44px;
-      height: 44px;
-      border-radius: 999px;
-    }
-
-    .account-info-footer p {
-      margin: 0;
-      color: rgba(244, 234, 214, 0.68);
-      font-size: 13px;
-      line-height: 1.45;
     }
 
     @media (max-width: 900px) {
@@ -4764,10 +4748,6 @@
         padding-left: 52px;
       }
 
-      .account-info-footer {
-        padding: 13px 15px;
-      }
-
       .connected-metrics {
         grid-template-columns: 1fr;
         gap: 10px;
@@ -5764,18 +5744,18 @@
               </div>
 
               <div class="account-credential-copy">
-                <p class="account-eyebrow">Verified player access</p>
-                <h3 id="backstage-account-heading">Checking access</h3>
+                <p class="account-eyebrow">Player account</p>
+                <h3 id="backstage-account-heading">Checking account</h3>
                 <span class="account-verification-badge" id="backstage-account-status-badge">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 12 3 3 7-7"/><circle cx="12" cy="12" r="9"/></svg>
                   <span id="backstage-account-status-label">Checking</span>
                 </span>
-                <p class="account-credential-description" id="backstage-account-status-copy">Checking your verified account and synchronized setup access.</p>
+                <p class="account-credential-description" id="backstage-account-status-copy">Checking your account access and saved setup connection.</p>
 
                 <div class="account-credential-statuses" aria-label="Account access status">
                   <div class="account-credential-status">
                     <span class="account-status-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg></span>
-                    <div><span>Login verification</span><strong id="backstage-account-login">Checking</strong></div>
+                    <div><span>Login</span><strong id="backstage-account-login">Checking</strong></div>
                   </div>
                   <div class="account-credential-status">
                     <span class="account-status-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 7h10v10H7z"/><path d="m4 12 3-3m13 3-3-3M12 4l-3 3m3 13-3-3"/></svg></span>
@@ -5783,7 +5763,7 @@
                   </div>
                   <div class="account-credential-status">
                     <span class="account-status-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg></span>
-                    <div><span>Account-backed</span><strong id="backstage-account-backed">Checking</strong></div>
+                    <div><span>Setup ownership</span><strong id="backstage-account-backed">Checking</strong></div>
                   </div>
                 </div>
               </div>
@@ -5803,36 +5783,21 @@
 
             <div class="account-support-grid">
               <section class="account-support-card" aria-labelledby="account-services-title">
-                <h3 class="account-support-title" id="account-services-title">Connected services &amp; synchronization</h3>
+                <h3 class="account-support-title" id="account-services-title">Connected account services</h3>
                 <div class="account-service-row">
                   <span class="account-row-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 18h14a4 4 0 0 0 0-8 7 7 0 0 0-13-2A5 5 0 0 0 5 18Z"/></svg></span>
-                  <div class="account-row-copy"><strong>Access provider</strong><span>Manages your verified login and access.</span></div>
+                  <div class="account-row-copy"><strong>Access provider</strong><span>Manages your login and account access.</span></div>
                   <span class="account-row-value" id="backstage-provider-status">Checking</span>
                 </div>
                 <div class="account-service-row">
                   <span class="account-row-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h10M4 17h16M10 12h10"/><circle cx="17" cy="7" r="2"/><circle cx="7" cy="12" r="2"/></svg></span>
-                  <div class="account-row-copy"><strong>Copedent synchronization</strong><span>Keeps entitled setup selections connected to your account.</span></div>
+                  <div class="account-row-copy"><strong>Saved copedents</strong><span>Keeps your active setup available to account-backed workspaces.</span></div>
                   <span class="account-row-value" id="backstage-sync-status">Checking</span>
-                </div>
-                <div class="account-service-row">
-                  <span class="account-row-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg></span>
-                  <div class="account-row-copy"><strong>Last synchronization</strong><span>Most recent successful setup synchronization.</span></div>
-                  <span class="account-row-value" id="backstage-last-sync">Not available</span>
-                </div>
-                <div class="account-service-row">
-                  <span class="account-row-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4"/></svg></span>
-                  <div class="account-row-copy"><strong>Active device</strong><span>The current session only; no device fingerprinting.</span></div>
-                  <span class="account-row-value">This browser</span>
                 </div>
               </section>
 
               <section class="account-support-card" aria-labelledby="account-controls-title">
                 <h3 class="account-support-title" id="account-controls-title">Account controls</h3>
-                <button class="account-control-button" id="backstage-copy-account-row" type="button" disabled>
-                  <span class="account-row-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg></span>
-                  <span class="account-row-copy"><strong>Copy Account ID</strong><span>Copy your technical account identifier.</span></span>
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
-                </button>
                 <details class="account-privacy-details">
                   <summary class="account-privacy-summary">
                     <span class="account-row-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 5 3 8 7 10 4-2 7-5 7-10V6l-7-3Z"/><path d="M9 12h6"/></svg></span>
@@ -5847,11 +5812,6 @@
                 </button>
               </section>
             </div>
-
-            <aside class="account-info-footer">
-              <span class="account-footer-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6m0-10h.01"/></svg></span>
-              <p>Password and billing controls remain with the login or future billing provider.</p>
-            </aside>
           </div>
         </div>
 
@@ -5972,9 +5932,7 @@
     const backstageAccountId = document.querySelector("#backstage-account-id");
     const backstageProviderStatus = document.querySelector("#backstage-provider-status");
     const backstageSyncStatus = document.querySelector("#backstage-sync-status");
-    const backstageLastSync = document.querySelector("#backstage-last-sync");
     const backstageCopyAccountId = document.querySelector("#backstage-copy-account-id");
-    const backstageCopyAccountRow = document.querySelector("#backstage-copy-account-row");
     const backstageAccountCopyStatus = document.querySelector("#backstage-account-copy-status");
     const backstageFeedbackMessage = document.querySelector("#backstage-feedback-message");
     const backstageFeedbackCount = document.querySelector("#backstage-feedback-count");
@@ -7684,23 +7642,21 @@
       overviewAccountStatus.textContent = verifiedAccount ? "Verified login" : "Local preview";
       overviewAccountSync.textContent = accountFeatureEnabled && verifiedAccount ? "Account-backed setup" : "Status unavailable";
       currentAuthorizedAccountId = verifiedAccount ? String(account.id || account.accountId || "") : "";
-      backstageAccountHeading.textContent = verifiedAccount ? "Access verified" : "Verification required";
-      backstageAccountStatusLabel.textContent = verifiedAccount ? "Verified" : "Local preview";
+      backstageAccountHeading.textContent = verifiedAccount ? "Account connected" : "Sign in required";
+      backstageAccountStatusLabel.textContent = verifiedAccount ? "Verified access" : "Not connected";
       backstageAccountStatusBadge.classList.toggle("is-verified", verifiedAccount);
       backstageAccountStatusCopy.textContent = verifiedAccount
-        ? "Your login and setup ownership are verified by the access provider."
-        : "This local preview does not represent a verified account.";
-      backstageAccountLogin.textContent = verifiedAccount ? "Verified" : "Local preview";
+        ? "Your login and active setup are connected to this account."
+        : "Sign in through the protected app to connect account access and saved setups.";
+      backstageAccountLogin.textContent = verifiedAccount ? "Connected" : "Not connected";
       backstageAccountSync.textContent = accountFeatureEnabled && verifiedAccount ? "Account-backed" : "Not enabled here";
-      backstageAccountBacked.textContent = verifiedAccount ? "Yes" : "No";
+      backstageAccountBacked.textContent = verifiedAccount ? "Confirmed" : "Unavailable";
       backstageAccountId.textContent = maskAccountId(currentAuthorizedAccountId);
       backstageProviderStatus.textContent = verifiedAccount ? "Connected" : "Local preview";
       backstageProviderStatus.classList.toggle("is-positive", verifiedAccount);
       backstageSyncStatus.textContent = accountFeatureEnabled && verifiedAccount ? "Account-backed" : "Not enabled";
       backstageSyncStatus.classList.toggle("is-positive", accountFeatureEnabled && verifiedAccount);
-      backstageLastSync.textContent = "Not available";
       backstageCopyAccountId.disabled = !currentAuthorizedAccountId;
-      backstageCopyAccountRow.disabled = !currentAuthorizedAccountId;
       backstageAccountCopyStatus.textContent = "";
       accessStateRadios.forEach((radio) => {
         radio.checked = radio.value === accessRole;
@@ -8134,7 +8090,6 @@
     });
 
     backstageCopyAccountId.addEventListener("click", copyAuthorizedAccountId);
-    backstageCopyAccountRow.addEventListener("click", copyAuthorizedAccountId);
     backstageFeedbackMessage.addEventListener("input", updateBackstageFeedbackCount);
 
     accessStateRadios.forEach((radio) => {
