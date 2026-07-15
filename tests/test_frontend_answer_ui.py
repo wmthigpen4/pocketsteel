@@ -456,6 +456,8 @@ def test_backstage_overview_is_a_truthful_control_room_with_real_state_hooks() -
 
     assert "Ready to play" in overview
     assert "Your backstage is set. Pick up where you left off." in overview
+    assert ".overview-status-item:nth-child(even)" in html
+    assert re.search(r"\.overview-status-item:nth-child\(even\)\s*\{[^}]*border-right:\s*0", html, re.DOTALL)
     assert 'src="assets/backstage/overview-road-case.png?v=control-room-20260714-1" alt="" width="1672" height="941"' in overview
     assert "hanging" not in overview.lower()
     assert "BACKSTAGE ALL ACCESS" not in overview
