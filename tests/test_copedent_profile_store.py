@@ -171,9 +171,9 @@ def test_backstage_exposes_common_profiles_and_mechanical_editor_fields() -> Non
     assert "renderTravelHeaders" in manager
     assert 'for="copedent-control-label">Tab label</label>' in html
     assert 'id="copedent-control-reset" type="button">Reset</button>' in html
-    assert 'id="copedent-control-apply" type="button">Save</button>' in html
-    assert "async function saveControlFields()" in manager
-    assert 'elements.controlApply.addEventListener("click", saveControlFields);' in manager
+    assert 'id="copedent-control-apply" type="button">Apply changes</button>' in html
+    assert "async function saveControlFields()" not in manager
+    assert 'elements.controlApply.addEventListener("click", applyControlFields);' in manager
     assert "Move left" not in setup_markup
     assert "Move right" not in setup_markup
     assert "Add travel state" not in setup_markup
@@ -188,6 +188,52 @@ def test_backstage_exposes_common_profiles_and_mechanical_editor_fields() -> Non
     assert "Open tuning table" not in setup_markup
     assert "eventually be tailored" not in html
     assert "RAG personalization are planned, but not connected yet" not in html
+
+
+def test_backstage_copedent_editor_guards_unsaved_changes_across_exit_paths() -> None:
+    html = (REPO_ROOT / "ui" / "steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+    manager = (REPO_ROOT / "ui" / "backstage-copedent-manager.js").read_text(encoding="utf-8")
+
+    assert 'id="copedent-edit-notice" role="status" aria-live="polite" hidden' in html
+    assert 'id="copedent-unsaved-dialog" aria-labelledby="copedent-unsaved-title"' in html
+    for action in ("Keep editing", "Discard changes", "Save draft and continue"):
+        assert action in html
+    assert "let hasUnsavedChanges = false;" in manager
+    assert "function setUnsavedChanges(value)" in manager
+    assert "function requestExit()" in manager
+    assert "async function runAfterSafeExit(action)" in manager
+    assert "global.STEEL_RAG_BACKSTAGE_COPEDENT_GUARD = Object.freeze" in manager
+    assert 'global.addEventListener("beforeunload"' in manager
+
+    # Every editable data family marks the workbench dirty only after an applied edit.
+    assert 'elements.name, elements.guitar, elements.notes' in manager
+    assert "markDraft(`Updated string ${activeStringNumber}." in manager
+    assert "markDraft(`Updated ${control.label}." in manager
+    assert "markDraft(`Updated ${activeCell.control.label}" in manager
+    assert 'markDraft("New control added.' in manager
+
+    # Setup replacement and destructive editor actions all pass through the guard.
+    assert 'if (!await requestExit()) {' in manager
+    assert 'elements.clone.addEventListener("click", () => runAfterSafeExit(cloneSelected));' in manager
+    assert 'elements.duplicate.addEventListener("click", () => runAfterSafeExit(cloneSelected));' in manager
+    assert 'elements.create.addEventListener("click", () => runAfterSafeExit(createCustom));' in manager
+    assert 'elements.remove.addEventListener("click", () => runAfterSafeExit(deleteCustom));' in manager
+    assert 'elements.importSelected?.addEventListener("click", () => runAfterSafeExit(importSelectedLocalProfiles));' in manager
+    assert 'elements.editActive?.addEventListener("click", () => runAfterSafeExit(editActiveSetup));' in manager
+    assert 'elements.duplicateActive?.addEventListener("click", () => runAfterSafeExit(duplicateActiveSetup));' in manager
+
+    # Failed persistence retains dirty state; successful rendering clears it and records a saved draft notice.
+    assert "setUnsavedChanges(true);\n      return false;" in manager
+    assert "hasUnsavedChanges = false;\n    refreshLibrary();" in manager
+    assert 'showEditNotice(!currentProfile.immutable && currentProfile.validationStatus === "draft" ? "saved" : "none");' in manager
+    assert "if (hasUnsavedChanges) return;" in manager
+
+    # The shell guards tabs and all Backstage close paths through the manager contract.
+    assert 'currentTab === "setup" && tabName !== "setup" && !await guardCopedentExit()' in html
+    assert "if (!await guardCopedentExit()) return false;" in html
+    assert 'backstageClose.addEventListener("click", () => closeBackstage({ restoreFocus: true }));' in html
+    assert 'backstage.addEventListener("click", () => closeBackstage({ restoreFocus: true }));' in html
+    assert 'event.key === "Escape" && !backstage.hidden' in html
 
 
 def test_table_grid_adapter_orders_groups_round_trips_and_edits_mechanics() -> None:

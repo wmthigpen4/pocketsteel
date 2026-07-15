@@ -238,4 +238,4 @@ def test_mobile_layout_is_usable() -> None:
     assert "min-height: 44px;" in shell_css
     assert "background-attachment: scroll;" in shell_css
     assert ".page.is-answering main" in html and "width: calc(100% - 28px);" in html
-    assert ".answer-followup-input textarea" in html and "min-height: 92px;" in html
+    assert "textarea {" in html and "min-height: 152px;" in html

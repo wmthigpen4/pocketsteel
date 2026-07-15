@@ -294,7 +294,7 @@ def test_backstage_plan_and_activity_has_honest_states_without_mock_counts() -> 
     assert "AI Usage" not in html
 
 
-def test_backstage_plan_and_activity_uses_all_approved_assets() -> None:
+def test_backstage_plan_and_activity_uses_only_workspace_and_pass_assets() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
     asset_version = "plan-activity-artwork-20260714-2"
     for name in (
@@ -303,14 +303,151 @@ def test_backstage_plan_and_activity_uses_all_approved_assets() -> None:
         "melody-activity.png",
         "lessons-activity.png",
         "brain-activity.png",
-        "connected-learning.png",
-        "ai-assisted.png",
     ):
         path = Path("ui/assets/backstage") / name
         assert path.is_file()
         assert f'src="assets/backstage/{name}?v={asset_version}" alt=""' in html
         assert f'src="assets/backstage/{name}" alt=""' not in html
         assert path.read_bytes().startswith(b"\x89PNG")
+
+    for name in ("connected-learning.png", "ai-assisted.png"):
+        path = Path("ui/assets/backstage") / name
+        assert path.is_file()
+        assert f"assets/backstage/{name}" not in html
+
+
+def test_backstage_pass_comparison_is_truthful_and_keyboard_accessible() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+    pass_panel = html.split('id="backstage-panel-pass"', 1)[1].split('id="backstage-panel-feedback"', 1)[0]
+
+    assert 'id="plan-compare-toggle" type="button" aria-expanded="false" aria-controls="plan-comparison"' in pass_panel
+    assert 'id="plan-comparison" aria-labelledby="plan-comparison-title" tabindex="-1" hidden' in pass_panel
+    assert 'id: "dance_hall"' in html
+    assert 'id: "session"' in html
+    assert 'id: "headliner"' in html
+    assert "For players using an included Emmons or Day setup." in html
+    assert "For players with a custom copedent or more than one setup." in html
+    assert "A future pass whose benefits and pricing are still being defined." in html
+    assert 'action.disabled = true;' in html
+    for label in (
+        "Current pass",
+        "Plan changes not available yet",
+        "Coming soon",
+        "Managed account",
+        "Sign in required",
+        "Lower tier",
+        "Higher tier",
+    ):
+        assert label in html
+    assert "This access is assigned to the account and cannot be changed through customer controls." in html
+    assert "This account pass is not in the current customer comparison catalog." in html
+    assert "renewal" not in pass_panel.lower()
+    assert "cancel plan" not in pass_panel.lower()
+    assert "$" not in pass_panel
+
+
+def test_backstage_pass_comparison_renders_current_adjacent_managed_and_unknown_states() -> None:
+    script = r'''
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const vm = require("node:vm");
+
+const html = fs.readFileSync("ui/steel-guitar-rag-mock.html", "utf8");
+const match = html.match(/    const BACKSTAGE_PASS_CATALOG = Object\.freeze\(\[[\s\S]*?(?=\n    let currentAuthorizedAccountId)/);
+assert.ok(match, "pass catalog implementation should be extractable");
+
+class Element {
+  constructor(tag = "") { this.tag = tag; this.children = []; this.textContent = ""; this.className = ""; this.disabled = false; this.type = ""; }
+  append(...children) { this.children.push(...children); }
+  replaceChildren(...children) { this.children = [...children]; }
+}
+
+const sandbox = {
+  document: { createElement: (tag) => new Element(tag) },
+  planOptionGrid: new Element("div"),
+  mockCurrentPass: new Element("span"),
+  mockCurrentPassStatus: new Element("span"),
+  planPassDescription: new Element("p"),
+  planManagementCopy: new Element("p")
+};
+vm.createContext(sandbox);
+vm.runInContext(match[0], sandbox);
+
+function render(passId, verifiedAccount = true) {
+  vm.runInContext(`renderPassPresentation({passId: ${JSON.stringify(passId)}, passLabel: ${JSON.stringify(passId)}, verifiedAccount: ${verifiedAccount}})`, sandbox);
+  return sandbox.planOptionGrid.children.map((option) => ({
+    current: option.className.includes("is-current"),
+    label: option.children[0].children[0].textContent,
+    badge: option.children[0].children[1].textContent,
+    action: option.children.at(-1).textContent,
+    disabled: option.children.at(-1).disabled
+  }));
+}
+
+let options = render("dance_hall");
+assert.deepEqual(options.map((option) => option.badge), ["Current pass", "Higher tier", "Coming soon"]);
+assert.ok(options.every((option) => option.disabled));
+assert.equal(options[1].action, "Plan changes not available yet");
+
+options = render("session");
+assert.deepEqual(options.map((option) => option.badge), ["Lower tier", "Current pass", "Coming soon"]);
+
+options = render("creator");
+assert.equal(sandbox.mockCurrentPassStatus.textContent, "Managed access");
+assert.match(sandbox.planManagementCopy.textContent, /assigned to the account/);
+assert.equal(options[0].action, "Managed account");
+assert.equal(options[1].action, "Managed account");
+
+options = render("unverified", false);
+assert.equal(options[0].action, "Sign in required");
+assert.equal(options[1].action, "Sign in required");
+
+options = render("future_internal_pass");
+assert.equal(options.some((option) => option.current), false);
+assert.equal(sandbox.planPassDescription.textContent, "This account pass is not in the current customer comparison catalog.");
+'''
+    result = subprocess.run(
+        ["node", "-e", script],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_backstage_active_setup_uses_one_primary_status_and_disclosed_details() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+    manager = Path("ui/backstage-copedent-manager.js").read_text(encoding="utf-8")
+    active_setup = html.split('class="setup-stage setup-active-stage"', 1)[1].split('class="setup-stage setup-library-stage"', 1)[0]
+
+    assert active_setup.count('class="setup-status ') == 1
+    assert 'id="setup-active-status"' in active_setup
+    assert 'id="setup-active-summary"' in active_setup
+    assert '<summary>Setup details</summary>' in active_setup
+    for detail_id in ("setup-active-sync", "setup-active-validation", "setup-active-revision"):
+        assert f'id="{detail_id}"' in active_setup
+    assert 'elements.activeStatus.textContent = ready ? "In use" : "Needs attention";' in manager
+    assert "Included setup selected across the app." in manager
+    assert "Saved to your account and used across Ask, Explorer, Lessons, and Melody Studio." in manager
+    assert "Saved on this device and used across the app." in manager
+    assert "Ready for use — mechanical checks passed" in manager
+
+
+def test_backstage_activity_summary_is_balanced_and_artwork_free() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+
+    assert re.search(
+        r"\.learning-summary-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)",
+        html,
+        re.DOTALL,
+    )
+    assert re.search(
+        r"@media \(max-width: 900px\).*?\.learning-summary-grid\s*\{[^}]*grid-template-columns:\s*1fr",
+        html,
+        re.DOTALL,
+    )
+    assert "connected-learning.png" not in html
+    assert "ai-assisted.png" not in html
 
 
 def test_backstage_overview_is_a_truthful_control_room_with_real_state_hooks() -> None:
@@ -520,7 +657,7 @@ def test_backstage_my_setup_uses_live_three_stage_rig_locker_structure() -> None
     assert "Setup Library" in setup_panel
     assert "Copedent Workbench" in setup_panel
     assert 'src="assets/backstage/setup-nameplate.png?v=rig-locker-20260714-1"' in setup_panel
-    assert 'backstage-copedent-manager.js?v=control-room-20260714-1' in html
+    assert 'backstage-copedent-manager.js?v=backstage-cleanup-20260715-1' in html
     assert 'elements.activeBadge.textContent = validationLabel(currentProfile);' in manager
     assert 'alt="" width="2022" height="778"' in setup_panel
     assert 'id="setup-active-heading">Loading active setup…</h3>' in setup_panel

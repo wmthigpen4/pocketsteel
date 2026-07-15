@@ -79,11 +79,19 @@
     activeSync: $("#setup-active-sync"),
     activeValidation: $("#setup-active-validation"),
     activeRevision: $("#setup-active-revision"),
+    activeSummary: $("#setup-active-summary"),
     editActive: $("#copedent-edit-active"),
     duplicateActive: $("#copedent-duplicate-active"),
     exportActive: $("#copedent-export-active"),
     workbenchTitle: $("#copedent-workbench-title"),
-    workbenchMeta: $("#copedent-workbench-meta")
+    workbenchMeta: $("#copedent-workbench-meta"),
+    editNotice: $("#copedent-edit-notice"),
+    editNoticeTitle: $("#copedent-edit-notice-title"),
+    editNoticeCopy: $("#copedent-edit-notice-copy"),
+    unsavedDialog: $("#copedent-unsaved-dialog"),
+    unsavedKeep: $("#copedent-unsaved-keep"),
+    unsavedDiscard: $("#copedent-unsaved-discard"),
+    unsavedSave: $("#copedent-unsaved-save")
   };
 
   if (!elements.library || !elements.grid) return;
@@ -145,6 +153,8 @@
   let activeControlId = "";
   let activeStringNumber = 0;
   let returnFocus = null;
+  let hasUnsavedChanges = false;
+  let pendingExitResolution = null;
 
   function escapeHtml(value) {
     return String(value ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -202,14 +212,30 @@
     const account = accountState();
     const name = profileName(active);
     const validated = validationLabel(active);
+    const ready = validated === "Validated";
     elements.activeName.textContent = name;
     elements.plateName.textContent = name;
-    elements.activeStatus.textContent = "Active";
-    elements.activeValidation.textContent = validated;
-    elements.activeValidation.classList.toggle("is-active", validated === "Validated");
+    elements.activeStatus.textContent = ready ? "In use" : "Needs attention";
+    elements.activeStatus.classList.toggle("is-active", ready);
+    elements.activeStatus.classList.toggle("is-warning", !ready);
+    elements.activeValidation.textContent = ready
+      ? "Ready for use — mechanical checks passed"
+      : validated === "Needs review"
+        ? "Needs review before the app can use it"
+        : "Draft saved — validate before use";
     elements.activeRevision.textContent = `Revision ${Number(active.revision || 1)}`;
-    elements.activeSync.hidden = !account.enabled || !account.verified;
-    elements.activeSync.textContent = active.immutable ? "Account-selected" : "Account-synced";
+    elements.activeSync.textContent = active.immutable
+      ? "Included with the app"
+      : account.enabled && account.verified
+        ? "Saved to your account"
+        : "Saved on this device";
+    elements.activeSummary.textContent = ready
+      ? active.immutable
+        ? "Included setup selected across the app."
+        : account.enabled && account.verified
+          ? "Saved to your account and used across Ask, Explorer, Lessons, and Melody Studio."
+          : "Saved on this device and used across the app."
+      : "This setup cannot be used across the app until its saved draft passes validation.";
     elements.editActive.querySelector("span").textContent = active.immutable ? "Copy and edit" : "Edit setup";
     elements.duplicateActive.disabled = Boolean(!account.canManageCustom && account.enabled);
     elements.exportActive.disabled = Boolean(active.immutable);
@@ -295,12 +321,54 @@
     elements.importSelected.textContent = account.canManageCustom ? "Import selected setups" : "Session Pass required to import";
   }
 
+  function showEditNotice(state = "none") {
+    if (!elements.editNotice) return;
+    elements.editNotice.hidden = state === "none";
+    elements.editNotice.dataset.state = state;
+    if (state === "unsaved") {
+      elements.editNoticeTitle.textContent = "Unsaved changes";
+      elements.editNoticeCopy.textContent = "Save a draft to preserve them, or Validate and use when the setup matches your guitar.";
+    } else if (state === "saved") {
+      elements.editNoticeTitle.textContent = "Draft saved";
+      elements.editNoticeCopy.textContent = "Validate and use before this setup is ready across the app.";
+    }
+  }
+
+  function setUnsavedChanges(value) {
+    hasUnsavedChanges = Boolean(value);
+    if (hasUnsavedChanges) showEditNotice("unsaved");
+  }
+
+  function finishPendingExit(allowed) {
+    const resolve = pendingExitResolution;
+    pendingExitResolution = null;
+    if (elements.unsavedDialog?.open) elements.unsavedDialog.close(allowed ? "continue" : "stay");
+    resolve?.(Boolean(allowed));
+  }
+
+  function requestExit() {
+    if (!hasUnsavedChanges) return Promise.resolve(true);
+    if (pendingExitResolution) return Promise.resolve(false);
+    return new Promise((resolve) => {
+      pendingExitResolution = resolve;
+      elements.unsavedDialog.showModal();
+      elements.unsavedKeep.focus();
+    });
+  }
+
+  async function runAfterSafeExit(action) {
+    if (!await requestExit()) return false;
+    await action();
+    return true;
+  }
+
   function markDraft(message) {
     if (!currentProfile?.immutable && currentProfile.validationStatus !== "needs_review") currentProfile.validationStatus = "draft";
     if (currentProfile && !currentProfile.immutable) {
       elements.activeBadge.textContent = validationLabel(currentProfile);
       elements.activeBadge.classList.remove("is-active");
     }
+    setUnsavedChanges(true);
     if (message) elements.status.textContent = message;
   }
 
@@ -497,6 +565,7 @@
     const libraryProfile = store.profileById(selectedId) || store.activeProfile();
     selectedId = libraryProfile.id;
     currentProfile = editableProfile(libraryProfile);
+    hasUnsavedChanges = false;
     refreshLibrary();
     elements.name.value = currentProfile.name || currentProfile.label || "";
     elements.family.value = "E9";
@@ -524,6 +593,7 @@
         : currentProfile.validationStatus === "valid"
           ? "Validated setup. Any edit returns it to draft until you validate again."
           : "Draft setup. Save it now or validate it when the chart matches your guitar.");
+    showEditNotice(!currentProfile.immutable && currentProfile.validationStatus === "draft" ? "saved" : "none");
   }
 
   function accessHeaders() {
@@ -552,16 +622,23 @@
   async function saveDraft() {
     try {
       if (currentProfile.immutable) throw new Error("Choose Copy and edit before changing this starter.");
-      if (customEditingLocked()) return showSubscription();
+      if (customEditingLocked()) {
+        showSubscription();
+        return false;
+      }
       currentProfile = await store.saveManagedProfile(profileFromEditor());
       selectedId = currentProfile.id;
       renderSelected(`${accountState().enabled ? "Draft synchronized to your account" : "Draft saved locally"}. Validate it before using it throughout the app.`);
+      return true;
     } catch (error) {
       elements.status.textContent = error.message;
+      setUnsavedChanges(true);
+      return false;
     }
   }
 
   async function validateAndActivate() {
+    const wasUnsaved = hasUnsavedChanges;
     try {
       if (currentProfile.immutable) {
         await store.activateProfile(currentProfile.id);
@@ -578,8 +655,11 @@
       selectedId = currentProfile.id;
       selectionWasExplicit = false;
       renderSelected(`Using ${currentProfile.name || currentProfile.label} throughout the app.`);
+      return true;
     } catch (error) {
       elements.status.textContent = error.message;
+      if (wasUnsaved && !currentProfile?.immutable) setUnsavedChanges(true);
+      return false;
     }
   }
 
@@ -801,11 +881,6 @@
     return control;
   }
 
-  async function saveControlFields() {
-    if (!applyControlFields()) return;
-    await saveDraft();
-  }
-
   function openStringDialog(stringNumber, trigger) {
     const string = currentProfile.strings.find((item) => Number(item.stringNumber) === Number(stringNumber));
     if (!string) return;
@@ -869,7 +944,7 @@
     } catch (_error) {
       elements.status.textContent = "Using the offline starter charts. Live validation still requires a connection.";
     }
-    renderSelected();
+    if (!hasUnsavedChanges) renderSelected();
   }
 
   async function importSelectedLocalProfiles() {
@@ -932,15 +1007,20 @@
     elements.status.textContent = `${profileName(active)} exported. No account data was deleted.`;
   }
 
-  elements.library.addEventListener("change", () => {
-    selectedId = elements.library.value;
+  elements.library.addEventListener("change", async () => {
+    const nextId = elements.library.value;
+    if (!await requestExit()) {
+      elements.library.value = selectedId;
+      return;
+    }
+    selectedId = nextId;
     selectionWasExplicit = true;
     renderSelected();
   });
   elements.activate.addEventListener("click", validateAndActivate);
   elements.activateEdited.addEventListener("click", validateAndActivate);
-  elements.clone.addEventListener("click", cloneSelected);
-  elements.duplicate.addEventListener("click", cloneSelected);
+  elements.clone.addEventListener("click", () => runAfterSafeExit(cloneSelected));
+  elements.duplicate.addEventListener("click", () => runAfterSafeExit(cloneSelected));
   elements.exportProfile.addEventListener("click", () => {
     if (!currentProfile?.immutable) {
       exportLocalProfile(currentProfile);
@@ -948,8 +1028,8 @@
     }
     elements.more.open = false;
   });
-  elements.create.addEventListener("click", createCustom);
-  elements.remove.addEventListener("click", deleteCustom);
+  elements.create.addEventListener("click", () => runAfterSafeExit(createCustom));
+  elements.remove.addEventListener("click", () => runAfterSafeExit(deleteCustom));
   elements.save.addEventListener("click", saveDraft);
   elements.reset.addEventListener("click", () => { renderSelected("Unsaved chart edits discarded."); elements.more.open = false; });
   elements.compare.addEventListener("click", compareWithStarter);
@@ -983,16 +1063,17 @@
     updateCellPreview();
   });
   elements.cellApply.addEventListener("click", applyCellChange);
-  elements.controlApply.addEventListener("click", saveControlFields);
+  elements.controlApply.addEventListener("click", applyControlFields);
   elements.controlReset.addEventListener("click", resetControlFields);
   elements.stringApply.addEventListener("click", applyStringDetails);
-  elements.importSelected?.addEventListener("click", importSelectedLocalProfiles);
-  elements.libraryGroups?.addEventListener("click", (event) => {
+  elements.importSelected?.addEventListener("click", () => runAfterSafeExit(importSelectedLocalProfiles));
+  elements.libraryGroups?.addEventListener("click", async (event) => {
     const entry = event.target.closest("[data-setup-profile]");
-    if (entry) selectProfile(entry.dataset.setupProfile, { explicit: true, message: `${entry.querySelector(".setup-library-entry-name")?.textContent || "Setup"} selected for review.` });
+    if (!entry || !await requestExit()) return;
+    selectProfile(entry.dataset.setupProfile, { explicit: true, message: `${entry.querySelector(".setup-library-entry-name")?.textContent || "Setup"} selected for review.` });
   });
-  elements.editActive?.addEventListener("click", editActiveSetup);
-  elements.duplicateActive?.addEventListener("click", duplicateActiveSetup);
+  elements.editActive?.addEventListener("click", () => runAfterSafeExit(editActiveSetup));
+  elements.duplicateActive?.addEventListener("click", () => runAfterSafeExit(duplicateActiveSetup));
   elements.exportActive?.addEventListener("click", exportActiveSetup);
   elements.localImportList?.addEventListener("click", (event) => {
     const exportButton = event.target.closest("[data-export-local]");
@@ -1024,10 +1105,42 @@
     });
   });
 
+  elements.unsavedKeep.addEventListener("click", () => finishPendingExit(false));
+  elements.unsavedDiscard.addEventListener("click", () => {
+    renderSelected("Unsaved chart edits discarded.");
+    finishPendingExit(true);
+  });
+  elements.unsavedSave.addEventListener("click", async () => {
+    elements.unsavedSave.disabled = true;
+    elements.unsavedKeep.disabled = true;
+    elements.unsavedDiscard.disabled = true;
+    const saved = await saveDraft();
+    elements.unsavedSave.disabled = false;
+    elements.unsavedKeep.disabled = false;
+    elements.unsavedDiscard.disabled = false;
+    if (saved) finishPendingExit(true);
+  });
+  elements.unsavedDialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    finishPendingExit(false);
+  });
+
+  global.addEventListener("beforeunload", (event) => {
+    if (!hasUnsavedChanges) return;
+    event.preventDefault();
+    event.returnValue = "";
+  });
+
+  global.STEEL_RAG_BACKSTAGE_COPEDENT_GUARD = Object.freeze({
+    hasUnsavedChanges: () => hasUnsavedChanges,
+    requestExit
+  });
+
   refreshLibrary();
   renderSelected();
   loadCatalog();
   function syncSelectedProfile() {
+    if (hasUnsavedChanges) return;
     const activeId = store.activeProfile().id;
     if (!selectionWasExplicit || !store.profileById(selectedId)) selectedId = activeId;
     renderSelected();

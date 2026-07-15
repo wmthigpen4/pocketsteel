@@ -827,6 +827,51 @@
       color: rgba(244, 234, 214, 0.62);
     }
 
+    .setup-status.is-warning {
+      border-color: rgba(224, 151, 57, 0.58);
+      background: rgba(224, 151, 57, 0.12);
+      color: rgba(255, 207, 123, 0.96);
+    }
+
+    .setup-status.is-warning svg { display: none; }
+    .setup-status.is-warning::before {
+      content: "!";
+      display: grid;
+      place-items: center;
+      width: 14px;
+      height: 14px;
+      border: 1px solid currentColor;
+      border-radius: 50%;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .setup-active-summary {
+      margin-top: 9px !important;
+    }
+
+    .setup-active-details {
+      margin-top: 10px;
+      color: rgba(244, 234, 214, 0.68);
+      font-size: 12px;
+    }
+
+    .setup-active-details summary {
+      width: fit-content;
+      color: rgba(240, 191, 105, 0.9);
+      cursor: pointer;
+    }
+
+    .setup-active-details dl {
+      display: grid;
+      grid-template-columns: max-content minmax(0, 1fr);
+      gap: 6px 12px;
+      margin: 10px 0 0;
+    }
+
+    .setup-active-details dt { color: rgba(244, 234, 214, 0.52); }
+    .setup-active-details dd { margin: 0; color: rgba(244, 234, 214, 0.82); }
+
     .setup-active-actions {
       display: grid;
       gap: 10px;
@@ -1404,6 +1449,29 @@
       text-align: right;
     }
 
+    .copedent-edit-notice {
+      display: grid;
+      gap: 3px;
+      margin: 10px 0 0;
+      border: 1px solid rgba(224, 151, 57, 0.5);
+      border-radius: 10px;
+      padding: 10px 12px;
+      background: rgba(224, 151, 57, 0.09);
+      color: rgba(244, 234, 214, 0.76);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .copedent-edit-notice[hidden] { display: none; }
+    .copedent-edit-notice strong { color: rgba(255, 207, 123, 0.98); }
+
+    .copedent-unsaved-actions {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
     .copedent-template-note {
       border-left: 2px solid rgba(240, 191, 105, 0.42);
       padding-left: 10px;
@@ -1939,6 +2007,8 @@
     }
 
     .plan-pass-card,
+    .plan-comparison,
+    .plan-option,
     .activity-card,
     .connected-learning-card,
     .ai-activity-card {
@@ -1952,16 +2022,14 @@
 
     .plan-pass-card {
       display: grid;
-      grid-template-columns: minmax(150px, 0.58fr) minmax(260px, 1.25fr) minmax(240px, 1fr);
+      grid-template-columns: minmax(150px, 0.58fr) minmax(260px, 1.25fr) minmax(220px, 0.85fr);
       align-items: center;
       gap: 26px;
       padding: 22px 26px;
     }
 
     .plan-artwork,
-    .activity-artwork,
-    .connected-artwork,
-    .ai-artwork {
+    .activity-artwork {
       display: block;
       width: 100%;
       height: auto;
@@ -1976,14 +2044,14 @@
     }
 
     .plan-pass-copy,
-    .plan-next-step {
+    .plan-pass-actions {
       display: grid;
       align-content: center;
       gap: 9px;
       min-width: 0;
     }
 
-    .plan-next-step {
+    .plan-pass-actions {
       align-self: stretch;
       padding-left: 26px;
       border-left: 1px solid rgba(240, 191, 105, 0.18);
@@ -2000,7 +2068,6 @@
     }
 
     .plan-pass-copy h3,
-    .plan-next-step h4,
     .activity-card h4 {
       margin: 0;
       color: var(--cream);
@@ -2013,7 +2080,6 @@
       font-size: clamp(30px, 4vw, 44px);
     }
 
-    .plan-next-step h4,
     .activity-card h4 {
       font-size: 24px;
     }
@@ -2038,7 +2104,8 @@
       line-height: 1.5;
     }
 
-    .plan-upgrade-button {
+    .plan-compare-button,
+    .plan-option-action {
       width: 100%;
       min-height: 40px;
       border: 1px solid rgba(240, 191, 105, 0.45);
@@ -2048,10 +2115,110 @@
       font: inherit;
     }
 
-    .plan-upgrade-button:disabled {
+    .plan-compare-button {
+      cursor: pointer;
+    }
+
+    .plan-compare-button:hover,
+    .plan-compare-button:focus-visible {
+      border-color: rgba(240, 191, 105, 0.82);
+      background: rgba(240, 191, 105, 0.12);
+    }
+
+    .plan-option-action:disabled {
       opacity: 0.78;
       cursor: not-allowed;
     }
+
+    .plan-comparison {
+      display: grid;
+      gap: 16px;
+      padding: 20px;
+    }
+
+    .plan-comparison[hidden] { display: none; }
+
+    .plan-comparison-heading {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .plan-comparison-heading h3 {
+      margin: 3px 0 0;
+      color: var(--cream);
+      font: 500 28px/1.08 var(--font-lesson);
+    }
+
+    .plan-comparison-heading p:last-child {
+      max-width: 520px;
+      margin: 0;
+      color: rgba(244, 234, 214, 0.65);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .plan-option-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .plan-option {
+      display: grid;
+      align-content: start;
+      gap: 10px;
+      min-width: 0;
+      padding: 16px;
+    }
+
+    .plan-option.is-current {
+      border-color: rgba(240, 191, 105, 0.72);
+      box-shadow: 0 0 0 1px rgba(240, 191, 105, 0.16), 0 16px 38px rgba(0, 0, 0, 0.2);
+    }
+
+    .plan-option header {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .plan-option h4 {
+      margin: 0;
+      color: var(--cream);
+      font: 500 22px/1.08 var(--font-lesson);
+    }
+
+    .plan-option-badge {
+      border: 1px solid rgba(240, 191, 105, 0.3);
+      border-radius: 999px;
+      padding: 3px 8px;
+      color: rgba(240, 191, 105, 0.9);
+      font-size: 10px;
+      white-space: nowrap;
+    }
+
+    .plan-option-fit,
+    .plan-option-note {
+      margin: 0;
+      color: rgba(244, 234, 214, 0.67);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .plan-option ul {
+      display: grid;
+      gap: 6px;
+      margin: 0;
+      padding-left: 18px;
+      color: rgba(244, 234, 214, 0.8);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .plan-option-action { margin-top: auto; }
 
     .plan-activity-heading {
       display: flex;
@@ -2149,7 +2316,7 @@
 
     .learning-summary-grid {
       display: grid;
-      grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.95fr);
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 14px;
     }
 
@@ -2160,21 +2327,6 @@
       gap: 16px;
       min-width: 0;
       padding: 16px 20px;
-    }
-
-    .connected-learning-card {
-      grid-template-columns: 116px minmax(0, 1fr);
-    }
-
-    .ai-activity-card {
-      grid-template-columns: 104px minmax(0, 1fr);
-    }
-
-    .connected-artwork,
-    .ai-artwork {
-      width: 104px;
-      height: 104px;
-      filter: drop-shadow(0 10px 10px rgba(0, 0, 0, 0.36));
     }
 
     .connected-body,
@@ -2865,12 +3017,14 @@
         grid-template-columns: 150px minmax(0, 1fr);
       }
 
-      .plan-next-step {
+      .plan-pass-actions {
         grid-column: 1 / -1;
         padding: 18px 0 0;
         border-top: 1px solid rgba(240, 191, 105, 0.18);
         border-left: 0;
       }
+
+      .plan-option-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
       .activity-card {
         grid-template-columns: 88px minmax(0, 1fr);
@@ -4600,9 +4754,12 @@
         margin: -8px auto;
       }
 
-      .plan-next-step {
+      .plan-pass-actions {
         grid-column: auto;
       }
+
+      .plan-option-grid { grid-template-columns: 1fr; }
+      .plan-comparison-heading { align-items: flex-start; flex-direction: column; }
 
       .activity-card-grid,
       .learning-summary-grid {
@@ -4637,16 +4794,7 @@
       }
 
       .connected-learning-card,
-      .ai-activity-card {
-        grid-template-columns: 76px minmax(0, 1fr);
-        padding: 14px;
-      }
-
-      .connected-artwork,
-      .ai-artwork {
-        width: 72px;
-        height: 72px;
-      }
+      .ai-activity-card { padding: 14px; }
 
       .account-credentials {
         gap: 12px;
@@ -5287,12 +5435,17 @@
                 <p class="setup-eyebrow">Active setup</p>
                 <h3 id="setup-active-heading">Loading active setup…</h3>
                 <div class="setup-status-list" aria-label="Active setup status">
-                  <span class="setup-status is-active" id="setup-active-status"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12 4 4 8-9"/></svg>Active</span>
-                  <span class="setup-status is-synced" id="setup-active-sync"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 18h10a4 4 0 0 0 .7-7.9A6 6 0 0 0 6.3 8.5 4.5 4.5 0 0 0 7 18Z"/></svg>Account-synced</span>
-                  <span class="setup-status" id="setup-active-validation">Validated</span>
-                  <span class="setup-status is-neutral" id="setup-active-revision">Revision 1</span>
+                  <span class="setup-status is-active" id="setup-active-status"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12 4 4 8-9"/></svg>In use</span>
                 </div>
-                <p>This setup drives Ask, Explorer, Lessons, and Melody Studio.</p>
+                <p class="setup-active-summary" id="setup-active-summary">Checking where this setup is saved and used…</p>
+                <details class="setup-active-details">
+                  <summary>Setup details</summary>
+                  <dl>
+                    <dt>Storage</dt><dd id="setup-active-sync">Checking…</dd>
+                    <dt>Readiness</dt><dd id="setup-active-validation">Checking…</dd>
+                    <dt>Revision</dt><dd id="setup-active-revision">Checking…</dd>
+                  </dl>
+                </details>
               </div>
               <div class="setup-active-actions" aria-label="Active setup actions">
                 <button class="backstage-button setup-primary-action" id="copedent-edit-active" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4.5-1 10-10-3.5-3.5-10 10L4 20Z"/><path d="m13.5 7 3.5 3.5"/></svg><span>Edit setup</span></button>
@@ -5365,6 +5518,11 @@
                   </details>
                 </div>
               </header>
+
+              <div class="copedent-edit-notice" id="copedent-edit-notice" role="status" aria-live="polite" hidden>
+                <strong id="copedent-edit-notice-title">Unsaved changes</strong>
+                <span id="copedent-edit-notice-copy">Save a draft to preserve them, or Validate and use when the setup matches your guitar.</span>
+              </div>
 
             <details class="copedent-details" id="copedent-profile-details">
               <summary>Profile details</summary>
@@ -5499,7 +5657,7 @@
                 </div>
                 <div class="copedent-dialog__actions">
                   <button class="backstage-button" id="copedent-control-reset" type="button">Reset</button>
-                  <button class="backstage-button is-primary" id="copedent-control-apply" type="button">Save</button>
+                  <button class="backstage-button is-primary" id="copedent-control-apply" type="button">Apply changes</button>
                 </div>
               </form>
             </dialog>
@@ -5523,6 +5681,23 @@
                 </div>
               </form>
             </dialog>
+
+            <dialog class="copedent-dialog" id="copedent-unsaved-dialog" aria-labelledby="copedent-unsaved-title" aria-describedby="copedent-unsaved-copy">
+              <div class="copedent-dialog__content">
+                <div class="copedent-dialog__header">
+                  <div>
+                    <h4 id="copedent-unsaved-title">Save your copedent changes?</h4>
+                    <p id="copedent-unsaved-copy">You have changes that have not been saved. Save a draft to preserve them, discard them, or keep editing.</p>
+                  </div>
+                </div>
+                <p class="copedent-change-preview">A saved draft is not ready across the app until you choose Validate and use.</p>
+                <div class="copedent-unsaved-actions">
+                  <button class="backstage-button" id="copedent-unsaved-keep" type="button">Keep editing</button>
+                  <button class="backstage-button" id="copedent-unsaved-discard" type="button">Discard changes</button>
+                  <button class="backstage-button is-primary" id="copedent-unsaved-save" type="button">Save draft and continue</button>
+                </div>
+              </div>
+            </dialog>
           </article>
           </section>
 
@@ -5538,14 +5713,24 @@
                 <span class="plan-status" id="mock-current-pass-status">Free</span>
                 <p class="plan-description" id="plan-pass-description">Includes the core learning workspaces, Emmons and Day setup access, and account-linked preferences.</p>
               </div>
-              <div class="plan-next-step" id="plan-next-step">
-                <p class="plan-label">Next step</p>
-                <h4 id="plan-next-pass">Session Pass</h4>
-                <p class="plan-description" id="plan-next-description">Unlock custom copedents, saved custom setups, and more personalized workspaces.</p>
-                <button class="plan-upgrade-button" type="button" disabled aria-describedby="plan-upgrade-note">Upgrade · coming soon</button>
-                <p class="plan-future-note" id="plan-upgrade-note">Checkout is not available yet. Headliner remains a future premium direction.</p>
+              <div class="plan-pass-actions">
+                <p class="plan-label">Plan options</p>
+                <p class="plan-description" id="plan-management-copy">Compare the passes available now and see what each one adds.</p>
+                <button class="plan-compare-button" id="plan-compare-toggle" type="button" aria-expanded="false" aria-controls="plan-comparison">Compare passes</button>
+                <p class="plan-future-note">Plan changes and checkout are not available yet.</p>
               </div>
             </article>
+
+            <section class="plan-comparison" id="plan-comparison" aria-labelledby="plan-comparison-title" tabindex="-1" hidden>
+              <div class="plan-comparison-heading">
+                <div>
+                  <p class="plan-label">Pass comparison</p>
+                  <h3 id="plan-comparison-title">Choose what fits your setup</h3>
+                </div>
+                <p>Compare access without starting a purchase. Pricing and plan changes are not connected yet.</p>
+              </div>
+              <div class="plan-option-grid" id="plan-option-grid"></div>
+            </section>
 
             <div class="plan-activity-heading">
               <h3>Your activity this month</h3>
@@ -5606,7 +5791,6 @@
 
             <div class="learning-summary-grid" id="activity-summary-details" hidden>
               <article class="connected-learning-card">
-                <img class="connected-artwork" src="assets/backstage/connected-learning.png?v=plan-activity-artwork-20260714-2" alt="">
                 <div class="connected-body">
                   <p class="plan-section-title">Connected learning</p>
                   <div class="connected-metrics">
@@ -5619,7 +5803,6 @@
               </article>
 
               <article class="ai-activity-card">
-                <img class="ai-artwork" src="assets/backstage/ai-assisted.png?v=plan-activity-artwork-20260714-2" alt="">
                 <div class="ai-activity-body">
                   <p class="plan-section-title">AI-assisted actions</p>
                   <strong class="ai-usage-total" id="activity-ai-actions">0 this month</strong>
@@ -5841,11 +6024,10 @@
     const mockCurrentPass = document.querySelector("#mock-current-pass");
     const mockCurrentPassStatus = document.querySelector("#mock-current-pass-status");
     const planPassDescription = document.querySelector("#plan-pass-description");
-    const planNextStep = document.querySelector("#plan-next-step");
-    const planNextPass = document.querySelector("#plan-next-pass");
-    const planNextDescription = document.querySelector("#plan-next-description");
-    const planUpgradeButton = document.querySelector(".plan-upgrade-button");
-    const planUpgradeNote = document.querySelector("#plan-upgrade-note");
+    const planManagementCopy = document.querySelector("#plan-management-copy");
+    const planCompareToggle = document.querySelector("#plan-compare-toggle");
+    const planComparison = document.querySelector("#plan-comparison");
+    const planOptionGrid = document.querySelector("#plan-option-grid");
     const backstageOverviewPassBadge = document.querySelector("#backstage-overview-pass-badge");
     const backstageOverviewPassSummary = document.querySelector("#backstage-overview-pass-summary");
     const backstageOverviewAccountBadge = document.querySelector("#backstage-overview-account-badge");
@@ -7468,12 +7650,99 @@
       }
     }
 
+    const BACKSTAGE_PASS_CATALOG = Object.freeze([
+      Object.freeze({
+        id: "dance_hall",
+        label: "Dance Hall Pass",
+        availability: "Free",
+        fit: "For players using an included Emmons or Day setup.",
+        benefits: Object.freeze(["Ask, Explorer, Melody Studio, and Lessons", "Included Emmons and Day setups", "Account-linked preferences"])
+      }),
+      Object.freeze({
+        id: "session",
+        label: "Session Pass",
+        availability: "Available now",
+        fit: "For players with a custom copedent or more than one setup.",
+        benefits: Object.freeze(["Everything in Dance Hall", "Create, import, and edit custom copedents", "Synchronize and use custom setups across workspaces"])
+      }),
+      Object.freeze({
+        id: "headliner",
+        label: "Headliner Pass",
+        availability: "Coming soon",
+        fit: "A future pass whose benefits and pricing are still being defined.",
+        benefits: Object.freeze([])
+      })
+    ]);
+
+    function renderPassComparison({ passId, verifiedAccount }) {
+      const normalizedPass = String(passId || "unverified").toLowerCase();
+      const currentIndex = BACKSTAGE_PASS_CATALOG.findIndex((pass) => pass.id === normalizedPass);
+      const managed = ["creator", "bandleader"].includes(normalizedPass);
+      planOptionGrid.replaceChildren();
+
+      BACKSTAGE_PASS_CATALOG.forEach((pass, index) => {
+        const current = pass.id === normalizedPass;
+        const option = document.createElement("article");
+        option.className = `plan-option${current ? " is-current" : ""}`;
+
+        const header = document.createElement("header");
+        const title = document.createElement("h4");
+        title.textContent = pass.label;
+        const badge = document.createElement("span");
+        badge.className = "plan-option-badge";
+        badge.textContent = current
+          ? "Current pass"
+          : pass.id === "headliner"
+            ? "Coming soon"
+            : currentIndex >= 0
+              ? (index < currentIndex ? "Lower tier" : "Higher tier")
+              : pass.availability;
+        header.append(title, badge);
+
+        const fit = document.createElement("p");
+        fit.className = "plan-option-fit";
+        fit.textContent = pass.fit;
+        option.append(header, fit);
+
+        if (pass.benefits.length) {
+          const benefits = document.createElement("ul");
+          pass.benefits.forEach((benefit) => {
+            const item = document.createElement("li");
+            item.textContent = benefit;
+            benefits.append(item);
+          });
+          option.append(benefits);
+        } else {
+          const note = document.createElement("p");
+          note.className = "plan-option-note";
+          note.textContent = "No feature or price claims are available for this pass yet.";
+          option.append(note);
+        }
+
+        const action = document.createElement("button");
+        action.className = "plan-option-action";
+        action.type = "button";
+        action.disabled = true;
+        action.textContent = current
+          ? "Current pass"
+          : pass.id === "headliner"
+            ? "Coming soon"
+            : managed
+              ? "Managed account"
+              : verifiedAccount
+                ? "Plan changes not available yet"
+                : "Sign in required";
+        option.append(action);
+        planOptionGrid.append(option);
+      });
+    }
+
     function renderPassPresentation({ passId, passLabel, verifiedAccount }) {
       const normalizedPass = String(passId || "dance_hall").toLowerCase();
       const descriptions = {
         dance_hall: "Includes the core learning workspaces, Emmons and Day setup access, and account-linked preferences.",
         session: "Includes custom copedents, saved custom setups, and personalized mechanics across the learning workspaces.",
-        headliner: "Includes the currently defined premium learning and personalization access for this account.",
+        headliner: "This future customer pass does not have defined benefits or pricing yet.",
         creator: "This account has managed product access, including custom setup and personalized workspace capabilities.",
         bandleader: "This account has managed internal access in addition to the customer learning workspaces.",
         unverified: "Sign in through the protected app to view an account pass and synchronized preferences."
@@ -7486,28 +7755,15 @@
           : ["creator", "bandleader"].includes(normalizedPass)
             ? "Managed access"
             : "Account access";
-      planPassDescription.textContent = descriptions[normalizedPass] || descriptions.dance_hall;
+      planPassDescription.textContent = descriptions[normalizedPass]
+        || "This account pass is not in the current customer comparison catalog.";
 
-      const hasCustomerUpgrade = normalizedPass === "dance_hall";
-      const hasFuturePremium = normalizedPass === "session";
-      planNextPass.textContent = hasCustomerUpgrade
-        ? "Session Pass"
-        : hasFuturePremium
-          ? "Headliner Pass"
-          : verifiedAccount
-            ? "Your access is managed"
-            : "Verify your account";
-      planNextDescription.textContent = hasCustomerUpgrade
-        ? "Unlock custom copedents, saved custom setups, and more personalized workspaces."
-        : hasFuturePremium
-          ? "Headliner is a future premium direction; no checkout or pricing is available yet."
-          : verifiedAccount
-            ? "There is no customer upgrade action attached to this account state."
-            : "Open Backstage after signing in to see the pass assigned to your account.";
-      planUpgradeButton.hidden = !hasCustomerUpgrade;
-      planUpgradeNote.textContent = hasCustomerUpgrade
-        ? "Checkout is not available yet. Headliner remains a future premium direction."
-        : "No billing or plan-management action is available here.";
+      planManagementCopy.textContent = ["creator", "bandleader"].includes(normalizedPass)
+        ? "This access is assigned to the account and cannot be changed through customer controls."
+        : verifiedAccount
+          ? "Compare your current pass with the customer passes above or below it."
+          : "Sign in through the protected app to identify your current pass.";
+      renderPassComparison({ passId: normalizedPass, verifiedAccount });
     }
 
     let currentAuthorizedAccountId = "";
@@ -7899,7 +8155,14 @@
       backstageFeedbackCount.textContent = `${backstageFeedbackMessage.value.length} / ${backstageFeedbackMessage.maxLength}`;
     }
 
-    function showBackstageTab(tabName) {
+    async function guardCopedentExit() {
+      const guard = window.STEEL_RAG_BACKSTAGE_COPEDENT_GUARD;
+      return typeof guard?.requestExit === "function" ? guard.requestExit() : true;
+    }
+
+    async function showBackstageTab(tabName, { skipGuard = false } = {}) {
+      const currentTab = backstageTabs.find((tab) => tab.getAttribute("aria-selected") === "true")?.dataset.backstageTab;
+      if (!skipGuard && currentTab === "setup" && tabName !== "setup" && !await guardCopedentExit()) return false;
       backstageTabs.forEach((tab) => {
         const isSelected = tab.dataset.backstageTab === tabName;
         tab.setAttribute("aria-selected", String(isSelected));
@@ -7912,6 +8175,7 @@
       if (tabName === "overview" || tabName === "pass") {
         refreshMonthlyUsage();
       }
+      return true;
     }
 
     function formatDraftDate(value) {
@@ -7936,7 +8200,7 @@
     function openBackstage({ initialTab = "overview" } = {}) {
       backstage.hidden = false;
       closeTechPopover();
-      showBackstageTab(initialTab);
+      showBackstageTab(initialTab, { skipGuard: true });
       requestAnimationFrame(() => {
         backstage.classList.add("is-open");
         backstageTriggers.forEach((trigger) => trigger.setAttribute("aria-expanded", "true"));
@@ -7944,7 +8208,8 @@
       });
     }
 
-    function closeBackstage({ restoreFocus = false } = {}) {
+    async function closeBackstage({ restoreFocus = false } = {}) {
+      if (!await guardCopedentExit()) return false;
       backstage.classList.remove("is-open");
       backstageTriggers.forEach((trigger) => trigger.setAttribute("aria-expanded", "false"));
       window.setTimeout(() => {
@@ -7955,6 +8220,7 @@
       if (restoreFocus) {
         activeBackstageTrigger?.focus();
       }
+      return true;
     }
 
     let mockAccessState = loadMockAccessState();
@@ -8015,18 +8281,25 @@
 
     backstageTabs.forEach((tab, index) => {
       tab.addEventListener("click", () => showBackstageTab(tab.dataset.backstageTab));
-      tab.addEventListener("keydown", (event) => {
+      tab.addEventListener("keydown", async (event) => {
         if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
         event.preventDefault();
         const direction = event.key === "ArrowRight" ? 1 : -1;
         const nextIndex = (index + direction + backstageTabs.length) % backstageTabs.length;
-        backstageTabs[nextIndex].focus();
-        showBackstageTab(backstageTabs[nextIndex].dataset.backstageTab);
+        if (await showBackstageTab(backstageTabs[nextIndex].dataset.backstageTab)) backstageTabs[nextIndex].focus();
       });
     });
 
     backstageJumpButtons.forEach((button) => {
       button.addEventListener("click", () => showBackstageTab(button.dataset.backstageJump));
+    });
+
+    planCompareToggle.addEventListener("click", () => {
+      const expanded = planCompareToggle.getAttribute("aria-expanded") === "true";
+      planCompareToggle.setAttribute("aria-expanded", String(!expanded));
+      planComparison.hidden = expanded;
+      planCompareToggle.textContent = expanded ? "Compare passes" : "Hide pass comparison";
+      if (!expanded) planComparison.focus();
     });
 
     backstageCopyAccountId.addEventListener("click", copyAuthorizedAccountId);
@@ -8100,6 +8373,12 @@
         }
         return;
       }
+      if (event.key === "Escape" && document.querySelector("#copedent-unsaved-dialog")?.open) {
+        return;
+      }
+      if (event.key === "Escape" && document.querySelector(".copedent-dialog[open]")) {
+        return;
+      }
       if (event.key === "Escape" && !backstage.hidden) {
         closeBackstage({ restoreFocus: true });
       } else if (event.key === "Escape" && !techPopover.hidden) {
@@ -8117,6 +8396,6 @@
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
     }
   </script>
-  <script src="backstage-copedent-manager.js?v=control-room-20260714-1"></script>
+  <script src="backstage-copedent-manager.js?v=backstage-cleanup-20260715-1"></script>
 </body>
 </html>
