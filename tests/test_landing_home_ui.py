@@ -24,7 +24,7 @@ def test_landing_home_has_product_first_hierarchy_and_copy() -> None:
 
     assert '<a class="skip-link" href="#main-content">Skip to main content</a>' in html
     assert '<nav class="header-actions app-shell-nav" aria-label="Primary navigation">' in html
-    assert 'href="workspace-shell.css?v=landing-melody-png-20260714-1"' in html
+    assert 'href="workspace-shell.css?v=full-screen-ask-20260714-1"' in html
     assert '<main id="main-content">' in html
     assert "A connected pedal-steel learning studio" in home
     assert "See the neck. Understand the music. Play with confidence." in home
@@ -135,7 +135,11 @@ def test_landing_home_uses_compact_functional_ask_card_without_voice_control() -
 
     assert 'id="ask-the-brain"' in home
     assert 'id="question"' in home
-    assert '<button class="send" type="button">Ask a question</button>' in home
+    assert '<button class="send" type="button">Ask the Brain</button>' in home
+    css = CSS_PATH.read_text(encoding="utf-8")
+    ask_textarea_rule = css.split(".ask-product-card textarea {", 1)[1].split("}", 1)[0]
+    assert "min-height: 96px;" in ask_textarea_rule
+    assert "font: 400 15px/1.45 var(--font-ui);" in ask_textarea_rule
     assert 'id="suggested-prompts"' in home
     assert 'aria-label="Voice question"' not in home
     assert 'const visiblePrompts = Array.from({ length: Math.min(1, promptPool.length)' in HTML_PATH.read_text(

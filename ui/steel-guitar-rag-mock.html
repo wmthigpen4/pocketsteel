@@ -4978,7 +4978,7 @@
       }
     }
   </style>
-  <link rel="stylesheet" href="workspace-shell.css?v=landing-melody-png-20260714-1">
+  <link rel="stylesheet" href="workspace-shell.css?v=full-screen-ask-20260714-1">
 </head>
 <body>
   <div class="page">
@@ -5000,9 +5000,9 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 11 9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/></svg>
           <span>Home</span>
         </button>
-        <button class="header-action-button ask-header-link" type="button" aria-label="Ask another steel guitar question" title="Ask">
+        <button class="header-action-button ask-header-link" type="button" aria-label="Ask the Steel Guitar Brain" title="Ask the Steel Guitar Brain">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v11H9l-4 3V5Z"/><path d="M8 9h8"/><path d="M8 12h5"/></svg>
-          <span>Ask</span>
+          <span class="nav-label-full">Ask the Steel Guitar Brain</span><span class="nav-label-short">Ask</span>
         </button>
         <button class="header-action-button backstage-trigger" type="button" aria-haspopup="dialog" aria-controls="backstage" aria-expanded="false">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5z"/><path d="M8 16h8"/><path d="M9 13l3-5 3 5"/><path d="M12 8v8"/></svg>
@@ -5102,7 +5102,7 @@
                   <div class="input-area">
                     <textarea id="question" aria-label="Type your steel guitar question" placeholder="Ask a steel guitar question..."></textarea>
                     <div class="prompt-typing-indicator" aria-label="Working" role="status"><span></span><span></span><span></span></div>
-                    <div class="input-actions"><button class="send" type="button">Ask a question</button></div>
+                    <div class="input-actions"><button class="send" type="button">Ask the Brain</button></div>
                   </div>
                   <p class="access-helper" id="access-helper">Get a Backstage Pass to ask Steel Guitar RAG.</p>
                   <p class="backstage-note" data-active-copedent></p>
@@ -7472,6 +7472,12 @@
       }
     }
 
+    function focusAnswerComposer() {
+      if (answerWorkspace.hidden) return;
+      followupQuestion.focus({ preventScroll: true });
+      followupQuestion.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
     function returnToStage({ focusTarget = "question" } = {}) {
       answerWorkspace.hidden = true;
       page.classList.remove("is-answering");
@@ -8098,7 +8104,7 @@
     brandHome.addEventListener("click", () => returnToStage({ focusTarget: "home" }));
     stageReturn.addEventListener("click", () => returnToStage({ focusTarget: "home" }));
     homeHeaderLink.addEventListener("click", () => returnToStage({ focusTarget: "home" }));
-    askHeaderLink.addEventListener("click", () => returnToStage({ focusTarget: "question" }));
+    askHeaderLink.addEventListener("click", focusAnswerComposer);
 
     saveCopedentRequest.addEventListener("click", () => {
       const requestDraft = {

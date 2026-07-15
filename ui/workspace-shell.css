@@ -665,7 +665,7 @@ select:focus-visible,
 
 .ask-product-card textarea {
   width: 100%;
-  min-height: 76px;
+  min-height: 96px;
   max-height: 140px;
   padding: 12px 13px;
   resize: vertical;
@@ -673,7 +673,7 @@ select:focus-visible,
   border-radius: var(--radius-sm);
   background: rgba(5, 5, 4, 0.65);
   color: var(--cream);
-  font: 400 14px/1.45 var(--font-ui);
+  font: 400 15px/1.45 var(--font-ui);
 }
 
 .ask-product-card textarea::placeholder {

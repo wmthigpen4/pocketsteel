@@ -72,7 +72,7 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     assert b'<script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>' in html
     assert b'<script src="melody-score.js?v=updated-score-artwork-20260714-1"></script>' in html
     assert b'<script src="landing-home.js?v=landing-bubble-labels-20260713"></script>' in html
-    assert b'<link rel="stylesheet" href="workspace-shell.css?v=landing-melody-png-20260714-1">' in html
+    assert b'<link rel="stylesheet" href="workspace-shell.css?v=full-screen-ask-20260714-1">' in html
 
     status, headers, score_asset = call_app(smoke_app(), "/ui/assets/landing/melody-score.png")
     assert status == "200 OK"

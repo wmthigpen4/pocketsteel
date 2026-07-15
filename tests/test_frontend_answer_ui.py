@@ -919,7 +919,8 @@ def test_answer_ui_header_only_exposes_home_ask_and_backstage() -> None:
     assert 'class="header-action-button home-header-link"' in html
     assert 'aria-label="Return home"' in html
     assert 'class="header-action-button ask-header-link"' in html
-    assert 'aria-label="Ask another steel guitar question"' in html
+    assert 'aria-label="Ask the Steel Guitar Brain"' in html
+    assert '<span class="nav-label-full">Ask the Steel Guitar Brain</span><span class="nav-label-short">Ask</span>' in html
     assert 'class="header-action-button backstage-trigger"' in html
     assert ".app-shell-header .header-action-button" in shell_css
     assert "min-height: 46px;" in shell_css
@@ -935,7 +936,13 @@ def test_answer_ui_header_only_exposes_home_ask_and_backstage() -> None:
     assert "not corpus retrieval or RAG-generated fretboard positions" not in html
     assert "[object Object]" not in html
     assert 'homeHeaderLink.addEventListener("click", () => returnToStage({ focusTarget: "home" }));' in html
-    assert 'askHeaderLink.addEventListener("click", () => returnToStage({ focusTarget: "question" }));' in html
+    assert "function focusAnswerComposer()" in html
+    assert "if (answerWorkspace.hidden) return;" in html
+    assert 'followupQuestion.focus({ preventScroll: true });' in html
+    assert 'followupQuestion.scrollIntoView({ behavior: "smooth", block: "center" });' in html
+    assert 'askHeaderLink.addEventListener("click", focusAnswerComposer);' in html
+    assert 'askHeaderLink.addEventListener("click", () => returnToStage' not in html
+    assert html.count('id="followup-question"') == 1
     assert 'document.querySelector(".home-sign")?.focus();' in html
     assert "question.focus();" in html
 
