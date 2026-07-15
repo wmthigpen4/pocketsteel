@@ -924,6 +924,7 @@ const STEEL_RAG_ANSWER_UI = (() => {
     if (payload?.features?.melodyExercise) features.melodyExercise = true;
     if (payload?.features?.melodyCatalog) features.melodyCatalog = true;
     if (payload?.features?.melodyImport) features.melodyImport = true;
+    if (payload?.features?.songPractice) features.songPractice = true;
     if (payload?.features?.accountCopedents) features.accountCopedents = true;
     if (payload?.features?.accountUsage) features.accountUsage = true;
     if (Object.keys(features).length) normalized.features = features;

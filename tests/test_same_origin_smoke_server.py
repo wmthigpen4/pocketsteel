@@ -140,9 +140,10 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     status, headers, studio = call_app(smoke_app(), "/ui/melody-workbench.html")
     assert status == "200 OK"
     assert headers["Content-Type"] == "text/html; charset=utf-8"
-    assert b"Turn a phrase into an E9 lesson." in studio
+    assert b"What do you want to work on?" in studio
     assert b'<script src="melody-score.js?v=copedent-transfer-20260713-1"></script>' in studio
-    assert b'<script src="melody-workbench.js?v=tab-learning-20260714-1"></script>' in studio
+    assert b'<script src="song-projects.js?v=chord-karaoke-20260715-10"></script>' in studio
+    assert b'<script src="melody-workbench.js?v=chord-karaoke-20260715-3"></script>' in studio
 
     status, headers, studio_script = call_app(smoke_app(), "/ui/melody-workbench.js")
     assert status == "200 OK"
@@ -151,6 +152,24 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
         "application/javascript; charset=utf-8",
     }
     assert b"buildMelodyRequest" in studio_script
+
+    status, headers, song_projects_script = call_app(smoke_app(), "/ui/song-projects.js")
+    assert status == "200 OK"
+    assert headers["Content-Type"] in {
+        "text/javascript; charset=utf-8",
+        "application/javascript; charset=utf-8",
+    }
+    assert b"song_project_v1" in song_projects_script
+
+    for track_name in (
+        "amazing-grace-preview.mp3",
+        "when-the-saints-preview.mp3",
+        "oh-susanna-preview.mp3",
+    ):
+        status, headers, track = call_app(smoke_app(), f"/ui/assets/song-practice/{track_name}")
+        assert status == "200 OK"
+        assert headers["Content-Type"] in {"audio/mpeg", "audio/mp3"}
+        assert track.startswith(b"ID3")
 
     status, headers, lessons = call_app(smoke_app(), "/ui/lesson-workbench.html")
     assert status == "200 OK"

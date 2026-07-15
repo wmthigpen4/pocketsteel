@@ -35,6 +35,7 @@
     }
   };
   const STARTING_POINTS = {
+    song: "song_practice",
     phrase: "user_melody",
     score: "user_melody",
     import: "user_melody",
@@ -302,6 +303,11 @@
 
   function entryChoicePresentation(target, { replacing = false, catalogCount = 0 } = {}) {
     const choices = {
+      song: {
+        label: "Learn a song",
+        defaultHelp: "Chord Karaoke",
+        replacementHelp: "Start a Song Project"
+      },
       catalog: {
         label: "Browse songbook",
         defaultHelp: catalogCount ? `${catalogCount} reviewed songs` : "Reviewed melody examples",
@@ -1310,7 +1316,7 @@
   }
 
   function entryPathForMethod(method) {
-    return ["phrase", "score", "microphone", "import", "catalog"].includes(method) ? method : "phrase";
+    return ["song", "phrase", "score", "microphone", "import", "catalog"].includes(method) ? method : "phrase";
   }
 
   function hasMelodyContent() {
@@ -1489,7 +1495,7 @@
           ? "Import music, then review the notes before arranging."
           : "Enter a short melody, then arrange it for E9.";
     renderEntryChoices(startingPoint);
-    const replacementLabels = { phrase: "typed notes", score: "the staff editor", microphone: "recorded or uploaded audio", import: "imported music", catalog: "an example song" };
+    const replacementLabels = { song: "a Song Project", phrase: "typed notes", score: "the staff editor", microphone: "recorded or uploaded audio", import: "imported music", catalog: "an example song" };
     elements.replaceConfirmation.hidden = !state.pendingReplacement;
     elements.replaceMessage.textContent = state.pendingReplacement
       ? `Replace the current melody with ${replacementLabels[state.pendingReplacement] || "a different melody"}?`
@@ -1515,6 +1521,12 @@
       state.pendingReplacement = startingPoint;
       renderStartingPoint();
       elements.replaceConfirmation.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      return;
+    }
+    if (startingPoint === "song") {
+      state.pendingReplacement = "";
+      renderStartingPoint();
+      global.STEEL_RAG_SONG_PROJECTS?.open?.();
       return;
     }
     if (startingPoint !== previousStartingPoint) clearMelodyDraft();
@@ -2936,10 +2948,25 @@
       }
       const importEnabled = Boolean(session.features?.melodyImport);
       const catalogEnabled = Boolean(session.features?.melodyCatalog);
+      const songPracticeEnabled = Boolean(session.features?.songPractice);
       const importChoice = elements.startChoices.find((button) => button.dataset.studioStart === "import");
       const catalogChoice = elements.startChoices.find((button) => button.dataset.studioStart === "catalog");
+      const songChoice = elements.startChoices.find((button) => button.dataset.studioStart === "song");
       if (importChoice) importChoice.hidden = !importEnabled;
       if (catalogChoice) catalogChoice.hidden = !catalogEnabled;
+      if (songChoice) songChoice.hidden = !songPracticeEnabled;
+      if (songPracticeEnabled) {
+        try {
+          await global.STEEL_RAG_SONG_PROJECTS?.configure?.({ session, enabled: true });
+        } catch (songPracticeError) {
+          if (songChoice) {
+            songChoice.disabled = true;
+            songChoice.dataset.songPracticeError = String(songPracticeError?.message || "Song Practice initialization failed");
+            const help = songChoice.querySelector("small");
+            if (help) help.textContent = "Temporarily unavailable";
+          }
+        }
+      }
       elements.editor.hidden = false;
       renderStartingPoint();
       renderPalette();

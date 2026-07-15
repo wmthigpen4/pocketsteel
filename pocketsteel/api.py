@@ -116,6 +116,12 @@ from pocketsteel.melody_import import (
     public_song_catalog,
 )
 from pocketsteel.lesson_studio import LessonStudioError, build_lesson_response, lesson_catalog
+from pocketsteel.song_practice import (
+    SongPracticeError,
+    arrange_song_practice,
+    configured_song_practice_enabled,
+    song_practice_catalog,
+)
 from pocketsteel.rag_guardrails import sanitize_retrieved_sources
 from pocketsteel.rag_guardrails import is_injection_like
 from pocketsteel.private_source_search import PrivateSourceSearchIndex
@@ -347,6 +353,7 @@ class RetrievalApi:
         curated_guidance_search: Callable[..., list[dict[str, object]]] | None = None,
         melody_exercise_enabled: bool | None = None,
         melody_import_enabled: bool | None = None,
+        song_practice_enabled: bool | None = None,
         account_copedents_enabled: bool | None = None,
         account_copedent_repository: AccountCopedentRepository | None = None,
         account_usage_enabled: bool | None = None,
@@ -372,6 +379,11 @@ class RetrievalApi:
             configured_melody_import_enabled()
             if melody_import_enabled is None
             else bool(melody_import_enabled)
+        )
+        self.song_practice_enabled = (
+            configured_song_practice_enabled()
+            if song_practice_enabled is None
+            else bool(song_practice_enabled)
         )
         self.account_copedents_enabled = (
             configured_account_copedents_enabled()
@@ -433,6 +445,7 @@ class RetrievalApi:
             path in CONTENT_BEARING_PATHS
             or path.startswith("/api/melody/")
             or path.startswith("/api/lessons/")
+            or path.startswith("/api/song-practice/")
         )
         if not is_content_work:
             return self._dispatch(environ, start_response)
@@ -536,6 +549,8 @@ class RetrievalApi:
                 features["melodyCatalog"] = True
             if self.melody_import_enabled:
                 features["melodyImport"] = True
+            if self.song_practice_enabled:
+                features["songPractice"] = True
             if self.account_copedents_enabled:
                 features["accountCopedents"] = True
             if self.account_usage_enabled:
@@ -959,6 +974,60 @@ class RetrievalApi:
                 start_response,
                 "200 OK",
                 draft,
+                extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
+            )
+
+        if path == "/api/song-practice/catalog":
+            if method != "GET":
+                return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"})
+            access = self._authorize_content_request(environ)
+            if not access.allowed:
+                return self._json_response(start_response, access.status, {"error": access.error})
+            if not self.song_practice_enabled:
+                return self._json_response(start_response, "404 Not Found", {"error": "song practice is not enabled"})
+            try:
+                catalog = song_practice_catalog()
+            except SongPracticeError as exc:
+                return self._json_response(start_response, "503 Service Unavailable", {"error": str(exc)})
+            return self._json_response(
+                start_response,
+                "200 OK",
+                catalog,
+                extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
+            )
+
+        if path == "/api/song-practice/arrange":
+            if method != "POST":
+                return self._json_response(start_response, "405 Method Not Allowed", {"error": "method not allowed"})
+            access = self._authorize_content_request(environ)
+            if not access.allowed:
+                return self._json_response(start_response, access.status, {"error": access.error})
+            if not self.song_practice_enabled:
+                return self._json_response(start_response, "404 Not Found", {"error": "song practice is not enabled"})
+            try:
+                song_request = self._read_json_body(environ)
+                context = song_request.get("copedentContext") or song_request.get("copedent_context")
+                if context is not None and not isinstance(context, dict):
+                    raise SongPracticeError("copedentContext must be an object")
+                profile, revision = self._resolve_request_copedent(access, context)
+                plan = arrange_song_practice(
+                    song_request,
+                    copedent_profile=profile,
+                    copedent_revision=revision,
+                )
+            except EntitlementRequiredError as exc:
+                return self._entitlement_response(start_response, exc)
+            except AccountProfileNotFoundError as exc:
+                return self._json_response(start_response, "404 Not Found", {"error": str(exc)})
+            except AccountConfigurationError:
+                return self._json_response(start_response, "503 Service Unavailable", {"error": "account copedent service is unavailable"})
+            except (JsonRequestError, SongPracticeError, ValueError, TypeError) as exc:
+                status = "413 Payload Too Large" if isinstance(exc, JsonRequestTooLargeError) else "400 Bad Request"
+                return self._json_response(start_response, status, {"error": str(exc)})
+            return self._json_response(
+                start_response,
+                "200 OK",
+                plan,
                 extra_headers=(("Cache-Control", "no-store"), ("Pragma", "no-cache")),
             )
 
@@ -1951,6 +2020,7 @@ def create_app(
     curated_guidance_search: Callable[..., list[dict[str, object]]] | None = None,
     melody_exercise_enabled: bool | None = None,
     melody_import_enabled: bool | None = None,
+    song_practice_enabled: bool | None = None,
     account_copedents_enabled: bool | None = None,
     account_copedent_repository: AccountCopedentRepository | None = None,
     account_usage_enabled: bool | None = None,
@@ -1979,6 +2049,7 @@ def create_app(
         curated_guidance_search=curated_guidance_search,
         melody_exercise_enabled=melody_exercise_enabled,
         melody_import_enabled=melody_import_enabled,
+        song_practice_enabled=song_practice_enabled,
         account_copedents_enabled=account_copedents_enabled,
         account_copedent_repository=account_copedent_repository,
         account_usage_enabled=account_usage_enabled,

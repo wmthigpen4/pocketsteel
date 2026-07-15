@@ -52,6 +52,8 @@ assert.equal(studio.createInitialState().pendingReplacement, "");
 assert.equal(studio.createInitialState().scoreEditingEnabled, true);
 assert.equal(studio.createInitialState().styleFamily, "auto");
 assert.equal(studio.createInitialState().selectedHarmonyType, "mixed_arrangement");
+assert.deepEqual(studio.entryChoicePresentation("song"), {label: "Learn a song", help: "Chord Karaoke"});
+assert.deepEqual(studio.entryChoicePresentation("song", {replacing: true}), {label: "Learn a song", help: "Start a Song Project"});
 assert.equal(studio.printableLessonTitle({title: "Amazing Grace — Complete E9 lesson", material: {song: "Amazing Grace"}}), "Amazing Grace");
 assert.equal(studio.printableLessonTitle({title: "Example — Section 2 E9 lesson"}), "Example");
 assert.equal(studio.printableLessonTitle({title: "Your melody exercise in G"}), "Your melody exercise in G");
@@ -369,19 +371,20 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     ids = re.findall(r'id="([^"]+)"', html)
     assert len(ids) == len(set(ids))
 
-    assert "Turn a phrase into an E9 lesson." in html
+    assert "What do you want to work on?" in html
     assert "Step 1 of 4" not in html
     assert 'data-studio-start="phrase"' in html
     assert 'data-studio-start="score"' in html
     assert 'data-studio-start="catalog"' in html
     assert 'data-studio-start="import"' in html
     assert 'data-studio-start="microphone"' in html
-    assert html.count("data-studio-start=") == 5
-    assert "Add a melody" in html
+    assert 'data-studio-start="song"' in html
+    assert html.count("data-studio-start=") == 6
     assert "Type or tap notes" in html
     assert "Import music" in html
     assert "Record or upload audio" in html
     start_options = re.search(r'id="studio-start-options".*?</div>', html, re.DOTALL).group(0)
+    assert start_options.index('data-studio-start="song"') < start_options.index('data-studio-start="catalog"')
     assert start_options.index('data-studio-start="catalog"') < start_options.index('data-studio-start="phrase"')
     assert start_options.index('data-studio-start="phrase"') < start_options.index('data-studio-start="microphone"')
     assert 'data-studio-start="phrase" data-default-label="Type or tap notes" aria-pressed="true"' in start_options
@@ -431,8 +434,9 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'id="studio-route-tabs"' in html
     assert 'id="studio-playing-style"' in html
     assert '>Playing style' in html
-    assert 'answer-client.js?v=tab-learning-20260714-1' in html
-    assert 'melody-workbench.js?v=tab-learning-20260714-1' in html
+    assert 'answer-client.js?v=chord-karaoke-20260715-1' in html
+    assert 'song-projects.js?v=chord-karaoke-20260715-10' in html
+    assert 'melody-workbench.js?v=chord-karaoke-20260715-3' in html
     assert html.index('id="studio-fretboard"') < html.index('id="studio-arrangement-choices"') < html.index('id="studio-tab"')
     assert 'id="studio-note-editor" hidden' in html
     assert 'id="studio-octave-down"' in html

@@ -78,6 +78,7 @@ def call_app(
     curated_guidance_search: Any | None = None,
     melody_exercise_enabled: bool | None = None,
     melody_import_enabled: bool | None = None,
+    song_practice_enabled: bool | None = None,
     account_copedents_enabled: bool | None = None,
     account_copedent_repository: Any | None = None,
     account_usage_enabled: bool | None = None,
@@ -94,6 +95,7 @@ def call_app(
         curated_guidance_search=curated_guidance_search,
         melody_exercise_enabled=melody_exercise_enabled,
         melody_import_enabled=melody_import_enabled,
+        song_practice_enabled=song_practice_enabled,
         account_copedents_enabled=account_copedents_enabled,
         account_copedent_repository=account_copedent_repository,
         account_usage_enabled=account_usage_enabled,
@@ -755,6 +757,20 @@ def test_retrieval_wall_clock_timeout_returns_before_dependency_finishes(
             "POST",
             {"sourceType": "catalog", "catalogId": "amazing-grace"},
             {"melody_exercise_enabled": True, "melody_import_enabled": True},
+        ),
+        ("/api/song-practice/catalog", "GET", None, {"song_practice_enabled": True}),
+        (
+            "/api/song-practice/arrange",
+            "POST",
+            {
+                "schemaVersion": "song_practice_request_v1",
+                "level": "chord_karaoke",
+                "key": "G",
+                "meter": "4/4",
+                "style": "classic_country",
+                "events": [{"id": "e1", "measureId": "m1", "sectionId": "s1", "chord": "G", "startMs": 0, "endMs": 1000, "role": "comp"}],
+            },
+            {"song_practice_enabled": True},
         ),
     ],
 )
@@ -4602,6 +4618,71 @@ def test_api_session_exposes_melody_feature_and_version_stays_minimal() -> None:
     assert session["features"] == {"melodyExercise": True, "melodyCatalog": True}
 
     status, _, version = call_app("/api/version", method="GET", melody_exercise_enabled=True)
+    assert status == "200 OK"
+    assert set(version) == {"status", "git_sha", "server_started_at"}
+
+
+def test_song_practice_api_is_authenticated_flag_gated_private_and_no_store() -> None:
+    status, _, payload = call_app("/api/song-practice/catalog", song_practice_enabled=False)
+    assert status == "404 Not Found"
+    assert payload == {"error": "song practice is not enabled"}
+
+    status, headers, payload = call_app("/api/song-practice/catalog", song_practice_enabled=True)
+    assert status == "200 OK"
+    assert headers["Cache-Control"] == "no-store"
+    assert payload["schemaVersion"] == "song_practice_catalog_v1"
+    assert [track["title"] for track in payload["tracks"]] == [
+        "Amazing Grace",
+        "When the Saints Go Marching In",
+        "Oh! Susanna",
+    ]
+
+    request = {
+        "schemaVersion": "song_practice_request_v1",
+        "level": "chord_karaoke",
+        "key": "G",
+        "meter": "4/4",
+        "style": "classic_country",
+        "events": [
+            {"id": "e1", "measureId": "m1", "sectionId": "s1", "chord": "G", "startMs": 0, "endMs": 1000, "role": "comp"},
+            {"id": "e2", "measureId": "m2", "sectionId": "s1", "chord": "C", "startMs": 1000, "endMs": 2000, "role": "comp"},
+        ],
+        "copedentContext": {"profileId": "day-e9-basic"},
+    }
+    status, headers, payload = call_app(
+        "/api/song-practice/arrange",
+        method="POST",
+        json_body=request,
+        song_practice_enabled=True,
+    )
+    assert status == "200 OK"
+    assert headers["Cache-Control"] == "no-store"
+    assert payload["schemaVersion"] == "song_practice_plan_v1"
+    assert payload["targetCopedentId"] == "day-e9-basic"
+    assert [event["status"] for event in payload["events"]] == ["ready", "ready"]
+    assert payload["provenance"]["audioReceived"] is False
+
+    private_request = {**request, "filename": "private.mp3", "audioBytes": "secret"}
+    status, _, payload = call_app(
+        "/api/song-practice/arrange",
+        method="POST",
+        json_body=private_request,
+        song_practice_enabled=True,
+    )
+    assert status == "400 Bad Request"
+    assert "not allowed" in payload["error"]
+
+
+def test_session_exposes_song_practice_only_when_enabled_and_version_stays_minimal() -> None:
+    status, _, session = call_app(
+        "/api/session",
+        melody_exercise_enabled=True,
+        song_practice_enabled=True,
+    )
+    assert status == "200 OK"
+    assert session["features"] == {"melodyExercise": True, "melodyCatalog": True, "songPractice": True}
+
+    status, _, version = call_app("/api/version", song_practice_enabled=True)
     assert status == "200 OK"
     assert set(version) == {"status", "git_sha", "server_started_at"}
 

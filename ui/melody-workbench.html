@@ -431,7 +431,70 @@
         font: 7.5pt/1.15 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
         white-space: pre;
       }
-      .studio-print-footer { margin: auto 0 0; border-top: 1px solid #d8c9b3; padding: 7px 2px 0; color: #6d5b45; font: 700 8pt/1.1 Arial, sans-serif; letter-spacing: 0.035em; text-align: right; }
+    .studio-print-footer { margin: auto 0 0; border-top: 1px solid #d8c9b3; padding: 7px 2px 0; color: #6d5b45; font: 700 8pt/1.1 Arial, sans-serif; letter-spacing: 0.035em; text-align: right; }
+    }
+
+    .song-project-head, .song-project-actions, .song-sync-actions, .song-practice-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .song-project-head h2, .song-practice-stage h3 { margin: 0; font-family: var(--lesson); }
+    .song-project-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 18px; }
+    .song-project-grid .is-wide { grid-column: 1 / -1; }
+    .song-source-options, .song-pilot-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .song-pilot-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .song-source-option, .song-pilot {
+      min-height: 68px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.025);
+      color: var(--cream);
+      text-align: left;
+    }
+    .song-source-option.is-selected, .song-pilot.is-selected { border-color: var(--gold); background: rgba(240, 191, 105, 0.1); }
+    .song-source-option strong, .song-source-option small, .song-pilot strong, .song-pilot small { display: block; }
+    .song-source-option small, .song-pilot small { margin-top: 5px; color: var(--muted); line-height: 1.35; }
+    .song-audio { width: 100%; margin-top: 8px; accent-color: var(--gold); }
+    .song-privacy-note { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .song-sync-stage, .song-practice-stage { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 18px; }
+    .song-sync-readout { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 14px 0; }
+    .song-sync-readout > div, .song-now-card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      background: rgba(255,255,255,0.025);
+    }
+    .song-sync-readout small, .song-now-card small { display: block; color: var(--muted); }
+    .song-sync-readout strong, .song-now-card strong { display: block; margin-top: 4px; font-size: 19px; }
+    .song-measure-list { display: grid; gap: 8px; max-height: 420px; overflow: auto; padding-right: 4px; }
+    .song-measure-row { display: grid; grid-template-columns: auto minmax(90px, 0.8fr) minmax(150px, 1.4fr); gap: 10px; align-items: center; border: 1px solid rgba(240,191,105,0.14); border-radius: 12px; padding: 10px; }
+    .song-measure-row.is-active { border-color: var(--gold); background: rgba(240,191,105,0.07); }
+    .song-measure-row button { min-width: 46px; }
+    .song-measure-row input[type="range"] { width: 100%; accent-color: var(--gold); }
+    .song-boundaries { grid-column: 2 / -1; display: grid; gap: 5px; }
+    .song-boundary { display: grid; grid-template-columns: minmax(110px, auto) 1fr auto; gap: 8px; align-items: center; color: var(--muted); font-size: 12px; }
+    .song-boundary output { min-width: 40px; text-align: right; }
+    .song-cue-row { grid-column: 2 / -1; }
+    .song-cue-row input { width: 100%; }
+    .song-practice-dashboard { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 14px 0; }
+    .song-position-card { grid-column: span 2; }
+    .song-position-instruction { margin: 8px 0 0; color: var(--muted); line-height: 1.45; }
+    .song-alternatives { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .song-alternatives button { min-height: 38px; border: 1px solid var(--line); border-radius: 999px; padding: 0 12px; background: transparent; color: var(--cream); }
+    .song-fretboard { grid-column: 1 / -1; min-width: 0; overflow-x: auto; }
+    .song-warning { border-left: 3px solid #e1a447; padding: 9px 12px; background: rgba(225,164,71,0.08); color: #ffe0a8; }
+    .song-project-status { min-height: 20px; margin: 10px 0 0; color: var(--muted); font-size: 13px; }
+
+    @media (max-width: 760px) {
+      .song-project-grid, .song-project-grid .is-wide, .song-source-options, .song-pilot-grid, .song-practice-dashboard { grid-template-columns: 1fr; }
+      .song-project-grid .is-wide, .song-position-card, .song-fretboard { grid-column: 1; }
+      .song-sync-readout { grid-template-columns: 1fr 1fr; }
+      .song-measure-row { grid-template-columns: auto 1fr; }
+      .song-measure-row > :last-child, .song-boundaries, .song-cue-row { grid-column: 1 / -1; }
     }
   </style>
 </head>
@@ -455,9 +518,9 @@
 
   <main>
     <section class="studio-hero" aria-labelledby="studio-title">
-      <p class="studio-kicker">A phrase-to-E9 teaching workspace</p>
-      <h1 id="studio-title">Turn a phrase into an E9 lesson.</h1>
-      <p>Bring a short melody, solo passage, or song section. Melody Studio maps the notes into synchronized fretboard positions, tab, and practice steps.</p>
+      <p class="studio-kicker">A song-and-melody teaching workspace</p>
+      <h1 id="studio-title">What do you want to work on?</h1>
+      <p>Learn a complete song by following its changes, or bring a melody, solo passage, or song section for synchronized E9 positions, tab, and practice steps.</p>
       <p class="studio-copy" id="studio-copedent-status" data-active-copedent></p>
     </section>
 
@@ -469,15 +532,113 @@
     </section>
 
     <div id="studio-workflow" hidden>
+      <section class="studio-panel" id="studio-song-project" hidden aria-labelledby="studio-song-project-title">
+        <div class="song-project-head">
+          <div>
+            <p class="phase-label">Learn a song · Level 1</p>
+            <h2 id="studio-song-project-title">Chord Karaoke</h2>
+            <p class="studio-copy">Tap the bar lines, then play the whole song with current and next changes plus a validated E9 route.</p>
+          </div>
+          <button class="secondary-action" type="button" id="song-project-close">Back to Melody Studio</button>
+        </div>
+
+        <div class="song-project-grid">
+          <label class="field">Saved projects
+            <select id="song-project-list"><option value="">Start a new song</option></select>
+          </label>
+          <div class="field" style="justify-content:end;align-self:end;">
+            <div class="song-project-actions"><button class="secondary-action" type="button" id="song-project-new">New project</button><button class="secondary-action" type="button" id="song-project-import">Import JSON</button><input id="song-project-import-file" type="file" accept="application/json,.json" hidden></div>
+          </div>
+
+          <div class="field is-wide">
+            <span>Choose the recording</span>
+            <div class="song-source-options" role="group" aria-label="Song recording source">
+              <button class="song-source-option is-selected" type="button" data-song-source="local" aria-pressed="true"><strong>My local recording</strong><small>Plays from this browser tab and is never uploaded</small></button>
+              <button class="song-source-option" type="button" data-song-source="built_in" aria-pressed="false"><strong>App practice track</strong><small>Original no-steel preview masters</small></button>
+            </div>
+          </div>
+
+          <div class="field is-wide" id="song-local-source">
+            <label class="field">Local audio file<input id="song-local-file" type="file" accept="audio/*"></label>
+            <p class="song-privacy-note" id="song-local-status">The recording stays in this tab. Saved projects keep only file identity so you can relink it later.</p>
+          </div>
+          <div class="field is-wide" id="song-built-in-source" hidden>
+            <span>Choose a pilot</span>
+            <div class="song-pilot-grid" id="song-pilot-grid"></div>
+            <p class="song-privacy-note" id="song-rights-notice"></p>
+          </div>
+
+          <label class="field">Project name<input id="song-project-name" maxlength="100" placeholder="My practice chart"></label>
+          <label class="field">Key
+            <select id="song-project-key"><option>C</option><option>Db</option><option>D</option><option>Eb</option><option>E</option><option>F</option><option>F#</option><option>G</option><option>Ab</option><option>A</option><option>Bb</option><option>B</option></select>
+          </label>
+          <label class="field">Meter
+            <select id="song-project-meter"><option>4/4</option><option>3/4</option><option>2/4</option><option>6/8</option></select>
+          </label>
+          <label class="field">Chart language
+            <select id="song-chart-mode"><option value="letter">Letter chords</option><option value="nashville">Nashville numbers</option></select>
+          </label>
+          <label class="field">Style
+            <select id="song-project-style"><option value="classic_country">Classic country</option><option value="hymn">Hymn</option><option value="western_swing">Western swing</option><option value="modern_country">Modern country</option></select>
+          </label>
+          <label class="field is-wide">Bar chart
+            <textarea id="song-chart" rows="5" placeholder="[Verse 1] | G | C | G D7 | G |"></textarea>
+            <span class="field-help">Use one bar between each pair of | marks. Multiple chords divide the bar evenly until you drag their boundaries. Add short section cues after parsing; full lyrics are not imported.</span>
+          </label>
+          <div class="field is-wide"><button class="primary-action" type="button" id="song-parse-chart">Build timeline</button></div>
+        </div>
+
+        <p class="song-project-status" id="song-project-status" role="status" aria-live="polite"></p>
+
+        <section class="song-sync-stage" id="song-sync-stage" hidden aria-labelledby="song-sync-title">
+          <div class="song-project-head"><div><p class="phase-label">Synchronize</p><h3 id="song-sync-title">Tap Space on every bar’s downbeat</h3></div><span class="review-badge" id="song-sync-progress">0 of 0 bars</span></div>
+          <audio class="song-audio" id="song-audio" controls preload="metadata"></audio>
+          <div class="song-practice-controls">
+            <label class="field">Speed<select id="song-playback-rate"><option value="0.75">75%</option><option value="0.85">85%</option><option value="1" selected>100%</option></select></label>
+            <label class="field">Sync offset<input id="song-sync-offset" type="number" min="-3000" max="3000" step="25" value="0"><span class="field-help">milliseconds</span></label>
+          </div>
+          <div class="song-sync-actions">
+            <button class="secondary-action" type="button" id="song-play-toggle">Play</button>
+            <button class="secondary-action" type="button" id="song-skip-back">−5 s</button>
+            <button class="secondary-action" type="button" id="song-skip-forward">+5 s</button>
+            <button class="primary-action" type="button" id="song-tap-bar">Tap bar (Space)</button>
+            <button class="secondary-action" type="button" id="song-undo-tap">Undo tap</button>
+            <button class="secondary-action" type="button" id="song-retap-section">Retap selected section</button>
+            <button class="secondary-action" type="button" id="song-nudge-back">−50 ms</button>
+            <button class="secondary-action" type="button" id="song-nudge-forward">+50 ms</button>
+          </div>
+          <div class="song-sync-readout"><div><small>Selected bar</small><strong id="song-selected-bar">—</strong></div><div><small>Audio time</small><strong id="song-audio-time">0:00.000</strong></div><div><small>Next tap</small><strong id="song-next-tap">Bar 1</strong></div></div>
+          <div class="song-measure-list" id="song-measure-list"></div>
+          <div class="song-project-actions" style="margin-top:14px;"><button class="secondary-action" type="button" id="song-save-project">Save project</button><button class="secondary-action" type="button" id="song-export-project">Export JSON</button><button class="primary-action" type="button" id="song-arrange">Build Chord Karaoke route</button></div>
+        </section>
+
+        <section class="song-practice-stage" id="song-practice-stage" hidden aria-labelledby="song-practice-title">
+          <div class="song-project-head"><div><p class="phase-label">Practice</p><h3 id="song-practice-title">Play the changes from beginning to end</h3></div><span class="review-badge">Chord Karaoke</span></div>
+          <div class="song-practice-controls">
+            <label class="field"><span><input id="song-loop-enabled" type="checkbox"> Loop</span></label>
+            <label class="field">Loop section<select id="song-loop-section"><option value="all">Whole song</option></select></label>
+          </div>
+          <div class="song-practice-dashboard">
+            <div class="song-now-card"><small>Current section</small><strong id="song-current-section">—</strong><small>Next: <span id="song-next-section">—</span></small></div>
+            <div class="song-now-card"><small>Current chord</small><strong id="song-current-chord">—</strong><small>Next: <span id="song-next-chord">—</span></small></div>
+            <div class="song-now-card"><small>Change in</small><strong id="song-countdown">—</strong><small id="song-current-cue">No cue</small></div>
+            <div class="song-now-card song-position-card"><small>Recommended E9 position</small><strong id="song-position-title">—</strong><p class="song-position-instruction" id="song-position-instruction"></p><div class="song-alternatives" id="song-alternatives"></div></div>
+            <div class="song-fretboard" id="song-fretboard"></div>
+          </div>
+          <p class="song-warning" id="song-practice-warning" hidden></p>
+        </section>
+      </section>
+
       <section class="studio-panel" id="studio-editor" aria-labelledby="studio-editor-title">
         <div class="start-picker">
           <div class="start-picker__heading">
             <div>
-              <p class="phase-label" id="studio-phase-label">Add melody</p>
-              <h2 id="studio-editor-title">Add a melody</h2>
+              <p class="phase-label" id="studio-phase-label">Choose a path</p>
+              <h2 id="studio-editor-title">What do you want to work on?</h2>
             </div>
           </div>
           <div class="start-options" id="studio-start-options" role="group" aria-label="Choose what you are starting with">
+            <button class="start-choice" type="button" data-studio-start="song" data-default-label="Learn a song" aria-pressed="false" hidden><strong>Learn a song</strong><small>Chord Karaoke</small></button>
             <button class="start-choice" type="button" data-studio-start="catalog" data-default-label="Browse songbook" aria-pressed="false"><strong>Browse songbook</strong><small>Reviewed melody examples</small></button>
             <button class="start-choice is-selected" type="button" data-studio-start="phrase" data-default-label="Type or tap notes" aria-pressed="true"><strong>Type or tap notes</strong><small>Notes or scale numbers</small></button>
             <button class="start-choice" type="button" data-studio-start="microphone" data-default-label="Record or upload audio" aria-pressed="false"><strong>Record or upload audio</strong><small>Choose a short passage</small></button>
@@ -809,12 +970,13 @@
   </aside>
 
   <script src="copedent-store.js?v=account-copedents-20260714-1"></script>
-  <script src="answer-client.js?v=tab-learning-20260714-1"></script>
+  <script src="answer-client.js?v=chord-karaoke-20260715-1"></script>
   <script src="account-activity.js?v=plan-activity-20260714-1"></script>
   <script src="pedal-steel-fretboard-styles.js?v=module-boundaries-20260713"></script>
   <script src="pedal-steel-fretboard.js?v=module-boundaries-20260713"></script>
   <script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>
   <script src="melody-score.js?v=copedent-transfer-20260713-1"></script>
-  <script src="melody-workbench.js?v=tab-learning-20260714-1"></script>
+  <script src="song-projects.js?v=chord-karaoke-20260715-10"></script>
+  <script src="melody-workbench.js?v=chord-karaoke-20260715-3"></script>
 </body>
 </html>
