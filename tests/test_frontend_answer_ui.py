@@ -404,41 +404,38 @@ def test_backstage_feedback_is_an_accessible_talkback_workspace() -> None:
     assert "function updateBackstageFeedbackCount()" in html
     assert 'backstageFeedbackMessage.addEventListener("input", updateBackstageFeedbackCount)' in html
 
-    assert 'id="backstage-feedback-current-page"' in feedback_panel
-    assert 'id="backstage-feedback-browser"' in feedback_panel
-    assert "Include recent answer reference" not in feedback_panel
-    assert "full user-agent" in feedback_panel
-    for sensitive_term in ("cookie value", "authentication header", "account identifier", "access token"):
-        assert sensitive_term not in feedback_panel.lower()
-
-    assert feedback_panel.count('name="feedback-impact"') == 4
-    for impact in ("Helped", "Slowed me down", "Blocked me", "Just an idea"):
-        assert impact in feedback_panel
+    assert "Include context" not in feedback_panel
+    assert 'id="backstage-feedback-current-page"' not in feedback_panel
+    assert 'id="backstage-feedback-browser"' not in feedback_panel
+    assert 'name="feedback-impact"' not in feedback_panel
+    assert "How did this affect your session?" not in feedback_panel
     assert 'class="feedback-submit-button" type="button" disabled' in feedback_panel
     assert "Send feedback · coming soon" in feedback_panel
     assert "Feedback submission is not connected yet." in feedback_panel
+    assert "your feedback type and message" in feedback_panel
     assert "Mock only" not in feedback_panel
     assert "claim success" not in feedback_panel
     assert "<img" not in feedback_panel
-    assert feedback_panel.count("<svg") >= 13
+    assert feedback_panel.count("<svg") >= 9
 
 
 def test_backstage_feedback_uses_native_single_selection_and_session_only_draft_state() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
 
     assert 'type="radio" name="feedback-category"' in html
-    assert 'type="radio" name="feedback-impact"' in html
+    assert 'type="radio" name="feedback-impact"' not in html
     assert '.feedback-choice > input:focus-visible + .feedback-choice-content' in html
-    assert '.feedback-impact-choice > input:focus-visible + .feedback-impact-row' in html
     assert '.feedback-choice > input:checked + .feedback-choice-content' in html
-    assert '.feedback-impact-choice > input:checked + .feedback-impact-row' in html
     assert "localStorage.setItem(\"backstage-feedback" not in html
     assert "sessionStorage.setItem(\"backstage-feedback" not in html
     assert "backstageFeedbackMessage.value =" not in html
     assert "backstageFeedbackMessage.value.length" in html
-    assert 'grid-template-columns: minmax(0, 1fr) minmax(290px, 0.42fr)' in html
+    assert 'grid-template-columns: minmax(0, 1fr) minmax(260px, 0.3fr)' in html
+    assert re.search(r"\.feedback-choice\s*\{[^}]*height: 100%;", html, re.DOTALL)
+    assert re.search(r"\.feedback-choice-content\s*\{[^}]*height: 100%;", html, re.DOTALL)
+    assert re.search(r"\.feedback-category-grid\s*\{[^}]*grid-auto-rows: 1fr;", html, re.DOTALL)
     assert ".feedback-talkback," in html
-    assert ".feedback-category-grid," in html
+    assert ".feedback-category-grid {" in html
 
 
 def test_backstage_account_uses_verified_credential_ui_without_fabricated_controls() -> None:
