@@ -315,6 +315,10 @@
     #studio-source-needed { border: 1px solid var(--line); border-radius: 18px; background: rgba(240, 191, 105, 0.07); padding: 20px; }
     #studio-source-needed p { color: var(--muted); line-height: 1.6; }
     #studio-fretboard { margin-top: 18px; }
+    .fretboard-playing-context { display: flex; align-items: baseline; flex-wrap: wrap; justify-content: space-between; gap: 6px 14px; margin-top: 18px; padding: 0 18px 8px; color: var(--cream); }
+    .fretboard-playing-context strong { color: var(--gold); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
+    .fretboard-playing-context span { color: rgba(244, 234, 214, 0.78); font-size: 13px; font-weight: 750; }
+    .fretboard-playing-context:not([hidden]) + #studio-fretboard { margin-top: 0; }
     #studio-transport { display: grid; gap: 12px; margin-top: 10px; }
     .octave-map-controls { min-width: 0; display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 8px 14px; }
     .octave-control, .marker-controls { min-width: 0; display: flex; align-items: center; gap: 6px; }
@@ -926,6 +930,10 @@
           </details>
         </div>
 
+        <div class="fretboard-playing-context" id="studio-fretboard-playing-context" aria-live="polite" hidden>
+          <strong id="studio-fretboard-chord-context"></strong>
+          <span id="studio-fretboard-action-context"></span>
+        </div>
         <div id="studio-fretboard" aria-label="Melody Studio fretboard"></div>
 
         <div class="octave-map-controls" id="studio-octave-map-controls" hidden>
@@ -941,7 +949,7 @@
           </div>
           <div class="marker-controls">
             <button class="studio-display-toggle" type="button" id="studio-string-label-toggle" aria-pressed="false"><span class="octave-toggle-mark" aria-hidden="true">✓</span>String labels</button>
-            <button class="studio-display-toggle" type="button" id="studio-note-label-toggle" aria-pressed="true"><span class="octave-toggle-mark" aria-hidden="true">✓</span>Note labels</button>
+            <button class="studio-display-toggle" type="button" id="studio-octave-label-toggle" aria-pressed="false"><span class="octave-toggle-mark" aria-hidden="true">✓</span>Octave labels</button>
           </div>
         </div>
 
@@ -1014,6 +1022,6 @@
   <script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>
   <script src="melody-score.js?v=copedent-transfer-20260713-1"></script>
   <script src="song-projects.js?v=chord-karaoke-learner-20260715-1"></script>
-  <script src="melody-workbench.js?v=style-impact-20260715-1"></script>
+  <script src="melody-workbench.js?v=playing-context-20260715-1"></script>
 </body>
 </html>

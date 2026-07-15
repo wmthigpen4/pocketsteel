@@ -178,13 +178,20 @@ const activeOnlyOptions = studio.melodyFretboardOptions(
     {step: 2, resolvedPitch: "G4", renderablePositionId: "event-2", notes: [{string: 4, fret: 3, changes: []}]}
   ],
   1,
-  {showNoteLabels: false, showStringLabels: true}
+  {showOctaveLabels: true, showStringLabels: true}
 );
 assert.deepEqual(activeOnlyOptions.positions.map((position) => position.id), ["event-2"]);
-assert.equal(activeOnlyOptions.showHighlightLabels, false);
+assert.equal(activeOnlyOptions.showHighlightLabels, true);
 assert.equal(activeOnlyOptions.showStringActionLabels, true);
 assert.equal(activeOnlyOptions.stringActionLabelMode, "all");
 assert.equal(studio.createInitialState().showOctaveMap, false);
+assert.equal(studio.createInitialState().showOctaveLabels, false);
+assert.deepEqual(studio.fretboardPlayingContext({harmonySymbol: "G", performanceControls: ["A", "B"], notes: [
+  {string: 6, fret: 3}, {string: 4, fret: 3}, {string: 5, fret: 3}
+]}), {chord: "PLAYING OVER A G CHORD", action: "strings 4–5–6 · A+B"});
+assert.deepEqual(studio.fretboardPlayingContext({harmonySymbol: "A", notes: [{string: 3, fret: 5}]}), {
+  chord: "PLAYING OVER AN A CHORD", action: "string 3 · no pedals"
+});
 assert.equal(studio.readableEventPosition({notes: [
   {string: 10, fret: 10, changes: ["B"]},
   {string: 6, fret: 10, changes: ["A"]},
@@ -276,7 +283,7 @@ assert.deepEqual(studio.transitionScoreVoices(pedalTransition, {
   notes: [{string: 5, fret: 3, changes: ["A"]}]
 }), []);
 assert.equal(studio.createInitialState().showStringLabels, false);
-assert.equal(studio.createInitialState().showNoteLabels, true);
+assert.equal(studio.createInitialState().showOctaveLabels, false);
 assert.equal(studio.createInitialState().inputMethod, "phrase");
 assert.equal(studio.youtubeVideoId("https://youtu.be/abc123?t=9"), "abc123");
 assert.equal(studio.youtubeVideoId("https://www.youtube.com/watch?v=xyz789"), "xyz789");
@@ -418,7 +425,10 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'id="studio-octave-toggle" aria-pressed="false"' in html
     assert 'id="studio-octave-guide" aria-label="Scientific octave color guide" hidden' in html
     assert 'id="studio-string-label-toggle" aria-pressed="false"' in html
-    assert 'id="studio-note-label-toggle" aria-pressed="true"' in html
+    assert 'id="studio-octave-label-toggle" aria-pressed="false"' in html
+    assert 'id="studio-fretboard-playing-context" aria-live="polite" hidden' in html
+    assert 'id="studio-fretboard-chord-context"' in html
+    assert 'id="studio-fretboard-action-context"' in html
     assert 'id="studio-octave-map-controls" hidden' in html
     assert 'aria-label="Octave 4 — C4 through B4"' in html
     assert 'data-scientific-octave="2"] { --octave-color: #b8a3ff;' in html
@@ -440,7 +450,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'aria-label="Next note">→</button>' in html
     assert '<span class="octave-toggle-mark" aria-hidden="true">✓</span>Octave colors</button>' in html
     assert '<span class="octave-toggle-mark" aria-hidden="true">✓</span>String labels</button>' in html
-    assert '<span class="octave-toggle-mark" aria-hidden="true">✓</span>Note labels</button>' in html
+    assert '<span class="octave-toggle-mark" aria-hidden="true">✓</span>Octave labels</button>' in html
     assert 'id="studio-contour"' in html
     assert 'id="studio-route-tabs"' in html
     assert 'id="studio-playing-style"' in html
@@ -448,7 +458,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert '>Style for Recommended' in html
     assert 'answer-client.js?v=chord-karaoke-20260715-1' in html
     assert 'song-projects.js?v=chord-karaoke-learner-20260715-1' in html
-    assert 'melody-workbench.js?v=style-impact-20260715-1' in html
+    assert 'melody-workbench.js?v=playing-context-20260715-1' in html
     assert html.index('id="studio-fretboard"') < html.index('id="studio-arrangement-choices"') < html.index('id="studio-tab"')
     assert 'id="studio-note-editor" hidden' in html
     assert 'id="studio-octave-down"' in html
@@ -503,6 +513,8 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "elements.octaveGuide.hidden" in script
     assert "updateOctaveMapVisibility" in script
     assert "showScientificOctaveOverlay: true" in script
+    assert 'showHighlightLabels: displayOptions.showOctaveLabels === true' in script
+    assert 'PLAYING OVER ${article} ${chord.toUpperCase()} CHORD' in script
     assert "scientificOctavesByString" in script
     assert "melodyRequest: buildMelodyRequest(state)" in script
     assert "copedentContext: global.STEEL_RAG_COPEDENTS.requestContext()" in script
@@ -585,7 +597,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert "Edit melody" not in print_sheet
     assert "Octave colors" not in print_sheet
     assert "String labels" not in print_sheet
-    assert "Note labels" not in print_sheet
+    assert "Octave labels" not in print_sheet
     assert "Open attribution source" not in print_sheet
     assert "Complete E9 lesson" not in print_sheet
     assert 'id="studio-result-score-stage" hidden' in html

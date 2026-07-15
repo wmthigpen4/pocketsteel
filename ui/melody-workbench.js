@@ -367,8 +367,8 @@
       sectionNumber: 1,
       activeEventIndex: 0,
       showOctaveMap: false,
+      showOctaveLabels: false,
       showStringLabels: false,
-      showNoteLabels: true,
       response: null,
       exploredTabEventIndex: null,
       scoreDraft: null,
@@ -696,6 +696,19 @@
     return [stringLabel, fretLabel, controls.length ? controls.join("+") : "Open"].filter(Boolean).join(" · ");
   }
 
+  function fretboardPlayingContext(event) {
+    const chord = String(event?.harmonySymbol || event?.chord || "").trim();
+    const strings = eventStrings(event);
+    const controls = eventPerformanceControlLabels(event);
+    const article = /^[AEF]/i.test(chord) ? "AN" : "A";
+    return {
+      chord: chord ? `PLAYING OVER ${article} ${chord.toUpperCase()} CHORD` : "",
+      action: strings.length
+        ? `${strings.length === 1 ? "string" : "strings"} ${strings.join("–")} · ${controls.length ? controls.join("+") : "no pedals"}`
+        : ""
+    };
+  }
+
   function hasChordContext(events) {
     return (events || []).some((event) => String(event?.harmonySymbol || event?.chord || "").trim());
   }
@@ -1009,7 +1022,7 @@
       hideFilterControls: true,
       hidePositionTools: true,
       hideLegend: true,
-      showHighlightLabels: displayOptions.showNoteLabels !== false,
+      showHighlightLabels: displayOptions.showOctaveLabels === true,
       showStringActionLabels: displayOptions.showStringLabels === true,
       stringActionLabelMode: "all",
       showScientificOctaveOverlay: true
@@ -1098,6 +1111,7 @@
     eventStepPresentation,
     eventStepCompactPresentation,
     readableEventPosition,
+    fretboardPlayingContext,
     hasChordContext,
     routeButtonLabel,
     eventPerformanceControls,
@@ -1298,10 +1312,13 @@
     styleReason: $("#studio-style-reason"),
     sourceNeeded: $("#studio-source-needed"),
     fretboard: $("#studio-fretboard"),
+    fretboardPlayingContext: $("#studio-fretboard-playing-context"),
+    fretboardChordContext: $("#studio-fretboard-chord-context"),
+    fretboardActionContext: $("#studio-fretboard-action-context"),
     octaveMapControls: $("#studio-octave-map-controls"),
     octaveToggle: $("#studio-octave-toggle"),
     stringLabelToggle: $("#studio-string-label-toggle"),
-    noteLabelToggle: $("#studio-note-label-toggle"),
+    octaveLabelToggle: $("#studio-octave-label-toggle"),
     octaveGuide: $("#studio-octave-guide"),
     transport: $("#studio-transport"),
     previous: $("#studio-previous"),
@@ -2447,10 +2464,14 @@
     const activeRoute = exercise?.routes?.find((item) => item.id === exercise.selectedRouteId);
     const fretboard = activeRoute?.fretboard || state.response?.fretboard;
     if (!exercise?.events?.length || !fretboard) return;
+    const playingContext = fretboardPlayingContext(exercise.events[state.activeEventIndex]);
+    elements.fretboardPlayingContext.hidden = !playingContext.chord && !playingContext.action;
+    elements.fretboardChordContext.textContent = playingContext.chord;
+    elements.fretboardActionContext.textContent = playingContext.action;
     global.STEEL_RAG_FRETBOARD.mountPedalSteelFretboard(
       elements.fretboard,
       melodyFretboardOptions(fretboard, exercise.events, state.activeEventIndex, {
-        showNoteLabels: state.showNoteLabels,
+        showOctaveLabels: state.showOctaveLabels,
         showStringLabels: state.showStringLabels
       })
     );
@@ -2727,7 +2748,7 @@
 
   function updateFretboardLabelToggles() {
     elements.stringLabelToggle.setAttribute("aria-pressed", String(state.showStringLabels));
-    elements.noteLabelToggle.setAttribute("aria-pressed", String(state.showNoteLabels));
+    elements.octaveLabelToggle.setAttribute("aria-pressed", String(state.showOctaveLabels));
   }
 
   function renderResult(response) {
@@ -3261,8 +3282,8 @@
     updateFretboardLabelToggles();
     renderActiveFretboard();
   });
-  elements.noteLabelToggle.addEventListener("click", () => {
-    state.showNoteLabels = !state.showNoteLabels;
+  elements.octaveLabelToggle.addEventListener("click", () => {
+    state.showOctaveLabels = !state.showOctaveLabels;
     updateFretboardLabelToggles();
     renderActiveFretboard();
   });
