@@ -296,6 +296,7 @@ def test_backstage_plan_and_activity_has_honest_states_without_mock_counts() -> 
 
 def test_backstage_plan_and_activity_uses_all_approved_assets() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+    asset_version = "plan-activity-artwork-20260714-2"
     for name in (
         "pass-ticket.png",
         "fretboard-activity.png",
@@ -307,7 +308,8 @@ def test_backstage_plan_and_activity_uses_all_approved_assets() -> None:
     ):
         path = Path("ui/assets/backstage") / name
         assert path.is_file()
-        assert f'src="assets/backstage/{name}" alt=""' in html
+        assert f'src="assets/backstage/{name}?v={asset_version}" alt=""' in html
+        assert f'src="assets/backstage/{name}" alt=""' not in html
         assert path.read_bytes().startswith(b"\x89PNG")
 
 
