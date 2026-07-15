@@ -24,7 +24,7 @@ def test_landing_home_has_product_first_hierarchy_and_copy() -> None:
 
     assert '<a class="skip-link" href="#main-content">Skip to main content</a>' in html
     assert '<nav class="header-actions app-shell-nav" aria-label="Primary navigation">' in html
-    assert 'href="workspace-shell.css?v=spotlight-ask-launch-20260715-2"' in html
+    assert 'href="workspace-shell.css?v=qa-cta-link-20260715"' in html
     assert '<main id="main-content">' in html
     assert "A connected pedal-steel learning studio" in home
     assert "See the neck. Understand the music. Play with confidence." in home
@@ -140,7 +140,7 @@ def test_landing_home_uses_launch_only_ask_card_with_spotlight_artwork() -> None
         "</article>", 1
     )[0]
     assert "Steel Guitar Q&amp;A" in ask_card
-    assert '<button class="ask-launch-cta" type="button">Open Q&amp;A' in ask_card
+    assert '<button class="home-card-link ask-launch-cta" type="button">Open Q&amp;A' in ask_card
     assert "Ask the Steel Guitar Brain" not in ask_card
     assert "Open Ask the Brain" not in ask_card
     assert "Ask the Brain" not in ask_card
@@ -148,8 +148,17 @@ def test_landing_home_uses_launch_only_ask_card_with_spotlight_artwork() -> None
     assert 'data-prefill-question="Show me a classic country move."' in home
     assert "Example question" in home
     assert "Show me a classic country move." in home
-    assert '<button class="ask-launch-cta" type="button">Open Q&amp;A' in home
+    assert '<button class="home-card-link ask-launch-cta" type="button">Open Q&amp;A' in home
     assert "Uses your active E9 setup" in home
+    assert ask_card.index("Uses your active E9 setup") < ask_card.index("Open Q&amp;A")
+    assert 'class="ask-launch-footer"' in ask_card
+    ask_cta_css = css.rsplit(".ask-launch-cta {", 1)[1].split("}", 1)[0]
+    assert "width: auto;" in ask_cta_css
+    assert "padding: 0;" in ask_cta_css
+    assert "border: 0;" in ask_cta_css
+    assert "background: transparent;" in ask_cta_css
+    assert "border-radius" not in ask_cta_css
+    assert "margin-top: auto;" in css.split(".ask-launch-footer {", 1)[1].split("}", 1)[0]
     assert "assets/landing/spotlight.png?v=ask-spotlight-launch-20260715" in css
     assert "background-position: center, center, right top;" in css
     assert "background-size: cover, cover, cover;" in css
