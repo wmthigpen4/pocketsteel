@@ -300,6 +300,41 @@
     return "phrase";
   }
 
+  function entryChoicePresentation(target, { replacing = false, catalogCount = 0 } = {}) {
+    const choices = {
+      catalog: {
+        label: "Browse songbook",
+        defaultHelp: catalogCount ? `${catalogCount} reviewed songs` : "Reviewed melody examples",
+        replacementHelp: "Choose a different reviewed song"
+      },
+      phrase: {
+        label: "Type or tap notes",
+        defaultHelp: "Notes or scale numbers",
+        replacementHelp: "Enter a different melody"
+      },
+      microphone: {
+        label: "Record or upload audio",
+        defaultHelp: "Choose a short passage",
+        replacementHelp: "Use a different recording"
+      },
+      score: {
+        label: "Staff editor",
+        defaultHelp: "Write notes on a staff",
+        replacementHelp: "Edit a different melody on the staff"
+      },
+      import: {
+        label: "Import music",
+        defaultHelp: "Photo, MusicXML, or MIDI",
+        replacementHelp: "Import a different file"
+      }
+    };
+    const choice = choices[target] || choices.phrase;
+    return {
+      label: choice.label,
+      help: replacing ? choice.replacementHelp : choice.defaultHelp
+    };
+  }
+
   function createInitialState(kind = "user_melody") {
     const safeKind = TASKS[kind] ? kind : "user_melody";
     return {
@@ -1000,6 +1035,7 @@
     savedE9TargetCopedent,
     createInitialState,
     startingPointForKind,
+    entryChoicePresentation,
     parsePhraseInput,
     parseSimpleTab,
     parseSimpleTabEvents,
@@ -1411,19 +1447,14 @@
       const target = button.dataset.studioStart;
       const selected = target === entryPath;
       const replacing = hasDraft && target !== startingPoint;
+      const presentation = entryChoicePresentation(target, {
+        replacing,
+        catalogCount: catalogSongs.length
+      });
       const strong = button.querySelector("strong");
       const small = button.querySelector("small");
-      if (strong) strong.textContent = replacing ? "Replace melody" : button.dataset.defaultLabel;
-      if (small && replacing) small.textContent = `Use ${button.dataset.defaultLabel.toLowerCase()}`;
-      else if (small) small.textContent = target === "phrase"
-        ? "Notes or scale numbers"
-        : target === "microphone"
-          ? "Choose a short passage"
-          : target === "score"
-            ? "Write notes on a staff"
-            : target === "catalog"
-              ? (catalogSongs.length ? `${catalogSongs.length} reviewed songs` : "Reviewed melody examples")
-              : "Photo, MusicXML, or MIDI";
+      if (strong) strong.textContent = presentation.label;
+      if (small) small.textContent = presentation.help;
       button.classList.toggle("is-selected", selected);
       button.setAttribute("aria-pressed", String(selected));
     });

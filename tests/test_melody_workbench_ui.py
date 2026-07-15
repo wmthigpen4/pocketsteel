@@ -39,6 +39,12 @@ assert.equal(studio.startingPointForKind("user_melody"), "phrase");
 assert.equal(studio.startingPointForKind("artist_solo_lesson"), "recording");
 assert.equal(studio.startingPointForKind("song_arrangement_lesson"), "recording");
 assert.equal(studio.startingPointForKind("original_exercise"), "exercise");
+assert.deepEqual(studio.entryChoicePresentation("catalog", {catalogCount: 12}), {label: "Browse songbook", help: "12 reviewed songs"});
+assert.deepEqual(studio.entryChoicePresentation("catalog", {replacing: true, catalogCount: 12}), {label: "Browse songbook", help: "Choose a different reviewed song"});
+assert.deepEqual(studio.entryChoicePresentation("phrase", {replacing: true}), {label: "Type or tap notes", help: "Enter a different melody"});
+assert.deepEqual(studio.entryChoicePresentation("microphone", {replacing: true}), {label: "Record or upload audio", help: "Use a different recording"});
+assert.deepEqual(studio.entryChoicePresentation("score", {replacing: true}), {label: "Staff editor", help: "Edit a different melody on the staff"});
+assert.deepEqual(studio.entryChoicePresentation("import", {replacing: true}), {label: "Import music", help: "Import a different file"});
 assert.equal(studio.createInitialState().kind, "user_melody");
 assert.equal(studio.createInitialState().inputMethod, "phrase");
 assert.equal(studio.createInitialState().workflowPhase, "add");
@@ -425,7 +431,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'id="studio-playing-style"' in html
     assert '>Playing style' in html
     assert 'answer-client.js?v=ambiguous-control-fix-20260714-1' in html
-    assert 'melody-workbench.js?v=amazing-tablature-20260714-1' in html
+    assert 'melody-workbench.js?v=entry-choice-copy-20260714-1' in html
     assert html.index('id="studio-fretboard"') < html.index('id="studio-arrangement-choices"') < html.index('id="studio-tab"')
     assert 'id="studio-note-editor" hidden' in html
     assert 'id="studio-octave-down"' in html
@@ -600,6 +606,8 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'id="studio-confirm-replace"' in html
     assert 'id="studio-keep-melody"' in html
     assert "state.pendingReplacement = startingPoint;" in script
+    assert 'strong.textContent = presentation.label;' in script
+    assert 'replacing ? "Replace melody"' not in script
     assert 'state.workflowPhase = "review"' in script
     assert 'state.workflowPhase = "result"' in script
     assert 'elements.audioFileControls.hidden = !state.sourceAudioUrl;' in script
