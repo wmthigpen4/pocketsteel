@@ -180,6 +180,34 @@ def control_display_label(profile: E9CopedentProfile, value: object) -> str:
     return label
 
 
+def control_tab_label(profile: E9CopedentProfile, value: object) -> str:
+    """Return the player's concise label for generated tablature.
+
+    Older saved copies of the included E9 profiles may retain descriptive
+    control names such as ``A pedal`` while also retaining the player's tab
+    shorthand ``A``.  Those descriptions are useful in prose, but generated
+    tab must use the compact symbol.  All other custom labels remain exact.
+    """
+
+    control = resolve_control(profile, value)
+    label = str(control.label or control.id).strip()
+    code = arranger_code(control)
+    if (
+        control.control_type == "pedal"
+        and _normalized_alias(label) == _normalized_alias(f"{code} pedal")
+    ):
+        shorthand = next(
+            (
+                str(value).strip()
+                for value in control.player_shorthand
+                if _normalized_alias(value) == _normalized_alias(code)
+            ),
+            "",
+        )
+        return shorthand or code
+    return label
+
+
 def candidate_control_states(profile: E9CopedentProfile) -> tuple[tuple[str, ...], ...]:
     """Enumerate compact, non-inert control postures for arrangement search.
 

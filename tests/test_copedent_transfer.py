@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pocketsteel.copedent_transfer import (
     absolute_pitch_for_profile,
-    control_display_label,
+    control_tab_label,
     custom_e9_profile_from_payload,
     retarget_fretboard_payload,
     retarget_tab_example_payload,
@@ -195,6 +195,39 @@ def test_complete_song_arranges_when_player_uses_distinct_g_and_gg_labels() -> N
     target_payload = saved_profile_payload(
         controls=[
             {
+                "id": "A",
+                "label": "A pedal",
+                "type": "pedal",
+                "physicalPosition": "P1",
+                "aliases": ["A", "P1"],
+                "changes": [
+                    {"stringNumber": 5, "fromNote": "B", "toNote": "C#"},
+                    {"stringNumber": 10, "fromNote": "B", "toNote": "C#"},
+                ],
+            },
+            {
+                "id": "B",
+                "label": "B pedal",
+                "type": "pedal",
+                "physicalPosition": "P2",
+                "aliases": ["B", "P2"],
+                "changes": [
+                    {"stringNumber": 3, "fromNote": "G#", "toNote": "A"},
+                    {"stringNumber": 6, "fromNote": "G#", "toNote": "A"},
+                ],
+            },
+            {
+                "id": "C",
+                "label": "C pedal",
+                "type": "pedal",
+                "physicalPosition": "P3",
+                "aliases": ["C", "P3"],
+                "changes": [
+                    {"stringNumber": 4, "fromNote": "E", "toNote": "F#"},
+                    {"stringNumber": 5, "fromNote": "B", "toNote": "C#"},
+                ],
+            },
+            {
                 "id": "RKL-half",
                 "label": "G",
                 "type": "lever",
@@ -246,14 +279,22 @@ def test_complete_song_arranges_when_player_uses_distinct_g_and_gg_labels() -> N
 
     assert result["status"] == "ready"
     assert result["section"]["eventEnd"] == len(melody)
+    assert control_tab_label(target, "A") == "A"
+    assert control_tab_label(target, "B") == "B"
+    assert control_tab_label(target, "C") == "C"
     assert all(
         event["performanceControlLabels"] == [
-            control_display_label(target, control)
+            control_tab_label(target, control)
             for control in event["performanceControls"]
         ]
         for route in result["routes"]
         for event in route["events"]
     )
+    rendered_tabs = "\n".join(route["tabExample"]["rendered_tab"] for route in result["routes"])
+    assert "A pedal" not in rendered_tabs
+    assert "B pedal" not in rendered_tabs
+    assert "C pedal" not in rendered_tabs
+    assert "A" in rendered_tabs
 
 
 def test_answer_fretboard_and_tab_are_retargeted_with_user_labels() -> None:

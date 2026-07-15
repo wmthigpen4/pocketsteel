@@ -12,9 +12,9 @@ from pocketsteel.answer_tab_examples import fretboard_payload_for_tab_example
 from pocketsteel.copedent_transfer import (
     absolute_pitch_for_profile,
     arranger_code,
+    control_tab_label,
     candidate_control_states,
     control_affects_string,
-    control_display_label,
     normalized_mechanical_action,
     resolve_control,
     resolve_arranger_control,
@@ -1141,7 +1141,7 @@ def build_route(
                 "arrangementRole": role,
                 "performanceControls": list(candidate.controls),
                 "performanceControlLabels": [
-                    control_display_label(target_profile, control) for control in candidate.controls
+                    control_tab_label(target_profile, control) for control in candidate.controls
                 ],
                 "pedalControls": [
                     arranger_code(resolve_control(target_profile, control)) for control in candidate.controls
@@ -2264,7 +2264,7 @@ def _display_control_code(profile: E9CopedentProfile | None, control: str) -> st
     if profile is not None:
         resolved = resolve_arranger_control(profile, control)
         if profile.id.startswith("saved:"):
-            return resolved.label
+            return control_tab_label(profile, resolved.id)
         return arranger_code(resolved)
     return control
 
