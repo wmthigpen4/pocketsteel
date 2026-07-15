@@ -12,7 +12,6 @@
     library: $("#copedent-profile-library"),
     libraryGroups: $("#copedent-library-groups"),
     activeBadge: $("#copedent-active-badge"),
-    libraryActive: $("#copedent-library-active"),
     reviewIssues: $("#copedent-review-issues"),
     name: $("#copedent-name"),
     family: $("#copedent-family"),
@@ -73,7 +72,6 @@
     importSelected: $("#copedent-import-selected"),
     importStatus: $("#copedent-import-status"),
     localEmpty: $("#copedent-local-empty"),
-    activeName: $("#setup-active-heading"),
     plateName: $("#setup-nameplate-name"),
     activeStatus: $("#setup-active-status"),
     activeSync: $("#setup-active-sync"),
@@ -213,7 +211,6 @@
     const name = profileName(active);
     const validated = validationLabel(active);
     const ready = validated === "Validated";
-    elements.activeName.textContent = name;
     elements.plateName.textContent = name;
     elements.activeStatus.textContent = ready ? "In use" : "Needs attention";
     elements.activeStatus.classList.toggle("is-active", ready);
@@ -295,29 +292,29 @@
     } else {
       elements.syncCopy.textContent = "Emmons and Day synchronize with your account. Session Pass is required to create, import, edit, activate, or use custom setups.";
     }
-    const localProfiles = account.enabled ? (store.localProfilesForImport?.() || []) : [];
-    elements.localImport.hidden = false;
-    elements.localEmpty.hidden = Boolean(localProfiles.length);
-    elements.localEmpty.textContent = localProfiles.length
-      ? ""
-      : (account.enabled ? "No browser-local setups are waiting to be imported." : "Account sync is unavailable here; local setups remain safely listed under Custom setups.");
+    const localProfiles = account.enabled
+      ? (store.localProfilesForImport?.() || []).filter((profile) => !profile.alreadyImported)
+      : [];
+    elements.localImport.hidden = !localProfiles.length;
+    elements.localEmpty.hidden = true;
+    elements.localEmpty.textContent = "";
     elements.localImportList.hidden = !localProfiles.length;
     if (!localProfiles.length) {
       elements.localImportList.innerHTML = "";
       elements.importSelected.disabled = true;
-      elements.importSelected.textContent = account.enabled ? "Nothing to import" : "Account sync unavailable";
+      elements.importSelected.textContent = "Nothing to import";
       return;
     }
     elements.localImportList.innerHTML = localProfiles.map((profile) => `
       <div class="setup-local-entry" data-local-profile="${escapeHtml(profile.id)}">
-        <label><input type="checkbox" value="${escapeHtml(profile.id)}" ${profile.alreadyImported || !account.canManageCustom ? "disabled" : ""}> <span><strong>${escapeHtml(profile.name)}</strong><br><small>${profile.alreadyImported ? "Already imported" : "Local only · on this browser"}</small></span></label>
+        <label><input type="checkbox" value="${escapeHtml(profile.id)}" ${!account.canManageCustom ? "disabled" : ""}> <span><strong>${escapeHtml(profile.name)}</strong><br><small>Local only · on this browser</small></span></label>
         <span class="setup-local-entry-actions">
           <button class="backstage-button" type="button" data-export-local="${escapeHtml(profile.id)}">Export</button>
           <button class="backstage-button" type="button" data-delete-local="${escapeHtml(profile.id)}" aria-label="Delete local copy of ${escapeHtml(profile.name)}">Delete</button>
         </span>
       </div>
     `).join("");
-    elements.importSelected.disabled = Boolean(!account.enabled || !account.canManageCustom || localProfiles.every((profile) => profile.alreadyImported));
+    elements.importSelected.disabled = Boolean(!account.enabled || !account.canManageCustom);
     elements.importSelected.textContent = account.canManageCustom ? "Import selected setups" : "Session Pass required to import";
   }
 
@@ -384,14 +381,11 @@
     elements.library.value = selectedId;
     const active = store.activeProfile();
     const label = active.name || active.label;
-    const activeProfiles = profiles.filter((profile) => profile.id === activeId);
     elements.libraryGroups.innerHTML = [
-      renderProfileGroup("Active setup", activeProfiles, "active setups", activeId, "The active setup is unavailable."),
       renderProfileGroup("Included setups", common.filter((profile) => profile.id !== activeId), "included setups", activeId, "No other included setups are available."),
       renderProfileGroup("Custom setups", custom.filter((profile) => profile.id !== activeId), "custom setups", activeId, "No account-backed custom setups yet.")
     ].join("");
     renderActiveSetup(active);
-    elements.libraryActive.textContent = `Active: ${label}`;
     elements.activeBadge.textContent = validationLabel(currentProfile || active);
     elements.overview.textContent = active.validationStatus === "needs_review" ? `${label} needs review` : `Using ${label}`;
     if (elements.overviewStatus) elements.overviewStatus.textContent = `Active · ${validationLabel(active)}`;
@@ -573,7 +567,7 @@
     elements.guitar.value = currentProfile.guitar || "";
     elements.notes.value = currentProfile.notes || "";
     elements.workbenchTitle.textContent = profileName(currentProfile);
-    elements.workbenchMeta.textContent = `${currentProfile.id === store.activeProfile().id ? "Active setup" : "Selected setup"} · Revision ${Number(currentProfile.revision || 1)}`;
+    elements.workbenchMeta.textContent = `${currentProfile.id === store.activeProfile().id ? "Current setup" : "Selected setup"} · Revision ${Number(currentProfile.revision || 1)}`;
     elements.activeBadge.textContent = validationLabel(currentProfile);
     elements.activeBadge.classList.toggle("is-active", validationLabel(currentProfile) === "Validated");
     const originId = String(currentProfile.origin || "").replace(/^clone:/, "");

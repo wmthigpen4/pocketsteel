@@ -657,11 +657,12 @@ def test_backstage_my_setup_uses_live_three_stage_rig_locker_structure() -> None
     library_index = setup_panel.index('class="setup-stage setup-library-stage"')
     workbench_index = setup_panel.index('class="setup-stage setup-workbench-stage"')
     assert active_index < library_index < workbench_index
-    assert "Your Active Setup" in setup_panel
+    assert "Current Setup" in setup_panel
+    assert "Your Active Setup" not in setup_panel
     assert "Setup Library" in setup_panel
     assert "Copedent Workbench" in setup_panel
     assert 'src="assets/backstage/setup-nameplate.png?v=rig-locker-20260714-1"' in setup_panel
-    assert 'backstage-copedent-manager.js?v=backstage-cleanup-20260715-1' in html
+    assert 'backstage-copedent-manager.js?v=setup-identity-20260715-1' in html
     assert 'elements.activeBadge.textContent = validationLabel(currentProfile);' in manager
     assert 'alt="" width="2022" height="778"' in setup_panel
     assert 'aria-label="Current setup"' in setup_panel

@@ -750,7 +750,6 @@
       text-transform: uppercase;
     }
 
-    .setup-active-copy h3,
     .setup-section-heading h3,
     .copedent-workbench-header h3 {
       margin: 0;
@@ -929,7 +928,7 @@
 
     .setup-library-groups {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       min-width: 0;
       border: 1px solid rgba(244, 234, 214, 0.09);
       border-radius: 10px;
@@ -1166,6 +1165,7 @@
       flex-wrap: wrap;
       justify-content: flex-end;
       gap: 8px;
+      margin-left: auto;
     }
 
     .copedent-library-actions .is-primary,
@@ -1688,13 +1688,6 @@
       .setup-library-footer .copedent-library-actions,
       .setup-library-footer .copedent-library-actions .backstage-button {
         width: 100%;
-      }
-
-      #copedent-library-active {
-        width: 100%;
-        max-width: 100%;
-        white-space: normal;
-        overflow-wrap: anywhere;
       }
 
       .setup-secondary-actions,
@@ -5395,17 +5388,15 @@
         </div>
 
         <div class="backstage-content backstage-tab-panel setup-workspace" id="backstage-panel-setup" role="tabpanel" aria-labelledby="backstage-tab-setup" hidden>
-          <section class="setup-stage setup-active-stage" aria-labelledby="setup-active-heading">
-            <div class="setup-stage-rail" aria-hidden="true"><span>1</span><strong>Your Active Setup</strong></div>
+          <section class="setup-stage setup-active-stage" aria-label="Current setup">
+            <div class="setup-stage-rail" aria-hidden="true"><span>1</span><strong>Current Setup</strong></div>
             <div class="setup-active-panel">
               <div class="setup-nameplate" aria-hidden="true">
                 <img src="assets/backstage/setup-nameplate.png?v=rig-locker-20260714-1" alt="" width="2022" height="778">
                 <span class="setup-nameplate-name" id="setup-nameplate-name">Loading active setup…</span>
               </div>
               <div class="setup-active-copy">
-                <p class="setup-eyebrow">Active setup</p>
-                <h3 id="setup-active-heading">Loading active setup…</h3>
-                <div class="setup-status-list" aria-label="Active setup status">
+                <div class="setup-status-list" aria-label="Current setup status">
                   <span class="setup-status is-active" id="setup-active-status"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 12 4 4 8-9"/></svg>In use</span>
                 </div>
                 <p class="setup-active-summary" id="setup-active-summary">Checking where this setup is saved and used…</p>
@@ -5418,7 +5409,7 @@
                   </dl>
                 </details>
               </div>
-              <div class="setup-active-actions" aria-label="Active setup actions">
+              <div class="setup-active-actions" aria-label="Current setup actions">
                 <button class="backstage-button setup-primary-action" id="copedent-edit-active" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 20 4.5-1 10-10-3.5-3.5-10 10L4 20Z"/><path d="m13.5 7 3.5 3.5"/></svg><span>Edit setup</span></button>
                 <div class="setup-secondary-actions">
                   <button class="backstage-button" id="copedent-duplicate-active" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg><span>Duplicate</span></button>
@@ -5442,11 +5433,11 @@
               <section class="copedent-section" id="copedent-account-status" aria-label="Setup access and synchronization">
                 <div class="setup-library-groups">
                   <div id="copedent-library-groups"></div>
-                  <section class="setup-library-group" id="copedent-local-import" aria-labelledby="copedent-local-title">
-                    <h4 id="copedent-local-title">Local setups <span>(awaiting import)</span></h4>
+                  <section class="setup-library-group" id="copedent-local-import" aria-labelledby="copedent-local-title" hidden>
+                    <h4 id="copedent-local-title">Browser copies to import</h4>
                     <p class="setup-library-empty" id="copedent-local-empty">Checking this browser…</p>
                     <div class="setup-local-list" id="copedent-local-import-list"></div>
-                    <p class="setup-library-help">Local setups stay on this browser until you explicitly select and import them.</p>
+                    <p class="setup-library-help">These copies exist only in this browser. Select one to add it to your account.</p>
                     <button class="backstage-button" id="copedent-import-selected" type="button">Import selected setups</button>
                     <span class="backstage-status" id="copedent-import-status" role="status"></span>
                   </section>
@@ -5454,7 +5445,6 @@
               </section>
               <select id="copedent-profile-library" hidden aria-hidden="true" tabindex="-1"></select>
               <footer class="setup-library-footer">
-                <span class="setup-status is-active" id="copedent-library-active">Active</span>
                 <div class="copedent-library-actions">
                   <button class="backstage-button is-primary" id="activate-copedent" type="button">Use selected setup</button>
                   <button class="backstage-button" id="clone-copedent" type="button">Copy and edit</button>
@@ -8343,6 +8333,6 @@
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
     }
   </script>
-  <script src="backstage-copedent-manager.js?v=backstage-cleanup-20260715-1"></script>
+  <script src="backstage-copedent-manager.js?v=setup-identity-20260715-1"></script>
 </body>
 </html>
