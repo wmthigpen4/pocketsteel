@@ -955,6 +955,8 @@ def test_answer_ui_header_only_exposes_home_ask_and_backstage() -> None:
     assert 'askHeaderLink.addEventListener("click", () => {' in html
     assert "openAskWorkspace();" in html
     assert 'askHeaderLink.addEventListener("click", () => returnToStage' not in html
+    assert ".page.is-asking .ask-header-link {\n      display: none;\n    }" in html
+    assert ".page.is-answering .ask-header-link" not in html
     assert html.count('id="question"') == 1
     assert html.count('id="followup-question"') == 0
     assert 'class="stage-return"' not in html
