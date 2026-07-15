@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from pocketsteel.copedent_transfer import (
     absolute_pitch_for_profile,
+    control_display_label,
     custom_e9_profile_from_payload,
     retarget_fretboard_payload,
     retarget_tab_example_payload,
+    resolve_arranger_control,
     resolve_control,
     tab_profile_for_e9,
     transfer_controls,
@@ -185,6 +187,73 @@ def test_transfer_uses_stable_ids_when_player_g_label_collides_with_arranger_cod
     assert transfer.exact is True
     assert transfer.target_controls == ("G-lower",)
     assert resolve_control(target, transfer.target_controls[0]).label == "GG"
+    assert resolve_arranger_control(target, "G").label == "GG"
+    assert resolve_control(target, "RKL-half").label == "G"
+
+
+def test_complete_song_arranges_when_player_uses_distinct_g_and_gg_labels() -> None:
+    target_payload = saved_profile_payload(
+        controls=[
+            {
+                "id": "RKL-half",
+                "label": "G",
+                "type": "lever",
+                "physicalPosition": "RKL",
+                "travel": "half-stop",
+                "changes": [
+                    {"stringNumber": 1, "fromNote": "F#", "toNote": "G"},
+                    {"stringNumber": 6, "fromNote": "G#", "toNote": "G"},
+                ],
+            },
+            {
+                "id": "G-lower",
+                "label": "GG",
+                "type": "lever",
+                "physicalPosition": "RKL",
+                "travel": "full-stop",
+                "changes": [
+                    {"stringNumber": 1, "fromNote": "F#", "toNote": "G#"},
+                    {"stringNumber": 6, "fromNote": "G#", "toNote": "F#"},
+                ],
+            },
+        ]
+    )
+    target = custom_e9_profile_from_payload(target_payload)
+    melody = [
+        {"token": note, "pitch": note, "measure": index // 4 + 1, "beat": index % 4 + 1}
+        for index, note in enumerate(
+            [
+                "C4", "E4", "F4", "G4", "C4", "E4", "F4", "G4",
+                "C4", "E4", "F4", "G4", "E4", "C4", "E4", "D4",
+                "E4", "E4", "D4", "C4", "E4", "G4", "G4", "F4",
+                "E4", "F4", "G4", "E4", "C4", "D4", "C4",
+            ]
+        )
+    ]
+
+    result = melody_exercise_response(
+        "Arrange the complete song for E9",
+        {
+            "kind": "song_arrangement_lesson",
+            "key": "C",
+            "melody": melody,
+            "wholeSong": True,
+            "targetCopedent": target_payload,
+            "targetCopedentId": target_payload["id"],
+            "texture": "both",
+        },
+    )["melody_exercise"]
+
+    assert result["status"] == "ready"
+    assert result["section"]["eventEnd"] == len(melody)
+    assert all(
+        event["performanceControlLabels"] == [
+            control_display_label(target, control)
+            for control in event["performanceControls"]
+        ]
+        for route in result["routes"]
+        for event in route["events"]
+    )
 
 
 def test_answer_fretboard_and_tab_are_retargeted_with_user_labels() -> None:

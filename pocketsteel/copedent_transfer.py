@@ -68,6 +68,29 @@ def arranger_code(control: E9CopedentControl) -> str:
     return _CANONICAL_ARRANGER_CODES.get(control.id, control.id)
 
 
+def resolve_arranger_control(profile: E9CopedentProfile, value: object) -> E9CopedentControl:
+    """Resolve an internal arranger code without consulting player aliases first.
+
+    Compact codes and player-facing labels occupy separate namespaces.  A
+    player may legitimately label a half stop ``G`` and its full stop ``GG``
+    while the canonical full-stop mechanic also renders with arranger code
+    ``G``.  Internal render data must select the exact mechanic represented by
+    that code instead of treating the code as an ambiguous user alias.
+    """
+
+    requested = _normalized_alias(value)
+    matches = [
+        control
+        for control in profile.controls
+        if _normalized_alias(arranger_code(control)) == requested
+    ]
+    if len(matches) == 1:
+        return matches[0]
+    if len(matches) > 1:
+        raise ValueError(f"Arranger control code {value!r} is ambiguous on {profile.label}.")
+    return resolve_control(profile, value)
+
+
 def _control_aliases(control: E9CopedentControl) -> set[str]:
     aliases = {
         control.id,

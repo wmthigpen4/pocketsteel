@@ -424,7 +424,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'id="studio-route-tabs"' in html
     assert 'id="studio-playing-style"' in html
     assert '>Playing style' in html
-    assert 'answer-client.js?v=amazing-tablature-20260714-1' in html
+    assert 'answer-client.js?v=ambiguous-control-fix-20260714-1' in html
     assert 'melody-workbench.js?v=amazing-tablature-20260714-1' in html
     assert html.index('id="studio-fretboard"') < html.index('id="studio-arrangement-choices"') < html.index('id="studio-tab"')
     assert 'id="studio-note-editor" hidden' in html

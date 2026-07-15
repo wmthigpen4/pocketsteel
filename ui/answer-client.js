@@ -885,7 +885,17 @@ const STEEL_RAG_ANSWER_UI = (() => {
     });
 
     if (!response.ok) {
-      throw new Error(`Answer request failed with ${response.status}`);
+      let message = "";
+      try {
+        const errorPayload = await response.json();
+        message = firstTextValue(errorPayload?.error)
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 240);
+      } catch (_error) {
+        message = "";
+      }
+      throw new Error(message || `Answer request failed with ${response.status}`);
     }
 
     const payload = await response.json();

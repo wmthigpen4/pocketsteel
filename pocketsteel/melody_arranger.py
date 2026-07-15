@@ -17,6 +17,7 @@ from pocketsteel.copedent_transfer import (
     control_display_label,
     normalized_mechanical_action,
     resolve_control,
+    resolve_arranger_control,
     resolve_target_profile,
     tab_profile_for_e9,
     transfer_controls,
@@ -2261,7 +2262,7 @@ def _add_cost(left: tuple[int, ...], right: tuple[int, ...]) -> tuple[int, ...]:
 
 def _display_control_code(profile: E9CopedentProfile | None, control: str) -> str:
     if profile is not None:
-        resolved = resolve_control(profile, control)
+        resolved = resolve_arranger_control(profile, control)
         if profile.id.startswith("saved:"):
             return resolved.label
         return arranger_code(resolved)

@@ -776,6 +776,41 @@ let capturedRequest;
     assert result.returncode == 0, result.stderr
 
 
+def test_frontend_answer_client_surfaces_safe_api_validation_error() -> None:
+    script = r"""
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const vm = require("node:vm");
+
+const code = fs.readFileSync("ui/answer-client.js", "utf8");
+const sandbox = { window: {} };
+vm.createContext(sandbox);
+vm.runInContext(code, sandbox);
+const answerUi = vm.runInContext("STEEL_RAG_ANSWER_UI", sandbox);
+
+(async () => {
+  await assert.rejects(
+    answerUi.requestAnswer("Arrange this song", {
+      fetchImpl: async () => ({
+        ok: false,
+        status: 400,
+        json: async () => ({ error: "This copedent action needs a unique control." })
+      })
+    }),
+    /This copedent action needs a unique control\./
+  );
+})().catch((error) => { console.error(error); process.exit(1); });
+"""
+    result = subprocess.run(
+        ["node", "-e", script],
+        cwd=Path(__file__).resolve().parents[1],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+
+
 def test_answer_ui_keeps_melody_lesson_renderer_without_cross_feature_header_link() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
     client = Path("ui/answer-client.js").read_text(encoding="utf-8")
