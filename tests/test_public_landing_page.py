@@ -91,6 +91,16 @@ def test_public_landing_page_reuses_the_real_app_home_previews() -> None:
     assert 'class="ask-launch-example" role="img"' in html
 
 
+def test_public_landing_hanging_sign_stays_anchored_to_the_left_edge() -> None:
+    html = LANDING_PAGE.read_text(encoding="utf-8")
+
+    assert "left: calc((100vw - 100%) / -2 - 12px);" in html
+    assert "left: calc((100vw - 100%) / -2);" in html
+    assert ".home-sign { top: -12px; left: 50%;" not in html
+    assert "transform: translateX(-50%)" not in html
+    assert ".app-shell-header { grid-template-columns: 1fr; min-height: 0; padding-top: 225px; }" in html
+
+
 def test_public_landing_page_describes_four_locked_workspaces() -> None:
     html = LANDING_PAGE.read_text(encoding="utf-8")
 

@@ -137,6 +137,7 @@
       display: flex;
       align-items: center;
       justify-content: flex-end;
+      flex-wrap: wrap;
       gap: 12px;
       padding-top: 6px;
     }
@@ -585,13 +586,6 @@
     }
 
     @media (max-width: 1099px) {
-      .app-shell-header {
-        grid-template-columns: 1fr;
-        min-height: 0;
-        padding-top: 218px;
-      }
-      .home-sign { top: -12px; left: 50%; width: clamp(300px, 44vw, 340px); transform: translateX(-50%); }
-      .public-header-actions { grid-column: 1; justify-content: center; padding-top: 0; }
       main { padding-top: 30px; }
       .home-product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .home-product-card { min-height: 320px; }
@@ -600,8 +594,14 @@
 
     @media (max-width: 720px) {
       .app-shell-header, main, .home-trust-footer { width: min(calc(100% - 24px), var(--shell-max)); }
-      .app-shell-header { padding-top: 194px; }
-      .home-sign { width: 300px; }
+      .app-shell-header { grid-template-columns: 1fr; min-height: 0; padding-top: 225px; }
+      .home-sign {
+        top: -12px;
+        left: calc((100vw - 100%) / -2);
+        width: min(300px, 94vw);
+        transform: none;
+      }
+      .public-header-actions { grid-column: 1; justify-content: flex-end; padding-top: 0; }
       main { padding-top: 24px; }
       .home-overview { gap: 28px; }
       .home-hero h1 { font-size: clamp(40px, 12.7vw, 58px); }
