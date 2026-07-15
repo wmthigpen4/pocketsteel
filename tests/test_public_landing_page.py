@@ -18,6 +18,7 @@ PUBLIC_PREVIEW_ASSETS = (
     "assets/landing/melody-score.png",
     "assets/landing/spotlight.png",
     "brand/pedal-steel-fretboard-background.svg",
+    "brand/steel-guitar-rag-hanging-sign-fallback.png",
 )
 
 
@@ -92,7 +93,9 @@ def test_public_landing_page_uses_dark_product_led_visual_direction() -> None:
 
     assert "--amber: #ffb12b;" in html
     assert 'url("assets/steel_on_stage2.png")' in html
-    assert 'src="brand/steel-guitar-rag-landing-fallback-alpha.png"' in html
+    assert 'src="brand/steel-guitar-rag-hanging-sign-fallback.png"' in html
+    assert '<video class="landing-sign"' not in html
+    assert "steel-guitar-rag-landing-alpha.webm" not in html
     assert 'class="app-shell-header"' in html
     assert 'class="home-explorer-panel"' in html
     assert 'id="home-explorer-preview"' in html
@@ -136,6 +139,23 @@ def test_public_landing_hanging_sign_stays_anchored_to_the_left_edge() -> None:
     assert ".app-shell-header { grid-template-columns: 1fr; min-height: 0; padding-top: 225px; }" in html
 
 
+def test_public_landing_mobile_sign_and_melody_card_avoid_ios_failures() -> None:
+    html = LANDING_PAGE.read_text(encoding="utf-8")
+    mobile_css = html.split("@media (max-width: 720px)", 1)[1].split("@media (prefers-reduced-motion: reduce)", 1)[0]
+
+    assert '<a class="home-sign" href="#top"' in html
+    assert '<img class="landing-sign-art"' in html
+    assert ".skip-link:focus-visible { transform: translateY(0); }" in html
+    assert ".skip-link:focus { transform: translateY(0); }" not in html
+    assert ".home-product-card { min-height: 0; padding: 20px; }" in mobile_css
+    assert ".home-card-preview { height: 100px; margin-bottom: 0; }" in mobile_css
+    assert ".locked-label { margin-top: 16px; }" in mobile_css
+    assert '.home-product-card[data-locked-workspace="melody-studio"]' in mobile_css
+    assert ".home-score-preview {" in mobile_css
+    assert "height: 126px;" in mobile_css
+    assert ".home-score-preview .home-melody-score-image { width: 100%; max-width: none; }" in mobile_css
+
+
 def test_public_landing_page_describes_four_locked_workspaces() -> None:
     html = LANDING_PAGE.read_text(encoding="utf-8")
 
@@ -147,7 +167,7 @@ def test_public_landing_page_describes_four_locked_workspaces() -> None:
     ]
     for workspace in expected_workspaces:
         assert workspace in html
-    assert html.count('data-locked-workspace="') == 4
+    assert html.count('<article class="home-product-card') == 4
     assert html.count("Coming at launch") == 4
     assert "See what you’ll be able to do." in html
     assert "They are shown here as static previews and do not open the app." in html
@@ -194,8 +214,7 @@ def test_cloudflare_pages_static_output_matches_landing_source() -> None:
     assert deploy_html == source_html
     assert Path("deploy/landing/assets/steel-guitar-rag-logo-transparent.png").is_file()
     assert Path("deploy/landing/assets/steel_on_stage2.png").is_file()
-    assert Path("deploy/landing/brand/steel-guitar-rag-landing-alpha.webm").is_file()
-    assert Path("deploy/landing/brand/steel-guitar-rag-landing-fallback-alpha.png").is_file()
+    assert Path("deploy/landing/brand/steel-guitar-rag-hanging-sign-fallback.png").is_file()
     for relative_path in PUBLIC_PREVIEW_SCRIPTS:
         deploy_script = Path("deploy/landing") / relative_path
         source_script = Path("ui") / relative_path
