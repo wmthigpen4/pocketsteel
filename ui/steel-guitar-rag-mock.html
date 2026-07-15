@@ -1787,8 +1787,7 @@
     }
 
     .overview-ready-copy,
-    .overview-status-grid,
-    .overview-continue {
+    .overview-status-grid {
       position: relative;
       z-index: 2;
       width: min(68%, 780px);
@@ -1869,10 +1868,7 @@
       pointer-events: none;
     }
 
-    .overview-continue { align-self: end; }
-    .overview-primary-cta,
-    .overview-station-card button,
-    #overview-resume-route {
+    .overview-station-card button {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -1885,9 +1881,6 @@
       font-weight: 700;
       text-decoration: none;
     }
-    .overview-primary-cta { width: min(370px, 100%); padding: 10px 18px; }
-    .overview-continue p { margin: 6px 0 0; color: rgba(240, 191, 105, 0.72); font-size: 12px; }
-
     .overview-stations {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1915,7 +1908,6 @@
     .overview-recent-route { padding: 18px 22px; }
     .overview-recent-route header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
     .overview-recent-route h3 { color: rgba(240, 191, 105, 0.9); font-family: var(--font-ui); font-size: 13px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase; }
-    #overview-resume-route { min-height: 40px; padding: 7px 13px; color: rgba(240, 191, 105, .9); background: rgba(240, 191, 105, .05); font-size: 12px; }
     #overview-route-list {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1928,15 +1920,12 @@
     .overview-route-step { position: relative; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; min-width: 0; }
     .overview-route-step:not(:last-child)::after { content: "→"; position: absolute; right: -20px; top: 8px; color: rgba(240, 191, 105, .85); }
     .overview-route-number { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid #dfa13a; border-radius: 50%; color: var(--cream); }
-    .overview-route-step a { color: var(--cream); font: 500 17px/1.2 var(--font-lesson); text-decoration: none; }
+    .overview-route-step strong { color: var(--cream); font: 500 17px/1.2 var(--font-lesson); }
     .overview-route-step p,
     .overview-route-step time { margin: 4px 0 0; color: rgba(244, 234, 214, .64); font-size: 11px; }
     #overview-route-empty { margin: 18px 0 0; padding: 14px; border: 1px dashed rgba(240, 191, 105, .24); border-radius: 10px; color: rgba(244, 234, 214, .68); text-align: center; }
 
-    .overview-primary-cta:focus-visible,
-    .overview-station-card button:focus-visible,
-    #overview-resume-route:focus-visible,
-    .overview-route-step a:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+    .overview-station-card button:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 
     .backstage-plan {
       display: grid;
@@ -4296,8 +4285,7 @@
 
     @media (max-width: 960px) {
       .overview-ready-copy,
-      .overview-status-grid,
-      .overview-continue { width: min(74%, 680px); }
+      .overview-status-grid { width: min(74%, 680px); }
 
       .overview-stations { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
@@ -4604,17 +4592,14 @@
       .overview-ready-hero { min-height: 0; padding: 22px 18px; }
       .overview-ready-hero::after { background: linear-gradient(180deg, rgba(11, 14, 14, .97) 0 50%, rgba(11, 14, 14, .62) 72%, rgba(11, 14, 14, .9)); }
       .overview-ready-copy,
-      .overview-status-grid,
-      .overview-continue { width: 100%; }
+      .overview-status-grid { width: 100%; }
       .overview-status-grid { grid-template-columns: 1fr; }
       .overview-status-item { border-right: 0; border-bottom: 1px solid rgba(240, 191, 105, .14); padding: 0 0 12px; }
       .overview-road-case { position: relative; right: auto; bottom: auto; order: 3; width: 100%; height: auto; max-height: 210px; object-position: center; }
-      .overview-continue { order: 4; }
       .overview-stations { grid-template-columns: 1fr; }
       .overview-station-card p { min-height: 0; }
       .overview-recent-route { padding: 18px 14px; }
       .overview-recent-route header { align-items: stretch; flex-direction: column; }
-      #overview-resume-route { width: 100%; }
 
       .backstage-tabs {
         top: 96px;
@@ -5311,10 +5296,6 @@
               </div>
             </div>
             <img class="overview-road-case" src="assets/backstage/overview-road-case.png?v=control-room-20260714-1" alt="" width="1672" height="941">
-            <div class="overview-continue">
-              <a class="overview-primary-cta" id="overview-continue-cta" href="/ui/e9-fretboard-explorer.html"><span id="overview-continue-label">Explore the fretboard</span><span aria-hidden="true">→</span></a>
-              <p id="overview-continue-destination">No resumable activity yet. Start in Fretboard Explorer.</p>
-            </div>
           </section>
 
           <section class="overview-stations" aria-label="Backstage stations">
@@ -5341,7 +5322,7 @@
           </section>
 
           <section class="overview-recent-route" aria-labelledby="overview-route-title">
-            <header><div><h3 id="overview-route-title">Your recent route</h3><p>Your latest learning flow—connected across tools.</p></div><a id="overview-resume-route" href="/ui/e9-fretboard-explorer.html" hidden>Resume latest handoff <span aria-hidden="true">→</span></a></header>
+            <header><div><h3 id="overview-route-title">Your recent route</h3><p>Your latest learning flow—connected across tools.</p></div></header>
             <ol id="overview-route-list" hidden></ol>
             <p id="overview-route-empty">No connected learning route yet. Carry an answer, position, lesson, or melody into another tool to see it here.</p>
           </section>
@@ -5933,12 +5914,8 @@
     const overviewLastWorkspace = document.querySelector("#overview-last-workspace");
     const overviewLastDescription = document.querySelector("#overview-last-description");
     const overviewLastTime = document.querySelector("#overview-last-time");
-    const overviewContinueCta = document.querySelector("#overview-continue-cta");
-    const overviewContinueLabel = document.querySelector("#overview-continue-label");
-    const overviewContinueDestination = document.querySelector("#overview-continue-destination");
     const overviewRouteList = document.querySelector("#overview-route-list");
     const overviewRouteEmpty = document.querySelector("#overview-route-empty");
-    const overviewResumeRoute = document.querySelector("#overview-resume-route");
     const usagePeriodLabel = document.querySelector("#usage-period-label");
     const usageStatusCopy = document.querySelector("#usage-status-copy");
     const usageMonthlyDetails = document.querySelector("#usage-monthly-details");
@@ -7791,30 +7768,30 @@
     }
 
     const overviewActivityDestinations = {
-      "explorer.position_selected": ["Fretboard Explorer", "Explored an E9 position", "/ui/e9-fretboard-explorer.html"],
-      "explorer.chord_grip_selected": ["Fretboard Explorer", "Explored a chord grip", "/ui/e9-fretboard-explorer.html"],
-      "explorer.scale_path_selected": ["Fretboard Explorer", "Explored a scale path", "/ui/e9-fretboard-explorer.html"],
-      "explorer.movement_compared": ["Fretboard Explorer", "Compared movement across the neck", "/ui/e9-fretboard-explorer.html"],
-      "melody.session_started": ["Melody Studio", "Started a melody session", "/ui/melody-workbench.html"],
-      "melody.edited": ["Melody Studio", "Edited a melody", "/ui/melody-workbench.html"],
-      "melody.playback_completed": ["Melody Studio", "Completed a melody playback", "/ui/melody-workbench.html"],
-      "lesson.started": ["Lessons", "Started a lesson", "/ui/lesson-workbench.html"],
-      "lesson.section_completed": ["Lessons", "Completed a lesson section", "/ui/lesson-workbench.html"],
-      "lesson.exercise_completed": ["Lessons", "Completed a lesson exercise", "/ui/lesson-workbench.html"],
-      "ask.answer": ["Ask the Brain", "Received an answer", "/ui/steel-guitar-rag-mock.html#ask-the-brain"],
-      "ask.followup": ["Ask the Brain", "Asked a follow-up", "/ui/steel-guitar-rag-mock.html#ask-the-brain"],
-      "ask.ai_assisted": ["Ask the Brain", "Used source-aware assistance", "/ui/steel-guitar-rag-mock.html#ask-the-brain"],
-      "connected.answer_to_explorer": ["Fretboard Explorer", "Opened an answer in Explorer", "/ui/e9-fretboard-explorer.html"],
-      "connected.lesson_to_explorer": ["Fretboard Explorer", "Continued a lesson in Explorer", "/ui/e9-fretboard-explorer.html"],
-      "connected.lesson_to_melody": ["Melody Studio", "Continued a lesson in Melody Studio", "/ui/melody-workbench.html"],
-      "connected.explorer_to_melody": ["Melody Studio", "Carried an Explorer idea into Melody Studio", "/ui/melody-workbench.html"]
+      "explorer.position_selected": ["Fretboard Explorer", "Explored an E9 position"],
+      "explorer.chord_grip_selected": ["Fretboard Explorer", "Explored a chord grip"],
+      "explorer.scale_path_selected": ["Fretboard Explorer", "Explored a scale path"],
+      "explorer.movement_compared": ["Fretboard Explorer", "Compared movement across the neck"],
+      "melody.session_started": ["Melody Studio", "Started a melody session"],
+      "melody.edited": ["Melody Studio", "Edited a melody"],
+      "melody.playback_completed": ["Melody Studio", "Completed a melody playback"],
+      "lesson.started": ["Lessons", "Started a lesson"],
+      "lesson.section_completed": ["Lessons", "Completed a lesson section"],
+      "lesson.exercise_completed": ["Lessons", "Completed a lesson exercise"],
+      "ask.answer": ["Ask the Brain", "Received an answer"],
+      "ask.followup": ["Ask the Brain", "Asked a follow-up"],
+      "ask.ai_assisted": ["Ask the Brain", "Used source-aware assistance"],
+      "connected.answer_to_explorer": ["Fretboard Explorer", "Opened an answer in Explorer"],
+      "connected.lesson_to_explorer": ["Fretboard Explorer", "Continued a lesson in Explorer"],
+      "connected.lesson_to_melody": ["Melody Studio", "Continued a lesson in Melody Studio"],
+      "connected.explorer_to_melody": ["Melody Studio", "Carried an Explorer idea into Melody Studio"]
     };
 
     function overviewActivityDetails(event) {
       if (!event?.eventType) return null;
       const destination = overviewActivityDestinations[event.eventType];
       if (!destination) return null;
-      return { workspace: destination[0], description: destination[1], href: destination[2], occurredAt: event.occurredAt };
+      return { workspace: destination[0], description: destination[1], occurredAt: event.occurredAt };
     }
 
     function formatOverviewActivityTime(value) {
@@ -7831,16 +7808,10 @@
         overviewLastWorkspace.textContent = recent.workspace;
         overviewLastDescription.textContent = recent.description;
         overviewLastTime.textContent = formatOverviewActivityTime(recent.occurredAt);
-        overviewContinueLabel.textContent = "Continue where you left off";
-        overviewContinueCta.href = recent.href;
-        overviewContinueDestination.textContent = `Return to ${recent.workspace}.`;
       } else {
         overviewLastWorkspace.textContent = "No recent learning activity yet.";
         overviewLastDescription.textContent = "Your next meaningful action will appear here.";
         overviewLastTime.textContent = "";
-        overviewContinueLabel.textContent = "Explore the fretboard";
-        overviewContinueCta.href = "/ui/e9-fretboard-explorer.html";
-        overviewContinueDestination.textContent = "No resumable activity yet. Start in Fretboard Explorer.";
       }
 
       const route = (usage?.recentConnectedRoute || []).map(overviewActivityDetails).filter(Boolean);
@@ -7852,21 +7823,18 @@
         number.className = "overview-route-number";
         number.textContent = String(index + 1);
         const copy = document.createElement("div");
-        const link = document.createElement("a");
-        link.href = step.href;
-        link.textContent = step.workspace;
+        const workspace = document.createElement("strong");
+        workspace.textContent = step.workspace;
         const description = document.createElement("p");
         description.textContent = step.description;
         const time = document.createElement("time");
         time.textContent = formatOverviewActivityTime(step.occurredAt);
-        copy.append(link, description, time);
+        copy.append(workspace, description, time);
         item.append(number, copy);
         overviewRouteList.append(item);
       });
       overviewRouteList.hidden = route.length === 0;
       overviewRouteEmpty.hidden = route.length > 0;
-      overviewResumeRoute.hidden = route.length === 0;
-      if (route.length) overviewResumeRoute.href = route.at(-1).href;
     }
 
     function renderUsageOverview(passLabel = mockCurrentPass.textContent) {

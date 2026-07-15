@@ -327,7 +327,6 @@ def test_backstage_overview_is_a_truthful_control_room_with_real_state_hooks() -
         "overview-account-status",
         "backstage-overview-pass-badge",
         "overview-last-workspace",
-        "overview-continue-cta",
     ):
         assert f'id="{state_id}"' in overview
     for station in ("My Setup", "Plan &amp; Activity", "Feedback", "Account"):
@@ -335,7 +334,10 @@ def test_backstage_overview_is_a_truthful_control_room_with_real_state_hooks() -
     for destination in ("setup", "pass", "feedback", "account"):
         assert f'data-backstage-jump="{destination}"' in overview
     assert "No connected learning route yet." in overview
-    assert 'id="overview-resume-route"' in overview and " hidden>" in overview
+    assert 'id="overview-continue-cta"' not in overview
+    assert 'id="overview-resume-route"' not in overview
+    assert "href=" not in overview
+    assert 'class="overview-route-step"' not in overview
     assert "upgrade" not in overview.lower()
     assert "billing" not in overview.lower()
 
@@ -344,7 +346,8 @@ def test_backstage_overview_is_a_truthful_control_room_with_real_state_hooks() -
     assert '"connected.explorer_to_melody"' in html
     assert "renderOverviewActivity(usage);" in html
     assert 'overviewRouteEmpty.hidden = route.length > 0;' in html
-    assert 'overviewResumeRoute.hidden = route.length === 0;' in html
+    assert 'document.createElement("strong")' in html
+    assert 'document.createElement("a")' not in html[html.index("function renderOverviewActivity"):html.index("function renderUsageOverview")]
     assert 'overviewAccountStatus.textContent = verifiedAccount ? "Verified login" : "Local preview";' in html
 
 
@@ -371,7 +374,7 @@ def test_backstage_overview_has_responsive_control_room_layout() -> None:
     assert "@media (max-width: 640px)" in html
     assert ".overview-road-case { position: relative;" in html
     assert ".overview-stations { grid-template-columns: 1fr; }" in html
-    assert ".overview-primary-cta:focus-visible" in html
+    assert ".overview-station-card button:focus-visible" in html
 
 
 def test_backstage_feedback_is_an_accessible_talkback_workspace() -> None:
