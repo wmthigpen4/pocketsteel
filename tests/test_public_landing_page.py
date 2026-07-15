@@ -18,7 +18,7 @@ PUBLIC_PREVIEW_ASSETS = (
     "assets/landing/melody-score.png",
     "assets/landing/spotlight.png",
     "brand/pedal-steel-fretboard-background.svg",
-    "brand/steel-guitar-rag-hanging-sign-fallback.png",
+    "brand/steel-guitar-rag-hanging-sign-cloudflare-login.png",
 )
 
 
@@ -93,7 +93,7 @@ def test_public_landing_page_uses_dark_product_led_visual_direction() -> None:
 
     assert "--amber: #ffb12b;" in html
     assert 'url("assets/steel_on_stage2.png")' in html
-    assert 'src="brand/steel-guitar-rag-hanging-sign-fallback.png"' in html
+    assert 'src="brand/steel-guitar-rag-hanging-sign-cloudflare-login.png"' in html
     assert '<video class="landing-sign"' not in html
     assert "steel-guitar-rag-landing-alpha.webm" not in html
     assert 'class="app-shell-header"' in html
@@ -145,6 +145,7 @@ def test_public_landing_mobile_sign_and_melody_card_avoid_ios_failures() -> None
 
     assert '<a class="home-sign" href="#top"' in html
     assert '<img class="landing-sign-art"' in html
+    assert "width: clamp(190px, 55vw, 240px);" in mobile_css
     assert ".skip-link:focus-visible { transform: translateY(0); }" in html
     assert ".skip-link:focus { transform: translateY(0); }" not in html
     assert ".home-product-card { min-height: 0; padding: 20px; }" in mobile_css
@@ -214,7 +215,9 @@ def test_cloudflare_pages_static_output_matches_landing_source() -> None:
     assert deploy_html == source_html
     assert Path("deploy/landing/assets/steel-guitar-rag-logo-transparent.png").is_file()
     assert Path("deploy/landing/assets/steel_on_stage2.png").is_file()
-    assert Path("deploy/landing/brand/steel-guitar-rag-hanging-sign-fallback.png").is_file()
+    deployed_sign = Path("deploy/landing/brand/steel-guitar-rag-hanging-sign-cloudflare-login.png")
+    source_sign = Path("ui/brand/steel-guitar-rag-hanging-sign-cloudflare-login.png")
+    assert deployed_sign.read_bytes() == source_sign.read_bytes()
     for relative_path in PUBLIC_PREVIEW_SCRIPTS:
         deploy_script = Path("deploy/landing") / relative_path
         source_script = Path("ui") / relative_path
