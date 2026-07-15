@@ -3331,30 +3331,6 @@
       display: none;
     }
 
-    .stage-return {
-      justify-self: start;
-      border: 0;
-      padding: 0;
-      background: transparent;
-      color: rgba(240, 191, 105, 0.82);
-      cursor: pointer;
-      font-size: 14px;
-      line-height: 1.35;
-      letter-spacing: 0.02em;
-      text-decoration: none;
-      transition: color 160ms ease, text-shadow 160ms ease, text-decoration-color 160ms ease;
-    }
-
-    .stage-return:hover,
-    .stage-return:focus-visible {
-      color: var(--cream);
-      text-decoration: underline;
-      text-decoration-color: rgba(240, 191, 105, 0.72);
-      text-underline-offset: 4px;
-      text-shadow: 0 0 12px rgba(240, 191, 105, 0.22);
-      outline: none;
-    }
-
     .question-card,
     .answer-card,
     .fretboard-card,
@@ -5104,7 +5080,6 @@
       </div>
 
       <section class="answer-workspace" id="answer-workspace" aria-label="Steel Guitar RAG answer workspace" hidden>
-        <button class="stage-return" type="button" aria-label="Return to Steel Guitar RAG home">← Return to the stage</button>
         <article class="question-card">
           <p class="answer-kicker">Your question</p>
           <h2 class="answered-question" id="answered-question">Why does touching the changer reduce hum?</h2>
@@ -5857,7 +5832,6 @@
     const page = document.querySelector(".page");
     const homeSections = Array.from(document.querySelectorAll(".home-overview"));
     const brandHome = document.querySelector(".brand-home");
-    const stageReturn = document.querySelector(".stage-return");
     const footer = document.querySelector("footer");
     const primarySend = document.querySelector(".ask-product-card .send");
     const answerWorkspace = document.querySelector("#answer-workspace");
@@ -7314,7 +7288,7 @@
       followupChipList.innerHTML = "";
       const followups = response.followups?.length
         ? response.followups
-        : ["Ask a follow-up", "Show more sources", "Make it simpler", "What should I try first?"];
+        : ["How does this apply on E9?", "Show me more source evidence", "Explain that more simply", "What should I practice first?"];
       followups.forEach((followup) => {
         const chip = document.createElement("button");
         chip.className = "followup-chip";
@@ -8070,7 +8044,6 @@
 
     primarySend.addEventListener("click", submitHomeQuestion);
     brandHome.addEventListener("click", () => returnToStage({ focusTarget: "home" }));
-    stageReturn.addEventListener("click", () => returnToStage({ focusTarget: "home" }));
     homeHeaderLink.addEventListener("click", () => returnToStage({ focusTarget: "home" }));
     askHeaderLink.addEventListener("click", focusAnswerComposer);
 
@@ -8137,8 +8110,7 @@
     followupChipList.addEventListener("click", (event) => {
       const chip = event.target.closest(".followup-chip");
       if (!chip) return;
-      followupQuestion.value = chip.textContent.trim();
-      followupQuestion.focus();
+      submitQuestion(chip.textContent.trim(), { isFollowup: true });
     });
 
     answerSend.addEventListener("click", () => {

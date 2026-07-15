@@ -954,8 +954,23 @@ def test_answer_ui_header_only_exposes_home_ask_and_backstage() -> None:
     assert 'askHeaderLink.addEventListener("click", focusAnswerComposer);' in html
     assert 'askHeaderLink.addEventListener("click", () => returnToStage' not in html
     assert html.count('id="followup-question"') == 1
+    assert 'class="stage-return"' not in html
+    assert 'const stageReturn =' not in html
+    assert 'stageReturn.addEventListener' not in html
     assert 'document.querySelector(".home-sign")?.focus();' in html
     assert "question.focus();" in html
+
+
+def test_answer_followup_chips_are_real_immediate_questions() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+
+    assert '"How does this apply on E9?"' in html
+    assert '"Show me more source evidence"' in html
+    assert '"Explain that more simply"' in html
+    assert '"What should I practice first?"' in html
+    assert ': ["Ask a follow-up",' not in html
+    assert 'submitQuestion(chip.textContent.trim(), { isFollowup: true });' in html
+    assert 'followupQuestion.value = chip.textContent.trim();' not in html
 
 
 def test_backstage_more_action_pill_centers_summary_text() -> None:
