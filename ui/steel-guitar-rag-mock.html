@@ -145,7 +145,7 @@
       border-radius: 8px;
     }
 
-    .page.is-answering .brand-home {
+    .page:is(.is-answering, .is-asking) .brand-home {
       display: inline-flex;
       align-items: center;
     }
@@ -3308,6 +3308,11 @@
       padding-top: 24px;
     }
 
+    .page.is-asking main {
+      width: min(1060px, calc(100% - 32px));
+      padding-top: 24px;
+    }
+
     .page.is-answering .hero,
     .page.is-answering .prompt-shell,
     .page.is-answering .try-asking,
@@ -4847,6 +4852,11 @@
         padding-top: 22px;
       }
 
+      .page.is-asking main {
+        width: calc(100% - 28px);
+        padding-top: 22px;
+      }
+
       .question-card,
       .answer-card,
       .fretboard-card {
@@ -4939,7 +4949,7 @@
       }
     }
   </style>
-  <link rel="stylesheet" href="workspace-shell.css?v=full-screen-ask-20260714-1">
+  <link rel="stylesheet" href="workspace-shell.css?v=spotlight-ask-launch-20260715-1">
 </head>
 <body>
   <div class="page">
@@ -5057,27 +5067,57 @@
                 <svg class="home-card-icon is-ask" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14v11H9l-4 3V5ZM8 9h8M8 12h5"/></svg>
                 <h3>Ask the Steel Guitar Brain</h3>
               </div>
-              <p>Get teacher-first, source-backed help with technique, tone, setup, gear, copedents, theory, and troubleshooting.</p>
-              <section class="prompt-shell" aria-label="Ask a steel guitar question">
-                <div class="prompt">
-                  <div class="input-area">
-                    <textarea id="question" aria-label="Type your steel guitar question" placeholder="Ask a steel guitar question..."></textarea>
-                    <div class="prompt-typing-indicator" aria-label="Working" role="status"><span></span><span></span><span></span></div>
-                    <div class="input-actions"><button class="send" type="button">Ask the Brain</button></div>
-                  </div>
-                  <p class="access-helper" id="access-helper">Get a Backstage Pass to ask Steel Guitar RAG.</p>
-                  <p class="backstage-note" data-active-copedent></p>
-                </div>
-              </section>
-              <div class="try-asking" aria-label="Suggested question">
-                <span class="try-label">Try:</span>
-                <div class="examples" id="suggested-prompts" aria-label="Example question"></div>
-              </div>
+              <p>Get a practical, teacher-first answer grounded in steel-guitar sources and your setup.</p>
+              <button class="ask-launch-example" type="button" data-prefill-question="Show me a classic country move.">
+                <span class="ask-launch-example-label">Example question</span>
+                <strong>Show me a classic country move.</strong>
+                <span class="ask-launch-example-copy">See how the move works, where to play it, and how to continue in Explorer.</span>
+              </button>
+              <button class="ask-launch-cta" type="button">Open Ask the Brain <span aria-hidden="true">→</span></button>
+              <p class="ask-launch-context">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16M8 5v14M16 5v14"/></svg>
+                Uses your active E9 setup
+              </p>
             </article>
           </div>
         </section>
 
       </div>
+
+      <section class="ask-workspace" id="ask-workspace" aria-labelledby="ask-workspace-title" hidden>
+        <section class="ask-workspace-hero">
+          <p class="home-eyebrow">Source-backed pedal-steel help</p>
+          <h1 id="ask-workspace-title">Ask the Steel Guitar Brain</h1>
+          <p>Get help with tone, gear, copedents, technique, tab, setup, and troubleshooting.</p>
+        </section>
+
+        <section class="prompt-shell ask-workspace-prompt" aria-label="Ask a steel guitar question">
+          <div class="prompt">
+            <div class="input-area">
+              <textarea id="question" aria-label="Type your steel guitar question" placeholder="Ask a steel guitar question..."></textarea>
+              <div class="prompt-typing-indicator" aria-label="Working" role="status"><span></span><span></span><span></span></div>
+              <div class="input-actions">
+                <button class="icon-button" type="button" aria-label="Voice question">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></svg>
+                </button>
+                <button class="send ask-workspace-send" type="button" aria-label="Ask the Steel Guitar Brain">↑</button>
+              </div>
+            </div>
+            <p class="input-helper">Buzz, tone, pedals, knee levers, amp settings, copedents, tab, or how to play a phrase.</p>
+            <p class="access-helper" id="access-helper">Get a Backstage Pass to ask Steel Guitar RAG.</p>
+            <p class="backstage-note" data-active-copedent></p>
+          </div>
+        </section>
+
+        <div class="try-asking ask-workspace-suggestions" aria-label="Suggested questions">
+          <div class="try-label-wrap"><p class="try-label">Try asking:</p></div>
+          <div class="examples" id="suggested-prompts" aria-label="Example questions"></div>
+          <p class="source-note">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 20 6v6c0 5-3.4 8-8 9-4.6-1-8-4-8-9V6l8-3Z"/><path d="m8.5 12 2.2 2.2 4.9-5"/></svg>
+            <span>Answers draw from forum discussions, manuals, setup notes, copedents, and steel-specific sources.</span>
+          </p>
+        </div>
+      </section>
 
       <section class="answer-workspace" id="answer-workspace" aria-label="Steel Guitar RAG answer workspace" hidden>
         <article class="question-card">
@@ -5827,13 +5867,15 @@
     const question = document.querySelector("#question");
     const promptBox = document.querySelector(".prompt");
     const inputArea = document.querySelector(".input-area");
-    const topic = document.querySelector("#topic");
     const suggestedPrompts = document.querySelector("#suggested-prompts");
     const page = document.querySelector(".page");
     const homeSections = Array.from(document.querySelectorAll(".home-overview"));
+    const askWorkspace = document.querySelector("#ask-workspace");
+    const askLaunchCta = document.querySelector(".ask-launch-cta");
+    const askLaunchExample = document.querySelector(".ask-launch-example");
     const brandHome = document.querySelector(".brand-home");
     const footer = document.querySelector("footer");
-    const primarySend = document.querySelector(".ask-product-card .send");
+    const primarySend = document.querySelector(".ask-workspace-send");
     const answerWorkspace = document.querySelector("#answer-workspace");
     const answeredQuestion = document.querySelector("#answered-question");
     const answerPrimaryTitle = document.querySelector("#answer-primary-title");
@@ -6204,7 +6246,6 @@
       }
     };
 
-    let activePromptIndex = 0;
 
     function getTimeOfDayQuestionLabel(date = new Date()) {
       const minutes = date.getHours() * 60 + date.getMinutes();
@@ -6484,9 +6525,7 @@
 
     function renderSuggestedPrompt() {
       suggestedPrompts.innerHTML = "";
-      const visiblePrompts = Array.from({ length: Math.min(1, promptPool.length) }, (_, offset) => (
-        promptPool[(activePromptIndex + offset) % promptPool.length]
-      ));
+      const visiblePrompts = promptPool.slice(9, 13);
       visiblePrompts.forEach((prompt) => {
         const button = document.createElement("button");
         button.className = "example";
@@ -6496,19 +6535,6 @@
         button.textContent = prompt.text;
         suggestedPrompts.appendChild(button);
       });
-    }
-
-    function rotateSuggestedPrompt() {
-      let nextIndex = activePromptIndex;
-      while (nextIndex === activePromptIndex) {
-        nextIndex = Math.floor(Math.random() * promptPool.length);
-      }
-      suggestedPrompts.classList.add("is-changing");
-      window.setTimeout(() => {
-        activePromptIndex = nextIndex;
-        renderSuggestedPrompt();
-        suggestedPrompts.classList.remove("is-changing");
-      }, 220);
     }
 
     function updateHelperState() {
@@ -7361,14 +7387,35 @@
       homeSections.forEach((section) => {
         section.hidden = true;
       });
+      askWorkspace.hidden = true;
       if (footer) {
         footer.hidden = true;
       }
       answerWorkspace.hidden = false;
+      page.classList.remove("is-asking");
       page.classList.add("is-answering");
-      askHeaderLink.setAttribute("aria-current", "page");
+      askHeaderLink.removeAttribute("aria-current");
       updateHelperState();
       window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function openAskWorkspace({ prefill = "" } = {}) {
+      answerWorkspace.hidden = true;
+      homeSections.forEach((section) => {
+        section.hidden = true;
+      });
+      askWorkspace.hidden = false;
+      if (footer) {
+        footer.hidden = false;
+      }
+      page.classList.remove("is-answering");
+      page.classList.add("is-asking");
+      askHeaderLink.setAttribute("aria-current", "page");
+      question.value = String(prefill || "");
+      followupQuestion.value = "";
+      updateHelperState();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      window.requestAnimationFrame(() => question.focus({ preventScroll: true }));
     }
 
     async function showAnswerWorkspace(rawQuestion, requestPayload = {}) {
@@ -7423,15 +7470,10 @@
       }
     }
 
-    function focusAnswerComposer() {
-      if (answerWorkspace.hidden) return;
-      followupQuestion.focus({ preventScroll: true });
-      followupQuestion.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
-
-    function returnToStage({ focusTarget = "question" } = {}) {
+    function returnToStage({ focusTarget = "home" } = {}) {
       answerWorkspace.hidden = true;
-      page.classList.remove("is-answering");
+      askWorkspace.hidden = true;
+      page.classList.remove("is-answering", "is-asking");
       askHeaderLink.removeAttribute?.("aria-current");
       homeSections.forEach((section) => {
         section.hidden = false;
@@ -7450,8 +7492,6 @@
       if (focusTarget === "home") {
         document.querySelector(".home-sign")?.focus();
         window.scrollTo({ top: 0, behavior: "smooth" });
-      } else {
-        question.focus();
       }
     }
 
@@ -8032,8 +8072,6 @@
     bootstrapSessionAccess();
     updateHelperState();
 
-    setInterval(rotateSuggestedPrompt, 6500);
-
     question.addEventListener("input", updateHelperState);
     question.addEventListener("keydown", (event) => {
       if (STEEL_RAG_ANSWER_UI.shouldSubmitQuestionKey(event)) {
@@ -8043,9 +8081,19 @@
     });
 
     primarySend.addEventListener("click", submitHomeQuestion);
+    askLaunchCta.addEventListener("click", () => openAskWorkspace());
+    askLaunchExample.addEventListener("click", () => openAskWorkspace({
+      prefill: askLaunchExample.dataset.prefillQuestion
+    }));
     brandHome.addEventListener("click", () => returnToStage({ focusTarget: "home" }));
     homeHeaderLink.addEventListener("click", () => returnToStage({ focusTarget: "home" }));
-    askHeaderLink.addEventListener("click", focusAnswerComposer);
+    askHeaderLink.addEventListener("click", () => {
+      if (page.classList.contains("is-asking")) {
+        question.focus({ preventScroll: true });
+        return;
+      }
+      openAskWorkspace();
+    });
 
     saveCopedentRequest.addEventListener("click", () => {
       const requestDraft = {
@@ -8101,9 +8149,6 @@
     suggestedPrompts.addEventListener("click", (event) => {
       const button = event.target.closest(".example");
       if (!button) return;
-      if (topic) {
-        topic.value = button.dataset.topic;
-      }
       submitQuestion(button.dataset.promptText || button.textContent.trim());
     });
 

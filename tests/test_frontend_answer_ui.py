@@ -908,8 +908,8 @@ def test_answer_ui_uses_safari_safe_transparent_home_and_answer_logos() -> None:
     assert "image-rendering: auto;" in html
     assert 'prefers-reduced-motion: reduce' in html
     assert ".brand-home {\n      display: none;" in html
-    assert ".page.is-answering .brand-home {\n      display: inline-flex;" in html
-    assert ".page.is-answering .home-sign" in shell_css
+    assert ".page:is(.is-answering, .is-asking) .brand-home {\n      display: inline-flex;" in html
+    assert ".page:is(.is-answering, .is-asking) .home-sign" in shell_css
     assert 'class="answer-brand-badge" src="brand/steel-guitar-rag-answer-badge-fallback-alpha.png?v=mobile-logo-safari-20260713-1"' in html
     assert '<video class="answer-brand-badge"' not in html
     assert "width: clamp(160px, 18vw, 240px);" in html
@@ -947,18 +947,45 @@ def test_answer_ui_header_only_exposes_home_ask_and_backstage() -> None:
     assert "not corpus retrieval or RAG-generated fretboard positions" not in html
     assert "[object Object]" not in html
     assert 'homeHeaderLink.addEventListener("click", () => returnToStage({ focusTarget: "home" }));' in html
-    assert "function focusAnswerComposer()" in html
-    assert "if (answerWorkspace.hidden) return;" in html
-    assert 'followupQuestion.focus({ preventScroll: true });' in html
-    assert 'followupQuestion.scrollIntoView({ behavior: "smooth", block: "center" });' in html
-    assert 'askHeaderLink.addEventListener("click", focusAnswerComposer);' in html
+    assert 'function openAskWorkspace({ prefill = "" } = {})' in html
+    assert 'page.classList.add("is-asking");' in html
+    assert 'askHeaderLink.setAttribute("aria-current", "page");' in html
+    assert 'question.value = String(prefill || "");' in html
+    assert 'if (page.classList.contains("is-asking")) {' in html
+    assert 'askHeaderLink.addEventListener("click", () => {' in html
+    assert "openAskWorkspace();" in html
     assert 'askHeaderLink.addEventListener("click", () => returnToStage' not in html
+    assert html.count('id="question"') == 1
     assert html.count('id="followup-question"') == 1
     assert 'class="stage-return"' not in html
     assert 'const stageReturn =' not in html
     assert 'stageReturn.addEventListener' not in html
     assert 'document.querySelector(".home-sign")?.focus();' in html
-    assert "question.focus();" in html
+    assert 'window.requestAnimationFrame(() => question.focus({ preventScroll: true }));' in html
+
+
+def test_full_screen_ask_is_the_only_primary_search_surface() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+    landing = html.split('<div class="home-overview">', 1)[1].split(
+        '<section class="ask-workspace"', 1
+    )[0]
+    ask_workspace = html.split('<section class="ask-workspace"', 1)[1].split(
+        '<section class="answer-workspace"', 1
+    )[0]
+
+    assert "<textarea" not in landing
+    assert "<input" not in landing
+    assert 'class="send' not in landing
+    assert ask_workspace.count('id="question"') == 1
+    assert 'class="send ask-workspace-send"' in ask_workspace
+    assert 'id="suggested-prompts"' in ask_workspace
+    assert 'id="access-helper"' in ask_workspace
+    assert 'data-active-copedent' in ask_workspace
+    assert 'askLaunchCta.addEventListener("click", () => openAskWorkspace());' in html
+    assert 'prefill: askLaunchExample.dataset.prefillQuestion' in html
+    assert 'askLaunchExample.addEventListener("click", () => openAskWorkspace({' in html
+    assert 'submitQuestion(askLaunchExample.dataset.prefillQuestion' not in html
+    assert 'submitQuestion(button.dataset.promptText || button.textContent.trim());' in html
 
 
 def test_answer_followup_chips_are_real_immediate_questions() -> None:

@@ -14,7 +14,7 @@ SCRIPT_PATH = Path("ui/landing-home.js")
 def _home_markup() -> str:
     html = HTML_PATH.read_text(encoding="utf-8")
     return html.split('<div class="home-overview">', 1)[1].split(
-        '<section class="answer-workspace"', 1
+        '<section class="ask-workspace"', 1
     )[0]
 
 
@@ -24,7 +24,7 @@ def test_landing_home_has_product_first_hierarchy_and_copy() -> None:
 
     assert '<a class="skip-link" href="#main-content">Skip to main content</a>' in html
     assert '<nav class="header-actions app-shell-nav" aria-label="Primary navigation">' in html
-    assert 'href="workspace-shell.css?v=full-screen-ask-20260714-1"' in html
+    assert 'href="workspace-shell.css?v=spotlight-ask-launch-20260715-1"' in html
     assert '<main id="main-content">' in html
     assert "A connected pedal-steel learning studio" in home
     assert "See the neck. Understand the music. Play with confidence." in home
@@ -56,7 +56,7 @@ def test_landing_home_exposes_all_four_workspaces_and_neutral_backstage() -> Non
     assert "Visualize E9 positions, grips, intervals, scales, harmony, and movement across the neck." in home
     assert "Build, edit, play back, and practice melodies while connecting each note to a playable E9 position." in home
     assert "Follow reviewed learning paths or build a focused lesson for the topic, level, and time you have." in home
-    assert "Get teacher-first, source-backed help with technique, tone, setup, gear, copedents, theory, and troubleshooting." in home
+    assert "Get a practical, teacher-first answer grounded in steel-guitar sources and your setup." in home
     assert "Manage your setup, copedent, account, access, feedback, and preferences." not in home
     assert "Open Backstage" not in home
     assert "Go Backstage" in html
@@ -130,21 +130,35 @@ def test_landing_workspace_cards_include_compact_tool_previews() -> None:
     assert ".home-lesson-mini" in css
 
 
-def test_landing_home_uses_compact_functional_ask_card_without_voice_control() -> None:
+def test_landing_home_uses_launch_only_ask_card_with_spotlight_artwork() -> None:
     home = _home_markup()
+    html = HTML_PATH.read_text(encoding="utf-8")
+    css = CSS_PATH.read_text(encoding="utf-8")
 
     assert 'id="ask-the-brain"' in home
-    assert 'id="question"' in home
-    assert '<button class="send" type="button">Ask the Brain</button>' in home
-    css = CSS_PATH.read_text(encoding="utf-8")
-    ask_textarea_rule = css.split(".ask-product-card textarea {", 1)[1].split("}", 1)[0]
-    assert "min-height: 96px;" in ask_textarea_rule
-    assert "font: 400 15px/1.45 var(--font-ui);" in ask_textarea_rule
-    assert 'id="suggested-prompts"' in home
+    assert '<button class="ask-launch-example" type="button"' in home
+    assert 'data-prefill-question="Show me a classic country move."' in home
+    assert "Example question" in home
+    assert "Show me a classic country move." in home
+    assert '<button class="ask-launch-cta" type="button">Open Ask the Brain' in home
+    assert "Uses your active E9 setup" in home
+    assert "assets/landing/spotlight.png?v=ask-spotlight-launch-20260715" in css
+    assert "background-position: center, center, right top;" in css
+    assert "background-size: cover, cover, cover;" in css
+    assert "mockup_search_card.png" not in html
+    assert "mockup_search_card.png" not in css
+    assert "<textarea" not in home
+    assert "<input" not in home
+    assert 'class="send' not in home
+    assert 'id="suggested-prompts"' not in home
     assert 'aria-label="Voice question"' not in home
-    assert 'const visiblePrompts = Array.from({ length: Math.min(1, promptPool.length)' in HTML_PATH.read_text(
-        encoding="utf-8"
-    )
+    assert html.count('id="question"') == 1
+
+    spotlight = Path("ui/assets/landing/spotlight.png")
+    assert spotlight.is_file()
+    with Image.open(spotlight) as image:
+        assert image.size == (1254, 1254)
+        assert image.format == "PNG"
 
 
 def test_landing_home_restores_source_aware_ai_shimmer_and_claim_boundaries() -> None:
@@ -206,12 +220,12 @@ def test_landing_shell_has_responsive_and_accessibility_contract() -> None:
     assert "min-height: 44px;" in css
     assert ".home-explorer-stage [data-string-label]," in css
     assert ".home-explorer-stage [data-tuning-label] {\n  display: none;\n}" in css
-    assert ".page:not(.is-answering) .app-shell-nav {" in css
+    assert ".page:not(.is-answering):not(.is-asking) .app-shell-nav {" in css
     assert "position: absolute;\n  top: 18px;\n  right: 0;" in css
-    assert ".page:not(.is-answering) .app-shell-nav > :not(.backstage-trigger)" in css
+    assert ".page:not(.is-answering):not(.is-asking) .app-shell-nav > :not(.backstage-trigger)" in css
     assert '--font-nav: "Gill Sans", "Gill Sans MT", "Avenir Next"' in css
     assert "font: 600 14px/1.15 var(--font-nav);" in css
-    assert ".page:not(.is-answering) .app-shell-header .app-shell-nav {" in css
+    assert ".page:not(.is-answering):not(.is-asking) .app-shell-header .app-shell-nav {" in css
     assert "position: static;" in css
     assert 'role="dialog" aria-modal="true"' in html
     assert 'event.key === "Tab" && !backstage.hidden' in html
