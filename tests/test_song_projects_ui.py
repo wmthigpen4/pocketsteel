@@ -38,6 +38,8 @@ assert.match(songs.parseSongChart("[A] G C", {mode: "letter", key: "G"}).errors[
 assert.match(songs.parseSongChart("[A] | H |", {mode: "letter", key: "G"}).errors[0], /invalid chord/);
 assert.equal(songs.normalizeLetterChord("F♯m7"), "F#m7");
 assert.equal(songs.normalizeLetterChord("G/B"), "G/B");
+assert.deepEqual(songs.automaticBarStarts(4, 10000, 2000), [2000, 4000, 6000, 8000]);
+assert.deepEqual(songs.automaticBarStarts(3, 9000), [0, 3000, 6000]);
 
 const project = {
   schemaVersion: songs.SCHEMA_VERSION,
@@ -100,6 +102,13 @@ def test_song_project_controller_contains_local_only_and_practice_controls() -> 
     assert 'maxlength="80"' in html or "MAX_CUE_LENGTH" in source
     assert 'id="song-loop-enabled"' in html
     assert 'id="song-play-toggle"' in html
+    assert 'id="song-player-stage"' in html
+    assert 'id="song-edit-sync"' in html
+    assert 'id="song-builder-details"' in html
+    assert "Your job is simple: play the chord shown on screen." in html
+    assert "Edit synchronization (advanced)" in html
+    assert "Tap every bar" not in html
+    assert source.index("await arrange();") > source.index("async function selectPilot")
     assert 'id="song-skip-back"' in html
     assert 'id="song-skip-forward"' in html
     assert '["INPUT", "TEXTAREA", "SELECT"].includes(doc.activeElement?.tagName)' in source

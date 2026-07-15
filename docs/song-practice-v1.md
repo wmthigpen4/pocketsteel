@@ -48,6 +48,20 @@ blobs are forbidden in IndexedDB and JSON exports. Reopening a local project
 requires the user to select the recording again. The browser checks all four
 identity fields before accepting the relink.
 
+## Learner path and advanced builder boundary
+
+Chord Karaoke begins with a ready-to-play experience. For a built-in song, the
+learner chooses the song and presses **Play song**. The track has a recognizable
+public-domain melody lead, a one-bar count-in, quiet accompaniment, and a
+reviewed synchronized chord map. The learner's only required job is to play the
+chord shown on screen.
+
+A local recording receives an automatic even-bar timing pass from its chart and
+duration. That pass is intentionally described as a first pass, not automatic
+audio analysis. Users who know the song may open **Edit synchronization
+(advanced)** to replace bar starts, nudge timing, or repair drift. Downbeat
+tapping is never a prerequisite for entry-level practice.
+
 ## Chart and synchronization contract
 
 - Letter charts and Nashville charts are explicit modes; a chart is never
@@ -58,9 +72,11 @@ identity fields before accepting the relink.
 - Invalid chord symbols block arrangement. Valid but unsupported qualities
   remain on the timeline with `manual_position_needed`; they never receive
   fabricated positions or tablature.
-- Space captures each bar downbeat against the active audio element. Undo,
-  per-bar nudge, section retap, global synchronization offset, seeking,
-  looping, and playback-rate changes operate on the same timestamps.
+- Built-in songs ship with reviewed bar timestamps and require no tapping.
+- Local songs get an automatic even-bar first pass. The optional advanced
+  editor lets Space replace bar downbeats; undo, per-bar nudge, section retap,
+  global synchronization offset, seeking, looping, and playback-rate changes
+  operate on the same timestamps.
 
 ## Arrange API
 
@@ -123,6 +139,7 @@ item is exposed only when all of the following are present and valid:
 - performer or generator credit
 - SHA-256 checksum matching the tracked audio file
 - duration, key, meter, synchronized bar map, and `noSteel: true`
+- `melodyLead: true`, a positive count-in bar count, and `learnerReady: true`
 - an audio file below the repository's 2 MiB tracked-file limit
 
 The three Stage 1 pilots are Amazing Grace, When the Saints Go Marching In,

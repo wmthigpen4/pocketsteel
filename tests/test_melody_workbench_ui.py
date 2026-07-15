@@ -435,7 +435,7 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'id="studio-playing-style"' in html
     assert '>Playing style' in html
     assert 'answer-client.js?v=chord-karaoke-20260715-1' in html
-    assert 'song-projects.js?v=chord-karaoke-20260715-10' in html
+    assert 'song-projects.js?v=chord-karaoke-learner-20260715-1' in html
     assert 'melody-workbench.js?v=chord-karaoke-20260715-3' in html
     assert html.index('id="studio-fretboard"') < html.index('id="studio-arrangement-choices"') < html.index('id="studio-tab"')
     assert 'id="studio-note-editor" hidden' in html

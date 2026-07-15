@@ -458,6 +458,21 @@
     .song-source-option.is-selected, .song-pilot.is-selected { border-color: var(--gold); background: rgba(240, 191, 105, 0.1); }
     .song-source-option strong, .song-source-option small, .song-pilot strong, .song-pilot small { display: block; }
     .song-source-option small, .song-pilot small { margin-top: 5px; color: var(--muted); line-height: 1.35; }
+    .song-how-it-works {
+      margin-top: 16px;
+      border: 1px solid rgba(240,191,105,0.32);
+      border-radius: 16px;
+      padding: 14px 16px;
+      background: rgba(240,191,105,0.075);
+    }
+    .song-how-it-works strong { display: block; color: var(--gold); font-size: 17px; }
+    .song-how-it-works p { margin: 6px 0 0; color: var(--cream); line-height: 1.5; }
+    .song-source-picker { display: grid; gap: 12px; margin-top: 16px; }
+    .song-builder-details { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
+    .song-builder-details summary { cursor: pointer; color: var(--muted); font-weight: 800; }
+    .song-builder-details[open] summary { color: var(--cream); }
+    .song-player-stage { margin-top: 18px; border: 1px solid var(--line); border-radius: 16px; padding: 16px; background: rgba(255,255,255,0.025); }
+    .song-player-instruction { margin: 0 0 10px; color: var(--cream); line-height: 1.5; }
     .song-audio { width: 100%; margin-top: 8px; accent-color: var(--gold); }
     .song-privacy-note { margin: 8px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
     .song-sync-stage, .song-practice-stage { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 18px; }
@@ -481,6 +496,9 @@
     .song-cue-row { grid-column: 2 / -1; }
     .song-cue-row input { width: 100%; }
     .song-practice-dashboard { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 14px 0; }
+    .song-chord-strip { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 8px; }
+    .song-chord-strip span { flex: 0 0 auto; min-width: 54px; border: 1px solid var(--line); border-radius: 999px; padding: 7px 11px; text-align: center; color: var(--muted); font-weight: 800; }
+    .song-chord-strip span.is-current { border-color: var(--gold); background: rgba(240,191,105,0.14); color: var(--cream); }
     .song-position-card { grid-column: span 2; }
     .song-position-instruction { margin: 8px 0 0; color: var(--muted); line-height: 1.45; }
     .song-alternatives { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
@@ -537,71 +555,89 @@
           <div>
             <p class="phase-label">Learn a song · Level 1</p>
             <h2 id="studio-song-project-title">Chord Karaoke</h2>
-            <p class="studio-copy">Tap the bar lines, then play the whole song with current and next changes plus a validated E9 route.</p>
+            <p class="studio-copy">Choose a song, press Play song, and follow the highlighted chord changes on your steel.</p>
           </div>
           <button class="secondary-action" type="button" id="song-project-close">Back to Melody Studio</button>
         </div>
 
-        <div class="song-project-grid">
-          <label class="field">Saved projects
-            <select id="song-project-list"><option value="">Start a new song</option></select>
-          </label>
-          <div class="field" style="justify-content:end;align-self:end;">
-            <div class="song-project-actions"><button class="secondary-action" type="button" id="song-project-new">New project</button><button class="secondary-action" type="button" id="song-project-import">Import JSON</button><input id="song-project-import-file" type="file" accept="application/json,.json" hidden></div>
-          </div>
+        <div class="song-how-it-works">
+          <strong>Your job is simple: play the chord shown on screen.</strong>
+          <p>The recording and chord timeline are already synchronized. During the count-in, get ready on the Next chord. When the song starts, change chords when the countdown reaches zero.</p>
+        </div>
 
-          <div class="field is-wide">
-            <span>Choose the recording</span>
+        <div class="song-source-picker">
+          <div class="field">
+            <span>Choose how you want to practice</span>
             <div class="song-source-options" role="group" aria-label="Song recording source">
-              <button class="song-source-option is-selected" type="button" data-song-source="local" aria-pressed="true"><strong>My local recording</strong><small>Plays from this browser tab and is never uploaded</small></button>
-              <button class="song-source-option" type="button" data-song-source="built_in" aria-pressed="false"><strong>App practice track</strong><small>Original no-steel preview masters</small></button>
+              <button class="song-source-option is-selected" type="button" data-song-source="built_in" aria-pressed="true"><strong>Ready-to-play songs</strong><small>Recognizable no-steel arrangements with the timing already prepared</small></button>
+              <button class="song-source-option" type="button" data-song-source="local" aria-pressed="false"><strong>My own recording</strong><small>Private, local playback with an automatic timing first pass</small></button>
             </div>
           </div>
 
-          <div class="field is-wide" id="song-local-source">
+          <div class="field" id="song-local-source" hidden>
             <label class="field">Local audio file<input id="song-local-file" type="file" accept="audio/*"></label>
-            <p class="song-privacy-note" id="song-local-status">The recording stays in this tab. Saved projects keep only file identity so you can relink it later.</p>
+            <p class="song-privacy-note" id="song-local-status">The recording stays in this tab and is never uploaded. Paste a chord chart below; timing is created automatically.</p>
           </div>
-          <div class="field is-wide" id="song-built-in-source" hidden>
-            <span>Choose a pilot</span>
+          <div class="field" id="song-built-in-source">
+            <span>Choose a ready-to-play song</span>
             <div class="song-pilot-grid" id="song-pilot-grid"></div>
             <p class="song-privacy-note" id="song-rights-notice"></p>
           </div>
-
-          <label class="field">Project name<input id="song-project-name" maxlength="100" placeholder="My practice chart"></label>
-          <label class="field">Key
-            <select id="song-project-key"><option>C</option><option>Db</option><option>D</option><option>Eb</option><option>E</option><option>F</option><option>F#</option><option>G</option><option>Ab</option><option>A</option><option>Bb</option><option>B</option></select>
-          </label>
-          <label class="field">Meter
-            <select id="song-project-meter"><option>4/4</option><option>3/4</option><option>2/4</option><option>6/8</option></select>
-          </label>
-          <label class="field">Chart language
-            <select id="song-chart-mode"><option value="letter">Letter chords</option><option value="nashville">Nashville numbers</option></select>
-          </label>
-          <label class="field">Style
-            <select id="song-project-style"><option value="classic_country">Classic country</option><option value="hymn">Hymn</option><option value="western_swing">Western swing</option><option value="modern_country">Modern country</option></select>
-          </label>
-          <label class="field is-wide">Bar chart
-            <textarea id="song-chart" rows="5" placeholder="[Verse 1] | G | C | G D7 | G |"></textarea>
-            <span class="field-help">Use one bar between each pair of | marks. Multiple chords divide the bar evenly until you drag their boundaries. Add short section cues after parsing; full lyrics are not imported.</span>
-          </label>
-          <div class="field is-wide"><button class="primary-action" type="button" id="song-parse-chart">Build timeline</button></div>
         </div>
 
-        <p class="song-project-status" id="song-project-status" role="status" aria-live="polite"></p>
+        <details class="song-builder-details" id="song-builder-details">
+          <summary>Song Project tools — use my recording or edit the automatic setup</summary>
+          <p class="song-privacy-note">For your own recording, add a chord chart and choose Create practice track. The app makes the timing first pass; precise synchronization is optional and advanced.</p>
+          <div class="song-project-grid">
+            <label class="field">Saved projects
+              <select id="song-project-list"><option value="">Start a new song</option></select>
+            </label>
+            <div class="field" style="justify-content:end;align-self:end;">
+              <div class="song-project-actions"><button class="secondary-action" type="button" id="song-project-new">New project</button><button class="secondary-action" type="button" id="song-project-import">Import JSON</button><input id="song-project-import-file" type="file" accept="application/json,.json" hidden></div>
+            </div>
+            <label class="field">Project name<input id="song-project-name" maxlength="100" placeholder="My practice chart"></label>
+            <label class="field">Key
+              <select id="song-project-key"><option>C</option><option>Db</option><option>D</option><option>Eb</option><option>E</option><option>F</option><option>F#</option><option>G</option><option>Ab</option><option>A</option><option>Bb</option><option>B</option></select>
+            </label>
+            <label class="field">Meter
+              <select id="song-project-meter"><option>4/4</option><option>3/4</option><option>2/4</option><option>6/8</option></select>
+            </label>
+            <label class="field">Chart language
+              <select id="song-chart-mode"><option value="letter">Letter chords</option><option value="nashville">Nashville numbers</option></select>
+            </label>
+            <label class="field">Style
+              <select id="song-project-style"><option value="classic_country">Classic country</option><option value="hymn">Hymn</option><option value="western_swing">Western swing</option><option value="modern_country">Modern country</option></select>
+            </label>
+            <label class="field is-wide">Bar chart
+              <textarea id="song-chart" rows="5" placeholder="[Verse 1] | G | C | G D7 | G |"></textarea>
+              <span class="field-help">Use one bar between each pair of | marks. Multiple chords are divided evenly. Timing is created automatically; full lyrics are not imported.</span>
+            </label>
+            <div class="field is-wide"><button class="primary-action" type="button" id="song-parse-chart">Create practice track automatically</button></div>
+          </div>
+        </details>
 
-        <section class="song-sync-stage" id="song-sync-stage" hidden aria-labelledby="song-sync-title">
-          <div class="song-project-head"><div><p class="phase-label">Synchronize</p><h3 id="song-sync-title">Tap Space on every bar’s downbeat</h3></div><span class="review-badge" id="song-sync-progress">0 of 0 bars</span></div>
+        <section class="song-player-stage" id="song-player-stage" hidden aria-labelledby="song-player-title">
+          <div class="song-project-head"><div><p class="phase-label">Listen and play</p><h3 id="song-player-title">You play the chord shown below</h3></div></div>
+          <p class="song-player-instruction">Press Play song. Use the count-in to get ready, then move to each chord when the countdown reaches zero.</p>
           <audio class="song-audio" id="song-audio" controls preload="metadata"></audio>
           <div class="song-practice-controls">
+            <button class="primary-action" type="button" id="song-play-toggle">▶ Play song</button>
+            <button class="secondary-action" type="button" id="song-skip-back">−5 s</button>
+            <button class="secondary-action" type="button" id="song-skip-forward">+5 s</button>
             <label class="field">Speed<select id="song-playback-rate"><option value="0.75">75%</option><option value="0.85">85%</option><option value="1" selected>100%</option></select></label>
+          </div>
+        </section>
+
+        <p class="song-project-status" id="song-project-status" role="status" aria-live="polite"></p>
+        <button class="secondary-action" type="button" id="song-edit-sync" hidden>Edit synchronization (advanced)</button>
+
+        <section class="song-sync-stage" id="song-sync-stage" hidden aria-labelledby="song-sync-title">
+          <div class="song-project-head"><div><p class="phase-label">Advanced Song Project Builder</p><h3 id="song-sync-title">Edit automatic synchronization</h3><p class="studio-copy">Most learners do not need this. Adjust a marker only when the automatic timing is clearly early or late.</p></div><span class="review-badge" id="song-sync-progress">0 of 0 bars</span></div>
+          <div class="song-practice-controls">
             <label class="field">Sync offset<input id="song-sync-offset" type="number" min="-3000" max="3000" step="25" value="0"><span class="field-help">milliseconds</span></label>
           </div>
           <div class="song-sync-actions">
-            <button class="secondary-action" type="button" id="song-play-toggle">Play</button>
-            <button class="secondary-action" type="button" id="song-skip-back">−5 s</button>
-            <button class="secondary-action" type="button" id="song-skip-forward">+5 s</button>
-            <button class="primary-action" type="button" id="song-tap-bar">Tap bar (Space)</button>
+            <button class="primary-action" type="button" id="song-tap-bar">Tap a replacement bar (Space)</button>
             <button class="secondary-action" type="button" id="song-undo-tap">Undo tap</button>
             <button class="secondary-action" type="button" id="song-retap-section">Retap selected section</button>
             <button class="secondary-action" type="button" id="song-nudge-back">−50 ms</button>
@@ -618,6 +654,7 @@
             <label class="field"><span><input id="song-loop-enabled" type="checkbox"> Loop</span></label>
             <label class="field">Loop section<select id="song-loop-section"><option value="all">Whole song</option></select></label>
           </div>
+          <div class="song-chord-strip" id="song-chord-strip" aria-label="Upcoming chord timeline"></div>
           <div class="song-practice-dashboard">
             <div class="song-now-card"><small>Current section</small><strong id="song-current-section">—</strong><small>Next: <span id="song-next-section">—</span></small></div>
             <div class="song-now-card"><small>Current chord</small><strong id="song-current-chord">—</strong><small>Next: <span id="song-next-chord">—</span></small></div>
@@ -976,7 +1013,7 @@
   <script src="pedal-steel-fretboard.js?v=module-boundaries-20260713"></script>
   <script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>
   <script src="melody-score.js?v=copedent-transfer-20260713-1"></script>
-  <script src="song-projects.js?v=chord-karaoke-20260715-10"></script>
+  <script src="song-projects.js?v=chord-karaoke-learner-20260715-1"></script>
   <script src="melody-workbench.js?v=chord-karaoke-20260715-3"></script>
 </body>
 </html>

@@ -549,10 +549,13 @@ def _validated_track(track: Mapping[str, Any]) -> dict[str, Any] | None:
         "meter",
         "barStartsMs",
         "noSteel",
+        "melodyLead",
+        "countInBars",
+        "learnerReady",
         "audioPath",
         "launchStatus",
     }
-    if any(not track.get(field) for field in required) or track.get("noSteel") is not True:
+    if any(track.get(field) is None or track.get(field) == "" or track.get(field) is False for field in required) or track.get("noSteel") is not True:
         return None
     asset = (_REPO_ROOT / str(track["audioPath"])).resolve()
     try:
@@ -580,6 +583,9 @@ def _validated_track(track: Mapping[str, Any]) -> dict[str, Any] | None:
         "barStartsMs": starts,
         "chart": track.get("chart") or "",
         "noSteel": True,
+        "melodyLead": track["melodyLead"],
+        "countInBars": track["countInBars"],
+        "learnerReady": track["learnerReady"],
         "audioUrl": "/" + str(track["audioPath"]).lstrip("/"),
         "launchStatus": track["launchStatus"],
     }

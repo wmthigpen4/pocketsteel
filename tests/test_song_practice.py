@@ -148,8 +148,11 @@ def test_pilot_catalog_passes_rights_checksum_no_steel_and_asset_budget_gates() 
     for track in catalog["tracks"]:
         asset = Path(track["audioUrl"].lstrip("/"))
         assert track["noSteel"] is True
+        assert track["melodyLead"] is True
+        assert track["countInBars"] == 1
+        assert track["learnerReady"] is True
         assert track["launchStatus"] == "internal_preview_exact_master_rights_review_required"
         assert asset.stat().st_size < 2 * 1024 * 1024
         assert hashlib.sha256(asset.read_bytes()).hexdigest()
-        assert track["barStartsMs"][0] == 0
+        assert track["barStartsMs"][0] > 0
         assert track["durationMs"] > track["barStartsMs"][-1]

@@ -176,6 +176,15 @@
     return { currentIndex: timeline.length - 1, current: timeline.at(-1) || null, next: null };
   }
 
+  function automaticBarStarts(measureCount, durationMs, leadInMs = 0) {
+    const count = Number(measureCount);
+    const duration = Number(durationMs);
+    const leadIn = Math.max(0, Number(leadInMs || 0));
+    if (!Number.isInteger(count) || count < 1 || !Number.isFinite(duration) || duration <= leadIn) return [];
+    const usableDuration = duration - leadIn;
+    return Array.from({ length: count }, (_item, index) => Math.round(leadIn + ((usableDuration * index) / count)));
+  }
+
   function localAudioIdentity(file, durationMs) {
     return {
       filename: String(file?.name || ""),
@@ -289,6 +298,7 @@
     parseSongChart,
     buildTimedEvents,
     activeTimelineState,
+    automaticBarStarts,
     localAudioIdentity,
     matchesLocalAudioIdentity,
     forbiddenRetainedAudioPath,
@@ -308,16 +318,16 @@
   const doc = global.document;
   const $ = (selector) => doc.querySelector(selector);
   const elements = {
-    workspace: $("#studio-song-project"), editor: $("#studio-editor"), close: $("#song-project-close"),
+    workspace: $("#studio-song-project"), editor: $("#studio-editor"), close: $("#song-project-close"), builderDetails: $("#song-builder-details"),
     projectList: $("#song-project-list"), newProject: $("#song-project-new"), importButton: $("#song-project-import"), importFile: $("#song-project-import-file"),
     sourceButtons: Array.from(doc.querySelectorAll("[data-song-source]")), localSource: $("#song-local-source"), builtInSource: $("#song-built-in-source"),
     localFile: $("#song-local-file"), localStatus: $("#song-local-status"), pilotGrid: $("#song-pilot-grid"), rightsNotice: $("#song-rights-notice"),
     name: $("#song-project-name"), key: $("#song-project-key"), meter: $("#song-project-meter"), chartMode: $("#song-chart-mode"), style: $("#song-project-style"), chart: $("#song-chart"), parse: $("#song-parse-chart"), status: $("#song-project-status"),
-    syncStage: $("#song-sync-stage"), audio: $("#song-audio"), rate: $("#song-playback-rate"), offset: $("#song-sync-offset"),
+    playerStage: $("#song-player-stage"), syncStage: $("#song-sync-stage"), editSync: $("#song-edit-sync"), audio: $("#song-audio"), rate: $("#song-playback-rate"), offset: $("#song-sync-offset"),
     playToggle: $("#song-play-toggle"), skipBack: $("#song-skip-back"), skipForward: $("#song-skip-forward"), tap: $("#song-tap-bar"), undo: $("#song-undo-tap"), retap: $("#song-retap-section"), nudgeBack: $("#song-nudge-back"), nudgeForward: $("#song-nudge-forward"),
     progress: $("#song-sync-progress"), selectedBar: $("#song-selected-bar"), audioTime: $("#song-audio-time"), nextTap: $("#song-next-tap"), measureList: $("#song-measure-list"),
     save: $("#song-save-project"), export: $("#song-export-project"), arrange: $("#song-arrange"),
-    practiceStage: $("#song-practice-stage"), loopEnabled: $("#song-loop-enabled"), loopSection: $("#song-loop-section"), currentSection: $("#song-current-section"), nextSection: $("#song-next-section"), currentChord: $("#song-current-chord"), nextChord: $("#song-next-chord"), countdown: $("#song-countdown"), currentCue: $("#song-current-cue"), positionTitle: $("#song-position-title"), positionInstruction: $("#song-position-instruction"), alternatives: $("#song-alternatives"), fretboard: $("#song-fretboard"), warning: $("#song-practice-warning")
+    practiceStage: $("#song-practice-stage"), chordStrip: $("#song-chord-strip"), loopEnabled: $("#song-loop-enabled"), loopSection: $("#song-loop-section"), currentSection: $("#song-current-section"), nextSection: $("#song-next-section"), currentChord: $("#song-current-chord"), nextChord: $("#song-next-chord"), countdown: $("#song-countdown"), currentCue: $("#song-current-cue"), positionTitle: $("#song-position-title"), positionInstruction: $("#song-position-instruction"), alternatives: $("#song-alternatives"), fretboard: $("#song-fretboard"), warning: $("#song-practice-warning")
   };
 
   let session = null;
@@ -350,7 +360,7 @@
       measures: [],
       barStartsMs: [],
       syncOffsetMs: 0,
-      source: { type: "local", builtInTrackId: "" },
+      source: { type: "built_in", builtInTrackId: "" },
       audioRef: null,
       chosenPlan: null,
       provenance: { audioRetained: false, createdIn: "melody_studio_song_practice" },
@@ -390,6 +400,7 @@
     if (url) elements.audio.src = url;
     else elements.audio.removeAttribute("src");
     elements.audio.load();
+    elements.playerStage.hidden = !url;
   }
 
   function hasAudioSource() {
@@ -415,7 +426,7 @@
     elements.style.value = project.style || "classic_country";
     elements.chart.value = project.chartText || "";
     elements.offset.value = String(project.syncOffsetMs || 0);
-    selectSource(project.source?.type || "local", { preserve: true });
+    selectSource(project.source?.type || "built_in", { preserve: true });
   }
 
   function selectSource(type, options = {}) {
@@ -431,6 +442,8 @@
     project.source.type = nextType;
     elements.localSource.hidden = nextType !== "local";
     elements.builtInSource.hidden = nextType !== "built_in";
+    if (nextType === "local") elements.builderDetails.open = true;
+    else elements.builderDetails.open = false;
     elements.sourceButtons.forEach((button) => {
       const selected = button.dataset.songSource === nextType;
       button.classList.toggle("is-selected", selected);
@@ -449,11 +462,12 @@
     tapStartIndex = 0;
     tapStopIndex = project.measures.length;
     selectedMeasureId = project.measures[0]?.id || "";
-    elements.syncStage.hidden = false;
+    elements.syncStage.hidden = true;
+    elements.editSync.hidden = false;
     elements.practiceStage.hidden = true;
     renderMeasures();
     renderLoopSections();
-    status(parsed.warnings.join(" ") || `${parsed.measures.length} bars ready to synchronize.`);
+    status(parsed.warnings.join(" ") || `${parsed.measures.length} bars received. Timing is ready automatically.`);
   }
 
   function parseCurrentChart(starts = null) {
@@ -463,28 +477,38 @@
       status(parsed.errors.join(" "), true);
       return false;
     }
-    applyParsedChart(parsed, starts);
+    const automaticStarts = starts || automaticBarStarts(parsed.measures.length, project.durationMs || project.audioRef?.durationMs || 0);
+    if (!automaticStarts.length) {
+      status("Choose a recording before creating the automatic practice track.", true);
+      return false;
+    }
+    applyParsedChart(parsed, automaticStarts);
+    if (!starts) {
+      project.provenance = { ...(project.provenance || {}), timingMethod: "automatic_even_first_pass" };
+      status(`${parsed.measures.length} bars aligned automatically. Press Play song; use advanced synchronization only if the changes are clearly early or late.`);
+    }
     return true;
   }
 
   function renderPilots() {
     elements.pilotGrid.innerHTML = catalog.map((track) => `
       <button class="song-pilot${project?.source?.builtInTrackId === track.id ? " is-selected" : ""}" type="button" data-song-pilot="${track.id}">
-        <strong>${escapeHtml(track.title)}</strong><small>${escapeHtml(track.key)} · ${escapeHtml(track.meter)} · no steel</small>
+        <strong>Practice ${escapeHtml(track.title)}</strong><small>${escapeHtml(track.key)} · ${escapeHtml(track.meter)} · recognizable melody · one-bar count-in · no steel</small>
       </button>`).join("");
-    elements.pilotGrid.querySelectorAll("[data-song-pilot]").forEach((button) => button.addEventListener("click", () => selectPilot(button.dataset.songPilot)));
+    elements.pilotGrid.querySelectorAll("[data-song-pilot]").forEach((button) => button.addEventListener("click", () => selectPilot(button.dataset.songPilot).catch((error) => status(error.message, true))));
   }
 
   function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
   }
 
-  function selectPilot(id, options = {}) {
+  async function selectPilot(id, options = {}) {
     const track = catalog.find((item) => item.id === id);
     if (!track) return;
     project.source = { type: "built_in", builtInTrackId: track.id };
     project.audioRef = { kind: "built_in", trackId: track.id, durationMs: track.durationMs };
     project.durationMs = track.durationMs;
+    setAudioSource(track.audioUrl);
     if (!options.preserveProject) {
       project.name = track.title;
       project.key = track.key;
@@ -492,11 +516,15 @@
       project.chartMode = "letter";
       project.chartText = track.chart;
       fillFields();
-      parseCurrentChart(track.barStartsMs);
+      if (!parseCurrentChart(track.barStartsMs)) return;
+      elements.builderDetails.open = false;
+      status(`Preparing ${track.title} for Chord Karaoke…`);
+      await arrange();
+    } else if (project.chosenPlan?.events?.length) {
+      elements.practiceStage.hidden = false;
+      renderPractice(true);
     }
-    setAudioSource(track.audioUrl);
     renderPilots();
-    elements.localStatus.textContent = "The app-owned preview master is ready.";
   }
 
   async function loadCatalog() {
@@ -506,7 +534,7 @@
     catalog = payload.tracks || [];
     elements.rightsNotice.textContent = payload.rightsNotice || "";
     renderPilots();
-    if (project?.source?.type === "built_in" && project.source.builtInTrackId) selectPilot(project.source.builtInTrackId, { preserveProject: true });
+    if (project?.source?.type === "built_in" && project.source.builtInTrackId) await selectPilot(project.source.builtInTrackId, { preserveProject: true });
   }
 
   function renderMeasures() {
@@ -604,11 +632,11 @@
     renderMeasures();
   }
 
-  async function persistProject() {
+  async function persistProject(options = {}) {
     collectFields();
     await saveProject(project);
     await refreshProjectList();
-    status("Project metadata saved. Audio was not copied into browser storage.");
+    if (!options.silent) status("Project metadata saved. Audio was not copied into browser storage.");
   }
 
   async function refreshProjectList() {
@@ -627,13 +655,15 @@
     tapStartIndex = 0;
     tapStopIndex = project.measures.length;
     fillFields();
-    elements.syncStage.hidden = !project.measures.length;
+    elements.syncStage.hidden = true;
+    elements.editSync.hidden = !project.measures.length;
     elements.practiceStage.hidden = !project.chosenPlan?.events?.length;
     renderMeasures();
     renderLoopSections();
     if (project.source?.type === "built_in") {
-      selectPilot(project.source.builtInTrackId, { preserveProject: true });
-      status("Built-in track relinked from the checked catalog.");
+      await selectPilot(project.source.builtInTrackId, { preserveProject: true });
+      elements.builderDetails.open = false;
+      status("Ready. Press Play song and follow the highlighted chord changes.");
     } else {
       setAudioSource("");
       elements.localStatus.textContent = `Relink ${project.audioRef?.filename || "the local recording"}. Filename, size, modified time, and duration must match.`;
@@ -682,8 +712,9 @@
       elements.practiceStage.hidden = false;
       selectedPlanEventId = "";
       renderPractice(true);
-      await persistProject();
-      elements.practiceStage.scrollIntoView({ behavior: "smooth", block: "start" });
+      await persistProject({ silent: true });
+      status("Ready. Press Play song and follow the highlighted chord changes.");
+      elements.playerStage.scrollIntoView({ behavior: "smooth", block: "start" });
     } catch (error) {
       status(error.message, true);
     } finally {
@@ -753,6 +784,15 @@
     renderFretboard(position);
   }
 
+  function renderChordStrip(events, display) {
+    const activeIndex = Math.max(0, events.indexOf(display));
+    const start = Math.max(0, activeIndex - 1);
+    elements.chordStrip.innerHTML = events.slice(start, start + 8).map((event, index) => {
+      const isActive = start + index === activeIndex;
+      return `<span class="${isActive ? "is-current" : ""}">${escapeHtml(event.chord || "Rest")}</span>`;
+    }).join("");
+  }
+
   function renderPractice(force = false) {
     const events = project?.chosenPlan?.events || [];
     if (!events.length) return;
@@ -771,6 +811,7 @@
       elements.currentChord.textContent = current ? (current.chord || "Rest") : "—";
       elements.nextChord.textContent = next?.chord || "End";
       elements.currentCue.textContent = (currentSection || nextSection)?.cue || "No cue";
+      renderChordStrip(events, display);
       showPosition(display, display.position);
       elements.warning.hidden = display.status !== "manual_position_needed";
       elements.warning.textContent = display.warning || "";
@@ -785,7 +826,7 @@
 
   function animationTick() {
     elements.audioTime.textContent = formatTime(elements.audio.currentTime * 1000);
-    elements.playToggle.textContent = elements.audio.paused ? "Play" : "Pause";
+    elements.playToggle.textContent = elements.audio.paused ? "▶ Play song" : "Pause song";
     renderPractice();
     animationFrame = global.requestAnimationFrame(animationTick);
   }
@@ -798,9 +839,10 @@
     tapStopIndex = 0;
     selectedMeasureId = "";
     elements.syncStage.hidden = true;
+    elements.editSync.hidden = true;
     elements.practiceStage.hidden = true;
     elements.localFile.value = "";
-    elements.localStatus.textContent = "The recording stays in this tab. Saved projects keep only file identity so you can relink it later.";
+    elements.localStatus.textContent = "The recording stays in this tab and is never uploaded. Paste a chord chart below; timing is created automatically.";
     fillFields();
     elements.projectList.value = "";
     status("");
@@ -812,13 +854,15 @@
     elements.close.addEventListener("click", () => api.close());
     elements.newProject.addEventListener("click", startNewProject);
     elements.sourceButtons.forEach((button) => button.addEventListener("click", () => selectSource(button.dataset.songSource)));
-    elements.parse.addEventListener("click", () => parseCurrentChart());
+    elements.parse.addEventListener("click", async () => {
+      if (parseCurrentChart()) await arrange();
+    });
     elements.playToggle.addEventListener("click", async () => {
       if (!hasAudioSource()) return status("Choose or relink a recording before playback.", true);
       try {
         if (elements.audio.paused) await elements.audio.play();
         else elements.audio.pause();
-        elements.playToggle.textContent = elements.audio.paused ? "Play" : "Pause";
+        elements.playToggle.textContent = elements.audio.paused ? "▶ Play song" : "Pause song";
       } catch (_playbackError) {
         status("Playback could not start. Use the audio controls and try again.", true);
       }
@@ -836,6 +880,11 @@
     elements.retap.addEventListener("click", retapSection);
     elements.nudgeBack.addEventListener("click", () => nudgeSelected(-50));
     elements.nudgeForward.addEventListener("click", () => nudgeSelected(50));
+    elements.editSync.addEventListener("click", () => {
+      elements.builderDetails.open = true;
+      elements.syncStage.hidden = false;
+      elements.syncStage.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
     elements.save.addEventListener("click", () => persistProject().catch((error) => status(error.message, true)));
     elements.export.addEventListener("click", exportCurrentProject);
     elements.arrange.addEventListener("click", arrange);
@@ -874,7 +923,8 @@
           renderPractice(true);
         }
         elements.localStatus.textContent = `${identity.filename} linked for this tab. Audio will not be saved or uploaded.`;
-        status("Local recording linked. Build the chart, then tap each bar.");
+        elements.builderDetails.open = true;
+        status("Local recording linked. Paste the chord chart, then choose Create practice track automatically. You do not need to tap every bar.");
       }, { once: true });
     });
     doc.addEventListener("keydown", (event) => {
