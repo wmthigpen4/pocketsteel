@@ -132,10 +132,14 @@ def test_public_landing_page_reuses_the_real_app_home_previews() -> None:
 def test_public_landing_hanging_sign_stays_anchored_to_the_left_edge() -> None:
     html = LANDING_PAGE.read_text(encoding="utf-8")
 
-    assert "left: calc((100vw - 100%) / -2 - 12px);" in html
-    assert "left: calc((100vw - 100%) / -2);" in html
-    assert ".home-sign { top: -12px; left: 50%;" not in html
-    assert "transform: translateX(-50%)" not in html
+    assert "width: min(1120px, calc(100% - 40px));" in html
+    assert "top: clamp(-42px, -3vw, -24px);" in html
+    assert "left: -18px;" in html
+    assert "width: clamp(300px, 23vw, 340px);" in html
+    assert "transform: rotate(-1.5deg);" in html
+    assert "transform-origin: top left;" in html
+    assert "drop-shadow(0 18px 28px rgba(0, 0, 0, 0.55))" in html
+    assert "drop-shadow(0 0 22px rgba(255, 106, 0, 0.22))" in html
     assert ".app-shell-header { grid-template-columns: 1fr; min-height: 0; padding-top: 225px; }" in html
 
 
@@ -145,7 +149,9 @@ def test_public_landing_mobile_sign_and_melody_card_avoid_ios_failures() -> None
 
     assert '<a class="home-sign" href="#top"' in html
     assert '<img class="landing-sign-art"' in html
-    assert "width: min(259px, 66vw);" in mobile_css
+    assert ".app-shell-header { width: calc(100% - 28px); }" in mobile_css
+    assert "width: clamp(220px, 30vw, 300px);" in mobile_css
+    assert "width: clamp(190px, 55vw, 240px);" in mobile_css
     assert ".skip-link:focus-visible { transform: translateY(0); }" in html
     assert ".skip-link:focus { transform: translateY(0); }" not in html
     assert ".home-product-card { min-height: 0; padding: 20px; }" in mobile_css
