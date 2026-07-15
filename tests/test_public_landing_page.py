@@ -18,7 +18,8 @@ PUBLIC_PREVIEW_ASSETS = (
     "assets/landing/melody-score.png",
     "assets/landing/spotlight.png",
     "brand/pedal-steel-fretboard-background.svg",
-    "brand/steel-guitar-rag-app-sign-reference.png",
+    "brand/steel-guitar-rag-hanging-sign-cloudflare-login.png",
+    "brand/steel-guitar-rag-landing-alpha.webm",
 )
 
 
@@ -93,9 +94,11 @@ def test_public_landing_page_uses_dark_product_led_visual_direction() -> None:
 
     assert "--amber: #ffb12b;" in html
     assert 'url("assets/steel_on_stage2.png")' in html
-    assert 'src="brand/steel-guitar-rag-app-sign-reference.png"' in html
-    assert '<video class="landing-sign"' not in html
-    assert "steel-guitar-rag-landing-alpha.webm" not in html
+    assert 'class="home-sign hero-hanging-sign"' in html
+    assert '<video class="landing-sign" autoplay muted loop playsinline' in html
+    assert 'src="brand/steel-guitar-rag-hanging-sign-cloudflare-login.png?v=mobile-logo-safari-20260713-1"' in html
+    assert 'src="brand/steel-guitar-rag-landing-alpha.webm?v=landing-alpha-return-20260713"' in html
+    assert "function initializeHeroHangingSigns()" in html
     assert 'class="app-shell-header"' in html
     assert 'class="home-explorer-panel"' in html
     assert 'id="home-explorer-preview"' in html
@@ -147,8 +150,10 @@ def test_public_landing_mobile_sign_and_melody_card_avoid_ios_failures() -> None
     html = LANDING_PAGE.read_text(encoding="utf-8")
     mobile_css = html.split("@media (max-width: 720px)", 1)[1].split("@media (prefers-reduced-motion: reduce)", 1)[0]
 
-    assert '<a class="home-sign" href="#top"' in html
-    assert '<img class="landing-sign-art"' in html
+    assert '<a class="home-sign hero-hanging-sign" href="#top"' in html
+    assert '<img class="landing-sign-fallback"' in html
+    assert ".hero-hanging-sign.is-animated .landing-sign" in mobile_css
+    assert ".hero-hanging-sign.is-animated .landing-sign-fallback { display: block; }" in mobile_css
     assert ".app-shell-header { width: calc(100% - 28px); }" in mobile_css
     assert "width: clamp(220px, 30vw, 300px);" in mobile_css
     assert "width: clamp(190px, 55vw, 240px);" in mobile_css
@@ -221,9 +226,13 @@ def test_cloudflare_pages_static_output_matches_landing_source() -> None:
     assert deploy_html == source_html
     assert Path("deploy/landing/assets/steel-guitar-rag-logo-transparent.png").is_file()
     assert Path("deploy/landing/assets/steel_on_stage2.png").is_file()
-    deployed_sign = Path("deploy/landing/brand/steel-guitar-rag-app-sign-reference.png")
-    source_sign = Path("ui/brand/steel-guitar-rag-app-sign-reference.png")
-    assert deployed_sign.read_bytes() == source_sign.read_bytes()
+    for sign_asset in (
+        "steel-guitar-rag-hanging-sign-cloudflare-login.png",
+        "steel-guitar-rag-landing-alpha.webm",
+    ):
+        deployed_sign = Path("deploy/landing/brand") / sign_asset
+        source_sign = Path("ui/brand") / sign_asset
+        assert deployed_sign.read_bytes() == source_sign.read_bytes()
     for relative_path in PUBLIC_PREVIEW_SCRIPTS:
         deploy_script = Path("deploy/landing") / relative_path
         source_script = Path("ui") / relative_path

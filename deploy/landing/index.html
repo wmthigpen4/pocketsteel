@@ -112,7 +112,7 @@
       padding: 12px 0 4px;
     }
 
-    .home-sign {
+    .hero-hanging-sign {
       position: absolute;
       top: clamp(-42px, -3vw, -24px);
       left: -18px;
@@ -126,7 +126,8 @@
         drop-shadow(0 18px 28px rgba(0, 0, 0, 0.55))
         drop-shadow(0 0 22px rgba(255, 106, 0, 0.22));
     }
-    .landing-sign-art {
+    .landing-sign,
+    .landing-sign-fallback {
       display: block;
       width: 100%;
       height: auto;
@@ -134,6 +135,10 @@
       object-position: top left;
       image-rendering: auto;
     }
+
+    .landing-sign { display: none; }
+    .hero-hanging-sign.is-animated .landing-sign { display: block; }
+    .hero-hanging-sign.is-animated .landing-sign-fallback { display: none; }
 
     .public-header-actions {
       grid-column: 2;
@@ -891,7 +896,7 @@
 
     @media (max-width: 640px) {
       .app-shell-header { width: calc(100% - 28px); }
-      .home-sign {
+      .hero-hanging-sign {
         width: clamp(220px, 30vw, 300px);
         top: 8px;
         left: -18px;
@@ -900,7 +905,7 @@
     }
 
     @media (max-width: 520px) {
-      .home-sign {
+      .hero-hanging-sign {
         top: 8px;
         left: -18px;
         width: clamp(190px, 55vw, 240px);
@@ -908,11 +913,21 @@
         z-index: 2;
         pointer-events: none;
       }
+      .landing-sign,
+      .hero-hanging-sign.is-animated .landing-sign {
+        display: none;
+        width: 100%;
+        height: auto;
+      }
+      .landing-sign-fallback,
+      .hero-hanging-sign.is-animated .landing-sign-fallback { display: block; }
     }
 
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
       *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+      .hero-hanging-sign.is-animated .landing-sign { display: none; }
+      .hero-hanging-sign.is-animated .landing-sign-fallback { display: block; }
       .home-ai-footer .footer-trigger.footer-shimmer { animation: none; background-position: 0 0; }
     }
   </style>
@@ -921,8 +936,11 @@
   <div class="page">
     <a class="skip-link" href="#main-content">Skip to main content</a>
     <header class="app-shell-header">
-      <a class="home-sign" href="#top" aria-label="Steel Guitar RAG home">
-        <img class="landing-sign-art" src="brand/steel-guitar-rag-app-sign-reference.png" alt="Steel Guitar RAG">
+      <a class="home-sign hero-hanging-sign" href="#top" aria-label="Steel Guitar RAG home">
+        <video class="landing-sign" autoplay muted loop playsinline poster="brand/steel-guitar-rag-hanging-sign-cloudflare-login.png?v=mobile-logo-safari-20260713-1" preload="metadata" aria-hidden="true">
+          <source src="brand/steel-guitar-rag-landing-alpha.webm?v=landing-alpha-return-20260713" type="video/webm">
+        </video>
+        <img class="landing-sign-fallback" src="brand/steel-guitar-rag-hanging-sign-cloudflare-login.png?v=mobile-logo-safari-20260713-1" alt="Steel Guitar RAG">
       </a>
       <div class="public-header-actions">
         <span class="preview-label"><svg class="lock-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10V7a5 5 0 0 1 10 0v3M5 10h14v11H5z"/></svg>Private preview</span>
@@ -1119,6 +1137,22 @@
         ]
       };
 
+      function initializeHeroHangingSigns() {
+        const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+        if (prefersReducedMotion) return;
+        document.querySelectorAll(".hero-hanging-sign video").forEach((video) => {
+          const sign = video.closest(".hero-hanging-sign");
+          const showFallback = () => sign?.classList.remove("is-animated");
+          video.addEventListener("error", showFallback, { once: true });
+          sign?.classList.add("is-animated");
+          video.load();
+          video.play?.().catch(() => {
+            showFallback();
+          });
+        });
+      }
+
+      initializeHeroHangingSigns();
       window.STEEL_RAG_LANDING?.mountExplorerPreview(document.querySelector("#home-explorer-preview"));
       window.STEEL_RAG_LANDING?.mountMelodyPreview(document.querySelector("#home-melody-preview"));
 
