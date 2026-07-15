@@ -87,6 +87,8 @@ class MonthlyAnswerUsage:
     successful_answers: int
     updated_at: str | None
     activity: dict[str, dict[str, int]]
+    recent_activity: dict[str, object] | None
+    recent_connected_route: tuple[dict[str, object], ...]
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -99,6 +101,8 @@ class MonthlyAnswerUsage:
                 "successfulAnswers": self.successful_answers,
                 "activity": self.activity,
                 "aiAssistedActions": self.activity["aiAssisted"]["actions"],
+                "recentActivity": self.recent_activity,
+                "recentConnectedRoute": list(self.recent_connected_route),
             },
             "updatedAt": self.updated_at,
         }
@@ -439,10 +443,41 @@ class AccountUsageRepository:
             str(row["last_answer_at"]) if row is not None else "",
             *[str(item["last_event_at"]) for item in activity_rows],
         ]
+        recent_candidates = [
+            {
+                "eventType": str(item["event_type"]),
+                "occurredAt": str(item["last_event_at"]),
+                "count": int(item["event_count"]),
+            }
+            for item in activity_rows
+        ]
+        if row is not None:
+            recent_candidates.append(
+                {
+                    "eventType": "ask.answer",
+                    "occurredAt": str(row["last_answer_at"]),
+                    "count": int(row["successful_answers"]),
+                }
+            )
+        recent_activity = max(
+            recent_candidates,
+            key=lambda item: str(item["occurredAt"]),
+            default=None,
+        )
+        connected_route = sorted(
+            (
+                item
+                for item in recent_candidates
+                if str(item["eventType"]).startswith("connected.")
+            ),
+            key=lambda item: str(item["occurredAt"]),
+        )[-3:]
         return MonthlyAnswerUsage(
             starts_at=starts_at.isoformat(),
             resets_at=resets_at.isoformat(),
             successful_answers=int(row["successful_answers"]) if row is not None else 0,
             updated_at=max(filter(None, updated_candidates), default=None),
             activity=self._activity_summary(activity_rows),
+            recent_activity=recent_activity,
+            recent_connected_route=tuple(connected_route),
         )

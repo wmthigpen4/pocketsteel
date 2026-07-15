@@ -38,6 +38,8 @@
     status: $("#copedent-save-status"),
     overview: $("#copedent-overview-summary"),
     overviewUpdated: $("#copedent-overview-updated"),
+    overviewStatus: $("#overview-setup-status"),
+    overviewStationStatus: $("#overview-station-setup-status"),
     mobileGroup: $("#copedent-mobile-group"),
     mobilePrevious: $("#copedent-mobile-previous"),
     mobileNext: $("#copedent-mobile-next"),
@@ -324,6 +326,8 @@
     elements.libraryActive.textContent = `Active: ${label}`;
     elements.activeBadge.textContent = validationLabel(currentProfile || active);
     elements.overview.textContent = active.validationStatus === "needs_review" ? `${label} needs review` : `Using ${label}`;
+    if (elements.overviewStatus) elements.overviewStatus.textContent = `Active · ${validationLabel(active)}`;
+    if (elements.overviewStationStatus) elements.overviewStationStatus.textContent = `Active · ${validationLabel(active)}`;
     elements.overviewUpdated.textContent = active.updatedAt
       ? new Date(active.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
       : "Built-in profile";

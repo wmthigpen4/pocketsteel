@@ -1710,6 +1710,195 @@
       max-height: min(92vh, 940px);
     }
 
+    .overview-control-room {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+      min-width: 0;
+    }
+
+    .overview-ready-hero,
+    .overview-station-card,
+    .overview-recent-route {
+      border: 1px solid rgba(240, 191, 105, 0.38);
+      border-radius: 14px;
+      background:
+        radial-gradient(circle at 70% 8%, rgba(240, 163, 56, 0.12), transparent 34%),
+        linear-gradient(115deg, rgba(22, 25, 24, 0.98), rgba(10, 13, 13, 0.94));
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22);
+    }
+
+    .overview-ready-hero {
+      position: relative;
+      isolation: isolate;
+      display: grid;
+      gap: 22px;
+      min-height: 300px;
+      padding: 26px 32px;
+      overflow: hidden;
+    }
+
+    .overview-ready-hero::after {
+      content: "";
+      position: absolute;
+      z-index: -1;
+      inset: 0;
+      background: linear-gradient(90deg, rgba(11, 14, 14, 0.98) 0 48%, rgba(11, 14, 14, 0.78) 63%, transparent 82%);
+      pointer-events: none;
+    }
+
+    .overview-ready-copy,
+    .overview-status-grid,
+    .overview-continue {
+      position: relative;
+      z-index: 2;
+      width: min(68%, 780px);
+    }
+
+    .overview-ready-copy h3,
+    .overview-station-card h3,
+    .overview-recent-route h3 {
+      margin: 0;
+      color: var(--cream);
+      font-family: var(--font-lesson);
+      font-weight: 500;
+      line-height: 1.05;
+    }
+
+    .overview-ready-copy h3 { font-size: clamp(34px, 4.4vw, 52px); }
+    .overview-ready-copy p,
+    .overview-recent-route header p { margin: 7px 0 0; color: rgba(244, 234, 214, 0.72); }
+
+    .overview-status-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px 10px;
+    }
+
+    .overview-status-item {
+      display: grid;
+      grid-template-columns: 40px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      min-width: 0;
+      padding-right: 12px;
+      border-right: 1px solid rgba(240, 191, 105, 0.2);
+    }
+
+    .overview-status-item svg,
+    .overview-station-card > svg {
+      width: 40px;
+      height: 40px;
+      padding: 8px;
+      border: 1px solid rgba(240, 191, 105, 0.5);
+      border-radius: 10px;
+      color: rgba(240, 191, 105, 0.92);
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .overview-status-item span,
+    .overview-station-card div > span {
+      display: block;
+      color: rgba(240, 191, 105, 0.9);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+
+    .overview-status-item strong,
+    .overview-status-item small,
+    .overview-status-item time { display: block; overflow-wrap: anywhere; }
+    .overview-status-item strong { margin-top: 4px; color: var(--cream); font: 500 17px/1.2 var(--font-lesson); }
+    .overview-status-item small,
+    .overview-status-item time { margin-top: 3px; color: rgba(244, 234, 214, 0.65); font-size: 11px; line-height: 1.35; }
+
+    .overview-road-case {
+      position: absolute;
+      z-index: 0;
+      right: -2%;
+      bottom: 0;
+      width: min(49%, 560px);
+      height: 100%;
+      object-fit: contain;
+      object-position: right bottom;
+      filter: drop-shadow(-18px 18px 25px rgba(0, 0, 0, 0.54));
+      pointer-events: none;
+    }
+
+    .overview-continue { align-self: end; }
+    .overview-primary-cta,
+    .overview-station-card button,
+    #overview-resume-route {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 44px;
+      border: 1px solid rgba(240, 191, 105, 0.58);
+      border-radius: 10px;
+      color: #17120a;
+      background: linear-gradient(135deg, #f7bd55, #d58a23);
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .overview-primary-cta { width: min(370px, 100%); padding: 10px 18px; }
+    .overview-continue p { margin: 6px 0 0; color: rgba(240, 191, 105, 0.72); font-size: 12px; }
+
+    .overview-stations {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .overview-station-card {
+      display: grid;
+      grid-template-columns: 44px minmax(0, 1fr);
+      grid-template-rows: 1fr auto;
+      gap: 12px;
+      padding: 18px;
+    }
+    .overview-station-card h3 { font-size: 22px; }
+    .overview-station-card p { min-height: 62px; margin: 8px 0 10px; color: rgba(244, 234, 214, 0.72); font-size: 13px; line-height: 1.45; }
+    .overview-station-card button {
+      grid-column: 1 / -1;
+      width: 100%;
+      padding: 8px 12px;
+      color: rgba(240, 191, 105, 0.95);
+      background: rgba(240, 191, 105, 0.04);
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .overview-recent-route { padding: 18px 22px; }
+    .overview-recent-route header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+    .overview-recent-route h3 { color: rgba(240, 191, 105, 0.9); font-family: var(--font-ui); font-size: 13px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase; }
+    #overview-resume-route { min-height: 40px; padding: 7px 13px; color: rgba(240, 191, 105, .9); background: rgba(240, 191, 105, .05); font-size: 12px; }
+    #overview-route-list {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 28px;
+      margin: 18px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+    #overview-route-list[hidden] { display: none; }
+    .overview-route-step { position: relative; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; min-width: 0; }
+    .overview-route-step:not(:last-child)::after { content: "→"; position: absolute; right: -20px; top: 8px; color: rgba(240, 191, 105, .85); }
+    .overview-route-number { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid #dfa13a; border-radius: 50%; color: var(--cream); }
+    .overview-route-step a { color: var(--cream); font: 500 17px/1.2 var(--font-lesson); text-decoration: none; }
+    .overview-route-step p,
+    .overview-route-step time { margin: 4px 0 0; color: rgba(244, 234, 214, .64); font-size: 11px; }
+    #overview-route-empty { margin: 18px 0 0; padding: 14px; border: 1px dashed rgba(240, 191, 105, .24); border-radius: 10px; color: rgba(244, 234, 214, .68); text-align: center; }
+
+    .overview-primary-cta:focus-visible,
+    .overview-station-card button:focus-visible,
+    #overview-resume-route:focus-visible,
+    .overview-route-step a:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+
     .backstage-plan {
       display: grid;
       gap: 18px;
@@ -4219,6 +4408,15 @@
     }
 
     @media (max-width: 960px) {
+      .overview-ready-copy,
+      .overview-status-grid,
+      .overview-continue { width: min(74%, 680px); }
+
+      .overview-stations { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+      #overview-route-list { grid-template-columns: 1fr; gap: 16px; }
+      .overview-route-step:not(:last-child)::after { content: "↓"; right: auto; left: 13px; top: 38px; }
+
       .examples {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
@@ -4514,6 +4712,22 @@
       .backstage-content.setup-workspace {
         padding: 12px;
       }
+
+      .overview-control-room { padding: 12px; }
+      .overview-ready-hero { min-height: 0; padding: 22px 18px; }
+      .overview-ready-hero::after { background: linear-gradient(180deg, rgba(11, 14, 14, .97) 0 50%, rgba(11, 14, 14, .62) 72%, rgba(11, 14, 14, .9)); }
+      .overview-ready-copy,
+      .overview-status-grid,
+      .overview-continue { width: 100%; }
+      .overview-status-grid { grid-template-columns: 1fr; }
+      .overview-status-item { border-right: 0; border-bottom: 1px solid rgba(240, 191, 105, .14); padding: 0 0 12px; }
+      .overview-road-case { position: relative; right: auto; bottom: auto; order: 3; width: 100%; height: auto; max-height: 210px; object-position: center; }
+      .overview-continue { order: 4; }
+      .overview-stations { grid-template-columns: 1fr; }
+      .overview-station-card p { min-height: 0; }
+      .overview-recent-route { padding: 18px 14px; }
+      .overview-recent-route header { align-items: stretch; flex-direction: column; }
+      #overview-resume-route { width: 100%; }
 
       .backstage-tabs {
         top: 96px;
@@ -5196,53 +5410,66 @@
           <button class="backstage-tab" id="backstage-tab-account" type="button" role="tab" aria-selected="false" aria-controls="backstage-panel-account" data-backstage-tab="account" tabindex="-1">Account</button>
         </nav>
 
-        <div class="backstage-content backstage-tab-panel" id="backstage-panel-overview" role="tabpanel" aria-labelledby="backstage-tab-overview">
-          <article class="backstage-card">
-            <div class="backstage-card-header">
-              <h3>My Setup</h3>
-              <span class="coming-soon">Active copedent</span>
+        <div class="backstage-content backstage-tab-panel overview-control-room" id="backstage-panel-overview" role="tabpanel" aria-labelledby="backstage-tab-overview">
+          <section class="overview-ready-hero" aria-labelledby="overview-ready-title">
+            <div class="overview-ready-copy">
+              <h3 id="overview-ready-title">Ready to play</h3>
+              <p>Your backstage is set. Pick up where you left off.</p>
             </div>
-            <p>Select a common E9 setup or make a custom version. The active copedent now drives personalized mechanics throughout the app.</p>
-            <div class="backstage-metrics">
-              <div class="backstage-metric">
-                <span>Saved setup</span>
-                <strong id="copedent-overview-summary">E9 10-string saved</strong>
+            <div class="overview-status-grid" aria-label="Backstage readiness">
+              <div class="overview-status-item">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM8 5v14M12 5v14M16 5v14M4 9h16M4 14h16"/></svg>
+                <div><span>Active setup</span><strong id="copedent-overview-summary">Loading setup…</strong><small id="overview-setup-status">Checking status…</small></div>
               </div>
-              <div class="backstage-metric">
-                <span>Last updated</span>
-                <strong id="copedent-overview-updated">Draft</strong>
+              <div class="overview-status-item">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 2.8 8.1 7 10 4.2-1.9 7-5.5 7-10V6l-7-3Z"/><path d="m8.5 12 2.2 2.2 4.8-5"/></svg>
+                <div><span>Account status</span><strong id="overview-account-status">Checking account…</strong><small id="overview-account-sync">Status unavailable</small></div>
+              </div>
+              <div class="overview-status-item">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4h12v16H6zM9 8h6M9 12h6M9 16h4"/></svg>
+                <div><span>Access level</span><strong id="backstage-overview-pass-badge">Checking access…</strong><small id="backstage-overview-pass-summary" aria-live="polite">Checking this month’s activity…</small></div>
+              </div>
+              <div class="overview-status-item">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                <div><span>Last activity</span><strong id="overview-last-workspace">Checking activity…</strong><small id="overview-last-description">Looking for your latest meaningful action.</small><time id="overview-last-time"></time></div>
               </div>
             </div>
-            <button class="backstage-button" type="button" data-backstage-jump="setup">Edit copedent</button>
-          </article>
-
-          <article class="backstage-card">
-            <div class="backstage-card-header">
-              <h3>Plan &amp; Activity</h3>
-              <span class="coming-soon" id="backstage-overview-pass-badge">Account access</span>
+            <img class="overview-road-case" src="assets/backstage/overview-road-case.png?v=control-room-20260714-1" alt="" width="1672" height="941">
+            <div class="overview-continue">
+              <a class="overview-primary-cta" id="overview-continue-cta" href="/ui/e9-fretboard-explorer.html"><span id="overview-continue-label">Explore the fretboard</span><span aria-hidden="true">→</span></a>
+              <p id="overview-continue-destination">No resumable activity yet. Start in Fretboard Explorer.</p>
             </div>
-            <p id="backstage-overview-pass-summary" aria-live="polite">Checking this month’s usage…</p>
-            <button class="backstage-button" type="button" data-backstage-jump="pass">View activity</button>
-          </article>
+          </section>
 
-          <article class="backstage-card">
-            <div class="backstage-card-header">
-              <h3>Feedback</h3>
-              <span class="coming-soon">Coming soon</span>
-            </div>
-            <p>Share what helped, what missed, or where the steel-guitar reasoning needs more work.</p>
-            <button class="backstage-button" type="button" data-backstage-jump="feedback">Open feedback</button>
-          </article>
+          <section class="overview-stations" aria-label="Backstage stations">
+            <article class="overview-station-card">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM8 5v14M12 5v14M16 5v14M4 9h16M4 14h16"/></svg>
+              <div><h3>My Setup</h3><p>Review the active copedent that drives Explorer, Melody Studio, Lessons, and Ask the Brain.</p><span id="overview-station-setup-status">Checking setup…</span></div>
+              <button type="button" data-backstage-jump="setup">Open my setup <span aria-hidden="true">→</span></button>
+            </article>
+            <article class="overview-station-card">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 15l2-3 2 2 4-5"/></svg>
+              <div><h3>Plan &amp; Activity</h3><p>See your access and meaningful learning activity across the app.</p><span id="overview-station-activity-status">Checking access…</span></div>
+              <button type="button" data-backstage-jump="pass">View activity <span aria-hidden="true">→</span></button>
+            </article>
+            <article class="overview-station-card">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v12H9l-5 4V5Z"/><path d="M8 9h8M8 13h5"/></svg>
+              <div><h3>Feedback</h3><p>Report an answer, source, steel-logic, or product issue to the crew.</p><span>Submission coming soon</span></div>
+              <button type="button" data-backstage-jump="feedback">Share feedback <span aria-hidden="true">→</span></button>
+            </article>
+            <article class="overview-station-card">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 2.8 8.1 7 10 4.2-1.9 7-5.5 7-10V6l-7-3Z"/><circle cx="12" cy="10" r="2.5"/><path d="M8.5 16c.8-2 2-3 3.5-3s2.7 1 3.5 3"/></svg>
+              <div><h3>Account</h3><p id="backstage-overview-account-summary">Manage login, synchronization, and account-backed setup state.</p><span id="backstage-overview-account-badge">Checking account…</span></div>
+              <button type="button" data-backstage-jump="account">View account <span aria-hidden="true">→</span></button>
+            </article>
+          </section>
 
-          <article class="backstage-card">
-            <div class="backstage-card-header">
-              <h3>Account</h3>
-              <span class="coming-soon" id="backstage-overview-account-badge">Verified login</span>
-            </div>
-            <p id="backstage-overview-account-summary">Your login keeps included setup selection and entitled custom copedents synchronized across devices.</p>
-            <button class="backstage-button" type="button" data-backstage-jump="account">View account</button>
-          </article>
-
+          <section class="overview-recent-route" aria-labelledby="overview-route-title">
+            <header><div><h3 id="overview-route-title">Your recent route</h3><p>Your latest learning flow—connected across tools.</p></div><a id="overview-resume-route" href="/ui/e9-fretboard-explorer.html" hidden>Resume latest handoff <span aria-hidden="true">→</span></a></header>
+            <ol id="overview-route-list" hidden></ol>
+            <p id="overview-route-empty">No connected learning route yet. Carry an answer, position, lesson, or melody into another tool to see it here.</p>
+          </section>
+          <span id="copedent-overview-updated" hidden>Draft</span>
         </div>
 
         <div class="backstage-content backstage-tab-panel setup-workspace" id="backstage-panel-setup" role="tabpanel" aria-labelledby="backstage-tab-setup" hidden>
@@ -5884,6 +6111,20 @@
     const backstageOverviewPassSummary = document.querySelector("#backstage-overview-pass-summary");
     const backstageOverviewAccountBadge = document.querySelector("#backstage-overview-account-badge");
     const backstageOverviewAccountSummary = document.querySelector("#backstage-overview-account-summary");
+    const overviewSetupStatus = document.querySelector("#overview-setup-status");
+    const overviewAccountStatus = document.querySelector("#overview-account-status");
+    const overviewAccountSync = document.querySelector("#overview-account-sync");
+    const overviewStationSetupStatus = document.querySelector("#overview-station-setup-status");
+    const overviewStationActivityStatus = document.querySelector("#overview-station-activity-status");
+    const overviewLastWorkspace = document.querySelector("#overview-last-workspace");
+    const overviewLastDescription = document.querySelector("#overview-last-description");
+    const overviewLastTime = document.querySelector("#overview-last-time");
+    const overviewContinueCta = document.querySelector("#overview-continue-cta");
+    const overviewContinueLabel = document.querySelector("#overview-continue-label");
+    const overviewContinueDestination = document.querySelector("#overview-continue-destination");
+    const overviewRouteList = document.querySelector("#overview-route-list");
+    const overviewRouteEmpty = document.querySelector("#overview-route-empty");
+    const overviewResumeRoute = document.querySelector("#overview-resume-route");
     const usagePeriodLabel = document.querySelector("#usage-period-label");
     const usageStatusCopy = document.querySelector("#usage-status-copy");
     const usageMonthlyDetails = document.querySelector("#usage-monthly-details");
@@ -7625,6 +7866,8 @@
       backstageOverviewAccountSummary.textContent = verifiedAccount
         ? "Your verified login keeps included setup selection and entitled custom copedents synchronized across devices."
         : "Sign in through the protected app to synchronize included setup selection and entitled custom copedents.";
+      overviewAccountStatus.textContent = verifiedAccount ? "Verified login" : "Local preview";
+      overviewAccountSync.textContent = accountFeatureEnabled && verifiedAccount ? "Account-backed setup" : "Status unavailable";
       currentAuthorizedAccountId = verifiedAccount ? String(account.id || account.accountId || "") : "";
       backstageAccountHeading.textContent = verifiedAccount ? "Access verified" : "Verification required";
       backstageAccountStatusLabel.textContent = verifiedAccount ? "Verified" : "Local preview";
@@ -7731,6 +7974,85 @@
       return date.toLocaleDateString(undefined, { ...options, timeZone: "UTC" });
     }
 
+    const overviewActivityDestinations = {
+      "explorer.position_selected": ["Fretboard Explorer", "Explored an E9 position", "/ui/e9-fretboard-explorer.html"],
+      "explorer.chord_grip_selected": ["Fretboard Explorer", "Explored a chord grip", "/ui/e9-fretboard-explorer.html"],
+      "explorer.scale_path_selected": ["Fretboard Explorer", "Explored a scale path", "/ui/e9-fretboard-explorer.html"],
+      "explorer.movement_compared": ["Fretboard Explorer", "Compared movement across the neck", "/ui/e9-fretboard-explorer.html"],
+      "melody.session_started": ["Melody Studio", "Started a melody session", "/ui/melody-workbench.html"],
+      "melody.edited": ["Melody Studio", "Edited a melody", "/ui/melody-workbench.html"],
+      "melody.playback_completed": ["Melody Studio", "Completed a melody playback", "/ui/melody-workbench.html"],
+      "lesson.started": ["Lessons", "Started a lesson", "/ui/lesson-workbench.html"],
+      "lesson.section_completed": ["Lessons", "Completed a lesson section", "/ui/lesson-workbench.html"],
+      "lesson.exercise_completed": ["Lessons", "Completed a lesson exercise", "/ui/lesson-workbench.html"],
+      "ask.answer": ["Ask the Brain", "Received an answer", "/ui/steel-guitar-rag-mock.html#ask-the-brain"],
+      "ask.followup": ["Ask the Brain", "Asked a follow-up", "/ui/steel-guitar-rag-mock.html#ask-the-brain"],
+      "ask.ai_assisted": ["Ask the Brain", "Used source-aware assistance", "/ui/steel-guitar-rag-mock.html#ask-the-brain"],
+      "connected.answer_to_explorer": ["Fretboard Explorer", "Opened an answer in Explorer", "/ui/e9-fretboard-explorer.html"],
+      "connected.lesson_to_explorer": ["Fretboard Explorer", "Continued a lesson in Explorer", "/ui/e9-fretboard-explorer.html"],
+      "connected.lesson_to_melody": ["Melody Studio", "Continued a lesson in Melody Studio", "/ui/melody-workbench.html"],
+      "connected.explorer_to_melody": ["Melody Studio", "Carried an Explorer idea into Melody Studio", "/ui/melody-workbench.html"]
+    };
+
+    function overviewActivityDetails(event) {
+      if (!event?.eventType) return null;
+      const destination = overviewActivityDestinations[event.eventType];
+      if (!destination) return null;
+      return { workspace: destination[0], description: destination[1], href: destination[2], occurredAt: event.occurredAt };
+    }
+
+    function formatOverviewActivityTime(value) {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "";
+      return date.toLocaleString(undefined, {
+        month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "UTC", timeZoneName: "short"
+      });
+    }
+
+    function renderOverviewActivity(usage) {
+      const recent = overviewActivityDetails(usage?.recentActivity);
+      if (recent) {
+        overviewLastWorkspace.textContent = recent.workspace;
+        overviewLastDescription.textContent = recent.description;
+        overviewLastTime.textContent = formatOverviewActivityTime(recent.occurredAt);
+        overviewContinueLabel.textContent = "Continue where you left off";
+        overviewContinueCta.href = recent.href;
+        overviewContinueDestination.textContent = `Return to ${recent.workspace}.`;
+      } else {
+        overviewLastWorkspace.textContent = "No recent learning activity yet.";
+        overviewLastDescription.textContent = "Your next meaningful action will appear here.";
+        overviewLastTime.textContent = "";
+        overviewContinueLabel.textContent = "Explore the fretboard";
+        overviewContinueCta.href = "/ui/e9-fretboard-explorer.html";
+        overviewContinueDestination.textContent = "No resumable activity yet. Start in Fretboard Explorer.";
+      }
+
+      const route = (usage?.recentConnectedRoute || []).map(overviewActivityDetails).filter(Boolean);
+      overviewRouteList.replaceChildren();
+      route.forEach((step, index) => {
+        const item = document.createElement("li");
+        item.className = "overview-route-step";
+        const number = document.createElement("span");
+        number.className = "overview-route-number";
+        number.textContent = String(index + 1);
+        const copy = document.createElement("div");
+        const link = document.createElement("a");
+        link.href = step.href;
+        link.textContent = step.workspace;
+        const description = document.createElement("p");
+        description.textContent = step.description;
+        const time = document.createElement("time");
+        time.textContent = formatOverviewActivityTime(step.occurredAt);
+        copy.append(link, description, time);
+        item.append(number, copy);
+        overviewRouteList.append(item);
+      });
+      overviewRouteList.hidden = route.length === 0;
+      overviewRouteEmpty.hidden = route.length > 0;
+      overviewResumeRoute.hidden = route.length === 0;
+      if (route.length) overviewResumeRoute.href = route.at(-1).href;
+    }
+
     function renderUsageOverview(passLabel = mockCurrentPass.textContent) {
       if (monthlyUsageState.status === "ready") {
         backstageOverviewPassSummary.textContent = `${passLabel} · ${usageCountLabel(monthlyUsageState.usage.successfulAnswers)}.`;
@@ -7741,6 +8063,7 @@
       } else {
         backstageOverviewPassSummary.textContent = "Checking this month’s activity…";
       }
+      overviewStationActivityStatus.textContent = passLabel;
     }
 
     function renderUsageState() {
@@ -7778,6 +8101,7 @@
         usagePeriodLabel.textContent = formatUsageDate(usage.startsAt, { month: "long" });
         usageMonthlyDetails.hidden = false;
         activitySummaryDetails.hidden = false;
+        renderOverviewActivity(usage);
         return;
       }
       usageMonthlyDetails.hidden = true;
@@ -7788,6 +8112,7 @@
         : monthlyUsageState.status === "unavailable"
           ? "Activity tracking is temporarily unavailable."
           : "Checking this month’s activity…";
+      renderOverviewActivity(null);
     }
 
     async function refreshMonthlyUsage() {
@@ -8103,6 +8428,6 @@
       window.history.replaceState(null, "", window.location.pathname + window.location.search);
     }
   </script>
-  <script src="backstage-copedent-manager.js?v=rig-locker-20260714-4"></script>
+  <script src="backstage-copedent-manager.js?v=control-room-20260714-1"></script>
 </body>
 </html>

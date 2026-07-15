@@ -215,7 +215,13 @@ let capturedRequest;
             startsAt: "2026-07-01T00:00:00+00:00",
             resetsAt: "2026-08-01T00:00:00+00:00"
           },
-          usage: { successfulAnswers: 42 },
+          usage: {
+            successfulAnswers: 42,
+            recentActivity: { eventType: "melody.edited", occurredAt: "2026-07-14T16:30:00+00:00", count: 2 },
+            recentConnectedRoute: [
+              { eventType: "connected.answer_to_explorer", occurredAt: "2026-07-14T16:20:00+00:00", count: 1 }
+            ]
+          },
           updatedAt: "2026-07-14T16:30:00+00:00"
         })
       };
@@ -232,6 +238,8 @@ let capturedRequest;
   assert.equal(usage.successfulAnswers, 42);
   assert.equal(usage.activity.explorer.ideasExplored, 0);
   assert.equal(usage.activity.aiAssisted.actions, 0);
+  assert.equal(usage.recentActivity.eventType, "melody.edited");
+  assert.equal(usage.recentConnectedRoute[0].eventType, "connected.answer_to_explorer");
   assert.equal(usage.updatedAt, "2026-07-14T16:30:00+00:00");
 
   assert.equal(JSON.stringify(answerUi.normalizeSessionResponse({
@@ -301,6 +309,67 @@ def test_backstage_plan_and_activity_uses_all_approved_assets() -> None:
         assert path.is_file()
         assert f'src="assets/backstage/{name}" alt=""' in html
         assert path.read_bytes().startswith(b"\x89PNG")
+
+
+def test_backstage_overview_is_a_truthful_control_room_with_real_state_hooks() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+    overview = html.split('id="backstage-panel-overview"', 1)[1].split('id="backstage-panel-setup"', 1)[0]
+
+    assert "Ready to play" in overview
+    assert "Your backstage is set. Pick up where you left off." in overview
+    assert 'src="assets/backstage/overview-road-case.png?v=control-room-20260714-1" alt="" width="1672" height="941"' in overview
+    assert "hanging" not in overview.lower()
+    assert "BACKSTAGE ALL ACCESS" not in overview
+    for state_id in (
+        "copedent-overview-summary",
+        "overview-account-status",
+        "backstage-overview-pass-badge",
+        "overview-last-workspace",
+        "overview-continue-cta",
+    ):
+        assert f'id="{state_id}"' in overview
+    for station in ("My Setup", "Plan &amp; Activity", "Feedback", "Account"):
+        assert station in overview
+    for destination in ("setup", "pass", "feedback", "account"):
+        assert f'data-backstage-jump="{destination}"' in overview
+    assert "No connected learning route yet." in overview
+    assert 'id="overview-resume-route"' in overview and " hidden>" in overview
+    assert "upgrade" not in overview.lower()
+    assert "billing" not in overview.lower()
+
+    assert "const overviewActivityDestinations = {" in html
+    assert '"connected.answer_to_explorer"' in html
+    assert '"connected.explorer_to_melody"' in html
+    assert "renderOverviewActivity(usage);" in html
+    assert 'overviewRouteEmpty.hidden = route.length > 0;' in html
+    assert 'overviewResumeRoute.hidden = route.length === 0;' in html
+    assert 'overviewAccountStatus.textContent = verifiedAccount ? "Verified login" : "Local preview";' in html
+
+
+def test_backstage_overview_road_case_is_rgba_with_transparent_left_field() -> None:
+    from PIL import Image
+
+    asset = Path("ui/assets/backstage/overview-road-case.png")
+    with Image.open(asset) as image:
+        assert image.mode == "RGBA"
+        assert image.size == (1672, 941)
+        alpha = image.getchannel("A")
+        assert alpha.getpixel((0, 0)) == 0
+        assert alpha.getpixel((image.width - 1, image.height - 1)) > 0
+        assert alpha.getbbox() == (574, 11, 1672, 941)
+
+
+def test_backstage_overview_has_responsive_control_room_layout() -> None:
+    html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+
+    assert ".overview-stations {" in html
+    assert "grid-template-columns: repeat(4, minmax(0, 1fr));" in html
+    assert ".overview-road-case {" in html
+    assert "object-fit: contain;" in html
+    assert "@media (max-width: 640px)" in html
+    assert ".overview-road-case { position: relative;" in html
+    assert ".overview-stations { grid-template-columns: 1fr; }" in html
+    assert ".overview-primary-cta:focus-visible" in html
 
 
 def test_backstage_feedback_is_an_accessible_talkback_workspace() -> None:
@@ -438,7 +507,7 @@ def test_backstage_my_setup_uses_live_three_stage_rig_locker_structure() -> None
     assert "Setup Library" in setup_panel
     assert "Copedent Workbench" in setup_panel
     assert 'src="assets/backstage/setup-nameplate.png?v=rig-locker-20260714-1"' in setup_panel
-    assert 'backstage-copedent-manager.js?v=rig-locker-20260714-4' in html
+    assert 'backstage-copedent-manager.js?v=control-room-20260714-1' in html
     assert 'elements.activeBadge.textContent = validationLabel(currentProfile);' in manager
     assert 'alt="" width="2022" height="778"' in setup_panel
     assert 'id="setup-active-heading">Loading active setup…</h3>' in setup_panel

@@ -930,6 +930,12 @@ const STEEL_RAG_ANSWER_UI = (() => {
       throw new Error("Account usage response is invalid");
     }
     const count = (value) => Number.isInteger(Number(value)) && Number(value) >= 0 ? Number(value) : 0;
+    const recentEvent = (value) => {
+      const eventType = firstTextValue(value?.eventType);
+      const occurredAt = firstTextValue(value?.occurredAt);
+      if (!eventType || !occurredAt) return null;
+      return { eventType, occurredAt, count: count(value?.count) };
+    };
     const activity = payload?.usage?.activity || {};
     return {
       schemaVersion: firstTextValue(payload?.schemaVersion, "account_usage_v1"),
@@ -967,6 +973,10 @@ const STEEL_RAG_ANSWER_UI = (() => {
           actions: count(activity?.aiAssisted?.actions ?? payload?.usage?.aiAssistedActions)
         }
       },
+      recentActivity: recentEvent(payload?.usage?.recentActivity),
+      recentConnectedRoute: Array.isArray(payload?.usage?.recentConnectedRoute)
+        ? payload.usage.recentConnectedRoute.map(recentEvent).filter(Boolean).slice(-3)
+        : [],
       updatedAt: firstTextValue(payload?.updatedAt)
     };
   }

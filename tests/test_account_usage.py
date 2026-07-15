@@ -46,6 +46,8 @@ def test_monthly_usage_starts_at_zero_and_rolls_over_in_utc(tmp_path: Path) -> N
 
     assert empty.successful_answers == 0
     assert empty.updated_at is None
+    assert empty.recent_activity is None
+    assert empty.recent_connected_route == ()
     assert first.successful_answers == 1
     assert first.starts_at == "2026-07-01T00:00:00+00:00"
     assert first.resets_at == "2026-08-01T00:00:00+00:00"
@@ -218,6 +220,46 @@ def test_connected_learning_requires_a_whitelisted_transition(tmp_path: Path) ->
     usage = repository.current_usage(IDENTITY, at=now)
     assert usage.activity["connectedLearning"]["transitions"] == 1
     assert usage.activity["connectedLearning"]["lessonsContinued"] == 1
+
+
+def test_recent_activity_and_route_are_derived_from_persisted_aggregate_timestamps(tmp_path: Path) -> None:
+    repository = AccountUsageRepository(tmp_path / "usage.sqlite3")
+    now = datetime(2026, 7, 14, 12, 0, tzinfo=timezone.utc)
+    repository.record_success(IDENTITY, at=now)
+    repository.record_activity(
+        IDENTITY,
+        event_type="connected.answer_to_explorer",
+        event_id="answer-to-explorer",
+        dedupe_key="answer-to-explorer",
+        at=now + timedelta(minutes=1),
+    )
+    repository.record_activity(
+        IDENTITY,
+        event_type="melody.edited",
+        event_id="melody-edited",
+        dedupe_key="melody-edited",
+        at=now + timedelta(minutes=2),
+    )
+    repository.record_activity(
+        IDENTITY,
+        event_type="connected.explorer_to_melody",
+        event_id="explorer-to-melody",
+        dedupe_key="explorer-to-melody",
+        at=now + timedelta(minutes=3),
+    )
+
+    payload = repository.current_usage(IDENTITY, at=now).to_dict()
+    assert payload["usage"]["recentActivity"] == {
+        "eventType": "connected.explorer_to_melody",
+        "occurredAt": "2026-07-14T12:03:00+00:00",
+        "count": 1,
+    }
+    assert [item["eventType"] for item in payload["usage"]["recentConnectedRoute"]] == [
+        "connected.answer_to_explorer",
+        "connected.explorer_to_melody",
+    ]
+    assert "answer-to-explorer" not in str(payload)
+    assert "melody-edited" not in str(payload)
 
 
 def test_schema_one_usage_database_migrates_without_losing_answer_counts(tmp_path: Path) -> None:
