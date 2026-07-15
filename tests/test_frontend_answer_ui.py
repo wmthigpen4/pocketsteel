@@ -548,6 +548,13 @@ def test_backstage_my_setup_uses_live_three_stage_rig_locker_structure() -> None
     assert 'id="add-copedent-change"' in setup_panel
     assert 'id="copedent-profile-details"' in setup_panel
     assert 'id="copedent-mobile-group"' in setup_panel
+    assert ".setup-local-entry-actions {" in html
+    assert "grid-template-columns: repeat(2, minmax(0, 1fr));" in html
+    assert "#copedent-import-selected," in html
+    assert "#add-copedent-change {" in html
+    assert "white-space: nowrap;" in html
+    assert "margin: 4px -14px 0;" in html
+    assert "padding: 12px 14px 16px;" in html
 
 
 def test_backstage_setup_nameplate_is_rgba_without_opaque_checkerboard() -> None:

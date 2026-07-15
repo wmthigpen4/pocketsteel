@@ -1000,8 +1000,8 @@
 
     .setup-local-entry {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 7px;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 10px;
       padding: 9px;
       border: 1px solid rgba(244, 234, 214, 0.09);
       border-radius: 8px;
@@ -1030,14 +1030,41 @@
     }
 
     .setup-local-entry-actions {
-      display: flex;
-      gap: 4px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+      width: 100%;
     }
 
     .setup-local-entry-actions .backstage-button {
-      min-height: 30px;
-      padding: 0 8px;
-      font-size: 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 36px;
+      padding: 0 10px;
+      font-size: 11px;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    #copedent-import-selected,
+    #add-copedent-change {
+      display: inline-flex;
+      flex: 0 0 auto;
+      align-items: center;
+      justify-content: center;
+      min-width: max-content;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+
+    #copedent-import-selected {
+      width: 100%;
+      min-width: 0;
+      min-height: 40px;
+      padding-inline: 10px;
+      font-size: 12px;
     }
 
     .setup-library-footer {
@@ -1350,17 +1377,23 @@
 
     .copedent-sticky-footer {
       position: sticky;
-      bottom: -1px;
+      bottom: 0;
       z-index: 10;
       display: grid;
       grid-template-columns: auto minmax(180px, 1fr);
       gap: 10px 16px;
       align-items: center;
-      margin: 4px -17px -17px;
-      padding: 12px 17px;
+      box-sizing: border-box;
+      margin: 4px -14px 0;
+      padding: 12px 14px 16px;
       border-top: 1px solid rgba(244, 234, 214, 0.12);
       background: rgba(29, 32, 33, 0.96);
       backdrop-filter: blur(12px);
+    }
+
+    .copedent-sticky-footer .backstage-button {
+      min-height: 40px;
+      white-space: nowrap;
     }
 
     .copedent-sticky-footer .backstage-status {
@@ -1646,10 +1679,16 @@
 
       .copedent-sticky-footer {
         grid-template-columns: 1fr;
+        margin: 4px -10px 0;
+        padding: 12px 10px 16px;
       }
 
       .copedent-sticky-footer .backstage-status {
         text-align: left;
+      }
+
+      .copedent-sticky-footer .backstage-button {
+        min-height: 44px;
       }
     }
 
