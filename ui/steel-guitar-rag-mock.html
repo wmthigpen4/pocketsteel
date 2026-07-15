@@ -1829,8 +1829,7 @@
     }
 
     .overview-ready-hero,
-    .overview-station-card,
-    .overview-recent-route {
+    .overview-station-card {
       border: 1px solid rgba(240, 191, 105, 0.38);
       border-radius: 14px;
       background:
@@ -1866,8 +1865,7 @@
     }
 
     .overview-ready-copy h3,
-    .overview-station-card h3,
-    .overview-recent-route h3 {
+    .overview-station-card h3 {
       margin: 0;
       color: var(--cream);
       font-family: var(--font-lesson);
@@ -1876,8 +1874,7 @@
     }
 
     .overview-ready-copy h3 { font-size: clamp(34px, 4.4vw, 52px); }
-    .overview-ready-copy p,
-    .overview-recent-route header p { margin: 7px 0 0; color: rgba(244, 234, 214, 0.72); }
+    .overview-ready-copy p { margin: 7px 0 0; color: rgba(244, 234, 214, 0.72); }
 
     .overview-status-grid {
       display: grid;
@@ -1981,26 +1978,6 @@
       font: inherit;
       cursor: pointer;
     }
-
-    .overview-recent-route { padding: 18px 22px; }
-    .overview-recent-route header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
-    .overview-recent-route h3 { color: rgba(240, 191, 105, 0.9); font-family: var(--font-ui); font-size: 13px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase; }
-    #overview-route-list {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 28px;
-      margin: 18px 0 0;
-      padding: 0;
-      list-style: none;
-    }
-    #overview-route-list[hidden] { display: none; }
-    .overview-route-step { position: relative; display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 10px; min-width: 0; }
-    .overview-route-step:not(:last-child)::after { content: "→"; position: absolute; right: -20px; top: 8px; color: rgba(240, 191, 105, .85); }
-    .overview-route-number { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid #dfa13a; border-radius: 50%; color: var(--cream); }
-    .overview-route-step strong { color: var(--cream); font: 500 17px/1.2 var(--font-lesson); }
-    .overview-route-step p,
-    .overview-route-step time { margin: 4px 0 0; color: rgba(244, 234, 214, .64); font-size: 11px; }
-    #overview-route-empty { margin: 18px 0 0; padding: 14px; border: 1px dashed rgba(240, 191, 105, .24); border-radius: 10px; color: rgba(244, 234, 214, .68); text-align: center; }
 
     .overview-station-card button:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 
@@ -4392,9 +4369,6 @@
 
       .overview-stations { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
-      #overview-route-list { grid-template-columns: 1fr; gap: 16px; }
-      .overview-route-step:not(:last-child)::after { content: "↓"; right: auto; left: 13px; top: 38px; }
-
       .examples {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
@@ -4697,9 +4671,6 @@
       .overview-road-case { position: relative; right: auto; bottom: auto; order: 3; width: 100%; height: auto; max-height: 210px; object-position: center; }
       .overview-stations { grid-template-columns: 1fr; }
       .overview-station-card p { min-height: 0; }
-      .overview-recent-route { padding: 18px 14px; }
-      .overview-recent-route header { align-items: stretch; flex-direction: column; }
-
       .backstage-tabs {
         top: 96px;
         padding: 10px 16px;
@@ -5420,11 +5391,6 @@
             </article>
           </section>
 
-          <section class="overview-recent-route" aria-labelledby="overview-route-title">
-            <header><div><h3 id="overview-route-title">Your recent route</h3><p>Your latest learning flow—connected across tools.</p></div></header>
-            <ol id="overview-route-list" hidden></ol>
-            <p id="overview-route-empty">No connected learning route yet. Carry an answer, position, lesson, or melody into another tool to see it here.</p>
-          </section>
           <span id="copedent-overview-updated" hidden>Draft</span>
         </div>
 
@@ -6045,8 +6011,6 @@
     const overviewLastWorkspace = document.querySelector("#overview-last-workspace");
     const overviewLastDescription = document.querySelector("#overview-last-description");
     const overviewLastTime = document.querySelector("#overview-last-time");
-    const overviewRouteList = document.querySelector("#overview-route-list");
-    const overviewRouteEmpty = document.querySelector("#overview-route-empty");
     const usagePeriodLabel = document.querySelector("#usage-period-label");
     const usageStatusCopy = document.querySelector("#usage-status-copy");
     const usageMonthlyDetails = document.querySelector("#usage-monthly-details");
@@ -7994,28 +7958,6 @@
         overviewLastDescription.textContent = "Your next meaningful action will appear here.";
         overviewLastTime.textContent = "";
       }
-
-      const route = (usage?.recentConnectedRoute || []).map(overviewActivityDetails).filter(Boolean);
-      overviewRouteList.replaceChildren();
-      route.forEach((step, index) => {
-        const item = document.createElement("li");
-        item.className = "overview-route-step";
-        const number = document.createElement("span");
-        number.className = "overview-route-number";
-        number.textContent = String(index + 1);
-        const copy = document.createElement("div");
-        const workspace = document.createElement("strong");
-        workspace.textContent = step.workspace;
-        const description = document.createElement("p");
-        description.textContent = step.description;
-        const time = document.createElement("time");
-        time.textContent = formatOverviewActivityTime(step.occurredAt);
-        copy.append(workspace, description, time);
-        item.append(number, copy);
-        overviewRouteList.append(item);
-      });
-      overviewRouteList.hidden = route.length === 0;
-      overviewRouteEmpty.hidden = route.length > 0;
     }
 
     function renderUsageOverview(passLabel = mockCurrentPass.textContent) {
