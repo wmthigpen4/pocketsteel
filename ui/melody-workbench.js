@@ -365,6 +365,7 @@
       showNoteLabels: true,
       response: null,
       scoreDraft: null,
+      scoreEditingEnabled: true,
       scoreSelectedIndex: -1,
       scoreHistory: [],
       scoreFuture: [],
@@ -1196,6 +1197,12 @@
     scoreDownload: $("#studio-score-download"),
     scoreArrange: $("#studio-score-arrange"),
     scoreArrangeStatus: $("#studio-score-arrange-status"),
+    scorePanel: $("#studio-score-panel"),
+    scoreHeading: $("#studio-score-heading"),
+    scoreGuidance: $("#studio-score-guidance"),
+    scoreActionTitle: $("#studio-score-action-title"),
+    scoreActionHelp: $("#studio-score-action-help"),
+    scoreEditToggle: $("#studio-score-edit-toggle"),
     scoreWarnings: $("#studio-score-warnings"),
     scoreSource: $("#studio-score-source"),
     scoreSourceImage: $("#studio-score-source-image"),
@@ -1318,6 +1325,7 @@
     state.tokens = [];
     state.selectedPhraseIndex = 0;
     state.scoreDraft = null;
+    state.scoreEditingEnabled = true;
     state.scoreSelectedIndex = -1;
     state.scoreHistory = [];
     state.scoreFuture = [];
@@ -1605,6 +1613,20 @@
   function renderScoreBuilder() {
     if (!scoreUi || !elements.scoreCanvas) return;
     const draft = ensureScoreDraft();
+    const isCatalog = draft.source.type === "catalog";
+    const isReviewOnly = isCatalog && !state.scoreEditingEnabled;
+    elements.scorePanel.classList.toggle("is-review-only", isReviewOnly);
+    elements.scoreHeading.textContent = isCatalog ? "Review songbook melody" : "Staff editor";
+    elements.scoreGuidance.textContent = isCatalog
+      ? "This reviewed melody is ready to arrange. Editing is available only when you choose it."
+      : "Add and review one melody voice. Open the details only when you need them.";
+    elements.scoreActionTitle.textContent = isCatalog ? `${draft.source.title || "Songbook melody"} is ready` : "Melody ready";
+    elements.scoreActionHelp.textContent = isCatalog
+      ? "Create the E9 arrangement now, or open note editing if the teaching melody needs a correction."
+      : "Review the staff, then create your E9 arrangement.";
+    elements.scoreEditToggle.hidden = !isCatalog;
+    elements.scoreEditToggle.textContent = isReviewOnly ? "Edit melody notes" : "Done editing";
+    elements.scoreEditToggle.setAttribute("aria-pressed", String(!isReviewOnly));
     renderScoreKeyboard();
     scoreUi.render(elements.scoreCanvas, draft, state.scoreSelectedIndex, selectScoreEvent);
     const event = selectedScoreEvent();
@@ -1688,6 +1710,7 @@
     state.scoreHistory = [];
     state.scoreFuture = [];
     state.scoreDraft = scoreUi.reflowDraft(draft);
+    state.scoreEditingEnabled = draft.source?.type !== "catalog";
     state.importParts = Array.isArray(draft.parts) && draft.parts.length > 1 ? draft.parts : [];
     state.importSelectedPart = String(draft.selectedPartId ?? draft.selectedTrackIndex ?? state.importSelectedPart ?? "");
     state.scoreSelectedIndex = state.scoreDraft.score.melody.length ? 0 : -1;
@@ -2705,7 +2728,13 @@
     elements.scoreArrange.disabled = true;
     elements.scoreArrange.textContent = "Arranging for E9…";
     elements.scoreArrangeStatus.textContent = "Checking the notes and finding playable E9 routes…";
+    const startedAt = Date.now();
+    const progressTimer = global.setInterval(() => {
+      const elapsed = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+      elements.scoreArrangeStatus.textContent = `Finding the best playable E9 route… ${elapsed}s`;
+    }, 1000);
     const success = await submitLesson(1, { preserveStructuredEvents: true, statusElement: elements.scoreArrangeStatus });
+    global.clearInterval(progressTimer);
     if (!success) {
       state.scoreDraft.review.status = previousReviewStatus;
       renderScoreBuilder();
@@ -2940,10 +2969,15 @@
   elements.scorePlay.addEventListener("click", playScoreDraft);
   elements.scoreDownload.addEventListener("click", downloadScoreDraft);
   elements.scoreArrange.addEventListener("click", arrangeScoreDraft);
+  elements.scoreEditToggle.addEventListener("click", () => {
+    state.scoreEditingEnabled = !state.scoreEditingEnabled;
+    renderScoreBuilder();
+  });
   elements.scorePreviousNote.addEventListener("click", () => selectScoreEvent(state.scoreSelectedIndex - 1));
   elements.scoreNextNote.addEventListener("click", () => selectScoreEvent(state.scoreSelectedIndex + 1));
   elements.scoreCanvas.addEventListener("click", (event) => {
     if (event.target.closest?.(".score-event")) return;
+    if (state.scoreDraft?.source?.type === "catalog" && !state.scoreEditingEnabled) return;
     const rect = elements.scoreCanvas.getBoundingClientRect();
     const relative = Math.max(0, Math.min(1, (event.clientY - rect.top) / Math.max(1, rect.height)));
     const pitchValue = Math.max(48, Math.min(84, Math.round(79 - relative * 24)));
@@ -3023,6 +3057,7 @@
 
   doc.addEventListener("keydown", (event) => {
     if (state.inputMethod !== "score" || event.metaKey || event.ctrlKey || event.altKey) return;
+    if (state.scoreDraft?.source?.type === "catalog" && !state.scoreEditingEnabled) return;
     if (["INPUT", "TEXTAREA", "SELECT"].includes(doc.activeElement?.tagName)) return;
     if (["Delete", "Backspace"].includes(event.key)) {
       event.preventDefault();

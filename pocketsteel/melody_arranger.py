@@ -98,10 +98,18 @@ def arrange_melody_routes(
     inputs = all_inputs[event_start:event_end]
     resolved_pitches = all_resolved_pitches[event_start:event_end]
     phrase_starts, phrase_ends = _phrase_boundaries(inputs, sections)
-    single_candidates = [
-        single_note_candidates(item, pitch, profile=target_profile)
-        for item, pitch in zip(inputs, resolved_pitches)
-    ]
+    single_cache: dict[tuple[object, ...], list[PositionCandidate]] = {}
+    single_candidates: list[list[PositionCandidate]] = []
+    for item, pitch in zip(inputs, resolved_pitches):
+        literal_key = None
+        if item.literal is not None:
+            literal_key = (item.literal.string, item.literal.fret, tuple(item.literal.changes))
+        cache_key = (item.note, item.degree, pitch, literal_key)
+        candidates = single_cache.get(cache_key)
+        if candidates is None:
+            candidates = single_note_candidates(item, pitch, profile=target_profile)
+            single_cache[cache_key] = candidates
+        single_candidates.append(candidates)
     single_path = choose_path(single_candidates, inputs=inputs)
     if not single_path:
         raise ValueError("The melody does not have a mechanically valid standard-E9 path.")
@@ -141,11 +149,36 @@ def arrange_melody_routes(
         )
     )
 
+    harmony_groups: dict[str, list[list[PositionCandidate]]] = {}
+    generic_catalogs: dict[str, list[PositionCandidate]] = {}
+
+    def groups_for(harmony_type: str) -> list[list[PositionCandidate]]:
+        groups = harmony_groups.get(harmony_type)
+        if groups is None:
+            groups = harmony_candidate_groups(
+                inputs,
+                resolved_pitches,
+                key,
+                harmony_type,
+                profile=target_profile,
+                generic_catalogs=generic_catalogs,
+            )
+            harmony_groups[harmony_type] = groups
+        return groups
+
     for suffix, harmony_type, label in route_specs[1:]:
         if harmony_type == "chord_melody" and not any(_active_chords(inputs)):
             continue
         if harmony_type == "mixed_arrangement":
-            candidate_groups = mixed_candidate_groups(inputs, resolved_pitches, key, profile=target_profile)
+            candidate_groups = mixed_candidate_groups(
+                inputs,
+                resolved_pitches,
+                key,
+                profile=target_profile,
+                single_groups=single_candidates,
+                dyad_groups=groups_for("automatic_harmony"),
+                triad_groups=groups_for("chord_melody"),
+            )
             path = choose_mixed_path(
                 candidate_groups,
                 inputs=inputs,
@@ -157,13 +190,7 @@ def arrange_melody_routes(
                 style_family=selected_style,
             )
         else:
-            candidate_groups = harmony_candidate_groups(
-                inputs,
-                resolved_pitches,
-                key,
-                harmony_type,
-                profile=target_profile,
-            )
+            candidate_groups = groups_for(harmony_type)
             path = choose_path(candidate_groups, inputs=inputs) if candidate_groups and all(candidate_groups) else []
         if not path:
             continue
@@ -439,16 +466,37 @@ def harmony_candidate_groups(
     harmony_type: str,
     *,
     profile: E9CopedentProfile | None = None,
+    generic_catalogs: dict[str, list[PositionCandidate]] | None = None,
 ) -> list[list[PositionCandidate]]:
     profile = profile or EMMONS_E9
     rows = major_three_string_rows(key) if harmony_type == "chord_melody" else major_two_string_rows(key)
     scale = _scale_notes(key)
     active_chords = _active_chords(inputs)
+    generic_catalog: list[PositionCandidate] | None = None
+    if profile.id.startswith("saved:"):
+        catalog_kind = "triad" if harmony_type == "chord_melody" else "dyad"
+        catalog_key = f"{key}:{catalog_kind}"
+        generic_catalogs = generic_catalogs if generic_catalogs is not None else {}
+        generic_catalog = generic_catalogs.get(catalog_key)
+        if generic_catalog is None:
+            generic_catalog = _generic_harmony_catalog(
+                key,
+                chord_melody=harmony_type == "chord_melody",
+                profile=profile,
+            )
+            generic_catalogs[catalog_key] = generic_catalog
     groups: list[list[PositionCandidate]] = []
+    cache: dict[tuple[int, str, int, str], list[PositionCandidate]] = {}
     for item, target_pitch, active_chord in zip(inputs, resolved_pitches, active_chords):
+        cache_key = (item.degree, item.note, target_pitch, active_chord)
+        cached = cache.get(cache_key)
+        if cached is not None:
+            groups.append(cached)
+            continue
         candidates: list[PositionCandidate] = []
         if not 1 <= item.degree <= 7:
             groups.append(candidates)
+            cache[cache_key] = candidates
             continue
         third_note = scale[(item.degree - 3) % 7]
         sixth_note = scale[(item.degree + 1) % 7]
@@ -480,6 +528,7 @@ def harmony_candidate_groups(
                     key,
                     harmony_type,
                     profile=profile,
+                    catalog=generic_catalog,
                 )
             )
             candidates = _dedupe_candidates(candidates)
@@ -487,6 +536,7 @@ def harmony_candidate_groups(
             best_fit = min(_chord_fit_penalty(candidate, active_chord) for candidate in candidates)
             candidates = [candidate for candidate in candidates if _chord_fit_penalty(candidate, active_chord) == best_fit]
         groups.append(candidates)
+        cache[cache_key] = candidates
     return groups
 
 
@@ -514,6 +564,7 @@ def _generic_harmony_candidates(
     harmony_type: str,
     *,
     profile: E9CopedentProfile,
+    catalog: Sequence[PositionCandidate] | None = None,
 ) -> list[PositionCandidate]:
     """Enumerate target-profile grips when no named source shape is required."""
 
@@ -522,19 +573,47 @@ def _generic_harmony_candidates(
     scale = _scale_notes(key)
     third_note = scale[(item.degree - 3) % 7]
     sixth_note = scale[(item.degree + 1) % 7]
-    tab_profile = tab_profile_for_e9(profile)
-    if harmony_type == "chord_melody":
-        grips = _GENERIC_TRIAD_GRIPS
-    else:
-        grips = tuple(
-            dict.fromkeys(
-                pair
-                for grip in _GENERIC_TRIAD_GRIPS
-                for pair in combinations(grip, 2)
-            )
-        )
     candidates: list[PositionCandidate] = []
+    if catalog is None:
+        catalog = _generic_harmony_catalog(
+            key,
+            chord_melody=harmony_type == "chord_melody",
+            profile=profile,
+        )
+    for candidate in catalog:
+        if candidate.top_pitch != target_pitch:
+            continue
+        top_index = max(range(len(candidate.voice_pitches)), key=lambda index: candidate.voice_pitches[index])
+        support_notes = [note for index, note in enumerate(candidate.note_names) if index != top_index]
+        if harmony_type == "thirds" and third_note not in support_notes:
+            continue
+        if harmony_type == "sixths" and sixth_note not in support_notes:
+            continue
+        if harmony_type == "automatic_harmony" and not ({third_note, sixth_note} & set(support_notes)):
+            continue
+        candidates.append(candidate)
+    return _dedupe_candidates(candidates)
+
+
+def _generic_harmony_catalog(
+    key: str,
+    *,
+    chord_melody: bool,
+    profile: E9CopedentProfile,
+) -> list[PositionCandidate]:
+    """Enumerate a saved copedent once, then filter it for each melody event."""
+
+    scale = _scale_notes(key)
     scale_pitch_classes = {_pitch_class(note) for note in scale}
+    tab_profile = tab_profile_for_e9(profile)
+    grips = _GENERIC_TRIAD_GRIPS if chord_melody else tuple(
+        dict.fromkeys(
+            pair
+            for grip in _GENERIC_TRIAD_GRIPS
+            for pair in combinations(grip, 2)
+        )
+    )
+    candidates: list[PositionCandidate] = []
     for controls in candidate_control_states(profile):
         for grip in grips:
             if controls and not any(
@@ -545,24 +624,14 @@ def _generic_harmony_candidates(
                 continue
             for fret in range(25):
                 pitches = tuple(_absolute_pitch(string, fret, controls, profile=profile) for string in grip)
-                if max(pitches) != target_pitch:
-                    continue
                 top_index = max(range(len(grip)), key=lambda index: pitches[index])
-                if pitches[top_index] != target_pitch:
-                    continue
+                top_pitch = pitches[top_index]
                 note_names = tuple(note_name_for_pitch(pitch) for pitch in pitches)
-                support_notes = [note for index, note in enumerate(note_names) if index != top_index]
-                if harmony_type == "thirds" and third_note not in support_notes:
-                    continue
-                if harmony_type == "sixths" and sixth_note not in support_notes:
-                    continue
-                if harmony_type == "automatic_harmony" and not ({third_note, sixth_note} & set(support_notes)):
-                    continue
-                if harmony_type == "chord_melody" and not all(
+                if chord_melody and not all(
                     _pitch_class(note) in scale_pitch_classes for note in note_names
                 ):
                     continue
-                if harmony_type == "chord_melody" and len({_pitch_class(note) for note in note_names}) < 3:
+                if chord_melody and len({_pitch_class(note) for note in note_names}) < 3:
                     continue
                 notes = tuple(
                     TabNote(
@@ -580,7 +649,7 @@ def _generic_harmony_candidates(
                     PositionCandidate(
                         fret=fret,
                         notes=notes,
-                        top_pitch=target_pitch,
+                        top_pitch=top_pitch,
                         controls=controls,
                         family="target_copedent_enumeration",
                         note_names=note_names,
@@ -603,16 +672,19 @@ def mixed_candidate_groups(
     key: str,
     *,
     profile: E9CopedentProfile | None = None,
+    single_groups: Sequence[Sequence[PositionCandidate]] | None = None,
+    dyad_groups: Sequence[Sequence[PositionCandidate]] | None = None,
+    triad_groups: Sequence[Sequence[PositionCandidate]] | None = None,
 ) -> list[list[PositionCandidate]]:
     """Combine scale rows with common chord grips and their playable subsets."""
 
     profile = profile or EMMONS_E9
-    dyads = harmony_candidate_groups(inputs, resolved_pitches, key, "automatic_harmony", profile=profile)
-    triads = harmony_candidate_groups(inputs, resolved_pitches, key, "chord_melody", profile=profile)
+    dyads = dyad_groups or harmony_candidate_groups(inputs, resolved_pitches, key, "automatic_harmony", profile=profile)
+    triads = triad_groups or harmony_candidate_groups(inputs, resolved_pitches, key, "chord_melody", profile=profile)
     active_chords = _active_chords(inputs)
     groups: list[list[PositionCandidate]] = []
     for index, (item, pitch) in enumerate(zip(inputs, resolved_pitches)):
-        singles = single_note_candidates(item, pitch, profile=profile)
+        singles = list(single_groups[index]) if single_groups is not None else single_note_candidates(item, pitch, profile=profile)
         if item.literal is not None:
             groups.append(singles)
             continue

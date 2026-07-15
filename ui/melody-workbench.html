@@ -130,6 +130,17 @@
     .import-dropzone { display: grid; place-items: center; gap: 10px; min-height: 150px; border: 1px dashed rgba(240, 191, 105, 0.48); border-radius: 16px; background: rgba(240, 191, 105, 0.045); padding: 22px; text-align: center; }
     .score-primary-tools { display: flex; align-items: end; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
     .score-primary-tools .field { min-width: 150px; }
+    .score-review-action { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 18px; margin: 0 0 16px; border: 1px solid rgba(240, 191, 105, 0.34); border-radius: 14px; background: rgba(240, 191, 105, 0.08); padding: 14px; }
+    .score-review-action p { margin: 4px 0 0; }
+    .score-review-action__buttons { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+    #studio-score-panel.is-review-only #studio-score-undo,
+    #studio-score-panel.is-review-only #studio-score-redo,
+    #studio-score-panel.is-review-only #studio-score-setup,
+    #studio-score-panel.is-review-only #studio-score-keyboard,
+    #studio-score-panel.is-review-only #studio-score-selection,
+    #studio-score-panel.is-review-only #studio-score-status,
+    #studio-score-panel.is-review-only #studio-score-event-editor,
+    #studio-score-panel.is-review-only #studio-score-tools { display: none; }
     .score-quick-edit { max-width: 280px; margin-top: 14px; }
     .audio-choice { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
     .audio-choice > * { border: 1px solid rgba(244, 234, 214, 0.12); border-radius: 14px; background: rgba(5, 7, 7, 0.28); padding: 14px; }
@@ -505,7 +516,15 @@
         </div>
 
         <section class="input-panel" id="studio-score-panel" data-input-panel="score" hidden>
-          <div class="input-panel-head"><div><h3 id="studio-score-heading">Staff editor</h3><p class="field-help">Add and review one melody voice. Open the details only when you need them.</p></div><span class="review-badge" id="studio-score-source">User-created score</span></div>
+          <div class="input-panel-head"><div><h3 id="studio-score-heading">Staff editor</h3><p class="field-help" id="studio-score-guidance">Add and review one melody voice. Open the details only when you need them.</p></div><span class="review-badge" id="studio-score-source">User-created score</span></div>
+          <div class="score-review-action">
+            <div><strong id="studio-score-action-title">Melody ready</strong><p class="field-help" id="studio-score-action-help">Review the staff, then create your E9 arrangement.</p></div>
+            <div class="score-review-action__buttons">
+              <button class="secondary-action" type="button" id="studio-score-edit-toggle" hidden>Edit melody notes</button>
+              <button class="primary-action" type="button" id="studio-score-arrange">Arrange for E9</button>
+            </div>
+            <p class="score-status" id="studio-score-arrange-status" role="status" aria-live="polite"></p>
+          </div>
           <div class="score-primary-tools">
             <button class="secondary-action" type="button" id="studio-score-undo">Undo</button>
             <button class="secondary-action" type="button" id="studio-score-redo">Redo</button>
@@ -554,10 +573,6 @@
               <button class="secondary-action" type="button" id="studio-score-octave-up">All notes up 1 octave</button>
               <button class="secondary-action" type="button" id="studio-score-download">Download MusicXML</button>
           </div></details>
-          <div class="score-actions" style="margin-top:14px; justify-content:flex-end;">
-            <button class="primary-action" type="button" id="studio-score-arrange">Arrange for E9</button>
-          </div>
-          <p class="score-status" id="studio-score-arrange-status" role="status" aria-live="polite"></p>
           <p class="score-warnings" id="studio-score-warnings" hidden></p>
           <img class="source-preview" id="studio-score-source-image" alt="Uploaded score being reviewed" hidden>
         </section>

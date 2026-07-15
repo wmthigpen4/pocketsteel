@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pocketsteel.melody_arranger as melody_arranger
+
 from pocketsteel.copedent_transfer import (
     absolute_pitch_for_profile,
     control_tab_label,
@@ -53,6 +55,54 @@ def saved_profile_payload(*, controls: list[dict] | None = None, name: str = "Te
         ],
         "controls": controls or [],
     }
+
+
+def test_saved_copedent_position_catalog_is_enumerated_once_per_grip_size(monkeypatch) -> None:
+    payload = saved_profile_payload(
+        controls=[
+            {
+                "id": "first-floor",
+                "label": "P1 B raise",
+                "type": "pedal",
+                "changes": [
+                    {"stringNumber": 5, "fromNote": "B", "toNote": "C#"},
+                    {"stringNumber": 10, "fromNote": "B", "toNote": "C#"},
+                ],
+            },
+            {
+                "id": "second-floor",
+                "label": "P2 G# raise",
+                "type": "pedal",
+                "changes": [
+                    {"stringNumber": 3, "fromNote": "G#", "toNote": "A"},
+                    {"stringNumber": 6, "fromNote": "G#", "toNote": "A"},
+                ],
+            },
+        ]
+    )
+    calls: list[bool] = []
+    original = melody_arranger._generic_harmony_catalog
+
+    def counted_catalog(key, *, chord_melody, profile):
+        calls.append(chord_melody)
+        return original(key, chord_melody=chord_melody, profile=profile)
+
+    monkeypatch.setattr(melody_arranger, "_generic_harmony_catalog", counted_catalog)
+    result = melody_exercise_response(
+        "Arrange a repeated phrase",
+        {
+            "key": "G",
+            "targetCopedent": payload,
+            "texture": "both",
+            "melody": [
+                {"pitch": pitch, "pitchValue": value, "chord": "G", "durationBeats": 1}
+                for pitch, value in [("G4", 67), ("B4", 71), ("D4", 62), ("G4", 67)] * 2
+            ],
+        },
+    )
+
+    assert result is not None
+    assert calls == [False, True]
 
 
 def test_photographed_source_profile_preserves_exact_d_and_g_mechanics() -> None:

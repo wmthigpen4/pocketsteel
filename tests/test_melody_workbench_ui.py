@@ -49,6 +49,7 @@ assert.equal(studio.createInitialState().kind, "user_melody");
 assert.equal(studio.createInitialState().inputMethod, "phrase");
 assert.equal(studio.createInitialState().workflowPhase, "add");
 assert.equal(studio.createInitialState().pendingReplacement, "");
+assert.equal(studio.createInitialState().scoreEditingEnabled, true);
 assert.equal(studio.createInitialState().styleFamily, "auto");
 assert.equal(studio.createInitialState().selectedHarmonyType, "mixed_arrangement");
 assert.equal(studio.printableLessonTitle({title: "Amazing Grace — Complete E9 lesson", material: {song: "Amazing Grace"}}), "Amazing Grace");
@@ -515,6 +516,10 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert 'removeSelectedScoreEvent();' in script
     assert 'transposeWholeScore(12, "Moved every note up one octave.")' in script
     assert 'id="studio-score-arrange-status" role="status"' in html
+    assert html.index('id="studio-score-arrange"') < html.index('id="studio-score-canvas"')
+    assert 'id="studio-score-edit-toggle" hidden' in html
+    assert 'state.scoreEditingEnabled = draft.source?.type !== "catalog";' in script
+    assert 'state.scoreDraft?.source?.type === "catalog" && !state.scoreEditingEnabled' in script
     assert "audio is decoded in this browser" in html
     assert "Longer files are fine" in html
     assert "elements.scoreArrange.disabled = !draft.score.melody.some((item) => !item.rest) || unsupportedKey;" in script
