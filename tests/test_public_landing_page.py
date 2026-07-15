@@ -63,8 +63,8 @@ def test_public_landing_page_uses_dark_product_led_visual_direction() -> None:
     assert 'id="home-explorer-preview"' in html
     assert 'class="home-product-grid"' in html
     assert 'class="trust-section"' in html
-    assert 'src="pedal-steel-fretboard.js?v=locked-public-app-home-20260715"' in html
-    assert 'src="landing-home.js?v=locked-public-app-home-20260715"' in html
+    assert 'src="pedal-steel-fretboard.js?v=locked-public-app-home-2-20260715"' in html
+    assert 'src="landing-home.js?v=locked-public-app-home-2-20260715"' in html
 
 
 def test_public_landing_page_reuses_the_real_app_home_previews() -> None:

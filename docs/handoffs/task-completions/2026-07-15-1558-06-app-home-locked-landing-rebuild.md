@@ -38,6 +38,7 @@ No source app renderer, source visual asset, backend, auth, deployment configura
 - `node --check` for the four deployed preview scripts — passed.
 - Inline landing JavaScript parse through `vm.Script` — passed; one inline script parsed.
 - Static forbidden-string scan across `deploy/landing` — clean for private app/API/runtime/auth/payment strings.
+- Production asset cache-bust revision `locked-public-app-home-2-20260715` prevents a pre-propagation fallback response from shadowing the new preview scripts or Q&A artwork.
 - `git diff --check` — passed.
 - Local desktop browser at 1440×1000 — full app-home visual pass; invite form above the fold; real 10-string fretboard mounted; four locked cards; zero card controls; zero Explorer controls; one form; one submit button; zero page overflow; clean browser logs.
 - Local narrow browser at 520×1125 — form above the fold; real fretboard mounted; four 496px single-column cards; zero card overflow; zero page overflow; zero card controls; clean browser logs.
