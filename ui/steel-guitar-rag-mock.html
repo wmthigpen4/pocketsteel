@@ -3339,8 +3339,7 @@
     .question-card,
     .answer-card,
     .fretboard-card,
-    .source-card,
-    .answer-followup-input {
+    .source-card {
       border: 1px solid rgba(240, 191, 105, 0.22);
       background:
         radial-gradient(circle at 50% 0%, rgba(240, 191, 105, 0.08), transparent 42%),
@@ -3357,8 +3356,7 @@
 
     .answer-kicker,
     .answer-section-title,
-    .source-section-title,
-    .followup-title {
+    .source-section-title {
       margin: 0;
       color: rgba(240, 191, 105, 0.92);
       font-size: 12px;
@@ -4020,8 +4018,7 @@
       min-width: 0;
     }
 
-    .source-section,
-    .followup-section {
+    .source-section {
       display: grid;
       gap: 12px;
     }
@@ -4030,8 +4027,7 @@
       display: none;
     }
 
-    .source-section-title,
-    .followup-title {
+    .source-section-title {
       display: flex;
       align-items: center;
       gap: 8px;
@@ -4107,43 +4103,6 @@
 
     .answer-status[hidden] {
       display: none;
-    }
-
-    .followup-chips {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    .followup-chip {
-      min-height: 54px;
-      border: 1px solid rgba(240, 191, 105, 0.24);
-      border-radius: 15px;
-      padding: 0 14px;
-      background: rgba(24, 27, 27, 0.72);
-      color: rgba(244, 234, 214, 0.9);
-      cursor: pointer;
-      font-size: 14px;
-      line-height: 1.25;
-    }
-
-    .followup-chip:hover,
-    .followup-chip:focus-visible {
-      border-color: rgba(240, 191, 105, 0.48);
-      background: rgba(240, 191, 105, 0.07);
-      outline: none;
-    }
-
-    .answer-followup-input {
-      position: relative;
-      min-height: 72px;
-      border-radius: 20px;
-    }
-
-    .answer-followup-input textarea {
-      min-height: 70px;
-      padding: 20px 124px 18px 24px;
-      font-size: 18px;
     }
 
     footer {
@@ -4284,10 +4243,6 @@
 
       .answer-section.is-wide .try-list {
         columns: 1;
-      }
-
-      .followup-chips {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
       .movement-lesson-card__facts,
@@ -4876,15 +4831,6 @@
         font-size: 12px;
       }
 
-      .followup-chips {
-        grid-template-columns: 1fr;
-      }
-
-      .answer-followup-input textarea {
-        min-height: 92px;
-        padding: 18px 20px 82px;
-      }
-
       footer {
         width: calc(100% - 28px);
         padding-bottom: 22px;
@@ -5189,25 +5135,6 @@
           </div>
         </section>
 
-        <section class="followup-section" aria-labelledby="keep-going-title">
-          <h2 class="followup-title" id="keep-going-title">Keep going</h2>
-          <div class="followup-chips">
-            <button class="followup-chip" type="button">Show me a test sequence</button>
-            <button class="followup-chip" type="button">Explain grounding simply</button>
-            <button class="followup-chip" type="button">Could it be my volume pedal?</button>
-            <button class="followup-chip" type="button">Find more forum posts</button>
-          </div>
-        </section>
-
-        <section class="answer-followup-input" aria-label="Ask another steel guitar question">
-          <textarea id="followup-question" aria-label="Ask another steel guitar question" placeholder="Ask another steel guitar question..."></textarea>
-          <div class="input-actions">
-            <button class="icon-button" type="button" aria-label="Voice question">
-              <svg viewBox="0 0 24 24"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></svg>
-            </button>
-            <button class="send answer-send" type="button" aria-label="Ask follow-up">↑</button>
-          </div>
-        </section>
       </section>
     </main>
 
@@ -5896,9 +5823,6 @@
     const answerFretboardMount = document.querySelector("#answer-fretboard-mount");
     const sourceGrid = document.querySelector("#source-grid");
     const sourceSection = document.querySelector(".source-section");
-    const followupQuestion = document.querySelector("#followup-question");
-    const answerSend = document.querySelector(".answer-send");
-    const followupChipList = document.querySelector(".followup-chips");
     const questionLabel = document.querySelector(".question-label");
     const lessonQuestion = document.querySelector("#lesson-question");
     const helperText = document.querySelector(".helper-text");
@@ -7311,17 +7235,6 @@
         link.addEventListener("click", (event) => event.preventDefault());
       });
 
-      followupChipList.innerHTML = "";
-      const followups = response.followups?.length
-        ? response.followups
-        : ["How does this apply on E9?", "Show me more source evidence", "Explain that more simply", "What should I practice first?"];
-      followups.forEach((followup) => {
-        const chip = document.createElement("button");
-        chip.className = "followup-chip";
-        chip.type = "button";
-        chip.textContent = followup;
-        followupChipList.appendChild(chip);
-      });
     }
 
     function renderLoadingState(submittedQuestion) {
@@ -7341,7 +7254,6 @@
       loadingCard.className = "source-card";
       loadingCard.innerHTML = '<div class="source-meta"><span>Source notes</span></div><h3>Retrieving source cards</h3><p>Forum name, thread title, excerpt, and source URL will appear here.</p>';
       sourceGrid.appendChild(loadingCard);
-      followupChipList.innerHTML = "";
       answeredQuestion.textContent = submittedQuestion;
     }
 
@@ -7362,7 +7274,6 @@
       errorCard.className = "source-card";
       errorCard.innerHTML = '<div class="source-meta"><span>Source notes</span></div><h3>No sources loaded</h3><p>The request failed before source cards could be returned.</p>';
       sourceGrid.appendChild(errorCard);
-      followupChipList.innerHTML = "";
     }
 
     let answerRequestInFlight = false;
@@ -7376,7 +7287,6 @@
     function setAnswerBusy(isBusy) {
       const canAskLive = STEEL_RAG_ANSWER_UI.canSubmitLiveQuestion(mockAccessState);
       primarySend.disabled = isBusy || !canAskLive;
-      answerSend.disabled = isBusy || !canAskLive;
       suggestedPrompts.querySelectorAll(".example").forEach((button) => {
         button.disabled = isBusy;
       });
@@ -7412,7 +7322,6 @@
       page.classList.add("is-asking");
       askHeaderLink.setAttribute("aria-current", "page");
       question.value = String(prefill || "");
-      followupQuestion.value = "";
       updateHelperState();
       window.scrollTo({ top: 0, behavior: "smooth" });
       window.requestAnimationFrame(() => question.focus({ preventScroll: true }));
@@ -7464,12 +7373,6 @@
       submitQuestion(question.value);
     }
 
-    function submitFollowupQuestion() {
-      if (submitQuestion(followupQuestion.value, { isFollowup: true })) {
-        followupQuestion.value = "";
-      }
-    }
-
     function returnToStage({ focusTarget = "home" } = {}) {
       answerWorkspace.hidden = true;
       askWorkspace.hidden = true;
@@ -7482,7 +7385,6 @@
         footer.hidden = false;
       }
       question.value = "";
-      followupQuestion.value = "";
       answeredQuestion.textContent = HUM_DEMO_QUESTION;
       clearProgressionGuide();
       clearMelodyExercise();
@@ -8150,23 +8052,6 @@
       const button = event.target.closest(".example");
       if (!button) return;
       submitQuestion(button.dataset.promptText || button.textContent.trim());
-    });
-
-    followupChipList.addEventListener("click", (event) => {
-      const chip = event.target.closest(".followup-chip");
-      if (!chip) return;
-      submitQuestion(chip.textContent.trim(), { isFollowup: true });
-    });
-
-    answerSend.addEventListener("click", () => {
-      submitFollowupQuestion();
-    });
-
-    followupQuestion.addEventListener("keydown", (event) => {
-      if (STEEL_RAG_ANSWER_UI.shouldSubmitQuestionKey(event)) {
-        event.preventDefault();
-        submitFollowupQuestion();
-      }
     });
 
     document.querySelectorAll(".source-card a").forEach((link) => {

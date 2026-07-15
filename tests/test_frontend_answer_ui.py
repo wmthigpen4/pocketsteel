@@ -956,7 +956,7 @@ def test_answer_ui_header_only_exposes_home_ask_and_backstage() -> None:
     assert "openAskWorkspace();" in html
     assert 'askHeaderLink.addEventListener("click", () => returnToStage' not in html
     assert html.count('id="question"') == 1
-    assert html.count('id="followup-question"') == 1
+    assert html.count('id="followup-question"') == 0
     assert 'class="stage-return"' not in html
     assert 'const stageReturn =' not in html
     assert 'stageReturn.addEventListener' not in html
@@ -988,16 +988,15 @@ def test_full_screen_ask_is_the_only_primary_search_surface() -> None:
     assert 'submitQuestion(button.dataset.promptText || button.textContent.trim());' in html
 
 
-def test_answer_followup_chips_are_real_immediate_questions() -> None:
+def test_answer_workspace_has_no_followup_chips_or_composer() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
 
-    assert '"How does this apply on E9?"' in html
-    assert '"Show me more source evidence"' in html
-    assert '"Explain that more simply"' in html
-    assert '"What should I practice first?"' in html
-    assert ': ["Ask a follow-up",' not in html
-    assert 'submitQuestion(chip.textContent.trim(), { isFollowup: true });' in html
-    assert 'followupQuestion.value = chip.textContent.trim();' not in html
+    answer_workspace = html.split('<section class="answer-workspace"', 1)[1].split("</main>", 1)[0]
+
+    assert 'class="followup-section"' not in answer_workspace
+    assert 'id="followup-question"' not in answer_workspace
+    assert 'class="answer-followup-input"' not in answer_workspace
+    assert 'submitQuestion(chip.textContent.trim(), { isFollowup: true });' not in html
 
 
 def test_backstage_more_action_pill_centers_summary_text() -> None:
@@ -2807,19 +2806,21 @@ assert.equal(answerUi.canSubmitLiveQuestion("admin"), true);
     assert result.returncode == 0, result.stderr
 
 
-def test_answer_ui_wires_enter_and_send_button_to_same_submit_path() -> None:
+def test_answer_ui_keeps_submission_in_full_screen_ask_workspace() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
 
     assert "question.addEventListener(\"keydown\"" in html
-    assert "followupQuestion.addEventListener(\"keydown\"" in html
     assert "STEEL_RAG_ANSWER_UI.shouldSubmitQuestionKey(event)" in html
     assert "event.preventDefault();" in html
     assert "function submitQuestion(questionText, requestPayload = {})" in html
     assert "STEEL_RAG_ANSWER_UI.hasSubmittableQuestion(questionText)" in html
     assert "submitQuestion(question.value);" in html
     assert "primarySend.addEventListener(\"click\", submitHomeQuestion)" in html
-    assert "answerSend.addEventListener(\"click\", () =>" in html
-    assert "submitFollowupQuestion();" in html
+    assert 'id="followup-question"' not in html
+    assert 'class="followup-section"' not in html
+    assert 'class="answer-followup-input"' not in html
+    assert "followupChipList" not in html
+    assert "submitFollowupQuestion" not in html
 
 
 def test_answer_ui_gates_live_submission_by_mock_access_state() -> None:

@@ -2708,7 +2708,11 @@ def unsupported_chord_location_request_for_question(question: str) -> Unsupporte
         return None
     body = prefix_match.group("body")
     body = re.sub(r"\bon e9\b$", "", body).strip()
-    body = re.sub(r"\b(?:and\s+)?where\s+(?:do|can|should)\s+i\s+play\s+it$", "", body).strip()
+    body = re.sub(
+        r"\b(?:and\s+)?where\s+(?:(?:do|can|should)\s+i\s+play|can\s+i\s+find)\s+it(?:\s+on\s+(?:the\s+)?fretboard)?$",
+        "",
+        body,
+    ).strip()
     body = re.sub(r"\bpositions?\b$", "", body).strip()
     body = re.sub(r"\bchord\b$", "", body).strip()
     quality_match = re.match(

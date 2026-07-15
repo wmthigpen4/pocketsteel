@@ -4902,6 +4902,10 @@ def test_quarantine_smoke_concrete_resolvers_are_direct_source_free_and_visual_w
             "required": ("Cmaj7 is C-E-G-B", "major 7th", "target B as the major 7"),
             "fretboard_title": "C major positions on E9",
         },
+        "What is an Fmaj7? Where can I find it on the fretboard?": {
+            "required": ("Fmaj7 is F-A-C-E", "major 7th", "target E as the major 7"),
+            "fretboard_title": "F major positions on E9",
+        },
         "How do I play a C major 7th?": {
             "required": ("Cmaj7 is C-E-G-B", "major 7th", "target B as the major 7"),
             "fretboard_title": "C major positions on E9",

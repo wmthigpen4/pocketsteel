@@ -59,7 +59,11 @@ def _normalize_chord_quality(quality: str) -> str:
 def basic_chord_theory_request_for_question(question: str) -> BasicChordTheoryRequest | None:
     q = normalize_chord_words_in_text(re.sub(r"\s+", " ", question or "").strip().lower())
     q = re.sub(r"[?!.,;:/]+$", "", q).strip()
-    q = re.sub(r"(?:[?!.,;:]+|\s+and)\s+where\s+(?:do|can|should)\s+i\s+play\s+it$", "", q).strip()
+    q = re.sub(
+        r"(?:[?!.,;:]+|\s+and)\s+where\s+(?:(?:do|can|should)\s+i\s+play|can\s+i\s+find)\s+it(?:\s+on\s+(?:the\s+)?fretboard)?$",
+        "",
+        q,
+    ).strip()
     if not q:
         return None
     root_pattern = r"(?P<root>[a-g](?:#|b)?)"
