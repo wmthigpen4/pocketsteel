@@ -44,6 +44,16 @@ reports/generated/
 smoke-output/
 tmp/
 
+# Local visual-design sources and redundant master exports
+Neon Sign/
+/"Neon Sign/
+public/brand/*.aep
+public/brand/*.mov
+public/brand/steel-guitar-rag-landing-master-prores*.mp4
+public/brand/steel-guitar-rag-landing.mp4
+public/brand/steel-guitar-rag-landing.webm
+public/brand/steel-guitar-rag-landing-fallback.png
+
 # Local corpus and generated artifacts
 archive/
 corpus-v2/
@@ -54,8 +64,11 @@ corpus_metadata/review_queue/
 corpus_metadata/source_policy_snapshots.jsonl
 rag-data/
 data/raw/
+data/clean/
+data/chunks/
 data/processed/
 data/indexes/
+data/rag/chroma/
 data/**/raw/
 data/**/processed/
 data/**/indexes/
@@ -104,6 +117,7 @@ lessons/
 # Human-managed non-SGF source inbox
 !source-inbox/
 !source-inbox/**/
+source-inbox/provenance.json
 source-inbox/**/*.txt
 source-inbox/**/*.pdf
 source-inbox/**/*.vtt
