@@ -1253,6 +1253,24 @@ def test_natural_language_major_requests_accept_common_question_forms() -> None:
         assert payload["positions"], question
 
 
+def test_classic_country_move_payload_visualizes_all_three_pitch_checked_states() -> None:
+    payload = fretboard_payload_for_question("Show me a classic country move.")
+
+    assert payload is not None
+    assert_valid_visualization_payload(payload)
+    assert payload["title"] == "Classic-country pickup in G"
+    assert [position["role"] for position in payload["positions"]] == [
+        "Step 1 · Pick the tense double-stop",
+        "Step 2 · Slide into the home fret",
+        "Step 3 · Release A and land on G",
+    ]
+    assert [position["notes"] for position in payload["positions"]] == [
+        {"4": "F", "5": "D"},
+        {"4": "G", "5": "E"},
+        {"4": "G", "5": "D", "6": "B"},
+    ]
+
+
 def test_b_flat_minor_preserves_flat_spelling_in_answer_and_payload() -> None:
     answer = minor_chord_answer_for_question("What does Bb minor look like?")
     payload = fretboard_payload_for_question("What does Bb minor look like?")

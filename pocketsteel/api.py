@@ -90,7 +90,10 @@ from pocketsteel.curated_guidance_retriever import (
     search_curated_guidance,
 )
 from pocketsteel.curated_source_registry import slide_bar_vendor_source_cards
-from pocketsteel.fretboard_examples import fretboard_payload_for_question
+from pocketsteel.fretboard_examples import (
+    classic_country_move_payload_for_question,
+    fretboard_payload_for_question,
+)
 from pocketsteel.progression_guide import progression_guide_for_question
 from pocketsteel.copedent_transfer import (
     copedent_context_metadata,
@@ -1394,6 +1397,9 @@ class RetrievalApi:
                     answer_request.question,
                     answer_intent_decision=answer_intent_decision,
                 )
+                classic_country_move_payload = classic_country_move_payload_for_question(answer_request.question)
+                if classic_country_move_payload is not None:
+                    payload["fretboard"] = classic_country_move_payload
                 if copedent_context is not None:
                     _personalize_answer_payload(payload, target_profile, target_revision)
                 self._log_answer_attempt(

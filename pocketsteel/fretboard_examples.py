@@ -1878,6 +1878,81 @@ def fret_string_pedal_payload_for_question(question: str) -> dict | None:
     ).to_payload()
 
 
+def classic_country_move_payload_for_question(question: str) -> dict | None:
+    """Show the three pitch-checked states used by the landing example answer."""
+    q = normalize_chord_intent_text(question)
+    if q != "show me a classic country move":
+        return None
+
+    candidates = (
+        major_position_candidate(
+            key="G",
+            quality="dominant7",
+            suffix="classic-country-pickup",
+            fret=1,
+            strings=(4, 5),
+            pedals=("A",),
+            color="primary",
+            role="Step 1 · Pick the tense double-stop",
+            family="classic_country_move",
+            tier="beginner",
+            color_role="primary",
+            visible_by_default=True,
+            sort_order=10,
+            explanation="At fret 1 with the A pedal down, strings 4 and 5 sound F and D.",
+            function="pickup",
+            key_context="G",
+            why_use_it="This two-note tension sets up the slide into the G home fret.",
+        ),
+        major_position_candidate(
+            key="G",
+            quality="major",
+            suffix="classic-country-slide",
+            fret=3,
+            strings=(4, 5),
+            pedals=("A",),
+            color="secondary",
+            role="Step 2 · Slide into the home fret",
+            family="classic_country_move",
+            tier="beginner",
+            color_role="secondary",
+            visible_by_default=True,
+            sort_order=20,
+            explanation="Keep the A pedal down as the ringing double-stop reaches fret 3, sounding G and E.",
+            function="arrival",
+            key_context="G",
+            why_use_it="The sustained bar move carries the tension into a recognizable G6 color.",
+        ),
+        major_position_candidate(
+            key="G",
+            quality="major",
+            suffix="classic-country-home",
+            fret=3,
+            strings=(4, 5, 6),
+            color="alternate",
+            role="Step 3 · Release A and land on G",
+            family="classic_country_move",
+            tier="beginner",
+            color_role="alternate",
+            visible_by_default=True,
+            sort_order=30,
+            explanation="Release the A pedal at fret 3, then lightly repick strings 4, 5, and 6 for G major.",
+            function="I",
+            key_context="G",
+            why_use_it="This is the full no-pedal G landing that resolves the moving string against the held G.",
+        ),
+    )
+    if any(position is None for position in candidates):
+        raise RuntimeError("Classic-country move failed pitch validation")
+    positions = tuple(position for position in candidates if position is not None)
+    return FretboardVisualizationPayload(
+        title="Classic-country pickup in G",
+        subtitle="Follow the three states: fret 1 with A, slide to fret 3 with A, then release A for the G landing.",
+        key="G",
+        positions=positions,
+    ).to_payload()
+
+
 def function_chord_payload_for_question(question: str) -> dict | None:
     request = function_chord_request_for_question(question)
     if request is None:
@@ -2395,6 +2470,9 @@ def fretboard_payload_for_question(question: str) -> dict | None:
     q = normalize_chord_intent_text(question)
     if not q:
         return None
+    classic_country_move_payload = classic_country_move_payload_for_question(q)
+    if classic_country_move_payload is not None:
+        return classic_country_move_payload
     diagnostic_payload = fret_string_pedal_payload_for_question(q)
     if diagnostic_payload is not None:
         return diagnostic_payload
