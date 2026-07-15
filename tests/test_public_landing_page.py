@@ -42,7 +42,7 @@ def test_public_landing_page_has_conversion_focused_copy_and_ctas() -> None:
     assert "Built for pedal steel" in html
     assert "See the neck. Understand the music. Play with confidence." in html
     assert "Explore E9 positions. Build and practice melodies. Follow guided lessons. Get source-aware help from the Steel Guitar Brain." in html
-    assert html.count("Get launch invite") >= 3
+    assert html.count("Get launch invite") == 2
     assert "No app access yet. We’ll email you when launch invites open." in html
     assert "You’re on the list. We’ll email you when launch invites open." in html
     assert '<form class="interest-form" id="interest-form" action="/api/interest" method="post">' in html
@@ -50,6 +50,41 @@ def test_public_landing_page_has_conversion_focused_copy_and_ctas() -> None:
     assert "Open app" not in html
     assert "Pricing" not in html
     assert "Payments" not in html
+
+
+def test_public_landing_header_status_is_plain_and_has_no_duplicate_invite_cta() -> None:
+    html = LANDING_PAGE.read_text(encoding="utf-8")
+    header = html.split('<header class="app-shell-header">', 1)[1].split("</header>", 1)[0]
+    label_style = html.split(".preview-label {", 1)[1].split("}", 1)[0]
+
+    assert '<span class="preview-label">' in header
+    assert "Private preview" in header
+    assert "Get launch invite" not in header
+    assert "invite-button" not in header
+    assert "preview-chip" not in html
+    assert "border" not in label_style
+    assert "border-radius" not in label_style
+    assert "background" not in label_style
+
+
+def test_public_landing_footer_centers_the_app_rag_explainer() -> None:
+    html = LANDING_PAGE.read_text(encoding="utf-8")
+
+    assert 'class="home-trust-footer home-ai-footer"' in html
+    assert "Built deep for pedal steel." in html
+    assert "Powered by source-aware AI underneath." in html
+    assert 'class="footer-trigger footer-shimmer"' in html
+    assert 'aria-expanded="false" aria-controls="tech-popover"' in html
+    assert 'id="tech-popover" role="dialog" aria-modal="true"' in html
+    assert "Inside the RAG" in html
+    assert "Retrieve" in html and "Augment" in html and "Generate" in html
+    assert 'title: "What’s underneath?"' in html
+    assert '“RAG” stands for retrieval-augmented generation' in html
+    assert "searches organized knowledge before responding" in html
+    assert "techPopoverClose.focus();" in html
+    assert 'event.key === "Escape"' in html
+    assert "Private preview · Features remain locked until launch." not in html
+    assert "Steel Guitar RAG · Built deep for pedal steel." not in html
 
 
 def test_public_landing_page_uses_dark_product_led_visual_direction() -> None:
