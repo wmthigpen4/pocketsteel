@@ -26,129 +26,78 @@ def test_interest_digest_config_enables_scoped_migrations_and_observability() ->
     assert "content_hash text not null" in migration
 
 
-def test_public_landing_page_has_required_beta_copy_and_ctas() -> None:
+def test_public_landing_page_has_conversion_focused_copy_and_ctas() -> None:
     html = LANDING_PAGE.read_text(encoding="utf-8")
 
-    assert 'Explore the neck. Ask <span class="hero-emphasis">better</span> questions.' in html
-    assert "Fretboard Explorer + Steel Guitar Brain" in html
-    assert "The Fretboard Explorer helps you see grips, scales, chords, notes, voicings, and pedal/lever moves across the E9 neck." in html
-    assert "The Steel Guitar Brain is the companion for source-aware explanation" in html
-    assert "Join the interest list" in html
-    assert "Open app" in html
-    assert "Start exploring" in html
-    assert "Start with the Explorer" in html
-    assert "Ask the Brain" in html
-    assert "Live AI access requires login and is not public yet." in html
-    assert "Tell me what you play and what you want Steel Guitar RAG to help with. This list is for inviting preview testers while the corpus, fretboard behavior, and beta access model are tuned." in html
+    assert "Built for pedal steel" in html
+    assert "See the neck. Understand the music. Play with confidence." in html
+    assert "Explore E9 positions, build and practice melodies, follow guided lessons, and get source-aware steel-guitar answers" in html
+    assert html.count("Get launch invite") >= 3
+    assert "No app access yet. We’ll email you when launch invites open." in html
+    assert "You’re on the list. We’ll email you when launch invites open." in html
     assert '<form class="interest-form" id="interest-form" action="/api/interest" method="post">' in html
+    assert 'href="#interest-form" data-focus-interest' in html
+    assert "Open app" not in html
+    assert "Pricing" not in html
+    assert "Payments" not in html
 
 
-def test_public_landing_page_uses_dark_premium_visual_direction() -> None:
+def test_public_landing_page_uses_dark_product_led_visual_direction() -> None:
     html = LANDING_PAGE.read_text(encoding="utf-8")
 
-    assert "--gold: #ffc45e;" in html
-    assert "--bg: #050403;" in html
-    assert "background-attachment: fixed;" in html
-    assert "hero-emphasis" in html
-    assert "app-preview" in html
-    assert "mode-dock" in html
-    assert "feature-strip" in html
-    assert "Unlock the full explorer" in html
-    assert "Request full access" in html
-    assert "Payments are not public yet" in html
-
-
-def test_public_landing_page_describes_pedal_steel_specific_preview() -> None:
-    html = LANDING_PAGE.read_text(encoding="utf-8")
-
-    assert "Use the Explorer when you want to see it. Use the Brain when you need explanation." in html
-    assert "See the E9 neck come alive. Explore grips, scales, chords, note locations, voicings, and control changes with validated copedent logic." in html
-    assert "Get source-aware answers on tone, copedents, setup, technique, theory, and troubleshooting" in html
-    assert "Validated explorer data" in html
-    assert "Pedal/lever aware" in html
-    assert "Built for real copedents" in html
-    assert "Not a generic chatbot" in html
-    assert "Forum discussions, manuals, courses, and player notes can support answers when relevant." in html
-    assert "full copyrighted song tabs" in html
-    assert "transcribe recorded solos on demand" in html
-    assert "The product is not built to hand out full copyrighted song tabs or transcribe recorded solos on demand." in html
-    assert "Pocket Steel" not in html
-
-
-def test_public_landing_page_lists_expected_example_questions() -> None:
-    html = LANDING_PAGE.read_text(encoding="utf-8")
-
-    expected_questions = [
-        "Why does touching the changer reduce hum?",
-        "What grip works for Fmaj7?",
-        "Give me a practice rut breaker",
-    ]
-
-    for question in expected_questions:
-        assert question in html
-
-
-def test_public_landing_page_makes_explorer_first_class() -> None:
-    html = LANDING_PAGE.read_text(encoding="utf-8")
-
-    assert '<a class="nav-link is-active" href="#top">Home</a>' in html
-    assert '<a class="nav-link" href="#explorer">Fretboard Explorer</a>' in html
-    assert '<a class="nav-link" href="#brain">Ask the Brain</a>' in html
-    assert '<a class="nav-link" href="#modes">Modes</a>' in html
-    assert '<a class="nav-link" href="#why">Why it works</a>' in html
-    assert 'class="app-preview"' in html
-    assert 'class="fretboard-window" aria-label="E9 Fretboard Explorer preview"' in html
-    assert "Two ways to learn faster" in html
-    assert "Fretboard Explorer</h3>" in html
-    assert "Steel Guitar Brain</h3>" in html
-
-    expected_modes = [
-        "Single Grip",
-        "Harmonized Path Scale",
-        "Single-Note Finder",
-        "Chord Finder",
-        "Voicing Identifier",
-    ]
-
-    for mode in expected_modes:
-        assert mode in html
-
-
-def test_public_landing_page_keeps_brain_compact_and_secondary() -> None:
-    html = LANDING_PAGE.read_text(encoding="utf-8")
-
-    assert 'class="brain-band"' in html
-    assert 'class="brain-input"' in html
-    assert "Ask the steel guitar brain..." in html
-    assert "Why does touching the changer reduce hum?" in html
-    assert "What grip works for Fmaj7?" in html
-    assert "Give me a practice rut breaker" in html
-    assert "chat transcript" not in html.lower()
-    assert "Thousands of steel players" not in html
-    assert "Loved by players" not in html
-
-
-def test_public_landing_page_is_static_and_uses_local_assets() -> None:
-    html = LANDING_PAGE.read_text(encoding="utf-8")
-
-    assert 'class="hero-hanging-sign"' in html
-    assert 'data-src="brand/steel-guitar-rag-landing-alpha.webm"' in html
-    assert 'poster="brand/steel-guitar-rag-landing-fallback-alpha.png"' in html
-    assert 'src="brand/steel-guitar-rag-landing-fallback-alpha.png"' in html
-    assert "width: clamp(168px, 18vw, 224px);" in html
-    assert "width: clamp(142px, 45vw, 190px);" in html
+    assert "--amber: #ffc45e;" in html
     assert 'url("assets/steel_on_stage2.png")' in html
+    assert 'src="brand/steel-guitar-rag-landing-fallback-alpha.png"' in html
+    assert 'class="product-window"' in html
+    assert 'class="workspace-grid"' in html
+    assert 'class="proof-grid"' in html
+    assert "background: linear-gradient(150deg" in html
+
+
+def test_public_landing_page_describes_four_locked_workspaces() -> None:
+    html = LANDING_PAGE.read_text(encoding="utf-8")
+
+    expected_workspaces = [
+        "Fretboard Explorer",
+        "Melody Studio",
+        "Lessons",
+        "Steel Guitar Q&amp;A",
+    ]
+    for workspace in expected_workspaces:
+        assert workspace in html
+    assert html.count('class="workspace-card"') == 4
+    assert html.count("Coming at launch") == 4
+    assert "Everything stays locked until launch. Here’s what’s coming." in html
+    assert "These are static previews of the product in development." in html
+    assert "Validated E9 logic" in html
+    assert "Real copedents" in html
+    assert "Source-aware answers" in html
+    assert "Show me a classic country move." in html
+
+
+def test_public_landing_page_is_static_email_only_and_accessible() -> None:
+    html = LANDING_PAGE.read_text(encoding="utf-8")
+
     assert "/api/answer" not in html
     assert 'action="/api/interest"' in html
     assert 'fetch("/api/interest"' in html
     assert 'id="interest-form"' in html
-    assert 'name="email"' in html
-    assert 'name="interests"' in html
-    assert 'name="turnstileToken"' in html
+    assert html.count('name="email"') == 1
+    assert 'name="name"' not in html
+    assert 'name="playerLevel"' not in html
+    assert 'name="interests"' not in html
+    assert 'name="message"' not in html
+    assert 'name="turnstileToken"' not in html
+    assert '<label for="interest-email">Email address</label>' in html
+    assert 'role="status" aria-live="polite"' in html
+    assert '<a class="skip-link" href="#main-content">Skip to main content</a>' in html
+    assert 'JSON.stringify({ email: email.value.trim() })' in html
     assert "steel-guitar-rag-mock.html" not in html
+    assert "app.steelguitarrag.com" not in html
     assert "chromadb" not in html.lower()
     assert "bb.steelguitarforum.com" not in html.lower()
     assert "stripe" not in html.lower()
+    assert "Pocket Steel" not in html
 
 
 def test_cloudflare_pages_static_output_matches_landing_source() -> None:
@@ -170,6 +119,7 @@ def test_cloudflare_pages_static_output_does_not_expose_private_app_or_rag() -> 
         "steel-guitar-rag-mock.html",
         "answer-client.js",
         "mock-answer-data.js",
+        "app.steelguitarrag.com",
         "Ollama",
         "Chroma",
         "bb.steelguitarforum.com",
@@ -227,6 +177,45 @@ assert.equal(saved[0].values[10], 0);
 assert.equal(saved[0].values[11], "");
 assert.equal(saved[0].values[12], "landing_page");
 assert.equal(saved[0].values.length, 13);
+"""
+    )
+
+    result = subprocess.run(["node", "-e", script], cwd=Path.cwd(), capture_output=True, text=True, check=False)
+
+    assert result.returncode == 0, result.stderr
+
+
+def test_interest_function_accepts_email_only_submission_as_new() -> None:
+    script = _interest_function_test_script(
+        """
+const saved = [];
+const d1 = {
+  prepare: (sql) => ({
+    bind: (...values) => ({
+      run: async () => saved.push({ sql, values })
+    })
+  })
+};
+const response = await mod.__test.handleInterestRequest({
+  request: new Request("https://steelguitarrag.com/api/interest", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "User-Agent": "pytest" },
+    body: JSON.stringify({ email: "launch@steelguitarrag.com" })
+  }),
+  env: { STEEL_RAG_INTEREST_D1: d1 }
+});
+const payload = await response.json();
+assert.equal(response.status, 200);
+assert.equal(payload.ok, true);
+assert.equal(payload.stored, true);
+assert.equal(saved.length, 1);
+assert.equal(saved[0].values[3], "launch@steelguitarrag.com");
+assert.equal(saved[0].values[4], "");
+assert.equal(saved[0].values[5], "[]");
+assert.equal(saved[0].values[6], "");
+assert.equal(saved[0].values[9], "new");
+assert.equal(saved[0].values[10], 0);
+assert.equal(saved[0].values[11], "");
 """
     )
 
@@ -382,7 +371,7 @@ assert.match(normalized.submission.adminNotes, /URL-heavy message/);
     assert result.returncode == 0, result.stderr
 
 
-def test_interest_function_marks_blank_and_long_entries_review() -> None:
+def test_interest_function_keeps_email_only_new_and_marks_long_entries_review() -> None:
     script = _interest_function_test_script(
         """
 const blank = mod.__test.normalizeSubmission({
@@ -394,9 +383,9 @@ const longMessage = mod.__test.normalizeSubmission({
   message: "x".repeat(1700)
 });
 assert.equal(blank.ok, true);
-assert.equal(blank.submission.status, "review");
-assert.equal(blank.submission.spamScore, 20);
-assert.match(blank.submission.adminNotes, /blank name and message/);
+assert.equal(blank.submission.status, "new");
+assert.equal(blank.submission.spamScore, 0);
+assert.equal(blank.submission.adminNotes, "");
 assert.equal(longMessage.ok, true);
 assert.equal(longMessage.submission.status, "review");
 assert.equal(longMessage.submission.spamScore, 40);

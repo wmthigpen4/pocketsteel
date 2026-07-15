@@ -68,12 +68,6 @@ function classifySubmission(submission) {
     notes.push("URL-heavy message");
   }
 
-  if (!submission.name && !submission.message) {
-    status = applyStatus(status, "review");
-    spamScore = Math.max(spamScore, 20);
-    notes.push("blank name and message");
-  }
-
   if (submission.message.length >= SUSPICIOUS_MESSAGE_LENGTH) {
     status = applyStatus(status, "review");
     spamScore = Math.max(spamScore, 40);

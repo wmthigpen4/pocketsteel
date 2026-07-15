@@ -87,13 +87,15 @@ Required prerequisites before GitHub integration:
 
 ## Interest Form
 
-The public landing page includes an early-access interest form with:
+The public landing page uses a conversion-focused email-only launch form. It
+submits only:
 
-- name
 - email
-- player level, optional
-- interest checkboxes
-- optional message
+
+The endpoint continues accepting the previous optional name, player-level,
+interest-list, and message fields for compatibility with older clients. A
+valid email-only submission is classified as `new`; leaving legacy optional
+fields blank is no longer a review signal.
 
 The form posts JSON to:
 
