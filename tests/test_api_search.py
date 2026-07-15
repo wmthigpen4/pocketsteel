@@ -3517,11 +3517,14 @@ def test_home_prompt_classic_country_move_returns_coach_drill_not_fragments() ->
     payload = answer_for_question("Show me a classic country move", noisy_home_prompt_sources())
 
     assert_home_coach_answer_is_clean(payload)
-    assert payload["answer"].startswith("Try this classic-country E9 move")
-    assert "3rd fret" in payload["answer"]
-    assert "strings 4-5-6" in payload["answer"]
-    assert "A+B" in payload["answer"]
-    assert "What to listen for" in payload["answer"]
+    assert payload["answer"].startswith("Try this classic-country E9 pickup in G")
+    assert "strings 4 and 5 together at fret 1" in payload["answer"]
+    assert "slide both ringing notes to fret 3" in payload["answer"]
+    assert "Release only the A pedal" in payload["answer"]
+    assert "string 5 falls from E to D while string 4 holds G" in payload["answer"]
+    assert "strings 4-5-6 at fret 3 with no pedals" in payload["answer"]
+    assert "6-to-5 resolution" in payload["answer"]
+    assert "A+B" not in payload["answer"]
 
 
 def test_home_prompt_practice_rut_breaker_returns_timeboxed_drill() -> None:

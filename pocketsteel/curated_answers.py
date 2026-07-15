@@ -1665,13 +1665,13 @@ def intent_mode_curated_answer(question: str) -> CuratedAnswer | None:
                 intent="technique_coach",
                 confidence="curated_high",
                 answer=(
-                    "Try this classic-country E9 move: use a simple I-to-IV sound at one fret, then answer it with space.\n\n"
-                    "Drill:\n"
-                    "- At the 3rd fret, pick strings 4-5-6 with no pedals for G.\n"
-                    "- Press A+B at the same fret for C, keeping the bar still.\n"
-                    "- Release A+B cleanly back to G, then leave a beat of silence.\n"
-                    "- Repeat the same idea on strings 3-4-5 and 5-6-8.\n\n"
-                    "What to listen for: even pedal timing, clean blocking after each grip, and a relaxed answer-the-singer feel instead of a busy lick."
+                    "Try this classic-country E9 pickup in G: slide a tense double-stop into the home fret, then let one pedal move finish the resolution.\n\n"
+                    "Play it:\n"
+                    "- Hold only the A pedal down. On beat 3, pick strings 4 and 5 together at fret 1. The notes are F and D.\n"
+                    "- Keep the A pedal down and slide both ringing notes to fret 3 on beat 4. They become G and E.\n"
+                    "- At fret 3, do not repick. Release only the A pedal on the “and” of 4 so string 5 falls from E to D while string 4 holds G.\n"
+                    "- On the next beat 1, lightly repick strings 4-5-6 at fret 3 with no pedals for the full G landing, then leave space.\n\n"
+                    "Why it sounds country: the bar carries F-D into G-E, then the A-pedal release gives the crying 6-to-5 resolution E-to-D against a held G. Let the notes sustain through the slide, add vibrato only after the landing, and block cleanly before the singer returns."
                 ),
             )
         if _mentions_fill_restraint_coach(q):
