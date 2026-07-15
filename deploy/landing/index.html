@@ -118,7 +118,7 @@
       left: calc((100vw - 100%) / -2 - 12px);
       z-index: 2;
       display: block;
-      width: clamp(330px, 24vw, 350px);
+      width: min(259px, 66vw);
       transform: none;
       filter: drop-shadow(0 8px 22px rgba(255, 143, 24, 0.22));
     }
@@ -835,9 +835,9 @@
       .app-shell-header, main, .home-trust-footer { width: min(calc(100% - 24px), var(--shell-max)); }
       .app-shell-header { grid-template-columns: 1fr; min-height: 0; padding-top: 225px; }
       .home-sign {
-        top: 8px;
+        top: 0;
         left: calc((100vw - 100%) / -2);
-        width: clamp(190px, 55vw, 240px);
+        width: min(259px, 66vw);
         transform: none;
       }
       .public-header-actions { grid-column: 1; justify-content: flex-end; padding-top: 0; }
@@ -901,7 +901,7 @@
     <a class="skip-link" href="#main-content">Skip to main content</a>
     <header class="app-shell-header">
       <a class="home-sign" href="#top" aria-label="Steel Guitar RAG home">
-        <img class="landing-sign-art" src="brand/steel-guitar-rag-hanging-sign-cloudflare-login.png" alt="Steel Guitar RAG">
+        <img class="landing-sign-art" src="brand/steel-guitar-rag-app-sign-reference.png" alt="Steel Guitar RAG">
       </a>
       <div class="public-header-actions">
         <span class="preview-label"><svg class="lock-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10V7a5 5 0 0 1 10 0v3M5 10h14v11H5z"/></svg>Private preview</span>
