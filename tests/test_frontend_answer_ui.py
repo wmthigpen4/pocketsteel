@@ -662,7 +662,7 @@ def test_backstage_my_setup_uses_live_three_stage_rig_locker_structure() -> None
     assert "Setup Library" in setup_panel
     assert "Copedent Workbench" in setup_panel
     assert 'src="assets/backstage/setup-nameplate.png?v=rig-locker-20260714-1"' in setup_panel
-    assert 'backstage-copedent-manager.js?v=setup-identity-20260715-1' in html
+    assert 'backstage-copedent-manager.js?v=setup-library-return-20260715-1' in html
     assert 'elements.activeBadge.textContent = validationLabel(currentProfile);' in manager
     assert 'alt="" width="2022" height="778"' in setup_panel
     assert 'aria-label="Current setup"' in setup_panel
@@ -681,6 +681,11 @@ def test_backstage_my_setup_uses_live_three_stage_rig_locker_structure() -> None
     assert 'renderProfileGroup("Active setup"' not in manager
     assert 'renderProfileGroup("Included setups"' in manager
     assert 'renderProfileGroup("Custom setups"' in manager
+    assert 'renderProfileGroup("Included setups", common,' in manager
+    assert 'renderProfileGroup("Custom setups", custom,' in manager
+    assert 'const badge = active ? "In use"' in manager
+    assert 'common.filter((profile) => profile.id !== activeId)' not in manager
+    assert 'custom.filter((profile) => profile.id !== activeId)' not in manager
     assert 'id="copedent-library-active"' not in setup_panel
     assert "elements.libraryActive" not in manager
     assert "Browser copies to import" in setup_panel

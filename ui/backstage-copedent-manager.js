@@ -181,7 +181,7 @@
     const active = profile.id === activeId;
     const selected = profile.id === selectedId;
     const custom = !profile.immutable;
-    const badge = active ? "Active" : (custom ? "Custom" : "Included");
+    const badge = active ? "In use" : (custom ? "Custom" : "Included");
     const meta = [
       `Revision ${Number(profile.revision || 1)}`,
       custom && accountState().enabled ? "Account-synced" : (custom ? "Saved on this device" : "Included setup"),
@@ -382,8 +382,8 @@
     const active = store.activeProfile();
     const label = active.name || active.label;
     elements.libraryGroups.innerHTML = [
-      renderProfileGroup("Included setups", common.filter((profile) => profile.id !== activeId), "included setups", activeId, "No other included setups are available."),
-      renderProfileGroup("Custom setups", custom.filter((profile) => profile.id !== activeId), "custom setups", activeId, "No account-backed custom setups yet.")
+      renderProfileGroup("Included setups", common, "included setups", activeId, "No included setups are available."),
+      renderProfileGroup("Custom setups", custom, "custom setups", activeId, "No account-backed custom setups yet.")
     ].join("");
     renderActiveSetup(active);
     elements.activeBadge.textContent = validationLabel(currentProfile || active);
