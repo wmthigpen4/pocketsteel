@@ -143,7 +143,7 @@ def test_public_landing_hanging_sign_stays_anchored_to_the_left_edge() -> None:
     app_html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
     shared_css = HERO_SIGN_STYLES.read_text(encoding="utf-8")
 
-    shared_link = '<link rel="stylesheet" href="hero-hanging-sign.css?v=shared-parity-20260716-1">'
+    shared_link = '<link rel="stylesheet" href="hero-hanging-sign.css?v=mobile-desktop-parity-20260716-2">'
     assert shared_link in html
     assert shared_link in app_html
     assert html.index(shared_link) > html.index("</style>")
