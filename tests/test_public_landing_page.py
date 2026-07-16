@@ -20,7 +20,8 @@ PUBLIC_PREVIEW_ASSETS = (
     "assets/landing/melody-score.png",
     "assets/landing/spotlight.png",
     "brand/pedal-steel-fretboard-background.svg",
-    "brand/steel-guitar-rag-hanging-sign-cloudflare-login.png",
+    "brand/steel-guitar-rag-hanging-sign-poster.png",
+    "brand/steel-guitar-rag-hanging-sign-mobile-alpha.mov",
     "brand/steel-guitar-rag-landing-alpha.webm",
 )
 
@@ -98,7 +99,10 @@ def test_public_landing_page_uses_dark_product_led_visual_direction() -> None:
     assert 'url("assets/steel_on_stage2.png")' in html
     assert 'class="home-sign hero-hanging-sign"' in html
     assert '<video class="landing-sign" autoplay muted loop playsinline' in html
-    assert 'src="brand/steel-guitar-rag-hanging-sign-cloudflare-login.png?v=mobile-logo-safari-20260713-1"' in html
+    assert 'poster="brand/steel-guitar-rag-hanging-sign-poster.png?v=mobile-desktop-parity-20260716-1"' in html
+    assert 'src="brand/steel-guitar-rag-hanging-sign-mobile-alpha.mov?v=mobile-desktop-parity-20260716-1"' in html
+    assert 'type=\'video/quicktime; codecs="hvc1"\'' in html
+    assert 'src="brand/steel-guitar-rag-hanging-sign-poster.png?v=mobile-desktop-parity-20260716-1"' in html
     assert 'src="brand/steel-guitar-rag-landing-alpha.webm?v=landing-alpha-return-20260713"' in html
     assert "function initializeHeroHangingSigns()" in html
     assert 'class="app-shell-header"' in html
@@ -165,6 +169,10 @@ def test_public_landing_mobile_sign_and_melody_card_avoid_ios_failures() -> None
     assert "@media (max-width: 699px)" in shared_css
     assert "width: min(290px, 86vw);" in shared_css
     assert "(hover: none) and (pointer: coarse)" in shared_css
+    assert "(max-width: 520px)" in shared_css
+    assert ".hero-hanging-sign.is-animated .landing-sign { display: block; }" in shared_css
+    assert ".hero-hanging-sign.is-animated .landing-sign-fallback { display: none; }" in shared_css
+    assert "@media (prefers-reduced-motion: reduce)" in shared_css
     assert ".hero-hanging-sign.is-animated .landing-sign-fallback" in shared_css
     assert ".skip-link:focus-visible { transform: translateY(0); }" in html
     assert ".skip-link:focus { transform: translateY(0); }" not in html
@@ -237,7 +245,8 @@ def test_cloudflare_pages_static_output_matches_landing_source() -> None:
     assert Path("deploy/landing/assets/steel-guitar-rag-logo-transparent.png").is_file()
     assert Path("deploy/landing/assets/steel_on_stage2.png").is_file()
     for sign_asset in (
-        "steel-guitar-rag-hanging-sign-cloudflare-login.png",
+        "steel-guitar-rag-hanging-sign-poster.png",
+        "steel-guitar-rag-hanging-sign-mobile-alpha.mov",
         "steel-guitar-rag-landing-alpha.webm",
     ):
         deployed_sign = Path("deploy/landing/brand") / sign_asset

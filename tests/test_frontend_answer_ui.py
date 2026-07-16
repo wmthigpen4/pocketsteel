@@ -1115,27 +1115,32 @@ def test_answer_ui_uses_live_answer_client_not_mock_answer_data() -> None:
 def test_answer_ui_uses_safari_safe_transparent_home_and_answer_logos() -> None:
     html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
     shell_css = Path("ui/workspace-shell.css").read_text(encoding="utf-8")
+    hero_css = Path("ui/hero-hanging-sign.css").read_text(encoding="utf-8")
 
     assert 'class="home-sign hero-hanging-sign"' in html
     assert 'class="landing-sign" autoplay muted loop playsinline' in html
-    assert 'poster="brand/steel-guitar-rag-hanging-sign-cloudflare-login.png?v=mobile-logo-safari-20260713-1"' in html
+    assert 'poster="brand/steel-guitar-rag-hanging-sign-poster.png?v=mobile-desktop-parity-20260716-1"' in html
+    assert 'src="brand/steel-guitar-rag-hanging-sign-mobile-alpha.mov?v=mobile-desktop-parity-20260716-1"' in html
+    assert 'type=\'video/quicktime; codecs="hvc1"\'' in html
     assert 'src="brand/steel-guitar-rag-landing-alpha.webm?v=landing-alpha-return-20260713"' in html
     assert 'type="video/webm"' in html
     assert 'type="video/mp4"' not in html
-    assert 'class="landing-sign-fallback" src="brand/steel-guitar-rag-hanging-sign-cloudflare-login.png?v=mobile-logo-safari-20260713-1"' in html
-    assert ".app-shell-header .home-sign" in shell_css
-    assert "position: absolute;" in shell_css
-    assert "left: calc((100vw - 100%) / -2 - 12px);" in shell_css
-    assert "width: clamp(330px, 24vw, 350px);" in shell_css
-    assert "width: clamp(300px, 40vw, 340px);" in shell_css
-    assert "width: min(290px, 86vw);" in shell_css
-    assert "@media (max-width: 520px)" in shell_css
-    assert "@media (hover: none) and (pointer: coarse)" in shell_css
-    assert "pointer-events: auto;" in shell_css
+    assert 'class="landing-sign-fallback" src="brand/steel-guitar-rag-hanging-sign-poster.png?v=mobile-desktop-parity-20260716-1"' in html
+    assert ".app-shell-header .home-sign" in hero_css
+    assert "position: absolute;" in hero_css
+    assert "left: calc((100vw - 100%) / -2 - 12px);" in hero_css
+    assert "width: clamp(330px, 24vw, 350px);" in hero_css
+    assert "width: clamp(300px, 40vw, 340px);" in hero_css
+    assert "width: min(290px, 86vw);" in hero_css
+    assert "(max-width: 520px)" in hero_css
+    assert "(hover: none) and (pointer: coarse)" in hero_css
+    assert "pointer-events: auto;" in hero_css
+    assert ".hero-hanging-sign.is-animated .landing-sign { display: block; }" in hero_css
+    assert ".hero-hanging-sign.is-animated .landing-sign-fallback { display: none; }" in hero_css
     assert ".hero-hanging-sign.is-animated .landing-sign" in html
     assert ".hero-hanging-sign.is-animated .landing-sign-fallback" in html
-    assert "@media (prefers-reduced-motion: reduce)" in shell_css
-    assert ".app-shell-header .landing-sign-fallback" in shell_css
+    assert "@media (prefers-reduced-motion: reduce)" in hero_css
+    assert ".app-shell-header .landing-sign-fallback" in hero_css
     assert "object-fit: contain;" in html
     assert "object-position: top left;" in html
     assert "image-rendering: auto;" in html
