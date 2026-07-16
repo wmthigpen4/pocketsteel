@@ -112,34 +112,6 @@
       padding: 12px 0 4px;
     }
 
-    .hero-hanging-sign {
-      position: absolute;
-      top: clamp(-42px, -3vw, -24px);
-      left: -18px;
-      z-index: 2;
-      display: block;
-      width: clamp(300px, 23vw, 340px);
-      pointer-events: none;
-      transform: rotate(-1.5deg);
-      transform-origin: top left;
-      filter:
-        drop-shadow(0 18px 28px rgba(0, 0, 0, 0.55))
-        drop-shadow(0 0 22px rgba(255, 106, 0, 0.22));
-    }
-    .landing-sign,
-    .landing-sign-fallback {
-      display: block;
-      width: 100%;
-      height: auto;
-      object-fit: contain;
-      object-position: top left;
-      image-rendering: auto;
-    }
-
-    .landing-sign { display: none; }
-    .hero-hanging-sign.is-animated .landing-sign { display: block; }
-    .hero-hanging-sign.is-animated .landing-sign-fallback { display: none; }
-
     .public-header-actions {
       grid-column: 2;
       display: flex;
@@ -894,43 +866,13 @@
       .tech-popover-rag-arrow { display: none; }
     }
 
-    @media (max-width: 640px) {
-      .app-shell-header { width: calc(100% - 28px); }
-      .hero-hanging-sign {
-        width: clamp(220px, 30vw, 300px);
-        top: 8px;
-        left: -18px;
-        transform: rotate(-1.5deg);
-      }
-    }
-
-    @media (max-width: 520px) {
-      .hero-hanging-sign {
-        top: 8px;
-        left: -18px;
-        width: clamp(190px, 55vw, 240px);
-        transform: rotate(-1.5deg);
-        z-index: 2;
-        pointer-events: none;
-      }
-      .landing-sign,
-      .hero-hanging-sign.is-animated .landing-sign {
-        display: none;
-        width: 100%;
-        height: auto;
-      }
-      .landing-sign-fallback,
-      .hero-hanging-sign.is-animated .landing-sign-fallback { display: block; }
-    }
-
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
       *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
-      .hero-hanging-sign.is-animated .landing-sign { display: none; }
-      .hero-hanging-sign.is-animated .landing-sign-fallback { display: block; }
       .home-ai-footer .footer-trigger.footer-shimmer { animation: none; background-position: 0 0; }
     }
   </style>
+  <link rel="stylesheet" href="hero-hanging-sign.css?v=shared-parity-20260716-1">
 </head>
 <body>
   <div class="page">

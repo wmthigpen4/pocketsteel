@@ -5,6 +5,8 @@ import tempfile
 
 LANDING_PAGE = Path("ui/steel-guitar-rag-landing.html")
 DEPLOY_PAGE = Path("deploy/landing/index.html")
+HERO_SIGN_STYLES = Path("ui/hero-hanging-sign.css")
+DEPLOY_HERO_SIGN_STYLES = Path("deploy/landing/hero-hanging-sign.css")
 INTEREST_FUNCTION = Path("functions/api/interest.js")
 INTEREST_DIGEST_WORKER = Path("workers/interest-digest.js")
 INTEREST_DIGEST_CONFIG = Path("wrangler-interest-digest.toml")
@@ -134,29 +136,36 @@ def test_public_landing_page_reuses_the_real_app_home_previews() -> None:
 
 def test_public_landing_hanging_sign_stays_anchored_to_the_left_edge() -> None:
     html = LANDING_PAGE.read_text(encoding="utf-8")
+    app_html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
+    shared_css = HERO_SIGN_STYLES.read_text(encoding="utf-8")
 
-    assert "width: min(1120px, calc(100% - 40px));" in html
-    assert "top: clamp(-42px, -3vw, -24px);" in html
-    assert "left: -18px;" in html
-    assert "width: clamp(300px, 23vw, 340px);" in html
-    assert "transform: rotate(-1.5deg);" in html
-    assert "transform-origin: top left;" in html
-    assert "drop-shadow(0 18px 28px rgba(0, 0, 0, 0.55))" in html
-    assert "drop-shadow(0 0 22px rgba(255, 106, 0, 0.22))" in html
-    assert ".app-shell-header { grid-template-columns: 1fr; min-height: 0; padding-top: 225px; }" in html
+    shared_link = '<link rel="stylesheet" href="hero-hanging-sign.css?v=shared-parity-20260716-1">'
+    assert shared_link in html
+    assert shared_link in app_html
+    assert html.index(shared_link) > html.index("</style>")
+    assert app_html.index(shared_link) > app_html.index('href="workspace-shell.css')
+    assert "width: min(calc(100% - 40px), 1180px);" in shared_css
+    assert "top: -14px;" in shared_css
+    assert "left: calc((100vw - 100%) / -2 - 12px);" in shared_css
+    assert "width: clamp(330px, 24vw, 350px);" in shared_css
+    assert "transform: none;" in shared_css
+    assert "filter: drop-shadow(0 8px 22px rgba(255, 143, 24, 0.22));" in shared_css
+    assert "pointer-events: auto;" in shared_css
 
 
 def test_public_landing_mobile_sign_and_melody_card_avoid_ios_failures() -> None:
     html = LANDING_PAGE.read_text(encoding="utf-8")
     mobile_css = html.split("@media (max-width: 720px)", 1)[1].split("@media (prefers-reduced-motion: reduce)", 1)[0]
+    shared_css = HERO_SIGN_STYLES.read_text(encoding="utf-8")
 
     assert '<a class="home-sign hero-hanging-sign" href="#top"' in html
     assert '<img class="landing-sign-fallback"' in html
-    assert ".hero-hanging-sign.is-animated .landing-sign" in mobile_css
-    assert ".hero-hanging-sign.is-animated .landing-sign-fallback { display: block; }" in mobile_css
-    assert ".app-shell-header { width: calc(100% - 28px); }" in mobile_css
-    assert "width: clamp(220px, 30vw, 300px);" in mobile_css
-    assert "width: clamp(190px, 55vw, 240px);" in mobile_css
+    assert "@media (max-width: 1099px)" in shared_css
+    assert "width: clamp(300px, 40vw, 340px);" in shared_css
+    assert "@media (max-width: 699px)" in shared_css
+    assert "width: min(290px, 86vw);" in shared_css
+    assert "(hover: none) and (pointer: coarse)" in shared_css
+    assert ".hero-hanging-sign.is-animated .landing-sign-fallback" in shared_css
     assert ".skip-link:focus-visible { transform: translateY(0); }" in html
     assert ".skip-link:focus { transform: translateY(0); }" not in html
     assert ".home-product-card { min-height: 0; padding: 20px; }" in mobile_css
@@ -224,6 +233,7 @@ def test_cloudflare_pages_static_output_matches_landing_source() -> None:
     deploy_html = DEPLOY_PAGE.read_text(encoding="utf-8")
 
     assert deploy_html == source_html
+    assert DEPLOY_HERO_SIGN_STYLES.read_bytes() == HERO_SIGN_STYLES.read_bytes()
     assert Path("deploy/landing/assets/steel-guitar-rag-logo-transparent.png").is_file()
     assert Path("deploy/landing/assets/steel_on_stage2.png").is_file()
     for sign_asset in (
