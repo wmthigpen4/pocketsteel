@@ -143,7 +143,7 @@ def test_public_landing_hanging_sign_stays_anchored_to_the_left_edge() -> None:
     app_html = Path("ui/steel-guitar-rag-mock.html").read_text(encoding="utf-8")
     shared_css = HERO_SIGN_STYLES.read_text(encoding="utf-8")
 
-    shared_link = '<link rel="stylesheet" href="hero-hanging-sign.css?v=mobile-desktop-parity-20260716-2">'
+    shared_link = '<link rel="stylesheet" href="hero-hanging-sign.css?v=mobile-poster-safari-20260716-3">'
     assert shared_link in html
     assert shared_link in app_html
     assert html.index(shared_link) > html.index("</style>")
@@ -170,8 +170,15 @@ def test_public_landing_mobile_sign_and_melody_card_avoid_ios_failures() -> None
     assert "width: min(290px, 86vw);" in shared_css
     assert "(hover: none) and (pointer: coarse)" in shared_css
     assert "(max-width: 520px)" in shared_css
-    assert ".hero-hanging-sign.is-animated .landing-sign { display: block; }" in shared_css
-    assert ".hero-hanging-sign.is-animated .landing-sign-fallback { display: none; }" in shared_css
+    mobile_sign_css = shared_css.split(
+        "@media (hover: none) and (pointer: coarse), (max-width: 520px)", 1
+    )[1].split("@media (prefers-reduced-motion: reduce)", 1)[0]
+    assert ".hero-hanging-sign.is-animated .landing-sign" in mobile_sign_css
+    assert ".hero-hanging-sign.is-animated .landing-sign-fallback" in mobile_sign_css
+    assert "display: none;" in mobile_sign_css
+    assert "display: block;" in mobile_sign_css
+    assert "steel-guitar-rag-hanging-sign-poster.png" in html
+    assert "steel-guitar-rag-hanging-sign-fallback.png" not in html
     assert "@media (prefers-reduced-motion: reduce)" in shared_css
     assert ".hero-hanging-sign.is-animated .landing-sign-fallback" in shared_css
     assert ".skip-link:focus-visible { transform: translateY(0); }" in html

@@ -1137,6 +1137,14 @@ def test_answer_ui_uses_safari_safe_transparent_home_and_answer_logos() -> None:
     assert "pointer-events: auto;" in hero_css
     assert ".hero-hanging-sign.is-animated .landing-sign { display: block; }" in hero_css
     assert ".hero-hanging-sign.is-animated .landing-sign-fallback { display: none; }" in hero_css
+    mobile_sign_css = hero_css.split(
+        "@media (hover: none) and (pointer: coarse), (max-width: 520px)", 1
+    )[1].split("@media (prefers-reduced-motion: reduce)", 1)[0]
+    assert ".hero-hanging-sign.is-animated .landing-sign" in mobile_sign_css
+    assert ".hero-hanging-sign.is-animated .landing-sign-fallback" in mobile_sign_css
+    assert "display: none;" in mobile_sign_css
+    assert "display: block;" in mobile_sign_css
+    assert "steel-guitar-rag-hanging-sign-fallback.png" not in html
     assert ".hero-hanging-sign.is-animated .landing-sign" in html
     assert ".hero-hanging-sign.is-animated .landing-sign-fallback" in html
     assert "@media (prefers-reduced-motion: reduce)" in hero_css
