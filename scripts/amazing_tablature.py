@@ -35,6 +35,30 @@ def _parser() -> argparse.ArgumentParser:
     ingest.add_argument("--evidence-type", choices=("expert_score_tab", "player_feedback"), default="expert_score_tab")
     ingest.add_argument("--batch-id")
 
+    partition = subparsers.add_parser(
+        "partition",
+        help="Create and seal a leakage-resistant discovery/validation/test split.",
+    )
+    partition.add_argument("batch_id")
+    partition.add_argument("--document-break", action="append", default=[])
+    partition.add_argument("--force-discovery", action="append", default=[])
+    partition.add_argument("--discovery-target", type=int, default=194)
+    partition.add_argument("--validation-target", type=int, default=28)
+    partition.add_argument("--test-target", type=int, default=56)
+    partition.add_argument("--guard-radius", type=int, default=1)
+    partition.add_argument("--similarity-threshold", type=int, default=3)
+
+    supersede = subparsers.add_parser(
+        "supersede-batch",
+        help="Preserve an old batch as historical and exclude it from future datasets.",
+    )
+    supersede.add_argument("batch_id")
+    supersede.add_argument("--replacement-batch", required=True)
+    supersede.add_argument("--approval-reference", required=True)
+
+    verify = subparsers.add_parser("verify-intake", help="Re-hash a batch and verify the source files are unchanged.")
+    verify.add_argument("batch_id")
+
     annotate = subparsers.add_parser("annotate", help="Import immutable private JSONL annotations for a batch.")
     annotate.add_argument("batch_id")
     annotate.add_argument("annotations", type=Path)
@@ -90,6 +114,25 @@ def main() -> int:
                 evidence_type=args.evidence_type,
                 batch_id=args.batch_id,
             )
+        elif args.command == "partition":
+            result = store.prepare_partition(
+                args.batch_id,
+                document_breaks=args.document_break,
+                forced_discovery=args.force_discovery,
+                discovery_target=args.discovery_target,
+                validation_target=args.validation_target,
+                test_target=args.test_target,
+                guard_radius=args.guard_radius,
+                similarity_threshold=args.similarity_threshold,
+            )
+        elif args.command == "supersede-batch":
+            result = store.supersede_batch(
+                args.batch_id,
+                replacement_batch_id=args.replacement_batch,
+                approval_reference=args.approval_reference,
+            )
+        elif args.command == "verify-intake":
+            result = store.verify_batch_inputs(args.batch_id)
         elif args.command == "annotate":
             result = store.import_annotations(args.batch_id, args.annotations)
         elif args.command == "validate":

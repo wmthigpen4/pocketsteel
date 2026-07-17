@@ -9,10 +9,12 @@ runtime integration lane.
 from __future__ import annotations
 
 import hashlib
+import itertools
 import json
 import math
 import os
 import re
+import secrets
 import subprocess
 import tempfile
 from datetime import UTC, datetime
@@ -25,12 +27,14 @@ from pocketsteel.melody_ranker import feature_vector, score_candidate, train_pai
 
 
 TRAINING_SCHEMA_VERSION = "amazing-tablature-training-v1"
+SPLIT_SCHEMA_VERSION = "amazing-tablature-split-v1"
 ANNOTATION_SCHEMA_VERSION = "melody-decision-annotation-v2"
 FEATURE_SCHEMA_VERSION = "melody-ranker-features-v1"
 DEFAULT_PRIVATE_ROOT = Path("corpus-private/melody-decisions")
 
 PIPELINE_STAGES = (
     "ingest",
+    "partition",
     "annotate",
     "validate",
     "review_exceptions",
@@ -51,7 +55,10 @@ REVIEW_STATUSES = {
     "rejected",
 }
 TRAINING_REVIEW_STATUSES = {"machine_validated", "audit_accepted", "reviewed"}
-PARTITIONS = {"train", "holdout"}
+LEGACY_PARTITIONS = {"train", "holdout"}
+SPLIT_PARTITIONS = {"discovery", "validation", "test"}
+PARTITIONS = LEGACY_PARTITIONS | SPLIT_PARTITIONS
+BATCH_LIFECYCLE_STATES = {"active", "superseded"}
 INPUT_SUFFIXES = {".jpg", ".jpeg", ".png", ".tif", ".tiff", ".pdf", ".json", ".jsonl"}
 REQUIRED_BENCHMARK_GROUPS = ("amazing_grace",)
 
@@ -116,6 +123,11 @@ def _sha256_json(value: object) -> str:
     return _sha256_bytes(_canonical_json(value).encode("utf-8"))
 
 
+def _seeded_digest(seed: bytes, *values: object) -> str:
+    payload = "\x1f".join(str(value) for value in values).encode("utf-8")
+    return hashlib.sha256(seed + b"\x00" + payload).hexdigest()
+
+
 def _read_json(path: Path) -> dict[str, Any]:
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
@@ -137,6 +149,13 @@ def _atomic_write_text(path: Path, value: str) -> None:
 
 def _write_json(path: Path, value: Mapping[str, Any]) -> None:
     _atomic_write_text(path, json.dumps(value, indent=2, sort_keys=True) + "\n")
+
+
+def _make_private(path: Path, *, directory: bool = False) -> None:
+    try:
+        path.chmod(0o700 if directory else 0o600)
+    except OSError as exc:
+        raise TrainingWorkflowError(f"Could not protect private split material: {path}.") from exc
 
 
 def _read_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -211,6 +230,102 @@ def _discover_inputs(source: Path) -> list[Path]:
     if not files:
         raise TrainingWorkflowError(f"No supported score/tab files were found in {source}.")
     return sorted(files, key=lambda path: path.relative_to(source).as_posix().lower())
+
+
+def _profile_digest(profile: E9CopedentProfile) -> str:
+    return _sha256_json(
+        {
+            "id": profile.id,
+            "revision": profile.revision,
+            "openNotes": profile.open_notes_by_string(),
+            "openPitchValues": profile.open_pitch_values_by_string(),
+            "controls": [
+                {
+                    "id": control.id,
+                    "type": control.control_type,
+                    "changes": [
+                        {
+                            "string": change.string,
+                            "from": change.from_note,
+                            "to": change.to_note,
+                            "semitones": change.semitones,
+                        }
+                        for change in control.changes
+                    ],
+                }
+                for control in profile.ordered_controls()
+            ],
+        }
+    )
+
+
+def _image_structural_metadata(path: Path) -> dict[str, Any]:
+    """Return non-semantic image measurements without writing a derivative."""
+
+    try:
+        from PIL import Image, ImageFilter, ImageOps, ImageStat
+    except ImportError as exc:
+        raise TrainingWorkflowError(
+            "Full-collection partitioning requires Pillow for structural image measurements."
+        ) from exc
+
+    try:
+        with Image.open(path) as image:
+            exif_orientation = int(image.getexif().get(274, 1) or 1)
+            normalized = ImageOps.exif_transpose(image)
+            width, height = normalized.size
+            grayscale = normalized.convert("L").resize((72, 96))
+            statistics = ImageStat.Stat(grayscale)
+            mean_luma = float(statistics.mean[0])
+            contrast = float(statistics.stddev[0])
+            edges = grayscale.filter(ImageFilter.FIND_EDGES)
+            edge_values = list(edges.getdata())
+            edge_density = sum(value >= 32 for value in edge_values) / max(1, len(edge_values))
+            dhash_source = grayscale.resize((9, 8))
+            pixels = list(dhash_source.getdata())
+            dhash = 0
+            for row in range(8):
+                for column in range(8):
+                    dhash = (dhash << 1) | int(
+                        pixels[row * 9 + column] > pixels[row * 9 + column + 1]
+                    )
+        return {
+            "status": "measured",
+            "width": width,
+            "height": height,
+            "orientation": "landscape" if width > height else "portrait",
+            "exifOrientation": exif_orientation,
+            "meanLuma": round(mean_luma, 4),
+            "contrast": round(contrast, 4),
+            "edgeDensity": round(edge_density, 6),
+            "dhash": f"{dhash:016x}",
+        }
+    except (OSError, SyntaxError, ValueError):
+        return {"status": "unavailable"}
+
+
+def _hamming_hex(left: str, right: str) -> int:
+    return bin(int(left, 16) ^ int(right, 16)).count("1")
+
+
+def _assign_quantile_bins(records: list[dict[str, Any]], field: str, output_field: str) -> None:
+    measured = sorted(
+        (
+            (float(record["structuralMetadata"][field]), str(record["inputId"]))
+            for record in records
+            if record.get("structuralMetadata", {}).get("status") == "measured"
+        ),
+        key=lambda item: (item[0], item[1]),
+    )
+    rank_by_id = {input_id: rank for rank, (_value, input_id) in enumerate(measured)}
+    labels = ("low", "middle", "high")
+    for record in records:
+        rank = rank_by_id.get(str(record["inputId"]))
+        if rank is None:
+            record["structuralMetadata"][output_field] = "unknown"
+            continue
+        bucket = min(2, (rank * 3) // max(1, len(measured)))
+        record["structuralMetadata"][output_field] = labels[bucket]
 
 
 def _profile_for_source(copedent_id: str) -> E9CopedentProfile:
@@ -339,6 +454,126 @@ def _contains_forbidden_runtime_data(value: object, path: str = "") -> list[str]
     return findings
 
 
+class _UnionFind:
+    def __init__(self, values: Iterable[str]) -> None:
+        self.parent = {value: value for value in values}
+
+    def find(self, value: str) -> str:
+        parent = self.parent[value]
+        if parent != value:
+            self.parent[value] = self.find(parent)
+        return self.parent[value]
+
+    def union(self, left: str, right: str) -> None:
+        left_root = self.find(left)
+        right_root = self.find(right)
+        if left_root == right_root:
+            return
+        keep, merge = sorted((left_root, right_root))
+        self.parent[merge] = keep
+
+
+def _largest_remainder_quotas(document_counts: Mapping[str, int], total: int) -> dict[str, int]:
+    page_count = sum(document_counts.values())
+    if page_count < 1 or total < 0 or total > page_count:
+        raise TrainingWorkflowError("Invalid partition target for the registered collection.")
+    exact = {document: total * count / page_count for document, count in document_counts.items()}
+    quotas = {document: int(math.floor(value)) for document, value in exact.items()}
+    remaining = total - sum(quotas.values())
+    order = sorted(document_counts, key=lambda document: (-(exact[document] - quotas[document]), document))
+    for document in order[:remaining]:
+        quotas[document] += 1
+    return quotas
+
+
+def _unit_category_counts(unit: Mapping[str, Any]) -> dict[str, int]:
+    counts: dict[str, int] = {
+        f"document:{unit['sourceDocumentId']}": len(unit["inputs"]),
+    }
+    for record in unit["inputs"]:
+        metadata = record.get("structuralMetadata", {})
+        categories = (
+            f"orientation:{metadata.get('orientation', 'unknown')}",
+            f"luminance:{metadata.get('luminanceBin', 'unknown')}",
+            f"density:{metadata.get('densityBin', 'unknown')}",
+        )
+        for category in categories:
+            counts[category] = counts.get(category, 0) + 1
+    return counts
+
+
+def _choose_units(
+    units: Sequence[dict[str, Any]],
+    *,
+    target: int,
+    seed: bytes,
+    label: str,
+) -> set[str]:
+    if target <= 0:
+        return set()
+    if not units:
+        raise TrainingWorkflowError(f"No eligible content units remain for {label}.")
+    if len(units) > 22:
+        raise TrainingWorkflowError(
+            "The provisional grouping produced too many independent units; increase the discovery guard or supply reviewed units."
+        )
+    total_pages = sum(len(unit["inputs"]) for unit in units)
+    if target > total_pages:
+        raise TrainingWorkflowError(f"The {label} target exceeds its eligible source pages.")
+    all_categories: dict[str, int] = {}
+    for unit in units:
+        for category, count in _unit_category_counts(unit).items():
+            all_categories[category] = all_categories.get(category, 0) + count
+    desired_fraction = target / total_pages
+    best: tuple[tuple[float, float, str], set[str]] | None = None
+    for size in range(1, len(units) + 1):
+        for chosen in itertools.combinations(units, size):
+            page_total = sum(len(unit["inputs"]) for unit in chosen)
+            count_error = abs(page_total - target)
+            if best is not None and count_error > best[0][0]:
+                continue
+            selected_categories: dict[str, int] = {}
+            for unit in chosen:
+                for category, count in _unit_category_counts(unit).items():
+                    selected_categories[category] = selected_categories.get(category, 0) + count
+            distribution_error = sum(
+                abs(selected_categories.get(category, 0) - count * desired_fraction)
+                for category, count in all_categories.items()
+            )
+            ids = sorted(str(unit["contentUnitId"]) for unit in chosen)
+            tie_breaker = _seeded_digest(seed, label, *ids)
+            score = (float(count_error), round(distribution_error, 8), tie_breaker)
+            if best is None or score < best[0]:
+                best = (score, set(ids))
+    if best is None:
+        raise TrainingWorkflowError(f"Could not construct the {label} partition.")
+    return best[1]
+
+
+def _partition_distribution(records: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+    documents: dict[str, int] = {}
+    orientations: dict[str, int] = {}
+    luminance: dict[str, int] = {}
+    density: dict[str, int] = {}
+    for record in records:
+        document = str(record["sourceDocumentId"])
+        documents[document] = documents.get(document, 0) + 1
+        metadata = record.get("structuralMetadata", {})
+        for destination, key, fallback in (
+            (orientations, "orientation", "unknown"),
+            (luminance, "luminanceBin", "unknown"),
+            (density, "densityBin", "unknown"),
+        ):
+            value = str(metadata.get(key) or fallback)
+            destination[value] = destination.get(value, 0) + 1
+    return {
+        "documents": dict(sorted(documents.items())),
+        "orientation": dict(sorted(orientations.items())),
+        "luminance": dict(sorted(luminance.items())),
+        "structuralDensity": dict(sorted(density.items())),
+    }
+
+
 class AmazingTablatureTrainingStore:
     """Private filesystem repository for the Lane 20 state machine."""
 
@@ -353,6 +588,7 @@ class AmazingTablatureTrainingStore:
             "batches": {},
             "models": {},
             "channels": {"beta": None, "stable": None},
+            "authoritativeBatchId": None,
             "rollbackHistory": [],
             "requiredBenchmarkGroups": list(REQUIRED_BENCHMARK_GROUPS),
         }
@@ -363,6 +599,12 @@ class AmazingTablatureTrainingStore:
         registry = _read_json(self.registry_path)
         if registry.get("schemaVersion") != TRAINING_SCHEMA_VERSION:
             raise TrainingWorkflowError("Unsupported Amazing Tablature training registry version.")
+        registry.setdefault("authoritativeBatchId", None)
+        for batch in registry.get("batches", {}).values():
+            batch.setdefault("lifecycleStatus", "active")
+        for model in registry.get("models", {}).values():
+            model.setdefault("datasetEligibility", "eligible")
+            model.setdefault("eligibleForFutureComparison", True)
         return registry
 
     def _save_registry(self, registry: Mapping[str, Any]) -> None:
@@ -404,7 +646,7 @@ class AmazingTablatureTrainingStore:
             raise TrainingWorkflowError("Source-copedent confidence must be confirmed, inferred, or unknown.")
         if source_copedent_confidence == "unknown":
             raise TrainingWorkflowError("A batch with an unknown source copedent must remain quarantined.")
-        _profile_for_source(source_copedent_id)
+        profile = _profile_for_source(source_copedent_id)
         source_path = Path(source).expanduser().resolve()
         files = _discover_inputs(source_path)
         inputs = [
@@ -420,6 +662,8 @@ class AmazingTablatureTrainingStore:
         immutable = {
             "sourceCopedentId": source_copedent_id,
             "sourceCopedentConfidence": source_copedent_confidence,
+            "sourceCopedentRevision": profile.revision,
+            "sourceCopedentDigest": _profile_digest(profile),
             "evidenceType": evidence_type,
             "inputs": inputs,
         }
@@ -473,19 +717,538 @@ class AmazingTablatureTrainingStore:
             "immutableDigest": digest,
             "evidenceType": evidence_type,
             "sourceCopedentId": source_copedent_id,
+            "sourceCopedentRevision": profile.revision,
+            "sourceCopedentDigest": _profile_digest(profile),
+            "lifecycleStatus": "active",
             "createdAt": created_at,
         }
         self._save_registry(registry)
         return self.batch_status(resolved_batch_id)
 
+    @staticmethod
+    def _resolve_input_names(inputs: Sequence[Mapping[str, Any]], names: Sequence[str]) -> set[str]:
+        by_relative = {str(item["relativePath"]).lower(): str(item["inputId"]) for item in inputs}
+        by_basename: dict[str, list[str]] = {}
+        for item in inputs:
+            by_basename.setdefault(Path(str(item["relativePath"])).name.lower(), []).append(str(item["inputId"]))
+        resolved: set[str] = set()
+        missing: list[str] = []
+        for raw_name in names:
+            normalized = str(raw_name).strip().replace("\\", "/").lower()
+            input_id = by_relative.get(normalized)
+            if input_id is None:
+                candidates = by_basename.get(Path(normalized).name, [])
+                if len(candidates) == 1:
+                    input_id = candidates[0]
+                elif len(candidates) > 1:
+                    raise TrainingWorkflowError(f"Ambiguous input filename: {raw_name}.")
+            if input_id is None:
+                missing.append(str(raw_name))
+            else:
+                resolved.add(input_id)
+        if missing:
+            raise TrainingWorkflowError(f"Unknown registered inputs: {', '.join(sorted(missing))}.")
+        return resolved
+
+    def _split_summary(self, batch_id: str) -> dict[str, Any] | None:
+        path = self._batch_dir(batch_id) / "partition-summary.json"
+        return _read_json(path) if path.exists() else None
+
+    def _require_active_batch(self, batch_id: str) -> None:
+        registry = self._registry()
+        batch_meta = registry["batches"].get(batch_id)
+        if batch_meta is None:
+            raise TrainingWorkflowError(f"Unknown batch: {batch_id}.")
+        if batch_meta.get("lifecycleStatus", "active") != "active":
+            raise TrainingWorkflowError("This operation cannot modify a superseded batch.")
+
+    def _partition_records(self, batch_id: str) -> list[dict[str, Any]]:
+        batch_dir = self._batch_dir(batch_id)
+        summary = self._split_summary(batch_id)
+        if summary is None:
+            return []
+        records = [
+            *_read_jsonl(batch_dir / "discovery-work.jsonl"),
+            *_read_jsonl(batch_dir / "validation-work.jsonl"),
+        ]
+        sealed = _read_json(batch_dir / "sealed-test" / "test-manifest.json")
+        test_records = sealed.get("inputs")
+        if not isinstance(test_records, list) or not all(isinstance(record, dict) for record in test_records):
+            raise TrainingWorkflowError("The sealed test manifest is malformed.")
+        records.extend(test_records)
+        if len(records) != int(summary["counts"]["total"]):
+            raise TrainingWorkflowError("The sealed partition membership is incomplete.")
+        return sorted(records, key=lambda record: str(record["inputId"]))
+
+    def prepare_partition(
+        self,
+        batch_id: str,
+        *,
+        document_breaks: Sequence[str],
+        forced_discovery: Sequence[str],
+        discovery_target: int,
+        validation_target: int,
+        test_target: int,
+        guard_radius: int = 1,
+        similarity_threshold: int = 3,
+        seed: bytes | None = None,
+    ) -> dict[str, Any]:
+        manifest, state = self._batch(batch_id)
+        if guard_radius < 0 or guard_radius > 5:
+            raise TrainingWorkflowError("Discovery guard radius must be between 0 and 5 pages.")
+        if similarity_threshold < 0 or similarity_threshold > 12:
+            raise TrainingWorkflowError("Perceptual similarity threshold must be between 0 and 12.")
+        inputs = list(manifest["inputs"])
+        total = len(inputs)
+        if discovery_target + validation_target + test_target != total:
+            raise TrainingWorkflowError("Discovery, validation, and test targets must equal the input count.")
+        if min(discovery_target, validation_target, test_target) < 1:
+            raise TrainingWorkflowError("Every partition must contain at least one page.")
+
+        normalized_config = {
+            "batchId": batch_id,
+            "documentBreaks": sorted(str(value).lower() for value in document_breaks),
+            "forcedDiscovery": sorted(str(value).lower() for value in forced_discovery),
+            "targets": {
+                "discovery": discovery_target,
+                "validation": validation_target,
+                "test": test_target,
+            },
+            "guardRadius": guard_radius,
+            "similarityThreshold": similarity_threshold,
+            "algorithm": "guarded-contiguous-units-stratified-v1",
+        }
+        config_digest = _sha256_json(normalized_config)
+        existing_summary = self._split_summary(batch_id)
+        if existing_summary is not None:
+            if existing_summary.get("configDigest") != config_digest:
+                raise TrainingWorkflowError("The collection partition is already sealed with a different configuration.")
+            return self.batch_status(batch_id)
+
+        break_ids = self._resolve_input_names(inputs, document_breaks)
+        forced_ids = self._resolve_input_names(inputs, forced_discovery)
+        if len(forced_ids) != len(set(str(value).lower() for value in forced_discovery)):
+            raise TrainingWorkflowError("Forced-discovery entries must identify unique registered pages.")
+
+        source_root = Path(str(manifest["sourceRoot"]))
+        records: list[dict[str, Any]] = []
+        document_number = 1
+        for index, item in enumerate(inputs):
+            input_id = str(item["inputId"])
+            if index and input_id in break_ids:
+                document_number += 1
+            relative_path = str(item["relativePath"])
+            records.append(
+                {
+                    "inputId": input_id,
+                    "relativePath": relative_path,
+                    "sha256": str(item["sha256"]),
+                    "size": int(item["size"]),
+                    "mediaType": str(item["mediaType"]),
+                    "sourceDocumentId": f"source-document-{document_number:03d}",
+                    "previouslyInspected": input_id in forced_ids,
+                    "guardDiscovery": False,
+                    "structuralMetadata": _image_structural_metadata(source_root / relative_path),
+                }
+            )
+        _assign_quantile_bins(records, "meanLuma", "luminanceBin")
+        _assign_quantile_bins(records, "edgeDensity", "densityBin")
+
+        records_by_document: dict[str, list[dict[str, Any]]] = {}
+        for record in records:
+            records_by_document.setdefault(str(record["sourceDocumentId"]), []).append(record)
+        for document_records in records_by_document.values():
+            inspected_indexes = {
+                index for index, record in enumerate(document_records) if record["previouslyInspected"]
+            }
+            guarded_indexes = {
+                candidate
+                for index in inspected_indexes
+                for candidate in range(max(0, index - guard_radius), min(len(document_records), index + guard_radius + 1))
+            }
+            for index, record in enumerate(document_records):
+                record["guardDiscovery"] = index in guarded_indexes and not record["previouslyInspected"]
+                record["forcedDiscovery"] = index in guarded_indexes
+
+        provisional_units: list[dict[str, Any]] = []
+        for document, document_records in sorted(records_by_document.items()):
+            current: list[dict[str, Any]] = []
+            current_forced: bool | None = None
+            for record in document_records:
+                forced = bool(record["forcedDiscovery"])
+                if current and forced != current_forced:
+                    provisional_units.append(
+                        {
+                            "provisionalId": f"provisional-{len(provisional_units) + 1:04d}",
+                            "sourceDocumentId": document,
+                            "forcedDiscovery": bool(current_forced),
+                            "inputs": current,
+                        }
+                    )
+                    current = []
+                current.append(record)
+                current_forced = forced
+            if current:
+                provisional_units.append(
+                    {
+                        "provisionalId": f"provisional-{len(provisional_units) + 1:04d}",
+                        "sourceDocumentId": document,
+                        "forcedDiscovery": bool(current_forced),
+                        "inputs": current,
+                    }
+                )
+
+        unit_for_input = {
+            str(record["inputId"]): str(unit["provisionalId"])
+            for unit in provisional_units
+            for record in unit["inputs"]
+        }
+        units_by_id = {str(unit["provisionalId"]): unit for unit in provisional_units}
+        union = _UnionFind(units_by_id)
+        cross_document_forced: set[str] = set()
+        for left_index, left in enumerate(records):
+            left_unit = unit_for_input[str(left["inputId"])]
+            left_metadata = left["structuralMetadata"]
+            for right in records[left_index + 1 :]:
+                right_unit = unit_for_input[str(right["inputId"])]
+                if left_unit == right_unit:
+                    continue
+                exact = left["sha256"] == right["sha256"]
+                near = False
+                if (
+                    left["sourceDocumentId"] == right["sourceDocumentId"]
+                    and left_metadata.get("status") == "measured"
+                    and right["structuralMetadata"].get("status") == "measured"
+                ):
+                    near = _hamming_hex(left_metadata["dhash"], right["structuralMetadata"]["dhash"]) <= similarity_threshold
+                if not exact and not near:
+                    continue
+                if left["sourceDocumentId"] != right["sourceDocumentId"]:
+                    cross_document_forced.update((left_unit, right_unit))
+                else:
+                    union.union(left_unit, right_unit)
+
+        merged: dict[str, dict[str, Any]] = {}
+        for unit in provisional_units:
+            provisional_id = str(unit["provisionalId"])
+            root = union.find(provisional_id)
+            destination = merged.setdefault(
+                root,
+                {
+                    "sourceDocumentId": unit["sourceDocumentId"],
+                    "forcedDiscovery": False,
+                    "inputs": [],
+                    "linkedProvisionalIds": [],
+                },
+            )
+            destination["inputs"].extend(unit["inputs"])
+            destination["linkedProvisionalIds"].append(provisional_id)
+            destination["forcedDiscovery"] = bool(
+                destination["forcedDiscovery"]
+                or unit["forcedDiscovery"]
+                or provisional_id in cross_document_forced
+            )
+
+        content_units: list[dict[str, Any]] = []
+        for unit in merged.values():
+            unit["inputs"].sort(key=lambda record: str(record["inputId"]))
+            member_ids = [str(record["inputId"]) for record in unit["inputs"]]
+            unit["contentUnitId"] = f"content-unit-{_sha256_json(member_ids)[:12]}"
+            content_units.append(unit)
+        content_units.sort(key=lambda unit: str(unit["contentUnitId"]))
+
+        document_counts = {document: len(document_records) for document, document_records in records_by_document.items()}
+        test_quotas = _largest_remainder_quotas(document_counts, test_target)
+        selected_test: set[str] = set()
+        split_seed = seed if seed is not None else secrets.token_bytes(32)
+        if len(split_seed) < 16:
+            raise TrainingWorkflowError("The private partition seed must contain at least 16 bytes.")
+        for document in sorted(records_by_document):
+            eligible = [
+                unit
+                for unit in content_units
+                if unit["sourceDocumentId"] == document and not unit["forcedDiscovery"]
+            ]
+            chosen_test = _choose_units(
+                eligible,
+                target=test_quotas[document],
+                seed=split_seed,
+                label=f"{document}:test",
+            )
+            selected_test.update(chosen_test)
+        validation_eligible = [
+            unit
+            for unit in content_units
+            if not unit["forcedDiscovery"] and unit["contentUnitId"] not in selected_test
+        ]
+        selected_validation = _choose_units(
+            validation_eligible,
+            target=validation_target,
+            seed=split_seed,
+            label="all-documents:validation",
+        )
+
+        assignment_records: list[dict[str, Any]] = []
+        for unit in content_units:
+            unit_id = str(unit["contentUnitId"])
+            partition = (
+                "test"
+                if unit_id in selected_test
+                else "validation"
+                if unit_id in selected_validation
+                else "discovery"
+            )
+            if unit["forcedDiscovery"] and partition != "discovery":
+                raise TrainingWorkflowError("A forced-discovery content unit entered a held-out partition.")
+            for record in unit["inputs"]:
+                assignment_records.append(
+                    {
+                        **record,
+                        "contentUnitId": unit_id,
+                        "datasetPartition": partition,
+                        "status": "pending",
+                    }
+                )
+        assignment_records.sort(key=lambda record: str(record["inputId"]))
+        by_partition = {
+            partition: [record for record in assignment_records if record["datasetPartition"] == partition]
+            for partition in ("discovery", "validation", "test")
+        }
+        if abs(len(by_partition["validation"]) - validation_target) > 2:
+            raise TrainingWorkflowError(
+                "Provisional units could not meet the approved validation range "
+                f"(selected {len(by_partition['validation'])}, target {validation_target})."
+            )
+        if abs(len(by_partition["test"]) - test_target) > 2:
+            raise TrainingWorkflowError(
+                "Provisional units could not meet the approved sealed-test range "
+                f"(selected {len(by_partition['test'])}, target {test_target})."
+            )
+        for partition, partition_records in by_partition.items():
+            documents = {str(record["sourceDocumentId"]) for record in partition_records}
+            if documents != set(records_by_document):
+                raise TrainingWorkflowError(f"The {partition} split does not represent every source document.")
+
+        profile = _profile_for_source(str(manifest["sourceCopedentId"]))
+        assignment_digest_payload = {
+            "schemaVersion": SPLIT_SCHEMA_VERSION,
+            "batchId": batch_id,
+            "configDigest": config_digest,
+            "sourceCopedentId": profile.id,
+            "sourceCopedentRevision": profile.revision,
+            "sourceCopedentDigest": _profile_digest(profile),
+            "seedDigest": _sha256_bytes(split_seed),
+            "assignments": [
+                {
+                    "inputId": record["inputId"],
+                    "sha256": record["sha256"],
+                    "sourceDocumentId": record["sourceDocumentId"],
+                    "contentUnitId": record["contentUnitId"],
+                    "datasetPartition": record["datasetPartition"],
+                }
+                for record in assignment_records
+            ],
+        }
+        partition_digest = _sha256_json(assignment_digest_payload)
+        created_at = _utc_now()
+        distribution = {
+            partition: _partition_distribution(partition_records)
+            for partition, partition_records in by_partition.items()
+        }
+        content_unit_counts = {
+            partition: len({str(record["contentUnitId"]) for record in partition_records})
+            for partition, partition_records in by_partition.items()
+        }
+        summary = {
+            "schemaVersion": SPLIT_SCHEMA_VERSION,
+            "batchId": batch_id,
+            "createdAt": created_at,
+            "sealedAt": created_at,
+            "status": "sealed_unopened",
+            "configDigest": config_digest,
+            "partitionDigest": partition_digest,
+            "seedDigest": _sha256_bytes(split_seed),
+            "sourceCopedentId": profile.id,
+            "sourceCopedentRevision": profile.revision,
+            "sourceCopedentDigest": _profile_digest(profile),
+            "algorithm": normalized_config["algorithm"],
+            "groupingReviewStatus": "provisional_structural",
+            "stratificationStatus": {
+                "sourceAndImageStructure": "completed",
+                "pageTypeAndMusicalContent": "pending_independent_review",
+            },
+            "guardRadius": guard_radius,
+            "similarityThreshold": similarity_threshold,
+            "targets": normalized_config["targets"],
+            "counts": {
+                "total": total,
+                **{partition: len(partition_records) for partition, partition_records in by_partition.items()},
+            },
+            "contentUnitCounts": content_unit_counts,
+            "forcedDiscoveryCount": sum(bool(record["forcedDiscovery"]) for record in assignment_records),
+            "previouslyInspectedCount": sum(bool(record["previouslyInspected"]) for record in assignment_records),
+            "distribution": distribution,
+            "sealedTest": {
+                "status": "sealed_unopened",
+                "membershipExposedInStatus": False,
+                "groundTruthStatus": "pending",
+            },
+        }
+
+        batch_dir = self._batch_dir(batch_id)
+        sealed_dir = batch_dir / "sealed-test"
+        sealed_dir.mkdir(parents=True, exist_ok=False)
+        _make_private(sealed_dir, directory=True)
+        seed_path = sealed_dir / "split-seed.bin"
+        seed_path.write_bytes(split_seed)
+        _make_private(seed_path)
+        _write_json(
+            sealed_dir / "test-manifest.json",
+            {
+                "schemaVersion": SPLIT_SCHEMA_VERSION,
+                "batchId": batch_id,
+                "partitionDigest": partition_digest,
+                "sourceCopedentId": profile.id,
+                "sourceCopedentRevision": profile.revision,
+                "sourceCopedentDigest": _profile_digest(profile),
+                "status": "sealed_unopened",
+                "inputs": by_partition["test"],
+            },
+        )
+        _make_private(sealed_dir / "test-manifest.json")
+        _write_json(
+            sealed_dir / "ground-truth-status.json",
+            {
+                "schemaVersion": SPLIT_SCHEMA_VERSION,
+                "batchId": batch_id,
+                "status": "pending",
+                "inputCount": len(by_partition["test"]),
+                "rulesFreezeDigest": None,
+                "openedAt": None,
+            },
+        )
+        _make_private(sealed_dir / "ground-truth-status.json")
+        _write_jsonl(batch_dir / "discovery-work.jsonl", by_partition["discovery"])
+        _write_jsonl(batch_dir / "validation-work.jsonl", by_partition["validation"])
+        _write_jsonl(batch_dir / "annotation-work.jsonl", by_partition["discovery"])
+        _write_json(batch_dir / "partition-summary.json", summary)
+        state["counts"].update(
+            {
+                "discoveryInputs": len(by_partition["discovery"]),
+                "validationInputs": len(by_partition["validation"]),
+                "testInputs": len(by_partition["test"]),
+            }
+        )
+        self._checkpoint(
+            state,
+            "partition",
+            "completed",
+            partitionDigest=partition_digest,
+            discoveryCount=len(by_partition["discovery"]),
+            validationCount=len(by_partition["validation"]),
+            testCount=len(by_partition["test"]),
+            sealedTestStatus="sealed_unopened",
+        )
+        self._save_state(batch_id, state)
+        registry = self._registry()
+        registry["batches"][batch_id]["partitionDigest"] = partition_digest
+        registry["batches"][batch_id]["partitionStatus"] = "sealed_unopened"
+        self._save_registry(registry)
+        return self.batch_status(batch_id)
+
+    def supersede_batch(
+        self,
+        batch_id: str,
+        *,
+        replacement_batch_id: str,
+        approval_reference: str,
+    ) -> dict[str, Any]:
+        if batch_id == replacement_batch_id:
+            raise TrainingWorkflowError("A batch cannot supersede itself.")
+        if not approval_reference.strip():
+            raise TrainingWorkflowError("Superseding a batch requires an explicit user decision reference.")
+        registry = self._registry()
+        old_meta = registry["batches"].get(batch_id)
+        replacement_meta = registry["batches"].get(replacement_batch_id)
+        if old_meta is None or replacement_meta is None:
+            raise TrainingWorkflowError("Both the superseded and replacement batches must exist.")
+        replacement_summary = self._split_summary(replacement_batch_id)
+        if replacement_summary is None or replacement_summary.get("status") != "sealed_unopened":
+            raise TrainingWorkflowError("The replacement batch must have a sealed partition before it becomes authoritative.")
+        if old_meta.get("lifecycleStatus") == "superseded":
+            if old_meta.get("supersededByBatchId") != replacement_batch_id:
+                raise TrainingWorkflowError("The batch was already superseded by a different replacement.")
+            return self.batch_status(batch_id)
+        changed_at = _utc_now()
+        old_meta.update(
+            {
+                "lifecycleStatus": "superseded",
+                "supersededByBatchId": replacement_batch_id,
+                "supersededAt": changed_at,
+                "supersededDecision": approval_reference,
+            }
+        )
+        replacement_meta["lifecycleStatus"] = "active"
+        registry["authoritativeBatchId"] = replacement_batch_id
+        _manifest, old_state = self._batch(batch_id)
+        old_state["lifecycleStatus"] = "superseded"
+        old_state["supersededByBatchId"] = replacement_batch_id
+        old_state["updatedAt"] = changed_at
+        self._save_state(batch_id, old_state)
+        affected_models = {
+            str(checkpoint.get("modelId"))
+            for checkpoint in old_state.get("checkpoints", {}).values()
+            if checkpoint.get("modelId")
+        }
+        for model_id in affected_models:
+            model_meta = registry["models"].get(model_id)
+            if model_meta is None:
+                continue
+            model_meta["datasetEligibility"] = "historical_superseded"
+            model_meta["eligibleForFutureComparison"] = False
+            source_batches = set(model_meta.get("supersededSourceBatches") or [])
+            source_batches.add(batch_id)
+            model_meta["supersededSourceBatches"] = sorted(source_batches)
+        self._save_registry(registry)
+        return self.batch_status(batch_id)
+
+    def verify_batch_inputs(self, batch_id: str) -> dict[str, Any]:
+        manifest, _state = self._batch(batch_id)
+        source_root = Path(str(manifest["sourceRoot"]))
+        failures: list[str] = []
+        for item in manifest["inputs"]:
+            path = source_root / str(item["relativePath"])
+            if not path.exists() or path.stat().st_size != int(item["size"]):
+                failures.append(str(item["inputId"]))
+                continue
+            if _sha256_bytes(path.read_bytes()) != item["sha256"]:
+                failures.append(str(item["inputId"]))
+        return {
+            "batchId": batch_id,
+            "inputCount": len(manifest["inputs"]),
+            "verifiedCount": len(manifest["inputs"]) - len(failures),
+            "sourceUnchanged": not failures,
+            "failedInputIds": failures,
+            "immutableDigest": manifest["immutableDigest"],
+        }
+
     def import_annotations(self, batch_id: str, source: Path | str) -> dict[str, Any]:
         manifest, state = self._batch(batch_id)
+        registry = self._registry()
+        batch_meta = registry["batches"].get(batch_id, {})
+        if batch_meta.get("lifecycleStatus", "active") != "active":
+            raise TrainingWorkflowError("Annotations cannot be imported into a superseded batch.")
         annotation_path = Path(source).expanduser().resolve()
         records = _read_jsonl(annotation_path)
         if not records:
             raise TrainingWorkflowError("Annotation input is empty.")
         decision_ids: set[str] = set()
         input_ids = {item["inputId"] for item in manifest["inputs"]}
+        partition_records = self._partition_records(batch_id)
+        partition_by_input = {
+            str(record["inputId"]): str(record["datasetPartition"])
+            for record in partition_records
+        }
         for record in records:
             decision_id = str(record.get("decisionId") or "").strip()
             if not decision_id or decision_id in decision_ids:
@@ -495,6 +1258,14 @@ class AmazingTablatureTrainingStore:
                 raise TrainingWorkflowError(f"{decision_id} refers to an input outside batch {batch_id}.")
             if record.get("sourceCopedentId") != manifest["sourceCopedentId"]:
                 raise TrainingWorkflowError(f"{decision_id} does not use the batch source copedent.")
+            if partition_by_input:
+                expected_partition = partition_by_input[str(record["inputId"])]
+                if expected_partition == "test":
+                    raise TrainingWorkflowError("Sealed-test inputs cannot enter the normal annotation workflow.")
+                if record.get("datasetPartition") != expected_partition:
+                    raise TrainingWorkflowError(
+                        f"{decision_id} must use its sealed {expected_partition} partition."
+                    )
         destination = self._batch_dir(batch_id) / "annotations.jsonl"
         digest = _sha256_json(records)
         if destination.exists():
@@ -513,6 +1284,7 @@ class AmazingTablatureTrainingStore:
         return {str(record.get("decisionId")): record for record in records if record.get("decisionId")}
 
     def apply_review(self, batch_id: str, source: Path | str) -> dict[str, Any]:
+        self._require_active_batch(batch_id)
         self._batch(batch_id)
         incoming = _read_jsonl(Path(source).expanduser().resolve())
         if not incoming:
@@ -539,6 +1311,7 @@ class AmazingTablatureTrainingStore:
         return self.validate(batch_id)
 
     def validate(self, batch_id: str) -> dict[str, Any]:
+        self._require_active_batch(batch_id)
         manifest, state = self._batch(batch_id)
         annotations = _read_jsonl(self._batch_dir(batch_id) / "annotations.jsonl")
         if not annotations:
@@ -581,7 +1354,9 @@ class AmazingTablatureTrainingStore:
                     raise TrainingWorkflowError(f"Unsupported reviewStatus: {review_status}.")
                 partition = str(record.get("datasetPartition") or "train")
                 if partition not in PARTITIONS:
-                    raise TrainingWorkflowError("datasetPartition must be train or holdout.")
+                    raise TrainingWorkflowError(
+                        "datasetPartition must be train, holdout, discovery, validation, or test."
+                    )
                 confidence = _number(record.get("confidence"), "confidence")
                 if confidence < 0 or confidence > 1:
                     raise TrainingWorkflowError("confidence must be between 0 and 1.")
@@ -664,10 +1439,16 @@ class AmazingTablatureTrainingStore:
         self._save_state(batch_id, state)
         return self.batch_status(batch_id)
 
-    def _accepted_records(self) -> list[dict[str, Any]]:
+    def _accepted_records(self, *, active_only: bool = True) -> list[dict[str, Any]]:
         registry = self._registry()
+        authoritative = registry.get("authoritativeBatchId")
         records: list[dict[str, Any]] = []
         for batch_id in sorted(registry["batches"]):
+            batch_meta = registry["batches"][batch_id]
+            if active_only and batch_meta.get("lifecycleStatus", "active") != "active":
+                continue
+            if active_only and authoritative and batch_id != authoritative:
+                continue
             records.extend(_read_jsonl(self._batch_dir(batch_id) / "accepted-decisions.jsonl"))
         return sorted(records, key=lambda record: (str(record.get("batchId")), str(record.get("decisionId"))))
 
@@ -684,7 +1465,9 @@ class AmazingTablatureTrainingStore:
         if epochs < 1 or learning_rate <= 0:
             raise TrainingWorkflowError("Training requires positive epochs and learning rate.")
         accepted = self._accepted_records()
-        training_records = [record for record in accepted if record.get("datasetPartition") == "train"]
+        training_records = [
+            record for record in accepted if record.get("datasetPartition") in {"train", "discovery"}
+        ]
         if not training_records:
             raise TrainingWorkflowError("No validated training decisions are available.")
         trainer_records = [self._trainer_record(record) for record in training_records]
@@ -714,6 +1497,7 @@ class AmazingTablatureTrainingStore:
             "evidenceCounts": evidence_counts,
             "reviewCounts": review_counts,
             "trainingConfig": config,
+            "sourceBatchIds": sorted({str(record["batchId"]) for record in training_records}),
             "codeRevision": _git_revision(self.repo_root),
             "copedentNeutral": True,
             "privacy": {"containsSourceContent": False, "containsProfileSnapshots": False},
@@ -728,6 +1512,9 @@ class AmazingTablatureTrainingStore:
             "status": "challenger",
             "createdAt": payload["createdAt"],
             "datasetHash": dataset_hash,
+            "sourceBatchIds": payload["sourceBatchIds"],
+            "datasetEligibility": "eligible",
+            "eligibleForFutureComparison": True,
             "evaluation": None,
         }
         self._save_registry(registry)
@@ -758,16 +1545,21 @@ class AmazingTablatureTrainingStore:
         if not model_meta:
             raise TrainingWorkflowError(f"Unknown challenger: {model_id}.")
         model = _read_json(self.root / model_meta["artifact"])
-        holdouts = [record for record in self._accepted_records() if record.get("datasetPartition") == "holdout"]
+        accepted = self._accepted_records()
+        holdouts = [record for record in accepted if record.get("datasetPartition") == "validation"]
+        evaluation_partition = "validation"
         if not holdouts:
-            raise TrainingWorkflowError("No validated holdout decisions are available.")
+            holdouts = [record for record in accepted if record.get("datasetPartition") == "holdout"]
+            evaluation_partition = "holdout"
+        if not holdouts:
+            raise TrainingWorkflowError("No validated validation decisions are available.")
         mechanical_accuracy = sum(bool(record.get("mechanicalValidation", {}).get("ok")) for record in holdouts) / len(holdouts)
         challenger_accuracy = self._model_accuracy(model, holdouts)
         champion_id = registry["channels"].get("stable")
         champion_accuracy: float | None = None
         if champion_id and champion_id != model_id:
             champion_meta = registry["models"].get(champion_id)
-            if champion_meta:
+            if champion_meta and champion_meta.get("eligibleForFutureComparison", True):
                 champion = _read_json(self.root / champion_meta["artifact"])
                 champion_accuracy = self._model_accuracy(champion, holdouts)
         benchmark_counts: dict[str, int] = {}
@@ -784,6 +1576,7 @@ class AmazingTablatureTrainingStore:
             "schemaVersion": TRAINING_SCHEMA_VERSION,
             "modelId": model_id,
             "evaluatedAt": _utc_now(),
+            "evaluationPartition": evaluation_partition,
             "holdoutCount": len(holdouts),
             "challengerPreferenceAccuracy": challenger_accuracy,
             "championModelId": champion_id,
@@ -976,15 +1769,41 @@ class AmazingTablatureTrainingStore:
 
     def batch_status(self, batch_id: str) -> dict[str, Any]:
         manifest, state = self._batch(batch_id)
-        return {
+        registry = self._registry()
+        meta = registry["batches"].get(batch_id, {})
+        split_summary = self._split_summary(batch_id)
+        payload = {
             "batchId": batch_id,
             "sourceCopedentId": manifest["sourceCopedentId"],
             "sourceCopedentConfidence": manifest["sourceCopedentConfidence"],
+            "sourceCopedentRevision": manifest.get("sourceCopedentRevision", meta.get("sourceCopedentRevision", 1)),
+            "sourceCopedentDigest": manifest.get("sourceCopedentDigest", meta.get("sourceCopedentDigest")),
             "evidenceType": manifest["evidenceType"],
             "immutableDigest": manifest["immutableDigest"],
+            "lifecycleStatus": meta.get("lifecycleStatus", state.get("lifecycleStatus", "active")),
+            "supersededByBatchId": meta.get("supersededByBatchId"),
             "counts": state["counts"],
             "checkpoints": state["checkpoints"],
         }
+        if split_summary is not None:
+            payload["partition"] = {
+                "schemaVersion": split_summary["schemaVersion"],
+                "status": split_summary["status"],
+                "partitionDigest": split_summary["partitionDigest"],
+                "groupingReviewStatus": split_summary.get("groupingReviewStatus", "provisional_structural"),
+                "stratificationStatus": split_summary.get(
+                    "stratificationStatus",
+                    {
+                        "sourceAndImageStructure": "completed",
+                        "pageTypeAndMusicalContent": "pending_independent_review",
+                    },
+                ),
+                "counts": split_summary["counts"],
+                "contentUnitCounts": split_summary["contentUnitCounts"],
+                "distribution": split_summary["distribution"],
+                "sealedTest": split_summary["sealedTest"],
+            }
+        return payload
 
     def status(self) -> dict[str, Any]:
         registry = self._registry()
@@ -992,6 +1811,7 @@ class AmazingTablatureTrainingStore:
         return {
             "schemaVersion": TRAINING_SCHEMA_VERSION,
             "root": str(self.root),
+            "authoritativeBatchId": registry.get("authoritativeBatchId"),
             "batchCount": len(batches),
             "batches": batches,
             "modelCount": len(registry["models"]),
@@ -999,6 +1819,8 @@ class AmazingTablatureTrainingStore:
                 model_id: {
                     "status": meta.get("status"),
                     "datasetHash": meta.get("datasetHash"),
+                    "datasetEligibility": meta.get("datasetEligibility", "eligible"),
+                    "eligibleForFutureComparison": meta.get("eligibleForFutureComparison", True),
                     "evaluation": meta.get("evaluation"),
                 }
                 for model_id, meta in sorted(registry["models"].items())
@@ -1014,6 +1836,7 @@ __all__ = [
     "FEATURE_SCHEMA_VERSION",
     "MODEL_STATES",
     "PIPELINE_STAGES",
+    "SPLIT_SCHEMA_VERSION",
     "TRAINING_SCHEMA_VERSION",
     "AmazingTablatureTrainingStore",
     "TrainingWorkflowError",

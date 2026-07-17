@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -132,6 +133,66 @@ def ingested_store(tmp_path: Path, *, evidence_type: str = "expert_score_tab") -
         batch_id="atb-test-batch",
     )
     return store, status["batchId"]
+
+
+INSPECTED_TRAINING_PAGES = {
+    161,
+    162,
+    175,
+    189,
+    205,
+    210,
+    220,
+    235,
+    250,
+    265,
+    280,
+    295,
+    *range(299, 305),
+    *range(310, 318),
+    325,
+    331,
+    340,
+    355,
+    370,
+    385,
+    400,
+    415,
+    430,
+    439,
+}
+
+
+def add_full_collection(
+    store: AmazingTablatureTrainingStore,
+    tmp_path: Path,
+    *,
+    batch_id: str = "atb-training-278",
+) -> str:
+    sources = tmp_path / f"{batch_id}-sources"
+    sources.mkdir()
+    for number in range(161, 440):
+        if number == 427:
+            continue
+        (sources / f"IMG_{number:04d}.JPG").write_bytes(f"private-page-{number}".encode())
+    status = store.ingest(
+        sources,
+        source_copedent_id="source-e9-abc-defg-v1",
+        batch_id=batch_id,
+    )
+    assert status["counts"]["inputs"] == 278
+    store.prepare_partition(
+        batch_id,
+        document_breaks=["IMG_0312.JPG"],
+        forced_discovery=[f"IMG_{number:04d}.JPG" for number in sorted(INSPECTED_TRAINING_PAGES)],
+        discovery_target=194,
+        validation_target=28,
+        test_target=56,
+        guard_radius=1,
+        similarity_threshold=3,
+        seed=b"lane-15-private-split-seed-v1",
+    )
+    return batch_id
 
 
 def add_train_and_holdout(store: AmazingTablatureTrainingStore, batch_id: str, tmp_path: Path) -> None:
@@ -345,6 +406,121 @@ def test_cli_status_uses_the_same_durable_store(tmp_path: Path) -> None:
     payload = json.loads(result.stdout)
     assert payload["batchId"] == batch_id
     assert payload["checkpoints"]["annotate"]["status"] == "pending"
+
+
+def test_full_collection_partition_is_sealed_and_leakage_safe(tmp_path: Path) -> None:
+    store = AmazingTablatureTrainingStore(tmp_path / "private", repo_root=tmp_path)
+    batch_id = add_full_collection(store, tmp_path)
+    status = store.batch_status(batch_id)
+    partition = status["partition"]
+
+    assert partition["status"] == "sealed_unopened"
+    assert partition["groupingReviewStatus"] == "provisional_structural"
+    assert partition["stratificationStatus"]["pageTypeAndMusicalContent"] == "pending_independent_review"
+    assert partition["counts"]["total"] == 278
+    assert 26 <= partition["counts"]["validation"] <= 30
+    assert 54 <= partition["counts"]["test"] <= 58
+    assert sum(partition["counts"][name] for name in ("discovery", "validation", "test")) == 278
+    assert partition["sealedTest"] == {
+        "groundTruthStatus": "pending",
+        "membershipExposedInStatus": False,
+        "status": "sealed_unopened",
+    }
+    assert "relativePath" not in json.dumps(status)
+
+    batch_dir = tmp_path / f"private/batches/{batch_id}"
+    discovery = [json.loads(line) for line in (batch_dir / "discovery-work.jsonl").read_text().splitlines()]
+    validation = [json.loads(line) for line in (batch_dir / "validation-work.jsonl").read_text().splitlines()]
+    sealed = json.loads((batch_dir / "sealed-test/test-manifest.json").read_text())
+    test = sealed["inputs"]
+    assert len(discovery) == partition["counts"]["discovery"]
+    assert len(validation) == partition["counts"]["validation"]
+    assert len(test) == partition["counts"]["test"]
+    assert {record["sourceDocumentId"] for record in discovery} == {
+        "source-document-001",
+        "source-document-002",
+    }
+    assert {record["sourceDocumentId"] for record in validation} == {
+        "source-document-001",
+        "source-document-002",
+    }
+    assert {record["sourceDocumentId"] for record in test} == {
+        "source-document-001",
+        "source-document-002",
+    }
+
+    discovery_paths = {record["relativePath"] for record in discovery}
+    held_out_paths = {record["relativePath"] for record in validation + test}
+    assert not discovery_paths & held_out_paths
+    for number in INSPECTED_TRAINING_PAGES:
+        assert f"IMG_{number:04d}.JPG" in discovery_paths
+    assert not any(path in (batch_dir / "annotation-work.jsonl").read_text() for path in held_out_paths)
+    assert stat.S_IMODE((batch_dir / "sealed-test").stat().st_mode) == 0o700
+    assert stat.S_IMODE((batch_dir / "sealed-test/test-manifest.json").stat().st_mode) == 0o600
+
+    same = store.prepare_partition(
+        batch_id,
+        document_breaks=["IMG_0312.JPG"],
+        forced_discovery=[f"IMG_{number:04d}.JPG" for number in sorted(INSPECTED_TRAINING_PAGES)],
+        discovery_target=194,
+        validation_target=28,
+        test_target=56,
+        seed=b"different-seed-is-ignored-after-sealing",
+    )
+    assert same["partition"]["partitionDigest"] == partition["partitionDigest"]
+    with pytest.raises(TrainingWorkflowError, match="already sealed"):
+        store.prepare_partition(
+            batch_id,
+            document_breaks=["IMG_0312.JPG"],
+            forced_discovery=["IMG_0161.JPG"],
+            discovery_target=194,
+            validation_target=28,
+            test_target=56,
+        )
+
+
+def test_partition_binding_and_superseded_batch_exclusion(tmp_path: Path) -> None:
+    store, old_batch_id = ingested_store(tmp_path)
+    add_train_and_holdout(store, old_batch_id, tmp_path)
+    old_model = store.train(epochs=2)
+    replacement_batch_id = add_full_collection(store, tmp_path)
+    batch_dir = tmp_path / f"private/batches/{replacement_batch_id}"
+    discovery = [json.loads(line) for line in (batch_dir / "discovery-work.jsonl").read_text().splitlines()]
+    validation = [json.loads(line) for line in (batch_dir / "validation-work.jsonl").read_text().splitlines()]
+    test = json.loads((batch_dir / "sealed-test/test-manifest.json").read_text())["inputs"]
+
+    wrong_validation = annotation("wrong-validation", validation[0]["inputId"], partition="train")
+    with pytest.raises(TrainingWorkflowError, match="sealed validation"):
+        store.import_annotations(
+            replacement_batch_id,
+            write_jsonl(tmp_path / "wrong-validation.jsonl", [wrong_validation]),
+        )
+    sealed_test = annotation("sealed-test", test[0]["inputId"], partition="test")
+    with pytest.raises(TrainingWorkflowError, match="Sealed-test"):
+        store.import_annotations(
+            replacement_batch_id,
+            write_jsonl(tmp_path / "sealed-test.jsonl", [sealed_test]),
+        )
+
+    records = [
+        annotation("replacement-discovery", discovery[0]["inputId"], partition="discovery"),
+        annotation("replacement-validation", validation[0]["inputId"], partition="validation"),
+    ]
+    store.import_annotations(replacement_batch_id, write_jsonl(tmp_path / "replacement.jsonl", records))
+    store.supersede_batch(
+        old_batch_id,
+        replacement_batch_id=replacement_batch_id,
+        approval_reference="user replaced the 51 images with the 278-image collection",
+    )
+    status = store.status()
+    assert status["authoritativeBatchId"] == replacement_batch_id
+    assert store.batch_status(old_batch_id)["lifecycleStatus"] == "superseded"
+    assert status["models"][old_model["modelId"]]["datasetEligibility"] == "historical_superseded"
+    assert status["models"][old_model["modelId"]]["eligibleForFutureComparison"] is False
+    with pytest.raises(TrainingWorkflowError, match="No validated training decisions"):
+        store.train(epochs=2)
+    with pytest.raises(TrainingWorkflowError, match="superseded"):
+        store.validate(old_batch_id)
 
 
 def test_player_facing_styles_are_descriptive_and_copedent_neutral() -> None:
