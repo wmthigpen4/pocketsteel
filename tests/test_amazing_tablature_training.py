@@ -254,6 +254,59 @@ def test_ingest_rejects_unknown_source_copedent(tmp_path: Path) -> None:
         )
 
 
+def test_lick_collection_excludes_copedent_evidence_and_seals_page_units(tmp_path: Path) -> None:
+    sources = tmp_path / "licks"
+    sources.mkdir()
+    (sources / "IMG_0441.JPG").write_bytes(b"private copedent chart")
+    for number in range(442, 476):
+        (sources / f"IMG_{number:04d}.JPG").write_bytes(f"private-lick-page-{number}".encode())
+
+    store = AmazingTablatureTrainingStore(tmp_path / "private", repo_root=tmp_path)
+    batch_id = "atb-licks-34"
+    status = store.ingest(
+        sources,
+        source_copedent_id="source-e9-abc-defg-d48-e29-v1",
+        source_copedent_evidence=["IMG_0441.JPG"],
+        batch_id=batch_id,
+    )
+
+    assert status["counts"]["inputs"] == 34
+    assert status["counts"]["copedentEvidence"] == 1
+    assert status["sourceCopedentEvidenceCount"] == 1
+    verification = store.verify_batch_inputs(batch_id)
+    assert verification["assetCount"] == 35
+    assert verification["verifiedCount"] == 35
+    assert verification["sourceUnchanged"] is True
+
+    store.prepare_partition(
+        batch_id,
+        document_breaks=[],
+        forced_discovery=["IMG_0442.JPG", "IMG_0459.JPG", "IMG_0475.JPG"],
+        content_unit_breaks=[f"IMG_{number:04d}.JPG" for number in range(443, 476)],
+        discovery_target=24,
+        validation_target=3,
+        test_target=7,
+        guard_radius=0,
+        similarity_threshold=3,
+        seed=b"lane-15-private-lick-split-seed-v1",
+    )
+    status = store.batch_status(batch_id)
+    partition = status["partition"]
+    assert partition["status"] == "sealed_unopened"
+    assert partition["groupingReviewStatus"] == "provisional_explicit_units"
+    assert partition["counts"] == {"total": 34, "discovery": 24, "validation": 3, "test": 7}
+    assert partition["contentUnitCounts"] == {"discovery": 24, "validation": 3, "test": 7}
+
+    batch_dir = tmp_path / f"private/batches/{batch_id}"
+    discovery = [json.loads(line) for line in (batch_dir / "discovery-work.jsonl").read_text().splitlines()]
+    discovery_paths = {record["relativePath"] for record in discovery}
+    assert {"IMG_0442.JPG", "IMG_0459.JPG", "IMG_0475.JPG"} <= discovery_paths
+    assert "IMG_0441.JPG" not in (batch_dir / "annotation-work.jsonl").read_text()
+    sealed = json.loads((batch_dir / "sealed-test/test-manifest.json").read_text())
+    assert len(sealed["inputs"]) == 7
+    assert sealed["status"] == "sealed_unopened"
+
+
 def test_validation_uses_stable_controls_and_writes_exception_queue(tmp_path: Path) -> None:
     store, batch_id = ingested_store(tmp_path)
     valid = annotation("valid", "input-0001", partition="train")

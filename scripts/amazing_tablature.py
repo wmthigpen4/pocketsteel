@@ -34,6 +34,12 @@ def _parser() -> argparse.ArgumentParser:
     ingest.add_argument("--copedent-confidence", choices=("confirmed", "inferred", "unknown"), default="confirmed")
     ingest.add_argument("--evidence-type", choices=("expert_score_tab", "player_feedback"), default="expert_score_tab")
     ingest.add_argument("--batch-id")
+    ingest.add_argument(
+        "--source-copedent-evidence",
+        action="append",
+        default=[],
+        help="Register a copedent chart as immutable evidence without treating it as a score/tab input.",
+    )
 
     partition = subparsers.add_parser(
         "partition",
@@ -42,6 +48,12 @@ def _parser() -> argparse.ArgumentParser:
     partition.add_argument("batch_id")
     partition.add_argument("--document-break", action="append", default=[])
     partition.add_argument("--force-discovery", action="append", default=[])
+    partition.add_argument(
+        "--content-unit-break",
+        action="append",
+        default=[],
+        help="Start a new indivisible content unit at this registered page.",
+    )
     partition.add_argument("--discovery-target", type=int, default=194)
     partition.add_argument("--validation-target", type=int, default=28)
     partition.add_argument("--test-target", type=int, default=56)
@@ -113,12 +125,14 @@ def main() -> int:
                 source_copedent_confidence=args.copedent_confidence,
                 evidence_type=args.evidence_type,
                 batch_id=args.batch_id,
+                source_copedent_evidence=args.source_copedent_evidence,
             )
         elif args.command == "partition":
             result = store.prepare_partition(
                 args.batch_id,
                 document_breaks=args.document_break,
                 forced_discovery=args.force_discovery,
+                content_unit_breaks=args.content_unit_break,
                 discovery_target=args.discovery_target,
                 validation_target=args.validation_target,
                 test_target=args.test_target,

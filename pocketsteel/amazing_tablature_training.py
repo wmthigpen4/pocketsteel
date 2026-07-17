@@ -513,10 +513,6 @@ def _choose_units(
         return set()
     if not units:
         raise TrainingWorkflowError(f"No eligible content units remain for {label}.")
-    if len(units) > 22:
-        raise TrainingWorkflowError(
-            "The provisional grouping produced too many independent units; increase the discovery guard or supply reviewed units."
-        )
     total_pages = sum(len(unit["inputs"]) for unit in units)
     if target > total_pages:
         raise TrainingWorkflowError(f"The {label} target exceeds its eligible source pages.")
@@ -526,25 +522,79 @@ def _choose_units(
             all_categories[category] = all_categories.get(category, 0) + count
     desired_fraction = target / total_pages
     best: tuple[tuple[float, float, str], set[str]] | None = None
-    for size in range(1, len(units) + 1):
-        for chosen in itertools.combinations(units, size):
-            page_total = sum(len(unit["inputs"]) for unit in chosen)
-            count_error = abs(page_total - target)
-            if best is not None and count_error > best[0][0]:
+    if len(units) <= 22:
+        for size in range(1, len(units) + 1):
+            for chosen in itertools.combinations(units, size):
+                page_total = sum(len(unit["inputs"]) for unit in chosen)
+                count_error = abs(page_total - target)
+                if best is not None and count_error > best[0][0]:
+                    continue
+                selected_categories: dict[str, int] = {}
+                for unit in chosen:
+                    for category, count in _unit_category_counts(unit).items():
+                        selected_categories[category] = selected_categories.get(category, 0) + count
+                distribution_error = sum(
+                    abs(selected_categories.get(category, 0) - count * desired_fraction)
+                    for category, count in all_categories.items()
+                )
+                ids = sorted(str(unit["contentUnitId"]) for unit in chosen)
+                tie_breaker = _seeded_digest(seed, label, *ids)
+                score = (float(count_error), round(distribution_error, 8), tie_breaker)
+                if best is None or score < best[0]:
+                    best = (score, set(ids))
+    else:
+        # Explicit page-level content units can exceed the practical limit for
+        # exhaustive subset enumeration. Retain a deterministic beam of the
+        # most structurally representative candidates for each page total.
+        beam_width = 256
+        max_total = min(total_pages, target + 2)
+        states: dict[int, list[tuple[tuple[str, ...], dict[str, int]]]] = {0: [((), {})]}
+        for unit in sorted(units, key=lambda value: str(value["contentUnitId"])):
+            unit_id = str(unit["contentUnitId"])
+            unit_size = len(unit["inputs"])
+            unit_categories = _unit_category_counts(unit)
+            expanded = {page_total: list(candidates) for page_total, candidates in states.items()}
+            for page_total, candidates in states.items():
+                next_total = page_total + unit_size
+                if next_total > max_total:
+                    continue
+                destination = expanded.setdefault(next_total, [])
+                for ids, categories in candidates:
+                    combined = dict(categories)
+                    for category, count in unit_categories.items():
+                        combined[category] = combined.get(category, 0) + count
+                    destination.append(((*ids, unit_id), combined))
+            states = {}
+            for page_total, candidates in expanded.items():
+                partial_fraction = page_total / total_pages
+                candidates.sort(
+                    key=lambda candidate: (
+                        round(
+                            sum(
+                                abs(candidate[1].get(category, 0) - count * partial_fraction)
+                                for category, count in all_categories.items()
+                            ),
+                            8,
+                        ),
+                        _seeded_digest(seed, label, *candidate[0]),
+                    )
+                )
+                states[page_total] = candidates[:beam_width]
+        for page_total, candidates in states.items():
+            if page_total < 1:
                 continue
-            selected_categories: dict[str, int] = {}
-            for unit in chosen:
-                for category, count in _unit_category_counts(unit).items():
-                    selected_categories[category] = selected_categories.get(category, 0) + count
-            distribution_error = sum(
-                abs(selected_categories.get(category, 0) - count * desired_fraction)
-                for category, count in all_categories.items()
-            )
-            ids = sorted(str(unit["contentUnitId"]) for unit in chosen)
-            tie_breaker = _seeded_digest(seed, label, *ids)
-            score = (float(count_error), round(distribution_error, 8), tie_breaker)
-            if best is None or score < best[0]:
-                best = (score, set(ids))
+            for ids, selected_categories in candidates:
+                distribution_error = sum(
+                    abs(selected_categories.get(category, 0) - count * desired_fraction)
+                    for category, count in all_categories.items()
+                )
+                score = (
+                    float(abs(page_total - target)),
+                    round(distribution_error, 8),
+                    _seeded_digest(seed, label, *ids),
+                )
+                if best is None or score < best[0]:
+                    best = (score, set(ids))
     if best is None:
         raise TrainingWorkflowError(f"Could not construct the {label} partition.")
     return best[1]
@@ -639,6 +689,7 @@ class AmazingTablatureTrainingStore:
         source_copedent_confidence: str = "confirmed",
         evidence_type: str = "expert_score_tab",
         batch_id: str | None = None,
+        source_copedent_evidence: Sequence[str] = (),
     ) -> dict[str, Any]:
         if evidence_type not in EVIDENCE_TYPES:
             raise TrainingWorkflowError(f"Unsupported evidence type: {evidence_type}.")
@@ -649,6 +700,32 @@ class AmazingTablatureTrainingStore:
         profile = _profile_for_source(source_copedent_id)
         source_path = Path(source).expanduser().resolve()
         files = _discover_inputs(source_path)
+        by_relative = {path.relative_to(source_path).as_posix().lower(): path for path in files}
+        by_basename: dict[str, list[Path]] = {}
+        for path in files:
+            by_basename.setdefault(path.name.lower(), []).append(path)
+        evidence_files: set[Path] = set()
+        missing_evidence: list[str] = []
+        for raw_name in source_copedent_evidence:
+            normalized = str(raw_name).strip().replace("\\", "/").lower()
+            evidence_path = by_relative.get(normalized)
+            if evidence_path is None:
+                candidates = by_basename.get(Path(normalized).name, [])
+                if len(candidates) == 1:
+                    evidence_path = candidates[0]
+                elif len(candidates) > 1:
+                    raise TrainingWorkflowError(f"Ambiguous source-copedent evidence filename: {raw_name}.")
+            if evidence_path is None:
+                missing_evidence.append(str(raw_name))
+            else:
+                evidence_files.add(evidence_path)
+        if missing_evidence:
+            raise TrainingWorkflowError(
+                f"Unknown source-copedent evidence files: {', '.join(sorted(missing_evidence))}."
+            )
+        input_files = [path for path in files if path not in evidence_files]
+        if not input_files:
+            raise TrainingWorkflowError("A batch must contain at least one score/tab input besides copedent evidence.")
         inputs = [
             {
                 "inputId": f"input-{index:04d}",
@@ -657,7 +734,17 @@ class AmazingTablatureTrainingStore:
                 "size": path.stat().st_size,
                 "mediaType": path.suffix.lower().lstrip("."),
             }
-            for index, path in enumerate(files, start=1)
+            for index, path in enumerate(input_files, start=1)
+        ]
+        copedent_evidence = [
+            {
+                "evidenceId": f"copedent-evidence-{index:04d}",
+                "relativePath": path.relative_to(source_path).as_posix(),
+                "sha256": _sha256_bytes(path.read_bytes()),
+                "size": path.stat().st_size,
+                "mediaType": path.suffix.lower().lstrip("."),
+            }
+            for index, path in enumerate(sorted(evidence_files), start=1)
         ]
         immutable = {
             "sourceCopedentId": source_copedent_id,
@@ -667,6 +754,8 @@ class AmazingTablatureTrainingStore:
             "evidenceType": evidence_type,
             "inputs": inputs,
         }
+        if copedent_evidence:
+            immutable["sourceCopedentEvidence"] = copedent_evidence
         digest = _sha256_json(immutable)
         resolved_batch_id = batch_id or f"atb-{datetime.now(UTC):%Y%m%d}-{digest[:10]}"
         if not re.fullmatch(r"[a-z0-9][a-z0-9._-]{2,79}", resolved_batch_id):
@@ -698,7 +787,13 @@ class AmazingTablatureTrainingStore:
                 stage: {"status": "pending", "updatedAt": created_at}
                 for stage in PIPELINE_STAGES
             },
-            "counts": {"inputs": len(inputs), "annotations": 0, "accepted": 0, "exceptions": 0},
+            "counts": {
+                "inputs": len(inputs),
+                "copedentEvidence": len(copedent_evidence),
+                "annotations": 0,
+                "accepted": 0,
+                "exceptions": 0,
+            },
         }
         self._checkpoint(state, "ingest", "completed", inputCount=len(inputs), immutableDigest=digest)
         batch_dir.mkdir(parents=True, exist_ok=False)
@@ -786,6 +881,7 @@ class AmazingTablatureTrainingStore:
         *,
         document_breaks: Sequence[str],
         forced_discovery: Sequence[str],
+        content_unit_breaks: Sequence[str] = (),
         discovery_target: int,
         validation_target: int,
         test_target: int,
@@ -809,6 +905,7 @@ class AmazingTablatureTrainingStore:
             "batchId": batch_id,
             "documentBreaks": sorted(str(value).lower() for value in document_breaks),
             "forcedDiscovery": sorted(str(value).lower() for value in forced_discovery),
+            "contentUnitBreaks": sorted(str(value).lower() for value in content_unit_breaks),
             "targets": {
                 "discovery": discovery_target,
                 "validation": validation_target,
@@ -816,7 +913,11 @@ class AmazingTablatureTrainingStore:
             },
             "guardRadius": guard_radius,
             "similarityThreshold": similarity_threshold,
-            "algorithm": "guarded-contiguous-units-stratified-v1",
+            "algorithm": (
+                "guarded-explicit-units-stratified-v2"
+                if content_unit_breaks
+                else "guarded-contiguous-units-stratified-v1"
+            ),
         }
         config_digest = _sha256_json(normalized_config)
         existing_summary = self._split_summary(batch_id)
@@ -827,6 +928,7 @@ class AmazingTablatureTrainingStore:
 
         break_ids = self._resolve_input_names(inputs, document_breaks)
         forced_ids = self._resolve_input_names(inputs, forced_discovery)
+        content_break_ids = self._resolve_input_names(inputs, content_unit_breaks)
         if len(forced_ids) != len(set(str(value).lower() for value in forced_discovery)):
             raise TrainingWorkflowError("Forced-discovery entries must identify unique registered pages.")
 
@@ -876,7 +978,7 @@ class AmazingTablatureTrainingStore:
             current_forced: bool | None = None
             for record in document_records:
                 forced = bool(record["forcedDiscovery"])
-                if current and forced != current_forced:
+                if current and (forced != current_forced or str(record["inputId"]) in content_break_ids):
                     provisional_units.append(
                         {
                             "provisionalId": f"provisional-{len(provisional_units) + 1:04d}",
@@ -1072,13 +1174,16 @@ class AmazingTablatureTrainingStore:
             "sourceCopedentRevision": profile.revision,
             "sourceCopedentDigest": _profile_digest(profile),
             "algorithm": normalized_config["algorithm"],
-            "groupingReviewStatus": "provisional_structural",
+            "groupingReviewStatus": (
+                "provisional_explicit_units" if content_unit_breaks else "provisional_structural"
+            ),
             "stratificationStatus": {
                 "sourceAndImageStructure": "completed",
                 "pageTypeAndMusicalContent": "pending_independent_review",
             },
             "guardRadius": guard_radius,
             "similarityThreshold": similarity_threshold,
+            "contentUnitBreakCount": len(content_break_ids),
             "targets": normalized_config["targets"],
             "counts": {
                 "total": total,
@@ -1216,19 +1321,31 @@ class AmazingTablatureTrainingStore:
         manifest, _state = self._batch(batch_id)
         source_root = Path(str(manifest["sourceRoot"]))
         failures: list[str] = []
-        for item in manifest["inputs"]:
+        failed_input_ids: list[str] = []
+        all_assets = [*manifest["inputs"], *manifest.get("sourceCopedentEvidence", [])]
+        for item in all_assets:
             path = source_root / str(item["relativePath"])
             if not path.exists() or path.stat().st_size != int(item["size"]):
-                failures.append(str(item["inputId"]))
+                asset_id = str(item.get("inputId") or item.get("evidenceId"))
+                failures.append(asset_id)
+                if item.get("inputId"):
+                    failed_input_ids.append(asset_id)
                 continue
             if _sha256_bytes(path.read_bytes()) != item["sha256"]:
-                failures.append(str(item["inputId"]))
+                asset_id = str(item.get("inputId") or item.get("evidenceId"))
+                failures.append(asset_id)
+                if item.get("inputId"):
+                    failed_input_ids.append(asset_id)
+        evidence_count = len(manifest.get("sourceCopedentEvidence", []))
         return {
             "batchId": batch_id,
             "inputCount": len(manifest["inputs"]),
-            "verifiedCount": len(manifest["inputs"]) - len(failures),
+            "copedentEvidenceCount": evidence_count,
+            "assetCount": len(all_assets),
+            "verifiedCount": len(all_assets) - len(failures),
             "sourceUnchanged": not failures,
-            "failedInputIds": failures,
+            "failedInputIds": failed_input_ids,
+            "failedAssetIds": failures,
             "immutableDigest": manifest["immutableDigest"],
         }
 
@@ -1780,6 +1897,7 @@ class AmazingTablatureTrainingStore:
             "sourceCopedentDigest": manifest.get("sourceCopedentDigest", meta.get("sourceCopedentDigest")),
             "evidenceType": manifest["evidenceType"],
             "immutableDigest": manifest["immutableDigest"],
+            "sourceCopedentEvidenceCount": len(manifest.get("sourceCopedentEvidence", [])),
             "lifecycleStatus": meta.get("lifecycleStatus", state.get("lifecycleStatus", "active")),
             "supersededByBatchId": meta.get("supersededByBatchId"),
             "counts": state["counts"],

@@ -44,6 +44,7 @@ DAY_COPEDENT_ID = "day-e9-basic"
 CUSTOM_LKV_COPEDENT_ID = "custom-e9-lkv"
 MY_COPEDENT_ID = "my-copedent-e9"
 SOURCE_ABC_DEFG_COPEDENT_ID = "source-e9-abc-defg-v1"
+SOURCE_ABC_DEFG_D48_E29_COPEDENT_ID = "source-e9-abc-defg-d48-e29-v1"
 
 ControlType = Literal["pedal", "lever"]
 ProfileStatus = Literal["app-default", "enabled", "disabled", "source"]
@@ -701,6 +702,77 @@ SOURCE_ABC_DEFG_E9 = E9CopedentProfile(
 )
 
 
+SOURCE_ABC_DEFG_D48_E29_E9 = E9CopedentProfile(
+    id=SOURCE_ABC_DEFG_D48_E29_COPEDENT_ID,
+    label="Source E9 A-B-C / D-E-F-G (D 4/8, E 2/9)",
+    status="source",
+    pedal_order=("A", "B", "C"),
+    controls=(
+        E9CopedentControl(
+            id="A",
+            label="A pedal",
+            control_type="pedal",
+            physical_position="A",
+            mechanical_name="B-to-C# raise on strings 5 and 10",
+            changes=(E9CopedentChange(5, "B", "C#"), E9CopedentChange(10, "B", "C#")),
+        ),
+        E9CopedentControl(
+            id="B",
+            label="B pedal",
+            control_type="pedal",
+            physical_position="B",
+            mechanical_name="G#-to-A raise on strings 3 and 6",
+            changes=(E9CopedentChange(3, "G#", "A"), E9CopedentChange(6, "G#", "A")),
+        ),
+        E9CopedentControl(
+            id="C",
+            label="C pedal",
+            control_type="pedal",
+            physical_position="C",
+            mechanical_name="E-to-F# and B-to-C# raise on strings 4 and 5",
+            changes=(E9CopedentChange(4, "E", "F#"), E9CopedentChange(5, "B", "C#")),
+        ),
+        E9CopedentControl(
+            id="D",
+            label="D lever",
+            control_type="lever",
+            physical_position="D",
+            mechanical_name="E-to-D# lower on strings 4 and 8",
+            changes=(E9CopedentChange(4, "E", "D#"), E9CopedentChange(8, "E", "D#")),
+        ),
+        E9CopedentControl(
+            id="E",
+            label="E lever",
+            control_type="lever",
+            physical_position="E",
+            mechanical_name="D#-to-D lower on string 2 and D-to-C# lower on string 9",
+            changes=(E9CopedentChange(2, "D#", "D"), E9CopedentChange(9, "D", "C#")),
+        ),
+        E9CopedentControl(
+            id="F",
+            label="F lever",
+            control_type="lever",
+            physical_position="F",
+            mechanical_name="E-to-F raise on strings 4 and 8",
+            changes=(E9CopedentChange(4, "E", "F"), E9CopedentChange(8, "E", "F")),
+        ),
+        E9CopedentControl(
+            id="G",
+            label="G lever",
+            control_type="lever",
+            physical_position="G",
+            mechanical_name="F#-to-G raise on strings 1 and 7",
+            changes=(E9CopedentChange(1, "F#", "G"), E9CopedentChange(7, "F#", "G")),
+        ),
+    ),
+    notes=(
+        "Reviewed source profile from the supplied lick-collection copedent chart. "
+        "It is decoding evidence only and is never selected as the app default."
+    ),
+    origin="source",
+)
+
+
 def available_e9_copedents() -> tuple[E9CopedentProfile, ...]:
     """Return immutable common profiles shown in the player-facing library."""
 
@@ -710,7 +782,13 @@ def available_e9_copedents() -> tuple[E9CopedentProfile, ...]:
 def known_e9_copedents() -> tuple[E9CopedentProfile, ...]:
     """Return app profiles plus source-only decoding profiles."""
 
-    return (*available_e9_copedents(), CUSTOM_LKV_E9, MY_COPEDENT_E9, SOURCE_ABC_DEFG_E9)
+    return (
+        *available_e9_copedents(),
+        CUSTOM_LKV_E9,
+        MY_COPEDENT_E9,
+        SOURCE_ABC_DEFG_E9,
+        SOURCE_ABC_DEFG_D48_E29_E9,
+    )
 
 
 def selectable_e9_copedents() -> tuple[E9CopedentProfile, ...]:

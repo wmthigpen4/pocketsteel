@@ -18,6 +18,8 @@ from pocketsteel.e9_copedents import (
     EMMONS_E9,
     CUSTOM_LKV_E9,
     SOURCE_ABC_DEFG_COPEDENT_ID,
+    SOURCE_ABC_DEFG_D48_E29_COPEDENT_ID,
+    SOURCE_ABC_DEFG_D48_E29_E9,
     SOURCE_ABC_DEFG_E9,
     get_e9_copedent_profile,
 )
@@ -149,6 +151,19 @@ def test_photographed_source_profile_preserves_exact_d_and_g_mechanics() -> None
     assert rendered.ok is True
     assert "0D" in rendered.tab
     assert "0G" in rendered.tab
+
+
+def test_lick_source_profile_preserves_distinct_d_and_e_mechanics() -> None:
+    profile = get_e9_copedent_profile(SOURCE_ABC_DEFG_D48_E29_COPEDENT_ID)
+    assert profile is SOURCE_ABC_DEFG_D48_E29_E9
+
+    d = resolve_control(profile, "D")
+    e = resolve_control(profile, "E")
+
+    assert [(change.string, change.semitones) for change in d.changes] == [(4, -1), (8, -1)]
+    assert [(change.string, change.semitones) for change in e.changes] == [(2, -1), (9, -1)]
+    assert absolute_pitch_for_profile(profile, 4, 0, ("D",)) == 63
+    assert absolute_pitch_for_profile(profile, 9, 0, ("E",)) == 49
 
 
 def test_extra_target_effect_is_safe_only_off_sounding_and_sustained_strings() -> None:

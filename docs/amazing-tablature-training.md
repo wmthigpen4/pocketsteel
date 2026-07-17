@@ -33,6 +33,16 @@ Register an immutable batch:
   --source-copedent source-e9-abc-defg-v1
 ```
 
+When the collection includes its source-copedent chart, register that file as immutable profile evidence rather than a score/tab input:
+
+```bash
+.venv/bin/python scripts/amazing_tablature.py ingest ~/Downloads/New\ Tabs \
+  --source-copedent <source-profile-id> \
+  --source-copedent-evidence COPEDENT.JPG
+```
+
+The evidence asset is hashed, pinned to the batch manifest, and covered by intake verification, but it never enters annotation, discovery, validation, or sealed-test queues.
+
 For a full collection that needs a sealed final test, partition immediately after intake and before annotations or rule work:
 
 ```bash
@@ -46,6 +56,8 @@ For a full collection that needs a sealed final test, partition immediately afte
 ```
 
 Repeat `--force-discovery` for every page already viewed during planning. The partitioner expands each named page by the configured one-page guard, treats the remaining contiguous runs as indivisible provisional content units, links exact and very-close perceptual matches, balances source sequences and structural image categories, and generates the split from a private random seed.
+
+For collections whose pages are independently complete examples, repeat `--content-unit-break <filename>` at the start of each subsequent page-level unit. Explicit units remain indivisible, still merge when exact or very-close duplicates are detected, and use the same private seeded structural balancing. Do not use page-level units for continuations, alternate arrangements, adjacent explanations, or any other material that belongs in one leakage-resistant content unit.
 
 Normal status output contains counts and digests but not sealed-test membership. Discovery pages replace the normal annotation work queue, validation has a separate queue, and the test mapping and pending ground-truth state live in a permission-restricted `sealed-test/` directory. Re-running the same partition configuration is idempotent; changing it after sealing fails.
 
@@ -100,7 +112,7 @@ Stable promotion additionally requires an existing independent Lane 15 handoff. 
 
 ## Durable records
 
-Each batch has an immutable manifest and separate mutable processing state. The manifest records file hashes, source copedent, evidence type, and an immutable digest. The state records checkpoints, counts, and generated model IDs. Re-ingesting identical inputs resumes the batch; reusing a batch ID for changed inputs fails.
+Each batch has an immutable manifest and separate mutable processing state. The manifest records input hashes, separately identified source-copedent evidence hashes, source copedent, evidence type, and an immutable digest. The state records checkpoints, counts, and generated model IDs. Re-ingesting identical inputs resumes the batch; reusing a batch ID for changed inputs fails.
 
 A partitioned batch additionally pins the source-copedent revision and digest, split-seed digest, document groups, provisional content units, discovery/validation/test counts, structural distribution summary, and immutable partition digest. Annotation imports must match the assigned discovery or validation partition. The normal annotation command rejects sealed-test inputs.
 
