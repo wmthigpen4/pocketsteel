@@ -169,6 +169,10 @@ DISCOVERY_MACHINE_TIMELINE_VERSION = "discovery-machine-score-tab-timeline-v1"
 DISCOVERY_MACHINE_TIMELINE_SCHEMA_VERSION = (
     "amazing-tablature-discovery-machine-score-tab-timeline-v1"
 )
+DISCOVERY_TAB_ROW_GEOMETRY_VERSION = "anchored-tab-row-geometry-v1"
+DISCOVERY_TAB_ROW_GEOMETRY_SCHEMA_VERSION = (
+    "amazing-tablature-discovery-tab-row-geometry-v1"
+)
 SOURCE_SCORE_VISION_REGRESSION_SCHEMA_VERSION = (
     "amazing-tablature-source-score-vision-regression-v1"
 )
@@ -7384,6 +7388,95 @@ def _tab_event_candidates(
             }
         )
     return events
+
+
+def _merge_split_grip_event_candidates(
+    events: Sequence[Mapping[str, Any]],
+    *,
+    image_width: int,
+    maximum_delta_ratio: float = 0.02,
+) -> list[dict[str, Any]]:
+    """Merge only an exact split middle row back into its two-row grip.
+
+    Compact half-stop or lever suffixes can be horizontally displaced enough
+    to form a second candidate immediately beside the two outer strings of the
+    same printed grip.  This source-geometry challenger is deliberately narrow:
+    the candidates must be adjacent, one must contain exactly two strings with
+    a one-string hole, the other must contain exactly that middle string, and
+    their centers must be within the fixed horizontal tolerance.
+    """
+
+    normalized = [copy.deepcopy(dict(event)) for event in events]
+    merged: list[dict[str, Any]] = []
+    index = 0
+    while index < len(normalized):
+        current = normalized[index]
+        following = normalized[index + 1] if index + 1 < len(normalized) else None
+        should_merge = False
+        if following is not None:
+            current_strings = {
+                int(value) for value in current.get("candidateStrings") or []
+            }
+            following_strings = {
+                int(value) for value in following.get("candidateStrings") or []
+            }
+            delta_ratio = abs(
+                float(current.get("x") or 0) - float(following.get("x") or 0)
+            ) / max(1, int(image_width))
+            for outer, middle in (
+                (current_strings, following_strings),
+                (following_strings, current_strings),
+            ):
+                if len(outer) != 2 or len(middle) != 1:
+                    continue
+                low, high = sorted(outer)
+                should_merge = bool(
+                    high - low == 2
+                    and next(iter(middle)) == low + 1
+                    and delta_ratio <= maximum_delta_ratio
+                )
+                if should_merge:
+                    break
+        if should_merge and following is not None:
+            merged.append(
+                {
+                    **current,
+                    "x": int(
+                        round(
+                            (
+                                float(current.get("x") or 0)
+                                + float(following.get("x") or 0)
+                            )
+                            / 2.0
+                        )
+                    ),
+                    "x0": min(
+                        int(current.get("x0") or current.get("x") or 0),
+                        int(following.get("x0") or following.get("x") or 0),
+                    ),
+                    "x1": max(
+                        int(current.get("x1") or current.get("x") or 0),
+                        int(following.get("x1") or following.get("x") or 0),
+                    ),
+                    "candidateStrings": sorted(
+                        {
+                            int(value)
+                            for value in (
+                                list(current.get("candidateStrings") or [])
+                                + list(following.get("candidateStrings") or [])
+                            )
+                        }
+                    ),
+                    "splitGripGeometryMerged": True,
+                }
+            )
+            index += 2
+            continue
+        merged.append(current)
+        index += 1
+    for event_index, event in enumerate(merged, start=1):
+        event["eventIndex"] = event_index
+    return merged
 
 
 def _tab_cell_horizontal_bounds(
@@ -20849,6 +20942,343 @@ class AmazingTablatureExtractor:
             "batchId": batch_id,
             "partition": "discovery",
             "aggregate": aggregate,
+            "promotionEligible": False,
+            "reviewPacketCreated": False,
+            "humanRereviewRequested": False,
+            "trainingEvidenceCreated": False,
+            "currentPageRecordsModified": False,
+            "validationAccessed": False,
+            "sealedTestAccessed": False,
+            "reportDigest": report_digest,
+            "reportPath": str(report_path.relative_to(output_root)),
+        }
+
+    def evaluate_discovery_tab_row_geometry_challenger(
+        self,
+        batch_id: str,
+    ) -> dict[str, Any]:
+        """Evaluate a narrow source-geometry grip merge on opened discovery."""
+
+        batch_dir, _manifest, _work = self._batch_paths(batch_id, "discovery")
+        output_root = batch_dir / "extraction" / "discovery"
+        review_root = output_root / "review"
+        benchmark_path = (
+            review_root
+            / "automation"
+            / "source-score-notehead-challenger"
+            / "benchmark-manifest.json"
+        )
+        if not benchmark_path.exists():
+            raise ExtractionWorkflowError(
+                "Freeze the source-score notehead benchmark before tab-row evaluation."
+            )
+        benchmark = _read_json(benchmark_path)
+        benchmark_digest = str(benchmark.get("manifestDigest") or "")
+        if benchmark_digest != _sha256_json(
+            {key: value for key, value in benchmark.items() if key != "manifestDigest"}
+        ):
+            raise ExtractionWorkflowError("The source-score benchmark digest changed.")
+
+        results: list[dict[str, Any]] = []
+        blocker_counts: Counter[str] = Counter()
+        for raw_case in benchmark.get("cases") or []:
+            case = dict(raw_case)
+            input_id = str(case.get("inputId") or "")
+            score_system_id = str(case.get("scoreSystemId") or "")
+            record_path = output_root / str(case.get("reviewedRecordPath") or "")
+            reviewed_record = _read_json(record_path)
+            if _sha256_json(reviewed_record) != str(
+                case.get("reviewedRecordDigest") or ""
+            ):
+                raise ExtractionWorkflowError(
+                    "A tab-row discovery record changed."
+                )
+            prior_digest = str(
+                (reviewed_record.get("machineCorrection") or {}).get(
+                    "priorMachineRecordDigest"
+                )
+                or ""
+            )
+            machine_record: dict[str, Any] | None = None
+            if prior_digest:
+                revision_dir = review_root / "machine-record-revisions" / input_id
+                for candidate_path in sorted(revision_dir.glob("*.json")):
+                    candidate = _read_json(candidate_path)
+                    if _sha256_json(candidate) == prior_digest:
+                        machine_record = candidate
+                        break
+            if machine_record is None:
+                blocker_counts["archived_machine_snapshot_missing"] += 1
+                results.append(
+                    {
+                        "caseId": case.get("caseId"),
+                        "inputId": input_id,
+                        "scoreSystemId": score_system_id,
+                        "subset": case.get("subset"),
+                        "status": "blocked",
+                        "blocker": "archived_machine_snapshot_missing",
+                    }
+                )
+                continue
+
+            machine_score_system = next(
+                (
+                    system
+                    for system in machine_record.get("scoreSystems") or []
+                    if str(system.get("scoreSystemId") or "") == score_system_id
+                ),
+                None,
+            )
+            reviewed_score_system = next(
+                (
+                    system
+                    for system in reviewed_record.get("scoreSystems") or []
+                    if str(system.get("scoreSystemId") or "") == score_system_id
+                ),
+                None,
+            )
+            machine_tab_system = next(
+                (
+                    system
+                    for system in machine_record.get("tabSystems") or []
+                    if machine_score_system is not None
+                    and str(system.get("tabSystemId") or "")
+                    == str(machine_score_system.get("pairedTabSystemId") or "")
+                ),
+                None,
+            )
+            reviewed_tab_system = next(
+                (
+                    system
+                    for system in reviewed_record.get("tabSystems") or []
+                    if reviewed_score_system is not None
+                    and str(system.get("tabSystemId") or "")
+                    == str(reviewed_score_system.get("pairedTabSystemId") or "")
+                ),
+                None,
+            )
+            if (
+                machine_score_system is None
+                or machine_tab_system is None
+                or reviewed_tab_system is None
+            ):
+                blocker_counts["paired_tab_system_missing"] += 1
+                continue
+
+            derivative = machine_record.get("derivative") or {}
+            derivative_path = output_root / str(derivative.get("relativePath") or "")
+            derivative_sha = str(derivative.get("sha256") or "")
+            if (
+                not derivative_path.exists()
+                or _sha256_bytes(derivative_path.read_bytes()) != derivative_sha
+            ):
+                raise ExtractionWorkflowError(
+                    "A tab-row source derivative changed."
+                )
+            gray = np.asarray(Image.open(derivative_path).convert("L"))
+            grids = detect_tab_grids(gray)
+            system_index = int(machine_score_system.get("systemIndex") or 0)
+            if not 1 <= system_index <= len(grids):
+                blocker_counts["tab_grid_missing"] += 1
+                continue
+            grid = grids[system_index - 1]
+            baseline_candidates = _tab_event_candidates(gray, grid)
+            challenger_candidates = _merge_split_grip_event_candidates(
+                baseline_candidates,
+                image_width=max(1, grid.x1 - grid.x0),
+            )
+            machine_events = sorted(
+                copy.deepcopy(machine_tab_system.get("tabEvents") or []),
+                key=lambda value: int(value.get("eventIndex") or 0),
+            )
+            anchors = [
+                float(event.get("horizontalPosition") or 0.0)
+                for event in machine_events
+            ]
+            row_proposals: list[dict[str, Any]] = []
+            if anchors and all(anchor > 0 for anchor in anchors):
+                grid_width = max(1, grid.x1 - grid.x0)
+                for event_index, (event, anchor) in enumerate(
+                    zip(machine_events, anchors, strict=True),
+                    start=1,
+                ):
+                    baseline_rows = {
+                        int(action.get("string") or 0)
+                        for action in event.get("steelActions") or []
+                        if int(action.get("string") or 0)
+                    }
+                    visual_rows: set[int] = set()
+                    for candidate in challenger_candidates:
+                        normalized_x = float(candidate.get("x") or 0) / grid_width
+                        nearest = min(
+                            range(len(anchors)),
+                            key=lambda value: abs(normalized_x - anchors[value]),
+                        )
+                        if (
+                            nearest == event_index - 1
+                            and abs(normalized_x - anchor) <= 0.045
+                        ):
+                            visual_rows.update(
+                                int(value)
+                                for value in candidate.get("candidateStrings") or []
+                            )
+                    if len(baseline_rows) != 2:
+                        continue
+                    low, high = sorted(baseline_rows)
+                    middle = low + 1
+                    if high - low == 2 and visual_rows == baseline_rows | {middle}:
+                        row_proposals.append(
+                            {
+                                "eventIndex": event_index,
+                                "baselineStrings": sorted(baseline_rows),
+                                "proposedMissingString": middle,
+                                "visualStrings": sorted(visual_rows),
+                            }
+                        )
+
+            inference = {
+                "geometryVersion": DISCOVERY_TAB_ROW_GEOMETRY_VERSION,
+                "derivativeSha256": derivative_sha,
+                "archivedMachineRecordDigest": prior_digest,
+                "systemIndex": system_index,
+                "baselineCandidates": baseline_candidates,
+                "challengerCandidates": challenger_candidates,
+                "rowProposals": row_proposals,
+                "reviewedTruthUsedDuringInference": False,
+            }
+            inference_digest = _sha256_json(inference)
+
+            truth_events = sorted(
+                copy.deepcopy(reviewed_tab_system.get("tabEvents") or []),
+                key=lambda value: int(value.get("eventIndex") or 0),
+            )
+            proposal_results: list[dict[str, Any]] = []
+            for proposal in row_proposals:
+                event_index = int(proposal["eventIndex"])
+                truth_rows = (
+                    {
+                        int(action.get("string") or 0)
+                        for action in truth_events[event_index - 1].get("steelActions")
+                        or []
+                    }
+                    if event_index <= len(truth_events)
+                    else set()
+                )
+                proposed_rows = set(proposal["baselineStrings"]) | {
+                    int(proposal["proposedMissingString"])
+                }
+                proposal_results.append(
+                    {
+                        "eventIndex": event_index,
+                        "exactAfterTruthJoin": proposed_rows == truth_rows,
+                    }
+                )
+            baseline_count_exact = len(baseline_candidates) == len(truth_events)
+            challenger_count_exact = len(challenger_candidates) == len(truth_events)
+            results.append(
+                {
+                    "caseId": case.get("caseId"),
+                    "inputId": input_id,
+                    "scoreSystemId": score_system_id,
+                    "subset": case.get("subset"),
+                    "status": "evaluated",
+                    "inferenceDigest": inference_digest,
+                    "inference": inference,
+                    "truthEventCount": len(truth_events),
+                    "baselineCountExact": baseline_count_exact,
+                    "challengerCountExact": challenger_count_exact,
+                    "countImproved": challenger_count_exact
+                    and not baseline_count_exact,
+                    "countRegressed": baseline_count_exact
+                    and not challenger_count_exact,
+                    "proposalResults": proposal_results,
+                    "truthJoinedAfterInference": True,
+                }
+            )
+
+        def subset_metrics(subset: str) -> dict[str, Any]:
+            items = [
+                item
+                for item in results
+                if item.get("subset") == subset and item.get("status") == "evaluated"
+            ]
+            proposals = [
+                proposal
+                for item in items
+                for proposal in item.get("proposalResults") or []
+            ]
+            return {
+                "evaluatedCaseCount": len(items),
+                "baselineExactCount": sum(
+                    bool(item.get("baselineCountExact")) for item in items
+                ),
+                "challengerExactCount": sum(
+                    bool(item.get("challengerCountExact")) for item in items
+                ),
+                "improvedCount": sum(bool(item.get("countImproved")) for item in items),
+                "regressedCount": sum(bool(item.get("countRegressed")) for item in items),
+                "rowProposalCount": len(proposals),
+                "exactRowProposalCount": sum(
+                    bool(item.get("exactAfterTruthJoin")) for item in proposals
+                ),
+                "falseRowProposalCount": sum(
+                    not bool(item.get("exactAfterTruthJoin")) for item in proposals
+                ),
+            }
+
+        by_subset = {
+            subset: subset_metrics(subset) for subset in ("development", "shadow")
+        }
+        development = by_subset["development"]
+        shadow = by_subset["shadow"]
+        gate_passed = bool(
+            development["improvedCount"] >= 1
+            and development["regressedCount"] == 0
+            and development["rowProposalCount"] >= 1
+            and development["falseRowProposalCount"] == 0
+            and shadow["regressedCount"] == 0
+            and shadow["rowProposalCount"] >= 1
+            and shadow["falseRowProposalCount"] == 0
+        )
+        report_core = {
+            "schemaVersion": DISCOVERY_TAB_ROW_GEOMETRY_SCHEMA_VERSION,
+            "batchId": batch_id,
+            "partition": "discovery",
+            "evaluationClass": "opened_discovery_tab_row_geometry_regression",
+            "benchmarkManifestDigest": benchmark_digest,
+            "geometryVersion": DISCOVERY_TAB_ROW_GEOMETRY_VERSION,
+            "lineageContract": {
+                "geometryInputs": "digest_pinned_source_derivative_only",
+                "anchorInputs": "digest_pinned_archived_pre_correction_machine_record_only",
+                "reviewedTruthJoin": "after_inference_digest",
+                "reviewedTruthUsedDuringInference": False,
+            },
+            "byOpenedSubset": by_subset,
+            "blockerCounts": dict(sorted(blocker_counts.items())),
+            "results": results,
+            "openedDiscoveryGatePassed": gate_passed,
+            "promotionEligible": False,
+            "reviewPacketCreated": False,
+            "humanRereviewRequested": False,
+            "trainingEvidenceCreated": False,
+            "currentPageRecordsModified": False,
+            "validationAccessed": False,
+            "sealedTestAccessed": False,
+        }
+        report_digest = _sha256_json(report_core)
+        report = {**report_core, "reportDigest": report_digest}
+        report_dir = review_root / "automation" / DISCOVERY_TAB_ROW_GEOMETRY_VERSION
+        report_dir.mkdir(parents=True, exist_ok=True)
+        os.chmod(report_dir, 0o700)
+        report_path = report_dir / f"report-{report_digest[:12]}.json"
+        _write_json(report_path, report)
+        return {
+            "schemaVersion": DISCOVERY_TAB_ROW_GEOMETRY_SCHEMA_VERSION,
+            "batchId": batch_id,
+            "partition": "discovery",
+            "byOpenedSubset": by_subset,
+            "blockerCounts": dict(sorted(blocker_counts.items())),
+            "openedDiscoveryGatePassed": gate_passed,
             "promotionEligible": False,
             "reviewPacketCreated": False,
             "humanRereviewRequested": False,

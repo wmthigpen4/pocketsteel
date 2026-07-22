@@ -281,6 +281,15 @@ def _parser() -> argparse.ArgumentParser:
     )
     evaluate_machine_timeline.add_argument("batch_id")
 
+    evaluate_tab_row_geometry = subparsers.add_parser(
+        "evaluate-discovery-tab-row-geometry-challenger",
+        help=(
+            "Evaluate a narrow split-grip row merge against opened discovery "
+            "lines without changing records or creating human review work."
+        ),
+    )
+    evaluate_tab_row_geometry.add_argument("batch_id")
+
     evaluate_score_projection = subparsers.add_parser(
         "evaluate-source-score-projection-challenger",
         help=(
@@ -1028,6 +1037,10 @@ def main() -> int:
             result = AmazingTablatureExtractor(
                 args.root
             ).evaluate_discovery_machine_score_tab_timeline(args.batch_id)
+        elif args.command == "evaluate-discovery-tab-row-geometry-challenger":
+            result = AmazingTablatureExtractor(
+                args.root
+            ).evaluate_discovery_tab_row_geometry_challenger(args.batch_id)
         elif args.command == "evaluate-source-score-projection-challenger":
             result = AmazingTablatureExtractor(
                 args.root

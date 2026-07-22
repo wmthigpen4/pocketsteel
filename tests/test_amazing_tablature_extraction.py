@@ -81,6 +81,7 @@ from pocketsteel.amazing_tablature_extraction import (
     _machine_localized_tab_events,
     _machine_score_is_contained_in_tab,
     _machine_unified_score_tab_timeline,
+    _merge_split_grip_event_candidates,
     _projection_tab_grid,
     _promote_full_line_record_to_combined_scope,
     _prepare_score_omr_crop,
@@ -2867,6 +2868,60 @@ def test_dense_neighboring_tab_columns_are_not_merged_into_one_event() -> None:
     ]
     assert len(string_five_events) == 2
     assert len(legacy_string_five_events) == 1
+
+
+def test_split_middle_string_geometry_merges_into_outer_grip() -> None:
+    events = [
+        {
+            "eventIndex": 1,
+            "x": 100,
+            "x0": 92,
+            "x1": 108,
+            "candidateStrings": [4, 6],
+        },
+        {
+            "eventIndex": 2,
+            "x": 115,
+            "x0": 109,
+            "x1": 121,
+            "candidateStrings": [5],
+        },
+        {
+            "eventIndex": 3,
+            "x": 240,
+            "x0": 234,
+            "x1": 246,
+            "candidateStrings": [3],
+        },
+    ]
+
+    merged = _merge_split_grip_event_candidates(events, image_width=1000)
+
+    assert [event["candidateStrings"] for event in merged] == [[4, 5, 6], [3]]
+    assert merged[0]["x"] == 108
+    assert merged[0]["x0"] == 92
+    assert merged[0]["x1"] == 121
+    assert merged[0]["splitGripGeometryMerged"] is True
+    assert [event["eventIndex"] for event in merged] == [1, 2]
+
+
+def test_split_grip_geometry_does_not_merge_unrelated_neighbors() -> None:
+    events = [
+        {"eventIndex": 1, "x": 100, "candidateStrings": [4, 6]},
+        {"eventIndex": 2, "x": 115, "candidateStrings": [7]},
+        {"eventIndex": 3, "x": 300, "candidateStrings": [4, 6]},
+        {"eventIndex": 4, "x": 340, "candidateStrings": [5]},
+    ]
+
+    merged = _merge_split_grip_event_candidates(events, image_width=1000)
+
+    assert [event["candidateStrings"] for event in merged] == [
+        [4, 6],
+        [7],
+        [4, 6],
+        [5],
+    ]
+    assert [event["eventIndex"] for event in merged] == [1, 2, 3, 4]
 
 
 def test_page_classifier_uses_tab_texture_and_specific_instructional_cues() -> None:
