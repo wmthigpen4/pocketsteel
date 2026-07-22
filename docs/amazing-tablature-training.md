@@ -202,6 +202,16 @@ Build the private full-line score-sequence labels from the frozen, already-opene
 
 The immutable manifest references digest-pinned conventional-score crops and contains only human-approved ordered pitch/chord groups. It excludes tablature, source text, duration, rhythmic position, ties, and unverified horizontal boxes. Development and shadow membership is inherited from the frozen page-grouped benchmark. Building the manifest does not start training, create review work, promote a model, modify reviewed records, or access validation or sealed-test data.
 
+Train the isolated full-line sequence challenger only after that immutable manifest exists:
+
+```bash
+.venv/bin/python scripts/amazing_tablature.py train-discovery-score-sequence-challenger <batch-id>
+```
+
+PyTorch must live beneath the ignored private trainer dependency directory; it is not an application dependency. The trainer uses content-unit-grouped development calibration, freezes the exact configuration and weights, and only then scores the already-opened discovery shadow once. Its target vocabulary preserves ordered attack groups, simultaneous pitches, pitch multiplicity, accidentals, and scientific octave while excluding tablature, source text, rhythm, duration, ties, and unreviewed horizontal localization. Rights-safe synthetic staff images derived only from approved development labels may be used for pretraining; they are generated in memory and are not corpus additions.
+
+Blank or malformed output, worse attack-count accuracy, higher token error, or failure to improve exact sequences and exact attack groups blocks the unified review gate. Rejected weights, contracts, and reports remain private for lineage. A failed candidate cannot create another review packet, modify current records, enter runtime, open validation, or open sealed test.
+
 The deterministic source-image alternative suppresses staff lines, measures vertical ink projection inside the staff band, and conservatively fuses only a nearby count with the Audiveris source-notehead anchors:
 
 ```bash

@@ -258,6 +258,25 @@ def _parser() -> argparse.ArgumentParser:
     )
     build_score_sequence_dataset.add_argument("batch_id")
 
+    train_score_sequence = subparsers.add_parser(
+        "train-discovery-score-sequence-challenger",
+        help=(
+            "Train a private full-line score CTC reader on development, freeze "
+            "it, and score the already-opened discovery shadow once."
+        ),
+    )
+    train_score_sequence.add_argument("batch_id")
+    train_score_sequence.add_argument(
+        "--dependency-root",
+        type=Path,
+        help=(
+            "Ignored private site-packages directory containing PyTorch. "
+            "Defaults beneath the Lane 20 private root."
+        ),
+    )
+    train_score_sequence.add_argument("--seed", type=int, default=1729)
+    train_score_sequence.add_argument("--maximum-epochs", type=int, default=80)
+
     evaluate_guided_capture = subparsers.add_parser(
         "evaluate-discovery-guided-capture-regression",
         help=(
@@ -1055,6 +1074,18 @@ def main() -> int:
             result = AmazingTablatureExtractor(
                 args.root
             ).build_discovery_score_sequence_dataset(args.batch_id)
+        elif args.command == "train-discovery-score-sequence-challenger":
+            dependency_root = args.dependency_root or (
+                args.root / "trainer-deps" / "score-sequence-v1" / "site-packages"
+            )
+            result = AmazingTablatureExtractor(
+                args.root
+            ).train_discovery_score_sequence_challenger(
+                args.batch_id,
+                dependency_root=dependency_root,
+                seed=args.seed,
+                maximum_epochs=args.maximum_epochs,
+            )
         elif args.command == "evaluate-discovery-guided-capture-regression":
             result = AmazingTablatureExtractor(
                 args.root,

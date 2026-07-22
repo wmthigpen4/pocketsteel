@@ -20653,6 +20653,33 @@ class AmazingTablatureExtractor:
             "sealedTestAccessed": False,
         }
 
+    def train_discovery_score_sequence_challenger(
+        self,
+        batch_id: str,
+        *,
+        dependency_root: Path,
+        seed: int = 1729,
+        maximum_epochs: int = 80,
+    ) -> dict[str, Any]:
+        """Train a private full-line CTC reader and score opened shadow once."""
+
+        batch_dir, _manifest, _work = self._batch_paths(batch_id, "discovery")
+        output_root = batch_dir / "extraction" / "discovery"
+        from pocketsteel.amazing_tablature_score_sequence import (
+            ScoreSequenceTrainingError,
+            train_discovery_score_sequence_challenger,
+        )
+
+        try:
+            return train_discovery_score_sequence_challenger(
+                output_root=output_root,
+                dependency_root=dependency_root,
+                seed=seed,
+                maximum_epochs=maximum_epochs,
+            )
+        except ScoreSequenceTrainingError as exc:
+            raise ExtractionWorkflowError(str(exc)) from exc
+
     def evaluate_discovery_source_score_semantic_repair(
         self,
         batch_id: str,
