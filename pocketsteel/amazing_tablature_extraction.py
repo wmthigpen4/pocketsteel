@@ -5824,6 +5824,8 @@ def _prepare_score_omr_crop(
                 x = int(raw_x)
                 if not first_event_x < x < last_event_x:
                     continue
+                if tail_start >= image.height:
+                    continue
                 draw.rectangle(
                     (
                         max(0, x - half_width),

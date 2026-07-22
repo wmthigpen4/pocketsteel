@@ -2731,6 +2731,41 @@ def test_score_omr_derivative_suppresses_only_connector_tails(tmp_path: Path) ->
     assert any(abs(value - 500) <= 2 for value in metadata["suppressedBarlineXs"])
 
 
+def test_score_omr_derivative_ignores_connector_tail_below_crop(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = tmp_path / "short-score.png"
+    target = tmp_path / "prepared" / "short-score.png"
+    Image.new("RGB", (120, 100), "white").save(source)
+    monkeypatch.setattr(
+        "pocketsteel.amazing_tablature_extraction._detect_score_staff_lines",
+        lambda _gray: (80, 90, 100, 110, 120),
+    )
+    grid = GridDetection(
+        x0=0,
+        y0=0,
+        x1=120,
+        y1=99,
+        line_ys=tuple(range(10, 100, 10)),
+        confidence=1.0,
+        barline_xs=(60,),
+    )
+    metadata = _prepare_score_omr_crop(
+        source,
+        target,
+        grid=grid,
+        tab_events=[
+            {"horizontalPosition": 0.2, "steelActions": [{"attack": True}]},
+            {"horizontalPosition": 0.8, "steelActions": [{"attack": True}]},
+        ],
+    )
+
+    assert target.exists()
+    assert metadata["suppressedBarlineXs"] == []
+    assert metadata["sourcePreserved"] is True
+
+
 def test_audiveris_head_graph_recovers_visible_pitches_and_written_accidental(
     tmp_path: Path,
 ) -> None:
