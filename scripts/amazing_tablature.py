@@ -5,13 +5,23 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 from typing import Any
 
+from pocketsteel.amazing_tablature_extraction import (
+    AmazingTablatureExtractor,
+    ExtractionWorkflowError,
+    serve_review_consoles,
+)
 from pocketsteel.amazing_tablature_training import (
     DEFAULT_PRIVATE_ROOT,
     AmazingTablatureTrainingStore,
     TrainingWorkflowError,
+)
+from pocketsteel.amazing_tablature_sealed_test import (
+    SealedTestCoordinator,
+    SealedTestWorkflowError,
 )
 
 
@@ -54,11 +64,31 @@ def _parser() -> argparse.ArgumentParser:
         default=[],
         help="Start a new indivisible content unit at this registered page.",
     )
+    partition.add_argument(
+        "--page-level-units",
+        action="store_true",
+        help="Start each registered page as its own provisional unit before semantic linking.",
+    )
+    partition.add_argument(
+        "--semantic-groups",
+        type=Path,
+        help="Private JSON map linking non-contiguous and multi-page semantic units.",
+    )
     partition.add_argument("--discovery-target", type=int, default=194)
     partition.add_argument("--validation-target", type=int, default=28)
     partition.add_argument("--test-target", type=int, default=56)
     partition.add_argument("--guard-radius", type=int, default=1)
     partition.add_argument("--similarity-threshold", type=int, default=3)
+
+    split_review = subparsers.add_parser(
+        "record-split-review",
+        help="Bind an independent PASS or FAIL verdict to the exact sealed partition digest.",
+    )
+    split_review.add_argument("batch_id")
+    split_review.add_argument("--outcome", choices=("pass", "fail"), required=True)
+    split_review.add_argument("--partition-digest", required=True)
+    split_review.add_argument("--reviewer-reference", required=True)
+    split_review.add_argument("--review-artifact-digest")
 
     supersede = subparsers.add_parser(
         "supersede-batch",
@@ -68,8 +98,557 @@ def _parser() -> argparse.ArgumentParser:
     supersede.add_argument("--replacement-batch", required=True)
     supersede.add_argument("--approval-reference", required=True)
 
+    compose = subparsers.add_parser(
+        "compose-dataset",
+        help="Bind multiple active sealed batches into one authoritative training dataset.",
+    )
+    compose.add_argument("--batch", action="append", required=True)
+    compose.add_argument("--approval-reference", required=True)
+
     verify = subparsers.add_parser("verify-intake", help="Re-hash a batch and verify the source files are unchanged.")
     verify.add_argument("batch_id")
+
+    authorize_use = subparsers.add_parser(
+        "record-use-authorization",
+        help="Record a reviewed rights basis and exact allowed uses for one private batch.",
+    )
+    authorize_use.add_argument("batch_id")
+    authorize_use.add_argument(
+        "--rights-status",
+        choices=("unknown", "owner_authorized", "licensed", "public_domain_verified", "user_provided_authorized"),
+        required=True,
+    )
+    authorize_use.add_argument(
+        "--allow",
+        action="append",
+        default=[],
+        choices=(
+            "privateExtraction",
+            "privateEvaluation",
+            "modelTraining",
+            "embeddings",
+            "quotation",
+            "publicDisplay",
+            "runtimeProductUse",
+            "derivativeRulePublication",
+        ),
+    )
+    authorize_use.add_argument("--approval-reference", required=True)
+
+    extract = subparsers.add_parser(
+        "extract",
+        help="Extract private provenance-backed teaching knowledge from discovery or validation pages.",
+    )
+    extract.add_argument("batch_id")
+    extract.add_argument("--partition", choices=("discovery", "validation"), default="discovery")
+    extract.add_argument("--audiveris-bin", type=Path)
+    extract.add_argument("--vision-model", default="gemma4:12b")
+    extract.add_argument("--vision-base-url", default="http://127.0.0.1:11434")
+    extract.add_argument("--tab-reader", choices=("apple", "ollama"), default="ollama")
+    extract.add_argument("--no-ocr", action="store_true")
+    extract.add_argument("--no-omr", action="store_true")
+    extract.add_argument("--no-tab-vision", action="store_true")
+    extract.add_argument("--no-resume", action="store_true")
+    extract.add_argument("--workers", type=int, default=1)
+
+    refresh_unreviewed = subparsers.add_parser(
+        "refresh-unreviewed-extraction",
+        help="Refresh only never-reviewed discovery pages with the current extractor.",
+    )
+    refresh_unreviewed.add_argument("batch_id")
+    refresh_unreviewed.add_argument("--limit", type=int, default=25)
+    refresh_unreviewed.add_argument("--audiveris-bin", type=Path)
+    refresh_unreviewed.add_argument("--vision-model", default="gemma4:12b")
+    refresh_unreviewed.add_argument("--vision-base-url", default="http://127.0.0.1:11434")
+    refresh_unreviewed.add_argument("--tab-reader", choices=("apple", "ollama"), default="ollama")
+    refresh_unreviewed.add_argument("--no-ocr", action="store_true")
+    refresh_unreviewed.add_argument("--no-omr", action="store_true")
+    refresh_unreviewed.add_argument("--no-tab-vision", action="store_true")
+    refresh_unreviewed.add_argument("--no-resume", action="store_true")
+    refresh_unreviewed.add_argument("--workers", type=int, default=1)
+    refresh_unreviewed.add_argument(
+        "--tab-pages-only",
+        action="store_true",
+        help="Refresh only pages whose existing extraction contains tablature systems.",
+    )
+
+    audit_discovery = subparsers.add_parser(
+        "audit-discovery-completion",
+        help=(
+            "Classify remaining discovery pages for refresh, internal remediation, "
+            "or genuinely ready human review without opening held-out data."
+        ),
+    )
+    audit_discovery.add_argument("batch_id")
+
+    remediate_discovery_score = subparsers.add_parser(
+        "remediate-discovery-score-correspondence",
+        help=(
+            "Build score-only canaries from current correction-confirmed discovery "
+            "records without changing reviewed facts or opening held-out data."
+        ),
+    )
+    remediate_discovery_score.add_argument("batch_id")
+    remediate_discovery_score.add_argument("--limit", type=int, default=5)
+    remediate_discovery_score.add_argument("--workers", type=int, default=1)
+    remediate_discovery_score.add_argument("--audiveris-bin", type=Path)
+
+    freeze_score_notehead_benchmark = subparsers.add_parser(
+        "freeze-source-score-notehead-benchmark",
+        help=(
+            "Freeze approved discovery score lines into page-grouped development "
+            "and shadow subsets without opening held-out data."
+        ),
+    )
+    freeze_score_notehead_benchmark.add_argument("batch_id")
+
+    evaluate_score_notehead = subparsers.add_parser(
+        "evaluate-source-score-notehead-challenger",
+        help=(
+            "Evaluate the frozen source-only notehead detector on development "
+            "or the page-grouped discovery shadow subset."
+        ),
+    )
+    evaluate_score_notehead.add_argument("batch_id")
+    evaluate_score_notehead.add_argument(
+        "--subset", choices=("development", "shadow"), default="development"
+    )
+
+    evaluate_score_vision = subparsers.add_parser(
+        "evaluate-source-score-vision-regression",
+        help=(
+            "Run an unconstrained score-only visual reader on the already-opened "
+            "discovery regression lines without creating review or training data."
+        ),
+    )
+    evaluate_score_vision.add_argument("batch_id")
+    evaluate_score_vision.add_argument("--workers", type=int, default=2)
+    evaluate_score_vision.add_argument("--limit", type=int, default=39)
+    evaluate_score_vision.add_argument("--vision-model", default="gemma4:12b")
+    evaluate_score_vision.add_argument(
+        "--vision-base-url", default="http://127.0.0.1:11434"
+    )
+    evaluate_score_vision.add_argument("--no-resume", action="store_true")
+
+    evaluate_score_projection = subparsers.add_parser(
+        "evaluate-source-score-projection-challenger",
+        help=(
+            "Evaluate the fixed source-image projection fusion on the opened "
+            "discovery regression benchmark without promotion or review creation."
+        ),
+    )
+    evaluate_score_projection.add_argument("batch_id")
+
+    evaluate_score_component_hybrid = subparsers.add_parser(
+        "evaluate-source-score-component-hybrid-challenger",
+        help=(
+            "Evaluate compact notehead components after the fixed projection "
+            "challenger on opened discovery regressions only."
+        ),
+    )
+    evaluate_score_component_hybrid.add_argument("batch_id")
+
+    freeze_score_component_hybrid = subparsers.add_parser(
+        "freeze-source-score-component-hybrid-contract",
+        help=(
+            "Freeze the fitted component-hybrid detector for a future unseen "
+            "discovery shadow; do not promote it."
+        ),
+    )
+    freeze_score_component_hybrid.add_argument("batch_id")
+
+    freeze_score_projection = subparsers.add_parser(
+        "freeze-source-score-projection-contract",
+        help=(
+            "Freeze the regression-passed projection detector for a future "
+            "previously unseen discovery shadow; do not promote it."
+        ),
+    )
+    freeze_score_projection.add_argument("batch_id")
+
+    capture_score_projection_shadow = subparsers.add_parser(
+        "capture-source-score-projection-shadow",
+        help=(
+            "Freeze predictions for unseen discovery score lines before any "
+            "human-facing review artifact exists."
+        ),
+    )
+    capture_score_projection_shadow.add_argument("batch_id")
+    capture_score_projection_shadow.add_argument("--limit", type=int, default=25)
+
+    score_score_projection_shadow = subparsers.add_parser(
+        "score-source-score-projection-shadow",
+        help=(
+            "Score previously frozen discovery predictions after independent "
+            "human-approved truth arrives."
+        ),
+    )
+    score_score_projection_shadow.add_argument("batch_id")
+    score_score_projection_shadow.add_argument(
+        "--minimum-cases", type=int, default=5
+    )
+
+    select_score_notehead = subparsers.add_parser(
+        "freeze-source-score-notehead-challenger-contract",
+        help="Freeze the exact development-passed source-notehead detector before shadow evaluation.",
+    )
+    select_score_notehead.add_argument("batch_id")
+
+    prepare_extraction_review = subparsers.add_parser(
+        "prepare-extraction-review",
+        help="Prepare a private side-by-side review packet for extracted discovery or validation pages.",
+    )
+    prepare_extraction_review.add_argument("batch_id")
+    prepare_extraction_review.add_argument("--partition", choices=("discovery", "validation"), default="discovery")
+    prepare_extraction_review.add_argument("--limit", type=int, default=25)
+    prepare_extraction_review.add_argument(
+        "--feedback-corrections-only",
+        action="store_true",
+        help="Include only corrected pages that have prior reviewer feedback.",
+    )
+    prepare_extraction_review.add_argument(
+        "--never-reviewed-only",
+        action="store_true",
+        help="Exclude every page that already has reviewer feedback.",
+    )
+    prepare_extraction_review.add_argument(
+        "--current-extractor-only",
+        action="store_true",
+        help="Include only pages refreshed with the current extractor version.",
+    )
+    prepare_extraction_review.add_argument(
+        "--tab-pages-only",
+        action="store_true",
+        help="Include only pages containing detected tablature systems.",
+    )
+    prepare_extraction_review.add_argument(
+        "--passing-refresh-gate-only",
+        action="store_true",
+        help="Withhold refreshed pages that regress structurally or mechanically.",
+    )
+
+    serve_review = subparsers.add_parser(
+        "serve-extraction-review",
+        help="Serve private review consoles and receive idempotent loopback-only review submissions.",
+    )
+    serve_review.add_argument("--port", type=int, default=8766)
+
+    apply_extraction_review = subparsers.add_parser(
+        "apply-extraction-review",
+        help="Apply immutable human accept, correction, or exclusion decisions to extracted pages.",
+    )
+    apply_extraction_review.add_argument("batch_id")
+    apply_extraction_review.add_argument("decisions", type=Path)
+    apply_extraction_review.add_argument("--partition", choices=("discovery", "validation"), default="discovery")
+
+    prepare_score_audit = subparsers.add_parser(
+        "prepare-score-audit-review",
+        help="Prepare a private per-system music-score audit for already approved pages.",
+    )
+    prepare_score_audit.add_argument("batch_id")
+    prepare_score_audit.add_argument("--partition", choices=("discovery", "validation"), default="discovery")
+    prepare_score_audit.add_argument("--limit", type=int, default=25)
+
+    repair_score_audit = subparsers.add_parser(
+        "repair-score-audit",
+        help="Build digest-pinned score-only candidates for the internal score-audit repair queue.",
+    )
+    repair_score_audit.add_argument("batch_id")
+    repair_score_audit.add_argument(
+        "--partition", choices=("discovery", "validation"), default="discovery"
+    )
+    repair_score_audit.add_argument("--workers", type=int, default=1)
+    repair_score_audit.add_argument("--limit", type=int, default=100)
+    repair_score_audit.add_argument(
+        "--input-id",
+        action="append",
+        default=[],
+        help="Repair only this queued discovery input; repeat for more than one input.",
+    )
+
+    apply_score_audit = subparsers.add_parser(
+        "apply-score-audit-review",
+        help="Apply explicit per-system music-score audit decisions without changing prior tab approval.",
+    )
+    apply_score_audit.add_argument("batch_id")
+    apply_score_audit.add_argument("decisions", type=Path)
+    apply_score_audit.add_argument("--partition", choices=("discovery", "validation"), default="discovery")
+
+    apply_score_corrections = subparsers.add_parser(
+        "apply-score-audit-corrections",
+        help="Apply digest-pinned score corrections from reviewed audit feedback.",
+    )
+    apply_score_corrections.add_argument("batch_id")
+    apply_score_corrections.add_argument("corrections", type=Path)
+    apply_score_corrections.add_argument(
+        "--partition", choices=("discovery", "validation"), default="discovery"
+    )
+    apply_score_corrections.add_argument("--dry-run", action="store_true")
+
+    qualify_score_scope = subparsers.add_parser(
+        "qualify-score-audit-scope",
+        help="Limit an approved score audit to pitch/harmony correspondence, excluding score rhythm.",
+    )
+    qualify_score_scope.add_argument("batch_id")
+    qualify_score_scope.add_argument("--input-id", required=True)
+    qualify_score_scope.add_argument("--expected-score-audit-decision-id", required=True)
+    qualify_score_scope.add_argument("--reviewer-reference", required=True)
+    qualify_score_scope.add_argument(
+        "--partition", choices=("discovery", "validation"), default="discovery"
+    )
+
+    apply_feedback_corrections = subparsers.add_parser(
+        "apply-feedback-corrections",
+        help="Apply digest-pinned machine corrections from reviewed feedback without granting human approval.",
+    )
+    apply_feedback_corrections.add_argument("batch_id")
+    apply_feedback_corrections.add_argument("corrections", type=Path)
+    apply_feedback_corrections.add_argument(
+        "--partition", choices=("discovery", "validation"), default="discovery"
+    )
+    apply_feedback_corrections.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate every correction in memory without writing corrected records or logs.",
+    )
+
+    prepare_feedback_confirmation = subparsers.add_parser(
+        "prepare-feedback-correction-confirmation",
+        help="Prepare a compact tab-only confirmation for applied reviewer corrections.",
+    )
+    prepare_feedback_confirmation.add_argument("batch_id")
+    prepare_feedback_confirmation.add_argument("corrections", type=Path)
+    prepare_feedback_confirmation.add_argument(
+        "--partition", choices=("discovery",), default="discovery"
+    )
+
+    apply_feedback_confirmation = subparsers.add_parser(
+        "apply-feedback-correction-confirmation-review",
+        help="Apply a submitted tab-only correction confirmation without approving score facts.",
+    )
+    apply_feedback_confirmation.add_argument("batch_id")
+    apply_feedback_confirmation.add_argument("submission", type=Path)
+    apply_feedback_confirmation.add_argument(
+        "--partition", choices=("discovery",), default="discovery"
+    )
+
+    prepare_combined_score_tab = subparsers.add_parser(
+        "prepare-combined-score-tab-review",
+        help="Prepare one combined score, confirmed-tab, and correspondence audit.",
+    )
+    prepare_combined_score_tab.add_argument("batch_id")
+    prepare_combined_score_tab.add_argument(
+        "--input-id",
+        action="append",
+        required=True,
+        help="Include this correction-approved discovery input; repeat for additional pages.",
+    )
+    prepare_combined_score_tab.add_argument(
+        "--score-system-id",
+        action="append",
+        default=[],
+        help=(
+            "Show only this score system within the requested pages; repeat for additional "
+            "changed lines."
+        ),
+    )
+    prepare_combined_score_tab.add_argument(
+        "--key-signature-override",
+        action="append",
+        default=[],
+        metavar="SCORE_SYSTEM_ID=FIFTHS",
+        help=(
+            "Use a directly observed printed key signature for one reviewed system; "
+            "repeat for additional systems."
+        ),
+    )
+    prepare_combined_score_tab.add_argument(
+        "--partition", choices=("discovery",), default="discovery"
+    )
+    prepare_combined_score_tab.add_argument(
+        "--no-activate",
+        action="store_true",
+        help=(
+            "Write a digest-versioned packet without replacing the current review URL; "
+            "use this to stage later work while another packet is being reviewed."
+        ),
+    )
+    prepare_combined_score_tab.add_argument(
+        "--provisional-joint-review",
+        action="store_true",
+        help="Require the reviewer to confirm both the displayed tablature and score mapping.",
+    )
+
+    prepare_challenger_comparison = subparsers.add_parser(
+        "prepare-challenger-comparison-review",
+        help="Show concrete source and challenger tablature only where a score-gated shadow disagrees.",
+    )
+    prepare_challenger_comparison.add_argument("batch_id")
+    prepare_challenger_comparison.add_argument("--model-id", required=True)
+    prepare_challenger_comparison.add_argument("--report-digest", required=True)
+    prepare_challenger_comparison.add_argument(
+        "--input-id", action="append", required=True
+    )
+    prepare_challenger_comparison.add_argument(
+        "--score-system-id", action="append", default=[]
+    )
+    prepare_challenger_comparison.add_argument(
+        "--max-decisions",
+        type=int,
+        default=None,
+        help="Cap the packet to the first N concrete differences (1-12).",
+    )
+
+    apply_challenger_comparison = subparsers.add_parser(
+        "apply-challenger-comparison-review",
+        help="Apply reviewed source-vs-challenger tablature preferences to discovery evidence.",
+    )
+    apply_challenger_comparison.add_argument("batch_id")
+    apply_challenger_comparison.add_argument("submission", type=Path)
+    apply_challenger_comparison.add_argument("--dry-run", action="store_true")
+
+    apply_combined_score_tab = subparsers.add_parser(
+        "apply-combined-score-tab-review",
+        help=(
+            "Apply a received combined score/tab review as line-scoped pitch evidence, "
+            "leaving rhythm excluded and unresolved correspondence out of training."
+        ),
+    )
+    apply_combined_score_tab.add_argument("batch_id")
+    apply_combined_score_tab.add_argument("submission", type=Path)
+    apply_combined_score_tab.add_argument("--dry-run", action="store_true")
+    apply_combined_score_tab.add_argument(
+        "--partition", choices=("discovery",), default="discovery"
+    )
+
+    replay_combined_score_tab = subparsers.add_parser(
+        "replay-combined-score-tab-regressions",
+        help=(
+            "Re-evaluate current discovery line approvals and prove unresolved or "
+            "superseded evidence cannot enter training."
+        ),
+    )
+    replay_combined_score_tab.add_argument("batch_id")
+    replay_combined_score_tab.add_argument(
+        "--partition", choices=("discovery",), default="discovery"
+    )
+
+    quarantine_combined_score_tab = subparsers.add_parser(
+        "quarantine-combined-score-tab-regressions",
+        help=(
+            "Supersede stale discovery line eligibility after a stricter combined "
+            "alignment contract detects a regression."
+        ),
+    )
+    quarantine_combined_score_tab.add_argument("batch_id")
+    quarantine_combined_score_tab.add_argument(
+        "--partition", choices=("discovery",), default="discovery"
+    )
+
+    revalidate_normalized_positions = subparsers.add_parser(
+        "revalidate-combined-score-tab-normalized-positions",
+        help=(
+            "Preserve one human-confirmed v4 score decision while rebuilding its "
+            "normalized-position grouping and alignments under the scale-aware gate."
+        ),
+    )
+    revalidate_normalized_positions.add_argument("batch_id")
+    revalidate_normalized_positions.add_argument("--input-id", required=True)
+    revalidate_normalized_positions.add_argument("--score-system-id", required=True)
+    revalidate_normalized_positions.add_argument(
+        "--partition", choices=("discovery",), default="discovery"
+    )
+
+    extraction_review_metrics = subparsers.add_parser(
+        "extraction-review-metrics",
+        help="Compute private aggregate extraction accuracy and correction metrics from human-reviewed pages.",
+    )
+    extraction_review_metrics.add_argument("batch_id")
+    extraction_review_metrics.add_argument("--partition", choices=("discovery", "validation"), default="discovery")
+
+    replay_event_counts = subparsers.add_parser(
+        "replay-event-count-exceptions",
+        help="Run a discovery-only whole-system count challenger without changing reviewed records.",
+    )
+    replay_event_counts.add_argument("batch_id")
+    replay_event_counts.add_argument("--vision-model", default="gemma4:12b")
+    replay_event_counts.add_argument("--vision-base-url", default="http://127.0.0.1:11434")
+    replay_event_counts.add_argument("--no-resume", action="store_true")
+
+    prepare_event_localization = subparsers.add_parser(
+        "prepare-event-localization-review",
+        help=(
+            "Localize only the remaining discovery event-count exceptions and prepare a compact "
+            "source-beside-tablature review."
+        ),
+    )
+    prepare_event_localization.add_argument("batch_id")
+    prepare_event_localization.add_argument("--vision-model", default="gemma4:12b")
+    prepare_event_localization.add_argument(
+        "--vision-base-url", default="http://127.0.0.1:11434"
+    )
+    prepare_event_localization.add_argument("--no-resume", action="store_true")
+
+    prepare_score_pitch = subparsers.add_parser(
+        "prepare-score-pitch-correspondence-review",
+        help=(
+            "Recapture conventional-score pitches independently and prepare a compact "
+            "score-to-tablature scientific-pitch audit."
+        ),
+    )
+    prepare_score_pitch.add_argument("batch_id")
+    prepare_score_pitch.add_argument("--vision-model", default="gemma4:12b")
+    prepare_score_pitch.add_argument("--vision-base-url", default="http://127.0.0.1:11434")
+    prepare_score_pitch.add_argument("--no-resume", action="store_true")
+
+    replay_score_chord_omissions = subparsers.add_parser(
+        "replay-score-chord-omission-gate",
+        help=(
+            "Re-evaluate reviewed discovery score/tab links and withhold any relationship "
+            "whose pitch-and-octave sets are not exact."
+        ),
+    )
+    replay_score_chord_omissions.add_argument("batch_id")
+
+    prepare_score_chord_omission_review = subparsers.add_parser(
+        "prepare-score-chord-omission-review",
+        help="Prepare a compact source-beside-tab review for strict score-subset cases.",
+    )
+    prepare_score_chord_omission_review.add_argument("batch_id")
+
+    prepare_full_line_score_recapture = subparsers.add_parser(
+        "prepare-full-line-score-recapture-review",
+        help=(
+            "Recapture complete discovery score lines under human-supplied event-count "
+            "constraints and prepare a full score-to-tab review."
+        ),
+    )
+    prepare_full_line_score_recapture.add_argument("batch_id")
+    prepare_full_line_score_recapture.add_argument("constraints", type=Path)
+    prepare_full_line_score_recapture.add_argument("--vision-model", default="gemma4:12b")
+    prepare_full_line_score_recapture.add_argument(
+        "--vision-base-url", default="http://127.0.0.1:11434"
+    )
+    prepare_full_line_score_recapture.add_argument("--no-resume", action="store_true")
+
+    apply_full_line_score_recapture = subparsers.add_parser(
+        "apply-full-line-score-recapture-review",
+        help=(
+            "Apply a submitted complete-line review plus digest-pinned structured corrections "
+            "as pitch-only score/tab truth."
+        ),
+    )
+    apply_full_line_score_recapture.add_argument("batch_id")
+    apply_full_line_score_recapture.add_argument("submission", type=Path)
+    apply_full_line_score_recapture.add_argument("corrections", type=Path)
+    apply_full_line_score_recapture.add_argument("--dry-run", action="store_true")
+
+    derive_decisions = subparsers.add_parser(
+        "derive-reviewed-decisions",
+        help="Materialize page-approved abstract ranking decisions into an immutable partition ledger.",
+    )
+    derive_decisions.add_argument("batch_id")
+    derive_decisions.add_argument("--partition", choices=("discovery", "validation"), required=True)
 
     annotate = subparsers.add_parser("annotate", help="Import immutable private JSONL annotations for a batch.")
     annotate.add_argument("batch_id")
@@ -86,11 +665,104 @@ def _parser() -> argparse.ArgumentParser:
     train.add_argument("--epochs", type=int, default=20)
     train.add_argument("--learning-rate", type=float, default=0.05)
 
+    train_discovery = subparsers.add_parser(
+        "train-discovery-challenger",
+        help="Freeze reviewed discovery evidence and build a non-promotable active-learning challenger.",
+    )
+    train_discovery.add_argument("--epochs", type=int, default=20)
+    train_discovery.add_argument("--learning-rate", type=float, default=0.05)
+    train_discovery.add_argument("--base-model-id")
+    train_discovery.add_argument(
+        "--average-weights",
+        action="store_true",
+        help="Average pairwise-perceptron weights across steps to reduce order sensitivity.",
+    )
+    train_discovery.add_argument(
+        "--base-weight-ratio",
+        type=float,
+        default=0.0,
+        help="Shrink retrained style weights toward the exact discovery baseline (0-1).",
+    )
+    train_discovery.add_argument(
+        "--experimental-style",
+        action="append",
+        default=[],
+        help="Retrain only this style while inheriting all other styles from the discovery baseline.",
+    )
+
+    train_complete = subparsers.add_parser(
+        "train-complete-discovery",
+        help=(
+            "Build a canonical validation candidate from fully reviewed discovery "
+            "using an exact discovery baseline."
+        ),
+    )
+    train_complete.add_argument("--base-model-id", required=True)
+    train_complete.add_argument("--epochs", type=int, default=20)
+    train_complete.add_argument("--learning-rate", type=float, default=0.05)
+    train_complete.add_argument("--average-weights", action="store_true")
+    train_complete.add_argument(
+        "--base-weight-ratio",
+        type=float,
+        default=0.20,
+        help="Initialize every canonical style from the exact baseline while updating from complete discovery.",
+    )
+
+    canonical_readiness = subparsers.add_parser(
+        "canonical-readiness",
+        help="Report discovery-completion blockers without opening validation or sealed tests.",
+    )
+    canonical_readiness.add_argument("--base-model-id")
+
+    shadow_discovery = subparsers.add_parser(
+        "shadow-test-discovery",
+        help="Score remaining discovery hypotheses and select a bounded review set.",
+    )
+    shadow_discovery.add_argument("model_id")
+    shadow_discovery.add_argument("--max-review-lines", type=int, default=12)
+
     evaluate = subparsers.add_parser("evaluate", help="Compare a challenger against holdout decisions and the champion.")
     evaluate.add_argument("model_id")
 
     report = subparsers.add_parser("report", help="Write a private metrics-only challenger report.")
     report.add_argument("model_id")
+
+    freeze = subparsers.add_parser(
+        "freeze-rules",
+        help="Freeze the exact passing model, validators, schemas, copedents, and code digests before sealed tests.",
+    )
+    freeze.add_argument("model_id")
+
+    prepare_ground_truth = subparsers.add_parser(
+        "prepare-sealed-ground-truth",
+        help="Open one sealed cohort for isolated Lane 15 ground-truth annotation after rules freeze.",
+    )
+    prepare_ground_truth.add_argument("batch_id")
+    prepare_ground_truth.add_argument("--freeze-id", required=True)
+
+    import_ground_truth = subparsers.add_parser(
+        "import-sealed-ground-truth",
+        help="Import complete independently reviewed ground truth for one frozen sealed cohort.",
+    )
+    import_ground_truth.add_argument("batch_id")
+    import_ground_truth.add_argument("ground_truth", type=Path)
+    import_ground_truth.add_argument("--freeze-id", required=True)
+
+    run_sealed = subparsers.add_parser(
+        "run-sealed-tests",
+        help="Run every frozen sealed cohort exactly once and record the official aggregate score first.",
+    )
+    run_sealed.add_argument("freeze_id")
+    run_sealed.add_argument("--audiveris-bin", type=Path)
+    run_sealed.add_argument("--vision-model", default="gemma4:12b")
+    run_sealed.add_argument("--vision-base-url", default="http://127.0.0.1:11434")
+    run_sealed.add_argument("--workers", type=int, default=1)
+
+    release_sealed = subparsers.add_parser(
+        "release-sealed-failures",
+        help="Release page-level failures only after the official score, converting the holdout to regression data.",
+    )
+    release_sealed.add_argument("freeze_id")
 
     promote = subparsers.add_parser("promote", help="Promote an exact passing model after explicit creator approval.")
     promote.add_argument("model_id")
@@ -117,6 +789,7 @@ def main() -> int:
     parser = _parser()
     args = parser.parse_args()
     store = AmazingTablatureTrainingStore(args.root)
+    result: Any
     try:
         if args.command == "ingest":
             result = store.ingest(
@@ -133,11 +806,21 @@ def main() -> int:
                 document_breaks=args.document_break,
                 forced_discovery=args.force_discovery,
                 content_unit_breaks=args.content_unit_break,
+                page_level_units=args.page_level_units,
+                semantic_groups=args.semantic_groups,
                 discovery_target=args.discovery_target,
                 validation_target=args.validation_target,
                 test_target=args.test_target,
                 guard_radius=args.guard_radius,
                 similarity_threshold=args.similarity_threshold,
+            )
+        elif args.command == "record-split-review":
+            result = store.record_split_review(
+                args.batch_id,
+                outcome=args.outcome,
+                partition_digest=args.partition_digest,
+                reviewer_reference=args.reviewer_reference,
+                review_artifact_digest=args.review_artifact_digest,
             )
         elif args.command == "supersede-batch":
             result = store.supersede_batch(
@@ -145,8 +828,330 @@ def main() -> int:
                 replacement_batch_id=args.replacement_batch,
                 approval_reference=args.approval_reference,
             )
+        elif args.command == "compose-dataset":
+            result = store.compose_authoritative_dataset(
+                args.batch,
+                approval_reference=args.approval_reference,
+            )
         elif args.command == "verify-intake":
             result = store.verify_batch_inputs(args.batch_id)
+        elif args.command == "record-use-authorization":
+            result = store.record_use_authorization(
+                args.batch_id,
+                rights_status=args.rights_status,
+                allowed_uses=args.allow,
+                approval_reference=args.approval_reference,
+            )
+        elif args.command == "extract":
+            extractor = AmazingTablatureExtractor(
+                args.root,
+                audiveris_binary=args.audiveris_bin,
+                vision_model=args.vision_model,
+                vision_base_url=args.vision_base_url,
+                tab_reader=args.tab_reader,
+            )
+            result = extractor.run(
+                args.batch_id,
+                partition=args.partition,
+                use_ocr=not args.no_ocr,
+                use_omr=not args.no_omr,
+                use_tab_vision=not args.no_tab_vision,
+                resume=not args.no_resume,
+                workers=args.workers,
+            )
+        elif args.command == "refresh-unreviewed-extraction":
+            extractor = AmazingTablatureExtractor(
+                args.root,
+                audiveris_binary=args.audiveris_bin,
+                vision_model=args.vision_model,
+                vision_base_url=args.vision_base_url,
+                tab_reader=args.tab_reader,
+            )
+            result = extractor.refresh_unreviewed(
+                args.batch_id,
+                limit=args.limit,
+                use_ocr=not args.no_ocr,
+                use_omr=not args.no_omr,
+                use_tab_vision=not args.no_tab_vision,
+                resume=not args.no_resume,
+                workers=args.workers,
+                require_tab_systems=args.tab_pages_only,
+            )
+        elif args.command == "audit-discovery-completion":
+            result = AmazingTablatureExtractor(args.root).audit_discovery_completion(
+                args.batch_id
+            )
+        elif args.command == "remediate-discovery-score-correspondence":
+            extractor = AmazingTablatureExtractor(
+                args.root,
+                audiveris_binary=args.audiveris_bin,
+            )
+            result = extractor.remediate_discovery_score_correspondence(
+                args.batch_id,
+                limit=args.limit,
+                workers=args.workers,
+            )
+        elif args.command == "freeze-source-score-notehead-benchmark":
+            result = AmazingTablatureExtractor(
+                args.root
+            ).freeze_source_score_notehead_benchmark(args.batch_id)
+        elif args.command == "evaluate-source-score-notehead-challenger":
+            result = AmazingTablatureExtractor(
+                args.root
+            ).evaluate_source_score_notehead_challenger(
+                args.batch_id,
+                subset=args.subset,
+            )
+        elif args.command == "evaluate-source-score-vision-regression":
+            result = AmazingTablatureExtractor(
+                args.root,
+                vision_model=args.vision_model,
+                vision_base_url=args.vision_base_url,
+            ).evaluate_source_score_vision_regression(
+                args.batch_id,
+                workers=args.workers,
+                limit=args.limit,
+                resume=not args.no_resume,
+            )
+        elif args.command == "evaluate-source-score-projection-challenger":
+            result = AmazingTablatureExtractor(
+                args.root
+            ).evaluate_source_score_projection_challenger(args.batch_id)
+        elif args.command == "evaluate-source-score-component-hybrid-challenger":
+            result = AmazingTablatureExtractor(
+                args.root
+            ).evaluate_source_score_component_hybrid_challenger(args.batch_id)
+        elif args.command == "freeze-source-score-component-hybrid-contract":
+            result = AmazingTablatureExtractor(
+                args.root
+            ).freeze_source_score_component_hybrid_contract(args.batch_id)
+        elif args.command == "freeze-source-score-projection-contract":
+            result = AmazingTablatureExtractor(
+                args.root
+            ).freeze_source_score_projection_contract(args.batch_id)
+        elif args.command == "capture-source-score-projection-shadow":
+            result = AmazingTablatureExtractor(
+                args.root
+            ).capture_source_score_projection_shadow(
+                args.batch_id,
+                limit=args.limit,
+            )
+        elif args.command == "score-source-score-projection-shadow":
+            result = AmazingTablatureExtractor(
+                args.root
+            ).score_source_score_projection_shadow(
+                args.batch_id,
+                minimum_cases=args.minimum_cases,
+            )
+        elif args.command == "freeze-source-score-notehead-challenger-contract":
+            result = AmazingTablatureExtractor(
+                args.root
+            ).freeze_source_score_notehead_challenger_contract(args.batch_id)
+        elif args.command == "prepare-extraction-review":
+            result = AmazingTablatureExtractor(args.root).prepare_review(
+                args.batch_id,
+                partition=args.partition,
+                limit=args.limit,
+                prior_feedback_only=args.feedback_corrections_only,
+                never_reviewed_only=args.never_reviewed_only,
+                current_extractor_only=args.current_extractor_only,
+                tab_pages_only=args.tab_pages_only,
+                passing_refresh_gate_only=args.passing_refresh_gate_only,
+            )
+        elif args.command == "serve-extraction-review":
+            _print({"host": "127.0.0.1", "port": args.port, "status": "serving_private_review"})
+            serve_review_consoles(args.root, port=args.port)
+            return 0
+        elif args.command == "apply-extraction-review":
+            result = AmazingTablatureExtractor(args.root).apply_review(
+                args.batch_id,
+                args.decisions,
+                partition=args.partition,
+            )
+        elif args.command == "prepare-score-audit-review":
+            result = AmazingTablatureExtractor(args.root).prepare_score_audit_review(
+                args.batch_id,
+                partition=args.partition,
+                limit=args.limit,
+            )
+        elif args.command == "repair-score-audit":
+            result = AmazingTablatureExtractor(args.root).repair_score_audit(
+                args.batch_id,
+                partition=args.partition,
+                workers=args.workers,
+                limit=args.limit,
+                input_ids=args.input_id,
+            )
+        elif args.command == "apply-score-audit-review":
+            result = AmazingTablatureExtractor(args.root).apply_score_audit_review(
+                args.batch_id,
+                args.decisions,
+                partition=args.partition,
+            )
+        elif args.command == "apply-score-audit-corrections":
+            result = AmazingTablatureExtractor(args.root).apply_score_audit_corrections(
+                args.batch_id,
+                args.corrections,
+                partition=args.partition,
+                dry_run=args.dry_run,
+            )
+        elif args.command == "qualify-score-audit-scope":
+            result = AmazingTablatureExtractor(args.root).qualify_score_audit_scope(
+                args.batch_id,
+                input_id=args.input_id,
+                expected_score_audit_decision_id=args.expected_score_audit_decision_id,
+                reviewer_reference=args.reviewer_reference,
+                partition=args.partition,
+            )
+        elif args.command == "apply-feedback-corrections":
+            result = AmazingTablatureExtractor(args.root).apply_feedback_corrections(
+                args.batch_id,
+                args.corrections,
+                partition=args.partition,
+                dry_run=args.dry_run,
+            )
+        elif args.command == "prepare-feedback-correction-confirmation":
+            result = AmazingTablatureExtractor(
+                args.root
+            ).prepare_feedback_correction_confirmation(
+                args.batch_id,
+                args.corrections,
+                partition=args.partition,
+            )
+        elif args.command == "apply-feedback-correction-confirmation-review":
+            result = AmazingTablatureExtractor(
+                args.root
+            ).apply_feedback_correction_confirmation_review(
+                args.batch_id,
+                args.submission,
+                partition=args.partition,
+            )
+        elif args.command == "prepare-combined-score-tab-review":
+            key_signature_overrides = {}
+            for value in args.key_signature_override:
+                system_id, separator, fifths = str(value).partition("=")
+                if not separator or not system_id or not re.fullmatch(r"-?[0-7]", fifths):
+                    raise ValueError(
+                        "Key-signature overrides must use SCORE_SYSTEM_ID=FIFTHS with -7..7."
+                    )
+                key_signature_overrides[system_id] = int(fifths)
+            result = AmazingTablatureExtractor(args.root).prepare_combined_score_tab_review(
+                args.batch_id,
+                input_ids=args.input_id,
+                score_system_ids=args.score_system_id,
+                key_signature_overrides=key_signature_overrides,
+                partition=args.partition,
+                activate=not args.no_activate,
+                provisional_joint_review=args.provisional_joint_review,
+            )
+        elif args.command == "apply-combined-score-tab-review":
+            result = AmazingTablatureExtractor(args.root).apply_combined_score_tab_review(
+                args.batch_id,
+                args.submission,
+                partition=args.partition,
+                dry_run=args.dry_run,
+            )
+        elif args.command == "prepare-challenger-comparison-review":
+            result = AmazingTablatureExtractor(
+                args.root
+            ).prepare_challenger_comparison_review(
+                args.batch_id,
+                model_id=args.model_id,
+                report_digest=args.report_digest,
+                input_ids=args.input_id,
+                score_system_ids=args.score_system_id,
+                max_decisions=args.max_decisions,
+            )
+        elif args.command == "apply-challenger-comparison-review":
+            result = AmazingTablatureTrainingStore(
+                args.root
+            ).apply_challenger_comparison_review(
+                args.batch_id,
+                args.submission,
+                dry_run=args.dry_run,
+            )
+        elif args.command == "replay-combined-score-tab-regressions":
+            result = AmazingTablatureExtractor(
+                args.root
+            ).replay_combined_score_tab_regressions(
+                args.batch_id,
+                partition=args.partition,
+            )
+        elif args.command == "quarantine-combined-score-tab-regressions":
+            result = AmazingTablatureExtractor(
+                args.root
+            ).quarantine_combined_score_tab_contract_regressions(
+                args.batch_id,
+                partition=args.partition,
+            )
+        elif args.command == "revalidate-combined-score-tab-normalized-positions":
+            result = AmazingTablatureExtractor(
+                args.root
+            ).revalidate_combined_score_tab_normalized_positions(
+                args.batch_id,
+                input_id=args.input_id,
+                score_system_id=args.score_system_id,
+                partition=args.partition,
+            )
+        elif args.command == "extraction-review-metrics":
+            result = AmazingTablatureExtractor(args.root).review_metrics(
+                args.batch_id,
+                partition=args.partition,
+            )
+        elif args.command == "replay-event-count-exceptions":
+            result = AmazingTablatureExtractor(
+                args.root,
+                vision_model=args.vision_model,
+                vision_base_url=args.vision_base_url,
+            ).replay_event_count_exceptions(
+                args.batch_id,
+                resume=not args.no_resume,
+            )
+        elif args.command == "prepare-event-localization-review":
+            result = AmazingTablatureExtractor(
+                args.root,
+                vision_model=args.vision_model,
+                vision_base_url=args.vision_base_url,
+            ).prepare_event_localization_review(
+                args.batch_id,
+                resume=not args.no_resume,
+            )
+        elif args.command == "prepare-score-pitch-correspondence-review":
+            result = AmazingTablatureExtractor(
+                args.root,
+                vision_model=args.vision_model,
+                vision_base_url=args.vision_base_url,
+            ).prepare_score_pitch_correspondence_review(
+                args.batch_id,
+                resume=not args.no_resume,
+            )
+        elif args.command == "replay-score-chord-omission-gate":
+            result = AmazingTablatureExtractor(args.root).replay_score_chord_omission_gate(
+                args.batch_id,
+            )
+        elif args.command == "prepare-score-chord-omission-review":
+            result = AmazingTablatureExtractor(args.root).prepare_score_chord_omission_review(
+                args.batch_id,
+            )
+        elif args.command == "prepare-full-line-score-recapture-review":
+            result = AmazingTablatureExtractor(
+                args.root,
+                vision_model=args.vision_model,
+                vision_base_url=args.vision_base_url,
+            ).prepare_full_line_score_recapture_review(
+                args.batch_id,
+                args.constraints,
+                resume=not args.no_resume,
+            )
+        elif args.command == "apply-full-line-score-recapture-review":
+            result = AmazingTablatureExtractor(args.root).apply_full_line_score_recapture_review(
+                args.batch_id,
+                args.submission,
+                args.corrections,
+                dry_run=args.dry_run,
+            )
+        elif args.command == "derive-reviewed-decisions":
+            result = store.derive_reviewed_decisions(args.batch_id, partition=args.partition)
         elif args.command == "annotate":
             result = store.import_annotations(args.batch_id, args.annotations)
         elif args.command == "validate":
@@ -155,10 +1160,60 @@ def main() -> int:
             result = store.apply_review(args.batch_id, args.resolutions)
         elif args.command == "train":
             result = store.train(epochs=args.epochs, learning_rate=args.learning_rate)
+        elif args.command == "train-discovery-challenger":
+            result = store.train_discovery_challenger(
+                epochs=args.epochs,
+                learning_rate=args.learning_rate,
+                base_model_id=args.base_model_id,
+                experimental_styles=args.experimental_style,
+                average_weights=args.average_weights,
+                base_weight_ratio=args.base_weight_ratio,
+            )
+        elif args.command == "train-complete-discovery":
+            result = store.train_complete_discovery_challenger(
+                base_model_id=args.base_model_id,
+                epochs=args.epochs,
+                learning_rate=args.learning_rate,
+                average_weights=args.average_weights,
+                base_weight_ratio=args.base_weight_ratio,
+            )
+        elif args.command == "canonical-readiness":
+            result = store.canonical_readiness(base_model_id=args.base_model_id)
+        elif args.command == "shadow-test-discovery":
+            result = store.shadow_test_discovery(
+                args.model_id,
+                max_review_lines=args.max_review_lines,
+            )
         elif args.command == "evaluate":
             result = store.evaluate(args.model_id)
         elif args.command == "report":
             result = store.report(args.model_id)
+        elif args.command == "freeze-rules":
+            result = store.freeze_rules(args.model_id)
+        elif args.command == "prepare-sealed-ground-truth":
+            result = SealedTestCoordinator(args.root).prepare_ground_truth(
+                args.batch_id,
+                freeze_id=args.freeze_id,
+            )
+        elif args.command == "import-sealed-ground-truth":
+            result = SealedTestCoordinator(args.root).import_ground_truth(
+                args.batch_id,
+                args.ground_truth,
+                freeze_id=args.freeze_id,
+            )
+        elif args.command == "run-sealed-tests":
+            sealed_extractor = AmazingTablatureExtractor(
+                args.root,
+                audiveris_binary=args.audiveris_bin,
+                vision_model=args.vision_model,
+                vision_base_url=args.vision_base_url,
+            )
+            result = SealedTestCoordinator(args.root, extractor=sealed_extractor).run(
+                args.freeze_id,
+                workers=args.workers,
+            )
+        elif args.command == "release-sealed-failures":
+            result = SealedTestCoordinator(args.root).release_failure_details(args.freeze_id)
         elif args.command == "promote":
             result = store.promote(
                 args.model_id,
@@ -178,7 +1233,7 @@ def main() -> int:
             result = store.batch_status(args.batch_id)
         else:
             result = store.status()
-    except TrainingWorkflowError as exc:
+    except (ExtractionWorkflowError, SealedTestWorkflowError, TrainingWorkflowError) as exc:
         parser.exit(2, f"Amazing Tablature workflow stopped: {exc}\n")
     _print(result)
     return 0
