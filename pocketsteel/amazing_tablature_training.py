@@ -1063,6 +1063,49 @@ class AmazingTablatureTrainingStore:
         path = self._batch_dir(batch_id) / "rights-and-access.json"
         return _read_json(path) if path.exists() else _default_rights_record(batch_id)
 
+    def _reviewed_evidence_rights_are_current(
+        self,
+        batch_id: str,
+        pinned_digest: str,
+        *,
+        required_use: str,
+    ) -> bool:
+        """Accept reviewed evidence across non-revoking authorization revisions.
+
+        Review records remain pinned to the authorization that existed when the
+        musical evidence was approved.  A later append-only authorization may
+        add another allowed use without forcing musical rereview, provided both
+        the pinned record and the current record explicitly allow the use that
+        consumes the evidence.  A missing lineage record, unknown rights
+        status, or current revocation still fails closed.
+        """
+
+        if required_use not in USE_KEYS or not pinned_digest:
+            return False
+        current = self._rights_and_access(batch_id)
+        if (
+            current.get("reviewStatus") != "approved"
+            or current.get("rightsStatus") == "unknown"
+            or not bool(current.get("allowedUses", {}).get(required_use))
+        ):
+            return False
+        history_path = self._batch_dir(batch_id) / "rights-and-access-history.jsonl"
+        candidates = _read_jsonl(history_path)
+        if current.get("recordDigest") and not any(
+            item.get("recordDigest") == current.get("recordDigest") for item in candidates
+        ):
+            candidates.append(current)
+        for record in candidates:
+            if str(record.get("recordDigest") or "") != pinned_digest:
+                continue
+            return bool(
+                record.get("batchId") == batch_id
+                and record.get("reviewStatus") == "approved"
+                and record.get("rightsStatus") != "unknown"
+                and record.get("allowedUses", {}).get(required_use)
+            )
+        return False
+
     def record_use_authorization(
         self,
         batch_id: str,
@@ -2156,9 +2199,13 @@ class AmazingTablatureTrainingStore:
                 )
             if record.get("sourceCopedent", {}).get("id") != profile.id:
                 raise TrainingWorkflowError("A combined-line record uses the wrong source copedent.")
-            if (
-                record.get("rightsAndAccess", {}).get("authorizationRecordDigest")
-                != expected_rights_digest
+            if not self._reviewed_evidence_rights_are_current(
+                batch_id,
+                str(
+                    record.get("rightsAndAccess", {}).get("authorizationRecordDigest")
+                    or ""
+                ),
+                required_use="modelTraining",
             ):
                 raise TrainingWorkflowError(
                     f"{input_id} combined-line evidence is pinned to stale rights authorization."
@@ -2303,7 +2350,16 @@ class AmazingTablatureTrainingStore:
             if not reviewed_path_value or not reviewed_path.exists():
                 raise TrainingWorkflowError("An approved extraction record is missing.")
             reviewed_record = _read_json(reviewed_path)
-            if reviewed_record.get("rightsAndAccess", {}).get("authorizationRecordDigest") != expected_digest:
+            if not self._reviewed_evidence_rights_are_current(
+                batch_id,
+                str(
+                    reviewed_record.get("rightsAndAccess", {}).get(
+                        "authorizationRecordDigest"
+                    )
+                    or ""
+                ),
+                required_use=required_use,
+            ):
                 raise TrainingWorkflowError(
                     f"{batch_id} {partition} review is pinned to a stale rights authorization."
                 )
@@ -2742,7 +2798,14 @@ class AmazingTablatureTrainingStore:
                 raise TrainingWorkflowError(f"An approved discovery record digest changed for {batch_id}.")
             if record.get("sourceCopedent", {}).get("id") != profile.id:
                 raise TrainingWorkflowError("An approved discovery record uses the wrong source copedent.")
-            if record.get("rightsAndAccess", {}).get("authorizationRecordDigest") != rights_digest:
+            if not self._reviewed_evidence_rights_are_current(
+                batch_id,
+                str(
+                    record.get("rightsAndAccess", {}).get("authorizationRecordDigest")
+                    or ""
+                ),
+                required_use="modelTraining",
+            ):
                 raise TrainingWorkflowError(
                     f"{batch_id} discovery evidence is pinned to stale rights authorization."
                 )

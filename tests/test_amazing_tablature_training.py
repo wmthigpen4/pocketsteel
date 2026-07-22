@@ -752,6 +752,40 @@ def test_model_training_rights_default_off_and_unknown_status_cannot_enable_it(t
     assert authorized["recordDigest"]
 
 
+def test_reviewed_evidence_survives_non_revoking_rights_extension(tmp_path: Path) -> None:
+    store, batch_id = ingested_store(tmp_path)
+    original = store.record_use_authorization(
+        batch_id,
+        rights_status="user_provided_authorized",
+        allowed_uses=["modelTraining"],
+        approval_reference="synthetic training authorization",
+    )
+    store.record_use_authorization(
+        batch_id,
+        rights_status="user_provided_authorized",
+        allowed_uses=["modelTraining", "runtimeProductUse"],
+        approval_reference="synthetic runtime extension",
+    )
+
+    assert store._reviewed_evidence_rights_are_current(
+        batch_id,
+        str(original["recordDigest"]),
+        required_use="modelTraining",
+    ) is True
+
+    store.record_use_authorization(
+        batch_id,
+        rights_status="user_provided_authorized",
+        allowed_uses=[],
+        approval_reference="synthetic training revocation",
+    )
+    assert store._reviewed_evidence_rights_are_current(
+        batch_id,
+        str(original["recordDigest"]),
+        required_use="modelTraining",
+    ) is False
+
+
 def test_lick_collection_excludes_copedent_evidence_and_seals_page_units(tmp_path: Path) -> None:
     sources = tmp_path / "licks"
     sources.mkdir()
@@ -1212,14 +1246,17 @@ def test_page_approved_decisions_materialize_into_private_partition_ledger(tmp_p
     assert "alignment:tab_only" in derived["categoryTags"]
     assert "alignment:score_supported" not in derived["categoryTags"]
 
-    store.record_use_authorization(
+    extended = store.record_use_authorization(
         "atb-derived-decisions",
         rights_status="user_provided_authorized",
-        allowed_uses=["modelTraining"],
+        allowed_uses=["modelTraining", "runtimeProductUse"],
         approval_reference="synthetic authorization revision",
     )
-    with pytest.raises(TrainingWorkflowError, match="stale rights authorization"):
-        store.derive_reviewed_decisions("atb-derived-decisions", partition="discovery")
+    refreshed = store.derive_reviewed_decisions(
+        "atb-derived-decisions", partition="discovery"
+    )
+    assert refreshed["decisionCount"] == 1
+    assert extended["allowedUses"]["runtimeProductUse"] is True
 
 
 def test_partial_discovery_challenger_uses_only_reviewed_tab_only_pages(tmp_path: Path) -> None:
