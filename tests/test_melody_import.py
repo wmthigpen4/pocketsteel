@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import io
+import struct
 import zipfile
 
 import pytest
@@ -9,12 +10,66 @@ import pytest
 from pocketsteel.melody_import import (
     MelodyImportError,
     import_score_draft,
+    normalize_score_draft,
+    parse_midi,
     parse_musicxml,
     public_song_catalog,
 )
+from pocketsteel.melody_arranger import parse_melody_inputs, resolve_contour
 
 
 AMAZING_GRACE_PITCHES = ["D4", "G4", "B4", "G4", "B4", "A4", "G4", "E4"]
+
+
+def _three_note_midi() -> bytes:
+    track = b"".join(
+        (
+            b"\x00\x90\x43\x40",
+            b"\x83\x60\x80\x43\x00",
+            b"\x00\x90\x45\x40",
+            b"\x83\x60\x80\x45\x00",
+            b"\x00\x90\x47\x40",
+            b"\x83\x60\x80\x47\x00",
+            b"\x00\xff\x2f\x00",
+        )
+    )
+    return (
+        b"MThd"
+        + struct.pack(">IHHH", 6, 0, 1, 480)
+        + b"MTrk"
+        + struct.pack(">I", len(track))
+        + track
+    )
+
+
+def test_structured_input_paths_share_exact_normalized_pitch_events() -> None:
+    expected = [67, 69, 71]
+    manual = normalize_score_draft(
+        {
+            "source": {"type": "composed_in_studio"},
+            "score": {
+                "sourceKey": "G",
+                "arrangementKey": "G",
+                "melody": [
+                    {"pitchValue": pitch, "measure": 1, "beat": index}
+                    for index, pitch in enumerate(expected, start=1)
+                ],
+            },
+        }
+    )
+    xml = b"""<score-partwise><part-list><score-part id='P1'><part-name>Melody</part-name></score-part></part-list><part id='P1'><measure number='1'><attributes><divisions>1</divisions><key><fifths>1</fifths></key></attributes><note><pitch><step>G</step><octave>4</octave></pitch><duration>1</duration></note><note><pitch><step>A</step><octave>4</octave></pitch><duration>1</duration></note><note><pitch><step>B</step><octave>4</octave></pitch><duration>1</duration></note></measure></part></score-partwise>"""
+    musicxml = parse_musicxml(xml)
+    midi = parse_midi(_three_note_midi())
+    interval_inputs = parse_melody_inputs(["1", "2", "3"], "G")
+
+    assert [event["pitchValue"] for event in manual["score"]["melody"]] == expected
+    assert [event["pitchValue"] for event in musicxml["score"]["melody"]] == expected
+    assert [event["pitchValue"] for event in midi["score"]["melody"]] == expected
+    assert resolve_contour(interval_inputs, "ascending") == expected
+    assert all(
+        draft["review"]["status"] == "needs_review"
+        for draft in (musicxml, midi)
+    )
 
 
 def test_amazing_grace_catalog_record_is_reviewed_and_checksummed() -> None:

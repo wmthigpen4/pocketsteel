@@ -224,9 +224,14 @@ def test_sealed_cohort_is_scored_once_then_becomes_a_regression_set(tmp_path: Pa
                 }
             },
             "sealedModelEvaluationPolicy": {
-                "metricVersion": "sealed-pairwise-preference-v1",
+                "metricVersion": "sealed-structured-input-tab-choice-v2",
                 "preferenceAccuracyFloor": 0.5,
+                "cohortPreferenceAccuracyFloor": 0.5,
+                "evidenceModePreferenceAccuracyFloor": 0.5,
+                "preferenceAccuracyComparison": "greater_than_or_equal",
+                "topThreeCoverageFloor": 0.0,
                 "minimumDecisionCountPerCohort": 1,
+                "minimumDecisionCountPerEvidenceMode": 1,
                 "requiresScoreBackedDecisionsOverall": True,
                 "requiresTabOnlyDecisionsOverall": True,
             },

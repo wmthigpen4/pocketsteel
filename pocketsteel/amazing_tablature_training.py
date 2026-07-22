@@ -40,9 +40,14 @@ DEFAULT_PRIVATE_ROOT = Path("corpus-private/melody-decisions")
 
 # These gates are part of the predeclared validation contract.  They must not
 # be tuned after validation evidence has been opened.
-VALIDATION_OVERALL_PREFERENCE_FLOOR = 0.85
-VALIDATION_COHORT_PREFERENCE_FLOOR = 0.80
-VALIDATION_EVIDENCE_MODE_PREFERENCE_FLOOR = 0.80
+# The primary launch claim is deliberately narrower than score-image or audio
+# transcription: it measures the ranker after the musical events are already
+# normalized.  Overall top-choice accuracy must be strictly greater than 95%;
+# equality is not a pass.  Image/audio recognition remains a separate metric.
+VALIDATION_OVERALL_PREFERENCE_FLOOR = 0.95
+VALIDATION_COHORT_PREFERENCE_FLOOR = 0.90
+VALIDATION_EVIDENCE_MODE_PREFERENCE_FLOOR = 0.90
+VALIDATION_TOP_THREE_COVERAGE_FLOOR = 0.99
 VALIDATION_MIN_DECISIONS_PER_COHORT = 10
 VALIDATION_MIN_DECISIONS_PER_EVIDENCE_MODE = 20
 CANONICAL_STYLE_FAMILIES = (
@@ -4715,21 +4720,64 @@ class AmazingTablatureTrainingStore:
 
     @staticmethod
     def _model_accuracy(model: Mapping[str, Any], records: Sequence[Mapping[str, Any]]) -> float:
+        return AmazingTablatureTrainingStore._model_ranking_metrics(model, records)[
+            "topChoiceAccuracy"
+        ]
+
+    @staticmethod
+    def _model_ranking_metrics(
+        model: Mapping[str, Any], records: Sequence[Mapping[str, Any]]
+    ) -> dict[str, float | int]:
+        """Score normalized-input candidate ranking without source recognition.
+
+        The source-selected candidate is independently reviewed and therefore
+        an acceptable answer.  Top-one uses the existing conservative strict
+        preference rule: a tie is not a correct top choice.  Top-three is also
+        conservative at a tie boundary by treating every tied alternative as
+        ahead of the reviewed candidate.
+        """
+
         if not records:
-            return 0.0
-        correct = 0
+            return {
+                "decisionCount": 0,
+                "topChoiceCorrectCount": 0,
+                "topChoiceAccuracy": 0.0,
+                "topThreeCoveredCount": 0,
+                "topThreeCoverage": 0.0,
+            }
+        top_choice_correct = 0
+        top_three_covered = 0
         weights_by_style = model.get("weightsByStyle")
         if not isinstance(weights_by_style, Mapping):
-            return 0.0
+            return {
+                "decisionCount": len(records),
+                "topChoiceCorrectCount": 0,
+                "topChoiceAccuracy": 0.0,
+                "topThreeCoveredCount": 0,
+                "topThreeCoverage": 0.0,
+            }
         for record in records:
             style = str(record.get("styleFamily") or "auto")
             weights = weights_by_style.get(style) or weights_by_style.get("auto") or {}
-            if all(
-                score_candidate(record["chosen"], weights) < score_candidate(alt, weights)
-                for alt in record["alternatives"]
-            ):
-                correct += 1
-        return correct / len(records)
+            chosen_score = score_candidate(record["chosen"], weights)
+            alternative_scores = [
+                score_candidate(alt, weights) for alt in record["alternatives"]
+            ]
+            if all(chosen_score < score for score in alternative_scores):
+                top_choice_correct += 1
+            conservative_rank = 1 + sum(
+                score <= chosen_score for score in alternative_scores
+            )
+            if conservative_rank <= 3:
+                top_three_covered += 1
+        count = len(records)
+        return {
+            "decisionCount": count,
+            "topChoiceCorrectCount": top_choice_correct,
+            "topChoiceAccuracy": top_choice_correct / count,
+            "topThreeCoveredCount": top_three_covered,
+            "topThreeCoverage": top_three_covered / count,
+        }
 
     def evaluate(self, model_id: str) -> dict[str, Any]:
         registry = self._registry()
@@ -4813,7 +4861,9 @@ class AmazingTablatureTrainingStore:
         mechanical_accuracy = sum(bool(record.get("mechanicalValidation", {}).get("ok")) for record in holdouts) / len(
             holdouts
         )
-        challenger_accuracy = self._model_accuracy(model, holdouts)
+        ranking_metrics = self._model_ranking_metrics(model, holdouts)
+        challenger_accuracy = float(ranking_metrics["topChoiceAccuracy"])
+        top_three_coverage = float(ranking_metrics["topThreeCoverage"])
         champion_id = registry["channels"].get("stable")
         champion_accuracy: float | None = None
         if champion_id and champion_id != model_id:
@@ -4856,8 +4906,17 @@ class AmazingTablatureTrainingStore:
             if canonical_evaluation
             else 1
         )
+        preference_floor_passed = (
+            challenger_accuracy > overall_preference_floor
+            if canonical_evaluation
+            else challenger_accuracy >= overall_preference_floor
+        )
+        top_three_floor = (
+            VALIDATION_TOP_THREE_COVERAGE_FLOOR if canonical_evaluation else 0.0
+        )
         preference_gate = bool(
-            challenger_accuracy >= overall_preference_floor
+            preference_floor_passed
+            and top_three_coverage >= top_three_floor
             and (
                 champion_accuracy is None
                 or challenger_accuracy >= champion_accuracy
@@ -4914,6 +4973,7 @@ class AmazingTablatureTrainingStore:
                 "sourceCopedentRevision": int(manifest["sourceCopedentRevision"]),
                 "sourceCopedentDigest": manifest["sourceCopedentDigest"],
             }
+            cohort_ranking = self._model_ranking_metrics(model, records)
             cohort_metrics[batch_id] = {
                 "decisionCount": len(records),
                 "evidenceSufficient": len(records) >= minimum_cohort_decisions,
@@ -4925,7 +4985,8 @@ class AmazingTablatureTrainingStore:
                     if records
                     else 0.0
                 ),
-                "challengerPreferenceAccuracy": self._model_accuracy(model, records),
+                "challengerPreferenceAccuracy": cohort_ranking["topChoiceAccuracy"],
+                "topThreeCoverage": cohort_ranking["topThreeCoverage"],
             }
         cohort_gate = all(
             metrics["evidenceSufficient"]
@@ -4939,6 +5000,7 @@ class AmazingTablatureTrainingStore:
         )
         for tag in category_tags:
             records = [record for record in holdouts if tag in (record.get("categoryTags") or [])]
+            category_ranking = self._model_ranking_metrics(model, records)
             category_metrics[tag] = {
                 "decisionCount": len(records),
                 "evidenceSufficient": (
@@ -4951,7 +5013,8 @@ class AmazingTablatureTrainingStore:
                     if records
                     else 0.0
                 ),
-                "challengerPreferenceAccuracy": self._model_accuracy(model, records),
+                "challengerPreferenceAccuracy": category_ranking["topChoiceAccuracy"],
+                "topThreeCoverage": category_ranking["topThreeCoverage"],
             }
         required_evidence_modes = (
             ("alignment:score_supported", "alignment:tab_only")
@@ -4976,9 +5039,18 @@ class AmazingTablatureTrainingStore:
         )
         evaluation_code_digests = _rules_code_file_digests(self.repo_root)
         threshold_contract = {
-            "metricVersion": "canonical-validation-preference-v1",
+            "metricVersion": "structured-input-tab-choice-v2",
             "canonicalEvaluation": canonical_evaluation,
+            "inputScope": "normalized_score_events",
+            "scoreImageRecognitionIncluded": False,
+            "audioRecognitionIncluded": False,
             "overallPreferenceAccuracyFloor": overall_preference_floor,
+            "overallPreferenceAccuracyComparison": (
+                "strictly_greater_than"
+                if canonical_evaluation
+                else "greater_than_or_equal"
+            ),
+            "overallTopThreeCoverageFloor": top_three_floor,
             "cohortPreferenceAccuracyFloor": cohort_preference_floor,
             "evidenceModePreferenceAccuracyFloor": evidence_mode_preference_floor,
             "minimumDecisionCountPerCohort": minimum_cohort_decisions,
@@ -5000,6 +5072,8 @@ class AmazingTablatureTrainingStore:
             "thresholdContractDigest": _sha256_json(threshold_contract),
             "holdoutCount": len(holdouts),
             "challengerPreferenceAccuracy": challenger_accuracy,
+            "structuredInputTopChoiceAccuracy": challenger_accuracy,
+            "structuredInputTopThreeCoverage": top_three_coverage,
             "championModelId": champion_id,
             "championPreferenceAccuracy": champion_accuracy,
             "mechanicalAccuracy": mechanical_accuracy,
@@ -5023,6 +5097,13 @@ class AmazingTablatureTrainingStore:
                 "mechanicalValidityRequired": 1.0,
                 "preferenceFloor": overall_preference_floor,
                 "overallPreferenceFloor": overall_preference_floor,
+                "overallPreferenceComparison": (
+                    "strictly_greater_than"
+                    if canonical_evaluation
+                    else "greater_than_or_equal"
+                ),
+                "topThreeCoverageFloor": top_three_floor,
+                "topThreeCoverage": top_three_coverage,
                 "cohortPreferenceFloor": cohort_preference_floor,
                 "evidenceModePreferenceFloor": evidence_mode_preference_floor,
                 "minimumDecisionCountPerCohort": minimum_cohort_decisions,
@@ -5063,7 +5144,8 @@ class AmazingTablatureTrainingStore:
             f"- Training decisions: {model['exampleCount']}",
             f"- Holdout decisions: {evaluation['holdoutCount']}",
             f"- Mechanical validity: {float(evaluation['mechanicalAccuracy']):.1%}",
-            f"- Challenger preference accuracy: {float(evaluation['challengerPreferenceAccuracy']):.1%}",
+            f"- Structured-input top-choice accuracy: {float(evaluation['challengerPreferenceAccuracy']):.1%}",
+            f"- Structured-input top-three coverage: {float(evaluation.get('structuredInputTopThreeCoverage') or 0.0):.1%}",
             f"- Gate: {'PASS' if evaluation['gate']['passed'] else 'FAIL'}",
             f"- Comparison: {comparison}",
             "",
@@ -5140,9 +5222,14 @@ class AmazingTablatureTrainingStore:
                     "Rules freeze requires the complete-discovery canonical challenger."
                 )
             expected_threshold_contract = {
-                "metricVersion": "canonical-validation-preference-v1",
+                "metricVersion": "structured-input-tab-choice-v2",
                 "canonicalEvaluation": True,
+                "inputScope": "normalized_score_events",
+                "scoreImageRecognitionIncluded": False,
+                "audioRecognitionIncluded": False,
                 "overallPreferenceAccuracyFloor": VALIDATION_OVERALL_PREFERENCE_FLOOR,
+                "overallPreferenceAccuracyComparison": "strictly_greater_than",
+                "overallTopThreeCoverageFloor": VALIDATION_TOP_THREE_COVERAGE_FLOOR,
                 "cohortPreferenceAccuracyFloor": VALIDATION_COHORT_PREFERENCE_FLOOR,
                 "evidenceModePreferenceAccuracyFloor": VALIDATION_EVIDENCE_MODE_PREFERENCE_FLOOR,
                 "minimumDecisionCountPerCohort": VALIDATION_MIN_DECISIONS_PER_COHORT,
@@ -5278,11 +5365,16 @@ class AmazingTablatureTrainingStore:
                 "musicalValidatorVersion": "score-tab-alignment-v2",
             },
             "sealedModelEvaluationPolicy": {
-                "metricVersion": "sealed-pairwise-preference-v1",
+                "metricVersion": "sealed-structured-input-tab-choice-v2",
                 "preferenceAccuracyFloor": float(
                     evaluation.get("gate", {}).get("overallPreferenceFloor")
                     or evaluation.get("gate", {}).get("preferenceFloor")
                     or VALIDATION_OVERALL_PREFERENCE_FLOOR
+                ),
+                "preferenceAccuracyComparison": "strictly_greater_than",
+                "topThreeCoverageFloor": float(
+                    evaluation.get("gate", {}).get("topThreeCoverageFloor")
+                    or VALIDATION_TOP_THREE_COVERAGE_FLOOR
                 ),
                 "cohortPreferenceAccuracyFloor": float(
                     evaluation.get("gate", {}).get("cohortPreferenceFloor")

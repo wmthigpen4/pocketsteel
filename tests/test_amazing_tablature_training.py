@@ -181,6 +181,32 @@ def candidate(
     }
 
 
+def test_structured_input_ranking_reports_conservative_top_one_and_top_three() -> None:
+    model = {"weightsByStyle": {"single_note_run": {"bar_travel": 1.0}}}
+    records = []
+    for index in range(20):
+        records.append(
+            {
+                "styleFamily": "single_note_run",
+                "chosen": {"textureSize": 1, "barTravel": 1 if index == 19 else 0},
+                "alternatives": [
+                    {"textureSize": 1, "barTravel": 0 if index == 19 else 1}
+                ],
+            }
+        )
+
+    metrics = AmazingTablatureTrainingStore._model_ranking_metrics(model, records)
+
+    assert metrics == {
+        "decisionCount": 20,
+        "topChoiceCorrectCount": 19,
+        "topChoiceAccuracy": 0.95,
+        "topThreeCoveredCount": 20,
+        "topThreeCoverage": 1.0,
+    }
+    assert not metrics["topChoiceAccuracy"] > 0.95
+
+
 def annotation(
     decision_id: str,
     input_id: str,
@@ -1308,11 +1334,16 @@ def test_complete_discovery_challenger_reuses_hardened_lineage_and_all_styles(
     evaluation = store.evaluate(canonical["modelId"])
     assert evaluation["gate"]["passed"] is False
     assert evaluation["thresholdContract"] == {
-        "metricVersion": "canonical-validation-preference-v1",
+        "metricVersion": "structured-input-tab-choice-v2",
         "canonicalEvaluation": True,
-        "overallPreferenceAccuracyFloor": 0.85,
-        "cohortPreferenceAccuracyFloor": 0.8,
-        "evidenceModePreferenceAccuracyFloor": 0.8,
+        "inputScope": "normalized_score_events",
+        "scoreImageRecognitionIncluded": False,
+        "audioRecognitionIncluded": False,
+        "overallPreferenceAccuracyFloor": 0.95,
+        "overallPreferenceAccuracyComparison": "strictly_greater_than",
+        "overallTopThreeCoverageFloor": 0.99,
+        "cohortPreferenceAccuracyFloor": 0.9,
+        "evidenceModePreferenceAccuracyFloor": 0.9,
         "minimumDecisionCountPerCohort": 10,
         "minimumDecisionCountPerEvidenceMode": 20,
         "mechanicalAccuracyRequired": 1.0,

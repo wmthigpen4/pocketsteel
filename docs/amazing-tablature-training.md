@@ -405,15 +405,20 @@ summary lineage, rights records, copedent revisions, feature schema, code
 digests, and trainer configuration.
 
 Canonical validation uses a threshold contract fixed before held-out evidence
-is opened: at least 85% preference accuracy overall; at least 80% in each
-authoritative cohort; at least 80% for each of `alignment:score_supported` and
-`alignment:tab_only`; at least 10 decisions per cohort; at least 20 decisions
-in each evidence mode; and 100% mechanical validity overall and per cohort.
-Insufficient samples fail as insufficient evidence rather than passing on a
-small denominator. Note duration remains diagnostic-only. The evaluation pins
-the exact model-file SHA, immutable validation-decision digest, per-cohort
-review-metrics and extraction-run lineage, rights, copedents, code digests, and
-the unchangeable threshold contract.
+is opened. It measures arrangement after input has been normalized into exact
+score events; score-image and audio recognition are explicitly outside this
+metric and are reported separately. Structured-input top-choice preference
+accuracy must be **strictly greater than 95%** overall, with at least 99%
+top-three coverage, at least 90% top-choice accuracy in each authoritative
+cohort, at least 90% for each of `alignment:score_supported` and
+`alignment:tab_only`, at least 10 decisions per cohort, at least 20 decisions
+in each evidence mode, and 100% mechanical validity overall and per cohort.
+Exactly 95% does not pass. Insufficient samples fail as insufficient evidence
+rather than passing on a small denominator. Note duration remains
+diagnostic-only. The evaluation pins the exact model-file SHA, immutable
+validation-decision digest, per-cohort review-metrics and extraction-run
+lineage, rights, copedents, code digests, and the unchangeable threshold
+contract.
 
 After every authoritative validation cohort has passed the fixed acceptance thresholds, freeze the exact challenger, schemas, validators, extractor, code digests, copedent revisions, partition digests, and unopened sealed cohorts:
 
@@ -431,7 +436,7 @@ Only then may Lane 15 prepare and import isolated human-reviewed ground truth fo
   --freeze-id <exact-freeze-id>
 ```
 
-When all frozen cohorts are ready, run the complete sealed program once. The coordinator holds an inter-process one-shot lock, verifies the frozen code and contracts, processes every cohort in one evaluation, and records the official overall/cohort/category score before exposing any detailed failures. The official result has two gates: extraction/alignment accuracy against Lane 15 ground truth, and frozen tab-choice prediction accuracy. For the second gate, the source tab supplies a hidden chosen-candidate label while the frozen challenger scores only abstract mechanically valid candidates; it cannot read the label or source tab during scoring. Score-backed decisions and explicitly `tab_only` lick movements are reported separately, using the exact preference floor frozen from validation. This is a teacher-forced pairwise candidate-choice test, so it measures whether the model selects the source-demonstrated solution from valid alternatives; it does not claim an unconstrained end-to-end transcription from score pixels. An interrupted process may resume the same run from its digest-pinned predictions, but a concurrent second runner is rejected:
+When all frozen cohorts are ready, run the complete sealed program once. The coordinator holds an inter-process one-shot lock, verifies the frozen code and contracts, processes every cohort in one evaluation, and records the official overall/cohort/category score before exposing any detailed failures. The official result has two gates: extraction/alignment accuracy against Lane 15 ground truth, and frozen tab-choice prediction accuracy. For the second gate, the source tab supplies a hidden chosen-candidate label while the frozen challenger scores only abstract mechanically valid candidates; it cannot read the label or source tab during scoring. Score-backed decisions and explicitly `tab_only` lick movements are reported separately, using the exact structured-input top-choice, top-three, cohort, and evidence-mode floors frozen from validation. This is a teacher-forced candidate-choice test, so it measures whether the model selects the independently reviewed source-demonstrated solution from valid alternatives; it does not claim an unconstrained end-to-end transcription from score pixels or audio. An interrupted process may resume the same run from its digest-pinned predictions, but a concurrent second runner is rejected:
 
 ```bash
 .venv/bin/python scripts/amazing_tablature.py run-sealed-tests <exact-freeze-id>

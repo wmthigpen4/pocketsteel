@@ -133,9 +133,13 @@ def _preference_metrics(
     decisions: Sequence[Mapping[str, Any]],
     *,
     floor: float,
+    top_three_floor: float = 0.0,
+    minimum_count: int = 1,
+    floor_is_exclusive: bool = False,
 ) -> dict[str, Any]:
     weights_by_style = model.get("weightsByStyle")
     correct = 0
+    top_three = 0
     if isinstance(weights_by_style, Mapping):
         for decision in decisions:
             style = str(decision.get("styleFamily") or "auto")
@@ -147,19 +151,40 @@ def _preference_metrics(
             ):
                 continue
             candidates = [item for item in alternatives if isinstance(item, Mapping)]
-            if candidates and all(
-                score_candidate(chosen, weights) < score_candidate(candidate, weights)
-                for candidate in candidates
-            ):
+            chosen_score = score_candidate(chosen, weights)
+            alternative_scores = [
+                score_candidate(candidate, weights) for candidate in candidates
+            ]
+            if candidates and all(chosen_score < score for score in alternative_scores):
                 correct += 1
+            conservative_rank = 1 + sum(
+                score <= chosen_score for score in alternative_scores
+            )
+            if candidates and conservative_rank <= 3:
+                top_three += 1
     count = len(decisions)
     accuracy = correct / count if count else 0.0
+    top_three_coverage = top_three / count if count else 0.0
+    accuracy_passed = accuracy > floor if floor_is_exclusive else accuracy >= floor
+    evidence_sufficient = count >= minimum_count
     return {
         "decisionCount": count,
         "correctDecisionCount": correct,
         "preferenceAccuracy": round(accuracy, 6),
         "preferenceAccuracyFloor": floor,
-        "passed": count > 0 and accuracy >= floor,
+        "preferenceAccuracyComparison": (
+            "strictly_greater_than" if floor_is_exclusive else "greater_than_or_equal"
+        ),
+        "topThreeCoveredCount": top_three,
+        "topThreeCoverage": round(top_three_coverage, 6),
+        "topThreeCoverageFloor": top_three_floor,
+        "minimumDecisionCount": minimum_count,
+        "evidenceSufficient": evidence_sufficient,
+        "passed": bool(
+            evidence_sufficient
+            and accuracy_passed
+            and top_three_coverage >= top_three_floor
+        ),
     }
 
 
@@ -168,15 +193,29 @@ def _sealed_model_metrics(
     decisions: Sequence[Mapping[str, Any]],
     *,
     floor: float,
+    top_three_floor: float = 0.0,
+    evidence_mode_floor: float | None = None,
+    minimum_count: int = 1,
+    minimum_evidence_mode_count: int = 1,
+    floor_is_exclusive: bool = False,
     require_score_backed: bool = False,
     require_tab_only: bool = False,
 ) -> dict[str, Any]:
-    overall = _preference_metrics(model, decisions, floor=floor)
+    overall = _preference_metrics(
+        model,
+        decisions,
+        floor=floor,
+        top_three_floor=top_three_floor,
+        minimum_count=minimum_count,
+        floor_is_exclusive=floor_is_exclusive,
+    )
+    mode_floor = floor if evidence_mode_floor is None else evidence_mode_floor
     by_mode = {
         mode: _preference_metrics(
             model,
             [decision for decision in decisions if _decision_evidence_mode(decision) == mode],
-            floor=floor,
+            floor=mode_floor,
+            minimum_count=minimum_evidence_mode_count,
         )
         for mode in ("score_supported", "tab_only")
     }
@@ -475,13 +514,39 @@ class SealedTestCoordinator:
         freeze = self._freeze(freeze_id)
         self._verify_frozen_code(freeze)
         model_policy = freeze.get("sealedModelEvaluationPolicy") or {}
-        if model_policy.get("metricVersion") != "sealed-pairwise-preference-v1":
+        if model_policy.get("metricVersion") != "sealed-structured-input-tab-choice-v2":
             raise SealedTestWorkflowError("The frozen tab-choice evaluation policy is missing or unsupported.")
         preference_floor = float(model_policy.get("preferenceAccuracyFloor") or 0.0)
+        cohort_preference_floor = float(
+            model_policy.get("cohortPreferenceAccuracyFloor") or 0.0
+        )
+        evidence_mode_preference_floor = float(
+            model_policy.get("evidenceModePreferenceAccuracyFloor") or 0.0
+        )
+        top_three_floor = float(model_policy.get("topThreeCoverageFloor") or 0.0)
+        floor_is_exclusive = (
+            model_policy.get("preferenceAccuracyComparison")
+            == "strictly_greater_than"
+        )
         if not 0.0 <= preference_floor <= 1.0:
             raise SealedTestWorkflowError("The frozen tab-choice preference floor is invalid.")
-        if int(model_policy.get("minimumDecisionCountPerCohort") or 0) != 1:
-            raise SealedTestWorkflowError("The frozen minimum tab-choice decision count is unsupported.")
+        if not all(
+            0.0 <= value <= 1.0
+            for value in (
+                cohort_preference_floor,
+                evidence_mode_preference_floor,
+                top_three_floor,
+            )
+        ):
+            raise SealedTestWorkflowError("A frozen tab-choice threshold is invalid.")
+        minimum_cohort_decisions = int(
+            model_policy.get("minimumDecisionCountPerCohort") or 0
+        )
+        minimum_evidence_mode_decisions = int(
+            model_policy.get("minimumDecisionCountPerEvidenceMode") or 0
+        )
+        if minimum_cohort_decisions < 1 or minimum_evidence_mode_decisions < 1:
+            raise SealedTestWorkflowError("A frozen minimum tab-choice decision count is invalid.")
         model_path = self.root / "models" / f"{freeze['modelId']}.json"
         if not model_path.exists():
             raise SealedTestWorkflowError("The frozen challenger artifact is missing.")
@@ -629,7 +694,11 @@ class SealedTestCoordinator:
             cohort_model_results[batch_id] = _sealed_model_metrics(
                 model,
                 cohort_decisions,
-                floor=preference_floor,
+                floor=cohort_preference_floor,
+                top_three_floor=top_three_floor,
+                evidence_mode_floor=evidence_mode_preference_floor,
+                minimum_count=minimum_cohort_decisions,
+                minimum_evidence_mode_count=minimum_evidence_mode_decisions,
             )
             all_model_decisions.extend(cohort_decisions)
             for decision in cohort_decisions:
@@ -647,11 +716,24 @@ class SealedTestCoordinator:
             model,
             all_model_decisions,
             floor=preference_floor,
+            top_three_floor=top_three_floor,
+            evidence_mode_floor=evidence_mode_preference_floor,
+            minimum_count=sum(
+                minimum_cohort_decisions for _cohort in cohorts
+            ),
+            minimum_evidence_mode_count=minimum_evidence_mode_decisions,
+            floor_is_exclusive=floor_is_exclusive,
             require_score_backed=bool(model_policy.get("requiresScoreBackedDecisionsOverall")),
             require_tab_only=bool(model_policy.get("requiresTabOnlyDecisionsOverall")),
         )
         model_category_results = {
-            category: _preference_metrics(model, decisions, floor=preference_floor)
+            category: _preference_metrics(
+                model,
+                decisions,
+                floor=preference_floor,
+                top_three_floor=top_three_floor,
+                floor_is_exclusive=floor_is_exclusive,
+            )
             for category, decisions in sorted(model_category_decisions.items())
         }
         extraction_gate_passed = bool(overall["allAcceptanceCriteriaPassed"]) and all(
@@ -728,8 +810,12 @@ class SealedTestCoordinator:
         model = _read_json(model_path)
         if _sha256_json(model) != freeze.get("modelArtifactDigest"):
             raise SealedTestWorkflowError("The frozen challenger artifact digest does not match.")
-        preference_floor = float(
-            (freeze.get("sealedModelEvaluationPolicy") or {}).get("preferenceAccuracyFloor") or 0.0
+        model_policy = freeze.get("sealedModelEvaluationPolicy") or {}
+        preference_floor = float(model_policy.get("preferenceAccuracyFloor") or 0.0)
+        top_three_floor = float(model_policy.get("topThreeCoverageFloor") or 0.0)
+        floor_is_exclusive = (
+            model_policy.get("preferenceAccuracyComparison")
+            == "strictly_greater_than"
         )
         pages: list[dict[str, Any]] = []
         for cohort in freeze.get("sealedTestCohorts") or []:
@@ -747,7 +833,13 @@ class SealedTestCoordinator:
                     if isinstance(decision, Mapping)
                 ]
                 preference = (
-                    _preference_metrics(model, decisions, floor=preference_floor)
+                    _preference_metrics(
+                        model,
+                        decisions,
+                        floor=preference_floor,
+                        top_three_floor=top_three_floor,
+                        floor_is_exclusive=floor_is_exclusive,
+                    )
                     if decisions
                     else {
                         "decisionCount": 0,
