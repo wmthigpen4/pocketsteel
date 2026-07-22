@@ -31,12 +31,14 @@ from pocketsteel.amazing_tablature_extraction import (
     SOURCE_SCORE_PROJECTION_CONTRACT,
     SOURCE_SCORE_PROJECTION_DETECTOR_VERSION,
     TAB_ONLY_APPROVAL_SECTIONS,
+    VALIDATION_CAPTURE_ISSUE_KINDS,
     VALIDATION_LINE_PREFLIGHT_VERSION,
     AmazingTablatureExtractor,
     ExtractionWorkflowError,
     LocalTabVision,
     LocalTabSystemVision,
     _align_events,
+    _apply_key_signature_to_score_events,
     _audiveris_notehead_columns,
     _approve_targeted_tab_corrections,
     _apply_feedback_correction_operation,
@@ -70,7 +72,12 @@ from pocketsteel.amazing_tablature_extraction import (
     _prepare_score_tab_source_crop,
     _provisional_joint_review_blockers,
     _validation_audit_not_ready_html,
+    _validation_capture_issue_count,
     _validation_line_preflight_blockers,
+    _validation_machine_count_consensus,
+    _machine_localized_score_events,
+    _machine_localized_tab_events,
+    _machine_score_is_contained_in_tab,
     _projection_tab_grid,
     _promote_full_line_record_to_combined_scope,
     _prepare_score_omr_crop,
@@ -145,6 +152,35 @@ def _synthetic_tab() -> Image.Image:
     draw.rectangle((750, lines[2] + 3, 760, lines[3] - 3), fill="black")
     draw.rectangle((764, lines[2] + 3, 774, lines[3] - 3), fill="black")
     return image
+
+
+def test_key_signature_application_preserves_explicit_accidentals() -> None:
+    events = [
+        {
+            "pitchStep": "F",
+            "pitchAlter": 0,
+            "octave": 4,
+            "pitch": "F4",
+            "pitchValue": 65,
+            "writtenAccidental": None,
+        },
+        {
+            "pitchStep": "C",
+            "pitchAlter": 0,
+            "octave": 5,
+            "pitch": "C5",
+            "pitchValue": 72,
+            "writtenAccidental": "natural",
+        },
+    ]
+
+    normalized = _apply_key_signature_to_score_events(events, 3)
+
+    assert normalized[0]["pitch"] == "F#4"
+    assert normalized[0]["pitchValue"] == 66
+    assert normalized[1]["pitch"] == "C5"
+    assert normalized[1]["pitchValue"] == 72
+    assert events[0]["pitch"] == "F4"
 
 
 def test_detect_score_staff_lines_accepts_high_resolution_spacing() -> None:
@@ -1044,6 +1080,145 @@ def test_validation_line_preflight_requires_complete_equal_renderings() -> None:
     assert _validation_line_preflight_blockers(
         incomplete_tab, key_signature_known=True, blocking_issue_count=0
     ) == ["incomplete_tablature_event_payload"]
+
+
+def test_validation_capture_issues_distinguish_reader_failures_from_musical_differences() -> None:
+    assert "score_omr_failure" in VALIDATION_CAPTURE_ISSUE_KINDS
+    issues = [
+        {"kind": "score_omr_failure", "blocking": True},
+        {"kind": "unresolved_tab_event_candidate", "blocking": True},
+        {"kind": "unverified_score_tab_alignment", "blocking": True},
+        {"kind": "score_pitch_not_in_tab", "blocking": True},
+        {"kind": "tab_cell_vision_failure", "blocking": False},
+    ]
+
+    assert _validation_capture_issue_count(issues) == 2
+
+
+def test_validation_machine_count_consensus_requires_two_confident_matching_readers() -> None:
+    tab_system = {"tabEventCandidates": [{}, {}, {}]}
+
+    assert _validation_machine_count_consensus(
+        tab_system,
+        {"eventCount": 3, "confidence": 0.94, "uncertain": False},
+    ) == (3, [])
+    assert _validation_machine_count_consensus(
+        tab_system,
+        {"eventCount": 2, "confidence": 0.94, "uncertain": False},
+    ) == (None, ["independent_tab_count_disagreement"])
+    assert _validation_machine_count_consensus(
+        tab_system,
+        {"eventCount": 3, "confidence": 0.7, "uncertain": True},
+    ) == (None, ["low_confidence_tab_count"])
+
+
+def test_machine_localized_events_require_complete_valid_tab_and_source_pitch_containment() -> None:
+    profile = get_e9_copedent_profile("source-e9-abc-defg-v1")
+    tab_system = {
+        "tabSystemId": "tab-1",
+        "tabEventCandidates": [
+            {"horizontalPosition": 0.2, "candidateStrings": [4, 5]},
+            {"horizontalPosition": 0.8, "candidateStrings": [4]},
+        ],
+    }
+    localization = {
+        "events": [
+            {
+                "x": 0.3043478,
+                "execution": "attack",
+                "cells": [
+                    {"string": 4, "token": "8"},
+                    {"string": 5, "token": "8"},
+                ],
+            },
+            {
+                "x": 0.826087,
+                "execution": "movement_only",
+                "cells": [{"string": 4, "token": "10"}],
+            },
+        ],
+        "confidence": 0.96,
+        "uncertain": False,
+    }
+    tab_events = _machine_localized_tab_events(
+        input_id="input-1",
+        tab_system=tab_system,
+        localization=localization,
+        crop_metadata={
+            "contentX0": 150,
+            "contentX1": 1150,
+            "width": 1150,
+        },
+        expected_count=2,
+        profile=profile,
+    )
+
+    assert [event["candidateStrings"] for event in tab_events] == [[4, 5], [4]]
+    assert [event["executionType"] for event in tab_events] == ["attack", "movement_only"]
+    assert all(
+        action["mechanicalValidation"]["valid"]
+        for event in tab_events
+        for action in event["steelActions"]
+    )
+
+    recognition = {
+        "events": [
+            {"pitches": ["C5"], "pitchValues": [72]},
+            {"pitches": ["D5"], "pitchValues": [74]},
+        ],
+        "confidence": 0.97,
+        "uncertain": False,
+    }
+    score_events = _machine_localized_score_events(
+        input_id="input-1",
+        score_system={"scoreSystemId": "score-1"},
+        recognition=recognition,
+        tab_events=tab_events,
+    )
+
+    assert [event["pitch"] for event in score_events] == ["C5", "D5"]
+    assert _machine_score_is_contained_in_tab(score_events, tab_events) is True
+
+    wrong_score = copy.deepcopy(score_events)
+    wrong_score[1]["pitch"] = "E5"
+    wrong_score[1]["pitchValue"] = 76
+    assert _machine_score_is_contained_in_tab(wrong_score, tab_events) is False
+
+
+def test_machine_localized_tab_events_fail_closed_on_blank_or_invalid_states() -> None:
+    profile = get_e9_copedent_profile("source-e9-abc-defg-v1")
+    common = {
+        "input_id": "input-1",
+        "tab_system": {"tabSystemId": "tab-1"},
+        "crop_metadata": {"contentX0": 150, "contentX1": 1150, "width": 1150},
+        "expected_count": 1,
+        "profile": profile,
+    }
+
+    with pytest.raises(ExtractionWorkflowError, match="blank event"):
+        _machine_localized_tab_events(
+            **common,
+            localization={
+                "events": [{"x": 0.5, "execution": "attack", "cells": []}],
+                "confidence": 0.95,
+                "uncertain": False,
+            },
+        )
+    with pytest.raises(ExtractionWorkflowError, match="invalid state"):
+        _machine_localized_tab_events(
+            **common,
+            localization={
+                "events": [
+                    {
+                        "x": 0.5,
+                        "execution": "attack",
+                        "cells": [{"string": 4, "token": "8A"}],
+                    }
+                ],
+                "confidence": 0.95,
+                "uncertain": False,
+            },
+        )
 
 
 def test_validation_not_ready_page_contains_no_review_controls() -> None:
@@ -3751,14 +3926,16 @@ def test_whole_system_localizer_honors_reviewed_count_and_preserves_visible_cell
                             {
                                 "events": [
                                     {
-                                        "x": 0.2,
-                                        "execution": "attack",
-                                        "cells": [{"string": 5, "token": "3A"}],
-                                    },
-                                    {
                                         "x": 0.6,
+                                        "guideIndex": 2,
                                         "execution": "movement_only",
                                         "cells": [{"string": 4, "token": "3F"}],
+                                    },
+                                    {
+                                        "x": 0.2,
+                                        "guideIndex": 1,
+                                        "execution": "attack",
+                                        "cells": [{"string": 5, "token": "3A"}],
                                     },
                                 ],
                                 "confidence": 0.92,
@@ -3777,12 +3954,19 @@ def test_whole_system_localizer_honors_reviewed_count_and_preserves_visible_cell
         return _Response()
 
     monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
-    result = LocalTabSystemVision().localize_events(image, expected_event_count=2)
+    result = LocalTabSystemVision().localize_events(
+        image,
+        expected_event_count=2,
+        constraint_source="machine_visual_candidate_geometry",
+        guided=True,
+    )
 
     assert [event["eventIndex"] for event in result["events"]] == [1, 2]
     assert result["events"][0]["cells"] == [{"string": 5, "token": "3A"}]
     assert result["events"][1]["execution"] == "movement_only"
+    assert [event["guideIndex"] for event in result["events"]] == [1, 2]
     assert result["reviewedCountConstraint"] == 2
+    assert result["deterministicGeometryGuidesProvided"] is True
     assert "exactly 2" in captured_prompt
     assert "during sustain" in captured_prompt
 

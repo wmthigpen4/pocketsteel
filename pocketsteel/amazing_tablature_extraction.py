@@ -56,6 +56,21 @@ FEEDBACK_CORRECTION_CONFIRMATION_SCHEMA_VERSION = (
 COMBINED_SCORE_TAB_REVIEW_SCHEMA_VERSION = "amazing-tablature-combined-score-tab-review-v1"
 VALIDATION_LINE_AUDIT_SCHEMA_VERSION = "amazing-tablature-validation-line-audit-v1"
 VALIDATION_LINE_PREFLIGHT_VERSION = "validation-line-structural-preflight-v1"
+VALIDATION_MACHINE_RECAPTURE_VERSION = "validation-machine-recapture-v1"
+VALIDATION_CAPTURE_ISSUE_KINDS = frozenset(
+    {
+        "page_extraction_failure",
+        "score_omr_failure",
+        "tab_cell_vision_failure",
+        "unresolved_tab_event_candidate",
+        "uncertain_tab_symbol",
+        "tab_modifier_symbol",
+        "low_confidence_tab_symbol",
+        "repeated_tab_symbol_ambiguity",
+        "mechanical_validation_error",
+        "mechanically_invalid_tab_candidate",
+    }
+)
 COMBINED_SCORE_TAB_GATE_VERSION = "combined-score-tab-evidence-gate-v5"
 LEGACY_COMBINED_SCORE_TAB_GATE_VERSION = "combined-score-tab-evidence-gate-v3"
 FIXED_PRINTED_X_COMBINED_SCORE_TAB_GATE_VERSION = "combined-score-tab-evidence-gate-v4"
@@ -92,9 +107,9 @@ SCORE_NOTATION_RENDERER_VERSION = "verovio-6.2.1"
 TAB_VISION_PROMPT_VERSION = "tab-cell-cards-v3"
 TAB_SYSTEM_COUNT_PROMPT_VERSION = "tab-system-event-count-v3"
 EVENT_COUNT_REPLAY_SCHEMA_VERSION = "amazing-tablature-event-count-replay-v1"
-TAB_SYSTEM_LOCALIZATION_PROMPT_VERSION = "tab-system-event-localization-v3"
+TAB_SYSTEM_LOCALIZATION_PROMPT_VERSION = "tab-system-event-localization-v4"
 EVENT_LOCALIZATION_REVIEW_SCHEMA_VERSION = "amazing-tablature-event-localization-review-v1"
-SCORE_PITCH_LOCALIZATION_PROMPT_VERSION = "score-system-pitch-localization-v3"
+SCORE_PITCH_LOCALIZATION_PROMPT_VERSION = "score-system-pitch-localization-v4"
 SOURCE_SCORE_VISION_PROMPT_VERSION = "source-score-unconstrained-columns-v2"
 SCORE_PITCH_AUDIT_SCHEMA_VERSION = "amazing-tablature-score-pitch-audit-v1"
 SCORE_CHORD_OMISSION_REPLAY_SCHEMA_VERSION = (
@@ -790,6 +805,88 @@ def _prepare_score_pitch_crop(
     crop.save(target_path, format="PNG")
     os.chmod(target_path, 0o600)
     return target_path
+
+
+def _prepare_guided_tab_state_crop(
+    *,
+    localization_dir: Path,
+    input_id: str,
+    tab_system: Mapping[str, Any],
+    tab_crop: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Add numbered machine-geometry guides without changing source pixels."""
+
+    source_path = Path(str(tab_crop.get("path") or ""))
+    if not source_path.exists():
+        raise ExtractionWorkflowError("Guided tab recapture requires its tab-only crop.")
+    candidates = list(tab_system.get("tabEventCandidates") or [])
+    if not candidates:
+        raise ExtractionWorkflowError("Guided tab recapture requires visual event candidates.")
+    with Image.open(source_path) as opened:
+        source = opened.convert("RGB")
+    top_margin = 96
+    guided = Image.new("RGB", (source.width, source.height + top_margin), "white")
+    guided.paste(source, (0, top_margin))
+    overlay = Image.new("RGBA", guided.size, (255, 255, 255, 0))
+    draw = ImageDraw.Draw(overlay)
+    font = ImageFont.load_default(size=24)
+    content_x0 = float(tab_crop.get("contentX0") or 0.0)
+    content_x1 = float(tab_crop.get("contentX1") or 0.0)
+    if content_x1 <= content_x0:
+        raise ExtractionWorkflowError("Guided tab recapture crop geometry is incomplete.")
+    guides: list[dict[str, Any]] = []
+    for ordinal, candidate in enumerate(candidates, start=1):
+        local_x = max(
+            0.0,
+            min(1.0, float(candidate.get("horizontalPosition") or 0.0)),
+        )
+        x = int(round(content_x0 + local_x * (content_x1 - content_x0)))
+        draw.line((x, top_margin - 10, x, guided.height - 1), fill=(25, 105, 190, 92), width=2)
+        radius = 19
+        center_y = 43
+        draw.ellipse(
+            (x - radius, center_y - radius, x + radius, center_y + radius),
+            fill=(235, 246, 255, 255),
+            outline=(25, 105, 190, 255),
+            width=2,
+        )
+        label = str(ordinal)
+        label_box = draw.textbbox((0, 0), label, font=font)
+        draw.text(
+            (
+                x - (label_box[2] - label_box[0]) / 2,
+                center_y - (label_box[3] - label_box[1]) / 2 - 2,
+            ),
+            label,
+            fill=(15, 65, 125, 255),
+            font=font,
+        )
+        guides.append(
+            {
+                "eventIndex": ordinal,
+                "horizontalPosition": round(local_x, 7),
+                "imageX": x,
+            }
+        )
+    guided = Image.alpha_composite(guided.convert("RGBA"), overlay).convert("RGB")
+    target_dir = localization_dir / "guided-tab-state-crops"
+    target_dir.mkdir(parents=True, exist_ok=True)
+    os.chmod(target_dir, 0o700)
+    target_path = target_dir / (
+        f"{input_id}-system-{int(tab_system.get('systemIndex') or 0):02d}.png"
+    )
+    guided.save(target_path, format="PNG")
+    os.chmod(target_path, 0o600)
+    return {
+        "path": target_path,
+        "sha256": _sha256_bytes(target_path.read_bytes()),
+        "guides": guides,
+        "topMargin": top_margin,
+        "contentX0": content_x0,
+        "contentX1": content_x1,
+        "width": guided.width,
+        "height": guided.height,
+    }
 
 
 def _prepare_guided_score_pitch_crop(
@@ -5487,6 +5584,279 @@ def _validation_line_preflight_blockers(
     return blockers
 
 
+def _validation_capture_issue_count(items: Sequence[Mapping[str, Any]]) -> int:
+    """Count reader/capture failures without treating musical differences as blanks."""
+
+    return sum(
+        str(item.get("kind") or "") in VALIDATION_CAPTURE_ISSUE_KINDS
+        for item in items
+        if item.get("blocking") is not False
+    )
+
+
+def _validation_machine_count_consensus(
+    tab_system: Mapping[str, Any],
+    tab_count_prediction: Mapping[str, Any],
+) -> tuple[int | None, list[str]]:
+    """Require independent image geometry and tab-system vision to agree."""
+
+    blockers: list[str] = []
+    candidate_count = len(tab_system.get("tabEventCandidates") or [])
+    predicted_count = int(tab_count_prediction.get("eventCount") or 0)
+    confidence = float(tab_count_prediction.get("confidence") or 0.0)
+    if not 1 <= candidate_count <= 64:
+        blockers.append("invalid_visual_candidate_count")
+    if predicted_count != candidate_count:
+        blockers.append("independent_tab_count_disagreement")
+    if confidence < 0.85 or bool(tab_count_prediction.get("uncertain")):
+        blockers.append("low_confidence_tab_count")
+    return (candidate_count if not blockers else None), blockers
+
+
+def _machine_localized_tab_events(
+    *,
+    input_id: str,
+    tab_system: Mapping[str, Any],
+    localization: Mapping[str, Any],
+    crop_metadata: Mapping[str, Any],
+    expected_count: int,
+    profile: Any,
+) -> list[dict[str, Any]]:
+    """Normalize a machine-count-constrained tab localization or fail closed."""
+
+    if (
+        bool(localization.get("uncertain"))
+        or float(localization.get("confidence") or 0.0) < 0.85
+        or len(localization.get("events") or []) != expected_count
+    ):
+        raise ExtractionWorkflowError(
+            "Machine tab localization did not satisfy its confidence and count gate."
+        )
+    content_x0 = float(crop_metadata.get("contentX0") or 0.0)
+    content_x1 = float(crop_metadata.get("contentX1") or 0.0)
+    full_width = float(crop_metadata.get("width") or 0.0)
+    content_width = content_x1 - content_x0
+    if full_width <= 0.0 or content_width <= 0.0:
+        raise ExtractionWorkflowError("Machine tab localization crop geometry is incomplete.")
+
+    events: list[dict[str, Any]] = []
+    for ordinal, raw_event in enumerate(localization.get("events") or [], start=1):
+        execution = str(raw_event.get("execution") or "uncertain")
+        if execution not in {"attack", "movement_only"}:
+            raise ExtractionWorkflowError("Machine tab localization has uncertain execution.")
+        local_x = (
+            float(raw_event.get("x") or 0.0) * full_width - content_x0
+        ) / content_width
+        local_x = max(0.0, min(1.0, local_x))
+        actions: list[dict[str, Any]] = []
+        for raw_cell in raw_event.get("cells") or []:
+            string = int(raw_cell.get("string") or 0)
+            token = str(raw_cell.get("token") or "").strip().upper()
+            action, issue = _tab_action_from_token(
+                token,
+                string=string,
+                profile=profile,
+                confidence=float(localization.get("confidence") or 0.0),
+                region_id=(
+                    f"validation-machine:{input_id}:"
+                    f"{tab_system.get('tabSystemId')}:{ordinal}:{string}"
+                ),
+            )
+            if (
+                issue is not None
+                or action is None
+                or not bool((action.get("mechanicalValidation") or {}).get("valid"))
+            ):
+                issue_kind = str((issue or {}).get("kind") or "mechanically_invalid")
+                issue_action = (issue or {}).get("candidateAction") or {}
+                mechanical_errors = ",".join(
+                    str(value)
+                    for value in (
+                        (issue or {}).get("issues")
+                        or ((action or issue_action).get("mechanicalValidation") or {}).get(
+                            "issues", []
+                        )
+                    )
+                )
+                raise ExtractionWorkflowError(
+                    "Machine tab localization contains an invalid state at "
+                    f"event={ordinal},string={string},issue={issue_kind},"
+                    f"mechanical_errors={mechanical_errors or 'none'}."
+                )
+            action["attack"] = execution == "attack"
+            action["sustain"] = execution == "movement_only"
+            action["evidenceClass"] = "direct_visual_observation"
+            action["reviewState"] = "needs_human_review"
+            actions.append(action)
+        if not actions:
+            raise ExtractionWorkflowError("Machine tab localization produced a blank event.")
+        event = {
+            "tabEventId": _stable_id(
+                "tab-event-validation-machine",
+                input_id,
+                tab_system.get("tabSystemId"),
+                ordinal,
+            ),
+            "eventIndex": ordinal,
+            "measure": 1,
+            "beat": float(ordinal),
+            "horizontalPosition": round(local_x, 7),
+            "candidateStrings": sorted(int(action["string"]) for action in actions),
+            "steelActions": actions,
+            "simultaneous": len(actions) > 1,
+            "gripId": None,
+            "evidenceClass": "direct_visual_observation",
+            "confidence": round(float(localization.get("confidence") or 0.0), 4),
+            "reviewState": "needs_human_review",
+        }
+        _refresh_event_execution(event)
+        events.append(event)
+    return events
+
+
+def _machine_localized_score_events(
+    *,
+    input_id: str,
+    score_system: Mapping[str, Any],
+    recognition: Mapping[str, Any],
+    tab_events: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Normalize source-only pitches against machine event geometry."""
+
+    raw_events = list(recognition.get("events") or [])
+    if (
+        bool(recognition.get("uncertain"))
+        or float(recognition.get("confidence") or 0.0) < 0.85
+        or len(raw_events) != len(tab_events)
+    ):
+        raise ExtractionWorkflowError(
+            "Machine score localization did not satisfy its confidence and count gate."
+        )
+    events: list[dict[str, Any]] = []
+    for ordinal, (raw_event, tab_event) in enumerate(
+        zip(raw_events, tab_events, strict=True), start=1
+    ):
+        pitches = list(raw_event.get("pitches") or [])
+        values = [int(value) for value in raw_event.get("pitchValues") or []]
+        if not pitches or len(pitches) != len(values):
+            raise ExtractionWorkflowError("Machine score localization produced a blank pitch event.")
+        for note_index, (pitch, pitch_value) in enumerate(
+            zip(pitches, values, strict=True)
+        ):
+            parsed = re.fullmatch(r"([A-G])([#b]{0,2})(-?\d+)", str(pitch))
+            if parsed is None or _scientific_pitch_value(str(pitch)) != pitch_value:
+                raise ExtractionWorkflowError("Machine score localization produced an invalid pitch.")
+            step, accidental, raw_octave = parsed.groups()
+            alter = accidental.count("#") - accidental.count("b")
+            events.append(
+                {
+                    "scoreEventId": _stable_id(
+                        "score-event-validation-machine",
+                        input_id,
+                        score_system.get("scoreSystemId"),
+                        ordinal,
+                        note_index,
+                        pitch,
+                    ),
+                    "measure": int(tab_event.get("measure") or 1),
+                    "beat": float(tab_event.get("beat") or ordinal),
+                    "rhythmicPosition": float(ordinal - 1),
+                    "durationBeats": 1.0,
+                    "durationEvidenceClass": "unknown_or_unresolved",
+                    "rhythmPlaceholder": True,
+                    "rest": False,
+                    "voice": 1,
+                    "staff": 1,
+                    "chordMember": note_index > 0,
+                    "tie": [],
+                    "articulations": [],
+                    "phraseBoundaries": [],
+                    "defaultX": float(tab_event.get("horizontalPosition") or ordinal),
+                    "pitch": str(pitch),
+                    "pitchValue": pitch_value,
+                    "pitchStep": step,
+                    "pitchAlter": alter,
+                    "octave": int(raw_octave),
+                    "writtenAccidental": (
+                        "sharp" if alter > 0 else "flat" if alter < 0 else None
+                    ),
+                    "evidenceClass": "direct_visual_observation",
+                    "confidence": round(float(recognition.get("confidence") or 0.0), 4),
+                    "reviewState": "needs_human_review",
+                }
+            )
+    return events
+
+
+def _machine_score_is_contained_in_tab(
+    score_events: Sequence[Mapping[str, Any]],
+    tab_events: Sequence[Mapping[str, Any]],
+) -> bool:
+    score_groups = _score_event_groups_by_printed_position(score_events)
+    if len(score_groups) != len(tab_events):
+        return False
+    for score_group, tab_event in zip(score_groups, tab_events, strict=True):
+        score_values = {
+            int(event["pitchValue"])
+            for event in score_group
+            if event.get("pitchValue") is not None
+        }
+        tab_values = {
+            int(action["soundingPitchValue"])
+            for action in tab_event.get("steelActions") or []
+            if action.get("soundingPitchValue") is not None
+        }
+        if not score_values or not score_values.issubset(tab_values):
+            return False
+    return True
+
+
+def _machine_score_tab_containment_diagnostics(
+    score_events: Sequence[Mapping[str, Any]],
+    tab_events: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    score_groups = _score_event_groups_by_printed_position(score_events)
+    exact_count = 0
+    nearest_delta_histogram: Counter[int] = Counter()
+    score_pitch_counts: Counter[int] = Counter()
+    tab_pitch_counts: Counter[int] = Counter()
+    for score_group, tab_event in zip(score_groups, tab_events, strict=False):
+        score_values = {
+            int(event["pitchValue"])
+            for event in score_group
+            if event.get("pitchValue") is not None
+        }
+        tab_values = {
+            int(action["soundingPitchValue"])
+            for action in tab_event.get("steelActions") or []
+            if action.get("soundingPitchValue") is not None
+        }
+        score_pitch_counts[len(score_values)] += 1
+        tab_pitch_counts[len(tab_values)] += 1
+        if score_values and score_values.issubset(tab_values):
+            exact_count += 1
+        elif score_values and tab_values:
+            for score_value in score_values:
+                nearest_delta_histogram[
+                    min(tab_values, key=lambda tab_value: abs(tab_value - score_value))
+                    - score_value
+                ] += 1
+    return {
+        "scoreEventGroupCount": len(score_groups),
+        "tabEventCount": len(tab_events),
+        "containedEventCount": exact_count,
+        "nearestPitchDeltaHistogram": {
+            str(delta): count for delta, count in sorted(nearest_delta_histogram.items())
+        },
+        "scorePitchCountHistogram": {
+            str(count): events for count, events in sorted(score_pitch_counts.items())
+        },
+        "tabPitchCountHistogram": {
+            str(count): events for count, events in sorted(tab_pitch_counts.items())
+        },
+    }
+
+
 def _current_combined_line_entries(
     entries: Sequence[Mapping[str, Any]],
 ) -> list[dict[str, Any]]:
@@ -7429,14 +7799,46 @@ class LocalTabSystemVision(LocalTabVision):
             "model": self.model,
         }
 
-    def localize_events(self, image_path: Path, *, expected_event_count: int) -> dict[str, Any]:
+    def localize_events(
+        self,
+        image_path: Path,
+        *,
+        expected_event_count: int,
+        constraint_source: str = "human_reviewed_discovery_feedback",
+        guided: bool = False,
+    ) -> dict[str, Any]:
         if not 1 <= expected_event_count <= 128:
             raise ExtractionWorkflowError("Event localization requires a bounded reviewed event count.")
+        if constraint_source not in {
+            "human_reviewed_discovery_feedback",
+            "independent_machine_count_consensus",
+            "machine_visual_candidate_geometry",
+        }:
+            raise ExtractionWorkflowError("Event localization has an invalid count-constraint source.")
+        count_basis = {
+            "human_reviewed_discovery_feedback": "An expert already established that",
+            "independent_machine_count_consensus": (
+                "Two independent machine readers already agreed that"
+            ),
+            "machine_visual_candidate_geometry": (
+                "A deterministic visual-geometry detector found that"
+            ),
+        }[constraint_source]
+        guide_instructions = (
+            " Blue vertical guides with numbered circles 1 through "
+            f"{expected_event_count} mark the exact chronological candidate columns found by the separate "
+            "geometry detector. Return exactly one event for every guide, with guideIndex equal to its blue "
+            "number. Read only the black source tokens at that guide; the blue line and number are not source "
+            "symbols. Do not move a state to a neighboring guide and do not split a vertical grip."
+            if guided
+            else ""
+        )
         prompt = (
             "This private image is an enlarged crop of one ten-string pedal-steel tablature system. Red STRING 1 "
             "through STRING 10 guides were added in the left margin from the deterministic grid geometry; they label "
-            "the row centers and are not source symbols. An expert already established that this system contains exactly "
-            f"{expected_event_count} chronological steel sounding-state events. Localize those events from left to "
+            f"the row centers and are not source symbols. {count_basis} this system contains exactly "
+            f"{expected_event_count} chronological steel sounding-state events.{guide_instructions} "
+            "Localize those events from left to "
             "right. The source itself may print a vertical 1-through-10 string-number legend at the far left; that "
             "legend labels rows and is never an event. A vertical grip is one event. A later fret change or "
             "pedal/lever engagement or release during "
@@ -7453,7 +7855,8 @@ class LocalTabSystemVision(LocalTabVision):
             "horizontal x from 0 to 1, execution as attack, movement_only, or uncertain, and the visibly printed cells. "
             "Each cell has string 1-10 and one state token such as 8, 8A, or 10B; do not invent hidden strings or "
             "controls. Return JSON only: {\"events\":[{\"x\":0.2,\"execution\":\"attack\","
-            "\"cells\":[{\"string\":5,\"token\":\"8A\"}]}],\"confidence\":0.9,\"uncertain\":false}."
+            "\"guideIndex\":1,\"cells\":[{\"string\":5,\"token\":\"8A\"}]}],"
+            "\"confidence\":0.9,\"uncertain\":false}."
         )
         payload = {
             "model": self.model,
@@ -7500,14 +7903,29 @@ class LocalTabSystemVision(LocalTabVision):
             raise ExtractionWorkflowError(
                 "The local tab-system localizer did not honor the reviewed event-count constraint."
             )
+        if not all(isinstance(raw_event, Mapping) for raw_event in raw_events):
+            raise ExtractionWorkflowError("A localized event is not an object.")
+        if guided:
+            try:
+                guide_indices = [int(raw_event.get("guideIndex")) for raw_event in raw_events]
+            except (TypeError, ValueError) as exc:
+                raise ExtractionWorkflowError("A guided tab event omitted its guide index.") from exc
+            if sorted(guide_indices) != list(range(1, expected_event_count + 1)):
+                raise ExtractionWorkflowError("Guided tab events did not cover every numbered guide exactly once.")
+            raw_events = sorted(raw_events, key=lambda raw_event: int(raw_event.get("guideIndex")))
+        else:
+            try:
+                raw_events = sorted(raw_events, key=lambda raw_event: float(raw_event.get("x")))
+            except (TypeError, ValueError) as exc:
+                raise ExtractionWorkflowError("A localized event omitted its horizontal position.") from exc
         events: list[dict[str, Any]] = []
         previous_x = -1.0
         for event_index, raw_event in enumerate(raw_events, start=1):
-            if not isinstance(raw_event, Mapping):
-                raise ExtractionWorkflowError("A localized event is not an object.")
             x = float(raw_event.get("x"))
             if not 0.0 <= x <= 1.0 or x < previous_x:
-                raise ExtractionWorkflowError("Localized event positions must be ordered within the system.")
+                raise ExtractionWorkflowError(
+                    "Localized event positions must be ordered within the system."
+                )
             previous_x = x
             execution = str(raw_event.get("execution") or "uncertain")
             if execution not in {"attack", "movement_only", "uncertain"}:
@@ -7529,6 +7947,7 @@ class LocalTabSystemVision(LocalTabVision):
             events.append(
                 {
                     "eventIndex": event_index,
+                    "guideIndex": int(raw_event.get("guideIndex") or event_index),
                     "x": round(x, 6),
                     "execution": execution,
                     "cells": sorted(cells, key=lambda cell: int(cell["string"])),
@@ -7541,6 +7960,8 @@ class LocalTabSystemVision(LocalTabVision):
             "promptVersion": TAB_SYSTEM_LOCALIZATION_PROMPT_VERSION,
             "model": self.model,
             "reviewedCountConstraint": expected_event_count,
+            "countConstraintSource": constraint_source,
+            "deterministicGeometryGuidesProvided": guided,
         }
 
     def read_unconstrained_score_columns(self, image_path: Path) -> dict[str, Any]:
@@ -7653,11 +8074,25 @@ class LocalTabSystemVision(LocalTabVision):
         *,
         expected_event_count: int,
         guided: bool = False,
+        constraint_source: str = "human_reviewed_discovery_feedback",
     ) -> dict[str, Any]:
         """Read pitches from a score-only crop without access to tablature pitches."""
 
         if not 1 <= expected_event_count <= 64:
             raise ExtractionWorkflowError("Score-pitch localization requires a bounded event count.")
+        if constraint_source not in {
+            "human_reviewed_discovery_feedback",
+            "independent_machine_count_consensus",
+            "machine_visual_candidate_geometry",
+        }:
+            raise ExtractionWorkflowError("Score-pitch localization has an invalid count-constraint source.")
+        count_basis = {
+            "human_reviewed_discovery_feedback": "An expert established",
+            "independent_machine_count_consensus": "Two independent machine readers established",
+            "machine_visual_candidate_geometry": (
+                "A deterministic visual-geometry detector established"
+            ),
+        }[constraint_source]
         guide_instructions = (
             " Blue vertical guides numbered 1 through "
             f"{expected_event_count} mark the chronological source-note columns. Red labels in the "
@@ -7671,7 +8106,7 @@ class LocalTabSystemVision(LocalTabVision):
         )
         prompt = (
             "This private image is a tightly cropped conventional-notation staff; it does not contain tablature. "
-            f"An expert established that the system contains exactly {expected_event_count} chronological attack "
+            f"{count_basis} that the system contains exactly {expected_event_count} chronological attack "
             "groups. Read only visible noteheads on or immediately around the treble-clef staff, from left to right. "
             "A pitch exists only when its own notehead is visibly printed. A vertical stack of visible noteheads is "
             "one attack group with multiple pitches. Ignore every word, title, chord name, chord symbol, rehearsal "
@@ -7807,6 +8242,7 @@ class LocalTabSystemVision(LocalTabVision):
             "promptVersion": SCORE_PITCH_LOCALIZATION_PROMPT_VERSION,
             "model": self.model,
             "reviewedAttackCountConstraint": expected_event_count,
+            "countConstraintSource": constraint_source,
             "tablatureOrExpectedPitchesProvidedToReader": False,
             "deterministicGeometryGuidesProvided": guided,
         }
@@ -8047,6 +8483,42 @@ def _parse_audiveris_head_graph(path: Path, system_id: str) -> dict[str, Any]:
             "rhythmAuthoritative": False,
         },
     }
+
+
+def _apply_key_signature_to_score_events(
+    events: Sequence[Mapping[str, Any]],
+    fifths: int,
+) -> list[dict[str, Any]]:
+    """Apply a conventional key signature without overriding written accidentals."""
+
+    if not -7 <= int(fifths) <= 7:
+        raise ExtractionWorkflowError("Score key signature fifths must be between -7 and 7.")
+    sharp_order = ("F", "C", "G", "D", "A", "E", "B")
+    flat_order = ("B", "E", "A", "D", "G", "C", "F")
+    affected = (
+        {step: 1 for step in sharp_order[: int(fifths)]}
+        if fifths > 0
+        else {step: -1 for step in flat_order[: abs(int(fifths))]}
+        if fifths < 0
+        else {}
+    )
+    normalized: list[dict[str, Any]] = []
+    for source_event in events:
+        event = copy.deepcopy(dict(source_event))
+        step = str(event.get("pitchStep") or "")
+        octave = int(event.get("octave") or 0)
+        written = event.get("writtenAccidental")
+        alter = int(event.get("pitchAlter") or 0)
+        if written is None:
+            alter = int(affected.get(step, 0))
+        accidental = "#" * max(0, alter) + "b" * max(0, -alter)
+        event["pitchAlter"] = alter
+        event["pitch"] = f"{step}{accidental}{octave}"
+        event["pitchValue"] = 12 * (octave + 1) + _PITCH_STEPS[step] + alter
+        event["keySignatureFifthsApplied"] = int(fifths)
+        event["keySignatureEvidenceClass"] = "deterministic_derivation"
+        normalized.append(event)
+    return normalized
 
 
 def _audiveris_notehead_columns(
@@ -19132,6 +19604,404 @@ class AmazingTablatureExtractor:
             "sealedTestAccessed": False,
         }
 
+    def evaluate_discovery_guided_capture_regression(
+        self,
+        batch_id: str,
+        *,
+        limit: int = 8,
+    ) -> dict[str, Any]:
+        """Replay corrected discovery lines as supervised glyph-recognition cases.
+
+        Reviewed event positions and string rows are supplied as geometry only.
+        Predicted fret/control tokens and score pitches are compared with truth
+        only after inference.  This is an opened discovery regression, never a
+        holdout, promotion result, or new training record.
+        """
+
+        if not 1 <= limit <= 25:
+            raise ExtractionWorkflowError("Guided discovery regression limit must be 1-25.")
+        batch_dir, manifest, _work = self._batch_paths(batch_id, "discovery")
+        output_root = batch_dir / "extraction" / "discovery"
+        profile = get_e9_copedent_profile(str(manifest["sourceCopedentId"]))
+        benchmark_root = (
+            output_root / "review" / "automation" / "source-score-notehead-challenger"
+        )
+        manifest_path = benchmark_root / "benchmark-manifest.json"
+        if not manifest_path.exists():
+            raise ExtractionWorkflowError(
+                "Freeze the source-score notehead benchmark before guided regression."
+            )
+        benchmark = _read_json(manifest_path)
+        benchmark_digest = str(benchmark.get("manifestDigest") or "")
+        if benchmark_digest != _sha256_json(
+            {key: value for key, value in benchmark.items() if key != "manifestDigest"}
+        ):
+            raise ExtractionWorkflowError("The source-score benchmark digest changed.")
+        regression_dir = (
+            output_root
+            / "review"
+            / "automation"
+            / "guided-score-tab-capture-regression-v1"
+        )
+        regression_dir.mkdir(parents=True, exist_ok=True)
+        os.chmod(regression_dir, 0o700)
+        contract = {
+            "schemaVersion": "guided-score-tab-capture-regression-v1",
+            "evaluationClass": "opened_discovery_supervised_geometry_regression",
+            "model": self.tab_system_vision.model,
+            "modelContract": self.tab_system_vision.contract(),
+            "tabPromptVersion": TAB_SYSTEM_LOCALIZATION_PROMPT_VERSION,
+            "scorePromptVersion": SCORE_PITCH_LOCALIZATION_PROMPT_VERSION,
+            "reviewedEventCountProvided": True,
+            "reviewedEventPositionsProvided": True,
+            "reviewedStringRowsProvided": True,
+            "reviewedKeySignatureProvided": True,
+            "reviewedFretControlTruthProvidedDuringInference": False,
+            "reviewedScorePitchTruthProvidedDuringInference": False,
+            "validationAccessed": False,
+            "sealedTestAccessed": False,
+        }
+        contract_digest = _sha256_json(contract)
+        results: list[dict[str, Any]] = []
+        eligible_count = 0
+        for case in sorted(
+            (dict(value) for value in benchmark.get("cases") or []),
+            key=lambda value: str(value.get("caseId") or ""),
+        ):
+            if eligible_count >= limit:
+                break
+            record_path = output_root / str(case.get("reviewedRecordPath") or "")
+            if not record_path.exists():
+                continue
+            record = _read_json(record_path)
+            if _sha256_json(record) != str(case.get("reviewedRecordDigest") or ""):
+                raise ExtractionWorkflowError("A reviewed discovery regression record changed.")
+            score_system = next(
+                (
+                    system
+                    for system in record.get("scoreSystems") or []
+                    if str(system.get("scoreSystemId") or "")
+                    == str(case.get("scoreSystemId") or "")
+                ),
+                None,
+            )
+            if score_system is None:
+                continue
+            tab_system = next(
+                (
+                    system
+                    for system in record.get("tabSystems") or []
+                    if str(system.get("tabSystemId") or "")
+                    == str(score_system.get("pairedTabSystemId") or "")
+                ),
+                None,
+            )
+            if tab_system is None:
+                continue
+            truth_tab_events = sorted(
+                list(tab_system.get("tabEvents") or []),
+                key=lambda value: int(value.get("eventIndex") or 0),
+            )
+            truth_score_groups = _score_event_groups_by_printed_position(
+                score_system.get("scoreEvents") or []
+            )
+            if (
+                not truth_tab_events
+                or len(truth_tab_events) != len(truth_score_groups)
+                or len(truth_tab_events) > 32
+            ):
+                continue
+            eligible_count += 1
+            case_id = str(case.get("caseId") or "")
+            result: dict[str, Any] = {
+                "caseId": case_id,
+                "inputId": case.get("inputId"),
+                "scoreSystemId": case.get("scoreSystemId"),
+                "eventCount": len(truth_tab_events),
+                "tabExact": False,
+                "scoreExact": False,
+                "status": "withheld",
+            }
+            try:
+                head_graph = _parse_audiveris_head_graph(
+                    output_root / str(case.get("omrRelativePath") or ""),
+                    str(score_system.get("scoreSystemId") or case_id),
+                )
+                natural_head_groups = _score_event_groups_by_printed_position(
+                    head_graph.get("scoreEvents") or []
+                )
+                result["headGraphNaturalAttackCount"] = len(natural_head_groups)
+                if len(natural_head_groups) == len(truth_score_groups):
+                    natural_exact_count = sum(
+                        {
+                            int(event["pitchValue"])
+                            for event in predicted
+                            if event.get("pitchValue") is not None
+                        }
+                        == {
+                            int(event["pitchValue"])
+                            for event in truth
+                            if event.get("pitchValue") is not None
+                        }
+                        for predicted, truth in zip(
+                            natural_head_groups, truth_score_groups, strict=True
+                        )
+                    )
+                    result["headGraphNaturalExactEventCount"] = natural_exact_count
+                    result["headGraphNaturalExact"] = natural_exact_count == len(
+                        truth_score_groups
+                    )
+                else:
+                    result["headGraphNaturalExactEventCount"] = 0
+                    result["headGraphNaturalExact"] = False
+                key_fifths = score_system.get("keyFifths")
+                if key_fifths is None:
+                    key_fifths = score_system.get("keySignatureFifths")
+                if key_fifths is not None:
+                    head_events = _apply_key_signature_to_score_events(
+                        head_graph.get("scoreEvents") or [], int(key_fifths)
+                    )
+                    head_groups = _score_event_groups_by_printed_position(head_events)
+                    result["headGraphAttackCount"] = len(head_groups)
+                    if len(head_groups) == len(truth_score_groups):
+                        head_exact_count = sum(
+                            {
+                                int(event["pitchValue"])
+                                for event in predicted
+                                if event.get("pitchValue") is not None
+                            }
+                            == {
+                                int(event["pitchValue"])
+                                for event in truth
+                                if event.get("pitchValue") is not None
+                            }
+                            for predicted, truth in zip(
+                                head_groups, truth_score_groups, strict=True
+                            )
+                        )
+                        result["headGraphExactEventCount"] = head_exact_count
+                        result["headGraphExact"] = head_exact_count == len(
+                            truth_score_groups
+                        )
+                    else:
+                        result["headGraphExactEventCount"] = 0
+                        result["headGraphExact"] = False
+                else:
+                    result["headGraphKeyAdjustedUnavailable"] = True
+            except ExtractionWorkflowError as exc:
+                result["headGraphFailure"] = type(exc).__name__
+            try:
+                guided_tab_system = copy.deepcopy(tab_system)
+                guided_tab_system["tabEventCandidates"] = [
+                    {
+                        "sourceCandidateEventIndex": ordinal,
+                        "horizontalPosition": float(event.get("horizontalPosition") or 0.0),
+                        "candidateStrings": sorted(
+                            int(action["string"])
+                            for action in event.get("steelActions") or []
+                        ),
+                    }
+                    for ordinal, event in enumerate(truth_tab_events, start=1)
+                ]
+                tab_crop = _prepare_event_localization_tab_crop(
+                    output_root=output_root,
+                    localization_dir=regression_dir,
+                    input_id=str(case.get("inputId") or case_id),
+                    record=record,
+                    tab_system=tab_system,
+                )
+                guided_tab_crop = _prepare_guided_tab_state_crop(
+                    localization_dir=regression_dir,
+                    input_id=str(case.get("inputId") or case_id),
+                    tab_system=guided_tab_system,
+                    tab_crop=tab_crop,
+                )
+                localization = self.tab_system_vision.localize_events(
+                    Path(guided_tab_crop["path"]),
+                    expected_event_count=len(truth_tab_events),
+                    constraint_source="human_reviewed_discovery_feedback",
+                    guided=True,
+                )
+                localization = copy.deepcopy(localization)
+                for raw_event, guide, candidate in zip(
+                    localization.get("events") or [],
+                    guided_tab_crop["guides"],
+                    guided_tab_system["tabEventCandidates"],
+                    strict=True,
+                ):
+                    raw_cells = sorted(
+                        list(raw_event.get("cells") or []),
+                        key=lambda cell: int(cell.get("string") or 0),
+                    )
+                    strings = list(candidate["candidateStrings"])
+                    if len(raw_cells) != len(strings):
+                        raise ExtractionWorkflowError(
+                            "Guided discovery reader did not return one token per reviewed row."
+                        )
+                    for raw_cell, string in zip(raw_cells, strings, strict=True):
+                        raw_cell["string"] = string
+                    raw_event["cells"] = raw_cells
+                    raw_event["x"] = round(
+                        (
+                            float(tab_crop["contentX0"])
+                            + float(guide["horizontalPosition"])
+                            * (
+                                float(tab_crop["contentX1"])
+                                - float(tab_crop["contentX0"])
+                            )
+                        )
+                        / float(tab_crop["width"]),
+                        7,
+                    )
+                predicted_tab_events = _machine_localized_tab_events(
+                    input_id=str(case.get("inputId") or case_id),
+                    tab_system=guided_tab_system,
+                    localization=localization,
+                    crop_metadata=tab_crop,
+                    expected_count=len(truth_tab_events),
+                    profile=profile,
+                )
+
+                def tab_signature(event: Mapping[str, Any]) -> list[tuple[int, int, tuple[str, ...]]]:
+                    return sorted(
+                        (
+                            int(action["string"]),
+                            int(action["fret"]),
+                            tuple(sorted(str(value) for value in action.get("controls") or [])),
+                        )
+                        for action in event.get("steelActions") or []
+                    )
+
+                tab_exact_count = sum(
+                    tab_signature(predicted) == tab_signature(truth)
+                    for predicted, truth in zip(
+                        predicted_tab_events, truth_tab_events, strict=True
+                    )
+                )
+                result["tabExactEventCount"] = tab_exact_count
+                result["tabExact"] = tab_exact_count == len(truth_tab_events)
+
+                predicted_tab_system = copy.deepcopy(tab_system)
+                predicted_tab_system["tabEvents"] = predicted_tab_events
+                guided_score_crop = _prepare_guided_score_pitch_crop(
+                    output_root=output_root,
+                    audit_dir=regression_dir,
+                    input_id=str(case.get("inputId") or case_id),
+                    score_system=score_system,
+                    tab_system=predicted_tab_system,
+                )
+                recognition = self.tab_system_vision.read_score_pitch_events(
+                    Path(guided_score_crop["path"]),
+                    expected_event_count=len(truth_tab_events),
+                    guided=True,
+                    constraint_source="human_reviewed_discovery_feedback",
+                )
+                predicted_score_events = _machine_localized_score_events(
+                    input_id=str(case.get("inputId") or case_id),
+                    score_system=score_system,
+                    recognition=recognition,
+                    tab_events=predicted_tab_events,
+                )
+                predicted_score_groups = _score_event_groups_by_printed_position(
+                    predicted_score_events
+                )
+                score_exact_count = sum(
+                    {
+                        int(event["pitchValue"])
+                        for event in predicted
+                        if event.get("pitchValue") is not None
+                    }
+                    == {
+                        int(event["pitchValue"])
+                        for event in truth
+                        if event.get("pitchValue") is not None
+                    }
+                    for predicted, truth in zip(
+                        predicted_score_groups, truth_score_groups, strict=True
+                    )
+                )
+                result["scoreExactEventCount"] = score_exact_count
+                result["scoreExact"] = score_exact_count == len(truth_score_groups)
+                result["status"] = "measured"
+            except ExtractionWorkflowError as exc:
+                result["failure"] = str(exc)[:500]
+            results.append(result)
+
+        measured = [item for item in results if item["status"] == "measured"]
+        total_events = sum(int(item["eventCount"]) for item in results)
+        report_core = {
+            "schemaVersion": "guided-score-tab-capture-regression-v1",
+            "batchId": batch_id,
+            "partition": "discovery",
+            "benchmarkManifestDigest": benchmark_digest,
+            "contract": contract,
+            "contractDigest": contract_digest,
+            "caseCount": len(results),
+            "measuredCaseCount": len(measured),
+            "withheldCaseCount": len(results) - len(measured),
+            "eventCount": total_events,
+            "tabExactEventCount": sum(
+                int(item.get("tabExactEventCount") or 0) for item in measured
+            ),
+            "scoreExactEventCount": sum(
+                int(item.get("scoreExactEventCount") or 0) for item in measured
+            ),
+            "headGraphExactEventCount": sum(
+                int(item.get("headGraphExactEventCount") or 0) for item in results
+            ),
+            "headGraphNaturalExactEventCount": sum(
+                int(item.get("headGraphNaturalExactEventCount") or 0)
+                for item in results
+            ),
+            "tabExactLineCount": sum(bool(item.get("tabExact")) for item in measured),
+            "scoreExactLineCount": sum(bool(item.get("scoreExact")) for item in measured),
+            "headGraphExactLineCount": sum(
+                bool(item.get("headGraphExact")) for item in results
+            ),
+            "headGraphNaturalExactLineCount": sum(
+                bool(item.get("headGraphNaturalExact")) for item in results
+            ),
+            "results": results,
+            "promotionEligible": False,
+            "reviewPacketCreated": False,
+            "trainingEvidenceCreated": False,
+            "validationAccessed": False,
+            "sealedTestAccessed": False,
+        }
+        report_digest = _sha256_json(report_core)
+        report = {**report_core, "reportDigest": report_digest}
+        report_path = regression_dir / f"report-{report_digest}.json"
+        _write_json(report_path, report)
+        return {
+            key: report[key]
+            for key in (
+                "schemaVersion",
+                "batchId",
+                "partition",
+                "caseCount",
+                "measuredCaseCount",
+                "withheldCaseCount",
+                "eventCount",
+                "tabExactEventCount",
+                "scoreExactEventCount",
+                "headGraphExactEventCount",
+                "headGraphNaturalExactEventCount",
+                "tabExactLineCount",
+                "scoreExactLineCount",
+                "headGraphExactLineCount",
+                "headGraphNaturalExactLineCount",
+                "promotionEligible",
+                "reviewPacketCreated",
+                "trainingEvidenceCreated",
+                "validationAccessed",
+                "sealedTestAccessed",
+            )
+        } | {
+            "contractDigest": contract_digest,
+            "reportDigest": report_digest,
+            "reportPath": str(report_path.relative_to(output_root)),
+        }
+
     def evaluate_source_score_vision_regression(
         self,
         batch_id: str,
@@ -21419,6 +22289,582 @@ class AmazingTablatureExtractor:
             _write_json(review_dir / "packet-summary.json", summary)
         return summary
 
+    def remediate_validation_machine_capture(
+        self,
+        batch_id: str,
+        *,
+        input_ids: Sequence[str] = (),
+        limit: int = 8,
+        resume: bool = True,
+        apply: bool = False,
+    ) -> dict[str, Any]:
+        """Recapture validation lines from machine consensus without human truth."""
+
+        if not 1 <= limit <= 100:
+            raise ExtractionWorkflowError("Validation machine recapture limit must be 1-100.")
+        batch_dir, manifest, work = self._batch_paths(batch_id, "validation")
+        profile = get_e9_copedent_profile(str(manifest["sourceCopedentId"]))
+        output_root = batch_dir / "extraction" / "validation"
+        pages_dir = output_root / "pages"
+        summary_path = output_root / "summary.json"
+        if not summary_path.exists():
+            raise ExtractionWorkflowError("Validation extraction is required before recapture.")
+        extraction_summary = _read_json(summary_path)
+        validation_model = copy.deepcopy(extraction_summary.get("validationModel") or {})
+        if not validation_model.get("modelId"):
+            raise ExtractionWorkflowError("Validation recapture requires pinned model lineage.")
+        remediation_dir = (
+            output_root
+            / "review"
+            / "automation"
+            / VALIDATION_MACHINE_RECAPTURE_VERSION
+        )
+        candidate_dir = remediation_dir / "candidates"
+        revision_dir = remediation_dir / "machine-record-revisions"
+        for directory in (remediation_dir, candidate_dir, revision_dir):
+            directory.mkdir(parents=True, exist_ok=True)
+            os.chmod(directory, 0o700)
+        contract = {
+            "schemaVersion": VALIDATION_MACHINE_RECAPTURE_VERSION,
+            "countReader": self.tab_system_vision.contract(),
+            "tabLocalizationPromptVersion": TAB_SYSTEM_LOCALIZATION_PROMPT_VERSION,
+            "scorePitchPromptVersion": SCORE_PITCH_LOCALIZATION_PROMPT_VERSION,
+            "countConstraintSource": "machine_visual_candidate_geometry",
+            "minimumConfidence": 0.85,
+            "requiresVisualCandidateAgreement": True,
+            "eventAndStringGeometrySource": "deterministic_visual_candidate_geometry",
+            "stateTokenSource": "guided_full_state_vision",
+            "requiresOneTokenPerVisualCandidateCell": True,
+            "minimumStringOriginConsensus": 0.75,
+            "mechanicalChecksumMayResolveMinorityRow": True,
+            "countOnlyVisionReaderIsDiagnostic": True,
+            "requiresMechanicalValidity": True,
+            "requiresScorePitchContainmentInTab": True,
+            "sourceCopedentId": profile.id,
+            "sourceCopedentRevision": profile.revision,
+            "validationModel": validation_model,
+            "validationMayTrain": False,
+            "sealedTestAccessed": False,
+        }
+        contract_digest = _sha256_json(contract)
+        requested_ids = {str(value) for value in input_ids if str(value)}
+        work_ids = {str(item.get("inputId") or "") for item in work}
+        if requested_ids - work_ids:
+            raise ExtractionWorkflowError("Validation recapture requested an unknown input ID.")
+
+        results: list[dict[str, Any]] = []
+        selected_count = 0
+        applied_count = 0
+        for work_item in work:
+            input_id = str(work_item.get("inputId") or "")
+            if requested_ids and input_id not in requested_ids:
+                continue
+            page_path = pages_dir / f"{input_id}.json"
+            if not page_path.exists():
+                raise ExtractionWorkflowError(f"Validation page record is missing for {input_id}.")
+            record = _read_json(page_path)
+            tab_by_id = {
+                str(system.get("tabSystemId") or ""): system
+                for system in record.get("tabSystems") or []
+            }
+            for score_system in list(record.get("scoreSystems") or []):
+                if selected_count >= limit:
+                    break
+                score_system_id = str(score_system.get("scoreSystemId") or "")
+                tab_system_id = str(score_system.get("pairedTabSystemId") or "")
+                tab_system = tab_by_id.get(tab_system_id)
+                if not score_system_id or tab_system is None:
+                    continue
+                existing_comparison = _combined_score_tab_columns(
+                    score_system, tab_system
+                )
+                existing_issues = [
+                    item
+                    for item in record.get("unresolved") or []
+                    if str(item.get("scoreSystemId") or "") == score_system_id
+                    or str(item.get("tabSystemId") or "") == tab_system_id
+                ]
+                key_known = (
+                    score_system.get("keySignatureFifths") is not None
+                    or score_system.get("keyFifths") is not None
+                    or (score_system.get("keySignature") or {}).get("fifths")
+                    is not None
+                )
+                existing_blockers = _validation_line_preflight_blockers(
+                    existing_comparison,
+                    key_signature_known=key_known,
+                    blocking_issue_count=_validation_capture_issue_count(existing_issues),
+                )
+                if not existing_blockers:
+                    continue
+                selected_count += 1
+                result_core: dict[str, Any] = {
+                    "inputId": input_id,
+                    "scoreSystemId": score_system_id,
+                    "tabSystemId": tab_system_id,
+                    "systemIndex": int(score_system.get("systemIndex") or 0),
+                    "priorBlockers": existing_blockers,
+                    "applied": False,
+                }
+                try:
+                    source_crop = _prepare_score_tab_source_crop(
+                        output_root=output_root,
+                        audit_dir=remediation_dir,
+                        input_id=input_id,
+                        record=record,
+                        score_system=score_system,
+                        tab_system=tab_system,
+                    )
+                    source_pair_path = output_root / str(source_crop["relativePath"])
+                    tab_crop = _prepare_event_localization_tab_crop(
+                        output_root=output_root,
+                        localization_dir=remediation_dir,
+                        input_id=input_id,
+                        record=record,
+                        tab_system=tab_system,
+                    )
+                    guided_tab_crop = _prepare_guided_tab_state_crop(
+                        localization_dir=remediation_dir,
+                        input_id=input_id,
+                        tab_system=tab_system,
+                        tab_crop=tab_crop,
+                    )
+                    cache_path = candidate_dir / f"{input_id}-{score_system_id}.json"
+                    machine_record_digest = _sha256_json(record)
+                    cached: dict[str, Any] = {}
+                    if resume and cache_path.exists():
+                        candidate_cache = _read_json(cache_path)
+                        if (
+                            candidate_cache.get("contractDigest") == contract_digest
+                            and candidate_cache.get("machineRecordDigest")
+                            == machine_record_digest
+                            and candidate_cache.get("sourcePairSha256")
+                            == _sha256_bytes(source_pair_path.read_bytes())
+                        ):
+                            cached = candidate_cache
+                    tab_count_prediction = copy.deepcopy(
+                        cached.get("tabCountPrediction")
+                    ) if isinstance(cached.get("tabCountPrediction"), Mapping) else None
+                    if tab_count_prediction is None:
+                        tab_count_prediction = self.tab_system_vision.read_event_count(
+                            source_pair_path
+                        )
+                    expected_count = len(tab_system.get("tabEventCandidates") or [])
+                    if not 1 <= expected_count <= 64:
+                        raise ExtractionWorkflowError(
+                            "Deterministic visual candidate geometry produced an invalid count."
+                        )
+                    independent_count, count_blockers = _validation_machine_count_consensus(
+                        tab_system, tab_count_prediction
+                    )
+                    count_reader_agrees = independent_count == expected_count
+                    localization = copy.deepcopy(
+                        cached.get("tabLocalization")
+                    ) if (
+                        int(cached.get("expectedEventCount") or 0) == expected_count
+                        and isinstance(cached.get("tabLocalization"), Mapping)
+                    ) else None
+                    if localization is None:
+                        localization = self.tab_system_vision.localize_events(
+                            Path(guided_tab_crop["path"]),
+                            expected_event_count=expected_count,
+                            constraint_source="machine_visual_candidate_geometry",
+                            guided=True,
+                        )
+                    localization = copy.deepcopy(localization)
+                    string_offset_votes: Counter[int] = Counter()
+                    string_offset_vote_count = 0
+                    for raw_event, candidate in zip(
+                        localization.get("events") or [],
+                        tab_system.get("tabEventCandidates") or [],
+                        strict=True,
+                    ):
+                        reported_strings = sorted(
+                            int(cell.get("string") or 0)
+                            for cell in raw_event.get("cells") or []
+                        )
+                        candidate_strings = sorted(
+                            int(value) for value in candidate.get("candidateStrings") or []
+                        )
+                        if len(reported_strings) != len(candidate_strings):
+                            raise ExtractionWorkflowError(
+                                "Guided tab state reader did not return one token per visual candidate cell."
+                            )
+                        for reported_string, candidate_string in zip(
+                            reported_strings, candidate_strings, strict=True
+                        ):
+                            string_offset_votes[reported_string - candidate_string] += 1
+                            string_offset_vote_count += 1
+                    if not string_offset_votes:
+                        raise ExtractionWorkflowError(
+                            "Guided tab state reader produced no string-origin evidence."
+                        )
+                    ranked_offsets = string_offset_votes.most_common()
+                    string_origin_offset, winning_offset_votes = ranked_offsets[0]
+                    string_origin_consensus = winning_offset_votes / string_offset_vote_count
+                    if (
+                        string_origin_consensus < 0.75
+                        or (
+                            len(ranked_offsets) > 1
+                            and ranked_offsets[1][1] == winning_offset_votes
+                        )
+                    ):
+                        raise ExtractionWorkflowError(
+                            "Machine readers could not establish one system-level string origin."
+                        )
+                    geometry_row_reassignments = 0
+                    mechanical_row_overrides = 0
+                    for raw_event, guide, candidate in zip(
+                        localization.get("events") or [],
+                        guided_tab_crop["guides"],
+                        tab_system.get("tabEventCandidates") or [],
+                        strict=True,
+                    ):
+                        raw_cells = sorted(
+                            list(raw_event.get("cells") or []),
+                            key=lambda cell: int(cell.get("string") or 0),
+                        )
+                        candidate_strings = sorted(
+                            int(value) + string_origin_offset
+                            for value in candidate.get("candidateStrings") or []
+                        )
+                        if any(value not in range(1, 11) for value in candidate_strings):
+                            raise ExtractionWorkflowError(
+                                "String-origin calibration moved a candidate outside strings 1-10."
+                            )
+                        if len(raw_cells) != len(candidate_strings):
+                            raise ExtractionWorkflowError(
+                                "Guided tab state reader did not return one token per visual candidate cell."
+                            )
+                        for raw_cell, candidate_string in zip(
+                            raw_cells, candidate_strings, strict=True
+                        ):
+                            reported_string = int(raw_cell.get("string") or 0)
+                            token = str(raw_cell.get("token") or "")
+                            candidate_action, candidate_issue = _tab_action_from_token(
+                                token,
+                                string=candidate_string,
+                                profile=profile,
+                                confidence=float(localization.get("confidence") or 0.0),
+                                region_id="validation-machine-row-check",
+                            )
+                            reported_action, reported_issue = _tab_action_from_token(
+                                token,
+                                string=reported_string,
+                                profile=profile,
+                                confidence=float(localization.get("confidence") or 0.0),
+                                region_id="validation-machine-row-check",
+                            )
+                            candidate_valid = (
+                                candidate_issue is None
+                                and candidate_action is not None
+                                and bool(
+                                    (candidate_action.get("mechanicalValidation") or {}).get(
+                                        "valid"
+                                    )
+                                )
+                            )
+                            reported_valid = (
+                                reported_issue is None
+                                and reported_action is not None
+                                and bool(
+                                    (reported_action.get("mechanicalValidation") or {}).get(
+                                        "valid"
+                                    )
+                                )
+                            )
+                            resolved_string = candidate_string
+                            if not candidate_valid and reported_valid:
+                                resolved_string = reported_string
+                                mechanical_row_overrides += 1
+                            geometry_row_reassignments += (
+                                reported_string != resolved_string
+                            )
+                            raw_cell["string"] = resolved_string
+                        raw_event["cells"] = raw_cells
+                        raw_event["x"] = round(
+                            (
+                                float(tab_crop["contentX0"])
+                                + float(guide["horizontalPosition"])
+                                * (
+                                    float(tab_crop["contentX1"])
+                                    - float(tab_crop["contentX0"])
+                                )
+                            )
+                            / float(tab_crop["width"]),
+                            7,
+                        )
+                    tab_events = _machine_localized_tab_events(
+                        input_id=input_id,
+                        tab_system=tab_system,
+                        localization=localization,
+                        crop_metadata=tab_crop,
+                        expected_count=expected_count,
+                        profile=profile,
+                    )
+                    visual_candidates = list(tab_system.get("tabEventCandidates") or [])
+                    if len(visual_candidates) != expected_count:
+                        raise ExtractionWorkflowError(
+                            "Machine tab localization lost visual candidate agreement."
+                        )
+                    maximum_position_delta = max(
+                        (
+                            abs(
+                                float(event.get("horizontalPosition") or 0.0)
+                                - float(candidate.get("horizontalPosition") or 0.0)
+                            )
+                            for event, candidate in zip(
+                                tab_events, visual_candidates, strict=True
+                            )
+                        ),
+                        default=1.0,
+                    )
+                    if maximum_position_delta > 0.065:
+                        raise ExtractionWorkflowError(
+                            "Machine tab localization failed independent checks: "
+                            f"maximum_position_delta={maximum_position_delta:.6f}."
+                        )
+                    temporary_tab_system = copy.deepcopy(tab_system)
+                    temporary_tab_system["tabEvents"] = copy.deepcopy(tab_events)
+                    guided_crop = _prepare_guided_score_pitch_crop(
+                        output_root=output_root,
+                        audit_dir=remediation_dir,
+                        input_id=input_id,
+                        score_system=score_system,
+                        tab_system=temporary_tab_system,
+                    )
+                    score_recognition = copy.deepcopy(
+                        cached.get("scoreRecognition")
+                    ) if (
+                        int(cached.get("expectedEventCount") or 0) == expected_count
+                        and isinstance(cached.get("scoreRecognition"), Mapping)
+                    ) else None
+                    if score_recognition is None:
+                        score_recognition = self.tab_system_vision.read_score_pitch_events(
+                            Path(guided_crop["path"]),
+                            expected_event_count=expected_count,
+                            guided=True,
+                            constraint_source="machine_visual_candidate_geometry",
+                        )
+                    score_events = _machine_localized_score_events(
+                        input_id=input_id,
+                        score_system=score_system,
+                        recognition=score_recognition,
+                        tab_events=tab_events,
+                    )
+                    score_tab_diagnostics = _machine_score_tab_containment_diagnostics(
+                        score_events, tab_events
+                    )
+                    if not _machine_score_is_contained_in_tab(score_events, tab_events):
+                        raise ExtractionWorkflowError(
+                            "Machine score pitches are not contained in the machine-captured tab states: "
+                            + json.dumps(score_tab_diagnostics, sort_keys=True)
+                        )
+                    cache_core = {
+                        "schemaVersion": VALIDATION_MACHINE_RECAPTURE_VERSION,
+                        "batchId": batch_id,
+                        "partition": "validation",
+                        "inputId": input_id,
+                        "scoreSystemId": score_system_id,
+                        "tabSystemId": tab_system_id,
+                        "machineRecordDigest": machine_record_digest,
+                        "contractDigest": contract_digest,
+                        "sourcePairSha256": _sha256_bytes(source_pair_path.read_bytes()),
+                        "tabCropSha256": _sha256_bytes(Path(tab_crop["path"]).read_bytes()),
+                        "guidedTabCropSha256": str(guided_tab_crop["sha256"]),
+                        "guidedScoreCropSha256": str(guided_crop["sha256"]),
+                        "expectedEventCount": expected_count,
+                        "tabCountPrediction": tab_count_prediction,
+                        "countOnlyReaderAgrees": count_reader_agrees,
+                        "countOnlyReaderBlockers": count_blockers,
+                        "tabLocalization": localization,
+                        "scoreRecognition": score_recognition,
+                        "scoreTabContainmentDiagnostics": score_tab_diagnostics,
+                        "geometryRowReassignmentCount": geometry_row_reassignments,
+                        "mechanicalRowOverrideCount": mechanical_row_overrides,
+                        "stringOriginOffset": string_origin_offset,
+                        "stringOriginConsensus": round(string_origin_consensus, 6),
+                        "humanTruthUsed": False,
+                        "validationMayTrain": False,
+                        "sealedTestAccessed": False,
+                    }
+                    _write_json(cache_path, cache_core)
+
+                    candidate_record = copy.deepcopy(record)
+                    candidate_score = next(
+                        system
+                        for system in candidate_record.get("scoreSystems") or []
+                        if str(system.get("scoreSystemId") or "") == score_system_id
+                    )
+                    candidate_tab = next(
+                        system
+                        for system in candidate_record.get("tabSystems") or []
+                        if str(system.get("tabSystemId") or "") == tab_system_id
+                    )
+                    candidate_score["scoreEvents"] = score_events
+                    candidate_score["scoreAttackCount"] = expected_count
+                    candidate_score["keyFifths"] = int(
+                        score_recognition["keySignatureFifths"]
+                    )
+                    candidate_score["keySignatureFifths"] = int(
+                        score_recognition["keySignatureFifths"]
+                    )
+                    candidate_score["omrStatus"] = "machine_recaptured"
+                    candidate_score["machineRecapture"] = {
+                        "schemaVersion": VALIDATION_MACHINE_RECAPTURE_VERSION,
+                        "contractDigest": contract_digest,
+                        "expectedEventCount": expected_count,
+                        "humanTruthUsed": False,
+                    }
+                    candidate_tab["tabEvents"] = tab_events
+                    for candidate, resolved_event in zip(
+                        candidate_tab.get("tabEventCandidates") or [],
+                        tab_events,
+                        strict=True,
+                    ):
+                        original_strings = [
+                            int(value) for value in candidate.get("candidateStrings") or []
+                        ]
+                        candidate["candidateStrings"] = sorted(
+                            int(action["string"])
+                            for action in resolved_event.get("steelActions") or []
+                        )
+                        candidate["stringOriginCalibration"] = {
+                            "schemaVersion": VALIDATION_MACHINE_RECAPTURE_VERSION,
+                            "originalCandidateStrings": original_strings,
+                            "offset": string_origin_offset,
+                            "consensus": round(string_origin_consensus, 6),
+                        }
+                    candidate_tab["eventCounts"] = {
+                        **copy.deepcopy(candidate_tab.get("eventCounts") or {}),
+                        "printedCandidateColumns": expected_count,
+                        "recognizedSoundingStates": expected_count,
+                        "pickedStates": sum(
+                            event.get("executionType") != "movement_only"
+                            for event in tab_events
+                        ),
+                        "movementOnlyStates": sum(
+                            event.get("executionType") == "movement_only"
+                            for event in tab_events
+                        ),
+                        "unresolvedCandidateColumns": 0,
+                    }
+                    candidate_record["unresolved"] = [
+                        item
+                        for item in candidate_record.get("unresolved") or []
+                        if str(item.get("scoreSystemId") or "") != score_system_id
+                        and str(item.get("tabSystemId") or "") != tab_system_id
+                    ]
+                    _revalidate_corrected_record(
+                        candidate_record,
+                        profile,
+                        include_movement_only_tab_system_ids={tab_system_id},
+                    )
+                    recaptured_score = next(
+                        system
+                        for system in candidate_record.get("scoreSystems") or []
+                        if str(system.get("scoreSystemId") or "") == score_system_id
+                    )
+                    recaptured_tab = next(
+                        system
+                        for system in candidate_record.get("tabSystems") or []
+                        if str(system.get("tabSystemId") or "") == tab_system_id
+                    )
+                    recaptured_issues = [
+                        item
+                        for item in candidate_record.get("unresolved") or []
+                        if str(item.get("scoreSystemId") or "") == score_system_id
+                        or str(item.get("tabSystemId") or "") == tab_system_id
+                    ]
+                    final_comparison = _combined_score_tab_columns(
+                        recaptured_score, recaptured_tab
+                    )
+                    final_blockers = _validation_line_preflight_blockers(
+                        final_comparison,
+                        key_signature_known=True,
+                        blocking_issue_count=_validation_capture_issue_count(
+                            recaptured_issues
+                        ),
+                    )
+                    if final_blockers:
+                        raise ExtractionWorkflowError(
+                            "Recaptured line failed structural preflight: "
+                            + ", ".join(final_blockers)
+                        )
+                    candidate_record["revision"] = int(record.get("revision") or 1) + 1
+                    candidate_record.setdefault("validationMachineRecaptures", []).append(
+                        {
+                            "schemaVersion": VALIDATION_MACHINE_RECAPTURE_VERSION,
+                            "scoreSystemId": score_system_id,
+                            "tabSystemId": tab_system_id,
+                            "contractDigest": contract_digest,
+                            "expectedEventCount": expected_count,
+                            "countOnlyReaderAgrees": count_reader_agrees,
+                            "humanTruthUsed": False,
+                            "validationMayTrain": False,
+                        }
+                    )
+                    if apply:
+                        prior_digest = _sha256_json(record)
+                        archive_path = (
+                            revision_dir / input_id / f"{prior_digest}.json"
+                        )
+                        if not archive_path.exists():
+                            _write_json(archive_path, record)
+                        _write_json(page_path, candidate_record)
+                        record = candidate_record
+                        tab_by_id[tab_system_id] = recaptured_tab
+                        applied_count += 1
+                    results.append(
+                        {
+                            **result_core,
+                            "status": "passed_machine_preflight",
+                            "expectedEventCount": expected_count,
+                            "maximumPositionDelta": round(maximum_position_delta, 6),
+                            "geometryRowReassignmentCount": geometry_row_reassignments,
+                            "mechanicalRowOverrideCount": mechanical_row_overrides,
+                            "stringOriginOffset": string_origin_offset,
+                            "stringOriginConsensus": round(string_origin_consensus, 6),
+                            "countOnlyReaderAgrees": count_reader_agrees,
+                            "countOnlyReaderBlockers": count_blockers,
+                            "scorePitchContainmentPassed": True,
+                            "applied": apply,
+                        }
+                    )
+                except ExtractionWorkflowError as exc:
+                    results.append(
+                        {
+                            **result_core,
+                            "status": "withheld",
+                            "failure": str(exc)[:500],
+                        }
+                    )
+            if selected_count >= limit:
+                break
+        status_counts = Counter(str(item["status"]) for item in results)
+        report_core = {
+            "schemaVersion": VALIDATION_MACHINE_RECAPTURE_VERSION,
+            "batchId": batch_id,
+            "partition": "validation",
+            "contract": contract,
+            "contractDigest": contract_digest,
+            "selectedLineCount": selected_count,
+            "passedLineCount": int(status_counts["passed_machine_preflight"]),
+            "withheldLineCount": int(status_counts["withheld"]),
+            "appliedLineCount": applied_count,
+            "applyRequested": apply,
+            "results": results,
+            "humanTruthUsed": False,
+            "validationMayTrain": False,
+            "validationAccessed": True,
+            "sealedTestAccessed": False,
+        }
+        report_digest = _sha256_json(report_core)
+        report = {**report_core, "reportDigest": report_digest}
+        _write_json(remediation_dir / f"report-{report_digest}.json", report)
+        _write_json(remediation_dir / "report.json", report)
+        return report
+
     def prepare_validation_line_audit(
         self,
         batch_id: str,
@@ -21548,7 +22994,7 @@ class AmazingTablatureExtractor:
                 capture_preflight_blockers = _validation_line_preflight_blockers(
                     comparison,
                     key_signature_known=captured_key_fifths is not None,
-                    blocking_issue_count=len(line_issues),
+                    blocking_issue_count=_validation_capture_issue_count(line_issues),
                 )
                 line_gate_passed = bool(
                     comparison.get("automaticPitchGatePassed")

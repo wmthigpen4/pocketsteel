@@ -249,6 +249,20 @@ def _parser() -> argparse.ArgumentParser:
     )
     evaluate_score_vision.add_argument("--no-resume", action="store_true")
 
+    evaluate_guided_capture = subparsers.add_parser(
+        "evaluate-discovery-guided-capture-regression",
+        help=(
+            "Replay corrected discovery lines with reviewed geometry while "
+            "measuring machine-read tab states and score pitches only."
+        ),
+    )
+    evaluate_guided_capture.add_argument("batch_id")
+    evaluate_guided_capture.add_argument("--limit", type=int, default=8)
+    evaluate_guided_capture.add_argument("--vision-model", default="gemma4:12b")
+    evaluate_guided_capture.add_argument(
+        "--vision-base-url", default="http://127.0.0.1:11434"
+    )
+
     evaluate_score_projection = subparsers.add_parser(
         "evaluate-source-score-projection-challenger",
         help=(
@@ -510,6 +524,23 @@ def _parser() -> argparse.ArgumentParser:
         "--no-activate",
         action="store_true",
         help="Write an immutable digest-versioned audit without replacing its current URL.",
+    )
+
+    remediate_validation_capture = subparsers.add_parser(
+        "remediate-validation-machine-capture",
+        help=(
+            "Recapture incomplete validation lines from machine visual geometry, "
+            "guided state reading, and fail-closed checks without using human truth."
+        ),
+    )
+    remediate_validation_capture.add_argument("batch_id")
+    remediate_validation_capture.add_argument("--input-id", action="append", default=[])
+    remediate_validation_capture.add_argument("--limit", type=int, default=8)
+    remediate_validation_capture.add_argument("--no-resume", action="store_true")
+    remediate_validation_capture.add_argument("--apply", action="store_true")
+    remediate_validation_capture.add_argument("--vision-model", default="gemma4:12b")
+    remediate_validation_capture.add_argument(
+        "--vision-base-url", default="http://127.0.0.1:11434"
     )
 
     prepare_challenger_comparison = subparsers.add_parser(
@@ -962,6 +993,15 @@ def main() -> int:
                 limit=args.limit,
                 resume=not args.no_resume,
             )
+        elif args.command == "evaluate-discovery-guided-capture-regression":
+            result = AmazingTablatureExtractor(
+                args.root,
+                vision_model=args.vision_model,
+                vision_base_url=args.vision_base_url,
+            ).evaluate_discovery_guided_capture_regression(
+                args.batch_id,
+                limit=args.limit,
+            )
         elif args.command == "evaluate-source-score-projection-challenger":
             result = AmazingTablatureExtractor(
                 args.root
@@ -1097,6 +1137,18 @@ def main() -> int:
             result = AmazingTablatureExtractor(args.root).prepare_validation_line_audit(
                 args.batch_id,
                 activate=not args.no_activate,
+            )
+        elif args.command == "remediate-validation-machine-capture":
+            result = AmazingTablatureExtractor(
+                args.root,
+                vision_model=args.vision_model,
+                vision_base_url=args.vision_base_url,
+            ).remediate_validation_machine_capture(
+                args.batch_id,
+                input_ids=args.input_id,
+                limit=args.limit,
+                resume=not args.no_resume,
+                apply=args.apply,
             )
         elif args.command == "apply-combined-score-tab-review":
             result = AmazingTablatureExtractor(args.root).apply_combined_score_tab_review(
