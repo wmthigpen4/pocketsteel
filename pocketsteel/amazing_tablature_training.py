@@ -3058,11 +3058,28 @@ class AmazingTablatureTrainingStore:
             == _profile_digest(profile)
         )
         remaining = int(summary.get("remainingPageCount") or 0)
-        human_complete = bool(summary.get("humanApprovalComplete")) and remaining == 0
+        reviewed_page_count = int(summary.get("reviewedPageCount") or 0)
+        total_page_count = int(
+            summary.get("totalPageCount")
+            or reviewed_page_count + remaining
+        )
+        score_audit_complete = (
+            bool(summary.get("humanApprovalComplete")) and remaining == 0
+        )
+        disposition_complete = bool(
+            remaining == 0
+            and total_page_count > 0
+            and reviewed_page_count == total_page_count
+        )
         return {
             "batchId": batch_id,
-            "humanApprovalComplete": human_complete,
-            "reviewedPageCount": int(summary.get("reviewedPageCount") or 0),
+            "humanApprovalComplete": score_audit_complete,
+            "discoveryDispositionComplete": disposition_complete,
+            "scoreAuditComplete": score_audit_complete,
+            "tabOnlyApprovedPageCount": int(
+                summary.get("tabOnlyApprovedPageCount") or 0
+            ),
+            "reviewedPageCount": reviewed_page_count,
             "remainingPageCount": remaining,
             "approvedRecordCount": sum(
                 item.get("status") == "human_approved" for item in approved_index
@@ -3129,7 +3146,7 @@ class AmazingTablatureTrainingStore:
         blockers: list[str] = []
         for cohort in cohorts:
             batch_id = str(cohort["batchId"])
-            if not cohort["humanApprovalComplete"]:
+            if not cohort["discoveryDispositionComplete"]:
                 blockers.append(
                     f"{batch_id}:discovery_remaining={cohort['remainingPageCount']}"
                 )
@@ -3227,7 +3244,11 @@ class AmazingTablatureTrainingStore:
             records.extend(batch_records)
             cohorts.append(cohort)
         full_discovery_review_complete = all(
-            bool(cohort["reviewCompletion"]["humanApprovalComplete"])
+            bool(cohort["reviewCompletion"]["discoveryDispositionComplete"])
+            for cohort in cohorts
+        )
+        full_discovery_score_audit_complete = all(
+            bool(cohort["reviewCompletion"]["scoreAuditComplete"])
             for cohort in cohorts
         )
         if require_complete and not full_discovery_review_complete:
@@ -3257,6 +3278,7 @@ class AmazingTablatureTrainingStore:
             "rulesCodeFileDigests": code_digests,
             "partition": "discovery",
             "fullDiscoveryReviewComplete": full_discovery_review_complete,
+            "fullDiscoveryScoreAuditComplete": full_discovery_score_audit_complete,
             "validationAccessed": False,
             "sealedTestAccessed": False,
         }
@@ -3505,6 +3527,9 @@ class AmazingTablatureTrainingStore:
             ),
             "promotionEligible": False,
             "fullDiscoveryReviewComplete": bool(complete_discovery),
+            "fullDiscoveryScoreAuditComplete": bool(
+                seed.get("fullDiscoveryScoreAuditComplete")
+            ),
             "privacy": {"containsSourceContent": False, "containsProfileSnapshots": False},
         }
         findings = _contains_forbidden_runtime_data(payload)

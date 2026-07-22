@@ -1199,15 +1199,18 @@ def test_complete_discovery_challenger_reuses_hardened_lineage_and_all_styles(
                 "reviewDecisionId": "complete-page-review",
                 "reviewedRecordPath": "review/approved-records/input-r2.json",
                 "reviewedRecordDigest": reviewed_digest,
+                "approvalScope": "tab_only_score_audit_required",
             }
         ],
     )
     (extraction_root / "review/human-review-summary.json").write_text(
         json.dumps(
             {
-                "humanApprovalComplete": True,
+                "humanApprovalComplete": False,
+                "totalPageCount": 1,
                 "reviewedPageCount": 1,
                 "remainingPageCount": 0,
+                "tabOnlyApprovedPageCount": 1,
             }
         ),
         encoding="utf-8",
@@ -1248,6 +1251,9 @@ def test_complete_discovery_challenger_reuses_hardened_lineage_and_all_styles(
     base = store.train_discovery_challenger(epochs=2)
     readiness = store.canonical_readiness(base_model_id=base["modelId"])
     assert readiness["readyForCompleteDiscoveryTraining"] is True
+    assert readiness["cohorts"][0]["discoveryDispositionComplete"] is True
+    assert readiness["cohorts"][0]["scoreAuditComplete"] is False
+    assert readiness["cohorts"][0]["tabOnlyApprovedPageCount"] == 1
     assert readiness["preferenceAccounting"]["actual"] == {
         "reviewedCount": 16,
         "trainingCount": 6,
@@ -1261,6 +1267,7 @@ def test_complete_discovery_challenger_reuses_hardened_lineage_and_all_styles(
     )
     assert canonical["parentModelId"] == base["modelId"]
     assert canonical["fullDiscoveryReviewComplete"] is True
+    assert canonical["fullDiscoveryScoreAuditComplete"] is False
     assert canonical["evaluationScope"] == "canonical_validation_candidate"
     assert canonical["promotionEligible"] is False
     assert sorted(canonical["weightsByStyle"]) == [

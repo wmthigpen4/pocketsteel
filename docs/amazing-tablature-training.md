@@ -396,6 +396,8 @@ training evidence and ten both-valid comparisons are neutral evidence. It
 reports only aggregate discovery state and explicitly carries
 `validationAccessed=false` and `sealedTestAccessed=false`.
 
+Canonical readiness distinguishes complete discovery disposition from complete printed-score audit. A page that was explicitly approved only for tablature may contribute only `alignment:tab_only` movement/style evidence; it cannot provide score-to-tab supervision. The candidate and seed therefore report `fullDiscoveryScoreAuditComplete` separately instead of relabeling an unaudited printed score as correct.
+
 When and only when both discovery cohorts have zero remaining pages, build the
 canonical validation candidate through the same hardened phrase-sequence
 trainer:
