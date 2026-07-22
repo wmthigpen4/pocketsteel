@@ -173,6 +173,10 @@ DISCOVERY_TAB_ROW_GEOMETRY_VERSION = "anchored-tab-row-geometry-v1"
 DISCOVERY_TAB_ROW_GEOMETRY_SCHEMA_VERSION = (
     "amazing-tablature-discovery-tab-row-geometry-v1"
 )
+DISCOVERY_TAB_ACTION_RECOVERY_VERSION = "split-grip-action-recovery-v1"
+DISCOVERY_TAB_ACTION_RECOVERY_SCHEMA_VERSION = (
+    "amazing-tablature-discovery-tab-action-recovery-v1"
+)
 SOURCE_SCORE_VISION_REGRESSION_SCHEMA_VERSION = (
     "amazing-tablature-source-score-vision-regression-v1"
 )
@@ -7477,6 +7481,53 @@ def _merge_split_grip_event_candidates(
     for event_index, event in enumerate(merged, start=1):
         event["eventIndex"] = event_index
     return merged
+
+
+def _tab_action_recovery_metrics(
+    results: Sequence[Mapping[str, Any]],
+    subset: str,
+) -> dict[str, int]:
+    proposals = [
+        (inference, score)
+        for result in results
+        if result.get("subset") == subset
+        for inference, score in zip(
+            (result.get("actionInference") or {}).get("proposals") or [],
+            result.get("scoredProposals") or [],
+            strict=True,
+        )
+    ]
+    return {
+        "proposalCount": len(proposals),
+        "completeTokenCount": sum(
+            bool(inference.get("completeIndependentToken"))
+            for inference, _score in proposals
+        ),
+        "mechanicallyValidCount": sum(
+            bool(inference.get("mechanicallyValid"))
+            for inference, _score in proposals
+        ),
+        "exactActionCount": sum(
+            bool(score.get("actionExactAfterTruthJoin"))
+            for _inference, score in proposals
+        ),
+    }
+
+
+def _tab_action_recovery_gate(by_subset: Mapping[str, Mapping[str, int]]) -> bool:
+    development = by_subset.get("development") or {}
+    shadow = by_subset.get("shadow") or {}
+    return bool(
+        int(development.get("proposalCount") or 0) >= 2
+        and development.get("completeTokenCount") == development.get("proposalCount")
+        and development.get("mechanicallyValidCount")
+        == development.get("proposalCount")
+        and development.get("exactActionCount") == development.get("proposalCount")
+        and int(shadow.get("proposalCount") or 0) >= 1
+        and shadow.get("completeTokenCount") == shadow.get("proposalCount")
+        and shadow.get("mechanicallyValidCount") == shadow.get("proposalCount")
+        and shadow.get("exactActionCount") == shadow.get("proposalCount")
+    )
 
 
 def _tab_cell_horizontal_bounds(
@@ -21279,6 +21330,464 @@ class AmazingTablatureExtractor:
             "byOpenedSubset": by_subset,
             "blockerCounts": dict(sorted(blocker_counts.items())),
             "openedDiscoveryGatePassed": gate_passed,
+            "promotionEligible": False,
+            "reviewPacketCreated": False,
+            "humanRereviewRequested": False,
+            "trainingEvidenceCreated": False,
+            "currentPageRecordsModified": False,
+            "validationAccessed": False,
+            "sealedTestAccessed": False,
+            "reportDigest": report_digest,
+            "reportPath": str(report_path.relative_to(output_root)),
+        }
+
+    def freeze_discovery_tab_row_geometry_contract(
+        self,
+        batch_id: str,
+    ) -> dict[str, Any]:
+        """Freeze the one regression-passed geometry contract for later replay."""
+
+        batch_dir, _manifest, _work = self._batch_paths(batch_id, "discovery")
+        output_root = batch_dir / "extraction" / "discovery"
+        geometry_root = (
+            output_root
+            / "review"
+            / "automation"
+            / DISCOVERY_TAB_ROW_GEOMETRY_VERSION
+        )
+        matching: list[tuple[Path, dict[str, Any]]] = []
+        for report_path in sorted(geometry_root.glob("report-*.json")):
+            report = _read_json(report_path)
+            report_digest = str(report.get("reportDigest") or "")
+            if report_digest != _sha256_json(
+                {key: value for key, value in report.items() if key != "reportDigest"}
+            ):
+                raise ExtractionWorkflowError(
+                    "A tab-row geometry report digest changed."
+                )
+            if (
+                report.get("schemaVersion")
+                == DISCOVERY_TAB_ROW_GEOMETRY_SCHEMA_VERSION
+                and report.get("geometryVersion")
+                == DISCOVERY_TAB_ROW_GEOMETRY_VERSION
+                and report.get("openedDiscoveryGatePassed") is True
+            ):
+                matching.append((report_path, report))
+        if len(matching) != 1:
+            raise ExtractionWorkflowError(
+                "Freeze exactly one regression-passed tab-row geometry report."
+            )
+        report_path, report = matching[0]
+        contract = {
+            "geometryVersion": DISCOVERY_TAB_ROW_GEOMETRY_VERSION,
+            "maximumSplitCandidateDeltaRatio": 0.02,
+            "maximumArchivedAnchorDeltaRatio": 0.045,
+            "pattern": "adjacent_exact_middle_string_between_two_outer_strings",
+            "rowPolicy": "add_missing_middle_only_never_replace_existing_rows",
+            "tokenPolicy": (
+                "complete_independent_cell_token_single_action_confidence_gte_0_95"
+            ),
+            "mechanicalPolicy": "exact_source_copedent_validation_required",
+        }
+        selection_core = {
+            "schemaVersion": DISCOVERY_TAB_ROW_GEOMETRY_SCHEMA_VERSION,
+            "batchId": batch_id,
+            "partition": "discovery",
+            "contract": contract,
+            "contractDigest": _sha256_json(contract),
+            "fitReportDigest": report.get("reportDigest"),
+            "fitReportPath": str(report_path.relative_to(output_root)),
+            "selectionClass": "frozen_opened_discovery_action_replay_only",
+            "freshDiscoveryAvailable": False,
+            "promotionEligible": False,
+            "validationAccessed": False,
+            "sealedTestAccessed": False,
+            "frozenAt": _utc_now(),
+        }
+        selection = {
+            **selection_core,
+            "selectionDigest": _sha256_json(selection_core),
+        }
+        selection_path = geometry_root / "selected-contract.json"
+        if selection_path.exists():
+            existing = _read_json(selection_path)
+            if str(existing.get("selectionDigest") or "") != _sha256_json(
+                {
+                    key: value
+                    for key, value in existing.items()
+                    if key != "selectionDigest"
+                }
+            ):
+                raise ExtractionWorkflowError(
+                    "The frozen tab-row geometry selection changed."
+                )
+            comparable_existing = {
+                key: value
+                for key, value in existing.items()
+                if key not in {"frozenAt", "selectionDigest"}
+            }
+            comparable_selection = {
+                key: value
+                for key, value in selection.items()
+                if key not in {"frozenAt", "selectionDigest"}
+            }
+            if comparable_existing != comparable_selection:
+                raise ExtractionWorkflowError(
+                    "A different tab-row geometry contract is already frozen."
+                )
+            selection = existing
+        else:
+            _write_json(selection_path, selection)
+        return {
+            "schemaVersion": DISCOVERY_TAB_ROW_GEOMETRY_SCHEMA_VERSION,
+            "batchId": batch_id,
+            "partition": "discovery",
+            "contractDigest": selection["contractDigest"],
+            "fitReportDigest": selection["fitReportDigest"],
+            "selectionDigest": selection["selectionDigest"],
+            "selectionPath": str(selection_path.relative_to(output_root)),
+            "selectionClass": selection["selectionClass"],
+            "promotionEligible": False,
+            "reviewPacketCreated": False,
+            "validationAccessed": False,
+            "sealedTestAccessed": False,
+        }
+
+    def evaluate_discovery_tab_action_recovery_challenger(
+        self,
+        batch_id: str,
+    ) -> dict[str, Any]:
+        """Read complete actions for frozen geometry proposals before truth join."""
+
+        batch_dir, manifest, _work = self._batch_paths(batch_id, "discovery")
+        output_root = batch_dir / "extraction" / "discovery"
+        review_root = output_root / "review"
+        geometry_root = (
+            review_root / "automation" / DISCOVERY_TAB_ROW_GEOMETRY_VERSION
+        )
+        selection_path = geometry_root / "selected-contract.json"
+        if not selection_path.exists():
+            raise ExtractionWorkflowError(
+                "Freeze the tab-row geometry contract before action recovery."
+            )
+        selection = _read_json(selection_path)
+        selection_digest = str(selection.get("selectionDigest") or "")
+        if selection_digest != _sha256_json(
+            {key: value for key, value in selection.items() if key != "selectionDigest"}
+        ):
+            raise ExtractionWorkflowError(
+                "The frozen tab-row geometry selection changed."
+            )
+        contract = selection.get("contract") or {}
+        if (
+            contract.get("geometryVersion") != DISCOVERY_TAB_ROW_GEOMETRY_VERSION
+            or float(contract.get("maximumSplitCandidateDeltaRatio") or 0.0)
+            != 0.02
+            or float(contract.get("maximumArchivedAnchorDeltaRatio") or 0.0)
+            != 0.045
+        ):
+            raise ExtractionWorkflowError(
+                "Action recovery requires the exact frozen geometry contract."
+            )
+        fit_report_path = output_root / str(selection.get("fitReportPath") or "")
+        fit_report = _read_json(fit_report_path)
+        if str(fit_report.get("reportDigest") or "") != str(
+            selection.get("fitReportDigest") or ""
+        ):
+            raise ExtractionWorkflowError(
+                "The selected tab-row geometry report changed."
+            )
+        benchmark_path = (
+            review_root
+            / "automation"
+            / "source-score-notehead-challenger"
+            / "benchmark-manifest.json"
+        )
+        benchmark = _read_json(benchmark_path)
+        benchmark_by_case = {
+            str(case.get("caseId") or ""): dict(case)
+            for case in benchmark.get("cases") or []
+        }
+        profile = get_e9_copedent_profile(str(manifest["sourceCopedentId"]))
+        reader_contract_method = getattr(self.tab_vision, "contract", None)
+        reader_contract = (
+            reader_contract_method()
+            if callable(reader_contract_method)
+            else {"reader": str(getattr(self.tab_vision, "model", "unknown"))}
+        )
+        reader_contract_digest = _sha256_json(reader_contract)
+        action_root = geometry_root / DISCOVERY_TAB_ACTION_RECOVERY_VERSION
+        cell_root = action_root / "cell-captures"
+        cell_root.mkdir(parents=True, exist_ok=True)
+        os.chmod(action_root, 0o700)
+        os.chmod(cell_root, 0o700)
+
+        def action_signature(action: Mapping[str, Any]) -> dict[str, Any]:
+            return {
+                "string": int(action.get("string") or 0),
+                "fret": int(action.get("fret") or 0),
+                "controls": sorted(
+                    str(value).upper() for value in action.get("controls") or []
+                ),
+                "halfStop": bool(action.get("halfStop")),
+                "attack": bool(action.get("attack", True)),
+            }
+
+        results: list[dict[str, Any]] = []
+        for geometry_result in fit_report.get("results") or []:
+            inference = geometry_result.get("inference") or {}
+            row_proposals = list(inference.get("rowProposals") or [])
+            if not row_proposals or geometry_result.get("status") != "evaluated":
+                continue
+            case_id = str(geometry_result.get("caseId") or "")
+            case = benchmark_by_case.get(case_id)
+            if case is None:
+                raise ExtractionWorkflowError(
+                    "A geometry action case is absent from the benchmark."
+                )
+            input_id = str(case.get("inputId") or "")
+            score_system_id = str(case.get("scoreSystemId") or "")
+            reviewed_path = output_root / str(case.get("reviewedRecordPath") or "")
+            reviewed_record = _read_json(reviewed_path)
+            if _sha256_json(reviewed_record) != str(
+                case.get("reviewedRecordDigest") or ""
+            ):
+                raise ExtractionWorkflowError(
+                    "A geometry action reviewed record changed."
+                )
+            prior_digest = str(inference.get("archivedMachineRecordDigest") or "")
+            machine_record: dict[str, Any] | None = None
+            revision_dir = review_root / "machine-record-revisions" / input_id
+            for candidate_path in sorted(revision_dir.glob("*.json")):
+                candidate = _read_json(candidate_path)
+                if _sha256_json(candidate) == prior_digest:
+                    machine_record = candidate
+                    break
+            if machine_record is None:
+                raise ExtractionWorkflowError(
+                    "A geometry action archived machine record is missing."
+                )
+            machine_score = next(
+                system
+                for system in machine_record.get("scoreSystems") or []
+                if str(system.get("scoreSystemId") or "") == score_system_id
+            )
+            machine_tab = next(
+                system
+                for system in machine_record.get("tabSystems") or []
+                if str(system.get("tabSystemId") or "")
+                == str(machine_score.get("pairedTabSystemId") or "")
+            )
+            machine_events = sorted(
+                copy.deepcopy(machine_tab.get("tabEvents") or []),
+                key=lambda value: int(value.get("eventIndex") or 0),
+            )
+            anchors = [
+                float(event.get("horizontalPosition") or 0.0)
+                for event in machine_events
+            ]
+            derivative = machine_record.get("derivative") or {}
+            derivative_path = output_root / str(derivative.get("relativePath") or "")
+            if _sha256_bytes(derivative_path.read_bytes()) != str(
+                derivative.get("sha256") or ""
+            ):
+                raise ExtractionWorkflowError(
+                    "A geometry action derivative changed."
+                )
+            image = Image.open(derivative_path).convert("RGB")
+            gray = np.asarray(image.convert("L"))
+            grids = detect_tab_grids(gray)
+            system_index = int(machine_score.get("systemIndex") or 0)
+            if not 1 <= system_index <= len(grids):
+                raise ExtractionWorkflowError(
+                    "A geometry action tab grid is missing."
+                )
+            grid = grids[system_index - 1]
+            challenger_candidates = [
+                copy.deepcopy(dict(candidate))
+                for candidate in inference.get("challengerCandidates") or []
+            ]
+            sheets = _contact_sheets(
+                image,
+                grid,
+                challenger_candidates,
+                cell_root / case_id,
+                system_index,
+            )
+            cells: dict[str, dict[str, Any]] = {}
+            for sheet in sheets:
+                cells.update(self._read_tab_cells(sheet))
+            grid_width = max(1, grid.x1 - grid.x0)
+            proposal_inferences: list[dict[str, Any]] = []
+            for proposal in row_proposals:
+                event_index = int(proposal["eventIndex"])
+                string = int(proposal["proposedMissingString"])
+                anchor = anchors[event_index - 1]
+                matching_candidates = [
+                    candidate
+                    for candidate in challenger_candidates
+                    if string in {
+                        int(value)
+                        for value in candidate.get("candidateStrings") or []
+                    }
+                    and abs(
+                        float(candidate.get("x") or 0) / grid_width - anchor
+                    )
+                    <= float(contract["maximumArchivedAnchorDeltaRatio"])
+                ]
+                matching_candidates.sort(
+                    key=lambda candidate: abs(
+                        float(candidate.get("x") or 0) / grid_width - anchor
+                    )
+                )
+                candidate = matching_candidates[0] if matching_candidates else None
+                cell = (
+                    cells.get(f"e{candidate['eventIndex']}s{string}", {})
+                    if candidate is not None
+                    else {}
+                )
+                confidence = float(cell.get("confidence") or 0.0)
+                uncertain = bool(cell.get("uncertain"))
+                actions, issue = _tab_action_sequence_from_cell(
+                    cell,
+                    string=string,
+                    profile=profile,
+                    region_id=_stable_id(
+                        "geometry-action-region", case_id, event_index, string
+                    ),
+                )
+                complete = bool(
+                    candidate is not None
+                    and confidence >= 0.95
+                    and not uncertain
+                    and len(actions) == 1
+                    and issue is None
+                )
+                mechanically_valid = bool(
+                    complete
+                    and (actions[0].get("mechanicalValidation") or {}).get("valid")
+                )
+                proposal_inferences.append(
+                    {
+                        "eventIndex": event_index,
+                        "string": string,
+                        "candidateEventIndex": (
+                            int(candidate["eventIndex"])
+                            if candidate is not None
+                            else None
+                        ),
+                        "cell": copy.deepcopy(cell),
+                        "action": (
+                            action_signature(actions[0]) if complete else None
+                        ),
+                        "completeIndependentToken": complete,
+                        "mechanicallyValid": mechanically_valid,
+                        "issueKind": str((issue or {}).get("kind") or "") or None,
+                    }
+                )
+            action_inference = {
+                "actionRecoveryVersion": DISCOVERY_TAB_ACTION_RECOVERY_VERSION,
+                "geometrySelectionDigest": selection_digest,
+                "geometryInferenceDigest": geometry_result.get("inferenceDigest"),
+                "readerContract": reader_contract,
+                "readerContractDigest": reader_contract_digest,
+                "sourceCopedentId": profile.id,
+                "sourceCopedentRevision": profile.revision,
+                "sourceCopedentDigest": _profile_digest(profile),
+                "proposals": proposal_inferences,
+                "reviewedTruthUsedDuringInference": False,
+            }
+            action_inference_digest = _sha256_json(action_inference)
+
+            reviewed_score = next(
+                system
+                for system in reviewed_record.get("scoreSystems") or []
+                if str(system.get("scoreSystemId") or "") == score_system_id
+            )
+            reviewed_tab = next(
+                system
+                for system in reviewed_record.get("tabSystems") or []
+                if str(system.get("tabSystemId") or "")
+                == str(reviewed_score.get("pairedTabSystemId") or "")
+            )
+            truth_events = sorted(
+                reviewed_tab.get("tabEvents") or [],
+                key=lambda value: int(value.get("eventIndex") or 0),
+            )
+            scored_proposals: list[dict[str, Any]] = []
+            for proposal in proposal_inferences:
+                truth_action = next(
+                    (
+                        action
+                        for action in truth_events[int(proposal["eventIndex"]) - 1].get(
+                            "steelActions"
+                        )
+                        or []
+                        if int(action.get("string") or 0) == int(proposal["string"])
+                    ),
+                    None,
+                )
+                scored_proposals.append(
+                    {
+                        "eventIndex": proposal["eventIndex"],
+                        "string": proposal["string"],
+                        "actionExactAfterTruthJoin": bool(
+                            proposal.get("action") is not None
+                            and truth_action is not None
+                            and proposal["action"] == action_signature(truth_action)
+                        ),
+                    }
+                )
+            results.append(
+                {
+                    "caseId": case_id,
+                    "inputId": input_id,
+                    "scoreSystemId": score_system_id,
+                    "subset": case.get("subset"),
+                    "actionInferenceDigest": action_inference_digest,
+                    "actionInference": action_inference,
+                    "scoredProposals": scored_proposals,
+                    "truthJoinedAfterInference": True,
+                }
+            )
+
+        by_subset = {
+            subset: _tab_action_recovery_metrics(results, subset)
+            for subset in ("development", "shadow")
+        }
+        gate_passed = _tab_action_recovery_gate(by_subset)
+        report_core = {
+            "schemaVersion": DISCOVERY_TAB_ACTION_RECOVERY_SCHEMA_VERSION,
+            "batchId": batch_id,
+            "partition": "discovery",
+            "evaluationClass": "opened_discovery_tab_action_regression",
+            "geometrySelectionDigest": selection_digest,
+            "readerContractDigest": reader_contract_digest,
+            "byOpenedSubset": by_subset,
+            "results": results,
+            "openedDiscoveryActionGatePassed": gate_passed,
+            "freshDiscoveryAvailable": False,
+            "promotionEligible": False,
+            "reviewPacketCreated": False,
+            "humanRereviewRequested": False,
+            "trainingEvidenceCreated": False,
+            "currentPageRecordsModified": False,
+            "validationAccessed": False,
+            "sealedTestAccessed": False,
+        }
+        report_digest = _sha256_json(report_core)
+        report = {**report_core, "reportDigest": report_digest}
+        report_path = action_root / f"report-{report_digest[:12]}.json"
+        _write_json(report_path, report)
+        return {
+            "schemaVersion": DISCOVERY_TAB_ACTION_RECOVERY_SCHEMA_VERSION,
+            "batchId": batch_id,
+            "partition": "discovery",
+            "geometrySelectionDigest": selection_digest,
+            "readerContractDigest": reader_contract_digest,
+            "byOpenedSubset": by_subset,
+            "openedDiscoveryActionGatePassed": gate_passed,
+            "freshDiscoveryAvailable": False,
             "promotionEligible": False,
             "reviewPacketCreated": False,
             "humanRereviewRequested": False,

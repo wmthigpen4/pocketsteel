@@ -124,6 +124,8 @@ from pocketsteel.amazing_tablature_extraction import (
     _tab_action_from_token,
     _tab_action_sequence_from_cell,
     _tab_action_sequence_from_token,
+    _tab_action_recovery_gate,
+    _tab_action_recovery_metrics,
     _tab_cell_horizontal_bounds,
     _tab_event_candidates,
     _tab_measure_context,
@@ -2922,6 +2924,58 @@ def test_split_grip_geometry_does_not_merge_unrelated_neighbors() -> None:
         [5],
     ]
     assert [event["eventIndex"] for event in merged] == [1, 2, 3, 4]
+
+
+def test_tab_action_recovery_gate_requires_complete_exact_both_subsets() -> None:
+    results = [
+        {
+            "subset": "development",
+            "actionInference": {
+                "proposals": [
+                    {
+                        "completeIndependentToken": True,
+                        "mechanicallyValid": True,
+                    },
+                    {
+                        "completeIndependentToken": True,
+                        "mechanicallyValid": True,
+                    },
+                ]
+            },
+            "scoredProposals": [
+                {"actionExactAfterTruthJoin": True},
+                {"actionExactAfterTruthJoin": True},
+            ],
+        },
+        {
+            "subset": "shadow",
+            "actionInference": {
+                "proposals": [
+                    {
+                        "completeIndependentToken": True,
+                        "mechanicallyValid": True,
+                    }
+                ]
+            },
+            "scoredProposals": [{"actionExactAfterTruthJoin": True}],
+        },
+    ]
+    metrics = {
+        subset: _tab_action_recovery_metrics(results, subset)
+        for subset in ("development", "shadow")
+    }
+
+    assert metrics["development"] == {
+        "proposalCount": 2,
+        "completeTokenCount": 2,
+        "mechanicallyValidCount": 2,
+        "exactActionCount": 2,
+    }
+    assert metrics["shadow"]["exactActionCount"] == 1
+    assert _tab_action_recovery_gate(metrics) is True
+
+    metrics["shadow"]["exactActionCount"] = 0
+    assert _tab_action_recovery_gate(metrics) is False
 
 
 def test_page_classifier_uses_tab_texture_and_specific_instructional_cues() -> None:

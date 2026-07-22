@@ -290,6 +290,28 @@ def _parser() -> argparse.ArgumentParser:
     )
     evaluate_tab_row_geometry.add_argument("batch_id")
 
+    freeze_tab_row_geometry = subparsers.add_parser(
+        "freeze-discovery-tab-row-geometry-contract",
+        help="Freeze the one regression-passed split-grip geometry contract.",
+    )
+    freeze_tab_row_geometry.add_argument("batch_id")
+
+    evaluate_tab_action_recovery = subparsers.add_parser(
+        "evaluate-discovery-tab-action-recovery-challenger",
+        help=(
+            "Read complete mechanically valid actions for frozen split-grip "
+            "proposals on opened discovery only."
+        ),
+    )
+    evaluate_tab_action_recovery.add_argument("batch_id")
+    evaluate_tab_action_recovery.add_argument(
+        "--tab-reader", choices=("apple", "ollama"), default="ollama"
+    )
+    evaluate_tab_action_recovery.add_argument("--vision-model", default="gemma4:12b")
+    evaluate_tab_action_recovery.add_argument(
+        "--vision-base-url", default="http://127.0.0.1:11434"
+    )
+
     evaluate_score_projection = subparsers.add_parser(
         "evaluate-source-score-projection-challenger",
         help=(
@@ -1041,6 +1063,17 @@ def main() -> int:
             result = AmazingTablatureExtractor(
                 args.root
             ).evaluate_discovery_tab_row_geometry_challenger(args.batch_id)
+        elif args.command == "freeze-discovery-tab-row-geometry-contract":
+            result = AmazingTablatureExtractor(
+                args.root
+            ).freeze_discovery_tab_row_geometry_contract(args.batch_id)
+        elif args.command == "evaluate-discovery-tab-action-recovery-challenger":
+            result = AmazingTablatureExtractor(
+                args.root,
+                tab_reader=args.tab_reader,
+                vision_model=args.vision_model,
+                vision_base_url=args.vision_base_url,
+            ).evaluate_discovery_tab_action_recovery_challenger(args.batch_id)
         elif args.command == "evaluate-source-score-projection-challenger":
             result = AmazingTablatureExtractor(
                 args.root
