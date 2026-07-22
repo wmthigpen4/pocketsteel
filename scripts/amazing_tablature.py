@@ -272,6 +272,15 @@ def _parser() -> argparse.ArgumentParser:
     )
     evaluate_semantic_score_repair.add_argument("batch_id")
 
+    evaluate_machine_timeline = subparsers.add_parser(
+        "evaluate-discovery-machine-score-tab-timeline",
+        help=(
+            "Join source-only score semantics to archived pre-correction machine "
+            "tablature on opened discovery lines and fail closed before review."
+        ),
+    )
+    evaluate_machine_timeline.add_argument("batch_id")
+
     evaluate_score_projection = subparsers.add_parser(
         "evaluate-source-score-projection-challenger",
         help=(
@@ -1015,6 +1024,10 @@ def main() -> int:
             result = AmazingTablatureExtractor(
                 args.root
             ).evaluate_discovery_source_score_semantic_repair(args.batch_id)
+        elif args.command == "evaluate-discovery-machine-score-tab-timeline":
+            result = AmazingTablatureExtractor(
+                args.root
+            ).evaluate_discovery_machine_score_tab_timeline(args.batch_id)
         elif args.command == "evaluate-source-score-projection-challenger":
             result = AmazingTablatureExtractor(
                 args.root

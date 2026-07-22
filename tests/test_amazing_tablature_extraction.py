@@ -65,6 +65,7 @@ from pocketsteel.amazing_tablature_extraction import (
     _score_projection_fusion,
     _score_component_fusion,
     _score_projection_component_hybrid,
+    _source_first_system_key_signature,
     _source_score_semantic_repair,
     _source_score_projection_shadow_metrics,
     _page_review_compatibility_version,
@@ -79,6 +80,7 @@ from pocketsteel.amazing_tablature_extraction import (
     _machine_localized_score_events,
     _machine_localized_tab_events,
     _machine_score_is_contained_in_tab,
+    _machine_unified_score_tab_timeline,
     _projection_tab_grid,
     _promote_full_line_record_to_combined_scope,
     _prepare_score_omr_crop,
@@ -1220,6 +1222,252 @@ def test_machine_localized_tab_events_fail_closed_on_blank_or_invalid_states() -
                 "uncertain": False,
             },
         )
+
+
+def test_machine_unified_timeline_preserves_ties_and_movement_only_states() -> None:
+    score_events = [
+        {
+            "scoreEventId": "score-1",
+            "measure": 1,
+            "beat": 1.0,
+            "defaultX": 100,
+            "pitchValue": 60,
+            "rest": False,
+        },
+        {
+            "scoreEventId": "score-1-tie",
+            "measure": 1,
+            "beat": 2.0,
+            "defaultX": 200,
+            "pitchValue": 60,
+            "rest": False,
+            "tie": ["stop"],
+        },
+        {
+            "scoreEventId": "score-2",
+            "measure": 1,
+            "beat": 3.0,
+            "defaultX": 300,
+            "pitchValue": 62,
+            "rest": False,
+        },
+    ]
+
+    def action(pitch: int, *, attack: bool) -> dict[str, Any]:
+        return {
+            "string": 4,
+            "fret": 8,
+            "controls": [],
+            "attack": attack,
+            "soundingPitchValue": pitch,
+            "mechanicalValidation": {"valid": True},
+        }
+
+    tab_events = [
+        {
+            "tabEventId": "tab-1",
+            "eventIndex": 1,
+            "executionType": "attack",
+            "horizontalPosition": 0.1,
+            "steelActions": [action(60, attack=True)],
+        },
+        {
+            "tabEventId": "tab-2",
+            "eventIndex": 2,
+            "executionType": "movement_only",
+            "horizontalPosition": 0.5,
+            "steelActions": [action(60, attack=False)],
+        },
+        {
+            "tabEventId": "tab-3",
+            "eventIndex": 3,
+            "executionType": "attack",
+            "horizontalPosition": 0.9,
+            "steelActions": [action(62, attack=True)],
+        },
+    ]
+
+    timeline = _machine_unified_score_tab_timeline(
+        score_events, tab_events, expected_attack_count=2
+    )
+
+    assert timeline["reviewable"] is True
+    assert timeline["noBlankTimelineRows"] is True
+    assert [row["scoreStateType"] for row in timeline["rows"]] == [
+        "attack",
+        "tied_continuation",
+        "attack",
+    ]
+    assert timeline["reviewedTruthUsedDuringInference"] is False
+
+
+def test_machine_unified_timeline_inherits_held_state_and_blocks_bad_pitch() -> None:
+    score_events = [
+        {
+            "scoreEventId": "score-1",
+            "measure": 1,
+            "beat": 1.0,
+            "defaultX": 100,
+            "pitchValue": 60,
+            "rest": False,
+        }
+    ]
+    tab_events = [
+        {
+            "tabEventId": "tab-1",
+            "eventIndex": 1,
+            "executionType": "attack",
+            "steelActions": [
+                {
+                    "string": 4,
+                    "fret": 8,
+                    "controls": [],
+                    "attack": True,
+                    "soundingPitchValue": 60,
+                    "mechanicalValidation": {"valid": True},
+                }
+            ],
+        },
+        {
+            "tabEventId": "tab-2",
+            "eventIndex": 2,
+            "executionType": "movement_only",
+            "steelActions": [
+                {
+                    "string": 4,
+                    "fret": 10,
+                    "controls": [],
+                    "attack": False,
+                    "soundingPitchValue": 62,
+                    "mechanicalValidation": {"valid": True},
+                }
+            ],
+        },
+    ]
+
+    timeline = _machine_unified_score_tab_timeline(
+        score_events, tab_events, expected_attack_count=1
+    )
+
+    assert timeline["structurallyComplete"] is True
+    assert timeline["rows"][1]["scoreStateType"] == "held_score_state"
+    assert timeline["rows"][1]["scorePitchContainedInTab"] is False
+    assert timeline["reviewable"] is False
+    assert "score_pitch_not_contained_in_tab" in {
+        blocker["kind"] for blocker in timeline["blockers"]
+    }
+
+
+def test_machine_unified_timeline_blocks_unmatched_attacks_without_blank_rows() -> None:
+    score_events = [
+        {
+            "scoreEventId": "score-1",
+            "measure": 1,
+            "beat": 1.0,
+            "pitchValue": 60,
+            "rest": False,
+        },
+        {
+            "scoreEventId": "score-2",
+            "measure": 1,
+            "beat": 2.0,
+            "pitchValue": 62,
+            "rest": False,
+        },
+    ]
+    tab_events = [
+        {
+            "tabEventId": "tab-1",
+            "eventIndex": 1,
+            "executionType": "attack",
+            "steelActions": [
+                {
+                    "string": 4,
+                    "fret": 8,
+                    "controls": [],
+                    "attack": True,
+                    "soundingPitchValue": 60,
+                    "mechanicalValidation": {"valid": True},
+                }
+            ],
+        }
+    ]
+
+    timeline = _machine_unified_score_tab_timeline(
+        score_events, tab_events, expected_attack_count=2
+    )
+
+    assert timeline["reviewable"] is False
+    assert timeline["timelineRowCount"] == 1
+    assert "tab_attack_count_mismatch" in {
+        blocker["kind"] for blocker in timeline["blockers"]
+    }
+    assert "score_state_without_tab_state" in {
+        blocker["kind"] for blocker in timeline["blockers"]
+    }
+
+
+def test_source_first_system_key_signature_accepts_explicit_or_proven_zero(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    omr_path = tmp_path / "first-system.omr"
+    omr_path.write_bytes(b"fixture")
+    monkeypatch.setattr(
+        "pocketsteel.amazing_tablature_extraction._parse_audiveris_head_graph",
+        lambda _path, _system_id: {
+            "keySignature": {
+                "fifths": 3,
+                "evidenceClass": "direct_visual_observation",
+                "confidence": 0.91,
+            },
+            "clef": {"confidence": 0.9},
+            "keySignatureCandidates": [],
+            "keySignatureAmbiguous": False,
+        },
+    )
+
+    explicit = _source_first_system_key_signature(omr_path, system_id="score-1")
+
+    assert explicit is not None
+    assert explicit["fifths"] == 3
+    assert explicit["source"] == "explicit_first_system_key_signature"
+
+    monkeypatch.setattr(
+        "pocketsteel.amazing_tablature_extraction._parse_audiveris_head_graph",
+        lambda _path, _system_id: {
+            "keySignature": None,
+            "clef": {"confidence": 0.84},
+            "keySignatureCandidates": [],
+            "keySignatureAmbiguous": False,
+        },
+    )
+
+    zero = _source_first_system_key_signature(omr_path, system_id="score-1")
+
+    assert zero is not None
+    assert zero["fifths"] == 0
+    assert zero["source"] == "first_system_clef_with_no_key_symbols"
+    assert zero["evidenceClass"] == "deterministic_derivation"
+
+
+def test_source_first_system_key_signature_rejects_ambiguous_absence(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    omr_path = tmp_path / "first-system.omr"
+    omr_path.write_bytes(b"fixture")
+    monkeypatch.setattr(
+        "pocketsteel.amazing_tablature_extraction._parse_audiveris_head_graph",
+        lambda _path, _system_id: {
+            "keySignature": None,
+            "clef": {"confidence": 0.9},
+            "keySignatureCandidates": [{"fifths": 2}],
+            "keySignatureAmbiguous": True,
+        },
+    )
+
+    assert (
+        _source_first_system_key_signature(omr_path, system_id="score-1") is None
+    )
 
 
 def test_validation_not_ready_page_contains_no_review_controls() -> None:

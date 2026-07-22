@@ -165,6 +165,10 @@ SOURCE_SCORE_SEMANTIC_REPAIR_VERSION = "source-score-semantic-repair-v1"
 SOURCE_SCORE_SEMANTIC_REPAIR_SCHEMA_VERSION = (
     "amazing-tablature-source-score-semantic-repair-v1"
 )
+DISCOVERY_MACHINE_TIMELINE_VERSION = "discovery-machine-score-tab-timeline-v1"
+DISCOVERY_MACHINE_TIMELINE_SCHEMA_VERSION = (
+    "amazing-tablature-discovery-machine-score-tab-timeline-v1"
+)
 SOURCE_SCORE_VISION_REGRESSION_SCHEMA_VERSION = (
     "amazing-tablature-source-score-vision-regression-v1"
 )
@@ -5861,6 +5865,273 @@ def _machine_score_tab_containment_diagnostics(
     }
 
 
+def _machine_unified_score_tab_timeline(
+    score_events: Sequence[Mapping[str, Any]],
+    tab_events: Sequence[Mapping[str, Any]],
+    *,
+    expected_attack_count: int | None = None,
+) -> dict[str, Any]:
+    """Build a fail-closed machine score/tab timeline without blank placeholders.
+
+    Picked tablature states consume one printed score attack.  A movement-only
+    state consumes an explicit tied continuation when one is next in score
+    order; otherwise it inherits the preceding sounding score state.  The
+    function never inserts an empty score or tablature event to make counts
+    appear equal.  Any unmatched event, invalid steel action, or pitch mismatch
+    blocks the timeline from human review.
+    """
+
+    visible_score_events = [
+        event for event in score_events if not bool(event.get("rest"))
+    ]
+    def tie_types(event: Mapping[str, Any]) -> set[str]:
+        raw = event.get("tie") or []
+        return {str(raw)} if isinstance(raw, str) else {str(value) for value in raw}
+
+    def score_state(
+        group: Sequence[Mapping[str, Any]],
+        *,
+        group_index: int,
+        state_type: str,
+    ) -> dict[str, Any]:
+        pitch_values = sorted(
+            {
+                int(event["pitchValue"])
+                for event in group
+                if event.get("pitchValue") is not None
+            }
+        )
+        return {
+            "scoreGroupIndex": group_index,
+            "stateType": state_type,
+            "scoreEventIds": [str(event.get("scoreEventId") or "") for event in group],
+            "pitchValues": pitch_values,
+            "pitches": [scientific_pitch_for_value(value) for value in pitch_values],
+            "measure": int(group[0].get("measure") or 0) if group else 0,
+            "beat": float(group[0].get("beat") or 0.0) if group else 0.0,
+            "horizontalPosition": (
+                round(
+                    sum(
+                        float(event["defaultX"])
+                        for event in group
+                        if event.get("defaultX") is not None
+                    )
+                    / sum(event.get("defaultX") is not None for event in group),
+                    7,
+                )
+                if group and any(event.get("defaultX") is not None for event in group)
+                else None
+            ),
+        }
+
+    attack_groups = _score_attack_groups(visible_score_events)
+    attack_states = [
+        score_state(group, group_index=index, state_type="attack")
+        for index, group in enumerate(attack_groups, start=1)
+    ]
+    tie_events = [
+        event
+        for event in visible_score_events
+        if bool(event.get("tieContinuation")) or "stop" in tie_types(event)
+    ]
+    tie_states = [
+        score_state(group, group_index=index, state_type="tied_continuation")
+        for index, group in enumerate(
+            _score_event_groups_by_printed_position(tie_events), start=1
+        )
+    ]
+    ties_after_attack: dict[int, list[dict[str, Any]]] = {}
+    for tie_state in tie_states:
+        tie_x = tie_state.get("horizontalPosition")
+        preceding_attack = 1
+        if tie_x is not None:
+            preceding = [
+                index
+                for index, state in enumerate(attack_states, start=1)
+                if state.get("horizontalPosition") is not None
+                and float(state["horizontalPosition"]) <= float(tie_x)
+            ]
+            if preceding:
+                preceding_attack = preceding[-1]
+        ties_after_attack.setdefault(preceding_attack, []).append(tie_state)
+
+    tab_states = _ordered_tab_states({"tabEvents": list(tab_events)})
+    blockers: list[dict[str, Any]] = []
+    rows: list[dict[str, Any]] = []
+    score_cursor = 0
+    prior_score_state: dict[str, Any] | None = None
+    score_attack_count = len(attack_states)
+    tab_attack_count = sum(bool(state["isAttack"]) for state in tab_states)
+    required_attack_count = (
+        score_attack_count if expected_attack_count is None else int(expected_attack_count)
+    )
+    if score_attack_count != required_attack_count:
+        blockers.append(
+            {
+                "kind": "score_attack_count_mismatch",
+                "expected": required_attack_count,
+                "actual": score_attack_count,
+            }
+        )
+    if tab_attack_count != required_attack_count:
+        blockers.append(
+            {
+                "kind": "tab_attack_count_mismatch",
+                "expected": required_attack_count,
+                "actual": tab_attack_count,
+            }
+        )
+
+    for timeline_index, tab_state in enumerate(tab_states, start=1):
+        score_state: dict[str, Any] | None = None
+        score_state_type = ""
+        if bool(tab_state.get("isAttack")):
+            if score_cursor < len(attack_states):
+                score_state = attack_states[score_cursor]
+                score_state_type = "attack"
+                score_cursor += 1
+                prior_score_state = score_state
+            if score_state is None:
+                blockers.append(
+                    {
+                        "kind": "tab_attack_without_score_attack",
+                        "timelineIndex": timeline_index,
+                        "tabEventId": tab_state.get("tabEventId"),
+                    }
+                )
+        else:
+            prior_attack_index = int(
+                (prior_score_state or {}).get("scoreGroupIndex") or 0
+            )
+            pending_ties = ties_after_attack.get(prior_attack_index) or []
+            if pending_ties:
+                score_state = pending_ties.pop(0)
+                score_state_type = "tied_continuation"
+            elif prior_score_state is not None:
+                score_state = prior_score_state
+                score_state_type = "held_score_state"
+            else:
+                blockers.append(
+                    {
+                        "kind": "movement_before_score_state",
+                        "timelineIndex": timeline_index,
+                        "tabEventId": tab_state.get("tabEventId"),
+                    }
+                )
+
+        if score_state is None:
+            continue
+        score_values = set(int(value) for value in score_state.get("pitchValues") or [])
+        tab_values = set(int(value) for value in tab_state.get("pitchValues") or [])
+        pitch_contained = bool(score_values) and score_values.issubset(tab_values)
+        mechanically_valid = bool(tab_state.get("steelActions")) and bool(
+            tab_state.get("mechanicallyValid")
+        )
+        if not score_values or not tab_values:
+            blockers.append(
+                {
+                    "kind": "blank_timeline_pitch_state",
+                    "timelineIndex": timeline_index,
+                }
+            )
+        if not mechanically_valid:
+            blockers.append(
+                {
+                    "kind": "mechanically_invalid_tab_state",
+                    "timelineIndex": timeline_index,
+                    "tabEventId": tab_state.get("tabEventId"),
+                }
+            )
+        if not pitch_contained:
+            blockers.append(
+                {
+                    "kind": "score_pitch_not_contained_in_tab",
+                    "timelineIndex": timeline_index,
+                    "scorePitchValues": sorted(score_values),
+                    "tabPitchValues": sorted(tab_values),
+                }
+            )
+        rows.append(
+            {
+                "timelineIndex": timeline_index,
+                "scoreStateType": score_state_type,
+                "scoreGroupIndex": score_state.get("scoreGroupIndex"),
+                "scoreEventIds": list(score_state.get("scoreEventIds") or []),
+                "scorePitches": list(score_state.get("pitches") or []),
+                "scorePitchValues": sorted(score_values),
+                "scoreMeasure": score_state.get("measure"),
+                "scoreBeat": score_state.get("beat"),
+                "scoreHorizontalPosition": score_state.get("horizontalPosition"),
+                "tabEventId": tab_state.get("tabEventId"),
+                "tabEventIndex": tab_state.get("eventIndex"),
+                "tabExecutionType": tab_state.get("executionType"),
+                "tabIsAttack": bool(tab_state.get("isAttack")),
+                "tabPitches": list(tab_state.get("pitches") or []),
+                "tabPitchValues": sorted(tab_values),
+                "tabHorizontalPosition": tab_state.get("horizontalPosition"),
+                "steelActions": copy.deepcopy(tab_state.get("steelActions") or []),
+                "mechanicallyValid": mechanically_valid,
+                "scorePitchContainedInTab": pitch_contained,
+                "evidenceClass": "deterministic_derivation",
+                "reviewState": "machine_validated" if pitch_contained and mechanically_valid else "needs_human_review",
+            }
+        )
+
+    for score_state in attack_states[score_cursor:]:
+        blockers.append(
+            {
+                "kind": "score_state_without_tab_state",
+                "scoreGroupIndex": score_state["scoreGroupIndex"],
+                "scoreStateType": score_state["stateType"],
+            }
+        )
+    no_blank_rows = bool(rows) and len(rows) == len(tab_states) and all(
+        row.get("scorePitchValues")
+        and row.get("tabPitchValues")
+        and row.get("steelActions")
+        for row in rows
+    )
+    mechanics_valid = bool(rows) and all(
+        bool(row.get("mechanicallyValid")) for row in rows
+    )
+    pitch_contained = bool(rows) and all(
+        bool(row.get("scorePitchContainedInTab")) for row in rows
+    )
+    structural_complete = bool(
+        score_attack_count == required_attack_count
+        and tab_attack_count == required_attack_count
+        and score_cursor == len(attack_states)
+        and len(rows) == len(tab_states)
+        and no_blank_rows
+    )
+    reviewable = bool(
+        structural_complete and mechanics_valid and pitch_contained and not blockers
+    )
+    return {
+        "timelineVersion": DISCOVERY_MACHINE_TIMELINE_VERSION,
+        "expectedAttackCount": required_attack_count,
+        "scoreAttackCount": score_attack_count,
+        "scoreStateCount": len(attack_states) + len(tie_states),
+        "scoreTieContinuationCount": len(tie_states),
+        "unconsumedTieContinuationCount": sum(
+            len(states) for states in ties_after_attack.values()
+        ),
+        "tabAttackCount": tab_attack_count,
+        "tabStateCount": len(tab_states),
+        "timelineRowCount": len(rows),
+        "structurallyComplete": structural_complete,
+        "mechanicallyValid": mechanics_valid,
+        "pitchContained": pitch_contained,
+        "noBlankTimelineRows": no_blank_rows,
+        "reviewable": reviewable,
+        "blockers": blockers,
+        "rows": rows,
+        "sourceOnlyScore": True,
+        "independentMachineTab": True,
+        "reviewedTruthUsedDuringInference": False,
+    }
+
+
 def _current_combined_line_entries(
     entries: Sequence[Mapping[str, Any]],
 ) -> list[dict[str, Any]]:
@@ -9179,6 +9450,48 @@ def _source_score_semantic_repair(
         "reviewerPitchesProvided": False,
         "tablatureProvided": False,
     }
+
+
+def _source_first_system_key_signature(
+    omr_path: Path,
+    *,
+    system_id: str,
+) -> dict[str, Any] | None:
+    """Read page-level key evidence from a digest-pinned first score system.
+
+    A recognized key signature is direct visual evidence.  When the first
+    printed system has a recognized clef, no key candidates, and no ambiguous
+    key symbols, the absence itself deterministically means zero fifths.  This
+    helper must not be used on continuation systems, where a publisher may omit
+    a repeated key signature.
+    """
+
+    head_graph = _parse_audiveris_head_graph(omr_path, system_id)
+    explicit = head_graph.get("keySignature")
+    if isinstance(explicit, Mapping):
+        return {
+            **copy.deepcopy(dict(explicit)),
+            "source": "explicit_first_system_key_signature",
+            "firstSystemOnly": True,
+        }
+    if (
+        head_graph.get("clef")
+        and not (head_graph.get("keySignatureCandidates") or [])
+        and not bool(head_graph.get("keySignatureAmbiguous"))
+    ):
+        return {
+            "fifths": 0,
+            "evidenceClass": "deterministic_derivation",
+            "confidence": round(
+                min(0.95, float((head_graph.get("clef") or {}).get("confidence") or 0.0)),
+                4,
+            ),
+            "source": "first_system_clef_with_no_key_symbols",
+            "firstSystemOnly": True,
+            "keySignatureCandidates": [],
+            "keySignatureAmbiguous": False,
+        }
+    return None
 
 
 def _collect_review_exposure_ids(
@@ -20067,6 +20380,515 @@ class AmazingTablatureExtractor:
             "byOpenedSubset": by_subset,
             "promotionEligible": False,
             "reviewPacketCreated": False,
+            "trainingEvidenceCreated": False,
+            "currentPageRecordsModified": False,
+            "validationAccessed": False,
+            "sealedTestAccessed": False,
+            "reportDigest": report_digest,
+            "reportPath": str(report_path.relative_to(output_root)),
+        }
+
+    def evaluate_discovery_machine_score_tab_timeline(
+        self,
+        batch_id: str,
+    ) -> dict[str, Any]:
+        """Test the unified machine timeline on already-opened discovery cases.
+
+        Source-score inference and archived pre-correction machine tablature are
+        frozen before reviewed score/tab truth is read for scoring.  The command
+        creates neither review packets nor training evidence and cannot access
+        validation or sealed-test partitions.
+        """
+
+        batch_dir, _manifest, _work = self._batch_paths(batch_id, "discovery")
+        output_root = batch_dir / "extraction" / "discovery"
+        review_root = output_root / "review"
+        benchmark_root = (
+            review_root / "automation" / "source-score-notehead-challenger"
+        )
+        manifest_path = benchmark_root / "benchmark-manifest.json"
+        if not manifest_path.exists():
+            raise ExtractionWorkflowError(
+                "Freeze the source-score notehead benchmark before timeline evaluation."
+            )
+        benchmark = _read_json(manifest_path)
+        benchmark_digest = str(benchmark.get("manifestDigest") or "")
+        if benchmark_digest != _sha256_json(
+            {key: value for key, value in benchmark.items() if key != "manifestDigest"}
+        ):
+            raise ExtractionWorkflowError("The source-score benchmark digest changed.")
+
+        def tab_signature(event: Mapping[str, Any]) -> dict[str, Any]:
+            return {
+                "executionType": str(event.get("executionType") or "attack"),
+                "controlChanges": sorted(str(value) for value in event.get("controlChanges") or []),
+                "actions": [
+                    {
+                        "string": int(action.get("string") or 0),
+                        "fret": int(action.get("fret") or 0),
+                        "controls": sorted(
+                            str(value).upper() for value in action.get("controls") or []
+                        ),
+                        "attack": bool(action.get("attack", True)),
+                        "sustain": bool(action.get("sustain")),
+                    }
+                    for action in sorted(
+                        event.get("steelActions") or [],
+                        key=lambda value: int(value.get("string") or 0),
+                    )
+                ],
+            }
+
+        results: list[dict[str, Any]] = []
+        blocker_counts: Counter[str] = Counter()
+        for raw_case in benchmark.get("cases") or []:
+            case = dict(raw_case)
+            input_id = str(case.get("inputId") or "")
+            score_system_id = str(case.get("scoreSystemId") or "")
+            record_path = output_root / str(case.get("reviewedRecordPath") or "")
+            if not record_path.exists():
+                raise ExtractionWorkflowError(
+                    "A timeline discovery record is missing."
+                )
+            reviewed_record = _read_json(record_path)
+            if _sha256_json(reviewed_record) != str(
+                case.get("reviewedRecordDigest") or ""
+            ):
+                raise ExtractionWorkflowError(
+                    "A timeline discovery record changed."
+                )
+            reviewed_score_system = next(
+                (
+                    system
+                    for system in reviewed_record.get("scoreSystems") or []
+                    if str(system.get("scoreSystemId") or "") == score_system_id
+                ),
+                None,
+            )
+            if reviewed_score_system is None:
+                raise ExtractionWorkflowError(
+                    "A timeline discovery score system is missing."
+                )
+
+            crop_path: Path | None = None
+            crop_sha256 = ""
+            for crop in (
+                reviewed_score_system.get("omrPreparedDerivative") or {},
+                reviewed_score_system.get("scoreRepairSourceCrop") or {},
+            ):
+                relative_path = str(crop.get("relativePath") or "")
+                expected_sha = str(crop.get("sha256") or "")
+                candidate_path = output_root / relative_path
+                if (
+                    relative_path
+                    and candidate_path.exists()
+                    and _sha256_bytes(candidate_path.read_bytes()) == expected_sha
+                ):
+                    crop_path = candidate_path
+                    crop_sha256 = expected_sha
+                    break
+            if crop_path is None:
+                raise ExtractionWorkflowError(
+                    "A digest-pinned score crop is unavailable for timeline evaluation."
+                )
+            omr_path = output_root / str(case.get("omrRelativePath") or "")
+            if (
+                not omr_path.exists()
+                or _sha256_bytes(omr_path.read_bytes())
+                != str(case.get("omrSha256") or "")
+            ):
+                raise ExtractionWorkflowError(
+                    "A timeline OMR artifact changed."
+                )
+
+            prior_digest = str(
+                (reviewed_record.get("machineCorrection") or {}).get(
+                    "priorMachineRecordDigest"
+                )
+                or ""
+            )
+            machine_record: dict[str, Any] | None = None
+            if prior_digest:
+                revision_dir = review_root / "machine-record-revisions" / input_id
+                for candidate_path in sorted(revision_dir.glob("*.json")):
+                    candidate = _read_json(candidate_path)
+                    if _sha256_json(candidate) == prior_digest:
+                        machine_record = candidate
+                        break
+
+            page_key_signature: dict[str, Any] | None = None
+            page_key_crop_sha256: str | None = None
+            page_key_omr_sha256: str | None = None
+            if machine_record is not None:
+                machine_score_systems = sorted(
+                    machine_record.get("scoreSystems") or [],
+                    key=lambda value: int(value.get("systemIndex") or 0),
+                )
+                first_score_system = (
+                    machine_score_systems[0] if machine_score_systems else None
+                )
+                if first_score_system is not None:
+                    first_index = int(first_score_system.get("systemIndex") or 0)
+                    first_crop_path = (
+                        output_root
+                        / "score-crops"
+                        / input_id
+                        / f"score-system-{first_index:02d}.png"
+                    )
+                    first_omr_path = (
+                        output_root
+                        / "omr"
+                        / input_id
+                        / f"system-{first_index:02d}"
+                        / f"score-system-{first_index:02d}.omr"
+                    )
+                    expected_crop_sha = str(
+                        first_score_system.get("cropSha256") or ""
+                    )
+                    if (
+                        first_index == 1
+                        and first_crop_path.exists()
+                        and expected_crop_sha
+                        and _sha256_bytes(first_crop_path.read_bytes())
+                        == expected_crop_sha
+                        and first_omr_path.exists()
+                    ):
+                        page_key_crop_sha256 = expected_crop_sha
+                        page_key_omr_sha256 = _sha256_bytes(
+                            first_omr_path.read_bytes()
+                        )
+                        try:
+                            page_key_signature = _source_first_system_key_signature(
+                                first_omr_path,
+                                system_id=str(
+                                    first_score_system.get("scoreSystemId")
+                                    or f"{input_id}-first-system"
+                                ),
+                            )
+                        except ExtractionWorkflowError:
+                            page_key_signature = None
+
+            # Machine inference ends before any reviewed score/tab facts below
+            # are grouped or compared.  Only immutable IDs, source derivatives,
+            # and the archived pre-correction machine snapshot are inputs.
+            prediction = _source_score_semantic_repair(
+                image_path=crop_path,
+                omr_path=omr_path,
+                system_id=score_system_id,
+            )
+            page_key_applied = bool(
+                prediction.get("keySignature") is None
+                and page_key_signature is not None
+            )
+            if page_key_applied:
+                prediction = copy.deepcopy(prediction)
+                prediction["keySignature"] = copy.deepcopy(page_key_signature)
+                prediction["scoreEvents"] = _apply_key_signature_to_score_events(
+                    prediction.get("naturalScoreEvents") or [],
+                    int(page_key_signature["fifths"]),
+                )
+                prediction["pageKeySignatureApplied"] = True
+            inference_blockers: list[dict[str, Any]] = []
+            machine_tab_events: list[dict[str, Any]] = []
+            if machine_record is None:
+                inference_blockers.append({"kind": "archived_machine_snapshot_missing"})
+            else:
+                machine_score_system = next(
+                    (
+                        system
+                        for system in machine_record.get("scoreSystems") or []
+                        if str(system.get("scoreSystemId") or "") == score_system_id
+                    ),
+                    None,
+                )
+                machine_tab_system = None
+                if machine_score_system is not None:
+                    paired_tab_id = str(
+                        machine_score_system.get("pairedTabSystemId") or ""
+                    )
+                    machine_tab_system = next(
+                        (
+                            system
+                            for system in machine_record.get("tabSystems") or []
+                            if str(system.get("tabSystemId") or "") == paired_tab_id
+                        ),
+                        None,
+                    )
+                if machine_tab_system is None:
+                    inference_blockers.append(
+                        {"kind": "archived_machine_tab_system_missing"}
+                    )
+                else:
+                    machine_tab_events = sorted(
+                        copy.deepcopy(machine_tab_system.get("tabEvents") or []),
+                        key=lambda value: int(value.get("eventIndex") or 0),
+                    )
+
+            semantic_count = int(prediction.get("semanticAttackCount") or 0)
+            source_attack_groups = _score_attack_groups(
+                prediction.get("scoreEvents") or []
+            )
+            timeline_pitch_candidate_complete = bool(
+                prediction.get("countPublishable")
+                and prediction.get("scoreEvents")
+                and len(source_attack_groups) == semantic_count
+                and prediction.get("keySignature") is not None
+            )
+            machine_tab_states = _ordered_tab_states(
+                {"tabEvents": machine_tab_events}
+            )
+            machine_tab_attack_count = sum(
+                bool(state.get("isAttack")) for state in machine_tab_states
+            )
+            if not bool(prediction.get("countPublishable")):
+                inference_blockers.append({"kind": "source_score_count_not_publishable"})
+            if not timeline_pitch_candidate_complete:
+                inference_blockers.append({"kind": "source_score_pitch_candidate_incomplete"})
+            if len(source_attack_groups) != semantic_count:
+                inference_blockers.append(
+                    {
+                        "kind": "source_score_event_count_mismatch",
+                        "expected": semantic_count,
+                        "actual": len(source_attack_groups),
+                    }
+                )
+            if machine_tab_attack_count != semantic_count:
+                inference_blockers.append(
+                    {
+                        "kind": "independent_machine_tab_count_mismatch",
+                        "expected": semantic_count,
+                        "actual": machine_tab_attack_count,
+                    }
+                )
+
+            timeline = _machine_unified_score_tab_timeline(
+                prediction.get("scoreEvents") or [],
+                machine_tab_events,
+                expected_attack_count=semantic_count,
+            )
+            inference_blockers.extend(copy.deepcopy(timeline.get("blockers") or []))
+            machine_reviewable = bool(
+                not inference_blockers and timeline.get("reviewable")
+            )
+            for blocker in inference_blockers:
+                blocker_counts[str(blocker.get("kind") or "unknown")] += 1
+
+            inference = {
+                "repairVersion": SOURCE_SCORE_SEMANTIC_REPAIR_VERSION,
+                "timelineVersion": DISCOVERY_MACHINE_TIMELINE_VERSION,
+                "cropSha256": crop_sha256,
+                "omrSha256": str(case.get("omrSha256") or ""),
+                "pageKeyCropSha256": page_key_crop_sha256,
+                "pageKeyOmrSha256": page_key_omr_sha256,
+                "pageKeySignature": copy.deepcopy(page_key_signature),
+                "pageKeySignatureApplied": page_key_applied,
+                "archivedMachineRecordDigest": prior_digest or None,
+                "semanticAttackCount": semantic_count,
+                "sourceScoreAttackCount": len(source_attack_groups),
+                "machineTabAttackCount": machine_tab_attack_count,
+                "machineTabStateCount": len(machine_tab_states),
+                "countPublishable": bool(prediction.get("countPublishable")),
+                "pitchCandidateComplete": timeline_pitch_candidate_complete,
+                "timeline": timeline,
+                "blockers": inference_blockers,
+                "machineReviewable": machine_reviewable,
+                "reviewedTruthUsedDuringInference": False,
+            }
+            inference_digest = _sha256_json(inference)
+
+            # Post-inference scoring starts here.  These reviewed values never
+            # influence the prediction, its blockers, or its digest.
+            reviewed_tab_system = next(
+                (
+                    system
+                    for system in reviewed_record.get("tabSystems") or []
+                    if str(system.get("tabSystemId") or "")
+                    == str(reviewed_score_system.get("pairedTabSystemId") or "")
+                ),
+                None,
+            )
+            truth_score_groups = _score_attack_groups(
+                reviewed_score_system.get("scoreEvents") or []
+            )
+            truth_tab_events = sorted(
+                copy.deepcopy((reviewed_tab_system or {}).get("tabEvents") or []),
+                key=lambda value: int(value.get("eventIndex") or 0),
+            )
+            predicted_score_groups = _score_attack_groups(
+                prediction.get("scoreEvents") or []
+            )
+            score_pitch_exact = bool(
+                len(predicted_score_groups) == len(truth_score_groups)
+                and all(
+                    {
+                        int(event["pitchValue"])
+                        for event in predicted_group
+                        if event.get("pitchValue") is not None
+                    }
+                    == {
+                        int(event["pitchValue"])
+                        for event in truth_group
+                        if event.get("pitchValue") is not None
+                    }
+                    for predicted_group, truth_group in zip(
+                        predicted_score_groups, truth_score_groups, strict=True
+                    )
+                )
+            )
+            tab_exact = bool(
+                len(machine_tab_events) == len(truth_tab_events)
+                and all(
+                    tab_signature(predicted) == tab_signature(truth)
+                    for predicted, truth in zip(
+                        machine_tab_events, truth_tab_events, strict=True
+                    )
+                )
+            )
+            results.append(
+                {
+                    "caseId": case.get("caseId"),
+                    "inputId": input_id,
+                    "scoreSystemId": score_system_id,
+                    "subset": case.get("subset"),
+                    "inferenceDigest": inference_digest,
+                    "inference": inference,
+                    "truthScoreAttackCount": len(truth_score_groups),
+                    "truthTabStateCount": len(truth_tab_events),
+                    "scoreCountExact": semantic_count == len(truth_score_groups),
+                    "machineTabCountExact": len(machine_tab_events)
+                    == len(truth_tab_events),
+                    "scorePitchExact": score_pitch_exact,
+                    "machineTabExact": tab_exact,
+                    "machineReviewable": machine_reviewable,
+                    "reviewableTruthExact": bool(
+                        machine_reviewable and score_pitch_exact and tab_exact
+                    ),
+                    "truthJoinedAfterInference": True,
+                }
+            )
+
+        reviewable = [item for item in results if item.get("machineReviewable")]
+        aggregate = {
+            "caseCount": len(results),
+            "archivedMachineSnapshotCount": sum(
+                bool((item.get("inference") or {}).get("archivedMachineRecordDigest"))
+                for item in results
+            ),
+            "sourceCountPublishableCount": sum(
+                bool((item.get("inference") or {}).get("countPublishable"))
+                for item in results
+            ),
+            "sourcePitchCandidateCompleteCount": sum(
+                bool((item.get("inference") or {}).get("pitchCandidateComplete"))
+                for item in results
+            ),
+            "sourceMachineAttackCountAgreementCount": sum(
+                int((item.get("inference") or {}).get("semanticAttackCount") or 0)
+                > 0
+                and int((item.get("inference") or {}).get("semanticAttackCount") or 0)
+                == int((item.get("inference") or {}).get("sourceScoreAttackCount") or 0)
+                == int((item.get("inference") or {}).get("machineTabAttackCount") or 0)
+                for item in results
+            ),
+            "structurallyCompleteTimelineCount": sum(
+                bool(
+                    ((item.get("inference") or {}).get("timeline") or {}).get(
+                        "structurallyComplete"
+                    )
+                )
+                for item in results
+            ),
+            "mechanicallyValidTimelineCount": sum(
+                bool(
+                    ((item.get("inference") or {}).get("timeline") or {}).get(
+                        "mechanicallyValid"
+                    )
+                )
+                for item in results
+            ),
+            "pitchContainedTimelineCount": sum(
+                bool(
+                    ((item.get("inference") or {}).get("timeline") or {}).get(
+                        "pitchContained"
+                    )
+                )
+                for item in results
+            ),
+            "noBlankTimelineCount": sum(
+                bool(
+                    ((item.get("inference") or {}).get("timeline") or {}).get(
+                        "noBlankTimelineRows"
+                    )
+                )
+                for item in results
+            ),
+            "sourceCountExactCount": sum(
+                bool(item.get("scoreCountExact")) for item in results
+            ),
+            "machineTabCountExactCount": sum(
+                bool(item.get("machineTabCountExact")) for item in results
+            ),
+            "scorePitchExactCount": sum(
+                bool(item.get("scorePitchExact")) for item in results
+            ),
+            "machineTabExactCount": sum(
+                bool(item.get("machineTabExact")) for item in results
+            ),
+            "machineReviewableCount": len(reviewable),
+            "reviewableTruthExactCount": sum(
+                bool(item.get("reviewableTruthExact")) for item in reviewable
+            ),
+            "reviewablePrecision": (
+                round(
+                    sum(bool(item.get("reviewableTruthExact")) for item in reviewable)
+                    / len(reviewable),
+                    6,
+                )
+                if reviewable
+                else None
+            ),
+            "withheldFromReviewCount": len(results) - len(reviewable),
+            "blockerCounts": dict(sorted(blocker_counts.items())),
+        }
+        report_core = {
+            "schemaVersion": DISCOVERY_MACHINE_TIMELINE_SCHEMA_VERSION,
+            "batchId": batch_id,
+            "partition": "discovery",
+            "evaluationClass": "opened_discovery_machine_timeline_regression",
+            "benchmarkManifestDigest": benchmark_digest,
+            "repairVersion": SOURCE_SCORE_SEMANTIC_REPAIR_VERSION,
+            "timelineVersion": DISCOVERY_MACHINE_TIMELINE_VERSION,
+            "lineageContract": {
+                "sourceScoreInputs": "digest_pinned_source_crop_and_omr_only",
+                "tabInputs": "digest_pinned_archived_pre_correction_machine_record_only",
+                "reviewedTruthJoin": "after_inference_digest",
+                "reviewedTruthUsedDuringInference": False,
+            },
+            "aggregate": aggregate,
+            "results": results,
+            "promotionEligible": False,
+            "reviewPacketCreated": False,
+            "humanRereviewRequested": False,
+            "trainingEvidenceCreated": False,
+            "currentPageRecordsModified": False,
+            "validationAccessed": False,
+            "sealedTestAccessed": False,
+        }
+        report_digest = _sha256_json(report_core)
+        report = {**report_core, "reportDigest": report_digest}
+        report_dir = review_root / "automation" / DISCOVERY_MACHINE_TIMELINE_VERSION
+        report_dir.mkdir(parents=True, exist_ok=True)
+        os.chmod(report_dir, 0o700)
+        report_path = report_dir / f"report-{report_digest[:12]}.json"
+        _write_json(report_path, report)
+        return {
+            "schemaVersion": DISCOVERY_MACHINE_TIMELINE_SCHEMA_VERSION,
+            "batchId": batch_id,
+            "partition": "discovery",
+            "aggregate": aggregate,
+            "promotionEligible": False,
+            "reviewPacketCreated": False,
+            "humanRereviewRequested": False,
             "trainingEvidenceCreated": False,
             "currentPageRecordsModified": False,
             "validationAccessed": False,
