@@ -498,6 +498,20 @@ def _parser() -> argparse.ArgumentParser:
         help="Require the reviewer to confirm both the displayed tablature and score mapping.",
     )
 
+    prepare_validation_line_audit = subparsers.add_parser(
+        "prepare-validation-line-audit",
+        help=(
+            "Prepare a complete line-level validation ground-truth audit without "
+            "opening sealed test or creating training evidence."
+        ),
+    )
+    prepare_validation_line_audit.add_argument("batch_id")
+    prepare_validation_line_audit.add_argument(
+        "--no-activate",
+        action="store_true",
+        help="Write an immutable digest-versioned audit without replacing its current URL.",
+    )
+
     prepare_challenger_comparison = subparsers.add_parser(
         "prepare-challenger-comparison-review",
         help="Show concrete source and challenger tablature only where a score-gated shadow disagrees.",
@@ -1069,6 +1083,11 @@ def main() -> int:
                 partition=args.partition,
                 activate=not args.no_activate,
                 provisional_joint_review=args.provisional_joint_review,
+            )
+        elif args.command == "prepare-validation-line-audit":
+            result = AmazingTablatureExtractor(args.root).prepare_validation_line_audit(
+                args.batch_id,
+                activate=not args.no_activate,
             )
         elif args.command == "apply-combined-score-tab-review":
             result = AmazingTablatureExtractor(args.root).apply_combined_score_tab_review(

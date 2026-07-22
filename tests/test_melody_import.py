@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import io
+import json
 import struct
 import zipfile
 
@@ -15,7 +16,11 @@ from pocketsteel.melody_import import (
     parse_musicxml,
     public_song_catalog,
 )
-from pocketsteel.melody_arranger import parse_melody_inputs, resolve_contour
+from pocketsteel.melody_arranger import (
+    arrange_melody_routes,
+    parse_melody_inputs,
+    resolve_contour,
+)
 
 
 AMAZING_GRACE_PITCHES = ["D4", "G4", "B4", "G4", "B4", "A4", "G4", "E4"]
@@ -61,15 +66,61 @@ def test_structured_input_paths_share_exact_normalized_pitch_events() -> None:
     musicxml = parse_musicxml(xml)
     midi = parse_midi(_three_note_midi())
     interval_inputs = parse_melody_inputs(["1", "2", "3"], "G")
+    typed_note_inputs = parse_melody_inputs(["G", "A", "B"], "G")
 
     assert [event["pitchValue"] for event in manual["score"]["melody"]] == expected
     assert [event["pitchValue"] for event in musicxml["score"]["melody"]] == expected
     assert [event["pitchValue"] for event in midi["score"]["melody"]] == expected
     assert resolve_contour(interval_inputs, "ascending") == expected
+    assert resolve_contour(typed_note_inputs, "ascending") == expected
     assert all(
         draft["review"]["status"] == "needs_review"
         for draft in (musicxml, midi)
     )
+
+    modality_inputs = {
+        "typed_notes": ["G", "A", "B"],
+        "intervals": ["1", "2", "3"],
+        "musicxml": musicxml["score"]["melody"],
+        "midi": midi["score"]["melody"],
+        "normalized_events": manual["score"]["melody"],
+    }
+
+    def arrangement_signature(raw_events: list[object]) -> list[object]:
+        routes, resolved = arrange_melody_routes(
+            raw_events,
+            key="G",
+            texture="both",
+            route_id_prefix="modality-parity",
+            title="Modality parity",
+        )
+        return [
+            [event["pitchValue"] for event in resolved],
+            [
+                {
+                    "harmonyType": route["harmonyType"],
+                    "events": [
+                        {
+                            "pitchValue": event["pitchValue"],
+                            "notes": event["notes"],
+                            "performanceControls": event["performanceControls"],
+                            "patternFamily": event["patternFamily"],
+                            "canonicalGrip": event["canonicalGrip"],
+                        }
+                        for event in route["tabExample"]["events"]
+                    ],
+                }
+                for route in routes
+            ],
+        ]
+
+    signatures = {
+        input_type: arrangement_signature(raw_events)
+        for input_type, raw_events in modality_inputs.items()
+    }
+    assert len(
+        {json.dumps(signature, sort_keys=True) for signature in signatures.values()}
+    ) == 1
 
 
 def test_amazing_grace_catalog_record_is_reviewed_and_checksummed() -> None:

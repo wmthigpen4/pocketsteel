@@ -99,6 +99,7 @@ from pocketsteel.amazing_tablature_extraction import (
     _store_score_chord_omission_submission,
     _store_score_pitch_submission,
     _store_combined_score_tab_submission,
+    _store_validation_line_audit_submission,
     _store_challenger_comparison_submission,
     _combined_review_alignments,
     _current_combined_line_entries,
@@ -792,6 +793,153 @@ def test_joint_combined_submission_requires_explicit_tab_confirmation(tmp_path: 
 
     assert versioned_result["reviewCount"] == 1
     assert versioned_result["status"] == "received_not_applied"
+
+
+def test_validation_line_audit_submission_is_complete_and_never_training(
+    tmp_path: Path,
+) -> None:
+    private = tmp_path / "private"
+    review_dir = (
+        private
+        / "batches/batch-validation/extraction/validation/review/validation-line-audit"
+    )
+    review_dir.mkdir(parents=True)
+    packet_core = {
+        "schemaVersion": "amazing-tablature-validation-line-audit-v1",
+        "reviewType": "validation_line_audit",
+        "batchId": "batch-validation",
+        "partition": "validation",
+        "trainingEligible": False,
+        "validationGroundTruthMayTrain": False,
+        "sealedTestAccessed": False,
+        "pages": [
+            {
+                "inputId": "input-0001",
+                "systems": [
+                    {
+                        "inputId": "input-0001",
+                        "scoreSystemId": "score-1",
+                        "tabSystemId": "tab-1",
+                        "machineRecordDigest": "machine-1",
+                        "lineGatePassed": True,
+                        "validationIssueSummary": {
+                            "blockingCount": 0,
+                            "digest": "issue-1",
+                        },
+                    },
+                    {
+                        "inputId": "input-0001",
+                        "scoreSystemId": "score-2",
+                        "tabSystemId": "tab-2",
+                        "machineRecordDigest": "machine-1",
+                        "lineGatePassed": False,
+                        "validationIssueSummary": {
+                            "blockingCount": 3,
+                            "digest": "issue-2",
+                        },
+                    },
+                ],
+            }
+        ],
+    }
+    packet_digest = _sha256_json(packet_core)
+    (review_dir / f"packet-{packet_digest}.json").write_text(
+        json.dumps({**packet_core, "packetDigest": packet_digest}),
+        encoding="utf-8",
+    )
+    base_payload = {
+        "reviewType": "validation_line_audit",
+        "batchId": "batch-validation",
+        "partition": "validation",
+        "packetDigest": packet_digest,
+    }
+
+    with pytest.raises(ExtractionWorkflowError, match="Every validation line"):
+        _store_validation_line_audit_submission(
+            private,
+            {
+                **base_payload,
+                "reviews": [
+                    {
+                        "inputId": "input-0001",
+                        "scoreSystemId": "score-1",
+                        "status": "both_match",
+                        "tabConfirmed": True,
+                    }
+                ],
+            },
+        )
+
+    with pytest.raises(ExtractionWorkflowError, match="blocked validation line"):
+        _store_validation_line_audit_submission(
+            private,
+            {
+                **base_payload,
+                "reviews": [
+                    {
+                        "inputId": "input-0001",
+                        "scoreSystemId": "score-1",
+                        "status": "both_match",
+                        "tabConfirmed": True,
+                    },
+                    {
+                        "inputId": "input-0001",
+                        "scoreSystemId": "score-2",
+                        "status": "both_match",
+                        "tabConfirmed": True,
+                    },
+                ],
+            },
+        )
+
+    result = _store_validation_line_audit_submission(
+        private,
+        {
+            **base_payload,
+            "reviews": [
+                {
+                    "inputId": "input-0001",
+                    "scoreSystemId": "score-1",
+                    "status": "both_match",
+                    "tabConfirmed": True,
+                },
+                {
+                    "inputId": "input-0001",
+                    "scoreSystemId": "score-2",
+                    "status": "feedback",
+                    "comment": "The second printed note and tablature movement need correction.",
+                },
+            ],
+        },
+    )
+
+    assert result["reviewCount"] == 2
+    assert result["eligibleForTraining"] is False
+    assert result["sealedTestAccessed"] is False
+    metadata = json.loads(
+        (
+            review_dir
+            / "submissions"
+            / f"{result['submissionId']}.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert metadata["validationGroundTruthMayTrain"] is False
+    assert metadata["status"] == "received_validation_ground_truth_not_scored"
+
+
+def test_combined_console_supports_validation_ground_truth_mode() -> None:
+    digest = "b" * 64
+    html = _combined_score_tab_console_html(
+        packet_digest=digest,
+        packet_filename=f"packet-{digest}.json",
+        review_type="validation_line_audit",
+    )
+
+    assert "REVIEW_TYPE='validation_line_audit'" in html
+    assert "This is validation, not more training" in html
+    assert "prohibited from challenger training" in html
+    assert "machine flagged this line" in html
+    assert "partition:packet.partition" in html
 
 
 def test_provisional_joint_review_rejects_reviewer_reconstruction_work() -> None:

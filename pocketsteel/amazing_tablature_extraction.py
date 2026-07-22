@@ -54,6 +54,7 @@ FEEDBACK_CORRECTION_CONFIRMATION_SCHEMA_VERSION = (
     "amazing-tablature-feedback-correction-confirmation-v1"
 )
 COMBINED_SCORE_TAB_REVIEW_SCHEMA_VERSION = "amazing-tablature-combined-score-tab-review-v1"
+VALIDATION_LINE_AUDIT_SCHEMA_VERSION = "amazing-tablature-validation-line-audit-v1"
 COMBINED_SCORE_TAB_GATE_VERSION = "combined-score-tab-evidence-gate-v5"
 LEGACY_COMBINED_SCORE_TAB_GATE_VERSION = "combined-score-tab-evidence-gate-v3"
 FIXED_PRINTED_X_COMBINED_SCORE_TAB_GATE_VERSION = "combined-score-tab-evidence-gate-v4"
@@ -2374,6 +2375,157 @@ def _store_combined_score_tab_submission(
     }
 
 
+def _store_validation_line_audit_submission(
+    private_root: Path | str, payload: Mapping[str, Any]
+) -> dict[str, Any]:
+    """Receive complete line-level validation ground truth without training on it."""
+
+    batch_id = str(payload.get("batchId") or "")
+    partition = str(payload.get("partition") or "")
+    packet_digest = str(payload.get("packetDigest") or "")
+    reviews = payload.get("reviews")
+    if not re.fullmatch(r"[A-Za-z0-9._-]+", batch_id) or partition != "validation":
+        raise ExtractionWorkflowError("Validation line audit has invalid batch identity.")
+    if not isinstance(reviews, list) or not reviews or len(reviews) > 100:
+        raise ExtractionWorkflowError(
+            "Validation line audit must contain 1-100 complete line reviews."
+        )
+    review_dir = (
+        Path(private_root).expanduser().resolve()
+        / "batches"
+        / batch_id
+        / "extraction"
+        / "validation"
+        / "review"
+        / "validation-line-audit"
+    )
+    packet, _packet_path = _load_combined_score_tab_packet(review_dir, packet_digest)
+    if (
+        packet.get("reviewType") != "validation_line_audit"
+        or packet.get("partition") != "validation"
+        or packet.get("trainingEligible") is not False
+        or packet.get("validationGroundTruthMayTrain") is not False
+        or packet.get("sealedTestAccessed") is not False
+    ):
+        raise ExtractionWorkflowError(
+            "Validation line audit packet does not satisfy the no-training contract."
+        )
+    expected = {
+        (str(system.get("inputId") or ""), str(system.get("scoreSystemId") or "")): system
+        for page in packet.get("pages") or []
+        for system in page.get("systems") or []
+    }
+    valid_statuses = {
+        "both_match",
+        "tab_pitch_hypothesis_matches",
+        "score_reader_matches",
+        "feedback",
+    }
+    normalized: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for raw_review in reviews:
+        if not isinstance(raw_review, Mapping):
+            raise ExtractionWorkflowError("Every validation line review must be an object.")
+        key = (
+            str(raw_review.get("inputId") or ""),
+            str(raw_review.get("scoreSystemId") or ""),
+        )
+        expected_system = expected.get(key)
+        status = str(raw_review.get("status") or "")
+        comment = str(raw_review.get("comment") or "").strip() or None
+        tab_confirmed = bool(raw_review.get("tabConfirmed"))
+        if expected_system is None or key in seen or status not in valid_statuses:
+            raise ExtractionWorkflowError(
+                "Validation line review has an unknown target or status."
+            )
+        line_gate_passed = bool(expected_system.get("lineGatePassed"))
+        if status == "both_match" and not line_gate_passed:
+            raise ExtractionWorkflowError(
+                "A blocked validation line cannot be accepted as an automatic exact match."
+            )
+        if status == "feedback" and comment is None:
+            raise ExtractionWorkflowError(
+                "A validation line correction request needs a comment."
+            )
+        if status != "feedback" and not tab_confirmed:
+            raise ExtractionWorkflowError(
+                "Validation line review requires explicit confirmation of the displayed tablature."
+            )
+        seen.add(key)
+        normalized.append(
+            {
+                "inputId": key[0],
+                "scoreSystemId": key[1],
+                "tabSystemId": str(expected_system.get("tabSystemId") or ""),
+                "expectedMachineRecordDigest": str(
+                    expected_system.get("machineRecordDigest") or ""
+                ),
+                "lineGatePassed": line_gate_passed,
+                "validationIssueDigest": str(
+                    (expected_system.get("validationIssueSummary") or {}).get("digest")
+                    or ""
+                ),
+                "status": status,
+                "comment": comment,
+                "tabConfirmed": tab_confirmed,
+                "trainingEligible": False,
+            }
+        )
+    if seen != set(expected):
+        raise ExtractionWorkflowError(
+            "Every validation line must be reviewed before submission."
+        )
+    submission_digest = _sha256_json(
+        {
+            "reviewType": "validation_line_audit",
+            "batchId": batch_id,
+            "partition": partition,
+            "packetDigest": packet_digest,
+            "reviews": normalized,
+            "validationGroundTruthMayTrain": False,
+        }
+    )
+    submission_id = f"validation-line-audit-submission-{submission_digest[:20]}"
+    submissions_dir = review_dir / "submissions"
+    submissions_dir.mkdir(parents=True, exist_ok=True)
+    os.chmod(submissions_dir, 0o700)
+    submission_path = submissions_dir / f"{submission_id}.jsonl"
+    metadata_path = submissions_dir / f"{submission_id}.json"
+    deduplicated = submission_path.exists()
+    if not deduplicated:
+        _write_jsonl(submission_path, normalized)
+        _write_json(
+            metadata_path,
+            {
+                "schemaVersion": VALIDATION_LINE_AUDIT_SCHEMA_VERSION,
+                "submissionId": submission_id,
+                "submissionDigest": submission_digest,
+                "batchId": batch_id,
+                "partition": partition,
+                "packetDigest": packet_digest,
+                "reviewCount": len(normalized),
+                "submittedAt": _utc_now(),
+                "status": "received_validation_ground_truth_not_scored",
+                "eligibleForTraining": False,
+                "validationGroundTruthMayTrain": False,
+                "sealedTestAccessed": False,
+            },
+        )
+    elif _sha256_json(_read_jsonl(submission_path)) != _sha256_json(normalized):
+        raise ExtractionWorkflowError(
+            "Existing validation line audit differs from its stable ID."
+        )
+    return {
+        "submissionId": submission_id,
+        "submissionDigest": submission_digest,
+        "reviewCount": len(normalized),
+        "deduplicated": deduplicated,
+        "status": "received_validation_ground_truth_not_scored",
+        "eligibleForTraining": False,
+        "sealedTestAccessed": False,
+    }
+
+
 def _store_challenger_comparison_submission(
     private_root: Path | str, payload: Mapping[str, Any]
 ) -> dict[str, Any]:
@@ -2606,6 +2758,8 @@ def make_review_http_server(
                     )
                 elif review_type == "combined_score_tab":
                     result = _store_combined_score_tab_submission(private_root, payload)
+                elif review_type == "validation_line_audit":
+                    result = _store_validation_line_audit_submission(private_root, payload)
                 elif review_type == "challenger_comparison":
                     result = _store_challenger_comparison_submission(private_root, payload)
                 else:
@@ -2779,23 +2933,27 @@ def _combined_score_tab_console_html(
     *,
     packet_digest: str,
     packet_filename: str = "packet.json",
+    review_type: str = "combined_score_tab",
 ) -> str:
     """Render one compact, musician-facing score/tab decision per printed line."""
 
     if not re.fullmatch(r"packet(?:-[0-9a-f]{64})?\.json", packet_filename):
         raise ExtractionWorkflowError("Combined score/tab console packet filename is invalid.")
+    if review_type not in {"combined_score_tab", "validation_line_audit"}:
+        raise ExtractionWorkflowError("Combined score/tab console review type is invalid.")
 
     template = r"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Combined score and tablature audit</title>
 <style>
 :root{color-scheme:light;font:15px/1.4 Inter,ui-sans-serif,system-ui,sans-serif}*{box-sizing:border-box}body{margin:0;background:#f2efe8;color:#211f1a}button,textarea{font:inherit}header,footer{position:sticky;z-index:10;background:#17251f;color:#fff;padding:11px 16px}header{top:0}footer{bottom:0}.bar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}main{max-width:1500px;margin:auto;padding:14px}.notice,.card,.line{border:1px solid #d0c9bb;border-radius:11px;background:#fff;padding:12px;margin-bottom:13px}.notice{background:#e8f4eb;border-color:#87b894}.line{box-shadow:0 2px 9px #00000012}.source{display:block;width:100%;max-height:360px;object-fit:contain;border:1px solid #d7d2c7;background:#fafafa}.summary{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0}.badge{padding:4px 8px;border-radius:999px;background:#ece9e1;font-size:13px;font-weight:750}.badge.good{background:#dff2e4;color:#17582b}.badge.bad{background:#ffe0dc;color:#81261d}.difference-list{display:grid;gap:9px;margin:10px 0}.difference-card{display:grid;grid-template-columns:76px 1fr 1fr;gap:8px;align-items:stretch;padding:9px;border:2px solid #d88b7f;border-radius:9px;background:#fff5f2}.difference-number{display:grid;place-items:center;border-radius:7px;background:#81261d;color:#fff;font-size:18px;font-weight:900;text-align:center}.difference-value{padding:8px;border:1px solid #d8d0c3;border-radius:7px;background:#fff}.difference-value b{display:block;margin-bottom:3px}.event-staff{display:block;width:100%;height:118px;min-width:210px;background:#fff}.missing-event{display:grid;place-items:center;height:118px;border:1px dashed #b5ada0;border-radius:6px;color:#6d675d;font-weight:800}.full-reference{margin:11px 0;border:1px solid #cfc8ba;border-radius:9px;background:#fbfaf7}.full-reference summary{cursor:pointer;padding:10px;font-weight:850}.full-reference-content{padding:0 10px 10px}.comparison{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}.candidate{min-width:0;border:1px solid #cfc8ba;border-radius:9px;padding:9px;background:#fbfaf7}.candidate h3{margin:0 0 5px;font-size:15px}.staffwrap,.tabwrap{overflow-x:auto}.staff{display:block;min-width:720px;width:100%;height:150px;background:#fff}.tab{border-collapse:collapse;width:max-content;min-width:100%;font:13px/1.1 ui-monospace,SFMono-Regular,Menlo,monospace}.tab th,.tab td{min-width:64px;height:30px;padding:3px;border:1px solid #d4cec2;text-align:center}.tab th{background:#e5eee8}.tab th:first-child,.tab td:first-child{position:sticky;left:0;background:#eee9dd;font-weight:800}.pitchrow{display:flex;gap:5px;overflow-x:auto;margin:7px 0}.pitchcell{min-width:76px;padding:5px;border-radius:6px;text-align:center;background:#ece9e1;font:12px/1.2 ui-monospace,monospace}.pitchcell.bad{background:#ffe0dc}.decision{display:grid;gap:7px;margin-top:10px;padding:10px;background:#f7f4ed;border-radius:8px}.decision label{display:block;padding:7px;border-radius:6px;background:white;border:1px solid #ddd6c8}.decision label.disabled{opacity:.45}.decision textarea{width:100%;min-height:70px;padding:7px}.required-note{padding:7px;border-radius:6px;background:#ffe0dc;color:#81261d;font-weight:800}.hidden{display:none}.primary,.secondary{padding:8px 12px;border-radius:7px;font-weight:800;cursor:pointer}.primary{background:#e6ba55;border:1px solid #f5d88f}.secondary{background:#f5f2ea;border:1px solid #aaa292}h1,h2{margin:0 0 7px}h1{font-size:18px}h2{font-size:18px}.muted{color:#69645a}.message{font-weight:750;color:#ffe7a7}@media(max-width:900px){.comparison{grid-template-columns:1fr}.difference-card{grid-template-columns:64px 1fr}.difference-value:last-child{grid-column:2}.source{max-height:270px}}
+body.validation-audit .difference-list{max-height:340px;overflow:auto;padding-right:5px;border-block:1px solid #ded7ca}body.validation-audit .full-reference{border-width:2px;border-color:#87b894}
 </style></head><body>
 <header><div class="bar"><div><h1>Combined music-score and tablature audit</h1><div id="progress">Loading…</div><button id="incomplete" class="secondary hidden">Go to incomplete line</button></div><div id="identity"></div></div></header>
 <main><section class="notice" id="review-scope"><strong>One check replaces the separate score and tablature audits.</strong> Each written musical change is compared with the sounding tablature change below it, including a pedal/lever movement while the strings continue ringing. Exact pitch-and-octave matches are used as anchors across the whole line, so one disagreement cannot shift every later comparison.</section><div id="page"></div></main>
 <footer><div class="bar"><div><button id="previous" class="secondary">Previous page</button> <button id="next" class="secondary">Next page</button></div><div><button id="submit" class="primary">Submit all reviewed lines</button> <span id="message" class="message"></span></div></div></footer>
 <script>
-const EXPECTED_DIGEST='__DIGEST__';let packet=null;let pageIndex=0;const decisions=new Map();const key=`lane20-combined-score-tab:${EXPECTED_DIGEST}`;
+const EXPECTED_DIGEST='__DIGEST__',REVIEW_TYPE='__REVIEW_TYPE__';let packet=null;let pageIndex=0;const decisions=new Map();const key=`lane20-${REVIEW_TYPE}:${EXPECTED_DIGEST}`;
 function esc(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function save(){localStorage.setItem(key,JSON.stringify(Object.fromEntries(decisions)));update();}function restore(){try{for(const [k,v] of Object.entries(JSON.parse(localStorage.getItem(key)||'{}')))decisions.set(k,v);}catch(_e){}}function lineKey(s){return `${s.inputId}:${s.scoreSystemId}`;}
 function pitchCoord(token){const m=/^([A-G])([#b]?)(-?\d+)$/.exec(token||'');if(!m)return null;return Number(m[3])*7+['C','D','E','F','G','A','B'].indexOf(m[1]);}
@@ -2808,15 +2966,18 @@ function keySignatureSymbols(fifths,bottom=75,startX=80,gap=12){const sharp=['F5
 function eventAccidental(p,keyFifths){const m=/^([A-G])([#b]?)/.exec(p||'');if(!m)return '';const sharp=['F','C','G','D','A','E','B'],flat=['B','E','A','D','G','C','F'],expected=keyFifths>0&&sharp.slice(0,keyFifths).includes(m[1])?1:keyFifths<0&&flat.slice(0,-keyFifths).includes(m[1])?-1:0,actual=m[2]==='#'?1:m[2]==='b'?-1:0;if(actual===expected)return '';if(actual===0)return '♮';return actual>0?'♯':'♭';}
 function eventStaff(pitches,label,keyFifths){if(!pitches?.length)return `<div class="missing-event" role="img" aria-label="${esc(label)}: no captured event">No captured event</div>`;const w=260,bottom=75,gap=12,cx=177;let x=`<svg class="event-staff" viewBox="0 0 ${w} 118" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${esc(label)} in the printed key signature">`;for(let i=0;i<5;i++)x+=`<line x1="25" y1="${bottom-i*gap}" x2="242" y2="${bottom-i*gap}" stroke="#222"/>`;x+='<text x="31" y="78" font-size="44">𝄞</text>'+keySignatureSymbols(keyFifths);pitches.forEach((p,i)=>{const c=pitchCoord(p);if(c==null)return;const cy=bottom-(c-(4*7+2))*gap/2,dx=(i%2)*12;for(let ly=bottom+gap;ly>=cy+2;ly-=gap)x+=`<line x1="${cx+dx-12}" y1="${ly}" x2="${cx+dx+12}" y2="${ly}" stroke="#222"/>`;for(let ly=bottom-5*gap;ly<=cy-2;ly+=gap)x+=`<line x1="${cx+dx-12}" y1="${ly}" x2="${cx+dx+12}" y2="${ly}" stroke="#222"/>`;x+=`<ellipse cx="${cx+dx}" cy="${cy}" rx="8" ry="5.5" fill="#111"/>`;const accidental=eventAccidental(p,keyFifths);if(accidental)x+=`<text x="${cx+dx-19}" y="${cy+5}" font-size="16">${accidental}</text>`;});return x+'</svg>';}
 function differenceCards(columns,keyFifths){const differences=columns.filter(c=>c.relationship!=='exact'&&c.relationship!=='movement_during_sustain');if(!differences.length)return '<div class="notice"><strong>No pitch differences.</strong> Both readings agree at every written musical change.</div>';return '<div class="difference-list">'+differences.map(c=>{const score=c.scoreAttack?.pitches||[],tab=displayTabPitches(c),movement=c.representsSustainMovement;return `<div class="difference-card"><div class="difference-number">Event<br>${c.columnIndex}${movement?'<br><small>pedal/lever change<br>without repicking</small>':''}</div><div class="difference-value"><b>A · score reader</b>${eventStaff(score,`Event ${c.columnIndex}, score reader`,keyFifths)}</div><div class="difference-value"><b>B · sounding tablature state</b>${eventStaff(tab,`Event ${c.columnIndex}, sounding tablature state`,keyFifths)}</div></div>`;}).join('')+'</div>';}
-function renderLine(system,index){const cmp=system.comparison,exact=cmp.automaticPitchGatePassed,k=lineKey(system),d=decisions.get(k)||{},anchorCount=cmp.exactAnchorCount??cmp.exactColumnCount,decisionCount=cmp.anchoredDiscrepancyColumnCount??cmp.discrepancyColumnCount,displayColumns=cmp.anchorAlignedColumns||cmp.columns,keyKnown=system.keySignatureKnown===true,keyFifths=Number(system.keySignatureFifths||0),keyLabel=keyKnown?(keyFifths===0?'no sharps or flats':`${Math.abs(keyFifths)} ${keyFifths>0?'sharp':'flat'}${Math.abs(keyFifths)===1?'':'s'}`):'not captured',countText=cmp.stateCountsAgree?`${cmp.scoreAttackCount} written musical changes / ${cmp.tabMovementCount} tablature changes (${cmp.tabAttackCount} picked${cmp.movementOnlyCount?` + ${cmp.movementOnlyCount} pedal/lever change${cmp.movementOnlyCount===1?'':'s'} without repicking`:''})`:`${cmp.scoreAttackCount} written musical changes / ${cmp.tabMovementCount} tablature changes`;const section=document.createElement('section');section.className='line';section.innerHTML=`<h2>Line ${index+1}</h2><div class="muted">${esc(system.sourceLabel)} · printed system ${system.systemIndex}</div><img class="source" src="${esc(system.sourcePairUrl)}" alt="Original printed music score and its tablature together"><div class="summary"><span class="badge ${cmp.stateCountsAgree||cmp.countsAgree?'good':'bad'}">${countText}</span><span class="badge ${keyKnown?'good':'bad'}">printed key: ${keyLabel}</span><span class="badge ${exact?'good':'bad'}">${anchorCount} exact pitch anchors${cmp.anchorImprovementCount?` · ${cmp.anchorImprovementCount} recovered after a gap`:''}</span>${decisionCount?`<span class="badge bad">${decisionCount} differences shown below</span>`:''}<span class="badge good">copedent mechanics passed</span></div><h3>${exact?'Result':'Review only these differences'}</h3><div class="muted">Every event not shown here already agrees exactly in pitch and octave. A written musical change may be produced by picking a new grip or by moving a pedal/lever while strings continue to ring. ${keyKnown?'Each example uses the captured printed key signature.':'This line is not eligible for joint review until its printed key is captured.'}</div>${differenceCards(displayColumns,keyFifths)}<details class="full-reference" ${exact?'open':''}><summary>${exact?'Full score-to-tablature evidence':'Open the full-line renderings and tablature only if needed'}</summary><div class="full-reference-content"><div class="comparison"><div class="candidate"><h3>A. Independent score-only reader</h3><div class="staffwrap">${staffSvg(cmp.scoreAttacks,'Independent score-only reading',keyFifths)}</div></div><div class="candidate"><h3>B. Sounding pitches at every tablature change</h3><div class="staffwrap">${staffSvg(displayColumns.map(c=>({pitches:displayTabPitches(c)})),'Confirmed tablature pitch changes',keyFifths)}</div></div></div><h3>Full event-by-event comparison</h3>${pitchCells(displayColumns)}<h3>Confirmed ten-string tablature</h3>${tabTable(cmp.tabStates)}</div></details><div class="decision"><strong>For the numbered differences above, which reading matches the original printed score?</strong><label class="${exact?'':'disabled'}"><input type="radio" name="${esc(k)}" value="both_match" ${d.status==='both_match'?'checked':''} ${exact?'':'disabled'}> There are no differences; both readings match</label><label><input type="radio" name="${esc(k)}" value="tab_pitch_hypothesis_matches" ${d.status==='tab_pitch_hypothesis_matches'?'checked':''}> B is right for every numbered difference</label><label><input type="radio" name="${esc(k)}" value="score_reader_matches" ${d.status==='score_reader_matches'?'checked':''}> A is right for every numbered difference</label><label><input type="radio" name="${esc(k)}" value="feedback" ${d.status==='feedback'?'checked':''}> The answer is mixed, or neither is right</label><textarea class="${d.status==='feedback'?'':'hidden'}" placeholder="Name only the affected event numbers and what the printed score should show">${esc(d.comment||'')}</textarea></div>`;const ta=section.querySelector('textarea');section.querySelectorAll('input[type=radio]').forEach(r=>r.onchange=()=>{const prior=decisions.get(k)||{};decisions.set(k,{status:r.value,comment:r.value==='feedback'?(prior.comment||''):null});ta.classList.toggle('hidden',r.value!=='feedback');save();});ta.oninput=()=>{decisions.set(k,{status:'feedback',comment:ta.value});save();};return section;}
+function renderLine(system,index){const cmp=system.comparison,validation=packet.reviewType==='validation_line_audit',issues=system.validationIssueSummary||{},exact=validation?Boolean(system.lineGatePassed):cmp.automaticPitchGatePassed,k=lineKey(system),d=decisions.get(k)||{},anchorCount=cmp.exactAnchorCount??cmp.exactColumnCount,decisionCount=cmp.anchoredDiscrepancyColumnCount??cmp.discrepancyColumnCount,displayColumns=cmp.anchorAlignedColumns||cmp.columns,keyKnown=system.keySignatureKnown===true,keyFifths=Number(system.keySignatureFifths||0),keyLabel=keyKnown?(keyFifths===0?'no sharps or flats':`${Math.abs(keyFifths)} ${keyFifths>0?'sharp':'flat'}${Math.abs(keyFifths)===1?'':'s'}`):'not captured',countText=cmp.stateCountsAgree?`${cmp.scoreAttackCount} written musical changes / ${cmp.tabMovementCount} tablature changes (${cmp.tabAttackCount} picked${cmp.movementOnlyCount?` + ${cmp.movementOnlyCount} pedal/lever change${cmp.movementOnlyCount===1?'':'s'} without repicking`:''})`:`${cmp.scoreAttackCount} written musical changes / ${cmp.tabMovementCount} tablature changes`,issueBadge=validation&&issues.blockingCount?`<span class="badge bad">machine flagged this line · ${esc(issues.plainLanguage||`${issues.blockingCount} unresolved issue${issues.blockingCount===1?'':'s'}`)}</span>`:validation?'<span class="badge good">no machine blockers on this line</span>':'';const section=document.createElement('section');section.className='line';section.innerHTML=`<h2>Line ${index+1}</h2><div class="muted">${esc(system.sourceLabel)} · printed system ${system.systemIndex}</div><img class="source" src="${esc(system.sourcePairUrl)}" alt="Original printed music score and its tablature together"><div class="summary"><span class="badge ${cmp.stateCountsAgree||cmp.countsAgree?'good':'bad'}">${countText}</span><span class="badge ${keyKnown?'good':'bad'}">printed key: ${keyLabel}</span><span class="badge ${exact?'good':'bad'}">${anchorCount} exact pitch anchors${cmp.anchorImprovementCount?` · ${cmp.anchorImprovementCount} recovered after a gap`:''}</span>${decisionCount?`<span class="badge bad">${decisionCount} differences shown below</span>`:''}${issueBadge}<span class="badge ${cmp.mechanicallyValid?'good':'bad'}">copedent mechanics ${cmp.mechanicallyValid?'passed':'needs review'}</span></div><h3>${exact?'Result':'Review only these differences'}</h3><div class="muted">Every event not shown here already agrees exactly in pitch and octave. A written musical change may be produced by picking a new grip or by moving a pedal/lever while strings continue to ring. ${keyKnown?'Each example uses the captured printed key signature.':'The printed key signature is unresolved and must be considered in your decision.'}</div>${differenceCards(displayColumns,keyFifths)}<details class="full-reference" ${exact?'open':''}><summary>${exact?'Full score-to-tablature evidence':'Open the full-line renderings and tablature only if needed'}</summary><div class="full-reference-content"><div class="comparison"><div class="candidate"><h3>A. Independent score-only reader</h3><div class="staffwrap">${staffSvg(cmp.scoreAttacks,'Independent score-only reading',keyFifths)}</div></div><div class="candidate"><h3>B. Sounding pitches at every tablature change</h3><div class="staffwrap">${staffSvg(displayColumns.map(c=>({pitches:displayTabPitches(c)})),'Confirmed tablature pitch changes',keyFifths)}</div></div></div><h3>Full event-by-event comparison</h3>${pitchCells(displayColumns)}<h3>${validation?'Candidate':'Confirmed'} ten-string tablature</h3>${tabTable(cmp.tabStates)}</div></details><div class="decision"><strong>For the numbered differences above, which reading matches the original printed score?</strong><label class="${exact?'':'disabled'}"><input type="radio" name="${esc(k)}" value="both_match" ${d.status==='both_match'?'checked':''} ${exact?'':'disabled'}> There are no differences; both readings match</label><label><input type="radio" name="${esc(k)}" value="tab_pitch_hypothesis_matches" ${d.status==='tab_pitch_hypothesis_matches'?'checked':''}> B is right for every numbered difference</label><label><input type="radio" name="${esc(k)}" value="score_reader_matches" ${d.status==='score_reader_matches'?'checked':''}> A is right for every numbered difference</label><label><input type="radio" name="${esc(k)}" value="feedback" ${d.status==='feedback'?'checked':''}> The answer is mixed, or neither is right</label><textarea class="${d.status==='feedback'?'':'hidden'}" placeholder="Name only the affected event numbers and what the printed score or tablature should show">${esc(d.comment||'')}</textarea></div>`;const ta=section.querySelector('textarea');section.querySelectorAll('input[type=radio]').forEach(r=>r.onchange=()=>{const prior=decisions.get(k)||{};decisions.set(k,{status:r.value,comment:r.value==='feedback'?(prior.comment||''):null});ta.classList.toggle('hidden',r.value!=='feedback');save();});ta.oninput=()=>{decisions.set(k,{status:'feedback',comment:ta.value});save();};return section;}
 function render(){
   const page=packet.pages[pageIndex],root=document.getElementById('page'),joint=Boolean(packet.jointTabReviewRequired);
-  document.getElementById('review-scope').innerHTML=joint
+  document.getElementById('review-scope').innerHTML=packet.reviewType==='validation_line_audit'
+    ?'<strong>This is validation, not more training.</strong> Review each complete musical line once: compare the displayed tablature with the photograph, then compare the independent score reading with its sounding pitches. Your answers become evaluation ground truth and are prohibited from challenger training. The sealed test remains closed.'
+    :joint
     ?'<strong>This is a joint check of both captures.</strong> First compare the ten-string tablature with the photograph, then compare the captured score pitches with those movements. Nothing on this page is treated as confirmed until you submit it.'
     :'<strong>One check replaces the separate score and tablature audits.</strong> The tablature corrections you already confirmed are locked. Each written musical change is compared with the sounding tablature change below it.';
   root.innerHTML=`<section class="card"><h2>Page ${pageIndex+1} of ${packet.pages.length}: ${esc(page.sourceLabel)}</h2><div class="muted">${joint?'Confirm the displayed tablature and then decide whether the captured score matches it.':'Tab corrections are already confirmed. This page is checking score capture and score-to-tab correspondence.'}</div></section>`;
   page.systems.forEach((s,i)=>{
     const section=renderLine(s,i);
+    if(packet.reviewType==='validation_line_audit')section.querySelector('details.full-reference').open=true;
     if(joint){
       const k=lineKey(s),d=decisions.get(k)||{},box=document.createElement('label');
       box.className='required-note';
@@ -2838,11 +2999,13 @@ function incompleteLines(){const missing=[];packet.pages.forEach((page,pageNumbe
 function focusIncomplete(item){pageIndex=item.pageNumber;render();setTimeout(()=>{const section=document.querySelectorAll('section.line')[item.lineNumber];const target=section?.querySelector('textarea:not(.hidden)')||section?.querySelector('.decision');target?.scrollIntoView({block:'center',behavior:'smooth'});if(target?.tagName==='TEXTAREA')target.focus();},0);}
 function update(){if(!packet)return;const all=packet.pages.flatMap(p=>p.systems),missing=incompleteLines(),done=all.length-missing.length,first=missing[0],button=document.getElementById('incomplete');document.getElementById('progress').textContent=first?`${done}/${all.length} lines reviewed · ${first.sourceLabel}, line ${first.lineNumber+1}: ${first.reason}`:`${done}/${all.length} lines reviewed`;button.classList.toggle('hidden',!first);button.textContent=first?`Finish ${first.sourceLabel} line ${first.lineNumber+1}`:'Go to incomplete line';button.onclick=first?()=>focusIncomplete(first):null;document.getElementById('submit').disabled=Boolean(missing.length);}
 document.getElementById('previous').onclick=()=>{if(pageIndex>0){pageIndex--;render();}};document.getElementById('next').onclick=()=>{if(pageIndex<packet.pages.length-1){pageIndex++;render();}};
-document.getElementById('submit').onclick=async e=>{const all=packet.pages.flatMap(p=>p.systems),reviews=[];for(const s of all){const d=decisions.get(lineKey(s));if(!d?.status||(d.status==='feedback'&&!String(d.comment||'').trim())||(packet.jointTabReviewRequired&&d.status!=='feedback'&&!d.tabConfirmed)){document.getElementById('message').textContent='Review every line first.';return;}reviews.push({inputId:s.inputId,scoreSystemId:s.scoreSystemId,status:d.status,comment:String(d.comment||'').trim()||null,tabConfirmed:Boolean(d.tabConfirmed)});}const b=e.currentTarget;b.disabled=true;b.textContent='Submitting…';try{const response=await fetch('/__lane20_review_submission',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reviewType:'combined_score_tab',batchId:packet.batchId,partition:'discovery',packetDigest:packet.packetDigest,reviews})});const result=await response.json();if(!response.ok)throw new Error(result.message||result.error||`HTTP ${response.status}`);b.textContent='Combined review received by Lane 20';document.getElementById('message').textContent=`Received ${result.reviewCount} line decisions.`;}catch(error){b.disabled=false;b.textContent='Submit all reviewed lines';document.getElementById('message').textContent=`Submission failed: ${error.message}. Your work remains saved.`;}};
-fetch('./__PACKET_FILE__',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json();}).then(v=>{if(v.packetDigest!==EXPECTED_DIGEST)throw new Error('Packet digest mismatch');packet=v;restore();render();}).catch(error=>{document.getElementById('page').innerHTML=`<section class="notice">Could not load this audit: ${esc(error.message)}</section>`;});
+document.getElementById('submit').onclick=async e=>{const all=packet.pages.flatMap(p=>p.systems),reviews=[];for(const s of all){const d=decisions.get(lineKey(s));if(!d?.status||(d.status==='feedback'&&!String(d.comment||'').trim())||(packet.jointTabReviewRequired&&d.status!=='feedback'&&!d.tabConfirmed)){document.getElementById('message').textContent='Review every line first.';return;}reviews.push({inputId:s.inputId,scoreSystemId:s.scoreSystemId,status:d.status,comment:String(d.comment||'').trim()||null,tabConfirmed:Boolean(d.tabConfirmed)});}const b=e.currentTarget;b.disabled=true;b.textContent='Submitting…';try{const response=await fetch('/__lane20_review_submission',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reviewType:REVIEW_TYPE,batchId:packet.batchId,partition:packet.partition,packetDigest:packet.packetDigest,reviews})});const result=await response.json();if(!response.ok)throw new Error(result.message||result.error||`HTTP ${response.status}`);b.textContent=REVIEW_TYPE==='validation_line_audit'?'Validation audit received by Lane 20':'Combined review received by Lane 20';document.getElementById('message').textContent=`Received ${result.reviewCount} line decisions.`;}catch(error){b.disabled=false;b.textContent='Submit all reviewed lines';document.getElementById('message').textContent=`Submission failed: ${error.message}. Your work remains saved.`;}};
+fetch('./__PACKET_FILE__',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(`HTTP ${r.status}`);return r.json();}).then(v=>{if(v.packetDigest!==EXPECTED_DIGEST)throw new Error('Packet digest mismatch');packet=v;document.body.classList.toggle('validation-audit',packet.reviewType==='validation_line_audit');restore();render();}).catch(error=>{document.getElementById('page').innerHTML=`<section class="notice">Could not load this audit: ${esc(error.message)}</section>`;});
 </script></body></html>"""
-    return template.replace("__DIGEST__", packet_digest).replace(
-        "__PACKET_FILE__", packet_filename
+    return (
+        template.replace("__DIGEST__", packet_digest)
+        .replace("__PACKET_FILE__", packet_filename)
+        .replace("__REVIEW_TYPE__", review_type)
     )
 
 
@@ -21123,6 +21286,287 @@ class AmazingTablatureExtractor:
         if activate:
             _write_json(review_dir / "packet-summary.json", summary)
         return summary
+
+    def prepare_validation_line_audit(
+        self,
+        batch_id: str,
+        *,
+        activate: bool = True,
+    ) -> dict[str, Any]:
+        """Prepare a complete, compact validation audit without creating training data."""
+
+        batch_dir, manifest, work = self._batch_paths(batch_id, "validation")
+        output_root = batch_dir / "extraction" / "validation"
+        pages_dir = output_root / "pages"
+        summary_path = output_root / "summary.json"
+        if not summary_path.exists():
+            raise ExtractionWorkflowError(
+                "A complete validation extraction is required before its line audit."
+            )
+        extraction_summary = _read_json(summary_path)
+        if (
+            extraction_summary.get("partition") != "validation"
+            or extraction_summary.get("extractorVersion") != EXTRACTOR_VERSION
+            or extraction_summary.get("failedPageCount") != 0
+            or extraction_summary.get("sealedTestAccessed") is not False
+        ):
+            raise ExtractionWorkflowError(
+                "Validation line audit requires a complete current-extractor run with sealed test closed."
+            )
+        validation_model = extraction_summary.get("validationModel") or {}
+        if not validation_model.get("modelId") or not validation_model.get(
+            "artifactSha256"
+        ):
+            raise ExtractionWorkflowError(
+                "Validation line audit requires an exact pinned challenger lineage."
+            )
+        audit_dir = output_root / "review" / "validation-line-audit"
+        audit_dir.mkdir(parents=True, exist_ok=True)
+        os.chmod(audit_dir, 0o700)
+        input_names = {
+            str(item.get("inputId") or ""): Path(
+                str(item.get("relativePath") or "")
+            ).name
+            for item in manifest.get("inputs") or []
+        }
+        pages: list[dict[str, Any]] = []
+        no_line_pages: list[dict[str, Any]] = []
+        expected_run_digest = str(extraction_summary.get("runDigest") or "")
+        work_ids = [str(item.get("inputId") or "") for item in work]
+        issue_kind_labels = {
+            "unresolved_tab_event_candidate": "unresolved movement columns",
+            "uncertain_tab_symbol": "uncertain tablature symbols",
+            "tab_modifier_symbol": "unresolved pedal/lever marks",
+            "low_confidence_tab_symbol": "low-confidence tablature symbols",
+            "repeated_tab_symbol_ambiguity": "repeat-mark ambiguities",
+            "score_omr_failure": "score-reader failures",
+            "tab_cell_vision_failure": "tablature-reader failures",
+        }
+        for input_id in work_ids:
+            page_path = pages_dir / f"{input_id}.json"
+            if not page_path.exists():
+                raise ExtractionWorkflowError(
+                    f"Validation page record is missing for {input_id}."
+                )
+            record = _read_json(page_path)
+            if (
+                record.get("datasetPartition") != "validation"
+                or record.get("extractorVersion") != EXTRACTOR_VERSION
+                or str(record.get("runDigest") or "") != expected_run_digest
+            ):
+                raise ExtractionWorkflowError(
+                    f"Validation page lineage is stale for {input_id}."
+                )
+            machine_digest = _sha256_json(record)
+            tab_by_id = {
+                str(system.get("tabSystemId") or ""): system
+                for system in record.get("tabSystems") or []
+            }
+            blocking_items = [
+                item
+                for item in record.get("unresolved") or []
+                if item.get("blocking") is not False
+            ]
+            systems: list[dict[str, Any]] = []
+            for score_system in record.get("scoreSystems") or []:
+                score_system_id = str(score_system.get("scoreSystemId") or "")
+                tab_system_id = str(score_system.get("pairedTabSystemId") or "")
+                tab_system = tab_by_id.get(tab_system_id)
+                if not score_system_id or tab_system is None:
+                    raise ExtractionWorkflowError(
+                        f"Validation score/tab system pairing is incomplete for {input_id}."
+                    )
+                line_issues = [
+                    item
+                    for item in blocking_items
+                    if (
+                        str(item.get("scoreSystemId") or "") == score_system_id
+                        or str(item.get("tabSystemId") or "") == tab_system_id
+                        or (
+                            not item.get("scoreSystemId")
+                            and not item.get("tabSystemId")
+                        )
+                    )
+                ]
+                kind_counts = Counter(
+                    str(item.get("kind") or "unclassified_validation_issue")
+                    for item in line_issues
+                )
+                issue_phrases = [
+                    f"{count} {issue_kind_labels.get(kind, kind.replace('_', ' '))}"
+                    for kind, count in sorted(kind_counts.items())
+                ]
+                issue_core = {
+                    "blockingCount": len(line_issues),
+                    "kindCounts": dict(sorted(kind_counts.items())),
+                    "plainLanguage": "; ".join(issue_phrases),
+                }
+                key_signature = score_system.get("keySignature") or {}
+                captured_key_fifths = (
+                    score_system.get("keySignatureFifths")
+                    if score_system.get("keySignatureFifths") is not None
+                    else (
+                        key_signature.get("fifths")
+                        if isinstance(key_signature, Mapping)
+                        and key_signature.get("fifths") is not None
+                        else score_system.get("keyFifths")
+                    )
+                )
+                comparison = _combined_score_tab_columns(score_system, tab_system)
+                line_gate_passed = bool(
+                    comparison.get("automaticPitchGatePassed")
+                    and comparison.get("mechanicallyValid")
+                    and not line_issues
+                )
+                crop = _prepare_score_tab_source_crop(
+                    output_root=output_root,
+                    audit_dir=audit_dir,
+                    input_id=input_id,
+                    record=record,
+                    score_system=score_system,
+                    tab_system=tab_system,
+                )
+                systems.append(
+                    {
+                        "inputId": input_id,
+                        "sourceLabel": input_names.get(input_id) or input_id,
+                        "systemIndex": int(
+                            score_system.get("systemIndex") or len(systems) + 1
+                        ),
+                        "scoreSystemId": score_system_id,
+                        "tabSystemId": tab_system_id,
+                        "machineRecordDigest": machine_digest,
+                        "keySignatureFifths": int(captured_key_fifths or 0),
+                        "keySignatureKnown": captured_key_fifths is not None,
+                        "sourcePairUrl": Path(
+                            os.path.relpath(
+                                output_root / str(crop["relativePath"]), audit_dir
+                            )
+                        ).as_posix(),
+                        "sourcePairSha256": crop["sha256"],
+                        "comparison": comparison,
+                        "validationIssueSummary": {
+                            **issue_core,
+                            "digest": _sha256_json(issue_core),
+                        },
+                        "lineGatePassed": line_gate_passed,
+                        "trainingEligible": False,
+                    }
+                )
+            if systems:
+                pages.append(
+                    {
+                        "inputId": input_id,
+                        "sourceLabel": input_names.get(input_id) or input_id,
+                        "machineRecordDigest": machine_digest,
+                        "systems": systems,
+                    }
+                )
+            else:
+                no_line_pages.append(
+                    {
+                        "inputId": input_id,
+                        "sourceLabel": input_names.get(input_id) or input_id,
+                        "machineRecordDigest": machine_digest,
+                        "reason": "no_paired_score_tab_line_detected",
+                        "automaticValidationFailure": True,
+                    }
+                )
+        line_count = sum(len(page["systems"]) for page in pages)
+        if line_count < 1:
+            raise ExtractionWorkflowError("Validation line audit found no paired musical lines.")
+        packet_core = {
+            "schemaVersion": VALIDATION_LINE_AUDIT_SCHEMA_VERSION,
+            "reviewType": "validation_line_audit",
+            "gateVersion": COMBINED_SCORE_TAB_GATE_VERSION,
+            "rendererVersion": COMBINED_SCORE_TAB_RENDERER_VERSION,
+            "batchId": batch_id,
+            "partition": "validation",
+            "extractorVersion": EXTRACTOR_VERSION,
+            "validationRunDigest": expected_run_digest,
+            "validationModel": copy.deepcopy(validation_model),
+            "pages": pages,
+            "validationPageCount": len(work_ids),
+            "reviewablePageCount": len(pages),
+            "noLinePages": no_line_pages,
+            "noLinePageCount": len(no_line_pages),
+            "lineCount": line_count,
+            "jointTabReviewRequired": True,
+            "trainingEligible": False,
+            "trainingEligibleBeforeReview": False,
+            "validationGroundTruthMayTrain": False,
+            "validationAccessed": True,
+            "sealedTestAccessed": False,
+        }
+        packet_digest = _sha256_json(packet_core)
+        packet = {**packet_core, "packetDigest": packet_digest}
+        packet_filename = f"packet-{packet_digest}.json"
+        console_filename = (
+            f"validation-line-audit-console-{packet_digest[:12]}.html"
+        )
+        packet_path = audit_dir / packet_filename
+        console_path = audit_dir / console_filename
+        _write_json(packet_path, packet)
+        _write_private_text(
+            console_path,
+            _combined_score_tab_console_html(
+                packet_digest=packet_digest,
+                packet_filename=packet_filename,
+                review_type="validation_line_audit",
+            ),
+        )
+        if activate:
+            _write_json(audit_dir / "packet.json", packet)
+            _write_private_text(
+                audit_dir / "validation-line-audit-console.html",
+                _combined_score_tab_console_html(
+                    packet_digest=packet_digest,
+                    review_type="validation_line_audit",
+                ),
+            )
+        result = {
+            "schemaVersion": VALIDATION_LINE_AUDIT_SCHEMA_VERSION,
+            "batchId": batch_id,
+            "partition": "validation",
+            "validationPageCount": len(work_ids),
+            "reviewablePageCount": len(pages),
+            "noLinePageCount": len(no_line_pages),
+            "noLinePageDigest": _sha256_json(no_line_pages),
+            "lineCount": line_count,
+            "machinePassingLineCount": sum(
+                bool(system["lineGatePassed"])
+                for page in pages
+                for system in page["systems"]
+            ),
+            "humanReviewLineCount": sum(
+                not bool(system["lineGatePassed"])
+                for page in pages
+                for system in page["systems"]
+            ),
+            "blockingIssueCount": sum(
+                int(system["validationIssueSummary"]["blockingCount"])
+                for page in pages
+                for system in page["systems"]
+            ),
+            "validationModel": copy.deepcopy(validation_model),
+            "validationRunDigest": expected_run_digest,
+            "packetDigest": packet_digest,
+            "packetPath": str(packet_path.relative_to(batch_dir)),
+            "consolePath": str(console_path.relative_to(batch_dir)),
+            "relativeUrl": (
+                f"/{batch_id}/extraction/validation/review/validation-line-audit/"
+                f"{console_filename}?v={packet_digest[:8]}"
+            ),
+            "activatedAsCurrentPacket": activate,
+            "eligibleForTraining": False,
+            "validationGroundTruthMayTrain": False,
+            "validationAccessed": True,
+            "sealedTestAccessed": False,
+        }
+        _write_json(audit_dir / f"packet-summary-{packet_digest}.json", result)
+        if activate:
+            _write_json(audit_dir / "packet-summary.json", result)
+        return result
 
     def prepare_challenger_comparison_review(
         self,

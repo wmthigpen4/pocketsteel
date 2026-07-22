@@ -428,6 +428,27 @@ Open validation by naming that exact canonical challenger for every cohort:
 
 The extractor rejects a partial challenger, a changed model artifact, or a model that does not cover the cohort. The extraction run pins the model ID, artifact SHA-256, discovery seed, code revision, and printed-score audit scope. Later validation-review operations inherit that pin from the private extraction summary. This gate replaces the older per-batch training checkpoint, which could not identify the exact combined-dataset challenger being evaluated.
 
+Before scoring validation, prepare one complete line-level audit for each
+authoritative cohort:
+
+```bash
+.venv/bin/python scripts/amazing_tablature.py prepare-validation-line-audit <batch-id>
+```
+
+The audit shows the original printed score and tablature together, the
+independent score reading, sounding pitches for every captured tablature
+movement, and the complete ten-string tablature. It requests one decision per
+musical line rather than a list of individual recognition cells. Long lists of
+candidate differences remain within a bounded scroll area while the full-line
+comparison stays open. Pages on which no score/tab line was detected are
+recorded as automatic validation failures and are never silently omitted.
+
+Validation submissions are immutable, digest-pinned evaluation ground truth.
+They are explicitly ineligible for training, discovery refinement, preference
+ledgers, prompts, or no-rereview accounting. The packet and receipt both pin
+the validation extraction run, exact challenger artifact, page-record digests,
+extractor and renderer versions, and `sealedTestAccessed: false`.
+
 Canonical validation uses a threshold contract fixed before held-out evidence
 is opened. It measures arrangement after input has been normalized into exact
 score events; score-image and audio recognition are explicitly outside this
