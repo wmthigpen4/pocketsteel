@@ -18,6 +18,17 @@ FEATURE_NAMES = (
     "voice_leading",
     "sustained_voices",
     "repicked_voices",
+    "disconnected_bar_travel",
+    "controlled_move",
+    "incoming_string_distance",
+    "outgoing_bar_travel",
+    "outgoing_control_changes",
+    "outgoing_string_distance",
+    "outgoing_sustain_continuity",
+    "fret_direction_reversal",
+    "fret_direction_continuation",
+    "string_direction_reversal",
+    "string_direction_continuation",
     "cadence_arrival",
 )
 
@@ -41,16 +52,42 @@ class RankerModel:
 
 def feature_vector(candidate: Mapping[str, object]) -> dict[str, float]:
     texture = max(1, min(3, int(candidate.get("textureSize") or 1)))
+    bar_travel = float(candidate.get("barTravel") or 0)
+    control_changes = float(candidate.get("controlChanges") or 0)
+    pocket_changes = float(candidate.get("pocketChanges") or 0)
+    repicked_voices = float(candidate.get("repickedVoices") or 0)
     return {
         "texture_1": 1.0 if texture == 1 else 0.0,
         "texture_2": 1.0 if texture == 2 else 0.0,
         "texture_3": 1.0 if texture == 3 else 0.0,
-        "bar_travel": float(candidate.get("barTravel") or 0),
-        "control_changes": float(candidate.get("controlChanges") or 0),
-        "pocket_changes": float(candidate.get("pocketChanges") or 0),
+        "bar_travel": bar_travel,
+        "control_changes": control_changes,
+        "pocket_changes": pocket_changes,
         "voice_leading": float(candidate.get("voiceLeading") or 0),
         "sustained_voices": float(candidate.get("sustainedVoices") or 0),
-        "repicked_voices": float(candidate.get("repickedVoices") or 0),
+        "repicked_voices": repicked_voices,
+        # Distinguish a bar move that continues on an already sounding string
+        # from a simultaneous bar-and-string-path jump.  The latter is a
+        # separate practical cost even when both candidates sound the same.
+        "disconnected_bar_travel": bar_travel if repicked_voices <= 0 else 0.0,
+        # Expressive pedal/lever motion during a position change should not be
+        # collapsed into the same global preference as an arbitrary bar move.
+        "controlled_move": 1.0 if control_changes > 0 and pocket_changes > 0 else 0.0,
+        "incoming_string_distance": float(candidate.get("incomingStringDistance") or 0),
+        "outgoing_bar_travel": float(candidate.get("outgoingBarTravel") or 0),
+        "outgoing_control_changes": float(candidate.get("outgoingControlChanges") or 0),
+        "outgoing_string_distance": float(candidate.get("outgoingStringDistance") or 0),
+        "outgoing_sustain_continuity": float(
+            candidate.get("outgoingSustainContinuity") or 0
+        ),
+        "fret_direction_reversal": float(candidate.get("fretDirectionReversal") or 0),
+        "fret_direction_continuation": float(
+            candidate.get("fretDirectionContinuation") or 0
+        ),
+        "string_direction_reversal": float(candidate.get("stringDirectionReversal") or 0),
+        "string_direction_continuation": float(
+            candidate.get("stringDirectionContinuation") or 0
+        ),
         "cadence_arrival": 1.0 if candidate.get("phraseRole") in {"cadence", "chord_arrival", "resolution"} else 0.0,
     }
 
@@ -65,6 +102,7 @@ def train_pairwise_ranker(
     *,
     epochs: int = 20,
     learning_rate: float = 0.05,
+    average_weights: bool = False,
 ) -> RankerModel:
     """Fit reviewed chosen-vs-alternative comparisons with a perceptron.
 
@@ -91,20 +129,36 @@ def train_pairwise_ranker(
     weights_by_style: dict[str, dict[str, float]] = {}
     for style, _chosen, _alternatives, _evidence_weight in examples:
         weights_by_style.setdefault(style, {name: 0.0 for name in FEATURE_NAMES})
+    weight_totals_by_style = {
+        style: {name: 0.0 for name in FEATURE_NAMES} for style in weights_by_style
+    }
+    step_counts_by_style = {style: 0 for style in weights_by_style}
     for _epoch in range(max(1, int(epochs))):
         for style, chosen, alternatives, evidence_weight in examples:
             weights = weights_by_style[style]
             chosen_features = feature_vector(chosen)
             for alternative in alternatives:
-                if score_candidate(chosen, weights) < score_candidate(alternative, weights):
-                    continue
-                alternative_features = feature_vector(alternative)
-                for name in FEATURE_NAMES:
-                    # Lower scores are better, so move the chosen vector down
-                    # and the rejected vector up.
-                    weights[name] += learning_rate * evidence_weight * (
-                        alternative_features[name] - chosen_features[name]
-                    )
+                if score_candidate(chosen, weights) >= score_candidate(alternative, weights):
+                    alternative_features = feature_vector(alternative)
+                    for name in FEATURE_NAMES:
+                        # Lower scores are better, so move the chosen vector down
+                        # and the rejected vector up.
+                        weights[name] += learning_rate * evidence_weight * (
+                            alternative_features[name] - chosen_features[name]
+                        )
+                if average_weights:
+                    step_counts_by_style[style] += 1
+                    totals = weight_totals_by_style[style]
+                    for name in FEATURE_NAMES:
+                        totals[name] += weights[name]
+    if average_weights:
+        for style, weights in weights_by_style.items():
+            step_count = step_counts_by_style[style]
+            if step_count:
+                totals = weight_totals_by_style[style]
+                weights_by_style[style] = {
+                    name: totals[name] / step_count for name in FEATURE_NAMES
+                }
     return RankerModel(
         model_version=RANKER_CONTRACT_VERSION,
         feature_names=FEATURE_NAMES,

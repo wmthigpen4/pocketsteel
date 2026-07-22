@@ -636,4 +636,14 @@ def test_private_ranker_learns_abstract_choice_without_copedent_labels() -> None
 
     assert model.example_count == 1
     assert score_candidate(chosen, weights) < score_candidate(rejected, weights)
-    assert all("string" not in feature.lower() and "control_label" not in feature.lower() for feature in model.feature_names)
+    # Relative string-path features describe motion only; they do not encode a
+    # literal source string number or a source pedal/lever label.
+    forbidden_literal_features = {
+        "string",
+        "string_number",
+        "source_string",
+        "control_label",
+        "pedal_label",
+        "lever_label",
+    }
+    assert forbidden_literal_features.isdisjoint(model.feature_names)
