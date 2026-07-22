@@ -411,6 +411,8 @@ def test_validation_line_scorer_verifies_receipts_without_training(tmp_path: Pat
     assert report["batchReceipts"][batch_id]["status"] == "verified_and_scored_in_memory"
     assert report["recognition"]["metrics"]["scoreReaderAccuracy"] == 1.0
     assert report["arrangerRanking"]["metrics"]["topChoiceAccuracy"] == 1.0
+    assert report["structuredInputParity"]["parityPassed"] is True
+    assert report["structuredInputParity"]["totalAdapterEvents"] == 210
     assert report["gate"]["passed"] is False  # evidence-size floors still apply
     assert report["noTrainingContract"]["validationDecisionsAddedToTraining"] == 0
     assert report["sealedTestAccessed"] is False

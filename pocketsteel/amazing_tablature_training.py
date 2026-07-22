@@ -21,6 +21,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
+from pocketsteel.amazing_tablature_input_parity import structured_input_parity_report
 from pocketsteel.e9_copedents import E9CopedentProfile, e9_copedent_profile_digest, get_e9_copedent_profile
 from pocketsteel.melody_decision_rules import normalize_style_family
 from pocketsteel.melody_ranker import feature_vector, score_candidate, train_pairwise_ranker
@@ -109,6 +110,7 @@ USE_KEYS = {
 INPUT_SUFFIXES = {".jpg", ".jpeg", ".png", ".tif", ".tiff", ".pdf", ".json", ".jsonl"}
 REQUIRED_BENCHMARK_GROUPS = ("amazing_grace",)
 RULES_CODE_FILES = (
+    "pocketsteel/amazing_tablature_input_parity.py",
     "pocketsteel/amazing_tablature_model.py",
     "pocketsteel/amazing_tablature_decisions.py",
     "pocketsteel/amazing_tablature_extraction.py",
@@ -5206,6 +5208,9 @@ class AmazingTablatureTrainingStore:
                 for metrics in evidence_mode_metrics.values()
             )
         )
+        input_parity = structured_input_parity_report()
+        if not input_parity.get("parityPassed"):
+            ranking_gate = False
         gate_passed = recognition_gate and ranking_gate
         report_core = {
             "schemaVersion": "amazing-tablature-validation-line-score-v1",
@@ -5243,6 +5248,14 @@ class AmazingTablatureTrainingStore:
                     "mechanicalAccuracy": 1.0,
                 },
                 "passed": ranking_gate,
+            },
+            "structuredInputParity": {
+                **input_parity,
+                "rankingMetricInheritance": (
+                    "All five exact input adapters normalize to identical arranger "
+                    "events; after validation is complete, each modality inherits "
+                    "the same exact challenger ranking metrics above."
+                ),
             },
             "gate": {
                 "passed": gate_passed,
