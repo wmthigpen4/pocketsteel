@@ -1281,6 +1281,7 @@
     result: $("#studio-result"),
     resultTitle: $("#studio-result-title"),
     resultSource: $("#studio-result-source"),
+    engineStatus: $("#studio-engine-status"),
     resultScoreStage: $("#studio-result-score-stage"),
     resultScore: $("#studio-result-score"),
     scoreLyricCue: $("#studio-score-lyric-cue"),
@@ -2788,6 +2789,12 @@
     } else {
       elements.resultSource.hidden = !arrangedFor;
     }
+    const modelMetadata = exercise?.decisionRules?.modelMetadata || {};
+    const rankerEnabled = modelMetadata.rankerEnabled === true;
+    elements.engineStatus.textContent = rankerEnabled
+      ? "Arrangement method: trained Amazing Tablature ranker with verified E9 rules."
+      : "Arrangement method: verified E9 rules. Imported score images are reviewed before arranging."
+    elements.engineStatus.hidden = false;
     elements.sourceNeeded.hidden = !needsSource;
     elements.sourceNeeded.querySelector("p").textContent = needsSource
       ? "The recording identity is saved, but Melody Studio does not listen to the link yet. Paste notes, scale degrees, or simple one-string tab—or build the passage with the note palette—to render playable E9 positions."

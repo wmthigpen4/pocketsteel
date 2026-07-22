@@ -301,6 +301,8 @@
     .result-title-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px 18px; }
     .result-title-row .secondary-action { border-color: rgba(240, 191, 105, 0.58); background: rgba(240, 191, 105, 0.11); }
     #studio-result-source { margin: 0; color: var(--muted); }
+    #studio-engine-status { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+    #studio-engine-status::before { content: "✓"; margin-right: 7px; color: var(--gold); font-weight: 900; }
     .print-only { display: none; }
     .arrangement-choices { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 300px); gap: 12px 20px; align-items: end; margin: 12px 0 4px; }
     .arrangement-choices > strong { color: var(--muted); font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; }
@@ -891,6 +893,7 @@
             <button class="secondary-action" id="studio-edit-top" type="button">Edit melody</button>
           </div>
           <p id="studio-result-source" hidden></p>
+          <p id="studio-engine-status" aria-live="polite" hidden></p>
         </div>
 
         <nav class="section-navigation" id="studio-section-navigation" aria-label="Song phrases" hidden>
@@ -1022,6 +1025,6 @@
   <script src="vendor/vexflow-5.0.0.js?v=5.0.0"></script>
   <script src="melody-score.js?v=copedent-transfer-20260713-1"></script>
   <script src="song-projects.js?v=chord-karaoke-learner-20260715-1"></script>
-  <script src="melody-workbench.js?v=playing-context-20260715-1"></script>
+  <script src="melody-workbench.js?v=arrangement-engine-20260722-1"></script>
 </body>
 </html>

@@ -458,7 +458,11 @@ def test_melody_workbench_has_direct_phrase_entry_and_compact_note_navigator() -
     assert '>Style for Recommended' in html
     assert 'answer-client.js?v=chord-karaoke-20260715-1' in html
     assert 'song-projects.js?v=chord-karaoke-learner-20260715-1' in html
-    assert 'melody-workbench.js?v=playing-context-20260715-1' in html
+    assert 'melody-workbench.js?v=arrangement-engine-20260722-1' in html
+    assert 'id="studio-engine-status" aria-live="polite" hidden' in html
+    assert "Arrangement method: verified E9 rules. Imported score images are reviewed before arranging." in script
+    assert "Arrangement method: trained Amazing Tablature ranker with verified E9 rules." in script
+    assert "modelMetadata.rankerEnabled === true" in script
     assert html.index('id="studio-fretboard"') < html.index('id="studio-arrangement-choices"') < html.index('id="studio-tab"')
     assert 'id="studio-note-editor" hidden' in html
     assert 'id="studio-octave-down"' in html

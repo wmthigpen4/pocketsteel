@@ -143,7 +143,7 @@ def test_same_origin_server_serves_ui_and_answer_client() -> None:
     assert b"What do you want to work on?" in studio
     assert b'<script src="melody-score.js?v=copedent-transfer-20260713-1"></script>' in studio
     assert b'<script src="song-projects.js?v=chord-karaoke-learner-20260715-1"></script>' in studio
-    assert b'<script src="melody-workbench.js?v=playing-context-20260715-1"></script>' in studio
+    assert b'<script src="melody-workbench.js?v=arrangement-engine-20260722-1"></script>' in studio
 
     status, headers, studio_script = call_app(smoke_app(), "/ui/melody-workbench.js")
     assert status == "200 OK"
