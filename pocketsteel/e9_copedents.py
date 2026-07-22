@@ -7,6 +7,8 @@ and pedal/lever impact previews.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass
 from typing import Literal
 
@@ -357,6 +359,35 @@ class E9CopedentProfile:
         if include_options:
             payload["available_options"] = [profile.selector_option() for profile in available_e9_copedents()]
         return payload
+
+
+def e9_copedent_profile_digest(profile: E9CopedentProfile) -> str:
+    """Return the canonical mechanical identity for an E9 copedent revision."""
+
+    payload = {
+        "id": profile.id,
+        "revision": profile.revision,
+        "openNotes": profile.open_notes_by_string(),
+        "openPitchValues": profile.open_pitch_values_by_string(),
+        "controls": [
+            {
+                "id": control.id,
+                "type": control.control_type,
+                "changes": [
+                    {
+                        "string": change.string,
+                        "from": change.from_note,
+                        "to": change.to_note,
+                        "semitones": change.semitones,
+                    }
+                    for change in control.changes
+                ],
+            }
+            for control in profile.ordered_controls()
+        ],
+    }
+    encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 SOURCE_CONTEXT: list[dict[str, str]] = []

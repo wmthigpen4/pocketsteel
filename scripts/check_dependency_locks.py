@@ -6,7 +6,13 @@ import sys
 
 
 LOCK_DIR = Path("requirements")
-EXPECTED_LOCKS = ("runtime.lock", "rag.lock", "test.lock", "deployment.lock")
+EXPECTED_LOCKS = (
+    "runtime.lock",
+    "rag.lock",
+    "training.lock",
+    "test.lock",
+    "deployment.lock",
+)
 PIN_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+==[^\s\\;]+")
 
 
