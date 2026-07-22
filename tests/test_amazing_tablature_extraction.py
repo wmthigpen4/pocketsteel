@@ -5868,6 +5868,31 @@ def test_unreviewed_refresh_preserves_feedback_pages_and_scopes_next_packet(
         json.loads((pages_dir / "input-0001.json").read_text(encoding="utf-8"))
     ) == immutable_digest
 
+    with pytest.raises(ExtractionWorkflowError, match="confirmation flag"):
+        extractor.quarantine_discovery_remainder(
+            "batch-refresh",
+            approval_reference="explicit synthetic approval",
+        )
+    quarantine = extractor.quarantine_discovery_remainder(
+        "batch-refresh",
+        approval_reference="explicit synthetic approval",
+        confirm_bulk_quarantine=True,
+    )
+    assert quarantine["pageCount"] == 2
+    assert quarantine["remainingPageCount"] == 0
+    assert quarantine["humanApprovalComplete"] is True
+    assert quarantine["factualApprovalGranted"] is False
+    assert quarantine["sourceAssetsModified"] is False
+    assert quarantine["validationAccessed"] is False
+    assert quarantine["sealedTestAccessed"] is False
+    reviewed_index = [
+        json.loads(line)
+        for line in (review_dir / "approved-record-index.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
+    ]
+    assert {item["status"] for item in reviewed_index} == {"excluded"}
+
 
 def test_targeted_feedback_is_validated_logged_and_does_not_approve_page(tmp_path: Path) -> None:
     private = tmp_path / "private"

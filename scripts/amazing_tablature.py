@@ -181,6 +181,21 @@ def _parser() -> argparse.ArgumentParser:
     )
     audit_discovery.add_argument("batch_id")
 
+    quarantine_discovery = subparsers.add_parser(
+        "quarantine-discovery-remainder",
+        help=(
+            "Apply an explicitly approved bulk exclusion to the exact audited "
+            "discovery remainder without approving its facts or opening held-out data."
+        ),
+    )
+    quarantine_discovery.add_argument("batch_id")
+    quarantine_discovery.add_argument("--approval-reference", required=True)
+    quarantine_discovery.add_argument(
+        "--confirm-bulk-quarantine",
+        action="store_true",
+        help="Confirm that every currently undispositioned discovery page is excluded from this training snapshot.",
+    )
+
     remediate_discovery_score = subparsers.add_parser(
         "remediate-discovery-score-correspondence",
         help=(
@@ -880,6 +895,12 @@ def main() -> int:
         elif args.command == "audit-discovery-completion":
             result = AmazingTablatureExtractor(args.root).audit_discovery_completion(
                 args.batch_id
+            )
+        elif args.command == "quarantine-discovery-remainder":
+            result = AmazingTablatureExtractor(args.root).quarantine_discovery_remainder(
+                args.batch_id,
+                approval_reference=args.approval_reference,
+                confirm_bulk_quarantine=args.confirm_bulk_quarantine,
             )
         elif args.command == "remediate-discovery-score-correspondence":
             extractor = AmazingTablatureExtractor(

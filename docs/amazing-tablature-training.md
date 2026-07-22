@@ -151,6 +151,16 @@ Discovery completion is automated before another review packet is considered:
 
 The refresh command is discovery-only and preserves finalized pages, every page with unresolved current feedback, and every reviewer-confirmed correction. The completion audit writes only a private remediation queue. It does not create a review packet or an approval. A page is review-ready only when the current extractor, refresh-regression, mechanical, unresolved-evidence, and score/tab correspondence gates all pass. Historical feedback is not mistaken for pending work after its digest-pinned correction has been confirmed; newer feedback, an unconfirmed correction, or a stale confirmation remains protected. This no-rereview accounting prevents confirmed tablature corrections from being sent back to the reviewer merely because the score reader still needs internal repair. Validation and sealed-test partitions are never opened by either command.
 
+When the owner explicitly authorizes automatic quarantine instead of more discovery review, apply that disposition to the exact digest-pinned remainder:
+
+```bash
+.venv/bin/python scripts/amazing_tablature.py quarantine-discovery-remainder <batch-id> \
+  --approval-reference '<explicit owner authorization>' \
+  --confirm-bulk-quarantine
+```
+
+Bulk quarantine is exclusion from the current transformation-training snapshot, not factual approval. It retains raw sources, extraction hypotheses, corrections, comments, and teaching evidence in the private batch; approves no score, tablature, pitch, rhythm, or alignment fields; and cannot open validation or sealed-test data. The command reruns the discovery audit, requires exact queue coverage and current page digests, records an append-only exclusion through the normal review ledger, and refuses to run without both an explicit authorization reference and the confirmation flag.
+
 Run bounded printed-score remediation against that discovery queue without creating more review work:
 
 ```bash

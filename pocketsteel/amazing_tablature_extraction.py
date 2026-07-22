@@ -16434,6 +16434,126 @@ class AmazingTablatureExtractor:
         _write_json(audit_path, summary)
         return summary
 
+    def quarantine_discovery_remainder(
+        self,
+        batch_id: str,
+        *,
+        approval_reference: str,
+        confirm_bulk_quarantine: bool = False,
+    ) -> dict[str, Any]:
+        """Exclude the audited unresolved remainder from transformation training.
+
+        This is a disposition, not factual approval.  It preserves every raw
+        asset, extraction, comment, correction, and audit artifact while
+        keeping uncertain pages out of model evidence.  The operation is
+        intentionally unavailable without an explicit human authorization and
+        an affirmative bulk-quarantine flag.
+        """
+
+        reference = str(approval_reference or "").strip()
+        if not confirm_bulk_quarantine or len(reference) < 12:
+            raise ExtractionWorkflowError(
+                "Bulk discovery quarantine requires an explicit approval reference and confirmation flag."
+            )
+        batch_dir, _manifest, _work = self._batch_paths(batch_id, "discovery")
+        output_root = batch_dir / "extraction" / "discovery"
+        review_dir = output_root / "review"
+        audit = self.audit_discovery_completion(batch_id)
+        if audit.get("validationAccessed") or audit.get("sealedTestAccessed"):
+            raise ExtractionWorkflowError(
+                "Discovery quarantine cannot run after held-out access."
+            )
+        queue_path = output_root / str(audit.get("queuePath") or "")
+        queue = _read_jsonl(queue_path)
+        if len(queue) != int(audit.get("remainingPageCount") or 0):
+            raise ExtractionWorkflowError(
+                "The discovery quarantine queue does not cover the exact remaining cohort."
+            )
+        allowed_outcomes = {
+            "protected_feedback_pending",
+            "refresh_required",
+            "remediation_required",
+            "review_ready",
+        }
+        if any(str(item.get("outcome") or "") not in allowed_outcomes for item in queue):
+            raise ExtractionWorkflowError(
+                "The discovery quarantine queue contains an unsupported disposition."
+            )
+        decisions: list[dict[str, Any]] = []
+        outcome_counts: Counter[str] = Counter()
+        reason_counts: Counter[str] = Counter()
+        for item in queue:
+            input_id = str(item.get("inputId") or "")
+            machine_digest = str(item.get("machineRecordDigest") or "")
+            page_path = output_root / "pages" / f"{input_id}.json"
+            if not input_id or not machine_digest or not page_path.exists():
+                raise ExtractionWorkflowError(
+                    "Every quarantined discovery page must have a current digest-pinned extraction."
+                )
+            if _sha256_json(_read_json(page_path)) != machine_digest:
+                raise ExtractionWorkflowError(
+                    f"The discovery quarantine audit is stale for {input_id}."
+                )
+            outcome = str(item.get("outcome") or "")
+            reasons = sorted({str(value) for value in item.get("reasons") or []})
+            outcome_counts[outcome] += 1
+            reason_counts.update(reasons)
+            decisions.append(
+                {
+                    "inputId": input_id,
+                    "expectedMachineRecordDigest": machine_digest,
+                    "action": "exclude",
+                    "reviewerReference": reference,
+                    "approvedSections": [],
+                    "notes": (
+                        "Excluded from the current structured-input transformation "
+                        "training snapshot under the approved automatic-quarantine "
+                        "policy; source and teaching evidence are retained privately."
+                    ),
+                }
+            )
+        quarantine_core = {
+            "schemaVersion": "amazing-tablature-discovery-quarantine-v1",
+            "batchId": batch_id,
+            "partition": "discovery",
+            "auditId": audit["auditId"],
+            "auditQueueDigest": audit["queueDigest"],
+            "approvalReference": reference,
+            "pageCount": len(decisions),
+            "outcomeCounts": dict(sorted(outcome_counts.items())),
+            "reasonCounts": dict(sorted(reason_counts.items())),
+            "factualApprovalGranted": False,
+            "sourceAssetsModified": False,
+            "validationAccessed": False,
+            "sealedTestAccessed": False,
+        }
+        quarantine_id = _stable_id(
+            "discovery-quarantine", batch_id, _sha256_json(quarantine_core)
+        )
+        quarantine_dir = review_dir / "automation" / quarantine_id
+        decisions_path = quarantine_dir / "decisions.jsonl"
+        summary_path = quarantine_dir / "summary.json"
+        if summary_path.exists():
+            return _read_json(summary_path)
+        quarantine_dir.mkdir(parents=True, exist_ok=False)
+        os.chmod(quarantine_dir, 0o700)
+        _write_jsonl(decisions_path, decisions)
+        review_summary = self.apply_review(
+            batch_id,
+            decisions_path,
+            partition="discovery",
+        )
+        summary = {
+            **quarantine_core,
+            "quarantineId": quarantine_id,
+            "reviewSummaryDigest": _sha256_json(review_summary),
+            "remainingPageCount": int(review_summary["remainingPageCount"]),
+            "humanApprovalComplete": bool(review_summary["humanApprovalComplete"]),
+            "completedAt": _utc_now(),
+        }
+        _write_json(summary_path, summary)
+        return summary
+
     def remediate_discovery_score_correspondence(
         self,
         batch_id: str,
@@ -23808,7 +23928,11 @@ class AmazingTablatureExtractor:
         existing_index = _read_jsonl(existing_index_path) if existing_index_path.exists() else []
         index_by_input = {str(item["inputId"]): item for item in existing_index}
         logged_ids = {str(item["reviewDecisionId"]) for item in existing_decisions}
-        logged_feedback_ids = {str(item["feedbackSubmissionId"]) for item in existing_feedback}
+        logged_feedback_ids = {
+            str(item["feedbackSubmissionId"])
+            for item in existing_feedback
+            if item.get("feedbackSubmissionId")
+        }
         reviewed_machine_records = {
             (str(item["inputId"]), str(item["machineRecordDigest"])) for item in existing_decisions
         }
