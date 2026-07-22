@@ -65,6 +65,7 @@ from pocketsteel.amazing_tablature_extraction import (
     _score_projection_fusion,
     _score_component_fusion,
     _score_projection_component_hybrid,
+    _constrain_source_head_groups_to_published_count,
     _source_first_system_key_signature,
     _source_score_semantic_repair,
     _source_score_projection_shadow_metrics,
@@ -3891,6 +3892,187 @@ def test_source_score_semantic_repair_requires_source_only_corroboration(
     assert result["reviewerCountProvided"] is False
     assert result["reviewerPitchesProvided"] is False
     assert result["tablatureProvided"] is False
+
+
+def test_source_score_semantic_repair_constrains_incomplete_chord_relations(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "pocketsteel.amazing_tablature_extraction._audiveris_notehead_columns",
+        lambda _path: {
+            "columnCount": 2,
+            "relationColumnCount": 2,
+            "geometryColumnCount": 2,
+            "columns": [{"x": 100.0}, {"x": 200.0}],
+        },
+    )
+    monkeypatch.setattr(
+        "pocketsteel.amazing_tablature_extraction._score_projection_component_hybrid",
+        lambda _image, _noteheads: {
+            "fusedAttackCount": 2,
+            "fusionApplied": False,
+            "projection": {"imageProjectionCount": 2},
+            "component": {"imageComponentCount": 1},
+        },
+    )
+
+    def head_event(
+        event_id: str,
+        pitch: int,
+        center_x: float,
+        default_x: float,
+    ) -> dict:
+        step = {60: "C", 62: "D", 64: "E"}[pitch]
+        return {
+            "scoreEventId": event_id,
+            "measure": 1,
+            "beat": default_x,
+            "rhythmicPosition": default_x - 1.0,
+            "defaultX": default_x,
+            "chordMember": False,
+            "pitchValue": pitch,
+            "pitchStep": step,
+            "pitchAlter": 0,
+            "octave": 4,
+            "pitch": f"{step}4",
+            "writtenAccidental": None,
+            "rest": False,
+            "tie": [],
+            "tieContinuation": False,
+            "sourceHeadGraphBounds": {
+                "x": center_x - 5.0,
+                "y": 40.0,
+                "width": 10.0,
+                "height": 8.0,
+            },
+        }
+
+    monkeypatch.setattr(
+        "pocketsteel.amazing_tablature_extraction._parse_audiveris_head_graph",
+        lambda _path, _system_id: {
+            "scoreEvents": [
+                head_event("head-1", 60, 100.0, 100.0),
+                head_event("head-2", 64, 101.0, 104.0),
+                head_event("head-3", 62, 200.0, 200.0),
+            ],
+            "keySignature": {
+                "fifths": 0,
+                "confidence": 0.95,
+                "evidenceClass": "direct_visual_observation",
+            },
+        },
+    )
+
+    result = _source_score_semantic_repair(
+        image_path=tmp_path / "score.png",
+        omr_path=tmp_path / "score.omr",
+        system_id="score-system-1",
+    )
+
+    assert result["repairVersion"] == "source-score-semantic-repair-v2"
+    assert result["semanticAttackCount"] == 2
+    assert result["scoreGroupCountBeforeCountConstraint"] == 3
+    assert result["scoreGroupCountAfterCountConstraint"] == 2
+    assert result["countConstrainedGroupingApplied"] is True
+    assert result["pitchCandidateComplete"] is True
+    assert [
+        [event["pitchValue"] for event in group]
+        for group in _score_attack_groups(result["scoreEvents"])
+    ] == [[60, 64], [62]]
+
+
+def test_source_head_grouping_uses_only_published_count_and_head_geometry() -> None:
+    def event(event_id: str, pitch: int, center_x: float, default_x: float) -> dict:
+        return {
+            "scoreEventId": event_id,
+            "measure": 1,
+            "beat": default_x,
+            "rhythmicPosition": default_x - 1.0,
+            "defaultX": default_x,
+            "chordMember": False,
+            "pitchValue": pitch,
+            "rest": False,
+            "tie": [],
+            "tieContinuation": False,
+            "sourceHeadGraphBounds": {
+                "x": center_x - 5.0,
+                "y": 40.0,
+                "width": 10.0,
+                "height": 8.0,
+            },
+        }
+
+    source_events = [
+        event("head-1", 60, 100.0, 100.0),
+        event("head-2", 64, 101.0, 104.0),
+        event("head-3", 62, 200.0, 200.0),
+        event("head-4", 65, 300.0, 300.0),
+        event("head-5", 69, 301.0, 304.0),
+    ]
+
+    regrouped, diagnostics = _constrain_source_head_groups_to_published_count(
+        source_events,
+        published_attack_count=3,
+    )
+
+    assert diagnostics == {
+        "version": "source-head-count-constrained-grouping-v1",
+        "publishedAttackCount": 3,
+        "scoreAttackCountBefore": 5,
+        "scoreAttackCountAfter": 3,
+        "applied": True,
+        "sourceOnly": True,
+        "reviewerCountProvided": False,
+        "tablatureProvided": False,
+        "failure": None,
+    }
+    groups = _score_attack_groups(regrouped)
+    assert [[event["pitchValue"] for event in group] for group in groups] == [
+        [60, 64],
+        [62],
+        [65, 69],
+    ]
+    assert all(
+        event["sourceCountConstrainedGroup"] == group_index
+        for group_index, group in enumerate(groups, start=1)
+        for event in group
+    )
+    assert "sourceCountConstrainedGroup" not in source_events[0]
+
+
+def test_source_head_grouping_fails_closed_without_geometry() -> None:
+    source_events = [
+        {
+            "scoreEventId": "head-1",
+            "measure": 1,
+            "beat": 1.0,
+            "defaultX": 100.0,
+            "chordMember": False,
+            "pitchValue": 60,
+            "rest": False,
+            "tie": [],
+        },
+        {
+            "scoreEventId": "head-2",
+            "measure": 1,
+            "beat": 2.0,
+            "defaultX": 200.0,
+            "chordMember": False,
+            "pitchValue": 62,
+            "rest": False,
+            "tie": [],
+        },
+    ]
+
+    regrouped, diagnostics = _constrain_source_head_groups_to_published_count(
+        source_events,
+        published_attack_count=1,
+    )
+
+    assert regrouped == source_events
+    assert diagnostics["applied"] is False
+    assert diagnostics["failure"] == "source_head_bounds_missing"
 
 
 def test_discovery_human_exposure_inventory_is_conservative_and_excludes_automation(

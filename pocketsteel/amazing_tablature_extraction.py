@@ -161,10 +161,11 @@ SOURCE_SCORE_COMPONENT_CONTRACT = {
     "maximumCountDelta": 1,
 }
 SOURCE_SCORE_HYBRID_DETECTOR_VERSION = "score-projection-component-hybrid-v1"
-SOURCE_SCORE_SEMANTIC_REPAIR_VERSION = "source-score-semantic-repair-v1"
+SOURCE_SCORE_SEMANTIC_REPAIR_VERSION = "source-score-semantic-repair-v2"
 SOURCE_SCORE_SEMANTIC_REPAIR_SCHEMA_VERSION = (
-    "amazing-tablature-source-score-semantic-repair-v1"
+    "amazing-tablature-source-score-semantic-repair-v2"
 )
+SOURCE_HEAD_COUNT_CONSTRAINT_VERSION = "source-head-count-constrained-grouping-v1"
 DISCOVERY_MACHINE_TIMELINE_VERSION = "discovery-machine-score-tab-timeline-v1"
 DISCOVERY_MACHINE_TIMELINE_SCHEMA_VERSION = (
     "amazing-tablature-discovery-machine-score-tab-timeline-v1"
@@ -9443,6 +9444,116 @@ def _score_projection_component_hybrid(
     }
 
 
+def _constrain_source_head_groups_to_published_count(
+    score_events: Sequence[Mapping[str, Any]],
+    *,
+    published_attack_count: int,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Regroup source noteheads only when an independent count is publishable.
+
+    Audiveris can recognize the individual noteheads while its ``head-chord``
+    relations split a printed grip into several attacks.  The frozen projection
+    and compact-component detectors provide an independent, source-image-only
+    attack count.  When that count is publishable, use the largest horizontal
+    gaps between the recognized noteheads to form exactly that many ordered
+    attack columns.  Reviewer facts and tablature are not inputs.
+
+    This is deliberately fail-closed: missing bounds, an impossible target, or
+    a result that does not reproduce the target through the normal attack-group
+    contract leaves the original events untouched.
+    """
+
+    original = [copy.deepcopy(dict(event)) for event in score_events]
+    before_count = len(_score_attack_groups(original))
+    diagnostics: dict[str, Any] = {
+        "version": SOURCE_HEAD_COUNT_CONSTRAINT_VERSION,
+        "publishedAttackCount": int(published_attack_count),
+        "scoreAttackCountBefore": before_count,
+        "scoreAttackCountAfter": before_count,
+        "applied": False,
+        "sourceOnly": True,
+        "reviewerCountProvided": False,
+        "tablatureProvided": False,
+        "failure": None,
+    }
+    if published_attack_count <= 0 or before_count == published_attack_count:
+        diagnostics["failure"] = "constraint_not_needed"
+        return original, diagnostics
+
+    active_heads: list[tuple[float, dict[str, Any]]] = []
+    for event in original:
+        if bool(event.get("rest")):
+            continue
+        raw_ties = event.get("tie") or []
+        tie_types = {str(raw_ties)} if isinstance(raw_ties, str) else {
+            str(value) for value in raw_ties
+        }
+        if bool(event.get("tieContinuation")) or "stop" in tie_types:
+            continue
+        bounds = event.get("sourceHeadGraphBounds") or {}
+        if bounds.get("x") is None or bounds.get("width") is None:
+            diagnostics["failure"] = "source_head_bounds_missing"
+            return original, diagnostics
+        center_x = float(bounds["x"]) + float(bounds["width"]) / 2.0
+        active_heads.append((center_x, event))
+
+    if published_attack_count > len(active_heads):
+        diagnostics["failure"] = "published_count_exceeds_recognized_heads"
+        return original, diagnostics
+
+    active_heads.sort(key=lambda value: value[0])
+    gaps = sorted(
+        (
+            (active_heads[index + 1][0] - active_heads[index][0], index)
+            for index in range(len(active_heads) - 1)
+        ),
+        reverse=True,
+    )
+    cut_after = {
+        index for _gap, index in gaps[: published_attack_count - 1]
+    }
+    columns: list[list[tuple[float, dict[str, Any]]]] = []
+    column: list[tuple[float, dict[str, Any]]] = []
+    for index, head in enumerate(active_heads):
+        column.append(head)
+        if index in cut_after or index == len(active_heads) - 1:
+            columns.append(column)
+            column = []
+    if len(columns) != published_attack_count:
+        diagnostics["failure"] = "constraint_partition_failed"
+        return original, diagnostics
+
+    for attack_index, grouped_heads in enumerate(columns, start=1):
+        source_x = round(
+            sum(center_x for center_x, _event in grouped_heads)
+            / len(grouped_heads),
+            6,
+        )
+        for note_index, (_center_x, event) in enumerate(
+            sorted(
+                grouped_heads,
+                key=lambda value: (
+                    int(value[1].get("pitchValue") or -999),
+                    str(value[1].get("scoreEventId") or ""),
+                ),
+            )
+        ):
+            event["defaultX"] = source_x
+            event["beat"] = float(attack_index)
+            event["rhythmicPosition"] = float(attack_index - 1)
+            event["chordMember"] = note_index > 0
+            event["sourceCountConstrainedGroup"] = attack_index
+
+    after_count = len(_score_attack_groups(original))
+    diagnostics["scoreAttackCountAfter"] = after_count
+    if after_count != published_attack_count:
+        diagnostics["failure"] = "normal_attack_group_contract_disagrees"
+        return [copy.deepcopy(dict(event)) for event in score_events], diagnostics
+
+    diagnostics["applied"] = True
+    return original, diagnostics
+
+
 def _source_score_semantic_repair(
     *,
     image_path: Path,
@@ -9529,7 +9640,33 @@ def _source_score_semantic_repair(
         hybrid_count > 0
         and (bounded_fusion_applied or corroborated_baseline or tie_repair_applied)
     )
-    score_group_count = len(_score_event_groups_by_printed_position(score_events))
+    score_group_count_before_constraint = len(_score_attack_groups(score_events))
+    grouping_diagnostics: dict[str, Any] = {
+        "version": SOURCE_HEAD_COUNT_CONSTRAINT_VERSION,
+        "publishedAttackCount": hybrid_count,
+        "scoreAttackCountBefore": score_group_count_before_constraint,
+        "scoreAttackCountAfter": score_group_count_before_constraint,
+        "applied": False,
+        "sourceOnly": True,
+        "reviewerCountProvided": False,
+        "tablatureProvided": False,
+        "failure": "count_not_publishable",
+    }
+    if count_publishable:
+        natural_score_events, grouping_diagnostics = (
+            _constrain_source_head_groups_to_published_count(
+                natural_score_events,
+                published_attack_count=hybrid_count,
+            )
+        )
+        score_events = (
+            _apply_key_signature_to_score_events(
+                natural_score_events, int(key_signature["fifths"])
+            )
+            if key_signature is not None
+            else copy.deepcopy(natural_score_events)
+        )
+    score_group_count = len(_score_attack_groups(score_events))
     pitch_candidate_complete = bool(
         count_publishable
         and score_events
@@ -9550,6 +9687,12 @@ def _source_score_semantic_repair(
         "boundedFusionApplied": bounded_fusion_applied,
         "corroboratedBaseline": corroborated_baseline,
         "countPublishable": count_publishable,
+        "scoreGroupCountBeforeCountConstraint": score_group_count_before_constraint,
+        "scoreGroupCountAfterCountConstraint": score_group_count,
+        "countConstrainedGroupingApplied": bool(
+            grouping_diagnostics.get("applied")
+        ),
+        "countConstrainedGrouping": grouping_diagnostics,
         # A complete source-only pitch candidate still needs an independent
         # score/tab containment vote before it can be published downstream.
         "pitchCandidateComplete": pitch_candidate_complete,
