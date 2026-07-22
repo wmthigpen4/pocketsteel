@@ -50,6 +50,14 @@ VALIDATION_EVIDENCE_MODE_PREFERENCE_FLOOR = 0.90
 VALIDATION_TOP_THREE_COVERAGE_FLOOR = 0.99
 VALIDATION_MIN_DECISIONS_PER_COHORT = 10
 VALIDATION_MIN_DECISIONS_PER_EVIDENCE_MODE = 20
+# Recognition is measured separately from tablature-choice ranking.  These
+# fixed floors are deliberately not substitutes for the full atomic OCR/OMR
+# acceptance contract; they are the pre-freeze line-audit gates available from
+# the compact expert validation review.
+VALIDATION_LINE_PAGE_DETECTION_FLOOR = 0.95
+VALIDATION_LINE_SCORE_READER_FLOOR = 0.97
+VALIDATION_LINE_TAB_CONFIRMATION_FLOOR = 0.98
+VALIDATION_LINE_RESOLUTION_FLOOR = 0.98
 CANONICAL_STYLE_FAMILIES = (
     "chord_melody",
     "harmonized",
@@ -4802,6 +4810,471 @@ class AmazingTablatureTrainingStore:
             "topChoiceAccuracy": top_choice_correct / count,
             "topThreeCoveredCount": top_three_covered,
             "topThreeCoverage": top_three_covered / count,
+        }
+
+    @staticmethod
+    def _validation_ranking_metrics(
+        model: Mapping[str, Any], records: Sequence[Mapping[str, Any]]
+    ) -> dict[str, float | int]:
+        """Score arranger preference and mechanics on validation-only records."""
+
+        ranking = AmazingTablatureTrainingStore._model_ranking_metrics(model, records)
+        if not records:
+            return {
+                **ranking,
+                "approvedSourceMechanicalValidCount": 0,
+                "approvedSourceMechanicalAccuracy": 0.0,
+                "predictedTopMechanicalValidCount": 0,
+                "predictedTopMechanicalAccuracy": 0.0,
+            }
+        weights_by_style = model.get("weightsByStyle")
+        if not isinstance(weights_by_style, Mapping):
+            weights_by_style = {}
+        approved_valid = 0
+        predicted_valid = 0
+        for record in records:
+            chosen = record.get("chosen") or {}
+            alternatives = list(record.get("alternatives") or [])
+            if chosen.get("mechanicallyValid") is True:
+                approved_valid += 1
+            style = str(record.get("styleFamily") or "auto")
+            weights = weights_by_style.get(style) or weights_by_style.get("auto") or {}
+            candidates = [chosen, *alternatives]
+            scores = [score_candidate(candidate, weights) for candidate in candidates]
+            best_score = min(scores) if scores else math.inf
+            predicted = [
+                candidate
+                for candidate, score in zip(candidates, scores, strict=True)
+                if score == best_score
+            ]
+            if predicted and all(
+                candidate.get("mechanicallyValid") is True for candidate in predicted
+            ):
+                predicted_valid += 1
+        count = len(records)
+        return {
+            **ranking,
+            "approvedSourceMechanicalValidCount": approved_valid,
+            "approvedSourceMechanicalAccuracy": approved_valid / count,
+            "predictedTopMechanicalValidCount": predicted_valid,
+            "predictedTopMechanicalAccuracy": predicted_valid / count,
+        }
+
+    def score_validation_line_audits(self, model_id: str) -> dict[str, Any]:
+        """Score immutable expert validation receipts without training on them.
+
+        This is the pre-freeze bridge between the compact line audit and the
+        canonical validation gate.  It intentionally does not import, accept,
+        correct, or otherwise persist validation decisions as training data.
+        """
+
+        registry = self._registry()
+        model_meta = registry["models"].get(model_id)
+        if not model_meta:
+            raise TrainingWorkflowError(f"Unknown challenger: {model_id}.")
+        if (
+            model_meta.get("datasetEligibility") != "complete_discovery"
+            or not model_meta.get("canonicalEvaluationEligible")
+        ):
+            raise TrainingWorkflowError(
+                "Validation line scoring requires a complete-discovery canonical challenger."
+            )
+        authoritative_ids = self._authoritative_batch_ids(registry)
+        if not authoritative_ids:
+            raise TrainingWorkflowError("No authoritative validation batches are registered.")
+        if tuple(model_meta.get("sourceBatchIds") or ()) != authoritative_ids:
+            raise TrainingWorkflowError(
+                "The challenger source batches do not match the authoritative dataset."
+            )
+        model_path = self.root / str(model_meta["artifact"])
+        if not model_path.exists():
+            raise TrainingWorkflowError("The challenger artifact is missing.")
+        artifact_sha256 = _sha256_bytes(model_path.read_bytes())
+        if artifact_sha256 != str(model_meta.get("artifactSha256") or ""):
+            raise TrainingWorkflowError(
+                "The challenger artifact digest changed before validation scoring."
+            )
+        model = _read_json(model_path)
+
+        batch_receipts: dict[str, dict[str, Any]] = {}
+        ranking_records: list[dict[str, Any]] = []
+        pending_batches: list[str] = []
+        total_pages = 0
+        reviewable_pages = 0
+        no_line_pages = 0
+        total_lines = 0
+        resolved_lines = 0
+        score_reader_correct = 0
+        tab_confirmed = 0
+        exact_pitch_set_matches = 0
+        automated_blockers = 0
+
+        for batch_id in authoritative_ids:
+            batch_dir = self._batch_dir(batch_id)
+            audit_dir = (
+                batch_dir
+                / "extraction"
+                / "validation"
+                / "review"
+                / "validation-line-audit"
+            )
+            packet_path = audit_dir / "packet.json"
+            if not packet_path.exists():
+                raise TrainingWorkflowError(
+                    f"Authoritative batch lacks a validation line packet: {batch_id}."
+                )
+            packet = _read_json(packet_path)
+            packet_digest = str(packet.get("packetDigest") or "")
+            packet_core = {
+                key: value for key, value in packet.items() if key != "packetDigest"
+            }
+            if (
+                packet.get("reviewType") != "validation_line_audit"
+                or packet.get("partition") != "validation"
+                or packet.get("trainingEligible") is not False
+                or packet.get("validationGroundTruthMayTrain") is not False
+                or packet.get("sealedTestAccessed") is not False
+                or _sha256_json(packet_core) != packet_digest
+            ):
+                raise TrainingWorkflowError(
+                    f"Validation packet lineage or no-training contract failed: {batch_id}."
+                )
+            pinned_model = packet.get("validationModel") or {}
+            if (
+                str(pinned_model.get("modelId") or "") != model_id
+                or str(pinned_model.get("artifactSha256") or "") != artifact_sha256
+            ):
+                raise TrainingWorkflowError(
+                    f"Validation packet is not pinned to the exact challenger: {batch_id}."
+                )
+            systems = {
+                (str(system.get("inputId") or ""), str(system.get("scoreSystemId") or "")): system
+                for page in packet.get("pages") or []
+                for system in page.get("systems") or []
+            }
+            total_pages += int(packet.get("validationPageCount") or 0)
+            packet_reviewable_pages = len(packet.get("pages") or [])
+            reviewable_pages += packet_reviewable_pages
+            no_line_pages += int(packet.get("noLinePageCount") or 0)
+            total_lines += len(systems)
+            automated_blockers += sum(
+                int((system.get("validationIssueSummary") or {}).get("blockingCount") or 0)
+                for system in systems.values()
+            )
+
+            metadata_candidates = []
+            for metadata_path in sorted((audit_dir / "submissions").glob("*.json")):
+                metadata = _read_json(metadata_path)
+                if str(metadata.get("packetDigest") or "") == packet_digest:
+                    metadata_candidates.append((metadata_path, metadata))
+            if not metadata_candidates:
+                pending_batches.append(batch_id)
+                batch_receipts[batch_id] = {
+                    "status": "awaiting_complete_expert_submission",
+                    "packetDigest": packet_digest,
+                    "validationRunDigest": packet.get("validationRunDigest"),
+                    "validationPageCount": int(packet.get("validationPageCount") or 0),
+                    "reviewablePageCount": packet_reviewable_pages,
+                    "noLinePageCount": int(packet.get("noLinePageCount") or 0),
+                    "lineCount": len(systems),
+                    "automatedBlockingIssueCount": sum(
+                        int((system.get("validationIssueSummary") or {}).get("blockingCount") or 0)
+                        for system in systems.values()
+                    ),
+                }
+                continue
+            submission_digests = {
+                str(metadata.get("submissionDigest") or "")
+                for _path, metadata in metadata_candidates
+            }
+            if len(metadata_candidates) != 1 or len(submission_digests) != 1:
+                raise TrainingWorkflowError(
+                    f"Validation packet has ambiguous expert submissions: {batch_id}."
+                )
+            metadata_path, metadata = metadata_candidates[0]
+            if (
+                metadata.get("eligibleForTraining") is not False
+                or metadata.get("validationGroundTruthMayTrain") is not False
+                or metadata.get("sealedTestAccessed") is not False
+            ):
+                raise TrainingWorkflowError(
+                    f"Validation submission violates the no-training contract: {batch_id}."
+                )
+            submission_id = str(metadata.get("submissionId") or "")
+            submission_path = metadata_path.with_suffix(".jsonl")
+            if metadata_path.stem != submission_id or not submission_path.exists():
+                raise TrainingWorkflowError(
+                    f"Validation submission receipt is incomplete: {batch_id}."
+                )
+            rows = _read_jsonl(submission_path)
+            expected_submission_digest = _sha256_json(
+                {
+                    "reviewType": "validation_line_audit",
+                    "batchId": batch_id,
+                    "partition": "validation",
+                    "packetDigest": packet_digest,
+                    "reviews": rows,
+                    "validationGroundTruthMayTrain": False,
+                }
+            )
+            if (
+                expected_submission_digest
+                != str(metadata.get("submissionDigest") or "")
+                or int(metadata.get("reviewCount") or 0) != len(rows)
+                or len(rows) != len(systems)
+            ):
+                raise TrainingWorkflowError(
+                    f"Validation submission digest or line count failed: {batch_id}."
+                )
+            seen: set[tuple[str, str]] = set()
+            batch_record_count = 0
+            status_counts: dict[str, int] = {}
+            for row in rows:
+                key = (
+                    str(row.get("inputId") or ""),
+                    str(row.get("scoreSystemId") or ""),
+                )
+                system = systems.get(key)
+                status = str(row.get("status") or "")
+                if (
+                    system is None
+                    or key in seen
+                    or status
+                    not in {
+                        "both_match",
+                        "tab_pitch_hypothesis_matches",
+                        "score_reader_matches",
+                        "feedback",
+                    }
+                    or str(row.get("expectedMachineRecordDigest") or "")
+                    != str(system.get("machineRecordDigest") or "")
+                    or row.get("trainingEligible") is not False
+                ):
+                    raise TrainingWorkflowError(
+                        f"Validation line receipt does not match its packet: {batch_id}."
+                    )
+                seen.add(key)
+                status_counts[status] = status_counts.get(status, 0) + 1
+                row_tab_confirmed = bool(row.get("tabConfirmed"))
+                if row_tab_confirmed:
+                    tab_confirmed += 1
+                if status != "feedback":
+                    resolved_lines += 1
+                if status in {"both_match", "score_reader_matches"}:
+                    score_reader_correct += 1
+                if status == "both_match":
+                    exact_pitch_set_matches += 1
+                if status == "feedback" or not row_tab_confirmed:
+                    continue
+
+                input_id = key[0]
+                page_path = (
+                    batch_dir
+                    / "extraction"
+                    / "validation"
+                    / "pages"
+                    / f"{input_id}.json"
+                )
+                if not page_path.exists():
+                    raise TrainingWorkflowError(
+                        f"Validation page record is missing: {batch_id}/{input_id}."
+                    )
+                page_record = _read_json(page_path)
+                if _sha256_json(page_record) != str(system.get("machineRecordDigest") or ""):
+                    raise TrainingWorkflowError(
+                        f"Validation page changed after expert review: {batch_id}/{input_id}."
+                    )
+                tab_system_id = str(system.get("tabSystemId") or "")
+                tab_system = next(
+                    (
+                        item
+                        for item in page_record.get("tabSystems") or []
+                        if str(item.get("tabSystemId") or "") == tab_system_id
+                    ),
+                    None,
+                )
+                if tab_system is None:
+                    raise TrainingWorkflowError(
+                        f"Reviewed validation line has no current tab system: {batch_id}/{input_id}."
+                    )
+                tab_event_ids = {
+                    str(event.get("tabEventId") or "")
+                    for event in tab_system.get("tabEvents") or []
+                }
+                decisions = [
+                    dict(decision)
+                    for decision in page_record.get("derivedDecisions") or []
+                    if str(decision.get("sourceTabEventId") or "") in tab_event_ids
+                    and isinstance(decision.get("chosen"), Mapping)
+                    and bool(decision.get("alternatives"))
+                ]
+                for decision in decisions:
+                    decision["batchId"] = batch_id
+                    decision["validationLineStatus"] = status
+                ranking_records.extend(decisions)
+                batch_record_count += len(decisions)
+            if seen != set(systems):
+                raise TrainingWorkflowError(
+                    f"Validation submission is not complete for every line: {batch_id}."
+                )
+            batch_receipts[batch_id] = {
+                "status": "verified_and_scored_in_memory",
+                "packetDigest": packet_digest,
+                "validationRunDigest": packet.get("validationRunDigest"),
+                "submissionId": submission_id,
+                "submissionDigest": metadata.get("submissionDigest"),
+                "submissionFileSha256": _sha256_bytes(submission_path.read_bytes()),
+                "lineCount": len(rows),
+                "statusCounts": dict(sorted(status_counts.items())),
+                "rankingDecisionCount": batch_record_count,
+                "eligibleForTraining": False,
+            }
+
+        recognition_metrics = {
+            "validationPageCount": total_pages,
+            "reviewablePageCount": reviewable_pages,
+            "noLinePageCount": no_line_pages,
+            "pageSystemDetectionAccuracy": reviewable_pages / total_pages if total_pages else 0.0,
+            "auditedLineCount": total_lines,
+            "resolvedLineCount": resolved_lines,
+            "resolvedLineRate": resolved_lines / total_lines if total_lines else 0.0,
+            "scoreReaderCorrectCount": score_reader_correct,
+            "scoreReaderAccuracy": score_reader_correct / total_lines if total_lines else 0.0,
+            "tabCaptureConfirmedCount": tab_confirmed,
+            "tabCaptureConfirmationRate": tab_confirmed / total_lines if total_lines else 0.0,
+            "exactScoreTabPitchSetMatchCount": exact_pitch_set_matches,
+            "exactScoreTabPitchSetMatchRate": exact_pitch_set_matches / total_lines if total_lines else 0.0,
+            "automatedBlockingIssueCountBeforeExpertReview": automated_blockers,
+        }
+        recognition_complete = not pending_batches
+        recognition_gate = bool(
+            recognition_complete
+            and recognition_metrics["pageSystemDetectionAccuracy"]
+            >= VALIDATION_LINE_PAGE_DETECTION_FLOOR
+            and recognition_metrics["scoreReaderAccuracy"]
+            >= VALIDATION_LINE_SCORE_READER_FLOOR
+            and recognition_metrics["tabCaptureConfirmationRate"]
+            >= VALIDATION_LINE_TAB_CONFIRMATION_FLOOR
+            and recognition_metrics["resolvedLineRate"]
+            >= VALIDATION_LINE_RESOLUTION_FLOOR
+        )
+
+        overall_ranking = self._validation_ranking_metrics(model, ranking_records)
+        cohort_metrics: dict[str, dict[str, Any]] = {}
+        for batch_id in authoritative_ids:
+            records = [
+                record for record in ranking_records if record.get("batchId") == batch_id
+            ]
+            cohort_metrics[batch_id] = {
+                **self._validation_ranking_metrics(model, records),
+                "evidenceSufficient": len(records) >= VALIDATION_MIN_DECISIONS_PER_COHORT,
+            }
+        evidence_mode_metrics: dict[str, dict[str, Any]] = {}
+        for tag in ("alignment:score_supported", "alignment:tab_only"):
+            records = [
+                record
+                for record in ranking_records
+                if tag in (record.get("categoryTags") or [])
+            ]
+            evidence_mode_metrics[tag] = {
+                **self._validation_ranking_metrics(model, records),
+                "evidenceSufficient": len(records)
+                >= VALIDATION_MIN_DECISIONS_PER_EVIDENCE_MODE,
+            }
+        ranking_gate = bool(
+            recognition_complete
+            and overall_ranking["topChoiceAccuracy"]
+            > VALIDATION_OVERALL_PREFERENCE_FLOOR
+            and overall_ranking["topThreeCoverage"]
+            >= VALIDATION_TOP_THREE_COVERAGE_FLOOR
+            and overall_ranking["approvedSourceMechanicalAccuracy"] == 1.0
+            and overall_ranking["predictedTopMechanicalAccuracy"] == 1.0
+            and all(
+                metrics["evidenceSufficient"]
+                and metrics["topChoiceAccuracy"]
+                >= VALIDATION_COHORT_PREFERENCE_FLOOR
+                and metrics["approvedSourceMechanicalAccuracy"] == 1.0
+                and metrics["predictedTopMechanicalAccuracy"] == 1.0
+                for metrics in cohort_metrics.values()
+            )
+            and all(
+                metrics["evidenceSufficient"]
+                and metrics["topChoiceAccuracy"]
+                >= VALIDATION_EVIDENCE_MODE_PREFERENCE_FLOOR
+                and metrics["approvedSourceMechanicalAccuracy"] == 1.0
+                and metrics["predictedTopMechanicalAccuracy"] == 1.0
+                for metrics in evidence_mode_metrics.values()
+            )
+        )
+        gate_passed = recognition_gate and ranking_gate
+        report_core = {
+            "schemaVersion": "amazing-tablature-validation-line-score-v1",
+            "modelId": model_id,
+            "modelArtifactSha256": artifact_sha256,
+            "authoritativeBatchIds": list(authoritative_ids),
+            "batchReceipts": batch_receipts,
+            "recognition": {
+                "metricScope": "compact_expert_line_audit_not_full_atomic_omr_contract",
+                "metrics": recognition_metrics,
+                "thresholds": {
+                    "pageSystemDetectionAccuracy": VALIDATION_LINE_PAGE_DETECTION_FLOOR,
+                    "scoreReaderAccuracy": VALIDATION_LINE_SCORE_READER_FLOOR,
+                    "tabCaptureConfirmationRate": VALIDATION_LINE_TAB_CONFIRMATION_FLOOR,
+                    "resolvedLineRate": VALIDATION_LINE_RESOLUTION_FLOOR,
+                },
+                "passed": recognition_gate,
+            },
+            "arrangerRanking": {
+                "inputScope": "normalized_score_events",
+                "scoreImageRecognitionIncluded": False,
+                "metrics": overall_ranking,
+                "cohorts": cohort_metrics,
+                "evidenceModes": evidence_mode_metrics,
+                "thresholds": {
+                    "overallTopChoiceAccuracy": {
+                        "comparison": "strictly_greater_than",
+                        "value": VALIDATION_OVERALL_PREFERENCE_FLOOR,
+                    },
+                    "topThreeCoverage": VALIDATION_TOP_THREE_COVERAGE_FLOOR,
+                    "cohortTopChoiceAccuracy": VALIDATION_COHORT_PREFERENCE_FLOOR,
+                    "minimumDecisionsPerCohort": VALIDATION_MIN_DECISIONS_PER_COHORT,
+                    "evidenceModeTopChoiceAccuracy": VALIDATION_EVIDENCE_MODE_PREFERENCE_FLOOR,
+                    "minimumDecisionsPerEvidenceMode": VALIDATION_MIN_DECISIONS_PER_EVIDENCE_MODE,
+                    "mechanicalAccuracy": 1.0,
+                },
+                "passed": ranking_gate,
+            },
+            "gate": {
+                "passed": gate_passed,
+                "rulesFreezeAllowed": gate_passed,
+                "sealedTestAllowed": gate_passed,
+                "pendingBatches": pending_batches,
+            },
+            "lineage": {
+                "modelCodeRevision": model.get("codeRevision"),
+                "evaluationCodeRevision": _git_revision(self.repo_root),
+                "evaluationCodeFileDigests": _rules_code_file_digests(self.repo_root),
+            },
+            "noTrainingContract": {
+                "validationGroundTruthMayTrain": False,
+                "validationDecisionsAddedToTraining": 0,
+                "acceptedDecisionLedgersModified": False,
+                "modelArtifactModified": False,
+            },
+            "validationAccessed": True,
+            "sealedTestAccessed": False,
+        }
+        report_digest = _sha256_json(report_core)
+        report = {**report_core, "reportDigest": report_digest}
+        report_dir = self.root / "validation-evaluations" / model_id
+        report_dir.mkdir(parents=True, exist_ok=True)
+        _make_private(report_dir, directory=True)
+        report_path = report_dir / f"validation-line-score-{report_digest}.json"
+        _write_json(report_path, report)
+        _make_private(report_path)
+        return {
+            **report,
+            "reportPath": str(report_path.relative_to(self.root)),
         }
 
     def evaluate(self, model_id: str) -> dict[str, Any]:

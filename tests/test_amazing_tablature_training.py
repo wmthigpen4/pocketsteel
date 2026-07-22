@@ -154,6 +154,13 @@ def write_jsonl(path: Path, records: list[dict[str, object]]) -> Path:
     return path
 
 
+def canonical_sha(value: object) -> str:
+    payload = json.dumps(
+        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
 def candidate(
     *,
     melody: int,
@@ -205,6 +212,210 @@ def test_structured_input_ranking_reports_conservative_top_one_and_top_three() -
         "topThreeCoverage": 1.0,
     }
     assert not metrics["topChoiceAccuracy"] > 0.95
+
+
+def test_validation_ranking_separates_preference_and_mechanical_safety() -> None:
+    model = {"weightsByStyle": {"single_note_run": {"bar_travel": 1.0}}}
+    records = [
+        {
+            "styleFamily": "single_note_run",
+            "chosen": {
+                "textureSize": 1,
+                "barTravel": 0,
+                "mechanicallyValid": True,
+            },
+            "alternatives": [
+                {
+                    "textureSize": 1,
+                    "barTravel": 1,
+                    "mechanicallyValid": True,
+                }
+            ],
+        },
+        {
+            "styleFamily": "single_note_run",
+            "chosen": {
+                "textureSize": 1,
+                "barTravel": 1,
+                "mechanicallyValid": True,
+            },
+            "alternatives": [
+                {
+                    "textureSize": 1,
+                    "barTravel": 0,
+                    "mechanicallyValid": False,
+                }
+            ],
+        },
+    ]
+
+    metrics = AmazingTablatureTrainingStore._validation_ranking_metrics(model, records)
+
+    assert metrics["topChoiceAccuracy"] == 0.5
+    assert metrics["topThreeCoverage"] == 1.0
+    assert metrics["approvedSourceMechanicalAccuracy"] == 1.0
+    assert metrics["predictedTopMechanicalAccuracy"] == 0.5
+
+
+def test_validation_line_scorer_verifies_receipts_without_training(tmp_path: Path) -> None:
+    root = tmp_path / "private"
+    model_id = "at-validation-model"
+    batch_id = "atb-validation-batch"
+    model_path = root / "models" / f"{model_id}.json"
+    model_path.parent.mkdir(parents=True)
+    model = {
+        "modelId": model_id,
+        "codeRevision": "discovery-only-revision",
+        "weightsByStyle": {"single_note_run": {"bar_travel": 1.0}},
+    }
+    model_path.write_text(json.dumps(model, sort_keys=True) + "\n", encoding="utf-8")
+    model_sha = hashlib.sha256(model_path.read_bytes()).hexdigest()
+    registry = {
+        "schemaVersion": "amazing-tablature-training-v1",
+        "batches": {batch_id: {"lifecycleStatus": "active"}},
+        "models": {
+            model_id: {
+                "artifact": f"models/{model_id}.json",
+                "artifactSha256": model_sha,
+                "datasetEligibility": "complete_discovery",
+                "canonicalEvaluationEligible": True,
+                "sourceBatchIds": [batch_id],
+                "status": "challenger",
+            }
+        },
+        "channels": {"beta": None, "stable": None},
+        "authoritativeBatchId": batch_id,
+        "authoritativeDataset": {"batchIds": [batch_id]},
+        "datasetHistory": [],
+        "rollbackHistory": [],
+        "rulesFreezes": {},
+        "discoverySeeds": {},
+        "requiredBenchmarkGroups": [],
+    }
+    root.mkdir(exist_ok=True)
+    (root / "training-registry.json").write_text(
+        json.dumps(registry, sort_keys=True) + "\n", encoding="utf-8"
+    )
+
+    input_id = "input-0001"
+    score_system_id = "score-system-1"
+    tab_system_id = "tab-system-1"
+    tab_event_id = "tab-event-1"
+    chosen = {"textureSize": 1, "barTravel": 0, "mechanicallyValid": True}
+    alternative = {"textureSize": 1, "barTravel": 1, "mechanicallyValid": True}
+    page_record = {
+        "inputId": input_id,
+        "datasetPartition": "validation",
+        "tabSystems": [
+            {"tabSystemId": tab_system_id, "tabEvents": [{"tabEventId": tab_event_id}]}
+        ],
+        "derivedDecisions": [
+            {
+                "decisionId": "decision-1",
+                "sourceTabEventId": tab_event_id,
+                "styleFamily": "single_note_run",
+                "categoryTags": ["alignment:score_supported"],
+                "chosen": chosen,
+                "alternatives": [alternative],
+            }
+        ],
+    }
+    machine_digest = canonical_sha(page_record)
+    page_path = (
+        root
+        / "batches"
+        / batch_id
+        / "extraction"
+        / "validation"
+        / "pages"
+        / f"{input_id}.json"
+    )
+    page_path.parent.mkdir(parents=True)
+    page_path.write_text(json.dumps(page_record, sort_keys=True) + "\n", encoding="utf-8")
+
+    system = {
+        "inputId": input_id,
+        "scoreSystemId": score_system_id,
+        "tabSystemId": tab_system_id,
+        "machineRecordDigest": machine_digest,
+        "validationIssueSummary": {"blockingCount": 0, "digest": "issues-1"},
+    }
+    packet_core = {
+        "schemaVersion": "amazing-tablature-validation-line-audit-v1",
+        "reviewType": "validation_line_audit",
+        "batchId": batch_id,
+        "partition": "validation",
+        "validationRunDigest": "validation-run-1",
+        "validationModel": {"modelId": model_id, "artifactSha256": model_sha},
+        "pages": [{"inputId": input_id, "systems": [system]}],
+        "validationPageCount": 1,
+        "noLinePages": [],
+        "noLinePageCount": 0,
+        "lineCount": 1,
+        "trainingEligible": False,
+        "validationGroundTruthMayTrain": False,
+        "sealedTestAccessed": False,
+    }
+    packet_digest = canonical_sha(packet_core)
+    packet = {**packet_core, "packetDigest": packet_digest}
+    audit_dir = page_path.parent.parent / "review" / "validation-line-audit"
+    audit_dir.mkdir(parents=True)
+    (audit_dir / "packet.json").write_text(
+        json.dumps(packet, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    rows = [
+        {
+            "inputId": input_id,
+            "scoreSystemId": score_system_id,
+            "tabSystemId": tab_system_id,
+            "expectedMachineRecordDigest": machine_digest,
+            "status": "both_match",
+            "tabConfirmed": True,
+            "trainingEligible": False,
+        }
+    ]
+    submission_digest = canonical_sha(
+        {
+            "reviewType": "validation_line_audit",
+            "batchId": batch_id,
+            "partition": "validation",
+            "packetDigest": packet_digest,
+            "reviews": rows,
+            "validationGroundTruthMayTrain": False,
+        }
+    )
+    submission_id = f"validation-line-audit-submission-{submission_digest[:20]}"
+    submissions = audit_dir / "submissions"
+    submissions.mkdir()
+    write_jsonl(submissions / f"{submission_id}.jsonl", rows)
+    metadata = {
+        "submissionId": submission_id,
+        "submissionDigest": submission_digest,
+        "batchId": batch_id,
+        "partition": "validation",
+        "packetDigest": packet_digest,
+        "reviewCount": 1,
+        "eligibleForTraining": False,
+        "validationGroundTruthMayTrain": False,
+        "sealedTestAccessed": False,
+    }
+    (submissions / f"{submission_id}.json").write_text(
+        json.dumps(metadata, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    model_before = model_path.read_bytes()
+
+    report = AmazingTablatureTrainingStore(
+        root, repo_root=tmp_path
+    ).score_validation_line_audits(model_id)
+
+    assert report["batchReceipts"][batch_id]["status"] == "verified_and_scored_in_memory"
+    assert report["recognition"]["metrics"]["scoreReaderAccuracy"] == 1.0
+    assert report["arrangerRanking"]["metrics"]["topChoiceAccuracy"] == 1.0
+    assert report["gate"]["passed"] is False  # evidence-size floors still apply
+    assert report["noTrainingContract"]["validationDecisionsAddedToTraining"] == 0
+    assert report["sealedTestAccessed"] is False
+    assert model_path.read_bytes() == model_before
+    assert not (root / "batches" / batch_id / "accepted-decisions.jsonl").exists()
 
 
 def annotation(

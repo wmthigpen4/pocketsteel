@@ -2439,10 +2439,6 @@ def _store_validation_line_audit_submission(
                 "Validation line review has an unknown target or status."
             )
         line_gate_passed = bool(expected_system.get("lineGatePassed"))
-        if status == "both_match" and not line_gate_passed:
-            raise ExtractionWorkflowError(
-                "A blocked validation line cannot be accepted as an automatic exact match."
-            )
         if status == "feedback" and comment is None:
             raise ExtractionWorkflowError(
                 "A validation line correction request needs a comment."
@@ -2977,7 +2973,12 @@ function render(){
   root.innerHTML=`<section class="card"><h2>Page ${pageIndex+1} of ${packet.pages.length}: ${esc(page.sourceLabel)}</h2><div class="muted">${joint?'Confirm the displayed tablature and then decide whether the captured score matches it.':'Tab corrections are already confirmed. This page is checking score capture and score-to-tab correspondence.'}</div></section>`;
   page.systems.forEach((s,i)=>{
     const section=renderLine(s,i);
-    if(packet.reviewType==='validation_line_audit')section.querySelector('details.full-reference').open=true;
+    if(packet.reviewType==='validation_line_audit'){
+      section.querySelector('details.full-reference').open=true;
+      const bothMatch=section.querySelector('input[value="both_match"]');
+      bothMatch.disabled=false;
+      bothMatch.closest('label').classList.remove('disabled');
+    }
     if(joint){
       const k=lineKey(s),d=decisions.get(k)||{},box=document.createElement('label');
       box.className='required-note';

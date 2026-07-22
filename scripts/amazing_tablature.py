@@ -757,6 +757,15 @@ def _parser() -> argparse.ArgumentParser:
     evaluate = subparsers.add_parser("evaluate", help="Compare a challenger against holdout decisions and the champion.")
     evaluate.add_argument("model_id")
 
+    score_validation_lines = subparsers.add_parser(
+        "score-validation-line-audits",
+        help=(
+            "Verify and score immutable expert validation line receipts without "
+            "adding validation evidence to training."
+        ),
+    )
+    score_validation_lines.add_argument("model_id")
+
     report = subparsers.add_parser("report", help="Write a private metrics-only challenger report.")
     report.add_argument("model_id")
 
@@ -1231,6 +1240,8 @@ def main() -> int:
             )
         elif args.command == "evaluate":
             result = store.evaluate(args.model_id)
+        elif args.command == "score-validation-line-audits":
+            result = store.score_validation_line_audits(args.model_id)
         elif args.command == "report":
             result = store.report(args.model_id)
         elif args.command == "freeze-rules":

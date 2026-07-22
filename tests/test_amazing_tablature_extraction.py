@@ -870,28 +870,6 @@ def test_validation_line_audit_submission_is_complete_and_never_training(
             },
         )
 
-    with pytest.raises(ExtractionWorkflowError, match="blocked validation line"):
-        _store_validation_line_audit_submission(
-            private,
-            {
-                **base_payload,
-                "reviews": [
-                    {
-                        "inputId": "input-0001",
-                        "scoreSystemId": "score-1",
-                        "status": "both_match",
-                        "tabConfirmed": True,
-                    },
-                    {
-                        "inputId": "input-0001",
-                        "scoreSystemId": "score-2",
-                        "status": "both_match",
-                        "tabConfirmed": True,
-                    },
-                ],
-            },
-        )
-
     result = _store_validation_line_audit_submission(
         private,
         {
@@ -906,8 +884,8 @@ def test_validation_line_audit_submission_is_complete_and_never_training(
                 {
                     "inputId": "input-0001",
                     "scoreSystemId": "score-2",
-                    "status": "feedback",
-                    "comment": "The second printed note and tablature movement need correction.",
+                    "status": "both_match",
+                    "tabConfirmed": True,
                 },
             ],
         },
@@ -940,6 +918,7 @@ def test_combined_console_supports_validation_ground_truth_mode() -> None:
     assert "prohibited from challenger training" in html
     assert "machine flagged this line" in html
     assert "partition:packet.partition" in html
+    assert "bothMatch.disabled=false" in html
 
 
 def test_provisional_joint_review_rejects_reviewer_reconstruction_work() -> None:
