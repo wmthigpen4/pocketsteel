@@ -5291,7 +5291,7 @@ def test_extractor_never_accepts_sealed_test_partition(tmp_path: Path) -> None:
         extractor.prepare_review("batch", limit=0)
 
 
-def test_validation_queue_stays_closed_until_discovery_challenger_is_trained(tmp_path: Path) -> None:
+def test_validation_queue_requires_exact_complete_discovery_challenger(tmp_path: Path) -> None:
     batch_dir = tmp_path / "batches" / "batch-validation-gate"
     batch_dir.mkdir(parents=True)
     (batch_dir / "manifest.json").write_text(json.dumps({"batchId": "batch-validation-gate"}))
@@ -5299,18 +5299,57 @@ def test_validation_queue_stays_closed_until_discovery_challenger_is_trained(tmp
     (batch_dir / "partition-summary.json").write_text(
         json.dumps({"groupingReviewStatus": "independent_review_passed"})
     )
-    state_path = batch_dir / "state.json"
-    state_path.write_text(json.dumps({"checkpoints": {"train": {"status": "pending"}}}))
     extractor = AmazingTablatureExtractor(tmp_path)
 
-    with pytest.raises(ExtractionWorkflowError, match="Validation remains closed"):
+    with pytest.raises(ExtractionWorkflowError, match="exact canonical discovery model ID"):
         extractor._batch_paths("batch-validation-gate", "validation")
 
-    state_path.write_text(
-        json.dumps({"checkpoints": {"train": {"status": "completed", "modelId": "challenger-1"}}})
+    models_dir = tmp_path / "models"
+    models_dir.mkdir()
+    model_path = models_dir / "canonical-1.json"
+    model_path.write_text(
+        json.dumps(
+            {
+                "modelId": "canonical-1",
+                "sourceBatchIds": ["batch-validation-gate"],
+                "fullDiscoveryReviewComplete": True,
+                "fullDiscoveryScoreAuditComplete": False,
+                "codeRevision": "clean-head",
+                "discoverySeedId": "seed-1",
+            }
+        )
     )
-    _batch_dir, _manifest, work = extractor._batch_paths("batch-validation-gate", "validation")
+    model_sha = hashlib.sha256(model_path.read_bytes()).hexdigest()
+    (tmp_path / "training-registry.json").write_text(
+        json.dumps(
+            {
+                "models": {
+                    "canonical-1": {
+                        "artifact": "models/canonical-1.json",
+                        "artifactSha256": model_sha,
+                        "datasetEligibility": "complete_discovery",
+                        "canonicalEvaluationEligible": True,
+                    }
+                }
+            }
+        )
+    )
+    _batch_dir, _manifest, work = extractor._batch_paths(
+        "batch-validation-gate",
+        "validation",
+        validation_model_id="canonical-1",
+    )
     assert work == [{"inputId": "input-1"}]
+
+    summary_path = batch_dir / "extraction/validation/summary.json"
+    summary_path.parent.mkdir(parents=True)
+    summary_path.write_text(
+        json.dumps({"validationModel": {"modelId": "canonical-1"}})
+    )
+    _batch_dir, _manifest, resumed_work = extractor._batch_paths(
+        "batch-validation-gate", "validation"
+    )
+    assert resumed_work == work
 
 
 class _FakeOCR:

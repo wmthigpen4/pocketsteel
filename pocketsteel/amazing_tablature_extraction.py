@@ -12773,7 +12773,65 @@ class AmazingTablatureExtractor:
         )
         return cells
 
-    def _batch_paths(self, batch_id: str, partition: str) -> tuple[Path, dict[str, Any], list[dict[str, Any]]]:
+    def _validation_model_contract(
+        self,
+        batch_id: str,
+        model_id: str,
+    ) -> dict[str, Any]:
+        registry_path = self.private_root / "training-registry.json"
+        if not model_id or not registry_path.exists():
+            raise ExtractionWorkflowError(
+                "Validation extraction requires an exact canonical discovery model ID."
+            )
+        registry = _read_json(registry_path)
+        model_meta = (registry.get("models") or {}).get(model_id)
+        if not isinstance(model_meta, Mapping):
+            raise ExtractionWorkflowError(
+                "Validation extraction references an unknown discovery model."
+            )
+        if (
+            model_meta.get("datasetEligibility") != "complete_discovery"
+            or model_meta.get("canonicalEvaluationEligible") is not True
+        ):
+            raise ExtractionWorkflowError(
+                "Validation extraction requires the complete-discovery canonical challenger."
+            )
+        artifact_relative = str(model_meta.get("artifact") or "")
+        artifact_path = self.private_root / artifact_relative
+        if not artifact_relative or not artifact_path.exists():
+            raise ExtractionWorkflowError("The canonical challenger artifact is missing.")
+        artifact_sha256 = _sha256_bytes(artifact_path.read_bytes())
+        if artifact_sha256 != str(model_meta.get("artifactSha256") or ""):
+            raise ExtractionWorkflowError(
+                "The canonical challenger artifact digest changed before validation extraction."
+            )
+        model = _read_json(artifact_path)
+        if (
+            model.get("modelId") != model_id
+            or model.get("fullDiscoveryReviewComplete") is not True
+            or batch_id not in set(model.get("sourceBatchIds") or [])
+        ):
+            raise ExtractionWorkflowError(
+                "The canonical challenger does not cover this validation cohort."
+            )
+        return {
+            "modelId": model_id,
+            "artifactSha256": artifact_sha256,
+            "codeRevision": model.get("codeRevision"),
+            "discoverySeedId": model.get("discoverySeedId"),
+            "fullDiscoveryReviewComplete": True,
+            "fullDiscoveryScoreAuditComplete": bool(
+                model.get("fullDiscoveryScoreAuditComplete")
+            ),
+        }
+
+    def _batch_paths(
+        self,
+        batch_id: str,
+        partition: str,
+        *,
+        validation_model_id: str | None = None,
+    ) -> tuple[Path, dict[str, Any], list[dict[str, Any]]]:
         if partition not in {"discovery", "validation"}:
             raise ExtractionWorkflowError("Extraction may read discovery or validation only; sealed test is forbidden.")
         batch_dir = self.private_root / "batches" / batch_id
@@ -12787,13 +12845,16 @@ class AmazingTablatureExtractor:
             if partition_summary.get("groupingReviewStatus") != "independent_review_passed":
                 raise ExtractionWorkflowError(f"Batch {batch_id} has not passed an independent unopened-split review.")
         if partition == "validation":
-            state_path = batch_dir / "state.json"
-            state = _read_json(state_path) if state_path.exists() else {}
-            train_checkpoint = (state.get("checkpoints") or {}).get("train") or {}
-            if train_checkpoint.get("status") != "completed" or not train_checkpoint.get("modelId"):
-                raise ExtractionWorkflowError(
-                    "Validation remains closed until a discovery-only challenger has been trained."
+            pinned_model_id = str(validation_model_id or "")
+            existing_summary_path = batch_dir / "extraction/validation/summary.json"
+            if not pinned_model_id and existing_summary_path.exists():
+                pinned_model_id = str(
+                    (_read_json(existing_summary_path).get("validationModel") or {}).get(
+                        "modelId"
+                    )
+                    or ""
                 )
+            self._validation_model_contract(batch_id, pinned_model_id)
         return batch_dir, _read_json(manifest_path), _read_jsonl(work_path)
 
     def run(
@@ -12809,6 +12870,7 @@ class AmazingTablatureExtractor:
         refresh_unreviewed: bool = False,
         refresh_limit: int | None = None,
         refresh_require_tab_systems: bool = False,
+        validation_model_id: str | None = None,
     ) -> dict[str, Any]:
         if workers < 1 or workers > 4:
             raise ExtractionWorkflowError("Extraction workers must be between 1 and 4.")
@@ -12816,7 +12878,11 @@ class AmazingTablatureExtractor:
             raise ExtractionWorkflowError("Unreviewed extraction refresh is discovery-only.")
         if refresh_unreviewed and (refresh_limit is None or refresh_limit < 1 or refresh_limit > 100):
             raise ExtractionWorkflowError("Unreviewed extraction refresh limit must be between 1 and 100.")
-        batch_dir, manifest, work = self._batch_paths(batch_id, partition)
+        batch_dir, manifest, work = self._batch_paths(
+            batch_id,
+            partition,
+            validation_model_id=validation_model_id,
+        )
         rights_path = batch_dir / "rights-and-access.json"
         rights_and_access = _normalized_rights_and_access(_read_json(rights_path) if rights_path.exists() else None)
         profile = get_e9_copedent_profile(str(manifest["sourceCopedentId"]))
@@ -12910,6 +12976,14 @@ class AmazingTablatureExtractor:
             "refreshMode": "never_reviewed_only" if refresh_unreviewed else None,
             "refreshTargetInputIds": sorted(refresh_target_ids),
             "refreshRequiresTabSystems": refresh_require_tab_systems,
+            "validationModel": (
+                self._validation_model_contract(
+                    batch_id,
+                    str(validation_model_id or ""),
+                )
+                if partition == "validation"
+                else None
+            ),
         }
         run_digest = _sha256_json(run_contract)
         page_records: list[dict[str, Any]] = []

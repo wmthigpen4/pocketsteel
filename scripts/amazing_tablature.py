@@ -141,6 +141,10 @@ def _parser() -> argparse.ArgumentParser:
     )
     extract.add_argument("batch_id")
     extract.add_argument("--partition", choices=("discovery", "validation"), default="discovery")
+    extract.add_argument(
+        "--validation-model-id",
+        help="Exact complete-discovery canonical challenger that authorizes and is pinned to validation extraction.",
+    )
     extract.add_argument("--audiveris-bin", type=Path)
     extract.add_argument("--vision-model", default="gemma4:12b")
     extract.add_argument("--vision-base-url", default="http://127.0.0.1:11434")
@@ -873,6 +877,7 @@ def main() -> int:
                 use_tab_vision=not args.no_tab_vision,
                 resume=not args.no_resume,
                 workers=args.workers,
+                validation_model_id=args.validation_model_id,
             )
         elif args.command == "refresh-unreviewed-extraction":
             extractor = AmazingTablatureExtractor(

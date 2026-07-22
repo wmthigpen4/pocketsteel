@@ -416,6 +416,18 @@ seed-file SHAs, every cohort preference ledger, reviewed-record and review
 summary lineage, rights records, copedent revisions, feature schema, code
 digests, and trainer configuration.
 
+Open validation by naming that exact canonical challenger for every cohort:
+
+```bash
+.venv/bin/python scripts/amazing_tablature.py extract <batch-id> \
+  --partition validation \
+  --validation-model-id <exact-canonical-model-id> \
+  --tab-reader apple \
+  --workers 4
+```
+
+The extractor rejects a partial challenger, a changed model artifact, or a model that does not cover the cohort. The extraction run pins the model ID, artifact SHA-256, discovery seed, code revision, and printed-score audit scope. Later validation-review operations inherit that pin from the private extraction summary. This gate replaces the older per-batch training checkpoint, which could not identify the exact combined-dataset challenger being evaluated.
+
 Canonical validation uses a threshold contract fixed before held-out evidence
 is opened. It measures arrangement after input has been normalized into exact
 score events; score-image and audio recognition are explicitly outside this
