@@ -1301,7 +1301,7 @@ def test_machine_unified_timeline_preserves_ties_and_movement_only_states() -> N
     assert timeline["reviewedTruthUsedDuringInference"] is False
 
 
-def test_machine_unified_timeline_inherits_held_state_and_blocks_bad_pitch() -> None:
+def test_machine_unified_timeline_maps_movement_to_score_event_and_blocks_bad_pitch() -> None:
     score_events = [
         {
             "scoreEventId": "score-1",
@@ -1310,7 +1310,15 @@ def test_machine_unified_timeline_inherits_held_state_and_blocks_bad_pitch() -> 
             "defaultX": 100,
             "pitchValue": 60,
             "rest": False,
-        }
+        },
+        {
+            "scoreEventId": "score-2",
+            "measure": 1,
+            "beat": 2.0,
+            "defaultX": 200,
+            "pitchValue": 60,
+            "rest": False,
+        },
     ]
     tab_events = [
         {
@@ -1346,11 +1354,11 @@ def test_machine_unified_timeline_inherits_held_state_and_blocks_bad_pitch() -> 
     ]
 
     timeline = _machine_unified_score_tab_timeline(
-        score_events, tab_events, expected_attack_count=1
+        score_events, tab_events, expected_attack_count=2
     )
 
     assert timeline["structurallyComplete"] is True
-    assert timeline["rows"][1]["scoreStateType"] == "held_score_state"
+    assert timeline["rows"][1]["scoreStateType"] == "movement_to_score_event"
     assert timeline["rows"][1]["scorePitchContainedInTab"] is False
     assert timeline["reviewable"] is False
     assert "score_pitch_not_contained_in_tab" in {
@@ -1398,11 +1406,8 @@ def test_machine_unified_timeline_blocks_unmatched_attacks_without_blank_rows() 
     )
 
     assert timeline["reviewable"] is False
-    assert timeline["timelineRowCount"] == 1
-    assert "tab_attack_count_mismatch" in {
-        blocker["kind"] for blocker in timeline["blockers"]
-    }
-    assert "score_state_without_tab_state" in {
+    assert timeline["timelineRowCount"] == 0
+    assert "tab_state_count_mismatch" in {
         blocker["kind"] for blocker in timeline["blockers"]
     }
 

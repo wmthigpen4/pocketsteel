@@ -5873,12 +5873,12 @@ def _machine_unified_score_tab_timeline(
 ) -> dict[str, Any]:
     """Build a fail-closed machine score/tab timeline without blank placeholders.
 
-    Picked tablature states consume one printed score attack.  A movement-only
-    state consumes an explicit tied continuation when one is next in score
-    order; otherwise it inherits the preceding sounding score state.  The
-    function never inserts an empty score or tablature event to make counts
-    appear equal.  Any unmatched event, invalid steel action, or pitch mismatch
-    blocks the timeline from human review.
+    Every tablature state consumes one printed musical-event column, whether
+    that state is picked or reached by a slide/control movement.  Pure tied
+    continuations may be represented explicitly or inherited without inventing
+    an extra tab column.  The function never inserts an empty score or tablature
+    event to make counts appear equal.  Any unmatched event, invalid steel
+    action, or pitch mismatch blocks the timeline from human review.
     """
 
     visible_score_events = [
@@ -5929,6 +5929,24 @@ def _machine_unified_score_tab_timeline(
         score_state(group, group_index=index, state_type="attack")
         for index, group in enumerate(attack_groups, start=1)
     ]
+    all_score_groups = _score_event_groups_by_printed_position(visible_score_events)
+    all_score_states = [
+        score_state(
+            group,
+            group_index=index,
+            state_type=(
+                "tied_continuation"
+                if group
+                and all(
+                    bool(event.get("tieContinuation"))
+                    or "stop" in tie_types(event)
+                    for event in group
+                )
+                else "attack"
+            ),
+        )
+        for index, group in enumerate(all_score_groups, start=1)
+    ]
     tie_events = [
         event
         for event in visible_score_events
@@ -5940,26 +5958,9 @@ def _machine_unified_score_tab_timeline(
             _score_event_groups_by_printed_position(tie_events), start=1
         )
     ]
-    ties_after_attack: dict[int, list[dict[str, Any]]] = {}
-    for tie_state in tie_states:
-        tie_x = tie_state.get("horizontalPosition")
-        preceding_attack = 1
-        if tie_x is not None:
-            preceding = [
-                index
-                for index, state in enumerate(attack_states, start=1)
-                if state.get("horizontalPosition") is not None
-                and float(state["horizontalPosition"]) <= float(tie_x)
-            ]
-            if preceding:
-                preceding_attack = preceding[-1]
-        ties_after_attack.setdefault(preceding_attack, []).append(tie_state)
-
     tab_states = _ordered_tab_states({"tabEvents": list(tab_events)})
     blockers: list[dict[str, Any]] = []
     rows: list[dict[str, Any]] = []
-    score_cursor = 0
-    prior_score_state: dict[str, Any] | None = None
     score_attack_count = len(attack_states)
     tab_attack_count = sum(bool(state["isAttack"]) for state in tab_states)
     required_attack_count = (
@@ -5973,54 +5974,31 @@ def _machine_unified_score_tab_timeline(
                 "actual": score_attack_count,
             }
         )
-    if tab_attack_count != required_attack_count:
+    if len(tab_states) == len(all_score_states):
+        selected_score_states = all_score_states
+        score_state_selection = "all_visible_score_states"
+    elif len(tab_states) == len(attack_states):
+        selected_score_states = attack_states
+        score_state_selection = "attacks_with_unrepresented_ties_inherited"
+    else:
+        selected_score_states = []
+        score_state_selection = "unresolved_count_mismatch"
         blockers.append(
             {
-                "kind": "tab_attack_count_mismatch",
-                "expected": required_attack_count,
-                "actual": tab_attack_count,
+                "kind": "tab_state_count_mismatch",
+                "acceptedScoreStateCounts": sorted(
+                    {len(attack_states), len(all_score_states)}
+                ),
+                "actual": len(tab_states),
             }
         )
 
-    for timeline_index, tab_state in enumerate(tab_states, start=1):
-        score_state: dict[str, Any] | None = None
-        score_state_type = ""
-        if bool(tab_state.get("isAttack")):
-            if score_cursor < len(attack_states):
-                score_state = attack_states[score_cursor]
-                score_state_type = "attack"
-                score_cursor += 1
-                prior_score_state = score_state
-            if score_state is None:
-                blockers.append(
-                    {
-                        "kind": "tab_attack_without_score_attack",
-                        "timelineIndex": timeline_index,
-                        "tabEventId": tab_state.get("tabEventId"),
-                    }
-                )
-        else:
-            prior_attack_index = int(
-                (prior_score_state or {}).get("scoreGroupIndex") or 0
-            )
-            pending_ties = ties_after_attack.get(prior_attack_index) or []
-            if pending_ties:
-                score_state = pending_ties.pop(0)
-                score_state_type = "tied_continuation"
-            elif prior_score_state is not None:
-                score_state = prior_score_state
-                score_state_type = "held_score_state"
-            else:
-                blockers.append(
-                    {
-                        "kind": "movement_before_score_state",
-                        "timelineIndex": timeline_index,
-                        "tabEventId": tab_state.get("tabEventId"),
-                    }
-                )
-
-        if score_state is None:
-            continue
+    for timeline_index, (score_state, tab_state) in enumerate(
+        zip(selected_score_states, tab_states, strict=False), start=1
+    ):
+        score_state_type = str(score_state.get("stateType") or "attack")
+        if score_state_type == "attack" and not bool(tab_state.get("isAttack")):
+            score_state_type = "movement_to_score_event"
         score_values = set(int(value) for value in score_state.get("pitchValues") or [])
         tab_values = set(int(value) for value in tab_state.get("pitchValues") or [])
         pitch_contained = bool(score_values) and score_values.issubset(tab_values)
@@ -6077,14 +6055,6 @@ def _machine_unified_score_tab_timeline(
             }
         )
 
-    for score_state in attack_states[score_cursor:]:
-        blockers.append(
-            {
-                "kind": "score_state_without_tab_state",
-                "scoreGroupIndex": score_state["scoreGroupIndex"],
-                "scoreStateType": score_state["stateType"],
-            }
-        )
     no_blank_rows = bool(rows) and len(rows) == len(tab_states) and all(
         row.get("scorePitchValues")
         and row.get("tabPitchValues")
@@ -6099,8 +6069,7 @@ def _machine_unified_score_tab_timeline(
     )
     structural_complete = bool(
         score_attack_count == required_attack_count
-        and tab_attack_count == required_attack_count
-        and score_cursor == len(attack_states)
+        and bool(selected_score_states)
         and len(rows) == len(tab_states)
         and no_blank_rows
     )
@@ -6113,8 +6082,11 @@ def _machine_unified_score_tab_timeline(
         "scoreAttackCount": score_attack_count,
         "scoreStateCount": len(attack_states) + len(tie_states),
         "scoreTieContinuationCount": len(tie_states),
-        "unconsumedTieContinuationCount": sum(
-            len(states) for states in ties_after_attack.values()
+        "scoreStateSelection": score_state_selection,
+        "unrepresentedTieContinuationCount": (
+            len(tie_states)
+            if score_state_selection == "attacks_with_unrepresented_ties_inherited"
+            else 0
         ),
         "tabAttackCount": tab_attack_count,
         "tabStateCount": len(tab_states),
@@ -20652,15 +20624,6 @@ class AmazingTablatureExtractor:
                         "actual": len(source_attack_groups),
                     }
                 )
-            if machine_tab_attack_count != semantic_count:
-                inference_blockers.append(
-                    {
-                        "kind": "independent_machine_tab_count_mismatch",
-                        "expected": semantic_count,
-                        "actual": machine_tab_attack_count,
-                    }
-                )
-
             timeline = _machine_unified_score_tab_timeline(
                 prediction.get("scoreEvents") or [],
                 machine_tab_events,
@@ -20782,12 +20745,12 @@ class AmazingTablatureExtractor:
                 bool((item.get("inference") or {}).get("pitchCandidateComplete"))
                 for item in results
             ),
-            "sourceMachineAttackCountAgreementCount": sum(
+            "sourceMachineEventCountAgreementCount": sum(
                 int((item.get("inference") or {}).get("semanticAttackCount") or 0)
                 > 0
                 and int((item.get("inference") or {}).get("semanticAttackCount") or 0)
                 == int((item.get("inference") or {}).get("sourceScoreAttackCount") or 0)
-                == int((item.get("inference") or {}).get("machineTabAttackCount") or 0)
+                == int((item.get("inference") or {}).get("machineTabStateCount") or 0)
                 for item in results
             ),
             "structurallyCompleteTimelineCount": sum(

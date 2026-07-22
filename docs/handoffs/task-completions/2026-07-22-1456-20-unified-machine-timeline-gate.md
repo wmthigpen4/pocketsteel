@@ -13,8 +13,8 @@ Final discovery regression result:
 - Source score counts exact after truth join: 23.
 - Source score pitches exact after truth join: 5.
 - Archived machine tablature exact after truth join: 11.
-- Structurally complete unified timelines: 6.
-- Timelines with exact score-pitch containment in machine tab: 3.
+- Structurally complete unified timelines: 8.
+- Timelines with exact score-pitch containment in machine tab: 4.
 - Lines passing every machine reviewability gate: 1.
 - Passing lines exact after the post-inference truth join: 1 of 1.
 - Lines withheld from human review: 38.
@@ -39,8 +39,8 @@ The single passing opened-shadow line is `input-0033`, score system `score-syste
 
 Ignored private report only:
 
-- `corpus-private/melody-decisions/batches/atb-20260716-training-278-semantic-v2/extraction/discovery/review/automation/discovery-machine-score-tab-timeline-v1/report-71df385cc46e.json`
-- Report digest: `71df385cc46e55e00edc9fccbd853607f494f16fbc6301ab15241c85862256c7`.
+- `corpus-private/melody-decisions/batches/atb-20260716-training-278-semantic-v2/extraction/discovery/review/automation/discovery-machine-score-tab-timeline-v1/report-d8db35e15dcf.json`
+- Report digest: `d8db35e15dcfde73dbcdf5dd759618b55cb41ddc6f38381e1e21c4497fc37b1d`.
 
 No current page record, corrected record, review decision, training ledger, challenger model, validation record, or sealed-test artifact was modified.
 
@@ -51,12 +51,13 @@ No current page record, corrected record, review decision, training ledger, chal
 - `.venv/bin/python -m pytest -q tests/test_amazing_tablature_training.py tests/test_amazing_tablature_sealed_test.py tests/test_amazing_tablature_input_parity.py` — PASS, 38 tests using repository fixtures only.
 - `.venv/bin/ruff check pocketsteel/amazing_tablature_extraction.py scripts/amazing_tablature.py tests/test_amazing_tablature_extraction.py` — PASS.
 - `git diff --check` — PASS.
-- Discovery-only machine timeline replay — PASS; report digest `71df385cc46e55e00edc9fccbd853607f494f16fbc6301ab15241c85862256c7`.
+- Discovery-only machine timeline replay — PASS; report digest `d8db35e15dcfde73dbcdf5dd759618b55cb41ddc6f38381e1e21c4497fc37b1d`.
 
 ## Integration notes
 
 - This gate solves the review-integrity problem, not the remaining recognition problem. It prevents blank or count-inconsistent representations from reaching the user.
-- The principal coverage blockers are now quantified: independent machine-tab attack counts disagree with source counts on 26 lines; source pitch candidates are incomplete on 34 lines; only 5 lines have exact source pitches and only 11 have exact archived machine tablature after truth is joined.
+- The principal coverage blockers are now quantified: machine-tab state counts cannot be reconciled with source musical-event states on 27 lines; source pitch candidates are incomplete on 34 lines; only 5 lines have exact source pitches and only 11 have exact archived machine tablature after truth is joined.
+- A picked attack is no longer incorrectly required for every new score note. A slide or pedal/lever movement can consume a new written score event without a repick. Pure tied continuations may be explicit when a matching tab state exists or inherited when they do not create a separate steel movement.
 - Blocker counts are non-exclusive and include downstream cascades; they must not be added together as unique cases.
 - The first-system zero-fifths rule is limited to a digest-pinned first printed system with a recognized clef, no key candidates, and no ambiguity. It is never inferred from a continuation system.
 - The 1/1 reviewable precision result is useful lineage evidence but statistically too small for promotion. It comes from previously opened discovery material.
