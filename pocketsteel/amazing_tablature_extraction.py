@@ -161,6 +161,10 @@ SOURCE_SCORE_COMPONENT_CONTRACT = {
     "maximumCountDelta": 1,
 }
 SOURCE_SCORE_HYBRID_DETECTOR_VERSION = "score-projection-component-hybrid-v1"
+SOURCE_SCORE_SEMANTIC_REPAIR_VERSION = "source-score-semantic-repair-v1"
+SOURCE_SCORE_SEMANTIC_REPAIR_SCHEMA_VERSION = (
+    "amazing-tablature-source-score-semantic-repair-v1"
+)
 SOURCE_SCORE_VISION_REGRESSION_SCHEMA_VERSION = (
     "amazing-tablature-source-score-vision-regression-v1"
 )
@@ -8372,6 +8376,68 @@ def _parse_audiveris_head_graph(path: Path, system_id: str) -> dict[str, Any]:
         elif target in alters and source in heads:
             head_alters[source] = alters[target]
 
+    tie_ids = {
+        str(item.attrib.get("id") or "")
+        for item in root.iter("slur")
+        if str(item.attrib.get("tie") or "").lower() == "true"
+        and item.attrib.get("id")
+    }
+    tie_starts: set[str] = set()
+    tie_continuations: set[str] = set()
+    for relation in root.iter("relation"):
+        source = str(relation.attrib.get("source") or "")
+        target = str(relation.attrib.get("target") or "")
+        if source in tie_ids and target in heads:
+            head_id = target
+        elif target in tie_ids and source in heads:
+            head_id = source
+        else:
+            continue
+        for slur_head in relation.findall("slur-head"):
+            side = str(slur_head.attrib.get("side") or "").upper()
+            if side == "LEFT":
+                tie_starts.add(head_id)
+            elif side == "RIGHT":
+                tie_continuations.add(head_id)
+
+    key_candidates: list[dict[str, Any]] = []
+    for item in root.iter("key"):
+        raw_fifths = str(item.attrib.get("fifths") or "").strip()
+        if not re.fullmatch(r"-?[0-7]", raw_fifths):
+            continue
+        key_staff = str(item.attrib.get("staff") or staff_id)
+        if key_staff != staff_id:
+            continue
+        key_candidate: dict[str, Any] = {
+            "fifths": int(raw_fifths),
+            "staff": int(key_staff) if key_staff.isdigit() else key_staff,
+            "confidence": float(
+                item.attrib.get("ctx-grade") or item.attrib.get("grade") or 0.0
+            ),
+            "sourceKeyGraphId": str(item.attrib.get("id") or ""),
+            "evidenceClass": "direct_visual_observation",
+        }
+        try:
+            x, y, width, height = bounds(item)
+        except ExtractionWorkflowError:
+            pass
+        else:
+            key_candidate["sourceKeyGraphBounds"] = {
+                "x": x,
+                "y": y,
+                "width": width,
+                "height": height,
+            }
+        key_candidates.append(key_candidate)
+    distinct_key_fifths = {
+        int(candidate["fifths"]) for candidate in key_candidates
+    }
+    key_signature = (
+        max(key_candidates, key=lambda candidate: float(candidate["confidence"]))
+        if len(distinct_key_fifths) == 1
+        else None
+    )
+
     groups: list[list[str]] = [
         sorted(set(head_ids), key=lambda head_id: (heads[head_id]["staffPitch"], head_id))
         for head_ids in chord_heads.values()
@@ -8420,7 +8486,11 @@ def _parse_audiveris_head_graph(path: Path, system_id: str) -> dict[str, Any]:
                     "voice": 1,
                     "staff": 1,
                     "chordMember": note_index > 0,
-                    "tie": [],
+                    "tie": sorted(
+                        (["start"] if head_id in tie_starts else [])
+                        + (["stop"] if head_id in tie_continuations else [])
+                    ),
+                    "tieContinuation": head_id in tie_continuations,
                     "articulations": [],
                     "phraseBoundaries": [],
                     "defaultX": round(default_x, 6),
@@ -8463,7 +8533,12 @@ def _parse_audiveris_head_graph(path: Path, system_id: str) -> dict[str, Any]:
         "chordContexts": [],
         "tempoMarkings": [],
         "repeatStructures": [],
-        "keyFifths": None,
+        "keyFifths": (
+            int(key_signature["fifths"]) if key_signature is not None else None
+        ),
+        "keySignature": copy.deepcopy(key_signature),
+        "keySignatureCandidates": copy.deepcopy(key_candidates),
+        "keySignatureAmbiguous": len(distinct_key_fifths) > 1,
         "timeSignature": None,
         "clef": {
             "sign": "G",
@@ -8479,6 +8554,9 @@ def _parse_audiveris_head_graph(path: Path, system_id: str) -> dict[str, Any]:
             "attackCount": len(groups),
             "noteheadCount": len(score_events),
             "writtenAccidentalCount": len(head_alters),
+            "explicitTieCount": len(tie_ids),
+            "tieStartHeadCount": len(tie_starts),
+            "tieContinuationHeadCount": len(tie_continuations),
             "tablaturePitchesProvided": False,
             "rhythmAuthoritative": False,
         },
@@ -8610,7 +8688,9 @@ def _audiveris_notehead_columns(
             path, "source-score-notehead-detector"
         )
         relation_column_count = len(
-            _score_attack_groups(relation_graph.get("scoreEvents") or [])
+            _score_event_groups_by_printed_position(
+                relation_graph.get("scoreEvents") or []
+            )
         )
     except ExtractionWorkflowError as exc:
         relation_failure = type(exc).__name__
@@ -8973,6 +9053,131 @@ def _score_projection_component_hybrid(
         "expectedCountProvided": False,
         "tablatureProvided": False,
         "pitchesEmitted": False,
+    }
+
+
+def _source_score_semantic_repair(
+    *,
+    image_path: Path,
+    omr_path: Path,
+    system_id: str,
+) -> dict[str, Any]:
+    """Build a fail-closed source-only score prediction.
+
+    Count detectors, tie semantics, and key-signature evidence are derived from
+    the printed score and its Audiveris graph.  Tablature, reviewer counts, and
+    reviewer pitches are never inputs.  A count is marked publishable only when
+    independent source-only detectors corroborate it or a frozen detector
+    applies a bounded repair.
+    """
+
+    noteheads = _audiveris_notehead_columns(omr_path)
+    hybrid = _score_projection_component_hybrid(image_path, noteheads)
+    baseline_count = int(noteheads.get("columnCount") or 0)
+    hybrid_count = int(hybrid.get("fusedAttackCount") or 0)
+    score_events: list[dict[str, Any]] = []
+    natural_score_events: list[dict[str, Any]] = []
+    key_signature: dict[str, Any] | None = None
+    head_graph_failure: str | None = None
+    relation_group_count: int | None = None
+    explicit_tie_continuation_group_count = 0
+    tie_repair_applied = False
+    try:
+        head_graph = _parse_audiveris_head_graph(omr_path, system_id)
+        natural_score_events = copy.deepcopy(head_graph.get("scoreEvents") or [])
+        natural_groups = _score_event_groups_by_printed_position(natural_score_events)
+        relation_group_count = len(natural_groups)
+        retained_groups = [
+            group
+            for group in natural_groups
+            if not group
+            or not all(bool(event.get("tieContinuation")) for event in group)
+        ]
+        explicit_tie_continuation_group_count = len(natural_groups) - len(
+            retained_groups
+        )
+        # A single whole-column tie continuation is a strong source fact.  More
+        # complex tie patterns remain unresolved because they can encode moving
+        # inner voices or control changes during sustain.
+        if (
+            explicit_tie_continuation_group_count == 1
+            and hybrid_count == relation_group_count
+        ):
+            tie_repair_applied = True
+            hybrid_count = len(retained_groups)
+            natural_score_events = [
+                copy.deepcopy(event)
+                for group in retained_groups
+                for event in group
+            ]
+        key_signature = copy.deepcopy(head_graph.get("keySignature"))
+        score_events = (
+            _apply_key_signature_to_score_events(
+                natural_score_events, int(key_signature["fifths"])
+            )
+            if key_signature is not None
+            else copy.deepcopy(natural_score_events)
+        )
+    except ExtractionWorkflowError as exc:
+        head_graph_failure = type(exc).__name__
+
+    relation_geometry_agree = (
+        noteheads.get("relationColumnCount") is not None
+        and int(noteheads["relationColumnCount"])
+        == int(noteheads.get("geometryColumnCount") or 0)
+    )
+    raw_projection_agrees = (
+        int((hybrid.get("projection") or {}).get("imageProjectionCount") or 0)
+        == baseline_count
+    )
+    raw_component_agrees = (
+        int((hybrid.get("component") or {}).get("imageComponentCount") or 0)
+        == baseline_count
+    )
+    bounded_fusion_applied = bool(hybrid.get("fusionApplied"))
+    corroborated_baseline = relation_geometry_agree and (
+        raw_projection_agrees or raw_component_agrees
+    )
+    count_publishable = bool(
+        hybrid_count > 0
+        and (bounded_fusion_applied or corroborated_baseline or tie_repair_applied)
+    )
+    score_group_count = len(_score_event_groups_by_printed_position(score_events))
+    pitch_candidate_complete = bool(
+        count_publishable
+        and score_events
+        and score_group_count == hybrid_count
+        and key_signature is not None
+    )
+    return {
+        "repairVersion": SOURCE_SCORE_SEMANTIC_REPAIR_VERSION,
+        "baselineAttackCount": baseline_count,
+        "hybridAttackCountBeforeTieRepair": int(
+            hybrid.get("fusedAttackCount") or 0
+        ),
+        "semanticAttackCount": hybrid_count,
+        "relationGroupCount": relation_group_count,
+        "geometryColumnCount": int(noteheads.get("geometryColumnCount") or 0),
+        "explicitTieContinuationGroupCount": explicit_tie_continuation_group_count,
+        "tieRepairApplied": tie_repair_applied,
+        "boundedFusionApplied": bounded_fusion_applied,
+        "corroboratedBaseline": corroborated_baseline,
+        "countPublishable": count_publishable,
+        # A complete source-only pitch candidate still needs an independent
+        # score/tab containment vote before it can be published downstream.
+        "pitchCandidateComplete": pitch_candidate_complete,
+        "pitchesPublishable": False,
+        "keySignature": key_signature,
+        "keySignatureRequiredForPitchPublication": True,
+        "naturalScoreEvents": natural_score_events,
+        "scoreEvents": score_events,
+        "headGraphFailure": head_graph_failure,
+        "noteheadPrediction": noteheads,
+        "hybridPrediction": hybrid,
+        "sourceOnly": True,
+        "reviewerCountProvided": False,
+        "reviewerPitchesProvided": False,
+        "tablatureProvided": False,
     }
 
 
@@ -19602,6 +19807,272 @@ class AmazingTablatureExtractor:
             "trainingStarted": False,
             "validationAccessed": False,
             "sealedTestAccessed": False,
+        }
+
+    def evaluate_discovery_source_score_semantic_repair(
+        self,
+        batch_id: str,
+    ) -> dict[str, Any]:
+        """Replay the source-only semantic repair on opened discovery truth.
+
+        Prediction is completed before reviewed counts or pitches are joined.
+        This command creates no review packet, training evidence, or promotion
+        claim and cannot open validation or sealed-test partitions.
+        """
+
+        batch_dir, _manifest, _work = self._batch_paths(batch_id, "discovery")
+        output_root = batch_dir / "extraction" / "discovery"
+        benchmark_root = (
+            output_root / "review" / "automation" / "source-score-notehead-challenger"
+        )
+        manifest_path = benchmark_root / "benchmark-manifest.json"
+        if not manifest_path.exists():
+            raise ExtractionWorkflowError(
+                "Freeze the source-score notehead benchmark before semantic repair."
+            )
+        benchmark = _read_json(manifest_path)
+        benchmark_digest = str(benchmark.get("manifestDigest") or "")
+        if benchmark_digest != _sha256_json(
+            {key: value for key, value in benchmark.items() if key != "manifestDigest"}
+        ):
+            raise ExtractionWorkflowError("The source-score benchmark digest changed.")
+
+        results: list[dict[str, Any]] = []
+        for raw_case in benchmark.get("cases") or []:
+            case = dict(raw_case)
+            record_path = output_root / str(case.get("reviewedRecordPath") or "")
+            if not record_path.exists():
+                raise ExtractionWorkflowError(
+                    "A semantic-repair discovery record is missing."
+                )
+            record = _read_json(record_path)
+            if _sha256_json(record) != str(case.get("reviewedRecordDigest") or ""):
+                raise ExtractionWorkflowError(
+                    "A semantic-repair discovery record changed."
+                )
+            score_system = next(
+                (
+                    system
+                    for system in record.get("scoreSystems") or []
+                    if str(system.get("scoreSystemId") or "")
+                    == str(case.get("scoreSystemId") or "")
+                ),
+                None,
+            )
+            if score_system is None:
+                raise ExtractionWorkflowError(
+                    "A semantic-repair score system is missing."
+                )
+            crop_path: Path | None = None
+            crop_sha256 = ""
+            for crop in (
+                score_system.get("omrPreparedDerivative") or {},
+                score_system.get("scoreRepairSourceCrop") or {},
+            ):
+                relative_path = str(crop.get("relativePath") or "")
+                expected_sha = str(crop.get("sha256") or "")
+                candidate_path = output_root / relative_path
+                if (
+                    relative_path
+                    and candidate_path.exists()
+                    and _sha256_bytes(candidate_path.read_bytes()) == expected_sha
+                ):
+                    crop_path = candidate_path
+                    crop_sha256 = expected_sha
+                    break
+            if crop_path is None:
+                raise ExtractionWorkflowError(
+                    "A digest-pinned score crop is unavailable for semantic repair."
+                )
+            omr_path = output_root / str(case.get("omrRelativePath") or "")
+            if (
+                not omr_path.exists()
+                or _sha256_bytes(omr_path.read_bytes())
+                != str(case.get("omrSha256") or "")
+            ):
+                raise ExtractionWorkflowError(
+                    "A semantic-repair OMR artifact changed."
+                )
+
+            # Source-only inference ends here.  Reviewed truth is joined below.
+            prediction = _source_score_semantic_repair(
+                image_path=crop_path,
+                omr_path=omr_path,
+                system_id=str(case.get("scoreSystemId") or ""),
+            )
+            truth_count = int(case.get("sourceAttackCount") or 0)
+            truth_groups = _score_event_groups_by_printed_position(
+                score_system.get("scoreEvents") or []
+            )
+            predicted_groups = _score_event_groups_by_printed_position(
+                prediction.get("scoreEvents") or []
+            )
+            natural_groups = _score_event_groups_by_printed_position(
+                prediction.get("naturalScoreEvents") or []
+            )
+
+            def exact_pitch_groups(
+                predicted: Sequence[Sequence[Mapping[str, Any]]],
+            ) -> int:
+                if len(predicted) != len(truth_groups):
+                    return 0
+                return sum(
+                    {
+                        int(event["pitchValue"])
+                        for event in predicted_group
+                        if event.get("pitchValue") is not None
+                    }
+                    == {
+                        int(event["pitchValue"])
+                        for event in truth_group
+                        if event.get("pitchValue") is not None
+                    }
+                    for predicted_group, truth_group in zip(
+                        predicted, truth_groups, strict=True
+                    )
+                )
+
+            semantic_count = int(prediction.get("semanticAttackCount") or 0)
+            baseline_count = int(prediction.get("baselineAttackCount") or 0)
+            hybrid_count = int(
+                prediction.get("hybridAttackCountBeforeTieRepair") or 0
+            )
+            natural_exact = exact_pitch_groups(natural_groups)
+            adjusted_exact = exact_pitch_groups(predicted_groups)
+            results.append(
+                {
+                    "caseId": case.get("caseId"),
+                    "inputId": case.get("inputId"),
+                    "scoreSystemId": case.get("scoreSystemId"),
+                    "subset": case.get("subset"),
+                    "cropSha256": crop_sha256,
+                    "sourceAttackCount": truth_count,
+                    "baselineAttackCount": baseline_count,
+                    "hybridAttackCount": hybrid_count,
+                    "semanticAttackCount": semantic_count,
+                    "baselineExact": baseline_count == truth_count,
+                    "hybridExact": hybrid_count == truth_count,
+                    "semanticExact": semantic_count == truth_count,
+                    "baselineAbsoluteError": abs(baseline_count - truth_count),
+                    "hybridAbsoluteError": abs(hybrid_count - truth_count),
+                    "semanticAbsoluteError": abs(semantic_count - truth_count),
+                    "countPublishable": bool(prediction.get("countPublishable")),
+                    "pitchesPublishable": bool(prediction.get("pitchesPublishable")),
+                    "tieRepairApplied": bool(prediction.get("tieRepairApplied")),
+                    "keySignatureCaptured": prediction.get("keySignature") is not None,
+                    "truthEventCount": len(truth_groups),
+                    "naturalPitchExactEventCount": natural_exact,
+                    "adjustedPitchExactEventCount": adjusted_exact,
+                    "adjustedPitchExactLine": bool(
+                        truth_groups and adjusted_exact == len(truth_groups)
+                    ),
+                    "prediction": prediction,
+                }
+            )
+
+        def metrics(items: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+            publishable = [item for item in items if item.get("countPublishable")]
+            pitch_comparable = [
+                item
+                for item in items
+                if int(item.get("truthEventCount") or 0)
+                == len(
+                    _score_event_groups_by_printed_position(
+                        (item.get("prediction") or {}).get("scoreEvents") or []
+                    )
+                )
+            ]
+            return {
+                "caseCount": len(items),
+                "baselineExactCount": sum(bool(item["baselineExact"]) for item in items),
+                "hybridExactCount": sum(bool(item["hybridExact"]) for item in items),
+                "semanticExactCount": sum(bool(item["semanticExact"]) for item in items),
+                "baselineAbsoluteError": sum(
+                    int(item["baselineAbsoluteError"]) for item in items
+                ),
+                "hybridAbsoluteError": sum(
+                    int(item["hybridAbsoluteError"]) for item in items
+                ),
+                "semanticAbsoluteError": sum(
+                    int(item["semanticAbsoluteError"]) for item in items
+                ),
+                "publishableCount": len(publishable),
+                "publishableExactCount": sum(
+                    bool(item["semanticExact"]) for item in publishable
+                ),
+                "publishableCountAccuracy": round(
+                    sum(bool(item["semanticExact"]) for item in publishable)
+                    / len(publishable),
+                    6,
+                )
+                if publishable
+                else None,
+                "withheldCount": len(items) - len(publishable),
+                "tieRepairCount": sum(bool(item["tieRepairApplied"]) for item in items),
+                "keySignatureCaptureCount": sum(
+                    bool(item["keySignatureCaptured"]) for item in items
+                ),
+                "pitchComparableLineCount": len(pitch_comparable),
+                "naturalPitchExactEventCount": sum(
+                    int(item["naturalPitchExactEventCount"])
+                    for item in pitch_comparable
+                ),
+                "adjustedPitchExactEventCount": sum(
+                    int(item["adjustedPitchExactEventCount"])
+                    for item in pitch_comparable
+                ),
+                "pitchComparableEventCount": sum(
+                    int(item["truthEventCount"]) for item in pitch_comparable
+                ),
+                "adjustedPitchExactLineCount": sum(
+                    bool(item["adjustedPitchExactLine"])
+                    for item in pitch_comparable
+                ),
+            }
+
+        aggregate = metrics(results)
+        by_subset = {
+            subset: metrics(
+                [item for item in results if str(item.get("subset") or "") == subset]
+            )
+            for subset in ("development", "shadow")
+        }
+        report_core = {
+            "schemaVersion": SOURCE_SCORE_SEMANTIC_REPAIR_SCHEMA_VERSION,
+            "batchId": batch_id,
+            "partition": "discovery",
+            "evaluationClass": "opened_discovery_regression_fit_only",
+            "benchmarkManifestDigest": benchmark_digest,
+            "repairVersion": SOURCE_SCORE_SEMANTIC_REPAIR_VERSION,
+            "aggregate": aggregate,
+            "byOpenedSubset": by_subset,
+            "results": results,
+            "promotionEligible": False,
+            "reviewPacketCreated": False,
+            "trainingEvidenceCreated": False,
+            "currentPageRecordsModified": False,
+            "validationAccessed": False,
+            "sealedTestAccessed": False,
+        }
+        report_digest = _sha256_json(report_core)
+        report = {**report_core, "reportDigest": report_digest}
+        report_path = benchmark_root / f"semantic-repair-{report_digest[:12]}.json"
+        _write_json(report_path, report)
+        return {
+            "schemaVersion": report["schemaVersion"],
+            "batchId": batch_id,
+            "partition": "discovery",
+            "repairVersion": SOURCE_SCORE_SEMANTIC_REPAIR_VERSION,
+            "aggregate": aggregate,
+            "byOpenedSubset": by_subset,
+            "promotionEligible": False,
+            "reviewPacketCreated": False,
+            "trainingEvidenceCreated": False,
+            "currentPageRecordsModified": False,
+            "validationAccessed": False,
+            "sealedTestAccessed": False,
+            "reportDigest": report_digest,
+            "reportPath": str(report_path.relative_to(output_root)),
         }
 
     def evaluate_discovery_guided_capture_regression(

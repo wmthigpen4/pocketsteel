@@ -65,6 +65,7 @@ from pocketsteel.amazing_tablature_extraction import (
     _score_projection_fusion,
     _score_component_fusion,
     _score_projection_component_hybrid,
+    _source_score_semantic_repair,
     _source_score_projection_shadow_metrics,
     _page_review_compatibility_version,
     _parse_audiveris_head_graph,
@@ -3314,9 +3315,17 @@ def test_audiveris_head_graph_recovers_visible_pitches_and_written_accidental(
   <alter pitch="3" shape="SHARP" grade="0.9" staff="1" id="30">
     <bounds x="175" y="70" w="15" h="35"/>
   </alter>
+  <key fifths="1" grade="0.8" ctx-grade="0.95" staff="1" id="31">
+    <bounds x="40" y="20" w="15" h="35"/>
+  </key>
+  <slur tie="true" shape="SLUR_ABOVE" grade="0.8" staff="1" id="40">
+    <bounds x="110" y="40" w="100" h="20"/>
+  </slur>
   <relation source="20" target="10"/>
   <relation source="21" target="11"/>
   <relation source="30" target="11"/>
+  <relation source="40" target="10"><slur-head side="LEFT"/></relation>
+  <relation source="40" target="11"><slur-head side="RIGHT"/></relation>
 </sheet>
 """
     with zipfile.ZipFile(archive_path, "w") as archive:
@@ -3327,12 +3336,20 @@ def test_audiveris_head_graph_recovers_visible_pitches_and_written_accidental(
     assert [event["pitch"] for event in result["scoreEvents"]] == ["D4", "F#4"]
     assert [event["pitchValue"] for event in result["scoreEvents"]] == [62, 66]
     assert result["scoreEvents"][1]["writtenAccidental"] == "sharp"
+    assert result["scoreEvents"][0]["tie"] == ["start"]
+    assert result["scoreEvents"][1]["tie"] == ["stop"]
+    assert result["scoreEvents"][1]["tieContinuation"] is True
+    assert result["keyFifths"] == 1
+    assert result["keySignature"]["evidenceClass"] == "direct_visual_observation"
     assert all(event["rhythmPlaceholder"] for event in result["scoreEvents"])
     assert result["headGraph"] == {
         "reader": "audiveris-internal-head-graph-v1",
         "attackCount": 2,
         "noteheadCount": 2,
         "writtenAccidentalCount": 1,
+        "explicitTieCount": 1,
+        "tieStartHeadCount": 1,
+        "tieContinuationHeadCount": 1,
         "tablaturePitchesProvided": False,
         "rhythmAuthoritative": False,
     }
@@ -3432,6 +3449,86 @@ def test_score_component_fusion_recovers_compact_heads_missed_by_baseline(
     assert component["pitchesEmitted"] is False
     assert hybrid["fusedAttackCount"] == 3
     assert hybrid["sourceOnly"] is True
+
+
+def test_source_score_semantic_repair_requires_source_only_corroboration(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "pocketsteel.amazing_tablature_extraction._audiveris_notehead_columns",
+        lambda _path: {
+            "columnCount": 2,
+            "relationColumnCount": 2,
+            "geometryColumnCount": 2,
+            "columns": [{"x": 100.0}, {"x": 200.0}],
+        },
+    )
+    monkeypatch.setattr(
+        "pocketsteel.amazing_tablature_extraction._score_projection_component_hybrid",
+        lambda _image, _noteheads: {
+            "fusedAttackCount": 2,
+            "fusionApplied": False,
+            "projection": {"imageProjectionCount": 2},
+            "component": {"imageComponentCount": 1},
+        },
+    )
+    monkeypatch.setattr(
+        "pocketsteel.amazing_tablature_extraction._parse_audiveris_head_graph",
+        lambda _path, _system_id: {
+            "scoreEvents": [
+                {
+                    "measure": 1,
+                    "beat": 1.0,
+                    "rhythmicPosition": 0.0,
+                    "defaultX": 100.0,
+                    "chordMember": False,
+                    "pitch": "F4",
+                    "pitchValue": 65,
+                    "pitchStep": "F",
+                    "pitchAlter": 0,
+                    "octave": 4,
+                    "writtenAccidental": None,
+                    "tieContinuation": False,
+                },
+                {
+                    "measure": 1,
+                    "beat": 2.0,
+                    "rhythmicPosition": 1.0,
+                    "defaultX": 200.0,
+                    "chordMember": False,
+                    "pitch": "G4",
+                    "pitchValue": 67,
+                    "pitchStep": "G",
+                    "pitchAlter": 0,
+                    "octave": 4,
+                    "writtenAccidental": None,
+                    "tieContinuation": False,
+                },
+            ],
+            "keySignature": {
+                "fifths": 1,
+                "confidence": 0.95,
+                "evidenceClass": "direct_visual_observation",
+            },
+        },
+    )
+
+    result = _source_score_semantic_repair(
+        image_path=tmp_path / "score.png",
+        omr_path=tmp_path / "score.omr",
+        system_id="score-system-1",
+    )
+
+    assert result["semanticAttackCount"] == 2
+    assert result["corroboratedBaseline"] is True
+    assert result["countPublishable"] is True
+    assert result["pitchCandidateComplete"] is True
+    assert result["pitchesPublishable"] is False
+    assert [event["pitch"] for event in result["scoreEvents"]] == ["F#4", "G4"]
+    assert result["reviewerCountProvided"] is False
+    assert result["reviewerPitchesProvided"] is False
+    assert result["tablatureProvided"] is False
 
 
 def test_discovery_human_exposure_inventory_is_conservative_and_excludes_automation(

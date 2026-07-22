@@ -263,6 +263,15 @@ def _parser() -> argparse.ArgumentParser:
         "--vision-base-url", default="http://127.0.0.1:11434"
     )
 
+    evaluate_semantic_score_repair = subparsers.add_parser(
+        "evaluate-discovery-source-score-semantic-repair",
+        help=(
+            "Replay source-only attack, tie, and key-signature repair on the "
+            "opened discovery benchmark without review or training output."
+        ),
+    )
+    evaluate_semantic_score_repair.add_argument("batch_id")
+
     evaluate_score_projection = subparsers.add_parser(
         "evaluate-source-score-projection-challenger",
         help=(
@@ -1002,6 +1011,10 @@ def main() -> int:
                 args.batch_id,
                 limit=args.limit,
             )
+        elif args.command == "evaluate-discovery-source-score-semantic-repair":
+            result = AmazingTablatureExtractor(
+                args.root
+            ).evaluate_discovery_source_score_semantic_repair(args.batch_id)
         elif args.command == "evaluate-source-score-projection-challenger":
             result = AmazingTablatureExtractor(
                 args.root
