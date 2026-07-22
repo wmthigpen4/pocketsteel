@@ -101,6 +101,7 @@ from pocketsteel.amazing_tablature_extraction import (
     _score_audit_diagnostics,
     _score_audit_equivalence_gates,
     _score_attack_groups,
+    _reviewed_score_sequence_target,
     _score_repair_candidate,
     _score_tab_attack_counts_complete,
     _score_tab_pitch_relationship,
@@ -4073,6 +4074,110 @@ def test_source_head_grouping_fails_closed_without_geometry() -> None:
     assert regrouped == source_events
     assert diagnostics["applied"] is False
     assert diagnostics["failure"] == "source_head_bounds_missing"
+
+
+def test_reviewed_score_sequence_target_excludes_unapproved_rhythm() -> None:
+    approved_states = {
+        "eventOrder": "human_approved",
+        "chordMembership": "human_approved",
+        "pitch": "human_approved",
+        "duration": "not_reviewed_excluded",
+        "rhythmicPosition": "not_reviewed_excluded",
+        "tie": "not_reviewed_excluded",
+    }
+    score_system = {
+        "scoreEvents": [
+            {
+                "scoreEventId": "event-1",
+                "measure": 1,
+                "beat": 1.0,
+                "defaultX": 100.0,
+                "chordMember": False,
+                "pitchValue": 60,
+                "pitchStep": "C",
+                "pitchAlter": 0,
+                "octave": 4,
+                "writtenAccidental": None,
+                "durationBeats": 4.0,
+                "tie": ["start"],
+                "rest": False,
+                "fieldReviewStates": approved_states,
+            },
+            {
+                "scoreEventId": "event-2",
+                "measure": 1,
+                "beat": 1.0,
+                "defaultX": 100.0,
+                "chordMember": True,
+                "pitchValue": 64,
+                "pitchStep": "E",
+                "pitchAlter": 0,
+                "octave": 4,
+                "writtenAccidental": None,
+                "durationBeats": 0.5,
+                "tie": [],
+                "rest": False,
+                "fieldReviewStates": approved_states,
+            },
+        ]
+    }
+
+    target = _reviewed_score_sequence_target(score_system)
+
+    assert target == [
+        {
+            "attackIndex": 1,
+            "notes": [
+                {
+                    "pitchValue": 60,
+                    "pitchStep": "C",
+                    "pitchAlter": 0,
+                    "octave": 4,
+                    "writtenAccidental": None,
+                },
+                {
+                    "pitchValue": 64,
+                    "pitchStep": "E",
+                    "pitchAlter": 0,
+                    "octave": 4,
+                    "writtenAccidental": None,
+                },
+            ],
+        }
+    ]
+    serialized = json.dumps(target)
+    assert "duration" not in serialized
+    assert "rhythmic" not in serialized
+    assert '"tie"' not in serialized
+    assert "defaultX" not in serialized
+
+
+def test_reviewed_score_sequence_target_rejects_partial_approval() -> None:
+    with pytest.raises(ExtractionWorkflowError, match="human-approved"):
+        _reviewed_score_sequence_target(
+            {
+                "scoreEvents": [
+                    {
+                        "scoreEventId": "event-1",
+                        "measure": 1,
+                        "beat": 1.0,
+                        "defaultX": 100.0,
+                        "chordMember": False,
+                        "pitchValue": 60,
+                        "pitchStep": "C",
+                        "pitchAlter": 0,
+                        "octave": 4,
+                        "rest": False,
+                        "tie": [],
+                        "fieldReviewStates": {
+                            "eventOrder": "human_approved",
+                            "chordMembership": "human_approved",
+                            "pitch": "needs_human_review",
+                        },
+                    }
+                ]
+            }
+        )
 
 
 def test_discovery_human_exposure_inventory_is_conservative_and_excludes_automation(

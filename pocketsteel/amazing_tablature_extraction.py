@@ -166,6 +166,10 @@ SOURCE_SCORE_SEMANTIC_REPAIR_SCHEMA_VERSION = (
     "amazing-tablature-source-score-semantic-repair-v2"
 )
 SOURCE_HEAD_COUNT_CONSTRAINT_VERSION = "source-head-count-constrained-grouping-v1"
+DISCOVERY_SCORE_SEQUENCE_DATASET_VERSION = "reviewed-score-sequence-dataset-v1"
+DISCOVERY_SCORE_SEQUENCE_DATASET_SCHEMA_VERSION = (
+    "amazing-tablature-reviewed-score-sequence-dataset-v1"
+)
 DISCOVERY_MACHINE_TIMELINE_VERSION = "discovery-machine-score-tab-timeline-v1"
 DISCOVERY_MACHINE_TIMELINE_SCHEMA_VERSION = (
     "amazing-tablature-discovery-machine-score-tab-timeline-v1"
@@ -1471,6 +1475,66 @@ def _score_attack_groups(
             continue
         attacks.append(event)
     return _score_event_groups_by_printed_position(attacks)
+
+
+def _reviewed_score_sequence_target(
+    score_system: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    """Return pitch/chord sequence labels only when every fact is approved.
+
+    The user's score audits approved attack order, chord membership, and pitch,
+    but intentionally did not approve duration or rhythmic position.  This
+    target therefore contains no beat, duration, tie, or horizontal-coordinate
+    labels.  It is suitable for private full-line sequence training without
+    pretending that weak machine localization is human ground truth.
+    """
+
+    target: list[dict[str, Any]] = []
+    for attack_index, group in enumerate(
+        _score_attack_groups(score_system.get("scoreEvents") or []),
+        start=1,
+    ):
+        notes: list[dict[str, Any]] = []
+        for event in group:
+            states = event.get("fieldReviewStates") or {}
+            if any(
+                str(states.get(field) or "") != "human_approved"
+                for field in ("eventOrder", "chordMembership", "pitch")
+            ):
+                raise ExtractionWorkflowError(
+                    "Score sequence training requires human-approved order, "
+                    "chord membership, and pitch for every notehead."
+                )
+            if event.get("pitchValue") is None:
+                raise ExtractionWorkflowError(
+                    "Score sequence training found an approved event without pitch."
+                )
+            notes.append(
+                {
+                    "pitchValue": int(event["pitchValue"]),
+                    "pitchStep": str(event.get("pitchStep") or ""),
+                    "pitchAlter": int(event.get("pitchAlter") or 0),
+                    "octave": int(event.get("octave") or 0),
+                    "writtenAccidental": event.get("writtenAccidental"),
+                }
+            )
+        target.append(
+            {
+                "attackIndex": attack_index,
+                "notes": sorted(
+                    notes,
+                    key=lambda value: (
+                        int(value["pitchValue"]),
+                        str(value["pitchStep"]),
+                    ),
+                ),
+            }
+        )
+    if not target:
+        raise ExtractionWorkflowError(
+            "Score sequence training requires at least one approved attack."
+        )
+    return target
 
 
 def _score_audit_equivalence_gates(
@@ -20377,6 +20441,214 @@ class AmazingTablatureExtractor:
             "reviewPacketCreated": False,
             "currentPageRecordsModified": False,
             "trainingStarted": False,
+            "validationAccessed": False,
+            "sealedTestAccessed": False,
+        }
+
+    def build_discovery_score_sequence_dataset(
+        self,
+        batch_id: str,
+    ) -> dict[str, Any]:
+        """Freeze reviewed discovery lines as private sequence-model labels.
+
+        The dataset contains digest-pinned conventional-score crops and ordered
+        human-approved pitch groups.  It deliberately excludes tablature,
+        timing, horizontal boxes, validation, and sealed-test material.
+        """
+
+        batch_dir, _manifest, _work = self._batch_paths(batch_id, "discovery")
+        output_root = batch_dir / "extraction" / "discovery"
+        benchmark_root = (
+            output_root / "review" / "automation" / "source-score-notehead-challenger"
+        )
+        benchmark_path = benchmark_root / "benchmark-manifest.json"
+        if not benchmark_path.exists():
+            raise ExtractionWorkflowError(
+                "Freeze the discovery score benchmark before sequence labeling."
+            )
+        benchmark = _read_json(benchmark_path)
+        benchmark_digest = str(benchmark.get("manifestDigest") or "")
+        if benchmark_digest != _sha256_json(
+            {key: value for key, value in benchmark.items() if key != "manifestDigest"}
+        ):
+            raise ExtractionWorkflowError("The score benchmark digest changed.")
+
+        cases: list[dict[str, Any]] = []
+        for raw_case in benchmark.get("cases") or []:
+            case = dict(raw_case)
+            record_path = output_root / str(case.get("reviewedRecordPath") or "")
+            if not record_path.exists():
+                raise ExtractionWorkflowError(
+                    "A reviewed score sequence record is missing."
+                )
+            record = _read_json(record_path)
+            reviewed_record_digest = str(case.get("reviewedRecordDigest") or "")
+            if _sha256_json(record) != reviewed_record_digest:
+                raise ExtractionWorkflowError(
+                    "A reviewed score sequence record changed."
+                )
+            rights = record.get("rightsAndAccess") or {}
+            if (
+                str(rights.get("reviewStatus") or "") != "approved"
+                or not bool((rights.get("allowedUses") or {}).get("modelTraining"))
+            ):
+                raise ExtractionWorkflowError(
+                    "Score sequence labels require approved model-training use."
+                )
+            score_system_id = str(case.get("scoreSystemId") or "")
+            score_system = next(
+                (
+                    system
+                    for system in record.get("scoreSystems") or []
+                    if str(system.get("scoreSystemId") or "") == score_system_id
+                ),
+                None,
+            )
+            if score_system is None:
+                raise ExtractionWorkflowError(
+                    "A reviewed score sequence system is missing."
+                )
+
+            image_path: Path | None = None
+            image_metadata: dict[str, Any] | None = None
+            for candidate in (
+                score_system.get("omrPreparedDerivative") or {},
+                score_system.get("scoreRepairSourceCrop") or {},
+            ):
+                relative_path = str(candidate.get("relativePath") or "")
+                expected_sha = str(candidate.get("sha256") or "")
+                path = output_root / relative_path
+                if (
+                    relative_path
+                    and expected_sha
+                    and path.exists()
+                    and _sha256_bytes(path.read_bytes()) == expected_sha
+                ):
+                    image_path = path
+                    image_metadata = copy.deepcopy(dict(candidate))
+                    break
+            if image_path is None or image_metadata is None:
+                raise ExtractionWorkflowError(
+                    "A digest-pinned conventional-score crop is unavailable."
+                )
+            with Image.open(image_path) as opened:
+                width, height = opened.size
+
+            target = _reviewed_score_sequence_target(score_system)
+            target_digest = _sha256_json(target)
+            cases.append(
+                {
+                    "caseId": str(case.get("caseId") or ""),
+                    "inputId": str(case.get("inputId") or ""),
+                    "scoreSystemId": score_system_id,
+                    "contentUnitId": str(record.get("contentUnitId") or ""),
+                    "subset": str(case.get("subset") or ""),
+                    "reviewDecisionId": str(case.get("reviewDecisionId") or ""),
+                    "reviewedRecordPath": str(case.get("reviewedRecordPath") or ""),
+                    "reviewedRecordDigest": reviewed_record_digest,
+                    "image": {
+                        "relativePath": str(image_path.relative_to(output_root)),
+                        "sha256": _sha256_bytes(image_path.read_bytes()),
+                        "width": width,
+                        "height": height,
+                        "role": "conventional_score_line",
+                        "rawImageCopied": False,
+                    },
+                    "target": target,
+                    "targetDigest": target_digest,
+                    "targetContract": {
+                        "order": "human_approved",
+                        "chordMembership": "human_approved",
+                        "pitch": "human_approved",
+                        "durationIncluded": False,
+                        "rhythmicPositionIncluded": False,
+                        "tieIncluded": False,
+                        "horizontalLocalizationIncluded": False,
+                    },
+                    "rightsAuthorizationRecordDigest": str(
+                        rights.get("authorizationRecordDigest") or ""
+                    ),
+                    "modelTrainingAllowed": True,
+                }
+            )
+
+        def metrics(values: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+            return {
+                "caseCount": len(values),
+                "sourcePageCount": len(
+                    {str(value.get("inputId") or "") for value in values}
+                ),
+                "contentUnitCount": len(
+                    {str(value.get("contentUnitId") or "") for value in values}
+                ),
+                "attackGroupCount": sum(
+                    len(value.get("target") or []) for value in values
+                ),
+                "noteheadLabelCount": sum(
+                    len(group.get("notes") or [])
+                    for value in values
+                    for group in value.get("target") or []
+                ),
+            }
+
+        by_subset = {
+            subset: metrics(
+                [value for value in cases if value.get("subset") == subset]
+            )
+            for subset in ("development", "shadow")
+        }
+        manifest_core = {
+            "schemaVersion": DISCOVERY_SCORE_SEQUENCE_DATASET_SCHEMA_VERSION,
+            "datasetVersion": DISCOVERY_SCORE_SEQUENCE_DATASET_VERSION,
+            "batchId": batch_id,
+            "partition": "discovery",
+            "evaluationClass": "opened_discovery_supervised_sequence_training",
+            "benchmarkManifestDigest": benchmark_digest,
+            "splitContract": "page_grouped_inherited_from_frozen_benchmark",
+            "aggregate": metrics(cases),
+            "bySubset": by_subset,
+            "cases": cases,
+            "sourceTextIncluded": False,
+            "tablatureIncluded": False,
+            "rawImagesCopied": False,
+            "reviewPacketCreated": False,
+            "currentPageRecordsModified": False,
+            "trainingStarted": False,
+            "promotionEligible": False,
+            "validationAccessed": False,
+            "sealedTestAccessed": False,
+        }
+        manifest_digest = _sha256_json(manifest_core)
+        manifest = {**manifest_core, "manifestDigest": manifest_digest}
+        dataset_root = (
+            output_root
+            / "review"
+            / "automation"
+            / DISCOVERY_SCORE_SEQUENCE_DATASET_VERSION
+        )
+        dataset_root.mkdir(parents=True, exist_ok=True)
+        os.chmod(dataset_root, 0o700)
+        manifest_path = dataset_root / f"manifest-{manifest_digest[:12]}.json"
+        if manifest_path.exists():
+            if _read_json(manifest_path) != manifest:
+                raise ExtractionWorkflowError(
+                    "An immutable score sequence manifest cannot be overwritten."
+                )
+        else:
+            _write_json(manifest_path, manifest)
+        return {
+            "schemaVersion": manifest["schemaVersion"],
+            "datasetVersion": manifest["datasetVersion"],
+            "batchId": batch_id,
+            "partition": "discovery",
+            "aggregate": manifest["aggregate"],
+            "bySubset": manifest["bySubset"],
+            "manifestDigest": manifest_digest,
+            "manifestPath": str(manifest_path.relative_to(output_root)),
+            "reviewPacketCreated": False,
+            "currentPageRecordsModified": False,
+            "trainingStarted": False,
+            "promotionEligible": False,
             "validationAccessed": False,
             "sealedTestAccessed": False,
         }

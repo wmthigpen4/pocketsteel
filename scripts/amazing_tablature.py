@@ -249,6 +249,15 @@ def _parser() -> argparse.ArgumentParser:
     )
     evaluate_score_vision.add_argument("--no-resume", action="store_true")
 
+    build_score_sequence_dataset = subparsers.add_parser(
+        "build-discovery-score-sequence-dataset",
+        help=(
+            "Build a private digest-pinned image-to-approved-pitch-sequence "
+            "manifest from the opened discovery benchmark."
+        ),
+    )
+    build_score_sequence_dataset.add_argument("batch_id")
+
     evaluate_guided_capture = subparsers.add_parser(
         "evaluate-discovery-guided-capture-regression",
         help=(
@@ -1042,6 +1051,10 @@ def main() -> int:
                 limit=args.limit,
                 resume=not args.no_resume,
             )
+        elif args.command == "build-discovery-score-sequence-dataset":
+            result = AmazingTablatureExtractor(
+                args.root
+            ).build_discovery_score_sequence_dataset(args.batch_id)
         elif args.command == "evaluate-discovery-guided-capture-regression":
             result = AmazingTablatureExtractor(
                 args.root,

@@ -194,6 +194,14 @@ After the shadow result has been opened, those discovery lines are regression ev
 
 The reader receives only a hash-pinned conventional-score crop. It is not given the reviewer count, tablature image, tablature event count, or tablature pitches. It returns visible notehead columns and explicit tied-continuation flags; pitch and octave recognition is intentionally deferred until the count gate passes. The report compares its attack count with the frozen Audiveris notehead detector only after inference. Results remain diagnostic because every case has already participated in discovery correction work: they cannot promote a reader, create training records, or justify another human review packet. The command uses a private digest-keyed cache. Use one worker with the current local vision server because it serializes image generations.
 
+Build the private full-line score-sequence labels from the frozen, already-opened discovery corrections before training a supervised score reader:
+
+```bash
+.venv/bin/python scripts/amazing_tablature.py build-discovery-score-sequence-dataset <batch-id>
+```
+
+The immutable manifest references digest-pinned conventional-score crops and contains only human-approved ordered pitch/chord groups. It excludes tablature, source text, duration, rhythmic position, ties, and unverified horizontal boxes. Development and shadow membership is inherited from the frozen page-grouped benchmark. Building the manifest does not start training, create review work, promote a model, modify reviewed records, or access validation or sealed-test data.
+
 The deterministic source-image alternative suppresses staff lines, measures vertical ink projection inside the staff band, and conservatively fuses only a nearby count with the Audiveris source-notehead anchors:
 
 ```bash
