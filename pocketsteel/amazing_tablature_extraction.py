@@ -72,7 +72,7 @@ SCORE_AUDIT_CORRECTION_PLAN_SCHEMA_VERSION = (
 )
 SCORE_AUDIT_SCOPE_SCHEMA_VERSION = "amazing-tablature-score-audit-scope-v1"
 EVENT_EXECUTION_SCHEMA_VERSION = "steel-event-execution-v1"
-EXTRACTOR_VERSION = "lane20-score-tab-v15"
+EXTRACTOR_VERSION = "lane20-score-tab-v17"
 PAGE_REVIEW_COMPATIBILITY_VERSION = "page-review-facts-v1"
 PAGE_REVIEW_COMPATIBLE_EXTRACTOR_VERSIONS = frozenset(
     {
@@ -80,6 +80,8 @@ PAGE_REVIEW_COMPATIBLE_EXTRACTOR_VERSIONS = frozenset(
         "lane20-score-tab-v13",
         "lane20-score-tab-v14",
         "lane20-score-tab-v15",
+        "lane20-score-tab-v16",
+        "lane20-score-tab-v17",
     }
 )
 SCORE_AUDIT_GATE_VERSION = "score-tab-equivalence-gate-v2"
@@ -6460,8 +6462,55 @@ def _tab_event_candidates(
     for event_index, cluster in enumerate(retained_clusters, start=1):
         center_x = int(round(float(np.mean([item["centerX"] for item in cluster]))))
         candidate_strings = sorted({int(item["string"]) for item in cluster})
-        events.append({"eventIndex": event_index, "x": center_x, "candidateStrings": candidate_strings})
+        events.append(
+            {
+                "eventIndex": event_index,
+                "x": center_x,
+                "x0": int(math.floor(min(float(item["x0"]) for item in cluster))),
+                "x1": int(math.ceil(max(float(item["x1"]) for item in cluster))),
+                "candidateStrings": candidate_strings,
+            }
+        )
     return events
+
+
+def _tab_cell_horizontal_bounds(
+    events: Sequence[Mapping[str, Any]],
+    event_index: int,
+    *,
+    image_width: int,
+    cell_height: int,
+) -> tuple[int, int]:
+    """Crop one event without leaking neighboring printed states into it."""
+
+    event = events[event_index]
+    center = float(event["x"])
+    left = max(0.0, center - cell_height * 2.0)
+    right = min(float(image_width), center + cell_height * 2.0)
+    if event_index > 0:
+        previous = events[event_index - 1]
+        previous_edge = float(previous.get("x1", previous["x"]))
+        current_edge = float(event.get("x0", center))
+        boundary = (
+            (previous_edge + current_edge) / 2.0
+            if previous_edge <= current_edge
+            else (float(previous["x"]) + center) / 2.0
+        )
+        left = max(left, boundary)
+    if event_index + 1 < len(events):
+        following = events[event_index + 1]
+        current_edge = float(event.get("x1", center))
+        following_edge = float(following.get("x0", following["x"]))
+        boundary = (
+            (current_edge + following_edge) / 2.0
+            if current_edge <= following_edge
+            else (center + float(following["x"])) / 2.0
+        )
+        right = min(right, boundary)
+    return (
+        max(0, int(math.floor(left))),
+        min(image_width, max(int(math.ceil(right)), int(math.floor(left)) + 1)),
+    )
 
 
 def _tab_measure_boundaries(grid: GridDetection) -> list[int]:
@@ -6598,15 +6647,21 @@ def _contact_sheets(
     patch_width = max(76, cell_height * 4)
     patch_height = max(54, cell_height * 3)
     cards: list[tuple[str, Image.Image]] = []
-    for event in events:
+    for event_offset, event in enumerate(events):
+        crop_x0, crop_x1 = _tab_cell_horizontal_bounds(
+            events,
+            event_offset,
+            image_width=rectified.width,
+            cell_height=cell_height,
+        )
         for string in event.get("candidateStrings", []):
             label = f"e{int(event['eventIndex'])}s{int(string)}"
             center_y = local_grid.string_centers[int(string) - 1]
             source = rectified.crop(
                 (
-                    max(0, int(event["x"]) - cell_height * 2),
+                    crop_x0,
                     max(0, int(center_y - cell_height * 0.48)),
-                    min(rectified.width, int(event["x"]) + cell_height * 2),
+                    crop_x1,
                     min(rectified.height, int(center_y + cell_height * 0.48)),
                 )
             ).convert("L")
@@ -10257,6 +10312,12 @@ def _tab_action_sequence_from_cell(
     token = cell.get("token")
     confidence = float(cell.get("confidence") or 0.0)
     uncertain = bool(cell.get("uncertain"))
+    # The event detector deliberately nominates more string rows than may
+    # contain printed tokens. A blank read means this string is not part of
+    # the event; the caller raises one column-level issue only if every row is
+    # blank or unresolved.
+    if token is None or not str(token).strip():
+        return [], None
     if uncertain or confidence < 0.8:
         return [], {
             "kind": "low_confidence_tab_symbol",
@@ -24861,6 +24922,7 @@ class AmazingTablatureExtractor:
             next_event_index = 1
             for candidate in candidates:
                 action_sequences: dict[int, list[dict[str, Any]]] = {}
+                candidate_issues: list[dict[str, Any]] = []
                 tab_measure, measure_position = _tab_measure_context(grid, int(candidate["x"]))
                 for string in candidate["candidateStrings"]:
                     label = f"e{candidate['eventIndex']}s{string}"
@@ -24885,8 +24947,38 @@ class AmazingTablatureExtractor:
                             )
                         action_sequences[int(string)] = sequence
                     if issue is not None:
-                        unresolved.append({**issue, "inputId": item["inputId"], "tabSystemId": tab_system_id})
+                        candidate_issues.append(
+                            {
+                                **issue,
+                                "inputId": item["inputId"],
+                                "tabSystemId": tab_system_id,
+                                "sourceCandidateEventIndex": int(candidate["eventIndex"]),
+                                "horizontalPosition": round(
+                                    int(candidate["x"]) / max(1, grid.x1 - grid.x0),
+                                    7,
+                                ),
+                            }
+                        )
                 sequence_length = max((len(sequence) for sequence in action_sequences.values()), default=0)
+                if candidate_issues:
+                    unresolved.extend(candidate_issues)
+                elif sequence_length == 0:
+                    unresolved.append(
+                        {
+                            "kind": "unresolved_tab_event_candidate",
+                            "inputId": item["inputId"],
+                            "tabSystemId": tab_system_id,
+                            "sourceCandidateEventIndex": int(candidate["eventIndex"]),
+                            "horizontalPosition": round(
+                                int(candidate["x"]) / max(1, grid.x1 - grid.x0),
+                                7,
+                            ),
+                            "candidateStrings": list(candidate["candidateStrings"]),
+                            "candidateMeaning": "printed_event_column_with_no_recognized_tab_state",
+                            "evidenceClass": "unknown_or_unresolved",
+                            "blocking": True,
+                        }
+                    )
                 candidate_event_records.append(
                     {
                         "sourceCandidateEventIndex": int(candidate["eventIndex"]),

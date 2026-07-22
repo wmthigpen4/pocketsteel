@@ -109,6 +109,7 @@ from pocketsteel.amazing_tablature_extraction import (
     _tab_action_from_token,
     _tab_action_sequence_from_cell,
     _tab_action_sequence_from_token,
+    _tab_cell_horizontal_bounds,
     _tab_event_candidates,
     _tab_measure_context,
     _unreviewed_refresh_regression_gate,
@@ -4062,6 +4063,36 @@ def test_movement_chain_cell_is_retained_while_low_confidence_cell_is_quarantine
     assert actions == []
     assert issue is not None
     assert issue["excludedFromNormalizedFacts"] is True
+
+
+def test_empty_high_recall_string_cell_is_not_a_symbol_failure() -> None:
+    profile = get_e9_copedent_profile("source-e9-abc-defg-v1")
+
+    actions, issue = _tab_action_sequence_from_cell(
+        {"token": None, "confidence": 0.0, "uncertain": True},
+        string=7,
+        profile=profile,
+        region_id="region-empty-high-recall-cell",
+    )
+
+    assert actions == []
+    assert issue is None
+
+
+def test_tab_cell_crop_stops_between_neighboring_event_components() -> None:
+    events = [
+        {"x": 100, "x0": 88, "x1": 112},
+        {"x": 140, "x0": 128, "x1": 152},
+        {"x": 220, "x0": 208, "x1": 232},
+    ]
+
+    first = _tab_cell_horizontal_bounds(events, 0, image_width=300, cell_height=24)
+    middle = _tab_cell_horizontal_bounds(events, 1, image_width=300, cell_height=24)
+    last = _tab_cell_horizontal_bounds(events, 2, image_width=300, cell_height=24)
+
+    assert first == (52, 120)
+    assert middle == (120, 180)
+    assert last == (180, 268)
 
 
 def test_movement_chain_uses_the_exact_batch_copedent_for_lever_changes() -> None:
