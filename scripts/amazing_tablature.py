@@ -924,6 +924,13 @@ def _parser() -> argparse.ArgumentParser:
     reject.add_argument("model_id")
     reject.add_argument("--approval-reference", required=True)
 
+    deactivate = subparsers.add_parser(
+        "deactivate-channel",
+        help="Clear an obsolete beta or stable channel and retain an audited rollback entry.",
+    )
+    deactivate.add_argument("--channel", choices=("beta", "stable"), required=True)
+    deactivate.add_argument("--approval-reference", required=True)
+
     rollback = subparsers.add_parser("rollback", help="Restore an exact previously active model.")
     rollback.add_argument("model_id")
     rollback.add_argument("--channel", choices=("beta", "stable"), required=True)
@@ -1447,6 +1454,11 @@ def main() -> int:
             )
         elif args.command == "reject":
             result = store.reject(args.model_id, approval_reference=args.approval_reference)
+        elif args.command == "deactivate-channel":
+            result = store.deactivate_channel(
+                channel=args.channel,
+                approval_reference=args.approval_reference,
+            )
         elif args.command == "rollback":
             result = store.rollback(
                 channel=args.channel,

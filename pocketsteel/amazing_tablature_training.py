@@ -6100,6 +6100,39 @@ class AmazingTablatureTrainingStore:
         self._save_registry(registry)
         return {"modelId": model_id, "status": "retired", "decision": "rejected"}
 
+    def deactivate_channel(
+        self,
+        *,
+        channel: str,
+        approval_reference: str,
+    ) -> dict[str, Any]:
+        """Clear an obsolete runtime channel without selecting a replacement."""
+
+        if channel not in {"beta", "stable"}:
+            raise TrainingWorkflowError("Deactivation channel must be beta or stable.")
+        if not approval_reference.strip():
+            raise TrainingWorkflowError(
+                "Channel deactivation requires an explicit creator approval reference."
+            )
+        registry = self._registry()
+        previous = registry["channels"].get(channel)
+        if previous is None:
+            return {"channel": channel, "modelId": None, "previousModelId": None}
+        registry["channels"][channel] = None
+        registry["rollbackHistory"].append(
+            {
+                "action": "deactivate",
+                "channel": channel,
+                "fromModelId": previous,
+                "toModelId": None,
+                "approvalReference": approval_reference.strip(),
+                "at": _utc_now(),
+            }
+        )
+        self._refresh_model_states(registry)
+        self._save_registry(registry)
+        return {"channel": channel, "modelId": None, "previousModelId": previous}
+
     def rollback(self, *, channel: str, model_id: str, approval_reference: str) -> dict[str, Any]:
         if channel not in {"beta", "stable"}:
             raise TrainingWorkflowError("Rollback channel must be beta or stable.")

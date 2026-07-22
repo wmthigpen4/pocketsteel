@@ -2178,6 +2178,18 @@ def test_evaluate_report_promote_and_rollback_exact_models(tmp_path: Path) -> No
     )
     assert beta["modelId"] == stable["modelId"] == first["modelId"]
 
+    deactivated = store.deactivate_channel(
+        channel="beta",
+        approval_reference="creator retired obsolete beta channel",
+    )
+    assert deactivated == {
+        "channel": "beta",
+        "modelId": None,
+        "previousModelId": first["modelId"],
+    }
+    assert store.status()["channels"]["beta"] is None
+    assert store.status()["models"][first["modelId"]]["status"] == "approved_stable"
+
     second = store.train(epochs=5)
     assert second["modelId"] != first["modelId"]
     assert store.evaluate(second["modelId"])["gate"]["passed"] is True
