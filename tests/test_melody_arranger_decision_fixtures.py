@@ -57,7 +57,7 @@ def _lever_entry_count(path: list[PositionCandidate]) -> int:
     return entries
 
 
-def test_approved_beta_learned_score_prefers_reviewed_chord_texture() -> None:
+def test_deterministic_fallback_applies_no_unapproved_chord_weight() -> None:
     single = _open_grip(3, (4,), 67)
     triad = _open_grip(3, (4, 5, 6), 67)
 
@@ -65,11 +65,10 @@ def test_approved_beta_learned_score_prefers_reviewed_chord_texture() -> None:
     triad_penalty = _learned_start_penalty(triad, "chord_arrival", 3, "chord_melody")
     auto_penalty = _learned_start_penalty(triad, "chord_arrival", 3, "auto")
 
-    assert triad_penalty < single_penalty
-    assert auto_penalty == triad_penalty
+    assert single_penalty == triad_penalty == auto_penalty == 0
 
 
-def test_approved_beta_learned_score_prefers_reviewed_harmonized_dyad() -> None:
+def test_deterministic_fallback_applies_no_unapproved_harmony_weight() -> None:
     single = _open_grip(3, (4,), 67)
     dyad = _open_grip(3, (4, 5), 67)
     triad = _open_grip(3, (4, 5, 6), 67)
@@ -79,8 +78,7 @@ def test_approved_beta_learned_score_prefers_reviewed_harmonized_dyad() -> None:
         for candidate in (single, dyad, triad)
     }
 
-    assert penalties[2] < penalties[1]
-    assert penalties[2] < penalties[3]
+    assert set(penalties.values()) == {0}
 
 
 def test_blocking_fixture_full_grip_slide_sustains_every_attacked_string() -> None:

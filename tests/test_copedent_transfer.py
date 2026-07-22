@@ -568,10 +568,14 @@ def test_rule_contract_is_versioned_and_documents_ordered_texture_fallback() -> 
     contract = rule_contract_payload("vocal_steel")
 
     assert contract["modelVersion"] == MODEL_VERSION
-    assert contract["modelVersion"] == "at-44c59f08724d501e"
-    assert contract["modelStatus"] == "approved_beta"
-    assert contract["modelMetadata"]["exampleCount"] == 45
+    assert contract["modelVersion"] == "deterministic-fallback-v1"
+    assert contract["modelStatus"] == "deterministic_fallback"
+    assert contract["modelMetadata"]["exampleCount"] == 0
     assert contract["modelMetadata"]["copedentNeutral"] is True
+    assert contract["modelMetadata"]["rankerEnabled"] is False
+    assert contract["modelMetadata"]["inputScope"] == "normalized_score_events"
+    assert contract["modelMetadata"]["scoreImageRecognitionIncluded"] is False
+    assert contract["modelMetadata"]["lineage"]["retiredModelId"] == "at-44c59f08724d501e"
     assert contract["styleFamily"] == "vocal_steel"
     assert contract["fallbackOrder"][2] == "reduce_triad_to_dyad_to_single_melody"
     assert all(

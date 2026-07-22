@@ -69,7 +69,19 @@ The versioned ranker supports `auto`, `vocal_steel`, `chord_melody`, `harmonized
 
 Player-facing labels are descriptive rather than player-attributed: Best Fit, Singing Steel, Full Harmony, Smooth Harmony, Fast & Clean, Pedal & Lever Motion, and Pocket Playing. Melody Studio presents arrangement type and playing style as separate choices. Arrangement controls the harmonic contract; style controls ranking and performance realization within that contract.
 
-The runtime's approved beta policy is `at-44c59f08724d501e`, trained from 45 mechanically validated abstract decisions and activated only after its held-out evaluation passed and its exact ID was approved. Lane 20 operates the durable private workflow through `scripts/amazing_tablature.py`; `scripts/train_melody_decision_ranker.py` remains a compatibility entry point for the original one-shot trainer. Training features exclude source control letters, literal tab, copyrighted passage text, and profile-specific fret identities. The learned score ranks only mechanically and harmonically valid target candidates; deterministic pitch, register, control-effect, melody-on-top, and fallback rules remain authoritative. Best Fit maps phrase roles to an approved learned style family rather than synthesizing unapproved `auto` weights.
+The runtime policy is currently `deterministic-fallback-v1`. The earlier
+`at-44c59f08724d501e` beta is retired because its 51-image source batch was
+superseded. No current challenger contributes learned penalties until its exact
+feature adapter, held-out evaluation, model ID, and promotion are approved.
+Lane 20 operates the durable private workflow through
+`scripts/amazing_tablature.py`; `scripts/train_melody_decision_ranker.py`
+remains a compatibility entry point for the original one-shot trainer.
+Training features exclude source control letters, literal tab, copyrighted
+passage text, and profile-specific fret identities. A promoted learned score
+may rank only mechanically and harmonically valid target candidates;
+deterministic pitch, register, control-effect, melody-on-top, and fallback
+rules remain authoritative. Score-image recognition is a separate review-first
+input adapter and is not included in structured-input arrangement accuracy.
 
 ## Rule record fields
 

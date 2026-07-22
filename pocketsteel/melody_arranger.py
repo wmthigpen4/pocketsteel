@@ -7,7 +7,7 @@ import re
 from itertools import combinations
 from typing import Any, Mapping, Sequence
 
-from pocketsteel.amazing_tablature_model import WEIGHTS_BY_STYLE
+from pocketsteel.amazing_tablature_model import RANKER_ENABLED, WEIGHTS_BY_STYLE
 from pocketsteel.answer_tab_examples import fretboard_payload_for_tab_example
 from pocketsteel.copedent_transfer import (
     absolute_pitch_for_profile,
@@ -2098,7 +2098,9 @@ def _learned_candidate_penalty(
     voice_leading: int,
 ) -> int:
     learned_style = _learned_style_for_role(style_family, role)
-    weights = WEIGHTS_BY_STYLE[learned_style]
+    weights = WEIGHTS_BY_STYLE.get(learned_style) if RANKER_ENABLED else None
+    if not weights:
+        return 0
     features = {
         "textureSize": len(candidate.notes),
         "barTravel": bar_travel,

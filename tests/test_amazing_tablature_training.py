@@ -2367,7 +2367,7 @@ def test_player_facing_styles_are_descriptive_and_copedent_neutral() -> None:
     )["melody_exercise"]
 
     assert result["styleLabel"] == "Singing Steel"
-    assert result["decisionModelStatus"] == MODEL_STATUS == "approved_beta"
+    assert result["decisionModelStatus"] == MODEL_STATUS == "deterministic_fallback"
     assert result["routes"][0]["styleLabel"] == "Singing Steel"
-    assert result["routes"][0]["decisionModelStatus"] == "approved_beta"
+    assert result["routes"][0]["decisionModelStatus"] == "deterministic_fallback"
     assert result["routes"][0]["targetCopedentId"] == "emmons-e9-basic"
