@@ -31,6 +31,7 @@ from pocketsteel.amazing_tablature_extraction import (
     SOURCE_SCORE_PROJECTION_CONTRACT,
     SOURCE_SCORE_PROJECTION_DETECTOR_VERSION,
     TAB_ONLY_APPROVAL_SECTIONS,
+    VALIDATION_LINE_PREFLIGHT_VERSION,
     AmazingTablatureExtractor,
     ExtractionWorkflowError,
     LocalTabVision,
@@ -68,6 +69,8 @@ from pocketsteel.amazing_tablature_extraction import (
     _parse_musicxml,
     _prepare_score_tab_source_crop,
     _provisional_joint_review_blockers,
+    _validation_audit_not_ready_html,
+    _validation_line_preflight_blockers,
     _projection_tab_grid,
     _promote_full_line_record_to_combined_scope,
     _prepare_score_omr_crop,
@@ -342,7 +345,7 @@ def test_combined_score_tab_console_explains_written_and_sustained_changes() -> 
     assert "one disagreement cannot shift every later comparison" in html
     assert "Each written musical change is compared with the sounding tablature change" in html
     assert "pedal/lever movement while the strings continue ringing" in html
-    assert "cmp.anchorAlignedColumns||cmp.columns" in html
+    assert "validation?cmp.columns:(cmp.anchorAlignedColumns||cmp.columns)" in html
     assert "differences shown below" in html
     assert "function differenceCards(columns,keyFifths,validation=false)" in html
     assert "function displayTabPitches(column)" in html
@@ -808,6 +811,7 @@ def test_validation_line_audit_submission_is_complete_and_never_training(
     packet_core = {
         "schemaVersion": "amazing-tablature-validation-line-audit-v1",
         "reviewType": "validation_line_audit",
+        "preflightVersion": VALIDATION_LINE_PREFLIGHT_VERSION,
         "batchId": "batch-validation",
         "partition": "validation",
         "trainingEligible": False,
@@ -822,6 +826,7 @@ def test_validation_line_audit_submission_is_complete_and_never_training(
                         "scoreSystemId": "score-1",
                         "tabSystemId": "tab-1",
                         "machineRecordDigest": "machine-1",
+                        "capturePreflightPassed": True,
                         "lineGatePassed": True,
                         "validationIssueSummary": {
                             "blockingCount": 0,
@@ -833,6 +838,7 @@ def test_validation_line_audit_submission_is_complete_and_never_training(
                         "scoreSystemId": "score-2",
                         "tabSystemId": "tab-2",
                         "machineRecordDigest": "machine-1",
+                        "capturePreflightPassed": True,
                         "lineGatePassed": False,
                         "validationIssueSummary": {
                             "blockingCount": 3,
@@ -905,6 +911,41 @@ def test_validation_line_audit_submission_is_complete_and_never_training(
     assert metadata["validationGroundTruthMayTrain"] is False
     assert metadata["status"] == "received_validation_ground_truth_not_scored"
 
+    legacy_packet_core = {
+        key: value
+        for key, value in packet_core.items()
+        if key != "preflightVersion"
+    }
+    legacy_packet_digest = _sha256_json(legacy_packet_core)
+    (review_dir / f"packet-{legacy_packet_digest}.json").write_text(
+        json.dumps(
+            {**legacy_packet_core, "packetDigest": legacy_packet_digest}
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ExtractionWorkflowError, match="withdrawn"):
+        _store_validation_line_audit_submission(
+            private,
+            {
+                **base_payload,
+                "packetDigest": legacy_packet_digest,
+                "reviews": [
+                    {
+                        "inputId": "input-0001",
+                        "scoreSystemId": "score-1",
+                        "status": "both_match",
+                        "tabConfirmed": True,
+                    },
+                    {
+                        "inputId": "input-0001",
+                        "scoreSystemId": "score-2",
+                        "status": "capture_failed",
+                        "tabConfirmed": False,
+                    },
+                ],
+            },
+        )
+
 
 def test_combined_console_supports_validation_ground_truth_mode() -> None:
     digest = "b" * 64
@@ -943,6 +984,185 @@ def test_provisional_joint_review_rejects_reviewer_reconstruction_work() -> None
         "empty_score_comparison_column",
         "empty_tablature_comparison_column",
     ]
+
+
+def test_validation_line_preflight_requires_complete_equal_renderings() -> None:
+    score_attacks = [
+        {"pitches": ["C5"], "pitchValues": [72]},
+        {"pitches": ["D5"], "pitchValues": [74]},
+    ]
+    tab_states = [
+        {"pitches": ["C5"], "steelActions": [{"string": 4, "fret": 8}]},
+        {"pitches": ["D5"], "steelActions": [{"string": 1, "fret": 8}]},
+    ]
+    complete = {
+        "scoreAttackCount": 2,
+        "tabMovementCount": 2,
+        "scoreAttacks": score_attacks,
+        "tabStates": tab_states,
+        "columns": [
+            {"scoreAttack": score_attacks[0], "tabState": tab_states[0]},
+            {"scoreAttack": score_attacks[1], "tabState": tab_states[1]},
+        ],
+        "mechanicallyValid": True,
+    }
+
+    assert _validation_line_preflight_blockers(
+        complete, key_signature_known=True, blocking_issue_count=0
+    ) == []
+
+    incomplete = {
+        **complete,
+        "scoreAttackCount": 0,
+        "scoreAttacks": [],
+        "columns": [
+            {"scoreAttack": None, "tabState": tab_states[0]},
+            {"scoreAttack": None, "tabState": tab_states[1]},
+        ],
+    }
+    blockers = _validation_line_preflight_blockers(
+        incomplete, key_signature_known=False, blocking_issue_count=1
+    )
+    assert blockers == [
+        "score_events_missing",
+        "score_tablature_event_count_mismatch",
+        "blank_or_misaligned_comparison_event",
+        "key_signature_not_captured",
+        "unresolved_reader_issue",
+    ]
+
+    incomplete_tab = {
+        **complete,
+        "tabStates": [
+            tab_states[0],
+            {
+                **tab_states[1],
+                "steelActions": [{"string": 1, "fret": None}],
+            },
+        ],
+    }
+    assert _validation_line_preflight_blockers(
+        incomplete_tab, key_signature_known=True, blocking_issue_count=0
+    ) == ["incomplete_tablature_event_payload"]
+
+
+def test_validation_not_ready_page_contains_no_review_controls() -> None:
+    html = _validation_audit_not_ready_html(
+        {
+            "lineCount": 8,
+            "blockedLineCount": 8,
+            "noLinePageCount": 2,
+            "readinessDigest": "a" * 64,
+        }
+    )
+
+    assert "Not ready for human review" in html
+    assert "validation audit has been withdrawn" in html
+    assert "same event count" in html
+    assert "<form" not in html
+    assert "Submit all reviewed lines" not in html
+
+
+def test_validation_audit_is_withdrawn_before_incomplete_lines_are_published(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    private = tmp_path / "private"
+    batch_dir = private / "batches" / "batch-validation"
+    output_root = batch_dir / "extraction" / "validation"
+    pages_dir = output_root / "pages"
+    pages_dir.mkdir(parents=True)
+    (output_root / "summary.json").write_text(
+        json.dumps(
+            {
+                "partition": "validation",
+                "extractorVersion": EXTRACTOR_VERSION,
+                "failedPageCount": 0,
+                "sealedTestAccessed": False,
+                "runDigest": "run-validation",
+                "validationModel": {
+                    "modelId": "at-frozen",
+                    "artifactSha256": "a" * 64,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    (pages_dir / "input-0001.json").write_text(
+        json.dumps(
+            {
+                "inputId": "input-0001",
+                "datasetPartition": "validation",
+                "extractorVersion": EXTRACTOR_VERSION,
+                "runDigest": "run-validation",
+                "scoreSystems": [
+                    {
+                        "scoreSystemId": "score-system-1",
+                        "systemIndex": 1,
+                        "pairedTabSystemId": "tab-system-1",
+                        "scoreEvents": [],
+                    }
+                ],
+                "tabSystems": [
+                    {
+                        "tabSystemId": "tab-system-1",
+                        "systemIndex": 1,
+                        "tabEvents": [
+                            {
+                                "tabEventId": "tab-event-1",
+                                "eventIndex": 1,
+                                "steelActions": [
+                                    {
+                                        "steelActionId": "action-1",
+                                        "string": 4,
+                                        "fret": 8,
+                                        "attack": True,
+                                        "soundingPitch": "C5",
+                                        "soundingPitchValue": 72,
+                                        "mechanicalValidation": {"valid": True},
+                                    }
+                                ],
+                            }
+                        ],
+                    }
+                ],
+                "unresolved": [
+                    {
+                        "kind": "score_omr_failure",
+                        "scoreSystemId": "score-system-1",
+                        "blocking": True,
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    extractor = AmazingTablatureExtractor(private)
+    monkeypatch.setattr(
+        extractor,
+        "_batch_paths",
+        lambda _batch_id, _partition: (
+            batch_dir,
+            {
+                "inputs": [
+                    {"inputId": "input-0001", "relativePath": "SOURCE.JPG"}
+                ]
+            },
+            [{"inputId": "input-0001", "datasetPartition": "validation"}],
+        ),
+    )
+
+    result = extractor.prepare_validation_line_audit("batch-validation")
+
+    assert result["status"] == "blocked_before_human_review"
+    assert result["auditPublished"] is False
+    assert result["blockedLineCount"] == 1
+    assert result["sealedTestAccessed"] is False
+    audit_dir = output_root / "review" / "validation-line-audit"
+    active_html = (audit_dir / "validation-line-audit-console.html").read_text(
+        encoding="utf-8"
+    )
+    assert "Not ready for human review" in active_html
+    assert not (audit_dir / "packet.json").exists()
 
 
 def test_provisional_joint_review_allows_explicit_sustain_movement() -> None:

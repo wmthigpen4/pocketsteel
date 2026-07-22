@@ -55,6 +55,7 @@ FEEDBACK_CORRECTION_CONFIRMATION_SCHEMA_VERSION = (
 )
 COMBINED_SCORE_TAB_REVIEW_SCHEMA_VERSION = "amazing-tablature-combined-score-tab-review-v1"
 VALIDATION_LINE_AUDIT_SCHEMA_VERSION = "amazing-tablature-validation-line-audit-v1"
+VALIDATION_LINE_PREFLIGHT_VERSION = "validation-line-structural-preflight-v1"
 COMBINED_SCORE_TAB_GATE_VERSION = "combined-score-tab-evidence-gate-v5"
 LEGACY_COMBINED_SCORE_TAB_GATE_VERSION = "combined-score-tab-evidence-gate-v3"
 FIXED_PRINTED_X_COMBINED_SCORE_TAB_GATE_VERSION = "combined-score-tab-evidence-gate-v4"
@@ -2410,6 +2411,14 @@ def _store_validation_line_audit_submission(
         raise ExtractionWorkflowError(
             "Validation line audit packet does not satisfy the no-training contract."
         )
+    if packet.get("preflightVersion") != VALIDATION_LINE_PREFLIGHT_VERSION or any(
+        system.get("capturePreflightPassed") is not True
+        for page in packet.get("pages") or []
+        for system in page.get("systems") or []
+    ):
+        raise ExtractionWorkflowError(
+            "Validation line audit packet was withdrawn because its machine capture is incomplete."
+        )
     expected = {
         (str(system.get("inputId") or ""), str(system.get("scoreSystemId") or "")): system
         for page in packet.get("pages") or []
@@ -2926,6 +2935,29 @@ def _feedback_correction_confirmation_console_html(
     return template.replace("__PACKET_MANIFEST__", embedded)
 
 
+def _validation_audit_not_ready_html(readiness: Mapping[str, Any]) -> str:
+    """Render a static stop page instead of exposing structurally broken lines."""
+
+    line_count = int(readiness.get("lineCount") or 0)
+    blocked_line_count = int(readiness.get("blockedLineCount") or 0)
+    no_line_page_count = int(readiness.get("noLinePageCount") or 0)
+    readiness_digest = str(readiness.get("readinessDigest") or "")
+    return f"""<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Validation audit paused</title>
+<style>
+:root{{font:16px/1.5 Inter,ui-sans-serif,system-ui,sans-serif;color:#211f1a;background:#f2efe8}}body{{margin:0}}main{{max-width:850px;margin:8vh auto;padding:20px}}section{{background:white;border:2px solid #b4493e;border-radius:14px;padding:24px;box-shadow:0 4px 18px #0001}}h1{{margin-top:0;color:#81261d}}.counts{{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:18px 0}}.count{{background:#fff0ed;border-radius:9px;padding:12px}}.count b{{display:block;font-size:24px}}code{{font-size:12px;color:#625d54}}li{{margin:.45rem 0}}
+</style></head><body><main><section>
+<h1>Not ready for human review</h1>
+<p><strong>This validation audit has been withdrawn.</strong> The machine capture is structurally incomplete, so there is nothing for you to review or submit yet.</p>
+<div class="counts"><div class="count"><b>{blocked_line_count}</b> incomplete lines</div><div class="count"><b>{line_count}</b> detected lines</div><div class="count"><b>{no_line_page_count}</b> pages with no complete line</div></div>
+<p>Lane 20 must repair and automatically verify all of the following before another audit is published:</p>
+<ul><li>nonblank conventional-score events;</li><li>nonblank tablature movements;</li><li>the same event count in the score, pitch comparison, full rendering, and ten-string tablature;</li><li>complete string, fret, pedal, and lever tokens;</li><li>a captured key signature and mechanically valid copedent actions;</li><li>no unresolved score or tablature reader failures.</li></ul>
+<p>Your locally saved choices are not submitted and validation evidence remains prohibited from challenger training.</p>
+<code>readiness {readiness_digest}</code>
+</section></main></body></html>"""
+
+
 def _combined_score_tab_console_html(
     *,
     packet_digest: str,
@@ -2976,7 +3008,7 @@ function differenceCards(columns,keyFifths,validation=false){
   }).join('')+'</div>';
 }
 function renderLine(system,index){
-  const cmp=system.comparison,validation=packet.reviewType==='validation_line_audit',issues=system.validationIssueSummary||{},exact=validation?Boolean(system.lineGatePassed):cmp.automaticPitchGatePassed,k=lineKey(system),d=decisions.get(k)||{},anchorCount=cmp.exactAnchorCount??cmp.exactColumnCount,decisionCount=cmp.anchoredDiscrepancyColumnCount??cmp.discrepancyColumnCount,displayColumns=cmp.anchorAlignedColumns||cmp.columns,keyKnown=system.keySignatureKnown===true,keyFifths=Number(system.keySignatureFifths||0),keyLabel=keyKnown?(keyFifths===0?'no sharps or flats':`${Math.abs(keyFifths)} ${keyFifths>0?'sharp':'flat'}${Math.abs(keyFifths)===1?'':'s'}`):'not captured';
+  const cmp=system.comparison,validation=packet.reviewType==='validation_line_audit',issues=system.validationIssueSummary||{},exact=validation?Boolean(system.lineGatePassed):cmp.automaticPitchGatePassed,k=lineKey(system),d=decisions.get(k)||{},anchorCount=cmp.exactAnchorCount??cmp.exactColumnCount,decisionCount=validation?cmp.discrepancyColumnCount:(cmp.anchoredDiscrepancyColumnCount??cmp.discrepancyColumnCount),displayColumns=validation?cmp.columns:(cmp.anchorAlignedColumns||cmp.columns),keyKnown=system.keySignatureKnown===true,keyFifths=Number(system.keySignatureFifths||0),keyLabel=keyKnown?(keyFifths===0?'no sharps or flats':`${Math.abs(keyFifths)} ${keyFifths>0?'sharp':'flat'}${Math.abs(keyFifths)===1?'':'s'}`):'not captured';
   const countText=cmp.stateCountsAgree?`${cmp.scoreAttackCount} written musical changes / ${cmp.tabMovementCount} tablature changes (${cmp.tabAttackCount} picked${cmp.movementOnlyCount?` + ${cmp.movementOnlyCount} pedal/lever change${cmp.movementOnlyCount===1?'':'s'} without repicking`:''})`:`${cmp.scoreAttackCount} written musical changes / ${cmp.tabMovementCount} tablature changes`;
   const severeCountMismatch=Math.abs(Number(cmp.scoreAttackCount||0)-Number(cmp.tabMovementCount||0))>Math.max(2,Math.ceil(Number(cmp.scoreAttackCount||0)*.25));
   const obviousFailure=validation&&(Number(cmp.scoreAttackCount||0)===0||Number(cmp.tabMovementCount||0)===0||severeCountMismatch);
@@ -5393,6 +5425,65 @@ def _provisional_joint_review_blockers(
         blockers.append("empty_score_comparison_column")
     if any(column.get("tabState") is None for column in columns):
         blockers.append("empty_tablature_comparison_column")
+    return blockers
+
+
+def _validation_line_preflight_blockers(
+    comparison: Mapping[str, Any],
+    *,
+    key_signature_known: bool,
+    blocking_issue_count: int,
+) -> list[str]:
+    """Fail closed before incomplete validation evidence reaches a reviewer."""
+
+    blockers: list[str] = []
+    score_count = int(comparison.get("scoreAttackCount") or 0)
+    tab_count = int(comparison.get("tabMovementCount") or 0)
+    score_attacks = list(comparison.get("scoreAttacks") or [])
+    tab_states = list(comparison.get("tabStates") or [])
+    columns = list(comparison.get("columns") or [])
+
+    def action_payload_complete(action: Mapping[str, Any]) -> bool:
+        try:
+            string = int(action["string"])
+            fret = int(action["fret"])
+        except (KeyError, TypeError, ValueError):
+            return False
+        return 1 <= string <= 10 and fret >= 0
+
+    if score_count < 1:
+        blockers.append("score_events_missing")
+    if tab_count < 1:
+        blockers.append("tablature_events_missing")
+    if score_count != tab_count:
+        blockers.append("score_tablature_event_count_mismatch")
+    if len(score_attacks) != score_count or any(
+        not attack.get("pitches") or not attack.get("pitchValues")
+        for attack in score_attacks
+    ):
+        blockers.append("incomplete_score_event_payload")
+    if len(tab_states) != tab_count or any(
+        not state.get("steelActions")
+        or not state.get("pitches")
+        or any(
+            not action_payload_complete(action)
+            for action in state.get("steelActions") or []
+        )
+        for state in tab_states
+    ):
+        blockers.append("incomplete_tablature_event_payload")
+    if (
+        len(columns) != score_count
+        or any(column.get("scoreAttack") is None for column in columns)
+        or any(column.get("tabState") is None for column in columns)
+    ):
+        blockers.append("blank_or_misaligned_comparison_event")
+    if not key_signature_known:
+        blockers.append("key_signature_not_captured")
+    if not bool(comparison.get("mechanicallyValid")):
+        blockers.append("mechanically_invalid_tablature_capture")
+    if blocking_issue_count:
+        blockers.append("unresolved_reader_issue")
     return blockers
 
 
@@ -21454,18 +21545,15 @@ class AmazingTablatureExtractor:
                     )
                 )
                 comparison = _combined_score_tab_columns(score_system, tab_system)
+                capture_preflight_blockers = _validation_line_preflight_blockers(
+                    comparison,
+                    key_signature_known=captured_key_fifths is not None,
+                    blocking_issue_count=len(line_issues),
+                )
                 line_gate_passed = bool(
                     comparison.get("automaticPitchGatePassed")
                     and comparison.get("mechanicallyValid")
                     and not line_issues
-                )
-                crop = _prepare_score_tab_source_crop(
-                    output_root=output_root,
-                    audit_dir=audit_dir,
-                    input_id=input_id,
-                    record=record,
-                    score_system=score_system,
-                    tab_system=tab_system,
                 )
                 systems.append(
                     {
@@ -21479,17 +21567,14 @@ class AmazingTablatureExtractor:
                         "machineRecordDigest": machine_digest,
                         "keySignatureFifths": int(captured_key_fifths or 0),
                         "keySignatureKnown": captured_key_fifths is not None,
-                        "sourcePairUrl": Path(
-                            os.path.relpath(
-                                output_root / str(crop["relativePath"]), audit_dir
-                            )
-                        ).as_posix(),
-                        "sourcePairSha256": crop["sha256"],
                         "comparison": comparison,
                         "validationIssueSummary": {
                             **issue_core,
                             "digest": _sha256_json(issue_core),
                         },
+                        "capturePreflightVersion": VALIDATION_LINE_PREFLIGHT_VERSION,
+                        "capturePreflightPassed": not capture_preflight_blockers,
+                        "capturePreflightBlockers": capture_preflight_blockers,
                         "lineGatePassed": line_gate_passed,
                         "trainingEligible": False,
                     }
@@ -21515,12 +21600,118 @@ class AmazingTablatureExtractor:
                 )
         line_count = sum(len(page["systems"]) for page in pages)
         if line_count < 1:
-            raise ExtractionWorkflowError("Validation line audit found no paired musical lines.")
+            no_line_pages.extend(
+                {
+                    "inputId": input_id,
+                    "sourceLabel": input_names.get(input_id) or input_id,
+                    "reason": "no_paired_score_tab_line_detected",
+                    "automaticValidationFailure": True,
+                }
+                for input_id in work_ids
+                if input_id not in {str(item.get("inputId") or "") for item in no_line_pages}
+            )
+        preflight_failures = [
+            {
+                "inputId": str(system.get("inputId") or ""),
+                "scoreSystemId": str(system.get("scoreSystemId") or ""),
+                "blockers": list(system.get("capturePreflightBlockers") or []),
+            }
+            for page in pages
+            for system in page["systems"]
+            if not bool(system.get("capturePreflightPassed"))
+        ]
+        if preflight_failures or no_line_pages:
+            blocker_counts = Counter(
+                blocker
+                for failure in preflight_failures
+                for blocker in failure["blockers"]
+            )
+            if no_line_pages:
+                blocker_counts["page_has_no_complete_score_tab_line"] += len(
+                    no_line_pages
+                )
+            readiness_core = {
+                "schemaVersion": VALIDATION_LINE_AUDIT_SCHEMA_VERSION,
+                "status": "blocked_before_human_review",
+                "preflightVersion": VALIDATION_LINE_PREFLIGHT_VERSION,
+                "batchId": batch_id,
+                "partition": "validation",
+                "extractorVersion": EXTRACTOR_VERSION,
+                "validationRunDigest": expected_run_digest,
+                "validationModel": copy.deepcopy(validation_model),
+                "validationPageCount": len(work_ids),
+                "lineCount": line_count,
+                "blockedLineCount": len(preflight_failures),
+                "readyLineCount": line_count - len(preflight_failures),
+                "noLinePageCount": len(no_line_pages),
+                "blockerCounts": dict(sorted(blocker_counts.items())),
+                "failures": preflight_failures,
+                "noLinePages": no_line_pages,
+                "auditPublished": False,
+                "trainingEligible": False,
+                "validationGroundTruthMayTrain": False,
+                "validationAccessed": True,
+                "sealedTestAccessed": False,
+            }
+            readiness_digest = _sha256_json(readiness_core)
+            readiness = {
+                **readiness_core,
+                "readinessDigest": readiness_digest,
+                "relativeUrl": (
+                    f"/{batch_id}/extraction/validation/review/validation-line-audit/"
+                    f"validation-line-audit-console.html?v={readiness_digest[:8]}"
+                ),
+                "activatedAsCurrentStatus": activate,
+            }
+            _write_json(
+                audit_dir / f"readiness-{readiness_digest}.json", readiness
+            )
+            _write_private_text(
+                audit_dir / f"validation-line-audit-not-ready-{readiness_digest[:12]}.html",
+                _validation_audit_not_ready_html(readiness),
+            )
+            if activate:
+                _write_json(audit_dir / "packet-summary.json", readiness)
+                _write_private_text(
+                    audit_dir / "validation-line-audit-console.html",
+                    _validation_audit_not_ready_html(readiness),
+                )
+            return readiness
+
+        for page in pages:
+            input_id = str(page.get("inputId") or "")
+            record = _read_json(pages_dir / f"{input_id}.json")
+            score_by_id = {
+                str(system.get("scoreSystemId") or ""): system
+                for system in record.get("scoreSystems") or []
+            }
+            tab_by_id = {
+                str(system.get("tabSystemId") or ""): system
+                for system in record.get("tabSystems") or []
+            }
+            for system in page["systems"]:
+                score_system = score_by_id[str(system["scoreSystemId"])]
+                tab_system = tab_by_id[str(system["tabSystemId"])]
+                crop = _prepare_score_tab_source_crop(
+                    output_root=output_root,
+                    audit_dir=audit_dir,
+                    input_id=input_id,
+                    record=record,
+                    score_system=score_system,
+                    tab_system=tab_system,
+                )
+                system["sourcePairUrl"] = Path(
+                    os.path.relpath(
+                        output_root / str(crop["relativePath"]), audit_dir
+                    )
+                ).as_posix()
+                system["sourcePairSha256"] = crop["sha256"]
         packet_core = {
             "schemaVersion": VALIDATION_LINE_AUDIT_SCHEMA_VERSION,
             "reviewType": "validation_line_audit",
             "gateVersion": COMBINED_SCORE_TAB_GATE_VERSION,
             "rendererVersion": COMBINED_SCORE_TAB_RENDERER_VERSION,
+            "preflightVersion": VALIDATION_LINE_PREFLIGHT_VERSION,
             "batchId": batch_id,
             "partition": "validation",
             "extractorVersion": EXTRACTOR_VERSION,

@@ -37,6 +37,7 @@ DISCOVERY_SHADOW_SCHEMA_VERSION = "amazing-tablature-discovery-shadow-v2"
 CHALLENGER_PREFERENCE_SCHEMA_VERSION = "amazing-tablature-challenger-preference-v1"
 ANNOTATION_SCHEMA_VERSION = "melody-decision-annotation-v2"
 FEATURE_SCHEMA_VERSION = "melody-ranker-features-v3-phrase-sequence"
+VALIDATION_LINE_PREFLIGHT_VERSION = "validation-line-structural-preflight-v1"
 DEFAULT_PRIVATE_ROOT = Path("corpus-private/melody-decisions")
 
 # These gates are part of the predeclared validation contract.  They must not
@@ -4937,6 +4938,12 @@ class AmazingTablatureTrainingStore:
                 or packet.get("trainingEligible") is not False
                 or packet.get("validationGroundTruthMayTrain") is not False
                 or packet.get("sealedTestAccessed") is not False
+                or packet.get("preflightVersion") != VALIDATION_LINE_PREFLIGHT_VERSION
+                or any(
+                    system.get("capturePreflightPassed") is not True
+                    for page in packet.get("pages") or []
+                    for system in page.get("systems") or []
+                )
                 or _sha256_json(packet_core) != packet_digest
             ):
                 raise TrainingWorkflowError(

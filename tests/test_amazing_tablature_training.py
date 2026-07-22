@@ -12,6 +12,7 @@ import pytest
 from pocketsteel.amazing_tablature_training import (
     AmazingTablatureTrainingStore,
     TrainingWorkflowError,
+    VALIDATION_LINE_PREFLIGHT_VERSION,
     _challenger_line_previously_reviewed,
     _discovery_line_review_readiness,
 )
@@ -338,11 +339,13 @@ def test_validation_line_scorer_verifies_receipts_without_training(tmp_path: Pat
         "scoreSystemId": score_system_id,
         "tabSystemId": tab_system_id,
         "machineRecordDigest": machine_digest,
+        "capturePreflightPassed": True,
         "validationIssueSummary": {"blockingCount": 0, "digest": "issues-1"},
     }
     packet_core = {
         "schemaVersion": "amazing-tablature-validation-line-audit-v1",
         "reviewType": "validation_line_audit",
+        "preflightVersion": VALIDATION_LINE_PREFLIGHT_VERSION,
         "batchId": batch_id,
         "partition": "validation",
         "validationRunDigest": "validation-run-1",
@@ -440,6 +443,25 @@ def test_validation_line_scorer_verifies_receipts_without_training(tmp_path: Pat
     assert report["sealedTestAccessed"] is False
     assert model_path.read_bytes() == model_before
     assert not (root / "batches" / batch_id / "accepted-decisions.jsonl").exists()
+
+    legacy_packet_core = {
+        key: value
+        for key, value in packet_core.items()
+        if key != "preflightVersion"
+    }
+    legacy_packet_digest = canonical_sha(legacy_packet_core)
+    (audit_dir / "packet.json").write_text(
+        json.dumps(
+            {**legacy_packet_core, "packetDigest": legacy_packet_digest},
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(TrainingWorkflowError, match="lineage"):
+        AmazingTablatureTrainingStore(
+            root, repo_root=tmp_path
+        ).score_validation_line_audits(model_id)
 
 
 def annotation(
