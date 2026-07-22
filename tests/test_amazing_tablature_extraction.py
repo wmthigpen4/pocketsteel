@@ -344,7 +344,7 @@ def test_combined_score_tab_console_explains_written_and_sustained_changes() -> 
     assert "pedal/lever movement while the strings continue ringing" in html
     assert "cmp.anchorAlignedColumns||cmp.columns" in html
     assert "differences shown below" in html
-    assert "function differenceCards(columns,keyFifths)" in html
+    assert "function differenceCards(columns,keyFifths,validation=false)" in html
     assert "function displayTabPitches(column)" in html
     assert "spellings.get(Number(value))" in html
     assert "function eventStaff(pitches,label,keyFifths)" in html
@@ -352,8 +352,9 @@ def test_combined_score_tab_console_explains_written_and_sustained_changes() -> 
     assert "function eventAccidental(p,keyFifths)" in html
     assert "function staffSvg(attacks,label,keyFifths)" in html
     assert "staffSvg(cmp.scoreAttacks,'Independent score-only reading',keyFifths)" in html
-    assert "staffSvg(displayColumns.map(c=>({pitches:displayTabPitches(c)})),'Confirmed tablature pitch changes',keyFifths)" in html
+    assert "staffSvg(displayColumns.map(c=>({pitches:displayTabPitches(c)})),tabStaffLabel,keyFifths)" in html
     assert "printed key:" in html
+    assert "A and B are unverified machine outputs" in html
     assert "Each example uses the captured printed key signature" in html
     assert "printed key: ${keyLabel}" in html
     assert "keyKnown=system.keySignatureKnown===true" in html
@@ -884,8 +885,8 @@ def test_validation_line_audit_submission_is_complete_and_never_training(
                 {
                     "inputId": "input-0001",
                     "scoreSystemId": "score-2",
-                    "status": "both_match",
-                    "tabConfirmed": True,
+                    "status": "capture_failed",
+                    "tabConfirmed": False,
                 },
             ],
         },
@@ -917,6 +918,10 @@ def test_combined_console_supports_validation_ground_truth_mode() -> None:
     assert "This is validation, not more training" in html
     assert "prohibited from challenger training" in html
     assert "machine flagged this line" in html
+    assert "Machine capture failed this line" in html
+    assert "Machine-captured ten-string tablature (not ground truth)" in html
+    assert "pitch calculated from machine-captured tab" in html
+    assert "['capture_failed','feedback']" in html
     assert "partition:packet.partition" in html
     assert "bothMatch.disabled=false" in html
 

@@ -4906,6 +4906,7 @@ class AmazingTablatureTrainingStore:
         no_line_pages = 0
         total_lines = 0
         resolved_lines = 0
+        capture_failed_lines = 0
         score_reader_correct = 0
         tab_confirmed = 0
         exact_pitch_set_matches = 0
@@ -5043,6 +5044,7 @@ class AmazingTablatureTrainingStore:
                     or key in seen
                     or status
                     not in {
+                        "capture_failed",
                         "both_match",
                         "tab_pitch_hypothesis_matches",
                         "score_reader_matches",
@@ -5060,13 +5062,15 @@ class AmazingTablatureTrainingStore:
                 row_tab_confirmed = bool(row.get("tabConfirmed"))
                 if row_tab_confirmed:
                     tab_confirmed += 1
-                if status != "feedback":
+                if status == "capture_failed":
+                    capture_failed_lines += 1
+                if status not in {"capture_failed", "feedback"}:
                     resolved_lines += 1
                 if status in {"both_match", "score_reader_matches"}:
                     score_reader_correct += 1
                 if status == "both_match":
                     exact_pitch_set_matches += 1
-                if status == "feedback" or not row_tab_confirmed:
+                if status in {"capture_failed", "feedback"} or not row_tab_confirmed:
                     continue
 
                 input_id = key[0]
@@ -5139,6 +5143,7 @@ class AmazingTablatureTrainingStore:
             "pageSystemDetectionAccuracy": reviewable_pages / total_pages if total_pages else 0.0,
             "auditedLineCount": total_lines,
             "resolvedLineCount": resolved_lines,
+            "captureFailedLineCount": capture_failed_lines,
             "resolvedLineRate": resolved_lines / total_lines if total_lines else 0.0,
             "scoreReaderCorrectCount": score_reader_correct,
             "scoreReaderAccuracy": score_reader_correct / total_lines if total_lines else 0.0,

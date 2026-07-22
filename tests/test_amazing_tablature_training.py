@@ -347,11 +347,22 @@ def test_validation_line_scorer_verifies_receipts_without_training(tmp_path: Pat
         "partition": "validation",
         "validationRunDigest": "validation-run-1",
         "validationModel": {"modelId": model_id, "artifactSha256": model_sha},
-        "pages": [{"inputId": input_id, "systems": [system]}],
+        "pages": [
+            {
+                "inputId": input_id,
+                "systems": [
+                    system,
+                    {
+                        **system,
+                        "scoreSystemId": "score-system-capture-failed",
+                    },
+                ],
+            }
+        ],
         "validationPageCount": 1,
         "noLinePages": [],
         "noLinePageCount": 0,
-        "lineCount": 1,
+        "lineCount": 2,
         "trainingEligible": False,
         "validationGroundTruthMayTrain": False,
         "sealedTestAccessed": False,
@@ -372,7 +383,16 @@ def test_validation_line_scorer_verifies_receipts_without_training(tmp_path: Pat
             "status": "both_match",
             "tabConfirmed": True,
             "trainingEligible": False,
-        }
+        },
+        {
+            "inputId": input_id,
+            "scoreSystemId": "score-system-capture-failed",
+            "tabSystemId": tab_system_id,
+            "expectedMachineRecordDigest": machine_digest,
+            "status": "capture_failed",
+            "tabConfirmed": False,
+            "trainingEligible": False,
+        },
     ]
     submission_digest = canonical_sha(
         {
@@ -394,7 +414,7 @@ def test_validation_line_scorer_verifies_receipts_without_training(tmp_path: Pat
         "batchId": batch_id,
         "partition": "validation",
         "packetDigest": packet_digest,
-        "reviewCount": 1,
+        "reviewCount": 2,
         "eligibleForTraining": False,
         "validationGroundTruthMayTrain": False,
         "sealedTestAccessed": False,
@@ -409,7 +429,9 @@ def test_validation_line_scorer_verifies_receipts_without_training(tmp_path: Pat
     ).score_validation_line_audits(model_id)
 
     assert report["batchReceipts"][batch_id]["status"] == "verified_and_scored_in_memory"
-    assert report["recognition"]["metrics"]["scoreReaderAccuracy"] == 1.0
+    assert report["recognition"]["metrics"]["scoreReaderAccuracy"] == 0.5
+    assert report["recognition"]["metrics"]["captureFailedLineCount"] == 1
+    assert report["recognition"]["metrics"]["resolvedLineCount"] == 1
     assert report["arrangerRanking"]["metrics"]["topChoiceAccuracy"] == 1.0
     assert report["structuredInputParity"]["parityPassed"] is True
     assert report["structuredInputParity"]["totalAdapterEvents"] == 210
