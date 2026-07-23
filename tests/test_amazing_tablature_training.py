@@ -381,6 +381,375 @@ def canonical_sha(value: object) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def corrected_adjudication_fixture(
+    tmp_path: Path,
+    *,
+    feedback: bool = False,
+) -> tuple[
+    AmazingTablatureTrainingStore,
+    str,
+    list[str],
+]:
+    root = tmp_path / "private"
+    root.mkdir()
+    store = AmazingTablatureTrainingStore(root, repo_root=tmp_path)
+    model_id = "at-corrected-fixture"
+    model = {
+        "modelId": model_id,
+        "codeRevision": "fixture-revision",
+    }
+    model_path = root / "models" / f"{model_id}.json"
+    model_path.parent.mkdir()
+    model_path.write_text(
+        json.dumps(model, sort_keys=True),
+        encoding="utf-8",
+    )
+    model_sha256 = hashlib.sha256(model_path.read_bytes()).hexdigest()
+    batch_ids = ("atb-main-fixture", "atb-licks-fixture")
+    registry = store._new_registry()
+    registry["models"][model_id] = {
+        "artifact": str(model_path.relative_to(root)),
+        "artifactSha256": model_sha256,
+        "status": "challenger",
+    }
+    registry["authoritativeDataset"] = {
+        "status": "active",
+        "batchIds": list(batch_ids),
+    }
+    store._save_registry(registry)
+
+    pending = [
+        {
+            "decisionId": "decision-main-score",
+            "batchId": batch_ids[0],
+            "categoryTags": ["alignment:score_supported"],
+        },
+        {
+            "decisionId": "decision-main-tab",
+            "batchId": batch_ids[0],
+            "categoryTags": ["alignment:tab_only"],
+        },
+        {
+            "decisionId": "decision-licks-score",
+            "batchId": batch_ids[1],
+            "categoryTags": ["alignment:score_supported"],
+        },
+        {
+            "decisionId": "decision-licks-tab",
+            "batchId": batch_ids[1],
+            "categoryTags": ["alignment:tab_only"],
+        },
+    ]
+    disagreement_core = {
+        "schemaVersion": (
+            "amazing-tablature-corrected-validation-disagreements-v1"
+        ),
+        "modelId": model_id,
+        "modelArtifactSha256": model_sha256,
+        "correctionReportDigest": "c" * 64,
+        "decisionDigest": "d" * 64,
+        "disagreementCount": len(pending),
+        "carriedEquivalentCount": 0,
+        "pendingAmbiguousCount": len(pending),
+        "carriedEquivalentVerdicts": [],
+        "pendingAmbiguousDisagreements": pending,
+        "validationGroundTruthMayTrain": False,
+        "validationMayTrain": False,
+        "sealedTestAccessed": False,
+    }
+    disagreement_digest = canonical_sha(disagreement_core)
+    disagreement = {
+        **disagreement_core,
+        "reportDigest": disagreement_digest,
+    }
+
+    overall_metrics = {
+        "decisionCount": 44,
+        "topChoiceCorrectCount": 40,
+        "topChoiceAccuracy": 40 / 44,
+        "topThreeCoveredCount": 44,
+        "topThreeCoverage": 1.0,
+        "approvedSourceMechanicalValidCount": 44,
+        "approvedSourceMechanicalAccuracy": 1.0,
+        "predictedTopMechanicalValidCount": 44,
+        "predictedTopMechanicalAccuracy": 1.0,
+        "strictSourceTopChoiceCorrectCount": 40,
+        "strictSourceTopChoiceAccuracy": 40 / 44,
+        "humanAcceptedEquivalentAlternativeCount": 0,
+        "humanUnresolvedAlternativeCount": 4,
+        "acceptedTopChoiceCorrectCount": 40,
+        "acceptedTopChoiceAccuracy": 40 / 44,
+    }
+    cohort_metrics = {
+        batch_id: {
+            "decisionCount": 22,
+            "topChoiceCorrectCount": 20,
+            "topChoiceAccuracy": 20 / 22,
+            "topThreeCoverage": 1.0,
+            "approvedSourceMechanicalAccuracy": 1.0,
+            "predictedTopMechanicalAccuracy": 1.0,
+            "strictSourceTopChoiceCorrectCount": 20,
+            "strictSourceTopChoiceAccuracy": 20 / 22,
+            "humanAcceptedEquivalentAlternativeCount": 0,
+            "humanUnresolvedAlternativeCount": 2,
+            "acceptedTopChoiceCorrectCount": 20,
+            "acceptedTopChoiceAccuracy": 20 / 22,
+            "evidenceSufficient": True,
+        }
+        for batch_id in batch_ids
+    }
+    evidence_metrics = {
+        evidence_tag: {
+            "decisionCount": 22,
+            "topChoiceCorrectCount": 20,
+            "topChoiceAccuracy": 20 / 22,
+            "topThreeCoverage": 1.0,
+            "approvedSourceMechanicalAccuracy": 1.0,
+            "predictedTopMechanicalAccuracy": 1.0,
+            "strictSourceTopChoiceCorrectCount": 20,
+            "strictSourceTopChoiceAccuracy": 20 / 22,
+            "humanAcceptedEquivalentAlternativeCount": 0,
+            "humanUnresolvedAlternativeCount": 2,
+            "acceptedTopChoiceCorrectCount": 20,
+            "acceptedTopChoiceAccuracy": 20 / 22,
+            "evidenceSufficient": True,
+        }
+        for evidence_tag in (
+            "alignment:score_supported",
+            "alignment:tab_only",
+        )
+    }
+    score_core = {
+        "schemaVersion": (
+            "amazing-tablature-corrected-canonical-validation-v1"
+        ),
+        "modelId": model_id,
+        "modelArtifactSha256": model_sha256,
+        "evaluatedAt": "2026-07-23T00:00:00Z",
+        "correctionReportDigest": "c" * 64,
+        "sourceAdjudicationDigest": "a" * 64,
+        "sourceDisagreementDigest": "b" * 64,
+        "truthLineCount": 2,
+        "truthLineReceipts": [],
+        "decisionCount": 44,
+        "decisionDigest": "d" * 64,
+        "metrics": overall_metrics,
+        "cohortMetrics": cohort_metrics,
+        "evidenceModeMetrics": evidence_metrics,
+        "disagreementDigest": disagreement_digest,
+        "disagreementCount": len(pending),
+        "carriedEquivalentDisagreementCount": 0,
+        "pendingAmbiguousDisagreementCount": len(pending),
+        "thresholds": {},
+        "gate": {
+            "humanGroundTruthComplete": True,
+            "correctedCanonicalGatePassed": False,
+        },
+        "lineage": {},
+        "noTrainingContract": {
+            "validationGroundTruthMayTrain": False,
+            "validationDecisionsAddedToTraining": 0,
+            "acceptedDecisionLedgersModified": False,
+            "modelArtifactModified": False,
+        },
+        "humanTruthUsed": True,
+        "validationAccessed": True,
+        "validationMayTrain": False,
+        "sealedTestAccessed": False,
+    }
+    score_digest = canonical_sha(score_core)
+    score = {**score_core, "reportDigest": score_digest}
+    evaluation_dir = root / "validation-evaluations" / model_id
+    evaluation_dir.mkdir(parents=True)
+    (evaluation_dir / (
+        f"corrected-canonical-disagreements-{disagreement_digest}.json"
+    )).write_text(
+        json.dumps(disagreement, sort_keys=True),
+        encoding="utf-8",
+    )
+    (evaluation_dir / (
+        f"corrected-canonical-score-{score_digest}.json"
+    )).write_text(
+        json.dumps(score, sort_keys=True),
+        encoding="utf-8",
+    )
+
+    submission_ids: list[str] = []
+    for batch_id in batch_ids:
+        batch_pending = [
+            item for item in pending if item["batchId"] == batch_id
+        ]
+        review_dir = (
+            root
+            / "batches"
+            / batch_id
+            / "extraction"
+            / "validation"
+            / "review"
+            / "challenger-disagreements"
+        )
+        review_dir.mkdir(parents=True)
+        packet_core = {
+            "schemaVersion": (
+                "amazing-tablature-validation-disagreement-review-v1"
+            ),
+            "reviewType": "validation_challenger_disagreement",
+            "reviewScope": (
+                "new_ambiguities_from_corrected_canonical_truth"
+            ),
+            "batchId": batch_id,
+            "partition": "validation",
+            "modelId": model_id,
+            "modelArtifactSha256": model_sha256,
+            "machineDecisionDigest": "d" * 64,
+            "disagreementReportDigest": disagreement_digest,
+            "correctedCanonicalScoreReportDigest": score_digest,
+            "systems": [
+                {
+                    "disagreements": [
+                        {"decisionId": item["decisionId"]}
+                        for item in batch_pending
+                    ]
+                }
+            ],
+            "trainingEligible": False,
+            "validationGroundTruthMayTrain": False,
+            "sealedTestAccessed": False,
+        }
+        packet_digest = canonical_sha(packet_core)
+        packet = {**packet_core, "packetDigest": packet_digest}
+        (review_dir / f"packet-{packet_digest}.json").write_text(
+            json.dumps(packet, sort_keys=True),
+            encoding="utf-8",
+        )
+        rows = [
+            {
+                "decisionId": item["decisionId"],
+                "status": (
+                    "feedback"
+                    if feedback
+                    and item["decisionId"] == "decision-licks-tab"
+                    else "both_valid"
+                ),
+                "comment": (
+                    "Needs a corrected candidate."
+                    if feedback
+                    and item["decisionId"] == "decision-licks-tab"
+                    else None
+                ),
+                "trainingEligible": False,
+            }
+            for item in batch_pending
+        ]
+        submission_digest = canonical_sha(
+            {
+                "reviewType": "validation_challenger_disagreement",
+                "batchId": batch_id,
+                "packetDigest": packet_digest,
+                "reviews": rows,
+                "validationGroundTruthMayTrain": False,
+            }
+        )
+        submission_id = (
+            "validation-disagreement-submission-"
+            f"{submission_digest[:20]}"
+        )
+        submission_ids.append(submission_id)
+        submissions_dir = review_dir / "submissions"
+        submissions_dir.mkdir()
+        write_jsonl(
+            submissions_dir / f"{submission_id}.jsonl",
+            rows,
+        )
+        metadata = {
+            "schemaVersion": (
+                "amazing-tablature-validation-disagreement-review-v1"
+            ),
+            "submissionId": submission_id,
+            "submissionDigest": submission_digest,
+            "packetDigest": packet_digest,
+            "modelId": model_id,
+            "modelArtifactSha256": model_sha256,
+            "disagreementReportDigest": disagreement_digest,
+            "reviewCount": len(rows),
+            "eligibleForTraining": False,
+            "validationGroundTruthMayTrain": False,
+            "sealedTestAccessed": False,
+        }
+        (submissions_dir / f"{submission_id}.json").write_text(
+            json.dumps(metadata, sort_keys=True),
+            encoding="utf-8",
+        )
+    return store, score_digest, submission_ids
+
+
+def test_corrected_canonical_adjudication_recomputes_fixed_gates_without_training(
+    tmp_path: Path,
+) -> None:
+    store, score_digest, submission_ids = corrected_adjudication_fixture(
+        tmp_path
+    )
+
+    report = store.adjudicate_corrected_canonical_validation(
+        "at-corrected-fixture",
+        score_report_digest=score_digest,
+        submission_ids=submission_ids,
+    )
+
+    assert report["allDisagreementsAdjudicated"] is True
+    assert report["metrics"]["strictSourceTopChoiceCorrectCount"] == 40
+    assert report["metrics"]["humanAcceptedAlternativeCount"] == 4
+    assert report["metrics"]["acceptedTopChoiceCorrectCount"] == 44
+    assert report["metrics"]["acceptedTopChoiceAccuracy"] == 1.0
+    assert report["gate"] == {
+        "correctedCanonicalGatePassed": True,
+        "rulesFreezeAllowed": True,
+        "privateRuntimeEnableAllowed": True,
+        "sealedTestAllowedAfterRulesFreeze": True,
+        "reasons": [],
+    }
+    assert report["noTrainingContract"] == {
+        "validationGroundTruthMayTrain": False,
+        "validationDecisionsAddedToTraining": 0,
+        "acceptedDecisionLedgersModified": False,
+        "modelArtifactModified": False,
+    }
+    assert report["sealedTestAccessed"] is False
+    assert not list((tmp_path / "private/batches").rglob(
+        "accepted-decisions.jsonl"
+    ))
+
+
+def test_corrected_canonical_adjudication_fails_closed_on_feedback_or_missing_cohort(
+    tmp_path: Path,
+) -> None:
+    store, score_digest, submission_ids = corrected_adjudication_fixture(
+        tmp_path,
+        feedback=True,
+    )
+
+    with pytest.raises(
+        TrainingWorkflowError,
+        match="one submission per cohort",
+    ):
+        store.adjudicate_corrected_canonical_validation(
+            "at-corrected-fixture",
+            score_report_digest=score_digest,
+            submission_ids=submission_ids[:1],
+        )
+
+    report = store.adjudicate_corrected_canonical_validation(
+        "at-corrected-fixture",
+        score_report_digest=score_digest,
+        submission_ids=submission_ids,
+    )
+    assert report["metrics"]["humanUnresolvedAlternativeCount"] == 1
+    assert report["gate"]["correctedCanonicalGatePassed"] is False
+    assert "human_feedback_requires_correction" in report["gate"]["reasons"]
+    assert report["gate"]["rulesFreezeAllowed"] is False
+    assert report["gate"]["privateRuntimeEnableAllowed"] is False
+
+
 def candidate(
     *,
     melody: int,

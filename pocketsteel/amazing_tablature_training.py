@@ -9902,6 +9902,610 @@ class AmazingTablatureTrainingStore:
             ),
         }
 
+    def adjudicate_corrected_canonical_validation(
+        self,
+        model_id: str,
+        *,
+        score_report_digest: str,
+        submission_ids: Sequence[str],
+    ) -> dict[str, Any]:
+        """Finalize corrected canonical validation without training from it.
+
+        The corrected score may contain more than one authoritative cohort, so
+        this operation consumes one immutable review submission per cohort. It
+        accepts only the exact pending disagreements from the score report,
+        combines them with byte-equivalent prior verdicts already carried by
+        that report, and recomputes every fixed gate from strict counts.
+        """
+
+        if not re.fullmatch(r"[0-9a-f]{64}", score_report_digest):
+            raise TrainingWorkflowError(
+                "Corrected canonical adjudication needs an exact score digest."
+            )
+        normalized_submission_ids = tuple(
+            str(value).strip() for value in submission_ids
+        )
+        if (
+            not normalized_submission_ids
+            or len(set(normalized_submission_ids))
+            != len(normalized_submission_ids)
+            or any(
+                not re.fullmatch(
+                    r"validation-disagreement-submission-[0-9a-f]{20}",
+                    value,
+                )
+                for value in normalized_submission_ids
+            )
+        ):
+            raise TrainingWorkflowError(
+                "Corrected canonical adjudication needs unique exact submission IDs."
+            )
+
+        registry = self._registry()
+        model_meta = (registry.get("models") or {}).get(model_id)
+        if not isinstance(model_meta, Mapping):
+            raise TrainingWorkflowError(f"Unknown challenger: {model_id}.")
+        model_path = self.root / str(model_meta.get("artifact") or "")
+        if not model_path.exists():
+            raise TrainingWorkflowError(
+                "The corrected canonical challenger artifact is missing."
+            )
+        model_sha256 = _sha256_bytes(model_path.read_bytes())
+        if model_sha256 != str(model_meta.get("artifactSha256") or ""):
+            raise TrainingWorkflowError(
+                "The corrected canonical challenger artifact changed."
+            )
+        authoritative_ids = self._authoritative_batch_ids(registry)
+        evaluation_dir = self.root / "validation-evaluations" / model_id
+        score_path = (
+            evaluation_dir
+            / f"corrected-canonical-score-{score_report_digest}.json"
+        )
+        if not score_path.exists():
+            raise TrainingWorkflowError(
+                "The exact corrected canonical score report is missing."
+            )
+        score = _read_json(score_path)
+        score_core = {
+            key: value for key, value in score.items() if key != "reportDigest"
+        }
+        disagreement_digest = str(score.get("disagreementDigest") or "")
+        disagreement_path = (
+            evaluation_dir
+            / "corrected-canonical-disagreements-"
+            f"{disagreement_digest}.json"
+        )
+        if (
+            score.get("schemaVersion")
+            != "amazing-tablature-corrected-canonical-validation-v1"
+            or score.get("modelId") != model_id
+            or score.get("modelArtifactSha256") != model_sha256
+            or score.get("reportDigest") != score_report_digest
+            or _sha256_json(score_core) != score_report_digest
+            or score.get("humanTruthUsed") is not True
+            or (
+                score.get("noTrainingContract") or {}
+            ).get("validationGroundTruthMayTrain") is not False
+            or score.get("validationMayTrain") is not False
+            or score.get("sealedTestAccessed") is not False
+            or not re.fullmatch(r"[0-9a-f]{64}", disagreement_digest)
+            or not disagreement_path.exists()
+        ):
+            raise TrainingWorkflowError(
+                "Corrected canonical score lineage or no-training contract failed."
+            )
+        disagreement = _read_json(disagreement_path)
+        disagreement_core = {
+            key: value
+            for key, value in disagreement.items()
+            if key != "reportDigest"
+        }
+        carried = [
+            deepcopy(value)
+            for value in disagreement.get("carriedEquivalentVerdicts") or ()
+            if isinstance(value, Mapping)
+        ]
+        pending = [
+            deepcopy(value)
+            for value in disagreement.get("pendingAmbiguousDisagreements") or ()
+            if isinstance(value, Mapping)
+        ]
+        carried_ids = {
+            str(value.get("decisionId") or "") for value in carried
+        }
+        pending_ids = {
+            str(value.get("decisionId") or "") for value in pending
+        }
+        if (
+            disagreement.get("schemaVersion")
+            != "amazing-tablature-corrected-validation-disagreements-v1"
+            or disagreement.get("modelId") != model_id
+            or disagreement.get("modelArtifactSha256") != model_sha256
+            or disagreement.get("reportDigest") != disagreement_digest
+            or _sha256_json(disagreement_core) != disagreement_digest
+            or int(disagreement.get("carriedEquivalentCount") or 0)
+            != len(carried)
+            or int(disagreement.get("pendingAmbiguousCount") or 0)
+            != len(pending)
+            or int(disagreement.get("disagreementCount") or 0)
+            != len(carried) + len(pending)
+            or int(score.get("disagreementCount") or 0)
+            != len(carried) + len(pending)
+            or len(carried_ids) != len(carried)
+            or len(pending_ids) != len(pending)
+            or "" in carried_ids
+            or "" in pending_ids
+            or carried_ids & pending_ids
+            or disagreement.get("validationGroundTruthMayTrain") is not False
+            or disagreement.get("validationMayTrain") is not False
+            or disagreement.get("sealedTestAccessed") is not False
+        ):
+            raise TrainingWorkflowError(
+                "Corrected canonical disagreement lineage failed."
+            )
+
+        pending_by_batch: dict[str, set[str]] = {}
+        pending_by_id: dict[str, dict[str, Any]] = {}
+        for item in pending:
+            decision_id = str(item.get("decisionId") or "")
+            batch_id = str(item.get("batchId") or "")
+            if (
+                not decision_id
+                or decision_id in pending_by_id
+                or batch_id not in authoritative_ids
+            ):
+                raise TrainingWorkflowError(
+                    "Corrected canonical disagreement identity is invalid."
+                )
+            pending_by_id[decision_id] = item
+            pending_by_batch.setdefault(batch_id, set()).add(decision_id)
+        if (
+            not pending_by_batch
+            or not set(pending_by_batch).issubset(authoritative_ids)
+        ):
+            raise TrainingWorkflowError(
+                "Corrected canonical review contains no valid pending cohort."
+            )
+        if len(normalized_submission_ids) != len(pending_by_batch):
+            raise TrainingWorkflowError(
+                "Corrected canonical adjudication needs one submission per cohort."
+            )
+
+        new_statuses: dict[str, str] = {}
+        submission_receipts: list[dict[str, Any]] = []
+        consumed_batches: set[str] = set()
+        for submission_id in normalized_submission_ids:
+            matches: list[tuple[str, Path, Path]] = []
+            for batch_id in sorted(pending_by_batch):
+                review_dir = (
+                    self._batch_dir(batch_id)
+                    / "extraction"
+                    / "validation"
+                    / "review"
+                    / "challenger-disagreements"
+                    / "submissions"
+                )
+                metadata_path = review_dir / f"{submission_id}.json"
+                submission_path = review_dir / f"{submission_id}.jsonl"
+                if metadata_path.exists() or submission_path.exists():
+                    matches.append(
+                        (batch_id, metadata_path, submission_path)
+                    )
+            if len(matches) != 1:
+                raise TrainingWorkflowError(
+                    "A corrected canonical submission is missing or ambiguous."
+                )
+            batch_id, metadata_path, submission_path = matches[0]
+            if (
+                batch_id in consumed_batches
+                or not metadata_path.exists()
+                or not submission_path.exists()
+            ):
+                raise TrainingWorkflowError(
+                    "Corrected canonical submissions do not map one-to-one to cohorts."
+                )
+            consumed_batches.add(batch_id)
+            metadata = _read_json(metadata_path)
+            packet_digest = str(metadata.get("packetDigest") or "")
+            packet_path = (
+                metadata_path.parent.parent
+                / f"packet-{packet_digest}.json"
+            )
+            if not packet_path.exists():
+                raise TrainingWorkflowError(
+                    "The corrected canonical adjudication packet is missing."
+                )
+            packet = _read_json(packet_path)
+            packet_core = {
+                key: value
+                for key, value in packet.items()
+                if key != "packetDigest"
+            }
+            expected_ids = {
+                str(item.get("decisionId") or "")
+                for system in packet.get("systems") or ()
+                for item in system.get("disagreements") or ()
+            }
+            if (
+                packet.get("schemaVersion")
+                != "amazing-tablature-validation-disagreement-review-v1"
+                or packet.get("reviewType")
+                != "validation_challenger_disagreement"
+                or packet.get("reviewScope")
+                != "new_ambiguities_from_corrected_canonical_truth"
+                or packet.get("batchId") != batch_id
+                or packet.get("partition") != "validation"
+                or packet.get("modelId") != model_id
+                or packet.get("modelArtifactSha256") != model_sha256
+                or packet.get("correctedCanonicalScoreReportDigest")
+                != score_report_digest
+                or packet.get("disagreementReportDigest")
+                != disagreement_digest
+                or packet.get("packetDigest") != packet_digest
+                or _sha256_json(packet_core) != packet_digest
+                or expected_ids != pending_by_batch[batch_id]
+                or packet.get("trainingEligible") is not False
+                or packet.get("validationGroundTruthMayTrain") is not False
+                or packet.get("sealedTestAccessed") is not False
+            ):
+                raise TrainingWorkflowError(
+                    "Corrected canonical packet lineage or privacy failed."
+                )
+            rows = _read_jsonl(submission_path)
+            submission_digest = _sha256_json(
+                {
+                    "reviewType": "validation_challenger_disagreement",
+                    "batchId": batch_id,
+                    "packetDigest": packet_digest,
+                    "reviews": rows,
+                    "validationGroundTruthMayTrain": False,
+                }
+            )
+            if (
+                metadata.get("schemaVersion")
+                != "amazing-tablature-validation-disagreement-review-v1"
+                or metadata.get("submissionId") != submission_id
+                or metadata.get("submissionDigest") != submission_digest
+                or metadata.get("packetDigest") != packet_digest
+                or metadata.get("modelId") != model_id
+                or metadata.get("modelArtifactSha256") != model_sha256
+                or metadata.get("disagreementReportDigest")
+                != disagreement_digest
+                or int(metadata.get("reviewCount") or 0) != len(rows)
+                or metadata.get("eligibleForTraining") is not False
+                or metadata.get("validationGroundTruthMayTrain") is not False
+                or metadata.get("sealedTestAccessed") is not False
+            ):
+                raise TrainingWorkflowError(
+                    "Corrected canonical submission lineage or privacy failed."
+                )
+            row_ids: set[str] = set()
+            for row in rows:
+                decision_id = str(row.get("decisionId") or "")
+                status = str(row.get("status") or "")
+                if (
+                    decision_id not in expected_ids
+                    or decision_id in row_ids
+                    or status
+                    not in {
+                        "source_preferred",
+                        "challenger_valid",
+                        "both_valid",
+                        "feedback",
+                    }
+                    or row.get("trainingEligible") is not False
+                ):
+                    raise TrainingWorkflowError(
+                        "Corrected canonical adjudication contains an unknown decision."
+                    )
+                row_ids.add(decision_id)
+                new_statuses[decision_id] = status
+            if row_ids != expected_ids:
+                raise TrainingWorkflowError(
+                    "Corrected canonical adjudication is incomplete."
+                )
+            submission_receipts.append(
+                {
+                    "batchId": batch_id,
+                    "submissionId": submission_id,
+                    "submissionDigest": submission_digest,
+                    "submissionFileSha256": _sha256_bytes(
+                        submission_path.read_bytes()
+                    ),
+                    "packetDigest": packet_digest,
+                    "reviewCount": len(rows),
+                }
+            )
+        if consumed_batches != set(pending_by_batch):
+            raise TrainingWorkflowError(
+                "Corrected canonical adjudication did not cover every cohort."
+            )
+
+        statuses: dict[str, str] = {}
+        for item in carried:
+            decision_id = str(item.get("decisionId") or "")
+            status = str(item.get("status") or "")
+            if (
+                decision_id not in carried_ids
+                or decision_id in statuses
+                or status
+                not in {
+                    "source_preferred",
+                    "challenger_valid",
+                    "both_valid",
+                }
+            ):
+                raise TrainingWorkflowError(
+                    "A carried corrected verdict lost exact lineage."
+                )
+            statuses[decision_id] = status
+        for decision_id, status in new_statuses.items():
+            if decision_id in statuses:
+                raise TrainingWorkflowError(
+                    "A corrected canonical verdict was reviewed twice."
+                )
+            statuses[decision_id] = status
+        if set(statuses) != carried_ids | pending_ids:
+            raise TrainingWorkflowError(
+                "Corrected canonical adjudication did not resolve every disagreement."
+            )
+
+        accepted_statuses = {"challenger_valid", "both_valid"}
+
+        def accepted_metrics(
+            strict_metrics: Mapping[str, Any],
+            new_disagreement_ids: set[str],
+        ) -> dict[str, Any]:
+            metrics = deepcopy(dict(strict_metrics))
+            decision_count = int(metrics.get("decisionCount") or 0)
+            strict_correct = int(
+                metrics.get("topChoiceCorrectCount")
+                or metrics.get("strictSourceTopChoiceCorrectCount")
+                or 0
+            )
+            carried_accepted = int(
+                metrics.get("humanAcceptedEquivalentAlternativeCount")
+                or metrics.get("humanAcceptedAlternativeCount")
+                or 0
+            )
+            new_accepted = sum(
+                statuses.get(decision_id) in accepted_statuses
+                for decision_id in new_disagreement_ids
+            )
+            unresolved = sum(
+                statuses.get(decision_id) == "feedback"
+                for decision_id in new_disagreement_ids
+            )
+            metrics.update(
+                {
+                    "strictSourceTopChoiceCorrectCount": strict_correct,
+                    "strictSourceTopChoiceAccuracy": (
+                        strict_correct / decision_count
+                        if decision_count
+                        else 0.0
+                    ),
+                    "carriedHumanAcceptedAlternativeCount": (
+                        carried_accepted
+                    ),
+                    "newHumanAcceptedAlternativeCount": new_accepted,
+                    "humanAcceptedAlternativeCount": (
+                        carried_accepted + new_accepted
+                    ),
+                    "newHumanRejectedAlternativeCount": sum(
+                        statuses.get(decision_id) == "source_preferred"
+                        for decision_id in new_disagreement_ids
+                    ),
+                    "humanUnresolvedAlternativeCount": unresolved,
+                    "acceptedTopChoiceCorrectCount": (
+                        strict_correct
+                        + carried_accepted
+                        + new_accepted
+                    ),
+                    "acceptedTopChoiceAccuracy": (
+                        (
+                            strict_correct
+                            + carried_accepted
+                            + new_accepted
+                        )
+                        / decision_count
+                        if decision_count
+                        else 0.0
+                    ),
+                }
+            )
+            return metrics
+
+        overall = accepted_metrics(
+            score.get("metrics") or {},
+            pending_ids,
+        )
+        cohort_metrics: dict[str, dict[str, Any]] = {}
+        for batch_id, strict_metrics in (
+            score.get("cohortMetrics") or {}
+        ).items():
+            if not isinstance(strict_metrics, Mapping):
+                raise TrainingWorkflowError(
+                    "Corrected canonical cohort metrics are malformed."
+                )
+            cohort_ids = {
+                decision_id
+                for decision_id, item in pending_by_id.items()
+                if str(item.get("batchId") or "") == batch_id
+            }
+            cohort_metrics[str(batch_id)] = accepted_metrics(
+                strict_metrics,
+                cohort_ids,
+            )
+        evidence_metrics: dict[str, dict[str, Any]] = {}
+        for evidence_tag, strict_metrics in (
+            score.get("evidenceModeMetrics") or {}
+        ).items():
+            if not isinstance(strict_metrics, Mapping):
+                raise TrainingWorkflowError(
+                    "Corrected canonical evidence metrics are malformed."
+                )
+            evidence_ids = {
+                decision_id
+                for decision_id, item in pending_by_id.items()
+                if str(evidence_tag) in (item.get("categoryTags") or ())
+            }
+            evidence_metrics[str(evidence_tag)] = accepted_metrics(
+                strict_metrics,
+                evidence_ids,
+            )
+
+        unresolved_count = sum(
+            status == "feedback" for status in statuses.values()
+        )
+        cohort_gate = bool(
+            set(cohort_metrics) == set(authoritative_ids)
+            and all(
+                bool(metrics.get("evidenceSufficient"))
+                and float(metrics.get("acceptedTopChoiceAccuracy") or 0.0)
+                >= VALIDATION_COHORT_PREFERENCE_FLOOR
+                for metrics in cohort_metrics.values()
+            )
+        )
+        required_evidence_tags = {
+            "alignment:score_supported",
+            "alignment:tab_only",
+        }
+        evidence_gate = bool(
+            set(evidence_metrics) == required_evidence_tags
+            and all(
+                bool(metrics.get("evidenceSufficient"))
+                and float(metrics.get("acceptedTopChoiceAccuracy") or 0.0)
+                >= VALIDATION_EVIDENCE_MODE_PREFERENCE_FLOOR
+                for metrics in evidence_metrics.values()
+            )
+        )
+        gate_passed = bool(
+            unresolved_count == 0
+            and float(overall.get("acceptedTopChoiceAccuracy") or 0.0)
+            > VALIDATION_OVERALL_PREFERENCE_FLOOR
+            and float(overall.get("topThreeCoverage") or 0.0)
+            >= VALIDATION_TOP_THREE_COVERAGE_FLOOR
+            and float(
+                overall.get("approvedSourceMechanicalAccuracy") or 0.0
+            )
+            == 1.0
+            and float(
+                overall.get("predictedTopMechanicalAccuracy") or 0.0
+            )
+            == 1.0
+            and cohort_gate
+            and evidence_gate
+        )
+        reasons = [
+            *(
+                ["human_feedback_requires_correction"]
+                if unresolved_count
+                else []
+            ),
+            *(
+                ["overall_preference_threshold_not_met"]
+                if float(
+                    overall.get("acceptedTopChoiceAccuracy") or 0.0
+                )
+                <= VALIDATION_OVERALL_PREFERENCE_FLOOR
+                else []
+            ),
+            *(
+                ["top_three_threshold_not_met"]
+                if float(overall.get("topThreeCoverage") or 0.0)
+                < VALIDATION_TOP_THREE_COVERAGE_FLOOR
+                else []
+            ),
+            *(
+                ["mechanical_validity_threshold_not_met"]
+                if (
+                    float(
+                        overall.get("approvedSourceMechanicalAccuracy")
+                        or 0.0
+                    )
+                    != 1.0
+                    or float(
+                        overall.get("predictedTopMechanicalAccuracy")
+                        or 0.0
+                    )
+                    != 1.0
+                )
+                else []
+            ),
+            *([] if cohort_gate else ["cohort_threshold_not_met"]),
+            *(
+                []
+                if evidence_gate
+                else ["evidence_mode_threshold_not_met"]
+            ),
+        ]
+        report_core = {
+            "schemaVersion": (
+                "amazing-tablature-corrected-canonical-adjudication-v1"
+            ),
+            "modelId": model_id,
+            "modelArtifactSha256": model_sha256,
+            "evaluatedAt": _utc_now(),
+            "sourceScoreReportDigest": score_report_digest,
+            "sourceDisagreementReportDigest": disagreement_digest,
+            "sourceCorrectionReportDigest": score.get(
+                "correctionReportDigest"
+            ),
+            "submissionReceipts": sorted(
+                submission_receipts,
+                key=lambda value: str(value["batchId"]),
+            ),
+            "carriedEquivalentVerdicts": carried,
+            "newVerdictCounts": {
+                status: sum(value == status for value in new_statuses.values())
+                for status in sorted(set(new_statuses.values()))
+            },
+            "allDisagreementsAdjudicated": True,
+            "metrics": overall,
+            "cohortMetrics": cohort_metrics,
+            "evidenceModeMetrics": evidence_metrics,
+            "gate": {
+                "correctedCanonicalGatePassed": gate_passed,
+                "rulesFreezeAllowed": gate_passed,
+                "privateRuntimeEnableAllowed": gate_passed,
+                "sealedTestAllowedAfterRulesFreeze": gate_passed,
+                "reasons": reasons,
+            },
+            "thresholds": deepcopy(score.get("thresholds") or {}),
+            "lineage": {
+                "modelCodeRevision": _read_json(model_path).get(
+                    "codeRevision"
+                ),
+                "evaluationCodeRevision": _git_revision(self.repo_root),
+                "evaluationCodeFileDigests": _rules_code_file_digests(
+                    self.repo_root
+                ),
+            },
+            "noTrainingContract": {
+                "validationGroundTruthMayTrain": False,
+                "validationDecisionsAddedToTraining": 0,
+                "acceptedDecisionLedgersModified": False,
+                "modelArtifactModified": False,
+            },
+            "humanTruthUsed": True,
+            "validationAccessed": True,
+            "validationGroundTruthMayTrain": False,
+            "validationMayTrain": False,
+            "sealedTestAccessed": False,
+        }
+        report_digest = _sha256_json(report_core)
+        report = {**report_core, "reportDigest": report_digest}
+        report_path = (
+            evaluation_dir
+            / f"corrected-canonical-adjudication-{report_digest}.json"
+        )
+        _write_json(report_path, report)
+        _make_private(report_path)
+        return {
+            **report,
+            "reportPath": str(report_path.relative_to(self.root)),
+        }
+
     def evaluate(self, model_id: str) -> dict[str, Any]:
         registry = self._registry()
         model_meta = registry["models"].get(model_id)

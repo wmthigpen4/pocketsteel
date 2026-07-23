@@ -1117,6 +1117,29 @@ def _parser() -> argparse.ArgumentParser:
         required=True,
     )
 
+    adjudicate_corrected_canonical = subparsers.add_parser(
+        "adjudicate-corrected-canonical-validation",
+        help=(
+            "Consume one exact corrected-canonical preference submission per "
+            "authoritative validation cohort and recompute the fixed gates "
+            "without adding validation truth to training."
+        ),
+    )
+    adjudicate_corrected_canonical.add_argument("model_id")
+    adjudicate_corrected_canonical.add_argument(
+        "--score-report-digest",
+        required=True,
+    )
+    adjudicate_corrected_canonical.add_argument(
+        "--submission-id",
+        action="append",
+        required=True,
+        help=(
+            "Exact validation disagreement submission ID. Repeat once per "
+            "cohort represented in the corrected ambiguity review."
+        ),
+    )
+
     report = subparsers.add_parser("report", help="Write a private metrics-only challenger report.")
     report.add_argument("model_id")
 
@@ -1772,6 +1795,15 @@ def main() -> int:
                 source_adjudication_digest=(
                     args.source_adjudication_digest
                 ),
+            )
+        elif (
+            args.command
+            == "adjudicate-corrected-canonical-validation"
+        ):
+            result = store.adjudicate_corrected_canonical_validation(
+                args.model_id,
+                score_report_digest=args.score_report_digest,
+                submission_ids=args.submission_id,
             )
         elif args.command == "report":
             result = store.report(args.model_id)
