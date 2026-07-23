@@ -9,7 +9,7 @@ import urllib.error
 import urllib.request
 import zipfile
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping, Sequence
 
 import numpy as np
 import pytest
@@ -1240,6 +1240,44 @@ def test_machine_score_containment_records_written_octave_without_rewriting_pitc
     assert _machine_score_is_contained_in_tab(inconsistent, tab_events) is False
 
 
+def test_machine_score_containment_can_compare_picked_states_when_tab_has_sustain_move() -> None:
+    score_events = [
+        {
+            "scoreEventId": f"score-{index}",
+            "measure": 1,
+            "beat": float(index),
+            "defaultX": float(index * 100),
+            "pitchValue": pitch_value,
+            "rest": False,
+        }
+        for index, pitch_value in enumerate((72, 74), start=1)
+    ]
+    tab_events = [
+        {
+            "tabEventId": "tab-1",
+            "executionType": "attack",
+            "steelActions": [{"soundingPitchValue": 60}],
+        },
+        {
+            "tabEventId": "tab-2",
+            "executionType": "movement_only",
+            "steelActions": [{"soundingPitchValue": 61}],
+        },
+        {
+            "tabEventId": "tab-3",
+            "executionType": "attack",
+            "steelActions": [{"soundingPitchValue": 62}],
+        },
+    ]
+
+    assert _machine_score_is_contained_in_tab(score_events, tab_events) is True
+    diagnostics = _machine_score_tab_containment_diagnostics(score_events, tab_events)
+    assert diagnostics["comparisonBasis"] == "picked_tab_states"
+    assert diagnostics["tabEventCount"] == 3
+    assert diagnostics["tabAttackCount"] == 2
+    assert diagnostics["scoreNotationTranspositionSemitones"] == 12
+
+
 def test_combined_columns_apply_one_explicit_written_octave_convention() -> None:
     score_system = {
         "scoreEvents": [
@@ -1318,7 +1356,7 @@ def test_validation_score_reuse_requires_complete_pinned_independent_omr() -> No
     }
 
     events, recognition = _validation_machine_score_from_existing_omr(
-        score_system, expected_event_count=2
+        score_system, expected_event_counts={2}
     )
     assert [event["pitchValue"] for event in events] == [76, 78]
     assert recognition["captureSource"] == "existing_independent_musicxml"
@@ -1329,17 +1367,17 @@ def test_validation_score_reuse_requires_complete_pinned_independent_omr() -> No
     missing_lineage["musicXml"].pop("sha256")
     with pytest.raises(ExtractionWorkflowError, match="lineage"):
         _validation_machine_score_from_existing_omr(
-            missing_lineage, expected_event_count=2
+            missing_lineage, expected_event_counts={2}
         )
     with pytest.raises(ExtractionWorkflowError, match="does not match"):
         _validation_machine_score_from_existing_omr(
-            score_system, expected_event_count=3
+            score_system, expected_event_counts={3}
         )
     missing_key = copy.deepcopy(score_system)
     missing_key.pop("keyFifths")
     with pytest.raises(ExtractionWorkflowError, match="key signature"):
         _validation_machine_score_from_existing_omr(
-            missing_key, expected_event_count=2
+            missing_key, expected_event_counts={2}
         )
 
 
@@ -4988,6 +5026,7 @@ def test_guided_localizer_retries_until_numbered_cell_geometry_is_complete(
         constraint_source="machine_visual_candidate_geometry",
         guided=True,
         expected_cell_counts=[2, 1],
+        control_string_map={"A": [5, 10], "D": [4, 8], "E": [2, 9]},
     )
 
     assert len(calls) == 2
@@ -4996,6 +5035,9 @@ def test_guided_localizer_retries_until_numbered_cell_geometry_is_complete(
     assert [len(event["cells"]) for event in result["events"]] == [2, 1]
     assert result["expectedCellCounts"] == [2, 1]
     assert "1=2, 2=1" in calls[0]["messages"][0]["content"]
+    assert "D is valid only on strings 4 and 8" in calls[0]["messages"][0]["content"]
+    assert "E is valid only on strings 2 and 9" in calls[0]["messages"][0]["content"]
+    assert result["controlStringMap"]["E"] == [2, 9]
     assert "prior response failed" in calls[1]["messages"][0]["content"]
 
 
@@ -5412,8 +5454,14 @@ def test_event_localization_review_is_isolated_compact_and_submittable(
         num_ctx = 1024
 
         @staticmethod
-        def localize_events(_path: Path, *, expected_event_count: int) -> dict[str, Any]:
+        def localize_events(
+            _path: Path,
+            *,
+            expected_event_count: int,
+            control_string_map: Mapping[str, Sequence[int]],
+        ) -> dict[str, Any]:
             assert expected_event_count == 2
+            assert control_string_map["D"] == [2]
             return {
                 "events": [
                     {

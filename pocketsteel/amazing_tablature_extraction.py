@@ -107,7 +107,7 @@ SCORE_NOTATION_RENDERER_VERSION = "verovio-6.2.1"
 TAB_VISION_PROMPT_VERSION = "tab-cell-cards-v3"
 TAB_SYSTEM_COUNT_PROMPT_VERSION = "tab-system-event-count-v3"
 EVENT_COUNT_REPLAY_SCHEMA_VERSION = "amazing-tablature-event-count-replay-v1"
-TAB_SYSTEM_LOCALIZATION_PROMPT_VERSION = "tab-system-event-localization-v4"
+TAB_SYSTEM_LOCALIZATION_PROMPT_VERSION = "tab-system-event-localization-v5"
 EVENT_LOCALIZATION_REVIEW_SCHEMA_VERSION = "amazing-tablature-event-localization-review-v1"
 SCORE_PITCH_LOCALIZATION_PROMPT_VERSION = "score-system-pitch-localization-v4"
 SOURCE_SCORE_VISION_PROMPT_VERSION = "source-score-unconstrained-columns-v2"
@@ -4904,6 +4904,17 @@ def _profile_digest(profile: Any) -> str:
     return e9_copedent_profile_digest(profile)
 
 
+def _profile_control_string_map(profile: Any) -> dict[str, list[int]]:
+    """Return prompt-safe mechanical control constraints for one source profile."""
+
+    return {
+        str(control.id).upper(): sorted(
+            {int(change.string) for change in control.changes}
+        )
+        for control in profile.controls
+    }
+
+
 def _scientific_pitch_value(pitch: str) -> int:
     match = re.fullmatch(r"([A-Ga-g])([#b]?)(-?\d+)", str(pitch).strip())
     if match is None:
@@ -5972,7 +5983,7 @@ def _machine_localized_score_events(
 def _validation_machine_score_from_existing_omr(
     score_system: Mapping[str, Any],
     *,
-    expected_event_count: int,
+    expected_event_counts: Collection[int],
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Reuse only a complete independent Audiveris capture for validation.
 
@@ -5995,10 +6006,13 @@ def _validation_machine_score_from_existing_omr(
         )
     score_events = copy.deepcopy(list(score_system.get("scoreEvents") or []))
     score_attacks = _ordered_score_attacks(score_system)
-    if len(score_attacks) != expected_event_count:
+    allowed_counts = {
+        int(value) for value in expected_event_counts if int(value) >= 0
+    }
+    if not allowed_counts or len(score_attacks) not in allowed_counts:
         raise ExtractionWorkflowError(
-            "Independent Audiveris score capture does not match the machine geometry count "
-            f"({len(score_attacks)} versus {expected_event_count})."
+            "Independent Audiveris score capture does not match either complete machine timeline "
+            f"count ({len(score_attacks)} versus {sorted(allowed_counts)})."
         )
     if any(not attack.get("pitchValues") for attack in score_attacks):
         raise ExtractionWorkflowError(
@@ -6041,6 +6055,16 @@ def _machine_score_is_contained_in_tab(
     tab_events: Sequence[Mapping[str, Any]],
 ) -> bool:
     score_groups = _score_event_groups_by_printed_position(score_events)
+    tab_attacks = [
+        event for event in tab_events if event.get("executionType") != "movement_only"
+    ]
+    comparison_events = (
+        list(tab_events)
+        if len(score_groups) == len(tab_events)
+        else tab_attacks
+        if len(score_groups) == len(tab_attacks)
+        else []
+    )
     notation_offset = _ordered_notation_transposition(
         [
             {
@@ -6056,7 +6080,7 @@ def _machine_score_is_contained_in_tab(
                 for action in tab_event.get("steelActions") or []
                 if action.get("soundingPitchValue") is not None
             }
-            for tab_event in tab_events
+            for tab_event in comparison_events
         ],
     )
     return notation_offset is not None
@@ -6075,7 +6099,7 @@ def _machine_score_tab_containment_diagnostics(
         }
         for score_group in score_groups
     ]
-    tab_sets = [
+    all_tab_sets = [
         {
             int(action["soundingPitchValue"])
             for action in tab_event.get("steelActions") or []
@@ -6083,6 +6107,26 @@ def _machine_score_tab_containment_diagnostics(
         }
         for tab_event in tab_events
     ]
+    tab_attacks = [
+        event for event in tab_events if event.get("executionType") != "movement_only"
+    ]
+    attack_tab_sets = [
+        {
+            int(action["soundingPitchValue"])
+            for action in tab_event.get("steelActions") or []
+            if action.get("soundingPitchValue") is not None
+        }
+        for tab_event in tab_attacks
+    ]
+    if len(score_sets) == len(all_tab_sets):
+        tab_sets = all_tab_sets
+        comparison_basis = "all_tab_states"
+    elif len(score_sets) == len(attack_tab_sets):
+        tab_sets = attack_tab_sets
+        comparison_basis = "picked_tab_states"
+    else:
+        tab_sets = []
+        comparison_basis = "count_mismatch"
     notation_offset = _ordered_notation_transposition(score_sets, tab_sets)
     diagnostic_offset = notation_offset if notation_offset is not None else 0
     exact_count = 0
@@ -6104,6 +6148,9 @@ def _machine_score_tab_containment_diagnostics(
     return {
         "scoreEventGroupCount": len(score_groups),
         "tabEventCount": len(tab_events),
+        "tabAttackCount": len(tab_attacks),
+        "comparisonBasis": comparison_basis,
+        "comparisonEventCount": len(tab_sets),
         "containedEventCount": exact_count,
         "scoreNotationTranspositionSemitones": notation_offset,
         "notationTranspositionEstablished": notation_offset is not None,
@@ -8451,6 +8498,7 @@ class LocalTabSystemVision(LocalTabVision):
         constraint_source: str = "human_reviewed_discovery_feedback",
         guided: bool = False,
         expected_cell_counts: Sequence[int] | None = None,
+        control_string_map: Mapping[str, Sequence[int]] | None = None,
     ) -> dict[str, Any]:
         if not 1 <= expected_event_count <= 128:
             raise ExtractionWorkflowError("Event localization requires a bounded reviewed event count.")
@@ -8471,6 +8519,19 @@ class LocalTabSystemVision(LocalTabVision):
                 raise ExtractionWorkflowError(
                     "Guided event localization has invalid visual cell-count constraints."
                 )
+        normalized_control_strings = {
+            str(control).upper(): tuple(sorted({int(value) for value in strings}))
+            for control, strings in (control_string_map or {}).items()
+        }
+        if normalized_control_strings and any(
+            not re.fullmatch(r"[A-G]", control)
+            or not strings
+            or any(string not in range(1, 11) for string in strings)
+            for control, strings in normalized_control_strings.items()
+        ):
+            raise ExtractionWorkflowError(
+                "Event localization received invalid source-copedent control constraints."
+            )
         count_basis = {
             "human_reviewed_discovery_feedback": "An expert already established that",
             "independent_machine_count_consensus": (
@@ -8500,6 +8561,18 @@ class LocalTabSystemVision(LocalTabVision):
             if guided
             else ""
         )
+        control_checksum = (
+            " This source uses these exact copedent checksums: "
+            + "; ".join(
+                f"{control} is valid only on strings "
+                + " and ".join(str(string) for string in strings)
+                for control, strings in sorted(normalized_control_strings.items())
+            )
+            + ". A control suffix is a row-reading checksum. If a row estimate conflicts, re-read the row; "
+            "do not move, rename, or invent the control."
+            if normalized_control_strings
+            else " Do not assume a control-to-string mapping that was not supplied."
+        )
         prompt = (
             "This private image is an enlarged crop of one ten-string pedal-steel tablature system. Red STRING 1 "
             "through STRING 10 guides were added in the left margin from the deterministic grid geometry; they label "
@@ -8512,11 +8585,9 @@ class LocalTabSystemVision(LocalTabVision):
             "sustain is another event even without a repick. Ties, sustain waves, grid lines, barlines, and connector "
             "strokes are not events. Read the numbered string rows at the left: the top tablature row is string 1 and "
             "the bottom row is string 10. Include every vertically stacked printed fret at an event; never collapse a "
-            "two- or three-string grip to one cell. This source uses exactly this copedent: A is valid only on strings "
-            "5 and 10; B only on 3 and 6; C only on 4 and 5; D only on 2; E and F only on 4 and 8; G only on 1 and 7. "
-            "A control suffix is therefore a row-reading checksum: for example a printed 10B is on string 3 or 6, "
-            "never string 5. If your first row estimate conflicts, re-read the row; do not move, rename, or invent the "
-            "control. Dash-connected endpoints are separate events; do not combine them into a token such as 3B-5B. "
+            "two- or three-string grip to one cell."
+            + control_checksum
+            + " Dash-connected endpoints are separate events; do not combine them into a token such as 3B-5B. "
             "When a later endpoint visibly prints only a control suffix during a connected sustain, inherit the fret "
             "from that same string's preceding endpoint and mark it movement_only. For each event return normalized "
             "horizontal x from 0 to 1, execution as attack, movement_only, or uncertain, and the visibly printed cells. "
@@ -8713,6 +8784,10 @@ class LocalTabSystemVision(LocalTabVision):
             "expectedCellCounts": list(normalized_cell_counts)
             if normalized_cell_counts is not None
             else None,
+            "controlStringMap": {
+                control: list(strings)
+                for control, strings in sorted(normalized_control_strings.items())
+            },
         }
 
     def read_unconstrained_score_columns(self, image_path: Path) -> dict[str, Any]:
@@ -15518,6 +15593,7 @@ class AmazingTablatureExtractor:
                     localization = self.tab_system_vision.localize_events(
                         localizer_crop_path,
                         expected_event_count=expected_count,
+                        control_string_map=_profile_control_string_map(profile),
                     )
                 except ExtractionWorkflowError as exc:
                     failures.append(
@@ -22774,6 +22850,11 @@ class AmazingTablatureExtractor:
                     expected_event_count=len(truth_tab_events),
                     constraint_source="human_reviewed_discovery_feedback",
                     guided=True,
+                    expected_cell_counts=[
+                        len(candidate.get("candidateStrings") or [])
+                        for candidate in guided_tab_system["tabEventCandidates"]
+                    ],
+                    control_string_map=_profile_control_string_map(profile),
                 )
                 localization = copy.deepcopy(localization)
                 for raw_event, guide, candidate in zip(
@@ -25428,6 +25509,7 @@ class AmazingTablatureExtractor:
                                 len(candidate.get("candidateStrings") or [])
                                 for candidate in tab_system.get("tabEventCandidates") or []
                             ],
+                            control_string_map=_profile_control_string_map(profile),
                         )
                     localization = copy.deepcopy(localization)
                     string_offset_votes: Counter[int] = Counter()
@@ -25585,7 +25667,13 @@ class AmazingTablatureExtractor:
                     score_events, score_recognition = (
                         _validation_machine_score_from_existing_omr(
                             score_system,
-                            expected_event_count=expected_count,
+                            expected_event_counts={
+                                expected_count,
+                                sum(
+                                    event.get("executionType") != "movement_only"
+                                    for event in tab_events
+                                ),
+                            },
                         )
                     )
                     score_tab_diagnostics = _machine_score_tab_containment_diagnostics(
