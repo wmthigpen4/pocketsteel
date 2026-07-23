@@ -1483,6 +1483,9 @@ def test_validation_score_only_consensus_is_independent_and_preserves_score_geom
     ]
     assert recognition["captureSource"] == "two_reader_score_only_consensus"
     assert recognition["eventCount"] == 2
+    assert recognition["confidence"] == 0.85
+    assert recognition["confidenceBasis"] == "exact_two_reader_consensus_threshold"
+    assert recognition["reportedReaderConfidences"] == [None, None]
     assert recognition["tablatureOrExpectedPitchesProvidedToReader"] is False
     assert [event["defaultX"] for event in events] == [0.2, 0.7]
     assert [event["pitch"] for event in events] == ["C5", "D5"]
@@ -1502,6 +1505,39 @@ def test_validation_score_only_consensus_is_independent_and_preserves_score_geom
                     "reader-b",
                     x_positions=(0.21, 0.69),
                     pitches=("C5", "E5"),
+                ),
+            ],
+            expected_event_counts={2},
+        )
+
+    class LowConfidenceScoreReader(StubScoreReader):
+        def read_score_pitch_events(
+            self,
+            image_path: Path,
+            *,
+            expected_event_count: int,
+            guided: bool,
+            constraint_source: str,
+        ) -> dict[str, object]:
+            result = super().read_score_pitch_events(
+                image_path,
+                expected_event_count=expected_event_count,
+                guided=guided,
+                constraint_source=constraint_source,
+            )
+            result["confidence"] = 0.4
+            result["confidenceReported"] = True
+            return result
+
+    with pytest.raises(ExtractionWorkflowError, match="pitch read is incomplete"):
+        _validation_score_only_consensus_recapture(
+            input_id="input-1",
+            score_system=score_system,
+            score_crop_path=score_crop,
+            readers=[
+                StubScoreReader("reader-a", x_positions=(0.2, 0.7)),
+                LowConfidenceScoreReader(
+                    "reader-b", x_positions=(0.21, 0.69)
                 ),
             ],
             expected_event_counts={2},
@@ -5389,6 +5425,7 @@ def test_score_pitch_reader_is_score_only_and_preserves_scientific_octaves(
     assert result["events"][0]["pitchValues"] == [59, 62]
     assert result["events"][1]["pitches"] == ["F4", "A4"]
     assert result["keySignatureFifths"] == 1
+    assert result["confidenceReported"] is True
     assert result["tablatureOrExpectedPitchesProvidedToReader"] is False
     assert "does not contain tablature" in captured_prompt
     assert "expected pitch" not in captured_prompt.lower()

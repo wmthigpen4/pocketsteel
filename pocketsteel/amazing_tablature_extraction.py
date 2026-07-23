@@ -6222,6 +6222,7 @@ def _validation_score_only_consensus_recapture(
         for reader in readers
     ]
     pitch_signatures: list[tuple[int, tuple[tuple[int, ...], ...]]] = []
+    reported_pitch_confidences: list[float | None] = []
     for result in pitch_reads:
         raw_events = list(result.get("events") or [])
         signature = (
@@ -6231,9 +6232,18 @@ def _validation_score_only_consensus_recapture(
                 for event in raw_events
             ),
         )
+        confidence_reported = bool(result.get("confidenceReported"))
+        reported_confidence = (
+            float(result.get("confidence") or 0.0)
+            if confidence_reported
+            else None
+        )
         if (
             bool(result.get("uncertain"))
-            or float(result.get("confidence") or 0.0) < 0.85
+            or (
+                reported_confidence is not None
+                and reported_confidence < 0.85
+            )
             or len(raw_events) != consensus_count
             or any(not values for values in signature[1])
             or bool(result.get("tablatureOrExpectedPitchesProvidedToReader"))
@@ -6244,6 +6254,7 @@ def _validation_score_only_consensus_recapture(
                 "An independent validation score-pitch read is incomplete."
             )
         pitch_signatures.append(signature)
+        reported_pitch_confidences.append(reported_confidence)
     if pitch_signatures[0] != pitch_signatures[1]:
         raise ExtractionWorkflowError(
             "Independent validation score-pitch readers disagree."
@@ -6260,7 +6271,19 @@ def _validation_score_only_consensus_recapture(
             "Independent validation score-pitch readers disagree on source geometry "
             f"(maximum_position_delta={maximum_position_delta:.6f})."
         )
-    confidence = min(float(result.get("confidence") or 0.0) for result in pitch_reads)
+    if all(value is not None for value in reported_pitch_confidences):
+        confidence = min(
+            float(value) for value in reported_pitch_confidences if value is not None
+        )
+        confidence_basis = "minimum_reported_reader_confidence"
+    else:
+        # Some local vision models omit the optional scalar even when they
+        # explicitly return ``uncertain: false``. Exact agreement across two
+        # independently seeded count, key, pitch, and geometry reads is the
+        # confidence source in that case; the threshold value is recorded as
+        # derived rather than misrepresented as model-reported.
+        confidence = 0.85
+        confidence_basis = "exact_two_reader_consensus_threshold"
     recognition = {
         **copy.deepcopy(pitch_reads[0]),
         "reader": "two-reader-score-only-consensus-v1",
@@ -6268,6 +6291,8 @@ def _validation_score_only_consensus_recapture(
         "scoreCropSha256": _sha256_bytes(score_crop_path.read_bytes()),
         "eventCount": consensus_count,
         "confidence": round(confidence, 4),
+        "confidenceBasis": confidence_basis,
+        "reportedReaderConfidences": reported_pitch_confidences,
         "uncertain": False,
         "readerContracts": [reader.contract() for reader in readers],
         "countReads": count_reads,
@@ -9519,6 +9544,10 @@ class LocalTabSystemVision(LocalTabVision):
             "keySignatureFifths": key_fifths,
             "events": events,
             "confidence": round(max(0.0, min(1.0, float(parsed.get("confidence") or 0.0))), 4),
+            "confidenceReported": (
+                not isinstance(parsed.get("confidence"), bool)
+                and isinstance(parsed.get("confidence"), (int, float))
+            ),
             "uncertain": bool(parsed.get("uncertain", False)),
             "promptVersion": SCORE_PITCH_LOCALIZATION_PROMPT_VERSION,
             "model": self.model,
