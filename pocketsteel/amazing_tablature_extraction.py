@@ -31419,6 +31419,691 @@ class AmazingTablatureExtractor:
             ),
         }
 
+    def apply_canonical_validation_followup_corrections(
+        self,
+        model_id: str,
+        *,
+        correction_report_digest: str,
+        packet_digest: str,
+        submission_id: str,
+        correction_plan: Path | str,
+    ) -> dict[str, Any]:
+        """Apply feedback from a focused canonical-correction confirmation.
+
+        The prior correction report is immutable.  This method creates another
+        append-only overlay and carries every unchanged or already-confirmed
+        line forward without rereview.
+        """
+
+        if not re.fullmatch(r"at-[A-Za-z0-9._-]+", model_id):
+            raise ExtractionWorkflowError(
+                "Canonical validation follow-up has an invalid model ID."
+            )
+        for label, value in {
+            "correction report": correction_report_digest,
+            "packet": packet_digest,
+        }.items():
+            if not re.fullmatch(r"[0-9a-f]{64}", value):
+                raise ExtractionWorkflowError(
+                    f"Canonical validation follow-up needs an exact {label} digest."
+                )
+        if not re.fullmatch(
+            r"canonical-validation-correction-submission-[0-9a-f]{20}",
+            submission_id,
+        ):
+            raise ExtractionWorkflowError(
+                "Canonical validation follow-up has an invalid submission ID."
+            )
+
+        evaluation_dir = (
+            self.private_root / "validation-evaluations" / model_id
+        )
+        correction_dir = (
+            evaluation_dir / "canonical-validation" / "corrections"
+        )
+        report_path = (
+            correction_dir / f"report-{correction_report_digest}.json"
+        )
+        packet_path = correction_dir / f"packet-{packet_digest}.json"
+        metadata_path = correction_dir / "submissions" / f"{submission_id}.json"
+        submission_path = (
+            correction_dir / "submissions" / f"{submission_id}.jsonl"
+        )
+        if not all(
+            path.exists()
+            for path in (
+                report_path,
+                packet_path,
+                metadata_path,
+                submission_path,
+            )
+        ):
+            raise ExtractionWorkflowError(
+                "Canonical validation follow-up lineage is incomplete."
+            )
+
+        report = _read_json(report_path)
+        report_core = {
+            key: value
+            for key, value in report.items()
+            if key != "reportDigest"
+        }
+        packet = _read_json(packet_path)
+        packet_core = {
+            key: value
+            for key, value in packet.items()
+            if key != "packetDigest"
+        }
+        metadata = _read_json(metadata_path)
+        rows = _read_jsonl(submission_path)
+        submission_core = {
+            "reviewType": "canonical_validation_correction",
+            "batchId": str(packet.get("batchId") or ""),
+            "modelId": model_id,
+            "partition": "validation",
+            "packetDigest": packet_digest,
+            "correctionReportDigest": correction_report_digest,
+            "reviews": rows,
+            "validationGroundTruthMayTrain": False,
+        }
+        submission_digest = _sha256_json(submission_core)
+        if (
+            report.get("schemaVersion")
+            != CANONICAL_VALIDATION_CORRECTION_SCHEMA_VERSION
+            or report.get("modelId") != model_id
+            or report.get("reportDigest") != correction_report_digest
+            or _sha256_json(report_core) != correction_report_digest
+            or report.get("allCorrectedLinesMechanicallyValid") is not True
+            or report.get("validationGroundTruthMayTrain") is not False
+            or report.get("validationMayTrain") is not False
+            or report.get("sealedTestAccessed") is not False
+            or packet.get("schemaVersion")
+            != CANONICAL_VALIDATION_CORRECTION_SCHEMA_VERSION
+            or packet.get("reviewType")
+            != "canonical_validation_correction"
+            or packet.get("reviewScope")
+            != "changed_lines_requiring_confirmation"
+            or packet.get("modelId") != model_id
+            or packet.get("correctionReportDigest")
+            != correction_report_digest
+            or packet.get("packetDigest") != packet_digest
+            or _sha256_json(packet_core) != packet_digest
+            or packet.get("allLinesMechanicallyValid") is not True
+            or packet.get("trainingEligible") is not False
+            or packet.get("validationGroundTruthMayTrain") is not False
+            or packet.get("sealedTestAccessed") is not False
+            or metadata.get("schemaVersion")
+            != CANONICAL_VALIDATION_CORRECTION_SCHEMA_VERSION
+            or metadata.get("submissionId") != submission_id
+            or metadata.get("submissionDigest") != submission_digest
+            or metadata.get("packetDigest") != packet_digest
+            or metadata.get("correctionReportDigest")
+            != correction_report_digest
+            or metadata.get("modelId") != model_id
+            or int(metadata.get("reviewCount") or 0) != len(rows)
+            or metadata.get("eligibleForTraining") is not False
+            or metadata.get("validationGroundTruthMayTrain") is not False
+            or metadata.get("sealedTestAccessed") is not False
+            or submission_id
+            != (
+                "canonical-validation-correction-submission-"
+                f"{submission_digest[:20]}"
+            )
+        ):
+            raise ExtractionWorkflowError(
+                "Canonical validation follow-up lineage or privacy contract failed."
+            )
+
+        packet_lines = {
+            str(line.get("lineId") or ""): line
+            for line in packet.get("lines") or ()
+            if isinstance(line, Mapping)
+        }
+        rows_by_line = {
+            str(row.get("lineId") or ""): row
+            for row in rows
+            if isinstance(row, Mapping)
+        }
+        if (
+            set(packet_lines) != set(rows_by_line)
+            or len(rows_by_line) != len(rows)
+        ):
+            raise ExtractionWorkflowError(
+                "Canonical validation follow-up submission is incomplete."
+            )
+        feedback_ids = {
+            line_id
+            for line_id, row in rows_by_line.items()
+            if row.get("status") == "feedback"
+            and str(row.get("comment") or "").strip()
+        }
+        correct_ids = {
+            line_id
+            for line_id, row in rows_by_line.items()
+            if (
+                row.get("status") == "correct"
+                and row.get("tabConfirmed") is True
+                and (
+                    row.get("evidenceMode") != "score_supported"
+                    or row.get("scoreConfirmed") is True
+                )
+            )
+        }
+        if feedback_ids | correct_ids != set(packet_lines):
+            raise ExtractionWorkflowError(
+                "Canonical validation follow-up contains unresolved review rows."
+            )
+
+        plans = _read_jsonl(Path(correction_plan).expanduser().resolve())
+        plans_by_line = {
+            str(plan.get("lineId") or ""): plan
+            for plan in plans
+            if isinstance(plan, Mapping)
+        }
+        if (
+            set(plans_by_line) != feedback_ids
+            or len(plans_by_line) != len(plans)
+        ):
+            raise ExtractionWorkflowError(
+                "Canonical follow-up plan must cover every feedback line exactly once."
+            )
+        plan_digest = _sha256_json(plans)
+        prior_receipts = {
+            str(receipt.get("lineId") or ""): copy.deepcopy(receipt)
+            for receipt in report.get("lineReceipts") or ()
+            if isinstance(receipt, Mapping)
+        }
+        if (
+            len(prior_receipts)
+            != int(report.get("lineCount") or 0)
+            or not prior_receipts
+        ):
+            raise ExtractionWorkflowError(
+                "Canonical follow-up source receipts are incomplete."
+            )
+        packet_by_parent = {
+            str(line.get("parentLineId") or ""): line
+            for line in packet_lines.values()
+        }
+        if (
+            set(packet_by_parent)
+            != {
+                line_id
+                for line_id, receipt in prior_receipts.items()
+                if receipt.get("requiresConfirmation") is True
+            }
+        ):
+            raise ExtractionWorkflowError(
+                "Canonical follow-up packet differs from pending source receipts."
+            )
+
+        corrected_lines_dir = correction_dir / "corrected-lines"
+        corrected_lines_dir.mkdir(parents=True, exist_ok=True)
+        os.chmod(corrected_lines_dir, 0o700)
+        next_receipts: list[dict[str, Any]] = []
+        confirmation_lines: list[dict[str, Any]] = []
+        corrected_parent_ids: set[str] = set()
+
+        for parent_line_id, prior_receipt in prior_receipts.items():
+            packet_line = packet_by_parent.get(parent_line_id)
+            if packet_line is None:
+                next_receipts.append(prior_receipt)
+                continue
+            correction_line_id = str(packet_line.get("lineId") or "")
+            row = rows_by_line[correction_line_id]
+            if correction_line_id in correct_ids:
+                confirmed = copy.deepcopy(prior_receipt)
+                confirmed.update(
+                    {
+                        "status": "human_confirmed_correction",
+                        "sourceConfirmationSubmissionId": submission_id,
+                        "sourceConfirmationRowDigest": _sha256_json(row),
+                        "requiresConfirmation": False,
+                        "requiresScoreConfirmation": False,
+                        "trainingEligible": False,
+                    }
+                )
+                next_receipts.append(confirmed)
+                continue
+
+            plan = plans_by_line[correction_line_id]
+            prior_corrected_digest = str(
+                prior_receipt.get("correctedLineDigest") or ""
+            )
+            prior_corrected_path = (
+                self.private_root
+                / str(prior_receipt.get("correctedLinePath") or "")
+            ).resolve()
+            try:
+                prior_corrected_path.relative_to(corrected_lines_dir.resolve())
+            except ValueError as exc:
+                raise ExtractionWorkflowError(
+                    "Canonical follow-up source correction escaped its private root."
+                ) from exc
+            if (
+                not prior_corrected_path.exists()
+                or not re.fullmatch(r"[0-9a-f]{64}", prior_corrected_digest)
+            ):
+                raise ExtractionWorkflowError(
+                    "Canonical follow-up source correction is missing."
+                )
+            prior_corrected = _read_json(prior_corrected_path)
+            prior_corrected_core = {
+                key: value
+                for key, value in prior_corrected.items()
+                if key != "correctedLineDigest"
+            }
+            if (
+                prior_corrected.get("schemaVersion")
+                != CANONICAL_VALIDATION_CORRECTION_SCHEMA_VERSION
+                or prior_corrected.get("modelId") != model_id
+                or prior_corrected.get("correctedLineDigest")
+                != prior_corrected_digest
+                or _sha256_json(prior_corrected_core)
+                != prior_corrected_digest
+                or prior_corrected.get("mechanicallyValid") is not True
+                or prior_corrected.get("validationGroundTruthMayTrain")
+                is not False
+                or prior_corrected.get("validationMayTrain") is not False
+                or prior_corrected.get("sealedTestAccessed") is not False
+                or packet_line.get("correctedLineDigest")
+                != prior_corrected_digest
+                or row.get("correctedLineDigest")
+                != prior_corrected_digest
+            ):
+                raise ExtractionWorkflowError(
+                    "Canonical follow-up source correction lineage failed."
+                )
+            if (
+                plan.get("schemaVersion")
+                != CANONICAL_VALIDATION_CORRECTION_SCHEMA_VERSION
+                or plan.get("lineId") != correction_line_id
+                or plan.get("parentLineId") != parent_line_id
+                or plan.get("batchId") != prior_receipt.get("batchId")
+                or plan.get("inputId") != prior_receipt.get("inputId")
+                or plan.get("tabSystemId")
+                != prior_receipt.get("tabSystemId")
+                or plan.get("expectedCorrectedLineDigest")
+                != prior_corrected_digest
+                or plan.get("feedbackRowDigest") != _sha256_json(row)
+                or plan.get("acknowledgedFeedback") is not True
+                or not isinstance(plan.get("operations"), list)
+                or not plan.get("operations")
+            ):
+                raise ExtractionWorkflowError(
+                    "Canonical follow-up plan does not pin the reviewed feedback."
+                )
+
+            batch_id = str(prior_receipt.get("batchId") or "")
+            input_id = str(prior_receipt.get("inputId") or "")
+            tab_system_id = str(prior_receipt.get("tabSystemId") or "")
+            validation_root = (
+                self.private_root
+                / "batches"
+                / batch_id
+                / "extraction"
+                / "validation"
+            )
+            page_path = validation_root / "pages" / f"{input_id}.json"
+            if not page_path.exists():
+                raise ExtractionWorkflowError(
+                    "Canonical follow-up source page is missing."
+                )
+            page_record = _read_json(page_path)
+            working_record = copy.deepcopy(page_record)
+            working_record["scoreSystems"] = []
+            working_record["eventAlignments"] = []
+            working_record["tabSystems"] = [
+                {
+                    "tabSystemId": tab_system_id,
+                    "tabEvents": copy.deepcopy(
+                        prior_corrected.get("events") or ()
+                    ),
+                }
+            ]
+            working_record["unresolved"] = []
+            for operation in plan["operations"]:
+                _apply_feedback_correction_operation(
+                    working_record,
+                    operation,
+                    feedback_item_ids=[correction_line_id],
+                )
+            _reindex_corrected_tab_events(working_record)
+            profile = get_e9_copedent_profile(
+                str(
+                    (page_record.get("sourceCopedent") or {}).get(
+                        "profileId"
+                    )
+                    or (page_record.get("sourceCopedent") or {}).get("id")
+                    or ""
+                )
+            )
+            _revalidate_corrected_record(
+                working_record,
+                profile,
+                include_movement_only_tab_system_ids=[tab_system_id],
+            )
+            corrected_events = copy.deepcopy(
+                working_record["tabSystems"][0].get("tabEvents") or ()
+            )
+            actions = [
+                action
+                for event in corrected_events
+                for action in event.get("steelActions") or ()
+            ]
+            if not (
+                corrected_events
+                and actions
+                and all(
+                    (action.get("mechanicalValidation") or {}).get("valid")
+                    is True
+                    for action in actions
+                )
+                and all(
+                    len(
+                        {
+                            int(action.get("string") or 0)
+                            for action in event.get("steelActions") or ()
+                        }
+                    )
+                    == len(event.get("steelActions") or ())
+                    for event in corrected_events
+                )
+            ):
+                raise ExtractionWorkflowError(
+                    "Canonical follow-up correction failed mechanical validation."
+                )
+            corrected_core = {
+                "schemaVersion": (
+                    CANONICAL_VALIDATION_CORRECTION_SCHEMA_VERSION
+                ),
+                "modelId": model_id,
+                "batchId": batch_id,
+                "partition": "validation",
+                "inputId": input_id,
+                "scoreSystemId": str(
+                    prior_receipt.get("scoreSystemId") or ""
+                ),
+                "tabSystemId": tab_system_id,
+                "sourceCorrectedLineDigest": prior_corrected_digest,
+                "sourceCorrectionReportDigest": correction_report_digest,
+                "sourceCorrectionSubmissionDigest": submission_digest,
+                "sourceConfirmationRowDigest": _sha256_json(row),
+                "correctionPlanDigest": plan_digest,
+                "operationDigest": _sha256_json(plan["operations"]),
+                "events": corrected_events,
+                "executionDigest": (
+                    validation_contact_execution_digest(corrected_events)
+                ),
+                "eventCount": len(corrected_events),
+                "mechanicallyValid": True,
+                "humanTruthUsed": True,
+                "validationGroundTruthMayTrain": False,
+                "validationMayTrain": False,
+                "sealedTestAccessed": False,
+            }
+            corrected_digest = _sha256_json(corrected_core)
+            corrected = {
+                **corrected_core,
+                "correctedLineDigest": corrected_digest,
+            }
+            corrected_path = (
+                corrected_lines_dir / f"line-{corrected_digest}.json"
+            )
+            _write_json(corrected_path, corrected)
+            os.chmod(corrected_path, 0o600)
+            requires_confirmation = bool(
+                plan.get("requiresConfirmation", True)
+            )
+            requires_score_confirmation = bool(
+                plan.get("requiresScoreConfirmation")
+            )
+            evidence_mode = str(
+                prior_receipt.get("evidenceMode") or "tab_only"
+            )
+            receipt = {
+                **copy.deepcopy(prior_receipt),
+                "status": (
+                    "correction_pending_confirmation"
+                    if requires_confirmation
+                    else "human_feedback_applied"
+                ),
+                "sourceCorrectedLineDigest": prior_corrected_digest,
+                "sourceConfirmationSubmissionId": submission_id,
+                "sourceConfirmationRowDigest": _sha256_json(row),
+                "correctedLineDigest": corrected_digest,
+                "correctedLinePath": str(
+                    corrected_path.relative_to(self.private_root)
+                ),
+                "executionDigest": corrected_core["executionDigest"],
+                "requiresConfirmation": requires_confirmation,
+                "requiresScoreConfirmation": (
+                    requires_score_confirmation
+                ),
+                "trainingEligible": False,
+            }
+            next_receipts.append(receipt)
+            corrected_parent_ids.add(parent_line_id)
+
+            if requires_confirmation:
+                displayed_events = [
+                    {
+                        "eventIndex": index,
+                        "executionType": str(
+                            event.get("executionType") or ""
+                        ),
+                        "scorePitches": [],
+                        "steelActions": [
+                            {
+                                key: copy.deepcopy(action.get(key))
+                                for key in (
+                                    "string",
+                                    "fret",
+                                    "controls",
+                                    "attack",
+                                    "slide",
+                                    "controlTransition",
+                                    "soundingPitchValue",
+                                )
+                                if action.get(key) is not None
+                            }
+                            for action in event.get("steelActions") or ()
+                        ],
+                    }
+                    for index, event in enumerate(
+                        corrected_events,
+                        start=1,
+                    )
+                ]
+                source_pair = (
+                    correction_dir
+                    / str(packet_line.get("sourcePairUrl") or "")
+                ).resolve()
+                confirmation_lines.append(
+                    {
+                        "lineId": _stable_id(
+                            "canonical-validation-correction-line",
+                            parent_line_id,
+                            corrected_digest,
+                        ),
+                        "parentLineId": parent_line_id,
+                        "supersedesCorrectionLineId": correction_line_id,
+                        "batchId": batch_id,
+                        "inputId": input_id,
+                        "sourceLabel": str(
+                            packet_line.get("sourceLabel") or input_id
+                        ),
+                        "systemIndex": int(
+                            packet_line.get("systemIndex") or 0
+                        ),
+                        "scoreSystemId": receipt["scoreSystemId"],
+                        "tabSystemId": tab_system_id,
+                        "correctedLineDigest": corrected_digest,
+                        "evidenceMode": evidence_mode,
+                        "sourcePairUrl": Path(
+                            os.path.relpath(source_pair, correction_dir)
+                        ).as_posix(),
+                        "events": displayed_events,
+                        "machineComplete": True,
+                        "mechanicallyValid": True,
+                        "trainingEligible": False,
+                    }
+                )
+
+        next_receipts.sort(
+            key=lambda receipt: (
+                str(receipt.get("batchId") or ""),
+                str(receipt.get("inputId") or ""),
+                str(receipt.get("tabSystemId") or ""),
+            )
+        )
+        confirmation_lines.sort(
+            key=lambda line: (
+                str(line.get("sourceLabel") or ""),
+                int(line.get("systemIndex") or 0),
+            )
+        )
+        next_report_core = {
+            "schemaVersion": (
+                CANONICAL_VALIDATION_CORRECTION_SCHEMA_VERSION
+            ),
+            "modelId": model_id,
+            "modelArtifactSha256": str(
+                report.get("modelArtifactSha256") or ""
+            ),
+            "scoreReportDigest": str(
+                report.get("scoreReportDigest") or ""
+            ),
+            "sourcePacketDigest": str(
+                report.get("sourcePacketDigest") or ""
+            ),
+            "sourceSubmissionId": str(
+                report.get("sourceSubmissionId") or ""
+            ),
+            "sourceSubmissionDigest": str(
+                report.get("sourceSubmissionDigest") or ""
+            ),
+            "sourceCorrectionReportDigest": correction_report_digest,
+            "sourceCorrectionPacketDigest": packet_digest,
+            "sourceCorrectionSubmissionId": submission_id,
+            "sourceCorrectionSubmissionDigest": submission_digest,
+            "correctionPlanDigest": plan_digest,
+            "lineReceipts": next_receipts,
+            "lineCount": len(next_receipts),
+            "followupCorrectedLineCount": len(corrected_parent_ids),
+            "carriedLineCount": (
+                len(next_receipts) - len(corrected_parent_ids)
+            ),
+            "confirmationRequiredLineCount": len(
+                confirmation_lines
+            ),
+            "allCorrectedLinesMechanicallyValid": True,
+            "lineage": {
+                "repositoryHead": subprocess.run(
+                    ["git", "rev-parse", "HEAD"],
+                    cwd=self.repo_root,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                ).stdout.strip(),
+                "correctionCodeFileSha256": _sha256_bytes(
+                    Path(__file__).read_bytes()
+                ),
+            },
+            "humanTruthUsed": True,
+            "validationGroundTruthMayTrain": False,
+            "validationMayTrain": False,
+            "sealedTestAccessed": False,
+        }
+        next_report_digest = _sha256_json(next_report_core)
+        next_report = {
+            **next_report_core,
+            "reportDigest": next_report_digest,
+        }
+        next_report_path = (
+            correction_dir / f"report-{next_report_digest}.json"
+        )
+        _write_json(next_report_path, next_report)
+        os.chmod(next_report_path, 0o600)
+        if not confirmation_lines:
+            return {
+                **next_report,
+                "reportPath": str(
+                    next_report_path.relative_to(self.private_root)
+                ),
+                "packetDigest": None,
+                "relativeUrl": None,
+            }
+
+        next_packet_core = {
+            "schemaVersion": (
+                CANONICAL_VALIDATION_CORRECTION_SCHEMA_VERSION
+            ),
+            "reviewType": "canonical_validation_correction",
+            "reviewScope": "changed_lines_requiring_confirmation",
+            "batchId": str(packet.get("batchId") or ""),
+            "partition": "validation",
+            "modelId": model_id,
+            "modelArtifactSha256": str(
+                report.get("modelArtifactSha256") or ""
+            ),
+            "correctionReportDigest": next_report_digest,
+            "sourcePacketDigest": str(
+                report.get("sourcePacketDigest") or ""
+            ),
+            "sourceSubmissionId": str(
+                report.get("sourceSubmissionId") or ""
+            ),
+            "sourceCorrectionReportDigest": correction_report_digest,
+            "sourceCorrectionSubmissionId": submission_id,
+            "lines": confirmation_lines,
+            "lineCount": len(confirmation_lines),
+            "allLinesMechanicallyValid": True,
+            "trainingEligible": False,
+            "validationGroundTruthMayTrain": False,
+            "validationAccessed": True,
+            "sealedTestAccessed": False,
+        }
+        next_packet_digest = _sha256_json(next_packet_core)
+        next_packet = {
+            **next_packet_core,
+            "packetDigest": next_packet_digest,
+        }
+        packet_filename = f"packet-{next_packet_digest}.json"
+        console_filename = (
+            "canonical-validation-correction-console-"
+            f"{next_packet_digest[:12]}.html"
+        )
+        _write_json(correction_dir / packet_filename, next_packet)
+        _write_private_text(
+            correction_dir / console_filename,
+            _canonical_validation_console_html(
+                packet_digest=next_packet_digest,
+                packet_filename=packet_filename,
+                review_type="canonical_validation_correction",
+            ),
+        )
+        _write_json(correction_dir / "packet.json", next_packet)
+        _write_private_text(
+            correction_dir / "canonical-validation-correction-console.html",
+            _canonical_validation_console_html(
+                packet_digest=next_packet_digest,
+                review_type="canonical_validation_correction",
+            ),
+        )
+        return {
+            **next_report,
+            "reportPath": str(
+                next_report_path.relative_to(self.private_root)
+            ),
+            "packetDigest": next_packet_digest,
+            "relativeUrl": (
+                f"/validation-evaluations/{model_id}/"
+                "canonical-validation/corrections/"
+                f"{console_filename}?v={next_packet_digest[:8]}"
+            ),
+        }
+
     def prepare_canonical_validation_review(
         self,
         batch_id: str,

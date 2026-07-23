@@ -664,6 +664,32 @@ def _parser() -> argparse.ArgumentParser:
         required=True,
     )
 
+    apply_canonical_validation_followup = subparsers.add_parser(
+        "apply-canonical-validation-followup-corrections",
+        help=(
+            "Apply feedback from a focused canonical correction packet to the "
+            "append-only validation truth overlay and rereview only the lines "
+            "that changed again."
+        ),
+    )
+    apply_canonical_validation_followup.add_argument("model_id")
+    apply_canonical_validation_followup.add_argument(
+        "correction_plan",
+        type=Path,
+    )
+    apply_canonical_validation_followup.add_argument(
+        "--correction-report-digest",
+        required=True,
+    )
+    apply_canonical_validation_followup.add_argument(
+        "--packet-digest",
+        required=True,
+    )
+    apply_canonical_validation_followup.add_argument(
+        "--submission-id",
+        required=True,
+    )
+
     remediate_validation_capture = subparsers.add_parser(
         "remediate-validation-machine-capture",
         help=(
@@ -1472,6 +1498,21 @@ def main() -> int:
             ).apply_canonical_validation_corrections(
                 args.model_id,
                 score_report_digest=args.score_report_digest,
+                packet_digest=args.packet_digest,
+                submission_id=args.submission_id,
+                correction_plan=args.correction_plan,
+            )
+        elif (
+            args.command
+            == "apply-canonical-validation-followup-corrections"
+        ):
+            result = AmazingTablatureExtractor(
+                args.root
+            ).apply_canonical_validation_followup_corrections(
+                args.model_id,
+                correction_report_digest=(
+                    args.correction_report_digest
+                ),
                 packet_digest=args.packet_digest,
                 submission_id=args.submission_id,
                 correction_plan=args.correction_plan,

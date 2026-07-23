@@ -1492,6 +1492,347 @@ def test_canonical_validation_correction_console_only_rereviews_changes() -> Non
     assert "reviewType:REVIEW_TYPE" in html
 
 
+def test_canonical_validation_followup_replaces_only_feedback_line(
+    tmp_path: Path,
+) -> None:
+    private = tmp_path / "private"
+    model_id = "at-canonical-followup"
+    correction_dir = (
+        private
+        / "validation-evaluations"
+        / model_id
+        / "canonical-validation"
+        / "corrections"
+    )
+    corrected_dir = correction_dir / "corrected-lines"
+    corrected_dir.mkdir(parents=True)
+    batch_id = "batch-main"
+    input_id = "input-1"
+    tab_system_id = "tab-1"
+    parent_line_id = "canonical-parent-1"
+
+    prior_corrected_core = {
+        "schemaVersion": CANONICAL_VALIDATION_CORRECTION_SCHEMA_VERSION,
+        "modelId": model_id,
+        "batchId": batch_id,
+        "partition": "validation",
+        "inputId": input_id,
+        "scoreSystemId": "",
+        "tabSystemId": tab_system_id,
+        "events": [
+            {
+                "eventIndex": 1,
+                "tabEventId": "event-1",
+                "executionType": "attack",
+                "steelActions": [
+                    {
+                        "string": 5,
+                        "fret": 3,
+                        "controls": ["A"],
+                        "attack": True,
+                    }
+                ],
+            },
+            {
+                "eventIndex": 2,
+                "tabEventId": "event-2",
+                "executionType": "attack",
+                "steelActions": [
+                    {
+                        "string": 8,
+                        "fret": 3,
+                        "controls": [],
+                        "attack": True,
+                    }
+                ],
+            },
+        ],
+        "executionDigest": "a" * 64,
+        "eventCount": 2,
+        "mechanicallyValid": True,
+        "humanTruthUsed": True,
+        "validationGroundTruthMayTrain": False,
+        "validationMayTrain": False,
+        "sealedTestAccessed": False,
+    }
+    prior_corrected_digest = _sha256_json(prior_corrected_core)
+    prior_corrected_path = (
+        corrected_dir / f"line-{prior_corrected_digest}.json"
+    )
+    prior_corrected_path.write_text(
+        json.dumps(
+            {
+                **prior_corrected_core,
+                "correctedLineDigest": prior_corrected_digest,
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    report_core = {
+        "schemaVersion": CANONICAL_VALIDATION_CORRECTION_SCHEMA_VERSION,
+        "modelId": model_id,
+        "modelArtifactSha256": "b" * 64,
+        "scoreReportDigest": "c" * 64,
+        "sourcePacketDigest": "d" * 64,
+        "sourceSubmissionId": (
+            "canonical-validation-submission-" + "e" * 20
+        ),
+        "sourceSubmissionDigest": "f" * 64,
+        "correctionPlanDigest": "1" * 64,
+        "lineReceipts": [
+            {
+                "lineId": parent_line_id,
+                "batchId": batch_id,
+                "inputId": input_id,
+                "scoreSystemId": "",
+                "tabSystemId": tab_system_id,
+                "status": "correction_pending_confirmation",
+                "correctedLineDigest": prior_corrected_digest,
+                "correctedLinePath": str(
+                    prior_corrected_path.relative_to(private)
+                ),
+                "executionDigest": "a" * 64,
+                "evidenceMode": "tab_only",
+                "requiresConfirmation": True,
+                "requiresScoreConfirmation": False,
+                "trainingEligible": False,
+            }
+        ],
+        "lineCount": 1,
+        "correctedLineCount": 1,
+        "carriedCorrectLineCount": 0,
+        "confirmationRequiredLineCount": 1,
+        "allCorrectedLinesMechanicallyValid": True,
+        "lineage": {
+            "repositoryHead": "head",
+            "correctionCodeFileSha256": "2" * 64,
+        },
+        "humanTruthUsed": True,
+        "validationGroundTruthMayTrain": False,
+        "validationMayTrain": False,
+        "sealedTestAccessed": False,
+    }
+    report_digest = _sha256_json(report_core)
+    (correction_dir / f"report-{report_digest}.json").write_text(
+        json.dumps(
+            {**report_core, "reportDigest": report_digest},
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    correction_line_id = "corrected-line-1"
+    packet_core = {
+        "schemaVersion": CANONICAL_VALIDATION_CORRECTION_SCHEMA_VERSION,
+        "reviewType": "canonical_validation_correction",
+        "reviewScope": "changed_lines_requiring_confirmation",
+        "batchId": batch_id,
+        "partition": "validation",
+        "modelId": model_id,
+        "modelArtifactSha256": "b" * 64,
+        "correctionReportDigest": report_digest,
+        "sourcePacketDigest": "d" * 64,
+        "sourceSubmissionId": (
+            "canonical-validation-submission-" + "e" * 20
+        ),
+        "lines": [
+            {
+                "lineId": correction_line_id,
+                "parentLineId": parent_line_id,
+                "batchId": batch_id,
+                "inputId": input_id,
+                "scoreSystemId": "",
+                "tabSystemId": tab_system_id,
+                "correctedLineDigest": prior_corrected_digest,
+                "evidenceMode": "tab_only",
+                "sourceLabel": "source.jpg",
+                "sourcePairUrl": "source.png",
+                "systemIndex": 1,
+            }
+        ],
+        "lineCount": 1,
+        "allLinesMechanicallyValid": True,
+        "trainingEligible": False,
+        "validationGroundTruthMayTrain": False,
+        "validationAccessed": True,
+        "sealedTestAccessed": False,
+    }
+    packet_digest = _sha256_json(packet_core)
+    (correction_dir / f"packet-{packet_digest}.json").write_text(
+        json.dumps(
+            {**packet_core, "packetDigest": packet_digest},
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    submission = _store_canonical_validation_correction_submission(
+        private,
+        {
+            "reviewType": "canonical_validation_correction",
+            "batchId": batch_id,
+            "modelId": model_id,
+            "partition": "validation",
+            "packetDigest": packet_digest,
+            "reviews": [
+                {
+                    "lineId": correction_line_id,
+                    "status": "feedback",
+                    "comment": "Split the grip into two picked movements.",
+                }
+            ],
+        },
+    )
+    feedback_row = json.loads(
+        (
+            correction_dir
+            / "submissions"
+            / f"{submission['submissionId']}.jsonl"
+        ).read_text(encoding="utf-8")
+    )
+    page_dir = (
+        private
+        / "batches"
+        / batch_id
+        / "extraction"
+        / "validation"
+        / "pages"
+    )
+    page_dir.mkdir(parents=True)
+    (page_dir / f"{input_id}.json").write_text(
+        json.dumps(
+            {
+                "objectId": "source-page-1",
+                "batchId": batch_id,
+                "inputId": input_id,
+                "sourceCopedent": {
+                    "profileId": "source-e9-abc-defg-v1",
+                },
+                "derivative": {"width": 1000, "height": 1000},
+                "scoreSystems": [],
+                "tabSystems": [
+                    {
+                        "tabSystemId": tab_system_id,
+                        "systemIndex": 1,
+                        "pageRegion": {
+                            "x": 0.1,
+                            "y": 0.2,
+                            "width": 0.8,
+                            "height": 0.3,
+                        },
+                        "stringCenters": [
+                            220 + index * 20 for index in range(10)
+                        ],
+                        "tabEvents": [],
+                    }
+                ],
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    plan_path = correction_dir / "followup-plan.jsonl"
+    plan_path.write_text(
+        json.dumps(
+            {
+                "schemaVersion": (
+                    CANONICAL_VALIDATION_CORRECTION_SCHEMA_VERSION
+                ),
+                "lineId": correction_line_id,
+                "parentLineId": parent_line_id,
+                "batchId": batch_id,
+                "inputId": input_id,
+                "tabSystemId": tab_system_id,
+                "expectedCorrectedLineDigest": (
+                    prior_corrected_digest
+                ),
+                "feedbackRowDigest": _sha256_json(feedback_row),
+                "acknowledgedFeedback": True,
+                "requiresConfirmation": True,
+                "requiresScoreConfirmation": False,
+                "operations": [
+                    {
+                        "operationId": "split-grip",
+                        "type": "replace_tab_system_events",
+                        "tabSystemId": tab_system_id,
+                        "tabEvents": [
+                            {
+                                "horizontalPosition": 0.3,
+                                "steelActions": [
+                                    {
+                                        "string": 5,
+                                        "fret": 3,
+                                        "controls": ["A"],
+                                        "attack": True,
+                                    }
+                                ],
+                            },
+                            {
+                                "horizontalPosition": 0.5,
+                                "steelActions": [
+                                    {
+                                        "string": 5,
+                                        "fret": 3,
+                                        "controls": [],
+                                        "attack": False,
+                                        "controlTransition": {
+                                            "beforeControls": ["A"],
+                                            "afterControls": [],
+                                            "timing": "during_sustain",
+                                        },
+                                    }
+                                ],
+                            },
+                            {
+                                "horizontalPosition": 0.7,
+                                "steelActions": [
+                                    {
+                                        "string": 8,
+                                        "fret": 3,
+                                        "controls": [],
+                                        "attack": True,
+                                    }
+                                ],
+                            },
+                        ],
+                    }
+                ],
+            },
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    result = AmazingTablatureExtractor(
+        private,
+        repo_root=Path.cwd(),
+    ).apply_canonical_validation_followup_corrections(
+        model_id,
+        correction_report_digest=report_digest,
+        packet_digest=packet_digest,
+        submission_id=submission["submissionId"],
+        correction_plan=plan_path,
+    )
+
+    assert result["lineCount"] == 1
+    assert result["followupCorrectedLineCount"] == 1
+    assert result["carriedLineCount"] == 0
+    assert result["confirmationRequiredLineCount"] == 1
+    assert result["packetDigest"]
+    assert result["sealedTestAccessed"] is False
+    next_line = json.loads(
+        (
+            private
+            / result["lineReceipts"][0]["correctedLinePath"]
+        ).read_text(encoding="utf-8")
+    )
+    assert next_line["eventCount"] == 3
+    assert [
+        event["executionType"] for event in next_line["events"]
+    ] == ["attack", "movement_only", "attack"]
+    assert not (correction_dir / "accepted-decisions.jsonl").exists()
+
+
 def test_combined_console_supports_validation_ground_truth_mode() -> None:
     digest = "b" * 64
     html = _combined_score_tab_console_html(
