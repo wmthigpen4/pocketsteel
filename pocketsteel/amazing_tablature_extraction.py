@@ -31158,6 +31158,7 @@ class AmazingTablatureExtractor:
                 / "review"
                 / "canonical-validation"
             ).resolve()
+            cohort_review_root = child_dir.parent.resolve()
             child_path = child_dir / f"packet-{child_digest}.json"
             if not child_path.exists():
                 raise ExtractionWorkflowError(
@@ -31248,7 +31249,7 @@ class AmazingTablatureExtractor:
                     / str(child_line.get("sourcePairUrl") or "")
                 ).resolve()
                 try:
-                    source_path.relative_to(child_dir)
+                    source_path.relative_to(cohort_review_root)
                 except ValueError as exc:
                     raise ExtractionWorkflowError(
                         "Canonical source crop escaped its review root."

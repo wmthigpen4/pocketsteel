@@ -8725,6 +8725,10 @@ class AmazingTablatureTrainingStore:
             for key, value in score_report.items()
             if key != "reportDigest"
         }
+        evaluation_revision = _git_revision(self.repo_root)
+        evaluation_code_digests = _rules_code_file_digests(
+            self.repo_root
+        )
         if (
             score_report.get("schemaVersion")
             != "amazing-tablature-machine-validation-score-v2"
@@ -8736,9 +8740,74 @@ class AmazingTablatureTrainingStore:
             or score_report.get("humanTruthUsed") is not False
             or score_report.get("validationMayTrain") is not False
             or score_report.get("sealedTestAccessed") is not False
+            or (score_report.get("lineage") or {}).get(
+                "evaluationCodeRevision"
+            )
+            != evaluation_revision
+            or (score_report.get("lineage") or {}).get(
+                "evaluationCodeFileDigests"
+            )
+            != evaluation_code_digests
         ):
             raise TrainingWorkflowError(
                 "The canonical score report lineage or privacy contract failed."
+            )
+        decision_ledger_digest = str(
+            score_report.get("decisionLedgerDigest") or ""
+        )
+        decision_ledger_path = (
+            self.root
+            / str(score_report.get("decisionLedgerPath") or "")
+        ).resolve()
+        try:
+            decision_ledger_path.relative_to(evaluation_dir)
+        except ValueError as exc:
+            raise TrainingWorkflowError(
+                "The canonical decision ledger escaped its evaluation root."
+            ) from exc
+        if (
+            not re.fullmatch(r"[0-9a-f]{64}", decision_ledger_digest)
+            or not decision_ledger_path.exists()
+        ):
+            raise TrainingWorkflowError(
+                "The canonical decision ledger is missing."
+            )
+        decision_ledger = _read_json(decision_ledger_path)
+        decision_ledger_core = {
+            key: value
+            for key, value in decision_ledger.items()
+            if key != "ledgerDigest"
+        }
+        ledger_decision_ids = {
+            str(value.get("decisionId") or "")
+            for value in decision_ledger.get("decisions") or ()
+            if isinstance(value, Mapping)
+        }
+        if (
+            decision_ledger.get("schemaVersion")
+            != MACHINE_VALIDATION_DECISION_LEDGER_SCHEMA_VERSION
+            or decision_ledger.get("modelId") != model_id
+            or decision_ledger.get("modelArtifactSha256")
+            != model_sha256
+            or decision_ledger.get("ledgerDigest")
+            != decision_ledger_digest
+            or _sha256_json(decision_ledger_core)
+            != decision_ledger_digest
+            or decision_ledger.get("decisionDigest")
+            != score_report.get("decisionDigest")
+            or decision_ledger.get("candidateSetDigest")
+            != score_report.get("candidateSetDigest")
+            or int(decision_ledger.get("decisionCount") or 0)
+            != len(ledger_decision_ids)
+            or len(ledger_decision_ids)
+            != int(score_report.get("decisionCount") or 0)
+            or "" in ledger_decision_ids
+            or decision_ledger.get("humanTruthUsed") is not False
+            or decision_ledger.get("validationMayTrain") is not False
+            or decision_ledger.get("sealedTestAccessed") is not False
+        ):
+            raise TrainingWorkflowError(
+                "The canonical decision-ledger lineage failed."
             )
         review_dir = evaluation_dir / "canonical-validation"
         packet_path = review_dir / f"packet-{packet_digest}.json"
@@ -8773,6 +8842,10 @@ class AmazingTablatureTrainingStore:
             or packet.get("modelArtifactSha256") != model_sha256
             or packet.get("scoreReportDigest")
             != score_report_digest
+            or packet.get("decisionLedgerDigest")
+            != decision_ledger_digest
+            or packet.get("decisionDigest")
+            != score_report.get("decisionDigest")
             or tuple(packet.get("authoritativeBatchIds") or ())
             != authoritative_ids
             or packet.get("packetDigest") != packet_digest
@@ -8789,8 +8862,15 @@ class AmazingTablatureTrainingStore:
             or metadata.get("submissionId") != submission_id
             or metadata.get("packetDigest") != packet_digest
             or metadata.get("modelId") != model_id
+            or metadata.get("modelArtifactSha256") != model_sha256
             or metadata.get("scoreReportDigest")
             != score_report_digest
+            or metadata.get("decisionLedgerDigest")
+            != decision_ledger_digest
+            or metadata.get("decisionDigest")
+            != score_report.get("decisionDigest")
+            or metadata.get("schemaVersion")
+            != "amazing-tablature-canonical-validation-dataset-review-v1"
             or metadata.get("eligibleForTraining") is not False
             or metadata.get("validationGroundTruthMayTrain") is not False
             or metadata.get("sealedTestAccessed") is not False
@@ -8872,6 +8952,10 @@ class AmazingTablatureTrainingStore:
             for line in packet_lines.values()
             for value in line.get("decisionIds") or ()
         }
+        if expected_decisions != ledger_decision_ids:
+            raise TrainingWorkflowError(
+                "Canonical packet decisions differ from the exact ledger."
+            )
         all_lines_confirmed = bool(
             seen == set(packet_lines)
             and confirmed_decisions == expected_decisions
@@ -9022,10 +9106,8 @@ class AmazingTablatureTrainingStore:
                 "modelCodeRevision": _read_json(model_path).get(
                     "codeRevision"
                 ),
-                "evaluationCodeRevision": _git_revision(self.repo_root),
-                "evaluationCodeFileDigests": _rules_code_file_digests(
-                    self.repo_root
-                ),
+                "evaluationCodeRevision": evaluation_revision,
+                "evaluationCodeFileDigests": evaluation_code_digests,
             },
             "noTrainingContract": {
                 "validationGroundTruthMayTrain": False,

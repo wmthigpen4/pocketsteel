@@ -1240,11 +1240,26 @@ def test_machine_validation_scorer_uses_only_complete_tab_consensus(
     ).write_text(
         json.dumps(
             {
+                "schemaVersion": (
+                    "amazing-tablature-canonical-validation-dataset-review-v1"
+                ),
                 "submissionId": canonical_submission_id,
                 "submissionDigest": canonical_submission_digest,
+                "batchId": "atb-machine-validation",
+                "datasetId": current_registry["authoritativeDataset"][
+                    "datasetId"
+                ],
+                "authoritativeBatchIds": ["atb-machine-validation"],
+                "partition": "validation",
                 "packetDigest": canonical_packet_digest,
                 "modelId": model_id,
+                "modelArtifactSha256": model_sha,
                 "scoreReportDigest": result["reportDigest"],
+                "decisionLedgerDigest": result[
+                    "decisionLedgerDigest"
+                ],
+                "decisionDigest": result["decisionDigest"],
+                "reviewCount": 1,
                 "eligibleForTraining": False,
                 "validationGroundTruthMayTrain": False,
                 "sealedTestAccessed": False,
