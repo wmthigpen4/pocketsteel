@@ -10710,6 +10710,18 @@ class AmazingTablatureTrainingStore:
             "evidenceModeMetrics": evidence_metrics,
             "gate": {
                 "passed": gate_passed,
+                "humanGroundTruthComplete": (
+                    score.get("gate", {}).get(
+                        "humanGroundTruthComplete"
+                    )
+                    is True
+                ),
+                "noRereviewAccountingPassed": (
+                    score.get("gate", {}).get(
+                        "noRereviewAccountingPassed"
+                    )
+                    is True
+                ),
                 "correctedCanonicalGatePassed": gate_passed,
                 "rulesFreezeAllowed": gate_passed,
                 "privateRuntimeEnableAllowed": gate_passed,
@@ -11320,12 +11332,49 @@ class AmazingTablatureTrainingStore:
         validation_metrics: dict[str, str] = {}
         validation_extraction_contracts: dict[str, dict[str, Any]] = {}
         sealed_cohorts: list[dict[str, Any]] = []
+        corrected_canonical_evaluation = (
+            evaluation.get("schemaVersion")
+            in {
+                "amazing-tablature-corrected-canonical-validation-v1",
+                "amazing-tablature-corrected-canonical-adjudication-v1",
+            }
+        )
+        if corrected_canonical_evaluation and (
+            evaluation.get("humanTruthUsed") is not True
+            or evaluation.get("validationMayTrain") is not False
+            or evaluation.get("sealedTestAccessed") is not False
+            or evaluation.get("gate", {}).get(
+                "humanGroundTruthComplete",
+                False,
+            )
+            is not True
+            or evaluation.get("gate", {}).get(
+                "noRereviewAccountingPassed",
+                False,
+            )
+            is not True
+        ):
+            raise TrainingWorkflowError(
+                "Corrected canonical validation does not satisfy the "
+                "human-truth, no-rereview, and no-training freeze contract."
+            )
         model_rights_digests = {
             str(batch_id): str(digest) for batch_id, digest in (model.get("rightsAuthorizationDigests") or {}).items()
         }
         for batch_id in authoritative_ids:
-            self._require_complete_extraction_review(batch_id, "validation")
-            self._require_extraction_acceptance(batch_id, "validation")
+            if not corrected_canonical_evaluation:
+                self._require_complete_extraction_review(
+                    batch_id,
+                    "validation",
+                )
+                self._require_extraction_acceptance(
+                    batch_id,
+                    "validation",
+                )
+            self._require_current_extraction_rights(
+                batch_id,
+                "validation",
+            )
             metrics_path = self._batch_dir(batch_id) / "extraction/validation/review/review-metrics.json"
             if metrics_path.exists():
                 validation_metrics[batch_id] = _sha256_json(_read_json(metrics_path))

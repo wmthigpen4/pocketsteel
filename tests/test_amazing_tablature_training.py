@@ -543,6 +543,7 @@ def corrected_adjudication_fixture(
         "thresholds": {},
         "gate": {
             "humanGroundTruthComplete": True,
+            "noRereviewAccountingPassed": True,
             "correctedCanonicalGatePassed": False,
         },
         "lineage": {},
@@ -703,6 +704,8 @@ def test_corrected_canonical_adjudication_recomputes_fixed_gates_without_trainin
     assert report["metrics"]["acceptedTopChoiceAccuracy"] == 1.0
     assert report["gate"] == {
         "passed": True,
+        "humanGroundTruthComplete": True,
+        "noRereviewAccountingPassed": True,
         "correctedCanonicalGatePassed": True,
         "rulesFreezeAllowed": True,
         "privateRuntimeEnableAllowed": True,
