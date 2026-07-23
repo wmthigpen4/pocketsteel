@@ -489,9 +489,12 @@ Reader contracts also pin case-insensitive response-label normalization, so a
 correct `E1S5` response cannot be discarded merely because the requested key
 was `e1s5`. After the full-sheet pass, unresolved cards are enlarged and sent
 in bounded groups of at most eight to the two independently pinned readers.
-Only semantic agreement or a separately discovery-calibrated singleton can
-resolve a cell; smaller images improve legibility without relaxing the
-evidence gate.
+Discovery calibration runs those same bounded, enlarged card groups against
+the approved discovery truth. Reader rules are input-mode-specific: a state
+that is accurate on a full contact sheet never qualifies a singleton from a
+focused card group, or vice versa. Only semantic agreement or a singleton
+calibrated for that exact input mode can resolve a cell; smaller images improve
+legibility without relaxing the evidence gate.
 
 Before scoring validation, prepare one complete line-level audit for each
 authoritative cohort:

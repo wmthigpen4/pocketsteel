@@ -96,6 +96,63 @@ def test_reader_calibration_uses_grouped_holdout_precision() -> None:
     )
 
 
+def test_reader_calibration_never_transfers_a_rule_between_input_modes() -> None:
+    cases = []
+    for content_unit in ("unit-a", "unit-b", "unit-c", "unit-d"):
+        for input_mode in (
+            "full_contact_sheet",
+            "focused_contact_sheet_chunk",
+        ):
+            cases.append(
+                {
+                    "readerId": "reader-1",
+                    "contentUnitId": content_unit,
+                    "inputMode": input_mode,
+                    "predictedState": "state-8a",
+                    "truthState": (
+                        "state-8a"
+                        if input_mode == "full_contact_sheet"
+                        else (
+                            "state-8a"
+                            if content_unit != "unit-d"
+                            else "state-9"
+                        )
+                    ),
+                    "confidence": 1.0,
+                }
+            )
+    calibration = train_reader_calibration(
+        cases,
+        source_cohort_id="batch-1",
+        reader_contracts=[
+            {"modelTag": "reader-1", "modelDigest": "digest-1"}
+        ],
+        minimum_state_support=2,
+        minimum_content_units=2,
+        minimum_cv_predictions=4,
+        minimum_cv_precision=1.0,
+    )
+
+    assert calibrated_state_is_eligible(
+        calibration,
+        reader_id="reader-1",
+        predicted_state="state-8a",
+        confidence=1.0,
+        input_mode="full_contact_sheet",
+    )
+    assert not calibrated_state_is_eligible(
+        calibration,
+        reader_id="reader-1",
+        predicted_state="state-8a",
+        confidence=1.0,
+        input_mode="focused_contact_sheet_chunk",
+    )
+    assert {
+        (rule["inputMode"], rule["predictedState"])
+        for rule in calibration["acceptedRules"]
+    } == {("full_contact_sheet", "state-8a")}
+
+
 def test_reader_calibration_automates_only_accepted_rule_predictions() -> None:
     cases = []
     for content_unit in ("unit-a", "unit-b", "unit-c", "unit-d"):

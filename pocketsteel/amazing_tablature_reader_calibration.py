@@ -10,9 +10,10 @@ from typing import Any
 
 
 READER_CALIBRATION_SCHEMA_VERSION = (
-    "amazing-tablature-reader-calibration-v2"
+    "amazing-tablature-reader-calibration-v3"
 )
 READER_INPUT_MODE = "full_contact_sheet"
+FOCUSED_READER_INPUT_MODE = "focused_contact_sheet_chunk"
 BLANK_READER_STATE = "blank"
 DEFAULT_MINIMUM_STATE_SUPPORT = 8
 DEFAULT_MINIMUM_CONTENT_UNITS = 3
@@ -69,12 +70,16 @@ def _normalized_cases(
     for case in cases:
         reader_id = str(case.get("readerId") or "")
         content_unit_id = str(case.get("contentUnitId") or "")
+        input_mode = str(
+            case.get("inputMode") or READER_INPUT_MODE
+        )
         predicted_state = str(case.get("predictedState") or "")
         truth_state = str(case.get("truthState") or "")
         confidence = float(case.get("confidence") or 0.0)
         if (
             not reader_id
             or not content_unit_id
+            or not input_mode
             or not predicted_state
             or not truth_state
             or not 0.0 <= confidence <= 1.0
@@ -84,6 +89,7 @@ def _normalized_cases(
             {
                 "readerId": reader_id,
                 "contentUnitId": content_unit_id,
+                "inputMode": input_mode,
                 "predictedState": predicted_state,
                 "truthState": truth_state,
                 "confidence": confidence,
@@ -100,16 +106,24 @@ def _build_rules(
     minimum_content_units: int,
     minimum_precision: float,
 ) -> list[dict[str, Any]]:
-    grouped: dict[tuple[str, str], list[Mapping[str, Any]]] = defaultdict(list)
+    grouped: dict[
+        tuple[str, str, str],
+        list[Mapping[str, Any]],
+    ] = defaultdict(list)
     for case in cases:
         grouped[
             (
                 str(case["readerId"]),
+                str(case["inputMode"]),
                 str(case["predictedState"]),
             )
         ].append(case)
     rules: list[dict[str, Any]] = []
-    for (reader_id, predicted_state), state_cases in sorted(grouped.items()):
+    for (
+        reader_id,
+        input_mode,
+        predicted_state,
+    ), state_cases in sorted(grouped.items()):
         selected_rule: dict[str, Any] | None = None
         for threshold in _CONFIDENCE_THRESHOLDS:
             selected = [
@@ -133,6 +147,7 @@ def _build_rules(
                 # without relaxing the fixed precision contract.
                 selected_rule = {
                     "readerId": reader_id,
+                    "inputMode": input_mode,
                     "predictedState": predicted_state,
                     "minimumConfidence": threshold,
                     "support": support,
@@ -179,7 +194,11 @@ def train_reader_calibration(
             minimum_precision=minimum_cv_precision,
         )
         rule_index = {
-            (str(rule["readerId"]), str(rule["predictedState"])): rule
+            (
+                str(rule["readerId"]),
+                str(rule["inputMode"]),
+                str(rule["predictedState"]),
+            ): rule
             for rule in rules
         }
         for case in normalized:
@@ -188,6 +207,7 @@ def train_reader_calibration(
             rule = rule_index.get(
                 (
                     str(case["readerId"]),
+                    str(case["inputMode"]),
                     str(case["predictedState"]),
                 )
             )
@@ -201,6 +221,7 @@ def train_reader_calibration(
                 {
                     "readerId": str(case["readerId"]),
                     "contentUnitId": str(case["contentUnitId"]),
+                    "inputMode": str(case["inputMode"]),
                     "predictedState": str(case["predictedState"]),
                     "correct": bool(case["correct"]),
                 }
@@ -215,13 +236,15 @@ def train_reader_calibration(
         minimum_content_units=minimum_content_units,
         minimum_precision=minimum_cv_precision,
     )
-    cv_by_rule: dict[tuple[str, str], list[Mapping[str, Any]]] = defaultdict(
-        list
-    )
+    cv_by_rule: dict[
+        tuple[str, str, str],
+        list[Mapping[str, Any]],
+    ] = defaultdict(list)
     for prediction in cv_predictions:
         cv_by_rule[
             (
                 str(prediction["readerId"]),
+                str(prediction["inputMode"]),
                 str(prediction["predictedState"]),
             )
         ].append(prediction)
@@ -229,6 +252,7 @@ def train_reader_calibration(
     for rule in candidate_rules:
         key = (
             str(rule["readerId"]),
+            str(rule["inputMode"]),
             str(rule["predictedState"]),
         )
         predictions = cv_by_rule.get(key, [])
@@ -263,6 +287,7 @@ def train_reader_calibration(
     accepted_rule_keys = {
         (
             str(rule["readerId"]),
+            str(rule["inputMode"]),
             str(rule["predictedState"]),
         )
         for rule in final_rules
@@ -272,6 +297,7 @@ def train_reader_calibration(
         for prediction in cv_predictions
         if (
             str(prediction["readerId"]),
+            str(prediction["inputMode"]),
             str(prediction["predictedState"]),
         )
         in accepted_rule_keys
@@ -326,7 +352,9 @@ def train_reader_calibration(
         "schemaVersion": READER_CALIBRATION_SCHEMA_VERSION,
         "sourceCohortId": source_cohort_id,
         "policy": "calibrated_semantic_state_or_abstain",
-        "readerInputMode": READER_INPUT_MODE,
+        "readerInputModes": sorted(
+            {str(case["inputMode"]) for case in normalized}
+        ),
         "readerContracts": [
             dict(contract) for contract in reader_contracts
         ],
@@ -386,7 +414,9 @@ def calibrated_state_is_eligible(
         calibration.get("schemaVersion")
         != READER_CALIBRATION_SCHEMA_VERSION
         or calibration.get("automationEligible") is not True
-        or calibration.get("readerInputMode") != input_mode
+        or input_mode not in set(
+            calibration.get("readerInputModes") or ()
+        )
     ):
         return False
     thresholds = calibration.get("thresholds") or {}
@@ -413,6 +443,7 @@ def calibrated_state_is_eligible(
     for rule in calibration.get("acceptedRules") or ():
         if (
             str(rule.get("readerId") or "") == reader_id
+            and str(rule.get("inputMode") or "") == input_mode
             and str(rule.get("predictedState") or "") == predicted_state
             and int(rule.get("groupedCvPredictionCount") or 0)
             >= minimum_state_support

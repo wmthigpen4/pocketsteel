@@ -32,6 +32,8 @@ from pocketsteel.amazing_tablature_glyph_decoder import (
 )
 from pocketsteel.amazing_tablature_input_parity import structured_input_parity_report
 from pocketsteel.amazing_tablature_reader_calibration import (
+    FOCUSED_READER_INPUT_MODE,
+    READER_INPUT_MODE,
     reader_state_signature,
     train_reader_calibration,
 )
@@ -4216,6 +4218,7 @@ class AmazingTablatureTrainingStore:
         from pocketsteel.amazing_tablature_extraction import (
             ExtractionWorkflowError,
             LocalTabVision,
+            _render_focused_contact_sheet_chunks,
             _tab_action_sequence_from_token,
         )
 
@@ -4262,9 +4265,12 @@ class AmazingTablatureTrainingStore:
             / "discovery-contact-reader-calibration-v1"
         )
         cache_dir = automation_root / "reader-cache"
+        focused_dir = automation_root / "focused-contact-sheets"
         cache_dir.mkdir(parents=True, exist_ok=True)
+        focused_dir.mkdir(parents=True, exist_ok=True)
         _make_private(automation_root, directory=True)
         _make_private(cache_dir, directory=True)
+        _make_private(focused_dir, directory=True)
 
         def read_cells(
             reader: LocalTabVision,
@@ -4272,20 +4278,46 @@ class AmazingTablatureTrainingStore:
             contract: Mapping[str, Any],
             image_path: Path,
             labels: Sequence[str],
+            *,
+            input_mode: str,
         ) -> tuple[dict[str, dict[str, Any]], str]:
             image_sha256 = _sha256_bytes(image_path.read_bytes())
+            cache_core = {
+                "imageSha256": image_sha256,
+                "labels": list(labels),
+                "readerContract": contract,
+            }
             cache_key = _sha256_json(
                 {
-                    "imageSha256": image_sha256,
-                    "labels": list(labels),
-                    "readerContract": contract,
+                    **cache_core,
+                    "readerInputMode": input_mode,
                 }
             )
             cache_path = cache_dir / f"{cache_key}.json"
-            if cache_path.exists():
-                cached = _read_json(cache_path)
+            # Before input modes were part of the calibration contract, clean
+            # full-sheet reads were cached by the same immutable image,
+            # labels, and reader artifact. Retain exact reuse for those
+            # full-sheet caches only; focused views always use the new
+            # input-mode-qualified key.
+            legacy_cache_path = cache_dir / (
+                f"{_sha256_json(cache_core)}.json"
+            )
+            cache_candidates = [cache_path]
+            if (
+                input_mode == READER_INPUT_MODE
+                and legacy_cache_path != cache_path
+            ):
+                cache_candidates.append(legacy_cache_path)
+            for candidate_path in cache_candidates:
+                if not candidate_path.exists():
+                    continue
+                cached = _read_json(candidate_path)
+                cached_input_mode = str(
+                    cached.get("readerInputMode") or READER_INPUT_MODE
+                )
                 if (
-                    cached.get("imageSha256") == image_sha256
+                    cached_input_mode == input_mode
+                    and cached.get("imageSha256") == image_sha256
                     and cached.get("labels") == list(labels)
                     and cached.get("readerContract") == dict(contract)
                     and isinstance(cached.get("cells"), Mapping)
@@ -4301,7 +4333,7 @@ class AmazingTablatureTrainingStore:
                             for key, value in cached["cells"].items()
                             if isinstance(value, Mapping)
                         },
-                        _sha256_bytes(cache_path.read_bytes()),
+                        _sha256_bytes(candidate_path.read_bytes()),
                     )
             cells: dict[str, dict[str, Any]] | None = None
             last_error: Exception | None = None
@@ -4332,7 +4364,7 @@ class AmazingTablatureTrainingStore:
                     ),
                     "readerId": reader_id,
                     "readerContract": dict(contract),
-                    "readerInputMode": "full_contact_sheet",
+                    "readerInputMode": input_mode,
                     "imageSha256": image_sha256,
                     "labels": list(labels),
                     "cells": cells,
@@ -4342,6 +4374,77 @@ class AmazingTablatureTrainingStore:
             )
             _make_private(cache_path)
             return cells, _sha256_bytes(cache_path.read_bytes())
+
+        def append_calibration_cases(
+            *,
+            cells: Mapping[str, Mapping[str, Any]],
+            reader_id: str,
+            content_unit_id: str,
+            input_id: str,
+            labels: Sequence[str],
+            truth_by_label: Mapping[
+                str,
+                tuple[int, Sequence[Mapping[str, Any]]],
+            ],
+            input_mode: str,
+        ) -> None:
+            for label in labels:
+                truth = truth_by_label.get(label)
+                if truth is None:
+                    continue
+                string, truth_actions = truth
+                truth_state = reader_state_signature(truth_actions)
+                cell = cells.get(label) or {}
+                confidence = float(cell.get("confidence") or 0.0)
+                token = cell.get("token")
+                predicted_state: str | None = None
+                if token is None or not str(token).strip():
+                    if (
+                        cell.get("uncertain") is False
+                        and not cell.get("readerFailure")
+                        and confidence >= 0.8
+                    ):
+                        predicted_state = reader_state_signature(())
+                elif (
+                    cell.get("uncertain") is False
+                    and not cell.get("readerFailure")
+                    and confidence >= 0.8
+                ):
+                    actions, issue = _tab_action_sequence_from_token(
+                        str(token),
+                        string=string,
+                        profile=profile,
+                        confidence=confidence,
+                        region_id=(
+                            "discovery-reader-calibration:"
+                            f"{input_id}:{input_mode}:{label}"
+                        ),
+                    )
+                    if (
+                        actions
+                        and issue is None
+                        and all(
+                            action.get(
+                                "mechanicalValidation",
+                                {},
+                            ).get("valid")
+                            is True
+                            for action in actions
+                        )
+                    ):
+                        predicted_state = reader_state_signature(actions)
+                if predicted_state is None:
+                    continue
+                cases.append(
+                    {
+                        "readerId": reader_id,
+                        "contentUnitId": content_unit_id,
+                        "inputMode": input_mode,
+                        "predictedState": predicted_state,
+                        "truthState": truth_state,
+                        "confidence": confidence,
+                    }
+                )
 
         profile = get_e9_copedent_profile(
             str(manifest.get("sourceCopedentId") or "")
@@ -4358,6 +4461,8 @@ class AmazingTablatureTrainingStore:
         }
         sheet_count = 0
         label_count = 0
+        focused_chunk_count = 0
+        focused_label_count = 0
         eligible_truth_labels: set[tuple[str, str, str]] = set()
         for input_id, item in sorted(approved_index.items()):
             record_path = extraction_root / str(item["reviewedRecordPath"])
@@ -4415,6 +4520,10 @@ class AmazingTablatureTrainingStore:
                 )
                 for key, value in system_mapping_counts.items():
                     mapping_counts[key] += value
+                system_truth_by_label: dict[
+                    str,
+                    tuple[int, Sequence[Mapping[str, Any]]],
+                ] = {}
                 for sheet in tab_system.get("contactSheets") or ():
                     labels = [
                         str(value) for value in sheet.get("labels") or ()
@@ -4434,6 +4543,42 @@ class AmazingTablatureTrainingStore:
                         )
                     sheet_count += 1
                     label_count += len(labels)
+                    sheet_truth_by_label: dict[
+                        str,
+                        tuple[int, Sequence[Mapping[str, Any]]],
+                    ] = {}
+                    for label in labels:
+                        match = _CONTACT_SHEET_LABEL_RE.fullmatch(label)
+                        if match is None:
+                            continue
+                        source_column = int(match.group("event"))
+                        if source_column in ambiguous_columns:
+                            continue
+                        string = int(match.group("string"))
+                        event = truth_by_column.get(source_column)
+                        truth_actions = [
+                            action
+                            for action in (
+                                event.get("steelActions") or ()
+                                if event is not None
+                                else ()
+                            )
+                            if int(action.get("string") or 0) == string
+                        ]
+                        if len(truth_actions) > 1:
+                            continue
+                        eligible_truth_labels.add(
+                            (
+                                input_id,
+                                str(
+                                    tab_system.get("tabSystemId") or ""
+                                ),
+                                label,
+                            )
+                        )
+                        truth = (string, tuple(truth_actions))
+                        sheet_truth_by_label[label] = truth
+                        system_truth_by_label[label] = truth
                     reader_inputs = list(
                         zip(
                             readers,
@@ -4453,6 +4598,7 @@ class AmazingTablatureTrainingStore:
                                 contract,
                                 image_path,
                                 labels,
+                                input_mode=READER_INPUT_MODE,
                             )
                             for reader, reader_id, contract in reader_inputs
                         ]
@@ -4472,95 +4618,81 @@ class AmazingTablatureTrainingStore:
                         strict=True,
                     ):
                         reader_output_digests.append(cache_digest)
-                        for label in labels:
-                            match = _CONTACT_SHEET_LABEL_RE.fullmatch(label)
-                            if match is None:
-                                continue
-                            source_column = int(match.group("event"))
-                            if source_column in ambiguous_columns:
-                                continue
-                            string = int(match.group("string"))
-                            event = truth_by_column.get(source_column)
-                            truth_actions = [
-                                action
-                                for action in (
-                                    event.get("steelActions") or ()
-                                    if event is not None
-                                    else ()
-                                )
-                                if int(action.get("string") or 0) == string
-                            ]
-                            if len(truth_actions) > 1:
-                                continue
-                            eligible_truth_labels.add(
-                                (
-                                    input_id,
-                                    str(
-                                        tab_system.get("tabSystemId") or ""
+                        append_calibration_cases(
+                            cells=cells,
+                            reader_id=reader_id,
+                            content_unit_id=content_unit_id,
+                            input_id=input_id,
+                            labels=labels,
+                            truth_by_label=sheet_truth_by_label,
+                            input_mode=READER_INPUT_MODE,
+                        )
+                if system_truth_by_label:
+                    tab_system_slug = _sha256_json(
+                        {
+                            "inputId": input_id,
+                            "tabSystemId": str(
+                                tab_system.get("tabSystemId") or ""
+                            ),
+                        }
+                    )[:16]
+                    focused_path = focused_dir / (
+                        f"{input_id}-{tab_system_slug}.jpg"
+                    )
+                    focused_chunks = _render_focused_contact_sheet_chunks(
+                        output_root=extraction_root,
+                        tab_system=tab_system,
+                        unresolved_labels=system_truth_by_label,
+                        destination=focused_path,
+                    )
+                    for focused_image, focused_labels in focused_chunks:
+                        focused_chunk_count += 1
+                        focused_label_count += len(focused_labels)
+                        with concurrent.futures.ThreadPoolExecutor(
+                            max_workers=len(reader_inputs)
+                        ) as executor:
+                            futures = [
+                                executor.submit(
+                                    read_cells,
+                                    reader,
+                                    reader_id,
+                                    contract,
+                                    focused_image,
+                                    focused_labels,
+                                    input_mode=(
+                                        FOCUSED_READER_INPUT_MODE
                                     ),
-                                    label,
                                 )
-                            )
-                            truth_state = reader_state_signature(
-                                truth_actions
-                            )
-                            cell = cells.get(label) or {}
-                            confidence = float(
-                                cell.get("confidence") or 0.0
-                            )
-                            token = cell.get("token")
-                            predicted_state: str | None = None
-                            if token is None or not str(token).strip():
-                                if (
-                                    cell.get("uncertain") is False
-                                    and not cell.get("readerFailure")
-                                    and confidence >= 0.8
-                                ):
-                                    predicted_state = (
-                                        reader_state_signature(())
-                                    )
-                            elif (
-                                cell.get("uncertain") is False
-                                and not cell.get("readerFailure")
-                                and confidence >= 0.8
-                            ):
-                                actions, issue = (
-                                    _tab_action_sequence_from_token(
-                                        str(token),
-                                        string=string,
-                                        profile=profile,
-                                        confidence=confidence,
-                                        region_id=(
-                                            "discovery-reader-calibration:"
-                                            f"{input_id}:{label}"
-                                        ),
-                                    )
-                                )
-                                if (
-                                    actions
-                                    and issue is None
-                                    and all(
-                                        action.get(
-                                            "mechanicalValidation",
-                                            {},
-                                        ).get("valid")
-                                        is True
-                                        for action in actions
-                                    )
-                                ):
-                                    predicted_state = (
-                                        reader_state_signature(actions)
-                                    )
-                            if predicted_state is None:
-                                continue
-                            cases.append(
-                                {
-                                    "readerId": reader_id,
-                                    "contentUnitId": content_unit_id,
-                                    "predictedState": predicted_state,
-                                    "truthState": truth_state,
-                                    "confidence": confidence,
-                                }
+                                for (
+                                    reader,
+                                    reader_id,
+                                    contract,
+                                ) in reader_inputs
+                            ]
+                            focused_results = [
+                                future.result() for future in futures
+                            ]
+                        for (
+                            _reader,
+                            reader_id,
+                            _contract,
+                        ), (
+                            cells,
+                            cache_digest,
+                        ) in zip(
+                            reader_inputs,
+                            focused_results,
+                            strict=True,
+                        ):
+                            reader_output_digests.append(cache_digest)
+                            append_calibration_cases(
+                                cells=cells,
+                                reader_id=reader_id,
+                                content_unit_id=content_unit_id,
+                                input_id=input_id,
+                                labels=focused_labels,
+                                truth_by_label=system_truth_by_label,
+                                input_mode=FOCUSED_READER_INPUT_MODE,
                             )
             record_digests.append(record_digest)
         calibration = train_reader_calibration(
@@ -4633,6 +4765,8 @@ class AmazingTablatureTrainingStore:
             "contactSheetTruthMapping": mapping_counts,
             "contactSheetCount": sheet_count,
             "contactLabelCount": label_count,
+            "focusedContactSheetChunkCount": focused_chunk_count,
+            "focusedContactLabelCount": focused_label_count,
             "eligibleTruthLabelCount": len(eligible_truth_labels),
             "readerOutputSetDigest": reader_output_set_digest,
             "codeRevision": code_revision,

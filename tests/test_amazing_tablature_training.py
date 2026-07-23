@@ -906,7 +906,7 @@ def test_discovery_reader_calibration_is_private_and_discovery_only(
     )
     sheet_path = extraction_root / "review/contact-sheet.png"
     sheet_path.parent.mkdir(parents=True)
-    sheet_path.write_bytes(b"synthetic-private-contact-sheet")
+    Image.new("RGB", (800, 200), "white").save(sheet_path, "PNG")
     record = {
         "datasetPartition": "discovery",
         "inputId": discovery["inputId"],
@@ -1032,10 +1032,16 @@ def test_discovery_reader_calibration_is_private_and_discovery_only(
     )
 
     assert result["status"] == "diagnostic_only"
-    assert result["caseCount"] == 4
+    assert result["caseCount"] == 8
     assert result["contactSheetCount"] == 1
     assert result["contactLabelCount"] == 2
+    assert result["focusedContactSheetChunkCount"] == 1
+    assert result["focusedContactLabelCount"] == 2
     assert result["eligibleTruthLabelCount"] == 2
+    assert result["readerInputModes"] == [
+        "focused_contact_sheet_chunk",
+        "full_contact_sheet",
+    ]
     assert result["contactSheetTruthMappingVersion"] == (
         CONTACT_SHEET_TRUTH_MAPPING_VERSION
     )
