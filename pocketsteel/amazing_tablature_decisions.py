@@ -84,9 +84,6 @@ def _single_note_alternatives(
     next_actions: Sequence[Mapping[str, Any]] = (),
 ) -> list[dict[str, Any]]:
     previous_by_string = {int(action["string"]): action for action in previous_actions}
-    previous_top = max(previous_actions, key=lambda action: int(action["soundingPitchValue"]))
-    previous_controls = _controls(previous_actions)
-    previous_pitches = [int(action["soundingPitchValue"]) for action in previous_actions]
     controls_by_id = profile.controls_by_id()
     source_signature = (
         int(source_top["string"]),
@@ -117,20 +114,8 @@ def _single_note_alternatives(
                 string in previous_by_string
                 and int(previous_by_string[string]["soundingPitchValue"]) == target_pitch
             )
-            candidate = {
-                "textureSize": 1,
-                "attackVoices": 1,
-                "barTravel": abs(fret - int(previous_top["fret"])),
-                "controlChanges": len(set(controls) ^ previous_controls),
-                "pocketChanges": int(fret != int(previous_top["fret"])),
-                "voiceLeading": min(abs(target_pitch - pitch) for pitch in previous_pitches),
-                "sustainedVoices": sustained,
-                "repickedVoices": int(string in previous_by_string and not sustained),
-                "executionType": "attack",
-                "phraseRole": phrase_role,
-                "mechanicallyValid": True,
-                "voicePitchValues": [target_pitch],
-                "mechanicalActions": [
+            candidate = candidate_feature_record(
+                [
                     {
                         "string": int(string),
                         "fret": int(fret),
@@ -139,11 +124,16 @@ def _single_note_alternatives(
                         "attack": True,
                     }
                 ],
-            }
-            candidate.update(
-                _sequence_features(
-                    candidate["mechanicalActions"], previous_actions, next_actions
-                )
+                previous_actions,
+                phrase_role=phrase_role,
+                next_actions=next_actions,
+            )
+            # Preserve the frozen alternative semantics: holding the same
+            # string/pitch is counted as sustain even though its concrete
+            # review projection remains an explicit attack candidate.
+            candidate["sustainedVoices"] = sustained
+            candidate["repickedVoices"] = int(
+                string in previous_by_string and not sustained
             )
             signature = _ranker_signature(candidate)
             if signature == _ranker_signature(chosen):
