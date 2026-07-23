@@ -37,6 +37,10 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 from pocketsteel.amazing_tablature_decisions import DECISION_DERIVATION_VERSION, derive_decision_annotations
+from pocketsteel.amazing_tablature_transition_decoder import (
+    TransitionDecoderError,
+    classify_transition,
+)
 from pocketsteel.e9_copedents import (
     e9_copedent_profile_digest,
     get_e9_copedent_profile,
@@ -57,6 +61,7 @@ COMBINED_SCORE_TAB_REVIEW_SCHEMA_VERSION = "amazing-tablature-combined-score-tab
 VALIDATION_LINE_AUDIT_SCHEMA_VERSION = "amazing-tablature-validation-line-audit-v1"
 VALIDATION_LINE_PREFLIGHT_VERSION = "validation-line-structural-preflight-v1"
 VALIDATION_MACHINE_RECAPTURE_VERSION = "validation-machine-recapture-v8"
+VALIDATION_CONTACT_CONSENSUS_VERSION = "validation-contact-sheet-consensus-v1"
 VALIDATION_CAPTURE_ISSUE_KINDS = frozenset(
     {
         "page_extraction_failure",
@@ -13382,6 +13387,262 @@ def _tab_action_sequence_from_token(
             "blocking": True,
         }
     return actions, None
+
+
+def _consensus_contact_sheet_tab_events(
+    *,
+    labels: Sequence[str],
+    cells_by_reader: Mapping[str, Mapping[str, Mapping[str, Any]]],
+    profile: Any,
+    tab_system_id: str,
+    transition_decoder: Mapping[str, Any] | None = None,
+    minimum_reader_agreement: int = 2,
+    string_offset: int = 0,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Reconstruct ordered tab states from semantic multi-reader agreement.
+
+    Token typography is not compared directly. Each reader token is parsed
+    through the pinned copedent, and agreement means identical ordered
+    string/fret/control/sounding-pitch states. Source text is omitted from the
+    returned candidate so the report contains only normalized mechanics.
+    """
+
+    if minimum_reader_agreement < 2:
+        raise ExtractionWorkflowError(
+            "Contact-sheet consensus requires at least two agreeing readers."
+        )
+    if len(cells_by_reader) < minimum_reader_agreement:
+        raise ExtractionWorkflowError(
+            "Contact-sheet consensus lacks independent reader outputs."
+        )
+    label_pattern = re.compile(r"^e(?P<event>\d+)s(?P<string>\d+)$", re.I)
+    resolved_by_column: dict[int, list[dict[str, Any]]] = {}
+    unresolved_cells: list[dict[str, Any]] = []
+    resolved_cell_count = 0
+    for label in labels:
+        match = label_pattern.fullmatch(str(label))
+        if match is None:
+            unresolved_cells.append(
+                {
+                    "label": str(label),
+                    "reason": "invalid_contact_sheet_label",
+                }
+            )
+            continue
+        event_column = int(match.group("event"))
+        source_label_string = int(match.group("string"))
+        string = source_label_string + int(string_offset)
+        if not 1 <= string <= 10:
+            unresolved_cells.append(
+                {
+                    "label": str(label),
+                    "eventColumn": event_column,
+                    "sourceLabelString": source_label_string,
+                    "string": string,
+                    "reason": "string_offset_out_of_range",
+                }
+            )
+            continue
+        semantic_candidates: dict[
+            tuple[tuple[int, int, tuple[str, ...], int], ...],
+            list[tuple[str, list[dict[str, Any]], float]],
+        ] = {}
+        for reader_id, reader_cells in cells_by_reader.items():
+            cell = reader_cells.get(str(label)) or {}
+            token = cell.get("token")
+            if token is None or not str(token).strip():
+                continue
+            actions, _issue = _tab_action_sequence_from_token(
+                str(token),
+                string=string,
+                profile=profile,
+                confidence=float(cell.get("confidence") or 0.0),
+                region_id=f"contact-consensus:{tab_system_id}:{label}",
+            )
+            if not actions or any(
+                action.get("mechanicalValidation", {}).get("valid") is not True
+                for action in actions
+            ):
+                continue
+            semantic_key = tuple(
+                (
+                    int(action["string"]),
+                    int(action["fret"]),
+                    tuple(sorted(str(value) for value in action.get("controls") or ())),
+                    int(action["soundingPitchValue"]),
+                )
+                for action in actions
+            )
+            semantic_candidates.setdefault(semantic_key, []).append(
+                (
+                    reader_id,
+                    actions,
+                    float(cell.get("confidence") or 0.0),
+                )
+            )
+        ranked = sorted(
+            semantic_candidates.items(),
+            key=lambda item: (
+                -len(item[1]),
+                -max(value[2] for value in item[1]),
+                item[0],
+            ),
+        )
+        if not ranked or len(ranked[0][1]) < minimum_reader_agreement:
+            unresolved_cells.append(
+                {
+                    "label": str(label),
+                    "eventColumn": event_column,
+                    "sourceLabelString": source_label_string,
+                    "string": string,
+                    "reason": "no_semantic_reader_consensus",
+                    "parseableReaderCount": sum(
+                        len(values) for values in semantic_candidates.values()
+                    ),
+                }
+            )
+            continue
+        agreeing_readers = sorted(value[0] for value in ranked[0][1])
+        selected_actions = copy.deepcopy(
+            max(ranked[0][1], key=lambda value: value[2])[1]
+        )
+        for action in selected_actions:
+            action.pop("sourceToken", None)
+            action["consensusReaderIds"] = agreeing_readers
+            action["consensusReaderCount"] = len(agreeing_readers)
+            action["evidenceClass"] = "deterministic_derivation"
+            action["reviewState"] = "machine_validated"
+        resolved_by_column.setdefault(event_column, []).append(
+            {
+                "label": str(label),
+                "string": string,
+                "actions": selected_actions,
+                "semanticStateDigest": _sha256_json(ranked[0][0]),
+                "agreeingReaderIds": agreeing_readers,
+            }
+        )
+        resolved_cell_count += 1
+
+    events: list[dict[str, Any]] = []
+    unresolved_columns: list[dict[str, Any]] = []
+    for event_column in sorted(resolved_by_column):
+        cells = resolved_by_column[event_column]
+        sequence_lengths = {len(cell["actions"]) for cell in cells}
+        if len(sequence_lengths) != 1:
+            unresolved_columns.append(
+                {
+                    "eventColumn": event_column,
+                    "reason": "grip_cells_have_different_sequence_lengths",
+                    "sequenceLengths": sorted(sequence_lengths),
+                }
+            )
+            continue
+        sequence_length = next(iter(sequence_lengths))
+        for sequence_step in range(sequence_length):
+            actions = [
+                copy.deepcopy(cell["actions"][sequence_step])
+                for cell in sorted(cells, key=lambda value: int(value["string"]))
+            ]
+            is_attack = sequence_step == 0
+            for action in actions:
+                action["attack"] = is_attack
+                action["sustain"] = not is_attack
+                action["executionSchemaVersion"] = EVENT_EXECUTION_SCHEMA_VERSION
+            event = {
+                "tabEventId": _stable_id(
+                    "validation-contact-event",
+                    tab_system_id,
+                    event_column,
+                    sequence_step + 1,
+                ),
+                "eventIndex": len(events) + 1,
+                "sourceEventColumn": event_column,
+                "sourceSequenceStep": sequence_step + 1,
+                "horizontalPosition": 0.0,
+                "measure": 1,
+                "measureHorizontalPosition": 0.0,
+                "steelActions": actions,
+                "evidenceClass": "deterministic_derivation",
+                "confidence": min(
+                    float(action.get("confidence") or 0.0) for action in actions
+                ),
+                "reviewState": "machine_validated",
+                "executionInference": (
+                    "explicit_movement_sequence"
+                    if sequence_step
+                    else "unresolved_attack_or_hold"
+                ),
+            }
+            _refresh_event_execution(event)
+            events.append(event)
+    for event_index, event in enumerate(events):
+        event["eventIndex"] = event_index + 1
+        event["horizontalPosition"] = round(
+            (event_index + 0.5) / max(1, len(events)),
+            7,
+        )
+        event["measureHorizontalPosition"] = event["horizontalPosition"]
+
+    learned_movement_count = 0
+    unresolved_execution_count = 0
+    for previous, current in zip(events, events[1:]):
+        if current.get("executionInference") == "explicit_movement_sequence":
+            continue
+        decision: dict[str, Any] = {"decision": "unresolved"}
+        if transition_decoder is not None:
+            try:
+                decision = classify_transition(
+                    transition_decoder,
+                    previous,
+                    current,
+                )
+            except TransitionDecoderError:
+                decision = {"decision": "unresolved"}
+        if decision.get("decision") == "movement_only":
+            for action in current.get("steelActions") or ():
+                action["attack"] = False
+                action["sustain"] = True
+            current["executionInference"] = "reviewed_source_transition_decoder"
+            current["transitionDecoderEvidence"] = decision
+            _refresh_event_execution(current)
+            learned_movement_count += 1
+        else:
+            unresolved_execution_count += 1
+    if events:
+        events[0]["executionInference"] = "initial_attack"
+
+    expected_columns = {
+        int(match.group("event"))
+        for label in labels
+        if (match := label_pattern.fullmatch(str(label))) is not None
+    }
+    resolved_columns = set(resolved_by_column)
+    diagnostics = {
+        "schemaVersion": VALIDATION_CONTACT_CONSENSUS_VERSION,
+        "readerCount": len(cells_by_reader),
+        "minimumReaderAgreement": minimum_reader_agreement,
+        "stringOffset": int(string_offset),
+        "labelCount": len(labels),
+        "resolvedCellCount": resolved_cell_count,
+        "unresolvedCellCount": len(unresolved_cells),
+        "eventColumnCount": len(expected_columns),
+        "resolvedEventColumnCount": len(resolved_columns),
+        "eventCount": len(events),
+        "unresolvedCells": unresolved_cells,
+        "unresolvedColumns": unresolved_columns,
+        "learnedMovementCount": learned_movement_count,
+        "unresolvedExecutionCount": unresolved_execution_count,
+        "allCellsResolved": not unresolved_cells,
+        "allColumnsDecoded": (
+            resolved_columns == expected_columns and not unresolved_columns
+        ),
+        "mechanicallyValid": all(
+            action.get("mechanicalValidation", {}).get("valid") is True
+            for event in events
+            for action in event.get("steelActions") or ()
+        ),
+    }
+    return events, diagnostics
 
 
 def _tab_action_from_cell(
@@ -27250,6 +27511,536 @@ class AmazingTablatureExtractor:
         report = {**report_core, "reportDigest": report_digest}
         _write_json(remediation_dir / f"report-{report_digest}.json", report)
         _write_json(remediation_dir / "report.json", report)
+        return report
+
+    def prepare_validation_contact_sheet_consensus(
+        self,
+        batch_id: str,
+        *,
+        reader_models: Sequence[str] = (
+            "gemma4:12b",
+            "gemma4:latest",
+            "gemma4:12b-mlx",
+        ),
+    ) -> dict[str, Any]:
+        """Reconstruct validation tab states with multi-model semantic consensus.
+
+        This is a machine preflight only. It never creates validation ground
+        truth, never enters training, and never reads sealed-test paths.
+        """
+
+        normalized_models = tuple(
+            dict.fromkeys(str(value).strip() for value in reader_models if str(value).strip())
+        )
+        if len(normalized_models) < 2:
+            raise ExtractionWorkflowError(
+                "Validation contact consensus requires two distinct reader models."
+            )
+        batch_dir, manifest, work = self._batch_paths(batch_id, "validation")
+        output_root = batch_dir / "extraction" / "validation"
+        pages_dir = output_root / "pages"
+        summary_path = output_root / "summary.json"
+        if not summary_path.exists():
+            raise ExtractionWorkflowError(
+                "Validation contact consensus requires a complete extraction."
+            )
+        extraction_summary = _read_json(summary_path)
+        if (
+            extraction_summary.get("partition") != "validation"
+            or extraction_summary.get("failedPageCount") != 0
+            or extraction_summary.get("sealedTestAccessed") is not False
+        ):
+            raise ExtractionWorkflowError(
+                "Validation extraction lineage is incomplete or sealed-test state is unsafe."
+            )
+        validation_model = extraction_summary.get("validationModel") or {}
+        if not validation_model.get("modelId") or not validation_model.get(
+            "artifactSha256"
+        ):
+            raise ExtractionWorkflowError(
+                "Validation contact consensus requires an exact pinned challenger."
+            )
+        profile = get_e9_copedent_profile(str(manifest["sourceCopedentId"]))
+        registry_path = self.private_root / "training-registry.json"
+        registry = _read_json(registry_path) if registry_path.exists() else {}
+        decoder_candidates: list[tuple[str, dict[str, Any], dict[str, Any]]] = []
+        for decoder_id, metadata in (
+            registry.get("sourceTransitionDecoders") or {}
+        ).items():
+            if (
+                not isinstance(metadata, Mapping)
+                or metadata.get("sourceBatchId") != batch_id
+                or metadata.get("automationEligible") is not True
+            ):
+                continue
+            artifact_path = self.private_root / str(metadata.get("artifact") or "")
+            if (
+                not artifact_path.exists()
+                or _sha256_bytes(artifact_path.read_bytes())
+                != str(metadata.get("artifactSha256") or "")
+            ):
+                continue
+            decoder = _read_json(artifact_path)
+            if (
+                decoder.get("sourceManifestDigest")
+                != str(manifest.get("immutableDigest") or "")
+                or decoder.get("validationDataUsed") is not False
+                or decoder.get("sealedTestDataUsed") is not False
+            ):
+                continue
+            decoder_candidates.append(
+                (str(decoder_id), dict(metadata), decoder)
+            )
+        decoder_candidates.sort(
+            key=lambda value: (
+                str(value[2].get("createdAt") or ""),
+                value[0],
+            )
+        )
+        decoder_id: str | None = None
+        transition_decoder: dict[str, Any] | None = None
+        decoder_artifact_sha256: str | None = None
+        if decoder_candidates:
+            decoder_id, decoder_metadata, transition_decoder = decoder_candidates[-1]
+            decoder_artifact_sha256 = str(
+                decoder_metadata.get("artifactSha256") or ""
+            )
+
+        automation_root = (
+            output_root
+            / "review"
+            / "automation"
+            / VALIDATION_CONTACT_CONSENSUS_VERSION
+        )
+        reader_cache_dir = automation_root / "reader-cache"
+        focused_dir = automation_root / "focused-crops"
+        candidates_dir = automation_root / "candidates"
+        for directory in (
+            automation_root,
+            reader_cache_dir,
+            focused_dir,
+            candidates_dir,
+        ):
+            directory.mkdir(parents=True, exist_ok=True)
+            os.chmod(directory, 0o700)
+        readers = [
+            LocalTabVision(model, "http://127.0.0.1:11434")
+            for model in normalized_models
+        ]
+        contracts = [reader.contract() for reader in readers]
+        model_digests = [str(contract.get("modelDigest") or "") for contract in contracts]
+        if len(set(model_digests)) != len(model_digests) or any(
+            not value for value in model_digests
+        ):
+            raise ExtractionWorkflowError(
+                "Validation consensus readers do not have distinct pinned model artifacts."
+            )
+        reader_ids = [
+            f"{reader.model}:{str(contract['modelDigest'])[:12]}"
+            for reader, contract in zip(readers, contracts, strict=True)
+        ]
+
+        def read_cells(
+            reader: LocalTabVision,
+            reader_id: str,
+            contract: Mapping[str, Any],
+            image_path: Path,
+            labels: Sequence[str],
+        ) -> dict[str, dict[str, Any]]:
+            image_sha = _sha256_bytes(image_path.read_bytes())
+            cache_key = _sha256_json(
+                {
+                    "imageSha256": image_sha,
+                    "labels": list(labels),
+                    "readerContract": contract,
+                }
+            )
+            cache_path = reader_cache_dir / f"{cache_key}.json"
+            if cache_path.exists():
+                cached = _read_json(cache_path)
+                if (
+                    cached.get("imageSha256") == image_sha
+                    and cached.get("labels") == list(labels)
+                    and cached.get("readerContract") == contract
+                    and isinstance(cached.get("cells"), Mapping)
+                ):
+                    return {
+                        str(key): dict(value)
+                        for key, value in cached["cells"].items()
+                        if isinstance(value, Mapping)
+                    }
+            cells = reader.read(image_path, labels)
+            _write_json(
+                cache_path,
+                {
+                    "schemaVersion": VALIDATION_CONTACT_CONSENSUS_VERSION,
+                    "readerId": reader_id,
+                    "readerContract": dict(contract),
+                    "imageSha256": image_sha,
+                    "labels": list(labels),
+                    "cells": cells,
+                    "validationMayTrain": False,
+                    "sealedTestAccessed": False,
+                },
+            )
+            return cells
+
+        def decode_with_string_origin_consensus(
+            *,
+            labels: Sequence[str],
+            cells_by_reader: Mapping[
+                str,
+                Mapping[str, Mapping[str, Any]],
+            ],
+            tab_system_id: str,
+        ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+            hypotheses: list[
+                tuple[int, list[dict[str, Any]], dict[str, Any]]
+            ] = []
+            for string_offset in range(-2, 3):
+                events, diagnostics = _consensus_contact_sheet_tab_events(
+                    labels=labels,
+                    cells_by_reader=cells_by_reader,
+                    profile=profile,
+                    tab_system_id=tab_system_id,
+                    transition_decoder=transition_decoder,
+                    string_offset=string_offset,
+                )
+                hypotheses.append((string_offset, events, diagnostics))
+            complete = [
+                value
+                for value in hypotheses
+                if value[2]["allCellsResolved"]
+                and value[2]["allColumnsDecoded"]
+                and value[2]["mechanicallyValid"]
+                and value[2]["eventCount"] > 0
+            ]
+            zero_offset = next(value for value in hypotheses if value[0] == 0)
+            if zero_offset in complete:
+                offset, events, diagnostics = zero_offset
+                diagnostics["stringOriginSelection"] = (
+                    "detected_grid_origin_mechanically_complete"
+                )
+                diagnostics["eligibleStringOffsets"] = [
+                    value[0] for value in complete
+                ]
+                return events, diagnostics
+            if len(complete) == 1:
+                offset, events, diagnostics = complete[0]
+                diagnostics["stringOriginSelection"] = (
+                    "unique_complete_mechanical_hypothesis"
+                )
+                diagnostics["eligibleStringOffsets"] = [offset]
+                return events, diagnostics
+            if complete:
+                _offset, events, diagnostics = complete[0]
+                diagnostics["stringOriginSelection"] = (
+                    "withheld_ambiguous_complete_hypotheses"
+                )
+                diagnostics["eligibleStringOffsets"] = [
+                    value[0] for value in complete
+                ]
+                diagnostics["allCellsResolved"] = False
+                return events, diagnostics
+            best = max(
+                hypotheses,
+                key=lambda value: (
+                    int(value[2]["resolvedCellCount"]),
+                    int(value[2]["resolvedEventColumnCount"]),
+                    int(value[2]["eventCount"]),
+                    -abs(value[0]),
+                ),
+            )
+            offset, events, diagnostics = best
+            unresolved_cells = list(diagnostics.get("unresolvedCells") or ())
+            out_of_range = [
+                value
+                for value in unresolved_cells
+                if value.get("reason") == "string_offset_out_of_range"
+            ]
+            if (
+                out_of_range
+                and diagnostics.get("resolvedEventColumnCount")
+                == diagnostics.get("eventColumnCount")
+                and diagnostics.get("resolvedCellCount", 0)
+                / max(1, diagnostics.get("labelCount", 0))
+                >= 0.90
+            ):
+                diagnostics["unresolvedCells"] = [
+                    value
+                    for value in unresolved_cells
+                    if value.get("reason") != "string_offset_out_of_range"
+                ]
+                diagnostics["unresolvedCellCount"] = len(
+                    diagnostics["unresolvedCells"]
+                )
+                diagnostics["excludedOutOfRangeCandidateCount"] = len(
+                    out_of_range
+                )
+                diagnostics["excludedOutOfRangeCandidateReason"] = (
+                    "global_string_origin_places_candidate_outside_ten_string_grid"
+                )
+                diagnostics["allCellsResolved"] = not diagnostics[
+                    "unresolvedCells"
+                ]
+            diagnostics["stringOriginSelection"] = (
+                "best_incomplete_hypothesis"
+            )
+            diagnostics["eligibleStringOffsets"] = []
+            diagnostics["selectedDiagnosticStringOffset"] = offset
+            return events, diagnostics
+
+        def focused_sheet(
+            tab_system: Mapping[str, Any],
+            unresolved_labels: Collection[str],
+            destination: Path,
+        ) -> Path | None:
+            selected: list[tuple[str, Image.Image]] = []
+            unresolved = set(unresolved_labels)
+            for sheet in tab_system.get("contactSheets") or ():
+                labels = [str(value) for value in sheet.get("labels") or ()]
+                image_path = output_root / str(sheet.get("relativePath") or "")
+                if not image_path.exists() or not labels:
+                    continue
+                image = Image.open(image_path).convert("RGB")
+                rows = int(math.ceil(len(labels) / 4))
+                card_width = image.width // 4
+                card_height = image.height // max(1, rows)
+                for index, label in enumerate(labels):
+                    if label not in unresolved:
+                        continue
+                    left = (index % 4) * card_width
+                    top = (index // 4) * card_height
+                    card = image.crop(
+                        (
+                            left,
+                            top,
+                            min(image.width, left + card_width),
+                            min(image.height, top + card_height),
+                        )
+                    ).resize(
+                        (card_width * 3, card_height * 3),
+                        Image.Resampling.LANCZOS,
+                    )
+                    selected.append((label, ImageOps.autocontrast(card.convert("RGB"))))
+            if not selected:
+                return None
+            columns = min(4, len(selected))
+            card_width = max(card.width for _label, card in selected)
+            card_height = max(card.height for _label, card in selected)
+            rows = int(math.ceil(len(selected) / columns))
+            image = Image.new(
+                "RGB",
+                (columns * card_width, rows * card_height),
+                "white",
+            )
+            for index, (_label, card) in enumerate(selected):
+                image.paste(
+                    card,
+                    (
+                        (index % columns) * card_width,
+                        (index // columns) * card_height,
+                    ),
+                )
+            image.save(destination, "JPEG", quality=96, optimize=True)
+            os.chmod(destination, 0o600)
+            return destination
+
+        line_results: list[dict[str, Any]] = []
+        expected_run_digest = str(extraction_summary.get("runDigest") or "")
+        for work_item in work:
+            input_id = str(work_item.get("inputId") or "")
+            page_path = pages_dir / f"{input_id}.json"
+            if not page_path.exists():
+                raise ExtractionWorkflowError(
+                    f"Validation page record is missing for {input_id}."
+                )
+            record = _read_json(page_path)
+            if (
+                record.get("datasetPartition") != "validation"
+                or str(record.get("runDigest") or "") != expected_run_digest
+            ):
+                raise ExtractionWorkflowError(
+                    f"Validation page lineage is stale for {input_id}."
+                )
+            machine_record_digest = _sha256_json(record)
+            for tab_system in record.get("tabSystems") or ():
+                tab_system_id = str(tab_system.get("tabSystemId") or "")
+                system_index = int(tab_system.get("systemIndex") or 0)
+                labels: list[str] = []
+                cells_by_reader: dict[str, dict[str, dict[str, Any]]] = {
+                    reader_id: {} for reader_id in reader_ids
+                }
+                for sheet in tab_system.get("contactSheets") or ():
+                    sheet_labels = [
+                        str(value) for value in sheet.get("labels") or ()
+                    ]
+                    image_path = output_root / str(sheet.get("relativePath") or "")
+                    if not image_path.exists():
+                        raise ExtractionWorkflowError(
+                            f"Contact sheet is missing for {input_id} system {system_index}."
+                        )
+                    labels.extend(sheet_labels)
+                    for reader, reader_id, contract in zip(
+                        readers,
+                        reader_ids,
+                        contracts,
+                        strict=True,
+                    ):
+                        cells_by_reader[reader_id].update(
+                            read_cells(
+                                reader,
+                                reader_id,
+                                contract,
+                                image_path,
+                                sheet_labels,
+                            )
+                        )
+                events, diagnostics = decode_with_string_origin_consensus(
+                    labels=labels,
+                    cells_by_reader=cells_by_reader,
+                    tab_system_id=tab_system_id,
+                )
+                focused_sha256: str | None = None
+                if diagnostics["unresolvedCellCount"]:
+                    unresolved_labels = [
+                        str(item.get("label") or "")
+                        for item in diagnostics["unresolvedCells"]
+                        if item.get("label")
+                    ]
+                    focused_path = focused_dir / (
+                        f"{input_id}-system-{system_index:02d}.jpg"
+                    )
+                    generated = focused_sheet(
+                        tab_system,
+                        unresolved_labels,
+                        focused_path,
+                    )
+                    if generated is not None:
+                        focused_sha256 = _sha256_bytes(generated.read_bytes())
+                        for reader, reader_id, contract in zip(
+                            readers,
+                            reader_ids,
+                            contracts,
+                            strict=True,
+                        ):
+                            focused_cells = read_cells(
+                                reader,
+                                reader_id,
+                                contract,
+                                generated,
+                                unresolved_labels,
+                            )
+                            cells_by_reader[reader_id].update(focused_cells)
+                        events, diagnostics = decode_with_string_origin_consensus(
+                            labels=labels,
+                            cells_by_reader=cells_by_reader,
+                            tab_system_id=tab_system_id,
+                        )
+                complete = bool(
+                    diagnostics["allCellsResolved"]
+                    and diagnostics["allColumnsDecoded"]
+                    and diagnostics["mechanicallyValid"]
+                    and diagnostics["eventCount"] > 0
+                )
+                candidate_core = {
+                    "schemaVersion": VALIDATION_CONTACT_CONSENSUS_VERSION,
+                    "batchId": batch_id,
+                    "partition": "validation",
+                    "inputId": input_id,
+                    "systemIndex": system_index,
+                    "tabSystemId": tab_system_id,
+                    "machineRecordDigest": machine_record_digest,
+                    "validationRunDigest": expected_run_digest,
+                    "validationModel": copy.deepcopy(validation_model),
+                    "sourceTransitionDecoder": {
+                        "decoderId": decoder_id,
+                        "artifactSha256": decoder_artifact_sha256,
+                    },
+                    "events": events,
+                    "diagnostics": diagnostics,
+                    "focusedCropSha256": focused_sha256,
+                    "status": (
+                        "complete_machine_candidate"
+                        if complete
+                        else "withheld_incomplete"
+                    ),
+                    "humanTruthUsed": False,
+                    "validationMayTrain": False,
+                    "sealedTestAccessed": False,
+                }
+                candidate_digest = _sha256_json(candidate_core)
+                candidate = {
+                    **candidate_core,
+                    "candidateDigest": candidate_digest,
+                }
+                candidate_path = (
+                    candidates_dir
+                    / f"{input_id}-system-{system_index:02d}-{candidate_digest[:12]}.json"
+                )
+                _write_json(candidate_path, candidate)
+                line_results.append(
+                    {
+                        "inputId": input_id,
+                        "systemIndex": system_index,
+                        "tabSystemId": tab_system_id,
+                        "status": candidate_core["status"],
+                        "eventColumnCount": diagnostics["eventColumnCount"],
+                        "eventCount": diagnostics["eventCount"],
+                        "resolvedCellCount": diagnostics["resolvedCellCount"],
+                        "unresolvedCellCount": diagnostics["unresolvedCellCount"],
+                        "learnedMovementCount": diagnostics["learnedMovementCount"],
+                        "unresolvedExecutionCount": diagnostics[
+                            "unresolvedExecutionCount"
+                        ],
+                        "candidateDigest": candidate_digest,
+                        "candidatePath": str(
+                            candidate_path.relative_to(output_root)
+                        ),
+                    }
+                )
+        status_counts = Counter(str(value["status"]) for value in line_results)
+        report_core = {
+            "schemaVersion": VALIDATION_CONTACT_CONSENSUS_VERSION,
+            "batchId": batch_id,
+            "partition": "validation",
+            "validationRunDigest": expected_run_digest,
+            "validationModel": copy.deepcopy(validation_model),
+            "sourceTransitionDecoder": {
+                "decoderId": decoder_id,
+                "artifactSha256": decoder_artifact_sha256,
+            },
+            "readerContracts": contracts,
+            "lineCount": len(line_results),
+            "completeLineCount": int(
+                status_counts["complete_machine_candidate"]
+            ),
+            "withheldLineCount": int(status_counts["withheld_incomplete"]),
+            "unresolvedCellCount": sum(
+                int(value["unresolvedCellCount"]) for value in line_results
+            ),
+            "eventColumnCount": sum(
+                int(value["eventColumnCount"]) for value in line_results
+            ),
+            "reconstructedEventCount": sum(
+                int(value["eventCount"]) for value in line_results
+            ),
+            "learnedMovementCount": sum(
+                int(value["learnedMovementCount"]) for value in line_results
+            ),
+            "lines": line_results,
+            "humanTruthUsed": False,
+            "validationMayTrain": False,
+            "validationAccessed": True,
+            "sealedTestAccessed": False,
+        }
+        report_digest = _sha256_json(report_core)
+        report = {**report_core, "reportDigest": report_digest}
+        _write_json(
+            automation_root / f"report-{report_digest}.json",
+            report,
+        )
+        _write_json(automation_root / "report.json", report)
         return report
 
     def prepare_validation_line_audit(

@@ -45,6 +45,7 @@ from pocketsteel.amazing_tablature_extraction import (
     _apply_pitch_only_score_audit_scope,
     _classify_page,
     _combined_score_tab_columns,
+    _consensus_contact_sheet_tab_events,
     _combined_score_tab_console_html,
     _combined_feedback_score_audit_bridge,
     _derive_exercises,
@@ -6326,6 +6327,77 @@ def test_printed_tab_movement_chain_becomes_sustained_state_events(
         assert actions[1]["controlChanges"] == [
             {"control": control, "action": change, "timing": "during_sustain"}
         ]
+
+
+def test_contact_sheet_consensus_compares_mechanics_not_token_typography() -> None:
+    profile = get_e9_copedent_profile("source-e9-abc-defg-v1")
+    events, diagnostics = _consensus_contact_sheet_tab_events(
+        labels=["e1s5", "e2s5"],
+        cells_by_reader={
+            "reader-a": {
+                "e1s5": {"token": "8A", "confidence": 0.99},
+                "e2s5": {"token": "8", "confidence": 0.99},
+            },
+            "reader-b": {
+                "e1s5": {"token": "08a", "confidence": 0.97},
+                "e2s5": {"token": "08", "confidence": 0.97},
+            },
+        },
+        profile=profile,
+        tab_system_id="tab-system-consensus",
+    )
+
+    assert diagnostics["allCellsResolved"] is True
+    assert diagnostics["allColumnsDecoded"] is True
+    assert diagnostics["mechanicallyValid"] is True
+    assert diagnostics["eventColumnCount"] == 2
+    assert len(events) == 2
+    assert events[0]["steelActions"][0]["fret"] == 8
+    assert events[0]["steelActions"][0]["controls"] == ["A"]
+    assert events[0]["steelActions"][0]["consensusReaderCount"] == 2
+    assert events[1]["steelActions"][0]["controls"] == []
+    assert events[1]["executionInference"] == "unresolved_attack_or_hold"
+
+
+def test_contact_sheet_consensus_withholds_single_reader_disagreement() -> None:
+    profile = get_e9_copedent_profile("source-e9-abc-defg-v1")
+    events, diagnostics = _consensus_contact_sheet_tab_events(
+        labels=["e1s5"],
+        cells_by_reader={
+            "reader-a": {"e1s5": {"token": "8", "confidence": 0.99}},
+            "reader-b": {"e1s5": {"token": "9", "confidence": 0.99}},
+        },
+        profile=profile,
+        tab_system_id="tab-system-disagreement",
+    )
+
+    assert events == []
+    assert diagnostics["allCellsResolved"] is False
+    assert diagnostics["allColumnsDecoded"] is False
+    assert diagnostics["unresolvedCellCount"] == 1
+    assert diagnostics["unresolvedCells"][0]["reason"] == (
+        "no_semantic_reader_consensus"
+    )
+
+
+def test_contact_sheet_consensus_applies_one_global_string_origin_offset() -> None:
+    profile = get_e9_copedent_profile("source-e9-abc-defg-v1")
+    cells = {
+        "reader-a": {"e1s6": {"token": "8A", "confidence": 0.99}},
+        "reader-b": {"e1s6": {"token": "08a", "confidence": 0.99}},
+    }
+    events, diagnostics = _consensus_contact_sheet_tab_events(
+        labels=["e1s6"],
+        cells_by_reader=cells,
+        profile=profile,
+        tab_system_id="tab-system-shifted-origin",
+        string_offset=-1,
+    )
+
+    assert diagnostics["allCellsResolved"] is True
+    assert diagnostics["stringOffset"] == -1
+    assert events[0]["steelActions"][0]["string"] == 5
+    assert events[0]["steelActions"][0]["controls"] == ["A"]
 
 
 def test_movement_chain_cell_is_retained_while_low_confidence_cell_is_quarantined() -> None:

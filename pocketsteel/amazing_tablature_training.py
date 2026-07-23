@@ -3726,6 +3726,7 @@ class AmazingTablatureTrainingStore:
         )
         payload = {
             **decoder,
+            "createdAt": _utc_now(),
             "status": (
                 "source_decoder_eligible"
                 if automation_eligible
@@ -3753,6 +3754,7 @@ class AmazingTablatureTrainingStore:
             "artifactSha256": artifact_sha256,
             "sourceBatchId": batch_id,
             "status": payload["status"],
+            "createdAt": payload["createdAt"],
             "automationEligible": automation_eligible,
             "validationDataUsed": False,
             "sealedTestDataUsed": False,

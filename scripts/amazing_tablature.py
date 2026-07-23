@@ -589,6 +589,24 @@ def _parser() -> argparse.ArgumentParser:
         help="Require the reviewer to confirm both the displayed tablature and score mapping.",
     )
 
+    prepare_validation_contact_consensus = subparsers.add_parser(
+        "prepare-validation-contact-consensus",
+        help=(
+            "Reconstruct validation tab event columns through semantic agreement "
+            "between distinct local vision-model artifacts."
+        ),
+    )
+    prepare_validation_contact_consensus.add_argument("batch_id")
+    prepare_validation_contact_consensus.add_argument(
+        "--reader-model",
+        action="append",
+        default=[],
+        help=(
+            "Local vision model used as an independent cell reader; repeat at "
+            "least twice. Defaults to the three pinned local Gemma readers."
+        ),
+    )
+
     prepare_validation_line_audit = subparsers.add_parser(
         "prepare-validation-line-audit",
         help=(
@@ -1265,6 +1283,17 @@ def main() -> int:
                 activate=not args.no_activate,
                 provisional_joint_review=args.provisional_joint_review,
             )
+        elif args.command == "prepare-validation-contact-consensus":
+            extractor = AmazingTablatureExtractor(args.root)
+            if args.reader_model:
+                result = extractor.prepare_validation_contact_sheet_consensus(
+                    args.batch_id,
+                    reader_models=args.reader_model,
+                )
+            else:
+                result = extractor.prepare_validation_contact_sheet_consensus(
+                    args.batch_id,
+                )
         elif args.command == "prepare-validation-line-audit":
             result = AmazingTablatureExtractor(args.root).prepare_validation_line_audit(
                 args.batch_id,
