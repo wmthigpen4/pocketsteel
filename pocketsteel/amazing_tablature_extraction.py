@@ -56,7 +56,7 @@ FEEDBACK_CORRECTION_CONFIRMATION_SCHEMA_VERSION = (
 COMBINED_SCORE_TAB_REVIEW_SCHEMA_VERSION = "amazing-tablature-combined-score-tab-review-v1"
 VALIDATION_LINE_AUDIT_SCHEMA_VERSION = "amazing-tablature-validation-line-audit-v1"
 VALIDATION_LINE_PREFLIGHT_VERSION = "validation-line-structural-preflight-v1"
-VALIDATION_MACHINE_RECAPTURE_VERSION = "validation-machine-recapture-v1"
+VALIDATION_MACHINE_RECAPTURE_VERSION = "validation-machine-recapture-v2"
 VALIDATION_CAPTURE_ISSUE_KINDS = frozenset(
     {
         "page_extraction_failure",
@@ -4941,6 +4941,39 @@ def _score_tab_pitch_relationship(
     return "mismatch"
 
 
+def _ordered_notation_transposition(
+    score_pitch_sets: Sequence[Collection[int]],
+    tab_pitch_sets: Sequence[Collection[int]],
+) -> int | None:
+    """Return one line-wide octave convention that preserves every pitch set.
+
+    Guitar-family treble notation commonly writes pitches one octave above
+    their sounding register.  That convention must remain explicit: source
+    score pitches and sounding steel pitches are not rewritten.  A non-zero
+    offset is accepted only when one of the bounded octave displacements makes
+    every ordered score set a subset of its independently captured tab state.
+    """
+
+    if not score_pitch_sets or len(score_pitch_sets) != len(tab_pitch_sets):
+        return None
+    valid_offsets: list[int] = []
+    for offset in (-24, -12, 0, 12, 24):
+        if all(
+            bool(score_values)
+            and bool(tab_values)
+            and {int(value) for value in score_values}.issubset(
+                {int(value) + offset for value in tab_values}
+            )
+            for score_values, tab_values in zip(
+                score_pitch_sets, tab_pitch_sets, strict=True
+            )
+        ):
+            valid_offsets.append(offset)
+    if not valid_offsets:
+        return None
+    return min(valid_offsets, key=lambda value: (abs(value), value != 0, value))
+
+
 def _ordered_score_attacks(
     score_system: Mapping[str, Any],
     *,
@@ -5213,6 +5246,8 @@ def _full_line_score_recognition_events(
 def _exact_pitch_anchor_pairs(
     score_attacks: Sequence[Mapping[str, Any]],
     tab_attacks: Sequence[Mapping[str, Any]],
+    *,
+    notation_offset: int = 0,
 ) -> list[tuple[int, int]]:
     """Find monotonic exact pitch-and-octave anchors across a complete line.
 
@@ -5228,7 +5263,10 @@ def _exact_pitch_anchor_pairs(
     for score_index in range(score_count - 1, -1, -1):
         score_values = list(score_attacks[score_index].get("pitchValues") or [])
         for tab_index in range(tab_count - 1, -1, -1):
-            tab_values = list(tab_attacks[tab_index].get("pitchValues") or [])
+            tab_values = [
+                int(value) + notation_offset
+                for value in tab_attacks[tab_index].get("pitchValues") or []
+            ]
             options = [
                 objectives[score_index + 1][tab_index],
                 objectives[score_index][tab_index + 1],
@@ -5249,7 +5287,10 @@ def _exact_pitch_anchor_pairs(
     tab_index = 0
     while score_index < score_count and tab_index < tab_count:
         score_values = list(score_attacks[score_index].get("pitchValues") or [])
-        tab_values = list(tab_attacks[tab_index].get("pitchValues") or [])
+        tab_values = [
+            int(value) + notation_offset
+            for value in tab_attacks[tab_index].get("pitchValues") or []
+        ]
         following = objectives[score_index + 1][tab_index + 1]
         match_objective = (
             following[0] + 1,
@@ -5281,6 +5322,8 @@ def _exact_pitch_anchor_pairs(
 def _anchor_aligned_score_tab_columns(
     score_attacks: Sequence[Mapping[str, Any]],
     tab_states: Sequence[Mapping[str, Any]],
+    *,
+    notation_offset: int = 0,
 ) -> tuple[list[dict[str, Any]], list[tuple[int, int]]]:
     """Build review columns around exact anchors without inventing mappings."""
 
@@ -5292,7 +5335,11 @@ def _anchor_aligned_score_tab_columns(
     # picked attacks as alignable creates a false empty tab event beside the
     # written chord and a separate, unpaired sustain movement.
     if len(score_attacks) == len(tab_states) and score_attacks:
-        anchors = _exact_pitch_anchor_pairs(score_attacks, tab_states)
+        anchors = _exact_pitch_anchor_pairs(
+            score_attacks,
+            tab_states,
+            notation_offset=notation_offset,
+        )
         exact_pairs = set(anchors)
         columns: list[dict[str, Any]] = []
         tab_attack_ordinal = -1
@@ -5307,7 +5354,11 @@ def _anchor_aligned_score_tab_columns(
             else:
                 attack_ordinal = None
             relationship = _score_tab_pitch_relationship(
-                score.get("pitchValues") or [], tab.get("pitchValues") or []
+                score.get("pitchValues") or [],
+                [
+                    int(value) + notation_offset
+                    for value in tab.get("pitchValues") or []
+                ],
             )
             is_exact = relationship == "exact"
             is_movement = not bool(tab.get("isAttack"))
@@ -5319,6 +5370,11 @@ def _anchor_aligned_score_tab_columns(
                     "tabStateOrdinal": state_index,
                     "tabAttackOrdinal": attack_ordinal,
                     "relationship": relationship,
+                    "scoreNotationTranspositionSemitones": notation_offset,
+                    "rawPitchRelationship": _score_tab_pitch_relationship(
+                        score.get("pitchValues") or [],
+                        tab.get("pitchValues") or [],
+                    ),
                     "alignmentRole": (
                         "exact_sustain_pitch_anchor"
                         if is_exact and is_movement
@@ -5339,7 +5395,11 @@ def _anchor_aligned_score_tab_columns(
             )
         return columns, anchors
 
-    anchors = _exact_pitch_anchor_pairs(score_attacks, tab_attacks)
+    anchors = _exact_pitch_anchor_pairs(
+        score_attacks,
+        tab_attacks,
+        notation_offset=notation_offset,
+    )
     attack_columns: list[dict[str, Any]] = []
 
     def add_column(
@@ -5358,7 +5418,11 @@ def _anchor_aligned_score_tab_columns(
             role = "unmatched_score_attack"
         else:
             relationship = _score_tab_pitch_relationship(
-                score.get("pitchValues") or [], tab.get("pitchValues") or []
+                score.get("pitchValues") or [],
+                [
+                    int(value) + notation_offset
+                    for value in tab.get("pitchValues") or []
+                ],
             )
             role = "exact_pitch_anchor" if exact_anchor else "unresolved_gap_candidate"
         attack_columns.append(
@@ -5368,6 +5432,15 @@ def _anchor_aligned_score_tab_columns(
                 "scoreAttackOrdinal": score_index,
                 "tabAttackOrdinal": tab_index,
                 "relationship": relationship,
+                "scoreNotationTranspositionSemitones": notation_offset,
+                "rawPitchRelationship": (
+                    _score_tab_pitch_relationship(
+                        score.get("pitchValues") or [],
+                        tab.get("pitchValues") or [],
+                    )
+                    if score is not None and tab is not None
+                    else relationship
+                ),
                 "alignmentRole": role,
                 "exactPitchAnchor": exact_anchor,
                 "exactPitchAndOctaveSet": relationship == "exact",
@@ -5451,8 +5524,20 @@ def _combined_score_tab_columns(
     )
     tab_states = _ordered_tab_states(tab_system)
     tab_attack_states = [state for state in tab_states if state.get("isAttack")]
+    notation_comparison_states = (
+        tab_states
+        if score_attacks and len(score_attacks) == len(tab_states)
+        else tab_attack_states
+    )
+    notation_offset = _ordered_notation_transposition(
+        [attack.get("pitchValues") or [] for attack in score_attacks],
+        [state.get("pitchValues") or [] for state in notation_comparison_states],
+    )
+    effective_notation_offset = notation_offset if notation_offset is not None else 0
     anchor_aligned_columns, exact_anchors = _anchor_aligned_score_tab_columns(
-        score_attacks, tab_states
+        score_attacks,
+        tab_states,
+        notation_offset=effective_notation_offset,
     )
     columns: list[dict[str, Any]] = []
     score_index = 0
@@ -5463,7 +5548,11 @@ def _combined_score_tab_columns(
             score = score_attacks[score_index]
             score_index += 1
             relationship = _score_tab_pitch_relationship(
-                score.get("pitchValues") or [], tab.get("pitchValues") or []
+                score.get("pitchValues") or [],
+                [
+                    int(value) + effective_notation_offset
+                    for value in tab.get("pitchValues") or []
+                ],
             )
         elif not tab.get("isAttack"):
             relationship = "movement_during_sustain"
@@ -5481,6 +5570,15 @@ def _combined_score_tab_columns(
                 "scoreAttack": copy.deepcopy(score),
                 "tabState": copy.deepcopy(tab),
                 "relationship": relationship,
+                "scoreNotationTranspositionSemitones": effective_notation_offset,
+                "rawPitchRelationship": (
+                    _score_tab_pitch_relationship(
+                        score.get("pitchValues") or [],
+                        tab.get("pitchValues") or [],
+                    )
+                    if score is not None
+                    else relationship
+                ),
                 "exactPitchAndOctaveSet": relationship == "exact",
                 "possibleMissingScoreNote": relationship == "subset_requires_review",
                 "humanResolutionRequired": relationship
@@ -5570,6 +5668,8 @@ def _combined_score_tab_columns(
         "tabAttackTextureSizes": tab_attack_texture_sizes,
         "monophonicScoreTextureConflict": monophonic_score_texture_conflict,
         "mechanicallyValid": mechanical_valid,
+        "scoreNotationTranspositionSemitones": effective_notation_offset,
+        "notationTranspositionEstablished": notation_offset is not None,
         "scoreReaderIndependentOfTabPitches": True,
         "falseHarmonyInferenceAllowed": False,
         "automaticPitchGatePassed": exact,
@@ -5869,27 +5969,97 @@ def _machine_localized_score_events(
     return events
 
 
+def _validation_machine_score_from_existing_omr(
+    score_system: Mapping[str, Any],
+    *,
+    expected_event_count: int,
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Reuse only a complete independent Audiveris capture for validation.
+
+    Validation remediation must not force a score-only vision model to emit
+    the tablature detector's count and then mistake that constrained answer for
+    independent evidence.  The OMR result is eligible only when its own
+    MusicXML lineage, ordered attack count, pitches, and key signature are all
+    complete.  Otherwise the line remains withheld.
+    """
+
+    musicxml = score_system.get("musicXml") or {}
+    if (
+        not isinstance(musicxml, Mapping)
+        or str(musicxml.get("reader") or "") != "audiveris-musicxml-v1"
+        or not str(musicxml.get("relativePath") or "")
+        or not str(musicxml.get("sha256") or "")
+    ):
+        raise ExtractionWorkflowError(
+            "Independent validation score capture lacks pinned Audiveris MusicXML lineage."
+        )
+    score_events = copy.deepcopy(list(score_system.get("scoreEvents") or []))
+    score_attacks = _ordered_score_attacks(score_system)
+    if len(score_attacks) != expected_event_count:
+        raise ExtractionWorkflowError(
+            "Independent Audiveris score capture does not match the machine geometry count "
+            f"({len(score_attacks)} versus {expected_event_count})."
+        )
+    if any(not attack.get("pitchValues") for attack in score_attacks):
+        raise ExtractionWorkflowError(
+            "Independent Audiveris score capture contains a blank pitch event."
+        )
+    raw_key = score_system.get("keySignatureFifths")
+    if raw_key is None:
+        raw_key = score_system.get("keyFifths")
+    if isinstance(raw_key, bool) or not isinstance(raw_key, (int, float)):
+        raise ExtractionWorkflowError(
+            "Independent Audiveris score capture lacks an explicit key signature."
+        )
+    key_fifths = int(raw_key)
+    if float(raw_key) != key_fifths or not -7 <= key_fifths <= 7:
+        raise ExtractionWorkflowError(
+            "Independent Audiveris score capture has an invalid key signature."
+        )
+    confidence_values = [
+        float(event.get("confidence") or 0.0)
+        for event in score_events
+        if not event.get("rest")
+    ]
+    recognition = {
+        "reader": "audiveris-musicxml-v1",
+        "captureSource": "existing_independent_musicxml",
+        "musicXmlSha256": str(musicxml["sha256"]),
+        "eventCount": len(score_attacks),
+        "keySignatureFifths": key_fifths,
+        "confidence": round(min(confidence_values), 4)
+        if confidence_values
+        else 0.0,
+        "tablatureOrExpectedPitchesProvidedToReader": False,
+        "humanTruthUsed": False,
+    }
+    return score_events, recognition
+
+
 def _machine_score_is_contained_in_tab(
     score_events: Sequence[Mapping[str, Any]],
     tab_events: Sequence[Mapping[str, Any]],
 ) -> bool:
     score_groups = _score_event_groups_by_printed_position(score_events)
-    if len(score_groups) != len(tab_events):
-        return False
-    for score_group, tab_event in zip(score_groups, tab_events, strict=True):
-        score_values = {
-            int(event["pitchValue"])
-            for event in score_group
-            if event.get("pitchValue") is not None
-        }
-        tab_values = {
-            int(action["soundingPitchValue"])
-            for action in tab_event.get("steelActions") or []
-            if action.get("soundingPitchValue") is not None
-        }
-        if not score_values or not score_values.issubset(tab_values):
-            return False
-    return True
+    notation_offset = _ordered_notation_transposition(
+        [
+            {
+                int(event["pitchValue"])
+                for event in score_group
+                if event.get("pitchValue") is not None
+            }
+            for score_group in score_groups
+        ],
+        [
+            {
+                int(action["soundingPitchValue"])
+                for action in tab_event.get("steelActions") or []
+                if action.get("soundingPitchValue") is not None
+            }
+            for tab_event in tab_events
+        ],
+    )
+    return notation_offset is not None
 
 
 def _machine_score_tab_containment_diagnostics(
@@ -5897,21 +6067,30 @@ def _machine_score_tab_containment_diagnostics(
     tab_events: Sequence[Mapping[str, Any]],
 ) -> dict[str, Any]:
     score_groups = _score_event_groups_by_printed_position(score_events)
-    exact_count = 0
-    nearest_delta_histogram: Counter[int] = Counter()
-    score_pitch_counts: Counter[int] = Counter()
-    tab_pitch_counts: Counter[int] = Counter()
-    for score_group, tab_event in zip(score_groups, tab_events, strict=False):
-        score_values = {
+    score_sets = [
+        {
             int(event["pitchValue"])
             for event in score_group
             if event.get("pitchValue") is not None
         }
-        tab_values = {
+        for score_group in score_groups
+    ]
+    tab_sets = [
+        {
             int(action["soundingPitchValue"])
             for action in tab_event.get("steelActions") or []
             if action.get("soundingPitchValue") is not None
         }
+        for tab_event in tab_events
+    ]
+    notation_offset = _ordered_notation_transposition(score_sets, tab_sets)
+    diagnostic_offset = notation_offset if notation_offset is not None else 0
+    exact_count = 0
+    nearest_delta_histogram: Counter[int] = Counter()
+    score_pitch_counts: Counter[int] = Counter()
+    tab_pitch_counts: Counter[int] = Counter()
+    for score_values, raw_tab_values in zip(score_sets, tab_sets, strict=False):
+        tab_values = {value + diagnostic_offset for value in raw_tab_values}
         score_pitch_counts[len(score_values)] += 1
         tab_pitch_counts[len(tab_values)] += 1
         if score_values and score_values.issubset(tab_values):
@@ -5926,6 +6105,8 @@ def _machine_score_tab_containment_diagnostics(
         "scoreEventGroupCount": len(score_groups),
         "tabEventCount": len(tab_events),
         "containedEventCount": exact_count,
+        "scoreNotationTranspositionSemitones": notation_offset,
+        "notationTranspositionEstablished": notation_offset is not None,
         "nearestPitchDeltaHistogram": {
             str(delta): count for delta, count in sorted(nearest_delta_histogram.items())
         },
@@ -8269,6 +8450,7 @@ class LocalTabSystemVision(LocalTabVision):
         expected_event_count: int,
         constraint_source: str = "human_reviewed_discovery_feedback",
         guided: bool = False,
+        expected_cell_counts: Sequence[int] | None = None,
     ) -> dict[str, Any]:
         if not 1 <= expected_event_count <= 128:
             raise ExtractionWorkflowError("Event localization requires a bounded reviewed event count.")
@@ -8278,6 +8460,17 @@ class LocalTabSystemVision(LocalTabVision):
             "machine_visual_candidate_geometry",
         }:
             raise ExtractionWorkflowError("Event localization has an invalid count-constraint source.")
+        normalized_cell_counts: tuple[int, ...] | None = None
+        if expected_cell_counts is not None:
+            normalized_cell_counts = tuple(int(value) for value in expected_cell_counts)
+            if (
+                not guided
+                or len(normalized_cell_counts) != expected_event_count
+                or any(not 1 <= value <= 10 for value in normalized_cell_counts)
+            ):
+                raise ExtractionWorkflowError(
+                    "Guided event localization has invalid visual cell-count constraints."
+                )
         count_basis = {
             "human_reviewed_discovery_feedback": "An expert already established that",
             "independent_machine_count_consensus": (
@@ -8293,6 +8486,17 @@ class LocalTabSystemVision(LocalTabVision):
             "geometry detector. Return exactly one event for every guide, with guideIndex equal to its blue "
             "number. Read only the black source tokens at that guide; the blue line and number are not source "
             "symbols. Do not move a state to a neighboring guide and do not split a vertical grip."
+            + (
+                " The separate geometry detector found these visible cell counts by guide: "
+                + ", ".join(
+                    f"{index}={count}"
+                    for index, count in enumerate(normalized_cell_counts, start=1)
+                )
+                + ". Return exactly that many source cells at each guide; this supplies geometry only, "
+                "not fret, string, control, or pitch answers."
+                if normalized_cell_counts is not None
+                else ""
+            )
             if guided
             else ""
         )
@@ -8321,50 +8525,111 @@ class LocalTabSystemVision(LocalTabVision):
             "\"guideIndex\":1,\"cells\":[{\"string\":5,\"token\":\"8A\"}]}],"
             "\"confidence\":0.9,\"uncertain\":false}."
         )
-        payload = {
-            "model": self.model,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt,
-                    "images": [base64.b64encode(image_path.read_bytes()).decode("ascii")],
-                }
-            ],
-            "format": "json",
-            "stream": False,
-            "think": False,
-            "options": {"temperature": 0, "seed": self.seed, "num_ctx": self.num_ctx},
-        }
-        request = urllib.request.Request(
-            f"{self.base_url}/api/chat",
-            data=json.dumps(payload).encode("utf-8"),
-            headers={"Content-Type": "application/json"},
-            method="POST",
-        )
-        body: dict[str, Any] | None = None
+        encoded_image = base64.b64encode(image_path.read_bytes()).decode("ascii")
+        parsed: Mapping[str, Any] | None = None
+        raw_events: list[Any] | None = None
         last_error: Exception | None = None
-        for _attempt in range(2):
+        last_validation_failure = ""
+        semantic_attempts = 3 if guided else 1
+        for semantic_attempt in range(semantic_attempts):
+            correction = (
+                " Your prior response failed the numbered geometry constraints. Re-read every blue guide, "
+                "return every guide exactly once, and preserve every vertically stacked black source cell."
+                if semantic_attempt
+                else ""
+            )
+            payload = {
+                "model": self.model,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": prompt + correction,
+                        "images": [encoded_image],
+                    }
+                ],
+                "format": "json",
+                "stream": False,
+                "think": False,
+                "options": {
+                    "temperature": 0,
+                    "seed": self.seed + semantic_attempt,
+                    "num_ctx": self.num_ctx,
+                },
+            }
+            request = urllib.request.Request(
+                f"{self.base_url}/api/chat",
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            body: dict[str, Any] | None = None
+            for _transport_attempt in range(2):
+                try:
+                    with urllib.request.urlopen(request, timeout=180) as response:
+                        value = json.loads(response.read().decode("utf-8"))
+                    if not isinstance(value, dict):
+                        raise json.JSONDecodeError("Expected an object", str(value), 0)
+                    body = value
+                    break
+                except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+                    last_error = exc
+            if body is None:
+                last_validation_failure = "unavailable"
+                continue
+            content = str((body.get("message") or {}).get("content") or "").strip()
+            content = re.sub(r"^```(?:json)?\s*|\s*```$", "", content, flags=re.I | re.S)
             try:
-                with urllib.request.urlopen(request, timeout=180) as response:
-                    value = json.loads(response.read().decode("utf-8"))
-                if not isinstance(value, dict):
-                    raise json.JSONDecodeError("Expected an object", str(value), 0)
-                body = value
-                break
-            except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+                candidate = json.loads(content)
+            except json.JSONDecodeError as exc:
                 last_error = exc
-        if body is None:
-            raise ExtractionWorkflowError("The local tab-system localizer is unavailable after one retry.") from last_error
-        content = str((body.get("message") or {}).get("content") or "").strip()
-        content = re.sub(r"^```(?:json)?\s*|\s*```$", "", content, flags=re.I | re.S)
-        try:
-            parsed = json.loads(content)
-        except json.JSONDecodeError as exc:
-            raise ExtractionWorkflowError("The local tab-system localizer returned malformed JSON.") from exc
-        raw_events = parsed.get("events") if isinstance(parsed, Mapping) else None
-        if not isinstance(raw_events, list) or len(raw_events) != expected_event_count:
+                last_validation_failure = "malformed_json"
+                continue
+            candidate_events = candidate.get("events") if isinstance(candidate, Mapping) else None
+            if not isinstance(candidate_events, list) or len(candidate_events) != expected_event_count:
+                last_validation_failure = "event_count"
+                continue
+            if not all(isinstance(raw_event, Mapping) for raw_event in candidate_events):
+                last_validation_failure = "event_object"
+                continue
+            if guided:
+                try:
+                    ordered_candidate_events = sorted(
+                        candidate_events,
+                        key=lambda raw_event: int(raw_event.get("guideIndex")),
+                    )
+                    guide_indices = [
+                        int(raw_event.get("guideIndex"))
+                        for raw_event in ordered_candidate_events
+                    ]
+                except (TypeError, ValueError) as exc:
+                    last_error = exc
+                    last_validation_failure = "guide_index"
+                    continue
+                if guide_indices != list(range(1, expected_event_count + 1)):
+                    last_validation_failure = "guide_coverage"
+                    continue
+                if normalized_cell_counts is not None and any(
+                    not isinstance(raw_event.get("cells"), list)
+                    or len(raw_event.get("cells") or []) != expected_cells
+                    for raw_event, expected_cells in zip(
+                        ordered_candidate_events,
+                        normalized_cell_counts,
+                        strict=True,
+                    )
+                ):
+                    last_validation_failure = "cell_count"
+                    continue
+            parsed = candidate
+            raw_events = candidate_events
+            break
+        if parsed is None or raw_events is None:
+            if last_validation_failure == "unavailable":
+                raise ExtractionWorkflowError(
+                    "The local tab-system localizer is unavailable after bounded retries."
+                ) from last_error
             raise ExtractionWorkflowError(
-                "The local tab-system localizer did not honor the reviewed event-count constraint."
+                "The local tab-system localizer did not satisfy the numbered event/cell geometry "
+                f"after bounded retries ({last_validation_failure or 'unknown'})."
             )
         if not all(isinstance(raw_event, Mapping) for raw_event in raw_events):
             raise ExtractionWorkflowError("A localized event is not an object.")
@@ -8445,6 +8710,9 @@ class LocalTabSystemVision(LocalTabVision):
             "reviewedCountConstraint": expected_event_count,
             "countConstraintSource": constraint_source,
             "deterministicGeometryGuidesProvided": guided,
+            "expectedCellCounts": list(normalized_cell_counts)
+            if normalized_cell_counts is not None
+            else None,
         }
 
     def read_unconstrained_score_columns(self, image_path: Path) -> dict[str, Any]:
@@ -25013,7 +25281,8 @@ class AmazingTablatureExtractor:
             "schemaVersion": VALIDATION_MACHINE_RECAPTURE_VERSION,
             "countReader": self.tab_system_vision.contract(),
             "tabLocalizationPromptVersion": TAB_SYSTEM_LOCALIZATION_PROMPT_VERSION,
-            "scorePitchPromptVersion": SCORE_PITCH_LOCALIZATION_PROMPT_VERSION,
+            "scorePitchSource": "existing_independent_audiveris_musicxml",
+            "scorePitchCountMayBeConstrainedByTab": False,
             "countConstraintSource": "machine_visual_candidate_geometry",
             "minimumConfidence": 0.85,
             "requiresVisualCandidateAgreement": True,
@@ -25155,6 +25424,10 @@ class AmazingTablatureExtractor:
                             expected_event_count=expected_count,
                             constraint_source="machine_visual_candidate_geometry",
                             guided=True,
+                            expected_cell_counts=[
+                                len(candidate.get("candidateStrings") or [])
+                                for candidate in tab_system.get("tabEventCandidates") or []
+                            ],
                         )
                     localization = copy.deepcopy(localization)
                     string_offset_votes: Counter[int] = Counter()
@@ -25309,33 +25582,11 @@ class AmazingTablatureExtractor:
                             "Machine tab localization failed independent checks: "
                             f"maximum_position_delta={maximum_position_delta:.6f}."
                         )
-                    temporary_tab_system = copy.deepcopy(tab_system)
-                    temporary_tab_system["tabEvents"] = copy.deepcopy(tab_events)
-                    guided_crop = _prepare_guided_score_pitch_crop(
-                        output_root=output_root,
-                        audit_dir=remediation_dir,
-                        input_id=input_id,
-                        score_system=score_system,
-                        tab_system=temporary_tab_system,
-                    )
-                    score_recognition = copy.deepcopy(
-                        cached.get("scoreRecognition")
-                    ) if (
-                        int(cached.get("expectedEventCount") or 0) == expected_count
-                        and isinstance(cached.get("scoreRecognition"), Mapping)
-                    ) else None
-                    if score_recognition is None:
-                        score_recognition = self.tab_system_vision.read_score_pitch_events(
-                            Path(guided_crop["path"]),
+                    score_events, score_recognition = (
+                        _validation_machine_score_from_existing_omr(
+                            score_system,
                             expected_event_count=expected_count,
-                            guided=True,
-                            constraint_source="machine_visual_candidate_geometry",
                         )
-                    score_events = _machine_localized_score_events(
-                        input_id=input_id,
-                        score_system=score_system,
-                        recognition=score_recognition,
-                        tab_events=tab_events,
                     )
                     score_tab_diagnostics = _machine_score_tab_containment_diagnostics(
                         score_events, tab_events
@@ -25357,7 +25608,7 @@ class AmazingTablatureExtractor:
                         "sourcePairSha256": _sha256_bytes(source_pair_path.read_bytes()),
                         "tabCropSha256": _sha256_bytes(Path(tab_crop["path"]).read_bytes()),
                         "guidedTabCropSha256": str(guided_tab_crop["sha256"]),
-                        "guidedScoreCropSha256": str(guided_crop["sha256"]),
+                        "guidedScoreCropSha256": None,
                         "expectedEventCount": expected_count,
                         "tabCountPrediction": tab_count_prediction,
                         "countOnlyReaderAgrees": count_reader_agrees,
@@ -25394,11 +25645,12 @@ class AmazingTablatureExtractor:
                     candidate_score["keySignatureFifths"] = int(
                         score_recognition["keySignatureFifths"]
                     )
-                    candidate_score["omrStatus"] = "machine_recaptured"
+                    candidate_score["omrStatus"] = "machine_verified_existing_omr"
                     candidate_score["machineRecapture"] = {
                         "schemaVersion": VALIDATION_MACHINE_RECAPTURE_VERSION,
                         "contractDigest": contract_digest,
                         "expectedEventCount": expected_count,
+                        "scorePitchSource": score_recognition["captureSource"],
                         "humanTruthUsed": False,
                     }
                     candidate_tab["tabEvents"] = tab_events

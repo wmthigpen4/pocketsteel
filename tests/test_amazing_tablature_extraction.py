@@ -78,9 +78,11 @@ from pocketsteel.amazing_tablature_extraction import (
     _validation_capture_issue_count,
     _validation_line_preflight_blockers,
     _validation_machine_count_consensus,
+    _validation_machine_score_from_existing_omr,
     _machine_localized_score_events,
     _machine_localized_tab_events,
     _machine_score_is_contained_in_tab,
+    _machine_score_tab_containment_diagnostics,
     _machine_unified_score_tab_timeline,
     _merge_split_grip_event_candidates,
     _projection_tab_grid,
@@ -1191,6 +1193,154 @@ def test_machine_localized_events_require_complete_valid_tab_and_source_pitch_co
     wrong_score[1]["pitch"] = "E5"
     wrong_score[1]["pitchValue"] = 76
     assert _machine_score_is_contained_in_tab(wrong_score, tab_events) is False
+
+
+def test_machine_score_containment_records_written_octave_without_rewriting_pitch() -> None:
+    score_events = [
+        {
+            "scoreEventId": f"score-{index}",
+            "measure": 1,
+            "beat": float(index),
+            "defaultX": float(index * 100),
+            "pitch": pitch,
+            "pitchValue": pitch_value,
+            "rest": False,
+        }
+        for index, (pitch, pitch_value) in enumerate(
+            (("C5", 72), ("D5", 74)), start=1
+        )
+    ]
+    tab_events = [
+        {
+            "tabEventId": f"tab-{index}",
+            "eventIndex": index,
+            "executionType": "attack",
+            "steelActions": [
+                {
+                    "string": 4,
+                    "soundingPitchValue": pitch_value,
+                    "mechanicalValidation": {"valid": True},
+                }
+            ],
+        }
+        for index, pitch_value in enumerate((60, 62), start=1)
+    ]
+
+    assert _machine_score_is_contained_in_tab(score_events, tab_events) is True
+    diagnostics = _machine_score_tab_containment_diagnostics(score_events, tab_events)
+    assert diagnostics["scoreNotationTranspositionSemitones"] == 12
+    assert diagnostics["containedEventCount"] == 2
+    assert [event["pitchValue"] for event in score_events] == [72, 74]
+    assert [
+        event["steelActions"][0]["soundingPitchValue"] for event in tab_events
+    ] == [60, 62]
+
+    inconsistent = copy.deepcopy(score_events)
+    inconsistent[1]["pitchValue"] = 75
+    assert _machine_score_is_contained_in_tab(inconsistent, tab_events) is False
+
+
+def test_combined_columns_apply_one_explicit_written_octave_convention() -> None:
+    score_system = {
+        "scoreEvents": [
+            {
+                "scoreEventId": f"score-{index}",
+                "measure": 1,
+                "beat": float(index),
+                "defaultX": float(index * 100),
+                "pitch": pitch,
+                "pitchValue": pitch_value,
+                "rest": False,
+            }
+            for index, (pitch, pitch_value) in enumerate(
+                (("C5", 72), ("D5", 74)), start=1
+            )
+        ]
+    }
+    tab_system = {
+        "tabEvents": [
+            {
+                "tabEventId": f"tab-{index}",
+                "eventIndex": index,
+                "executionType": "attack",
+                "steelActions": [
+                    {
+                        "string": 4,
+                        "soundingPitchValue": pitch_value,
+                        "mechanicalValidation": {"valid": True},
+                    }
+                ],
+            }
+            for index, pitch_value in enumerate((60, 62), start=1)
+        ]
+    }
+
+    comparison = _combined_score_tab_columns(score_system, tab_system)
+
+    assert comparison["automaticPitchGatePassed"] is True
+    assert comparison["scoreNotationTranspositionSemitones"] == 12
+    assert comparison["notationTranspositionEstablished"] is True
+    assert [column["relationship"] for column in comparison["columns"]] == [
+        "exact",
+        "exact",
+    ]
+    assert [column["rawPitchRelationship"] for column in comparison["columns"]] == [
+        "mismatch",
+        "mismatch",
+    ]
+    assert comparison["scoreAttacks"][0]["pitchValues"] == [72]
+    assert comparison["tabStates"][0]["pitchValues"] == [60]
+
+
+def test_validation_score_reuse_requires_complete_pinned_independent_omr() -> None:
+    score_system = {
+        "musicXml": {
+            "reader": "audiveris-musicxml-v1",
+            "relativePath": "score-omr/source-a/score.musicxml",
+            "sha256": "a" * 64,
+        },
+        "keyFifths": 2,
+        "scoreEvents": [
+            {
+                "scoreEventId": f"score-{index}",
+                "measure": 1,
+                "beat": float(index),
+                "defaultX": float(index * 100),
+                "pitch": pitch,
+                "pitchValue": pitch_value,
+                "confidence": 0.98,
+                "rest": False,
+            }
+            for index, (pitch, pitch_value) in enumerate(
+                (("E5", 76), ("F#5", 78)), start=1
+            )
+        ],
+    }
+
+    events, recognition = _validation_machine_score_from_existing_omr(
+        score_system, expected_event_count=2
+    )
+    assert [event["pitchValue"] for event in events] == [76, 78]
+    assert recognition["captureSource"] == "existing_independent_musicxml"
+    assert recognition["keySignatureFifths"] == 2
+    assert recognition["tablatureOrExpectedPitchesProvidedToReader"] is False
+
+    missing_lineage = copy.deepcopy(score_system)
+    missing_lineage["musicXml"].pop("sha256")
+    with pytest.raises(ExtractionWorkflowError, match="lineage"):
+        _validation_machine_score_from_existing_omr(
+            missing_lineage, expected_event_count=2
+        )
+    with pytest.raises(ExtractionWorkflowError, match="does not match"):
+        _validation_machine_score_from_existing_omr(
+            score_system, expected_event_count=3
+        )
+    missing_key = copy.deepcopy(score_system)
+    missing_key.pop("keyFifths")
+    with pytest.raises(ExtractionWorkflowError, match="key signature"):
+        _validation_machine_score_from_existing_omr(
+            missing_key, expected_event_count=2
+        )
 
 
 def test_machine_localized_tab_events_fail_closed_on_blank_or_invalid_states() -> None:
@@ -4773,6 +4923,80 @@ def test_whole_system_localizer_honors_reviewed_count_and_preserves_visible_cell
     assert result["deterministicGeometryGuidesProvided"] is True
     assert "exactly 2" in captured_prompt
     assert "during sustain" in captured_prompt
+
+
+def test_guided_localizer_retries_until_numbered_cell_geometry_is_complete(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    image = tmp_path / "guided-tab-system.png"
+    Image.new("RGB", (400, 240), "white").save(image)
+    calls: list[dict[str, Any]] = []
+
+    class _Response:
+        def __init__(self, response: dict[str, Any]) -> None:
+            self.response = response
+
+        def __enter__(self) -> _Response:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        def read(self) -> bytes:
+            return json.dumps(self.response).encode()
+
+    def fake_urlopen(request: object, timeout: int) -> _Response:
+        assert timeout == 180
+        payload = json.loads(getattr(request, "data").decode("utf-8"))
+        calls.append(payload)
+        first_attempt = len(calls) == 1
+        events = [
+            {
+                "x": 0.2,
+                "guideIndex": 1,
+                "execution": "attack",
+                "cells": (
+                    [{"string": 4, "token": "8"}]
+                    if first_attempt
+                    else [
+                        {"string": 4, "token": "8"},
+                        {"string": 5, "token": "8A"},
+                    ]
+                ),
+            },
+            {
+                "x": 0.8,
+                "guideIndex": 2,
+                "execution": "attack",
+                "cells": [{"string": 4, "token": "10"}],
+            },
+        ]
+        return _Response(
+            {
+                "message": {
+                    "content": json.dumps(
+                        {"events": events, "confidence": 0.94, "uncertain": False}
+                    )
+                }
+            }
+        )
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+    result = LocalTabSystemVision(seed=40).localize_events(
+        image,
+        expected_event_count=2,
+        constraint_source="machine_visual_candidate_geometry",
+        guided=True,
+        expected_cell_counts=[2, 1],
+    )
+
+    assert len(calls) == 2
+    assert calls[0]["options"]["seed"] == 40
+    assert calls[1]["options"]["seed"] == 41
+    assert [len(event["cells"]) for event in result["events"]] == [2, 1]
+    assert result["expectedCellCounts"] == [2, 1]
+    assert "1=2, 2=1" in calls[0]["messages"][0]["content"]
+    assert "prior response failed" in calls[1]["messages"][0]["content"]
 
 
 def test_score_pitch_reader_is_score_only_and_preserves_scientific_octaves(
