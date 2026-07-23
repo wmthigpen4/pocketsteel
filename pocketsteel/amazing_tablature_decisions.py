@@ -10,6 +10,7 @@ from typing import Any
 
 from pocketsteel.copedent_transfer import absolute_pitch_for_profile, candidate_control_states
 from pocketsteel.e9_copedents import E9CopedentProfile, get_e9_copedent_profile, scientific_pitch_for_value
+from pocketsteel.melody_ranker_adapter import candidate_feature_record
 
 
 DECISION_DERIVATION_VERSION = "score-tab-decision-derivation-v5"
@@ -57,92 +58,6 @@ def _ranker_signature(candidate: Mapping[str, Any]) -> tuple[object, ...]:
     )
 
 
-def _direction(value: int) -> int:
-    return 1 if value > 0 else -1 if value < 0 else 0
-
-
-def _sequence_features(
-    actions: Sequence[Mapping[str, Any]],
-    previous_actions: Sequence[Mapping[str, Any]],
-    next_actions: Sequence[Mapping[str, Any]],
-) -> dict[str, int]:
-    """Return source-safe second-order movement features for one candidate."""
-
-    current_top = max(actions, key=lambda action: int(action["soundingPitchValue"]))
-    previous_top = max(
-        previous_actions, key=lambda action: int(action["soundingPitchValue"])
-    )
-    incoming_fret_direction = _direction(
-        int(current_top["fret"]) - int(previous_top["fret"])
-    )
-    incoming_string_direction = _direction(
-        int(current_top["string"]) - int(previous_top["string"])
-    )
-    features = {
-        "incomingStringDistance": abs(
-            int(current_top["string"]) - int(previous_top["string"])
-        ),
-        "incomingFretDirection": incoming_fret_direction,
-        "incomingStringDirection": incoming_string_direction,
-        "outgoingBarTravel": 0,
-        "outgoingControlChanges": 0,
-        "outgoingStringDistance": 0,
-        "outgoingFretDirection": 0,
-        "outgoingStringDirection": 0,
-        "outgoingSustainContinuity": 0,
-        "fretDirectionReversal": 0,
-        "fretDirectionContinuation": 0,
-        "stringDirectionReversal": 0,
-        "stringDirectionContinuation": 0,
-    }
-    if not next_actions:
-        return features
-    next_top = max(next_actions, key=lambda action: int(action["soundingPitchValue"]))
-    outgoing_fret_direction = _direction(
-        int(next_top["fret"]) - int(current_top["fret"])
-    )
-    outgoing_string_direction = _direction(
-        int(next_top["string"]) - int(current_top["string"])
-    )
-    current_strings = {int(action["string"]) for action in actions}
-    next_sustained_strings = {
-        int(action["string"])
-        for action in next_actions
-        if not bool(action.get("attack", True))
-    }
-    features.update(
-        {
-            "outgoingBarTravel": abs(
-                int(next_top["fret"]) - int(current_top["fret"])
-            ),
-            "outgoingControlChanges": len(_controls(next_actions) ^ _controls(actions)),
-            "outgoingStringDistance": abs(
-                int(next_top["string"]) - int(current_top["string"])
-            ),
-            "outgoingFretDirection": outgoing_fret_direction,
-            "outgoingStringDirection": outgoing_string_direction,
-            "outgoingSustainContinuity": len(
-                current_strings & next_sustained_strings
-            ),
-            "fretDirectionReversal": int(
-                incoming_fret_direction * outgoing_fret_direction < 0
-            ),
-            "fretDirectionContinuation": int(
-                incoming_fret_direction != 0
-                and incoming_fret_direction == outgoing_fret_direction
-            ),
-            "stringDirectionReversal": int(
-                incoming_string_direction * outgoing_string_direction < 0
-            ),
-            "stringDirectionContinuation": int(
-                incoming_string_direction != 0
-                and incoming_string_direction == outgoing_string_direction
-            ),
-        }
-    )
-    return features
-
-
 def _candidate(
     actions: Sequence[Mapping[str, Any]],
     previous_actions: Sequence[Mapping[str, Any]],
@@ -150,62 +65,12 @@ def _candidate(
     phrase_role: str,
     next_actions: Sequence[Mapping[str, Any]] = (),
 ) -> dict[str, Any]:
-    current_by_string = {int(action["string"]): action for action in actions}
-    previous_by_string = {int(action["string"]): action for action in previous_actions}
-    current_top = max(actions, key=lambda action: int(action["soundingPitchValue"]))
-    previous_top = max(previous_actions, key=lambda action: int(action["soundingPitchValue"]))
-    current_pitches = [int(action["soundingPitchValue"]) for action in actions]
-    previous_pitches = [int(action["soundingPitchValue"]) for action in previous_actions]
-    attacked_strings = {
-        string for string, action in current_by_string.items() if bool(action.get("attack", True))
-    }
-    sustained_strings = {
-        string for string, action in current_by_string.items() if not bool(action.get("attack", True))
-    }
-    common_strings = current_by_string.keys() & previous_by_string.keys()
-    mechanical_actions = [
-        {
-            "string": int(action["string"]),
-            "fret": int(action["fret"]),
-            "controls": sorted(str(value) for value in action.get("controls") or []),
-            "soundingPitchValue": int(action["soundingPitchValue"]),
-            "attack": bool(action.get("attack", True)),
-        }
-        for action in sorted(
-            actions,
-            key=lambda item: (
-                int(item["string"]),
-                int(item["fret"]),
-                tuple(sorted(str(value) for value in item.get("controls") or [])),
-            ),
-        )
-    ]
-    return {
-        "textureSize": len(actions),
-        "attackVoices": len(attacked_strings),
-        "barTravel": abs(int(current_top["fret"]) - int(previous_top["fret"])),
-        "controlChanges": len(_controls(actions) ^ _controls(previous_actions)),
-        "pocketChanges": int(int(current_top["fret"]) != int(previous_top["fret"])),
-        "voiceLeading": sum(min(abs(pitch - previous) for previous in previous_pitches) for pitch in current_pitches),
-        "sustainedVoices": len(sustained_strings),
-        "repickedVoices": len(common_strings & attacked_strings),
-        "executionType": (
-            "movement_only"
-            if actions and not attacked_strings
-            else "mixed"
-            if sustained_strings
-            else "attack"
-        ),
-        "phraseRole": phrase_role,
-        "mechanicallyValid": True,
-        "voicePitchValues": sorted(current_pitches),
-        # The ranker still consumes only abstract features. This source-safe
-        # mechanical projection lets a discovery reviewer see the concrete tab
-        # solution selected by a challenger instead of interpreting feature
-        # vectors such as ``barTravel`` and ``controlChanges``.
-        "mechanicalActions": mechanical_actions,
-        **_sequence_features(actions, previous_actions, next_actions),
-    }
+    return candidate_feature_record(
+        actions,
+        previous_actions,
+        phrase_role=phrase_role,
+        next_actions=next_actions,
+    )
 
 
 def _single_note_alternatives(

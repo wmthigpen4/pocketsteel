@@ -4,14 +4,19 @@ from __future__ import annotations
 
 import pytest
 
+import pocketsteel.melody_arranger as melody_arranger
+from pocketsteel.e9_copedents import EMMONS_E9
 from pocketsteel.melody_arranger import (
     MelodyInput,
     PositionCandidate,
     _learned_start_penalty,
+    _runtime_learned_penalty,
     _transition_between,
     choose_mixed_path,
     single_note_candidates,
 )
+from pocketsteel.melody_ranker import FEATURE_NAMES, score_candidate
+from pocketsteel.melody_ranker_adapter import runtime_candidate_feature_record
 from pocketsteel.tab_engine import TabNote
 
 
@@ -79,6 +84,80 @@ def test_deterministic_fallback_applies_no_unapproved_harmony_weight() -> None:
     }
 
     assert set(penalties.values()) == {0}
+
+
+def test_runtime_learned_penalty_scores_the_full_shared_feature_record(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    previous = _open_grip(3, (4,), 67)
+    current = _open_grip(5, (4,), 69)
+    following = _open_grip(6, (4,), 70)
+    weights = {name: (index + 1) / 100 for index, name in enumerate(FEATURE_NAMES)}
+    monkeypatch.setattr(melody_arranger, "RANKER_ENABLED", True)
+    monkeypatch.setattr(
+        melody_arranger,
+        "WEIGHTS_BY_STYLE",
+        {"single_note_run": weights},
+    )
+
+    record = runtime_candidate_feature_record(
+        previous,
+        current,
+        following,
+        phrase_role="passing_tone",
+        profile=EMMONS_E9,
+        current_sustained_strings=(4,),
+        following_sustained_strings=(4,),
+    )
+    penalty = _runtime_learned_penalty(
+        previous,
+        current,
+        following,
+        role="passing_tone",
+        style_family="single_note_run",
+        profile=EMMONS_E9,
+    )
+
+    assert penalty == round(score_candidate(record, weights) * 1000)
+
+
+def test_learned_path_search_preserves_following_context(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    first = _open_grip(3, (4,), 67)
+    expensive_middle = _open_grip(10, (4,), 74)
+    preferred_middle = _open_grip(5, (4,), 69)
+    last = _open_grip(7, (4,), 71)
+    monkeypatch.setattr(melody_arranger, "RANKER_ENABLED", True)
+    monkeypatch.setattr(
+        melody_arranger,
+        "WEIGHTS_BY_STYLE",
+        {"single_note_run": {name: 0.0 for name in FEATURE_NAMES}},
+    )
+    monkeypatch.setattr(
+        melody_arranger,
+        "_mixed_start_cost",
+        lambda *_args, **_kwargs: (0,) * 16,
+    )
+    monkeypatch.setattr(
+        melody_arranger,
+        "_mixed_transition_cost",
+        lambda *_args, **_kwargs: (0,) * 16,
+    )
+    monkeypatch.setattr(
+        melody_arranger,
+        "_runtime_learned_penalty",
+        lambda _previous, current, _following, **_kwargs: current.fret,
+    )
+
+    path = choose_mixed_path(
+        [[first], [expensive_middle, preferred_middle], [last]],
+        inputs=_repeated_g_inputs(3),
+        key="G",
+        style_family="single_note_run",
+    )
+
+    assert [candidate.fret for candidate in path] == [3, 5, 7]
 
 
 def test_blocking_fixture_full_grip_slide_sustains_every_attacked_string() -> None:

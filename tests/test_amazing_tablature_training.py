@@ -19,7 +19,10 @@ from pocketsteel.amazing_tablature_training import (
 from pocketsteel.e9_copedents import get_e9_copedent_profile
 from pocketsteel.melody_assistant import melody_exercise_response
 from pocketsteel.melody_decision_rules import MODEL_STATUS, style_catalog_payload
-from pocketsteel.melody_ranker import feature_vector, train_pairwise_ranker
+from pocketsteel.melody_models import PositionCandidate
+from pocketsteel.melody_ranker import FEATURE_NAMES, feature_vector, train_pairwise_ranker
+from pocketsteel.melody_ranker_adapter import runtime_candidate_feature_record
+from pocketsteel.tab_engine import TabNote
 
 
 def test_discovery_line_readiness_is_line_scoped_and_explains_page_gates() -> None:
@@ -148,6 +151,83 @@ def test_decision_candidate_captures_phrase_sequence_context() -> None:
     assert features["incoming_string_distance"] == 1
     assert features["outgoing_sustain_continuity"] == 1
     assert features["fret_direction_continuation"] == 1
+
+
+def test_runtime_adapter_matches_trainer_for_all_21_features() -> None:
+    from pocketsteel.amazing_tablature_decisions import _candidate
+
+    profile = get_e9_copedent_profile("source-e9-abc-defg-v1")
+    previous = PositionCandidate(
+        fret=3,
+        notes=(TabNote(5, 3), TabNote(6, 3)),
+        top_pitch=60,
+        controls=(),
+        family="parity",
+        note_names=("C", "G"),
+        intervals=("1", "5"),
+        voice_pitches=(60, 55),
+    )
+    current = PositionCandidate(
+        fret=5,
+        notes=(TabNote(4, 5, ("F",)), TabNote(6, 5)),
+        top_pitch=65,
+        controls=("F",),
+        family="parity",
+        note_names=("F", "C"),
+        intervals=("1", "5"),
+        voice_pitches=(65, 60),
+    )
+    following = PositionCandidate(
+        fret=6,
+        notes=(TabNote(4, 6, ("F",)), TabNote(5, 6)),
+        top_pitch=66,
+        controls=("F",),
+        family="parity",
+        note_names=("F#", "C#"),
+        intervals=("1", "5"),
+        voice_pitches=(66, 61),
+    )
+    previous_actions = [
+        {"string": 5, "fret": 3, "controls": [], "soundingPitchValue": 60, "attack": True},
+        {"string": 6, "fret": 3, "controls": [], "soundingPitchValue": 55, "attack": True},
+    ]
+    current_actions = [
+        {"string": 4, "fret": 5, "controls": ["F"], "soundingPitchValue": 65, "attack": True},
+        {"string": 6, "fret": 5, "controls": [], "soundingPitchValue": 60, "attack": False},
+    ]
+    following_actions = [
+        {"string": 4, "fret": 6, "controls": ["F"], "soundingPitchValue": 66, "attack": False},
+        {"string": 5, "fret": 6, "controls": [], "soundingPitchValue": 61, "attack": True},
+    ]
+
+    trainer_record = _candidate(
+        current_actions,
+        previous_actions,
+        phrase_role="resolution",
+        next_actions=following_actions,
+    )
+    runtime_record = runtime_candidate_feature_record(
+        previous,
+        current,
+        following,
+        phrase_role="resolution",
+        profile=profile,
+        current_sustained_strings=(6,),
+        following_sustained_strings=(4,),
+    )
+    trainer_vector = feature_vector(trainer_record)
+    runtime_vector = feature_vector(runtime_record)
+
+    assert tuple(trainer_vector) == FEATURE_NAMES
+    assert tuple(runtime_vector) == FEATURE_NAMES
+    assert len(runtime_vector) == 21
+    assert runtime_vector == trainer_vector
+    assert runtime_record["mechanicalActions"] == trainer_record["mechanicalActions"]
+    assert runtime_vector["bar_travel"] == 2
+    assert runtime_vector["sustained_voices"] == 1
+    assert runtime_vector["outgoing_sustain_continuity"] == 1
+    assert runtime_vector["fret_direction_continuation"] == 1
+    assert runtime_vector["cadence_arrival"] == 1
 
 
 def write_jsonl(path: Path, records: list[dict[str, object]]) -> Path:

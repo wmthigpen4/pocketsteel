@@ -126,6 +126,7 @@ RULES_CODE_FILES = (
     "pocketsteel/melody_decision_rules.py",
     "pocketsteel/melody_models.py",
     "pocketsteel/melody_ranker.py",
+    "pocketsteel/melody_ranker_adapter.py",
     "pocketsteel/tab_engine.py",
     "scripts/amazing_tablature.py",
 )

@@ -43,6 +43,7 @@ from pocketsteel.melody_models import (
     PositionCandidate,
 )
 from pocketsteel.melody_ranker import score_candidate
+from pocketsteel.melody_ranker_adapter import runtime_candidate_feature_record
 from pocketsteel.melody_decision_rules import (
     MODEL_STATUS,
     MODEL_VERSION,
@@ -189,6 +190,7 @@ def arrange_melody_routes(
                 phrase_starts=phrase_starts,
                 phrase_ends=phrase_ends,
                 style_family=selected_style,
+                profile=target_profile,
             )
         else:
             candidate_groups = groups_for(harmony_type)
@@ -719,6 +721,7 @@ def choose_mixed_path(
     phrase_starts: set[int] | None = None,
     phrase_ends: set[int] | None = None,
     style_family: str = "auto",
+    profile: E9CopedentProfile | None = None,
 ) -> list[PositionCandidate]:
     if not candidate_groups or any(not group for group in candidate_groups):
         return []
@@ -733,31 +736,121 @@ def choose_mixed_path(
     )
     home_fret = 3 if key == "G" else 8
     selected_style = normalize_style_family(style_family)
-    states: list[dict[int, tuple[tuple[int, ...], int | None]]] = []
-    first: dict[int, tuple[tuple[int, ...], int | None]] = {}
-    for candidate_index, candidate in enumerate(candidate_groups[0]):
-        first[candidate_index] = (
-            _mixed_start_cost(
-                candidate,
+    selected_profile = profile or EMMONS_E9
+    if len(candidate_groups) < 2 or not _learned_weights_available(
+        selected_style, roles
+    ):
+        states: list[dict[int, tuple[tuple[int, ...], int | None]]] = []
+        first: dict[int, tuple[tuple[int, ...], int | None]] = {}
+        for candidate_index, candidate in enumerate(candidate_groups[0]):
+            first[candidate_index] = (
+                _mixed_start_cost(
+                    candidate,
+                    inputs,
+                    0,
+                    active_chords,
+                    roles,
+                    home_fret=home_fret,
+                    style_family=selected_style,
+                ),
+                None,
+            )
+        states.append(first)
+        for event_index in range(1, len(candidate_groups)):
+            current: dict[int, tuple[tuple[int, ...], int | None]] = {}
+            for current_index, candidate in enumerate(candidate_groups[event_index]):
+                choices: list[tuple[tuple[int, ...], int]] = []
+                for previous_index, (previous_cost, _parent) in states[-1].items():
+                    previous = candidate_groups[event_index - 1][previous_index]
+                    transition = _mixed_transition_cost(
+                        previous,
+                        candidate,
+                        inputs,
+                        event_index,
+                        active_chords,
+                        roles,
+                        phrase_starts=phrase_starts or {0},
+                        home_fret=home_fret,
+                        key=key,
+                        style_family=selected_style,
+                    )
+                    choices.append(
+                        (_add_cost(previous_cost, transition), previous_index)
+                    )
+                current[current_index] = min(
+                    choices, key=lambda item: (item[0], item[1])
+                )
+            states.append(current)
+        last_index = min(
+            states[-1], key=lambda index: (states[-1][index][0], index)
+        )
+        path: list[PositionCandidate] = []
+        for event_index in range(len(states) - 1, -1, -1):
+            path.append(candidate_groups[event_index][last_index])
+            parent = states[event_index][last_index][1]
+            if parent is not None:
+                last_index = parent
+        return list(reversed(path))
+
+    # The canonical ranker has second-order features: a candidate's score
+    # depends on its previous and following positions. Preserve pairs in the
+    # Viterbi state so every one of the 21 trainer features can affect runtime
+    # selection without approximating the outgoing context.
+    pair_states: list[
+        dict[tuple[int, int], tuple[tuple[int, ...], int | None]]
+    ] = [{} for _index in candidate_groups]
+    for previous_index, previous in enumerate(candidate_groups[0]):
+        start_cost = _mixed_start_cost(
+            previous,
+            inputs,
+            0,
+            active_chords,
+            roles,
+            home_fret=home_fret,
+            style_family=selected_style,
+        )
+        for current_index, current in enumerate(candidate_groups[1]):
+            transition = _mixed_transition_cost(
+                previous,
+                current,
                 inputs,
-                0,
+                1,
                 active_chords,
                 roles,
+                phrase_starts=phrase_starts or {0},
                 home_fret=home_fret,
+                key=key,
                 style_family=selected_style,
-            ),
-            None,
-        )
-    states.append(first)
-    for event_index in range(1, len(candidate_groups)):
-        current: dict[int, tuple[tuple[int, ...], int | None]] = {}
-        for current_index, candidate in enumerate(candidate_groups[event_index]):
-            choices: list[tuple[tuple[int, ...], int]] = []
-            for previous_index, (previous_cost, _parent) in states[-1].items():
-                previous = candidate_groups[event_index - 1][previous_index]
-                transition = _mixed_transition_cost(
+            )
+            pair_states[1][(previous_index, current_index)] = (
+                _add_cost(start_cost, transition),
+                None,
+            )
+
+    for event_index in range(2, len(candidate_groups)):
+        current_layer: dict[
+            tuple[int, int], tuple[tuple[int, ...], int | None]
+        ] = {}
+        for (previous_index, current_index), (
+            previous_cost,
+            _parent,
+        ) in pair_states[event_index - 1].items():
+            previous = candidate_groups[event_index - 2][previous_index]
+            current = candidate_groups[event_index - 1][current_index]
+            for following_index, following in enumerate(
+                candidate_groups[event_index]
+            ):
+                learned_penalty = _runtime_learned_penalty(
                     previous,
-                    candidate,
+                    current,
+                    following,
+                    role=roles[event_index - 1],
+                    style_family=selected_style,
+                    profile=selected_profile,
+                )
+                transition = _mixed_transition_cost(
+                    current,
+                    following,
                     inputs,
                     event_index,
                     active_chords,
@@ -767,17 +860,58 @@ def choose_mixed_path(
                     key=key,
                     style_family=selected_style,
                 )
-                choices.append((_add_cost(previous_cost, transition), previous_index))
-            current[current_index] = min(choices, key=lambda item: (item[0], item[1]))
-        states.append(current)
-    last_index = min(states[-1], key=lambda index: (states[-1][index][0], index))
-    path: list[PositionCandidate] = []
-    for event_index in range(len(states) - 1, -1, -1):
-        path.append(candidate_groups[event_index][last_index])
-        parent = states[event_index][last_index][1]
-        if parent is not None:
-            last_index = parent
-    return list(reversed(path))
+                total = _add_cost(
+                    previous_cost,
+                    _add_cost(
+                        transition,
+                        _learned_cost_component(learned_penalty),
+                    ),
+                )
+                key_pair = (current_index, following_index)
+                choice = (total, previous_index)
+                existing = current_layer.get(key_pair)
+                if existing is None or (choice[0], choice[1]) < (
+                    existing[0],
+                    int(existing[1] or 0),
+                ):
+                    current_layer[key_pair] = choice
+        pair_states[event_index] = current_layer
+
+    final_layer = pair_states[-1]
+    ranked_finals: list[tuple[tuple[int, ...], tuple[int, int]]] = []
+    for (previous_index, current_index), (cost, _parent) in final_layer.items():
+        previous = candidate_groups[-2][previous_index]
+        current = candidate_groups[-1][current_index]
+        final_penalty = _runtime_learned_penalty(
+            previous,
+            current,
+            None,
+            role=roles[-1],
+            style_family=selected_style,
+            profile=selected_profile,
+        )
+        ranked_finals.append(
+            (
+                _add_cost(cost, _learned_cost_component(final_penalty)),
+                (previous_index, current_index),
+            )
+        )
+    _final_cost, (previous_index, current_index) = min(
+        ranked_finals, key=lambda item: (item[0], item[1])
+    )
+    indices = [current_index, previous_index]
+    for event_index in range(len(candidate_groups) - 1, 1, -1):
+        parent = pair_states[event_index][(previous_index, current_index)][1]
+        if parent is None:
+            raise ValueError("Learned path state lost its parent candidate.")
+        current_index = previous_index
+        previous_index = parent
+        indices.append(previous_index)
+    indices.reverse()
+    return [
+        candidate_groups[event_index][candidate_index]
+        for event_index, candidate_index in enumerate(indices)
+    ]
 
 
 def choose_path(
@@ -2018,7 +2152,9 @@ def _mixed_start_cost(
         0,
         0,
         _texture_penalty(len(candidate.notes), desired),
-        _learned_start_penalty(candidate, roles[index], home_fret, style_family),
+        # The trainer has no first-event record because every learned feature
+        # is defined relative to a previous mechanical state.
+        0,
         len(candidate.controls),
         abs(candidate.fret - home_fret),
         0,
@@ -2054,7 +2190,9 @@ def _mixed_transition_cost(
         _voice_leading_cost(previous, current),
         _string_group_change_penalty(previous, current),
         _texture_penalty(len(current.notes), desired),
-        _learned_transition_penalty(previous, current, roles[index], style_family),
+        # Full learned scoring is applied by the pair-state path search after
+        # the following candidate is known.
+        0,
         _control_posture_penalty(previous, current),
         abs(current.fret - previous.fret),
         texture_change * 2 + _style_transition_penalty(previous, current, style_family),
@@ -2083,8 +2221,81 @@ def _learned_style_for_role(style_family: str, role: str) -> str:
     if role in {"pickup", "passing_tone", "tension"}:
         return "single_note_run"
     if role == "sustained_note":
-        return "vocal_steel"
+        return "harmonized"
     return "chord_melody"
+
+
+def _learned_weights_available(
+    style_family: str,
+    roles: Sequence[str],
+) -> bool:
+    if not RANKER_ENABLED:
+        return False
+    return any(
+        bool(WEIGHTS_BY_STYLE.get(_learned_style_for_role(style_family, role)))
+        for role in roles[1:]
+    )
+
+
+def _learned_cost_component(penalty: int) -> tuple[int, ...]:
+    """Place one learned score in the stable mixed-path cost dimension."""
+
+    return (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, int(penalty), 0, 0, 0, 0, 0)
+
+
+def _ranker_sustained_strings(
+    previous: PositionCandidate,
+    current: PositionCandidate,
+    *,
+    profile: E9CopedentProfile,
+) -> tuple[int, ...]:
+    transition = _transition_between(
+        "ranker",
+        1,
+        previous,
+        current,
+        profile=profile,
+    )
+    if not transition:
+        return ()
+    return tuple(int(value) for value in transition.get("sustainedStrings") or ())
+
+
+def _runtime_learned_penalty(
+    previous: PositionCandidate,
+    current: PositionCandidate,
+    following: PositionCandidate | None,
+    *,
+    role: str,
+    style_family: str,
+    profile: E9CopedentProfile,
+) -> int:
+    """Score one runtime movement with the exact canonical trainer record."""
+
+    learned_style = _learned_style_for_role(style_family, role)
+    weights = WEIGHTS_BY_STYLE.get(learned_style) if RANKER_ENABLED else None
+    if not weights:
+        return 0
+    current_sustained = _ranker_sustained_strings(
+        previous,
+        current,
+        profile=profile,
+    )
+    following_sustained = (
+        _ranker_sustained_strings(current, following, profile=profile)
+        if following is not None
+        else ()
+    )
+    candidate = runtime_candidate_feature_record(
+        previous,
+        current,
+        following,
+        phrase_role=role,
+        profile=profile,
+        current_sustained_strings=current_sustained,
+        following_sustained_strings=following_sustained,
+    )
+    return round(score_candidate(candidate, weights) * 1000)
 
 
 def _learned_candidate_penalty(
