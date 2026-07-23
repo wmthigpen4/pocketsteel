@@ -81,6 +81,8 @@ from pocketsteel.amazing_tablature_extraction import (
     _validation_independent_contact_cells,
     _validation_contact_tab_hypothesis,
     _validation_machine_score_from_existing_omr,
+    _validation_score_events_from_score_only_recognition,
+    _validation_score_only_consensus_recapture,
     _machine_localized_score_events,
     _machine_localized_tab_events,
     _machine_score_is_contained_in_tab,
@@ -103,6 +105,7 @@ from pocketsteel.amazing_tablature_extraction import (
     _reviewed_tab_event_rhythmic_slot,
     _repair_repeated_score_glyph,
     _score_audit_diagnostics,
+    _scientific_pitch_value,
     _score_audit_equivalence_gates,
     _score_attack_groups,
     _reviewed_score_sequence_target,
@@ -1381,6 +1384,164 @@ def test_validation_score_reuse_requires_complete_pinned_independent_omr() -> No
         _validation_machine_score_from_existing_omr(
             missing_key, expected_event_counts={2}
         )
+
+
+def test_validation_score_only_consensus_is_independent_and_preserves_score_geometry(
+    tmp_path: Path,
+) -> None:
+    score_crop = tmp_path / "score.png"
+    Image.new("RGB", (900, 160), "white").save(score_crop)
+    count_calls: list[str] = []
+    pitch_calls: list[tuple[str, int, bool, str]] = []
+
+    class StubScoreReader:
+        def __init__(
+            self,
+            name: str,
+            *,
+            x_positions: tuple[float, float],
+            pitches: tuple[str, str] = ("C5", "D5"),
+        ) -> None:
+            self.name = name
+            self.x_positions = x_positions
+            self.pitches = pitches
+
+        def contract(self) -> dict[str, object]:
+            return {"reader": self.name, "seed": self.name}
+
+        def read_unconstrained_score_columns(
+            self, image_path: Path
+        ) -> dict[str, object]:
+            assert image_path == score_crop
+            count_calls.append(self.name)
+            return {
+                "events": [
+                    {
+                        "eventIndex": index,
+                        "x": x,
+                        "continuationOnly": False,
+                    }
+                    for index, x in enumerate(self.x_positions, start=1)
+                ],
+                "visibleColumnCount": 2,
+                "attackCount": 2,
+                "continuationOnlyCount": 0,
+                "confidence": 0.97,
+                "uncertain": False,
+                "expectedCountProvided": False,
+                "tablatureProvided": False,
+            }
+
+        def read_score_pitch_events(
+            self,
+            image_path: Path,
+            *,
+            expected_event_count: int,
+            guided: bool,
+            constraint_source: str,
+        ) -> dict[str, object]:
+            assert image_path == score_crop
+            pitch_calls.append(
+                (self.name, expected_event_count, guided, constraint_source)
+            )
+            return {
+                "keySignatureFifths": 0,
+                "events": [
+                    {
+                        "eventIndex": index,
+                        "x": x,
+                        "pitches": [pitch],
+                        "pitchValues": [_scientific_pitch_value(pitch)],
+                    }
+                    for index, (x, pitch) in enumerate(
+                        zip(self.x_positions, self.pitches, strict=True),
+                        start=1,
+                    )
+                ],
+                "confidence": 0.96,
+                "uncertain": False,
+                "countConstraintSource": constraint_source,
+                "tablatureOrExpectedPitchesProvidedToReader": False,
+            }
+
+    score_system = {"scoreSystemId": "score-system-1"}
+    events, recognition = _validation_score_only_consensus_recapture(
+        input_id="input-1",
+        score_system=score_system,
+        score_crop_path=score_crop,
+        readers=[
+            StubScoreReader("reader-a", x_positions=(0.2, 0.7)),
+            StubScoreReader("reader-b", x_positions=(0.21, 0.69)),
+        ],
+        expected_event_counts={2},
+    )
+
+    assert count_calls == ["reader-a", "reader-b"]
+    assert pitch_calls == [
+        ("reader-a", 2, False, "independent_machine_count_consensus"),
+        ("reader-b", 2, False, "independent_machine_count_consensus"),
+    ]
+    assert recognition["captureSource"] == "two_reader_score_only_consensus"
+    assert recognition["eventCount"] == 2
+    assert recognition["tablatureOrExpectedPitchesProvidedToReader"] is False
+    assert [event["defaultX"] for event in events] == [0.2, 0.7]
+    assert [event["pitch"] for event in events] == ["C5", "D5"]
+    assert all(
+        event["geometrySource"] == "independent_score_only_reader"
+        for event in events
+    )
+
+    with pytest.raises(ExtractionWorkflowError, match="pitch readers disagree"):
+        _validation_score_only_consensus_recapture(
+            input_id="input-1",
+            score_system=score_system,
+            score_crop_path=score_crop,
+            readers=[
+                StubScoreReader("reader-a", x_positions=(0.2, 0.7)),
+                StubScoreReader(
+                    "reader-b",
+                    x_positions=(0.21, 0.69),
+                    pitches=("C5", "E5"),
+                ),
+            ],
+            expected_event_counts={2},
+        )
+
+    with pytest.raises(ExtractionWorkflowError, match="complete machine timeline"):
+        _validation_score_only_consensus_recapture(
+            input_id="input-1",
+            score_system=score_system,
+            score_crop_path=score_crop,
+            readers=[
+                StubScoreReader("reader-a", x_positions=(0.2, 0.7)),
+                StubScoreReader("reader-b", x_positions=(0.21, 0.69)),
+            ],
+            expected_event_counts={3},
+        )
+
+
+def test_validation_score_only_event_normalization_rejects_tab_geometry() -> None:
+    recognition = {
+        "eventCount": 1,
+        "events": [
+            {
+                "x": 0.35,
+                "pitches": ["B3", "D4"],
+                "pitchValues": [59, 62],
+            }
+        ],
+        "confidence": 0.99,
+        "uncertain": False,
+    }
+    events = _validation_score_events_from_score_only_recognition(
+        input_id="input-1",
+        score_system={"scoreSystemId": "score-1"},
+        recognition=recognition,
+    )
+
+    assert {event["defaultX"] for event in events} == {0.35}
+    assert [event["chordMember"] for event in events] == [False, True]
+    assert [event["pitch"] for event in events] == ["B3", "D4"]
 
 
 def test_validation_contact_cells_require_exact_sheet_and_reader_lineage(
@@ -5256,12 +5417,12 @@ def test_unconstrained_score_reader_has_no_count_or_tablature_constraint(
                             {
                                 "events": [
                                     {
-                                        "x": 0.2,
-                                        "continuationOnly": False,
+                                        "x": 630,
+                                        "continuationOnly": True,
                                     },
                                     {
-                                        "x": 0.7,
-                                        "continuationOnly": True,
+                                        "x": 180,
+                                        "continuationOnly": False,
                                     },
                                 ],
                                 "confidence": 0.93,
@@ -5285,6 +5446,9 @@ def test_unconstrained_score_reader_has_no_count_or_tablature_constraint(
     assert result["visibleColumnCount"] == 2
     assert result["attackCount"] == 1
     assert result["continuationOnlyCount"] == 1
+    assert [event["x"] for event in result["events"]] == [0.2, 0.7]
+    assert result["chronologyNormalization"] == "horizontal_sort_v1"
+    assert result["coordinateNormalization"] == "pixel_to_normalized_x"
     assert result["expectedCountProvided"] is False
     assert result["tablatureProvided"] is False
     assert "No expected count is supplied" in captured_prompt

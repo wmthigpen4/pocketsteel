@@ -56,7 +56,7 @@ FEEDBACK_CORRECTION_CONFIRMATION_SCHEMA_VERSION = (
 COMBINED_SCORE_TAB_REVIEW_SCHEMA_VERSION = "amazing-tablature-combined-score-tab-review-v1"
 VALIDATION_LINE_AUDIT_SCHEMA_VERSION = "amazing-tablature-validation-line-audit-v1"
 VALIDATION_LINE_PREFLIGHT_VERSION = "validation-line-structural-preflight-v1"
-VALIDATION_MACHINE_RECAPTURE_VERSION = "validation-machine-recapture-v2"
+VALIDATION_MACHINE_RECAPTURE_VERSION = "validation-machine-recapture-v3"
 VALIDATION_CAPTURE_ISSUE_KINDS = frozenset(
     {
         "page_extraction_failure",
@@ -6050,6 +6050,240 @@ def _validation_machine_score_from_existing_omr(
     return score_events, recognition
 
 
+def _validation_score_events_from_score_only_recognition(
+    *,
+    input_id: str,
+    score_system: Mapping[str, Any],
+    recognition: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    """Normalize score-only consensus while preserving its own geometry.
+
+    Unlike ``_machine_localized_score_events``, this validation path never
+    borrows tablature positions. The score readers establish their own
+    left-to-right attacks, pitches, octave, and key signature before the
+    resulting score is compared with a separately captured tab hypothesis.
+    """
+
+    raw_events = list(recognition.get("events") or [])
+    if (
+        bool(recognition.get("uncertain"))
+        or float(recognition.get("confidence") or 0.0) < 0.85
+        or not raw_events
+        or int(recognition.get("eventCount") or 0) != len(raw_events)
+    ):
+        raise ExtractionWorkflowError(
+            "Score-only consensus did not satisfy its confidence and count gate."
+        )
+    events: list[dict[str, Any]] = []
+    previous_x = -1.0
+    for ordinal, raw_event in enumerate(raw_events, start=1):
+        if not isinstance(raw_event, Mapping):
+            raise ExtractionWorkflowError("A score-only consensus event is malformed.")
+        x = float(raw_event.get("x"))
+        if not 0.0 <= x <= 1.0 or x < previous_x:
+            raise ExtractionWorkflowError(
+                "Score-only consensus positions must be ordered within the score crop."
+            )
+        previous_x = x
+        pitches = list(raw_event.get("pitches") or [])
+        values = [int(value) for value in raw_event.get("pitchValues") or []]
+        if not pitches or len(pitches) != len(values):
+            raise ExtractionWorkflowError(
+                "Score-only consensus produced a blank pitch event."
+            )
+        for note_index, (pitch, pitch_value) in enumerate(
+            zip(pitches, values, strict=True)
+        ):
+            parsed = re.fullmatch(r"([A-G])([#b]{0,2})(-?\d+)", str(pitch))
+            if parsed is None or _scientific_pitch_value(str(pitch)) != pitch_value:
+                raise ExtractionWorkflowError(
+                    "Score-only consensus produced an invalid scientific pitch."
+                )
+            step, accidental, raw_octave = parsed.groups()
+            alter = accidental.count("#") - accidental.count("b")
+            events.append(
+                {
+                    "scoreEventId": _stable_id(
+                        "score-event-validation-score-only-consensus",
+                        input_id,
+                        score_system.get("scoreSystemId"),
+                        ordinal,
+                        note_index,
+                        pitch,
+                    ),
+                    "measure": 1,
+                    "beat": float(ordinal),
+                    "rhythmicPosition": float(ordinal - 1),
+                    "durationBeats": 1.0,
+                    "durationEvidenceClass": "unknown_or_unresolved",
+                    "rhythmPlaceholder": True,
+                    "rest": False,
+                    "voice": 1,
+                    "staff": 1,
+                    "chordMember": note_index > 0,
+                    "tie": [],
+                    "articulations": [],
+                    "phraseBoundaries": [],
+                    "defaultX": round(x, 7),
+                    "pitch": str(pitch),
+                    "pitchValue": pitch_value,
+                    "pitchStep": step,
+                    "pitchAlter": alter,
+                    "octave": int(raw_octave),
+                    "writtenAccidental": (
+                        "sharp" if alter > 0 else "flat" if alter < 0 else None
+                    ),
+                    "evidenceClass": "direct_visual_observation",
+                    "confidence": round(
+                        float(recognition.get("confidence") or 0.0), 4
+                    ),
+                    "reviewState": "needs_human_review",
+                    "geometrySource": "independent_score_only_reader",
+                }
+            )
+    return events
+
+
+def _validation_score_only_consensus_recapture(
+    *,
+    input_id: str,
+    score_system: Mapping[str, Any],
+    score_crop_path: Path,
+    readers: Sequence[LocalTabSystemVision],
+    expected_event_counts: Collection[int],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Recapture a score only when two independent reader seeds agree.
+
+    The unconstrained count pass sees neither an expected count nor
+    tablature. Its consensus count is compared with complete machine timeline
+    counts only after both reads finish. The subsequent pitch readers receive
+    that score-only count, never tab pitches or positions, and must agree
+    exactly on key and ordered pitch groups.
+    """
+
+    if len(readers) != 2:
+        raise ExtractionWorkflowError(
+            "Validation score-only consensus requires exactly two readers."
+        )
+    if not score_crop_path.exists():
+        raise ExtractionWorkflowError(
+            "Independent validation score-only crop is missing."
+        )
+    allowed_counts = {
+        int(value) for value in expected_event_counts if 1 <= int(value) <= 64
+    }
+    if not allowed_counts:
+        raise ExtractionWorkflowError(
+            "Validation score-only consensus lacks complete machine timeline counts."
+        )
+    count_reads = [
+        reader.read_unconstrained_score_columns(score_crop_path)
+        for reader in readers
+    ]
+    count_signatures: list[tuple[int, int, int, tuple[bool, ...]]] = []
+    for result in count_reads:
+        events = list(result.get("events") or [])
+        signature = (
+            int(result.get("visibleColumnCount") or 0),
+            int(result.get("attackCount") or 0),
+            int(result.get("continuationOnlyCount") or 0),
+            tuple(bool(event.get("continuationOnly")) for event in events),
+        )
+        if (
+            bool(result.get("uncertain"))
+            or float(result.get("confidence") or 0.0) < 0.85
+            or bool(result.get("expectedCountProvided"))
+            or bool(result.get("tablatureProvided"))
+            or signature[0] != len(events)
+            or signature[1] + signature[2] != signature[0]
+        ):
+            raise ExtractionWorkflowError(
+                "An unconstrained validation score-count read is incomplete."
+            )
+        count_signatures.append(signature)
+    if count_signatures[0] != count_signatures[1]:
+        raise ExtractionWorkflowError(
+            "Independent validation score-count readers disagree."
+        )
+    consensus_count = count_signatures[0][1]
+    if consensus_count not in allowed_counts:
+        raise ExtractionWorkflowError(
+            "Independent validation score-count consensus does not match a complete "
+            f"machine timeline ({consensus_count} versus {sorted(allowed_counts)})."
+        )
+
+    pitch_reads = [
+        reader.read_score_pitch_events(
+            score_crop_path,
+            expected_event_count=consensus_count,
+            guided=False,
+            constraint_source="independent_machine_count_consensus",
+        )
+        for reader in readers
+    ]
+    pitch_signatures: list[tuple[int, tuple[tuple[int, ...], ...]]] = []
+    for result in pitch_reads:
+        raw_events = list(result.get("events") or [])
+        signature = (
+            int(result.get("keySignatureFifths")),
+            tuple(
+                tuple(int(value) for value in event.get("pitchValues") or [])
+                for event in raw_events
+            ),
+        )
+        if (
+            bool(result.get("uncertain"))
+            or float(result.get("confidence") or 0.0) < 0.85
+            or len(raw_events) != consensus_count
+            or any(not values for values in signature[1])
+            or bool(result.get("tablatureOrExpectedPitchesProvidedToReader"))
+            or str(result.get("countConstraintSource") or "")
+            != "independent_machine_count_consensus"
+        ):
+            raise ExtractionWorkflowError(
+                "An independent validation score-pitch read is incomplete."
+            )
+        pitch_signatures.append(signature)
+    if pitch_signatures[0] != pitch_signatures[1]:
+        raise ExtractionWorkflowError(
+            "Independent validation score-pitch readers disagree."
+        )
+    position_deltas = [
+        abs(float(first.get("x")) - float(second.get("x")))
+        for first, second in zip(
+            pitch_reads[0]["events"], pitch_reads[1]["events"], strict=True
+        )
+    ]
+    maximum_position_delta = max(position_deltas, default=1.0)
+    if maximum_position_delta > 0.06:
+        raise ExtractionWorkflowError(
+            "Independent validation score-pitch readers disagree on source geometry "
+            f"(maximum_position_delta={maximum_position_delta:.6f})."
+        )
+    confidence = min(float(result.get("confidence") or 0.0) for result in pitch_reads)
+    recognition = {
+        **copy.deepcopy(pitch_reads[0]),
+        "reader": "two-reader-score-only-consensus-v1",
+        "captureSource": "two_reader_score_only_consensus",
+        "scoreCropSha256": _sha256_bytes(score_crop_path.read_bytes()),
+        "eventCount": consensus_count,
+        "confidence": round(confidence, 4),
+        "uncertain": False,
+        "readerContracts": [reader.contract() for reader in readers],
+        "countReads": count_reads,
+        "pitchReadDigests": [_sha256_json(result) for result in pitch_reads],
+        "maximumReaderPositionDelta": round(maximum_position_delta, 6),
+        "tablatureOrExpectedPitchesProvidedToReader": False,
+        "humanTruthUsed": False,
+    }
+    score_events = _validation_score_events_from_score_only_recognition(
+        input_id=input_id,
+        score_system=score_system,
+        recognition=recognition,
+    )
+    return score_events, recognition
+
+
 def _validation_independent_contact_cells(
     *,
     output_root: Path,
@@ -9059,22 +9293,39 @@ class LocalTabSystemVision(LocalTabVision):
             raise ExtractionWorkflowError(
                 "The unconstrained local score reader returned an invalid event list."
             )
-        events: list[dict[str, Any]] = []
-        previous_x = -1.0
-        for event_index, raw_event in enumerate(raw_events, start=1):
+        with Image.open(image_path) as source_image:
+            image_width = float(source_image.size[0])
+        normalized_events: list[tuple[float, bool]] = []
+        pixel_coordinate_count = 0
+        for raw_event in raw_events:
             if not isinstance(raw_event, Mapping):
                 raise ExtractionWorkflowError("An unconstrained score event is not an object.")
             x = float(raw_event.get("x"))
-            if not 0.0 <= x <= 1.0 or x < previous_x:
+            if 1.0 < x <= image_width:
+                x /= image_width
+                pixel_coordinate_count += 1
+            if not 0.0 <= x <= 1.0:
                 raise ExtractionWorkflowError(
-                    "Unconstrained score-event positions must be ordered within the crop."
+                    "Unconstrained score-event positions must fall within the crop."
                 )
-            previous_x = x
+            normalized_events.append(
+                (x, bool(raw_event.get("continuationOnly", False)))
+            )
+        # Chronology on a single printed staff is the horizontal order. A
+        # vision model can return a complete JSON list in arbitrary object
+        # order; normalize that redundant ordering instead of discarding an
+        # otherwise independent count. No expected count or tab geometry is
+        # introduced by this sort.
+        normalized_events.sort(key=lambda item: (item[0], item[1]))
+        events: list[dict[str, Any]] = []
+        for event_index, (x, continuation_only) in enumerate(
+            normalized_events, start=1
+        ):
             events.append(
                 {
                     "eventIndex": event_index,
                     "x": round(x, 6),
-                    "continuationOnly": bool(raw_event.get("continuationOnly", False)),
+                    "continuationOnly": continuation_only,
                 }
             )
         return {
@@ -9090,6 +9341,12 @@ class LocalTabSystemVision(LocalTabVision):
             "model": self.model,
             "expectedCountProvided": False,
             "tablatureProvided": False,
+            "chronologyNormalization": "horizontal_sort_v1",
+            "coordinateNormalization": (
+                "pixel_to_normalized_x"
+                if pixel_coordinate_count
+                else "already_normalized_x"
+            ),
         }
 
     def read_score_pitch_events(
@@ -25556,13 +25813,29 @@ class AmazingTablatureExtractor:
         for directory in (remediation_dir, candidate_dir, revision_dir):
             directory.mkdir(parents=True, exist_ok=True)
             os.chmod(directory, 0o700)
+        score_only_readers = (
+            self.tab_system_vision,
+            LocalTabSystemVision(
+                self.tab_system_vision.model,
+                self.tab_system_vision.base_url,
+                num_ctx=self.tab_system_vision.num_ctx,
+                seed=self.tab_system_vision.seed + 104729,
+            ),
+        )
         contract = {
             "schemaVersion": VALIDATION_MACHINE_RECAPTURE_VERSION,
             "countReader": self.tab_system_vision.contract(),
             "tabLocalizationPromptVersion": TAB_SYSTEM_LOCALIZATION_PROMPT_VERSION,
-            "scorePitchSource": "existing_independent_audiveris_musicxml",
+            "scorePitchSources": [
+                "existing_independent_audiveris_musicxml",
+                "two_reader_score_only_consensus",
+            ],
+            "scoreOnlyReaderContracts": [
+                reader.contract() for reader in score_only_readers
+            ],
             "scorePitchCountMayBeConstrainedByTab": False,
-            "countConstraintSource": "machine_visual_candidate_geometry",
+            "scoreOnlyCountConstraintSource": "independent_machine_count_consensus",
+            "tabCountConstraintSource": "machine_visual_candidate_geometry",
             "minimumConfidence": 0.85,
             "requiresVisualCandidateAgreement": True,
             "eventAndStringGeometrySource": "deterministic_visual_candidate_geometry",
@@ -25719,19 +25992,43 @@ class AmazingTablatureExtractor:
                             control_string_map=_profile_control_string_map(profile),
                         )
                     original_localization = copy.deepcopy(localization)
-                    score_events, score_recognition = (
-                        _validation_machine_score_from_existing_omr(
-                            score_system,
-                            expected_event_counts={
-                                expected_count,
-                                sum(
-                                    str(event.get("execution") or "")
-                                    != "movement_only"
-                                    for event in localization.get("events") or []
-                                ),
-                            },
+                    complete_machine_timeline_counts = {
+                        expected_count,
+                        sum(
+                            str(event.get("execution") or "")
+                            != "movement_only"
+                            for event in localization.get("events") or []
+                        ),
+                    }
+                    existing_omr_rejection: str | None = None
+                    try:
+                        score_events, score_recognition = (
+                            _validation_machine_score_from_existing_omr(
+                                score_system,
+                                expected_event_counts=complete_machine_timeline_counts,
+                            )
                         )
-                    )
+                    except ExtractionWorkflowError as exc:
+                        existing_omr_rejection = str(exc)
+                        system_index = int(score_system.get("systemIndex") or 0)
+                        score_crop_path = (
+                            output_root
+                            / "score-crops"
+                            / input_id
+                            / f"score-system-{system_index:02d}.png"
+                        )
+                        score_events, score_recognition = (
+                            _validation_score_only_consensus_recapture(
+                                input_id=input_id,
+                                score_system=score_system,
+                                score_crop_path=score_crop_path,
+                                readers=score_only_readers,
+                                expected_event_counts=complete_machine_timeline_counts,
+                            )
+                        )
+                        score_recognition["existingOmrRejection"] = (
+                            existing_omr_rejection[:500]
+                        )
                     localization, tab_events, hypothesis_diagnostics = (
                         _validation_contact_tab_hypothesis(
                             input_id=input_id,
@@ -25816,7 +26113,9 @@ class AmazingTablatureExtractor:
                         "sourcePairSha256": _sha256_bytes(source_pair_path.read_bytes()),
                         "tabCropSha256": _sha256_bytes(Path(tab_crop["path"]).read_bytes()),
                         "guidedTabCropSha256": str(guided_tab_crop["sha256"]),
-                        "guidedScoreCropSha256": None,
+                        "scoreOnlyCropSha256": score_recognition.get(
+                            "scoreCropSha256"
+                        ),
                         "expectedEventCount": expected_count,
                         "tabCountPrediction": tab_count_prediction,
                         "countOnlyReaderAgrees": count_reader_agrees,
@@ -25858,7 +26157,12 @@ class AmazingTablatureExtractor:
                     candidate_score["keySignatureFifths"] = int(
                         score_recognition["keySignatureFifths"]
                     )
-                    candidate_score["omrStatus"] = "machine_verified_existing_omr"
+                    candidate_score["omrStatus"] = (
+                        "machine_verified_existing_omr"
+                        if score_recognition["captureSource"]
+                        == "existing_independent_musicxml"
+                        else "machine_verified_score_only_consensus"
+                    )
                     candidate_score["machineRecapture"] = {
                         "schemaVersion": VALIDATION_MACHINE_RECAPTURE_VERSION,
                         "contractDigest": contract_digest,
@@ -25949,6 +26253,7 @@ class AmazingTablatureExtractor:
                             "tabSystemId": tab_system_id,
                             "contractDigest": contract_digest,
                             "expectedEventCount": expected_count,
+                            "scorePitchSource": score_recognition["captureSource"],
                             "countOnlyReaderAgrees": count_reader_agrees,
                             "humanTruthUsed": False,
                             "validationMayTrain": False,
@@ -25981,6 +26286,7 @@ class AmazingTablatureExtractor:
                             "countOnlyReaderAgrees": count_reader_agrees,
                             "countOnlyReaderBlockers": count_blockers,
                             "scorePitchContainmentPassed": True,
+                            "scorePitchSource": score_recognition["captureSource"],
                             "applied": apply,
                         }
                     )
