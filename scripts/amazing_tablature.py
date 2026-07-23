@@ -1135,6 +1135,14 @@ def _parser() -> argparse.ArgumentParser:
             "truth and preference ledger. Only byte-equivalent verdicts carry."
         ),
     )
+    score_corrected_canonical.add_argument(
+        "--source-adjudication-model-id",
+        help=(
+            "Exact prior challenger that owns a later corrected-canonical "
+            "preference adjudication. Verdicts carry only when the full "
+            "comparison signature is byte-equivalent."
+        ),
+    )
 
     adjudicate_corrected_canonical = subparsers.add_parser(
         "adjudicate-corrected-canonical-validation",
@@ -1817,6 +1825,9 @@ def main() -> int:
                     args.source_adjudication_digest
                 ),
                 source_model_id=args.source_model_id,
+                source_adjudication_model_id=(
+                    args.source_adjudication_model_id
+                ),
             )
         elif (
             args.command

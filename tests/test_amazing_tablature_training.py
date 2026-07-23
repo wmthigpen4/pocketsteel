@@ -702,6 +702,7 @@ def test_corrected_canonical_adjudication_recomputes_fixed_gates_without_trainin
     assert report["metrics"]["acceptedTopChoiceCorrectCount"] == 44
     assert report["metrics"]["acceptedTopChoiceAccuracy"] == 1.0
     assert report["gate"] == {
+        "passed": True,
         "correctedCanonicalGatePassed": True,
         "rulesFreezeAllowed": True,
         "privateRuntimeEnableAllowed": True,

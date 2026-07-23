@@ -9168,6 +9168,7 @@ class AmazingTablatureTrainingStore:
         correction_report_digest: str,
         source_adjudication_digest: str,
         source_model_id: str | None = None,
+        source_adjudication_model_id: str | None = None,
     ) -> dict[str, Any]:
         """Rerun the exact ranker against confirmed corrected validation truth.
 
@@ -9596,10 +9597,47 @@ class AmazingTablatureTrainingStore:
                 }
             )
 
+        adjudication_model_id = (
+            source_adjudication_model_id or truth_model_id
+        )
+        adjudication_model_meta = (registry.get("models") or {}).get(
+            adjudication_model_id
+        )
+        if not isinstance(adjudication_model_meta, Mapping):
+            raise TrainingWorkflowError(
+                "Unknown corrected-preference challenger: "
+                f"{adjudication_model_id}."
+            )
+        adjudication_model_path = self.root / str(
+            adjudication_model_meta.get("artifact") or ""
+        )
+        adjudication_model_sha256 = str(
+            adjudication_model_meta.get("artifactSha256") or ""
+        )
+        if (
+            not adjudication_model_path.exists()
+            or _sha256_bytes(adjudication_model_path.read_bytes())
+            != adjudication_model_sha256
+        ):
+            raise TrainingWorkflowError(
+                "The corrected-preference challenger artifact changed."
+            )
+        adjudication_evaluation_dir = (
+            self.root
+            / "validation-evaluations"
+            / adjudication_model_id
+        )
+        corrected_adjudication = (
+            adjudication_model_id != truth_model_id
+        )
+        adjudication_prefix = (
+            "corrected-canonical-adjudication-"
+            if corrected_adjudication
+            else "machine-consensus-adjudication-"
+        )
         source_adjudication_path = (
-            truth_evaluation_dir
-            / "machine-consensus-adjudication-"
-            f"{source_adjudication_digest}.json"
+            adjudication_evaluation_dir
+            / f"{adjudication_prefix}{source_adjudication_digest}.json"
         )
         if not source_adjudication_path.exists():
             raise TrainingWorkflowError(
@@ -9614,17 +9652,27 @@ class AmazingTablatureTrainingStore:
         source_disagreement_digest = str(
             source_adjudication.get("sourceDisagreementReportDigest") or ""
         )
+        disagreement_prefix = (
+            "corrected-canonical-disagreements-"
+            if corrected_adjudication
+            else "machine-consensus-disagreements-"
+        )
         source_disagreement_path = (
-            truth_evaluation_dir
-            / "machine-consensus-disagreements-"
-            f"{source_disagreement_digest}.json"
+            adjudication_evaluation_dir
+            / f"{disagreement_prefix}{source_disagreement_digest}.json"
+        )
+        expected_adjudication_schema = (
+            "amazing-tablature-corrected-canonical-adjudication-v1"
+            if corrected_adjudication
+            else "amazing-tablature-validation-disagreement-adjudication-v1"
         )
         if (
             source_adjudication.get("schemaVersion")
-            != "amazing-tablature-validation-disagreement-adjudication-v1"
-            or source_adjudication.get("modelId") != truth_model_id
+            != expected_adjudication_schema
+            or source_adjudication.get("modelId")
+            != adjudication_model_id
             or source_adjudication.get("modelArtifactSha256")
-            != truth_model_sha256
+            != adjudication_model_sha256
             or source_adjudication.get("reportDigest")
             != source_adjudication_digest
             or _sha256_json(source_adjudication_core)
@@ -9644,52 +9692,120 @@ class AmazingTablatureTrainingStore:
             for key, value in source_disagreement.items()
             if key != "reportDigest"
         }
+        expected_disagreement_schema = (
+            "amazing-tablature-corrected-validation-disagreements-v1"
+            if corrected_adjudication
+            else None
+        )
         if (
             source_disagreement.get("reportDigest")
             != source_disagreement_digest
             or _sha256_json(source_disagreement_core)
             != source_disagreement_digest
-            or source_disagreement.get("modelId") != truth_model_id
+            or (
+                expected_disagreement_schema is not None
+                and source_disagreement.get("schemaVersion")
+                != expected_disagreement_schema
+            )
+            or source_disagreement.get("modelId")
+            != adjudication_model_id
             or source_disagreement.get("modelArtifactSha256")
-            != truth_model_sha256
-            or source_disagreement.get("humanTruthUsed") is not False
+            != adjudication_model_sha256
+            or (
+                not corrected_adjudication
+                and source_disagreement.get("humanTruthUsed") is not False
+            )
             or source_disagreement.get("validationMayTrain") is not False
             or source_disagreement.get("sealedTestAccessed") is not False
         ):
             raise TrainingWorkflowError(
                 "The source disagreement report lineage failed."
             )
-        source_submission_id = str(
-            source_adjudication.get("submissionId") or ""
-        )
-        source_batch_id = str(source_adjudication.get("batchId") or "")
-        source_submission_path = (
-            self._batch_dir(source_batch_id)
-            / "extraction"
-            / "validation"
-            / "review"
-            / "challenger-disagreements"
-            / "submissions"
-            / f"{source_submission_id}.jsonl"
-        )
-        if (
-            not source_submission_path.exists()
-            or _sha256_bytes(source_submission_path.read_bytes())
-            != str(
-                source_adjudication.get("submissionFileSha256") or ""
+        source_statuses: dict[str, str] = {}
+        if corrected_adjudication:
+            submission_receipts = [
+                value
+                for value in (
+                    source_adjudication.get("submissionReceipts") or ()
+                )
+                if isinstance(value, Mapping)
+            ]
+            if not submission_receipts:
+                raise TrainingWorkflowError(
+                    "The corrected preference adjudication lost its "
+                    "submission receipts."
+                )
+            for receipt in submission_receipts:
+                source_batch_id = str(receipt.get("batchId") or "")
+                source_submission_id = str(
+                    receipt.get("submissionId") or ""
+                )
+                source_submission_path = (
+                    self._batch_dir(source_batch_id)
+                    / "extraction"
+                    / "validation"
+                    / "review"
+                    / "challenger-disagreements"
+                    / "submissions"
+                    / f"{source_submission_id}.jsonl"
+                )
+                if (
+                    not source_submission_path.exists()
+                    or _sha256_bytes(source_submission_path.read_bytes())
+                    != str(receipt.get("submissionFileSha256") or "")
+                ):
+                    raise TrainingWorkflowError(
+                        "A corrected preference submission changed."
+                    )
+                for value in _read_jsonl(source_submission_path):
+                    decision_id = str(value.get("decisionId") or "")
+                    if decision_id in source_statuses:
+                        raise TrainingWorkflowError(
+                            "A corrected preference decision is duplicated."
+                        )
+                    source_statuses[decision_id] = str(
+                        value.get("status") or ""
+                    )
+        else:
+            source_submission_id = str(
+                source_adjudication.get("submissionId") or ""
             )
-        ):
-            raise TrainingWorkflowError(
-                "The source preference submission changed."
+            source_batch_id = str(
+                source_adjudication.get("batchId") or ""
             )
-        source_statuses = {
-            str(value.get("decisionId") or ""): str(
-                value.get("status") or ""
+            source_submission_path = (
+                self._batch_dir(source_batch_id)
+                / "extraction"
+                / "validation"
+                / "review"
+                / "challenger-disagreements"
+                / "submissions"
+                / f"{source_submission_id}.jsonl"
             )
-            for value in _read_jsonl(source_submission_path)
-        }
+            if (
+                not source_submission_path.exists()
+                or _sha256_bytes(source_submission_path.read_bytes())
+                != str(
+                    source_adjudication.get("submissionFileSha256")
+                    or ""
+                )
+            ):
+                raise TrainingWorkflowError(
+                    "The source preference submission changed."
+                )
+            source_statuses = {
+                str(value.get("decisionId") or ""): str(
+                    value.get("status") or ""
+                )
+                for value in _read_jsonl(source_submission_path)
+            }
         source_status_by_signature: dict[str, str] = {}
-        for disagreement in source_disagreement.get("disagreements") or ():
+        source_disagreements = (
+            source_disagreement.get("pendingAmbiguousDisagreements")
+            if corrected_adjudication
+            else source_disagreement.get("disagreements")
+        )
+        for disagreement in source_disagreements or ():
             decision_id = str(disagreement.get("decisionId") or "")
             status = source_statuses.get(decision_id)
             if status not in {
@@ -9901,7 +10017,44 @@ class AmazingTablatureTrainingStore:
                 ),
                 "mechanicalAccuracy": 1.0,
             },
+            "thresholdContract": {
+                "metricVersion": "structured-input-tab-choice-v2",
+                "canonicalEvaluation": True,
+                "inputScope": "normalized_score_events",
+                "scoreImageRecognitionIncluded": False,
+                "audioRecognitionIncluded": False,
+                "overallPreferenceAccuracyFloor": (
+                    VALIDATION_OVERALL_PREFERENCE_FLOOR
+                ),
+                "overallPreferenceAccuracyComparison": (
+                    "strictly_greater_than"
+                ),
+                "overallTopThreeCoverageFloor": (
+                    VALIDATION_TOP_THREE_COVERAGE_FLOOR
+                ),
+                "cohortPreferenceAccuracyFloor": (
+                    VALIDATION_COHORT_PREFERENCE_FLOOR
+                ),
+                "evidenceModePreferenceAccuracyFloor": (
+                    VALIDATION_EVIDENCE_MODE_PREFERENCE_FLOOR
+                ),
+                "minimumDecisionCountPerCohort": (
+                    VALIDATION_MIN_DECISIONS_PER_COHORT
+                ),
+                "minimumDecisionCountPerEvidenceMode": (
+                    VALIDATION_MIN_DECISIONS_PER_EVIDENCE_MODE
+                ),
+                "mechanicalAccuracyRequired": 1.0,
+                "requiredEvidenceModes": [
+                    "alignment:score_supported",
+                    "alignment:tab_only",
+                ],
+                "durationDiagnosticOnly": True,
+                "thresholdAdjustmentAfterValidation": False,
+            },
+            "validationDecisionDigest": _sha256_json(ranking_records),
             "gate": {
+                "passed": gate_passed,
                 "humanGroundTruthComplete": True,
                 "noRereviewAccountingPassed": True,
                 "correctedCanonicalGatePassed": gate_passed,
@@ -9935,6 +10088,9 @@ class AmazingTablatureTrainingStore:
                     "correctionCodeFileSha256"
                 ),
             },
+            "evaluationCodeFileDigests": _rules_code_file_digests(
+                self.repo_root
+            ),
             "noTrainingContract": {
                 "validationGroundTruthMayTrain": False,
                 "validationDecisionsAddedToTraining": 0,
@@ -9954,6 +10110,34 @@ class AmazingTablatureTrainingStore:
         )
         _write_json(report_path, report)
         _make_private(report_path)
+        if gate_passed:
+            current_registry = self._registry()
+            current_model = (
+                current_registry.get("models") or {}
+            ).get(model_id)
+            if not isinstance(current_model, dict):
+                raise TrainingWorkflowError(
+                    "The corrected canonical model registry entry "
+                    "disappeared."
+                )
+            current_model["status"] = "evaluated"
+            current_model["evaluation"] = str(
+                report_path.relative_to(self.root)
+            )
+            current_model["correctedCanonicalValidation"] = {
+                "status": "passed",
+                "reportDigest": report_digest,
+                "report": str(report_path.relative_to(self.root)),
+                "correctionReportDigest": correction_report_digest,
+                "sourceAdjudicationDigest": (
+                    source_adjudication_digest
+                ),
+                "sourceAdjudicationModelId": adjudication_model_id,
+            }
+            current_model["privateRuntimeEnableEligible"] = True
+            current_model["rulesFreezeEligible"] = True
+            current_model["promotionEligible"] = False
+            self._save_registry(current_registry)
         return {
             **report,
             "reportPath": str(report_path.relative_to(self.root)),
@@ -10525,6 +10709,7 @@ class AmazingTablatureTrainingStore:
             "cohortMetrics": cohort_metrics,
             "evidenceModeMetrics": evidence_metrics,
             "gate": {
+                "passed": gate_passed,
                 "correctedCanonicalGatePassed": gate_passed,
                 "rulesFreezeAllowed": gate_passed,
                 "privateRuntimeEnableAllowed": gate_passed,
@@ -10532,6 +10717,42 @@ class AmazingTablatureTrainingStore:
                 "reasons": reasons,
             },
             "thresholds": deepcopy(score.get("thresholds") or {}),
+            "thresholdContract": {
+                "metricVersion": "structured-input-tab-choice-v2",
+                "canonicalEvaluation": True,
+                "inputScope": "normalized_score_events",
+                "scoreImageRecognitionIncluded": False,
+                "audioRecognitionIncluded": False,
+                "overallPreferenceAccuracyFloor": (
+                    VALIDATION_OVERALL_PREFERENCE_FLOOR
+                ),
+                "overallPreferenceAccuracyComparison": (
+                    "strictly_greater_than"
+                ),
+                "overallTopThreeCoverageFloor": (
+                    VALIDATION_TOP_THREE_COVERAGE_FLOOR
+                ),
+                "cohortPreferenceAccuracyFloor": (
+                    VALIDATION_COHORT_PREFERENCE_FLOOR
+                ),
+                "evidenceModePreferenceAccuracyFloor": (
+                    VALIDATION_EVIDENCE_MODE_PREFERENCE_FLOOR
+                ),
+                "minimumDecisionCountPerCohort": (
+                    VALIDATION_MIN_DECISIONS_PER_COHORT
+                ),
+                "minimumDecisionCountPerEvidenceMode": (
+                    VALIDATION_MIN_DECISIONS_PER_EVIDENCE_MODE
+                ),
+                "mechanicalAccuracyRequired": 1.0,
+                "requiredEvidenceModes": [
+                    "alignment:score_supported",
+                    "alignment:tab_only",
+                ],
+                "durationDiagnosticOnly": True,
+                "thresholdAdjustmentAfterValidation": False,
+            },
+            "validationDecisionDigest": score.get("decisionDigest"),
             "lineage": {
                 "modelCodeRevision": _read_json(model_path).get(
                     "codeRevision"
@@ -10541,6 +10762,9 @@ class AmazingTablatureTrainingStore:
                     self.repo_root
                 ),
             },
+            "evaluationCodeFileDigests": _rules_code_file_digests(
+                self.repo_root
+            ),
             "noTrainingContract": {
                 "validationGroundTruthMayTrain": False,
                 "validationDecisionsAddedToTraining": 0,
@@ -10561,6 +10785,32 @@ class AmazingTablatureTrainingStore:
         )
         _write_json(report_path, report)
         _make_private(report_path)
+        if gate_passed:
+            current_registry = self._registry()
+            current_model = (
+                current_registry.get("models") or {}
+            ).get(model_id)
+            if not isinstance(current_model, dict):
+                raise TrainingWorkflowError(
+                    "The corrected canonical model registry entry "
+                    "disappeared."
+                )
+            current_model["status"] = "evaluated"
+            current_model["evaluation"] = str(
+                report_path.relative_to(self.root)
+            )
+            current_model["correctedCanonicalValidation"] = {
+                "status": "passed",
+                "reportDigest": report_digest,
+                "report": str(report_path.relative_to(self.root)),
+                "scoreReportDigest": score_report_digest,
+                "disagreementReportDigest": disagreement_digest,
+                "submissionIds": sorted(submission_ids),
+            }
+            current_model["privateRuntimeEnableEligible"] = True
+            current_model["rulesFreezeEligible"] = True
+            current_model["promotionEligible"] = False
+            self._save_registry(current_registry)
         return {
             **report,
             "reportPath": str(report_path.relative_to(self.root)),
