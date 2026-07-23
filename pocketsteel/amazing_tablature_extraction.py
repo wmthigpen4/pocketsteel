@@ -6425,6 +6425,35 @@ def _validation_contact_tab_hypothesis(
                     confidence=float(cell.get("confidence") or 0.0),
                     region_id="validation-independent-contact-hypothesis",
                 )
+                state_only_horizontal_connector = bool(
+                    action is not None
+                    and isinstance(issue, Mapping)
+                    and str(issue.get("kind") or "") == "uncertain_tab_modifier"
+                    and action.get("notationMarks")
+                    and all(
+                        str(mark.get("mark") or "") == "horizontal_line"
+                        for mark in action.get("notationMarks") or []
+                    )
+                )
+                if state_only_horizontal_connector and action is not None:
+                    # Discovery feedback established that a trailing horizontal
+                    # stroke connects or sustains the printed state; it does not
+                    # alter that state's fret, controls, or sounding pitch. Keep
+                    # the source mark and its uncertainty, but do not discard
+                    # an otherwise exact state before full-line score/copedent
+                    # containment. This never creates a movement event.
+                    action["validationStateProjection"] = {
+                        "sourceMark": "horizontal_line",
+                        "stateFieldsUsed": [
+                            "string",
+                            "fret",
+                            "controls",
+                            "soundingPitchValue",
+                        ],
+                        "connectorMeaningResolved": False,
+                        "movementEventCreated": False,
+                    }
+                    issue = None
                 if (
                     issue is not None
                     or action is None
@@ -6434,7 +6463,28 @@ def _validation_contact_tab_hypothesis(
                 ):
                     valid = False
                     break
-                cells.append({"string": resolved_string, "token": token})
+                state_token = (
+                    f"{int(action['fret'])}"
+                    + "".join(str(value) for value in action.get("controls") or [])
+                    if state_only_horizontal_connector
+                    else token
+                )
+                cells.append(
+                    {
+                        "string": resolved_string,
+                        "token": state_token,
+                        **(
+                            {
+                                "sourceToken": token,
+                                "validationStateProjection": copy.deepcopy(
+                                    action["validationStateProjection"]
+                                ),
+                            }
+                            if state_only_horizontal_connector
+                            else {}
+                        ),
+                    }
+                )
             if not valid or not cells:
                 valid = False
                 break
@@ -6465,6 +6515,22 @@ def _validation_contact_tab_hypothesis(
             )
         except ExtractionWorkflowError:
             continue
+        for raw_event, tab_event in zip(
+            candidate_events, tab_events, strict=True
+        ):
+            projected_by_string = {
+                int(cell["string"]): cell
+                for cell in raw_event.get("cells") or []
+                if cell.get("validationStateProjection")
+            }
+            for action in tab_event.get("steelActions") or []:
+                projected = projected_by_string.get(int(action.get("string") or 0))
+                if projected is None:
+                    continue
+                action["sourceToken"] = projected["sourceToken"]
+                action["validationStateProjection"] = copy.deepcopy(
+                    projected["validationStateProjection"]
+                )
         if not _machine_score_is_contained_in_tab(score_events, tab_events):
             continue
         semantic_digest = _sha256_json(
@@ -6501,6 +6567,11 @@ def _validation_contact_tab_hypothesis(
         "mechanicallyCompleteOffsets": attempted_offsets,
         "eligibleSemanticHypothesisCount": len(hypotheses),
         "selectedStringOriginOffset": selected_offset,
+        "horizontalConnectorStateProjectionCount": sum(
+            bool(action.get("validationStateProjection"))
+            for event in tab_events_result
+            for action in event.get("steelActions") or []
+        ),
         "selectionEvidence": (
             "independent_cell_tokens_plus_copedent_plus_independent_score_containment"
         ),
@@ -25871,6 +25942,7 @@ class AmazingTablatureExtractor:
             "stateTokenSource": "guided_full_state_vision_with_pinned_cell_crosscheck",
             "independentCellReaderPromptVersion": TAB_VISION_PROMPT_VERSION,
             "requiresOneTokenPerVisualCandidateCell": True,
+            "horizontalConnectorMayProjectStateWithoutCreatingMovement": True,
             "minimumStringOriginConsensus": 0.75,
             "mechanicalChecksumMayResolveMinorityRow": False,
             "deterministicGeometryRowsRemainAuthoritative": True,

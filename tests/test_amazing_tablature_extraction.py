@@ -1676,7 +1676,7 @@ def test_validation_contact_hypothesis_uses_score_and_copedent_to_select_row_ori
             {
                 "eventIndex": 1,
                 "execution": "attack",
-                "cells": [{"string": 5, "token": "5"}],
+                "cells": [{"string": 5, "token": "5-"}],
             },
             {
                 "eventIndex": 2,
@@ -1686,7 +1686,7 @@ def test_validation_contact_hypothesis_uses_score_and_copedent_to_select_row_ori
         ],
     }
     independent_cells = {
-        "e1s6": {"token": "5", "confidence": 0.99, "uncertain": False},
+        "e1s6": {"token": "5-", "confidence": 0.99, "uncertain": False},
         "e2s6": {"token": "5A", "confidence": 0.99, "uncertain": False},
     }
 
@@ -1709,6 +1709,7 @@ def test_validation_contact_hypothesis_uses_score_and_copedent_to_select_row_ori
 
     assert diagnostics["selectedStringOriginOffset"] == -1
     assert diagnostics["eligibleSemanticHypothesisCount"] == 1
+    assert diagnostics["horizontalConnectorStateProjectionCount"] == 1
     assert [
         event["steelActions"][0]["string"] for event in tab_events
     ] == [5, 5]
@@ -1716,6 +1717,13 @@ def test_validation_contact_hypothesis_uses_score_and_copedent_to_select_row_ori
         "5",
         "5A",
     ]
+    assert tab_events[0]["steelActions"][0]["sourceToken"] == "5-"
+    assert (
+        tab_events[0]["steelActions"][0]["validationStateProjection"][
+            "movementEventCreated"
+        ]
+        is False
+    )
 
 
 def test_machine_localized_tab_events_fail_closed_on_blank_or_invalid_states() -> None:
