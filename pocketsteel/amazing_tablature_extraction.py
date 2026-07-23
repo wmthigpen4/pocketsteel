@@ -26277,28 +26277,6 @@ class AmazingTablatureExtractor:
                         and isinstance(cached.get("tabLocalization"), Mapping)
                     ) else None
                     full_line_localization_rejection: str | None = None
-                    if full_line_localization is None:
-                        try:
-                            full_line_localization = (
-                                self.tab_system_vision.localize_events(
-                                    Path(guided_tab_crop["path"]),
-                                    expected_event_count=expected_count,
-                                    constraint_source="machine_visual_candidate_geometry",
-                                    guided=True,
-                                    expected_cell_counts=[
-                                        len(candidate.get("candidateStrings") or [])
-                                        for candidate in tab_system.get(
-                                            "tabEventCandidates"
-                                        )
-                                        or []
-                                    ],
-                                    control_string_map=_profile_control_string_map(
-                                        profile
-                                    ),
-                                )
-                            )
-                        except ExtractionWorkflowError as exc:
-                            full_line_localization_rejection = str(exc)
                     # The score reader remains unconstrained by tablature.  The
                     # bounded range only rejects an impossible score with more
                     # attacks than visible deterministic tab columns; exact
@@ -26346,6 +26324,37 @@ class AmazingTablatureExtractor:
                         )
                     except ExtractionWorkflowError as exc:
                         execution_projection_rejection = str(exc)
+                        if full_line_localization is None:
+                            try:
+                                full_line_localization = (
+                                    self.tab_system_vision.localize_events(
+                                        Path(guided_tab_crop["path"]),
+                                        expected_event_count=expected_count,
+                                        constraint_source=(
+                                            "machine_visual_candidate_geometry"
+                                        ),
+                                        guided=True,
+                                        expected_cell_counts=[
+                                            len(
+                                                candidate.get(
+                                                    "candidateStrings"
+                                                )
+                                                or []
+                                            )
+                                            for candidate in tab_system.get(
+                                                "tabEventCandidates"
+                                            )
+                                            or []
+                                        ],
+                                        control_string_map=(
+                                            _profile_control_string_map(profile)
+                                        ),
+                                    )
+                                )
+                            except ExtractionWorkflowError as localizer_exc:
+                                full_line_localization_rejection = str(
+                                    localizer_exc
+                                )
                         if full_line_localization is None:
                             raise ExtractionWorkflowError(
                                 "Neither strict independent score/tab geometry nor "

@@ -7,6 +7,7 @@ The validation preflight exposed a structural bottleneck rather than a ranking-m
 This slice adds a fail-closed machine-only fallback:
 
 - independent score-reader x positions are matched monotonically to deterministic tablature columns;
+- the expensive full-line vision localizer is invoked only after the strict independent projection fails;
 - the maximum accepted pair delta is `0.02`;
 - unmatched tablature columns are represented as pedal/lever or bar movement without a new score attack;
 - equal-quality assignments are rejected unless a same-position candidate has a strictly stronger visible-cell tie-break;
