@@ -690,6 +690,19 @@ def _parser() -> argparse.ArgumentParser:
         required=True,
     )
 
+    prepare_corrected_validation_ambiguities = subparsers.add_parser(
+        "prepare-corrected-canonical-disagreement-review",
+        help=(
+            "Prepare compact review packets containing only new preference "
+            "ambiguities from the fully corrected canonical validation truth."
+        ),
+    )
+    prepare_corrected_validation_ambiguities.add_argument("model_id")
+    prepare_corrected_validation_ambiguities.add_argument(
+        "--score-report-digest",
+        required=True,
+    )
+
     remediate_validation_capture = subparsers.add_parser(
         "remediate-validation-machine-capture",
         help=(
@@ -1083,6 +1096,24 @@ def _parser() -> argparse.ArgumentParser:
     )
     score_canonical_validation.add_argument(
         "--equivalence-digest",
+        required=True,
+    )
+
+    score_corrected_canonical = subparsers.add_parser(
+        "score-corrected-canonical-validation",
+        help=(
+            "Rerun the exact challenger against the fully confirmed corrected "
+            "validation truth, carrying prior expert preference verdicts only "
+            "for byte-equivalent disagreements."
+        ),
+    )
+    score_corrected_canonical.add_argument("model_id")
+    score_corrected_canonical.add_argument(
+        "--correction-report-digest",
+        required=True,
+    )
+    score_corrected_canonical.add_argument(
+        "--source-adjudication-digest",
         required=True,
     )
 
@@ -1517,6 +1548,16 @@ def main() -> int:
                 submission_id=args.submission_id,
                 correction_plan=args.correction_plan,
             )
+        elif (
+            args.command
+            == "prepare-corrected-canonical-disagreement-review"
+        ):
+            result = AmazingTablatureExtractor(
+                args.root
+            ).prepare_corrected_canonical_disagreement_review(
+                args.model_id,
+                score_report_digest=args.score_report_digest,
+            )
         elif args.command == "remediate-validation-machine-capture":
             result = AmazingTablatureExtractor(
                 args.root,
@@ -1721,6 +1762,16 @@ def main() -> int:
                 submission_id=args.submission_id,
                 adjudication_digest=args.adjudication_digest,
                 equivalence_digest=args.equivalence_digest,
+            )
+        elif args.command == "score-corrected-canonical-validation":
+            result = store.score_corrected_canonical_validation(
+                args.model_id,
+                correction_report_digest=(
+                    args.correction_report_digest
+                ),
+                source_adjudication_digest=(
+                    args.source_adjudication_digest
+                ),
             )
         elif args.command == "report":
             result = store.report(args.model_id)

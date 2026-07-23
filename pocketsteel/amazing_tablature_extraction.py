@@ -33433,6 +33433,542 @@ class AmazingTablatureExtractor:
             "sealedTestAccessed": False,
         }
 
+    def prepare_corrected_canonical_disagreement_review(
+        self,
+        model_id: str,
+        *,
+        score_report_digest: str,
+    ) -> dict[str, Any]:
+        """Show only new preference ambiguities from corrected human truth."""
+
+        if not re.fullmatch(r"at-[A-Za-z0-9._-]+", model_id):
+            raise ExtractionWorkflowError(
+                "Corrected canonical disagreement review has an invalid model ID."
+            )
+        if not re.fullmatch(r"[0-9a-f]{64}", score_report_digest):
+            raise ExtractionWorkflowError(
+                "Corrected canonical disagreement review needs an exact score digest."
+            )
+        registry_path = self.private_root / "training-registry.json"
+        if not registry_path.exists():
+            raise ExtractionWorkflowError(
+                "The private training registry is missing."
+            )
+        registry = _read_json(registry_path)
+        model_meta = (registry.get("models") or {}).get(model_id)
+        if not isinstance(model_meta, Mapping):
+            raise ExtractionWorkflowError(
+                "Corrected canonical review references an unknown challenger."
+            )
+        model_path = self.private_root / str(
+            model_meta.get("artifact") or ""
+        )
+        model_sha256 = str(model_meta.get("artifactSha256") or "")
+        if (
+            not model_path.exists()
+            or _sha256_bytes(model_path.read_bytes()) != model_sha256
+        ):
+            raise ExtractionWorkflowError(
+                "The corrected canonical challenger artifact changed."
+            )
+        evaluation_dir = (
+            self.private_root / "validation-evaluations" / model_id
+        )
+        score_path = (
+            evaluation_dir
+            / f"corrected-canonical-score-{score_report_digest}.json"
+        )
+        if not score_path.exists():
+            raise ExtractionWorkflowError(
+                "The corrected canonical score report is missing."
+            )
+        score = _read_json(score_path)
+        score_core = {
+            key: value for key, value in score.items() if key != "reportDigest"
+        }
+        disagreement_digest = str(score.get("disagreementDigest") or "")
+        disagreement_path = (
+            evaluation_dir
+            / f"corrected-canonical-disagreements-{disagreement_digest}.json"
+        )
+        if (
+            score.get("schemaVersion")
+            != "amazing-tablature-corrected-canonical-validation-v1"
+            or score.get("modelId") != model_id
+            or score.get("modelArtifactSha256") != model_sha256
+            or score.get("reportDigest") != score_report_digest
+            or _sha256_json(score_core) != score_report_digest
+            or score.get("humanTruthUsed") is not True
+            or score.get("validationMayTrain") is not False
+            or score.get("sealedTestAccessed") is not False
+            or not disagreement_path.exists()
+        ):
+            raise ExtractionWorkflowError(
+                "The corrected canonical score lineage or privacy contract failed."
+            )
+        disagreement = _read_json(disagreement_path)
+        disagreement_core = {
+            key: value
+            for key, value in disagreement.items()
+            if key != "reportDigest"
+        }
+        pending = [
+            copy.deepcopy(value)
+            for value in (
+                disagreement.get("pendingAmbiguousDisagreements") or ()
+            )
+            if isinstance(value, Mapping)
+        ]
+        if (
+            disagreement.get("schemaVersion")
+            != "amazing-tablature-corrected-validation-disagreements-v1"
+            or disagreement.get("modelId") != model_id
+            or disagreement.get("modelArtifactSha256") != model_sha256
+            or disagreement.get("correctionReportDigest")
+            != score.get("correctionReportDigest")
+            or disagreement.get("reportDigest") != disagreement_digest
+            or _sha256_json(disagreement_core) != disagreement_digest
+            or int(disagreement.get("pendingAmbiguousCount") or 0)
+            != len(pending)
+            or not pending
+            or disagreement.get("validationGroundTruthMayTrain") is not False
+            or disagreement.get("validationMayTrain") is not False
+            or disagreement.get("sealedTestAccessed") is not False
+        ):
+            raise ExtractionWorkflowError(
+                "The corrected canonical disagreement lineage failed."
+            )
+        correction_digest = str(score.get("correctionReportDigest") or "")
+        correction_dir = (
+            evaluation_dir / "canonical-validation" / "corrections"
+        )
+        correction_path = (
+            correction_dir / f"report-{correction_digest}.json"
+        )
+        if not correction_path.exists():
+            raise ExtractionWorkflowError(
+                "The corrected canonical truth report is missing."
+            )
+        correction = _read_json(correction_path)
+        correction_core = {
+            key: value
+            for key, value in correction.items()
+            if key != "reportDigest"
+        }
+        receipts = {
+            str(value.get("lineId") or ""): value
+            for value in correction.get("lineReceipts") or ()
+            if isinstance(value, Mapping)
+        }
+        if (
+            correction.get("reportDigest") != correction_digest
+            or _sha256_json(correction_core) != correction_digest
+            or correction.get("modelId") != model_id
+            or int(correction.get("confirmationRequiredLineCount") or 0)
+            != 0
+            or correction.get("validationGroundTruthMayTrain") is not False
+            or correction.get("sealedTestAccessed") is not False
+        ):
+            raise ExtractionWorkflowError(
+                "The corrected canonical truth is not fully confirmed."
+            )
+        source_packet_digest = str(
+            correction.get("sourcePacketDigest") or ""
+        )
+        source_packet_path = (
+            evaluation_dir
+            / "canonical-validation"
+            / f"packet-{source_packet_digest}.json"
+        )
+        if not source_packet_path.exists():
+            raise ExtractionWorkflowError(
+                "The corrected canonical source packet is missing."
+            )
+        source_packet = _read_json(source_packet_path)
+        source_packet_core = {
+            key: value
+            for key, value in source_packet.items()
+            if key != "packetDigest"
+        }
+        source_lines = {
+            str(value.get("lineId") or ""): value
+            for value in source_packet.get("lines") or ()
+            if isinstance(value, Mapping)
+        }
+        if (
+            source_packet.get("packetDigest") != source_packet_digest
+            or _sha256_json(source_packet_core) != source_packet_digest
+            or source_packet.get("modelId") != model_id
+            or source_packet.get("validationGroundTruthMayTrain") is not False
+            or source_packet.get("sealedTestAccessed") is not False
+        ):
+            raise ExtractionWorkflowError(
+                "The corrected canonical source packet lineage failed."
+            )
+
+        events_by_line: dict[str, list[dict[str, Any]]] = {}
+        for line_id, receipt in receipts.items():
+            corrected_relative = str(
+                receipt.get("correctedLinePath") or ""
+            )
+            if corrected_relative:
+                corrected_path = (
+                    self.private_root / corrected_relative
+                ).resolve()
+                try:
+                    corrected_path.relative_to(correction_dir.resolve())
+                except ValueError as exc:
+                    raise ExtractionWorkflowError(
+                        "A corrected truth line escaped its private root."
+                    ) from exc
+                if not corrected_path.exists():
+                    raise ExtractionWorkflowError(
+                        "A corrected truth line is missing."
+                    )
+                corrected = _read_json(corrected_path)
+                corrected_core = {
+                    key: value
+                    for key, value in corrected.items()
+                    if key != "correctedLineDigest"
+                }
+                if (
+                    corrected.get("correctedLineDigest")
+                    != receipt.get("correctedLineDigest")
+                    or _sha256_json(corrected_core)
+                    != receipt.get("correctedLineDigest")
+                ):
+                    raise ExtractionWorkflowError(
+                        "A corrected truth line changed after confirmation."
+                    )
+                events_by_line[line_id] = [
+                    copy.deepcopy(value)
+                    for value in corrected.get("events") or ()
+                    if isinstance(value, Mapping)
+                ]
+            else:
+                source_line = source_lines.get(line_id)
+                if source_line is None:
+                    raise ExtractionWorkflowError(
+                        "A confirmed original truth line is missing."
+                    )
+                events_by_line[line_id] = [
+                    copy.deepcopy(value)
+                    for value in source_line.get("events") or ()
+                    if isinstance(value, Mapping)
+                ]
+
+        grouped: dict[str, dict[tuple[str, str], list[dict[str, Any]]]] = (
+            defaultdict(lambda: defaultdict(list))
+        )
+        for item in pending:
+            evidence = item.get("validationEvidence") or {}
+            truth_digest = str(evidence.get("truthLineDigest") or "")
+            matching_receipts = [
+                (line_id, receipt)
+                for line_id, receipt in receipts.items()
+                if str(
+                    receipt.get("correctedLineDigest")
+                    or receipt.get("candidateDigest")
+                    or ""
+                )
+                == truth_digest
+            ]
+            if len(matching_receipts) != 1:
+                raise ExtractionWorkflowError(
+                    "A pending ambiguity lost its exact truth line."
+                )
+            line_id, receipt = matching_receipts[0]
+            item["_truthLineId"] = line_id
+            batch_id = str(receipt.get("batchId") or "")
+            grouped[batch_id][
+                (
+                    str(receipt.get("inputId") or ""),
+                    str(receipt.get("tabSystemId") or ""),
+                )
+            ].append(item)
+
+        packets: list[dict[str, Any]] = []
+        for batch_id in sorted(grouped):
+            batch_dir, manifest, _work = self._batch_paths(
+                batch_id,
+                "validation",
+            )
+            output_root = batch_dir / "extraction" / "validation"
+            review_dir = (
+                output_root / "review" / "challenger-disagreements"
+            )
+            review_dir.mkdir(parents=True, exist_ok=True)
+            os.chmod(review_dir, 0o700)
+            input_names = {
+                str(value.get("inputId") or ""): Path(
+                    str(value.get("relativePath") or "")
+                ).name
+                for value in manifest.get("inputs") or ()
+            }
+            systems: list[dict[str, Any]] = []
+            for (input_id, tab_system_id), items in sorted(
+                grouped[batch_id].items()
+            ):
+                page_path = output_root / "pages" / f"{input_id}.json"
+                if not page_path.exists():
+                    raise ExtractionWorkflowError(
+                        "A corrected ambiguity source page is missing."
+                    )
+                page = _read_json(page_path)
+                tab_system = next(
+                    (
+                        value
+                        for value in page.get("tabSystems") or ()
+                        if str(value.get("tabSystemId") or "")
+                        == tab_system_id
+                    ),
+                    None,
+                )
+                score_system = next(
+                    (
+                        value
+                        for value in page.get("scoreSystems") or ()
+                        if str(value.get("pairedTabSystemId") or "")
+                        == tab_system_id
+                    ),
+                    None,
+                )
+                if tab_system is None or score_system is None:
+                    raise ExtractionWorkflowError(
+                        "A corrected ambiguity lacks its printed score/tab pair."
+                    )
+                line_id = str(items[0].get("_truthLineId") or "")
+                if any(
+                    str(value.get("_truthLineId") or "") != line_id
+                    for value in items
+                ):
+                    raise ExtractionWorkflowError(
+                        "Corrected ambiguities crossed truth lines."
+                    )
+                events = events_by_line.get(line_id) or []
+                event_indexes = {
+                    str(value.get("tabEventId") or ""): index
+                    for index, value in enumerate(events)
+                }
+                crop = _prepare_score_tab_source_crop(
+                    output_root=output_root,
+                    audit_dir=review_dir,
+                    input_id=input_id,
+                    record=page,
+                    score_system=score_system,
+                    tab_system=tab_system,
+                )
+                shown: list[dict[str, Any]] = []
+                for item in sorted(
+                    items,
+                    key=lambda value: str(
+                        value.get("decisionId") or ""
+                    ),
+                ):
+                    event_index = event_indexes.get(
+                        str(item.get("sourceTabEventId") or "")
+                    )
+                    candidates = [
+                        value
+                        for value in item.get("candidates") or ()
+                        if isinstance(value, Mapping)
+                    ]
+                    best_indexes = [
+                        int(value)
+                        for value in item.get("bestCandidateIndexes") or ()
+                    ]
+                    if (
+                        event_index is None
+                        or len(candidates) < 2
+                        or not best_indexes
+                        or best_indexes[0] <= 0
+                        or best_indexes[0] >= len(candidates)
+                    ):
+                        raise ExtractionWorkflowError(
+                            "A corrected ambiguity lacks a distinct complete choice."
+                        )
+                    source_candidate = candidates[0]
+                    challenger_candidate = candidates[best_indexes[0]]
+                    source_actions = list(
+                        source_candidate.get("mechanicalActions") or ()
+                    )
+                    challenger_actions = list(
+                        challenger_candidate.get("mechanicalActions") or ()
+                    )
+                    if (
+                        not source_actions
+                        or not challenger_actions
+                        or source_candidate.get("mechanicallyValid") is not True
+                        or challenger_candidate.get("mechanicallyValid")
+                        is not True
+                        or sorted(
+                            int(
+                                value.get("soundingPitchValue") or -1
+                            )
+                            for value in source_actions
+                        )
+                        != sorted(
+                            int(
+                                value.get("soundingPitchValue") or -1
+                            )
+                            for value in challenger_actions
+                        )
+                    ):
+                        raise ExtractionWorkflowError(
+                            "A corrected ambiguity does not compare playable equivalent pitches."
+                        )
+                    context_events = []
+                    for label, context_index in (
+                        ("Previous", event_index - 1),
+                        ("Compared source movement", event_index),
+                        ("Following", event_index + 1),
+                    ):
+                        if 0 <= context_index < len(events):
+                            context_events.append(
+                                {
+                                    "label": label,
+                                    "actions": copy.deepcopy(
+                                        events[context_index].get(
+                                            "steelActions"
+                                        )
+                                        or []
+                                    ),
+                                }
+                            )
+                    pitch_values = [
+                        int(value)
+                        for value in source_candidate.get(
+                            "voicePitchValues"
+                        )
+                        or ()
+                    ]
+                    shown.append(
+                        {
+                            "decisionId": str(
+                                item.get("decisionId") or ""
+                            ),
+                            "inputId": input_id,
+                            "scoreSystemId": str(
+                                score_system.get("scoreSystemId") or ""
+                            ),
+                            "tabSystemId": tab_system_id,
+                            "sourceTabEventId": str(
+                                item.get("sourceTabEventId") or ""
+                            ),
+                            "eventIndex": event_index + 1,
+                            "melodyPitch": "/".join(
+                                scientific_pitch_for_value(value)
+                                for value in pitch_values
+                            ),
+                            "sourceActions": source_actions,
+                            "challengerActions": challenger_actions,
+                            "contextEvents": context_events,
+                        }
+                    )
+                systems.append(
+                    {
+                        "inputId": input_id,
+                        "sourceLabel": input_names.get(input_id)
+                        or input_id,
+                        "systemIndex": int(
+                            tab_system.get("systemIndex") or 0
+                        ),
+                        "scoreSystemId": str(
+                            score_system.get("scoreSystemId") or ""
+                        ),
+                        "tabSystemId": tab_system_id,
+                        "candidateDigest": str(
+                            (items[0].get("validationEvidence") or {}).get(
+                                "truthLineDigest"
+                            )
+                            or ""
+                        ),
+                        "sourcePairUrl": crop["relativeUrl"],
+                        "sourcePairSha256": crop["sha256"],
+                        "tabEventCount": len(events),
+                        "disagreements": shown,
+                    }
+                )
+            packet_core = {
+                "schemaVersion": (
+                    VALIDATION_DISAGREEMENT_REVIEW_SCHEMA_VERSION
+                ),
+                "reviewType": "validation_challenger_disagreement",
+                "reviewScope": (
+                    "new_ambiguities_from_corrected_canonical_truth"
+                ),
+                "batchId": batch_id,
+                "partition": "validation",
+                "modelId": model_id,
+                "modelArtifactSha256": model_sha256,
+                "machineDecisionDigest": score.get("decisionDigest"),
+                "disagreementReportDigest": disagreement_digest,
+                "correctedCanonicalScoreReportDigest": (
+                    score_report_digest
+                ),
+                "systems": systems,
+                "tabCellsComplete": True,
+                "shownExecutionContextsExact": True,
+                "sourceTabMechanicsPassed": True,
+                "trainingEligible": False,
+                "validationGroundTruthMayTrain": False,
+                "validationAccessed": True,
+                "sealedTestAccessed": False,
+            }
+            packet_digest = _sha256_json(packet_core)
+            packet = {**packet_core, "packetDigest": packet_digest}
+            packet_path = review_dir / f"packet-{packet_digest}.json"
+            console_path = (
+                review_dir
+                / "challenger-disagreement-console-"
+                f"{packet_digest[:12]}.html"
+            )
+            _write_json(packet_path, packet)
+            _write_private_text(
+                console_path,
+                _challenger_comparison_console_html(
+                    packet_digest=packet_digest,
+                    review_type="validation_challenger_disagreement",
+                ),
+            )
+            _write_json(review_dir / "packet.json", packet)
+            _write_private_text(
+                review_dir / "challenger-disagreement-console.html",
+                _challenger_comparison_console_html(
+                    packet_digest=packet_digest,
+                    review_type="validation_challenger_disagreement",
+                ),
+            )
+            packets.append(
+                {
+                    "batchId": batch_id,
+                    "packetDigest": packet_digest,
+                    "systemCount": len(systems),
+                    "disagreementCount": sum(
+                        len(value["disagreements"]) for value in systems
+                    ),
+                    "relativeUrl": (
+                        f"/{batch_id}/extraction/validation/review/"
+                        "challenger-disagreements/"
+                        f"{console_path.name}?v={packet_digest[:8]}"
+                    ),
+                }
+            )
+        return {
+            "schemaVersion": (
+                "amazing-tablature-corrected-validation-review-ready-v1"
+            ),
+            "modelId": model_id,
+            "scoreReportDigest": score_report_digest,
+            "disagreementReportDigest": disagreement_digest,
+            "pendingAmbiguousDisagreementCount": len(pending),
+            "packets": packets,
+            "trainingEligible": False,
+            "validationGroundTruthMayTrain": False,
+            "validationAccessed": True,
+            "sealedTestAccessed": False,
+        }
+
     def replay_combined_score_tab_regressions(
         self,
         batch_id: str,

@@ -9154,6 +9154,754 @@ class AmazingTablatureTrainingStore:
             "reportPath": str(report_path.relative_to(self.root)),
         }
 
+    def score_corrected_canonical_validation(
+        self,
+        model_id: str,
+        *,
+        correction_report_digest: str,
+        source_adjudication_digest: str,
+    ) -> dict[str, Any]:
+        """Rerun the exact ranker against confirmed corrected validation truth.
+
+        Validation corrections are never imported into discovery or training.
+        Previously reviewed preference verdicts are carried only when the full
+        disagreement signature is byte-for-byte equivalent.
+        """
+
+        from pocketsteel.amazing_tablature_decisions import (
+            derive_decision_annotations,
+        )
+
+        for label, value in {
+            "correction report": correction_report_digest,
+            "source adjudication": source_adjudication_digest,
+        }.items():
+            if not re.fullmatch(r"[0-9a-f]{64}", value):
+                raise TrainingWorkflowError(
+                    f"Corrected canonical validation needs an exact {label} digest."
+                )
+        registry = self._registry()
+        model_meta = (registry.get("models") or {}).get(model_id)
+        if not isinstance(model_meta, Mapping):
+            raise TrainingWorkflowError(f"Unknown challenger: {model_id}.")
+        authoritative_ids = self._authoritative_batch_ids(registry)
+        if (
+            model_meta.get("datasetEligibility") != "complete_discovery"
+            or model_meta.get("canonicalEvaluationEligible") is not True
+            or tuple(model_meta.get("sourceBatchIds") or ())
+            != authoritative_ids
+        ):
+            raise TrainingWorkflowError(
+                "Corrected canonical validation requires the exact "
+                "complete-discovery challenger."
+            )
+        model_path = self.root / str(model_meta.get("artifact") or "")
+        model_sha256 = str(model_meta.get("artifactSha256") or "")
+        if (
+            not model_path.exists()
+            or _sha256_bytes(model_path.read_bytes()) != model_sha256
+        ):
+            raise TrainingWorkflowError(
+                "The corrected canonical challenger artifact changed."
+            )
+        model = _read_json(model_path)
+        evaluation_dir = self.root / "validation-evaluations" / model_id
+        correction_dir = (
+            evaluation_dir / "canonical-validation" / "corrections"
+        )
+        correction_path = (
+            correction_dir / f"report-{correction_report_digest}.json"
+        )
+        if not correction_path.exists():
+            raise TrainingWorkflowError(
+                "The corrected canonical validation report is missing."
+            )
+        correction = _read_json(correction_path)
+        correction_core = {
+            key: value
+            for key, value in correction.items()
+            if key != "reportDigest"
+        }
+        correction_lineage = correction.get("lineage") or {}
+        extraction_code_path = (
+            self.repo_root / "pocketsteel" / "amazing_tablature_extraction.py"
+        )
+        receipts = [
+            deepcopy(value)
+            for value in correction.get("lineReceipts") or ()
+            if isinstance(value, Mapping)
+        ]
+        if (
+            correction.get("schemaVersion")
+            != "amazing-tablature-canonical-validation-correction-v1"
+            or correction.get("modelId") != model_id
+            or correction.get("modelArtifactSha256") != model_sha256
+            or correction.get("reportDigest")
+            != correction_report_digest
+            or _sha256_json(correction_core)
+            != correction_report_digest
+            or correction.get("allCorrectedLinesMechanicallyValid")
+            is not True
+            or int(correction.get("confirmationRequiredLineCount") or 0)
+            != 0
+            or int(correction.get("lineCount") or 0) != len(receipts)
+            or len(receipts) != 9
+            or any(
+                bool(receipt.get("requiresConfirmation"))
+                or bool(receipt.get("requiresScoreConfirmation"))
+                or receipt.get("trainingEligible") is not False
+                for receipt in receipts
+            )
+            or tuple(
+                sorted(
+                    {
+                        str(receipt.get("batchId") or "")
+                        for receipt in receipts
+                    }
+                )
+            )
+            != tuple(sorted(authoritative_ids))
+            or correction.get("validationGroundTruthMayTrain") is not False
+            or correction.get("validationMayTrain") is not False
+            or correction.get("sealedTestAccessed") is not False
+            or not extraction_code_path.exists()
+            or correction_lineage.get("correctionCodeFileSha256")
+            != _sha256_bytes(extraction_code_path.read_bytes())
+            or not re.fullmatch(
+                r"[0-9a-f]{40}",
+                str(correction_lineage.get("repositoryHead") or ""),
+            )
+        ):
+            raise TrainingWorkflowError(
+                "Corrected canonical truth lineage or privacy contract failed."
+            )
+
+        source_packet_digest = str(
+            correction.get("sourcePacketDigest") or ""
+        )
+        source_packet_path = (
+            evaluation_dir
+            / "canonical-validation"
+            / f"packet-{source_packet_digest}.json"
+        )
+        if (
+            not re.fullmatch(r"[0-9a-f]{64}", source_packet_digest)
+            or not source_packet_path.exists()
+        ):
+            raise TrainingWorkflowError(
+                "Corrected canonical truth lost its source packet."
+            )
+        source_packet = _read_json(source_packet_path)
+        source_packet_core = {
+            key: value
+            for key, value in source_packet.items()
+            if key != "packetDigest"
+        }
+        packet_lines = {
+            str(value.get("lineId") or ""): value
+            for value in source_packet.get("lines") or ()
+            if isinstance(value, Mapping)
+        }
+        if (
+            source_packet.get("schemaVersion")
+            != "amazing-tablature-canonical-validation-dataset-review-v1"
+            or source_packet.get("modelId") != model_id
+            or source_packet.get("modelArtifactSha256") != model_sha256
+            or source_packet.get("packetDigest") != source_packet_digest
+            or _sha256_json(source_packet_core) != source_packet_digest
+            or source_packet.get("validationGroundTruthMayTrain") is not False
+            or source_packet.get("sealedTestAccessed") is not False
+            or set(packet_lines)
+            != {
+                str(receipt.get("lineId") or "")
+                for receipt in receipts
+            }
+        ):
+            raise TrainingWorkflowError(
+                "Corrected canonical source packet lineage failed."
+            )
+
+        candidate_indexes: dict[str, dict[str, Mapping[str, Any]]] = {}
+        ranking_records: list[dict[str, Any]] = []
+        truth_line_receipts: list[dict[str, Any]] = []
+        for receipt in receipts:
+            batch_id = str(receipt.get("batchId") or "")
+            input_id = str(receipt.get("inputId") or "")
+            tab_system_id = str(receipt.get("tabSystemId") or "")
+            line_id = str(receipt.get("lineId") or "")
+            evidence_mode = str(receipt.get("evidenceMode") or "")
+            if evidence_mode not in {"score_supported", "tab_only"}:
+                raise TrainingWorkflowError(
+                    "Corrected canonical truth has an invalid evidence mode."
+                )
+            batch_dir = self._batch_dir(batch_id)
+            validation_root = batch_dir / "extraction" / "validation"
+            page_path = validation_root / "pages" / f"{input_id}.json"
+            if not page_path.exists():
+                raise TrainingWorkflowError(
+                    "A corrected canonical source page is missing."
+                )
+            page = _read_json(page_path)
+            manifest, _state = self._batch(batch_id)
+            profile = _profile_for_source(
+                str(manifest["sourceCopedentId"])
+            )
+            if (
+                profile.revision
+                != int(manifest["sourceCopedentRevision"])
+                or _profile_digest(profile)
+                != str(manifest["sourceCopedentDigest"])
+            ):
+                raise TrainingWorkflowError(
+                    "A corrected canonical copedent changed."
+                )
+
+            corrected_relative = str(
+                receipt.get("correctedLinePath") or ""
+            )
+            truth_digest = str(
+                receipt.get("correctedLineDigest")
+                or receipt.get("candidateDigest")
+                or ""
+            )
+            if corrected_relative:
+                corrected_path = (self.root / corrected_relative).resolve()
+                try:
+                    corrected_path.relative_to(correction_dir.resolve())
+                except ValueError as exc:
+                    raise TrainingWorkflowError(
+                        "A corrected canonical line escaped its private root."
+                    ) from exc
+                if not corrected_path.exists():
+                    raise TrainingWorkflowError(
+                        "A corrected canonical line is missing."
+                    )
+                corrected = _read_json(corrected_path)
+                corrected_core = {
+                    key: value
+                    for key, value in corrected.items()
+                    if key != "correctedLineDigest"
+                }
+                if (
+                    corrected.get("correctedLineDigest") != truth_digest
+                    or _sha256_json(corrected_core) != truth_digest
+                    or corrected.get("batchId") != batch_id
+                    or corrected.get("inputId") != input_id
+                    or corrected.get("tabSystemId") != tab_system_id
+                    or corrected.get("mechanicallyValid") is not True
+                    or corrected.get("validationGroundTruthMayTrain")
+                    is not False
+                    or corrected.get("sealedTestAccessed") is not False
+                ):
+                    raise TrainingWorkflowError(
+                        "A corrected canonical line changed after confirmation."
+                    )
+                events = deepcopy(corrected.get("events") or [])
+                truth_origin = "human_confirmed_correction"
+            else:
+                candidate_digest = str(
+                    receipt.get("candidateDigest") or ""
+                )
+                if batch_id not in candidate_indexes:
+                    consensus_path = (
+                        validation_root
+                        / "review"
+                        / "automation"
+                        / "validation-contact-sheet-consensus-v3"
+                        / "report.json"
+                    )
+                    if not consensus_path.exists():
+                        raise TrainingWorkflowError(
+                            "A corrected canonical source consensus is missing."
+                        )
+                    consensus = _read_json(consensus_path)
+                    candidate_indexes[batch_id] = {
+                        str(value.get("candidateDigest") or ""): value
+                        for value in consensus.get("lines") or ()
+                        if isinstance(value, Mapping)
+                        and value.get("status")
+                        == "complete_machine_candidate"
+                    }
+                source_line = candidate_indexes[batch_id].get(
+                    candidate_digest
+                )
+                if source_line is None:
+                    raise TrainingWorkflowError(
+                        "A confirmed original canonical line lost its candidate."
+                    )
+                candidate_path = (
+                    validation_root
+                    / str(source_line.get("candidatePath") or "")
+                ).resolve()
+                if not candidate_path.exists():
+                    raise TrainingWorkflowError(
+                        "A confirmed original candidate is missing."
+                    )
+                candidate = _read_json(candidate_path)
+                candidate_core = {
+                    key: value
+                    for key, value in candidate.items()
+                    if key != "candidateDigest"
+                }
+                if (
+                    candidate.get("candidateDigest") != candidate_digest
+                    or _sha256_json(candidate_core) != candidate_digest
+                    or candidate.get("batchId") != batch_id
+                    or candidate.get("inputId") != input_id
+                    or candidate.get("tabSystemId") != tab_system_id
+                    or candidate.get("humanTruthUsed") is not False
+                    or candidate.get("validationMayTrain") is not False
+                    or candidate.get("sealedTestAccessed") is not False
+                ):
+                    raise TrainingWorkflowError(
+                        "A confirmed original candidate lineage failed."
+                    )
+                events = deepcopy(candidate.get("events") or [])
+                truth_origin = "human_confirmed_original"
+
+            if (
+                not events
+                or validation_contact_execution_digest(events)
+                != str(receipt.get("executionDigest") or "")
+            ):
+                raise TrainingWorkflowError(
+                    "A corrected canonical execution digest changed."
+                )
+            for event in events:
+                event["derivedMovementEligibility"] = {
+                    "eligible": True,
+                    "evidenceClass": "explicit_human_confirmation",
+                    "reason": None,
+                    "reviewState": "human_approved",
+                }
+            tab_system = next(
+                (
+                    deepcopy(value)
+                    for value in page.get("tabSystems") or ()
+                    if str(value.get("tabSystemId") or "")
+                    == tab_system_id
+                ),
+                None,
+            )
+            if tab_system is None:
+                raise TrainingWorkflowError(
+                    "A corrected canonical tab system is missing."
+                )
+            tab_system["tabEvents"] = events
+            derivation = deepcopy(page)
+            derivation["tabSystems"] = [tab_system]
+            # The ranker consumes normalized steel movement facts. Score
+            # support remains a separately reported evidence stratum and does
+            # not alter the candidate features being tested.
+            derivation["scoreSystems"] = []
+            derivation["eventAlignments"] = []
+            event_ids = {
+                str(value.get("tabEventId") or "") for value in events
+            }
+            derivation["movementSequences"] = [
+                value
+                for value in derivation.get("movementSequences") or ()
+                if str(value.get("toTabEventId") or "") in event_ids
+            ]
+            decisions = derive_decision_annotations(
+                derivation,
+                profile,
+            )
+            if len(decisions) != max(0, len(events) - 1):
+                raise TrainingWorkflowError(
+                    "A confirmed corrected line did not yield one ranker "
+                    "decision per movement transition."
+                )
+            for decision in decisions:
+                decision["batchId"] = batch_id
+                decision["validationEvidence"] = {
+                    "mode": "human_corrected_canonical_truth",
+                    "evidenceMode": evidence_mode,
+                    "correctionReportDigest": correction_report_digest,
+                    "truthLineDigest": truth_digest,
+                    "truthOrigin": truth_origin,
+                    "validationMayTrain": False,
+                }
+                decision["mechanicalValidation"] = (
+                    _mechanical_validation(decision, profile)
+                )
+            ranking_records.extend(decisions)
+            truth_line_receipts.append(
+                {
+                    "lineId": line_id,
+                    "batchId": batch_id,
+                    "inputId": input_id,
+                    "tabSystemId": tab_system_id,
+                    "evidenceMode": evidence_mode,
+                    "truthOrigin": truth_origin,
+                    "truthLineDigest": truth_digest,
+                    "eventCount": len(events),
+                    "decisionCount": len(decisions),
+                }
+            )
+
+        source_adjudication_path = (
+            evaluation_dir
+            / "machine-consensus-adjudication-"
+            f"{source_adjudication_digest}.json"
+        )
+        if not source_adjudication_path.exists():
+            raise TrainingWorkflowError(
+                "The source preference adjudication is missing."
+            )
+        source_adjudication = _read_json(source_adjudication_path)
+        source_adjudication_core = {
+            key: value
+            for key, value in source_adjudication.items()
+            if key != "reportDigest"
+        }
+        source_disagreement_digest = str(
+            source_adjudication.get("sourceDisagreementReportDigest") or ""
+        )
+        source_disagreement_path = (
+            evaluation_dir
+            / "machine-consensus-disagreements-"
+            f"{source_disagreement_digest}.json"
+        )
+        if (
+            source_adjudication.get("schemaVersion")
+            != "amazing-tablature-validation-disagreement-adjudication-v1"
+            or source_adjudication.get("modelId") != model_id
+            or source_adjudication.get("modelArtifactSha256")
+            != model_sha256
+            or source_adjudication.get("reportDigest")
+            != source_adjudication_digest
+            or _sha256_json(source_adjudication_core)
+            != source_adjudication_digest
+            or source_adjudication.get("allDisagreementsAdjudicated")
+            is not True
+            or source_adjudication.get("validationMayTrain") is not False
+            or source_adjudication.get("sealedTestAccessed") is not False
+            or not source_disagreement_path.exists()
+        ):
+            raise TrainingWorkflowError(
+                "The source preference adjudication lineage failed."
+            )
+        source_disagreement = _read_json(source_disagreement_path)
+        source_disagreement_core = {
+            key: value
+            for key, value in source_disagreement.items()
+            if key != "reportDigest"
+        }
+        if (
+            source_disagreement.get("reportDigest")
+            != source_disagreement_digest
+            or _sha256_json(source_disagreement_core)
+            != source_disagreement_digest
+            or source_disagreement.get("modelId") != model_id
+            or source_disagreement.get("modelArtifactSha256")
+            != model_sha256
+            or source_disagreement.get("humanTruthUsed") is not False
+            or source_disagreement.get("validationMayTrain") is not False
+            or source_disagreement.get("sealedTestAccessed") is not False
+        ):
+            raise TrainingWorkflowError(
+                "The source disagreement report lineage failed."
+            )
+        source_submission_id = str(
+            source_adjudication.get("submissionId") or ""
+        )
+        source_batch_id = str(source_adjudication.get("batchId") or "")
+        source_submission_path = (
+            self._batch_dir(source_batch_id)
+            / "extraction"
+            / "validation"
+            / "review"
+            / "challenger-disagreements"
+            / "submissions"
+            / f"{source_submission_id}.jsonl"
+        )
+        if (
+            not source_submission_path.exists()
+            or _sha256_bytes(source_submission_path.read_bytes())
+            != str(
+                source_adjudication.get("submissionFileSha256") or ""
+            )
+        ):
+            raise TrainingWorkflowError(
+                "The source preference submission changed."
+            )
+        source_statuses = {
+            str(value.get("decisionId") or ""): str(
+                value.get("status") or ""
+            )
+            for value in _read_jsonl(source_submission_path)
+        }
+        source_status_by_signature: dict[str, str] = {}
+        for disagreement in source_disagreement.get("disagreements") or ():
+            decision_id = str(disagreement.get("decisionId") or "")
+            status = source_statuses.get(decision_id)
+            if status not in {
+                "source_preferred",
+                "challenger_valid",
+                "both_valid",
+            }:
+                raise TrainingWorkflowError(
+                    "The source preference submission is incomplete."
+                )
+            signature_digest = _sha256_json(
+                _validation_disagreement_equivalence_signature(
+                    disagreement
+                )
+            )
+            source_status_by_signature[signature_digest] = status
+
+        disagreements = self._validation_ranking_disagreements(
+            model,
+            ranking_records,
+        )
+        carried: list[dict[str, Any]] = []
+        pending: list[dict[str, Any]] = []
+        for disagreement in disagreements:
+            signature_digest = _sha256_json(
+                _validation_disagreement_equivalence_signature(
+                    disagreement
+                )
+            )
+            status = source_status_by_signature.get(signature_digest)
+            if status is None:
+                pending.append(disagreement)
+            else:
+                carried.append(
+                    {
+                        "decisionId": disagreement.get("decisionId"),
+                        "signatureDigest": signature_digest,
+                        "status": status,
+                    }
+                )
+        carried_statuses = {
+            str(value.get("decisionId") or ""): str(
+                value.get("status") or ""
+            )
+            for value in carried
+        }
+
+        def accepted_metrics(
+            records: Sequence[Mapping[str, Any]],
+        ) -> dict[str, Any]:
+            metrics = dict(
+                self._validation_ranking_metrics(model, records)
+            )
+            disagreements_by_id = {
+                str(value.get("decisionId") or ""): value
+                for value in self._validation_ranking_disagreements(
+                    model,
+                    records,
+                )
+            }
+            accepted = sum(
+                carried_statuses.get(decision_id)
+                in {"challenger_valid", "both_valid"}
+                for decision_id in disagreements_by_id
+            )
+            unresolved = sum(
+                decision_id not in carried_statuses
+                for decision_id in disagreements_by_id
+            )
+            strict = int(metrics["topChoiceCorrectCount"])
+            count = int(metrics["decisionCount"])
+            metrics.update(
+                {
+                    "strictSourceTopChoiceCorrectCount": strict,
+                    "strictSourceTopChoiceAccuracy": (
+                        strict / count if count else 0.0
+                    ),
+                    "humanAcceptedEquivalentAlternativeCount": accepted,
+                    "humanUnresolvedAlternativeCount": unresolved,
+                    "acceptedTopChoiceCorrectCount": strict + accepted,
+                    "acceptedTopChoiceAccuracy": (
+                        (strict + accepted) / count if count else 0.0
+                    ),
+                }
+            )
+            return metrics
+
+        overall = accepted_metrics(ranking_records)
+        cohort_metrics = {
+            batch_id: {
+                **accepted_metrics(
+                    [
+                        value
+                        for value in ranking_records
+                        if value.get("batchId") == batch_id
+                    ]
+                ),
+                "evidenceSufficient": sum(
+                    value.get("batchId") == batch_id
+                    for value in ranking_records
+                )
+                >= VALIDATION_MIN_DECISIONS_PER_COHORT,
+            }
+            for batch_id in authoritative_ids
+        }
+        evidence_metrics = {}
+        for evidence_mode in ("score_supported", "tab_only"):
+            records = [
+                value
+                for value in ranking_records
+                if (value.get("validationEvidence") or {}).get(
+                    "evidenceMode"
+                )
+                == evidence_mode
+            ]
+            evidence_metrics[f"alignment:{evidence_mode}"] = {
+                **accepted_metrics(records),
+                "evidenceSufficient": len(records)
+                >= VALIDATION_MIN_DECISIONS_PER_EVIDENCE_MODE,
+            }
+        gate_passed = bool(
+            not pending
+            and float(overall["acceptedTopChoiceAccuracy"])
+            > VALIDATION_OVERALL_PREFERENCE_FLOOR
+            and float(overall["topThreeCoverage"])
+            >= VALIDATION_TOP_THREE_COVERAGE_FLOOR
+            and float(overall["approvedSourceMechanicalAccuracy"]) == 1.0
+            and float(overall["predictedTopMechanicalAccuracy"]) == 1.0
+            and all(
+                bool(value["evidenceSufficient"])
+                and float(value["acceptedTopChoiceAccuracy"])
+                >= VALIDATION_COHORT_PREFERENCE_FLOOR
+                for value in cohort_metrics.values()
+            )
+            and all(
+                bool(value["evidenceSufficient"])
+                and float(value["acceptedTopChoiceAccuracy"])
+                >= VALIDATION_EVIDENCE_MODE_PREFERENCE_FLOOR
+                for value in evidence_metrics.values()
+            )
+        )
+        disagreement_core = {
+            "schemaVersion": (
+                "amazing-tablature-corrected-validation-disagreements-v1"
+            ),
+            "modelId": model_id,
+            "modelArtifactSha256": model_sha256,
+            "correctionReportDigest": correction_report_digest,
+            "decisionDigest": _sha256_json(ranking_records),
+            "disagreementCount": len(disagreements),
+            "carriedEquivalentCount": len(carried),
+            "pendingAmbiguousCount": len(pending),
+            "carriedEquivalentVerdicts": carried,
+            "pendingAmbiguousDisagreements": pending,
+            "validationGroundTruthMayTrain": False,
+            "validationMayTrain": False,
+            "sealedTestAccessed": False,
+        }
+        disagreement_digest = _sha256_json(disagreement_core)
+        disagreement_report = {
+            **disagreement_core,
+            "reportDigest": disagreement_digest,
+        }
+        disagreement_path = (
+            evaluation_dir
+            / "corrected-canonical-disagreements-"
+            f"{disagreement_digest}.json"
+        )
+        _write_json(disagreement_path, disagreement_report)
+        _make_private(disagreement_path)
+        report_core = {
+            "schemaVersion": (
+                "amazing-tablature-corrected-canonical-validation-v1"
+            ),
+            "modelId": model_id,
+            "modelArtifactSha256": model_sha256,
+            "evaluatedAt": _utc_now(),
+            "correctionReportDigest": correction_report_digest,
+            "sourceAdjudicationDigest": source_adjudication_digest,
+            "sourceDisagreementDigest": source_disagreement_digest,
+            "truthLineCount": len(truth_line_receipts),
+            "truthLineReceipts": truth_line_receipts,
+            "decisionCount": len(ranking_records),
+            "decisionDigest": _sha256_json(ranking_records),
+            "metrics": overall,
+            "cohortMetrics": cohort_metrics,
+            "evidenceModeMetrics": evidence_metrics,
+            "disagreementDigest": disagreement_digest,
+            "disagreementCount": len(disagreements),
+            "carriedEquivalentDisagreementCount": len(carried),
+            "pendingAmbiguousDisagreementCount": len(pending),
+            "thresholds": {
+                "overallAcceptedTopChoiceAccuracy": {
+                    "comparison": "strictly_greater_than",
+                    "value": VALIDATION_OVERALL_PREFERENCE_FLOOR,
+                },
+                "topThreeCoverage": (
+                    VALIDATION_TOP_THREE_COVERAGE_FLOOR
+                ),
+                "cohortAcceptedTopChoiceAccuracy": (
+                    VALIDATION_COHORT_PREFERENCE_FLOOR
+                ),
+                "evidenceModeAcceptedTopChoiceAccuracy": (
+                    VALIDATION_EVIDENCE_MODE_PREFERENCE_FLOOR
+                ),
+                "mechanicalAccuracy": 1.0,
+            },
+            "gate": {
+                "humanGroundTruthComplete": True,
+                "noRereviewAccountingPassed": True,
+                "correctedCanonicalGatePassed": gate_passed,
+                "rulesFreezeAllowed": gate_passed,
+                "privateRuntimeEnableAllowed": gate_passed,
+                "sealedTestAllowedAfterRulesFreeze": gate_passed,
+                "reasons": [
+                    *(
+                        []
+                        if not pending
+                        else ["new_preference_ambiguities_need_review"]
+                    ),
+                    *(
+                        []
+                        if float(overall["acceptedTopChoiceAccuracy"])
+                        > VALIDATION_OVERALL_PREFERENCE_FLOOR
+                        else ["overall_preference_threshold_not_met"]
+                    ),
+                ],
+            },
+            "lineage": {
+                "modelCodeRevision": model.get("codeRevision"),
+                "evaluationCodeRevision": _git_revision(self.repo_root),
+                "evaluationCodeFileDigests": _rules_code_file_digests(
+                    self.repo_root
+                ),
+                "correctionRepositoryHead": correction_lineage.get(
+                    "repositoryHead"
+                ),
+                "correctionCodeFileSha256": correction_lineage.get(
+                    "correctionCodeFileSha256"
+                ),
+            },
+            "noTrainingContract": {
+                "validationGroundTruthMayTrain": False,
+                "validationDecisionsAddedToTraining": 0,
+                "acceptedDecisionLedgersModified": False,
+                "modelArtifactModified": False,
+            },
+            "humanTruthUsed": True,
+            "validationAccessed": True,
+            "validationMayTrain": False,
+            "sealedTestAccessed": False,
+        }
+        report_digest = _sha256_json(report_core)
+        report = {**report_core, "reportDigest": report_digest}
+        report_path = (
+            evaluation_dir
+            / f"corrected-canonical-score-{report_digest}.json"
+        )
+        _write_json(report_path, report)
+        _make_private(report_path)
+        return {
+            **report,
+            "reportPath": str(report_path.relative_to(self.root)),
+            "disagreementReportPath": str(
+                disagreement_path.relative_to(self.root)
+            ),
+        }
+
     def evaluate(self, model_id: str) -> dict[str, Any]:
         registry = self._registry()
         model_meta = registry["models"].get(model_id)
