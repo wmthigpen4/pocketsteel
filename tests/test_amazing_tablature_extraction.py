@@ -76,6 +76,7 @@ from pocketsteel.amazing_tablature_extraction import (
     _provisional_joint_review_blockers,
     _validation_audit_not_ready_html,
     _validation_capture_issue_count,
+    _validation_full_line_localization_consensus,
     _validation_line_preflight_blockers,
     _validation_project_execution_from_independent_geometry,
     _validation_machine_count_consensus,
@@ -84,6 +85,7 @@ from pocketsteel.amazing_tablature_extraction import (
     _validation_machine_score_from_existing_omr,
     _validation_score_events_from_score_only_recognition,
     _validation_score_only_consensus_recapture,
+    _validation_synthetic_tab_system_from_localization,
     _machine_localized_score_events,
     _machine_localized_tab_events,
     _machine_score_is_contained_in_tab,
@@ -1152,6 +1154,88 @@ def test_validation_machine_count_consensus_requires_two_confident_matching_read
         tab_system,
         {"eventCount": 3, "confidence": 0.7, "uncertain": True},
     ) == (None, ["low_confidence_tab_count"])
+    assert _validation_machine_count_consensus(
+        tab_system,
+        [
+            {"eventCount": 4, "confidence": 0.94, "uncertain": False},
+            {"eventCount": 4, "confidence": 0.92, "uncertain": False},
+        ],
+    ) == (4, [])
+    assert _validation_machine_count_consensus(
+        tab_system,
+        [
+            {"eventCount": 3, "confidence": 0.94, "uncertain": False},
+            {"eventCount": 4, "confidence": 0.92, "uncertain": False},
+        ],
+    ) == (3, [])
+    assert _validation_machine_count_consensus(
+        tab_system,
+        [
+            {"eventCount": 4, "confidence": 0.94, "uncertain": False},
+            {"eventCount": 5, "confidence": 0.92, "uncertain": False},
+        ],
+    ) == (None, ["independent_tab_count_disagreement"])
+
+
+def test_validation_full_line_consensus_can_replace_missed_geometry() -> None:
+    first = {
+        "events": [
+            {
+                "x": 0.20,
+                "execution": "attack",
+                "cells": [{"string": 5, "token": "8A"}],
+            },
+            {
+                "x": 0.70,
+                "execution": "movement_only",
+                "cells": [{"string": 5, "token": "8"}],
+            },
+        ],
+        "confidence": 0.96,
+        "uncertain": False,
+    }
+    second = copy.deepcopy(first)
+    second["events"][0]["x"] = 0.21
+    second["events"][1]["x"] = 0.69
+    consensus, diagnostics = _validation_full_line_localization_consensus(
+        [first, second],
+        expected_count=2,
+    )
+
+    assert [event["x"] for event in consensus["events"]] == [0.205, 0.695]
+    assert consensus["captureSource"] == "two_reader_full_line_tab_consensus"
+    assert diagnostics["exactStateSignatureAgreement"] is True
+    assert diagnostics["exactExecutionSignatureAgreement"] is True
+
+    synthetic = _validation_synthetic_tab_system_from_localization(
+        {
+            "tabSystemId": "tab-1",
+            "tabEventCandidates": [{"horizontalPosition": 0.4}],
+        },
+        consensus,
+        tab_crop={
+            "width": 2300,
+            "contentX0": 150,
+            "contentX1": 2300,
+        },
+    )
+    assert len(synthetic["tabEventCandidates"]) == 2
+    assert [
+        candidate["candidateStrings"]
+        for candidate in synthetic["tabEventCandidates"]
+    ] == [[5], [5]]
+    assert all(
+        candidate["geometrySource"] == "two_reader_full_line_tab_consensus"
+        for candidate in synthetic["tabEventCandidates"]
+    )
+
+    disagreeing = copy.deepcopy(second)
+    disagreeing["events"][1]["cells"][0]["token"] = "10"
+    with pytest.raises(ExtractionWorkflowError, match="disagree on states"):
+        _validation_full_line_localization_consensus(
+            [first, disagreeing],
+            expected_count=2,
+        )
 
 
 def test_machine_localized_events_require_complete_valid_tab_and_source_pitch_containment() -> None:
