@@ -32,6 +32,7 @@ from pocketsteel.amazing_tablature_extraction import (
     SOURCE_SCORE_PROJECTION_DETECTOR_VERSION,
     TAB_ONLY_APPROVAL_SECTIONS,
     VALIDATION_CAPTURE_ISSUE_KINDS,
+    VALIDATION_DISAGREEMENT_REVIEW_SCHEMA_VERSION,
     VALIDATION_LINE_PREFLIGHT_VERSION,
     AmazingTablatureExtractor,
     ExtractionWorkflowError,
@@ -131,6 +132,7 @@ from pocketsteel.amazing_tablature_extraction import (
     _store_score_pitch_submission,
     _store_combined_score_tab_submission,
     _store_validation_line_audit_submission,
+    _store_validation_disagreement_submission,
     _store_challenger_comparison_submission,
     _combined_review_alignments,
     _current_combined_line_entries,
@@ -798,6 +800,91 @@ def test_challenger_comparison_submission_is_complete_and_digest_pinned(
 
     assert result["reviewCount"] == 2
     assert result["status"] == "received_not_applied"
+
+
+def test_validation_disagreement_submission_is_complete_and_never_trains(
+    tmp_path: Path,
+) -> None:
+    private = tmp_path / "private"
+    review_dir = (
+        private
+        / "batches/batch-validation/extraction/validation/review/"
+        "challenger-disagreements"
+    )
+    review_dir.mkdir(parents=True)
+    packet_core = {
+        "schemaVersion": VALIDATION_DISAGREEMENT_REVIEW_SCHEMA_VERSION,
+        "reviewType": "validation_challenger_disagreement",
+        "batchId": "batch-validation",
+        "partition": "validation",
+        "modelId": "at-model",
+        "modelArtifactSha256": "a" * 64,
+        "machineDecisionDigest": "b" * 64,
+        "disagreementReportDigest": "c" * 64,
+        "systems": [
+            {
+                "disagreements": [
+                    {
+                        "decisionId": "decision-1",
+                        "inputId": "input-0001",
+                        "scoreSystemId": "score-1",
+                        "tabSystemId": "tab-1",
+                        "sourceTabEventId": "tab-event-1",
+                    },
+                    {
+                        "decisionId": "decision-2",
+                        "inputId": "input-0001",
+                        "scoreSystemId": "score-1",
+                        "tabSystemId": "tab-1",
+                        "sourceTabEventId": "tab-event-2",
+                    },
+                ]
+            }
+        ],
+        "trainingEligible": False,
+        "validationGroundTruthMayTrain": False,
+        "validationAccessed": True,
+        "sealedTestAccessed": False,
+    }
+    digest = _sha256_json(packet_core)
+    (review_dir / f"packet-{digest}.json").write_text(
+        json.dumps({**packet_core, "packetDigest": digest}),
+        encoding="utf-8",
+    )
+    base = {
+        "batchId": "batch-validation",
+        "packetDigest": digest,
+    }
+    with pytest.raises(
+        ExtractionWorkflowError,
+        match="Every shown validation disagreement",
+    ):
+        _store_validation_disagreement_submission(
+            private,
+            {
+                **base,
+                "reviews": [
+                    {"decisionId": "decision-1", "status": "source_preferred"}
+                ],
+            },
+        )
+
+    result = _store_validation_disagreement_submission(
+        private,
+        {
+            **base,
+            "reviews": [
+                {"decisionId": "decision-1", "status": "source_preferred"},
+                {"decisionId": "decision-2", "status": "both_valid"},
+            ],
+        },
+    )
+
+    assert result["reviewCount"] == 2
+    assert result["status"] == "received_validation_adjudication_not_scored"
+    assert result["eligibleForTraining"] is False
+    assert result["sealedTestAccessed"] is False
+    assert not (review_dir / "accepted-decisions.jsonl").exists()
 
 
 def test_joint_combined_submission_requires_explicit_tab_confirmation(tmp_path: Path) -> None:

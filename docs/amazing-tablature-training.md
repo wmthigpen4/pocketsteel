@@ -566,6 +566,27 @@ the canonical, rules-freeze, sealed-test, and private-runtime gates closed
 because machine consensus is not human validation ground truth and supplies no
 `alignment:score_supported` evidence.
 
+If that diagnostic misses the fixed top-choice threshold, it also writes an
+immutable private disagreement report containing only strict top-choice misses.
+Lane 20 may turn one exact cohort from that report into a compact adjudication
+packet:
+
+```bash
+.venv/bin/python scripts/amazing_tablature.py \
+  prepare-validation-disagreement-review <batch-id> \
+  --model-id <exact-model-id> \
+  --disagreement-digest <exact-report-digest>
+```
+
+The packet is limited to tab-cell-complete, mechanically valid movements with
+exact execution context and identical sounding pitches. It shows the source
+photograph, neighboring source movements, source tablature, and challenger
+choice. Conventional notation is visual context unless independently
+confirmed. Submissions are immutable validation adjudication only:
+`trainingEligible`, `validationGroundTruthMayTrain`, and
+`sealedTestAccessed` remain false. The packet cannot refine the challenger,
+enter preference accounting, or open the sealed test.
+
 Canonical validation uses a threshold contract fixed before held-out evidence
 is opened. It measures arrangement after input has been normalized into exact
 score events; score-image and audio recognition are explicitly outside this

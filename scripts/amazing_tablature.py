@@ -658,6 +658,20 @@ def _parser() -> argparse.ArgumentParser:
         help="Cap the packet to the first N concrete differences (1-12).",
     )
 
+    prepare_validation_disagreements = subparsers.add_parser(
+        "prepare-validation-disagreement-review",
+        help=(
+            "Show only complete, mechanically valid held-out movements where "
+            "the exact challenger and machine-captured source tablature differ."
+        ),
+    )
+    prepare_validation_disagreements.add_argument("batch_id")
+    prepare_validation_disagreements.add_argument("--model-id", required=True)
+    prepare_validation_disagreements.add_argument(
+        "--disagreement-digest",
+        required=True,
+    )
+
     apply_challenger_comparison = subparsers.add_parser(
         "apply-challenger-comparison-review",
         help="Apply reviewed source-vs-challenger tablature preferences to discovery evidence.",
@@ -1362,6 +1376,14 @@ def main() -> int:
                 input_ids=args.input_id,
                 score_system_ids=args.score_system_id,
                 max_decisions=args.max_decisions,
+            )
+        elif args.command == "prepare-validation-disagreement-review":
+            result = AmazingTablatureExtractor(
+                args.root
+            ).prepare_validation_disagreement_review(
+                args.batch_id,
+                model_id=args.model_id,
+                disagreement_digest=args.disagreement_digest,
             )
         elif args.command == "apply-challenger-comparison-review":
             result = AmazingTablatureTrainingStore(

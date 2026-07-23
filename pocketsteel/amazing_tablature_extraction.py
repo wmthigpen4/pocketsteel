@@ -108,6 +108,9 @@ COMBINED_SCORE_TAB_REGRESSION_SCHEMA_VERSION = (
 CHALLENGER_COMPARISON_REVIEW_SCHEMA_VERSION = (
     "amazing-tablature-challenger-comparison-review-v1"
 )
+VALIDATION_DISAGREEMENT_REVIEW_SCHEMA_VERSION = (
+    "amazing-tablature-validation-disagreement-review-v1"
+)
 SCORE_AUDIT_CORRECTION_PLAN_SCHEMA_VERSION = (
     "amazing-tablature-score-audit-correction-plan-v1"
 )
@@ -2871,6 +2874,165 @@ def _store_challenger_comparison_submission(
     }
 
 
+def _store_validation_disagreement_submission(
+    private_root: Path | str,
+    payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Receive immutable validation adjudication without creating training data."""
+
+    batch_id = str(payload.get("batchId") or "")
+    packet_digest = str(payload.get("packetDigest") or "")
+    reviews = payload.get("reviews")
+    if not re.fullmatch(r"[A-Za-z0-9._-]+", batch_id):
+        raise ExtractionWorkflowError(
+            "Validation disagreement review has an invalid batch ID."
+        )
+    if not isinstance(reviews, list) or not reviews or len(reviews) > 100:
+        raise ExtractionWorkflowError(
+            "Validation disagreement review must contain 1-100 decisions."
+        )
+    review_dir = (
+        Path(private_root).expanduser().resolve()
+        / "batches"
+        / batch_id
+        / "extraction"
+        / "validation"
+        / "review"
+        / "challenger-disagreements"
+    )
+    packet_path = review_dir / f"packet-{packet_digest}.json"
+    if not packet_path.exists():
+        raise ExtractionWorkflowError(
+            "Validation disagreement review references a missing immutable packet."
+        )
+    packet = _read_json(packet_path)
+    packet_core = {
+        key: value for key, value in packet.items() if key != "packetDigest"
+    }
+    if (
+        str(packet.get("packetDigest") or "") != packet_digest
+        or _sha256_json(packet_core) != packet_digest
+        or packet.get("schemaVersion")
+        != VALIDATION_DISAGREEMENT_REVIEW_SCHEMA_VERSION
+        or packet.get("reviewType") != "validation_challenger_disagreement"
+        or packet.get("partition") != "validation"
+        or packet.get("trainingEligible") is not False
+        or packet.get("validationGroundTruthMayTrain") is not False
+        or packet.get("validationAccessed") is not True
+        or packet.get("sealedTestAccessed") is not False
+    ):
+        raise ExtractionWorkflowError(
+            "Validation disagreement review targets a stale or unsafe packet."
+        )
+    expected = {
+        str(item.get("decisionId") or ""): item
+        for system in packet.get("systems") or ()
+        for item in system.get("disagreements") or ()
+    }
+    valid_statuses = {
+        "source_preferred",
+        "challenger_valid",
+        "both_valid",
+        "feedback",
+    }
+    normalized: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for raw in reviews:
+        if not isinstance(raw, Mapping):
+            raise ExtractionWorkflowError(
+                "Every validation disagreement decision must be an object."
+            )
+        decision_id = str(raw.get("decisionId") or "")
+        status = str(raw.get("status") or "")
+        comment = str(raw.get("comment") or "").strip() or None
+        if (
+            decision_id not in expected
+            or decision_id in seen
+            or status not in valid_statuses
+        ):
+            raise ExtractionWorkflowError(
+                "Validation disagreement review contains an unknown decision."
+            )
+        if status == "feedback" and comment is None:
+            raise ExtractionWorkflowError(
+                "A validation disagreement correction needs a short comment."
+            )
+        item = expected[decision_id]
+        normalized.append(
+            {
+                "decisionId": decision_id,
+                "inputId": str(item.get("inputId") or ""),
+                "scoreSystemId": str(item.get("scoreSystemId") or ""),
+                "tabSystemId": str(item.get("tabSystemId") or ""),
+                "sourceTabEventId": str(item.get("sourceTabEventId") or ""),
+                "status": status,
+                "comment": comment,
+                "trainingEligible": False,
+            }
+        )
+        seen.add(decision_id)
+    if seen != set(expected):
+        raise ExtractionWorkflowError(
+            "Every shown validation disagreement must be reviewed."
+        )
+    submission_digest = _sha256_json(
+        {
+            "reviewType": "validation_challenger_disagreement",
+            "batchId": batch_id,
+            "packetDigest": packet_digest,
+            "reviews": normalized,
+            "validationGroundTruthMayTrain": False,
+        }
+    )
+    submission_id = (
+        f"validation-disagreement-submission-{submission_digest[:20]}"
+    )
+    submissions_dir = review_dir / "submissions"
+    submissions_dir.mkdir(parents=True, exist_ok=True)
+    os.chmod(submissions_dir, 0o700)
+    submission_path = submissions_dir / f"{submission_id}.jsonl"
+    metadata_path = submissions_dir / f"{submission_id}.json"
+    deduplicated = submission_path.exists()
+    if not deduplicated:
+        _write_jsonl(submission_path, normalized)
+        _write_json(
+            metadata_path,
+            {
+                "schemaVersion": VALIDATION_DISAGREEMENT_REVIEW_SCHEMA_VERSION,
+                "submissionId": submission_id,
+                "submissionDigest": submission_digest,
+                "packetDigest": packet_digest,
+                "modelId": packet.get("modelId"),
+                "modelArtifactSha256": packet.get("modelArtifactSha256"),
+                "machineDecisionDigest": packet.get(
+                    "machineDecisionDigest"
+                ),
+                "disagreementReportDigest": packet.get(
+                    "disagreementReportDigest"
+                ),
+                "reviewCount": len(normalized),
+                "submittedAt": _utc_now(),
+                "status": "received_validation_adjudication_not_scored",
+                "eligibleForTraining": False,
+                "validationGroundTruthMayTrain": False,
+                "sealedTestAccessed": False,
+            },
+        )
+    elif _sha256_json(_read_jsonl(submission_path)) != _sha256_json(normalized):
+        raise ExtractionWorkflowError(
+            "Existing validation disagreement submission differs from its ID."
+        )
+    return {
+        "submissionId": submission_id,
+        "submissionDigest": submission_digest,
+        "reviewCount": len(normalized),
+        "deduplicated": deduplicated,
+        "status": "received_validation_adjudication_not_scored",
+        "eligibleForTraining": False,
+        "sealedTestAccessed": False,
+    }
+
+
 def _mark_review_submission_applied(source_path: Path, summary: Mapping[str, Any]) -> None:
     if source_path.parent.name != "submissions" or not source_path.name.startswith("review-submission-"):
         return
@@ -3012,6 +3174,11 @@ def make_review_http_server(
                     result = _store_validation_line_audit_submission(private_root, payload)
                 elif review_type == "challenger_comparison":
                     result = _store_challenger_comparison_submission(private_root, payload)
+                elif review_type == "validation_challenger_disagreement":
+                    result = _store_validation_disagreement_submission(
+                        private_root,
+                        payload,
+                    )
                 else:
                     result = _store_review_submission(private_root, payload)
             except (ExtractionWorkflowError, UnicodeDecodeError, json.JSONDecodeError) as exc:
@@ -3326,20 +3493,52 @@ fetch('./__PACKET_FILE__',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error(
     )
 
 
-def _challenger_comparison_console_html(*, packet_digest: str) -> str:
+def _challenger_comparison_console_html(
+    *,
+    packet_digest: str,
+    review_type: str = "challenger_comparison",
+) -> str:
     """Render only concrete tablature choices where the challenger disagrees."""
 
+    if review_type == "validation_challenger_disagreement":
+        title = "Validation challenger disagreements"
+        notice = (
+            "<strong>Only complete, mechanically valid disagreements are "
+            "shown.</strong> The source photograph and the exact captured source "
+            "movement are shown beside the challenger recommendation. The score "
+            "is context only unless separately confirmed. These answers are "
+            "validation adjudication and are prohibited from challenger training."
+        )
+    elif review_type == "challenger_comparison":
+        title = "Challenger tablature comparison"
+        notice = (
+            "<strong>This is the actual challenger check.</strong> The score "
+            "reader and the captured source tablature have already passed the "
+            "automatic completeness and pitch gates for these lines. Only places "
+            "where the challenger chose different playable tablature are shown. "
+            "Compare the alternatives as a pedal-steel player; you do not need "
+            "to count notes or decode internal event IDs."
+        )
+    else:
+        raise ExtractionWorkflowError(
+            "Unsupported challenger comparison review type."
+        )
     template = r"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Challenger tablature comparison</title><style>
-body{font:16px/1.4 system-ui,sans-serif;margin:0;background:#f4f1e9;color:#211f1a}header,footer{position:sticky;z-index:5;background:#17251f;color:white;padding:12px 18px}header{top:0}footer{bottom:0}main{max-width:1500px;margin:auto;padding:16px}.line,.choice{background:white;border:1px solid #c9c0ad;border-radius:12px;padding:14px;margin-bottom:16px}.source{display:block;width:100%;max-height:320px;object-fit:contain;background:#eee}.choices{display:grid;gap:12px}.choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.candidate{border:1px solid #aaa;border-radius:9px;padding:10px}.candidate.source-tab{background:#eef7ef}.candidate.challenger{background:#fff2c9}.tabwrap{overflow:auto}table{border-collapse:collapse;width:100%;font:14px ui-monospace,monospace}th,td{border:1px solid #bbb;padding:5px;text-align:center;height:26px}th{width:70px;background:#eee9dd}.token{font-weight:900;font-size:17px}.decision{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.decision label{padding:8px;border:1px solid #aaa;border-radius:8px;background:#faf8f2}.decision label:has(input:checked){background:#183f31;color:white}textarea{width:100%;min-height:62px;margin-top:8px}.hidden{display:none}.notice{padding:10px 12px;border:1px solid #83b58f;border-radius:9px;background:#e8f5ea;margin-bottom:14px}.muted{color:#676159}.badge{display:inline-block;padding:5px 9px;border-radius:999px;background:#e4eee7;font-weight:750;margin:3px}button{padding:9px 13px;border:1px solid #777;border-radius:8px;font-weight:750}button:disabled{opacity:.5}#message{font-weight:750;margin-left:10px}@media(max-width:850px){.choice-grid{grid-template-columns:1fr}}
-</style></head><body><header><strong>Challenger tablature comparison</strong> · <span id="progress"></span></header><main><div class="notice"><strong>This is the actual challenger check.</strong> The score reader and the captured source tablature have already passed the automatic completeness and pitch gates for these lines. Only places where the challenger chose different playable tablature are shown. Compare the alternatives as a pedal-steel player; you do not need to count notes or decode internal event IDs.</div><div id="root"></div></main><footer><button id="submit">Submit reviewed choices</button><span id="message"></span></footer>
-<script>const DIGEST='__DIGEST__';let packet=null;const saved=new Map();const key=`lane20-challenger:${DIGEST}`;try{Object.entries(JSON.parse(localStorage.getItem(key)||'{}')).forEach(([k,v])=>saved.set(k,v));}catch(_e){}const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function token(a){return `${a.fret??''}${(a.controls||[]).join('')}`;}function tab(actions){let h='<div class="tabwrap"><table>';for(let s=1;s<=10;s++){const a=(actions||[]).find(x=>Number(x.string)===s);h+=`<tr><th>String ${s}</th><td class="token">${a?esc(token(a)):''}</td></tr>`;}return h+'</table></div>';}
+<title>__TITLE__</title><style>
+body{font:16px/1.4 system-ui,sans-serif;margin:0;background:#f4f1e9;color:#211f1a}header,footer{position:sticky;z-index:5;background:#17251f;color:white;padding:12px 18px}header{top:0}footer{bottom:0}main{max-width:1500px;margin:auto;padding:16px}.line,.choice{background:white;border:1px solid #c9c0ad;border-radius:12px;padding:14px;margin-bottom:16px}.source{display:block;width:100%;max-height:320px;object-fit:contain;background:#eee}.choices{display:grid;gap:12px}.choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.candidate{border:1px solid #aaa;border-radius:9px;padding:10px}.candidate.source-tab{background:#eef7ef}.candidate.challenger{background:#fff2c9}.context{display:flex;gap:8px;align-items:stretch;overflow:auto;margin:10px 0}.context-step{min-width:180px;border:1px solid #b9b09e;border-radius:8px;padding:8px;background:#f8f5ed}.context-step.focus{background:#e5f1e8;border-color:#5e8b6a}.context-token{font:750 14px ui-monospace,monospace}.tabwrap{overflow:auto}table{border-collapse:collapse;width:100%;font:14px ui-monospace,monospace}th,td{border:1px solid #bbb;padding:5px;text-align:center;height:26px}th{width:70px;background:#eee9dd}.token{font-weight:900;font-size:17px}.decision{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.decision label{padding:8px;border:1px solid #aaa;border-radius:8px;background:#faf8f2}.decision label:has(input:checked){background:#183f31;color:white}textarea{width:100%;min-height:62px;margin-top:8px}.hidden{display:none}.notice{padding:10px 12px;border:1px solid #83b58f;border-radius:9px;background:#e8f5ea;margin-bottom:14px}.muted{color:#676159}.badge{display:inline-block;padding:5px 9px;border-radius:999px;background:#e4eee7;font-weight:750;margin:3px}button{padding:9px 13px;border:1px solid #777;border-radius:8px;font-weight:750}button:disabled{opacity:.5}#message{font-weight:750;margin-left:10px}@media(max-width:850px){.choice-grid{grid-template-columns:1fr}}
+</style></head><body><header><strong>__TITLE__</strong> · <span id="progress"></span></header><main><div class="notice">__NOTICE__</div><div id="root"></div></main><footer><button id="submit">Submit reviewed choices</button><span id="message"></span></footer>
+<script>const DIGEST='__DIGEST__',REVIEW_TYPE='__REVIEW_TYPE__';let packet=null;const saved=new Map();const key=`lane20-${REVIEW_TYPE}:${DIGEST}`;try{Object.entries(JSON.parse(localStorage.getItem(key)||'{}')).forEach(([k,v])=>saved.set(k,v));}catch(_e){}const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function token(a){return `${a.fret??''}${(a.controls||[]).join('')}`;}function compact(actions){return (actions||[]).map(a=>`S${a.string} ${token(a)}`).join(' + ')||'—';}function context(events){return `<div class="context">${(events||[]).map(x=>`<div class="context-step ${x.label==='Compared source movement'?'focus':''}"><b>${esc(x.label)}</b><div class="context-token">${esc(compact(x.actions))}</div></div>`).join('<div style="align-self:center">→</div>')}</div>`;}function tab(actions){let h='<div class="tabwrap"><table>';for(let s=1;s<=10;s++){const a=(actions||[]).find(x=>Number(x.string)===s);h+=`<tr><th>String ${s}</th><td class="token">${a?esc(token(a)):''}</td></tr>`;}return h+'</table></div>';}
 function persist(){localStorage.setItem(key,JSON.stringify(Object.fromEntries(saved)));update();}function all(){return packet.systems.flatMap(s=>s.disagreements);}function update(){const items=all(),done=items.filter(x=>saved.get(x.decisionId)?.status).length;document.getElementById('progress').textContent=`${done}/${items.length} choices reviewed`;document.getElementById('submit').disabled=done!==items.length;}
-function render(){const root=document.getElementById('root');root.innerHTML='';packet.systems.forEach(system=>{const section=document.createElement('section');section.className='line';section.innerHTML=`<h2>${esc(system.sourceLabel)} · printed line ${system.systemIndex}</h2><div><span class="badge">${system.scoreAttackCount} score changes</span><span class="badge">${system.tabAttackCount} source-tab changes</span><span class="badge">all pitches and octaves aligned</span></div><img class="source" src="${esc(system.sourcePairUrl)}" alt="Original score and tablature line"><div class="choices"></div>`;const choices=section.querySelector('.choices');system.disagreements.forEach(item=>{const current=saved.get(item.decisionId)||{};const card=document.createElement('article');card.className='choice';card.innerHTML=`<h3>Movement ${item.eventIndex} · ${esc(item.melodyPitch)}</h3><div class="muted">Both choices sound the same written pitch. The question is which string/fret/pedal movement is the better steel solution in this context.</div><div class="choice-grid"><div class="candidate source-tab"><b>A · source tablature</b>${tab(item.sourceActions)}</div><div class="candidate challenger"><b>B · challenger prediction</b>${tab(item.challengerActions)}</div></div><div class="decision"><label><input type="radio" name="${esc(item.decisionId)}" value="source_preferred" ${current.status==='source_preferred'?'checked':''}> A is better here</label><label><input type="radio" name="${esc(item.decisionId)}" value="challenger_valid" ${current.status==='challenger_valid'?'checked':''}> B is better here</label><label><input type="radio" name="${esc(item.decisionId)}" value="both_valid" ${current.status==='both_valid'?'checked':''}> Both are good choices</label><label><input type="radio" name="${esc(item.decisionId)}" value="feedback" ${current.status==='feedback'?'checked':''}> Neither / needs correction</label></div><textarea class="${current.status==='feedback'?'':'hidden'}" placeholder="Briefly say what is wrong">${esc(current.comment||'')}</textarea>`;const ta=card.querySelector('textarea');card.querySelectorAll('input').forEach(r=>r.onchange=()=>{saved.set(item.decisionId,{status:r.value,comment:r.value==='feedback'?(ta.value||''):null});ta.classList.toggle('hidden',r.value!=='feedback');persist();});ta.oninput=()=>{saved.set(item.decisionId,{status:'feedback',comment:ta.value});persist();};choices.append(card);});root.append(section);});update();}
-document.getElementById('submit').onclick=async()=>{const reviews=all().map(x=>({decisionId:x.decisionId,status:saved.get(x.decisionId)?.status,comment:String(saved.get(x.decisionId)?.comment||'').trim()||null}));const missing=reviews.find(x=>!x.status||(x.status==='feedback'&&!x.comment));if(missing){document.getElementById('message').textContent='Complete every choice and add a note for corrections.';return;}const b=document.getElementById('submit');b.disabled=true;b.textContent='Submitting…';try{const r=await fetch('/__lane20_review_submission',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reviewType:'challenger_comparison',batchId:packet.batchId,packetDigest:DIGEST,reviews})});const j=await r.json();if(!r.ok)throw new Error(j.message||j.error);b.textContent='Review received by Lane 20';document.getElementById('message').textContent=`Received ${j.reviewCount} choices.`;}catch(e){b.disabled=false;b.textContent='Submit reviewed choices';document.getElementById('message').textContent=`Submission failed: ${e.message}. Your work remains saved.`;}};
+function render(){const root=document.getElementById('root');root.innerHTML='';packet.systems.forEach(system=>{const section=document.createElement('section');section.className='line';const badges=REVIEW_TYPE==='validation_challenger_disagreement'?`<span class="badge">${system.tabEventCount} captured source movements</span><span class="badge">shown movements have exact execution context</span><span class="badge">score is visual context only</span>`:`<span class="badge">${system.scoreAttackCount} score changes</span><span class="badge">${system.tabAttackCount} source-tab changes</span><span class="badge">all pitches and octaves aligned</span>`;section.innerHTML=`<h2>${esc(system.sourceLabel)} · printed line ${system.systemIndex}</h2><div>${badges}</div><img class="source" src="${esc(system.sourcePairUrl)}" alt="Original score and tablature line"><div class="choices"></div>`;const choices=section.querySelector('.choices');system.disagreements.forEach(item=>{const current=saved.get(item.decisionId)||{};const card=document.createElement('article');card.className='choice';card.innerHTML=`<h3>Movement ${item.eventIndex} · ${esc(item.melodyPitch)}</h3><div class="muted">Both choices sound the same written pitch. The question is which string/fret/pedal movement is the better steel solution in this context.</div>${context(item.contextEvents)}<div class="choice-grid"><div class="candidate source-tab"><b>A · source tablature</b>${tab(item.sourceActions)}</div><div class="candidate challenger"><b>B · challenger prediction</b>${tab(item.challengerActions)}</div></div><div class="decision"><label><input type="radio" name="${esc(item.decisionId)}" value="source_preferred" ${current.status==='source_preferred'?'checked':''}> A is better here</label><label><input type="radio" name="${esc(item.decisionId)}" value="challenger_valid" ${current.status==='challenger_valid'?'checked':''}> B is better here</label><label><input type="radio" name="${esc(item.decisionId)}" value="both_valid" ${current.status==='both_valid'?'checked':''}> Both are good choices</label><label><input type="radio" name="${esc(item.decisionId)}" value="feedback" ${current.status==='feedback'?'checked':''}> Neither / needs correction</label></div><textarea class="${current.status==='feedback'?'':'hidden'}" placeholder="Briefly say what is wrong">${esc(current.comment||'')}</textarea>`;const ta=card.querySelector('textarea');card.querySelectorAll('input').forEach(r=>r.onchange=()=>{saved.set(item.decisionId,{status:r.value,comment:r.value==='feedback'?(ta.value||''):null});ta.classList.toggle('hidden',r.value!=='feedback');persist();});ta.oninput=()=>{saved.set(item.decisionId,{status:'feedback',comment:ta.value});persist();};choices.append(card);});root.append(section);});update();}
+document.getElementById('submit').onclick=async()=>{const reviews=all().map(x=>({decisionId:x.decisionId,status:saved.get(x.decisionId)?.status,comment:String(saved.get(x.decisionId)?.comment||'').trim()||null}));const missing=reviews.find(x=>!x.status||(x.status==='feedback'&&!x.comment));if(missing){document.getElementById('message').textContent='Complete every choice and add a note for corrections.';return;}const b=document.getElementById('submit');b.disabled=true;b.textContent='Submitting…';try{const r=await fetch('/__lane20_review_submission',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reviewType:REVIEW_TYPE,batchId:packet.batchId,packetDigest:DIGEST,reviews})});const j=await r.json();if(!r.ok)throw new Error(j.message||j.error);b.textContent='Review received by Lane 20';document.getElementById('message').textContent=`Received ${j.reviewCount} choices.`;}catch(e){b.disabled=false;b.textContent='Submit reviewed choices';document.getElementById('message').textContent=`Submission failed: ${e.message}. Your work remains saved.`;}};
 fetch(`./packet-${DIGEST}.json`,{cache:'no-store'}).then(r=>r.json()).then(v=>{if(v.packetDigest!==DIGEST)throw new Error('Packet digest mismatch');packet=v;render();}).catch(e=>document.getElementById('root').innerHTML=`<div class="notice">Could not load review: ${esc(e.message)}</div>`);</script></body></html>"""
-    return template.replace("__DIGEST__", packet_digest)
+    return (
+        template.replace("__DIGEST__", packet_digest)
+        .replace("__TITLE__", title)
+        .replace("__NOTICE__", notice)
+        .replace("__REVIEW_TYPE__", review_type)
+    )
 
 
 def _snapshot_current_combined_score_tab_review(
@@ -29447,6 +29646,459 @@ class AmazingTablatureExtractor:
                 f"challenger-comparison-console-{packet_digest[:12]}.html"
             ),
             "validationAccessed": False,
+            "sealedTestAccessed": False,
+        }
+
+    def prepare_validation_disagreement_review(
+        self,
+        batch_id: str,
+        *,
+        model_id: str,
+        disagreement_digest: str,
+    ) -> dict[str, Any]:
+        """Publish only complete validation movements where the challenger differs."""
+
+        if not re.fullmatch(r"at-[A-Za-z0-9._-]+", model_id):
+            raise ExtractionWorkflowError(
+                "Validation disagreement review has an invalid model ID."
+            )
+        if not re.fullmatch(r"[0-9a-f]{64}", disagreement_digest):
+            raise ExtractionWorkflowError(
+                "Validation disagreement review needs an exact report digest."
+            )
+        registry_path = self.private_root / "training-registry.json"
+        if not registry_path.exists():
+            raise ExtractionWorkflowError("The private training registry is missing.")
+        registry = _read_json(registry_path)
+        authoritative_ids = tuple(
+            str(value)
+            for value in (
+                (registry.get("authoritativeDataset") or {}).get("batchIds")
+                or ()
+            )
+        )
+        if batch_id not in authoritative_ids:
+            raise ExtractionWorkflowError(
+                "Validation disagreement review requires an authoritative batch."
+            )
+        model_meta = (registry.get("models") or {}).get(model_id)
+        if not isinstance(model_meta, Mapping):
+            raise ExtractionWorkflowError(
+                "Validation disagreement review references an unknown challenger."
+            )
+        model_path = self.private_root / str(model_meta.get("artifact") or "")
+        model_sha256 = str(model_meta.get("artifactSha256") or "")
+        if (
+            not model_path.exists()
+            or _sha256_bytes(model_path.read_bytes()) != model_sha256
+        ):
+            raise ExtractionWorkflowError(
+                "Validation disagreement review challenger lineage changed."
+            )
+        disagreement_path = (
+            self.private_root
+            / "validation-evaluations"
+            / model_id
+            / f"machine-consensus-disagreements-{disagreement_digest}.json"
+        )
+        if not disagreement_path.exists():
+            raise ExtractionWorkflowError(
+                "Validation disagreement review references a missing report."
+            )
+        disagreement_report = _read_json(disagreement_path)
+        disagreement_core = {
+            key: value
+            for key, value in disagreement_report.items()
+            if key != "reportDigest"
+        }
+        if (
+            disagreement_report.get("schemaVersion")
+            != "amazing-tablature-machine-validation-disagreements-v1"
+            or disagreement_report.get("modelId") != model_id
+            or disagreement_report.get("modelArtifactSha256") != model_sha256
+            or disagreement_report.get("reportDigest") != disagreement_digest
+            or _sha256_json(disagreement_core) != disagreement_digest
+            or disagreement_report.get("humanTruthUsed") is not False
+            or disagreement_report.get("validationMayTrain") is not False
+            or disagreement_report.get("sealedTestAccessed") is not False
+        ):
+            raise ExtractionWorkflowError(
+                "Validation disagreement report lineage or privacy contract failed."
+            )
+        selected = [
+            value
+            for value in disagreement_report.get("disagreements") or ()
+            if isinstance(value, Mapping)
+            and str(value.get("batchId") or "") == batch_id
+        ]
+        if not selected:
+            raise ExtractionWorkflowError(
+                "The selected validation cohort has no complete disagreements."
+            )
+        grouped: dict[str, list[Mapping[str, Any]]] = defaultdict(list)
+        consensus_digests: set[str] = set()
+        for value in selected:
+            evidence = value.get("validationEvidence") or {}
+            candidate_digest = str(evidence.get("candidateDigest") or "")
+            consensus_report_digest = str(
+                evidence.get("consensusReportDigest") or ""
+            )
+            if (
+                evidence.get("mode") != "machine_consensus_complete_line"
+                or evidence.get("validationMayTrain") is not False
+                or not re.fullmatch(r"[0-9a-f]{64}", candidate_digest)
+                or not re.fullmatch(r"[0-9a-f]{64}", consensus_report_digest)
+            ):
+                raise ExtractionWorkflowError(
+                    "A validation disagreement lacks complete candidate lineage."
+                )
+            grouped[candidate_digest].append(value)
+            consensus_digests.add(consensus_report_digest)
+        if len(consensus_digests) != 1:
+            raise ExtractionWorkflowError(
+                "Validation disagreements span multiple machine-consensus runs."
+            )
+        expected_consensus_digest = next(iter(consensus_digests))
+
+        batch_dir, manifest, _work = self._batch_paths(batch_id, "validation")
+        output_root = batch_dir / "extraction" / "validation"
+        review_dir = output_root / "review" / "challenger-disagreements"
+        review_dir.mkdir(parents=True, exist_ok=True)
+        os.chmod(review_dir, 0o700)
+        input_names = {
+            str(item.get("inputId") or ""): Path(
+                str(item.get("relativePath") or "")
+            ).name
+            for item in manifest.get("inputs") or ()
+        }
+        consensus_path = (
+            output_root
+            / "review"
+            / "automation"
+            / VALIDATION_CONTACT_CONSENSUS_VERSION
+            / f"report-{expected_consensus_digest}.json"
+        )
+        if not consensus_path.exists():
+            raise ExtractionWorkflowError(
+                "The current validation machine-consensus report is missing."
+            )
+        consensus = _read_json(consensus_path)
+        consensus_core = {
+            key: value for key, value in consensus.items() if key != "reportDigest"
+        }
+        consensus_digest = str(consensus.get("reportDigest") or "")
+        if (
+            consensus.get("batchId") != batch_id
+            or consensus.get("partition") != "validation"
+            or consensus.get("reportDigest") != expected_consensus_digest
+            or _sha256_json(consensus_core) != consensus_digest
+            or consensus.get("humanTruthUsed") is not False
+            or consensus.get("validationMayTrain") is not False
+            or consensus.get("sealedTestAccessed") is not False
+        ):
+            raise ExtractionWorkflowError(
+                "The validation machine-consensus report is stale or unsafe."
+            )
+        lines_by_candidate = {
+            str(value.get("candidateDigest") or ""): value
+            for value in consensus.get("lines") or ()
+            if value.get("status") == "complete_machine_candidate"
+        }
+        systems: list[dict[str, Any]] = []
+        exact_execution = {
+            "initial_attack",
+            "reviewed_source_transition_decoder",
+        }
+        for candidate_digest, values in sorted(grouped.items()):
+            line = lines_by_candidate.get(candidate_digest)
+            if line is None:
+                raise ExtractionWorkflowError(
+                    "A reviewed disagreement is no longer a complete machine line."
+                )
+            candidate_path = (
+                output_root / str(line.get("candidatePath") or "")
+            ).resolve()
+            allowed_root = (
+                output_root
+                / "review"
+                / "automation"
+                / VALIDATION_CONTACT_CONSENSUS_VERSION
+                / "candidates"
+            ).resolve()
+            try:
+                candidate_path.relative_to(allowed_root)
+            except ValueError as exc:
+                raise ExtractionWorkflowError(
+                    "A validation candidate escaped its private directory."
+                ) from exc
+            if not candidate_path.exists():
+                raise ExtractionWorkflowError(
+                    "A validation disagreement candidate is missing."
+                )
+            candidate = _read_json(candidate_path)
+            candidate_core = {
+                key: value
+                for key, value in candidate.items()
+                if key != "candidateDigest"
+            }
+            diagnostics = candidate.get("diagnostics") or {}
+            if (
+                candidate.get("candidateDigest") != candidate_digest
+                or _sha256_json(candidate_core) != candidate_digest
+                or candidate.get("status") != "complete_machine_candidate"
+                or diagnostics.get("allCellsResolved") is not True
+                or diagnostics.get("allColumnsDecoded") is not True
+                or diagnostics.get("mechanicallyValid") is not True
+                or candidate.get("humanTruthUsed") is not False
+                or candidate.get("validationMayTrain") is not False
+                or candidate.get("sealedTestAccessed") is not False
+            ):
+                raise ExtractionWorkflowError(
+                    "A validation disagreement candidate is incomplete or unsafe."
+                )
+            input_id = str(candidate.get("inputId") or "")
+            page_path = output_root / "pages" / f"{input_id}.json"
+            if not page_path.exists():
+                raise ExtractionWorkflowError(
+                    "A validation disagreement page record is missing."
+                )
+            record = _read_json(page_path)
+            if _sha256_json(record) != str(
+                candidate.get("machineRecordDigest") or ""
+            ):
+                raise ExtractionWorkflowError(
+                    "A validation disagreement page changed after consensus."
+                )
+            tab_system_id = str(candidate.get("tabSystemId") or "")
+            tab_system = next(
+                (
+                    value
+                    for value in record.get("tabSystems") or ()
+                    if str(value.get("tabSystemId") or "") == tab_system_id
+                ),
+                None,
+            )
+            score_system = next(
+                (
+                    value
+                    for value in record.get("scoreSystems") or ()
+                    if str(value.get("pairedTabSystemId") or "")
+                    == tab_system_id
+                ),
+                None,
+            )
+            if tab_system is None or score_system is None:
+                raise ExtractionWorkflowError(
+                    "A validation disagreement lacks its printed score/tab pair."
+                )
+            crop = _prepare_score_tab_source_crop(
+                output_root=output_root,
+                audit_dir=review_dir,
+                input_id=input_id,
+                record=record,
+                score_system=score_system,
+                tab_system=tab_system,
+            )
+            events = [
+                value
+                for value in candidate.get("events") or ()
+                if isinstance(value, Mapping)
+            ]
+            event_indexes = {
+                str(value.get("tabEventId") or ""): index
+                for index, value in enumerate(events)
+            }
+            shown: list[dict[str, Any]] = []
+            for value in sorted(
+                values,
+                key=lambda item: str(item.get("decisionId") or ""),
+            ):
+                event_index = event_indexes.get(
+                    str(value.get("sourceTabEventId") or "")
+                )
+                if event_index is None:
+                    raise ExtractionWorkflowError(
+                        "A validation disagreement lost its source movement."
+                    )
+                current_event = events[event_index]
+                following_event = (
+                    events[event_index + 1]
+                    if event_index + 1 < len(events)
+                    else None
+                )
+                if (
+                    str(current_event.get("executionInference") or "")
+                    not in exact_execution
+                    or (
+                        following_event is not None
+                        and str(
+                            following_event.get("executionInference") or ""
+                        )
+                        not in exact_execution
+                    )
+                ):
+                    raise ExtractionWorkflowError(
+                        "A validation disagreement no longer has exact execution context."
+                    )
+                candidates = [
+                    item
+                    for item in value.get("candidates") or ()
+                    if isinstance(item, Mapping)
+                ]
+                best_indexes = [
+                    int(index) for index in value.get("bestCandidateIndexes") or ()
+                ]
+                if (
+                    len(candidates) < 2
+                    or not best_indexes
+                    or best_indexes[0] <= 0
+                    or best_indexes[0] >= len(candidates)
+                ):
+                    raise ExtractionWorkflowError(
+                        "A validation disagreement lacks a distinct recommendation."
+                    )
+                source_candidate = candidates[0]
+                challenger_candidate = candidates[best_indexes[0]]
+                source_actions = list(
+                    source_candidate.get("mechanicalActions") or ()
+                )
+                challenger_actions = list(
+                    challenger_candidate.get("mechanicalActions") or ()
+                )
+                if (
+                    not source_actions
+                    or not challenger_actions
+                    or source_candidate.get("mechanicallyValid") is not True
+                    or challenger_candidate.get("mechanicallyValid") is not True
+                    or sorted(
+                        int(item.get("soundingPitchValue") or -1)
+                        for item in source_actions
+                    )
+                    != sorted(
+                        int(item.get("soundingPitchValue") or -1)
+                        for item in challenger_actions
+                    )
+                ):
+                    raise ExtractionWorkflowError(
+                        "A validation disagreement does not compare equivalent playable pitches."
+                    )
+                context_events = []
+                for label, context_index in (
+                    ("Previous", event_index - 1),
+                    ("Compared source movement", event_index),
+                    ("Following", event_index + 1),
+                ):
+                    if 0 <= context_index < len(events):
+                        context_events.append(
+                            {
+                                "label": label,
+                                "actions": copy.deepcopy(
+                                    events[context_index].get("steelActions")
+                                    or []
+                                ),
+                            }
+                        )
+                pitch_values = [
+                    int(item)
+                    for item in source_candidate.get("voicePitchValues") or ()
+                ]
+                shown.append(
+                    {
+                        "decisionId": str(value.get("decisionId") or ""),
+                        "inputId": input_id,
+                        "scoreSystemId": str(
+                            score_system.get("scoreSystemId") or ""
+                        ),
+                        "tabSystemId": tab_system_id,
+                        "sourceTabEventId": str(
+                            value.get("sourceTabEventId") or ""
+                        ),
+                        "eventIndex": event_index + 1,
+                        "melodyPitch": "/".join(
+                            scientific_pitch_for_value(item)
+                            for item in pitch_values
+                        ),
+                        "sourceActions": source_actions,
+                        "challengerActions": challenger_actions,
+                        "contextEvents": context_events,
+                    }
+                )
+            systems.append(
+                {
+                    "inputId": input_id,
+                    "sourceLabel": input_names.get(input_id) or input_id,
+                    "systemIndex": int(line.get("systemIndex") or 0),
+                    "scoreSystemId": str(
+                        score_system.get("scoreSystemId") or ""
+                    ),
+                    "tabSystemId": tab_system_id,
+                    "candidateDigest": candidate_digest,
+                    "sourcePairUrl": crop["relativeUrl"],
+                    "sourcePairSha256": crop["sha256"],
+                    "tabEventCount": len(events),
+                    "disagreements": shown,
+                }
+            )
+        packet_core = {
+            "schemaVersion": VALIDATION_DISAGREEMENT_REVIEW_SCHEMA_VERSION,
+            "reviewType": "validation_challenger_disagreement",
+            "batchId": batch_id,
+            "partition": "validation",
+            "modelId": model_id,
+            "modelArtifactSha256": model_sha256,
+            "machineDecisionDigest": disagreement_report.get(
+                "decisionDigest"
+            ),
+            "disagreementReportDigest": disagreement_digest,
+            "machineConsensusReportDigest": consensus_digest,
+            "systems": systems,
+            "tabCellsComplete": True,
+            "shownExecutionContextsExact": True,
+            "sourceTabMechanicsPassed": True,
+            "trainingEligible": False,
+            "validationGroundTruthMayTrain": False,
+            "validationAccessed": True,
+            "sealedTestAccessed": False,
+        }
+        packet_digest = _sha256_json(packet_core)
+        packet = {**packet_core, "packetDigest": packet_digest}
+        packet_path = review_dir / f"packet-{packet_digest}.json"
+        console_path = (
+            review_dir
+            / f"challenger-disagreement-console-{packet_digest[:12]}.html"
+        )
+        _write_json(packet_path, packet)
+        _write_private_text(
+            console_path,
+            _challenger_comparison_console_html(
+                packet_digest=packet_digest,
+                review_type="validation_challenger_disagreement",
+            ),
+        )
+        _write_json(review_dir / "packet.json", packet)
+        _write_private_text(
+            review_dir / "challenger-disagreement-console.html",
+            _challenger_comparison_console_html(
+                packet_digest=packet_digest,
+                review_type="validation_challenger_disagreement",
+            ),
+        )
+        return {
+            "schemaVersion": VALIDATION_DISAGREEMENT_REVIEW_SCHEMA_VERSION,
+            "batchId": batch_id,
+            "modelId": model_id,
+            "packetDigest": packet_digest,
+            "systemCount": len(systems),
+            "disagreementCount": sum(
+                len(value["disagreements"]) for value in systems
+            ),
+            "relativeUrl": (
+                f"/{batch_id}/extraction/validation/review/"
+                "challenger-disagreements/"
+                f"{console_path.name}?v={packet_digest[:8]}"
+            ),
+            "eligibleForTraining": False,
+            "validationAccessed": True,
             "sealedTestAccessed": False,
         }
 

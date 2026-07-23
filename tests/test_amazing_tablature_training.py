@@ -913,6 +913,14 @@ def test_machine_validation_scorer_uses_only_complete_tab_consensus(
     assert result["tabCellCompleteLineCount"] == 1
     assert result["withheldLineCount"] == 1
     assert result["decisionCount"] == 2
+    assert result["disagreementCount"] == 1
+    disagreement_report = json.loads(
+        (root / result["disagreementReportPath"]).read_text(encoding="utf-8")
+    )
+    assert disagreement_report["disagreementCount"] == 1
+    assert disagreement_report["humanTruthUsed"] is False
+    assert disagreement_report["validationMayTrain"] is False
+    assert disagreement_report["sealedTestAccessed"] is False
     assert result["cohortReceipts"]["atb-machine-validation"][
         "humanTruthUsed"
     ] is False

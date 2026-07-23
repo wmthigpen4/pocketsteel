@@ -6168,6 +6168,59 @@ class AmazingTablatureTrainingStore:
             "predictedTopMechanicalAccuracy": predicted_valid / count,
         }
 
+    @staticmethod
+    def _validation_ranking_disagreements(
+        model: Mapping[str, Any],
+        records: Sequence[Mapping[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Describe only strict top-choice misses in a private audit artifact."""
+
+        weights_by_style = model.get("weightsByStyle")
+        if not isinstance(weights_by_style, Mapping):
+            weights_by_style = {}
+        disagreements: list[dict[str, Any]] = []
+        for record in records:
+            chosen = deepcopy(record.get("chosen") or {})
+            alternatives = [
+                deepcopy(value) for value in record.get("alternatives") or ()
+            ]
+            style = str(record.get("styleFamily") or "auto")
+            weights = weights_by_style.get(style) or weights_by_style.get("auto") or {}
+            candidates = [chosen, *alternatives]
+            scores = [
+                float(score_candidate(candidate, weights))
+                for candidate in candidates
+            ]
+            if not scores or all(scores[0] < value for value in scores[1:]):
+                continue
+            best_score = min(scores)
+            disagreements.append(
+                {
+                    "decisionId": str(record.get("decisionId") or ""),
+                    "batchId": str(record.get("batchId") or ""),
+                    "inputId": str(record.get("inputId") or ""),
+                    "sourceTabEventId": str(
+                        record.get("sourceTabEventId") or ""
+                    ),
+                    "styleFamily": style,
+                    "categoryTags": list(record.get("categoryTags") or ()),
+                    "validationEvidence": deepcopy(
+                        record.get("validationEvidence") or {}
+                    ),
+                    "chosenCandidateIndex": 0,
+                    "chosenConservativeRank": 1
+                    + sum(value <= scores[0] for value in scores[1:]),
+                    "bestCandidateIndexes": [
+                        index
+                        for index, value in enumerate(scores)
+                        if value == best_score
+                    ],
+                    "candidateScores": scores,
+                    "candidates": candidates,
+                }
+            )
+        return disagreements
+
     def score_validation_line_audits(self, model_id: str) -> dict[str, Any]:
         """Score immutable expert validation receipts without training on them.
 
@@ -6945,6 +6998,37 @@ class AmazingTablatureTrainingStore:
             **self._validation_ranking_metrics(model, []),
             "evidenceSufficient": False,
         }
+        disagreements = self._validation_ranking_disagreements(
+            model,
+            ranking_records,
+        )
+        disagreement_core = {
+            "schemaVersion": (
+                "amazing-tablature-machine-validation-disagreements-v1"
+            ),
+            "modelId": model_id,
+            "modelArtifactSha256": artifact_sha256,
+            "decisionDigest": _sha256_json(ranking_records),
+            "disagreementCount": len(disagreements),
+            "disagreements": disagreements,
+            "humanTruthUsed": False,
+            "validationMayTrain": False,
+            "sealedTestAccessed": False,
+        }
+        disagreement_digest = _sha256_json(disagreement_core)
+        disagreement_report = {
+            **disagreement_core,
+            "reportDigest": disagreement_digest,
+        }
+        report_dir = self.root / "validation-evaluations" / model_id
+        report_dir.mkdir(parents=True, exist_ok=True)
+        _make_private(report_dir, directory=True)
+        disagreement_path = (
+            report_dir
+            / f"machine-consensus-disagreements-{disagreement_digest}.json"
+        )
+        _write_json(disagreement_path, disagreement_report)
+        _make_private(disagreement_path)
         measured_thresholds_passed = bool(
             overall["topChoiceAccuracy"]
             > VALIDATION_OVERALL_PREFERENCE_FLOOR
@@ -6967,7 +7051,7 @@ class AmazingTablatureTrainingStore:
         input_parity = structured_input_parity_report()
         canonical_gate_passed = False
         report_core = {
-            "schemaVersion": "amazing-tablature-machine-validation-score-v1",
+            "schemaVersion": "amazing-tablature-machine-validation-score-v2",
             "modelId": model_id,
             "modelArtifactSha256": artifact_sha256,
             "evaluatedAt": _utc_now(),
@@ -6978,6 +7062,11 @@ class AmazingTablatureTrainingStore:
             "withheldLineCount": withheld_line_count,
             "decisionCount": len(ranking_records),
             "decisionDigest": _sha256_json(ranking_records),
+            "disagreementCount": len(disagreements),
+            "disagreementDigest": disagreement_digest,
+            "disagreementReportPath": str(
+                disagreement_path.relative_to(self.root)
+            ),
             "candidateSetDigest": _sha256_json(sorted(candidate_digests)),
             "metrics": overall,
             "cohortMetrics": cohort_metrics,
@@ -7039,9 +7128,6 @@ class AmazingTablatureTrainingStore:
         }
         report_digest = _sha256_json(report_core)
         report = {**report_core, "reportDigest": report_digest}
-        report_dir = self.root / "validation-evaluations" / model_id
-        report_dir.mkdir(parents=True, exist_ok=True)
-        _make_private(report_dir, directory=True)
         report_path = (
             report_dir
             / f"machine-consensus-score-{report_digest}.json"
