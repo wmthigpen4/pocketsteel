@@ -86,6 +86,7 @@ from pocketsteel.amazing_tablature_extraction import (
     _validation_machine_count_consensus,
     _validation_independent_contact_cells,
     _validation_ordered_equal_count_projection,
+    _parallel_validation_reader_calls,
     _validation_contact_tab_hypothesis,
     _validation_machine_score_from_existing_omr,
     _validation_score_events_from_score_only_recognition,
@@ -1798,8 +1799,8 @@ def test_validation_score_only_consensus_is_independent_and_preserves_score_geom
         expected_event_counts={2},
     )
 
-    assert count_calls == ["reader-a", "reader-b"]
-    assert pitch_calls == [
+    assert sorted(count_calls) == ["reader-a", "reader-b"]
+    assert sorted(pitch_calls) == [
         ("reader-a", 2, False, "independent_machine_count_consensus"),
         ("reader-b", 2, False, "independent_machine_count_consensus"),
     ]
@@ -1954,6 +1955,27 @@ def test_validation_score_only_consensus_is_independent_and_preserves_score_geom
             ],
             expected_event_counts={3},
         )
+
+
+def test_parallel_validation_reader_calls_preserves_reader_order() -> None:
+    barrier = threading.Barrier(2)
+
+    class Reader:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+        def read(self, value: int) -> dict[str, object]:
+            barrier.wait(timeout=1)
+            return {"reader": self.name, "value": value}
+
+    assert _parallel_validation_reader_calls(
+        [Reader("first"), Reader("second")],
+        "read",
+        7,
+    ) == [
+        {"reader": "first", "value": 7},
+        {"reader": "second", "value": 7},
+    ]
 
 
 def test_validation_score_only_event_normalization_rejects_tab_geometry() -> None:

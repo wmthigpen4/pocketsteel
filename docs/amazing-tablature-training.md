@@ -446,6 +446,27 @@ Open validation by naming that exact canonical challenger for every cohort:
 
 The extractor rejects a partial challenger, a changed model artifact, or a model that does not cover the cohort. The extraction run pins the model ID, artifact SHA-256, discovery seed, code revision, and printed-score audit scope. Later validation-review operations inherit that pin from the private extraction summary. This gate replaces the older per-batch training checkpoint, which could not identify the exact combined-dataset challenger being evaluated.
 
+Build the independent two-model tab consensus before attempting automatic
+score/tab repair:
+
+```bash
+.venv/bin/python scripts/amazing_tablature.py \
+  prepare-validation-contact-consensus <batch-id>
+
+.venv/bin/python scripts/amazing_tablature.py \
+  remediate-validation-machine-capture <batch-id> --limit 100
+```
+
+Validation recapture inherits the exact two reader-model contracts and report
+digest from the current contact consensus. Independent count, localization,
+score-column, and score-pitch calls run concurrently across those two pinned
+models while results are returned in stable reader order. Concurrency changes
+throughput only: both readers must still satisfy the same confidence,
+completeness, exact-agreement, score containment, mechanical, and structural
+preflight gates. The default command is a dry run. A later `--apply` pass may
+revise only lines that passed every machine gate; withheld failures remain
+unchanged. Neither pass may train from validation or read sealed-test data.
+
 Before rerunning an incomplete independent comparison, build the
 precision-gated visual glyph decoder and calibrate the exact pinned tab-cell
 readers only against digest-verified, human-approved discovery contact sheets:

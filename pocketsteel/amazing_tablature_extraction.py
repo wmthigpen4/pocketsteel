@@ -6624,6 +6624,32 @@ def _validation_score_events_from_score_only_recognition(
     return events
 
 
+def _parallel_validation_reader_calls(
+    readers: Sequence[LocalTabSystemVision],
+    method_name: str,
+    *args: Any,
+    **kwargs: Any,
+) -> list[dict[str, Any]]:
+    """Run one independent call per pinned reader while preserving reader order."""
+
+    if len(readers) < 2:
+        raise ExtractionWorkflowError(
+            "Validation consensus requires at least two independent readers."
+        )
+    with concurrent.futures.ThreadPoolExecutor(
+        max_workers=len(readers)
+    ) as executor:
+        futures = [
+            executor.submit(
+                getattr(reader, method_name),
+                *args,
+                **kwargs,
+            )
+            for reader in readers
+        ]
+        return [future.result() for future in futures]
+
+
 def _validation_score_only_consensus_recapture(
     *,
     input_id: str,
@@ -6656,10 +6682,11 @@ def _validation_score_only_consensus_recapture(
         raise ExtractionWorkflowError(
             "Validation score-only consensus lacks complete machine timeline counts."
         )
-    count_reads = [
-        reader.read_unconstrained_score_columns(score_crop_path)
-        for reader in readers
-    ]
+    count_reads = _parallel_validation_reader_calls(
+        readers,
+        "read_unconstrained_score_columns",
+        score_crop_path,
+    )
     count_signatures: list[tuple[int, int, int, tuple[bool, ...]]] = []
     for result in count_reads:
         events = list(result.get("events") or [])
@@ -6725,15 +6752,14 @@ def _validation_score_only_consensus_recapture(
     ] = []
     pitch_candidate_failures: dict[int, str] = {}
     for candidate_count in candidate_counts:
-        pitch_reads = [
-            reader.read_score_pitch_events(
-                score_crop_path,
-                expected_event_count=candidate_count,
-                guided=False,
-                constraint_source="independent_machine_count_consensus",
-            )
-            for reader in readers
-        ]
+        pitch_reads = _parallel_validation_reader_calls(
+            readers,
+            "read_score_pitch_events",
+            score_crop_path,
+            expected_event_count=candidate_count,
+            guided=False,
+            constraint_source="independent_machine_count_consensus",
+        )
         pitch_signatures: list[tuple[int, tuple[tuple[int, ...], ...]]] = []
         reported_pitch_confidences: list[float | None] = []
         incomplete = False
@@ -27436,6 +27462,53 @@ class AmazingTablatureExtractor:
         validation_model = copy.deepcopy(extraction_summary.get("validationModel") or {})
         if not validation_model.get("modelId"):
             raise ExtractionWorkflowError("Validation recapture requires pinned model lineage.")
+        consensus_report_path = (
+            output_root
+            / "review"
+            / "automation"
+            / VALIDATION_CONTACT_CONSENSUS_VERSION
+            / "report.json"
+        )
+        if not consensus_report_path.exists():
+            raise ExtractionWorkflowError(
+                "Validation recapture requires the current multi-model contact consensus."
+            )
+        consensus_report = _read_json(consensus_report_path)
+        consensus_core = {
+            key: value
+            for key, value in consensus_report.items()
+            if key != "reportDigest"
+        }
+        consensus_reader_contracts = [
+            dict(value)
+            for value in consensus_report.get("readerContracts") or ()
+            if isinstance(value, Mapping)
+        ]
+        consensus_reader_models = tuple(
+            dict.fromkeys(
+                str(value.get("modelTag") or "").strip()
+                for value in consensus_reader_contracts
+                if str(value.get("modelTag") or "").strip()
+            )
+        )
+        if (
+            consensus_report.get("schemaVersion")
+            != VALIDATION_CONTACT_CONSENSUS_VERSION
+            or consensus_report.get("batchId") != batch_id
+            or consensus_report.get("partition") != "validation"
+            or consensus_report.get("validationRunDigest")
+            != extraction_summary.get("runDigest")
+            or consensus_report.get("validationModel") != validation_model
+            or consensus_report.get("reportDigest")
+            != _sha256_json(consensus_core)
+            or consensus_report.get("humanTruthUsed") is not False
+            or consensus_report.get("validationMayTrain") is not False
+            or consensus_report.get("sealedTestAccessed") is not False
+            or len(consensus_reader_models) < 2
+        ):
+            raise ExtractionWorkflowError(
+                "Validation recapture contact-consensus lineage is stale or unsafe."
+            )
         independent_cell_reader = str(extraction_summary.get("tabReader") or "")
         if not independent_cell_reader:
             raise ExtractionWorkflowError(
@@ -27452,31 +27525,40 @@ class AmazingTablatureExtractor:
         for directory in (remediation_dir, candidate_dir, revision_dir):
             directory.mkdir(parents=True, exist_ok=True)
             os.chmod(directory, 0o700)
-        score_only_readers = (
-            self.tab_system_vision,
+        score_only_readers = tuple(
             LocalTabSystemVision(
-                self.tab_system_vision.model,
+                model,
                 self.tab_system_vision.base_url,
                 num_ctx=self.tab_system_vision.num_ctx,
-                seed=self.tab_system_vision.seed + 104729,
-            ),
+                seed=self.tab_system_vision.seed + seed_offset,
+            )
+            for model, seed_offset in zip(
+                consensus_reader_models[:2],
+                (0, 104729),
+                strict=True,
+            )
         )
-        tab_only_readers = (
+        tab_only_readers = tuple(
             LocalTabSystemVision(
-                self.tab_system_vision.model,
+                model,
                 self.tab_system_vision.base_url,
                 num_ctx=self.tab_system_vision.num_ctx,
-                seed=self.tab_system_vision.seed + 130363,
-            ),
-            LocalTabSystemVision(
-                self.tab_system_vision.model,
-                self.tab_system_vision.base_url,
-                num_ctx=self.tab_system_vision.num_ctx,
-                seed=self.tab_system_vision.seed + 155921,
-            ),
+                seed=self.tab_system_vision.seed + seed_offset,
+            )
+            for model, seed_offset in zip(
+                consensus_reader_models[:2],
+                (130363, 155921),
+                strict=True,
+            )
         )
         contract = {
             "schemaVersion": VALIDATION_MACHINE_RECAPTURE_VERSION,
+            "sourceContactConsensusReportDigest": consensus_report[
+                "reportDigest"
+            ],
+            "sourceContactConsensusReaderContracts": (
+                consensus_reader_contracts
+            ),
             "countReaders": [reader.contract() for reader in tab_only_readers],
             "countConsensus": (
                 "two_of_three_deterministic_geometry_plus_two_tab_only_readers"
@@ -27623,10 +27705,11 @@ class AmazingTablatureExtractor:
                         copy.deepcopy(list(cached_count_predictions))
                         if isinstance(cached_count_predictions, list)
                         and len(cached_count_predictions) == 2
-                        else [
-                            reader.read_event_count(Path(str(tab_crop["path"])))
-                            for reader in tab_only_readers
-                        ]
+                        else _parallel_validation_reader_calls(
+                            tab_only_readers,
+                            "read_event_count",
+                            Path(str(tab_crop["path"])),
+                        )
                     )
                     deterministic_candidate_count = len(
                         tab_system.get("tabEventCandidates") or []
@@ -27661,20 +27744,19 @@ class AmazingTablatureExtractor:
                             copy.deepcopy(list(cached_localizations))
                             if isinstance(cached_localizations, list)
                             and len(cached_localizations) == 2
-                            else [
-                                reader.localize_events(
-                                    Path(str(tab_crop["path"])),
-                                    expected_event_count=expected_count,
-                                    constraint_source=(
-                                        "independent_machine_count_consensus"
-                                    ),
-                                    guided=False,
-                                    control_string_map=(
-                                        _profile_control_string_map(profile)
-                                    ),
-                                )
-                                for reader in tab_only_readers
-                            ]
+                            else _parallel_validation_reader_calls(
+                                tab_only_readers,
+                                "localize_events",
+                                Path(str(tab_crop["path"])),
+                                expected_event_count=expected_count,
+                                constraint_source=(
+                                    "independent_machine_count_consensus"
+                                ),
+                                guided=False,
+                                control_string_map=(
+                                    _profile_control_string_map(profile)
+                                ),
+                            )
                         )
                         (
                             full_line_localization,
@@ -27826,8 +27908,10 @@ class AmazingTablatureExtractor:
                         except ExtractionWorkflowError as exc:
                             execution_projection_rejection = str(exc)
                             try:
-                                localization_reads = [
-                                    reader.localize_events(
+                                localization_reads = (
+                                    _parallel_validation_reader_calls(
+                                        tab_only_readers,
+                                        "localize_events",
                                         Path(guided_tab_crop["path"]),
                                         expected_event_count=expected_count,
                                         constraint_source=(
@@ -27850,8 +27934,7 @@ class AmazingTablatureExtractor:
                                             _profile_control_string_map(profile)
                                         ),
                                     )
-                                    for reader in tab_only_readers
-                                ]
+                                )
                                 (
                                     full_line_localization,
                                     full_line_consensus_diagnostics,
