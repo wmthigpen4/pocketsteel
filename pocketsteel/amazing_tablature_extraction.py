@@ -56,7 +56,7 @@ FEEDBACK_CORRECTION_CONFIRMATION_SCHEMA_VERSION = (
 COMBINED_SCORE_TAB_REVIEW_SCHEMA_VERSION = "amazing-tablature-combined-score-tab-review-v1"
 VALIDATION_LINE_AUDIT_SCHEMA_VERSION = "amazing-tablature-validation-line-audit-v1"
 VALIDATION_LINE_PREFLIGHT_VERSION = "validation-line-structural-preflight-v1"
-VALIDATION_MACHINE_RECAPTURE_VERSION = "validation-machine-recapture-v7"
+VALIDATION_MACHINE_RECAPTURE_VERSION = "validation-machine-recapture-v8"
 VALIDATION_CAPTURE_ISSUE_KINDS = frozenset(
     {
         "page_extraction_failure",
@@ -6649,6 +6649,105 @@ def _validation_independent_contact_cells(
             "Independent validation tab-cell evidence is empty."
         )
     return cells, sorted(cache_digests)
+
+
+def _validation_ordered_equal_count_projection(
+    *,
+    tab_system: Mapping[str, Any],
+    tab_crop: Mapping[str, Any],
+    score_event_count: int,
+    independent_cells: Mapping[str, Mapping[str, Any]],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Project one source score event to each ordered visible tab column.
+
+    On the opened, score-audited discovery benchmark, 24/39 lines have equal
+    score-event, tab-state, and picked-state counts. Their chronological
+    correspondence is therefore fixed by source order; unequal score/tab
+    engraving spacing is not evidence that the events differ. This projection
+    is allowed only when every independent tab cell is complete and contains no
+    connector/slide mark that could encode a no-repick state.
+    """
+
+    candidates = list(tab_system.get("tabEventCandidates") or [])
+    if score_event_count < 1 or len(candidates) != score_event_count:
+        raise ExtractionWorkflowError(
+            "Ordered score/tab projection requires equal nonzero source counts."
+        )
+    full_width = float(tab_crop.get("width") or 0.0)
+    content_x0 = float(tab_crop.get("contentX0") or 0.0)
+    content_x1 = float(tab_crop.get("contentX1") or 0.0)
+    if full_width <= 0.0 or content_x1 <= content_x0:
+        raise ExtractionWorkflowError(
+            "Ordered score/tab projection crop geometry is incomplete."
+        )
+    events: list[dict[str, Any]] = []
+    for event_index, candidate in enumerate(candidates, start=1):
+        strings = sorted(
+            int(value) for value in candidate.get("candidateStrings") or []
+        )
+        if not strings:
+            raise ExtractionWorkflowError(
+                "Ordered score/tab projection contains a blank visual column."
+            )
+        cells: list[dict[str, Any]] = []
+        for string in strings:
+            label = f"e{event_index}s{string}"
+            cell = independent_cells.get(label) or {}
+            token = str(cell.get("token") or "").strip().upper()
+            if (
+                not token
+                or bool(cell.get("uncertain", True))
+                or float(cell.get("confidence") or 0.0) < 0.85
+            ):
+                raise ExtractionWorkflowError(
+                    "Ordered score/tab projection contains an incomplete tab cell."
+                )
+            if re.search(r"[-~_→←<>/\\\\]", token):
+                raise ExtractionWorkflowError(
+                    "Ordered score/tab projection found connector or slide notation "
+                    "that requires explicit execution recognition."
+                )
+            cells.append({"string": string, "token": token})
+        local_x = max(
+            0.0,
+            min(1.0, float(candidate.get("horizontalPosition") or 0.0)),
+        )
+        events.append(
+            {
+                "eventIndex": event_index,
+                "guideIndex": event_index,
+                "x": round(
+                    (
+                        content_x0
+                        + local_x * (content_x1 - content_x0)
+                    )
+                    / full_width,
+                    7,
+                ),
+                "execution": "attack",
+                "cells": cells,
+            }
+        )
+    return {
+        "events": events,
+        "confidence": 0.85,
+        "confidenceBasis": "equal_source_counts_plus_ordered_geometry",
+        "uncertain": False,
+        "captureSource": "ordered_equal_count_source_projection",
+        "model": None,
+        "promptVersion": None,
+    }, {
+        "scoreAttackCount": score_event_count,
+        "tabStateCount": len(candidates),
+        "movementOnlyCount": 0,
+        "selectedAttackEventIndices": list(range(1, len(candidates) + 1)),
+        "selectionEvidence": (
+            "equal_independent_score_and_tab_counts_plus_source_order"
+        ),
+        "discoveryBenchmarkExactAllAttackSupport": "24/39",
+        "pitchEvidenceUsed": False,
+        "humanTruthUsed": False,
+    }
 
 
 def _validation_project_execution_from_independent_geometry(
@@ -26426,8 +26525,8 @@ class AmazingTablatureExtractor:
             ),
             "tabLocalizationPromptVersion": TAB_SYSTEM_LOCALIZATION_PROMPT_VERSION,
             "scorePitchSources": [
-                "existing_independent_audiveris_musicxml",
-                "two_reader_score_only_consensus",
+                "mandatory_two_reader_score_only_consensus",
+                "existing_independent_audiveris_musicxml_diagnostic_only",
             ],
             "scoreOnlyReaderContracts": [
                 reader.contract() for reader in score_only_readers
@@ -26440,6 +26539,7 @@ class AmazingTablatureExtractor:
                 "two_of_three_deterministic_geometry_plus_two_tab_only_readers"
             ),
             "tabExecutionSources": [
+                "ordered_equal_count_source_projection",
                 "strict_independent_score_tab_geometry_projection",
                 "two_reader_full_line_machine_consensus_fallback",
             ],
@@ -26677,7 +26777,7 @@ class AmazingTablatureExtractor:
                     possible_score_counts = set(range(1, 65))
                     existing_omr_rejection: str | None = None
                     try:
-                        score_events, score_recognition = (
+                        omr_score_events, omr_score_recognition = (
                             _validation_machine_score_from_existing_omr(
                                 score_system,
                                 expected_event_counts=possible_score_counts,
@@ -26685,24 +26785,44 @@ class AmazingTablatureExtractor:
                         )
                     except ExtractionWorkflowError as exc:
                         existing_omr_rejection = str(exc)
-                        system_index = int(score_system.get("systemIndex") or 0)
-                        score_crop_path = (
-                            output_root
-                            / "score-crops"
-                            / input_id
-                            / f"score-system-{system_index:02d}.png"
+                        omr_score_events = []
+                        omr_score_recognition = None
+                    system_index = int(score_system.get("systemIndex") or 0)
+                    score_crop_path = (
+                        output_root
+                        / "score-crops"
+                        / input_id
+                        / f"score-system-{system_index:02d}.png"
+                    )
+                    score_events, score_recognition = (
+                        _validation_score_only_consensus_recapture(
+                            input_id=input_id,
+                            score_system=score_system,
+                            score_crop_path=score_crop_path,
+                            readers=score_only_readers,
+                            expected_event_counts=possible_score_counts,
                         )
-                        score_events, score_recognition = (
-                            _validation_score_only_consensus_recapture(
-                                input_id=input_id,
-                                score_system=score_system,
-                                score_crop_path=score_crop_path,
-                                readers=score_only_readers,
-                                expected_event_counts=possible_score_counts,
-                            )
+                    )
+                    if omr_score_recognition is not None:
+                        omr_groups = _score_event_groups_by_printed_position(
+                            [
+                                event
+                                for event in omr_score_events
+                                if not event.get("rest")
+                            ]
                         )
+                        score_recognition["existingOmrDiagnostic"] = {
+                            "captureSource": "existing_independent_musicxml",
+                            "eventCount": len(omr_groups),
+                            "agreesWithScoreOnlyConsensus": len(omr_groups)
+                            == int(score_recognition.get("eventCount") or 0),
+                            "musicXmlSha256": omr_score_recognition.get(
+                                "musicXmlSha256"
+                            ),
+                        }
+                    else:
                         score_recognition["existingOmrRejection"] = (
-                            existing_omr_rejection[:500]
+                            (existing_omr_rejection or "unavailable")[:500]
                         )
                     score_attack_count = len(
                         _score_event_groups_by_printed_position(
@@ -26721,7 +26841,20 @@ class AmazingTablatureExtractor:
                         )
                     execution_projection_rejection: str | None = None
                     execution_projection_diagnostics: dict[str, Any] | None = None
-                    if full_line_localization is not None:
+                    if (
+                        deterministic_geometry_selected
+                        and score_attack_count == expected_count
+                    ):
+                        (
+                            localization,
+                            execution_projection_diagnostics,
+                        ) = _validation_ordered_equal_count_projection(
+                            tab_system=working_tab_system,
+                            tab_crop=tab_crop,
+                            score_event_count=score_attack_count,
+                            independent_cells=independent_cells,
+                        )
+                    elif full_line_localization is not None:
                         localization = copy.deepcopy(full_line_localization)
                     else:
                         try:
@@ -26795,6 +26928,14 @@ class AmazingTablatureExtractor:
                             profile=profile,
                             expected_count=expected_count,
                         )
+                    )
+                    tab_execution_source = (
+                        "ordered_equal_count_source_projection"
+                        if str(input_localization.get("captureSource") or "")
+                        == "ordered_equal_count_source_projection"
+                        else "strict_independent_score_tab_geometry_projection"
+                        if execution_projection_diagnostics is not None
+                        else "two_reader_full_line_machine_consensus_fallback"
                     )
                     if execution_projection_diagnostics is not None:
                         # The input projection intentionally contains no token
@@ -26946,11 +27087,7 @@ class AmazingTablatureExtractor:
                         "contractDigest": contract_digest,
                         "expectedEventCount": expected_count,
                             "scorePitchSource": score_recognition["captureSource"],
-                            "tabExecutionSource": (
-                                "strict_independent_score_tab_geometry_projection"
-                                if execution_projection_diagnostics is not None
-                                else "two_reader_full_line_machine_consensus_fallback"
-                            ),
+                            "tabExecutionSource": tab_execution_source,
                             "humanTruthUsed": False,
                         }
                     candidate_tab["tabEvents"] = tab_events
@@ -27040,11 +27177,7 @@ class AmazingTablatureExtractor:
                             "contractDigest": contract_digest,
                             "expectedEventCount": expected_count,
                             "scorePitchSource": score_recognition["captureSource"],
-                            "tabExecutionSource": (
-                                "strict_independent_score_tab_geometry_projection"
-                                if execution_projection_diagnostics is not None
-                                else "two_reader_full_line_machine_consensus_fallback"
-                            ),
+                            "tabExecutionSource": tab_execution_source,
                             "countOnlyReaderAgrees": count_reader_agrees,
                             "humanTruthUsed": False,
                             "validationMayTrain": False,
@@ -27078,11 +27211,7 @@ class AmazingTablatureExtractor:
                             "countOnlyReaderBlockers": count_blockers,
                             "scorePitchContainmentPassed": True,
                             "scorePitchSource": score_recognition["captureSource"],
-                            "tabExecutionSource": (
-                                "strict_independent_score_tab_geometry_projection"
-                                if execution_projection_diagnostics is not None
-                                else "two_reader_full_line_machine_consensus_fallback"
-                            ),
+                            "tabExecutionSource": tab_execution_source,
                             "tabExecutionProjection": (
                                 execution_projection_diagnostics
                             ),

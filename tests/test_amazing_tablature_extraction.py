@@ -81,6 +81,7 @@ from pocketsteel.amazing_tablature_extraction import (
     _validation_project_execution_from_independent_geometry,
     _validation_machine_count_consensus,
     _validation_independent_contact_cells,
+    _validation_ordered_equal_count_projection,
     _validation_contact_tab_hypothesis,
     _validation_machine_score_from_existing_omr,
     _validation_score_events_from_score_only_recognition,
@@ -1235,6 +1236,75 @@ def test_validation_full_line_consensus_can_replace_missed_geometry() -> None:
         _validation_full_line_localization_consensus(
             [first, disagreeing],
             expected_count=2,
+        )
+
+
+def test_validation_equal_count_projection_uses_order_not_engraving_spacing() -> None:
+    tab_system = {
+        "tabEventCandidates": [
+            {
+                "sourceCandidateEventIndex": 1,
+                "horizontalPosition": 0.15,
+                "candidateStrings": [5],
+            },
+            {
+                "sourceCandidateEventIndex": 2,
+                "horizontalPosition": 0.85,
+                "candidateStrings": [4, 5],
+            },
+        ]
+    }
+    localization, diagnostics = _validation_ordered_equal_count_projection(
+        tab_system=tab_system,
+        tab_crop={
+            "width": 2300,
+            "contentX0": 150,
+            "contentX1": 2300,
+        },
+        score_event_count=2,
+        independent_cells={
+            "e1s5": {"token": "8A", "confidence": 0.99, "uncertain": False},
+            "e2s4": {"token": "10", "confidence": 0.98, "uncertain": False},
+            "e2s5": {"token": "10A", "confidence": 0.98, "uncertain": False},
+        },
+    )
+
+    assert localization["captureSource"] == "ordered_equal_count_source_projection"
+    assert [event["execution"] for event in localization["events"]] == [
+        "attack",
+        "attack",
+    ]
+    assert [len(event["cells"]) for event in localization["events"]] == [1, 2]
+    assert diagnostics["selectionEvidence"] == (
+        "equal_independent_score_and_tab_counts_plus_source_order"
+    )
+
+    with pytest.raises(ExtractionWorkflowError, match="connector or slide"):
+        _validation_ordered_equal_count_projection(
+            tab_system=tab_system,
+            tab_crop={
+                "width": 2300,
+                "contentX0": 150,
+                "contentX1": 2300,
+            },
+            score_event_count=2,
+            independent_cells={
+                "e1s5": {
+                    "token": "8-",
+                    "confidence": 0.99,
+                    "uncertain": False,
+                },
+                "e2s4": {
+                    "token": "10",
+                    "confidence": 0.98,
+                    "uncertain": False,
+                },
+                "e2s5": {
+                    "token": "10A",
+                    "confidence": 0.98,
+                    "uncertain": False,
+                },
+            },
         )
 
 
