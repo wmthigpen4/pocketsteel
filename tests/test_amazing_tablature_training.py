@@ -702,6 +702,8 @@ def test_machine_validation_scorer_uses_only_complete_tab_consensus(
     model = {
         "modelId": model_id,
         "codeRevision": "discovery-only-revision",
+        "featureSchemaVersion": "melody-ranker-features-v3-phrase-sequence",
+        "featureNames": list(FEATURE_NAMES),
         "weightsByStyle": {
             style: {
                 name: (1.0 if name == "bar_travel" else 0.0)
@@ -1051,6 +1053,23 @@ def test_machine_validation_scorer_uses_only_complete_tab_consensus(
     assert adjudicated["humanAdjudicationUsed"] is True
     assert adjudicated["validationMayTrain"] is False
     assert adjudicated["sealedTestAccessed"] is False
+    assert model_path.read_bytes() == model_before
+    assert not (batch_dir / "accepted-decisions.jsonl").exists()
+
+    carried = store.carry_forward_validation_machine_adjudication(
+        model_id,
+        score_report_digest=result["reportDigest"],
+        source_adjudication_digest=adjudicated["reportDigest"],
+        current_packet_digest=packet_digest,
+    )
+    assert carried["equivalentDisagreementCount"] == 1
+    assert carried["humanRereviewRequired"] is False
+    assert carried["adjudication"]["statusCounts"] == {
+        "challenger_valid": 1
+    }
+    assert carried["adjudication"]["validationMayTrain"] is False
+    assert carried["validationMayTrain"] is False
+    assert carried["sealedTestAccessed"] is False
     assert model_path.read_bytes() == model_before
     assert not (batch_dir / "accepted-decisions.jsonl").exists()
 

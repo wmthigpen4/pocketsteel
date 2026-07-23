@@ -30350,7 +30350,12 @@ class AmazingTablatureExtractor:
                 evidence.get("consensusReportDigest") or ""
             )
             if (
-                evidence.get("mode") != "machine_consensus_complete_line"
+                evidence.get("mode")
+                not in {
+                    "machine_consensus_complete_line",
+                    "machine_consensus_complete_tab_line",
+                    "machine_consensus_score_supported_line",
+                }
                 or evidence.get("validationMayTrain") is not False
                 or not re.fullmatch(r"[0-9a-f]{64}", candidate_digest)
                 or not re.fullmatch(r"[0-9a-f]{64}", consensus_report_digest)
@@ -30469,12 +30474,6 @@ class AmazingTablatureExtractor:
                     "A validation disagreement page record is missing."
                 )
             record = _read_json(page_path)
-            if _sha256_json(record) != str(
-                candidate.get("machineRecordDigest") or ""
-            ):
-                raise ExtractionWorkflowError(
-                    "A validation disagreement page changed after consensus."
-                )
             tab_system_id = str(candidate.get("tabSystemId") or "")
             tab_system = next(
                 (
@@ -30497,6 +30496,61 @@ class AmazingTablatureExtractor:
                 raise ExtractionWorkflowError(
                     "A validation disagreement lacks its printed score/tab pair."
                 )
+            evidence_modes = {
+                str(
+                    (value.get("validationEvidence") or {}).get("mode")
+                    or ""
+                )
+                for value in values
+            }
+            evidence_execution_digests = {
+                str(
+                    (value.get("validationEvidence") or {}).get(
+                        "executionDigest"
+                    )
+                    or ""
+                )
+                for value in values
+            }
+            page_record_unchanged = _sha256_json(record) == str(
+                candidate.get("machineRecordDigest") or ""
+            )
+            if evidence_modes == {"machine_consensus_complete_line"}:
+                if not page_record_unchanged:
+                    raise ExtractionWorkflowError(
+                        "A validation disagreement page changed after consensus."
+                    )
+            else:
+                candidate_execution_digest = (
+                    validation_contact_execution_digest(
+                        candidate.get("events") or []
+                    )
+                )
+                if (
+                    len(evidence_execution_digests) != 1
+                    or not re.fullmatch(
+                        r"[0-9a-f]{64}",
+                        next(iter(evidence_execution_digests), ""),
+                    )
+                    or evidence_execution_digests
+                    != {
+                        candidate_execution_digest,
+                    }
+                ):
+                    raise ExtractionWorkflowError(
+                        "A rebuilt validation disagreement changed musical execution."
+                    )
+                if evidence_modes == {
+                    "machine_consensus_score_supported_line"
+                } and (
+                    validation_contact_execution_digest(
+                        tab_system.get("tabEvents") or []
+                    )
+                    != candidate_execution_digest
+                ):
+                    raise ExtractionWorkflowError(
+                        "A score-supported disagreement changed current page execution."
+                    )
             crop = _prepare_score_tab_source_crop(
                 output_root=output_root,
                 audit_dir=review_dir,

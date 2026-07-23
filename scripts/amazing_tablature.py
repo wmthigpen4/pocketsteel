@@ -967,6 +967,27 @@ def _parser() -> argparse.ArgumentParser:
         required=True,
     )
 
+    carry_validation_adjudication = subparsers.add_parser(
+        "carry-forward-validation-adjudication",
+        help=(
+            "Reuse a prior expert validation verdict only when every "
+            "preference-relevant disagreement field is exactly equivalent."
+        ),
+    )
+    carry_validation_adjudication.add_argument("model_id")
+    carry_validation_adjudication.add_argument(
+        "--score-report-digest",
+        required=True,
+    )
+    carry_validation_adjudication.add_argument(
+        "--source-adjudication-digest",
+        required=True,
+    )
+    carry_validation_adjudication.add_argument(
+        "--current-packet-digest",
+        required=True,
+    )
+
     report = subparsers.add_parser("report", help="Write a private metrics-only challenger report.")
     report.add_argument("model_id")
 
@@ -1551,6 +1572,15 @@ def main() -> int:
                 batch_id=args.batch_id,
                 score_report_digest=args.score_report_digest,
                 submission_id=args.submission_id,
+            )
+        elif args.command == "carry-forward-validation-adjudication":
+            result = store.carry_forward_validation_machine_adjudication(
+                args.model_id,
+                score_report_digest=args.score_report_digest,
+                source_adjudication_digest=(
+                    args.source_adjudication_digest
+                ),
+                current_packet_digest=args.current_packet_digest,
             )
         elif args.command == "report":
             result = store.report(args.model_id)

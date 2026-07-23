@@ -1123,6 +1123,92 @@ def _machine_validation_score_support_lineage(
     }
 
 
+def _validation_disagreement_equivalence_signature(
+    disagreement: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Retain every preference-relevant field while dropping wrapper lineage."""
+
+    return {
+        key: deepcopy(disagreement.get(key))
+        for key in (
+            "decisionId",
+            "batchId",
+            "inputId",
+            "sourceTabEventId",
+            "styleFamily",
+            "chosenCandidateIndex",
+            "chosenConservativeRank",
+            "bestCandidateIndexes",
+            "candidateScores",
+            "candidates",
+        )
+    }
+
+
+def _validation_review_presentation_signature(
+    packet: Mapping[str, Any],
+) -> list[dict[str, Any]]:
+    """Retain the exact source context and choices shown to the reviewer."""
+
+    signature: list[dict[str, Any]] = []
+    for system in packet.get("systems") or ():
+        signature.append(
+            {
+                "inputId": str(system.get("inputId") or ""),
+                "sourceLabel": str(system.get("sourceLabel") or ""),
+                "systemIndex": int(system.get("systemIndex") or 0),
+                "scoreSystemId": str(system.get("scoreSystemId") or ""),
+                "tabSystemId": str(system.get("tabSystemId") or ""),
+                "sourcePairSha256": str(
+                    system.get("sourcePairSha256") or ""
+                ),
+                "tabEventCount": int(system.get("tabEventCount") or 0),
+                "disagreements": sorted(
+                    (
+                        {
+                            key: deepcopy(item.get(key))
+                            for key in (
+                                "decisionId",
+                                "inputId",
+                                "scoreSystemId",
+                                "tabSystemId",
+                                "sourceTabEventId",
+                                "eventIndex",
+                                "melodyPitch",
+                                "sourceActions",
+                                "challengerActions",
+                                "contextEvents",
+                            )
+                        }
+                        for item in system.get("disagreements") or ()
+                    ),
+                    key=lambda item: str(item.get("decisionId") or ""),
+                ),
+            }
+        )
+    return sorted(
+        signature,
+        key=lambda item: (
+            item["inputId"],
+            item["tabSystemId"],
+        ),
+    )
+
+
+def _validation_model_inference_signature(
+    model: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Retain the exact feature and learned-weight contract used to rank."""
+
+    return {
+        "featureSchemaVersion": str(
+            model.get("featureSchemaVersion") or ""
+        ),
+        "featureNames": list(model.get("featureNames") or ()),
+        "weightsByStyle": deepcopy(model.get("weightsByStyle") or {}),
+    }
+
+
 def _contains_forbidden_runtime_data(value: object, path: str = "") -> list[str]:
     findings: list[str] = []
     if isinstance(value, Mapping):
@@ -7497,6 +7583,566 @@ class AmazingTablatureTrainingStore:
             "reportPath": str(report_path.relative_to(self.root)),
         }
 
+    def carry_forward_validation_machine_adjudication(
+        self,
+        model_id: str,
+        *,
+        score_report_digest: str,
+        source_adjudication_digest: str,
+        current_packet_digest: str,
+    ) -> dict[str, Any]:
+        """Reuse an expert verdict only for exactly equivalent reviewed choices."""
+
+        if not re.fullmatch(r"[0-9a-f]{64}", score_report_digest):
+            raise TrainingWorkflowError(
+                "Adjudication carry-forward needs an exact score-report digest."
+            )
+        if not re.fullmatch(r"[0-9a-f]{64}", source_adjudication_digest):
+            raise TrainingWorkflowError(
+                "Adjudication carry-forward needs an exact source digest."
+            )
+        if not re.fullmatch(r"[0-9a-f]{64}", current_packet_digest):
+            raise TrainingWorkflowError(
+                "Adjudication carry-forward needs an exact current packet."
+            )
+        registry = self._registry()
+        model_meta = (registry.get("models") or {}).get(model_id)
+        if not isinstance(model_meta, Mapping):
+            raise TrainingWorkflowError(f"Unknown challenger: {model_id}.")
+        current_model_path = self.root / str(
+            model_meta.get("artifact") or ""
+        )
+        current_model_sha256 = str(
+            model_meta.get("artifactSha256") or ""
+        )
+        if (
+            not current_model_path.exists()
+            or _sha256_bytes(current_model_path.read_bytes())
+            != current_model_sha256
+        ):
+            raise TrainingWorkflowError(
+                "The current challenger artifact changed."
+            )
+        current_model = _read_json(current_model_path)
+        current_evaluation_dir = (
+            self.root / "validation-evaluations" / model_id
+        )
+        current_score_path = (
+            current_evaluation_dir
+            / f"machine-consensus-score-{score_report_digest}.json"
+        )
+        if not current_score_path.exists():
+            raise TrainingWorkflowError(
+                "The current machine-consensus score report is missing."
+            )
+        current_score = _read_json(current_score_path)
+        current_disagreement_digest = str(
+            current_score.get("disagreementDigest") or ""
+        )
+        current_score_core = {
+            key: value
+            for key, value in current_score.items()
+            if key != "reportDigest"
+        }
+        if (
+            current_score.get("schemaVersion")
+            != "amazing-tablature-machine-validation-score-v2"
+            or current_score.get("modelId") != model_id
+            or current_score.get("modelArtifactSha256")
+            != current_model_sha256
+            or current_score.get("reportDigest")
+            != score_report_digest
+            or _sha256_json(current_score_core)
+            != score_report_digest
+            or current_score.get("validationMayTrain") is not False
+            or current_score.get("sealedTestAccessed") is not False
+            or not re.fullmatch(
+                r"[0-9a-f]{64}",
+                current_disagreement_digest,
+            )
+        ):
+            raise TrainingWorkflowError(
+                "The current score report lineage or privacy contract failed."
+            )
+        current_disagreement_path = (
+            current_evaluation_dir
+            / "machine-consensus-disagreements-"
+            f"{current_disagreement_digest}.json"
+        )
+        if not current_disagreement_path.exists():
+            raise TrainingWorkflowError(
+                "The current disagreement report is missing."
+            )
+        current_disagreement = _read_json(current_disagreement_path)
+        current_disagreement_core = {
+            key: value
+            for key, value in current_disagreement.items()
+            if key != "reportDigest"
+        }
+        if (
+            current_disagreement.get("schemaVersion")
+            != "amazing-tablature-machine-validation-disagreements-v1"
+            or current_disagreement.get("modelId") != model_id
+            or current_disagreement.get("modelArtifactSha256")
+            != current_model_sha256
+            or current_disagreement.get("reportDigest")
+            != current_disagreement_digest
+            or _sha256_json(current_disagreement_core)
+            != current_disagreement_digest
+            or current_disagreement.get("humanTruthUsed") is not False
+            or current_disagreement.get("validationMayTrain") is not False
+            or current_disagreement.get("sealedTestAccessed") is not False
+        ):
+            raise TrainingWorkflowError(
+                "The current disagreement lineage or privacy contract failed."
+            )
+
+        source_paths = list(
+            (self.root / "validation-evaluations").glob(
+                "*/machine-consensus-adjudication-"
+                f"{source_adjudication_digest}.json"
+            )
+        )
+        if len(source_paths) != 1:
+            raise TrainingWorkflowError(
+                "The exact source adjudication is missing or ambiguous."
+            )
+        source_adjudication_path = source_paths[0]
+        source_adjudication = _read_json(source_adjudication_path)
+        source_adjudication_core = {
+            key: value
+            for key, value in source_adjudication.items()
+            if key != "reportDigest"
+        }
+        source_model_id = str(source_adjudication.get("modelId") or "")
+        source_disagreement_digest = str(
+            source_adjudication.get("sourceDisagreementReportDigest")
+            or ""
+        )
+        source_submission_id = str(
+            source_adjudication.get("submissionId") or ""
+        )
+        batch_id = str(source_adjudication.get("batchId") or "")
+        if (
+            source_adjudication.get("schemaVersion")
+            != "amazing-tablature-validation-disagreement-adjudication-v1"
+            or source_adjudication.get("reportDigest")
+            != source_adjudication_digest
+            or _sha256_json(source_adjudication_core)
+            != source_adjudication_digest
+            or source_adjudication.get("allDisagreementsAdjudicated")
+            is not True
+            or source_adjudication.get("humanAdjudicationUsed") is not True
+            or source_adjudication.get("validationMayTrain") is not False
+            or source_adjudication.get("sealedTestAccessed") is not False
+            or not re.fullmatch(
+                r"validation-disagreement-submission-[0-9a-f]{20}",
+                source_submission_id,
+            )
+            or not re.fullmatch(
+                r"[0-9a-f]{64}",
+                source_disagreement_digest,
+            )
+        ):
+            raise TrainingWorkflowError(
+                "The source adjudication lineage or privacy contract failed."
+            )
+        source_model_meta = (registry.get("models") or {}).get(
+            source_model_id
+        )
+        if not isinstance(source_model_meta, Mapping):
+            raise TrainingWorkflowError(
+                "The source adjudication challenger is missing."
+            )
+        source_model_path = self.root / str(
+            source_model_meta.get("artifact") or ""
+        )
+        source_model_sha256 = str(
+            source_model_meta.get("artifactSha256") or ""
+        )
+        if (
+            not source_model_path.exists()
+            or _sha256_bytes(source_model_path.read_bytes())
+            != source_model_sha256
+            or source_adjudication.get("modelArtifactSha256")
+            != source_model_sha256
+        ):
+            raise TrainingWorkflowError(
+                "The source adjudication challenger artifact changed."
+            )
+        source_model = _read_json(source_model_path)
+        current_inference_signature = (
+            _validation_model_inference_signature(current_model)
+        )
+        source_inference_signature = (
+            _validation_model_inference_signature(source_model)
+        )
+        if (
+            not current_inference_signature["featureNames"]
+            or not current_inference_signature["weightsByStyle"]
+            or current_inference_signature != source_inference_signature
+        ):
+            raise TrainingWorkflowError(
+                "The reviewed and current challengers do not share the exact "
+                "inference contract."
+            )
+        source_disagreement_path = (
+            self.root
+            / "validation-evaluations"
+            / source_model_id
+            / "machine-consensus-disagreements-"
+            f"{source_disagreement_digest}.json"
+        )
+        if not source_disagreement_path.exists():
+            raise TrainingWorkflowError(
+                "The source adjudication disagreement report is missing."
+            )
+        source_disagreement = _read_json(source_disagreement_path)
+        source_disagreement_core = {
+            key: value
+            for key, value in source_disagreement.items()
+            if key != "reportDigest"
+        }
+        if (
+            source_disagreement.get("schemaVersion")
+            != "amazing-tablature-machine-validation-disagreements-v1"
+            or source_disagreement.get("modelId") != source_model_id
+            or source_disagreement.get("modelArtifactSha256")
+            != source_model_sha256
+            or
+            source_disagreement.get("reportDigest")
+            != source_disagreement_digest
+            or _sha256_json(source_disagreement_core)
+            != source_disagreement_digest
+            or source_disagreement.get("humanTruthUsed") is not False
+            or source_disagreement.get("validationMayTrain") is not False
+            or source_disagreement.get("sealedTestAccessed") is not False
+        ):
+            raise TrainingWorkflowError(
+                "The source disagreement report lineage failed."
+            )
+
+        source_signatures = sorted(
+            (
+                _validation_disagreement_equivalence_signature(item)
+                for item in source_disagreement.get("disagreements") or []
+            ),
+            key=lambda item: str(item.get("decisionId") or ""),
+        )
+        current_signatures = sorted(
+            (
+                _validation_disagreement_equivalence_signature(item)
+                for item in current_disagreement.get("disagreements") or []
+            ),
+            key=lambda item: str(item.get("decisionId") or ""),
+        )
+        if not source_signatures or source_signatures != current_signatures:
+            raise TrainingWorkflowError(
+                "Current challenger disagreements are not exactly equivalent "
+                "to the reviewed choices."
+            )
+        if {
+            str(item.get("batchId") or "")
+            for item in current_signatures
+        } != {batch_id}:
+            raise TrainingWorkflowError(
+                "Adjudication carry-forward crossed validation cohorts."
+            )
+
+        source_review_dir = (
+            self._batch_dir(batch_id)
+            / "extraction"
+            / "validation"
+            / "review"
+            / "challenger-disagreements"
+        )
+        source_submission_path = (
+            source_review_dir
+            / "submissions"
+            / f"{source_submission_id}.jsonl"
+        )
+        source_metadata_path = (
+            source_review_dir
+            / "submissions"
+            / f"{source_submission_id}.json"
+        )
+        if (
+            not source_submission_path.exists()
+            or not source_metadata_path.exists()
+            or _sha256_bytes(source_submission_path.read_bytes())
+            != str(
+                source_adjudication.get("submissionFileSha256") or ""
+            )
+        ):
+            raise TrainingWorkflowError(
+                "The source expert submission receipt changed."
+            )
+        source_metadata = _read_json(source_metadata_path)
+        source_rows = _read_jsonl(source_submission_path)
+        source_packet_digest = str(
+            source_metadata.get("packetDigest") or ""
+        )
+        source_packet_path = (
+            source_review_dir / f"packet-{source_packet_digest}.json"
+        )
+        if not source_packet_path.exists():
+            raise TrainingWorkflowError(
+                "The source expert review packet is missing."
+            )
+        source_packet = _read_json(source_packet_path)
+        source_packet_core = {
+            key: value
+            for key, value in source_packet.items()
+            if key != "packetDigest"
+        }
+        source_submission_digest = _sha256_json(
+            {
+                "reviewType": "validation_challenger_disagreement",
+                "batchId": batch_id,
+                "packetDigest": source_packet_digest,
+                "reviews": source_rows,
+                "validationGroundTruthMayTrain": False,
+            }
+        )
+        if (
+            source_metadata.get("schemaVersion")
+            != "amazing-tablature-validation-disagreement-review-v1"
+            or source_metadata.get("submissionId")
+            != source_submission_id
+            or source_metadata.get("submissionDigest")
+            != source_submission_digest
+            or source_metadata.get("modelId") != source_model_id
+            or source_metadata.get("modelArtifactSha256")
+            != source_model_sha256
+            or source_metadata.get("disagreementReportDigest")
+            != source_disagreement_digest
+            or int(source_metadata.get("reviewCount") or 0)
+            != len(source_rows)
+            or source_metadata.get("eligibleForTraining") is not False
+            or source_metadata.get("validationGroundTruthMayTrain")
+            is not False
+            or source_metadata.get("sealedTestAccessed") is not False
+            or source_adjudication.get("submissionDigest")
+            != source_submission_digest
+            or source_packet.get("schemaVersion")
+            != "amazing-tablature-validation-disagreement-review-v1"
+            or source_packet.get("reviewType")
+            != "validation_challenger_disagreement"
+            or source_packet.get("batchId") != batch_id
+            or source_packet.get("partition") != "validation"
+            or source_packet.get("modelId") != source_model_id
+            or source_packet.get("modelArtifactSha256")
+            != source_model_sha256
+            or source_packet.get("disagreementReportDigest")
+            != source_disagreement_digest
+            or source_packet.get("packetDigest")
+            != source_packet_digest
+            or _sha256_json(source_packet_core) != source_packet_digest
+            or source_packet.get("trainingEligible") is not False
+            or source_packet.get("validationGroundTruthMayTrain")
+            is not False
+            or source_packet.get("sealedTestAccessed") is not False
+        ):
+            raise TrainingWorkflowError(
+                "The source expert packet or submission lineage changed."
+            )
+        expected_ids = {
+            str(item.get("decisionId") or "")
+            for item in current_signatures
+        }
+        if (
+            {
+                str(item.get("decisionId") or "")
+                for item in source_rows
+            }
+            != expected_ids
+            or any(
+                item.get("trainingEligible") is not False
+                or str(item.get("status") or "")
+                not in {
+                    "source_preferred",
+                    "challenger_valid",
+                    "both_valid",
+                }
+                for item in source_rows
+            )
+        ):
+            raise TrainingWorkflowError(
+                "The source expert verdict is incomplete or unresolved."
+            )
+
+        rows_by_id = {
+            str(item.get("decisionId") or ""): item
+            for item in source_rows
+        }
+        current_packet_path = (
+            source_review_dir / f"packet-{current_packet_digest}.json"
+        )
+        if not current_packet_path.exists():
+            raise TrainingWorkflowError(
+                "The current exact review packet is missing."
+            )
+        current_packet = _read_json(current_packet_path)
+        current_packet_core = {
+            key: value
+            for key, value in current_packet.items()
+            if key != "packetDigest"
+        }
+        if (
+            current_packet.get("schemaVersion")
+            != "amazing-tablature-validation-disagreement-review-v1"
+            or current_packet.get("reviewType")
+            != "validation_challenger_disagreement"
+            or current_packet.get("batchId") != batch_id
+            or current_packet.get("partition") != "validation"
+            or current_packet.get("modelId") != model_id
+            or current_packet.get("modelArtifactSha256")
+            != current_model_sha256
+            or current_packet.get("disagreementReportDigest")
+            != current_disagreement_digest
+            or current_packet.get("packetDigest")
+            != current_packet_digest
+            or _sha256_json(current_packet_core)
+            != current_packet_digest
+            or current_packet.get("trainingEligible") is not False
+            or current_packet.get("validationGroundTruthMayTrain")
+            is not False
+            or current_packet.get("sealedTestAccessed") is not False
+        ):
+            raise TrainingWorkflowError(
+                "The current review packet lineage or privacy contract failed."
+            )
+        source_presentation = _validation_review_presentation_signature(
+            source_packet
+        )
+        current_presentation = _validation_review_presentation_signature(
+            current_packet
+        )
+        if (
+            not source_presentation
+            or source_presentation != current_presentation
+            or {
+                str(item.get("decisionId") or "")
+                for system in current_presentation
+                for item in system.get("disagreements") or ()
+            }
+            != expected_ids
+        ):
+            raise TrainingWorkflowError(
+                "The current human-facing choices or musical context differ "
+                "from the reviewed packet."
+            )
+
+        carried_rows = [
+            deepcopy(rows_by_id[decision_id])
+            for decision_id in sorted(expected_ids)
+        ]
+        submission_digest = _sha256_json(
+            {
+                "reviewType": "validation_challenger_disagreement",
+                "batchId": batch_id,
+                "packetDigest": current_packet_digest,
+                "reviews": carried_rows,
+                "validationGroundTruthMayTrain": False,
+            }
+        )
+        submission_id = (
+            "validation-disagreement-submission-"
+            + submission_digest[:20]
+        )
+        submissions_dir = source_review_dir / "submissions"
+        submissions_dir.mkdir(parents=True, exist_ok=True)
+        _make_private(submissions_dir, directory=True)
+        submission_path = submissions_dir / f"{submission_id}.jsonl"
+        _atomic_write_text(
+            submission_path,
+            "".join(
+                json.dumps(row, sort_keys=True) + "\n"
+                for row in carried_rows
+            ),
+        )
+        _make_private(submission_path)
+        metadata = {
+            "schemaVersion": (
+                "amazing-tablature-validation-disagreement-review-v1"
+            ),
+            "submissionId": submission_id,
+            "submissionDigest": submission_digest,
+            "packetDigest": current_packet_digest,
+            "modelId": model_id,
+            "modelArtifactSha256": current_model_sha256,
+            "disagreementReportDigest": current_disagreement_digest,
+            "reviewCount": len(carried_rows),
+            "eligibleForTraining": False,
+            "validationGroundTruthMayTrain": False,
+            "sealedTestAccessed": False,
+            "reviewOrigin": "exact_equivalence_carry_forward",
+            "sourceAdjudicationDigest": source_adjudication_digest,
+            "equivalenceSignatureDigest": _sha256_json(
+                current_signatures
+            ),
+        }
+        metadata_path = submissions_dir / f"{submission_id}.json"
+        _write_json(metadata_path, metadata)
+        _make_private(metadata_path)
+
+        adjudication = self.adjudicate_validation_machine_disagreements(
+            model_id,
+            batch_id=batch_id,
+            score_report_digest=score_report_digest,
+            submission_id=submission_id,
+        )
+        certificate_core = {
+            "schemaVersion": (
+                "amazing-tablature-validation-adjudication-equivalence-v1"
+            ),
+            "modelId": model_id,
+            "modelArtifactSha256": current_model_sha256,
+            "scoreReportDigest": score_report_digest,
+            "currentDisagreementReportDigest": (
+                current_disagreement_digest
+            ),
+            "currentPacketDigest": current_packet_digest,
+            "sourceModelId": source_model_id,
+            "sourceAdjudicationDigest": source_adjudication_digest,
+            "sourceDisagreementReportDigest": (
+                source_disagreement_digest
+            ),
+            "sourcePacketDigest": source_packet_digest,
+            "modelInferenceSignatureDigest": _sha256_json(
+                current_inference_signature
+            ),
+            "equivalenceSignatureDigest": _sha256_json(
+                current_signatures
+            ),
+            "reviewPresentationSignatureDigest": _sha256_json(
+                current_presentation
+            ),
+            "equivalentDisagreementCount": len(current_signatures),
+            "derivedSubmissionId": submission_id,
+            "derivedSubmissionDigest": submission_digest,
+            "adjudicationReportDigest": adjudication["reportDigest"],
+            "humanRereviewRequired": False,
+            "validationMayTrain": False,
+            "sealedTestAccessed": False,
+        }
+        certificate_digest = _sha256_json(certificate_core)
+        certificate = {
+            **certificate_core,
+            "reportDigest": certificate_digest,
+        }
+        certificate_path = (
+            current_evaluation_dir
+            / f"adjudication-equivalence-{certificate_digest}.json"
+        )
+        _write_json(certificate_path, certificate)
+        _make_private(certificate_path)
+        return {
+            **certificate,
+            "reportPath": str(certificate_path.relative_to(self.root)),
+            "adjudication": adjudication,
+        }
+
     def adjudicate_validation_machine_disagreements(
         self,
         model_id: str,
@@ -7818,6 +8464,33 @@ class AmazingTablatureTrainingStore:
                 else 0.0
             ),
         }
+        for evidence_tag, metrics in list(evidence_metrics.items()):
+            if (
+                evidence_tag == "alignment:tab_only"
+                or not isinstance(metrics, Mapping)
+            ):
+                continue
+            evidence_count = int(metrics.get("decisionCount") or 0)
+            evidence_correct = int(
+                metrics.get("topChoiceCorrectCount") or 0
+            )
+            evidence_metrics[evidence_tag] = {
+                **metrics,
+                "strictSourceTopChoiceCorrectCount": evidence_correct,
+                "strictSourceTopChoiceAccuracy": (
+                    evidence_correct / evidence_count
+                    if evidence_count
+                    else 0.0
+                ),
+                "humanAcceptedAlternativeCount": 0,
+                "humanUnresolvedAlternativeCount": 0,
+                "acceptedTopChoiceCorrectCount": evidence_correct,
+                "acceptedTopChoiceAccuracy": (
+                    evidence_correct / evidence_count
+                    if evidence_count
+                    else 0.0
+                ),
+            }
         preference_thresholds_passed = bool(
             len(statuses) == len(disagreements)
             and unresolved == 0
@@ -7844,18 +8517,15 @@ class AmazingTablatureTrainingStore:
                 for metrics in cohort_metrics.values()
                 if isinstance(metrics, Mapping)
             )
-            and bool(
-                evidence_metrics["alignment:tab_only"].get(
-                    "evidenceSufficient"
+            and all(
+                bool(metrics.get("evidenceSufficient"))
+                and float(
+                    metrics.get("acceptedTopChoiceAccuracy") or 0.0
                 )
+                >= VALIDATION_EVIDENCE_MODE_PREFERENCE_FLOOR
+                for metrics in evidence_metrics.values()
+                if isinstance(metrics, Mapping)
             )
-            and float(
-                evidence_metrics["alignment:tab_only"].get(
-                    "acceptedTopChoiceAccuracy"
-                )
-                or 0.0
-            )
-            >= VALIDATION_EVIDENCE_MODE_PREFERENCE_FLOOR
         )
         report_core = {
             "schemaVersion": (
@@ -7888,7 +8558,18 @@ class AmazingTablatureTrainingStore:
                 "privateRuntimeEnableAllowed": False,
                 "reasons": [
                     "machine_consensus_is_not_complete_human_validation_ground_truth",
-                    "score_supported_validation_evidence_missing",
+                    *(
+                        []
+                        if bool(
+                            evidence_metrics.get(
+                                "alignment:score_supported",
+                                {},
+                            ).get("evidenceSufficient")
+                        )
+                        else [
+                            "score_supported_validation_evidence_missing"
+                        ]
+                    ),
                     *(
                         []
                         if preference_thresholds_passed

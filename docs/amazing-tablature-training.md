@@ -579,13 +579,17 @@ be scored automatically as a bounded diagnostic:
 ```
 
 This command accepts only digest-verified lines whose tablature cells are
-complete in the authoritative machine-consensus reports, strips all score
-hypotheses, derives
-`alignment:tab_only` movements, and writes no training evidence. Incomplete
-lines and attack-versus-hold ambiguities are withheld. The report always keeps
-the canonical, rules-freeze, sealed-test, and private-runtime gates closed
-because machine consensus is not human validation ground truth and supplies no
-`alignment:score_supported` evidence.
+complete in the authoritative machine-consensus reports and writes no training
+evidence. A line remains `alignment:tab_only` unless an applied v9 recapture
+proves independent score pitches, source-image geometry, exact score/tab
+alignment, the archived pre-recapture page, and stable musical-execution
+equivalence with the current contact candidate. Wrapper IDs and confidence
+fields may change when a candidate is rebuilt, but string, fret, controls,
+attack/hold state, and sounding pitch may not. Incomplete lines and
+attack-versus-hold ambiguities are withheld. Score-supported and tab-only
+metrics retain separate fixed sample and accuracy gates. The canonical,
+rules-freeze, sealed-test, and private-runtime gates remain closed because
+machine consensus is not complete human validation ground truth.
 
 If that diagnostic misses the fixed top-choice threshold, it also writes an
 immutable private disagreement report containing only strict top-choice misses.
@@ -624,8 +628,27 @@ separate human-accepted recommendation metric. A challenger choice counts as
 accepted only when the reviewer marked it better or equally valid; a
 source-preferred result remains a miss and feedback remains unresolved. Passing
 this preference diagnostic does not create full human validation ground truth,
-does not supply score-supported evidence, and cannot enable runtime, freeze
-rules, or open sealed test.
+and cannot enable runtime, freeze rules, or open sealed test.
+
+When a rebuilt challenger produces the exact same disagreement choices, reuse
+the prior expert verdict without another review:
+
+```bash
+.venv/bin/python scripts/amazing_tablature.py \
+  carry-forward-validation-adjudication <exact-model-id> \
+  --score-report-digest <exact-score-report-digest> \
+  --source-adjudication-digest <prior-adjudication-digest> \
+  --current-packet-digest <exact-current-packet-digest>
+```
+
+Carry-forward requires the same feature and learned-weight contract plus exact
+decision identity, style, source choice, candidate set, candidate scores,
+winning indexes, source crop, neighboring movements, pitch labels, and
+source/challenger actions. Cosmetic page tags and regenerated wrapper lineage
+are excluded. The command verifies the original immutable submission and both
+full review packets, creates a private equivalence certificate, and keeps
+validation ineligible for training. Any musical, visual-context, or
+preference-relevant difference fails closed and requires a new review.
 
 Canonical validation uses a threshold contract fixed before held-out evidence
 is opened. It measures arrangement after input has been normalized into exact
