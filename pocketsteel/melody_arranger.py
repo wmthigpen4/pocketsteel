@@ -7,7 +7,11 @@ import re
 from itertools import combinations
 from typing import Any, Mapping, Sequence
 
-from pocketsteel.amazing_tablature_model import RANKER_ENABLED, WEIGHTS_BY_STYLE
+from pocketsteel.amazing_tablature_model import (
+    RANKER_ENABLED,
+    WEIGHTS_BY_STYLE,
+    RuntimeRankerPolicy,
+)
 from pocketsteel.answer_tab_examples import fretboard_payload_for_tab_example
 from pocketsteel.copedent_transfer import (
     absolute_pitch_for_profile,
@@ -722,6 +726,7 @@ def choose_mixed_path(
     phrase_ends: set[int] | None = None,
     style_family: str = "auto",
     profile: E9CopedentProfile | None = None,
+    shadow_ranker_policy: RuntimeRankerPolicy | None = None,
 ) -> list[PositionCandidate]:
     if not candidate_groups or any(not group for group in candidate_groups):
         return []
@@ -737,9 +742,27 @@ def choose_mixed_path(
     home_fret = 3 if key == "G" else 8
     selected_style = normalize_style_family(style_family)
     selected_profile = profile or EMMONS_E9
-    if len(candidate_groups) < 2 or not _learned_weights_available(
-        selected_style, roles
-    ):
+    learned_weights_available = _learned_weights_available(
+        selected_style,
+        roles,
+        shadow_ranker_policy=shadow_ranker_policy,
+    )
+    if learned_weights_available:
+        candidate_groups = [
+            [
+                candidate
+                for candidate in group
+                if _ranker_candidate_is_hard_valid(
+                    candidate,
+                    inputs[event_index],
+                    profile=selected_profile,
+                )
+            ]
+            for event_index, group in enumerate(candidate_groups)
+        ]
+        if any(not group for group in candidate_groups):
+            return []
+    if len(candidate_groups) < 2 or not learned_weights_available:
         states: list[dict[int, tuple[tuple[int, ...], int | None]]] = []
         first: dict[int, tuple[tuple[int, ...], int | None]] = {}
         for candidate_index, candidate in enumerate(candidate_groups[0]):
@@ -847,6 +870,7 @@ def choose_mixed_path(
                     role=roles[event_index - 1],
                     style_family=selected_style,
                     profile=selected_profile,
+                    shadow_ranker_policy=shadow_ranker_policy,
                 )
                 transition = _mixed_transition_cost(
                     current,
@@ -889,6 +913,7 @@ def choose_mixed_path(
             role=roles[-1],
             style_family=selected_style,
             profile=selected_profile,
+            shadow_ranker_policy=shadow_ranker_policy,
         )
         ranked_finals.append(
             (
@@ -2228,13 +2253,67 @@ def _learned_style_for_role(style_family: str, role: str) -> str:
 def _learned_weights_available(
     style_family: str,
     roles: Sequence[str],
+    *,
+    shadow_ranker_policy: RuntimeRankerPolicy | None = None,
 ) -> bool:
-    if not RANKER_ENABLED:
+    weights_by_style = _ranker_weights(shadow_ranker_policy)
+    if not weights_by_style:
         return False
     return any(
-        bool(WEIGHTS_BY_STYLE.get(_learned_style_for_role(style_family, role)))
+        bool(weights_by_style.get(_learned_style_for_role(style_family, role)))
         for role in roles[1:]
     )
+
+
+def _ranker_weights(
+    shadow_ranker_policy: RuntimeRankerPolicy | None,
+) -> Mapping[str, Mapping[str, float]]:
+    if (
+        shadow_ranker_policy is not None
+        and shadow_ranker_policy.shadow_eligible
+        and not shadow_ranker_policy.ranker_enabled
+    ):
+        return shadow_ranker_policy.weights_by_style
+    return WEIGHTS_BY_STYLE if RANKER_ENABLED else {}
+
+
+def _ranker_candidate_is_hard_valid(
+    candidate: PositionCandidate,
+    item: MelodyInput,
+    *,
+    profile: E9CopedentProfile,
+) -> bool:
+    """Recheck pitch/register/mechanics before learned shadow ordering."""
+
+    if (
+        not candidate.notes
+        or candidate.fret < 0
+        or candidate.fret > 36
+        or any(note.fret != candidate.fret for note in candidate.notes)
+    ):
+        return False
+    try:
+        pitches = (
+            tuple(int(value) for value in candidate.voice_pitches)
+            if candidate.voice_pitches
+            and len(candidate.voice_pitches) == len(candidate.notes)
+            else tuple(
+                _absolute_pitch(
+                    note.string,
+                    candidate.fret,
+                    candidate.controls,
+                    profile=profile,
+                )
+                for note in candidate.notes
+            )
+        )
+    except (KeyError, TypeError, ValueError):
+        return False
+    if not pitches or max(pitches) != int(candidate.top_pitch):
+        return False
+    if item.forced_pitch is not None:
+        return int(candidate.top_pitch) == int(item.forced_pitch)
+    return int(candidate.top_pitch) % 12 == int(item.pitch_class) % 12
 
 
 def _learned_cost_component(penalty: int) -> tuple[int, ...]:
@@ -2269,11 +2348,12 @@ def _runtime_learned_penalty(
     role: str,
     style_family: str,
     profile: E9CopedentProfile,
+    shadow_ranker_policy: RuntimeRankerPolicy | None = None,
 ) -> int:
     """Score one runtime movement with the exact canonical trainer record."""
 
     learned_style = _learned_style_for_role(style_family, role)
-    weights = WEIGHTS_BY_STYLE.get(learned_style) if RANKER_ENABLED else None
+    weights = _ranker_weights(shadow_ranker_policy).get(learned_style)
     if not weights:
         return 0
     current_sustained = _ranker_sustained_strings(

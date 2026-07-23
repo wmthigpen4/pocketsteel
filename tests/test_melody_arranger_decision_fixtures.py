@@ -2,9 +2,18 @@
 
 from __future__ import annotations
 
+import hashlib
+import itertools
+import json
+
 import pytest
 
 import pocketsteel.melody_arranger as melody_arranger
+from pocketsteel.amazing_tablature_model import (
+    CANONICAL_FEATURE_SCHEMA_VERSION,
+    CANONICAL_STYLE_FAMILIES,
+    load_sanitized_ranker_artifact,
+)
 from pocketsteel.e9_copedents import EMMONS_E9
 from pocketsteel.melody_arranger import (
     MelodyInput,
@@ -62,6 +71,33 @@ def _lever_entry_count(path: list[PositionCandidate]) -> int:
     return entries
 
 
+def _shadow_policy(weights: dict[str, float]):
+    payload = {
+        "schemaVersion": "amazing-tablature-training-v1",
+        "modelId": "at-shadow-fixture",
+        "status": "challenger",
+        "featureSchemaVersion": CANONICAL_FEATURE_SCHEMA_VERSION,
+        "featureNames": list(FEATURE_NAMES),
+        "weightsByStyle": {
+            style: dict(weights) for style in CANONICAL_STYLE_FAMILIES
+        },
+        "exampleCount": 1,
+        "copedentNeutral": True,
+        "privacy": {
+            "containsSourceContent": False,
+            "containsProfileSnapshots": False,
+        },
+    }
+    artifact = (
+        json.dumps(payload, sort_keys=True, separators=(",", ":")) + "\n"
+    ).encode()
+    return load_sanitized_ranker_artifact(
+        artifact,
+        expected_model_id="at-shadow-fixture",
+        expected_sha256=hashlib.sha256(artifact).hexdigest(),
+    )
+
+
 def test_deterministic_fallback_applies_no_unapproved_chord_weight() -> None:
     single = _open_grip(3, (4,), 67)
     triad = _open_grip(3, (4, 5, 6), 67)
@@ -87,18 +123,12 @@ def test_deterministic_fallback_applies_no_unapproved_harmony_weight() -> None:
 
 
 def test_runtime_learned_penalty_scores_the_full_shared_feature_record(
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     previous = _open_grip(3, (4,), 67)
     current = _open_grip(5, (4,), 69)
     following = _open_grip(6, (4,), 70)
     weights = {name: (index + 1) / 100 for index, name in enumerate(FEATURE_NAMES)}
-    monkeypatch.setattr(melody_arranger, "RANKER_ENABLED", True)
-    monkeypatch.setattr(
-        melody_arranger,
-        "WEIGHTS_BY_STYLE",
-        {"single_note_run": weights},
-    )
+    shadow_policy = _shadow_policy(weights)
 
     record = runtime_candidate_feature_record(
         previous,
@@ -116,6 +146,7 @@ def test_runtime_learned_penalty_scores_the_full_shared_feature_record(
         role="passing_tone",
         style_family="single_note_run",
         profile=EMMONS_E9,
+        shadow_ranker_policy=shadow_policy,
     )
 
     assert penalty == round(score_candidate(record, weights) * 1000)
@@ -128,12 +159,7 @@ def test_learned_path_search_preserves_following_context(
     expensive_middle = _open_grip(10, (4,), 74)
     preferred_middle = _open_grip(5, (4,), 69)
     last = _open_grip(7, (4,), 71)
-    monkeypatch.setattr(melody_arranger, "RANKER_ENABLED", True)
-    monkeypatch.setattr(
-        melody_arranger,
-        "WEIGHTS_BY_STYLE",
-        {"single_note_run": {name: 0.0 for name in FEATURE_NAMES}},
-    )
+    shadow_policy = _shadow_policy({name: 0.0 for name in FEATURE_NAMES})
     monkeypatch.setattr(
         melody_arranger,
         "_mixed_start_cost",
@@ -149,12 +175,153 @@ def test_learned_path_search_preserves_following_context(
         "_runtime_learned_penalty",
         lambda _previous, current, _following, **_kwargs: current.fret,
     )
+    monkeypatch.setattr(
+        melody_arranger,
+        "_ranker_candidate_is_hard_valid",
+        lambda *_args, **_kwargs: True,
+    )
 
     path = choose_mixed_path(
         [[first], [expensive_middle, preferred_middle], [last]],
         inputs=_repeated_g_inputs(3),
         key="G",
         style_family="single_note_run",
+        shadow_ranker_policy=shadow_policy,
+    )
+
+    assert [candidate.fret for candidate in path] == [3, 5, 7]
+
+
+def test_invalid_shadow_policy_preserves_deterministic_path() -> None:
+    first = _open_grip(3, (4,), 67)
+    middle = _open_grip(5, (4,), 69)
+    alternative = _open_grip(10, (4,), 74)
+    last = _open_grip(7, (4,), 71)
+    deterministic = choose_mixed_path(
+        [[first], [middle, alternative], [last]],
+        inputs=_repeated_g_inputs(3),
+        key="G",
+        style_family="single_note_run",
+    )
+    invalid_artifact = b"{}"
+    fallback_policy = load_sanitized_ranker_artifact(
+        invalid_artifact,
+        expected_model_id="at-shadow-fixture",
+        expected_sha256=hashlib.sha256(invalid_artifact).hexdigest(),
+    )
+
+    shadow = choose_mixed_path(
+        [[first], [middle, alternative], [last]],
+        inputs=_repeated_g_inputs(3),
+        key="G",
+        style_family="single_note_run",
+        shadow_ranker_policy=fallback_policy,
+    )
+
+    assert shadow == deterministic
+
+
+def test_shadow_path_search_matches_brute_force_second_order_score(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    groups = [
+        [_open_grip(3, (4,), 67)],
+        [_open_grip(4, (4,), 68), _open_grip(5, (4,), 69)],
+        [_open_grip(6, (4,), 70), _open_grip(7, (4,), 71)],
+        [_open_grip(8, (4,), 72)],
+    ]
+    inputs = [
+        MelodyInput(
+            f"n-{index}",
+            "",
+            1,
+            candidate_group[0].top_pitch % 12,
+            forced_pitch=None,
+            duration_beats=1,
+            measure=1,
+            beat=index + 1,
+            chord="",
+        )
+        for index, candidate_group in enumerate(groups)
+    ]
+    shadow_policy = _shadow_policy({name: 0.0 for name in FEATURE_NAMES})
+
+    def learned_penalty(previous, current, following, **_kwargs):
+        next_fret = following.fret if following is not None else current.fret
+        return abs((current.fret - previous.fret) - (next_fret - current.fret))
+
+    monkeypatch.setattr(
+        melody_arranger,
+        "_mixed_start_cost",
+        lambda *_args, **_kwargs: (0,) * 16,
+    )
+    monkeypatch.setattr(
+        melody_arranger,
+        "_mixed_transition_cost",
+        lambda *_args, **_kwargs: (0,) * 16,
+    )
+    monkeypatch.setattr(
+        melody_arranger,
+        "_runtime_learned_penalty",
+        learned_penalty,
+    )
+    monkeypatch.setattr(
+        melody_arranger,
+        "_ranker_candidate_is_hard_valid",
+        lambda *_args, **_kwargs: True,
+    )
+
+    path = choose_mixed_path(
+        groups,
+        inputs=inputs,
+        key="G",
+        style_family="single_note_run",
+        shadow_ranker_policy=shadow_policy,
+    )
+    possible_paths = [
+        (groups[0][0], middle_1, middle_2, groups[3][0])
+        for middle_1, middle_2 in itertools.product(groups[1], groups[2])
+    ]
+    expected = min(
+        possible_paths,
+        key=lambda candidate_path: (
+            sum(
+                learned_penalty(
+                    candidate_path[index - 1],
+                    candidate_path[index],
+                    (
+                        candidate_path[index + 1]
+                        if index + 1 < len(candidate_path)
+                        else None
+                    ),
+                )
+                for index in range(1, len(candidate_path))
+            ),
+            tuple(candidate.fret for candidate in candidate_path),
+        ),
+    )
+
+    assert tuple(path) == expected
+
+
+def test_shadow_ranker_cannot_select_hard_invalid_pitch_with_extreme_weight() -> None:
+    valid_first = _open_grip(3, (4,), 67)
+    valid_middle = _open_grip(5, (4,), 69)
+    invalid_middle = _open_grip(10, (4,), 69)
+    valid_last = _open_grip(7, (4,), 71)
+    extreme_weights = {name: 0.0 for name in FEATURE_NAMES}
+    extreme_weights["bar_travel"] = -1_000_000.0
+
+    path = choose_mixed_path(
+        [[valid_first], [valid_middle, invalid_middle], [valid_last]],
+        inputs=[
+            MelodyInput("G4", "G", 1, 7, forced_pitch=67),
+            MelodyInput("A4", "A", 2, 9, forced_pitch=69),
+            MelodyInput("B4", "B", 3, 11, forced_pitch=71),
+        ],
+        key="G",
+        style_family="single_note_run",
+        shadow_ranker_policy=_shadow_policy(extreme_weights),
     )
 
     assert [candidate.fret for candidate in path] == [3, 5, 7]
