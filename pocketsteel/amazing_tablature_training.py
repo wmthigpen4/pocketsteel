@@ -7809,8 +7809,7 @@ class AmazingTablatureTrainingStore:
             or source_disagreement.get("modelId") != source_model_id
             or source_disagreement.get("modelArtifactSha256")
             != source_model_sha256
-            or
-            source_disagreement.get("reportDigest")
+            or source_disagreement.get("reportDigest")
             != source_disagreement_digest
             or _sha256_json(source_disagreement_core)
             != source_disagreement_digest
@@ -8442,37 +8441,38 @@ class AmazingTablatureTrainingStore:
         evidence_metrics = deepcopy(
             score_report.get("evidenceModeMetrics") or {}
         )
-        tab_only = evidence_metrics.get("alignment:tab_only")
-        if not isinstance(tab_only, Mapping):
+        if not all(
+            isinstance(metrics, Mapping)
+            for metrics in evidence_metrics.values()
+        ):
             raise TrainingWorkflowError(
-                "Validation adjudication tab-only metrics are missing."
+                "Validation adjudication evidence metrics are malformed."
             )
-        tab_count = int(tab_only.get("decisionCount") or 0)
-        tab_strict = int(tab_only.get("topChoiceCorrectCount") or 0)
-        evidence_metrics["alignment:tab_only"] = {
-            **tab_only,
-            "strictSourceTopChoiceCorrectCount": tab_strict,
-            "strictSourceTopChoiceAccuracy": (
-                tab_strict / tab_count if tab_count else 0.0
-            ),
-            "humanAcceptedAlternativeCount": human_accepted,
-            "humanUnresolvedAlternativeCount": unresolved,
-            "acceptedTopChoiceCorrectCount": tab_strict + human_accepted,
-            "acceptedTopChoiceAccuracy": (
-                (tab_strict + human_accepted) / tab_count
-                if tab_count
-                else 0.0
-            ),
+        disagreements_by_id = {
+            str(item.get("decisionId") or ""): item
+            for item in disagreements
         }
         for evidence_tag, metrics in list(evidence_metrics.items()):
-            if (
-                evidence_tag == "alignment:tab_only"
-                or not isinstance(metrics, Mapping)
-            ):
-                continue
+            assert isinstance(metrics, Mapping)
             evidence_count = int(metrics.get("decisionCount") or 0)
             evidence_correct = int(
                 metrics.get("topChoiceCorrectCount") or 0
+            )
+            evidence_statuses = [
+                status
+                for decision_id, status in statuses.items()
+                if evidence_tag
+                in (
+                    disagreements_by_id[decision_id].get("categoryTags")
+                    or ()
+                )
+            ]
+            evidence_human_accepted = sum(
+                status in accepted_statuses
+                for status in evidence_statuses
+            )
+            evidence_unresolved = sum(
+                status == "feedback" for status in evidence_statuses
             )
             evidence_metrics[evidence_tag] = {
                 **metrics,
@@ -8482,11 +8482,16 @@ class AmazingTablatureTrainingStore:
                     if evidence_count
                     else 0.0
                 ),
-                "humanAcceptedAlternativeCount": 0,
-                "humanUnresolvedAlternativeCount": 0,
-                "acceptedTopChoiceCorrectCount": evidence_correct,
+                "humanAcceptedAlternativeCount": (
+                    evidence_human_accepted
+                ),
+                "humanUnresolvedAlternativeCount": evidence_unresolved,
+                "acceptedTopChoiceCorrectCount": (
+                    evidence_correct + evidence_human_accepted
+                ),
                 "acceptedTopChoiceAccuracy": (
-                    evidence_correct / evidence_count
+                    (evidence_correct + evidence_human_accepted)
+                    / evidence_count
                     if evidence_count
                     else 0.0
                 ),
