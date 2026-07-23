@@ -22,6 +22,10 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
 from pocketsteel.amazing_tablature_input_parity import structured_input_parity_report
+from pocketsteel.amazing_tablature_transition_decoder import (
+    train_transition_decoder,
+    transition_training_rows,
+)
 from pocketsteel.e9_copedents import E9CopedentProfile, e9_copedent_profile_digest, get_e9_copedent_profile
 from pocketsteel.melody_decision_rules import normalize_style_family
 from pocketsteel.melody_ranker import feature_vector, score_candidate, train_pairwise_ranker
@@ -117,6 +121,7 @@ RULES_CODE_FILES = (
     "pocketsteel/amazing_tablature_extraction.py",
     "pocketsteel/amazing_tablature_sealed_test.py",
     "pocketsteel/amazing_tablature_training.py",
+    "pocketsteel/amazing_tablature_transition_decoder.py",
     "pocketsteel/answer_tab_examples.py",
     "pocketsteel/copedent_transfer.py",
     "pocketsteel/e9_copedents.py",
@@ -3654,6 +3659,110 @@ class AmazingTablatureTrainingStore:
             base_weight_ratio=base_weight_ratio,
             complete_discovery=True,
         )
+
+    def build_discovery_transition_decoder(self, batch_id: str) -> dict[str, Any]:
+        """Build a source-cohort movement decoder from discovery only.
+
+        The artifact is an extraction aid, not an arrangement model. It is
+        deliberately trained per source cohort because an unadorned repeated
+        tab state can mean either a repick or a held movement in different
+        publications.
+        """
+
+        self._require_active_batch(batch_id)
+        manifest, _state = self._batch(batch_id)
+        rights = self._rights_and_access(batch_id)
+        if (
+            rights.get("reviewStatus") != "approved"
+            or rights.get("rightsStatus") == "unknown"
+            or not bool(rights.get("allowedUses", {}).get("modelTraining"))
+        ):
+            raise TrainingWorkflowError(
+                f"{batch_id} lacks current modelTraining authorization."
+            )
+        extraction_root = self._batch_dir(batch_id) / "extraction" / "discovery"
+        approved_index_path = extraction_root / "review" / "approved-record-index.jsonl"
+        if not approved_index_path.exists():
+            raise TrainingWorkflowError(
+                f"{batch_id} has no approved discovery extraction index."
+            )
+        approved_index = {
+            str(item.get("inputId") or ""): item
+            for item in _read_jsonl(approved_index_path)
+            if item.get("status") == "human_approved"
+            and item.get("inputId")
+            and item.get("reviewedRecordPath")
+        }
+        rows: list[dict[str, Any]] = []
+        record_digests: list[str] = []
+        for input_id, item in sorted(approved_index.items()):
+            record_path = extraction_root / str(item["reviewedRecordPath"])
+            if not record_path.exists():
+                raise TrainingWorkflowError(
+                    f"Approved discovery record is missing: {batch_id}/{input_id}."
+                )
+            record = _read_json(record_path)
+            record_digest = _sha256_json(record)
+            if record_digest != str(item.get("reviewedRecordDigest") or ""):
+                raise TrainingWorkflowError(
+                    f"Approved discovery record digest changed: {batch_id}/{input_id}."
+                )
+            rows.extend(
+                transition_training_rows(
+                    record,
+                    source_cohort_id=batch_id,
+                )
+            )
+            record_digests.append(record_digest)
+        decoder = train_transition_decoder(
+            rows,
+            source_cohort_id=batch_id,
+        )
+        cross_validation = decoder["groupedCrossValidation"]
+        automation_eligible = bool(
+            decoder.get("acceptedSignatures")
+            and cross_validation.get("precision", 0.0) > 0.95
+            and int(cross_validation.get("falsePositiveCount") or 0) == 0
+        )
+        payload = {
+            **decoder,
+            "status": (
+                "source_decoder_eligible"
+                if automation_eligible
+                else "diagnostic_only"
+            ),
+            "automationEligible": automation_eligible,
+            "sourceManifestDigest": str(manifest.get("immutableDigest") or ""),
+            "sourceCopedentId": str(manifest.get("sourceCopedentId") or ""),
+            "approvedDiscoveryRecordCount": len(approved_index),
+            "approvedDiscoveryRecordSetDigest": _sha256_json(record_digests),
+            "codeRevision": _git_revision(self.repo_root),
+            "codeFileDigests": _rules_code_file_digests(self.repo_root),
+            "privacy": {
+                "containsSourceContent": False,
+                "containsProfileSnapshots": False,
+            },
+        }
+        artifact_dir = self.root / "source-transition-decoders"
+        artifact_path = artifact_dir / f"{decoder['decoderId']}.json"
+        _write_json(artifact_path, payload)
+        artifact_sha256 = _sha256_bytes(artifact_path.read_bytes())
+        registry = self._registry()
+        registry.setdefault("sourceTransitionDecoders", {})[decoder["decoderId"]] = {
+            "artifact": str(artifact_path.relative_to(self.root)),
+            "artifactSha256": artifact_sha256,
+            "sourceBatchId": batch_id,
+            "status": payload["status"],
+            "automationEligible": automation_eligible,
+            "validationDataUsed": False,
+            "sealedTestDataUsed": False,
+        }
+        self._save_registry(registry)
+        return {
+            **payload,
+            "artifact": str(artifact_path.relative_to(self.root)),
+            "artifactSha256": artifact_sha256,
+        }
 
     def shadow_test_discovery(self, model_id: str, *, max_review_lines: int = 12) -> dict[str, Any]:
         """Score remaining discovery hypotheses without treating them as ground truth."""

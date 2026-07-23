@@ -838,6 +838,15 @@ def _parser() -> argparse.ArgumentParser:
             "using an exact discovery baseline."
         ),
     )
+
+    transition_decoder = subparsers.add_parser(
+        "build-discovery-transition-decoder",
+        help=(
+            "Build a precision-first source movement decoder from approved "
+            "discovery records without reading validation or sealed-test data."
+        ),
+    )
+    transition_decoder.add_argument("batch_id")
     train_complete.add_argument("--base-model-id", required=True)
     train_complete.add_argument("--epochs", type=int, default=20)
     train_complete.add_argument("--learning-rate", type=float, default=0.05)
@@ -1406,6 +1415,8 @@ def main() -> int:
                 average_weights=args.average_weights,
                 base_weight_ratio=args.base_weight_ratio,
             )
+        elif args.command == "build-discovery-transition-decoder":
+            result = store.build_discovery_transition_decoder(args.batch_id)
         elif args.command == "canonical-readiness":
             result = store.canonical_readiness(base_model_id=args.base_model_id)
         elif args.command == "shadow-test-discovery":
