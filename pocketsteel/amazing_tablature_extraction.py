@@ -6098,6 +6098,156 @@ def _validation_independent_contact_cells(
     return cells, sorted(cache_digests)
 
 
+def _validation_contact_tab_hypothesis(
+    *,
+    input_id: str,
+    tab_system: Mapping[str, Any],
+    localization: Mapping[str, Any],
+    independent_cells: Mapping[str, Mapping[str, Any]],
+    guided_tab_crop: Mapping[str, Any],
+    tab_crop: Mapping[str, Any],
+    score_events: Sequence[Mapping[str, Any]],
+    profile: Any,
+    expected_count: int,
+) -> tuple[dict[str, Any], list[dict[str, Any]], dict[str, Any]]:
+    """Select one complete tab state by independent score/mechanics consensus.
+
+    The per-cell reader supplies tokens but no corrected string numbers.  The
+    deterministic detector supplies rows but can have one system-wide origin
+    offset.  Enumerate only bounded row origins and accept a hypothesis when
+    every cell is confident/mechanically valid and the complete state sequence
+    matches the independently captured score under one explicit notation
+    octave convention.
+    """
+
+    candidates = list(tab_system.get("tabEventCandidates") or [])
+    raw_events = list(localization.get("events") or [])
+    guides = list(guided_tab_crop.get("guides") or [])
+    if not (
+        len(candidates) == len(raw_events) == len(guides) == expected_count
+    ):
+        raise ExtractionWorkflowError(
+            "Independent validation tab hypothesis lacks complete event geometry."
+        )
+    hypotheses: dict[str, tuple[dict[str, Any], list[dict[str, Any]], int]] = {}
+    attempted_offsets: list[int] = []
+    for string_offset in range(-2, 3):
+        candidate_localization = copy.deepcopy(dict(localization))
+        candidate_events = list(candidate_localization.get("events") or [])
+        valid = True
+        for raw_event, candidate, guide in zip(
+            candidate_events, candidates, guides, strict=True
+        ):
+            event_index = int(
+                candidate.get("sourceCandidateEventIndex")
+                or raw_event.get("eventIndex")
+                or 0
+            )
+            cells: list[dict[str, Any]] = []
+            for original_string in sorted(
+                int(value) for value in candidate.get("candidateStrings") or []
+            ):
+                resolved_string = original_string + string_offset
+                label = f"e{event_index}s{original_string}"
+                cell = independent_cells.get(label) or {}
+                token = str(cell.get("token") or "").strip().upper()
+                if (
+                    resolved_string not in range(1, 11)
+                    or not token
+                    or bool(cell.get("uncertain", True))
+                    or float(cell.get("confidence") or 0.0) < 0.85
+                ):
+                    valid = False
+                    break
+                action, issue = _tab_action_from_token(
+                    token,
+                    string=resolved_string,
+                    profile=profile,
+                    confidence=float(cell.get("confidence") or 0.0),
+                    region_id="validation-independent-contact-hypothesis",
+                )
+                if (
+                    issue is not None
+                    or action is None
+                    or not bool(
+                        (action.get("mechanicalValidation") or {}).get("valid")
+                    )
+                ):
+                    valid = False
+                    break
+                cells.append({"string": resolved_string, "token": token})
+            if not valid or not cells:
+                valid = False
+                break
+            raw_event["cells"] = cells
+            raw_event["x"] = round(
+                (
+                    float(tab_crop["contentX0"])
+                    + float(guide["horizontalPosition"])
+                    * (
+                        float(tab_crop["contentX1"])
+                        - float(tab_crop["contentX0"])
+                    )
+                )
+                / float(tab_crop["width"]),
+                7,
+            )
+        if not valid:
+            continue
+        attempted_offsets.append(string_offset)
+        try:
+            tab_events = _machine_localized_tab_events(
+                input_id=input_id,
+                tab_system=tab_system,
+                localization=candidate_localization,
+                crop_metadata=tab_crop,
+                expected_count=expected_count,
+                profile=profile,
+            )
+        except ExtractionWorkflowError:
+            continue
+        if not _machine_score_is_contained_in_tab(score_events, tab_events):
+            continue
+        semantic_digest = _sha256_json(
+            [
+                {
+                    "executionType": event.get("executionType"),
+                    "actions": [
+                        {
+                            "string": action.get("string"),
+                            "fret": action.get("fret"),
+                            "controls": action.get("controls"),
+                            "soundingPitchValue": action.get("soundingPitchValue"),
+                        }
+                        for action in event.get("steelActions") or []
+                    ],
+                }
+                for event in tab_events
+            ]
+        )
+        hypotheses.setdefault(
+            semantic_digest,
+            (candidate_localization, tab_events, string_offset),
+        )
+    if len(hypotheses) != 1:
+        raise ExtractionWorkflowError(
+            "Independent score, per-cell tab, and copedent evidence did not select one unique "
+            f"complete tab hypothesis (eligible={len(hypotheses)}, offsets={attempted_offsets})."
+        )
+    localization_result, tab_events_result, selected_offset = next(
+        iter(hypotheses.values())
+    )
+    return localization_result, tab_events_result, {
+        "candidateOffsetRange": [-2, -1, 0, 1, 2],
+        "mechanicallyCompleteOffsets": attempted_offsets,
+        "eligibleSemanticHypothesisCount": len(hypotheses),
+        "selectedStringOriginOffset": selected_offset,
+        "selectionEvidence": (
+            "independent_cell_tokens_plus_copedent_plus_independent_score_containment"
+        ),
+    }
+
+
 def _machine_score_is_contained_in_tab(
     score_events: Sequence[Mapping[str, Any]],
     tab_events: Sequence[Mapping[str, Any]],
@@ -25568,156 +25718,62 @@ class AmazingTablatureExtractor:
                             ],
                             control_string_map=_profile_control_string_map(profile),
                         )
-                    localization = copy.deepcopy(localization)
-                    string_offset_votes: Counter[int] = Counter()
-                    string_offset_vote_count = 0
-                    for raw_event, candidate in zip(
-                        localization.get("events") or [],
-                        tab_system.get("tabEventCandidates") or [],
-                        strict=True,
-                    ):
-                        reported_strings = sorted(
-                            int(cell.get("string") or 0)
-                            for cell in raw_event.get("cells") or []
+                    original_localization = copy.deepcopy(localization)
+                    score_events, score_recognition = (
+                        _validation_machine_score_from_existing_omr(
+                            score_system,
+                            expected_event_counts={
+                                expected_count,
+                                sum(
+                                    str(event.get("execution") or "")
+                                    != "movement_only"
+                                    for event in localization.get("events") or []
+                                ),
+                            },
                         )
-                        candidate_strings = sorted(
-                            int(value) for value in candidate.get("candidateStrings") or []
+                    )
+                    localization, tab_events, hypothesis_diagnostics = (
+                        _validation_contact_tab_hypothesis(
+                            input_id=input_id,
+                            tab_system=tab_system,
+                            localization=localization,
+                            independent_cells=independent_cells,
+                            guided_tab_crop=guided_tab_crop,
+                            tab_crop=tab_crop,
+                            score_events=score_events,
+                            profile=profile,
+                            expected_count=expected_count,
                         )
-                        if len(reported_strings) != len(candidate_strings):
-                            raise ExtractionWorkflowError(
-                                "Guided tab state reader did not return one token per visual candidate cell."
-                            )
-                        for reported_string, candidate_string in zip(
-                            reported_strings, candidate_strings, strict=True
-                        ):
-                            string_offset_votes[reported_string - candidate_string] += 1
-                            string_offset_vote_count += 1
-                    if not string_offset_votes:
-                        raise ExtractionWorkflowError(
-                            "Guided tab state reader produced no string-origin evidence."
-                        )
-                    ranked_offsets = string_offset_votes.most_common()
-                    string_origin_offset, winning_offset_votes = ranked_offsets[0]
-                    string_origin_consensus = winning_offset_votes / string_offset_vote_count
-                    if (
-                        string_origin_consensus < 0.75
-                        or (
-                            len(ranked_offsets) > 1
-                            and ranked_offsets[1][1] == winning_offset_votes
-                        )
-                    ):
-                        raise ExtractionWorkflowError(
-                            "Machine readers could not establish one system-level string origin."
-                        )
+                    )
+                    string_origin_offset = int(
+                        hypothesis_diagnostics["selectedStringOriginOffset"]
+                    )
+                    string_origin_consensus = 1.0
                     geometry_row_reassignments = 0
                     independent_cell_token_overrides = 0
-                    for raw_event, guide, candidate in zip(
+                    for original_event, selected_event in zip(
+                        original_localization.get("events") or [],
                         localization.get("events") or [],
-                        guided_tab_crop["guides"],
-                        tab_system.get("tabEventCandidates") or [],
                         strict=True,
                     ):
-                        raw_cells = sorted(
-                            list(raw_event.get("cells") or []),
+                        original_cells = sorted(
+                            original_event.get("cells") or [],
                             key=lambda cell: int(cell.get("string") or 0),
                         )
-                        candidate_strings = sorted(
-                            int(value) + string_origin_offset
-                            for value in candidate.get("candidateStrings") or []
+                        selected_cells = sorted(
+                            selected_event.get("cells") or [],
+                            key=lambda cell: int(cell.get("string") or 0),
                         )
-                        original_candidate_strings = sorted(
-                            int(value)
-                            for value in candidate.get("candidateStrings") or []
-                        )
-                        if any(value not in range(1, 11) for value in candidate_strings):
-                            raise ExtractionWorkflowError(
-                                "String-origin calibration moved a candidate outside strings 1-10."
-                            )
-                        if len(raw_cells) != len(candidate_strings):
-                            raise ExtractionWorkflowError(
-                                "Guided tab state reader did not return one token per visual candidate cell."
-                            )
-                        for raw_cell, original_string, candidate_string in zip(
-                            raw_cells,
-                            original_candidate_strings,
-                            candidate_strings,
-                            strict=True,
+                        for original_cell, selected_cell in zip(
+                            original_cells, selected_cells, strict=True
                         ):
-                            reported_string = int(raw_cell.get("string") or 0)
-                            token = str(raw_cell.get("token") or "").strip().upper()
-                            candidate_action, candidate_issue = _tab_action_from_token(
-                                token,
-                                string=candidate_string,
-                                profile=profile,
-                                confidence=float(localization.get("confidence") or 0.0),
-                                region_id="validation-machine-row-check",
+                            geometry_row_reassignments += int(
+                                original_cell.get("string") or 0
+                            ) != int(selected_cell.get("string") or 0)
+                            independent_cell_token_overrides += (
+                                str(original_cell.get("token") or "").strip().upper()
+                                != str(selected_cell.get("token") or "").strip().upper()
                             )
-                            cell_label = (
-                                f"e{int(candidate.get('sourceCandidateEventIndex') or raw_event.get('eventIndex') or 0)}"
-                                f"s{original_string}"
-                            )
-                            independent_cell = independent_cells.get(cell_label) or {}
-                            independent_token = str(
-                                independent_cell.get("token") or ""
-                            ).strip().upper()
-                            independent_action, independent_issue = _tab_action_from_token(
-                                independent_token,
-                                string=candidate_string,
-                                profile=profile,
-                                confidence=float(independent_cell.get("confidence") or 0.0),
-                                region_id="validation-independent-cell-check",
-                            )
-                            candidate_valid = (
-                                candidate_issue is None
-                                and candidate_action is not None
-                                and bool(
-                                    (candidate_action.get("mechanicalValidation") or {}).get(
-                                        "valid"
-                                    )
-                                )
-                            )
-                            independent_valid = (
-                                independent_issue is None
-                                and independent_action is not None
-                                and not bool(independent_cell.get("uncertain", True))
-                                and float(independent_cell.get("confidence") or 0.0) >= 0.85
-                                and bool(
-                                    (independent_action.get("mechanicalValidation") or {}).get(
-                                        "valid"
-                                    )
-                                )
-                            )
-                            if candidate_valid and independent_valid and token != independent_token:
-                                raise ExtractionWorkflowError(
-                                    "Independent validation tab readers disagree on a mechanically valid token "
-                                    f"at {cell_label}."
-                                )
-                            if not candidate_valid and independent_valid:
-                                raw_cell["token"] = independent_token
-                                independent_cell_token_overrides += 1
-                            geometry_row_reassignments += reported_string != candidate_string
-                            raw_cell["string"] = candidate_string
-                        raw_event["cells"] = raw_cells
-                        raw_event["x"] = round(
-                            (
-                                float(tab_crop["contentX0"])
-                                + float(guide["horizontalPosition"])
-                                * (
-                                    float(tab_crop["contentX1"])
-                                    - float(tab_crop["contentX0"])
-                                )
-                            )
-                            / float(tab_crop["width"]),
-                            7,
-                        )
-                    tab_events = _machine_localized_tab_events(
-                        input_id=input_id,
-                        tab_system=tab_system,
-                        localization=localization,
-                        crop_metadata=tab_crop,
-                        expected_count=expected_count,
-                        profile=profile,
-                    )
                     visual_candidates = list(tab_system.get("tabEventCandidates") or [])
                     if len(visual_candidates) != expected_count:
                         raise ExtractionWorkflowError(
@@ -25740,18 +25796,6 @@ class AmazingTablatureExtractor:
                             "Machine tab localization failed independent checks: "
                             f"maximum_position_delta={maximum_position_delta:.6f}."
                         )
-                    score_events, score_recognition = (
-                        _validation_machine_score_from_existing_omr(
-                            score_system,
-                            expected_event_counts={
-                                expected_count,
-                                sum(
-                                    event.get("executionType") != "movement_only"
-                                    for event in tab_events
-                                ),
-                            },
-                        )
-                    )
                     score_tab_diagnostics = _machine_score_tab_containment_diagnostics(
                         score_events, tab_events
                     )
@@ -25780,6 +25824,7 @@ class AmazingTablatureExtractor:
                         "tabLocalization": localization,
                         "scoreRecognition": score_recognition,
                         "scoreTabContainmentDiagnostics": score_tab_diagnostics,
+                        "tabHypothesisDiagnostics": hypothesis_diagnostics,
                         "geometryRowReassignmentCount": geometry_row_reassignments,
                         "mechanicalRowOverrideCount": 0,
                         "independentCellTokenOverrideCount": independent_cell_token_overrides,
@@ -25804,7 +25849,9 @@ class AmazingTablatureExtractor:
                         if str(system.get("tabSystemId") or "") == tab_system_id
                     )
                     candidate_score["scoreEvents"] = score_events
-                    candidate_score["scoreAttackCount"] = expected_count
+                    candidate_score["scoreAttackCount"] = int(
+                        score_recognition["eventCount"]
+                    )
                     candidate_score["keyFifths"] = int(
                         score_recognition["keySignatureFifths"]
                     )

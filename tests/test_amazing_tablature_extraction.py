@@ -79,6 +79,7 @@ from pocketsteel.amazing_tablature_extraction import (
     _validation_line_preflight_blockers,
     _validation_machine_count_consensus,
     _validation_independent_contact_cells,
+    _validation_contact_tab_hypothesis,
     _validation_machine_score_from_existing_omr,
     _machine_localized_score_events,
     _machine_localized_tab_events,
@@ -1433,6 +1434,91 @@ def test_validation_contact_cells_require_exact_sheet_and_reader_lineage(
             tab_system=tab_system,
             model="different-model",
         )
+
+
+def test_validation_contact_hypothesis_uses_score_and_copedent_to_select_row_origin() -> None:
+    profile = get_e9_copedent_profile("source-e9-abc-defg-v1")
+    first_action, first_issue = _tab_action_from_token(
+        "5", string=5, profile=profile, confidence=0.99, region_id="test"
+    )
+    second_action, second_issue = _tab_action_from_token(
+        "5A", string=5, profile=profile, confidence=0.99, region_id="test"
+    )
+    assert first_issue is None and first_action is not None
+    assert second_issue is None and second_action is not None
+    score_events = [
+        {
+            "scoreEventId": f"score-{index}",
+            "measure": 1,
+            "beat": float(index),
+            "defaultX": float(index * 100),
+            "pitchValue": int(action["soundingPitchValue"]) + 12,
+            "rest": False,
+        }
+        for index, action in enumerate((first_action, second_action), start=1)
+    ]
+    tab_system = {
+        "tabSystemId": "tab-system",
+        "tabEventCandidates": [
+            {
+                "sourceCandidateEventIndex": 1,
+                "horizontalPosition": 0.25,
+                "candidateStrings": [6],
+            },
+            {
+                "sourceCandidateEventIndex": 2,
+                "horizontalPosition": 0.75,
+                "candidateStrings": [6],
+            },
+        ],
+    }
+    localization = {
+        "confidence": 0.99,
+        "uncertain": False,
+        "events": [
+            {
+                "eventIndex": 1,
+                "execution": "attack",
+                "cells": [{"string": 5, "token": "5"}],
+            },
+            {
+                "eventIndex": 2,
+                "execution": "attack",
+                "cells": [{"string": 5, "token": "5A"}],
+            },
+        ],
+    }
+    independent_cells = {
+        "e1s6": {"token": "5", "confidence": 0.99, "uncertain": False},
+        "e2s6": {"token": "5A", "confidence": 0.99, "uncertain": False},
+    }
+
+    selected, tab_events, diagnostics = _validation_contact_tab_hypothesis(
+        input_id="input-1",
+        tab_system=tab_system,
+        localization=localization,
+        independent_cells=independent_cells,
+        guided_tab_crop={
+            "guides": [
+                {"horizontalPosition": 0.25},
+                {"horizontalPosition": 0.75},
+            ]
+        },
+        tab_crop={"contentX0": 0, "contentX1": 100, "width": 100},
+        score_events=score_events,
+        profile=profile,
+        expected_count=2,
+    )
+
+    assert diagnostics["selectedStringOriginOffset"] == -1
+    assert diagnostics["eligibleSemanticHypothesisCount"] == 1
+    assert [
+        event["steelActions"][0]["string"] for event in tab_events
+    ] == [5, 5]
+    assert [event["cells"][0]["token"] for event in selected["events"]] == [
+        "5",
+        "5A",
+    ]
 
 
 def test_machine_localized_tab_events_fail_closed_on_blank_or_invalid_states() -> None:
