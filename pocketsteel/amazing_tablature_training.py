@@ -44,6 +44,9 @@ from pocketsteel.amazing_tablature_transition_decoder import (
     transition_decoder_automation_eligibility,
     transition_training_rows,
 )
+from pocketsteel.amazing_tablature_validation import (
+    validation_contact_execution_digest,
+)
 from pocketsteel.e9_copedents import E9CopedentProfile, e9_copedent_profile_digest, get_e9_copedent_profile
 from pocketsteel.melody_decision_rules import normalize_style_family
 from pocketsteel.melody_ranker import feature_vector, score_candidate, train_pairwise_ranker
@@ -867,6 +870,256 @@ def _mechanical_validation(record: Mapping[str, Any], profile: E9CopedentProfile
         "melodyPitchValue": melody_pitch_value,
         "melodyOnTop": True,
         "controlsValidatedByStableId": True,
+    }
+
+
+def _machine_validation_has_score_support(
+    score_system: Mapping[str, Any] | None,
+    *,
+    page_tab_events: Sequence[Mapping[str, Any]],
+    candidate_events: Sequence[Mapping[str, Any]],
+) -> bool:
+    """Verify one stable score-support receipt against rebuilt tab evidence."""
+
+    if score_system is None or not page_tab_events or not candidate_events:
+        return False
+    recapture = score_system.get("machineRecapture") or {}
+    candidate_execution_digest = validation_contact_execution_digest(
+        candidate_events
+    )
+    return bool(
+        recapture.get("schemaVersion")
+        == "validation-machine-recapture-v9"
+        and recapture.get("scorePitchSource")
+        in {
+            "musicxml_plus_source_geometry_consensus",
+            "two_reader_score_only_consensus",
+        }
+        and recapture.get("humanTruthUsed") is False
+        and re.fullmatch(
+            r"[0-9a-f]{64}",
+            str(recapture.get("sourceContactCandidateDigest") or ""),
+        )
+        and recapture.get("sourceContactExecutionDigest")
+        == candidate_execution_digest
+        == validation_contact_execution_digest(page_tab_events)
+    )
+
+
+def _machine_validation_score_support_lineage(
+    *,
+    validation_root: Path,
+    allowed_candidate_root: Path,
+    batch_id: str,
+    input_id: str,
+    system_index: int,
+    tab_system_id: str,
+    score_system: Mapping[str, Any] | None,
+    page_tab_events: Sequence[Mapping[str, Any]],
+    candidate_events: Sequence[Mapping[str, Any]],
+    current_consensus_report_digest: str,
+    current_candidate_digest: str,
+    model_id: str,
+    model_artifact_sha256: str,
+) -> dict[str, Any] | None:
+    """Prove that score support came from an applied, source-only recapture."""
+
+    if not _machine_validation_has_score_support(
+        score_system,
+        page_tab_events=page_tab_events,
+        candidate_events=candidate_events,
+    ):
+        return None
+    assert score_system is not None
+    recapture = score_system.get("machineRecapture") or {}
+    source_report_digest = str(
+        recapture.get("sourceContactConsensusReportDigest") or ""
+    )
+    source_candidate_digest = str(
+        recapture.get("sourceContactCandidateDigest") or ""
+    )
+    execution_digest = validation_contact_execution_digest(
+        candidate_events
+    )
+    contract_digest = str(recapture.get("contractDigest") or "")
+    expected_event_count = int(recapture.get("expectedEventCount") or 0)
+    if (
+        not re.fullmatch(r"[0-9a-f]{64}", source_report_digest)
+        or not re.fullmatch(r"[0-9a-f]{64}", contract_digest)
+        or expected_event_count != len(candidate_events)
+    ):
+        raise TrainingWorkflowError(
+            "A score-supported validation line has incomplete recapture lineage."
+        )
+
+    recapture_root = (
+        validation_root
+        / "review"
+        / "automation"
+        / "validation-machine-recapture-v9"
+    )
+    recapture_report_path = recapture_root / "report.json"
+    if not recapture_report_path.exists():
+        raise TrainingWorkflowError(
+            "A score-supported validation line lacks its recapture report."
+        )
+    recapture_report = _read_json(recapture_report_path)
+    recapture_report_digest = str(
+        recapture_report.get("reportDigest") or ""
+    )
+    recapture_report_core = {
+        key: value
+        for key, value in recapture_report.items()
+        if key != "reportDigest"
+    }
+    recapture_result = next(
+        (
+            item
+            for item in recapture_report.get("results") or []
+            if str(item.get("inputId") or "") == input_id
+            and str(item.get("scoreSystemId") or "")
+            == str(score_system.get("scoreSystemId") or "")
+            and str(item.get("tabSystemId") or "") == tab_system_id
+            and str(item.get("sourceContactCandidateDigest") or "")
+            == source_candidate_digest
+        ),
+        None,
+    )
+    if (
+        recapture_report.get("schemaVersion")
+        != "validation-machine-recapture-v9"
+        or recapture_report.get("batchId") != batch_id
+        or recapture_report.get("partition") != "validation"
+        or recapture_report.get("contractDigest") != contract_digest
+        or recapture_report.get("humanTruthUsed") is not False
+        or recapture_report.get("validationMayTrain") is not False
+        or recapture_report.get("sealedTestAccessed") is not False
+        or _sha256_json(recapture_report_core) != recapture_report_digest
+        or recapture_result is None
+        or recapture_result.get("status")
+        != "passed_score_support_preflight"
+        or recapture_result.get("applied") is not True
+        or recapture_result.get("sourceContactExecutionDigest")
+        != execution_digest
+    ):
+        raise TrainingWorkflowError(
+            "A score-supported validation recapture report is stale or unsafe."
+        )
+
+    source_report_path = (
+        validation_root
+        / "review"
+        / "automation"
+        / "validation-contact-sheet-consensus-v3"
+        / f"report-{source_report_digest}.json"
+    )
+    if not source_report_path.exists():
+        raise TrainingWorkflowError(
+            "A score-supported line lacks its source contact consensus report."
+        )
+    source_report = _read_json(source_report_path)
+    source_report_core = {
+        key: value
+        for key, value in source_report.items()
+        if key != "reportDigest"
+    }
+    source_model = source_report.get("validationModel") or {}
+    source_line = next(
+        (
+            item
+            for item in source_report.get("lines") or []
+            if str(item.get("inputId") or "") == input_id
+            and int(item.get("systemIndex") or 0) == system_index
+            and str(item.get("tabSystemId") or "") == tab_system_id
+            and str(item.get("candidateDigest") or "")
+            == source_candidate_digest
+        ),
+        None,
+    )
+    if (
+        source_report.get("schemaVersion")
+        != "validation-contact-sheet-consensus-v3"
+        or source_report.get("batchId") != batch_id
+        or source_report.get("partition") != "validation"
+        or source_report.get("reportDigest") != source_report_digest
+        or _sha256_json(source_report_core) != source_report_digest
+        or source_report.get("humanTruthUsed") is not False
+        or source_report.get("validationMayTrain") is not False
+        or source_report.get("sealedTestAccessed") is not False
+        or str(source_model.get("modelId") or "") != model_id
+        or str(source_model.get("artifactSha256") or "")
+        != model_artifact_sha256
+        or source_line is None
+        or source_line.get("status") != "complete_machine_candidate"
+    ):
+        raise TrainingWorkflowError(
+            "A score-supported line has stale source-contact lineage."
+        )
+
+    source_candidate_path = (
+        validation_root
+        / Path(str(source_line.get("candidatePath") or ""))
+    ).resolve()
+    try:
+        source_candidate_path.relative_to(allowed_candidate_root)
+    except ValueError as exc:
+        raise TrainingWorkflowError(
+            "A source contact candidate escaped its private output directory."
+        ) from exc
+    if not source_candidate_path.exists():
+        raise TrainingWorkflowError(
+            "A score-supported line lacks its source contact candidate."
+        )
+    source_candidate = _read_json(source_candidate_path)
+    source_candidate_core = {
+        key: value
+        for key, value in source_candidate.items()
+        if key != "candidateDigest"
+    }
+    source_candidate_model = source_candidate.get("validationModel") or {}
+    source_machine_digest = str(
+        source_candidate.get("machineRecordDigest") or ""
+    )
+    source_archive_path = (
+        recapture_root
+        / "machine-record-revisions"
+        / input_id
+        / f"{source_machine_digest}.json"
+    )
+    if (
+        source_candidate.get("candidateDigest") != source_candidate_digest
+        or _sha256_json(source_candidate_core) != source_candidate_digest
+        or source_candidate.get("status") != "complete_machine_candidate"
+        or source_candidate.get("humanTruthUsed") is not False
+        or source_candidate.get("validationMayTrain") is not False
+        or source_candidate.get("sealedTestAccessed") is not False
+        or str(source_candidate_model.get("modelId") or "") != model_id
+        or str(source_candidate_model.get("artifactSha256") or "")
+        != model_artifact_sha256
+        or validation_contact_execution_digest(
+            source_candidate.get("events") or []
+        )
+        != execution_digest
+        or not source_archive_path.exists()
+        or _sha256_json(_read_json(source_archive_path))
+        != source_machine_digest
+    ):
+        raise TrainingWorkflowError(
+            "A score-supported line has stale source-candidate or "
+            "pre-recapture page lineage."
+        )
+
+    return {
+        "mode": "machine_consensus_score_supported_line",
+        "consensusReportDigest": current_consensus_report_digest,
+        "candidateDigest": current_candidate_digest,
+        "executionDigest": execution_digest,
+        "recaptureReportDigest": recapture_report_digest,
+        "recaptureContractDigest": contract_digest,
+        "sourceContactConsensusReportDigest": source_report_digest,
+        "sourceContactCandidateDigest": source_candidate_digest,
+        "scorePitchSource": recapture.get("scorePitchSource"),
+        "validationMayTrain": False,
     }
 
 
@@ -6664,15 +6917,18 @@ class AmazingTablatureTrainingStore:
         """Score only complete, discovery-calibrated validation tab lines.
 
         This is an automatic, evaluation-only fallback for the image-reader
-        bottleneck.  It accepts no validation label as training evidence and
-        deliberately strips score facts before deriving candidate-choice
-        records.  As a result, the output can measure the exact challenger on
-        high-confidence ``alignment:tab_only`` movements, but it cannot satisfy
-        the separately predeclared ``alignment:score_supported`` gate.
+        bottleneck. It accepts no validation label as training evidence.
+        Complete tab lines remain ``alignment:tab_only`` unless the current
+        page also carries digest-pinned independent score consensus for the
+        exact same ordered execution.
         """
 
         from pocketsteel.amazing_tablature_decisions import (
             derive_decision_annotations,
+        )
+        from pocketsteel.amazing_tablature_extraction import (
+            _align_events,
+            _separate_verified_alignments,
         )
 
         registry = self._registry()
@@ -6875,10 +7131,77 @@ class AmazingTablatureTrainingStore:
                     for event in candidate_events
                 }
                 derivation_record = deepcopy(page_record)
-                # The automatic comparison is intentionally tab-only.  It may
-                # not turn a machine score hypothesis into held-out truth.
-                derivation_record["scoreSystems"] = []
-                derivation_record["eventAlignments"] = []
+                score_system = next(
+                    (
+                        deepcopy(item)
+                        for item in page_record.get("scoreSystems") or []
+                        if str(item.get("pairedTabSystemId") or "")
+                        == tab_system_id
+                    ),
+                    None,
+                )
+                candidate_execution_digest = (
+                    validation_contact_execution_digest(candidate_events)
+                )
+                page_tab_events = (
+                    next(
+                        item
+                        for item in page_record.get("tabSystems") or []
+                        if str(item.get("tabSystemId") or "")
+                        == tab_system_id
+                    ).get("tabEvents")
+                    or []
+                )
+                score_support_lineage = (
+                    _machine_validation_score_support_lineage(
+                        validation_root=validation_root,
+                        allowed_candidate_root=allowed_root,
+                        batch_id=batch_id,
+                        input_id=input_id,
+                        system_index=int(
+                            candidate.get("systemIndex") or 0
+                        ),
+                        tab_system_id=tab_system_id,
+                        score_system=score_system,
+                        page_tab_events=page_tab_events,
+                        candidate_events=candidate_events,
+                        current_consensus_report_digest=report_digest,
+                        current_candidate_digest=candidate_digest,
+                        model_id=model_id,
+                        model_artifact_sha256=artifact_sha256,
+                    )
+                )
+                score_supported = score_support_lineage is not None
+                if score_supported:
+                    alignments, unresolved_alignments = (
+                        _separate_verified_alignments(
+                            _align_events(
+                                score_system.get("scoreEvents") or [],
+                                candidate_events,
+                                include_movement_only=True,
+                            )
+                        )
+                    )
+                    aligned_tab_ids = {
+                        str(tab_event_id)
+                        for alignment in alignments
+                        for tab_event_id in alignment.get("tabEventIds") or []
+                    }
+                    if (
+                        unresolved_alignments
+                        or aligned_tab_ids != tab_event_ids
+                    ):
+                        raise TrainingWorkflowError(
+                            "A score-supported validation line lost exact "
+                            "score-to-tab correspondence."
+                        )
+                    derivation_record["scoreSystems"] = [score_system]
+                    derivation_record["eventAlignments"] = alignments
+                else:
+                    # An unverified machine score hypothesis cannot become
+                    # held-out truth merely because its tab line is complete.
+                    derivation_record["scoreSystems"] = []
+                    derivation_record["eventAlignments"] = []
                 derivation_record["tabSystems"] = [tab_system]
                 derivation_record["movementSequences"] = [
                     movement
@@ -6906,11 +7229,16 @@ class AmazingTablatureTrainingStore:
                 }
                 context_complete_decisions: list[dict[str, Any]] = []
                 for decision in decisions:
-                    if "alignment:tab_only" not in (
+                    expected_alignment_tag = (
+                        "alignment:score_supported"
+                        if score_supported
+                        else "alignment:tab_only"
+                    )
+                    if expected_alignment_tag not in (
                         decision.get("categoryTags") or []
                     ):
                         raise TrainingWorkflowError(
-                            "Automatic validation decisions must remain tab-only."
+                            "Automatic validation decision evidence mode changed."
                         )
                     event_index = event_index_by_id.get(
                         str(decision.get("sourceTabEventId") or "")
@@ -6941,12 +7269,17 @@ class AmazingTablatureTrainingStore:
                     ):
                         continue
                     decision["batchId"] = batch_id
-                    decision["validationEvidence"] = {
-                        "mode": "machine_consensus_complete_line",
-                        "consensusReportDigest": report_digest,
-                        "candidateDigest": candidate_digest,
-                        "validationMayTrain": False,
-                    }
+                    decision["validationEvidence"] = (
+                        deepcopy(score_support_lineage)
+                        if score_support_lineage is not None
+                        else {
+                            "mode": "machine_consensus_complete_tab_line",
+                            "consensusReportDigest": report_digest,
+                            "candidateDigest": candidate_digest,
+                            "executionDigest": candidate_execution_digest,
+                            "validationMayTrain": False,
+                        }
+                    )
                     decision["mechanicalValidation"] = _mechanical_validation(
                         decision,
                         profile,
@@ -6989,14 +7322,28 @@ class AmazingTablatureTrainingStore:
                 "evidenceSufficient": len(records)
                 >= VALIDATION_MIN_DECISIONS_PER_COHORT,
             }
+        tab_only_records = [
+            record
+            for record in ranking_records
+            if "alignment:tab_only" in (record.get("categoryTags") or [])
+        ]
+        score_supported_records = [
+            record
+            for record in ranking_records
+            if "alignment:score_supported"
+            in (record.get("categoryTags") or [])
+        ]
         tab_only_metrics = {
-            **self._validation_ranking_metrics(model, ranking_records),
-            "evidenceSufficient": len(ranking_records)
+            **self._validation_ranking_metrics(model, tab_only_records),
+            "evidenceSufficient": len(tab_only_records)
             >= VALIDATION_MIN_DECISIONS_PER_EVIDENCE_MODE,
         }
         score_supported_metrics = {
-            **self._validation_ranking_metrics(model, []),
-            "evidenceSufficient": False,
+            **self._validation_ranking_metrics(
+                model, score_supported_records
+            ),
+            "evidenceSufficient": len(score_supported_records)
+            >= VALIDATION_MIN_DECISIONS_PER_EVIDENCE_MODE,
         }
         disagreements = self._validation_ranking_disagreements(
             model,
@@ -7047,6 +7394,9 @@ class AmazingTablatureTrainingStore:
             and tab_only_metrics["evidenceSufficient"]
             and tab_only_metrics["topChoiceAccuracy"]
             >= VALIDATION_EVIDENCE_MODE_PREFERENCE_FLOOR
+            and score_supported_metrics["evidenceSufficient"]
+            and score_supported_metrics["topChoiceAccuracy"]
+            >= VALIDATION_EVIDENCE_MODE_PREFERENCE_FLOOR
         )
         input_parity = structured_input_parity_report()
         canonical_gate_passed = False
@@ -7055,7 +7405,9 @@ class AmazingTablatureTrainingStore:
             "modelId": model_id,
             "modelArtifactSha256": artifact_sha256,
             "evaluatedAt": _utc_now(),
-            "evaluationScope": "complete_machine_consensus_tab_lines",
+            "evaluationScope": (
+                "complete_machine_consensus_lines_with_independent_score_support"
+            ),
             "authoritativeBatchIds": list(authoritative_ids),
             "cohortReceipts": cohort_receipts,
             "tabCellCompleteLineCount": tab_cell_complete_line_count,
@@ -7100,7 +7452,13 @@ class AmazingTablatureTrainingStore:
                 "privateRuntimeEnableAllowed": False,
                 "reasons": [
                     "machine_consensus_is_not_human_validation_ground_truth",
-                    "score_supported_validation_evidence_missing",
+                    *(
+                        []
+                        if score_supported_metrics["evidenceSufficient"]
+                        else [
+                            "score_supported_validation_evidence_missing"
+                        ]
+                    ),
                     *(
                         []
                         if measured_thresholds_passed

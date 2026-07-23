@@ -2089,10 +2089,11 @@ def test_validation_score_support_required_is_digest_pinned() -> None:
     assert not _validation_score_support_required(
         {
             "machineRecapture": {
-                "schemaVersion": "validation-machine-recapture-v8",
+                "schemaVersion": "validation-machine-recapture-v9",
                 "scorePitchSource": "two_reader_score_only_consensus",
                 "sourceContactConsensusReportDigest": digest,
                 "sourceContactCandidateDigest": candidate_digest,
+                "sourceContactExecutionDigest": "d" * 64,
             }
         },
         line,
@@ -2101,10 +2102,11 @@ def test_validation_score_support_required_is_digest_pinned() -> None:
     assert not _validation_score_support_required(
         {
             "machineRecapture": {
-                "schemaVersion": "validation-machine-recapture-v8",
+                "schemaVersion": "validation-machine-recapture-v9",
                 "scorePitchSource": "musicxml_plus_source_geometry_consensus",
                 "sourceContactConsensusReportDigest": digest,
                 "sourceContactCandidateDigest": candidate_digest,
+                "sourceContactExecutionDigest": "d" * 64,
             }
         },
         line,
@@ -2113,10 +2115,11 @@ def test_validation_score_support_required_is_digest_pinned() -> None:
     assert _validation_score_support_required(
         {
             "machineRecapture": {
-                "schemaVersion": "validation-machine-recapture-v8",
+                "schemaVersion": "validation-machine-recapture-v9",
                 "scorePitchSource": "two_reader_score_only_consensus",
                 "sourceContactConsensusReportDigest": "c" * 64,
                 "sourceContactCandidateDigest": candidate_digest,
+                "sourceContactExecutionDigest": "d" * 64,
             }
         },
         line,

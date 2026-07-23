@@ -56,6 +56,9 @@ from pocketsteel.amazing_tablature_transition_decoder import (
     TransitionDecoderError,
     classify_transition,
 )
+from pocketsteel.amazing_tablature_validation import (
+    validation_contact_execution_digest,
+)
 from pocketsteel.e9_copedents import (
     e9_copedent_profile_digest,
     get_e9_copedent_profile,
@@ -75,7 +78,7 @@ FEEDBACK_CORRECTION_CONFIRMATION_SCHEMA_VERSION = (
 COMBINED_SCORE_TAB_REVIEW_SCHEMA_VERSION = "amazing-tablature-combined-score-tab-review-v1"
 VALIDATION_LINE_AUDIT_SCHEMA_VERSION = "amazing-tablature-validation-line-audit-v1"
 VALIDATION_LINE_PREFLIGHT_VERSION = "validation-line-structural-preflight-v1"
-VALIDATION_MACHINE_RECAPTURE_VERSION = "validation-machine-recapture-v8"
+VALIDATION_MACHINE_RECAPTURE_VERSION = "validation-machine-recapture-v9"
 VALIDATION_CONTACT_CONSENSUS_VERSION = "validation-contact-sheet-consensus-v3"
 VALIDATION_FOCUSED_CONTACT_CHUNK_SIZE = 8
 CONTACT_SHEET_TRUTH_MAPPING_VERSION = (
@@ -6741,6 +6744,10 @@ def _validation_score_support_required(
         and re.fullmatch(
             r"[0-9a-f]{64}",
             str(recapture.get("sourceContactCandidateDigest") or ""),
+        )
+        and re.fullmatch(
+            r"[0-9a-f]{64}",
+            str(recapture.get("sourceContactExecutionDigest") or ""),
         )
     )
 
@@ -28046,6 +28053,11 @@ class AmazingTablatureExtractor:
                             "sourceContactCandidateDigest": (
                                 contact_candidate_digest
                             ),
+                            "sourceContactExecutionDigest": (
+                                validation_contact_execution_digest(
+                                    contact_events
+                                )
+                            ),
                             "humanTruthUsed": False,
                         }
                         candidate_tab["tabEvents"] = contact_events
@@ -28113,6 +28125,11 @@ class AmazingTablatureExtractor:
                                 "sourceContactCandidateDigest": (
                                     contact_candidate_digest
                                 ),
+                                "sourceContactExecutionDigest": (
+                                    validation_contact_execution_digest(
+                                        contact_events
+                                    )
+                                ),
                                 "humanTruthUsed": False,
                                 "validationMayTrain": False,
                             }
@@ -28145,6 +28162,11 @@ class AmazingTablatureExtractor:
                                 ),
                                 "sourceContactCandidateDigest": (
                                     contact_candidate_digest
+                                ),
+                                "sourceContactExecutionDigest": (
+                                    validation_contact_execution_digest(
+                                        contact_events
+                                    )
                                 ),
                                 "applied": apply,
                             }

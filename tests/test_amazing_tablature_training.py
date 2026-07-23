@@ -24,6 +24,7 @@ from pocketsteel.amazing_tablature_training import (
     _challenger_line_previously_reviewed,
     _contact_sheet_truth_by_source_column,
     _discovery_line_review_readiness,
+    _machine_validation_has_score_support,
 )
 from pocketsteel.e9_copedents import get_e9_copedent_profile
 from pocketsteel.melody_assistant import melody_exercise_response
@@ -1064,6 +1065,64 @@ def test_machine_validation_scorer_uses_only_complete_tab_consensus(
         match="incomplete or unpinned",
     ):
         store.score_validation_machine_candidates(model_id)
+
+
+def test_machine_validation_score_support_uses_stable_execution_digest() -> None:
+    event = {
+        "eventIndex": 1,
+        "tabEventId": "page-event",
+        "executionType": "attack",
+        "steelActions": [
+            {
+                "string": 5,
+                "fret": 8,
+                "controls": ["A"],
+                "attack": True,
+                "soundingPitchValue": 68,
+            }
+        ],
+    }
+    rebuilt = {
+        **event,
+        "tabEventId": "candidate-wrapper",
+        "confidence": 0.93,
+    }
+    from pocketsteel.amazing_tablature_validation import (
+        validation_contact_execution_digest,
+    )
+
+    score_system = {
+        "machineRecapture": {
+            "schemaVersion": "validation-machine-recapture-v9",
+            "scorePitchSource": "musicxml_plus_source_geometry_consensus",
+            "sourceContactCandidateDigest": "a" * 64,
+            "sourceContactExecutionDigest": (
+                validation_contact_execution_digest([event])
+            ),
+            "humanTruthUsed": False,
+        }
+    }
+
+    assert _machine_validation_has_score_support(
+        score_system,
+        page_tab_events=[event],
+        candidate_events=[rebuilt],
+    )
+    changed = {
+        **rebuilt,
+        "steelActions": [
+            {
+                **rebuilt["steelActions"][0],
+                "controls": [],
+                "soundingPitchValue": 66,
+            }
+        ],
+    }
+    assert not _machine_validation_has_score_support(
+        score_system,
+        page_tab_events=[event],
+        candidate_events=[changed],
+    )
 
 
 def annotation(
