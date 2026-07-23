@@ -949,6 +949,24 @@ def _parser() -> argparse.ArgumentParser:
     )
     score_validation_machine.add_argument("model_id")
 
+    adjudicate_validation_machine = subparsers.add_parser(
+        "adjudicate-validation-machine-disagreements",
+        help=(
+            "Measure immutable expert adjudication of machine-consensus "
+            "challenger disagreements without adding validation to training."
+        ),
+    )
+    adjudicate_validation_machine.add_argument("model_id")
+    adjudicate_validation_machine.add_argument("--batch-id", required=True)
+    adjudicate_validation_machine.add_argument(
+        "--score-report-digest",
+        required=True,
+    )
+    adjudicate_validation_machine.add_argument(
+        "--submission-id",
+        required=True,
+    )
+
     report = subparsers.add_parser("report", help="Write a private metrics-only challenger report.")
     report.add_argument("model_id")
 
@@ -1527,6 +1545,13 @@ def main() -> int:
             result = store.score_validation_line_audits(args.model_id)
         elif args.command == "score-validation-machine-candidates":
             result = store.score_validation_machine_candidates(args.model_id)
+        elif args.command == "adjudicate-validation-machine-disagreements":
+            result = store.adjudicate_validation_machine_disagreements(
+                args.model_id,
+                batch_id=args.batch_id,
+                score_report_digest=args.score_report_digest,
+                submission_id=args.submission_id,
+            )
         elif args.command == "report":
             result = store.report(args.model_id)
         elif args.command == "freeze-rules":

@@ -587,6 +587,25 @@ confirmed. Submissions are immutable validation adjudication only:
 `sealedTestAccessed` remain false. The packet cannot refine the challenger,
 enter preference accounting, or open the sealed test.
 
+Score one exact submitted packet without changing the strict source-exact
+metric:
+
+```bash
+.venv/bin/python scripts/amazing_tablature.py \
+  adjudicate-validation-machine-disagreements <exact-model-id> \
+  --batch-id <batch-id> \
+  --score-report-digest <exact-score-report-digest> \
+  --submission-id <exact-submission-id>
+```
+
+The adjudication report preserves strict source-exact accuracy and adds a
+separate human-accepted recommendation metric. A challenger choice counts as
+accepted only when the reviewer marked it better or equally valid; a
+source-preferred result remains a miss and feedback remains unresolved. Passing
+this preference diagnostic does not create full human validation ground truth,
+does not supply score-supported evidence, and cannot enable runtime, freeze
+rules, or open sealed test.
+
 Canonical validation uses a threshold contract fixed before held-out evidence
 is opened. It measures arrangement after input has been normalized into exact
 score events; score-image and audio recognition are explicitly outside this

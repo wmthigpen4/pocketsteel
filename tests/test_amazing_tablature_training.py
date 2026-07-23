@@ -943,6 +943,116 @@ def test_machine_validation_scorer_uses_only_complete_tab_consensus(
         batch_dir / "accepted-decisions.jsonl"
     ).exists()
 
+    disagreement = disagreement_report["disagreements"][0]
+    review_dir = (
+        validation_root / "review/challenger-disagreements"
+    )
+    submission_id = (
+        "validation-disagreement-submission-" + "d" * 20
+    )
+    packet_core = {
+        "schemaVersion": (
+            "amazing-tablature-validation-disagreement-review-v1"
+        ),
+        "reviewType": "validation_challenger_disagreement",
+        "batchId": "atb-machine-validation",
+        "partition": "validation",
+        "modelId": model_id,
+        "modelArtifactSha256": model_sha,
+        "machineDecisionDigest": result["decisionDigest"],
+        "disagreementReportDigest": result["disagreementDigest"],
+        "systems": [
+            {
+                "disagreements": [
+                    {"decisionId": disagreement["decisionId"]}
+                ]
+            }
+        ],
+        "trainingEligible": False,
+        "validationGroundTruthMayTrain": False,
+        "validationAccessed": True,
+        "sealedTestAccessed": False,
+    }
+    packet_digest = canonical_sha(packet_core)
+    review_dir.mkdir(parents=True)
+    (review_dir / f"packet-{packet_digest}.json").write_text(
+        json.dumps(
+            {**packet_core, "packetDigest": packet_digest},
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    rows = [
+        {
+            "decisionId": disagreement["decisionId"],
+            "status": "challenger_valid",
+            "comment": None,
+            "trainingEligible": False,
+        }
+    ]
+    submission_digest = canonical_sha(
+        {
+            "reviewType": "validation_challenger_disagreement",
+            "batchId": "atb-machine-validation",
+            "packetDigest": packet_digest,
+            "reviews": rows,
+            "validationGroundTruthMayTrain": False,
+        }
+    )
+    submissions_dir = review_dir / "submissions"
+    submissions_dir.mkdir()
+    (submissions_dir / f"{submission_id}.jsonl").write_text(
+        "\n".join(json.dumps(row, sort_keys=True) for row in rows)
+        + "\n",
+        encoding="utf-8",
+    )
+    (submissions_dir / f"{submission_id}.json").write_text(
+        json.dumps(
+            {
+                "schemaVersion": (
+                    "amazing-tablature-validation-disagreement-review-v1"
+                ),
+                "submissionId": submission_id,
+                "submissionDigest": submission_digest,
+                "packetDigest": packet_digest,
+                "modelId": model_id,
+                "modelArtifactSha256": model_sha,
+                "disagreementReportDigest": result[
+                    "disagreementDigest"
+                ],
+                "reviewCount": 1,
+                "eligibleForTraining": False,
+                "validationGroundTruthMayTrain": False,
+                "sealedTestAccessed": False,
+            },
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    adjudicated = store.adjudicate_validation_machine_disagreements(
+        model_id,
+        batch_id="atb-machine-validation",
+        score_report_digest=result["reportDigest"],
+        submission_id=submission_id,
+    )
+    assert adjudicated["metrics"][
+        "acceptedTopChoiceCorrectCount"
+    ] == 2
+    assert adjudicated["metrics"]["acceptedTopChoiceAccuracy"] == 1.0
+    assert adjudicated["metrics"][
+        "strictSourceTopChoiceCorrectCount"
+    ] == 1
+    assert adjudicated["statusCounts"] == {"challenger_valid": 1}
+    assert adjudicated["gate"]["canonicalGatePassed"] is False
+    assert adjudicated["gate"]["privateRuntimeEnableAllowed"] is False
+    assert adjudicated["humanAdjudicationUsed"] is True
+    assert adjudicated["validationMayTrain"] is False
+    assert adjudicated["sealedTestAccessed"] is False
+    assert model_path.read_bytes() == model_before
+    assert not (batch_dir / "accepted-decisions.jsonl").exists()
+
     corrupted = json.loads(candidate_path.read_text(encoding="utf-8"))
     corrupted["validationMayTrain"] = True
     candidate_path.write_text(
