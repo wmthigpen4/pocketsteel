@@ -6010,7 +6010,7 @@ def _validation_line_preflight_blockers(
         blockers.append("score_events_missing")
     if tab_state_count < 1:
         blockers.append("tablature_events_missing")
-    if score_count != tab_attack_count:
+    if score_count not in {tab_attack_count, tab_state_count}:
         blockers.append("score_tablature_event_count_mismatch")
     if len(score_attacks) != score_count or any(
         not attack.get("pitches") or not attack.get("pitchValues")
@@ -6530,6 +6530,71 @@ def _validation_machine_score_from_existing_omr(
     return score_events, recognition
 
 
+def _validation_deterministic_score_consensus(
+    score_system: Mapping[str, Any],
+    *,
+    score_crop_path: Path,
+    omr_path: Path,
+    expected_event_counts: Collection[int],
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Require complete MusicXML pitches and independent source-image geometry."""
+
+    score_events, recognition = _validation_machine_score_from_existing_omr(
+        score_system,
+        expected_event_counts=expected_event_counts,
+    )
+    if not score_crop_path.exists() or not omr_path.exists():
+        raise ExtractionWorkflowError(
+            "Deterministic validation score consensus lacks its source artifacts."
+        )
+    noteheads = _audiveris_notehead_columns(omr_path)
+    hybrid = _score_projection_component_hybrid(
+        score_crop_path,
+        noteheads,
+    )
+    score_attack_count = len(_ordered_score_attacks(score_system))
+    score_note_count = sum(not event.get("rest") for event in score_events)
+    source_counts = {
+        "musicXmlAttackCount": score_attack_count,
+        "musicXmlNoteCount": score_note_count,
+        "noteheadColumnCount": int(noteheads.get("columnCount") or 0),
+        "noteheadGeometryColumnCount": int(
+            noteheads.get("geometryColumnCount") or 0
+        ),
+        "noteheadCount": int(noteheads.get("headCount") or 0),
+        "projectionHybridAttackCount": int(
+            hybrid.get("fusedAttackCount") or 0
+        ),
+    }
+    if (
+        source_counts["musicXmlAttackCount"]
+        != source_counts["noteheadColumnCount"]
+        or source_counts["musicXmlAttackCount"]
+        != source_counts["noteheadGeometryColumnCount"]
+        or source_counts["musicXmlAttackCount"]
+        != source_counts["projectionHybridAttackCount"]
+        or source_counts["musicXmlNoteCount"]
+        != source_counts["noteheadCount"]
+    ):
+        raise ExtractionWorkflowError(
+            "Deterministic validation score sources disagree: "
+            + json.dumps(source_counts, sort_keys=True)
+        )
+    recognition = {
+        **recognition,
+        "captureSource": "musicxml_plus_source_geometry_consensus",
+        "scoreCropSha256": _sha256_bytes(score_crop_path.read_bytes()),
+        "omrSha256": _sha256_bytes(omr_path.read_bytes()),
+        "sourceCounts": source_counts,
+        "noteheadDetectorVersion": noteheads.get("detectorVersion"),
+        "projectionDetectorVersion": hybrid.get("detectorVersion"),
+        "sourceOnly": True,
+        "expectedCountProvidedToReaders": False,
+        "tablatureProvidedToReaders": False,
+    }
+    return score_events, recognition
+
+
 def _validation_score_events_from_score_only_recognition(
     *,
     input_id: str,
@@ -6650,6 +6715,36 @@ def _parallel_validation_reader_calls(
         return [future.result() for future in futures]
 
 
+def _validation_score_support_required(
+    score_system: Mapping[str, Any],
+    consensus_line: Mapping[str, Any] | None,
+    *,
+    consensus_report_digest: str,
+) -> bool:
+    """Return whether a complete tab line still lacks pinned score-only evidence."""
+
+    if (
+        not isinstance(consensus_line, Mapping)
+        or consensus_line.get("status") != "complete_machine_candidate"
+    ):
+        return False
+    recapture = score_system.get("machineRecapture") or {}
+    return not (
+        recapture.get("schemaVersion") == VALIDATION_MACHINE_RECAPTURE_VERSION
+        and recapture.get("scorePitchSource")
+        in {
+            "musicxml_plus_source_geometry_consensus",
+            "two_reader_score_only_consensus",
+        }
+        and recapture.get("sourceContactConsensusReportDigest")
+        == consensus_report_digest
+        and re.fullmatch(
+            r"[0-9a-f]{64}",
+            str(recapture.get("sourceContactCandidateDigest") or ""),
+        )
+    )
+
+
 def _validation_score_only_consensus_recapture(
     *,
     input_id: str,
@@ -6657,6 +6752,7 @@ def _validation_score_only_consensus_recapture(
     score_crop_path: Path,
     readers: Sequence[LocalTabSystemVision],
     expected_event_counts: Collection[int],
+    existing_omr_event_count: int | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """Recapture a score only when two independent reader seeds agree.
 
@@ -6721,16 +6817,34 @@ def _validation_score_only_consensus_recapture(
         # about which columns are continuations. Admit only counts that receive
         # at least two source-only votes across the readers' visible-column and
         # attack counts. The later pitch readers must still agree exactly, and
-        # multiple surviving counts fail closed.
+        # multiple surviving counts fail closed. A frozen OMR count may act as
+        # a third independent score-only modality, but only when at least one
+        # visual reader independently proposed the same count.
+        reader_count_hypotheses: list[set[int]] = []
         for visible_count, attack_count, _continuation_count, _flags in count_signatures:
+            reader_count_hypotheses.append({visible_count, attack_count})
             source_only_count_votes[visible_count] += 1
             source_only_count_votes[attack_count] += 1
+        cross_reader_counts = set.intersection(*reader_count_hypotheses)
+        omr_supported_counts: set[int] = set()
+        if (
+            existing_omr_event_count is not None
+            and existing_omr_event_count in allowed_counts
+            and any(
+                existing_omr_event_count in hypotheses
+                for hypotheses in reader_count_hypotheses
+            )
+        ):
+            omr_supported_counts.add(existing_omr_event_count)
+            source_only_count_votes[existing_omr_event_count] += 1
         candidate_counts = sorted(
-            count
-            for count, votes in source_only_count_votes.items()
-            if votes >= 2 and count in allowed_counts
+            (cross_reader_counts | omr_supported_counts) & allowed_counts
         )
-        count_consensus_mode = "repeated_source_only_count_hypothesis"
+        count_consensus_mode = (
+            "existing_omr_plus_score_reader_consensus"
+            if omr_supported_counts
+            else "cross_reader_source_only_count_hypothesis"
+        )
     candidate_counts = [
         count for count in candidate_counts if count in allowed_counts
     ]
@@ -27509,6 +27623,19 @@ class AmazingTablatureExtractor:
             raise ExtractionWorkflowError(
                 "Validation recapture contact-consensus lineage is stale or unsafe."
             )
+        complete_consensus_lines_by_tab_id: dict[str, dict[str, Any]] = {}
+        for raw_line in consensus_report.get("lines") or ():
+            if (
+                not isinstance(raw_line, Mapping)
+                or raw_line.get("status") != "complete_machine_candidate"
+            ):
+                continue
+            tab_system_id = str(raw_line.get("tabSystemId") or "")
+            if not tab_system_id or tab_system_id in complete_consensus_lines_by_tab_id:
+                raise ExtractionWorkflowError(
+                    "Validation contact consensus has duplicate or missing tab-system lineage."
+                )
+            complete_consensus_lines_by_tab_id[tab_system_id] = dict(raw_line)
         independent_cell_reader = str(extraction_summary.get("tabReader") or "")
         if not independent_cell_reader:
             raise ExtractionWorkflowError(
@@ -27565,8 +27692,8 @@ class AmazingTablatureExtractor:
             ),
             "tabLocalizationPromptVersion": TAB_SYSTEM_LOCALIZATION_PROMPT_VERSION,
             "scorePitchSources": [
-                "mandatory_two_reader_score_only_consensus",
-                "existing_independent_audiveris_musicxml_diagnostic_only",
+                "musicxml_plus_source_notehead_and_projection_geometry_consensus",
+                "two_reader_score_only_consensus_fallback",
             ],
             "scoreOnlyReaderContracts": [
                 reader.contract() for reader in score_only_readers
@@ -27659,7 +27786,15 @@ class AmazingTablatureExtractor:
                     key_signature_known=key_known,
                     blocking_issue_count=_validation_capture_issue_count(existing_issues),
                 )
-                if not existing_blockers:
+                complete_consensus_line = complete_consensus_lines_by_tab_id.get(
+                    tab_system_id
+                )
+                score_support_required = _validation_score_support_required(
+                    score_system,
+                    complete_consensus_line,
+                    consensus_report_digest=str(consensus_report["reportDigest"]),
+                )
+                if not existing_blockers and not score_support_required:
                     continue
                 selected_count += 1
                 result_core: dict[str, Any] = {
@@ -27667,10 +27802,354 @@ class AmazingTablatureExtractor:
                     "scoreSystemId": score_system_id,
                     "tabSystemId": tab_system_id,
                     "systemIndex": int(score_system.get("systemIndex") or 0),
-                    "priorBlockers": existing_blockers,
+                    "priorBlockers": (
+                        existing_blockers
+                        if existing_blockers
+                        else ["score_supported_validation_evidence_missing"]
+                    ),
                     "applied": False,
                 }
                 try:
+                    if score_support_required:
+                        if complete_consensus_line is None:
+                            raise ExtractionWorkflowError(
+                                "Score-support enrichment lost its complete tab line."
+                            )
+                        candidate_path = (
+                            output_root
+                            / str(complete_consensus_line.get("candidatePath") or "")
+                        ).resolve()
+                        allowed_candidate_root = (
+                            output_root
+                            / "review"
+                            / "automation"
+                            / VALIDATION_CONTACT_CONSENSUS_VERSION
+                            / "candidates"
+                        ).resolve()
+                        try:
+                            candidate_path.relative_to(allowed_candidate_root)
+                        except ValueError as exc:
+                            raise ExtractionWorkflowError(
+                                "A score-support candidate escaped its private directory."
+                            ) from exc
+                        if not candidate_path.exists():
+                            raise ExtractionWorkflowError(
+                                "A complete score-support candidate is missing."
+                            )
+                        contact_candidate = _read_json(candidate_path)
+                        contact_candidate_core = {
+                            key: value
+                            for key, value in contact_candidate.items()
+                            if key != "candidateDigest"
+                        }
+                        contact_candidate_digest = str(
+                            contact_candidate.get("candidateDigest") or ""
+                        )
+                        contact_diagnostics = (
+                            contact_candidate.get("diagnostics") or {}
+                        )
+                        contact_events = [
+                            copy.deepcopy(dict(event))
+                            for event in contact_candidate.get("events") or ()
+                            if isinstance(event, Mapping)
+                        ]
+                        if (
+                            contact_candidate.get("schemaVersion")
+                            != VALIDATION_CONTACT_CONSENSUS_VERSION
+                            or contact_candidate.get("batchId") != batch_id
+                            or contact_candidate.get("partition") != "validation"
+                            or contact_candidate.get("status")
+                            != "complete_machine_candidate"
+                            or contact_candidate.get("inputId") != input_id
+                            or int(contact_candidate.get("systemIndex") or 0)
+                            != int(score_system.get("systemIndex") or 0)
+                            or contact_candidate.get("tabSystemId") != tab_system_id
+                            or contact_candidate.get("validationRunDigest")
+                            != extraction_summary.get("runDigest")
+                            or contact_candidate.get("validationModel")
+                            != validation_model
+                            or contact_candidate.get("machineRecordDigest")
+                            != _sha256_json(record)
+                            or contact_candidate_digest
+                            != str(
+                                complete_consensus_line.get("candidateDigest") or ""
+                            )
+                            or _sha256_json(contact_candidate_core)
+                            != contact_candidate_digest
+                            or contact_diagnostics.get("allCellsResolved") is not True
+                            or contact_diagnostics.get("allColumnsDecoded") is not True
+                            or contact_diagnostics.get("mechanicallyValid") is not True
+                            or int(
+                                contact_diagnostics.get("unresolvedCellCount") or 0
+                            )
+                            != 0
+                            or contact_candidate.get("humanTruthUsed") is not False
+                            or contact_candidate.get("validationMayTrain") is not False
+                            or contact_candidate.get("sealedTestAccessed") is not False
+                            or not contact_events
+                        ):
+                            raise ExtractionWorkflowError(
+                                "A complete score-support candidate is stale or unsafe."
+                            )
+                        expected_count = len(contact_events)
+                        picked_count = sum(
+                            event.get("executionType") != "movement_only"
+                            for event in contact_events
+                        )
+                        score_crop_path = (
+                            output_root
+                            / "score-crops"
+                            / input_id
+                            / (
+                                "score-system-"
+                                f"{int(score_system.get('systemIndex') or 0):02d}.png"
+                            )
+                        )
+                        raw_omr_path = Path(
+                            str(score_system.get("_omrPath") or "")
+                        )
+                        omr_path = (
+                            raw_omr_path
+                            if raw_omr_path.is_absolute()
+                            else output_root / raw_omr_path
+                        )
+                        deterministic_score_rejection: str | None = None
+                        try:
+                            score_events, score_recognition = (
+                                _validation_deterministic_score_consensus(
+                                    score_system,
+                                    score_crop_path=score_crop_path,
+                                    omr_path=omr_path,
+                                    expected_event_counts={
+                                        expected_count,
+                                        picked_count,
+                                    },
+                                )
+                            )
+                        except ExtractionWorkflowError as exc:
+                            deterministic_score_rejection = str(exc)
+                            existing_omr_events: list[dict[str, Any]] = []
+                            existing_omr_event_count: int | None = None
+                            existing_omr_recognition: dict[str, Any] | None = None
+                            try:
+                                (
+                                    existing_omr_events,
+                                    existing_omr_recognition,
+                                ) = _validation_machine_score_from_existing_omr(
+                                    score_system,
+                                    expected_event_counts=range(
+                                        1,
+                                        expected_count + 1,
+                                    ),
+                                )
+                                existing_omr_event_count = len(
+                                    _score_event_groups_by_printed_position(
+                                        [
+                                            event
+                                            for event in existing_omr_events
+                                            if not event.get("rest")
+                                        ]
+                                    )
+                                )
+                            except ExtractionWorkflowError:
+                                existing_omr_event_count = None
+                                existing_omr_recognition = None
+                            score_events, score_recognition = (
+                                _validation_score_only_consensus_recapture(
+                                    input_id=input_id,
+                                    score_system=score_system,
+                                    score_crop_path=score_crop_path,
+                                    readers=score_only_readers,
+                                    expected_event_counts=range(
+                                        1,
+                                        expected_count + 1,
+                                    ),
+                                    existing_omr_event_count=(
+                                        existing_omr_event_count
+                                    ),
+                                )
+                            )
+                            score_recognition[
+                                "deterministicScoreConsensusRejection"
+                            ] = deterministic_score_rejection[:500]
+                            if existing_omr_recognition is not None:
+                                score_recognition["existingOmrDiagnostic"] = {
+                                    "captureSource": (
+                                        "existing_independent_musicxml"
+                                    ),
+                                    "eventCount": existing_omr_event_count,
+                                    "agreesWithScoreOnlyConsensus": (
+                                        existing_omr_event_count
+                                        == int(
+                                            score_recognition.get("eventCount")
+                                            or 0
+                                        )
+                                    ),
+                                    "musicXmlSha256": (
+                                        existing_omr_recognition.get(
+                                            "musicXmlSha256"
+                                        )
+                                    ),
+                                }
+                        score_tab_diagnostics = (
+                            _machine_score_tab_containment_diagnostics(
+                                score_events,
+                                contact_events,
+                            )
+                        )
+                        if not _machine_score_is_contained_in_tab(
+                            score_events,
+                            contact_events,
+                        ):
+                            raise ExtractionWorkflowError(
+                                "Independent score pitches are not contained in the "
+                                "complete contact-consensus tab states: "
+                                + json.dumps(score_tab_diagnostics, sort_keys=True)
+                            )
+                        candidate_record = copy.deepcopy(record)
+                        candidate_score = next(
+                            system
+                            for system in candidate_record.get("scoreSystems") or []
+                            if str(system.get("scoreSystemId") or "")
+                            == score_system_id
+                        )
+                        candidate_tab = next(
+                            system
+                            for system in candidate_record.get("tabSystems") or []
+                            if str(system.get("tabSystemId") or "")
+                            == tab_system_id
+                        )
+                        candidate_score["scoreEvents"] = score_events
+                        candidate_score["scoreAttackCount"] = int(
+                            score_recognition["eventCount"]
+                        )
+                        candidate_score["keyFifths"] = int(
+                            score_recognition["keySignatureFifths"]
+                        )
+                        candidate_score["keySignatureFifths"] = int(
+                            score_recognition["keySignatureFifths"]
+                        )
+                        candidate_score["omrStatus"] = (
+                            "machine_verified_score_only_consensus"
+                        )
+                        candidate_score["machineRecapture"] = {
+                            "schemaVersion": VALIDATION_MACHINE_RECAPTURE_VERSION,
+                            "contractDigest": contract_digest,
+                            "expectedEventCount": expected_count,
+                            "scorePitchSource": score_recognition["captureSource"],
+                            "tabExecutionSource": (
+                                "complete_contact_consensus_candidate"
+                            ),
+                            "sourceContactConsensusReportDigest": (
+                                consensus_report["reportDigest"]
+                            ),
+                            "sourceContactCandidateDigest": (
+                                contact_candidate_digest
+                            ),
+                            "humanTruthUsed": False,
+                        }
+                        candidate_tab["tabEvents"] = contact_events
+                        _revalidate_corrected_record(
+                            candidate_record,
+                            profile,
+                            include_movement_only_tab_system_ids={tab_system_id},
+                        )
+                        recaptured_score = next(
+                            system
+                            for system in candidate_record.get("scoreSystems") or []
+                            if str(system.get("scoreSystemId") or "")
+                            == score_system_id
+                        )
+                        recaptured_tab = next(
+                            system
+                            for system in candidate_record.get("tabSystems") or []
+                            if str(system.get("tabSystemId") or "")
+                            == tab_system_id
+                        )
+                        recaptured_issues = [
+                            item
+                            for item in candidate_record.get("unresolved") or []
+                            if str(item.get("scoreSystemId") or "")
+                            == score_system_id
+                            or str(item.get("tabSystemId") or "")
+                            == tab_system_id
+                        ]
+                        final_blockers = _validation_line_preflight_blockers(
+                            _combined_score_tab_columns(
+                                recaptured_score,
+                                recaptured_tab,
+                            ),
+                            key_signature_known=True,
+                            blocking_issue_count=_validation_capture_issue_count(
+                                recaptured_issues
+                            ),
+                        )
+                        if final_blockers:
+                            raise ExtractionWorkflowError(
+                                "Score-supported line failed structural preflight: "
+                                + ", ".join(final_blockers)
+                            )
+                        candidate_record["revision"] = (
+                            int(record.get("revision") or 1) + 1
+                        )
+                        candidate_record.setdefault(
+                            "validationMachineRecaptures", []
+                        ).append(
+                            {
+                                "schemaVersion": VALIDATION_MACHINE_RECAPTURE_VERSION,
+                                "scoreSystemId": score_system_id,
+                                "tabSystemId": tab_system_id,
+                                "contractDigest": contract_digest,
+                                "expectedEventCount": expected_count,
+                                "scorePitchSource": score_recognition[
+                                    "captureSource"
+                                ],
+                                "tabExecutionSource": (
+                                    "complete_contact_consensus_candidate"
+                                ),
+                                "sourceContactConsensusReportDigest": (
+                                    consensus_report["reportDigest"]
+                                ),
+                                "sourceContactCandidateDigest": (
+                                    contact_candidate_digest
+                                ),
+                                "humanTruthUsed": False,
+                                "validationMayTrain": False,
+                            }
+                        )
+                        if apply:
+                            prior_digest = _sha256_json(record)
+                            archive_path = (
+                                revision_dir / input_id / f"{prior_digest}.json"
+                            )
+                            if not archive_path.exists():
+                                _write_json(archive_path, record)
+                            _write_json(page_path, candidate_record)
+                            record = candidate_record
+                            tab_by_id[tab_system_id] = recaptured_tab
+                            applied_count += 1
+                        results.append(
+                            {
+                                **result_core,
+                                "status": "passed_score_support_preflight",
+                                "expectedEventCount": expected_count,
+                                "scoreAttackCount": int(
+                                    score_recognition["eventCount"]
+                                ),
+                                "scorePitchContainmentPassed": True,
+                                "scorePitchSource": score_recognition[
+                                    "captureSource"
+                                ],
+                                "tabExecutionSource": (
+                                    "complete_contact_consensus_candidate"
+                                ),
+                                "sourceContactCandidateDigest": (
+                                    contact_candidate_digest
+                                ),
+                                "applied": apply,
+                            }
+                        )
+                        continue
                     source_crop = _prepare_score_tab_source_crop(
                         output_root=output_root,
                         audit_dir=remediation_dir,
@@ -27827,6 +28306,19 @@ class AmazingTablatureExtractor:
                         existing_omr_rejection = str(exc)
                         omr_score_events = []
                         omr_score_recognition = None
+                    existing_omr_event_count = (
+                        len(
+                            _score_event_groups_by_printed_position(
+                                [
+                                    event
+                                    for event in omr_score_events
+                                    if not event.get("rest")
+                                ]
+                            )
+                        )
+                        if omr_score_recognition is not None
+                        else None
+                    )
                     system_index = int(score_system.get("systemIndex") or 0)
                     score_crop_path = (
                         output_root
@@ -27841,6 +28333,7 @@ class AmazingTablatureExtractor:
                             score_crop_path=score_crop_path,
                             readers=score_only_readers,
                             expected_event_counts=possible_score_counts,
+                            existing_omr_event_count=existing_omr_event_count,
                         )
                     )
                     if omr_score_recognition is not None:
@@ -28270,6 +28763,13 @@ class AmazingTablatureExtractor:
             if selected_count >= limit:
                 break
         status_counts = Counter(str(item["status"]) for item in results)
+        score_supported_line_count = int(
+            status_counts["passed_score_support_preflight"]
+        )
+        passed_line_count = (
+            int(status_counts["passed_machine_preflight"])
+            + score_supported_line_count
+        )
         report_core = {
             "schemaVersion": VALIDATION_MACHINE_RECAPTURE_VERSION,
             "batchId": batch_id,
@@ -28277,7 +28777,8 @@ class AmazingTablatureExtractor:
             "contract": contract,
             "contractDigest": contract_digest,
             "selectedLineCount": selected_count,
-            "passedLineCount": int(status_counts["passed_machine_preflight"]),
+            "passedLineCount": passed_line_count,
+            "scoreSupportedLineCount": score_supported_line_count,
             "withheldLineCount": int(status_counts["withheld"]),
             "appliedLineCount": applied_count,
             "applyRequested": apply,

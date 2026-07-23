@@ -87,7 +87,9 @@ from pocketsteel.amazing_tablature_extraction import (
     _validation_independent_contact_cells,
     _validation_ordered_equal_count_projection,
     _parallel_validation_reader_calls,
+    _validation_score_support_required,
     _validation_contact_tab_hypothesis,
+    _validation_deterministic_score_consensus,
     _validation_machine_score_from_existing_omr,
     _validation_score_events_from_score_only_recognition,
     _validation_score_only_consensus_recapture,
@@ -1267,6 +1269,39 @@ def test_validation_line_preflight_requires_complete_equal_renderings() -> None:
         key_signature_known=True,
         blocking_issue_count=0,
     ) == []
+    state_aligned = {
+        **complete_with_movement,
+        "scoreAttackCount": 3,
+        "scoreAttacks": [
+            score_attacks[0],
+            {
+                **score_attacks[0],
+                "eventIndex": 2,
+                "pitches": movement_state["pitches"],
+                "pitchValues": [74],
+            },
+            score_attacks[1],
+        ],
+        "columns": [
+            {"scoreAttack": score_attacks[0], "tabState": tab_states[0]},
+            {
+                "scoreAttack": {
+                    **score_attacks[0],
+                    "eventIndex": 2,
+                    "pitches": movement_state["pitches"],
+                    "pitchValues": [74],
+                },
+                "tabState": movement_state,
+                "relationship": "exact",
+            },
+            {"scoreAttack": score_attacks[1], "tabState": tab_states[1]},
+        ],
+    }
+    assert _validation_line_preflight_blockers(
+        state_aligned,
+        key_signature_known=True,
+        blocking_issue_count=0,
+    ) == []
 
 
 def test_validation_capture_issues_distinguish_reader_failures_from_musical_differences() -> None:
@@ -1887,13 +1922,76 @@ def test_validation_score_only_consensus_is_independent_and_preserves_score_geom
     )
     assert (
         disagreement_recognition["countConsensusMode"]
-        == "repeated_source_only_count_hypothesis"
+        == "cross_reader_source_only_count_hypothesis"
     )
     assert disagreement_recognition["sourceOnlyCountVotes"] == {
         "1": 1,
         "2": 3,
     }
     assert disagreement_recognition["sourceOnlyCountCandidates"] == [2]
+
+    class CountHypothesisReader(StubScoreReader):
+        def __init__(
+            self,
+            name: str,
+            *,
+            visible_count: int,
+            attack_count: int,
+        ) -> None:
+            super().__init__(name, x_positions=(0.2, 0.7))
+            self.visible_count = visible_count
+            self.attack_count = attack_count
+
+        def read_unconstrained_score_columns(
+            self, image_path: Path
+        ) -> dict[str, object]:
+            assert image_path == score_crop
+            count_calls.append(self.name)
+            continuation_count = self.visible_count - self.attack_count
+            return {
+                "events": [
+                    {
+                        "eventIndex": index,
+                        "x": index / (self.visible_count + 1),
+                        "continuationOnly": index > self.attack_count,
+                    }
+                    for index in range(1, self.visible_count + 1)
+                ],
+                "visibleColumnCount": self.visible_count,
+                "attackCount": self.attack_count,
+                "continuationOnlyCount": continuation_count,
+                "confidence": 0.97,
+                "uncertain": False,
+                "expectedCountProvided": False,
+                "tablatureProvided": False,
+            }
+
+    _events, omr_supported_recognition = (
+        _validation_score_only_consensus_recapture(
+            input_id="input-1",
+            score_system=score_system,
+            score_crop_path=score_crop,
+            readers=[
+                CountHypothesisReader(
+                    "reader-a",
+                    visible_count=2,
+                    attack_count=1,
+                ),
+                CountHypothesisReader(
+                    "reader-b",
+                    visible_count=3,
+                    attack_count=3,
+                ),
+            ],
+            expected_event_counts={2},
+            existing_omr_event_count=2,
+        )
+    )
+    assert (
+        omr_supported_recognition["countConsensusMode"]
+        == "existing_omr_plus_score_reader_consensus"
+    )
+    assert omr_supported_recognition["sourceOnlyCountCandidates"] == [2]
 
     with pytest.raises(ExtractionWorkflowError, match="pitch readers disagree"):
         _validation_score_only_consensus_recapture(
@@ -1976,6 +2074,146 @@ def test_parallel_validation_reader_calls_preserves_reader_order() -> None:
         {"reader": "first", "value": 7},
         {"reader": "second", "value": 7},
     ]
+
+
+def test_validation_score_support_required_is_digest_pinned() -> None:
+    line = {"status": "complete_machine_candidate"}
+    digest = "a" * 64
+    candidate_digest = "b" * 64
+
+    assert _validation_score_support_required(
+        {},
+        line,
+        consensus_report_digest=digest,
+    )
+    assert not _validation_score_support_required(
+        {
+            "machineRecapture": {
+                "schemaVersion": "validation-machine-recapture-v8",
+                "scorePitchSource": "two_reader_score_only_consensus",
+                "sourceContactConsensusReportDigest": digest,
+                "sourceContactCandidateDigest": candidate_digest,
+            }
+        },
+        line,
+        consensus_report_digest=digest,
+    )
+    assert not _validation_score_support_required(
+        {
+            "machineRecapture": {
+                "schemaVersion": "validation-machine-recapture-v8",
+                "scorePitchSource": "musicxml_plus_source_geometry_consensus",
+                "sourceContactConsensusReportDigest": digest,
+                "sourceContactCandidateDigest": candidate_digest,
+            }
+        },
+        line,
+        consensus_report_digest=digest,
+    )
+    assert _validation_score_support_required(
+        {
+            "machineRecapture": {
+                "schemaVersion": "validation-machine-recapture-v8",
+                "scorePitchSource": "two_reader_score_only_consensus",
+                "sourceContactConsensusReportDigest": "c" * 64,
+                "sourceContactCandidateDigest": candidate_digest,
+            }
+        },
+        line,
+        consensus_report_digest=digest,
+    )
+    assert not _validation_score_support_required(
+        {},
+        {"status": "withheld_incomplete"},
+        consensus_report_digest=digest,
+    )
+
+
+def test_validation_deterministic_score_consensus_requires_all_source_counts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    score_crop = tmp_path / "score.png"
+    omr_path = tmp_path / "score.omr"
+    score_crop.write_bytes(b"score")
+    omr_path.write_bytes(b"omr")
+    score_events = [
+        {"scoreEventId": "s1", "pitchValue": 60, "rest": False},
+        {"scoreEventId": "s2", "pitchValue": 62, "rest": False},
+    ]
+    monkeypatch.setattr(
+        "pocketsteel.amazing_tablature_extraction."
+        "_validation_machine_score_from_existing_omr",
+        lambda *_args, **_kwargs: (
+            score_events,
+            {
+                "captureSource": "existing_independent_musicxml",
+                "eventCount": 2,
+                "keySignatureFifths": 0,
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        "pocketsteel.amazing_tablature_extraction._ordered_score_attacks",
+        lambda *_args, **_kwargs: [{}, {}],
+    )
+    monkeypatch.setattr(
+        "pocketsteel.amazing_tablature_extraction._audiveris_notehead_columns",
+        lambda *_args, **_kwargs: {
+            "detectorVersion": "heads-v1",
+            "columnCount": 2,
+            "geometryColumnCount": 2,
+            "headCount": 2,
+        },
+    )
+    monkeypatch.setattr(
+        "pocketsteel.amazing_tablature_extraction."
+        "_score_projection_component_hybrid",
+        lambda *_args, **_kwargs: {
+            "detectorVersion": "hybrid-v1",
+            "fusedAttackCount": 2,
+        },
+    )
+
+    events, recognition = _validation_deterministic_score_consensus(
+        {},
+        score_crop_path=score_crop,
+        omr_path=omr_path,
+        expected_event_counts={2},
+    )
+    assert events == score_events
+    assert (
+        recognition["captureSource"]
+        == "musicxml_plus_source_geometry_consensus"
+    )
+    assert recognition["sourceCounts"] == {
+        "musicXmlAttackCount": 2,
+        "musicXmlNoteCount": 2,
+        "noteheadColumnCount": 2,
+        "noteheadGeometryColumnCount": 2,
+        "noteheadCount": 2,
+        "projectionHybridAttackCount": 2,
+    }
+
+    monkeypatch.setattr(
+        "pocketsteel.amazing_tablature_extraction._audiveris_notehead_columns",
+        lambda *_args, **_kwargs: {
+            "detectorVersion": "heads-v1",
+            "columnCount": 2,
+            "geometryColumnCount": 2,
+            "headCount": 1,
+        },
+    )
+    with pytest.raises(
+        ExtractionWorkflowError,
+        match="Deterministic validation score sources disagree",
+    ):
+        _validation_deterministic_score_consensus(
+            {},
+            score_crop_path=score_crop,
+            omr_path=omr_path,
+            expected_event_counts={2},
+        )
 
 
 def test_validation_score_only_event_normalization_rejects_tab_geometry() -> None:
