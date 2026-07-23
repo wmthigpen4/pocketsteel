@@ -6853,8 +6853,15 @@ def _prepare_score_omr_crop(
         active_x = np.where(np.count_nonzero(horizontal[row_mask], axis=0) > 0)[0]
         if len(active_x):
             gap = float(np.median(np.diff(staff_lines)))
-            left = max(0, int(math.floor(float(active_x.min()) - gap * 4.0)))
-            right = min(image.width, int(math.ceil(float(active_x.max()) + gap * 4.0)))
+            # Keep the complete horizontal system.  Old instructional scans
+            # often have interrupted, bowed, or faint staff rules near the
+            # clef and final notes.  Using the detected horizontal-run extent
+            # as a crop boundary therefore removed the clef/key at the left
+            # and late attacks at the right even though those symbols were
+            # plainly present in the source.  The parent score-system crop is
+            # already horizontally bounded; only tighten it vertically here.
+            left = 0
+            right = image.width
             top = max(0, int(math.floor(staff_lines[0] - gap * 3.2)))
             bottom = min(image.height, int(math.ceil(staff_lines[-1] + gap * 3.0)))
             if right - left >= image.width * 0.35 and bottom - top >= gap * 7.0:
@@ -8377,8 +8384,23 @@ class LocalTabSystemVision(LocalTabVision):
         events: list[dict[str, Any]] = []
         previous_x = -1.0
         for event_index, raw_event in enumerate(raw_events, start=1):
-            x = float(raw_event.get("x"))
-            if not 0.0 <= x <= 1.0 or x < previous_x:
+            reported_x = float(raw_event.get("x"))
+            if not 0.0 <= reported_x <= 1.0:
+                raise ExtractionWorkflowError(
+                    "Localized event positions must fall within the system."
+                )
+            # A numbered guide is the authoritative chronological geometry.
+            # Vision sometimes returns otherwise correct guide-indexed cells
+            # with noisy or reversed x values.  Guided callers replace this
+            # normalized ordinal with the exact detector coordinate, so do
+            # not reject a complete state transcription based on a redundant
+            # model-estimated position.
+            x = (
+                event_index / (expected_event_count + 1)
+                if guided
+                else reported_x
+            )
+            if not guided and x < previous_x:
                 raise ExtractionWorkflowError(
                     "Localized event positions must be ordered within the system."
                 )
@@ -8405,6 +8427,11 @@ class LocalTabSystemVision(LocalTabVision):
                     "eventIndex": event_index,
                     "guideIndex": int(raw_event.get("guideIndex") or event_index),
                     "x": round(x, 6),
+                    **(
+                        {"reportedX": round(reported_x, 6)}
+                        if guided
+                        else {}
+                    ),
                     "execution": execution,
                     "cells": sorted(cells, key=lambda cell: int(cell["string"])),
                 }
@@ -10821,13 +10848,27 @@ class AudiverisReader:
             raise ExtractionWorkflowError(
                 "Audiveris is unavailable; set AUDIVERIS_BIN or mount the reviewed app image."
             )
-        output_dir.mkdir(parents=True, exist_ok=True)
-        candidates = sorted([*output_dir.rglob("*.mxl"), *output_dir.rglob("*.musicxml"), *output_dir.rglob("*.xml")])
+        # Audiveris output is a cache of one exact OMR derivative, not merely
+        # of an input/system identity.  Key the cache by the derivative bytes
+        # so a crop repair cannot silently reuse MusicXML made from a formerly
+        # truncated image.  Older unkeyed runs remain preserved for lineage
+        # but are never selected for a different crop.
+        crop_sha256 = _sha256_bytes(crop_path.read_bytes())
+        run_dir = output_dir / f"source-{crop_sha256[:16]}"
+        run_dir.mkdir(parents=True, exist_ok=True)
+        candidates = sorted(
+            [
+                *run_dir.rglob("*.mxl"),
+                *run_dir.rglob("*.musicxml"),
+                *run_dir.rglob("*.xml"),
+            ]
+        )
         if candidates:
             payload = _parse_musicxml(candidates[0], system_id)
             payload["_musicXmlPath"] = str(candidates[0])
-            omr_candidates = sorted(output_dir.rglob("*.omr"))
+            omr_candidates = sorted(run_dir.rglob("*.omr"))
             payload["_omrPath"] = str(omr_candidates[0]) if len(omr_candidates) == 1 else None
+            payload["_sourceCropSha256"] = crop_sha256
             return payload
         result = subprocess.run(
             [
@@ -10836,7 +10877,7 @@ class AudiverisReader:
                 "-transcribe",
                 "-export",
                 "-output",
-                str(output_dir),
+                str(run_dir),
                 str(crop_path),
             ],
             check=False,
@@ -10847,13 +10888,20 @@ class AudiverisReader:
         )
         if result.returncode != 0:
             raise ExtractionWorkflowError(f"Audiveris failed for {crop_path.name}: {result.stderr[-500:].strip()}")
-        candidates = sorted([*output_dir.rglob("*.mxl"), *output_dir.rglob("*.musicxml"), *output_dir.rglob("*.xml")])
+        candidates = sorted(
+            [
+                *run_dir.rglob("*.mxl"),
+                *run_dir.rglob("*.musicxml"),
+                *run_dir.rglob("*.xml"),
+            ]
+        )
         if not candidates:
             raise ExtractionWorkflowError(f"Audiveris produced no MusicXML for {crop_path.name}.")
         payload = _parse_musicxml(candidates[0], system_id)
         payload["_musicXmlPath"] = str(candidates[0])
-        omr_candidates = sorted(output_dir.rglob("*.omr"))
+        omr_candidates = sorted(run_dir.rglob("*.omr"))
         payload["_omrPath"] = str(omr_candidates[0]) if len(omr_candidates) == 1 else None
+        payload["_sourceCropSha256"] = crop_sha256
         return payload
 
 

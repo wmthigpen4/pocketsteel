@@ -2821,6 +2821,55 @@ def test_audiveris_mac_bundle_uses_headless_java_launcher(tmp_path: Path) -> Non
     assert reader.contract()["desktopWindowAllowed"] is False
 
 
+def test_audiveris_cache_is_keyed_by_exact_score_crop(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    binary = tmp_path / "audiveris"
+    binary.write_bytes(b"test")
+    binary.chmod(0o700)
+    crop = tmp_path / "score.png"
+    crop.write_bytes(b"crop-one")
+    output_dir = tmp_path / "omr"
+    launches: list[Path] = []
+
+    def fake_run(args: list[str], **_kwargs: Any) -> Any:
+        run_dir = Path(args[args.index("-output") + 1])
+        launches.append(run_dir)
+        run_dir.mkdir(parents=True, exist_ok=True)
+        (run_dir / "score.mxl").write_bytes(b"musicxml")
+        return type("Result", (), {"returncode": 0, "stderr": ""})()
+
+    monkeypatch.setattr(
+        "pocketsteel.amazing_tablature_extraction.subprocess.run",
+        fake_run,
+    )
+    monkeypatch.setattr(
+        "pocketsteel.amazing_tablature_extraction._parse_musicxml",
+        lambda _path, system_id: {"scoreSystemId": system_id},
+    )
+    reader = AudiverisReader(binary)
+
+    first = reader.read(crop, output_dir, "score-system-1")
+    cached = reader.read(crop, output_dir, "score-system-1")
+    first_sha = hashlib.sha256(b"crop-one").hexdigest()
+
+    assert first["_sourceCropSha256"] == first_sha
+    assert cached["_sourceCropSha256"] == first_sha
+    assert launches == [output_dir / f"source-{first_sha[:16]}"]
+
+    crop.write_bytes(b"crop-two")
+    second = reader.read(crop, output_dir, "score-system-1")
+    second_sha = hashlib.sha256(b"crop-two").hexdigest()
+
+    assert second["_sourceCropSha256"] == second_sha
+    assert launches == [
+        output_dir / f"source-{first_sha[:16]}",
+        output_dir / f"source-{second_sha[:16]}",
+    ]
+    assert first["_musicXmlPath"] != second["_musicXmlPath"]
+
+
 def test_detects_ten_string_grid_and_rejects_barlines_as_events() -> None:
     gray = np.asarray(_synthetic_tab())
     grids = detect_tab_grids(gray)
@@ -3601,6 +3650,10 @@ def test_score_omr_derivative_suppresses_only_connector_tails(tmp_path: Path) ->
         draw.line((100, y, 1100, y), fill="black", width=3)
     for x in (100, 500, 1100):
         draw.line((x, staff_lines[0] - 5, x, 500), fill="black", width=5)
+    # A faint late-system note can extend beyond the longest staff run that
+    # survives morphology.  The OMR derivative must retain it rather than
+    # turning a complete line into a missing-final-events failure.
+    draw.ellipse((1140, 112, 1164, 128), fill="black")
     score.save(source)
     grid = detect_tab_grids(np.asarray(_synthetic_tab()))[0]
     events = [
@@ -3613,12 +3666,15 @@ def test_score_omr_derivative_suppresses_only_connector_tails(tmp_path: Path) ->
     with Image.open(source) as original, Image.open(target) as prepared:
         assert original.getpixel((500, 400)) == (0, 0, 0)
         crop = metadata["cropBounds"]
+        assert crop["left"] == 0
+        assert crop["right"] == original.width
         assert crop["bottom"] < 400
         assert prepared.getpixel(
             (500 - crop["left"], staff_lines[2] - crop["top"])
         ) == (0, 0, 0)
         assert prepared.width == crop["right"] - crop["left"]
         assert prepared.height == crop["bottom"] - crop["top"]
+        assert prepared.getpixel((1152, 120 - crop["top"])) == (0, 0, 0)
     assert metadata["sourcePreserved"] is True
     assert metadata["aspectRatioPreserved"] is True
     assert any(abs(value - 500) <= 2 for value in metadata["suppressedBarlineXs"])
@@ -4672,13 +4728,13 @@ def test_whole_system_localizer_honors_reviewed_count_and_preserves_visible_cell
                             {
                                 "events": [
                                     {
-                                        "x": 0.6,
+                                        "x": 0.2,
                                         "guideIndex": 2,
                                         "execution": "movement_only",
                                         "cells": [{"string": 4, "token": "3F"}],
                                     },
                                     {
-                                        "x": 0.2,
+                                        "x": 0.6,
                                         "guideIndex": 1,
                                         "execution": "attack",
                                         "cells": [{"string": 5, "token": "3A"}],
@@ -4711,6 +4767,8 @@ def test_whole_system_localizer_honors_reviewed_count_and_preserves_visible_cell
     assert result["events"][0]["cells"] == [{"string": 5, "token": "3A"}]
     assert result["events"][1]["execution"] == "movement_only"
     assert [event["guideIndex"] for event in result["events"]] == [1, 2]
+    assert [event["x"] for event in result["events"]] == pytest.approx([1 / 3, 2 / 3])
+    assert [event["reportedX"] for event in result["events"]] == [0.6, 0.2]
     assert result["reviewedCountConstraint"] == 2
     assert result["deterministicGeometryGuidesProvided"] is True
     assert "exactly 2" in captured_prompt
