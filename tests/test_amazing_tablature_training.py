@@ -8,7 +8,14 @@ import sys
 from pathlib import Path
 
 import pytest
+from PIL import Image, ImageDraw
 
+from pocketsteel.amazing_tablature_glyph_decoder import (
+    glyph_feature_vector,
+    glyph_label,
+    glyph_label_token,
+    train_glyph_decoder,
+)
 from pocketsteel.amazing_tablature_training import (
     AmazingTablatureTrainingStore,
     TrainingWorkflowError,
@@ -23,6 +30,53 @@ from pocketsteel.melody_models import PositionCandidate
 from pocketsteel.melody_ranker import FEATURE_NAMES, feature_vector, train_pairwise_ranker
 from pocketsteel.melody_ranker_adapter import runtime_candidate_feature_record
 from pocketsteel.tab_engine import TabNote
+
+
+def test_glyph_feature_vector_and_label_contract_are_deterministic() -> None:
+    image = Image.new("L", (120, 40), "white")
+    draw = ImageDraw.Draw(image)
+    draw.text((45, 8), "3A", fill="black")
+
+    first = glyph_feature_vector(image)
+    second = glyph_feature_vector(image)
+
+    assert first is not None
+    assert first == second
+    assert len(first) == 648
+    assert glyph_label(3, ["A"]) == "3|A"
+    assert glyph_label_token("3|A") == "3A"
+
+
+def test_glyph_decoder_calibrates_grouped_precision_and_abstention() -> None:
+    examples = []
+    for group in range(5):
+        for _sample in range(4):
+            examples.extend(
+                [
+                    {
+                        "contentUnitId": f"group-{group}",
+                        "label": "3|A",
+                        "feature": [1.0, 0.0],
+                    },
+                    {
+                        "contentUnitId": f"group-{group}",
+                        "label": "8|",
+                        "feature": [0.0, 1.0],
+                    },
+                ]
+            )
+
+    decoder = train_glyph_decoder(
+        examples,
+        source_cohort_id="batch-discovery",
+        minimum_cv_predictions=10,
+    )
+
+    assert decoder["automationEligible"] is True
+    assert decoder["thresholds"]["selectedConfidence"] is not None
+    assert decoder["validationDataUsed"] is False
+    assert decoder["sealedTestDataUsed"] is False
+    assert decoder["groupedCrossValidation"]["foldUnit"] == "content_unit"
 
 
 def test_discovery_line_readiness_is_line_scoped_and_explains_page_gates() -> None:

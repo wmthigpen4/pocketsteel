@@ -37,6 +37,10 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 from pocketsteel.amazing_tablature_decisions import DECISION_DERIVATION_VERSION, derive_decision_annotations
+from pocketsteel.amazing_tablature_glyph_decoder import (
+    GlyphDecoderError,
+    classify_glyph,
+)
 from pocketsteel.amazing_tablature_transition_decoder import (
     TransitionDecoderError,
     classify_transition,
@@ -13387,6 +13391,47 @@ def _tab_action_sequence_from_token(
             "blocking": True,
         }
     return actions, None
+
+
+def _validation_page_furniture_candidate_indexes(
+    tab_system: Mapping[str, Any],
+    *,
+    exact_position_tolerance: float = 1e-7,
+) -> set[int]:
+    """Identify high-recall candidates that are the detected barline itself.
+
+    The tab localizer intentionally over-generates candidates. A candidate is
+    safe to remove from event accounting only when it is already unresolved
+    and its horizontal position is exactly the same detected position as a
+    barline. Nearby attacks remain candidates.
+    """
+
+    barlines = [
+        float(value)
+        for value in tab_system.get("barlineHorizontalPositions") or ()
+    ]
+    excluded: set[int] = set()
+    if not barlines:
+        return excluded
+    for candidate in tab_system.get("tabEventCandidates") or ():
+        if (
+            not isinstance(candidate, Mapping)
+            or str(candidate.get("recognitionState") or "") != "unresolved"
+        ):
+            continue
+        try:
+            event_index = int(candidate.get("sourceCandidateEventIndex") or 0)
+            position = float(candidate.get("horizontalPosition"))
+        except (TypeError, ValueError):
+            continue
+        if event_index < 1:
+            continue
+        if any(
+            abs(position - barline) <= exact_position_tolerance
+            for barline in barlines
+        ):
+            excluded.add(event_index)
+    return excluded
 
 
 def _consensus_contact_sheet_tab_events(
@@ -27519,8 +27564,8 @@ class AmazingTablatureExtractor:
         *,
         reader_models: Sequence[str] = (
             "gemma4:12b",
-            "gemma4:latest",
             "gemma4:12b-mlx",
+            "gemma4:latest",
         ),
     ) -> dict[str, Any]:
         """Reconstruct validation tab states with multi-model semantic consensus.
@@ -27605,6 +27650,56 @@ class AmazingTablatureExtractor:
             decoder_artifact_sha256 = str(
                 decoder_metadata.get("artifactSha256") or ""
             )
+        glyph_candidates: list[
+            tuple[str, dict[str, Any], dict[str, Any]]
+        ] = []
+        for glyph_id, metadata in (
+            registry.get("sourceGlyphDecoders") or {}
+        ).items():
+            if (
+                not isinstance(metadata, Mapping)
+                or metadata.get("sourceBatchId") != batch_id
+                or metadata.get("automationEligible") is not True
+            ):
+                continue
+            artifact_path = self.private_root / str(
+                metadata.get("artifact") or ""
+            )
+            if (
+                not artifact_path.exists()
+                or _sha256_bytes(artifact_path.read_bytes())
+                != str(metadata.get("artifactSha256") or "")
+            ):
+                continue
+            glyph_decoder_candidate = _read_json(artifact_path)
+            if (
+                glyph_decoder_candidate.get("sourceManifestDigest")
+                != str(manifest.get("immutableDigest") or "")
+                or glyph_decoder_candidate.get("validationDataUsed") is not False
+                or glyph_decoder_candidate.get("sealedTestDataUsed") is not False
+            ):
+                continue
+            glyph_candidates.append(
+                (str(glyph_id), dict(metadata), glyph_decoder_candidate)
+            )
+        glyph_candidates.sort(
+            key=lambda value: (
+                str(value[2].get("createdAt") or ""),
+                value[0],
+            )
+        )
+        glyph_decoder_id: str | None = None
+        glyph_decoder: dict[str, Any] | None = None
+        glyph_decoder_artifact_sha256: str | None = None
+        if glyph_candidates:
+            (
+                glyph_decoder_id,
+                glyph_decoder_metadata,
+                glyph_decoder,
+            ) = glyph_candidates[-1]
+            glyph_decoder_artifact_sha256 = str(
+                glyph_decoder_metadata.get("artifactSha256") or ""
+            )
 
         automation_root = (
             output_root
@@ -27639,6 +27734,19 @@ class AmazingTablatureExtractor:
             f"{reader.model}:{str(contract['modelDigest'])[:12]}"
             for reader, contract in zip(readers, contracts, strict=True)
         ]
+        full_sheet_readers = tuple(
+            zip(
+                readers[:2],
+                reader_ids[:2],
+                contracts[:2],
+                strict=True,
+            )
+        )
+        glyph_reader_id = (
+            f"discovery-glyph:{glyph_decoder_id}"
+            if glyph_decoder_id and glyph_decoder is not None
+            else None
+        )
 
         def read_cells(
             reader: LocalTabVision,
@@ -27669,7 +27777,24 @@ class AmazingTablatureExtractor:
                         for key, value in cached["cells"].items()
                         if isinstance(value, Mapping)
                     }
-            cells = reader.read(image_path, labels)
+            cells: dict[str, dict[str, Any]] | None = None
+            last_error: ExtractionWorkflowError | None = None
+            for _attempt in range(2):
+                try:
+                    cells = reader.read(image_path, labels)
+                    break
+                except ExtractionWorkflowError as exc:
+                    last_error = exc
+            if cells is None:
+                cells = {
+                    str(label): {
+                        "token": None,
+                        "confidence": 0.0,
+                        "uncertain": True,
+                        "readerFailure": str(last_error or "reader_failed")[:200],
+                    }
+                    for label in labels
+                }
             _write_json(
                 cache_path,
                 {
@@ -27684,6 +27809,50 @@ class AmazingTablatureExtractor:
                 },
             )
             return cells
+
+        def read_discovery_glyph_cells(
+            image_path: Path,
+            labels: Sequence[str],
+        ) -> dict[str, dict[str, Any]]:
+            if glyph_decoder is None:
+                return {}
+            with Image.open(image_path) as image:
+                source = image.convert("RGB")
+                rows = int(math.ceil(len(labels) / 4))
+                card_width = source.width // 4
+                card_height = source.height // max(1, rows)
+                patch_width = max(1, card_width - 120)
+                patch_height = max(1, card_height - 42)
+                cells: dict[str, dict[str, Any]] = {}
+                for index, label in enumerate(labels):
+                    left = (index % 4) * card_width + 90
+                    top = (index // 4) * card_height + 30
+                    crop = source.crop(
+                        (
+                            left,
+                            top,
+                            min(source.width, left + patch_width),
+                            min(source.height, top + patch_height),
+                        )
+                    )
+                    try:
+                        decision = classify_glyph(glyph_decoder, crop)
+                    except GlyphDecoderError:
+                        decision = {
+                            "decision": "unresolved",
+                            "reason": "glyph_decoder_error",
+                        }
+                    cells[label] = {
+                        "token": (
+                            str(decision.get("token") or "")
+                            if decision.get("decision") == "semantic_glyph"
+                            else None
+                        ),
+                        "confidence": float(decision.get("confidence") or 0.0),
+                        "uncertain": decision.get("decision")
+                        != "semantic_glyph",
+                    }
+                return cells
 
         def decode_with_string_origin_consensus(
             *,
@@ -27867,13 +28036,36 @@ class AmazingTablatureExtractor:
             for tab_system in record.get("tabSystems") or ():
                 tab_system_id = str(tab_system.get("tabSystemId") or "")
                 system_index = int(tab_system.get("systemIndex") or 0)
+                excluded_page_furniture_indexes = (
+                    _validation_page_furniture_candidate_indexes(tab_system)
+                )
+                label_pattern = re.compile(
+                    r"^e(?P<event>\d+)s\d+$",
+                    re.I,
+                )
+
+                def is_page_furniture_label(label: str) -> bool:
+                    match = label_pattern.fullmatch(label)
+                    return bool(
+                        match
+                        and int(match.group("event"))
+                        in excluded_page_furniture_indexes
+                    )
+
                 labels: list[str] = []
                 cells_by_reader: dict[str, dict[str, dict[str, Any]]] = {
                     reader_id: {} for reader_id in reader_ids
                 }
+                if glyph_reader_id is not None:
+                    cells_by_reader[glyph_reader_id] = {}
                 for sheet in tab_system.get("contactSheets") or ():
-                    sheet_labels = [
+                    raw_sheet_labels = [
                         str(value) for value in sheet.get("labels") or ()
+                    ]
+                    sheet_labels = [
+                        label
+                        for label in raw_sheet_labels
+                        if not is_page_furniture_label(label)
                     ]
                     image_path = output_root / str(sheet.get("relativePath") or "")
                     if not image_path.exists():
@@ -27881,25 +28073,43 @@ class AmazingTablatureExtractor:
                             f"Contact sheet is missing for {input_id} system {system_index}."
                         )
                     labels.extend(sheet_labels)
-                    for reader, reader_id, contract in zip(
-                        readers,
-                        reader_ids,
-                        contracts,
-                        strict=True,
-                    ):
+                    if glyph_reader_id is not None:
+                        glyph_cells = read_discovery_glyph_cells(
+                            image_path,
+                            raw_sheet_labels,
+                        )
+                        cells_by_reader[glyph_reader_id].update(
+                            {
+                                label: cell
+                                for label, cell in glyph_cells.items()
+                                if not is_page_furniture_label(label)
+                            }
+                        )
+                    for reader, reader_id, contract in full_sheet_readers:
+                        raw_cells = read_cells(
+                            reader,
+                            reader_id,
+                            contract,
+                            image_path,
+                            raw_sheet_labels,
+                        )
                         cells_by_reader[reader_id].update(
-                            read_cells(
-                                reader,
-                                reader_id,
-                                contract,
-                                image_path,
-                                sheet_labels,
-                            )
+                            {
+                                label: cell
+                                for label, cell in raw_cells.items()
+                                if not is_page_furniture_label(label)
+                            }
                         )
                 events, diagnostics = decode_with_string_origin_consensus(
                     labels=labels,
                     cells_by_reader=cells_by_reader,
                     tab_system_id=tab_system_id,
+                )
+                diagnostics["excludedPageFurnitureCandidateCount"] = len(
+                    excluded_page_furniture_indexes
+                )
+                diagnostics["excludedPageFurnitureCandidateReason"] = (
+                    "unresolved_candidate_exactly_matches_detected_barline"
                 )
                 focused_sha256: str | None = None
                 if diagnostics["unresolvedCellCount"]:
@@ -27937,6 +28147,12 @@ class AmazingTablatureExtractor:
                             cells_by_reader=cells_by_reader,
                             tab_system_id=tab_system_id,
                         )
+                        diagnostics["excludedPageFurnitureCandidateCount"] = len(
+                            excluded_page_furniture_indexes
+                        )
+                        diagnostics["excludedPageFurnitureCandidateReason"] = (
+                            "unresolved_candidate_exactly_matches_detected_barline"
+                        )
                 complete = bool(
                     diagnostics["allCellsResolved"]
                     and diagnostics["allColumnsDecoded"]
@@ -27956,6 +28172,10 @@ class AmazingTablatureExtractor:
                     "sourceTransitionDecoder": {
                         "decoderId": decoder_id,
                         "artifactSha256": decoder_artifact_sha256,
+                    },
+                    "sourceGlyphDecoder": {
+                        "decoderId": glyph_decoder_id,
+                        "artifactSha256": glyph_decoder_artifact_sha256,
                     },
                     "events": events,
                     "diagnostics": diagnostics,
@@ -28009,6 +28229,10 @@ class AmazingTablatureExtractor:
             "sourceTransitionDecoder": {
                 "decoderId": decoder_id,
                 "artifactSha256": decoder_artifact_sha256,
+            },
+            "sourceGlyphDecoder": {
+                "decoderId": glyph_decoder_id,
+                "artifactSha256": glyph_decoder_artifact_sha256,
             },
             "readerContracts": contracts,
             "lineCount": len(line_results),

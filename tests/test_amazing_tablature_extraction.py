@@ -68,6 +68,7 @@ from pocketsteel.amazing_tablature_extraction import (
     _score_projection_component_hybrid,
     _constrain_source_head_groups_to_published_count,
     _source_first_system_key_signature,
+    _validation_page_furniture_candidate_indexes,
     _source_score_semantic_repair,
     _source_score_projection_shadow_metrics,
     _page_review_compatibility_version,
@@ -6398,6 +6399,31 @@ def test_contact_sheet_consensus_applies_one_global_string_origin_offset() -> No
     assert diagnostics["stringOffset"] == -1
     assert events[0]["steelActions"][0]["string"] == 5
     assert events[0]["steelActions"][0]["controls"] == ["A"]
+
+
+def test_validation_page_furniture_excludes_only_exact_unresolved_barlines() -> None:
+    tab_system = {
+        "barlineHorizontalPositions": [0.25, 0.5],
+        "tabEventCandidates": [
+            {
+                "sourceCandidateEventIndex": 1,
+                "horizontalPosition": 0.25,
+                "recognitionState": "unresolved",
+            },
+            {
+                "sourceCandidateEventIndex": 2,
+                "horizontalPosition": 0.2502,
+                "recognitionState": "unresolved",
+            },
+            {
+                "sourceCandidateEventIndex": 3,
+                "horizontalPosition": 0.5,
+                "recognitionState": "recognized",
+            },
+        ],
+    }
+
+    assert _validation_page_furniture_candidate_indexes(tab_system) == {1}
 
 
 def test_movement_chain_cell_is_retained_while_low_confidence_cell_is_quarantined() -> None:

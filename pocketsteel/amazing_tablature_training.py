@@ -21,6 +21,13 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
 
+from PIL import Image
+
+from pocketsteel.amazing_tablature_glyph_decoder import (
+    glyph_feature_vector,
+    glyph_label,
+    train_glyph_decoder,
+)
 from pocketsteel.amazing_tablature_input_parity import structured_input_parity_report
 from pocketsteel.amazing_tablature_transition_decoder import (
     train_transition_decoder,
@@ -3750,6 +3757,164 @@ class AmazingTablatureTrainingStore:
         artifact_sha256 = _sha256_bytes(artifact_path.read_bytes())
         registry = self._registry()
         registry.setdefault("sourceTransitionDecoders", {})[decoder["decoderId"]] = {
+            "artifact": str(artifact_path.relative_to(self.root)),
+            "artifactSha256": artifact_sha256,
+            "sourceBatchId": batch_id,
+            "status": payload["status"],
+            "createdAt": payload["createdAt"],
+            "automationEligible": automation_eligible,
+            "validationDataUsed": False,
+            "sealedTestDataUsed": False,
+        }
+        self._save_registry(registry)
+        return {
+            **payload,
+            "artifact": str(artifact_path.relative_to(self.root)),
+            "artifactSha256": artifact_sha256,
+        }
+
+    def build_discovery_glyph_decoder(self, batch_id: str) -> dict[str, Any]:
+        """Build a precision-first visual token decoder from approved discovery."""
+
+        self._require_active_batch(batch_id)
+        manifest, _state = self._batch(batch_id)
+        rights = self._rights_and_access(batch_id)
+        if (
+            rights.get("reviewStatus") != "approved"
+            or rights.get("rightsStatus") == "unknown"
+            or not bool(rights.get("allowedUses", {}).get("modelTraining"))
+        ):
+            raise TrainingWorkflowError(
+                f"{batch_id} lacks current modelTraining authorization."
+            )
+        extraction_root = self._batch_dir(batch_id) / "extraction" / "discovery"
+        approved_index_path = extraction_root / "review" / "approved-record-index.jsonl"
+        if not approved_index_path.exists():
+            raise TrainingWorkflowError(
+                f"{batch_id} has no approved discovery extraction index."
+            )
+        approved_index = {
+            str(item.get("inputId") or ""): item
+            for item in _read_jsonl(approved_index_path)
+            if item.get("status") == "human_approved"
+            and item.get("inputId")
+            and item.get("reviewedRecordPath")
+        }
+        examples: list[dict[str, Any]] = []
+        record_digests: list[str] = []
+        for input_id, item in sorted(approved_index.items()):
+            record_path = extraction_root / str(item["reviewedRecordPath"])
+            if not record_path.exists():
+                raise TrainingWorkflowError(
+                    f"Approved discovery record is missing: {batch_id}/{input_id}."
+                )
+            record = _read_json(record_path)
+            record_digest = _sha256_json(record)
+            if record_digest != str(item.get("reviewedRecordDigest") or ""):
+                raise TrainingWorkflowError(
+                    f"Approved discovery record digest changed: {batch_id}/{input_id}."
+                )
+            derivative = record.get("derivative") or {}
+            image_path = extraction_root / str(derivative.get("relativePath") or "")
+            if not image_path.exists():
+                raise TrainingWorkflowError(
+                    f"Approved discovery derivative is missing: {batch_id}/{input_id}."
+                )
+            content_unit_id = str(
+                record.get("contentUnitId") or record.get("inputId") or ""
+            )
+            actions_by_region: dict[str, list[Mapping[str, Any]]] = {}
+            for tab_system in record.get("tabSystems") or ():
+                for event in tab_system.get("tabEvents") or ():
+                    for action in event.get("steelActions") or ():
+                        region_id = str(action.get("pageRegionId") or "")
+                        if region_id and isinstance(action.get("pageRegion"), Mapping):
+                            actions_by_region.setdefault(region_id, []).append(action)
+            with Image.open(image_path) as image:
+                width, height = image.size
+                for actions in actions_by_region.values():
+                    signatures = {
+                        glyph_label(
+                            int(action.get("fret") or 0),
+                            action.get("controls") or (),
+                        )
+                        for action in actions
+                    }
+                    if len(signatures) != 1:
+                        continue
+                    region = actions[0]["pageRegion"]
+                    left = max(0, int(float(region["x"]) * width))
+                    top = max(0, int(float(region["y"]) * height))
+                    right = min(
+                        width,
+                        max(
+                            left + 1,
+                            int(
+                                (
+                                    float(region["x"])
+                                    + float(region["width"])
+                                )
+                                * width
+                            ),
+                        ),
+                    )
+                    bottom = min(
+                        height,
+                        max(
+                            top + 1,
+                            int(
+                                (
+                                    float(region["y"])
+                                    + float(region["height"])
+                                )
+                                * height
+                            ),
+                        ),
+                    )
+                    crop = image.crop(
+                        (left, top, right, bottom)
+                    )
+                    feature = glyph_feature_vector(crop)
+                    if feature is not None:
+                        examples.append(
+                            {
+                                "contentUnitId": content_unit_id,
+                                "label": next(iter(signatures)),
+                                "feature": feature,
+                            }
+                        )
+            record_digests.append(record_digest)
+        decoder = train_glyph_decoder(
+            examples,
+            source_cohort_id=batch_id,
+        )
+        automation_eligible = bool(decoder.get("automationEligible"))
+        payload = {
+            **decoder,
+            "createdAt": _utc_now(),
+            "status": (
+                "source_decoder_eligible"
+                if automation_eligible
+                else "diagnostic_only"
+            ),
+            "sourceManifestDigest": str(manifest.get("immutableDigest") or ""),
+            "sourceCopedentId": str(manifest.get("sourceCopedentId") or ""),
+            "approvedDiscoveryRecordCount": len(approved_index),
+            "approvedDiscoveryRecordSetDigest": _sha256_json(record_digests),
+            "codeRevision": _git_revision(self.repo_root),
+            "codeFileDigests": _rules_code_file_digests(self.repo_root),
+            "privacy": {
+                "containsSourceContent": False,
+                "containsProfileSnapshots": False,
+                "containsDerivedVisualFeatures": True,
+            },
+        }
+        artifact_dir = self.root / "source-glyph-decoders"
+        artifact_path = artifact_dir / f"{decoder['decoderId']}.json"
+        _write_json(artifact_path, payload)
+        artifact_sha256 = _sha256_bytes(artifact_path.read_bytes())
+        registry = self._registry()
+        registry.setdefault("sourceGlyphDecoders", {})[decoder["decoderId"]] = {
             "artifact": str(artifact_path.relative_to(self.root)),
             "artifactSha256": artifact_sha256,
             "sourceBatchId": batch_id,
