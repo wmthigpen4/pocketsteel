@@ -20,6 +20,7 @@ from pocketsteel.amazing_tablature_extraction import (
     FEEDBACK_CORRECTION_PLAN_SCHEMA_VERSION,
     EXTRACTOR_VERSION,
     PAGE_REVIEW_COMPATIBILITY_VERSION,
+    CANONICAL_VALIDATION_DATASET_REVIEW_SCHEMA_VERSION,
     AudiverisReader,
     GridDetection,
     SCORE_AUDIT_SCOPE_SCHEMA_VERSION,
@@ -49,6 +50,7 @@ from pocketsteel.amazing_tablature_extraction import (
     _combined_score_tab_columns,
     _consensus_contact_sheet_tab_events,
     _combined_score_tab_console_html,
+    _canonical_validation_console_html,
     _combined_feedback_score_audit_bridge,
     _derive_exercises,
     _derive_grips,
@@ -135,6 +137,7 @@ from pocketsteel.amazing_tablature_extraction import (
     _store_score_pitch_submission,
     _store_combined_score_tab_submission,
     _store_validation_line_audit_submission,
+    _store_canonical_validation_submission,
     _store_validation_disagreement_submission,
     _store_challenger_comparison_submission,
     _combined_review_alignments,
@@ -890,6 +893,171 @@ def test_validation_disagreement_submission_is_complete_and_never_trains(
     assert not (review_dir / "accepted-decisions.jsonl").exists()
 
 
+def test_canonical_validation_submission_requires_every_complete_line(
+    tmp_path: Path,
+) -> None:
+    private = tmp_path / "private"
+    model_id = "at-canonical-model"
+    review_dir = (
+        private
+        / "validation-evaluations"
+        / model_id
+        / "canonical-validation"
+    )
+    review_dir.mkdir(parents=True)
+    lines = [
+        {
+            "lineId": "line-score",
+            "batchId": "batch-main",
+            "inputId": "input-main",
+            "scoreSystemId": "score-main",
+            "tabSystemId": "tab-main",
+            "candidateDigest": "a" * 64,
+            "executionDigest": "b" * 64,
+            "evidenceMode": "score_supported",
+            "decisionIds": ["decision-1"],
+            "decisionCount": 1,
+        },
+        {
+            "lineId": "line-tab",
+            "batchId": "batch-licks",
+            "inputId": "input-licks",
+            "scoreSystemId": "score-licks",
+            "tabSystemId": "tab-licks",
+            "candidateDigest": "c" * 64,
+            "executionDigest": "d" * 64,
+            "evidenceMode": "tab_only",
+            "decisionIds": ["decision-2"],
+            "decisionCount": 1,
+        },
+    ]
+    packet_core = {
+        "schemaVersion": (
+            CANONICAL_VALIDATION_DATASET_REVIEW_SCHEMA_VERSION
+        ),
+        "reviewType": "canonical_validation",
+        "reviewScope": "authoritative_dataset",
+        "batchId": "batch-main",
+        "datasetId": "dataset-1",
+        "authoritativeBatchIds": ["batch-main", "batch-licks"],
+        "partition": "validation",
+        "modelId": model_id,
+        "modelArtifactSha256": "e" * 64,
+        "scoreReportDigest": "f" * 64,
+        "decisionLedgerDigest": "1" * 64,
+        "decisionDigest": "2" * 64,
+        "lines": lines,
+        "lineCount": 2,
+        "decisionCount": 2,
+        "allLinesMachineComplete": True,
+        "allLinesMechanicallyValid": True,
+        "allScoredDecisionsCovered": True,
+        "priorPreferenceAdjudicationRereviewed": False,
+        "trainingEligible": False,
+        "validationGroundTruthMayTrain": False,
+        "validationAccessed": True,
+        "sealedTestAccessed": False,
+    }
+    packet_digest = _sha256_json(packet_core)
+    (review_dir / f"packet-{packet_digest}.json").write_text(
+        json.dumps(
+            {**packet_core, "packetDigest": packet_digest},
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    base = {
+        "reviewType": "canonical_validation",
+        "batchId": "batch-main",
+        "modelId": model_id,
+        "partition": "validation",
+        "packetDigest": packet_digest,
+    }
+    with pytest.raises(
+        ExtractionWorkflowError,
+        match="Every canonical validation line",
+    ):
+        _store_canonical_validation_submission(
+            private,
+            {
+                **base,
+                "reviews": [
+                    {
+                        "lineId": "line-score",
+                        "status": "correct",
+                        "tabConfirmed": True,
+                        "scoreConfirmed": True,
+                    }
+                ],
+            },
+        )
+    with pytest.raises(
+        ExtractionWorkflowError,
+        match="score confirmation",
+    ):
+        _store_canonical_validation_submission(
+            private,
+            {
+                **base,
+                "reviews": [
+                    {
+                        "lineId": "line-score",
+                        "status": "correct",
+                        "tabConfirmed": True,
+                        "scoreConfirmed": False,
+                    },
+                    {
+                        "lineId": "line-tab",
+                        "status": "correct",
+                        "tabConfirmed": True,
+                        "scoreConfirmed": False,
+                    },
+                ],
+            },
+        )
+
+    result = _store_canonical_validation_submission(
+        private,
+        {
+            **base,
+            "reviews": [
+                {
+                    "lineId": "line-score",
+                    "status": "correct",
+                    "tabConfirmed": True,
+                    "scoreConfirmed": True,
+                },
+                {
+                    "lineId": "line-tab",
+                    "status": "correct",
+                    "tabConfirmed": True,
+                    "scoreConfirmed": False,
+                },
+            ],
+        },
+    )
+
+    assert result["reviewCount"] == 2
+    assert result["status"] == (
+        "received_validation_ground_truth_not_scored"
+    )
+    assert result["eligibleForTraining"] is False
+    assert result["sealedTestAccessed"] is False
+    metadata = json.loads(
+        (
+            review_dir
+            / "submissions"
+            / f"{result['submissionId']}.json"
+        ).read_text(encoding="utf-8")
+    )
+    assert metadata["authoritativeBatchIds"] == [
+        "batch-main",
+        "batch-licks",
+    ]
+    assert metadata["validationGroundTruthMayTrain"] is False
+    assert not (review_dir / "accepted-decisions.jsonl").exists()
+
+
 def test_joint_combined_submission_requires_explicit_tab_confirmation(tmp_path: Path) -> None:
     private = tmp_path / "private"
     review_dir = (
@@ -1144,6 +1312,22 @@ def test_validation_line_audit_submission_is_complete_and_never_training(
                 ],
             },
         )
+
+
+def test_canonical_validation_console_is_complete_line_focused() -> None:
+    digest = "b" * 64
+    html = _canonical_validation_console_html(
+        packet_digest=digest,
+        packet_filename=f"packet-{digest}.json",
+    )
+
+    assert "smallest remaining human check" in html
+    assert "Nothing blank or structurally incomplete is included" in html
+    assert "Confirm score pitches + tablature" in html
+    assert "Confirm tablature only" in html
+    assert "Machine capture aligned by movement" in html
+    assert "localStorage" in html
+    assert "reviewType:'canonical_validation'" in html
 
 
 def test_combined_console_supports_validation_ground_truth_mode() -> None:
@@ -9961,6 +10145,21 @@ def test_loopback_review_submission_is_private_validated_and_idempotent(tmp_path
         "batchId": "batch-submit",
         "partition": "discovery",
     })
+    canonical_dir = (
+        private
+        / "validation-evaluations"
+        / "at-test"
+        / "canonical-validation"
+    )
+    canonical_dir.mkdir(parents=True)
+    (canonical_dir / "console.html").write_text(
+        "canonical validation console",
+        encoding="utf-8",
+    )
+    forbidden_model_path = (
+        private / "validation-evaluations" / "at-test" / "model.json"
+    )
+    forbidden_model_path.write_text("private model", encoding="utf-8")
 
     server = make_review_http_server(private, port=0)
     server_thread = threading.Thread(target=server.serve_forever, daemon=True)
@@ -9977,6 +10176,22 @@ def test_loopback_review_submission_is_private_validated_and_idempotent(tmp_path
         assert response.status == 201
         assert result["submissionId"] == first["submissionId"]
         assert result["deduplicated"] is True
+        with urllib.request.urlopen(
+            "http://127.0.0.1:"
+            f"{server.server_address[1]}"
+            "/validation-evaluations/at-test/"
+            "canonical-validation/console.html"
+        ) as canonical_response:
+            assert canonical_response.read().decode("utf-8") == (
+                "canonical validation console"
+            )
+        with pytest.raises(urllib.error.HTTPError) as forbidden:
+            urllib.request.urlopen(
+                "http://127.0.0.1:"
+                f"{server.server_address[1]}"
+                "/validation-evaluations/at-test/model.json"
+            )
+        assert forbidden.value.code == 404
     finally:
         server.shutdown()
         server.server_close()

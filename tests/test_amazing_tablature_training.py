@@ -916,7 +916,35 @@ def test_machine_validation_scorer_uses_only_complete_tab_consensus(
     assert result["tabCellCompleteLineCount"] == 1
     assert result["withheldLineCount"] == 1
     assert result["decisionCount"] == 2
+    assert result["decisionLedgerDigest"]
+    decision_ledger = json.loads(
+        (root / result["decisionLedgerPath"]).read_text(encoding="utf-8")
+    )
+    assert decision_ledger["decisionCount"] == 2
+    assert decision_ledger["decisionDigest"] == result["decisionDigest"]
+    assert decision_ledger["candidateSetDigest"] == result[
+        "candidateSetDigest"
+    ]
+    assert decision_ledger["humanTruthUsed"] is False
+    assert decision_ledger["validationMayTrain"] is False
+    assert decision_ledger["sealedTestAccessed"] is False
     assert result["disagreementCount"] == 1
+    decision_ledger_path = root / result["decisionLedgerPath"]
+    decision_ledger = json.loads(
+        decision_ledger_path.read_text(encoding="utf-8")
+    )
+    assert decision_ledger["schemaVersion"] == (
+        "amazing-tablature-machine-validation-decision-ledger-v1"
+    )
+    assert decision_ledger["ledgerDigest"] == result[
+        "decisionLedgerDigest"
+    ]
+    assert decision_ledger["decisionDigest"] == result["decisionDigest"]
+    assert decision_ledger["decisionCount"] == 2
+    assert len(decision_ledger["decisions"]) == 2
+    assert decision_ledger["humanTruthUsed"] is False
+    assert decision_ledger["validationMayTrain"] is False
+    assert decision_ledger["sealedTestAccessed"] is False
     disagreement_report = json.loads(
         (root / result["disagreementReportPath"]).read_text(encoding="utf-8")
     )
@@ -1070,6 +1098,178 @@ def test_machine_validation_scorer_uses_only_complete_tab_consensus(
     assert carried["adjudication"]["validationMayTrain"] is False
     assert carried["validationMayTrain"] is False
     assert carried["sealedTestAccessed"] is False
+    assert model_path.read_bytes() == model_before
+    assert not (batch_dir / "accepted-decisions.jsonl").exists()
+
+    canonical_review_dir = (
+        root
+        / "validation-evaluations"
+        / model_id
+        / "canonical-validation"
+    )
+    canonical_review_dir.mkdir()
+    decision_ids = [
+        str(decision["decisionId"])
+        for decision in decision_ledger["decisions"]
+    ]
+    evidence = decision_ledger["decisions"][0][
+        "validationEvidence"
+    ]
+    canonical_line = {
+        "lineId": "canonical-line-1",
+        "batchId": "atb-machine-validation",
+        "inputId": input_id,
+        "scoreSystemId": "",
+        "tabSystemId": tab_system_id,
+        "candidateDigest": evidence["candidateDigest"],
+        "executionDigest": evidence["executionDigest"],
+        "evidenceMode": "tab_only",
+        "decisionIds": decision_ids,
+        "decisionCount": len(decision_ids),
+        "machineComplete": True,
+        "mechanicallyValid": True,
+        "trainingEligible": False,
+    }
+    current_registry = json.loads(
+        (root / "training-registry.json").read_text(encoding="utf-8")
+    )
+    canonical_packet_core = {
+        "schemaVersion": (
+            "amazing-tablature-canonical-validation-dataset-review-v1"
+        ),
+        "reviewType": "canonical_validation",
+        "reviewScope": "authoritative_dataset",
+        "batchId": "atb-machine-validation",
+        "datasetId": current_registry["authoritativeDataset"][
+            "datasetId"
+        ],
+        "authoritativeBatchIds": ["atb-machine-validation"],
+        "partition": "validation",
+        "modelId": model_id,
+        "modelArtifactSha256": model_sha,
+        "scoreReportDigest": result["reportDigest"],
+        "decisionLedgerDigest": result["decisionLedgerDigest"],
+        "decisionDigest": result["decisionDigest"],
+        "childPackets": {},
+        "lines": [canonical_line],
+        "lineCount": 1,
+        "decisionCount": 2,
+        "scoreSupportedLineCount": 0,
+        "tabOnlyLineCount": 1,
+        "allLinesMachineComplete": True,
+        "allLinesMechanicallyValid": True,
+        "allScoredDecisionsCovered": True,
+        "priorPreferenceAdjudicationRereviewed": False,
+        "trainingEligible": False,
+        "validationGroundTruthMayTrain": False,
+        "validationAccessed": True,
+        "sealedTestAccessed": False,
+    }
+    canonical_packet_digest = canonical_sha(canonical_packet_core)
+    (
+        canonical_review_dir
+        / f"packet-{canonical_packet_digest}.json"
+    ).write_text(
+        json.dumps(
+            {
+                **canonical_packet_core,
+                "packetDigest": canonical_packet_digest,
+            },
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    canonical_rows = [
+        {
+            "lineId": "canonical-line-1",
+            "batchId": "atb-machine-validation",
+            "inputId": input_id,
+            "scoreSystemId": "",
+            "tabSystemId": tab_system_id,
+            "candidateDigest": evidence["candidateDigest"],
+            "executionDigest": evidence["executionDigest"],
+            "evidenceMode": "tab_only",
+            "decisionIds": decision_ids,
+            "decisionCount": 2,
+            "status": "correct",
+            "comment": None,
+            "tabConfirmed": True,
+            "scoreConfirmed": False,
+            "trainingEligible": False,
+        }
+    ]
+    canonical_submission_core = {
+        "reviewType": "canonical_validation",
+        "batchId": "atb-machine-validation",
+        "datasetId": current_registry["authoritativeDataset"][
+            "datasetId"
+        ],
+        "authoritativeBatchIds": ["atb-machine-validation"],
+        "modelId": model_id,
+        "modelArtifactSha256": model_sha,
+        "partition": "validation",
+        "packetDigest": canonical_packet_digest,
+        "scoreReportDigest": result["reportDigest"],
+        "decisionLedgerDigest": result["decisionLedgerDigest"],
+        "decisionDigest": result["decisionDigest"],
+        "reviews": canonical_rows,
+        "validationGroundTruthMayTrain": False,
+    }
+    canonical_submission_digest = canonical_sha(
+        canonical_submission_core
+    )
+    canonical_submission_id = (
+        "canonical-validation-submission-"
+        + canonical_submission_digest[:20]
+    )
+    canonical_submissions = canonical_review_dir / "submissions"
+    canonical_submissions.mkdir()
+    (
+        canonical_submissions / f"{canonical_submission_id}.jsonl"
+    ).write_text(
+        "\n".join(
+            json.dumps(row, sort_keys=True)
+            for row in canonical_rows
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    (
+        canonical_submissions / f"{canonical_submission_id}.json"
+    ).write_text(
+        json.dumps(
+            {
+                "submissionId": canonical_submission_id,
+                "submissionDigest": canonical_submission_digest,
+                "packetDigest": canonical_packet_digest,
+                "modelId": model_id,
+                "scoreReportDigest": result["reportDigest"],
+                "eligibleForTraining": False,
+                "validationGroundTruthMayTrain": False,
+                "sealedTestAccessed": False,
+            },
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    canonical = store.score_canonical_validation_review(
+        model_id,
+        score_report_digest=result["reportDigest"],
+        packet_digest=canonical_packet_digest,
+        submission_id=canonical_submission_id,
+        adjudication_digest=carried["adjudication"][
+            "reportDigest"
+        ],
+        equivalence_digest=carried["reportDigest"],
+    )
+    assert canonical["allLinesHumanConfirmed"] is True
+    assert canonical["decisionCount"] == 2
+    assert canonical["gate"]["canonicalGatePassed"] is False
+    assert canonical["gate"]["privateRuntimeEnableAllowed"] is False
+    assert canonical["validationMayTrain"] is False
+    assert canonical["sealedTestAccessed"] is False
     assert model_path.read_bytes() == model_before
     assert not (batch_dir / "accepted-decisions.jsonl").exists()
 

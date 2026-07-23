@@ -650,6 +650,44 @@ full review packets, creates a private equivalence certificate, and keeps
 validation ineligible for training. Any musical, visual-context, or
 preference-relevant difference fails closed and requires a new review.
 
+Before canonical scoring, bind every scored complete validation line and every
+decision to one immutable dataset-wide human confirmation packet:
+
+```bash
+.venv/bin/python scripts/amazing_tablature.py \
+  prepare-canonical-validation-review <authoritative-anchor-batch-id> \
+  --model-id <exact-model-id> \
+  --score-report-digest <exact-score-report-digest>
+```
+
+The score command writes a private decision ledger before this packet can be
+created. The packet must cover that ledger exactly once, include every
+authoritative cohort, and contain no blank, incomplete, mechanically invalid,
+or unresolved machine line. It presents one line per screen. A
+score-supported line asks for score pitches and tablature together; a tab-only
+line shows the printed score as source context but asks only about the
+tablature execution. Prior source-versus-challenger preference adjudication is
+carried forward and is not shown again.
+
+After the complete packet is submitted, close the human-ground-truth gate
+against the exact score report, packet, receipt, adjudication, and no-rereview
+certificate:
+
+```bash
+.venv/bin/python scripts/amazing_tablature.py \
+  score-canonical-validation-review <exact-model-id> \
+  --score-report-digest <exact-score-report-digest> \
+  --packet-digest <exact-packet-digest> \
+  --submission-id <exact-submission-id> \
+  --adjudication-digest <exact-adjudication-digest> \
+  --equivalence-digest <exact-equivalence-digest>
+```
+
+Every line must be confirmed. Feedback fails closed and routes only that line
+to correction. A pass marks the exact challenger eligible for private runtime
+comparison and rules freeze, but does not promote beta or stable, add
+validation to training, or open a sealed test.
+
 Canonical validation uses a threshold contract fixed before held-out evidence
 is opened. It measures arrangement after input has been normalized into exact
 score events; score-image and audio recognition are explicitly outside this

@@ -621,6 +621,23 @@ def _parser() -> argparse.ArgumentParser:
         help="Write an immutable digest-versioned audit without replacing its current URL.",
     )
 
+    prepare_canonical_validation = subparsers.add_parser(
+        "prepare-canonical-validation-review",
+        help=(
+            "Prepare one no-blank human confirmation packet covering every "
+            "scored complete line in the authoritative validation dataset."
+        ),
+    )
+    prepare_canonical_validation.add_argument("batch_id")
+    prepare_canonical_validation.add_argument(
+        "--model-id",
+        required=True,
+    )
+    prepare_canonical_validation.add_argument(
+        "--score-report-digest",
+        required=True,
+    )
+
     remediate_validation_capture = subparsers.add_parser(
         "remediate-validation-machine-capture",
         help=(
@@ -985,6 +1002,35 @@ def _parser() -> argparse.ArgumentParser:
     )
     carry_validation_adjudication.add_argument(
         "--current-packet-digest",
+        required=True,
+    )
+
+    score_canonical_validation = subparsers.add_parser(
+        "score-canonical-validation-review",
+        help=(
+            "Verify the complete-line human confirmation and close the "
+            "canonical gate without adding validation evidence to training."
+        ),
+    )
+    score_canonical_validation.add_argument("model_id")
+    score_canonical_validation.add_argument(
+        "--score-report-digest",
+        required=True,
+    )
+    score_canonical_validation.add_argument(
+        "--packet-digest",
+        required=True,
+    )
+    score_canonical_validation.add_argument(
+        "--submission-id",
+        required=True,
+    )
+    score_canonical_validation.add_argument(
+        "--adjudication-digest",
+        required=True,
+    )
+    score_canonical_validation.add_argument(
+        "--equivalence-digest",
         required=True,
     )
 
@@ -1386,6 +1432,14 @@ def main() -> int:
                 args.batch_id,
                 activate=not args.no_activate,
             )
+        elif args.command == "prepare-canonical-validation-review":
+            result = AmazingTablatureExtractor(
+                args.root
+            ).prepare_canonical_validation_dataset_review(
+                args.batch_id,
+                model_id=args.model_id,
+                score_report_digest=args.score_report_digest,
+            )
         elif args.command == "remediate-validation-machine-capture":
             result = AmazingTablatureExtractor(
                 args.root,
@@ -1581,6 +1635,15 @@ def main() -> int:
                     args.source_adjudication_digest
                 ),
                 current_packet_digest=args.current_packet_digest,
+            )
+        elif args.command == "score-canonical-validation-review":
+            result = store.score_canonical_validation_review(
+                args.model_id,
+                score_report_digest=args.score_report_digest,
+                packet_digest=args.packet_digest,
+                submission_id=args.submission_id,
+                adjudication_digest=args.adjudication_digest,
+                equivalence_digest=args.equivalence_digest,
             )
         elif args.command == "report":
             result = store.report(args.model_id)
