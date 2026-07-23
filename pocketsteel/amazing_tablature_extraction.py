@@ -27564,7 +27564,6 @@ class AmazingTablatureExtractor:
         *,
         reader_models: Sequence[str] = (
             "gemma4:12b",
-            "gemma4:12b-mlx",
             "gemma4:latest",
         ),
     ) -> dict[str, Any]:
@@ -27736,9 +27735,9 @@ class AmazingTablatureExtractor:
         ]
         full_sheet_readers = tuple(
             zip(
-                readers[:2],
-                reader_ids[:2],
-                contracts[:2],
+                readers[:1],
+                reader_ids[:1],
+                contracts[:1],
                 strict=True,
             )
         )
