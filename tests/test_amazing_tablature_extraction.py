@@ -930,6 +930,18 @@ def test_canonical_validation_submission_requires_every_complete_line(
             "decisionIds": ["decision-2"],
             "decisionCount": 1,
         },
+        {
+            "lineId": "line-complete-no-ranked-transition",
+            "batchId": "batch-main",
+            "inputId": "input-complete",
+            "scoreSystemId": "score-complete",
+            "tabSystemId": "tab-complete",
+            "candidateDigest": "3" * 64,
+            "executionDigest": "4" * 64,
+            "evidenceMode": "tab_only",
+            "decisionIds": [],
+            "decisionCount": 0,
+        },
     ]
     packet_core = {
         "schemaVersion": (
@@ -947,7 +959,7 @@ def test_canonical_validation_submission_requires_every_complete_line(
         "decisionLedgerDigest": "1" * 64,
         "decisionDigest": "2" * 64,
         "lines": lines,
-        "lineCount": 2,
+        "lineCount": 3,
         "decisionCount": 2,
         "allLinesMachineComplete": True,
         "allLinesMechanicallyValid": True,
@@ -1012,6 +1024,14 @@ def test_canonical_validation_submission_requires_every_complete_line(
                         "tabConfirmed": True,
                         "scoreConfirmed": False,
                     },
+                    {
+                        "lineId": (
+                            "line-complete-no-ranked-transition"
+                        ),
+                        "status": "correct",
+                        "tabConfirmed": True,
+                        "scoreConfirmed": False,
+                    },
                 ],
             },
         )
@@ -1033,11 +1053,17 @@ def test_canonical_validation_submission_requires_every_complete_line(
                     "tabConfirmed": True,
                     "scoreConfirmed": False,
                 },
+                {
+                    "lineId": "line-complete-no-ranked-transition",
+                    "status": "correct",
+                    "tabConfirmed": True,
+                    "scoreConfirmed": False,
+                },
             ],
         },
     )
 
-    assert result["reviewCount"] == 2
+    assert result["reviewCount"] == 3
     assert result["status"] == (
         "received_validation_ground_truth_not_scored"
     )

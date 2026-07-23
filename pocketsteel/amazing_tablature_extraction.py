@@ -2869,7 +2869,6 @@ def _store_canonical_validation_submission(
             line is None
             or line_id in seen
             or status not in {"correct", "feedback"}
-            or not line_decision_ids
             or int(line.get("decisionCount") or 0)
             != len(line_decision_ids)
         ):
@@ -31212,10 +31211,6 @@ class AmazingTablatureExtractor:
                     str(child_line.get("executionDigest") or ""),
                 )
                 line_decisions = decisions_by_line.get(line_key) or []
-                if not line_decisions:
-                    raise ExtractionWorkflowError(
-                        "A canonical line has no scored challenger decisions."
-                    )
                 evidence_mode = str(
                     child_line.get("evidenceMode") or ""
                 )
