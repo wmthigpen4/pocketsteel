@@ -4,6 +4,7 @@ from pocketsteel.amazing_tablature_transition_decoder import (
     TRANSITION_FEATURE_SCHEMA_VERSION,
     classify_transition,
     train_transition_decoder,
+    transition_decoder_automation_eligibility,
     transition_feature_signature,
     transition_training_rows,
 )
@@ -100,6 +101,58 @@ def test_transition_decoder_learns_repeated_source_movement_and_abstains() -> No
     }
     assert decoder["validationDataUsed"] is False
     assert decoder["sealedTestDataUsed"] is False
+    assert transition_decoder_automation_eligibility(decoder) == {
+        "attack": False,
+        "movement_only": False,
+    }
+
+
+def test_transition_decoder_learns_repeated_attack_without_guessing() -> None:
+    rows = []
+    for group_index in range(5):
+        record = {
+            "inputId": f"input-{group_index}",
+            "contentUnitId": f"unit-{group_index}",
+            "tabSystems": [
+                {
+                    "tabSystemId": f"tab-{group_index}",
+                    "tabEvents": [
+                        _event(1, fret=3, pitch=55),
+                        _event(
+                            2,
+                            fret=5,
+                            pitch=57,
+                            execution="attack",
+                        ),
+                    ],
+                }
+            ],
+        }
+        rows.extend(
+            transition_training_rows(record, source_cohort_id="cohort-1")
+        )
+    decoder = train_transition_decoder(
+        rows,
+        source_cohort_id="cohort-1",
+        minimum_support=4,
+        minimum_content_units=4,
+    )
+
+    attack = classify_transition(
+        decoder,
+        _event(1, fret=3, pitch=55),
+        _event(2, fret=5, pitch=57),
+    )
+
+    assert attack["decision"] == "attack"
+    assert attack["support"] == 5
+    assert decoder["acceptedSignatures"][0]["label"] == "attack"
+    assert decoder["groupedCrossValidation"]["perLabel"]["attack"][
+        "precision"
+    ] == 1.0
+    assert transition_decoder_automation_eligibility(decoder) == {
+        "attack": True,
+    }
 
 
 def test_grouped_cross_validation_catches_source_unit_exception() -> None:

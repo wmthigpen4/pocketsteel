@@ -154,6 +154,10 @@ from pocketsteel.amazing_tablature_extraction import (
     score_tab_pitch_relationship_findings,
 )
 from pocketsteel.amazing_tablature_training import _profile_digest as training_profile_digest
+from pocketsteel.amazing_tablature_transition_decoder import (
+    train_transition_decoder,
+    transition_feature_signature,
+)
 from pocketsteel.amazing_tablature_reader_calibration import (
     reader_state_signature,
     train_reader_calibration,
@@ -6510,6 +6514,59 @@ def test_contact_sheet_consensus_compares_mechanics_not_token_typography() -> No
     assert events[0]["steelActions"][0]["consensusReaderCount"] == 2
     assert events[1]["steelActions"][0]["controls"] == []
     assert events[1]["executionInference"] == "unresolved_attack_or_hold"
+
+
+def test_contact_sheet_consensus_applies_discovery_proven_attack_signature() -> None:
+    profile = get_e9_copedent_profile("source-e9-abc-defg-v1")
+    labels = ["e1s5", "e2s5"]
+    cells_by_reader = {
+        "reader-a": {
+            "e1s5": {"token": "3", "confidence": 0.99},
+            "e2s5": {"token": "5", "confidence": 0.99},
+        },
+        "reader-b": {
+            "e1s5": {"token": "03", "confidence": 0.97},
+            "e2s5": {"token": "05", "confidence": 0.97},
+        },
+    }
+    unresolved_events, _diagnostics = _consensus_contact_sheet_tab_events(
+        labels=labels,
+        cells_by_reader=cells_by_reader,
+        profile=profile,
+        tab_system_id="tab-system-attack-training",
+    )
+    signature = transition_feature_signature(
+        unresolved_events[0],
+        unresolved_events[1],
+    )
+    decoder = train_transition_decoder(
+        [
+            {
+                "sourceCohortId": "cohort-1",
+                "contentUnitId": f"unit-{index}",
+                "signature": signature,
+                "label": "attack",
+            }
+            for index in range(5)
+        ],
+        source_cohort_id="cohort-1",
+    )
+
+    events, diagnostics = _consensus_contact_sheet_tab_events(
+        labels=labels,
+        cells_by_reader=cells_by_reader,
+        profile=profile,
+        tab_system_id="tab-system-attack-application",
+        transition_decoder=decoder,
+    )
+
+    assert events[1]["executionType"] == "attack"
+    assert events[1]["executionInference"] == "reviewed_source_transition_decoder"
+    assert events[1]["steelActions"][0]["attack"] is True
+    assert events[1]["steelActions"][0]["sustain"] is False
+    assert diagnostics["learnedAttackCount"] == 1
+    assert diagnostics["learnedMovementCount"] == 0
+    assert diagnostics["unresolvedExecutionCount"] == 0
 
 
 def test_contact_sheet_consensus_resolves_independently_agreed_blank_rows() -> None:

@@ -512,6 +512,22 @@ agreement, accepted glyph evidence, and singletons calibrated for that exact
 input mode may resolve a cell; smaller images improve legibility without
 relaxing the evidence gate.
 
+Attack-versus-hold execution is decoded separately from tab-cell recognition.
+Each authoritative source cohort has a discovery-only transition decoder:
+
+```bash
+.venv/bin/python scripts/amazing_tablature.py \
+  build-discovery-transition-decoder <batch-id>
+```
+
+The decoder may emit either `attack` or `movement_only` only for an exact
+feature signature with at least five reviewed discovery examples from at
+least three independent content units and at least 99.5% label precision.
+Movement-only signatures must additionally pass the conservative mechanical
+gesture gate. Unrecognized or mixed signatures remain unresolved. Validation
+answers and sealed-test data are never eligible to train or refine this
+decoder.
+
 Before scoring validation, prepare one complete line-level audit for each
 authoritative cohort:
 
@@ -541,8 +557,9 @@ be scored automatically as a bounded diagnostic:
   score-validation-machine-candidates <exact-model-id>
 ```
 
-This command accepts only digest-verified complete lines from the authoritative
-machine-consensus reports, strips all score hypotheses, derives
+This command accepts only digest-verified lines whose tablature cells are
+complete in the authoritative machine-consensus reports, strips all score
+hypotheses, derives
 `alignment:tab_only` movements, and writes no training evidence. Incomplete
 lines and attack-versus-hold ambiguities are withheld. The report always keeps
 the canonical, rules-freeze, sealed-test, and private-runtime gates closed

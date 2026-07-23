@@ -41,6 +41,7 @@ from pocketsteel.amazing_tablature_reader_calibration import (
 )
 from pocketsteel.amazing_tablature_transition_decoder import (
     train_transition_decoder,
+    transition_decoder_automation_eligibility,
     transition_training_rows,
 )
 from pocketsteel.e9_copedents import E9CopedentProfile, e9_copedent_profile_digest, get_e9_copedent_profile
@@ -3944,11 +3945,10 @@ class AmazingTablatureTrainingStore:
             rows,
             source_cohort_id=batch_id,
         )
-        cross_validation = decoder["groupedCrossValidation"]
+        label_eligibility = transition_decoder_automation_eligibility(decoder)
         automation_eligible = bool(
-            decoder.get("acceptedSignatures")
-            and cross_validation.get("precision", 0.0) > 0.95
-            and int(cross_validation.get("falsePositiveCount") or 0) == 0
+            label_eligibility
+            and all(label_eligibility.values())
         )
         payload = {
             **decoder,
@@ -3959,6 +3959,7 @@ class AmazingTablatureTrainingStore:
                 else "diagnostic_only"
             ),
             "automationEligible": automation_eligible,
+            "automationEligibilityByLabel": label_eligibility,
             "sourceManifestDigest": str(manifest.get("immutableDigest") or ""),
             "sourceCopedentId": str(manifest.get("sourceCopedentId") or ""),
             "approvedDiscoveryRecordCount": len(approved_index),
@@ -6654,7 +6655,7 @@ class AmazingTablatureTrainingStore:
 
         ranking_records: list[dict[str, Any]] = []
         cohort_receipts: dict[str, dict[str, Any]] = {}
-        machine_line_count = 0
+        tab_cell_complete_line_count = 0
         withheld_line_count = 0
         candidate_digests: list[str] = []
 
@@ -6903,7 +6904,7 @@ class AmazingTablatureTrainingStore:
                 complete_lines += 1
 
             ranking_records.extend(batch_records)
-            machine_line_count += complete_lines
+            tab_cell_complete_line_count += complete_lines
             withheld_line_count += withheld_lines
             cohort_receipts[batch_id] = {
                 "consensusReportDigest": report_digest,
@@ -6911,7 +6912,7 @@ class AmazingTablatureTrainingStore:
                     report_path.read_bytes()
                 ),
                 "validationRunDigest": consensus.get("validationRunDigest"),
-                "completeMachineLineCount": complete_lines,
+                "tabCellCompleteLineCount": complete_lines,
                 "withheldLineCount": withheld_lines,
                 "decisionCount": len(batch_records),
                 "contextIncompleteDecisionCount": (
@@ -6973,7 +6974,7 @@ class AmazingTablatureTrainingStore:
             "evaluationScope": "complete_machine_consensus_tab_lines",
             "authoritativeBatchIds": list(authoritative_ids),
             "cohortReceipts": cohort_receipts,
-            "completeMachineLineCount": machine_line_count,
+            "tabCellCompleteLineCount": tab_cell_complete_line_count,
             "withheldLineCount": withheld_line_count,
             "decisionCount": len(ranking_records),
             "decisionDigest": _sha256_json(ranking_records),

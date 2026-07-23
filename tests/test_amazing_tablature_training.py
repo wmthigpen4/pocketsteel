@@ -910,7 +910,7 @@ def test_machine_validation_scorer_uses_only_complete_tab_consensus(
 
     result = store.score_validation_machine_candidates(model_id)
 
-    assert result["completeMachineLineCount"] == 1
+    assert result["tabCellCompleteLineCount"] == 1
     assert result["withheldLineCount"] == 1
     assert result["decisionCount"] == 2
     assert result["cohortReceipts"]["atb-machine-validation"][

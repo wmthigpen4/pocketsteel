@@ -14054,6 +14054,7 @@ def _consensus_contact_sheet_tab_events(
         event["measureHorizontalPosition"] = event["horizontalPosition"]
 
     learned_movement_count = 0
+    learned_attack_count = 0
     unresolved_execution_count = 0
     for previous, current in zip(events, events[1:]):
         if current.get("executionInference") == "explicit_movement_sequence":
@@ -14076,6 +14077,16 @@ def _consensus_contact_sheet_tab_events(
             current["transitionDecoderEvidence"] = decision
             _refresh_event_execution(current)
             learned_movement_count += 1
+        elif decision.get("decision") == "attack":
+            for action in current.get("steelActions") or ():
+                action["attack"] = True
+                action["sustain"] = False
+            current["executionInference"] = (
+                "reviewed_source_transition_decoder"
+            )
+            current["transitionDecoderEvidence"] = decision
+            _refresh_event_execution(current)
+            learned_attack_count += 1
         else:
             unresolved_execution_count += 1
     if events:
@@ -14117,6 +14128,7 @@ def _consensus_contact_sheet_tab_events(
         "unresolvedCells": unresolved_cells,
         "unresolvedColumns": unresolved_columns,
         "learnedMovementCount": learned_movement_count,
+        "learnedAttackCount": learned_attack_count,
         "unresolvedExecutionCount": unresolved_execution_count,
         "allCellsResolved": not unresolved_cells,
         "allColumnsDecoded": (
@@ -28758,6 +28770,7 @@ class AmazingTablatureExtractor:
                         ],
                         "unresolvedCellCount": diagnostics["unresolvedCellCount"],
                         "learnedMovementCount": diagnostics["learnedMovementCount"],
+                        "learnedAttackCount": diagnostics["learnedAttackCount"],
                         "unresolvedExecutionCount": diagnostics[
                             "unresolvedExecutionCount"
                         ],
@@ -28811,6 +28824,9 @@ class AmazingTablatureExtractor:
             ),
             "learnedMovementCount": sum(
                 int(value["learnedMovementCount"]) for value in line_results
+            ),
+            "learnedAttackCount": sum(
+                int(value["learnedAttackCount"]) for value in line_results
             ),
             "lines": line_results,
             "humanTruthUsed": False,

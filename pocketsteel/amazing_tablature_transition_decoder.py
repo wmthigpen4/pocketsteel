@@ -5,8 +5,8 @@ ranker.  It learns how one source cohort denotes an unpicked bar or control
 movement; it does not decide which movement a new melody should use.
 
 The decoder is precision-first and may abstain.  A transition is emitted as
-``movement_only`` only when an exact, mechanically admissible signature has
-repeated support across independent discovery content units.  Everything else
+``movement_only`` or ``attack`` only when an exact signature has repeated
+label-pure support across independent discovery content units. Everything else
 remains unresolved for another source-evidence reader or human review.
 """
 
@@ -20,10 +20,10 @@ from typing import Any
 
 
 TRANSITION_FEATURE_SCHEMA_VERSION = "amazing-tablature-transition-features-v1"
-TRANSITION_DECODER_SCHEMA_VERSION = "amazing-tablature-transition-decoder-v1"
+TRANSITION_DECODER_SCHEMA_VERSION = "amazing-tablature-transition-decoder-v2"
 DEFAULT_MINIMUM_SUPPORT = 5
 DEFAULT_MINIMUM_CONTENT_UNITS = 3
-DEFAULT_MINIMUM_PRECISION = 0.95
+DEFAULT_MINIMUM_PRECISION = 0.995
 
 
 class TransitionDecoderError(ValueError):
@@ -203,7 +203,7 @@ def _learned_signatures(
     statistics: dict[str, dict[str, Any]] = defaultdict(
         lambda: {
             "support": 0,
-            "movementOnlyCount": 0,
+            "labelCounts": {"attack": 0, "movement_only": 0},
             "contentUnitIds": set(),
             "signature": None,
         }
@@ -212,31 +212,47 @@ def _learned_signatures(
         signature = row.get("signature")
         if not isinstance(signature, Mapping):
             continue
+        label = str(row.get("label") or "")
+        if label not in {"attack", "movement_only"}:
+            continue
         key = _canonical_json(signature)
         current = statistics[key]
         current["support"] += 1
-        current["movementOnlyCount"] += int(row.get("label") == "movement_only")
+        current["labelCounts"][label] += 1
         current["contentUnitIds"].add(str(row.get("contentUnitId") or ""))
         current["signature"] = dict(signature)
     accepted: dict[str, dict[str, Any]] = {}
     for key, values in statistics.items():
         support = int(values["support"])
-        movement_count = int(values["movementOnlyCount"])
         content_units = {
             value for value in values["contentUnitIds"] if value
         }
-        precision = movement_count / support if support else 0.0
+        label_counts = {
+            label: int(count)
+            for label, count in values["labelCounts"].items()
+        }
+        label = max(
+            sorted(label_counts),
+            key=lambda value: label_counts[value],
+        )
+        label_count = label_counts[label]
+        precision = label_count / support if support else 0.0
         if (
             support >= minimum_support
             and len(content_units) >= minimum_content_units
             and precision >= minimum_precision
-            and _mechanically_admissible(values["signature"])
+            and (
+                label == "attack"
+                or _mechanically_admissible(values["signature"])
+            )
         ):
             accepted[key] = {
                 "signature": values["signature"],
                 "signatureDigest": _sha256_json(values["signature"]),
+                "label": label,
                 "support": support,
-                "movementOnlyCount": movement_count,
+                "labelCount": label_count,
+                "labelCounts": label_counts,
                 "precision": precision,
                 "contentUnitCount": len(content_units),
             }
@@ -257,9 +273,17 @@ def _grouped_cross_validation(
             if row.get("contentUnitId")
         }
     )
-    true_positive = 0
-    false_positive = 0
-    false_negative = 0
+    per_label = {
+        label: {
+            "truePositiveCount": 0,
+            "falsePositiveCount": 0,
+            "falseNegativeCount": 0,
+        }
+        for label in ("attack", "movement_only")
+    }
+    abstention_count = 0
+    exact_count = 0
+    evaluated_count = 0
     for held_out_group in groups:
         training = [
             row
@@ -275,23 +299,60 @@ def _grouped_cross_validation(
         for row in rows:
             if str(row.get("contentUnitId") or "") != held_out_group:
                 continue
-            predicted = _canonical_json(row["signature"]) in accepted
-            actual = row.get("label") == "movement_only"
-            true_positive += int(predicted and actual)
-            false_positive += int(predicted and not actual)
-            false_negative += int(not predicted and actual)
-    predicted_count = true_positive + false_positive
-    movement_count = true_positive + false_negative
+            actual = str(row.get("label") or "")
+            if actual not in per_label:
+                continue
+            evaluated_count += 1
+            match = accepted.get(_canonical_json(row["signature"]))
+            predicted = str((match or {}).get("label") or "")
+            if not predicted:
+                abstention_count += 1
+                per_label[actual]["falseNegativeCount"] += 1
+                continue
+            if predicted == actual:
+                exact_count += 1
+                per_label[actual]["truePositiveCount"] += 1
+            else:
+                per_label[predicted]["falsePositiveCount"] += 1
+                per_label[actual]["falseNegativeCount"] += 1
+    label_metrics: dict[str, Any] = {}
+    for label, counts in per_label.items():
+        predicted_count = (
+            counts["truePositiveCount"] + counts["falsePositiveCount"]
+        )
+        actual_count = (
+            counts["truePositiveCount"] + counts["falseNegativeCount"]
+        )
+        label_metrics[label] = {
+            **counts,
+            "precision": (
+                counts["truePositiveCount"] / predicted_count
+                if predicted_count
+                else 0.0
+            ),
+            "recall": (
+                counts["truePositiveCount"] / actual_count
+                if actual_count
+                else 0.0
+            ),
+        }
+    movement = label_metrics["movement_only"]
     return {
         "foldUnit": "content_unit",
         "foldCount": len(groups),
-        "truePositiveCount": true_positive,
-        "falsePositiveCount": false_positive,
-        "falseNegativeCount": false_negative,
-        "precision": (
-            true_positive / predicted_count if predicted_count else 0.0
+        # Preserve the original movement-only fields for audit continuity.
+        "truePositiveCount": movement["truePositiveCount"],
+        "falsePositiveCount": movement["falsePositiveCount"],
+        "falseNegativeCount": movement["falseNegativeCount"],
+        "precision": movement["precision"],
+        "recall": movement["recall"],
+        "perLabel": label_metrics,
+        "evaluatedCount": evaluated_count,
+        "exactCount": exact_count,
+        "exactAccuracy": (
+            exact_count / evaluated_count if evaluated_count else 0.0
         ),
-        "recall": true_positive / movement_count if movement_count else 0.0,
+        "abstentionCount": abstention_count,
         "abstainsOnUnrecognizedSignatures": True,
     }
 
@@ -336,7 +397,7 @@ def train_transition_decoder(
         "schemaVersion": TRANSITION_DECODER_SCHEMA_VERSION,
         "featureSchemaVersion": TRANSITION_FEATURE_SCHEMA_VERSION,
         "sourceCohortId": source_cohort_id,
-        "policy": "movement_only_or_abstain",
+        "policy": "reviewed_attack_or_movement_only_or_abstain",
         "thresholds": {
             "minimumSupport": minimum_support,
             "minimumContentUnits": minimum_content_units,
@@ -344,6 +405,7 @@ def train_transition_decoder(
         },
         "trainingRowCount": len(normalized_rows),
         "trainingMovementOnlyCount": movement_count,
+        "trainingAttackCount": len(normalized_rows) - movement_count,
         "acceptedSignatures": sorted(
             learned.values(),
             key=lambda value: str(value["signatureDigest"]),
@@ -356,6 +418,40 @@ def train_transition_decoder(
         **artifact_core,
         "decoderId": f"atx-{_sha256_json(artifact_core)[:16]}",
         "artifactDigest": _sha256_json(artifact_core),
+    }
+
+
+def transition_decoder_automation_eligibility(
+    decoder: Mapping[str, Any],
+) -> dict[str, bool]:
+    """Return whether each emitted label passed grouped precision gates."""
+
+    if decoder.get("schemaVersion") != TRANSITION_DECODER_SCHEMA_VERSION:
+        raise TransitionDecoderError("Unsupported transition decoder schema.")
+    accepted_labels = {
+        str(value.get("label") or "")
+        for value in decoder.get("acceptedSignatures") or ()
+        if isinstance(value, Mapping)
+        and value.get("label") in {"attack", "movement_only"}
+    }
+    per_label_metrics = (
+        decoder.get("groupedCrossValidation") or {}
+    ).get("perLabel") or {}
+    minimum_precision = float(
+        (decoder.get("thresholds") or {}).get("minimumPrecision") or 0.0
+    )
+    return {
+        label: bool(
+            int((per_label_metrics.get(label) or {}).get("truePositiveCount") or 0)
+            > 0
+            and int(
+                (per_label_metrics.get(label) or {}).get("falsePositiveCount") or 0
+            )
+            == 0
+            and float((per_label_metrics.get(label) or {}).get("precision") or 0.0)
+            >= minimum_precision
+        )
+        for label in sorted(accepted_labels)
     }
 
 
@@ -383,7 +479,7 @@ def classify_transition(
             "signatureDigest": signature_digest,
         }
     return {
-        "decision": "movement_only",
+        "decision": str(match.get("label") or "unresolved"),
         "reason": "repeated_reviewed_source_signature",
         "signatureDigest": signature_digest,
         "support": int(match.get("support") or 0),
