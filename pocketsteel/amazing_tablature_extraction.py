@@ -56,7 +56,7 @@ FEEDBACK_CORRECTION_CONFIRMATION_SCHEMA_VERSION = (
 COMBINED_SCORE_TAB_REVIEW_SCHEMA_VERSION = "amazing-tablature-combined-score-tab-review-v1"
 VALIDATION_LINE_AUDIT_SCHEMA_VERSION = "amazing-tablature-validation-line-audit-v1"
 VALIDATION_LINE_PREFLIGHT_VERSION = "validation-line-structural-preflight-v1"
-VALIDATION_MACHINE_RECAPTURE_VERSION = "validation-machine-recapture-v4"
+VALIDATION_MACHINE_RECAPTURE_VERSION = "validation-machine-recapture-v5"
 VALIDATION_CAPTURE_ISSUE_KINDS = frozenset(
     {
         "page_extraction_failure",
@@ -6206,76 +6206,145 @@ def _validation_score_only_consensus_recapture(
                 "An unconstrained validation score-count read is incomplete."
             )
         count_signatures.append(signature)
-    if count_signatures[0] != count_signatures[1]:
-        raise ExtractionWorkflowError(
-            "Independent validation score-count readers disagree."
+
+    count_consensus_mode = "exact_attack_and_continuation_consensus"
+    source_only_count_votes: Counter[int] = Counter()
+    if count_signatures[0] == count_signatures[1]:
+        candidate_counts = [count_signatures[0][1]]
+        source_only_count_votes[candidate_counts[0]] = 2
+    else:
+        # A tie/continuation classification is a harder visual judgment than
+        # locating the printed notehead columns. Do not discard an otherwise
+        # complete score merely because the two independent readers disagree
+        # about which columns are continuations. Admit only counts that receive
+        # at least two source-only votes across the readers' visible-column and
+        # attack counts. The later pitch readers must still agree exactly, and
+        # multiple surviving counts fail closed.
+        for visible_count, attack_count, _continuation_count, _flags in count_signatures:
+            source_only_count_votes[visible_count] += 1
+            source_only_count_votes[attack_count] += 1
+        candidate_counts = sorted(
+            count
+            for count, votes in source_only_count_votes.items()
+            if votes >= 2 and count in allowed_counts
         )
-    consensus_count = count_signatures[0][1]
-    if consensus_count not in allowed_counts:
+        count_consensus_mode = "repeated_source_only_count_hypothesis"
+    candidate_counts = [
+        count for count in candidate_counts if count in allowed_counts
+    ]
+    if not candidate_counts:
         raise ExtractionWorkflowError(
             "Independent validation score-count consensus does not match a complete "
-            f"machine timeline ({consensus_count} versus {sorted(allowed_counts)})."
+            f"machine timeline (candidates={candidate_counts}, "
+            f"votes={dict(sorted(source_only_count_votes.items()))}, "
+            f"allowed={sorted(allowed_counts)})."
         )
 
-    pitch_reads = [
-        reader.read_score_pitch_events(
-            score_crop_path,
-            expected_event_count=consensus_count,
-            guided=False,
-            constraint_source="independent_machine_count_consensus",
-        )
-        for reader in readers
-    ]
-    pitch_signatures: list[tuple[int, tuple[tuple[int, ...], ...]]] = []
-    reported_pitch_confidences: list[float | None] = []
-    for result in pitch_reads:
-        raw_events = list(result.get("events") or [])
-        signature = (
-            int(result.get("keySignatureFifths")),
-            tuple(
-                tuple(int(value) for value in event.get("pitchValues") or [])
-                for event in raw_events
-            ),
-        )
-        confidence_reported = bool(result.get("confidenceReported"))
-        reported_confidence = (
-            float(result.get("confidence") or 0.0)
-            if confidence_reported
-            else None
-        )
-        if (
-            bool(result.get("uncertain"))
-            or (
-                reported_confidence is not None
-                and reported_confidence < 0.85
+    pitch_candidates: list[
+        tuple[
+            int,
+            list[dict[str, Any]],
+            list[float | None],
+            float,
+        ]
+    ] = []
+    pitch_candidate_failures: dict[int, str] = {}
+    for candidate_count in candidate_counts:
+        pitch_reads = [
+            reader.read_score_pitch_events(
+                score_crop_path,
+                expected_event_count=candidate_count,
+                guided=False,
+                constraint_source="independent_machine_count_consensus",
             )
-            or len(raw_events) != consensus_count
-            or any(not values for values in signature[1])
-            or bool(result.get("tablatureOrExpectedPitchesProvidedToReader"))
-            or str(result.get("countConstraintSource") or "")
-            != "independent_machine_count_consensus"
-        ):
+            for reader in readers
+        ]
+        pitch_signatures: list[tuple[int, tuple[tuple[int, ...], ...]]] = []
+        reported_pitch_confidences: list[float | None] = []
+        incomplete = False
+        for result in pitch_reads:
+            raw_events = list(result.get("events") or [])
+            signature = (
+                int(result.get("keySignatureFifths")),
+                tuple(
+                    tuple(int(value) for value in event.get("pitchValues") or [])
+                    for event in raw_events
+                ),
+            )
+            confidence_reported = bool(result.get("confidenceReported"))
+            reported_confidence = (
+                float(result.get("confidence") or 0.0)
+                if confidence_reported
+                else None
+            )
+            if (
+                bool(result.get("uncertain"))
+                or (
+                    reported_confidence is not None
+                    and reported_confidence < 0.85
+                )
+                or len(raw_events) != candidate_count
+                or any(not values for values in signature[1])
+                or bool(result.get("tablatureOrExpectedPitchesProvidedToReader"))
+                or str(result.get("countConstraintSource") or "")
+                != "independent_machine_count_consensus"
+            ):
+                incomplete = True
+                break
+            pitch_signatures.append(signature)
+            reported_pitch_confidences.append(reported_confidence)
+        if incomplete:
+            pitch_candidate_failures[candidate_count] = "incomplete_pitch_read"
+            continue
+        if pitch_signatures[0] != pitch_signatures[1]:
+            pitch_candidate_failures[candidate_count] = "pitch_readers_disagree"
+            continue
+        position_deltas = [
+            abs(float(first.get("x")) - float(second.get("x")))
+            for first, second in zip(
+                pitch_reads[0]["events"], pitch_reads[1]["events"], strict=True
+            )
+        ]
+        maximum_position_delta = max(position_deltas, default=1.0)
+        if maximum_position_delta > 0.06:
+            pitch_candidate_failures[candidate_count] = (
+                "score_geometry_disagreement:"
+                f"{maximum_position_delta:.6f}"
+            )
+            continue
+        pitch_candidates.append(
+            (
+                candidate_count,
+                pitch_reads,
+                reported_pitch_confidences,
+                maximum_position_delta,
+            )
+        )
+    if not pitch_candidates:
+        if set(pitch_candidate_failures.values()) == {"pitch_readers_disagree"}:
+            raise ExtractionWorkflowError(
+                "Independent validation score-pitch readers disagree."
+            )
+        if set(pitch_candidate_failures.values()) == {"incomplete_pitch_read"}:
             raise ExtractionWorkflowError(
                 "An independent validation score-pitch read is incomplete."
             )
-        pitch_signatures.append(signature)
-        reported_pitch_confidences.append(reported_confidence)
-    if pitch_signatures[0] != pitch_signatures[1]:
         raise ExtractionWorkflowError(
-            "Independent validation score-pitch readers disagree."
+            "No repeated source-only count hypothesis produced one complete "
+            f"score-pitch consensus ({pitch_candidate_failures})."
         )
-    position_deltas = [
-        abs(float(first.get("x")) - float(second.get("x")))
-        for first, second in zip(
-            pitch_reads[0]["events"], pitch_reads[1]["events"], strict=True
-        )
-    ]
-    maximum_position_delta = max(position_deltas, default=1.0)
-    if maximum_position_delta > 0.06:
+    if len(pitch_candidates) != 1:
         raise ExtractionWorkflowError(
-            "Independent validation score-pitch readers disagree on source geometry "
-            f"(maximum_position_delta={maximum_position_delta:.6f})."
+            "Independent validation score readers produced multiple complete "
+            "source-only count hypotheses "
+            f"({[candidate[0] for candidate in pitch_candidates]})."
         )
+    (
+        consensus_count,
+        pitch_reads,
+        reported_pitch_confidences,
+        maximum_position_delta,
+    ) = pitch_candidates[0]
     if all(value is not None for value in reported_pitch_confidences):
         confidence = min(
             float(value) for value in reported_pitch_confidences if value is not None
@@ -6301,6 +6370,16 @@ def _validation_score_only_consensus_recapture(
         "uncertain": False,
         "readerContracts": [reader.contract() for reader in readers],
         "countReads": count_reads,
+        "countConsensusMode": count_consensus_mode,
+        "sourceOnlyCountVotes": {
+            str(count): votes
+            for count, votes in sorted(source_only_count_votes.items())
+        },
+        "sourceOnlyCountCandidates": candidate_counts,
+        "pitchCandidateFailures": {
+            str(count): failure
+            for count, failure in sorted(pitch_candidate_failures.items())
+        },
         "pitchReadDigests": [_sha256_json(result) for result in pitch_reads],
         "maximumReaderPositionDelta": round(maximum_position_delta, 6),
         "tablatureOrExpectedPitchesProvidedToReader": False,

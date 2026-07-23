@@ -1513,6 +1513,12 @@ def test_validation_score_only_consensus_is_independent_and_preserves_score_geom
     assert recognition["confidence"] == 0.85
     assert recognition["confidenceBasis"] == "exact_two_reader_consensus_threshold"
     assert recognition["reportedReaderConfidences"] == [None, None]
+    assert (
+        recognition["countConsensusMode"]
+        == "exact_attack_and_continuation_consensus"
+    )
+    assert recognition["sourceOnlyCountVotes"] == {"2": 2}
+    assert recognition["sourceOnlyCountCandidates"] == [2]
     assert recognition["tablatureOrExpectedPitchesProvidedToReader"] is False
     assert [event["defaultX"] for event in events] == [0.2, 0.7]
     assert [event["pitch"] for event in events] == ["C5", "D5"]
@@ -1520,6 +1526,78 @@ def test_validation_score_only_consensus_is_independent_and_preserves_score_geom
         event["geometrySource"] == "independent_score_only_reader"
         for event in events
     )
+
+    class ContinuationDisagreementReader(StubScoreReader):
+        def __init__(
+            self,
+            name: str,
+            *,
+            x_positions: tuple[float, float],
+            continuation_only: tuple[bool, bool],
+        ) -> None:
+            super().__init__(name, x_positions=x_positions)
+            self.continuation_only = continuation_only
+
+        def read_unconstrained_score_columns(
+            self, image_path: Path
+        ) -> dict[str, object]:
+            assert image_path == score_crop
+            count_calls.append(self.name)
+            continuation_count = sum(self.continuation_only)
+            return {
+                "events": [
+                    {
+                        "eventIndex": index,
+                        "x": x,
+                        "continuationOnly": continuation,
+                    }
+                    for index, (x, continuation) in enumerate(
+                        zip(
+                            self.x_positions,
+                            self.continuation_only,
+                            strict=True,
+                        ),
+                        start=1,
+                    )
+                ],
+                "visibleColumnCount": 2,
+                "attackCount": 2 - continuation_count,
+                "continuationOnlyCount": continuation_count,
+                "confidence": 0.97,
+                "uncertain": False,
+                "expectedCountProvided": False,
+                "tablatureProvided": False,
+            }
+
+    _events, disagreement_recognition = (
+        _validation_score_only_consensus_recapture(
+            input_id="input-1",
+            score_system=score_system,
+            score_crop_path=score_crop,
+            readers=[
+                ContinuationDisagreementReader(
+                    "reader-a",
+                    x_positions=(0.2, 0.7),
+                    continuation_only=(False, True),
+                ),
+                ContinuationDisagreementReader(
+                    "reader-b",
+                    x_positions=(0.21, 0.69),
+                    continuation_only=(False, False),
+                ),
+            ],
+            expected_event_counts={2},
+        )
+    )
+    assert (
+        disagreement_recognition["countConsensusMode"]
+        == "repeated_source_only_count_hypothesis"
+    )
+    assert disagreement_recognition["sourceOnlyCountVotes"] == {
+        "1": 1,
+        "2": 3,
+    }
+    assert disagreement_recognition["sourceOnlyCountCandidates"] == [2]
 
     with pytest.raises(ExtractionWorkflowError, match="pitch readers disagree"):
         _validation_score_only_consensus_recapture(
