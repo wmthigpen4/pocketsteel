@@ -471,30 +471,39 @@ missing or stale source-column lineage.
 Calibration is content-unit-grouped and precision-first. A reader plus exact
 semantic fret/control state is usable as singleton evidence only when that
 state independently reaches the fixed support, content-unit, and at least
-99.5% leave-one-content-unit-out precision gates. Automation eligibility is
-computed only from those accepted rules; rejected candidate states remain
-diagnostics and cannot dilute or qualify an accepted state. Aggregate accuracy
-from a different state cannot qualify it. Two-reader semantic agreement
-remains stronger evidence, independently agreed blanks are explicit
-observations, and equal-strength conflicts abstain. A calibration or glyph
-decoder that misses any fixed automation gate is registered as diagnostic-only
-and cannot affect validation. Exact cached reader failures remain abstentions
-after their bounded attempts; they are neither retried indefinitely nor
-reinterpreted as blank cells. The private artifacts contain derived visual
-features or aggregate rules and lineage, not source imagery or raw reader
-output. Validation automatically accepts only eligible artifacts with the
-exact source-manifest, approved-record, source-column, and reader-contract
-lineage. It never trains on validation and cannot read sealed-test data.
+99.5% leave-one-content-unit-out precision gates. The ordered state from the
+two pinned readers is calibrated separately at the same precision threshold
+with its own grouped support gates. That exact pair rule may approve an
+agreement or correct a repeatable source-font confusion, including a blank
+versus symbol disagreement. An accepted exact pair rule outranks ordinary
+two-reader agreement so that a discovery-proven systematic confusion can be
+corrected. When no accepted pair correction exists, independent semantic
+agreement remains usable evidence; independently agreed blanks remain
+explicit observations, and equal-strength conflicts abstain.
+
+Automation eligibility is computed only from accepted singleton and pair
+rules; rejected candidate states remain diagnostics and cannot dilute or
+qualify an accepted state. Aggregate accuracy from a different state or pair
+cannot qualify it. A calibration or glyph decoder that misses any fixed
+automation gate is registered as diagnostic-only and cannot affect
+validation. Exact cached reader failures remain abstentions after their
+bounded attempts; they are neither retried indefinitely nor reinterpreted as
+blank cells. The private artifacts contain derived visual features or
+aggregate rules and lineage, not source imagery or raw reader output.
+Validation automatically accepts only eligible artifacts with the exact
+source-manifest, approved-record, source-column, and reader-contract lineage.
+It never trains on validation and cannot read sealed-test data.
 Reader contracts also pin case-insensitive response-label normalization, so a
 correct `E1S5` response cannot be discarded merely because the requested key
 was `e1s5`. After the full-sheet pass, unresolved cards are enlarged and sent
 in bounded groups of at most eight to the two independently pinned readers.
 Discovery calibration runs those same bounded, enlarged card groups against
 the approved discovery truth. Reader rules are input-mode-specific: a state
-that is accurate on a full contact sheet never qualifies a singleton from a
-focused card group, or vice versa. Only semantic agreement or a singleton
-calibrated for that exact input mode can resolve a cell; smaller images improve
-legibility without relaxing the evidence gate.
+or pair that is accurate on a full contact sheet never qualifies evidence from
+a focused card group, or vice versa. Accepted pair rules, independent semantic
+agreement, accepted glyph evidence, and singletons calibrated for that exact
+input mode may resolve a cell; smaller images improve legibility without
+relaxing the evidence gate.
 
 Before scoring validation, prepare one complete line-level audit for each
 authoritative cohort:

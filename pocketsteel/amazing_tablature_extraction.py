@@ -45,7 +45,10 @@ from pocketsteel.amazing_tablature_glyph_decoder import (
     contact_sheet_token_crops,
 )
 from pocketsteel.amazing_tablature_reader_calibration import (
+    BLANK_READER_STATE,
     READER_CALIBRATION_SCHEMA_VERSION,
+    UNRESOLVED_READER_STATE,
+    calibrated_pair_state,
     calibrated_state_is_eligible,
     reader_state_signature,
 )
@@ -13596,6 +13599,55 @@ def _render_focused_contact_sheet_chunks(
     return generated
 
 
+def _tab_actions_from_reader_state_signature(
+    state: str,
+    *,
+    string: int,
+    profile: Any,
+    region_id: str,
+) -> list[dict[str, Any]] | None:
+    """Reconstruct mechanically validated actions from a calibrated state."""
+
+    if state == BLANK_READER_STATE:
+        return []
+    try:
+        raw_actions = json.loads(state)
+    except (TypeError, json.JSONDecodeError):
+        return None
+    if not isinstance(raw_actions, list) or not raw_actions:
+        return None
+    actions: list[dict[str, Any]] = []
+    for index, raw_action in enumerate(raw_actions, start=1):
+        if not isinstance(raw_action, Mapping):
+            return None
+        try:
+            fret = int(raw_action["fret"])
+        except (KeyError, TypeError, ValueError):
+            return None
+        controls = raw_action.get("controls")
+        if not isinstance(controls, list):
+            return None
+        token = f"{fret}{''.join(str(value) for value in controls)}"
+        parsed, issue = _tab_action_sequence_from_token(
+            token,
+            string=string,
+            profile=profile,
+            confidence=1.0,
+            region_id=f"{region_id}:{index}",
+        )
+        if (
+            issue is not None
+            or len(parsed) != 1
+            or parsed[0].get("mechanicalValidation", {}).get("valid")
+            is not True
+        ):
+            return None
+        actions.append(parsed[0])
+    if reader_state_signature(actions) != state:
+        return None
+    return actions
+
+
 def _consensus_contact_sheet_tab_events(
     *,
     labels: Sequence[str],
@@ -13631,6 +13683,19 @@ def _consensus_contact_sheet_tab_events(
     unresolved_cells: list[dict[str, Any]] = []
     resolved_cell_count = 0
     calibrated_singleton_count = 0
+    calibrated_pair_count = 0
+    pair_reader_ids = sorted(
+        {
+            str(state.get("readerId") or "")
+            for rule in (
+                reader_calibration.get("acceptedPairRules") or ()
+                if reader_calibration
+                else ()
+            )
+            for state in rule.get("readerStates") or ()
+            if state.get("readerId")
+        }
+    )
     for label in labels:
         match = label_pattern.fullmatch(str(label))
         if match is None:
@@ -13660,8 +13725,21 @@ def _consensus_contact_sheet_tab_events(
             tuple[tuple[int, int, tuple[str, ...], int], ...],
             list[tuple[str, list[dict[str, Any]], float, bool]],
         ] = {}
+        pair_states = {
+            reader_id: UNRESOLVED_READER_STATE
+            for reader_id in pair_reader_ids
+        }
+        pair_input_modes: dict[str, str] = {}
+        pair_confidences: dict[str, float] = {}
         for reader_id, reader_cells in cells_by_reader.items():
             cell = reader_cells.get(str(label)) or {}
+            if reader_id in pair_states:
+                pair_input_modes[reader_id] = str(
+                    cell.get("readerInputMode") or ""
+                )
+                pair_confidences[reader_id] = float(
+                    cell.get("confidence") or 0.0
+                )
             token = cell.get("token")
             if token is None or not str(token).strip():
                 # An explicit high-confidence blank is a semantic observation,
@@ -13674,6 +13752,8 @@ def _consensus_contact_sheet_tab_events(
                     and float(cell.get("confidence") or 0.0) >= 0.8
                 ):
                     confidence = float(cell.get("confidence") or 0.0)
+                    if reader_id in pair_states:
+                        pair_states[reader_id] = BLANK_READER_STATE
                     semantic_candidates.setdefault((), []).append(
                         (
                             reader_id,
@@ -13706,6 +13786,8 @@ def _consensus_contact_sheet_tab_events(
                 for action in actions
             ):
                 continue
+            if reader_id in pair_states:
+                pair_states[reader_id] = reader_state_signature(actions)
             semantic_key = tuple(
                 (
                     int(action["string"]),
@@ -13735,6 +13817,74 @@ def _consensus_contact_sheet_tab_events(
                 )
             )
 
+        pair_modes = {
+            pair_input_modes.get(reader_id, "")
+            for reader_id in pair_reader_ids
+        }
+        pair_prediction: str | None = None
+        pair_actions: list[dict[str, Any]] | None = None
+        if (
+            reader_calibration
+            and len(pair_reader_ids) >= 2
+            and len(pair_modes) == 1
+            and "" not in pair_modes
+        ):
+            pair_prediction = calibrated_pair_state(
+                reader_calibration,
+                reader_states=[
+                    {
+                        "readerId": reader_id,
+                        "state": pair_states[reader_id],
+                    }
+                    for reader_id in pair_reader_ids
+                ],
+                input_mode=next(iter(pair_modes)),
+            )
+            if pair_prediction is not None:
+                pair_actions = _tab_actions_from_reader_state_signature(
+                    pair_prediction,
+                    string=string,
+                    profile=profile,
+                    region_id=(
+                        f"contact-pair:{tab_system_id}:{label}"
+                    ),
+                )
+                if pair_actions is None:
+                    pair_prediction = None
+        if pair_prediction is not None and pair_actions is not None:
+            pair_semantic_key = tuple(
+                (
+                    int(action["string"]),
+                    int(action["fret"]),
+                    tuple(
+                        sorted(
+                            str(value)
+                            for value in action.get("controls") or ()
+                        )
+                    ),
+                    int(action["soundingPitchValue"]),
+                )
+                for action in pair_actions
+            )
+            pair_confidence = min(
+                pair_confidences.get(reader_id, 0.0)
+                for reader_id in pair_reader_ids
+            )
+            semantic_candidates.setdefault(
+                pair_semantic_key,
+                [],
+            ).extend(
+                (
+                    (
+                        f"discovery-pair:{reader_id}",
+                        copy.deepcopy(pair_actions),
+                        pair_confidence,
+                        False,
+                    )
+                    for reader_id in pair_reader_ids
+                )
+            )
+
         def evidence_tier(
             item: tuple[
                 tuple[tuple[int, int, tuple[str, ...], int], ...],
@@ -13742,7 +13892,18 @@ def _consensus_contact_sheet_tab_events(
             ],
         ) -> int:
             values = item[1]
+            reader_ids = {value[0] for value in values}
+            if any(
+                reader_id.startswith("discovery-pair:")
+                for reader_id in reader_ids
+            ):
+                # Exact pair outcomes that repeatedly mapped to this state
+                # across held-out discovery units may correct a systematic
+                # shared-reader confusion.
+                return 3
             if len(values) >= minimum_reader_agreement:
+                # Ordinary independent semantic agreement remains valid when
+                # no higher-tier discovery pair correction applies.
                 return 2
             if len(values) == 1 and values[0][3]:
                 return 1
@@ -13793,6 +13954,12 @@ def _consensus_contact_sheet_tab_events(
         calibrated_reader_ids = sorted(
             value[0] for value in selected_reader_values if value[3]
         )
+        pair_calibrated = any(
+            value[0].startswith("discovery-pair:")
+            for value in selected_reader_values
+        )
+        if pair_calibrated:
+            calibrated_pair_count += 1
         calibrated_singleton = bool(
             len(selected_reader_values) == 1
             and calibrated_reader_ids
@@ -13939,6 +14106,7 @@ def _consensus_contact_sheet_tab_events(
             len(values) for values in resolved_blank_labels_by_column.values()
         ),
         "calibratedSingletonResolvedCellCount": calibrated_singleton_count,
+        "calibratedPairResolvedCellCount": calibrated_pair_count,
         "unresolvedCellCount": len(unresolved_cells),
         "rawCandidateEventColumnCount": len(raw_expected_columns),
         "eventColumnCount": len(expected_columns),
@@ -28585,6 +28753,9 @@ class AmazingTablatureExtractor:
                         "calibratedSingletonResolvedCellCount": diagnostics[
                             "calibratedSingletonResolvedCellCount"
                         ],
+                        "calibratedPairResolvedCellCount": diagnostics[
+                            "calibratedPairResolvedCellCount"
+                        ],
                         "unresolvedCellCount": diagnostics["unresolvedCellCount"],
                         "learnedMovementCount": diagnostics["learnedMovementCount"],
                         "unresolvedExecutionCount": diagnostics[
@@ -28626,6 +28797,10 @@ class AmazingTablatureExtractor:
             ),
             "calibratedSingletonResolvedCellCount": sum(
                 int(value["calibratedSingletonResolvedCellCount"])
+                for value in line_results
+            ),
+            "calibratedPairResolvedCellCount": sum(
+                int(value["calibratedPairResolvedCellCount"])
                 for value in line_results
             ),
             "eventColumnCount": sum(

@@ -34,6 +34,7 @@ from pocketsteel.amazing_tablature_input_parity import structured_input_parity_r
 from pocketsteel.amazing_tablature_reader_calibration import (
     FOCUSED_READER_INPUT_MODE,
     READER_INPUT_MODE,
+    UNRESOLVED_READER_STATE,
     reader_state_signature,
     train_reader_calibration,
 )
@@ -4387,7 +4388,8 @@ class AmazingTablatureTrainingStore:
                 tuple[int, Sequence[Mapping[str, Any]]],
             ],
             input_mode: str,
-        ) -> None:
+        ) -> dict[str, str]:
+            states_by_label: dict[str, str] = {}
             for label in labels:
                 truth = truth_by_label.get(label)
                 if truth is None:
@@ -4434,7 +4436,9 @@ class AmazingTablatureTrainingStore:
                     ):
                         predicted_state = reader_state_signature(actions)
                 if predicted_state is None:
+                    states_by_label[label] = UNRESOLVED_READER_STATE
                     continue
+                states_by_label[label] = predicted_state
                 cases.append(
                     {
                         "readerId": reader_id,
@@ -4445,11 +4449,57 @@ class AmazingTablatureTrainingStore:
                         "confidence": confidence,
                     }
                 )
+            return states_by_label
+
+        def append_pair_cases(
+            *,
+            reader_state_maps: Sequence[Mapping[str, str]],
+            content_unit_id: str,
+            labels: Sequence[str],
+            truth_by_label: Mapping[
+                str,
+                tuple[int, Sequence[Mapping[str, Any]]],
+            ],
+            input_mode: str,
+        ) -> None:
+            if len(reader_state_maps) != len(reader_ids):
+                raise TrainingWorkflowError(
+                    "Reader-pair calibration lacks a pinned reader result."
+                )
+            for label in labels:
+                truth = truth_by_label.get(label)
+                if truth is None:
+                    continue
+                _string, truth_actions = truth
+                paired_cases.append(
+                    {
+                        "contentUnitId": content_unit_id,
+                        "inputMode": input_mode,
+                        "readerStates": [
+                            {
+                                "readerId": reader_id,
+                                "state": state_map.get(
+                                    label,
+                                    UNRESOLVED_READER_STATE,
+                                ),
+                            }
+                            for reader_id, state_map in zip(
+                                reader_ids,
+                                reader_state_maps,
+                                strict=True,
+                            )
+                        ],
+                        "truthState": reader_state_signature(
+                            truth_actions
+                        ),
+                    }
+                )
 
         profile = get_e9_copedent_profile(
             str(manifest.get("sourceCopedentId") or "")
         )
         cases: list[dict[str, Any]] = []
+        paired_cases: list[dict[str, Any]] = []
         record_digests: list[str] = []
         source_record_digests: list[str] = []
         reader_output_digests: list[str] = []
@@ -4605,6 +4655,7 @@ class AmazingTablatureTrainingStore:
                         reader_results = [
                             future.result() for future in futures
                         ]
+                    reader_state_maps: list[dict[str, str]] = []
                     for (
                         _reader,
                         reader_id,
@@ -4618,15 +4669,24 @@ class AmazingTablatureTrainingStore:
                         strict=True,
                     ):
                         reader_output_digests.append(cache_digest)
-                        append_calibration_cases(
-                            cells=cells,
-                            reader_id=reader_id,
-                            content_unit_id=content_unit_id,
-                            input_id=input_id,
-                            labels=labels,
-                            truth_by_label=sheet_truth_by_label,
-                            input_mode=READER_INPUT_MODE,
+                        reader_state_maps.append(
+                            append_calibration_cases(
+                                cells=cells,
+                                reader_id=reader_id,
+                                content_unit_id=content_unit_id,
+                                input_id=input_id,
+                                labels=labels,
+                                truth_by_label=sheet_truth_by_label,
+                                input_mode=READER_INPUT_MODE,
+                            )
                         )
+                    append_pair_cases(
+                        reader_state_maps=reader_state_maps,
+                        content_unit_id=content_unit_id,
+                        labels=labels,
+                        truth_by_label=sheet_truth_by_label,
+                        input_mode=READER_INPUT_MODE,
+                    )
                 if system_truth_by_label:
                     tab_system_slug = _sha256_json(
                         {
@@ -4672,6 +4732,7 @@ class AmazingTablatureTrainingStore:
                             focused_results = [
                                 future.result() for future in futures
                             ]
+                        focused_state_maps: list[dict[str, str]] = []
                         for (
                             _reader,
                             reader_id,
@@ -4685,20 +4746,30 @@ class AmazingTablatureTrainingStore:
                             strict=True,
                         ):
                             reader_output_digests.append(cache_digest)
-                            append_calibration_cases(
-                                cells=cells,
-                                reader_id=reader_id,
-                                content_unit_id=content_unit_id,
-                                input_id=input_id,
-                                labels=focused_labels,
-                                truth_by_label=system_truth_by_label,
-                                input_mode=FOCUSED_READER_INPUT_MODE,
+                            focused_state_maps.append(
+                                append_calibration_cases(
+                                    cells=cells,
+                                    reader_id=reader_id,
+                                    content_unit_id=content_unit_id,
+                                    input_id=input_id,
+                                    labels=focused_labels,
+                                    truth_by_label=system_truth_by_label,
+                                    input_mode=FOCUSED_READER_INPUT_MODE,
+                                )
                             )
+                        append_pair_cases(
+                            reader_state_maps=focused_state_maps,
+                            content_unit_id=content_unit_id,
+                            labels=focused_labels,
+                            truth_by_label=system_truth_by_label,
+                            input_mode=FOCUSED_READER_INPUT_MODE,
+                        )
             record_digests.append(record_digest)
         calibration = train_reader_calibration(
             cases,
             source_cohort_id=batch_id,
             reader_contracts=contracts,
+            paired_cases=paired_cases,
         )
         automation_eligible = bool(
             calibration.get("automationEligible")

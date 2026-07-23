@@ -2,6 +2,7 @@ import copy
 
 from pocketsteel.amazing_tablature_reader_calibration import (
     BLANK_READER_STATE,
+    calibrated_pair_state,
     calibrated_state_is_eligible,
     reader_state_signature,
     train_reader_calibration,
@@ -151,6 +152,73 @@ def test_reader_calibration_never_transfers_a_rule_between_input_modes() -> None
         (rule["inputMode"], rule["predictedState"])
         for rule in calibration["acceptedRules"]
     } == {("full_contact_sheet", "state-8a")}
+
+
+def test_reader_pair_calibration_can_correct_an_exact_discovery_confusion() -> None:
+    paired_cases = []
+    for content_unit in (
+        "unit-a",
+        "unit-b",
+        "unit-c",
+        "unit-d",
+        "unit-e",
+    ):
+        for _repeat in range(2):
+            paired_cases.append(
+                {
+                    "contentUnitId": content_unit,
+                    "inputMode": "focused_contact_sheet_chunk",
+                    "readerStates": [
+                        {
+                            "readerId": "reader-1",
+                            "state": BLANK_READER_STATE,
+                        },
+                        {
+                            "readerId": "reader-2",
+                            "state": "state-3b",
+                        },
+                    ],
+                    "truthState": "state-8",
+                }
+            )
+    calibration = train_reader_calibration(
+        [],
+        paired_cases=paired_cases,
+        source_cohort_id="batch-1",
+        reader_contracts=[
+            {"modelTag": "reader-1", "modelDigest": "digest-1"},
+            {"modelTag": "reader-2", "modelDigest": "digest-2"},
+        ],
+        minimum_cv_precision=1.0,
+    )
+
+    assert calibration["singletonAutomationEligible"] is False
+    assert calibration["pairAutomationEligible"] is True
+    assert calibration["automationEligible"] is True
+    assert calibration["acceptedPairRuleCrossValidation"] == {
+        "foldUnit": "content_unit",
+        "foldCount": 5,
+        "predictionCount": 10,
+        "correctCount": 10,
+        "falsePositiveCount": 0,
+        "precision": 1.0,
+    }
+    assert calibrated_pair_state(
+        calibration,
+        reader_states=[
+            {"readerId": "reader-2", "state": "state-3b"},
+            {"readerId": "reader-1", "state": BLANK_READER_STATE},
+        ],
+        input_mode="focused_contact_sheet_chunk",
+    ) == "state-8"
+    assert calibrated_pair_state(
+        calibration,
+        reader_states=[
+            {"readerId": "reader-2", "state": "state-3b"},
+            {"readerId": "reader-1", "state": BLANK_READER_STATE},
+        ],
+        input_mode="full_contact_sheet",
+    ) is None
 
 
 def test_reader_calibration_automates_only_accepted_rule_predictions() -> None:

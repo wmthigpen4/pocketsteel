@@ -1033,6 +1033,7 @@ def test_discovery_reader_calibration_is_private_and_discovery_only(
 
     assert result["status"] == "diagnostic_only"
     assert result["caseCount"] == 8
+    assert result["pairCaseCount"] == 4
     assert result["contactSheetCount"] == 1
     assert result["contactLabelCount"] == 2
     assert result["focusedContactSheetChunkCount"] == 1

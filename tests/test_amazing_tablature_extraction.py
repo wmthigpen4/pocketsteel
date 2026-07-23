@@ -6699,6 +6699,139 @@ def test_contact_sheet_consensus_abstains_on_conflicting_calibrated_singletons()
     )
 
 
+def test_contact_sheet_consensus_applies_discovery_pair_confusion_correction() -> None:
+    profile = get_e9_copedent_profile("source-e9-abc-defg-v1")
+    state_8 = reader_state_signature([{"fret": 8, "controls": []}])
+    state_3b = reader_state_signature([{"fret": 3, "controls": ["B"]}])
+    calibration = train_reader_calibration(
+        [],
+        paired_cases=[
+            {
+                "contentUnitId": content_unit,
+                "inputMode": "focused_contact_sheet_chunk",
+                "readerStates": [
+                    {"readerId": "reader-a", "state": "blank"},
+                    {"readerId": "reader-b", "state": state_3b},
+                ],
+                "truthState": state_8,
+            }
+            for content_unit in (
+                "unit-a",
+                "unit-b",
+                "unit-c",
+                "unit-d",
+            )
+            for _occurrence in range(2)
+        ],
+        source_cohort_id="batch-1",
+        reader_contracts=[
+            {"modelTag": "reader-a", "modelDigest": "digest-a"},
+            {"modelTag": "reader-b", "modelDigest": "digest-b"},
+        ],
+    )
+
+    events, diagnostics = _consensus_contact_sheet_tab_events(
+        labels=["e1s6"],
+        cells_by_reader={
+            "reader-a": {
+                "e1s6": {
+                    "token": None,
+                    "confidence": 1.0,
+                    "uncertain": False,
+                    "readerInputMode": "focused_contact_sheet_chunk",
+                }
+            },
+            "reader-b": {
+                "e1s6": {
+                    "token": "3B",
+                    "confidence": 1.0,
+                    "uncertain": False,
+                    "readerInputMode": "focused_contact_sheet_chunk",
+                }
+            },
+        },
+        profile=profile,
+        tab_system_id="tab-system-pair-correction",
+        reader_calibration=calibration,
+    )
+
+    assert diagnostics["allCellsResolved"] is True
+    assert diagnostics["calibratedPairResolvedCellCount"] == 1
+    assert len(events) == 1
+    action = events[0]["steelActions"][0]
+    assert action["fret"] == 8
+    assert action["controls"] == []
+    assert action["consensusReaderCount"] == 2
+    assert action["consensusReaderIds"] == [
+        "discovery-pair:reader-a",
+        "discovery-pair:reader-b",
+    ]
+
+
+def test_contact_sheet_consensus_keeps_ordinary_agreement_without_pair_rule() -> None:
+    profile = get_e9_copedent_profile("source-e9-abc-defg-v1")
+    state_8 = reader_state_signature([{"fret": 8, "controls": []}])
+    state_3b = reader_state_signature([{"fret": 3, "controls": ["B"]}])
+    calibration = train_reader_calibration(
+        [],
+        paired_cases=[
+            {
+                "contentUnitId": content_unit,
+                "inputMode": "focused_contact_sheet_chunk",
+                "readerStates": [
+                    {"readerId": "reader-a", "state": "blank"},
+                    {"readerId": "reader-b", "state": state_3b},
+                ],
+                "truthState": state_8,
+            }
+            for content_unit in (
+                "unit-a",
+                "unit-b",
+                "unit-c",
+                "unit-d",
+            )
+            for _occurrence in range(2)
+        ],
+        source_cohort_id="batch-1",
+        reader_contracts=[
+            {"modelTag": "reader-a", "modelDigest": "digest-a"},
+            {"modelTag": "reader-b", "modelDigest": "digest-b"},
+        ],
+    )
+
+    events, diagnostics = _consensus_contact_sheet_tab_events(
+        labels=["e1s5"],
+        cells_by_reader={
+            "reader-a": {
+                "e1s5": {
+                    "token": "3A",
+                    "confidence": 1.0,
+                    "uncertain": False,
+                    "readerInputMode": "focused_contact_sheet_chunk",
+                }
+            },
+            "reader-b": {
+                "e1s5": {
+                    "token": "3A",
+                    "confidence": 1.0,
+                    "uncertain": False,
+                    "readerInputMode": "focused_contact_sheet_chunk",
+                }
+            },
+        },
+        profile=profile,
+        tab_system_id="tab-system-uncalibrated-reader-agreement",
+        reader_calibration=calibration,
+    )
+
+    assert len(events) == 1
+    assert events[0]["steelActions"][0]["fret"] == 3
+    assert events[0]["steelActions"][0]["controls"] == ["A"]
+    assert diagnostics["allCellsResolved"] is True
+    assert diagnostics["calibratedPairResolvedCellCount"] == 0
+    assert diagnostics["unresolvedCellCount"] == 0
+
+
 def test_contact_sheet_consensus_withholds_single_reader_disagreement() -> None:
     profile = get_e9_copedent_profile("source-e9-abc-defg-v1")
     events, diagnostics = _consensus_contact_sheet_tab_events(
