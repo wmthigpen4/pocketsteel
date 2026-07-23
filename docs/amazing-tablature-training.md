@@ -468,6 +468,13 @@ excluded from calibration. Artifacts pin the source-record set digest and the
 exact mapping-contract version, and validation rejects an artifact with
 missing or stale source-column lineage.
 
+The glyph decoder uses a fixed five-neighbor weighted-cosine classifier with
+squared similarity. This bounded setting replaces the earlier nine-neighbor,
+fifth-power vote after discovery-only grouped replay showed materially better
+zero-false-positive coverage in both source cohorts. The classifier settings,
+feature schema, accepted labels, confidence threshold, grouped predictions,
+and code lineage are pinned in the private artifact.
+
 Calibration is content-unit-grouped and precision-first. A reader plus exact
 semantic fret/control state is usable as singleton evidence only when that
 state independently reaches the fixed support, content-unit, and at least

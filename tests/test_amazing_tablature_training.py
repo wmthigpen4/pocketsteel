@@ -78,6 +78,11 @@ def test_glyph_decoder_calibrates_grouped_precision_and_abstention() -> None:
     )
 
     assert decoder["automationEligible"] is True
+    assert decoder["classifier"] == {
+        "kind": "weighted_cosine_nearest_neighbors",
+        "neighborCount": 5,
+        "similarityPower": 2,
+    }
     assert decoder["thresholds"]["selectedConfidence"] is not None
     assert decoder["validationDataUsed"] is False
     assert decoder["sealedTestDataUsed"] is False

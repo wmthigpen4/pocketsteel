@@ -14,8 +14,10 @@ from PIL import Image, ImageOps
 
 
 GLYPH_FEATURE_SCHEMA_VERSION = "amazing-tablature-glyph-centered-v2"
-GLYPH_DECODER_SCHEMA_VERSION = "amazing-tablature-glyph-decoder-v2"
+GLYPH_DECODER_SCHEMA_VERSION = "amazing-tablature-glyph-decoder-v3"
 GLYPH_INPUT_MODE = "contact_sheet_token_crop"
+GLYPH_NEIGHBOR_COUNT = 5
+GLYPH_SIMILARITY_POWER = 2
 DEFAULT_MINIMUM_LABEL_SUPPORT = 8
 DEFAULT_MINIMUM_CV_PREDICTIONS = 30
 DEFAULT_MINIMUM_CV_PRECISION = 0.995
@@ -291,7 +293,8 @@ def _predict(
     training: Sequence[Mapping[str, Any]],
     feature: Sequence[float],
     *,
-    neighbor_count: int = 9,
+    neighbor_count: int = GLYPH_NEIGHBOR_COUNT,
+    similarity_power: int = GLYPH_SIMILARITY_POWER,
 ) -> tuple[str | None, float]:
     if not training:
         return None, 0.0
@@ -308,7 +311,7 @@ def _predict(
     )[:neighbor_count]
     votes: dict[str, float] = defaultdict(float)
     for similarity, label in scored:
-        votes[label] += max(0.0, similarity) ** 5
+        votes[label] += max(0.0, similarity) ** similarity_power
     total = sum(votes.values())
     if total <= 0:
         return None, 0.0
@@ -432,6 +435,11 @@ def train_glyph_decoder(
         "schemaVersion": GLYPH_DECODER_SCHEMA_VERSION,
         "featureSchemaVersion": GLYPH_FEATURE_SCHEMA_VERSION,
         "inputMode": GLYPH_INPUT_MODE,
+        "classifier": {
+            "kind": "weighted_cosine_nearest_neighbors",
+            "neighborCount": GLYPH_NEIGHBOR_COUNT,
+            "similarityPower": GLYPH_SIMILARITY_POWER,
+        },
         "sourceCohortId": source_cohort_id,
         "policy": "semantic_glyph_or_abstain",
         "thresholds": {
