@@ -11301,7 +11301,20 @@ class AmazingTablatureTrainingStore:
             ),
             key=lambda item: item["batchId"],
         )
-        if model.get("sourceCopedentProfiles") != expected_model_profiles:
+        actual_model_profiles = sorted(
+            (
+                {
+                    "batchId": str(entry.get("batchId") or ""),
+                    "id": str(entry.get("id") or ""),
+                    "revision": int(entry.get("revision") or 0),
+                    "digest": entry.get("digest"),
+                }
+                for entry in model.get("sourceCopedentProfiles") or ()
+                if isinstance(entry, Mapping)
+            ),
+            key=lambda item: item["batchId"],
+        )
+        if actual_model_profiles != expected_model_profiles:
             raise TrainingWorkflowError("The challenger does not pin every authoritative source-copedent profile.")
 
         validation_metrics: dict[str, str] = {}
