@@ -638,6 +638,32 @@ def _parser() -> argparse.ArgumentParser:
         required=True,
     )
 
+    apply_canonical_validation_corrections = subparsers.add_parser(
+        "apply-canonical-validation-corrections",
+        help=(
+            "Apply exact canonical validation feedback to an append-only, "
+            "no-training ground-truth overlay and prepare only necessary "
+            "correction confirmations."
+        ),
+    )
+    apply_canonical_validation_corrections.add_argument("model_id")
+    apply_canonical_validation_corrections.add_argument(
+        "correction_plan",
+        type=Path,
+    )
+    apply_canonical_validation_corrections.add_argument(
+        "--score-report-digest",
+        required=True,
+    )
+    apply_canonical_validation_corrections.add_argument(
+        "--packet-digest",
+        required=True,
+    )
+    apply_canonical_validation_corrections.add_argument(
+        "--submission-id",
+        required=True,
+    )
+
     remediate_validation_capture = subparsers.add_parser(
         "remediate-validation-machine-capture",
         help=(
@@ -1439,6 +1465,16 @@ def main() -> int:
                 args.batch_id,
                 model_id=args.model_id,
                 score_report_digest=args.score_report_digest,
+            )
+        elif args.command == "apply-canonical-validation-corrections":
+            result = AmazingTablatureExtractor(
+                args.root
+            ).apply_canonical_validation_corrections(
+                args.model_id,
+                score_report_digest=args.score_report_digest,
+                packet_digest=args.packet_digest,
+                submission_id=args.submission_id,
+                correction_plan=args.correction_plan,
             )
         elif args.command == "remediate-validation-machine-capture":
             result = AmazingTablatureExtractor(

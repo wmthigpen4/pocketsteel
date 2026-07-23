@@ -21,6 +21,7 @@ from pocketsteel.amazing_tablature_extraction import (
     EXTRACTOR_VERSION,
     PAGE_REVIEW_COMPATIBILITY_VERSION,
     CANONICAL_VALIDATION_DATASET_REVIEW_SCHEMA_VERSION,
+    CANONICAL_VALIDATION_CORRECTION_SCHEMA_VERSION,
     AudiverisReader,
     GridDetection,
     SCORE_AUDIT_SCOPE_SCHEMA_VERSION,
@@ -138,6 +139,7 @@ from pocketsteel.amazing_tablature_extraction import (
     _store_combined_score_tab_submission,
     _store_validation_line_audit_submission,
     _store_canonical_validation_submission,
+    _store_canonical_validation_correction_submission,
     _store_validation_disagreement_submission,
     _store_challenger_comparison_submission,
     _combined_review_alignments,
@@ -1353,7 +1355,141 @@ def test_canonical_validation_console_is_complete_line_focused() -> None:
     assert "Confirm tablature only" in html
     assert "Machine capture aligned by movement" in html
     assert "localStorage" in html
-    assert "reviewType:'canonical_validation'" in html
+    assert "REVIEW_TYPE='canonical_validation'" in html
+    assert "reviewType:REVIEW_TYPE" in html
+
+
+def test_canonical_validation_correction_submission_is_no_training(
+    tmp_path: Path,
+) -> None:
+    private = tmp_path / "private"
+    model_id = "at-canonical-correction"
+    correction_dir = (
+        private
+        / "validation-evaluations"
+        / model_id
+        / "canonical-validation"
+        / "corrections"
+    )
+    correction_dir.mkdir(parents=True)
+    lines = [
+        {
+            "lineId": "corrected-tab",
+            "batchId": "batch-main",
+            "inputId": "input-1",
+            "scoreSystemId": "",
+            "tabSystemId": "tab-1",
+            "correctedLineDigest": "a" * 64,
+            "evidenceMode": "tab_only",
+        },
+        {
+            "lineId": "corrected-score",
+            "batchId": "batch-licks",
+            "inputId": "input-2",
+            "scoreSystemId": "score-2",
+            "tabSystemId": "tab-2",
+            "correctedLineDigest": "b" * 64,
+            "evidenceMode": "score_supported",
+        },
+    ]
+    packet_core = {
+        "schemaVersion": (
+            CANONICAL_VALIDATION_CORRECTION_SCHEMA_VERSION
+        ),
+        "reviewType": "canonical_validation_correction",
+        "reviewScope": "changed_lines_requiring_confirmation",
+        "batchId": "batch-main",
+        "partition": "validation",
+        "modelId": model_id,
+        "modelArtifactSha256": "c" * 64,
+        "correctionReportDigest": "d" * 64,
+        "sourcePacketDigest": "e" * 64,
+        "sourceSubmissionId": (
+            "canonical-validation-submission-" + "f" * 20
+        ),
+        "lines": lines,
+        "lineCount": 2,
+        "allLinesMechanicallyValid": True,
+        "trainingEligible": False,
+        "validationGroundTruthMayTrain": False,
+        "validationAccessed": True,
+        "sealedTestAccessed": False,
+    }
+    packet_digest = _sha256_json(packet_core)
+    (correction_dir / f"packet-{packet_digest}.json").write_text(
+        json.dumps(
+            {**packet_core, "packetDigest": packet_digest},
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    base = {
+        "reviewType": "canonical_validation_correction",
+        "batchId": "batch-main",
+        "modelId": model_id,
+        "partition": "validation",
+        "packetDigest": packet_digest,
+    }
+    with pytest.raises(
+        ExtractionWorkflowError,
+        match="score confirmation",
+    ):
+        _store_canonical_validation_correction_submission(
+            private,
+            {
+                **base,
+                "reviews": [
+                    {
+                        "lineId": "corrected-tab",
+                        "status": "correct",
+                        "tabConfirmed": True,
+                    },
+                    {
+                        "lineId": "corrected-score",
+                        "status": "correct",
+                        "tabConfirmed": True,
+                        "scoreConfirmed": False,
+                    },
+                ],
+            },
+        )
+    result = _store_canonical_validation_correction_submission(
+        private,
+        {
+            **base,
+            "reviews": [
+                {
+                    "lineId": "corrected-tab",
+                    "status": "correct",
+                    "tabConfirmed": True,
+                },
+                {
+                    "lineId": "corrected-score",
+                    "status": "correct",
+                    "tabConfirmed": True,
+                    "scoreConfirmed": True,
+                },
+            ],
+        },
+    )
+    assert result["reviewCount"] == 2
+    assert result["eligibleForTraining"] is False
+    assert result["sealedTestAccessed"] is False
+    assert not (correction_dir / "accepted-decisions.jsonl").exists()
+
+
+def test_canonical_validation_correction_console_only_rereviews_changes() -> None:
+    digest = "d" * 64
+    html = _canonical_validation_console_html(
+        packet_digest=digest,
+        packet_filename=f"packet-{digest}.json",
+        review_type="canonical_validation_correction",
+    )
+
+    assert "Only corrections that genuinely need another look" in html
+    assert "not being sent back to you" in html
+    assert "REVIEW_TYPE='canonical_validation_correction'" in html
+    assert "reviewType:REVIEW_TYPE" in html
 
 
 def test_combined_console_supports_validation_ground_truth_mode() -> None:
