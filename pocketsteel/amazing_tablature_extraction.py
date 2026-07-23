@@ -56,7 +56,7 @@ FEEDBACK_CORRECTION_CONFIRMATION_SCHEMA_VERSION = (
 COMBINED_SCORE_TAB_REVIEW_SCHEMA_VERSION = "amazing-tablature-combined-score-tab-review-v1"
 VALIDATION_LINE_AUDIT_SCHEMA_VERSION = "amazing-tablature-validation-line-audit-v1"
 VALIDATION_LINE_PREFLIGHT_VERSION = "validation-line-structural-preflight-v1"
-VALIDATION_MACHINE_RECAPTURE_VERSION = "validation-machine-recapture-v3"
+VALIDATION_MACHINE_RECAPTURE_VERSION = "validation-machine-recapture-v4"
 VALIDATION_CAPTURE_ISSUE_KINDS = frozenset(
     {
         "page_extraction_failure",
@@ -5727,7 +5727,8 @@ def _validation_line_preflight_blockers(
 
     blockers: list[str] = []
     score_count = int(comparison.get("scoreAttackCount") or 0)
-    tab_count = int(comparison.get("tabMovementCount") or 0)
+    tab_attack_count = int(comparison.get("tabAttackCount") or 0)
+    tab_state_count = int(comparison.get("tabMovementCount") or 0)
     score_attacks = list(comparison.get("scoreAttacks") or [])
     tab_states = list(comparison.get("tabStates") or [])
     columns = list(comparison.get("columns") or [])
@@ -5742,16 +5743,16 @@ def _validation_line_preflight_blockers(
 
     if score_count < 1:
         blockers.append("score_events_missing")
-    if tab_count < 1:
+    if tab_state_count < 1:
         blockers.append("tablature_events_missing")
-    if score_count != tab_count:
+    if score_count != tab_attack_count:
         blockers.append("score_tablature_event_count_mismatch")
     if len(score_attacks) != score_count or any(
         not attack.get("pitches") or not attack.get("pitchValues")
         for attack in score_attacks
     ):
         blockers.append("incomplete_score_event_payload")
-    if len(tab_states) != tab_count or any(
+    if len(tab_states) != tab_state_count or any(
         not state.get("steelActions")
         or not state.get("pitches")
         or any(
@@ -5762,8 +5763,12 @@ def _validation_line_preflight_blockers(
     ):
         blockers.append("incomplete_tablature_event_payload")
     if (
-        len(columns) != score_count
-        or any(column.get("scoreAttack") is None for column in columns)
+        len(columns) != tab_state_count
+        or any(
+            column.get("scoreAttack") is None
+            and str(column.get("relationship") or "") != "movement_during_sustain"
+            for column in columns
+        )
         or any(column.get("tabState") is None for column in columns)
     ):
         blockers.append("blank_or_misaligned_comparison_event")
@@ -6355,6 +6360,189 @@ def _validation_independent_contact_cells(
             "Independent validation tab-cell evidence is empty."
         )
     return cells, sorted(cache_digests)
+
+
+def _validation_project_execution_from_independent_geometry(
+    *,
+    tab_system: Mapping[str, Any],
+    score_events: Sequence[Mapping[str, Any]],
+    tab_crop: Mapping[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Project attacks onto deterministic tab columns only at an exact geometry gate.
+
+    The score-only readers and deterministic tab detector establish their own
+    normalized horizontal coordinates.  A monotonic minimum-distance match may
+    classify unmatched tab columns as no-pick movement states, but only when
+    every selected pair is within the discovery-validated 0.02 tolerance and
+    the best assignment is unambiguous.  Visible cell count is a secondary
+    tie-breaker only for multiple state columns printed at the same x-position.
+    No pitches, reviewer truth, or validation labels participate.
+    """
+
+    candidates = list(tab_system.get("tabEventCandidates") or [])
+    score_groups = _score_event_groups_by_printed_position(
+        [event for event in score_events if not event.get("rest")]
+    )
+    if not score_groups or len(score_groups) > len(candidates):
+        raise ExtractionWorkflowError(
+            "Independent score/tab geometry cannot form a complete monotonic timeline."
+        )
+    score_positions: list[float] = []
+    for group in score_groups:
+        raw_positions = [
+            float(event["defaultX"])
+            for event in group
+            if event.get("defaultX") is not None
+        ]
+        if not raw_positions or any(not 0.0 <= value <= 1.0 for value in raw_positions):
+            raise ExtractionWorkflowError(
+                "Independent score geometry is not normalized to the score crop."
+            )
+        score_positions.append(round(sum(raw_positions) / len(raw_positions), 7))
+    tab_positions = [
+        float(candidate.get("horizontalPosition"))
+        for candidate in candidates
+    ]
+    if any(not 0.0 <= value <= 1.0 for value in tab_positions):
+        raise ExtractionWorkflowError(
+            "Deterministic tablature geometry is not normalized to the tab system."
+        )
+
+    # Keep the best two distinct paths at each dynamic-programming state so an
+    # equal-quality alternative can fail closed instead of being hidden by a
+    # deterministic iteration order.
+    PathState = tuple[float, int, tuple[int, ...]]
+    score_count = len(score_positions)
+    tab_count = len(tab_positions)
+    states: list[list[list[PathState]]] = [
+        [[] for _ in range(tab_count + 1)]
+        for _ in range(score_count + 1)
+    ]
+    for tab_index in range(tab_count + 1):
+        states[0][tab_index] = [(0.0, 0, ())]
+
+    def retain_best(values: Sequence[PathState]) -> list[PathState]:
+        unique: dict[tuple[int, ...], PathState] = {}
+        for value in values:
+            prior = unique.get(value[2])
+            if prior is None or (value[0], value[1]) < (prior[0], prior[1]):
+                unique[value[2]] = value
+        return sorted(
+            unique.values(),
+            key=lambda value: (round(value[0], 12), value[1], value[2]),
+        )[:2]
+
+    for score_index in range(1, score_count + 1):
+        for tab_index in range(1, tab_count + 1):
+            options = list(states[score_index][tab_index - 1])
+            for distance, negative_cell_count, path in states[
+                score_index - 1
+            ][tab_index - 1]:
+                candidate = candidates[tab_index - 1]
+                options.append(
+                    (
+                        distance
+                        + abs(
+                            score_positions[score_index - 1]
+                            - tab_positions[tab_index - 1]
+                        ),
+                        negative_cell_count
+                        - len(candidate.get("candidateStrings") or []),
+                        path + (tab_index - 1,),
+                    )
+                )
+            states[score_index][tab_index] = retain_best(options)
+
+    finalists = states[score_count][tab_count]
+    if not finalists or len(finalists[0][2]) != score_count:
+        raise ExtractionWorkflowError(
+            "Independent score/tab geometry has no complete monotonic assignment."
+        )
+    best_distance, best_negative_cells, selected = finalists[0]
+    deltas = [
+        abs(score_positions[index] - tab_positions[tab_index])
+        for index, tab_index in enumerate(selected)
+    ]
+    maximum_delta = max(deltas, default=1.0)
+    if maximum_delta > 0.02:
+        raise ExtractionWorkflowError(
+            "Independent score/tab geometry exceeds the exact projection tolerance "
+            f"(maximum_delta={maximum_delta:.6f})."
+        )
+    second_distance_margin: float | None = None
+    secondary_cell_margin: int | None = None
+    if len(finalists) > 1:
+        second_distance, second_negative_cells, _second_path = finalists[1]
+        second_distance_margin = second_distance - best_distance
+        secondary_cell_margin = second_negative_cells - best_negative_cells
+        same_distance = abs(second_distance_margin) <= 1e-9
+        if (
+            (same_distance and secondary_cell_margin <= 0)
+            or (not same_distance and second_distance_margin < 0.01)
+        ):
+            raise ExtractionWorkflowError(
+                "Independent score/tab geometry has an ambiguous attack projection."
+            )
+
+    selected_set = set(selected)
+    full_width = float(tab_crop.get("width") or 0.0)
+    content_x0 = float(tab_crop.get("contentX0") or 0.0)
+    content_x1 = float(tab_crop.get("contentX1") or 0.0)
+    if full_width <= 0.0 or content_x1 <= content_x0:
+        raise ExtractionWorkflowError(
+            "Independent score/tab projection crop geometry is incomplete."
+        )
+    raw_events = []
+    for event_index, candidate in enumerate(candidates, start=1):
+        local_x = float(candidate.get("horizontalPosition"))
+        raw_events.append(
+            {
+                "eventIndex": event_index,
+                "guideIndex": event_index,
+                "x": round(
+                    (content_x0 + local_x * (content_x1 - content_x0))
+                    / full_width,
+                    7,
+                ),
+                "execution": (
+                    "attack"
+                    if event_index - 1 in selected_set
+                    else "movement_only"
+                ),
+                # Independent per-cell reads replace this empty placeholder in
+                # _validation_contact_tab_hypothesis.
+                "cells": [],
+            }
+        )
+    localization = {
+        "events": raw_events,
+        "confidence": 0.85,
+        "confidenceBasis": "exact_independent_score_tab_geometry_threshold",
+        "uncertain": False,
+        "promptVersion": None,
+        "model": None,
+        "captureSource": "independent_score_tab_geometry_projection",
+    }
+    diagnostics = {
+        "scoreAttackCount": score_count,
+        "tabStateCount": tab_count,
+        "movementOnlyCount": tab_count - score_count,
+        "selectedAttackEventIndices": [index + 1 for index in selected],
+        "maximumPositionDelta": round(maximum_delta, 7),
+        "totalPositionDistance": round(best_distance, 7),
+        "secondBestDistanceMargin": (
+            round(second_distance_margin, 7)
+            if second_distance_margin is not None
+            else None
+        ),
+        "secondaryVisibleCellMargin": secondary_cell_margin,
+        "selectionEvidence": (
+            "independent_score_geometry_plus_deterministic_tab_geometry"
+        ),
+        "pitchEvidenceUsed": False,
+        "humanTruthUsed": False,
+    }
+    return localization, diagnostics
 
 
 def _validation_contact_tab_hypothesis(
@@ -25934,8 +26122,16 @@ class AmazingTablatureExtractor:
                 reader.contract() for reader in score_only_readers
             ],
             "scorePitchCountMayBeConstrainedByTab": False,
-            "scoreOnlyCountConstraintSource": "independent_machine_count_consensus",
+            "scoreOnlyCountConstraintSource": (
+                "independent_score_only_consensus_reconciled_post_hoc"
+            ),
             "tabCountConstraintSource": "machine_visual_candidate_geometry",
+            "tabExecutionSources": [
+                "strict_independent_score_tab_geometry_projection",
+                "full_line_machine_localizer_fallback",
+            ],
+            "scoreTabGeometryProjectionMaximumDelta": 0.02,
+            "scoreTabGeometryProjectionRequiresUniqueAssignment": True,
             "minimumConfidence": 0.85,
             "requiresVisualCandidateAgreement": True,
             "eventAndStringGeometrySource": "deterministic_visual_candidate_geometry",
@@ -26074,39 +26270,47 @@ class AmazingTablatureExtractor:
                         tab_system, tab_count_prediction
                     )
                     count_reader_agrees = independent_count == expected_count
-                    localization = copy.deepcopy(
+                    full_line_localization = copy.deepcopy(
                         cached.get("tabLocalization")
                     ) if (
                         int(cached.get("expectedEventCount") or 0) == expected_count
                         and isinstance(cached.get("tabLocalization"), Mapping)
                     ) else None
-                    if localization is None:
-                        localization = self.tab_system_vision.localize_events(
-                            Path(guided_tab_crop["path"]),
-                            expected_event_count=expected_count,
-                            constraint_source="machine_visual_candidate_geometry",
-                            guided=True,
-                            expected_cell_counts=[
-                                len(candidate.get("candidateStrings") or [])
-                                for candidate in tab_system.get("tabEventCandidates") or []
-                            ],
-                            control_string_map=_profile_control_string_map(profile),
-                        )
-                    original_localization = copy.deepcopy(localization)
-                    complete_machine_timeline_counts = {
-                        expected_count,
-                        sum(
-                            str(event.get("execution") or "")
-                            != "movement_only"
-                            for event in localization.get("events") or []
-                        ),
-                    }
+                    full_line_localization_rejection: str | None = None
+                    if full_line_localization is None:
+                        try:
+                            full_line_localization = (
+                                self.tab_system_vision.localize_events(
+                                    Path(guided_tab_crop["path"]),
+                                    expected_event_count=expected_count,
+                                    constraint_source="machine_visual_candidate_geometry",
+                                    guided=True,
+                                    expected_cell_counts=[
+                                        len(candidate.get("candidateStrings") or [])
+                                        for candidate in tab_system.get(
+                                            "tabEventCandidates"
+                                        )
+                                        or []
+                                    ],
+                                    control_string_map=_profile_control_string_map(
+                                        profile
+                                    ),
+                                )
+                            )
+                        except ExtractionWorkflowError as exc:
+                            full_line_localization_rejection = str(exc)
+                    # The score reader remains unconstrained by tablature.  The
+                    # bounded range only rejects an impossible score with more
+                    # attacks than visible deterministic tab columns; exact
+                    # reconciliation happens later through independent x
+                    # geometry, mechanics, and pitch containment.
+                    possible_score_counts = set(range(1, expected_count + 1))
                     existing_omr_rejection: str | None = None
                     try:
                         score_events, score_recognition = (
                             _validation_machine_score_from_existing_omr(
                                 score_system,
-                                expected_event_counts=complete_machine_timeline_counts,
+                                expected_event_counts=possible_score_counts,
                             )
                         )
                     except ExtractionWorkflowError as exc:
@@ -26124,12 +26328,57 @@ class AmazingTablatureExtractor:
                                 score_system=score_system,
                                 score_crop_path=score_crop_path,
                                 readers=score_only_readers,
-                                expected_event_counts=complete_machine_timeline_counts,
+                                expected_event_counts=possible_score_counts,
                             )
                         )
                         score_recognition["existingOmrRejection"] = (
                             existing_omr_rejection[:500]
                         )
+                    execution_projection_rejection: str | None = None
+                    execution_projection_diagnostics: dict[str, Any] | None = None
+                    try:
+                        localization, execution_projection_diagnostics = (
+                            _validation_project_execution_from_independent_geometry(
+                                tab_system=tab_system,
+                                score_events=score_events,
+                                tab_crop=tab_crop,
+                            )
+                        )
+                    except ExtractionWorkflowError as exc:
+                        execution_projection_rejection = str(exc)
+                        if full_line_localization is None:
+                            raise ExtractionWorkflowError(
+                                "Neither strict independent score/tab geometry nor "
+                                "the full-line machine localizer produced a complete "
+                                f"timeline: geometry={execution_projection_rejection}; "
+                                f"localizer={full_line_localization_rejection or 'unavailable'}."
+                            ) from exc
+                        score_attack_count = len(
+                            _score_event_groups_by_printed_position(
+                                [
+                                    event
+                                    for event in score_events
+                                    if not event.get("rest")
+                                ]
+                            )
+                        )
+                        full_line_attack_count = sum(
+                            str(event.get("execution") or "")
+                            != "movement_only"
+                            for event in full_line_localization.get("events") or []
+                        )
+                        if score_attack_count not in {
+                            expected_count,
+                            full_line_attack_count,
+                        }:
+                            raise ExtractionWorkflowError(
+                                "Full-line machine execution classification does not "
+                                "match the independent score attack count "
+                                f"({score_attack_count} versus "
+                                f"{full_line_attack_count}/{expected_count})."
+                            ) from exc
+                        localization = full_line_localization
+                    input_localization = copy.deepcopy(localization)
                     localization, tab_events, hypothesis_diagnostics = (
                         _validation_contact_tab_hypothesis(
                             input_id=input_id,
@@ -26143,6 +26392,14 @@ class AmazingTablatureExtractor:
                             expected_count=expected_count,
                         )
                     )
+                    if execution_projection_diagnostics is not None:
+                        # The input projection intentionally contains no token
+                        # cells. Independent contact evidence populated them in
+                        # the selected localization, so token override counts
+                        # are zero rather than a misleading full-line delta.
+                        original_localization = copy.deepcopy(localization)
+                    else:
+                        original_localization = input_localization
                     string_origin_offset = int(
                         hypothesis_diagnostics["selectedStringOriginOffset"]
                     )
@@ -26222,6 +26479,13 @@ class AmazingTablatureExtractor:
                         "countOnlyReaderAgrees": count_reader_agrees,
                         "countOnlyReaderBlockers": count_blockers,
                         "tabLocalization": localization,
+                        "tabExecutionProjection": execution_projection_diagnostics,
+                        "tabExecutionProjectionRejection": (
+                            execution_projection_rejection
+                        ),
+                        "fullLineLocalizationRejection": (
+                            full_line_localization_rejection
+                        ),
                         "scoreRecognition": score_recognition,
                         "scoreTabContainmentDiagnostics": score_tab_diagnostics,
                         "tabHypothesisDiagnostics": hypothesis_diagnostics,
@@ -26268,9 +26532,14 @@ class AmazingTablatureExtractor:
                         "schemaVersion": VALIDATION_MACHINE_RECAPTURE_VERSION,
                         "contractDigest": contract_digest,
                         "expectedEventCount": expected_count,
-                        "scorePitchSource": score_recognition["captureSource"],
-                        "humanTruthUsed": False,
-                    }
+                            "scorePitchSource": score_recognition["captureSource"],
+                            "tabExecutionSource": (
+                                "strict_independent_score_tab_geometry_projection"
+                                if execution_projection_diagnostics is not None
+                                else "full_line_machine_localizer_fallback"
+                            ),
+                            "humanTruthUsed": False,
+                        }
                     candidate_tab["tabEvents"] = tab_events
                     for candidate, resolved_event in zip(
                         candidate_tab.get("tabEventCandidates") or [],
@@ -26355,6 +26624,11 @@ class AmazingTablatureExtractor:
                             "contractDigest": contract_digest,
                             "expectedEventCount": expected_count,
                             "scorePitchSource": score_recognition["captureSource"],
+                            "tabExecutionSource": (
+                                "strict_independent_score_tab_geometry_projection"
+                                if execution_projection_diagnostics is not None
+                                else "full_line_machine_localizer_fallback"
+                            ),
                             "countOnlyReaderAgrees": count_reader_agrees,
                             "humanTruthUsed": False,
                             "validationMayTrain": False,
@@ -26388,6 +26662,14 @@ class AmazingTablatureExtractor:
                             "countOnlyReaderBlockers": count_blockers,
                             "scorePitchContainmentPassed": True,
                             "scorePitchSource": score_recognition["captureSource"],
+                            "tabExecutionSource": (
+                                "strict_independent_score_tab_geometry_projection"
+                                if execution_projection_diagnostics is not None
+                                else "full_line_machine_localizer_fallback"
+                            ),
+                            "tabExecutionProjection": (
+                                execution_projection_diagnostics
+                            ),
                             "applied": apply,
                         }
                     )

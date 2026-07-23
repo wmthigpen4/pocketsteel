@@ -77,6 +77,7 @@ from pocketsteel.amazing_tablature_extraction import (
     _validation_audit_not_ready_html,
     _validation_capture_issue_count,
     _validation_line_preflight_blockers,
+    _validation_project_execution_from_independent_geometry,
     _validation_machine_count_consensus,
     _validation_independent_contact_cells,
     _validation_contact_tab_hypothesis,
@@ -1048,6 +1049,7 @@ def test_validation_line_preflight_requires_complete_equal_renderings() -> None:
     ]
     complete = {
         "scoreAttackCount": 2,
+        "tabAttackCount": 2,
         "tabMovementCount": 2,
         "scoreAttacks": score_attacks,
         "tabStates": tab_states,
@@ -1095,6 +1097,31 @@ def test_validation_line_preflight_requires_complete_equal_renderings() -> None:
     assert _validation_line_preflight_blockers(
         incomplete_tab, key_signature_known=True, blocking_issue_count=0
     ) == ["incomplete_tablature_event_payload"]
+
+    movement_state = {
+        "pitches": ["D5"],
+        "steelActions": [{"string": 1, "fret": 8}],
+    }
+    complete_with_movement = {
+        **complete,
+        "tabAttackCount": 2,
+        "tabMovementCount": 3,
+        "tabStates": [tab_states[0], movement_state, tab_states[1]],
+        "columns": [
+            {"scoreAttack": score_attacks[0], "tabState": tab_states[0]},
+            {
+                "scoreAttack": None,
+                "tabState": movement_state,
+                "relationship": "movement_during_sustain",
+            },
+            {"scoreAttack": score_attacks[1], "tabState": tab_states[1]},
+        ],
+    }
+    assert _validation_line_preflight_blockers(
+        complete_with_movement,
+        key_signature_known=True,
+        blocking_issue_count=0,
+    ) == []
 
 
 def test_validation_capture_issues_distinguish_reader_failures_from_musical_differences() -> None:
@@ -1630,6 +1657,71 @@ def test_validation_contact_cells_require_exact_sheet_and_reader_lineage(
             output_root=output_root,
             tab_system=tab_system,
             model="different-model",
+        )
+
+
+def test_validation_execution_projection_accepts_only_exact_unambiguous_geometry() -> None:
+    score_events = [
+        {
+            "scoreEventId": f"score-{index}",
+            "measure": 1,
+            "beat": float(index),
+            "defaultX": x,
+            "pitchValue": 60 + index,
+            "rest": False,
+        }
+        for index, x in enumerate((0.1, 0.5, 0.9), start=1)
+    ]
+    tab_system = {
+        "tabEventCandidates": [
+            {
+                "sourceCandidateEventIndex": 1,
+                "horizontalPosition": 0.1,
+                "candidateStrings": [5],
+            },
+            {
+                "sourceCandidateEventIndex": 2,
+                "horizontalPosition": 0.5,
+                "candidateStrings": [5],
+            },
+            {
+                "sourceCandidateEventIndex": 3,
+                "horizontalPosition": 0.5,
+                "candidateStrings": [4, 5, 6],
+            },
+            {
+                "sourceCandidateEventIndex": 4,
+                "horizontalPosition": 0.9,
+                "candidateStrings": [6],
+            },
+        ]
+    }
+    localization, diagnostics = (
+        _validation_project_execution_from_independent_geometry(
+            tab_system=tab_system,
+            score_events=score_events,
+            tab_crop={"contentX0": 10, "contentX1": 90, "width": 100},
+        )
+    )
+
+    assert [
+        event["execution"] for event in localization["events"]
+    ] == ["attack", "movement_only", "attack", "attack"]
+    assert diagnostics["selectedAttackEventIndices"] == [1, 3, 4]
+    assert diagnostics["movementOnlyCount"] == 1
+    assert diagnostics["maximumPositionDelta"] == 0.0
+    assert diagnostics["pitchEvidenceUsed"] is False
+    assert diagnostics["humanTruthUsed"] is False
+
+    ambiguous = copy.deepcopy(tab_system)
+    ambiguous["tabEventCandidates"][1]["horizontalPosition"] = 0.49
+    ambiguous["tabEventCandidates"][2]["horizontalPosition"] = 0.51
+    ambiguous["tabEventCandidates"][2]["candidateStrings"] = [4]
+    with pytest.raises(ExtractionWorkflowError, match="ambiguous"):
+        _validation_project_execution_from_independent_geometry(
+            tab_system=ambiguous,
+            score_events=score_events,
+            tab_crop={"contentX0": 10, "contentX1": 90, "width": 100},
         )
 
 
