@@ -939,6 +939,12 @@ def _parser() -> argparse.ArgumentParser:
         help="Shrink retrained style weights toward the exact discovery baseline (0-1).",
     )
     train_discovery.add_argument(
+        "--update-margin",
+        type=float,
+        default=0.0,
+        help="Update tied or insufficiently separated pairs until this score margin is exceeded.",
+    )
+    train_discovery.add_argument(
         "--experimental-style",
         action="append",
         default=[],
@@ -995,6 +1001,12 @@ def _parser() -> argparse.ArgumentParser:
         type=float,
         default=0.20,
         help="Initialize every canonical style from the exact baseline while updating from complete discovery.",
+    )
+    train_complete.add_argument(
+        "--update-margin",
+        type=float,
+        default=0.0,
+        help="Update tied or insufficiently separated pairs until this score margin is exceeded.",
     )
 
     canonical_readiness = subparsers.add_parser(
@@ -1725,6 +1737,7 @@ def main() -> int:
                 experimental_styles=args.experimental_style,
                 average_weights=args.average_weights,
                 base_weight_ratio=args.base_weight_ratio,
+                update_margin=args.update_margin,
             )
         elif args.command == "train-complete-discovery":
             result = store.train_complete_discovery_challenger(
@@ -1733,6 +1746,7 @@ def main() -> int:
                 learning_rate=args.learning_rate,
                 average_weights=args.average_weights,
                 base_weight_ratio=args.base_weight_ratio,
+                update_margin=args.update_margin,
             )
         elif args.command == "build-discovery-transition-decoder":
             result = store.build_discovery_transition_decoder(args.batch_id)

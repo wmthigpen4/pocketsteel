@@ -3961,12 +3961,15 @@ class AmazingTablatureTrainingStore:
         experimental_styles: Sequence[str] | None = None,
         average_weights: bool = False,
         base_weight_ratio: float = 0.0,
+        update_margin: float = 0.0,
         complete_discovery: bool = False,
     ) -> dict[str, Any]:
         """Train the shared partial- or complete-discovery challenger path."""
 
         if epochs < 1 or learning_rate <= 0:
             raise TrainingWorkflowError("Training requires positive epochs and learning rate.")
+        if update_margin < 0:
+            raise TrainingWorkflowError("The pairwise update margin must be non-negative.")
         if not 0.0 <= base_weight_ratio <= 1.0:
             raise TrainingWorkflowError("The base weight ratio must be between zero and one.")
         if base_weight_ratio and not base_model_id:
@@ -3995,6 +3998,7 @@ class AmazingTablatureTrainingStore:
             epochs=epochs,
             learning_rate=learning_rate,
             average_weights=average_weights,
+            update_margin=update_margin,
         )
         weights_by_style = {
             style: dict(weights) for style, weights in trained.weights_by_style.items()
@@ -4081,6 +4085,7 @@ class AmazingTablatureTrainingStore:
             "experimentalStyles": normalized_experimental_styles,
             "averageWeights": bool(average_weights),
             "baseWeightRatio": float(base_weight_ratio),
+            "updateMargin": float(update_margin),
             "completeDiscovery": bool(complete_discovery),
         }
         dataset_hash = _sha256_json({"seedId": seed_id, "records": trainer_records})
@@ -4205,6 +4210,7 @@ class AmazingTablatureTrainingStore:
         learning_rate: float = 0.05,
         average_weights: bool = False,
         base_weight_ratio: float = 0.20,
+        update_margin: float = 0.0,
     ) -> dict[str, Any]:
         """Build a validation-eligible model through the hardened discovery trainer."""
 
@@ -4215,6 +4221,7 @@ class AmazingTablatureTrainingStore:
             experimental_styles=CANONICAL_STYLE_FAMILIES,
             average_weights=average_weights,
             base_weight_ratio=base_weight_ratio,
+            update_margin=update_margin,
             complete_discovery=True,
         )
 

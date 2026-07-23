@@ -3015,6 +3015,7 @@ def test_complete_discovery_challenger_reuses_hardened_lineage_and_all_styles(
         base_model_id=base["modelId"],
         epochs=2,
         base_weight_ratio=0.20,
+        update_margin=0.10,
     )
     assert canonical["parentModelId"] == base["modelId"]
     assert canonical["fullDiscoveryReviewComplete"] is True
@@ -3028,6 +3029,7 @@ def test_complete_discovery_challenger_reuses_hardened_lineage_and_all_styles(
         "single_note_run",
     ]
     assert canonical["preferenceAccounting"]["reviewedCount"] == 16
+    assert canonical["trainingConfig"]["updateMargin"] == 0.10
     registry = json.loads(
         (tmp_path / "private/training-registry.json").read_text(encoding="utf-8")
     )
@@ -3598,6 +3600,30 @@ def test_averaged_pairwise_ranker_dampens_last_update_order_effect() -> None:
     assert averaged.weights_by_style["single_note_run"]["bar_travel"] == -0.5
 
 
+def test_pairwise_ranker_margin_updates_insufficiently_separated_pairs() -> None:
+    records = [
+        {
+            "styleFamily": "single_note_run",
+            "chosen": {"barTravel": 0},
+            "alternatives": [{"barTravel": 1}],
+            "evidenceWeight": 1,
+        }
+    ]
+
+    no_margin = train_pairwise_ranker(records, epochs=2, learning_rate=0.05)
+    with_margin = train_pairwise_ranker(
+        records,
+        epochs=2,
+        learning_rate=0.05,
+        update_margin=0.10,
+    )
+
+    assert no_margin.weights_by_style["single_note_run"]["bar_travel"] == 0.05
+    assert with_margin.weights_by_style["single_note_run"]["bar_travel"] == 0.10
+    with pytest.raises(ValueError, match="non-negative"):
+        train_pairwise_ranker(records, update_margin=-0.01)
+
+
 def test_discovery_weight_shrinkage_requires_a_valid_baseline_ratio(tmp_path: Path) -> None:
     store = AmazingTablatureTrainingStore(tmp_path / "private", repo_root=tmp_path)
 
@@ -3605,6 +3631,8 @@ def test_discovery_weight_shrinkage_requires_a_valid_baseline_ratio(tmp_path: Pa
         store.train_discovery_challenger(base_weight_ratio=1.01)
     with pytest.raises(TrainingWorkflowError, match="exact discovery baseline"):
         store.train_discovery_challenger(base_weight_ratio=0.8)
+    with pytest.raises(TrainingWorkflowError, match="non-negative"):
+        store.train_discovery_challenger(update_margin=-0.01)
 
 
 def test_evaluate_report_promote_and_rollback_exact_models(tmp_path: Path) -> None:

@@ -103,6 +103,7 @@ def train_pairwise_ranker(
     epochs: int = 20,
     learning_rate: float = 0.05,
     average_weights: bool = False,
+    update_margin: float = 0.0,
 ) -> RankerModel:
     """Fit reviewed chosen-vs-alternative comparisons with a perceptron.
 
@@ -110,6 +111,9 @@ def train_pairwise_ranker(
     control letters, and copyrighted passage text are deliberately absent.
     Lower scores rank better at runtime.
     """
+
+    if update_margin < 0:
+        raise ValueError("The pairwise update margin must be non-negative.")
 
     examples: list[tuple[str, Mapping[str, object], Sequence[Mapping[str, object]], float]] = []
     for record in records:
@@ -138,7 +142,9 @@ def train_pairwise_ranker(
             weights = weights_by_style[style]
             chosen_features = feature_vector(chosen)
             for alternative in alternatives:
-                if score_candidate(chosen, weights) >= score_candidate(alternative, weights):
+                chosen_score = score_candidate(chosen, weights)
+                alternative_score = score_candidate(alternative, weights)
+                if alternative_score - chosen_score <= update_margin:
                     alternative_features = feature_vector(alternative)
                     for name in FEATURE_NAMES:
                         # Lower scores are better, so move the chosen vector down
