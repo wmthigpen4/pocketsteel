@@ -533,6 +533,22 @@ ledgers, prompts, or no-rereview accounting. The packet and receipt both pin
 the validation extraction run, exact challenger artifact, page-record digests,
 extractor and renderer versions, and `sealedTestAccessed: false`.
 
+Before requesting more human review, complete machine-consensus tab lines may
+be scored automatically as a bounded diagnostic:
+
+```bash
+.venv/bin/python scripts/amazing_tablature.py \
+  score-validation-machine-candidates <exact-model-id>
+```
+
+This command accepts only digest-verified complete lines from the authoritative
+machine-consensus reports, strips all score hypotheses, derives
+`alignment:tab_only` movements, and writes no training evidence. Incomplete
+lines and attack-versus-hold ambiguities are withheld. The report always keeps
+the canonical, rules-freeze, sealed-test, and private-runtime gates closed
+because machine consensus is not human validation ground truth and supplies no
+`alignment:score_supported` evidence.
+
 Canonical validation uses a threshold contract fixed before held-out evidence
 is opened. It measures arrangement after input has been normalized into exact
 score events; score-image and audio recognition are explicitly outside this

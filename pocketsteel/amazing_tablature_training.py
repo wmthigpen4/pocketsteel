@@ -18,6 +18,7 @@ import re
 import secrets
 import subprocess
 import tempfile
+from copy import deepcopy
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Iterable, Mapping, Sequence
@@ -6598,6 +6599,452 @@ class AmazingTablatureTrainingStore:
         report_dir.mkdir(parents=True, exist_ok=True)
         _make_private(report_dir, directory=True)
         report_path = report_dir / f"validation-line-score-{report_digest}.json"
+        _write_json(report_path, report)
+        _make_private(report_path)
+        return {
+            **report,
+            "reportPath": str(report_path.relative_to(self.root)),
+        }
+
+    def score_validation_machine_candidates(self, model_id: str) -> dict[str, Any]:
+        """Score only complete, discovery-calibrated validation tab lines.
+
+        This is an automatic, evaluation-only fallback for the image-reader
+        bottleneck.  It accepts no validation label as training evidence and
+        deliberately strips score facts before deriving candidate-choice
+        records.  As a result, the output can measure the exact challenger on
+        high-confidence ``alignment:tab_only`` movements, but it cannot satisfy
+        the separately predeclared ``alignment:score_supported`` gate.
+        """
+
+        from pocketsteel.amazing_tablature_decisions import (
+            derive_decision_annotations,
+        )
+
+        registry = self._registry()
+        model_meta = registry["models"].get(model_id)
+        if not model_meta:
+            raise TrainingWorkflowError(f"Unknown challenger: {model_id}.")
+        if (
+            model_meta.get("datasetEligibility") != "complete_discovery"
+            or not model_meta.get("canonicalEvaluationEligible")
+        ):
+            raise TrainingWorkflowError(
+                "Machine-candidate validation scoring requires a "
+                "complete-discovery canonical challenger."
+            )
+        authoritative_ids = self._authoritative_batch_ids(registry)
+        if not authoritative_ids:
+            raise TrainingWorkflowError(
+                "No authoritative validation batches are registered."
+            )
+        if tuple(model_meta.get("sourceBatchIds") or ()) != authoritative_ids:
+            raise TrainingWorkflowError(
+                "The challenger source batches do not match the authoritative dataset."
+            )
+        model_path = self.root / str(model_meta["artifact"])
+        if not model_path.exists():
+            raise TrainingWorkflowError("The challenger artifact is missing.")
+        artifact_sha256 = _sha256_bytes(model_path.read_bytes())
+        if artifact_sha256 != str(model_meta.get("artifactSha256") or ""):
+            raise TrainingWorkflowError(
+                "The challenger artifact digest changed before validation scoring."
+            )
+        model = _read_json(model_path)
+
+        ranking_records: list[dict[str, Any]] = []
+        cohort_receipts: dict[str, dict[str, Any]] = {}
+        machine_line_count = 0
+        withheld_line_count = 0
+        candidate_digests: list[str] = []
+
+        for batch_id in authoritative_ids:
+            manifest, _state = self._batch(batch_id)
+            profile = _profile_for_source(str(manifest["sourceCopedentId"]))
+            if (
+                profile.revision != int(manifest["sourceCopedentRevision"])
+                or _profile_digest(profile) != str(manifest["sourceCopedentDigest"])
+            ):
+                raise TrainingWorkflowError(
+                    f"The source copedent changed before validation scoring: {batch_id}."
+                )
+            validation_root = (
+                self._batch_dir(batch_id) / "extraction" / "validation"
+            )
+            report_path = (
+                validation_root
+                / "review"
+                / "automation"
+                / "validation-contact-sheet-consensus-v3"
+                / "report.json"
+            )
+            if not report_path.exists():
+                raise TrainingWorkflowError(
+                    f"Authoritative batch lacks a machine-consensus report: {batch_id}."
+                )
+            consensus = _read_json(report_path)
+            report_digest = str(consensus.get("reportDigest") or "")
+            report_core = {
+                key: value
+                for key, value in consensus.items()
+                if key != "reportDigest"
+            }
+            if (
+                consensus.get("schemaVersion")
+                != "validation-contact-sheet-consensus-v3"
+                or consensus.get("batchId") != batch_id
+                or consensus.get("partition") != "validation"
+                or consensus.get("humanTruthUsed") is not False
+                or consensus.get("validationMayTrain") is not False
+                or consensus.get("sealedTestAccessed") is not False
+                or _sha256_json(report_core) != report_digest
+            ):
+                raise TrainingWorkflowError(
+                    f"Machine-consensus lineage or no-training contract failed: {batch_id}."
+                )
+            pinned_model = consensus.get("validationModel") or {}
+            if (
+                str(pinned_model.get("modelId") or "") != model_id
+                or str(pinned_model.get("artifactSha256") or "")
+                != artifact_sha256
+            ):
+                raise TrainingWorkflowError(
+                    f"Machine consensus is not pinned to the exact challenger: {batch_id}."
+                )
+
+            batch_records: list[dict[str, Any]] = []
+            complete_lines = 0
+            withheld_lines = 0
+            candidate_decision_count = 0
+            for line in consensus.get("lines") or []:
+                if line.get("status") != "complete_machine_candidate":
+                    withheld_lines += 1
+                    continue
+                candidate_relative = Path(str(line.get("candidatePath") or ""))
+                candidate_path = (validation_root / candidate_relative).resolve()
+                allowed_root = (
+                    validation_root
+                    / "review"
+                    / "automation"
+                    / "validation-contact-sheet-consensus-v3"
+                    / "candidates"
+                ).resolve()
+                try:
+                    candidate_path.relative_to(allowed_root)
+                except ValueError as exc:
+                    raise TrainingWorkflowError(
+                        "A machine validation candidate escaped its private output directory."
+                    ) from exc
+                if not candidate_path.exists():
+                    raise TrainingWorkflowError(
+                        f"A complete machine validation candidate is missing: {batch_id}."
+                    )
+                candidate = _read_json(candidate_path)
+                candidate_digest = str(candidate.get("candidateDigest") or "")
+                candidate_core = {
+                    key: value
+                    for key, value in candidate.items()
+                    if key != "candidateDigest"
+                }
+                diagnostics = candidate.get("diagnostics") or {}
+                if (
+                    candidate.get("schemaVersion")
+                    != "validation-contact-sheet-consensus-v3"
+                    or candidate.get("batchId") != batch_id
+                    or candidate.get("partition") != "validation"
+                    or candidate.get("status")
+                    != "complete_machine_candidate"
+                    or candidate.get("humanTruthUsed") is not False
+                    or candidate.get("validationMayTrain") is not False
+                    or candidate.get("sealedTestAccessed") is not False
+                    or candidate_digest
+                    != str(line.get("candidateDigest") or "")
+                    or _sha256_json(candidate_core) != candidate_digest
+                    or diagnostics.get("allCellsResolved") is not True
+                    or diagnostics.get("allColumnsDecoded") is not True
+                    or diagnostics.get("mechanicallyValid") is not True
+                    or int(diagnostics.get("unresolvedCellCount") or 0) != 0
+                ):
+                    raise TrainingWorkflowError(
+                        f"A machine validation candidate is incomplete or unpinned: {batch_id}."
+                    )
+                candidate_model = candidate.get("validationModel") or {}
+                if (
+                    str(candidate_model.get("modelId") or "") != model_id
+                    or str(candidate_model.get("artifactSha256") or "")
+                    != artifact_sha256
+                ):
+                    raise TrainingWorkflowError(
+                        f"A machine candidate targets a different challenger: {batch_id}."
+                    )
+                input_id = str(candidate.get("inputId") or "")
+                page_path = validation_root / "pages" / f"{input_id}.json"
+                if not page_path.exists():
+                    raise TrainingWorkflowError(
+                        f"A machine validation page is missing: {batch_id}/{input_id}."
+                    )
+                page_record = _read_json(page_path)
+                if _sha256_json(page_record) != str(
+                    candidate.get("machineRecordDigest") or ""
+                ):
+                    raise TrainingWorkflowError(
+                        f"A validation page changed after machine consensus: "
+                        f"{batch_id}/{input_id}."
+                    )
+                tab_system_id = str(candidate.get("tabSystemId") or "")
+                tab_system = next(
+                    (
+                        deepcopy(item)
+                        for item in page_record.get("tabSystems") or []
+                        if str(item.get("tabSystemId") or "") == tab_system_id
+                    ),
+                    None,
+                )
+                if tab_system is None:
+                    raise TrainingWorkflowError(
+                        f"A machine candidate has no source tab system: "
+                        f"{batch_id}/{input_id}."
+                    )
+                candidate_events = deepcopy(candidate.get("events") or [])
+                if not candidate_events:
+                    raise TrainingWorkflowError(
+                        f"A complete machine candidate has no events: "
+                        f"{batch_id}/{input_id}."
+                    )
+                candidate_decision_count += max(
+                    0,
+                    len(candidate_events) - 1,
+                )
+                tab_system["tabEvents"] = candidate_events
+                tab_event_ids = {
+                    str(event.get("tabEventId") or "")
+                    for event in candidate_events
+                }
+                derivation_record = deepcopy(page_record)
+                # The automatic comparison is intentionally tab-only.  It may
+                # not turn a machine score hypothesis into held-out truth.
+                derivation_record["scoreSystems"] = []
+                derivation_record["eventAlignments"] = []
+                derivation_record["tabSystems"] = [tab_system]
+                derivation_record["movementSequences"] = [
+                    movement
+                    for movement in derivation_record.get("movementSequences")
+                    or []
+                    if str(movement.get("toTabEventId") or "")
+                    in tab_event_ids
+                ]
+                decisions = derive_decision_annotations(
+                    derivation_record,
+                    profile,
+                )
+                if len(decisions) != max(0, len(candidate_events) - 1):
+                    raise TrainingWorkflowError(
+                        "A complete machine line did not yield one context-complete "
+                        "decision for every movement."
+                    )
+                event_index_by_id = {
+                    str(event.get("tabEventId") or ""): index
+                    for index, event in enumerate(candidate_events)
+                }
+                exact_execution_inference = {
+                    "initial_attack",
+                    "reviewed_source_transition_decoder",
+                }
+                context_complete_decisions: list[dict[str, Any]] = []
+                for decision in decisions:
+                    if "alignment:tab_only" not in (
+                        decision.get("categoryTags") or []
+                    ):
+                        raise TrainingWorkflowError(
+                            "Automatic validation decisions must remain tab-only."
+                        )
+                    event_index = event_index_by_id.get(
+                        str(decision.get("sourceTabEventId") or "")
+                    )
+                    if event_index is None:
+                        raise TrainingWorkflowError(
+                            "An automatic validation decision lost its source event."
+                        )
+                    current_event = candidate_events[event_index]
+                    following_event = (
+                        candidate_events[event_index + 1]
+                        if event_index + 1 < len(candidate_events)
+                        else None
+                    )
+                    # An unresolved attack-versus-hold changes sustained,
+                    # repicked, and outgoing-continuity features.  Such a
+                    # movement is not context-complete and cannot be scored.
+                    if (
+                        str(current_event.get("executionInference") or "")
+                        not in exact_execution_inference
+                        or (
+                            following_event is not None
+                            and str(
+                                following_event.get("executionInference") or ""
+                            )
+                            not in exact_execution_inference
+                        )
+                    ):
+                        continue
+                    decision["batchId"] = batch_id
+                    decision["validationEvidence"] = {
+                        "mode": "machine_consensus_complete_line",
+                        "consensusReportDigest": report_digest,
+                        "candidateDigest": candidate_digest,
+                        "validationMayTrain": False,
+                    }
+                    decision["mechanicalValidation"] = _mechanical_validation(
+                        decision,
+                        profile,
+                    )
+                    context_complete_decisions.append(decision)
+                batch_records.extend(context_complete_decisions)
+                candidate_digests.append(candidate_digest)
+                complete_lines += 1
+
+            ranking_records.extend(batch_records)
+            machine_line_count += complete_lines
+            withheld_line_count += withheld_lines
+            cohort_receipts[batch_id] = {
+                "consensusReportDigest": report_digest,
+                "consensusReportFileSha256": _sha256_bytes(
+                    report_path.read_bytes()
+                ),
+                "validationRunDigest": consensus.get("validationRunDigest"),
+                "completeMachineLineCount": complete_lines,
+                "withheldLineCount": withheld_lines,
+                "decisionCount": len(batch_records),
+                "contextIncompleteDecisionCount": (
+                    candidate_decision_count - len(batch_records)
+                ),
+                "decisionDigest": _sha256_json(batch_records),
+                "humanTruthUsed": False,
+                "validationMayTrain": False,
+            }
+
+        overall = self._validation_ranking_metrics(model, ranking_records)
+        cohort_metrics: dict[str, dict[str, Any]] = {}
+        for batch_id in authoritative_ids:
+            records = [
+                record
+                for record in ranking_records
+                if record.get("batchId") == batch_id
+            ]
+            cohort_metrics[batch_id] = {
+                **self._validation_ranking_metrics(model, records),
+                "evidenceSufficient": len(records)
+                >= VALIDATION_MIN_DECISIONS_PER_COHORT,
+            }
+        tab_only_metrics = {
+            **self._validation_ranking_metrics(model, ranking_records),
+            "evidenceSufficient": len(ranking_records)
+            >= VALIDATION_MIN_DECISIONS_PER_EVIDENCE_MODE,
+        }
+        score_supported_metrics = {
+            **self._validation_ranking_metrics(model, []),
+            "evidenceSufficient": False,
+        }
+        measured_thresholds_passed = bool(
+            overall["topChoiceAccuracy"]
+            > VALIDATION_OVERALL_PREFERENCE_FLOOR
+            and overall["topThreeCoverage"]
+            >= VALIDATION_TOP_THREE_COVERAGE_FLOOR
+            and overall["approvedSourceMechanicalAccuracy"] == 1.0
+            and overall["predictedTopMechanicalAccuracy"] == 1.0
+            and all(
+                metrics["evidenceSufficient"]
+                and metrics["topChoiceAccuracy"]
+                >= VALIDATION_COHORT_PREFERENCE_FLOOR
+                and metrics["approvedSourceMechanicalAccuracy"] == 1.0
+                and metrics["predictedTopMechanicalAccuracy"] == 1.0
+                for metrics in cohort_metrics.values()
+            )
+            and tab_only_metrics["evidenceSufficient"]
+            and tab_only_metrics["topChoiceAccuracy"]
+            >= VALIDATION_EVIDENCE_MODE_PREFERENCE_FLOOR
+        )
+        input_parity = structured_input_parity_report()
+        canonical_gate_passed = False
+        report_core = {
+            "schemaVersion": "amazing-tablature-machine-validation-score-v1",
+            "modelId": model_id,
+            "modelArtifactSha256": artifact_sha256,
+            "evaluatedAt": _utc_now(),
+            "evaluationScope": "complete_machine_consensus_tab_lines",
+            "authoritativeBatchIds": list(authoritative_ids),
+            "cohortReceipts": cohort_receipts,
+            "completeMachineLineCount": machine_line_count,
+            "withheldLineCount": withheld_line_count,
+            "decisionCount": len(ranking_records),
+            "decisionDigest": _sha256_json(ranking_records),
+            "candidateSetDigest": _sha256_json(sorted(candidate_digests)),
+            "metrics": overall,
+            "cohortMetrics": cohort_metrics,
+            "evidenceModeMetrics": {
+                "alignment:score_supported": score_supported_metrics,
+                "alignment:tab_only": tab_only_metrics,
+            },
+            "thresholds": {
+                "overallTopChoiceAccuracy": {
+                    "comparison": "strictly_greater_than",
+                    "value": VALIDATION_OVERALL_PREFERENCE_FLOOR,
+                },
+                "topThreeCoverage": VALIDATION_TOP_THREE_COVERAGE_FLOOR,
+                "cohortTopChoiceAccuracy": VALIDATION_COHORT_PREFERENCE_FLOOR,
+                "evidenceModeTopChoiceAccuracy": (
+                    VALIDATION_EVIDENCE_MODE_PREFERENCE_FLOOR
+                ),
+                "minimumDecisionsPerCohort": (
+                    VALIDATION_MIN_DECISIONS_PER_COHORT
+                ),
+                "minimumDecisionsPerEvidenceMode": (
+                    VALIDATION_MIN_DECISIONS_PER_EVIDENCE_MODE
+                ),
+                "mechanicalAccuracy": 1.0,
+            },
+            "structuredInputParity": input_parity,
+            "gate": {
+                "measuredThresholdsPassed": measured_thresholds_passed,
+                "canonicalGatePassed": canonical_gate_passed,
+                "rulesFreezeAllowed": False,
+                "privateRuntimeEnableAllowed": False,
+                "reasons": [
+                    "machine_consensus_is_not_human_validation_ground_truth",
+                    "score_supported_validation_evidence_missing",
+                    *(
+                        []
+                        if measured_thresholds_passed
+                        else ["measured_preference_thresholds_not_met"]
+                    ),
+                ],
+            },
+            "lineage": {
+                "modelCodeRevision": model.get("codeRevision"),
+                "evaluationCodeRevision": _git_revision(self.repo_root),
+                "evaluationCodeFileDigests": _rules_code_file_digests(
+                    self.repo_root
+                ),
+            },
+            "noTrainingContract": {
+                "validationGroundTruthMayTrain": False,
+                "validationDecisionsAddedToTraining": 0,
+                "acceptedDecisionLedgersModified": False,
+                "modelArtifactModified": False,
+            },
+            "humanTruthUsed": False,
+            "validationAccessed": True,
+            "validationMayTrain": False,
+            "sealedTestAccessed": False,
+        }
+        report_digest = _sha256_json(report_core)
+        report = {**report_core, "reportDigest": report_digest}
+        report_dir = self.root / "validation-evaluations" / model_id
+        report_dir.mkdir(parents=True, exist_ok=True)
+        _make_private(report_dir, directory=True)
+        report_path = (
+            report_dir
+            / f"machine-consensus-score-{report_digest}.json"
+        )
         _write_json(report_path, report)
         _make_private(report_path)
         return {

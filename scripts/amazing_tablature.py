@@ -926,6 +926,15 @@ def _parser() -> argparse.ArgumentParser:
     )
     score_validation_lines.add_argument("model_id")
 
+    score_validation_machine = subparsers.add_parser(
+        "score-validation-machine-candidates",
+        help=(
+            "Score only complete discovery-calibrated validation tab lines "
+            "without treating machine consensus as training or human truth."
+        ),
+    )
+    score_validation_machine.add_argument("model_id")
+
     report = subparsers.add_parser("report", help="Write a private metrics-only challenger report.")
     report.add_argument("model_id")
 
@@ -1494,6 +1503,8 @@ def main() -> int:
             result = store.evaluate(args.model_id)
         elif args.command == "score-validation-line-audits":
             result = store.score_validation_line_audits(args.model_id)
+        elif args.command == "score-validation-machine-candidates":
+            result = store.score_validation_machine_candidates(args.model_id)
         elif args.command == "report":
             result = store.report(args.model_id)
         elif args.command == "freeze-rules":

@@ -682,6 +682,272 @@ def test_validation_line_scorer_verifies_receipts_without_training(tmp_path: Pat
         ).score_validation_line_audits(model_id)
 
 
+def test_machine_validation_scorer_uses_only_complete_tab_consensus(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "private"
+    store = AmazingTablatureTrainingStore(root, repo_root=tmp_path)
+    _discovery, validation = add_small_partitioned_batch(
+        store,
+        tmp_path,
+        batch_id="atb-machine-validation",
+        source_copedent_id="source-e9-abc-defg-v1",
+    )
+    store.compose_authoritative_dataset(
+        ["atb-machine-validation"],
+        approval_reference="synthetic machine validation program",
+    )
+    model_id = "at-machine-validation-model"
+    model = {
+        "modelId": model_id,
+        "codeRevision": "discovery-only-revision",
+        "weightsByStyle": {
+            style: {
+                name: (1.0 if name == "bar_travel" else 0.0)
+                for name in FEATURE_NAMES
+            }
+            for style in (
+                "chord_melody",
+                "harmonized",
+                "lever_driven",
+                "single_note_run",
+            )
+        },
+    }
+    model_path = root / "models" / f"{model_id}.json"
+    model_path.parent.mkdir(parents=True)
+    model_path.write_text(
+        json.dumps(model, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    model_sha = hashlib.sha256(model_path.read_bytes()).hexdigest()
+    registry = json.loads(
+        (root / "training-registry.json").read_text(encoding="utf-8")
+    )
+    registry["models"][model_id] = {
+        "artifact": f"models/{model_id}.json",
+        "artifactSha256": model_sha,
+        "datasetEligibility": "complete_discovery",
+        "canonicalEvaluationEligible": True,
+        "sourceBatchIds": ["atb-machine-validation"],
+        "status": "challenger",
+    }
+    (root / "training-registry.json").write_text(
+        json.dumps(registry, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+    batch_dir = root / "batches/atb-machine-validation"
+    validation_root = batch_dir / "extraction/validation"
+    input_id = str(validation["inputId"])
+    tab_system_id = "tab-system-machine-complete"
+    actions = [
+        {
+            "string": 5,
+            "fret": 3,
+            "controls": [],
+            "soundingPitchValue": 62,
+            "attack": True,
+            "confidence": 1.0,
+            "mechanicalValidation": {"valid": True},
+        },
+        {
+            "string": 5,
+            "fret": 3,
+            "controls": ["A"],
+            "soundingPitchValue": 64,
+            "attack": True,
+            "confidence": 1.0,
+            "mechanicalValidation": {"valid": True},
+        },
+        {
+            "string": 5,
+            "fret": 5,
+            "controls": [],
+            "soundingPitchValue": 64,
+            "attack": True,
+            "confidence": 1.0,
+            "mechanicalValidation": {"valid": True},
+        },
+    ]
+    events = [
+        {
+            "eventIndex": index,
+            "tabEventId": f"tab-event-{index}",
+            "steelActions": [action],
+            "attackStringNumbers": [5],
+            "sustainedStringNumbers": [],
+            "executionType": "attack",
+            "executionInference": (
+                "initial_attack"
+                if index == 1
+                else "reviewed_source_transition_decoder"
+            ),
+            "confidence": 1.0,
+            "reviewState": "machine_proposed",
+        }
+        for index, action in enumerate(actions, start=1)
+    ]
+    page_record = {
+        "batchId": "atb-machine-validation",
+        "inputId": input_id,
+        "datasetPartition": "validation",
+        "sourceDocumentId": "source-document-test",
+        "pageClassification": {"primary": "lick_or_fill"},
+        "sourceStructure": {
+            "orientation": "portrait",
+            "luminanceBin": "middle",
+            "densityBin": "middle",
+        },
+        "scoreSystems": [{"scoreSystemId": "untrusted-score-system"}],
+        "eventAlignments": [{"eventAlignmentId": "untrusted-alignment"}],
+        "tabSystems": [
+            {
+                "tabSystemId": tab_system_id,
+                "systemIndex": 1,
+                "tabEvents": [],
+            }
+        ],
+        "movementSequences": [],
+        "teachingConcepts": [],
+        "unresolved": [],
+    }
+    page_digest = canonical_sha(page_record)
+    page_path = validation_root / "pages" / f"{input_id}.json"
+    page_path.parent.mkdir(parents=True)
+    page_path.write_text(
+        json.dumps(page_record, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+    candidate_core = {
+        "schemaVersion": "validation-contact-sheet-consensus-v3",
+        "batchId": "atb-machine-validation",
+        "partition": "validation",
+        "inputId": input_id,
+        "systemIndex": 1,
+        "tabSystemId": tab_system_id,
+        "machineRecordDigest": page_digest,
+        "status": "complete_machine_candidate",
+        "events": events,
+        "diagnostics": {
+            "allCellsResolved": True,
+            "allColumnsDecoded": True,
+            "mechanicallyValid": True,
+            "unresolvedCellCount": 0,
+            "unresolvedExecutionCount": 0,
+        },
+        "validationModel": {
+            "modelId": model_id,
+            "artifactSha256": model_sha,
+        },
+        "humanTruthUsed": False,
+        "validationMayTrain": False,
+        "sealedTestAccessed": False,
+    }
+    candidate_digest = canonical_sha(candidate_core)
+    candidate = {
+        **candidate_core,
+        "candidateDigest": candidate_digest,
+    }
+    consensus_dir = (
+        validation_root
+        / "review/automation/validation-contact-sheet-consensus-v3"
+    )
+    candidate_relative = (
+        "review/automation/validation-contact-sheet-consensus-v3/"
+        f"candidates/{input_id}-system-01-{candidate_digest[:12]}.json"
+    )
+    candidate_path = validation_root / candidate_relative
+    candidate_path.parent.mkdir(parents=True)
+    candidate_path.write_text(
+        json.dumps(candidate, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    report_core = {
+        "schemaVersion": "validation-contact-sheet-consensus-v3",
+        "batchId": "atb-machine-validation",
+        "partition": "validation",
+        "validationRunDigest": "validation-run-machine-complete",
+        "validationModel": {
+            "modelId": model_id,
+            "artifactSha256": model_sha,
+        },
+        "lines": [
+            {
+                "inputId": input_id,
+                "systemIndex": 1,
+                "tabSystemId": tab_system_id,
+                "status": "complete_machine_candidate",
+                "candidatePath": candidate_relative,
+                "candidateDigest": candidate_digest,
+            },
+            {
+                "inputId": "withheld-input",
+                "systemIndex": 1,
+                "tabSystemId": "withheld-tab-system",
+                "status": "withheld_incomplete",
+                "candidatePath": "",
+                "candidateDigest": "",
+            },
+        ],
+        "humanTruthUsed": False,
+        "validationMayTrain": False,
+        "sealedTestAccessed": False,
+    }
+    report_digest = canonical_sha(report_core)
+    consensus_dir.mkdir(parents=True, exist_ok=True)
+    report_path = consensus_dir / "report.json"
+    report_path.write_text(
+        json.dumps(
+            {**report_core, "reportDigest": report_digest},
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    model_before = model_path.read_bytes()
+
+    result = store.score_validation_machine_candidates(model_id)
+
+    assert result["completeMachineLineCount"] == 1
+    assert result["withheldLineCount"] == 1
+    assert result["decisionCount"] == 2
+    assert result["cohortReceipts"]["atb-machine-validation"][
+        "humanTruthUsed"
+    ] is False
+    assert result["evidenceModeMetrics"]["alignment:tab_only"][
+        "decisionCount"
+    ] == 2
+    assert result["evidenceModeMetrics"]["alignment:score_supported"][
+        "decisionCount"
+    ] == 0
+    assert result["gate"]["canonicalGatePassed"] is False
+    assert result["gate"]["privateRuntimeEnableAllowed"] is False
+    assert result["noTrainingContract"][
+        "validationDecisionsAddedToTraining"
+    ] == 0
+    assert result["humanTruthUsed"] is False
+    assert result["validationMayTrain"] is False
+    assert result["sealedTestAccessed"] is False
+    assert model_path.read_bytes() == model_before
+    assert not (
+        batch_dir / "accepted-decisions.jsonl"
+    ).exists()
+
+    corrupted = json.loads(candidate_path.read_text(encoding="utf-8"))
+    corrupted["validationMayTrain"] = True
+    candidate_path.write_text(
+        json.dumps(corrupted, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(
+        TrainingWorkflowError,
+        match="incomplete or unpinned",
+    ):
+        store.score_validation_machine_candidates(model_id)
+
+
 def annotation(
     decision_id: str,
     input_id: str,
