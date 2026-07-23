@@ -9301,9 +9301,27 @@ class AmazingTablatureTrainingStore:
             or correction.get("validationGroundTruthMayTrain") is not False
             or correction.get("validationMayTrain") is not False
             or correction.get("sealedTestAccessed") is not False
-            or not extraction_code_path.exists()
-            or correction_lineage.get("correctionCodeFileSha256")
-            != _sha256_bytes(extraction_code_path.read_bytes())
+            or not re.fullmatch(
+                r"[0-9a-f]{64}",
+                str(
+                    correction_lineage.get(
+                        "correctionCodeFileSha256"
+                    )
+                    or ""
+                ),
+            )
+            or (
+                truth_model_id == model_id
+                and (
+                    not extraction_code_path.exists()
+                    or correction_lineage.get(
+                        "correctionCodeFileSha256"
+                    )
+                    != _sha256_bytes(
+                        extraction_code_path.read_bytes()
+                    )
+                )
+            )
             or not re.fullmatch(
                 r"[0-9a-f]{40}",
                 str(correction_lineage.get("repositoryHead") or ""),

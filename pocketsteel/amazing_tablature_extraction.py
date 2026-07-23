@@ -33506,6 +33506,37 @@ class AmazingTablatureExtractor:
             raise ExtractionWorkflowError(
                 "The corrected canonical score lineage or privacy contract failed."
             )
+        truth_model_id = str(
+            score.get("sourceTruthModelId") or model_id
+        )
+        truth_model_meta = (registry.get("models") or {}).get(
+            truth_model_id
+        )
+        if not isinstance(truth_model_meta, Mapping):
+            raise ExtractionWorkflowError(
+                "The corrected canonical truth references an unknown challenger."
+            )
+        truth_model_path = self.private_root / str(
+            truth_model_meta.get("artifact") or ""
+        )
+        truth_model_sha256 = str(
+            truth_model_meta.get("artifactSha256") or ""
+        )
+        if (
+            not truth_model_path.exists()
+            or _sha256_bytes(truth_model_path.read_bytes())
+            != truth_model_sha256
+            or score.get("sourceTruthModelArtifactSha256")
+            not in {None, truth_model_sha256}
+        ):
+            raise ExtractionWorkflowError(
+                "The corrected canonical truth challenger artifact changed."
+            )
+        truth_evaluation_dir = (
+            self.private_root
+            / "validation-evaluations"
+            / truth_model_id
+        )
         disagreement = _read_json(disagreement_path)
         disagreement_core = {
             key: value
@@ -33540,7 +33571,9 @@ class AmazingTablatureExtractor:
             )
         correction_digest = str(score.get("correctionReportDigest") or "")
         correction_dir = (
-            evaluation_dir / "canonical-validation" / "corrections"
+            truth_evaluation_dir
+            / "canonical-validation"
+            / "corrections"
         )
         correction_path = (
             correction_dir / f"report-{correction_digest}.json"
@@ -33563,7 +33596,9 @@ class AmazingTablatureExtractor:
         if (
             correction.get("reportDigest") != correction_digest
             or _sha256_json(correction_core) != correction_digest
-            or correction.get("modelId") != model_id
+            or correction.get("modelId") != truth_model_id
+            or correction.get("modelArtifactSha256")
+            != truth_model_sha256
             or int(correction.get("confirmationRequiredLineCount") or 0)
             != 0
             or correction.get("validationGroundTruthMayTrain") is not False
@@ -33576,7 +33611,7 @@ class AmazingTablatureExtractor:
             correction.get("sourcePacketDigest") or ""
         )
         source_packet_path = (
-            evaluation_dir
+            truth_evaluation_dir
             / "canonical-validation"
             / f"packet-{source_packet_digest}.json"
         )
@@ -33598,7 +33633,9 @@ class AmazingTablatureExtractor:
         if (
             source_packet.get("packetDigest") != source_packet_digest
             or _sha256_json(source_packet_core) != source_packet_digest
-            or source_packet.get("modelId") != model_id
+            or source_packet.get("modelId") != truth_model_id
+            or source_packet.get("modelArtifactSha256")
+            != truth_model_sha256
             or source_packet.get("validationGroundTruthMayTrain") is not False
             or source_packet.get("sealedTestAccessed") is not False
         ):
