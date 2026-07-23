@@ -1128,6 +1128,13 @@ def _parser() -> argparse.ArgumentParser:
         "--source-adjudication-digest",
         required=True,
     )
+    score_corrected_canonical.add_argument(
+        "--source-model-id",
+        help=(
+            "Exact prior challenger that owns the already-confirmed corrected "
+            "truth and preference ledger. Only byte-equivalent verdicts carry."
+        ),
+    )
 
     adjudicate_corrected_canonical = subparsers.add_parser(
         "adjudicate-corrected-canonical-validation",
@@ -1809,6 +1816,7 @@ def main() -> int:
                 source_adjudication_digest=(
                     args.source_adjudication_digest
                 ),
+                source_model_id=args.source_model_id,
             )
         elif (
             args.command

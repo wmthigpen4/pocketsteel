@@ -9167,6 +9167,7 @@ class AmazingTablatureTrainingStore:
         *,
         correction_report_digest: str,
         source_adjudication_digest: str,
+        source_model_id: str | None = None,
     ) -> dict[str, Any]:
         """Rerun the exact ranker against confirmed corrected validation truth.
 
@@ -9213,8 +9214,36 @@ class AmazingTablatureTrainingStore:
             )
         model = _read_json(model_path)
         evaluation_dir = self.root / "validation-evaluations" / model_id
+        evaluation_dir.mkdir(parents=True, exist_ok=True)
+        truth_model_id = source_model_id or model_id
+        truth_model_meta = (registry.get("models") or {}).get(
+            truth_model_id
+        )
+        if not isinstance(truth_model_meta, Mapping):
+            raise TrainingWorkflowError(
+                f"Unknown corrected-truth challenger: {truth_model_id}."
+            )
+        truth_model_path = self.root / str(
+            truth_model_meta.get("artifact") or ""
+        )
+        truth_model_sha256 = str(
+            truth_model_meta.get("artifactSha256") or ""
+        )
+        if (
+            not truth_model_path.exists()
+            or _sha256_bytes(truth_model_path.read_bytes())
+            != truth_model_sha256
+        ):
+            raise TrainingWorkflowError(
+                "The corrected-truth challenger artifact changed."
+            )
+        truth_evaluation_dir = (
+            self.root / "validation-evaluations" / truth_model_id
+        )
         correction_dir = (
-            evaluation_dir / "canonical-validation" / "corrections"
+            truth_evaluation_dir
+            / "canonical-validation"
+            / "corrections"
         )
         correction_path = (
             correction_dir / f"report-{correction_report_digest}.json"
@@ -9241,8 +9270,9 @@ class AmazingTablatureTrainingStore:
         if (
             correction.get("schemaVersion")
             != "amazing-tablature-canonical-validation-correction-v1"
-            or correction.get("modelId") != model_id
-            or correction.get("modelArtifactSha256") != model_sha256
+            or correction.get("modelId") != truth_model_id
+            or correction.get("modelArtifactSha256")
+            != truth_model_sha256
             or correction.get("reportDigest")
             != correction_report_digest
             or _sha256_json(correction_core)
@@ -9287,7 +9317,7 @@ class AmazingTablatureTrainingStore:
             correction.get("sourcePacketDigest") or ""
         )
         source_packet_path = (
-            evaluation_dir
+            truth_evaluation_dir
             / "canonical-validation"
             / f"packet-{source_packet_digest}.json"
         )
@@ -9312,8 +9342,9 @@ class AmazingTablatureTrainingStore:
         if (
             source_packet.get("schemaVersion")
             != "amazing-tablature-canonical-validation-dataset-review-v1"
-            or source_packet.get("modelId") != model_id
-            or source_packet.get("modelArtifactSha256") != model_sha256
+            or source_packet.get("modelId") != truth_model_id
+            or source_packet.get("modelArtifactSha256")
+            != truth_model_sha256
             or source_packet.get("packetDigest") != source_packet_digest
             or _sha256_json(source_packet_core) != source_packet_digest
             or source_packet.get("validationGroundTruthMayTrain") is not False
@@ -9548,7 +9579,7 @@ class AmazingTablatureTrainingStore:
             )
 
         source_adjudication_path = (
-            evaluation_dir
+            truth_evaluation_dir
             / "machine-consensus-adjudication-"
             f"{source_adjudication_digest}.json"
         )
@@ -9566,16 +9597,16 @@ class AmazingTablatureTrainingStore:
             source_adjudication.get("sourceDisagreementReportDigest") or ""
         )
         source_disagreement_path = (
-            evaluation_dir
+            truth_evaluation_dir
             / "machine-consensus-disagreements-"
             f"{source_disagreement_digest}.json"
         )
         if (
             source_adjudication.get("schemaVersion")
             != "amazing-tablature-validation-disagreement-adjudication-v1"
-            or source_adjudication.get("modelId") != model_id
+            or source_adjudication.get("modelId") != truth_model_id
             or source_adjudication.get("modelArtifactSha256")
-            != model_sha256
+            != truth_model_sha256
             or source_adjudication.get("reportDigest")
             != source_adjudication_digest
             or _sha256_json(source_adjudication_core)
@@ -9600,9 +9631,9 @@ class AmazingTablatureTrainingStore:
             != source_disagreement_digest
             or _sha256_json(source_disagreement_core)
             != source_disagreement_digest
-            or source_disagreement.get("modelId") != model_id
+            or source_disagreement.get("modelId") != truth_model_id
             or source_disagreement.get("modelArtifactSha256")
-            != model_sha256
+            != truth_model_sha256
             or source_disagreement.get("humanTruthUsed") is not False
             or source_disagreement.get("validationMayTrain") is not False
             or source_disagreement.get("sealedTestAccessed") is not False
@@ -9788,6 +9819,8 @@ class AmazingTablatureTrainingStore:
             ),
             "modelId": model_id,
             "modelArtifactSha256": model_sha256,
+            "sourceTruthModelId": truth_model_id,
+            "sourceTruthModelArtifactSha256": truth_model_sha256,
             "correctionReportDigest": correction_report_digest,
             "decisionDigest": _sha256_json(ranking_records),
             "disagreementCount": len(disagreements),
@@ -9817,6 +9850,8 @@ class AmazingTablatureTrainingStore:
             ),
             "modelId": model_id,
             "modelArtifactSha256": model_sha256,
+            "sourceTruthModelId": truth_model_id,
+            "sourceTruthModelArtifactSha256": truth_model_sha256,
             "evaluatedAt": _utc_now(),
             "correctionReportDigest": correction_report_digest,
             "sourceAdjudicationDigest": source_adjudication_digest,

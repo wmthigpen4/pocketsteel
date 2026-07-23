@@ -750,6 +750,46 @@ def test_corrected_canonical_adjudication_fails_closed_on_feedback_or_missing_co
     assert report["gate"]["privateRuntimeEnableAllowed"] is False
 
 
+def test_corrected_canonical_score_rejects_unknown_source_truth_model(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "private"
+    root.mkdir()
+    store = AmazingTablatureTrainingStore(root, repo_root=tmp_path)
+    model_id = "at-target-fixture"
+    model_path = root / "models" / f"{model_id}.json"
+    model_path.parent.mkdir()
+    model_path.write_text(
+        json.dumps({"modelId": model_id}, sort_keys=True),
+        encoding="utf-8",
+    )
+    model_sha256 = hashlib.sha256(model_path.read_bytes()).hexdigest()
+    registry = store._new_registry()
+    registry["authoritativeDataset"] = {
+        "status": "active",
+        "batchIds": ["atb-fixture"],
+    }
+    registry["models"][model_id] = {
+        "artifact": str(model_path.relative_to(root)),
+        "artifactSha256": model_sha256,
+        "datasetEligibility": "complete_discovery",
+        "canonicalEvaluationEligible": True,
+        "sourceBatchIds": ["atb-fixture"],
+    }
+    store._save_registry(registry)
+
+    with pytest.raises(
+        TrainingWorkflowError,
+        match="Unknown corrected-truth challenger",
+    ):
+        store.score_corrected_canonical_validation(
+            model_id,
+            correction_report_digest="c" * 64,
+            source_adjudication_digest="a" * 64,
+            source_model_id="at-missing-source",
+        )
+
+
 def candidate(
     *,
     melody: int,
