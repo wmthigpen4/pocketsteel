@@ -8,6 +8,7 @@ runtime integration lane.
 
 from __future__ import annotations
 
+import concurrent.futures
 import hashlib
 import itertools
 import json
@@ -24,11 +25,16 @@ from typing import Any, Iterable, Mapping, Sequence
 from PIL import Image
 
 from pocketsteel.amazing_tablature_glyph_decoder import (
+    contact_sheet_token_crops,
     glyph_feature_vector,
     glyph_label,
     train_glyph_decoder,
 )
 from pocketsteel.amazing_tablature_input_parity import structured_input_parity_report
+from pocketsteel.amazing_tablature_reader_calibration import (
+    reader_state_signature,
+    train_reader_calibration,
+)
 from pocketsteel.amazing_tablature_transition_decoder import (
     train_transition_decoder,
     transition_training_rows,
@@ -49,6 +55,9 @@ CHALLENGER_PREFERENCE_SCHEMA_VERSION = "amazing-tablature-challenger-preference-
 ANNOTATION_SCHEMA_VERSION = "melody-decision-annotation-v2"
 FEATURE_SCHEMA_VERSION = "melody-ranker-features-v3-phrase-sequence"
 VALIDATION_LINE_PREFLIGHT_VERSION = "validation-line-structural-preflight-v1"
+CONTACT_SHEET_TRUTH_MAPPING_VERSION = (
+    "contact-sheet-source-column-lineage-v1"
+)
 DEFAULT_PRIVATE_ROOT = Path("corpus-private/melody-decisions")
 
 # These gates are part of the predeclared validation contract.  They must not
@@ -122,7 +131,9 @@ USE_KEYS = {
 INPUT_SUFFIXES = {".jpg", ".jpeg", ".png", ".tif", ".tiff", ".pdf", ".json", ".jsonl"}
 REQUIRED_BENCHMARK_GROUPS = ("amazing_grace",)
 RULES_CODE_FILES = (
+    "pocketsteel/amazing_tablature_glyph_decoder.py",
     "pocketsteel/amazing_tablature_input_parity.py",
+    "pocketsteel/amazing_tablature_reader_calibration.py",
     "pocketsteel/amazing_tablature_model.py",
     "pocketsteel/amazing_tablature_decisions.py",
     "pocketsteel/amazing_tablature_extraction.py",
@@ -144,6 +155,10 @@ RULES_CODE_FILES = (
 )
 
 _NOTE_RE = re.compile(r"^([A-Ga-g](?:#|b)?)(-?\d+)?$")
+_CONTACT_SHEET_LABEL_RE = re.compile(
+    r"^e(?P<event>\d+)s(?P<string>\d+)$",
+    re.I,
+)
 _NOTE_CLASS = {
     "C": 0,
     "B#": 0,
@@ -295,6 +310,195 @@ def _read_jsonl(path: Path) -> list[dict[str, Any]]:
             raise TrainingWorkflowError(f"{path}:{line_number} must contain a JSON object.")
         records.append(value)
     return records
+
+
+def _contact_sheet_signature(
+    tab_system: Mapping[str, Any],
+) -> str:
+    """Identify the immutable image/label contract for one tab system."""
+
+    return _sha256_json(
+        [
+            {
+                "relativePath": str(sheet.get("relativePath") or ""),
+                "sha256": str(sheet.get("sha256") or ""),
+                "labels": [
+                    str(value) for value in sheet.get("labels") or ()
+                ],
+            }
+            for sheet in tab_system.get("contactSheets") or ()
+        ]
+    )
+
+
+def _source_contact_record(
+    extraction_root: Path,
+    input_id: str,
+    approved_record: Mapping[str, Any],
+) -> tuple[dict[str, Any], dict[str, dict[str, Any]], str, str]:
+    """Load the earliest record that generated the approved contact sheets.
+
+    Contact-sheet labels refer to source candidate columns. Human corrections
+    may later remove, insert, or renumber normalized events, so the approved
+    event index is not valid source-column lineage. The earliest archived
+    machine revision is preferred; an unmodified revision-one page record is
+    the fallback when no correction archive exists.
+    """
+
+    revision_dir = (
+        extraction_root
+        / "review"
+        / "machine-record-revisions"
+        / input_id
+    )
+    candidate_paths = sorted(revision_dir.glob("revision-*.json"))
+    page_path = extraction_root / "pages" / f"{input_id}.json"
+    if page_path.exists():
+        candidate_paths.append(page_path)
+    approved_systems = [
+        system
+        for system in approved_record.get("tabSystems") or ()
+        if system.get("contactSheets")
+    ]
+    for path in candidate_paths:
+        source_record = _read_json(path)
+        if str(source_record.get("inputId") or "") != input_id:
+            continue
+        source_by_signature: dict[str, list[dict[str, Any]]] = {}
+        for system in source_record.get("tabSystems") or ():
+            if not system.get("contactSheets"):
+                continue
+            source_by_signature.setdefault(
+                _contact_sheet_signature(system),
+                [],
+            ).append(dict(system))
+        source_systems: dict[str, dict[str, Any]] = {}
+        valid = True
+        for approved_system in approved_systems:
+            matches = source_by_signature.get(
+                _contact_sheet_signature(approved_system),
+                [],
+            )
+            if len(matches) != 1:
+                valid = False
+                break
+            source_systems[
+                str(approved_system.get("tabSystemId") or "")
+            ] = matches[0]
+        if valid and len(source_systems) == len(approved_systems):
+            digest = _sha256_json(source_record)
+            return (
+                source_record,
+                source_systems,
+                digest,
+                str(path.relative_to(extraction_root)),
+            )
+    raise TrainingWorkflowError(
+        "No immutable source record matches the approved contact sheets for "
+        f"{input_id}."
+    )
+
+
+def _contact_sheet_truth_by_source_column(
+    source_tab_system: Mapping[str, Any],
+    approved_tab_system: Mapping[str, Any],
+) -> tuple[
+    dict[int, Mapping[str, Any] | None],
+    set[int],
+    dict[str, int],
+]:
+    """Map source contact columns to corrected events without positional drift.
+
+    Stable tab-event IDs are authoritative. Explicit
+    ``sourceCandidateEventIndex`` lineage is the only accepted substitute.
+    A removed or originally empty source column is a reviewed blank only when
+    the approved system has no unlinked inserted event that could occupy it.
+    Otherwise the column is ambiguous and excluded from calibration.
+    """
+
+    label_columns = {
+        int(match.group("event"))
+        for sheet in source_tab_system.get("contactSheets") or ()
+        for raw_label in sheet.get("labels") or ()
+        if (
+            match := _CONTACT_SHEET_LABEL_RE.fullmatch(str(raw_label))
+        )
+    }
+    source_by_column: dict[int, Mapping[str, Any]] = {}
+    source_ids: set[str] = set()
+    for event in source_tab_system.get("tabEvents") or ():
+        column = int(event.get("eventIndex") or 0)
+        event_id = str(event.get("tabEventId") or "")
+        if (
+            column <= 0
+            or not event_id
+            or column in source_by_column
+            or event_id in source_ids
+        ):
+            raise TrainingWorkflowError(
+                "Source contact-sheet event lineage is duplicated or missing."
+            )
+        source_by_column[column] = event
+        source_ids.add(event_id)
+
+    approved_by_id: dict[str, Mapping[str, Any]] = {}
+    explicit_by_column: dict[int, list[Mapping[str, Any]]] = {}
+    unlinked_insertions: list[Mapping[str, Any]] = []
+    for event in approved_tab_system.get("tabEvents") or ():
+        event_id = str(event.get("tabEventId") or "")
+        if not event_id or event_id in approved_by_id:
+            raise TrainingWorkflowError(
+                "Approved contact-sheet event lineage is duplicated or missing."
+            )
+        approved_by_id[event_id] = event
+        raw_source_column = event.get("sourceCandidateEventIndex")
+        if raw_source_column is not None:
+            source_column = int(raw_source_column)
+            if source_column <= 0:
+                raise TrainingWorkflowError(
+                    "Approved source candidate lineage must be positive."
+                )
+            explicit_by_column.setdefault(source_column, []).append(event)
+        elif event_id not in source_ids:
+            unlinked_insertions.append(event)
+
+    truth_by_column: dict[int, Mapping[str, Any] | None] = {}
+    ambiguous_columns: set[int] = set()
+    counts = {
+        "stableTabEventId": 0,
+        "explicitSourceCandidateIndex": 0,
+        "reviewedBlank": 0,
+        "ambiguousUnlinkedInsertion": 0,
+    }
+    for column in sorted(label_columns):
+        source_event = source_by_column.get(column)
+        stable_event = (
+            approved_by_id.get(str(source_event.get("tabEventId") or ""))
+            if source_event is not None
+            else None
+        )
+        explicit_events = explicit_by_column.get(column, [])
+        if stable_event is not None and (
+            not explicit_events or explicit_events == [stable_event]
+        ):
+            truth_by_column[column] = stable_event
+            counts["stableTabEventId"] += 1
+            continue
+        if stable_event is None and len(explicit_events) == 1:
+            truth_by_column[column] = explicit_events[0]
+            counts["explicitSourceCandidateIndex"] += 1
+            continue
+        if (
+            stable_event is None
+            and not explicit_events
+            and not unlinked_insertions
+        ):
+            truth_by_column[column] = None
+            counts["reviewedBlank"] += 1
+            continue
+        ambiguous_columns.add(column)
+        counts["ambiguousUnlinkedInsertion"] += 1
+    return truth_by_column, ambiguous_columns, counts
 
 
 def _jsonl_text(records: Iterable[Mapping[str, Any]]) -> str:
@@ -3693,12 +3897,23 @@ class AmazingTablatureTrainingStore:
             raise TrainingWorkflowError(
                 f"{batch_id} has no approved discovery extraction index."
             )
-        approved_index = {
-            str(item.get("inputId") or ""): item
+        eligible_index_rows = [
+            item
             for item in _read_jsonl(approved_index_path)
             if item.get("status") == "human_approved"
             and item.get("inputId")
             and item.get("reviewedRecordPath")
+        ]
+        eligible_input_ids = [
+            str(item["inputId"]) for item in eligible_index_rows
+        ]
+        if len(set(eligible_input_ids)) != len(eligible_input_ids):
+            raise TrainingWorkflowError(
+                f"{batch_id} has duplicate approved discovery records."
+            )
+        approved_index = {
+            str(item["inputId"]): item
+            for item in eligible_index_rows
         }
         rows: list[dict[str, Any]] = []
         record_digests: list[str] = []
@@ -3802,6 +4017,13 @@ class AmazingTablatureTrainingStore:
         }
         examples: list[dict[str, Any]] = []
         record_digests: list[str] = []
+        source_record_digests: list[str] = []
+        mapping_counts = {
+            "stableTabEventId": 0,
+            "explicitSourceCandidateIndex": 0,
+            "reviewedBlank": 0,
+            "ambiguousUnlinkedInsertion": 0,
+        }
         for input_id, item in sorted(approved_index.items()):
             record_path = extraction_root / str(item["reviewedRecordPath"])
             if not record_path.exists():
@@ -3814,75 +4036,95 @@ class AmazingTablatureTrainingStore:
                 raise TrainingWorkflowError(
                     f"Approved discovery record digest changed: {batch_id}/{input_id}."
                 )
-            derivative = record.get("derivative") or {}
-            image_path = extraction_root / str(derivative.get("relativePath") or "")
-            if not image_path.exists():
-                raise TrainingWorkflowError(
-                    f"Approved discovery derivative is missing: {batch_id}/{input_id}."
-                )
             content_unit_id = str(
                 record.get("contentUnitId") or record.get("inputId") or ""
             )
-            actions_by_region: dict[str, list[Mapping[str, Any]]] = {}
+            (
+                _source_record,
+                source_systems,
+                source_record_digest,
+                _source_record_path,
+            ) = _source_contact_record(
+                extraction_root,
+                input_id,
+                record,
+            )
+            source_record_digests.append(source_record_digest)
             for tab_system in record.get("tabSystems") or ():
-                for event in tab_system.get("tabEvents") or ():
-                    for action in event.get("steelActions") or ():
-                        region_id = str(action.get("pageRegionId") or "")
-                        if region_id and isinstance(action.get("pageRegion"), Mapping):
-                            actions_by_region.setdefault(region_id, []).append(action)
-            with Image.open(image_path) as image:
-                width, height = image.size
-                for actions in actions_by_region.values():
-                    signatures = {
-                        glyph_label(
-                            int(action.get("fret") or 0),
-                            action.get("controls") or (),
+                if tab_system.get("reviewState") != "human_approved":
+                    continue
+                source_tab_system = source_systems.get(
+                    str(tab_system.get("tabSystemId") or "")
+                )
+                if source_tab_system is None:
+                    if tab_system.get("contactSheets"):
+                        raise TrainingWorkflowError(
+                            "Approved contact-sheet system lacks immutable "
+                            f"source lineage: {batch_id}/{input_id}."
                         )
-                        for action in actions
-                    }
-                    if len(signatures) != 1:
+                    continue
+                (
+                    truth_by_column,
+                    ambiguous_columns,
+                    system_mapping_counts,
+                ) = _contact_sheet_truth_by_source_column(
+                    source_tab_system,
+                    tab_system,
+                )
+                for key, value in system_mapping_counts.items():
+                    mapping_counts[key] += value
+                for sheet in tab_system.get("contactSheets") or ():
+                    labels = [
+                        str(value) for value in sheet.get("labels") or ()
+                    ]
+                    image_path = extraction_root / str(
+                        sheet.get("relativePath") or ""
+                    )
+                    if not labels or not image_path.exists():
                         continue
-                    region = actions[0]["pageRegion"]
-                    left = max(0, int(float(region["x"]) * width))
-                    top = max(0, int(float(region["y"]) * height))
-                    right = min(
-                        width,
-                        max(
-                            left + 1,
-                            int(
-                                (
-                                    float(region["x"])
-                                    + float(region["width"])
-                                )
-                                * width
-                            ),
-                        ),
-                    )
-                    bottom = min(
-                        height,
-                        max(
-                            top + 1,
-                            int(
-                                (
-                                    float(region["y"])
-                                    + float(region["height"])
-                                )
-                                * height
-                            ),
-                        ),
-                    )
-                    crop = image.crop(
-                        (left, top, right, bottom)
-                    )
-                    feature = glyph_feature_vector(crop)
-                    if feature is not None:
-                        examples.append(
-                            {
-                                "contentUnitId": content_unit_id,
-                                "label": next(iter(signatures)),
-                                "feature": feature,
-                            }
+                    expected_sha256 = str(sheet.get("sha256") or "")
+                    if (
+                        expected_sha256
+                        and _sha256_bytes(image_path.read_bytes())
+                        != expected_sha256
+                    ):
+                        raise TrainingWorkflowError(
+                            "Approved discovery contact sheet changed: "
+                            f"{batch_id}/{input_id}."
                         )
+                    with Image.open(image_path) as image:
+                        crops = contact_sheet_token_crops(image, labels)
+                    for label, crop in crops.items():
+                        match = _CONTACT_SHEET_LABEL_RE.fullmatch(label)
+                        if match is None:
+                            continue
+                        source_column = int(match.group("event"))
+                        if source_column in ambiguous_columns:
+                            continue
+                        event = truth_by_column.get(source_column)
+                        if event is None:
+                            continue
+                        string = int(match.group("string"))
+                        actions = [
+                            action
+                            for action in event.get("steelActions") or ()
+                            if int(action.get("string") or 0) == string
+                        ]
+                        if len(actions) != 1:
+                            continue
+                        signature = glyph_label(
+                            int(actions[0].get("fret") or 0),
+                            actions[0].get("controls") or (),
+                        )
+                        feature = glyph_feature_vector(crop)
+                        if feature is not None:
+                            examples.append(
+                                {
+                                    "contentUnitId": content_unit_id,
+                                    "label": signature,
+                                    "feature": feature,
+                                }
+                            )
             record_digests.append(record_digest)
         decoder = train_glyph_decoder(
             examples,
@@ -3901,6 +4143,13 @@ class AmazingTablatureTrainingStore:
             "sourceCopedentId": str(manifest.get("sourceCopedentId") or ""),
             "approvedDiscoveryRecordCount": len(approved_index),
             "approvedDiscoveryRecordSetDigest": _sha256_json(record_digests),
+            "contactSheetTruthMappingVersion": (
+                CONTACT_SHEET_TRUTH_MAPPING_VERSION
+            ),
+            "sourceContactRecordSetDigest": _sha256_json(
+                source_record_digests
+            ),
+            "contactSheetTruthMapping": mapping_counts,
             "codeRevision": _git_revision(self.repo_root),
             "codeFileDigests": _rules_code_file_digests(self.repo_root),
             "privacy": {
@@ -3915,6 +4164,515 @@ class AmazingTablatureTrainingStore:
         artifact_sha256 = _sha256_bytes(artifact_path.read_bytes())
         registry = self._registry()
         registry.setdefault("sourceGlyphDecoders", {})[decoder["decoderId"]] = {
+            "artifact": str(artifact_path.relative_to(self.root)),
+            "artifactSha256": artifact_sha256,
+            "sourceBatchId": batch_id,
+            "status": payload["status"],
+            "createdAt": payload["createdAt"],
+            "automationEligible": automation_eligible,
+            "validationDataUsed": False,
+            "sealedTestDataUsed": False,
+        }
+        self._save_registry(registry)
+        return {
+            **payload,
+            "artifact": str(artifact_path.relative_to(self.root)),
+            "artifactSha256": artifact_sha256,
+        }
+
+    def build_discovery_reader_calibration(
+        self,
+        batch_id: str,
+        *,
+        reader_models: Sequence[str] = (
+            "gemma4:12b",
+            "gemma4:latest",
+        ),
+    ) -> dict[str, Any]:
+        """Calibrate pinned cell readers against approved discovery corrections."""
+
+        self._require_active_batch(batch_id)
+        manifest, _state = self._batch(batch_id)
+        rights = self._rights_and_access(batch_id)
+        if (
+            rights.get("reviewStatus") != "approved"
+            or rights.get("rightsStatus") == "unknown"
+            or not bool(rights.get("allowedUses", {}).get("modelTraining"))
+        ):
+            raise TrainingWorkflowError(
+                f"{batch_id} lacks current modelTraining authorization."
+            )
+        normalized_models = tuple(
+            dict.fromkeys(
+                str(value).strip()
+                for value in reader_models
+                if str(value).strip()
+            )
+        )
+        if len(normalized_models) < 2:
+            raise TrainingWorkflowError(
+                "Discovery reader calibration requires two distinct models."
+            )
+        from pocketsteel.amazing_tablature_extraction import (
+            ExtractionWorkflowError,
+            LocalTabVision,
+            _tab_action_sequence_from_token,
+        )
+
+        readers = [
+            LocalTabVision(model, "http://127.0.0.1:11434")
+            for model in normalized_models
+        ]
+        contracts = [reader.contract() for reader in readers]
+        model_digests = [
+            str(contract.get("modelDigest") or "") for contract in contracts
+        ]
+        if (
+            any(not value for value in model_digests)
+            or len(set(model_digests)) != len(model_digests)
+        ):
+            raise TrainingWorkflowError(
+                "Discovery calibration readers need distinct pinned artifacts."
+            )
+        reader_ids = [
+            f"{reader.model}:{str(contract['modelDigest'])[:12]}"
+            for reader, contract in zip(readers, contracts, strict=True)
+        ]
+        extraction_root = (
+            self._batch_dir(batch_id) / "extraction" / "discovery"
+        )
+        approved_index_path = (
+            extraction_root / "review" / "approved-record-index.jsonl"
+        )
+        if not approved_index_path.exists():
+            raise TrainingWorkflowError(
+                f"{batch_id} has no approved discovery extraction index."
+            )
+        approved_index = {
+            str(item.get("inputId") or ""): item
+            for item in _read_jsonl(approved_index_path)
+            if item.get("status") == "human_approved"
+            and item.get("inputId")
+            and item.get("reviewedRecordPath")
+        }
+        automation_root = (
+            extraction_root
+            / "review"
+            / "automation"
+            / "discovery-contact-reader-calibration-v1"
+        )
+        cache_dir = automation_root / "reader-cache"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        _make_private(automation_root, directory=True)
+        _make_private(cache_dir, directory=True)
+
+        def read_cells(
+            reader: LocalTabVision,
+            reader_id: str,
+            contract: Mapping[str, Any],
+            image_path: Path,
+            labels: Sequence[str],
+        ) -> tuple[dict[str, dict[str, Any]], str]:
+            image_sha256 = _sha256_bytes(image_path.read_bytes())
+            cache_key = _sha256_json(
+                {
+                    "imageSha256": image_sha256,
+                    "labels": list(labels),
+                    "readerContract": contract,
+                }
+            )
+            cache_path = cache_dir / f"{cache_key}.json"
+            if cache_path.exists():
+                cached = _read_json(cache_path)
+                if (
+                    cached.get("imageSha256") == image_sha256
+                    and cached.get("labels") == list(labels)
+                    and cached.get("readerContract") == dict(contract)
+                    and isinstance(cached.get("cells"), Mapping)
+                ):
+                    # A cached readerFailure already represents two bounded
+                    # attempts against this exact image, label list, and
+                    # pinned reader artifact. Reuse it as an abstention rather
+                    # than silently promoting it to blank evidence or
+                    # repeating expensive identical inference forever.
+                    return (
+                        {
+                            str(key): dict(value)
+                            for key, value in cached["cells"].items()
+                            if isinstance(value, Mapping)
+                        },
+                        _sha256_bytes(cache_path.read_bytes()),
+                    )
+            cells: dict[str, dict[str, Any]] | None = None
+            last_error: Exception | None = None
+            try:
+                # LocalTabVision owns the exact two-attempt retry contract.
+                # Retrying that wrapper here would silently expand one
+                # calibrated inference into as many as four model calls.
+                cells = reader.read(image_path, labels)
+            except ExtractionWorkflowError as exc:
+                last_error = exc
+            if cells is None:
+                cells = {
+                    str(label): {
+                        "token": None,
+                        "confidence": 0.0,
+                        "uncertain": True,
+                        "readerFailure": str(
+                            last_error or "reader_failed"
+                        )[:200],
+                    }
+                    for label in labels
+                }
+            _write_json(
+                cache_path,
+                {
+                    "schemaVersion": (
+                        "discovery-contact-reader-calibration-v1"
+                    ),
+                    "readerId": reader_id,
+                    "readerContract": dict(contract),
+                    "readerInputMode": "full_contact_sheet",
+                    "imageSha256": image_sha256,
+                    "labels": list(labels),
+                    "cells": cells,
+                    "validationDataUsed": False,
+                    "sealedTestDataUsed": False,
+                },
+            )
+            _make_private(cache_path)
+            return cells, _sha256_bytes(cache_path.read_bytes())
+
+        profile = get_e9_copedent_profile(
+            str(manifest.get("sourceCopedentId") or "")
+        )
+        cases: list[dict[str, Any]] = []
+        record_digests: list[str] = []
+        source_record_digests: list[str] = []
+        reader_output_digests: list[str] = []
+        mapping_counts = {
+            "stableTabEventId": 0,
+            "explicitSourceCandidateIndex": 0,
+            "reviewedBlank": 0,
+            "ambiguousUnlinkedInsertion": 0,
+        }
+        sheet_count = 0
+        label_count = 0
+        eligible_truth_labels: set[tuple[str, str, str]] = set()
+        for input_id, item in sorted(approved_index.items()):
+            record_path = extraction_root / str(item["reviewedRecordPath"])
+            if not record_path.exists():
+                raise TrainingWorkflowError(
+                    f"Approved discovery record is missing: {batch_id}/{input_id}."
+                )
+            record = _read_json(record_path)
+            record_digest = _sha256_json(record)
+            if record_digest != str(item.get("reviewedRecordDigest") or ""):
+                raise TrainingWorkflowError(
+                    f"Approved discovery record digest changed: {batch_id}/{input_id}."
+                )
+            if (
+                record.get("datasetPartition") != "discovery"
+                or str(record.get("inputId") or "") != input_id
+            ):
+                raise TrainingWorkflowError(
+                    f"Approved discovery record lineage is invalid: {batch_id}/{input_id}."
+                )
+            content_unit_id = str(
+                record.get("contentUnitId") or input_id
+            )
+            (
+                _source_record,
+                source_systems,
+                source_record_digest,
+                _source_record_path,
+            ) = _source_contact_record(
+                extraction_root,
+                input_id,
+                record,
+            )
+            source_record_digests.append(source_record_digest)
+            for tab_system in record.get("tabSystems") or ():
+                if tab_system.get("reviewState") != "human_approved":
+                    continue
+                source_tab_system = source_systems.get(
+                    str(tab_system.get("tabSystemId") or "")
+                )
+                if source_tab_system is None:
+                    if tab_system.get("contactSheets"):
+                        raise TrainingWorkflowError(
+                            "Approved contact-sheet system lacks immutable "
+                            f"source lineage: {batch_id}/{input_id}."
+                        )
+                    continue
+                (
+                    truth_by_column,
+                    ambiguous_columns,
+                    system_mapping_counts,
+                ) = _contact_sheet_truth_by_source_column(
+                    source_tab_system,
+                    tab_system,
+                )
+                for key, value in system_mapping_counts.items():
+                    mapping_counts[key] += value
+                for sheet in tab_system.get("contactSheets") or ():
+                    labels = [
+                        str(value) for value in sheet.get("labels") or ()
+                    ]
+                    relative_path = str(sheet.get("relativePath") or "")
+                    image_path = extraction_root / relative_path
+                    if not labels or not image_path.exists():
+                        continue
+                    image_sha256 = _sha256_bytes(image_path.read_bytes())
+                    expected_sha256 = str(sheet.get("sha256") or "")
+                    if (
+                        expected_sha256
+                        and image_sha256 != expected_sha256
+                    ):
+                        raise TrainingWorkflowError(
+                            f"Approved contact sheet changed: {batch_id}/{input_id}."
+                        )
+                    sheet_count += 1
+                    label_count += len(labels)
+                    reader_inputs = list(
+                        zip(
+                            readers,
+                            reader_ids,
+                            contracts,
+                            strict=True,
+                        )
+                    )
+                    with concurrent.futures.ThreadPoolExecutor(
+                        max_workers=len(reader_inputs)
+                    ) as executor:
+                        futures = [
+                            executor.submit(
+                                read_cells,
+                                reader,
+                                reader_id,
+                                contract,
+                                image_path,
+                                labels,
+                            )
+                            for reader, reader_id, contract in reader_inputs
+                        ]
+                        reader_results = [
+                            future.result() for future in futures
+                        ]
+                    for (
+                        _reader,
+                        reader_id,
+                        _contract,
+                    ), (
+                        cells,
+                        cache_digest,
+                    ) in zip(
+                        reader_inputs,
+                        reader_results,
+                        strict=True,
+                    ):
+                        reader_output_digests.append(cache_digest)
+                        for label in labels:
+                            match = _CONTACT_SHEET_LABEL_RE.fullmatch(label)
+                            if match is None:
+                                continue
+                            source_column = int(match.group("event"))
+                            if source_column in ambiguous_columns:
+                                continue
+                            string = int(match.group("string"))
+                            event = truth_by_column.get(source_column)
+                            truth_actions = [
+                                action
+                                for action in (
+                                    event.get("steelActions") or ()
+                                    if event is not None
+                                    else ()
+                                )
+                                if int(action.get("string") or 0) == string
+                            ]
+                            if len(truth_actions) > 1:
+                                continue
+                            eligible_truth_labels.add(
+                                (
+                                    input_id,
+                                    str(
+                                        tab_system.get("tabSystemId") or ""
+                                    ),
+                                    label,
+                                )
+                            )
+                            truth_state = reader_state_signature(
+                                truth_actions
+                            )
+                            cell = cells.get(label) or {}
+                            confidence = float(
+                                cell.get("confidence") or 0.0
+                            )
+                            token = cell.get("token")
+                            predicted_state: str | None = None
+                            if token is None or not str(token).strip():
+                                if (
+                                    cell.get("uncertain") is False
+                                    and not cell.get("readerFailure")
+                                    and confidence >= 0.8
+                                ):
+                                    predicted_state = (
+                                        reader_state_signature(())
+                                    )
+                            elif (
+                                cell.get("uncertain") is False
+                                and not cell.get("readerFailure")
+                                and confidence >= 0.8
+                            ):
+                                actions, issue = (
+                                    _tab_action_sequence_from_token(
+                                        str(token),
+                                        string=string,
+                                        profile=profile,
+                                        confidence=confidence,
+                                        region_id=(
+                                            "discovery-reader-calibration:"
+                                            f"{input_id}:{label}"
+                                        ),
+                                    )
+                                )
+                                if (
+                                    actions
+                                    and issue is None
+                                    and all(
+                                        action.get(
+                                            "mechanicalValidation",
+                                            {},
+                                        ).get("valid")
+                                        is True
+                                        for action in actions
+                                    )
+                                ):
+                                    predicted_state = (
+                                        reader_state_signature(actions)
+                                    )
+                            if predicted_state is None:
+                                continue
+                            cases.append(
+                                {
+                                    "readerId": reader_id,
+                                    "contentUnitId": content_unit_id,
+                                    "predictedState": predicted_state,
+                                    "truthState": truth_state,
+                                    "confidence": confidence,
+                                }
+                            )
+            record_digests.append(record_digest)
+        calibration = train_reader_calibration(
+            cases,
+            source_cohort_id=batch_id,
+            reader_contracts=contracts,
+        )
+        automation_eligible = bool(
+            calibration.get("automationEligible")
+        )
+        source_manifest_digest = str(
+            manifest.get("immutableDigest") or ""
+        )
+        source_copedent_id = str(
+            manifest.get("sourceCopedentId") or ""
+        )
+        approved_record_set_digest = _sha256_json(record_digests)
+        reader_output_set_digest = _sha256_json(
+            sorted(reader_output_digests)
+        )
+        code_revision = _git_revision(self.repo_root)
+        code_file_digests = _rules_code_file_digests(self.repo_root)
+        lineage_core = {
+            "calibrationRuleDigest": str(
+                calibration.get("artifactDigest") or ""
+            ),
+            "sourceBatchId": batch_id,
+            "sourceManifestDigest": source_manifest_digest,
+            "sourceCopedentId": source_copedent_id,
+            "approvedDiscoveryRecordSetDigest": (
+                approved_record_set_digest
+            ),
+            "contactSheetTruthMappingVersion": (
+                CONTACT_SHEET_TRUTH_MAPPING_VERSION
+            ),
+            "sourceContactRecordSetDigest": _sha256_json(
+                source_record_digests
+            ),
+            "readerOutputSetDigest": reader_output_set_digest,
+            "codeRevision": code_revision,
+            "codeFileDigests": code_file_digests,
+        }
+        lineage_digest = _sha256_json(lineage_core)
+        calibration_id = f"atr-{lineage_digest[:16]}"
+        payload_candidate = {
+            **calibration,
+            "calibrationRuleId": str(
+                calibration.get("calibrationId") or ""
+            ),
+            "calibrationId": calibration_id,
+            "lineageDigest": lineage_digest,
+            "createdAt": _utc_now(),
+            "status": (
+                "source_reader_calibration_eligible"
+                if automation_eligible
+                else "diagnostic_only"
+            ),
+            "sourceManifestDigest": source_manifest_digest,
+            "sourceCopedentId": source_copedent_id,
+            "approvedDiscoveryRecordCount": len(approved_index),
+            "approvedDiscoveryRecordSetDigest": (
+                approved_record_set_digest
+            ),
+            "contactSheetTruthMappingVersion": (
+                CONTACT_SHEET_TRUTH_MAPPING_VERSION
+            ),
+            "sourceContactRecordSetDigest": _sha256_json(
+                source_record_digests
+            ),
+            "contactSheetTruthMapping": mapping_counts,
+            "contactSheetCount": sheet_count,
+            "contactLabelCount": label_count,
+            "eligibleTruthLabelCount": len(eligible_truth_labels),
+            "readerOutputSetDigest": reader_output_set_digest,
+            "codeRevision": code_revision,
+            "codeFileDigests": code_file_digests,
+            "privacy": {
+                "containsSourceContent": False,
+                "containsProfileSnapshots": False,
+                "containsReaderOutput": False,
+            },
+        }
+        artifact_dir = self.root / "source-reader-calibrations"
+        artifact_path = artifact_dir / f"{calibration_id}.json"
+        if artifact_path.exists():
+            payload = _read_json(artifact_path)
+            if (
+                payload.get("calibrationId") != calibration_id
+                or payload.get("lineageDigest") != lineage_digest
+                or {
+                    key: value
+                    for key, value in payload.items()
+                    if key != "createdAt"
+                }
+                != {
+                    key: value
+                    for key, value in payload_candidate.items()
+                    if key != "createdAt"
+                }
+            ):
+                raise TrainingWorkflowError(
+                    "Existing source-reader calibration lineage changed."
+                )
+        else:
+            payload = payload_candidate
+            _write_json(artifact_path, payload)
+            _make_private(artifact_path)
+        artifact_sha256 = _sha256_bytes(artifact_path.read_bytes())
+        registry = self._registry()
+        registry.setdefault("sourceReaderCalibrations", {})[
+            calibration_id
+        ] = {
             "artifact": str(artifact_path.relative_to(self.root)),
             "artifactSha256": artifact_sha256,
             "sourceBatchId": batch_id,

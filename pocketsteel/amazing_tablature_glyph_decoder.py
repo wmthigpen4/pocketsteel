@@ -8,16 +8,33 @@ from collections import Counter, defaultdict
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+import cv2
 import numpy as np
 from PIL import Image, ImageOps
 
 
-GLYPH_FEATURE_SCHEMA_VERSION = "amazing-tablature-glyph-hog-v1"
-GLYPH_DECODER_SCHEMA_VERSION = "amazing-tablature-glyph-decoder-v1"
+GLYPH_FEATURE_SCHEMA_VERSION = "amazing-tablature-glyph-centered-v2"
+GLYPH_DECODER_SCHEMA_VERSION = "amazing-tablature-glyph-decoder-v2"
+GLYPH_INPUT_MODE = "contact_sheet_token_crop"
 DEFAULT_MINIMUM_LABEL_SUPPORT = 8
 DEFAULT_MINIMUM_CV_PREDICTIONS = 30
-DEFAULT_MINIMUM_CV_PRECISION = 0.95
-_CONFIDENCE_THRESHOLDS = (0.95, 0.90, 0.85, 0.80, 0.75, 0.70, 0.65, 0.60)
+DEFAULT_MINIMUM_CV_PRECISION = 0.995
+_CONFIDENCE_THRESHOLDS = (
+    1.0,
+    0.999,
+    0.995,
+    0.99,
+    0.98,
+    0.97,
+    0.95,
+    0.90,
+    0.85,
+    0.80,
+    0.75,
+    0.70,
+    0.65,
+    0.60,
+)
 
 
 class GlyphDecoderError(ValueError):
@@ -44,18 +61,192 @@ def glyph_label_token(label: str) -> str:
     return f"{int(fret)}{controls}"
 
 
-def glyph_feature_vector(image: Image.Image) -> list[float] | None:
-    """Return a normalized HOG vector after suppressing long tab-grid strokes."""
+def contact_sheet_token_crops(
+    image: Image.Image,
+    labels: Sequence[str],
+) -> dict[str, Image.Image]:
+    """Return token-only crops using the exact validation card geometry."""
 
-    prepared = ImageOps.autocontrast(image.convert("L")).resize(
-        (96, 48),
-        Image.Resampling.LANCZOS,
+    if not labels:
+        return {}
+    source = image.convert("RGB")
+    columns = 4
+    rows = max(1, (len(labels) + columns - 1) // columns)
+    card_width = source.width // columns
+    card_height = source.height // rows
+    patch_width = max(1, card_width - 120)
+    patch_height = max(1, card_height - 42)
+    return {
+        str(label): source.crop(
+            (
+                (index % columns) * card_width + 90,
+                (index // columns) * card_height + 30,
+                min(
+                    source.width,
+                    (index % columns) * card_width + 90 + patch_width,
+                ),
+                min(
+                    source.height,
+                    (index // columns) * card_height + 30 + patch_height,
+                ),
+            )
+        )
+        for index, label in enumerate(labels)
+    }
+
+
+def glyph_feature_vector(image: Image.Image) -> list[float] | None:
+    """Return centered raw-ink and HOG features for the target tab glyph."""
+
+    prepared = ImageOps.autocontrast(image.convert("L"))
+    gray_source = np.asarray(prepared, dtype=np.uint8)
+    if not gray_source.size:
+        return None
+    _threshold, binary = cv2.threshold(
+        gray_source,
+        0,
+        255,
+        cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU,
     )
-    gray = np.asarray(prepared, dtype=np.float32) / 255.0
-    ink = 1.0 - gray
-    row_occupancy = np.mean(ink > 0.25, axis=1)
-    gray[row_occupancy > 0.55, :] = 1.0
-    gray[gray > 0.88] = 1.0
+    height, width = binary.shape
+    horizontal = cv2.morphologyEx(
+        binary,
+        cv2.MORPH_OPEN,
+        cv2.getStructuringElement(
+            cv2.MORPH_RECT,
+            (max(12, width // 5), 1),
+        ),
+    )
+    vertical = cv2.morphologyEx(
+        binary,
+        cv2.MORPH_OPEN,
+        cv2.getStructuringElement(
+            cv2.MORPH_RECT,
+            (1, max(12, int(height * 0.65))),
+        ),
+    )
+    glyph_ink = cv2.subtract(binary, cv2.max(horizontal, vertical))
+    glyph_ink = cv2.morphologyEx(
+        glyph_ink,
+        cv2.MORPH_OPEN,
+        np.ones((2, 2), dtype=np.uint8),
+    )
+    count, component_map, stats, centroids = (
+        cv2.connectedComponentsWithStats(glyph_ink, 8)
+    )
+    components: list[dict[str, float | int]] = []
+    for index in range(1, count):
+        x, y, component_width, component_height, area = (
+            int(value) for value in stats[index]
+        )
+        if (
+            area < max(4, int(height * width * 0.0002))
+            or component_height < max(3, int(height * 0.10))
+            or component_width > component_height * 3.0
+        ):
+            continue
+        components.append(
+            {
+                "index": index,
+                "x": x,
+                "y": y,
+                "width": component_width,
+                "height": component_height,
+                "area": area,
+                "centerX": float(centroids[index][0]),
+                "centerY": float(centroids[index][1]),
+            }
+        )
+    if not components:
+        return None
+    target_x = width / 2
+    main = min(
+        components,
+        key=lambda item: (
+            abs(float(item["centerX"]) - target_x)
+            / max(1.0, float(width))
+            - 0.20
+            * float(item["height"])
+            / max(1.0, float(height)),
+            -int(item["area"]),
+        ),
+    )
+    selected = {int(main["index"])}
+    cluster_left = int(main["x"])
+    cluster_right = cluster_left + int(main["width"])
+    cluster_top = int(main["y"])
+    cluster_bottom = cluster_top + int(main["height"])
+    maximum_gap = max(4, int(main["height"]) // 2)
+    for _pass in range(2):
+        for component in components:
+            index = int(component["index"])
+            if index in selected:
+                continue
+            left = int(component["x"])
+            right = left + int(component["width"])
+            top = int(component["y"])
+            bottom = top + int(component["height"])
+            horizontal_gap = max(
+                0,
+                max(cluster_left, left) - min(cluster_right, right),
+            )
+            vertical_overlap = max(
+                0,
+                min(cluster_bottom, bottom) - max(cluster_top, top),
+            )
+            if (
+                horizontal_gap <= maximum_gap
+                and vertical_overlap
+                >= min(
+                    int(component["height"]),
+                    cluster_bottom - cluster_top,
+                )
+                * 0.20
+            ):
+                selected.add(index)
+                cluster_left = min(cluster_left, left)
+                cluster_right = max(cluster_right, right)
+                cluster_top = min(cluster_top, top)
+                cluster_bottom = max(cluster_bottom, bottom)
+    selected_ink = np.zeros_like(glyph_ink)
+    selected_ink[np.isin(component_map, list(selected))] = 255
+    padding = max(
+        2,
+        int(
+            max(
+                cluster_right - cluster_left,
+                cluster_bottom - cluster_top,
+            )
+            * 0.10
+        ),
+    )
+    left = max(0, cluster_left - padding)
+    right = min(width, cluster_right + padding)
+    top = max(0, cluster_top - padding)
+    bottom = min(height, cluster_bottom + padding)
+    isolated = selected_ink[top:bottom, left:right]
+    if not isolated.size or not np.any(isolated):
+        return None
+    canvas = np.zeros((48, 96), dtype=np.uint8)
+    scale = min(
+        88 / max(1, isolated.shape[1]),
+        42 / max(1, isolated.shape[0]),
+    )
+    resized = cv2.resize(
+        isolated,
+        (
+            max(1, int(round(isolated.shape[1] * scale))),
+            max(1, int(round(isolated.shape[0] * scale))),
+        ),
+        interpolation=cv2.INTER_AREA,
+    )
+    paste_y = (canvas.shape[0] - resized.shape[0]) // 2
+    paste_x = (canvas.shape[1] - resized.shape[1]) // 2
+    canvas[
+        paste_y : paste_y + resized.shape[0],
+        paste_x : paste_x + resized.shape[1],
+    ] = resized
+    gray = 1.0 - (canvas.astype(np.float32) / 255.0)
     gradient_x = np.zeros_like(gray)
     gradient_y = np.zeros_like(gray)
     gradient_x[:, 1:-1] = gray[:, :-2] - gray[:, 2:]
@@ -80,7 +271,18 @@ def glyph_feature_vector(image: Image.Image) -> list[float] | None:
             )
             histogram /= float(np.linalg.norm(histogram)) + 1e-6
             features.extend(float(value) for value in histogram)
-    vector = np.asarray(features, dtype=np.float32)
+    raw = cv2.resize(
+        canvas,
+        (32, 16),
+        interpolation=cv2.INTER_AREA,
+    ).astype(np.float32)
+    raw /= 255.0
+    vector = np.concatenate(
+        (
+            raw.reshape(-1),
+            np.asarray(features, dtype=np.float32),
+        )
+    )
     vector /= float(np.linalg.norm(vector)) + 1e-6
     return [round(float(value), 7) for value in vector]
 
@@ -168,9 +370,44 @@ def train_glyph_decoder(
     predictions = _grouped_cv_predictions(normalized)
     calibration: list[dict[str, Any]] = []
     selected_threshold: float | None = None
+    selected_labels: list[str] = []
     for threshold in _CONFIDENCE_THRESHOLDS:
-        selected = [
+        threshold_predictions = [
             row for row in predictions if float(row["confidence"]) >= threshold
+        ]
+        label_metrics: dict[str, dict[str, Any]] = {}
+        for label in sorted(eligible_labels):
+            label_rows = [
+                row
+                for row in threshold_predictions
+                if row["predicted"] == label
+            ]
+            correct = sum(
+                row["predicted"] == row["actual"]
+                for row in label_rows
+            )
+            precision = (
+                correct / len(label_rows) if label_rows else 0.0
+            )
+            label_metrics[label] = {
+                "predictionCount": len(label_rows),
+                "correctCount": correct,
+                "precision": precision,
+            }
+        accepted_labels = sorted(
+            label
+            for label, metrics in label_metrics.items()
+            if (
+                int(metrics["predictionCount"])
+                >= minimum_label_support
+                and float(metrics["precision"])
+                >= minimum_cv_precision
+            )
+        )
+        selected = [
+            row
+            for row in threshold_predictions
+            if row["predicted"] in accepted_labels
         ]
         correct = sum(row["predicted"] == row["actual"] for row in selected)
         precision = correct / len(selected) if selected else 0.0
@@ -181,6 +418,8 @@ def train_glyph_decoder(
                 "correctCount": correct,
                 "precision": precision,
                 "coverage": len(selected) / len(predictions) if predictions else 0.0,
+                "acceptedLabels": accepted_labels,
+                "labelMetrics": label_metrics,
             }
         )
         if (
@@ -188,9 +427,11 @@ def train_glyph_decoder(
             and precision >= minimum_cv_precision
         ):
             selected_threshold = threshold
+            selected_labels = accepted_labels
     artifact_core = {
         "schemaVersion": GLYPH_DECODER_SCHEMA_VERSION,
         "featureSchemaVersion": GLYPH_FEATURE_SCHEMA_VERSION,
+        "inputMode": GLYPH_INPUT_MODE,
         "sourceCohortId": source_cohort_id,
         "policy": "semantic_glyph_or_abstain",
         "thresholds": {
@@ -199,6 +440,7 @@ def train_glyph_decoder(
             "minimumCvPrecision": minimum_cv_precision,
             "selectedConfidence": selected_threshold,
         },
+        "acceptedLabels": selected_labels,
         "labelCounts": dict(sorted(counts.items())),
         "trainingExampleCount": len(normalized),
         "contentUnitCount": len(
@@ -233,11 +475,18 @@ def classify_glyph(
     if decoder.get("schemaVersion") != GLYPH_DECODER_SCHEMA_VERSION:
         raise GlyphDecoderError("Unsupported glyph decoder schema.")
     threshold = (decoder.get("thresholds") or {}).get("selectedConfidence")
+    accepted_labels = {
+        str(value) for value in decoder.get("acceptedLabels") or ()
+    }
     feature = glyph_feature_vector(image)
-    if threshold is None or feature is None:
+    if threshold is None or not accepted_labels or feature is None:
         return {"decision": "unresolved", "reason": "decoder_not_eligible"}
     label, confidence = _predict(decoder.get("examples") or (), feature)
-    if label is None or confidence < float(threshold):
+    if (
+        label is None
+        or label not in accepted_labels
+        or confidence < float(threshold)
+    ):
         return {
             "decision": "unresolved",
             "reason": "confidence_below_discovery_calibration",

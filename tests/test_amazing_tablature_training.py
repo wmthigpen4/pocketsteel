@@ -18,9 +18,11 @@ from pocketsteel.amazing_tablature_glyph_decoder import (
 )
 from pocketsteel.amazing_tablature_training import (
     AmazingTablatureTrainingStore,
+    CONTACT_SHEET_TRUTH_MAPPING_VERSION,
     TrainingWorkflowError,
     VALIDATION_LINE_PREFLIGHT_VERSION,
     _challenger_line_previously_reviewed,
+    _contact_sheet_truth_by_source_column,
     _discovery_line_review_readiness,
 )
 from pocketsteel.e9_copedents import get_e9_copedent_profile
@@ -35,14 +37,17 @@ from pocketsteel.tab_engine import TabNote
 def test_glyph_feature_vector_and_label_contract_are_deterministic() -> None:
     image = Image.new("L", (120, 40), "white")
     draw = ImageDraw.Draw(image)
-    draw.text((45, 8), "3A", fill="black")
+    draw.arc((42, 4, 62, 20), -80, 100, fill="black", width=3)
+    draw.arc((42, 18, 62, 35), -100, 80, fill="black", width=3)
+    draw.line((66, 34, 74, 5, 82, 34), fill="black", width=3)
+    draw.line((69, 23, 79, 23), fill="black", width=3)
 
     first = glyph_feature_vector(image)
     second = glyph_feature_vector(image)
 
     assert first is not None
     assert first == second
-    assert len(first) == 648
+    assert len(first) == 1160
     assert glyph_label(3, ["A"]) == "3|A"
     assert glyph_label_token("3|A") == "3A"
 
@@ -77,6 +82,80 @@ def test_glyph_decoder_calibrates_grouped_precision_and_abstention() -> None:
     assert decoder["validationDataUsed"] is False
     assert decoder["sealedTestDataUsed"] is False
     assert decoder["groupedCrossValidation"]["foldUnit"] == "content_unit"
+
+
+def test_contact_sheet_truth_uses_stable_source_columns_not_corrected_indexes() -> None:
+    source_system = {
+        "contactSheets": [
+            {
+                "labels": ["e1s5", "e2s5", "e3s5", "e4s5"],
+            }
+        ],
+        "tabEvents": [
+            {"eventIndex": 1, "tabEventId": "removed-source-event"},
+            {"eventIndex": 2, "tabEventId": "stable-source-event"},
+        ],
+    }
+    corrected_stable = {
+        "eventIndex": 1,
+        "tabEventId": "stable-source-event",
+        "steelActions": [{"string": 5, "fret": 8, "controls": ["A"]}],
+    }
+    corrected_explicit = {
+        "eventIndex": 2,
+        "tabEventId": "inserted-event",
+        "sourceCandidateEventIndex": 3,
+        "steelActions": [{"string": 5, "fret": 10, "controls": []}],
+    }
+    truth, ambiguous, counts = _contact_sheet_truth_by_source_column(
+        source_system,
+        {
+            "tabEvents": [
+                corrected_stable,
+                corrected_explicit,
+            ]
+        },
+    )
+
+    assert truth == {
+        1: None,
+        2: corrected_stable,
+        3: corrected_explicit,
+        4: None,
+    }
+    assert ambiguous == set()
+    assert counts == {
+        "stableTabEventId": 1,
+        "explicitSourceCandidateIndex": 1,
+        "reviewedBlank": 2,
+        "ambiguousUnlinkedInsertion": 0,
+    }
+
+
+def test_contact_sheet_truth_abstains_when_inserted_event_has_no_source_column() -> None:
+    truth, ambiguous, counts = _contact_sheet_truth_by_source_column(
+        {
+            "contactSheets": [{"labels": ["e1s5", "e2s5"]}],
+            "tabEvents": [
+                {"eventIndex": 1, "tabEventId": "removed-source-event"}
+            ],
+        },
+        {
+            "tabEvents": [
+                {
+                    "eventIndex": 1,
+                    "tabEventId": "inserted-without-lineage",
+                    "steelActions": [
+                        {"string": 5, "fret": 8, "controls": []}
+                    ],
+                }
+            ]
+        },
+    )
+
+    assert truth == {}
+    assert ambiguous == {1, 2}
+    assert counts["ambiguousUnlinkedInsertion"] == 2
 
 
 def test_discovery_line_readiness_is_line_scoped_and_explains_page_gates() -> None:
@@ -805,6 +884,192 @@ def add_small_partitioned_batch(
     discovery = json.loads((batch_dir / "discovery-work.jsonl").read_text().splitlines()[0])
     validation = json.loads((batch_dir / "validation-work.jsonl").read_text().splitlines()[0])
     return discovery, validation
+
+
+def test_discovery_reader_calibration_is_private_and_discovery_only(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = AmazingTablatureTrainingStore(
+        tmp_path / "private",
+        repo_root=tmp_path,
+    )
+    discovery, _validation = add_small_partitioned_batch(
+        store,
+        tmp_path,
+        batch_id="atb-reader-calibration",
+        source_copedent_id="source-e9-abc-defg-v1",
+    )
+    extraction_root = (
+        tmp_path
+        / "private/batches/atb-reader-calibration/extraction/discovery"
+    )
+    sheet_path = extraction_root / "review/contact-sheet.png"
+    sheet_path.parent.mkdir(parents=True)
+    sheet_path.write_bytes(b"synthetic-private-contact-sheet")
+    record = {
+        "datasetPartition": "discovery",
+        "inputId": discovery["inputId"],
+        "contentUnitId": "content-unit-discovery-only",
+        "tabSystems": [
+            {
+                "tabSystemId": "tab-system-1",
+                "reviewState": "human_approved",
+                "tabEvents": [
+                    {
+                        "eventIndex": 1,
+                        "tabEventId": "source-event-2",
+                        "steelActions": [
+                            {
+                                "string": 5,
+                                "fret": 8,
+                                "controls": ["A"],
+                            }
+                        ],
+                    }
+                ],
+                "contactSheets": [
+                    {
+                        "relativePath": "review/contact-sheet.png",
+                        "sha256": hashlib.sha256(
+                            sheet_path.read_bytes()
+                        ).hexdigest(),
+                        "labels": ["e1s5", "e2s5"],
+                    }
+                ],
+            }
+        ],
+    }
+    approved_path = extraction_root / "review/approved-records/input.json"
+    approved_path.parent.mkdir(parents=True)
+    approved_path.write_text(json.dumps(record), encoding="utf-8")
+    write_jsonl(
+        extraction_root / "review/approved-record-index.jsonl",
+        [
+            {
+                "inputId": discovery["inputId"],
+                "status": "human_approved",
+                "reviewedRecordPath": "review/approved-records/input.json",
+                "reviewedRecordDigest": canonical_sha(record),
+            }
+        ],
+    )
+    source_record = {
+        "datasetPartition": "discovery",
+        "inputId": discovery["inputId"],
+        "tabSystems": [
+            {
+                "tabSystemId": "tab-system-1",
+                "tabEvents": [
+                    {
+                        "eventIndex": 1,
+                        "tabEventId": "source-event-1",
+                    },
+                    {
+                        "eventIndex": 2,
+                        "tabEventId": "source-event-2",
+                    },
+                ],
+                "contactSheets": record["tabSystems"][0]["contactSheets"],
+            }
+        ],
+    }
+    source_record_path = (
+        extraction_root
+        / "review/machine-record-revisions"
+        / discovery["inputId"]
+        / "revision-0001-source.json"
+    )
+    source_record_path.parent.mkdir(parents=True)
+    source_record_path.write_text(
+        json.dumps(source_record),
+        encoding="utf-8",
+    )
+
+    def fake_contract(reader: object) -> dict[str, object]:
+        model = str(getattr(reader, "model"))
+        return {
+            "reader": "synthetic-reader",
+            "modelTag": model,
+            "modelDigest": hashlib.sha256(model.encode()).hexdigest(),
+            "promptVersion": "synthetic-v1",
+        }
+
+    def fake_read(
+        _reader: object,
+        _sheet: Path,
+        labels: list[str],
+    ) -> dict[str, dict[str, object]]:
+        return {
+            label: (
+                {
+                    "token": "8A",
+                    "confidence": 1.0,
+                    "uncertain": False,
+                }
+                if label == "e2s5"
+                else {
+                    "token": None,
+                    "confidence": 1.0,
+                    "uncertain": False,
+                }
+            )
+            for label in labels
+        }
+
+    monkeypatch.setattr(
+        "pocketsteel.amazing_tablature_extraction.LocalTabVision.contract",
+        fake_contract,
+    )
+    monkeypatch.setattr(
+        "pocketsteel.amazing_tablature_extraction.LocalTabVision.read",
+        fake_read,
+    )
+
+    result = store.build_discovery_reader_calibration(
+        "atb-reader-calibration",
+        reader_models=("reader-a", "reader-b"),
+    )
+
+    assert result["status"] == "diagnostic_only"
+    assert result["caseCount"] == 4
+    assert result["contactSheetCount"] == 1
+    assert result["contactLabelCount"] == 2
+    assert result["eligibleTruthLabelCount"] == 2
+    assert result["contactSheetTruthMappingVersion"] == (
+        CONTACT_SHEET_TRUTH_MAPPING_VERSION
+    )
+    assert result["contactSheetTruthMapping"] == {
+        "stableTabEventId": 1,
+        "explicitSourceCandidateIndex": 0,
+        "reviewedBlank": 1,
+        "ambiguousUnlinkedInsertion": 0,
+    }
+    assert result["validationDataUsed"] is False
+    assert result["sealedTestDataUsed"] is False
+    assert result["privacy"] == {
+        "containsSourceContent": False,
+        "containsProfileSnapshots": False,
+        "containsReaderOutput": False,
+    }
+    registry = json.loads(
+        (tmp_path / "private/training-registry.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    metadata = registry["sourceReaderCalibrations"][
+        result["calibrationId"]
+    ]
+    assert metadata["automationEligible"] is False
+    assert metadata["validationDataUsed"] is False
+    assert metadata["sealedTestDataUsed"] is False
+    repeated = store.build_discovery_reader_calibration(
+        "atb-reader-calibration",
+        reader_models=("reader-a", "reader-b"),
+    )
+    assert repeated["calibrationId"] == result["calibrationId"]
+    assert repeated["artifactSha256"] == result["artifactSha256"]
+    assert repeated["createdAt"] == result["createdAt"]
 
 
 def test_ingest_is_immutable_idempotent_and_resumable(tmp_path: Path) -> None:

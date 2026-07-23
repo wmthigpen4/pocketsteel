@@ -37,6 +37,7 @@ from pocketsteel.amazing_tablature_extraction import (
     ExtractionWorkflowError,
     LocalTabVision,
     LocalTabSystemVision,
+    _approved_discovery_record_set_digest,
     _align_events,
     _apply_key_signature_to_score_events,
     _audiveris_notehead_columns,
@@ -106,6 +107,7 @@ from pocketsteel.amazing_tablature_extraction import (
     _replace_score_system_attacks_from_review,
     _review_tab_event_description,
     _rebase_score_repair_candidate_after_tab_correction,
+    _render_focused_contact_sheet_chunks,
     _review_record_counts,
     _reviewed_tab_facts_digest,
     _reviewed_tab_event_rhythmic_slot,
@@ -152,6 +154,10 @@ from pocketsteel.amazing_tablature_extraction import (
     score_tab_pitch_relationship_findings,
 )
 from pocketsteel.amazing_tablature_training import _profile_digest as training_profile_digest
+from pocketsteel.amazing_tablature_reader_calibration import (
+    reader_state_signature,
+    train_reader_calibration,
+)
 from pocketsteel.amazing_tablature_decisions import (
     _candidate,
     _voice_preserving_alternatives,
@@ -173,6 +179,48 @@ def _synthetic_tab() -> Image.Image:
     draw.rectangle((750, lines[2] + 3, 760, lines[3] - 3), fill="black")
     draw.rectangle((764, lines[2] + 3, 774, lines[3] - 3), fill="black")
     return image
+
+
+def test_approved_discovery_record_set_digest_rejects_stale_or_duplicate_index(
+    tmp_path: Path,
+) -> None:
+    batch_dir = tmp_path / "batch"
+    discovery_root = batch_dir / "extraction/discovery"
+    record_path = discovery_root / "review/approved-records/input-1.json"
+    record_path.parent.mkdir(parents=True)
+    record = {"inputId": "input-1", "datasetPartition": "discovery"}
+    record_path.write_text(json.dumps(record), encoding="utf-8")
+    record_digest = _sha256_json(record)
+    index_path = (
+        discovery_root / "review/approved-record-index.jsonl"
+    )
+    index_row = {
+        "inputId": "input-1",
+        "status": "human_approved",
+        "reviewedRecordPath": "review/approved-records/input-1.json",
+        "reviewedRecordDigest": record_digest,
+    }
+    index_path.write_text(
+        json.dumps(index_row) + "\n",
+        encoding="utf-8",
+    )
+
+    assert _approved_discovery_record_set_digest(
+        batch_dir
+    ) == _sha256_json([record_digest])
+
+    record_path.write_text(
+        json.dumps({**record, "changed": True}),
+        encoding="utf-8",
+    )
+    assert _approved_discovery_record_set_digest(batch_dir) is None
+
+    record_path.write_text(json.dumps(record), encoding="utf-8")
+    index_path.write_text(
+        json.dumps(index_row) + "\n" + json.dumps(index_row) + "\n",
+        encoding="utf-8",
+    )
+    assert _approved_discovery_record_set_digest(batch_dir) is None
 
 
 def test_key_signature_application_preserves_explicit_accidentals() -> None:
@@ -5498,7 +5546,20 @@ def test_local_tab_reader_retries_one_transient_failure(tmp_path: Path, monkeypa
         @staticmethod
         def read() -> bytes:
             return json.dumps(
-                {"message": {"content": json.dumps({"cells": {"e1s5": {"token": "5A", "confidence": 0.99}}})}}
+                {
+                    "message": {
+                        "content": json.dumps(
+                            {
+                                "cells": {
+                                    " E1S5 ": {
+                                        "token": "5A",
+                                        "confidence": 0.99,
+                                    }
+                                }
+                            }
+                        )
+                    }
+                }
             ).encode()
 
     def fake_urlopen(_request: object, timeout: int) -> _Response:
@@ -5514,6 +5575,57 @@ def test_local_tab_reader_retries_one_transient_failure(tmp_path: Path, monkeypa
 
     assert calls == 2
     assert result["e1s5"]["token"] == "5A"
+
+
+def test_local_tab_reader_rejects_duplicate_case_normalized_labels(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sheet = tmp_path / "sheet.jpg"
+    sheet.write_bytes(b"synthetic-sheet")
+
+    class _Response:
+        def __enter__(self) -> _Response:
+            return self
+
+        def __exit__(self, *_args: object) -> None:
+            return None
+
+        @staticmethod
+        def read() -> bytes:
+            return json.dumps(
+                {
+                    "message": {
+                        "content": json.dumps(
+                            {
+                                "cells": {
+                                    "e1s5": {
+                                        "token": "5A",
+                                        "confidence": 0.99,
+                                    },
+                                    " E1S5 ": {
+                                        "token": "8A",
+                                        "confidence": 0.99,
+                                    },
+                                }
+                            }
+                        )
+                    }
+                }
+            ).encode()
+
+    monkeypatch.setattr(
+        "urllib.request.urlopen",
+        lambda _request, timeout: _Response(),
+    )
+
+    result = LocalTabVision().read(sheet, ["e1s5"])
+
+    assert result["e1s5"] == {
+        "token": None,
+        "confidence": 0.0,
+        "uncertain": True,
+    }
 
 
 def test_whole_system_counter_returns_only_bounded_count_evidence(
@@ -6330,6 +6442,46 @@ def test_printed_tab_movement_chain_becomes_sustained_state_events(
         ]
 
 
+def test_focused_contact_sheet_reader_inputs_are_bounded_chunks(
+    tmp_path: Path,
+) -> None:
+    labels = [f"e{index}s5" for index in range(1, 12)]
+    source_path = tmp_path / "contact.jpg"
+    source = Image.new("RGB", (400, 300), "white")
+    draw = ImageDraw.Draw(source)
+    for index, label in enumerate(labels):
+        left = (index % 4) * 100
+        top = (index // 4) * 100
+        draw.text((left + 35, top + 35), label, fill="black")
+    source.save(source_path)
+    destination = tmp_path / "focused.jpg"
+
+    chunks = _render_focused_contact_sheet_chunks(
+        output_root=tmp_path,
+        tab_system={
+            "contactSheets": [
+                {
+                    "relativePath": source_path.name,
+                    "labels": labels,
+                }
+            ]
+        },
+        unresolved_labels=labels,
+        destination=destination,
+        chunk_size=8,
+    )
+
+    assert [chunk_labels for _path, chunk_labels in chunks] == [
+        labels[:8],
+        labels[8:],
+    ]
+    assert [path.name for path, _labels in chunks] == [
+        "focused-chunk-01.jpg",
+        "focused-chunk-02.jpg",
+    ]
+    assert all(path.exists() for path, _labels in chunks)
+
+
 def test_contact_sheet_consensus_compares_mechanics_not_token_typography() -> None:
     profile = get_e9_copedent_profile("source-e9-abc-defg-v1")
     events, diagnostics = _consensus_contact_sheet_tab_events(
@@ -6358,6 +6510,193 @@ def test_contact_sheet_consensus_compares_mechanics_not_token_typography() -> No
     assert events[0]["steelActions"][0]["consensusReaderCount"] == 2
     assert events[1]["steelActions"][0]["controls"] == []
     assert events[1]["executionInference"] == "unresolved_attack_or_hold"
+
+
+def test_contact_sheet_consensus_resolves_independently_agreed_blank_rows() -> None:
+    profile = get_e9_copedent_profile("source-e9-abc-defg-v1")
+    events, diagnostics = _consensus_contact_sheet_tab_events(
+        labels=["e1s4", "e1s5", "e2s4", "e2s5"],
+        cells_by_reader={
+            "reader-a": {
+                "e1s4": {"token": None, "confidence": 1.0, "uncertain": False},
+                "e1s5": {"token": "8A", "confidence": 0.99, "uncertain": False},
+                "e2s4": {"token": None, "confidence": 1.0, "uncertain": False},
+                "e2s5": {"token": None, "confidence": 1.0, "uncertain": False},
+            },
+            "reader-b": {
+                "e1s4": {"token": None, "confidence": 0.99, "uncertain": False},
+                "e1s5": {"token": "08a", "confidence": 0.97, "uncertain": False},
+                "e2s4": {"token": None, "confidence": 0.99, "uncertain": False},
+                "e2s5": {"token": None, "confidence": 0.99, "uncertain": False},
+            },
+        },
+        profile=profile,
+        tab_system_id="tab-system-blank-consensus",
+    )
+
+    assert diagnostics["allCellsResolved"] is True
+    assert diagnostics["allColumnsDecoded"] is True
+    assert diagnostics["rawCandidateEventColumnCount"] == 2
+    assert diagnostics["eventColumnCount"] == 1
+    assert diagnostics["resolvedBlankCellCount"] == 3
+    assert diagnostics["excludedBlankEventColumns"] == [2]
+    assert len(events) == 1
+    assert events[0]["sourceEventColumn"] == 1
+    assert events[0]["steelActions"][0]["string"] == 5
+
+
+def test_contact_sheet_consensus_does_not_treat_uncertain_blank_as_evidence() -> None:
+    profile = get_e9_copedent_profile("source-e9-abc-defg-v1")
+    events, diagnostics = _consensus_contact_sheet_tab_events(
+        labels=["e1s4", "e1s5"],
+        cells_by_reader={
+            "reader-a": {
+                "e1s4": {"token": None, "confidence": 1.0, "uncertain": False},
+                "e1s5": {"token": "8A", "confidence": 0.99, "uncertain": False},
+            },
+            "reader-b": {
+                "e1s4": {"token": None, "confidence": 0.7, "uncertain": True},
+                "e1s5": {"token": "08a", "confidence": 0.97, "uncertain": False},
+            },
+        },
+        profile=profile,
+        tab_system_id="tab-system-uncertain-blank",
+    )
+
+    assert len(events) == 1
+    assert diagnostics["allCellsResolved"] is False
+    assert diagnostics["resolvedBlankCellCount"] == 0
+    assert diagnostics["unresolvedCells"][0]["label"] == "e1s4"
+    assert diagnostics["unresolvedCells"][0]["reason"] == (
+        "no_semantic_reader_consensus"
+    )
+
+
+def test_contact_sheet_consensus_accepts_only_discovery_calibrated_singletons() -> None:
+    profile = get_e9_copedent_profile("source-e9-abc-defg-v1")
+    expected_state = reader_state_signature(
+        [{"fret": 8, "controls": ["A"]}]
+    )
+    calibration = train_reader_calibration(
+        [
+            {
+                "readerId": "reader-a",
+                "contentUnitId": content_unit,
+                "predictedState": expected_state,
+                "truthState": expected_state,
+                "confidence": 1.0,
+            }
+            for content_unit in ("unit-a", "unit-b", "unit-c", "unit-d")
+        ],
+        source_cohort_id="batch-1",
+        reader_contracts=[
+            {"modelTag": "reader-a", "modelDigest": "digest-a"}
+        ],
+        minimum_state_support=2,
+        minimum_content_units=2,
+        minimum_cv_predictions=2,
+        minimum_cv_precision=1.0,
+    )
+    events, diagnostics = _consensus_contact_sheet_tab_events(
+        labels=["e1s5"],
+        cells_by_reader={
+            "reader-a": {
+                "e1s5": {
+                    "token": "8A",
+                    "confidence": 1.0,
+                    "uncertain": False,
+                    "readerInputMode": "full_contact_sheet",
+                }
+            },
+            "reader-b": {
+                "e1s5": {
+                    "token": None,
+                    "confidence": 0.0,
+                    "uncertain": True,
+                }
+            },
+        },
+        profile=profile,
+        tab_system_id="tab-system-calibrated-singleton",
+        reader_calibration=calibration,
+    )
+
+    assert diagnostics["allCellsResolved"] is True
+    assert diagnostics["calibratedSingletonResolvedCellCount"] == 1
+    assert len(events) == 1
+    action = events[0]["steelActions"][0]
+    assert action["consensusReaderCount"] == 1
+    assert action["calibratedReaderIds"] == ["reader-a"]
+    assert action["calibratedSingletonEvidence"] is True
+
+
+def test_contact_sheet_consensus_abstains_on_conflicting_calibrated_singletons() -> None:
+    profile = get_e9_copedent_profile("source-e9-abc-defg-v1")
+    state_8 = reader_state_signature([{"fret": 8, "controls": []}])
+    state_9 = reader_state_signature([{"fret": 9, "controls": []}])
+    calibration_cases = []
+    for content_unit in ("unit-a", "unit-b", "unit-c", "unit-d"):
+        calibration_cases.extend(
+            [
+                {
+                    "readerId": "reader-a",
+                    "contentUnitId": content_unit,
+                    "predictedState": state_8,
+                    "truthState": state_8,
+                    "confidence": 1.0,
+                },
+                {
+                    "readerId": "reader-b",
+                    "contentUnitId": content_unit,
+                    "predictedState": state_9,
+                    "truthState": state_9,
+                    "confidence": 1.0,
+                },
+            ]
+        )
+    calibration = train_reader_calibration(
+        calibration_cases,
+        source_cohort_id="batch-1",
+        reader_contracts=[
+            {"modelTag": "reader-a", "modelDigest": "digest-a"},
+            {"modelTag": "reader-b", "modelDigest": "digest-b"},
+        ],
+        minimum_state_support=2,
+        minimum_content_units=2,
+        minimum_cv_predictions=4,
+        minimum_cv_precision=1.0,
+    )
+
+    events, diagnostics = _consensus_contact_sheet_tab_events(
+        labels=["e1s5"],
+        cells_by_reader={
+            "reader-a": {
+                "e1s5": {
+                    "token": "8",
+                    "confidence": 1.0,
+                    "uncertain": False,
+                    "readerInputMode": "full_contact_sheet",
+                }
+            },
+            "reader-b": {
+                "e1s5": {
+                    "token": "9",
+                    "confidence": 1.0,
+                    "uncertain": False,
+                    "readerInputMode": "full_contact_sheet",
+                }
+            },
+        },
+        profile=profile,
+        tab_system_id="tab-system-conflicting-calibrated-singletons",
+        reader_calibration=calibration,
+    )
+
+    assert events == []
+    assert diagnostics["allCellsResolved"] is False
+    assert diagnostics["unresolvedCells"][0]["reason"] == (
+        "conflicting_semantic_reader_consensus"
+    )
 
 
 def test_contact_sheet_consensus_withholds_single_reader_disagreement() -> None:

@@ -446,6 +446,53 @@ Open validation by naming that exact canonical challenger for every cohort:
 
 The extractor rejects a partial challenger, a changed model artifact, or a model that does not cover the cohort. The extraction run pins the model ID, artifact SHA-256, discovery seed, code revision, and printed-score audit scope. Later validation-review operations inherit that pin from the private extraction summary. This gate replaces the older per-batch training checkpoint, which could not identify the exact combined-dataset challenger being evaluated.
 
+Before rerunning an incomplete independent comparison, build the
+precision-gated visual glyph decoder and calibrate the exact pinned tab-cell
+readers only against digest-verified, human-approved discovery contact sheets:
+
+```bash
+.venv/bin/python scripts/amazing_tablature.py build-discovery-glyph-decoder \
+  <batch-id>
+
+.venv/bin/python scripts/amazing_tablature.py build-discovery-reader-calibration \
+  <batch-id>
+```
+
+Contact-sheet labels identify columns in the immutable machine extraction, not
+the later renumbered reviewed events. Both builders therefore recover the
+earliest digest-matching machine record and map each source column to its
+reviewed result through the stable tab-event ID or an explicit source-candidate
+index. A removed source column is accepted as a reviewed blank only when no
+unlinked reviewed insertion could occupy it; ambiguous columns abstain and are
+excluded from calibration. Artifacts pin the source-record set digest and the
+exact mapping-contract version, and validation rejects an artifact with
+missing or stale source-column lineage.
+
+Calibration is content-unit-grouped and precision-first. A reader plus exact
+semantic fret/control state is usable as singleton evidence only when that
+state independently reaches the fixed support, content-unit, and at least
+99.5% leave-one-content-unit-out precision gates. Automation eligibility is
+computed only from those accepted rules; rejected candidate states remain
+diagnostics and cannot dilute or qualify an accepted state. Aggregate accuracy
+from a different state cannot qualify it. Two-reader semantic agreement
+remains stronger evidence, independently agreed blanks are explicit
+observations, and equal-strength conflicts abstain. A calibration or glyph
+decoder that misses any fixed automation gate is registered as diagnostic-only
+and cannot affect validation. Exact cached reader failures remain abstentions
+after their bounded attempts; they are neither retried indefinitely nor
+reinterpreted as blank cells. The private artifacts contain derived visual
+features or aggregate rules and lineage, not source imagery or raw reader
+output. Validation automatically accepts only eligible artifacts with the
+exact source-manifest, approved-record, source-column, and reader-contract
+lineage. It never trains on validation and cannot read sealed-test data.
+Reader contracts also pin case-insensitive response-label normalization, so a
+correct `E1S5` response cannot be discarded merely because the requested key
+was `e1s5`. After the full-sheet pass, unresolved cards are enlarged and sent
+in bounded groups of at most eight to the two independently pinned readers.
+Only semantic agreement or a separately discovery-calibrated singleton can
+resolve a cell; smaller images improve legibility without relaxing the
+evidence gate.
+
 Before scoring validation, prepare one complete line-level audit for each
 authoritative cohort:
 

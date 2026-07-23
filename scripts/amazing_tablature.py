@@ -603,7 +603,7 @@ def _parser() -> argparse.ArgumentParser:
         default=[],
         help=(
             "Local vision model used as an independent cell reader; repeat at "
-            "least twice. Defaults to the three pinned local Gemma readers."
+            "least twice. Defaults to the two pinned local Gemma readers."
         ),
     )
 
@@ -873,6 +873,23 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     glyph_decoder.add_argument("batch_id")
+    reader_calibration = subparsers.add_parser(
+        "build-discovery-reader-calibration",
+        help=(
+            "Calibrate pinned tab-cell readers against human-approved "
+            "discovery corrections without reading validation or sealed test."
+        ),
+    )
+    reader_calibration.add_argument("batch_id")
+    reader_calibration.add_argument(
+        "--reader-model",
+        action="append",
+        default=[],
+        help=(
+            "Pinned local vision reader to calibrate; repeat at least twice. "
+            "Defaults to the two current Gemma readers."
+        ),
+    )
     train_complete.add_argument("--base-model-id", required=True)
     train_complete.add_argument("--epochs", type=int, default=20)
     train_complete.add_argument("--learning-rate", type=float, default=0.05)
@@ -1456,6 +1473,16 @@ def main() -> int:
             result = store.build_discovery_transition_decoder(args.batch_id)
         elif args.command == "build-discovery-glyph-decoder":
             result = store.build_discovery_glyph_decoder(args.batch_id)
+        elif args.command == "build-discovery-reader-calibration":
+            if args.reader_model:
+                result = store.build_discovery_reader_calibration(
+                    args.batch_id,
+                    reader_models=args.reader_model,
+                )
+            else:
+                result = store.build_discovery_reader_calibration(
+                    args.batch_id,
+                )
         elif args.command == "canonical-readiness":
             result = store.canonical_readiness(base_model_id=args.base_model_id)
         elif args.command == "shadow-test-discovery":

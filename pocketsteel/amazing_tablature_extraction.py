@@ -25,7 +25,7 @@ import tempfile
 import urllib.error
 import urllib.request
 import zipfile
-from collections import Counter
+from collections import Counter, defaultdict
 from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -38,8 +38,16 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 
 from pocketsteel.amazing_tablature_decisions import DECISION_DERIVATION_VERSION, derive_decision_annotations
 from pocketsteel.amazing_tablature_glyph_decoder import (
+    GLYPH_DECODER_SCHEMA_VERSION,
+    GLYPH_INPUT_MODE,
     GlyphDecoderError,
     classify_glyph,
+    contact_sheet_token_crops,
+)
+from pocketsteel.amazing_tablature_reader_calibration import (
+    READER_CALIBRATION_SCHEMA_VERSION,
+    calibrated_state_is_eligible,
+    reader_state_signature,
 )
 from pocketsteel.amazing_tablature_transition_decoder import (
     TransitionDecoderError,
@@ -65,7 +73,11 @@ COMBINED_SCORE_TAB_REVIEW_SCHEMA_VERSION = "amazing-tablature-combined-score-tab
 VALIDATION_LINE_AUDIT_SCHEMA_VERSION = "amazing-tablature-validation-line-audit-v1"
 VALIDATION_LINE_PREFLIGHT_VERSION = "validation-line-structural-preflight-v1"
 VALIDATION_MACHINE_RECAPTURE_VERSION = "validation-machine-recapture-v8"
-VALIDATION_CONTACT_CONSENSUS_VERSION = "validation-contact-sheet-consensus-v1"
+VALIDATION_CONTACT_CONSENSUS_VERSION = "validation-contact-sheet-consensus-v3"
+VALIDATION_FOCUSED_CONTACT_CHUNK_SIZE = 8
+CONTACT_SHEET_TRUTH_MAPPING_VERSION = (
+    "contact-sheet-source-column-lineage-v1"
+)
 VALIDATION_CAPTURE_ISSUE_KINDS = frozenset(
     {
         "page_extraction_failure",
@@ -114,6 +126,9 @@ SCORE_AUDIT_GATE_VERSION = "score-tab-equivalence-gate-v2"
 SCORE_REPAIR_VERSION = "score-only-omr-repair-v19"
 SCORE_NOTATION_RENDERER_VERSION = "verovio-6.2.1"
 TAB_VISION_PROMPT_VERSION = "tab-cell-cards-v3"
+TAB_VISION_RESPONSE_NORMALIZATION_VERSION = (
+    "tab-cell-response-label-normalization-v3"
+)
 TAB_SYSTEM_COUNT_PROMPT_VERSION = "tab-system-event-count-v3"
 EVENT_COUNT_REPLAY_SCHEMA_VERSION = "amazing-tablature-event-count-replay-v1"
 TAB_SYSTEM_LOCALIZATION_PROMPT_VERSION = "tab-system-event-localization-v5"
@@ -422,6 +437,45 @@ def _read_jsonl(path: Path) -> list[dict[str, Any]]:
             raise ExtractionWorkflowError(f"{path}:{line_number} must contain a JSON object.")
         records.append(value)
     return records
+
+
+def _approved_discovery_record_set_digest(
+    batch_dir: Path,
+) -> str | None:
+    """Return the exact approved discovery record-set digest, if coherent."""
+
+    discovery_root = batch_dir / "extraction" / "discovery"
+    index_path = (
+        discovery_root / "review" / "approved-record-index.jsonl"
+    )
+    if not index_path.exists():
+        return None
+    eligible = [
+        item
+        for item in _read_jsonl(index_path)
+        if item.get("status") == "human_approved"
+        and item.get("inputId")
+        and item.get("reviewedRecordPath")
+    ]
+    input_ids = [str(item["inputId"]) for item in eligible]
+    if not eligible or len(set(input_ids)) != len(input_ids):
+        return None
+    indexed = {
+        str(item["inputId"]): item
+        for item in eligible
+    }
+    record_digests: list[str] = []
+    for _input_id, item in sorted(indexed.items()):
+        record_path = discovery_root / str(item["reviewedRecordPath"])
+        if not record_path.exists():
+            return None
+        record_digest = _sha256_json(_read_json(record_path))
+        if record_digest != str(
+            item.get("reviewedRecordDigest") or ""
+        ):
+            return None
+        record_digests.append(record_digest)
+    return _sha256_json(record_digests)
 
 
 def _write_json(path: Path, value: Mapping[str, Any]) -> None:
@@ -9428,6 +9482,9 @@ class LocalTabVision:
             "modelTag": self.model,
             "modelDigest": digest,
             "promptVersion": TAB_VISION_PROMPT_VERSION,
+            "responseNormalizationVersion": (
+                TAB_VISION_RESPONSE_NORMALIZATION_VERSION
+            ),
             "temperature": 0,
             "seed": self.seed,
             "numCtx": self.num_ctx,
@@ -9498,15 +9555,37 @@ class LocalTabVision:
         raw_cells = parsed.get("cells") if isinstance(parsed, Mapping) else None
         if not isinstance(raw_cells, Mapping):
             raise ExtractionWorkflowError("The local tab-cell reader did not return a cells object.")
+        normalized_raw_cells: dict[str, Any] = {}
+        duplicate_keys: set[str] = set()
+        for raw_label, item in raw_cells.items():
+            normalized_label = str(raw_label).strip().lower()
+            if not normalized_label:
+                continue
+            if normalized_label in normalized_raw_cells:
+                duplicate_keys.add(normalized_label)
+                continue
+            normalized_raw_cells[normalized_label] = item
         normalized: dict[str, dict[str, Any]] = {}
         for label in labels:
-            item = raw_cells.get(label)
-            if item is None or isinstance(item, (str, int, float)):
-                token = str(item).strip() if item is not None and str(item).strip() else None
+            normalized_label = str(label).strip().lower()
+            item = (
+                None
+                if normalized_label in duplicate_keys
+                else normalized_raw_cells.get(normalized_label)
+            )
+            if item is None:
+                normalized[label] = {
+                    "token": None,
+                    "confidence": 0.0,
+                    "uncertain": True,
+                }
+                continue
+            if isinstance(item, (str, int, float)):
+                token = str(item).strip() if str(item).strip() else None
                 normalized[label] = {
                     "token": token,
-                    "confidence": 0.8 if token is not None else 0.0,
-                    "uncertain": token is not None,
+                    "confidence": 0.8,
+                    "uncertain": True,
                 }
                 continue
             if not isinstance(item, Mapping):
@@ -13434,6 +13513,89 @@ def _validation_page_furniture_candidate_indexes(
     return excluded
 
 
+def _render_focused_contact_sheet_chunks(
+    *,
+    output_root: Path,
+    tab_system: Mapping[str, Any],
+    unresolved_labels: Collection[str],
+    destination: Path,
+    chunk_size: int = VALIDATION_FOCUSED_CONTACT_CHUNK_SIZE,
+) -> list[tuple[Path, list[str]]]:
+    """Render small, legible reader inputs from unresolved contact cards."""
+
+    if chunk_size < 1:
+        raise ExtractionWorkflowError(
+            "Focused contact-sheet chunk size must be positive."
+        )
+    selected: list[tuple[str, Image.Image]] = []
+    unresolved = set(unresolved_labels)
+    for sheet in tab_system.get("contactSheets") or ():
+        labels = [str(value) for value in sheet.get("labels") or ()]
+        image_path = output_root / str(sheet.get("relativePath") or "")
+        if not image_path.exists() or not labels:
+            continue
+        with Image.open(image_path) as source:
+            image = source.convert("RGB")
+        rows = int(math.ceil(len(labels) / 4))
+        card_width = image.width // 4
+        card_height = image.height // max(1, rows)
+        for index, label in enumerate(labels):
+            if label not in unresolved:
+                continue
+            left = (index % 4) * card_width
+            top = (index // 4) * card_height
+            card = image.crop(
+                (
+                    left,
+                    top,
+                    min(image.width, left + card_width),
+                    min(image.height, top + card_height),
+                )
+            ).resize(
+                (card_width * 3, card_height * 3),
+                Image.Resampling.LANCZOS,
+            )
+            selected.append(
+                (label, ImageOps.autocontrast(card.convert("RGB")))
+            )
+    generated: list[tuple[Path, list[str]]] = []
+    for chunk_index, chunk_start in enumerate(
+        range(0, len(selected), chunk_size),
+        start=1,
+    ):
+        chunk = selected[chunk_start : chunk_start + chunk_size]
+        columns = min(4, len(chunk))
+        card_width = max(card.width for _label, card in chunk)
+        card_height = max(card.height for _label, card in chunk)
+        rows = int(math.ceil(len(chunk) / columns))
+        image = Image.new(
+            "RGB",
+            (columns * card_width, rows * card_height),
+            "white",
+        )
+        for index, (_label, card) in enumerate(chunk):
+            image.paste(
+                card,
+                (
+                    (index % columns) * card_width,
+                    (index // columns) * card_height,
+                ),
+            )
+        chunk_path = destination.with_name(
+            f"{destination.stem}-chunk-{chunk_index:02d}"
+            f"{destination.suffix}"
+        )
+        image.save(chunk_path, "JPEG", quality=96, optimize=True)
+        os.chmod(chunk_path, 0o600)
+        generated.append(
+            (
+                chunk_path,
+                [label for label, _card in chunk],
+            )
+        )
+    return generated
+
+
 def _consensus_contact_sheet_tab_events(
     *,
     labels: Sequence[str],
@@ -13441,6 +13603,7 @@ def _consensus_contact_sheet_tab_events(
     profile: Any,
     tab_system_id: str,
     transition_decoder: Mapping[str, Any] | None = None,
+    reader_calibration: Mapping[str, Any] | None = None,
     minimum_reader_agreement: int = 2,
     string_offset: int = 0,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
@@ -13462,8 +13625,12 @@ def _consensus_contact_sheet_tab_events(
         )
     label_pattern = re.compile(r"^e(?P<event>\d+)s(?P<string>\d+)$", re.I)
     resolved_by_column: dict[int, list[dict[str, Any]]] = {}
+    resolved_labels_by_column: dict[int, set[str]] = defaultdict(set)
+    resolved_blank_labels_by_column: dict[int, set[str]] = defaultdict(set)
+    labels_by_column: dict[int, set[str]] = defaultdict(set)
     unresolved_cells: list[dict[str, Any]] = []
     resolved_cell_count = 0
+    calibrated_singleton_count = 0
     for label in labels:
         match = label_pattern.fullmatch(str(label))
         if match is None:
@@ -13475,6 +13642,7 @@ def _consensus_contact_sheet_tab_events(
             )
             continue
         event_column = int(match.group("event"))
+        labels_by_column[event_column].add(str(label))
         source_label_string = int(match.group("string"))
         string = source_label_string + int(string_offset)
         if not 1 <= string <= 10:
@@ -13490,12 +13658,41 @@ def _consensus_contact_sheet_tab_events(
             continue
         semantic_candidates: dict[
             tuple[tuple[int, int, tuple[str, ...], int], ...],
-            list[tuple[str, list[dict[str, Any]], float]],
+            list[tuple[str, list[dict[str, Any]], float, bool]],
         ] = {}
         for reader_id, reader_cells in cells_by_reader.items():
             cell = reader_cells.get(str(label)) or {}
             token = cell.get("token")
             if token is None or not str(token).strip():
+                # An explicit high-confidence blank is a semantic observation,
+                # not a missing read. It may resolve an over-generated string
+                # row only when two independently pinned readers agree. Reader
+                # failures and uncertain blanks continue to abstain.
+                if (
+                    cell.get("uncertain") is False
+                    and not cell.get("readerFailure")
+                    and float(cell.get("confidence") or 0.0) >= 0.8
+                ):
+                    confidence = float(cell.get("confidence") or 0.0)
+                    semantic_candidates.setdefault((), []).append(
+                        (
+                            reader_id,
+                            [],
+                            confidence,
+                            bool(
+                                reader_calibration
+                                and calibrated_state_is_eligible(
+                                    reader_calibration,
+                                    reader_id=reader_id,
+                                    predicted_state=reader_state_signature(()),
+                                    confidence=confidence,
+                                    input_mode=str(
+                                        cell.get("readerInputMode") or ""
+                                    ),
+                                )
+                            ),
+                        )
+                    )
                 continue
             actions, _issue = _tab_action_sequence_from_token(
                 str(token),
@@ -13523,38 +13720,99 @@ def _consensus_contact_sheet_tab_events(
                     reader_id,
                     actions,
                     float(cell.get("confidence") or 0.0),
+                    bool(
+                        reader_calibration
+                            and calibrated_state_is_eligible(
+                                reader_calibration,
+                                reader_id=reader_id,
+                                predicted_state=reader_state_signature(actions),
+                                confidence=float(cell.get("confidence") or 0.0),
+                                input_mode=str(
+                                    cell.get("readerInputMode") or ""
+                                ),
+                            )
+                    ),
                 )
             )
+
+        def evidence_tier(
+            item: tuple[
+                tuple[tuple[int, int, tuple[str, ...], int], ...],
+                list[tuple[str, list[dict[str, Any]], float, bool]],
+            ],
+        ) -> int:
+            values = item[1]
+            if len(values) >= minimum_reader_agreement:
+                return 2
+            if len(values) == 1 and values[0][3]:
+                return 1
+            return 0
+
         ranked = sorted(
             semantic_candidates.items(),
             key=lambda item: (
+                -evidence_tier(item),
                 -len(item[1]),
                 -max(value[2] for value in item[1]),
                 item[0],
             ),
         )
-        if not ranked or len(ranked[0][1]) < minimum_reader_agreement:
+        qualified = [
+            item for item in ranked if evidence_tier(item) > 0
+        ]
+        conflicting_consensus = bool(
+            len(qualified) > 1
+            and evidence_tier(qualified[0]) == evidence_tier(qualified[1])
+            and len(qualified[0][1]) == len(qualified[1][1])
+        )
+        if (
+            not qualified
+            or conflicting_consensus
+        ):
             unresolved_cells.append(
                 {
                     "label": str(label),
                     "eventColumn": event_column,
                     "sourceLabelString": source_label_string,
                     "string": string,
-                    "reason": "no_semantic_reader_consensus",
+                    "reason": (
+                        "conflicting_semantic_reader_consensus"
+                        if conflicting_consensus
+                        else "no_semantic_reader_consensus"
+                    ),
                     "parseableReaderCount": sum(
                         len(values) for values in semantic_candidates.values()
                     ),
                 }
             )
             continue
-        agreeing_readers = sorted(value[0] for value in ranked[0][1])
+        selected_semantic_key, selected_reader_values = qualified[0]
+        agreeing_readers = sorted(
+            value[0] for value in selected_reader_values
+        )
+        calibrated_reader_ids = sorted(
+            value[0] for value in selected_reader_values if value[3]
+        )
+        calibrated_singleton = bool(
+            len(selected_reader_values) == 1
+            and calibrated_reader_ids
+        )
+        if calibrated_singleton:
+            calibrated_singleton_count += 1
+        resolved_labels_by_column[event_column].add(str(label))
+        if not selected_semantic_key:
+            resolved_blank_labels_by_column[event_column].add(str(label))
+            resolved_cell_count += 1
+            continue
         selected_actions = copy.deepcopy(
-            max(ranked[0][1], key=lambda value: value[2])[1]
+            max(selected_reader_values, key=lambda value: value[2])[1]
         )
         for action in selected_actions:
             action.pop("sourceToken", None)
             action["consensusReaderIds"] = agreeing_readers
             action["consensusReaderCount"] = len(agreeing_readers)
+            action["calibratedReaderIds"] = calibrated_reader_ids
+            action["calibratedSingletonEvidence"] = calibrated_singleton
             action["evidenceClass"] = "deterministic_derivation"
             action["reviewState"] = "machine_validated"
         resolved_by_column.setdefault(event_column, []).append(
@@ -13562,7 +13820,7 @@ def _consensus_contact_sheet_tab_events(
                 "label": str(label),
                 "string": string,
                 "actions": selected_actions,
-                "semanticStateDigest": _sha256_json(ranked[0][0]),
+                "semanticStateDigest": _sha256_json(selected_semantic_key),
                 "agreeingReaderIds": agreeing_readers,
             }
         )
@@ -13656,11 +13914,19 @@ def _consensus_contact_sheet_tab_events(
     if events:
         events[0]["executionInference"] = "initial_attack"
 
-    expected_columns = {
-        int(match.group("event"))
-        for label in labels
-        if (match := label_pattern.fullmatch(str(label))) is not None
+    raw_expected_columns = set(labels_by_column)
+    excluded_blank_columns = {
+        event_column
+        for event_column, column_labels in labels_by_column.items()
+        if (
+            column_labels
+            and resolved_labels_by_column.get(event_column, set())
+            == column_labels
+            and resolved_blank_labels_by_column.get(event_column, set())
+            == column_labels
+        )
     }
+    expected_columns = raw_expected_columns - excluded_blank_columns
     resolved_columns = set(resolved_by_column)
     diagnostics = {
         "schemaVersion": VALIDATION_CONTACT_CONSENSUS_VERSION,
@@ -13669,9 +13935,16 @@ def _consensus_contact_sheet_tab_events(
         "stringOffset": int(string_offset),
         "labelCount": len(labels),
         "resolvedCellCount": resolved_cell_count,
+        "resolvedBlankCellCount": sum(
+            len(values) for values in resolved_blank_labels_by_column.values()
+        ),
+        "calibratedSingletonResolvedCellCount": calibrated_singleton_count,
         "unresolvedCellCount": len(unresolved_cells),
+        "rawCandidateEventColumnCount": len(raw_expected_columns),
         "eventColumnCount": len(expected_columns),
         "resolvedEventColumnCount": len(resolved_columns),
+        "excludedBlankEventColumns": sorted(excluded_blank_columns),
+        "excludedBlankEventColumnCount": len(excluded_blank_columns),
         "eventCount": len(events),
         "unresolvedCells": unresolved_cells,
         "unresolvedColumns": unresolved_columns,
@@ -27607,6 +27880,9 @@ class AmazingTablatureExtractor:
         profile = get_e9_copedent_profile(str(manifest["sourceCopedentId"]))
         registry_path = self.private_root / "training-registry.json"
         registry = _read_json(registry_path) if registry_path.exists() else {}
+        discovery_record_set_digest = (
+            _approved_discovery_record_set_digest(batch_dir)
+        )
         decoder_candidates: list[tuple[str, dict[str, Any], dict[str, Any]]] = []
         for decoder_id, metadata in (
             registry.get("sourceTransitionDecoders") or {}
@@ -27674,6 +27950,24 @@ class AmazingTablatureExtractor:
             if (
                 glyph_decoder_candidate.get("sourceManifestDigest")
                 != str(manifest.get("immutableDigest") or "")
+                or not discovery_record_set_digest
+                or glyph_decoder_candidate.get(
+                    "approvedDiscoveryRecordSetDigest"
+                )
+                != discovery_record_set_digest
+                or glyph_decoder_candidate.get("schemaVersion")
+                != GLYPH_DECODER_SCHEMA_VERSION
+                or glyph_decoder_candidate.get("inputMode")
+                != GLYPH_INPUT_MODE
+                or glyph_decoder_candidate.get(
+                    "contactSheetTruthMappingVersion"
+                )
+                != CONTACT_SHEET_TRUTH_MAPPING_VERSION
+                or not glyph_decoder_candidate.get(
+                    "sourceContactRecordSetDigest"
+                )
+                or glyph_decoder_candidate.get("automationEligible")
+                is not True
                 or glyph_decoder_candidate.get("validationDataUsed") is not False
                 or glyph_decoder_candidate.get("sealedTestDataUsed") is not False
             ):
@@ -27706,7 +28000,12 @@ class AmazingTablatureExtractor:
             / "automation"
             / VALIDATION_CONTACT_CONSENSUS_VERSION
         )
-        reader_cache_dir = automation_root / "reader-cache"
+        reader_cache_dir = (
+            output_root
+            / "review"
+            / "automation"
+            / "validation-contact-reader-cache-v1"
+        )
         focused_dir = automation_root / "focused-crops"
         candidates_dir = automation_root / "candidates"
         for directory in (
@@ -27733,6 +28032,70 @@ class AmazingTablatureExtractor:
             f"{reader.model}:{str(contract['modelDigest'])[:12]}"
             for reader, contract in zip(readers, contracts, strict=True)
         ]
+        reader_calibration_candidates: list[
+            tuple[str, dict[str, Any], dict[str, Any]]
+        ] = []
+        for calibration_id, metadata in (
+            registry.get("sourceReaderCalibrations") or {}
+        ).items():
+            if (
+                not isinstance(metadata, Mapping)
+                or metadata.get("sourceBatchId") != batch_id
+                or metadata.get("automationEligible") is not True
+            ):
+                continue
+            artifact_path = self.private_root / str(
+                metadata.get("artifact") or ""
+            )
+            if (
+                not artifact_path.exists()
+                or _sha256_bytes(artifact_path.read_bytes())
+                != str(metadata.get("artifactSha256") or "")
+            ):
+                continue
+            candidate = _read_json(artifact_path)
+            if (
+                candidate.get("sourceManifestDigest")
+                != str(manifest.get("immutableDigest") or "")
+                or not discovery_record_set_digest
+                or candidate.get("approvedDiscoveryRecordSetDigest")
+                != discovery_record_set_digest
+                or candidate.get("calibrationId")
+                != str(calibration_id)
+                or candidate.get("schemaVersion")
+                != READER_CALIBRATION_SCHEMA_VERSION
+                or candidate.get(
+                    "contactSheetTruthMappingVersion"
+                )
+                != CONTACT_SHEET_TRUTH_MAPPING_VERSION
+                or not candidate.get("sourceContactRecordSetDigest")
+                or candidate.get("automationEligible") is not True
+                or candidate.get("validationDataUsed") is not False
+                or candidate.get("sealedTestDataUsed") is not False
+                or candidate.get("readerContracts") != contracts
+            ):
+                continue
+            reader_calibration_candidates.append(
+                (str(calibration_id), dict(metadata), candidate)
+            )
+        reader_calibration_candidates.sort(
+            key=lambda value: (
+                str(value[2].get("createdAt") or ""),
+                value[0],
+            )
+        )
+        reader_calibration_id: str | None = None
+        reader_calibration: dict[str, Any] | None = None
+        reader_calibration_artifact_sha256: str | None = None
+        if reader_calibration_candidates:
+            (
+                reader_calibration_id,
+                reader_calibration_metadata,
+                reader_calibration,
+            ) = reader_calibration_candidates[-1]
+            reader_calibration_artifact_sha256 = str(
+                reader_calibration_metadata.get("artifactSha256") or ""
+            )
         full_sheet_readers = tuple(
             zip(
                 readers[:1],
@@ -27753,6 +28116,8 @@ class AmazingTablatureExtractor:
             contract: Mapping[str, Any],
             image_path: Path,
             labels: Sequence[str],
+            *,
+            input_mode: str,
         ) -> dict[str, dict[str, Any]]:
             image_sha = _sha256_bytes(image_path.read_bytes())
             cache_key = _sha256_json(
@@ -27763,27 +28128,54 @@ class AmazingTablatureExtractor:
                 }
             )
             cache_path = reader_cache_dir / f"{cache_key}.json"
-            if cache_path.exists():
-                cached = _read_json(cache_path)
+            legacy_cache_paths = sorted(
+                (
+                    output_root
+                    / "review"
+                    / "automation"
+                ).glob(
+                    "validation-contact-sheet-consensus-*/"
+                    f"reader-cache/{cache_key}.json"
+                )
+            )
+            candidate_cache_paths = (
+                ([cache_path] if cache_path.exists() else [])
+                + [
+                    path
+                    for path in legacy_cache_paths
+                    if path != cache_path
+                ]
+            )
+            for candidate_cache_path in candidate_cache_paths:
+                cached = _read_json(candidate_cache_path)
                 if (
                     cached.get("imageSha256") == image_sha
                     and cached.get("labels") == list(labels)
                     and cached.get("readerContract") == contract
                     and isinstance(cached.get("cells"), Mapping)
                 ):
+                    # The cache is bound to the exact image, labels, prompt,
+                    # and model digest. A stored reader failure has already
+                    # exhausted the bounded attempts and remains an
+                    # abstention; do not reissue identical inference or
+                    # reinterpret it as an empty tab cell.
                     return {
-                        str(key): dict(value)
+                        str(key): {
+                            **dict(value),
+                            "readerInputMode": input_mode,
+                        }
                         for key, value in cached["cells"].items()
                         if isinstance(value, Mapping)
                     }
             cells: dict[str, dict[str, Any]] | None = None
             last_error: ExtractionWorkflowError | None = None
-            for _attempt in range(2):
-                try:
-                    cells = reader.read(image_path, labels)
-                    break
-                except ExtractionWorkflowError as exc:
-                    last_error = exc
+            try:
+                # LocalTabVision already performs its exact bounded retry.
+                # A second wrapper loop would multiply the same request to as
+                # many as four calls without adding independent evidence.
+                cells = reader.read(image_path, labels)
+            except ExtractionWorkflowError as exc:
+                last_error = exc
             if cells is None:
                 cells = {
                     str(label): {
@@ -27800,6 +28192,7 @@ class AmazingTablatureExtractor:
                     "schemaVersion": VALIDATION_CONTACT_CONSENSUS_VERSION,
                     "readerId": reader_id,
                     "readerContract": dict(contract),
+                    "readerInputMode": input_mode,
                     "imageSha256": image_sha,
                     "labels": list(labels),
                     "cells": cells,
@@ -27807,7 +28200,14 @@ class AmazingTablatureExtractor:
                     "sealedTestAccessed": False,
                 },
             )
-            return cells
+            return {
+                str(key): {
+                    **dict(value),
+                    "readerInputMode": input_mode,
+                }
+                for key, value in cells.items()
+                if isinstance(value, Mapping)
+            }
 
         def read_discovery_glyph_cells(
             image_path: Path,
@@ -27816,24 +28216,9 @@ class AmazingTablatureExtractor:
             if glyph_decoder is None:
                 return {}
             with Image.open(image_path) as image:
-                source = image.convert("RGB")
-                rows = int(math.ceil(len(labels) / 4))
-                card_width = source.width // 4
-                card_height = source.height // max(1, rows)
-                patch_width = max(1, card_width - 120)
-                patch_height = max(1, card_height - 42)
+                crops = contact_sheet_token_crops(image, labels)
                 cells: dict[str, dict[str, Any]] = {}
-                for index, label in enumerate(labels):
-                    left = (index % 4) * card_width + 90
-                    top = (index // 4) * card_height + 30
-                    crop = source.crop(
-                        (
-                            left,
-                            top,
-                            min(source.width, left + patch_width),
-                            min(source.height, top + patch_height),
-                        )
-                    )
+                for label, crop in crops.items():
                     try:
                         decision = classify_glyph(glyph_decoder, crop)
                     except GlyphDecoderError:
@@ -27872,6 +28257,7 @@ class AmazingTablatureExtractor:
                     profile=profile,
                     tab_system_id=tab_system_id,
                     transition_decoder=transition_decoder,
+                    reader_calibration=reader_calibration,
                     string_offset=string_offset,
                 )
                 hypotheses.append((string_offset, events, diagnostics))
@@ -27958,62 +28344,6 @@ class AmazingTablatureExtractor:
             diagnostics["selectedDiagnosticStringOffset"] = offset
             return events, diagnostics
 
-        def focused_sheet(
-            tab_system: Mapping[str, Any],
-            unresolved_labels: Collection[str],
-            destination: Path,
-        ) -> Path | None:
-            selected: list[tuple[str, Image.Image]] = []
-            unresolved = set(unresolved_labels)
-            for sheet in tab_system.get("contactSheets") or ():
-                labels = [str(value) for value in sheet.get("labels") or ()]
-                image_path = output_root / str(sheet.get("relativePath") or "")
-                if not image_path.exists() or not labels:
-                    continue
-                image = Image.open(image_path).convert("RGB")
-                rows = int(math.ceil(len(labels) / 4))
-                card_width = image.width // 4
-                card_height = image.height // max(1, rows)
-                for index, label in enumerate(labels):
-                    if label not in unresolved:
-                        continue
-                    left = (index % 4) * card_width
-                    top = (index // 4) * card_height
-                    card = image.crop(
-                        (
-                            left,
-                            top,
-                            min(image.width, left + card_width),
-                            min(image.height, top + card_height),
-                        )
-                    ).resize(
-                        (card_width * 3, card_height * 3),
-                        Image.Resampling.LANCZOS,
-                    )
-                    selected.append((label, ImageOps.autocontrast(card.convert("RGB"))))
-            if not selected:
-                return None
-            columns = min(4, len(selected))
-            card_width = max(card.width for _label, card in selected)
-            card_height = max(card.height for _label, card in selected)
-            rows = int(math.ceil(len(selected) / columns))
-            image = Image.new(
-                "RGB",
-                (columns * card_width, rows * card_height),
-                "white",
-            )
-            for index, (_label, card) in enumerate(selected):
-                image.paste(
-                    card,
-                    (
-                        (index % columns) * card_width,
-                        (index // columns) * card_height,
-                    ),
-                )
-            image.save(destination, "JPEG", quality=96, optimize=True)
-            os.chmod(destination, 0o600)
-            return destination
-
         line_results: list[dict[str, Any]] = []
         expected_run_digest = str(extraction_summary.get("runDigest") or "")
         for work_item in work:
@@ -28091,6 +28421,7 @@ class AmazingTablatureExtractor:
                             contract,
                             image_path,
                             raw_sheet_labels,
+                            input_mode="full_contact_sheet",
                         )
                         cells_by_reader[reader_id].update(
                             {
@@ -28110,7 +28441,7 @@ class AmazingTablatureExtractor:
                 diagnostics["excludedPageFurnitureCandidateReason"] = (
                     "unresolved_candidate_exactly_matches_detected_barline"
                 )
-                focused_sha256: str | None = None
+                focused_crop_records: list[dict[str, Any]] = []
                 if diagnostics["unresolvedCellCount"]:
                     unresolved_labels = [
                         str(item.get("label") or "")
@@ -28120,27 +28451,60 @@ class AmazingTablatureExtractor:
                     focused_path = focused_dir / (
                         f"{input_id}-system-{system_index:02d}.jpg"
                     )
-                    generated = focused_sheet(
-                        tab_system,
-                        unresolved_labels,
-                        focused_path,
+                    generated_chunks = _render_focused_contact_sheet_chunks(
+                        output_root=output_root,
+                        tab_system=tab_system,
+                        unresolved_labels=unresolved_labels,
+                        destination=focused_path,
                     )
-                    if generated is not None:
-                        focused_sha256 = _sha256_bytes(generated.read_bytes())
-                        for reader, reader_id, contract in zip(
-                            readers,
-                            reader_ids,
-                            contracts,
+                    for generated, chunk_labels in generated_chunks:
+                        focused_crop_records.append(
+                            {
+                                "labels": chunk_labels,
+                                "sha256": _sha256_bytes(
+                                    generated.read_bytes()
+                                ),
+                            }
+                        )
+                        reader_inputs = list(
+                            zip(
+                                readers,
+                                reader_ids,
+                                contracts,
+                                strict=True,
+                            )
+                        )
+                        with concurrent.futures.ThreadPoolExecutor(
+                            max_workers=len(reader_inputs)
+                        ) as executor:
+                            futures = [
+                                executor.submit(
+                                    read_cells,
+                                    reader,
+                                    reader_id,
+                                    contract,
+                                    generated,
+                                    chunk_labels,
+                                    input_mode=(
+                                        "focused_contact_sheet_chunk"
+                                    ),
+                                )
+                                for reader, reader_id, contract in reader_inputs
+                            ]
+                            focused_results = [
+                                future.result() for future in futures
+                            ]
+                        for (
+                            _reader,
+                            reader_id,
+                            _contract,
+                        ), focused_cells in zip(
+                            reader_inputs,
+                            focused_results,
                             strict=True,
                         ):
-                            focused_cells = read_cells(
-                                reader,
-                                reader_id,
-                                contract,
-                                generated,
-                                unresolved_labels,
-                            )
                             cells_by_reader[reader_id].update(focused_cells)
+                    if generated_chunks:
                         events, diagnostics = decode_with_string_origin_consensus(
                             labels=labels,
                             cells_by_reader=cells_by_reader,
@@ -28176,9 +28540,20 @@ class AmazingTablatureExtractor:
                         "decoderId": glyph_decoder_id,
                         "artifactSha256": glyph_decoder_artifact_sha256,
                     },
+                    "sourceReaderCalibration": {
+                        "calibrationId": reader_calibration_id,
+                        "artifactSha256": (
+                            reader_calibration_artifact_sha256
+                        ),
+                    },
                     "events": events,
                     "diagnostics": diagnostics,
-                    "focusedCropSha256": focused_sha256,
+                    "focusedCropCount": len(focused_crop_records),
+                    "focusedCropSetDigest": (
+                        _sha256_json(focused_crop_records)
+                        if focused_crop_records
+                        else None
+                    ),
                     "status": (
                         "complete_machine_candidate"
                         if complete
@@ -28207,6 +28582,9 @@ class AmazingTablatureExtractor:
                         "eventColumnCount": diagnostics["eventColumnCount"],
                         "eventCount": diagnostics["eventCount"],
                         "resolvedCellCount": diagnostics["resolvedCellCount"],
+                        "calibratedSingletonResolvedCellCount": diagnostics[
+                            "calibratedSingletonResolvedCellCount"
+                        ],
                         "unresolvedCellCount": diagnostics["unresolvedCellCount"],
                         "learnedMovementCount": diagnostics["learnedMovementCount"],
                         "unresolvedExecutionCount": diagnostics[
@@ -28233,6 +28611,10 @@ class AmazingTablatureExtractor:
                 "decoderId": glyph_decoder_id,
                 "artifactSha256": glyph_decoder_artifact_sha256,
             },
+            "sourceReaderCalibration": {
+                "calibrationId": reader_calibration_id,
+                "artifactSha256": reader_calibration_artifact_sha256,
+            },
             "readerContracts": contracts,
             "lineCount": len(line_results),
             "completeLineCount": int(
@@ -28241,6 +28623,10 @@ class AmazingTablatureExtractor:
             "withheldLineCount": int(status_counts["withheld_incomplete"]),
             "unresolvedCellCount": sum(
                 int(value["unresolvedCellCount"]) for value in line_results
+            ),
+            "calibratedSingletonResolvedCellCount": sum(
+                int(value["calibratedSingletonResolvedCellCount"])
+                for value in line_results
             ),
             "eventColumnCount": sum(
                 int(value["eventColumnCount"]) for value in line_results
