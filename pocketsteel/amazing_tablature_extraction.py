@@ -56,7 +56,7 @@ FEEDBACK_CORRECTION_CONFIRMATION_SCHEMA_VERSION = (
 COMBINED_SCORE_TAB_REVIEW_SCHEMA_VERSION = "amazing-tablature-combined-score-tab-review-v1"
 VALIDATION_LINE_AUDIT_SCHEMA_VERSION = "amazing-tablature-validation-line-audit-v1"
 VALIDATION_LINE_PREFLIGHT_VERSION = "validation-line-structural-preflight-v1"
-VALIDATION_MACHINE_RECAPTURE_VERSION = "validation-machine-recapture-v5"
+VALIDATION_MACHINE_RECAPTURE_VERSION = "validation-machine-recapture-v6"
 VALIDATION_CAPTURE_ISSUE_KINDS = frozenset(
     {
         "page_extraction_failure",
@@ -6397,7 +6397,7 @@ def _validation_independent_contact_cells(
     *,
     output_root: Path,
     tab_system: Mapping[str, Any],
-    model: str,
+    reader: str,
 ) -> tuple[dict[str, dict[str, Any]], list[str]]:
     """Load pinned per-cell vision reads independently of the full-line reader."""
 
@@ -6419,7 +6419,7 @@ def _validation_independent_contact_cells(
         cache = _read_json(token_path)
         if (
             str(cache.get("promptVersion") or "") != TAB_VISION_PROMPT_VERSION
-            or str(cache.get("model") or "") != model
+            or str(cache.get("model") or "") != reader
             or str(cache.get("sheetSha256") or "") != sheet_sha
             or list(cache.get("labels") or []) != list(sheet.get("labels") or [])
             or not isinstance(cache.get("cells"), Mapping)
@@ -26169,6 +26169,11 @@ class AmazingTablatureExtractor:
         validation_model = copy.deepcopy(extraction_summary.get("validationModel") or {})
         if not validation_model.get("modelId"):
             raise ExtractionWorkflowError("Validation recapture requires pinned model lineage.")
+        independent_cell_reader = str(extraction_summary.get("tabReader") or "")
+        if not independent_cell_reader:
+            raise ExtractionWorkflowError(
+                "Validation recapture requires pinned tab-cell reader lineage."
+            )
         remediation_dir = (
             output_root
             / "review"
@@ -26216,6 +26221,7 @@ class AmazingTablatureExtractor:
             "eventAndStringGeometrySource": "deterministic_visual_candidate_geometry",
             "stateTokenSource": "guided_full_state_vision_with_pinned_cell_crosscheck",
             "independentCellReaderPromptVersion": TAB_VISION_PROMPT_VERSION,
+            "independentCellReader": independent_cell_reader,
             "requiresOneTokenPerVisualCandidateCell": True,
             "horizontalConnectorMayProjectStateWithoutCreatingMovement": True,
             "minimumStringOriginConsensus": 0.75,
@@ -26317,7 +26323,7 @@ class AmazingTablatureExtractor:
                         _validation_independent_contact_cells(
                             output_root=output_root,
                             tab_system=tab_system,
-                            model=self.tab_system_vision.model,
+                            reader=independent_cell_reader,
                         )
                     )
                     cache_path = candidate_dir / f"{input_id}-{score_system_id}.json"

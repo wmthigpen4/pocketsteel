@@ -1717,7 +1717,7 @@ def test_validation_contact_cells_require_exact_sheet_and_reader_lineage(
     cells, digests = _validation_independent_contact_cells(
         output_root=output_root,
         tab_system=tab_system,
-        model="vision-model",
+        reader="vision-model",
     )
     assert cells["e1s5"]["token"] == "5A"
     assert digests == [hashlib.sha256(cache_path.read_bytes()).hexdigest()]
@@ -1728,13 +1728,13 @@ def test_validation_contact_cells_require_exact_sheet_and_reader_lineage(
         _validation_independent_contact_cells(
             output_root=output_root,
             tab_system=changed,
-            model="vision-model",
+            reader="vision-model",
         )
     with pytest.raises(ExtractionWorkflowError, match="lineage"):
         _validation_independent_contact_cells(
             output_root=output_root,
             tab_system=tab_system,
-            model="different-model",
+            reader="different-model",
         )
 
 
