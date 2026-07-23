@@ -6050,6 +6050,54 @@ def _validation_machine_score_from_existing_omr(
     return score_events, recognition
 
 
+def _validation_independent_contact_cells(
+    *,
+    output_root: Path,
+    tab_system: Mapping[str, Any],
+    model: str,
+) -> tuple[dict[str, dict[str, Any]], list[str]]:
+    """Load pinned per-cell vision reads independently of the full-line reader."""
+
+    cells: dict[str, dict[str, Any]] = {}
+    cache_digests: list[str] = []
+    for sheet in tab_system.get("contactSheets") or []:
+        relative_path = str(sheet.get("relativePath") or "")
+        sheet_path = output_root / relative_path
+        token_path = sheet_path.with_suffix(".tokens.json")
+        if not relative_path or not sheet_path.exists() or not token_path.exists():
+            raise ExtractionWorkflowError(
+                "Independent validation tab-cell evidence is missing."
+            )
+        sheet_sha = _sha256_bytes(sheet_path.read_bytes())
+        if sheet_sha != str(sheet.get("sha256") or ""):
+            raise ExtractionWorkflowError(
+                "Independent validation tab-cell sheet changed after extraction."
+            )
+        cache = _read_json(token_path)
+        if (
+            str(cache.get("promptVersion") or "") != TAB_VISION_PROMPT_VERSION
+            or str(cache.get("model") or "") != model
+            or str(cache.get("sheetSha256") or "") != sheet_sha
+            or list(cache.get("labels") or []) != list(sheet.get("labels") or [])
+            or not isinstance(cache.get("cells"), Mapping)
+        ):
+            raise ExtractionWorkflowError(
+                "Independent validation tab-cell evidence lacks exact reader lineage."
+            )
+        for label, cell in cache["cells"].items():
+            if label in cells or not isinstance(cell, Mapping):
+                raise ExtractionWorkflowError(
+                    "Independent validation tab-cell evidence is duplicated or malformed."
+                )
+            cells[str(label)] = dict(cell)
+        cache_digests.append(_sha256_bytes(token_path.read_bytes()))
+    if not cells:
+        raise ExtractionWorkflowError(
+            "Independent validation tab-cell evidence is empty."
+        )
+    return cells, sorted(cache_digests)
+
+
 def _machine_score_is_contained_in_tab(
     score_events: Sequence[Mapping[str, Any]],
     tab_events: Sequence[Mapping[str, Any]],
@@ -25368,10 +25416,12 @@ class AmazingTablatureExtractor:
             "minimumConfidence": 0.85,
             "requiresVisualCandidateAgreement": True,
             "eventAndStringGeometrySource": "deterministic_visual_candidate_geometry",
-            "stateTokenSource": "guided_full_state_vision",
+            "stateTokenSource": "guided_full_state_vision_with_pinned_cell_crosscheck",
+            "independentCellReaderPromptVersion": TAB_VISION_PROMPT_VERSION,
             "requiresOneTokenPerVisualCandidateCell": True,
             "minimumStringOriginConsensus": 0.75,
-            "mechanicalChecksumMayResolveMinorityRow": True,
+            "mechanicalChecksumMayResolveMinorityRow": False,
+            "deterministicGeometryRowsRemainAuthoritative": True,
             "countOnlyVisionReaderIsDiagnostic": True,
             "requiresMechanicalValidity": True,
             "requiresScorePitchContainmentInTab": True,
@@ -25464,6 +25514,13 @@ class AmazingTablatureExtractor:
                         tab_system=tab_system,
                         tab_crop=tab_crop,
                     )
+                    independent_cells, independent_cell_cache_digests = (
+                        _validation_independent_contact_cells(
+                            output_root=output_root,
+                            tab_system=tab_system,
+                            model=self.tab_system_vision.model,
+                        )
+                    )
                     cache_path = candidate_dir / f"{input_id}-{score_system_id}.json"
                     machine_record_digest = _sha256_json(record)
                     cached: dict[str, Any] = {}
@@ -25553,7 +25610,7 @@ class AmazingTablatureExtractor:
                             "Machine readers could not establish one system-level string origin."
                         )
                     geometry_row_reassignments = 0
-                    mechanical_row_overrides = 0
+                    independent_cell_token_overrides = 0
                     for raw_event, guide, candidate in zip(
                         localization.get("events") or [],
                         guided_tab_crop["guides"],
@@ -25568,6 +25625,10 @@ class AmazingTablatureExtractor:
                             int(value) + string_origin_offset
                             for value in candidate.get("candidateStrings") or []
                         )
+                        original_candidate_strings = sorted(
+                            int(value)
+                            for value in candidate.get("candidateStrings") or []
+                        )
                         if any(value not in range(1, 11) for value in candidate_strings):
                             raise ExtractionWorkflowError(
                                 "String-origin calibration moved a candidate outside strings 1-10."
@@ -25576,11 +25637,14 @@ class AmazingTablatureExtractor:
                             raise ExtractionWorkflowError(
                                 "Guided tab state reader did not return one token per visual candidate cell."
                             )
-                        for raw_cell, candidate_string in zip(
-                            raw_cells, candidate_strings, strict=True
+                        for raw_cell, original_string, candidate_string in zip(
+                            raw_cells,
+                            original_candidate_strings,
+                            candidate_strings,
+                            strict=True,
                         ):
                             reported_string = int(raw_cell.get("string") or 0)
-                            token = str(raw_cell.get("token") or "")
+                            token = str(raw_cell.get("token") or "").strip().upper()
                             candidate_action, candidate_issue = _tab_action_from_token(
                                 token,
                                 string=candidate_string,
@@ -25588,12 +25652,20 @@ class AmazingTablatureExtractor:
                                 confidence=float(localization.get("confidence") or 0.0),
                                 region_id="validation-machine-row-check",
                             )
-                            reported_action, reported_issue = _tab_action_from_token(
-                                token,
-                                string=reported_string,
+                            cell_label = (
+                                f"e{int(candidate.get('sourceCandidateEventIndex') or raw_event.get('eventIndex') or 0)}"
+                                f"s{original_string}"
+                            )
+                            independent_cell = independent_cells.get(cell_label) or {}
+                            independent_token = str(
+                                independent_cell.get("token") or ""
+                            ).strip().upper()
+                            independent_action, independent_issue = _tab_action_from_token(
+                                independent_token,
+                                string=candidate_string,
                                 profile=profile,
-                                confidence=float(localization.get("confidence") or 0.0),
-                                region_id="validation-machine-row-check",
+                                confidence=float(independent_cell.get("confidence") or 0.0),
+                                region_id="validation-independent-cell-check",
                             )
                             candidate_valid = (
                                 candidate_issue is None
@@ -25604,23 +25676,27 @@ class AmazingTablatureExtractor:
                                     )
                                 )
                             )
-                            reported_valid = (
-                                reported_issue is None
-                                and reported_action is not None
+                            independent_valid = (
+                                independent_issue is None
+                                and independent_action is not None
+                                and not bool(independent_cell.get("uncertain", True))
+                                and float(independent_cell.get("confidence") or 0.0) >= 0.85
                                 and bool(
-                                    (reported_action.get("mechanicalValidation") or {}).get(
+                                    (independent_action.get("mechanicalValidation") or {}).get(
                                         "valid"
                                     )
                                 )
                             )
-                            resolved_string = candidate_string
-                            if not candidate_valid and reported_valid:
-                                resolved_string = reported_string
-                                mechanical_row_overrides += 1
-                            geometry_row_reassignments += (
-                                reported_string != resolved_string
-                            )
-                            raw_cell["string"] = resolved_string
+                            if candidate_valid and independent_valid and token != independent_token:
+                                raise ExtractionWorkflowError(
+                                    "Independent validation tab readers disagree on a mechanically valid token "
+                                    f"at {cell_label}."
+                                )
+                            if not candidate_valid and independent_valid:
+                                raw_cell["token"] = independent_token
+                                independent_cell_token_overrides += 1
+                            geometry_row_reassignments += reported_string != candidate_string
+                            raw_cell["string"] = candidate_string
                         raw_event["cells"] = raw_cells
                         raw_event["x"] = round(
                             (
@@ -25705,7 +25781,9 @@ class AmazingTablatureExtractor:
                         "scoreRecognition": score_recognition,
                         "scoreTabContainmentDiagnostics": score_tab_diagnostics,
                         "geometryRowReassignmentCount": geometry_row_reassignments,
-                        "mechanicalRowOverrideCount": mechanical_row_overrides,
+                        "mechanicalRowOverrideCount": 0,
+                        "independentCellTokenOverrideCount": independent_cell_token_overrides,
+                        "independentCellCacheDigests": independent_cell_cache_digests,
                         "stringOriginOffset": string_origin_offset,
                         "stringOriginConsensus": round(string_origin_consensus, 6),
                         "humanTruthUsed": False,
@@ -25847,7 +25925,10 @@ class AmazingTablatureExtractor:
                             "expectedEventCount": expected_count,
                             "maximumPositionDelta": round(maximum_position_delta, 6),
                             "geometryRowReassignmentCount": geometry_row_reassignments,
-                            "mechanicalRowOverrideCount": mechanical_row_overrides,
+                            "mechanicalRowOverrideCount": 0,
+                            "independentCellTokenOverrideCount": (
+                                independent_cell_token_overrides
+                            ),
                             "stringOriginOffset": string_origin_offset,
                             "stringOriginConsensus": round(string_origin_consensus, 6),
                             "countOnlyReaderAgrees": count_reader_agrees,

@@ -78,6 +78,7 @@ from pocketsteel.amazing_tablature_extraction import (
     _validation_capture_issue_count,
     _validation_line_preflight_blockers,
     _validation_machine_count_consensus,
+    _validation_independent_contact_cells,
     _validation_machine_score_from_existing_omr,
     _machine_localized_score_events,
     _machine_localized_tab_events,
@@ -1378,6 +1379,59 @@ def test_validation_score_reuse_requires_complete_pinned_independent_omr() -> No
     with pytest.raises(ExtractionWorkflowError, match="key signature"):
         _validation_machine_score_from_existing_omr(
             missing_key, expected_event_counts={2}
+        )
+
+
+def test_validation_contact_cells_require_exact_sheet_and_reader_lineage(
+    tmp_path: Path,
+) -> None:
+    output_root = tmp_path / "validation"
+    sheet_path = output_root / "contact-sheets" / "input-1" / "tab-system-01.jpg"
+    sheet_path.parent.mkdir(parents=True)
+    sheet_path.write_bytes(b"machine-sheet")
+    sheet_sha = hashlib.sha256(sheet_path.read_bytes()).hexdigest()
+    cache_path = sheet_path.with_suffix(".tokens.json")
+    cache = {
+        "promptVersion": "tab-cell-cards-v3",
+        "model": "vision-model",
+        "sheetSha256": sheet_sha,
+        "labels": ["e1s5"],
+        "cells": {
+            "e1s5": {"token": "5A", "confidence": 0.99, "uncertain": False}
+        },
+    }
+    cache_path.write_text(json.dumps(cache), encoding="utf-8")
+    tab_system = {
+        "contactSheets": [
+            {
+                "relativePath": str(sheet_path.relative_to(output_root)),
+                "sha256": sheet_sha,
+                "labels": ["e1s5"],
+            }
+        ]
+    }
+
+    cells, digests = _validation_independent_contact_cells(
+        output_root=output_root,
+        tab_system=tab_system,
+        model="vision-model",
+    )
+    assert cells["e1s5"]["token"] == "5A"
+    assert digests == [hashlib.sha256(cache_path.read_bytes()).hexdigest()]
+
+    changed = copy.deepcopy(tab_system)
+    changed["contactSheets"][0]["sha256"] = "0" * 64
+    with pytest.raises(ExtractionWorkflowError, match="changed"):
+        _validation_independent_contact_cells(
+            output_root=output_root,
+            tab_system=changed,
+            model="vision-model",
+        )
+    with pytest.raises(ExtractionWorkflowError, match="lineage"):
+        _validation_independent_contact_cells(
+            output_root=output_root,
+            tab_system=tab_system,
+            model="different-model",
         )
 
 
